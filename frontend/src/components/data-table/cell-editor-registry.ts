@@ -14,6 +14,7 @@ import type { RichCellEditorValuesCallbackParams } from 'ag-grid-community'
 import { enumLabelOf } from '@/features/config/enum-label'
 import { DateTimeCellEditor } from '@/components/data-table/datetime-cell-editor'
 import { MultiSelectCellEditor } from '@/components/data-table/multi-select-cell-editor'
+import { OfferLinesCellEditor } from '@/features/request-management/offer-lines-cell-editor'
 import { ProductLinesCellEditor } from '@/features/product-lines/product-lines-cell-editor'
 import { RelationCellEditor } from '@/components/data-table/relation-cell-editor'
 import { SelectCellEditor } from '@/components/data-table/select-cell-editor'
@@ -22,7 +23,14 @@ import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { ColumnType, TableColumn, TableRow } from '@/features/table/types'
 
 /** The lookup key: a column's declared `editor` when present, else its `type` (spec 0054 D-1, 0055 D-1). */
-export type CellEditorKind = ColumnType | 'relation' | 'select' | 'multiselect' | 'date' | 'product_lines'
+export type CellEditorKind =
+  | ColumnType
+  | 'relation'
+  | 'select'
+  | 'multiselect'
+  | 'date'
+  | 'product_lines'
+  | 'offer_lines'
 
 /** cellEditor (a built-in name, or a custom React component) + optional per-column params, resolved once per colDef. */
 export interface CellEditorSpec {
@@ -127,6 +135,15 @@ export const CELL_EDITOR_REGISTRY: Record<CellEditorKind, CellEditorSpec> = {
   product_lines: {
     cellEditor: ProductLinesCellEditor as ComponentType<CustomCellEditorProps>,
     cellEditorPopup: true,
+  },
+  // User directive 2026-09-07: the whole collection of an offer's REVENUE
+  // rows. Its component renders nothing in the grid — it delegates to the
+  // dialog the request-management screen mounts and closes itself — because a
+  // row is composed with pickers that cannot survive inside a cell popup (see
+  // `OfferLinesCellEditor`). Registering it here is what keeps the GESTURE and
+  // the per-row gate identical to every other editable column.
+  offer_lines: {
+    cellEditor: OfferLinesCellEditor as ComponentType<CustomCellEditorProps>,
   },
   relation: {
     // AG Grid itself types `ColDef.cellEditor` as `any` (the shape differs by

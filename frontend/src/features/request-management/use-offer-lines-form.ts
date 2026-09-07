@@ -1,13 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import type { Path } from 'react-hook-form'
+import { useForm, type Path, type UseFormSetError } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import axios from 'axios'
 import { z } from 'zod'
-import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { opportunityDetailQueryKey } from '@/features/opportunities/api'
+import type { IRowNode } from 'ag-grid-community'
+import type { ApiErrorResponse } from '@/api/types'
 import {
   linesToFormValues,
   originalLineInputs,
@@ -18,23 +16,29 @@ import {
 import { MAX_LINES_PER_TAB, quoteLineRowSchema } from '@/features/quotes/quote-schema'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { ProductLineRow } from '@/features/product-lines/types'
-import { updateRequestWork } from '@/features/request-management/api'
-import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { toProductLineRows } from '@/features/request-management/request-work-payload'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
+import { updateTableCell } from '@/features/table/api'
+import type { TableRow } from '@/features/table/types'
 
 /**
  * The quick-edit form values: the offer rows, plus the classification they are
  * scoped by. `product_lines` is carried READ-ONLY — `RequestOfferLinesField`
  * watches it to scope the product picker and to resolve the `single`-mode row
- * cap — and never travels: this surface edits the offer rows alone (user
- * directive 2026-09-07), the classification keeps its own inline-editable
- * column on the same grid.
+ * cap — and never travels: this cell edits the offer rows alone, the
+ * classification has its own inline-editable column on the same grid.
  */
 export interface OfferLinesFormValues {
   product_lines: ProductLineRow[]
   offer_lines: QuoteLineFormValues[]
 }
+
+/** The edited column, which is also its `editableField` and this form's own RHF path. */
+const OFFER_LINES_FIELD = 'offer_lines'
+
+/** The key a cell PATCH's 422 reports under: the engine validates one `value`, whatever its shape. */
+const CELL_VALUE_KEY = 'value'
 
 function buildDefaultValues(panel: RequestWorkPanelWithPermissions): OfferLinesFormValues {
   return {
@@ -45,27 +49,61 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): OfferLinesF
   }
 }
 
+/**
+ * Maps the cell endpoint's 422 onto the form: the engine reports on `value`
+ * (and `value.<i>.<field>` for a per-row rule), while the row editor binds
+ * `offer_lines.<i>.<field>` — the same paths, under the generic engine's own
+ * name. Without this rename a per-row message would land nowhere and the
+ * operator would only see a summary.
+ */
+function applyCellValidationErrors(
+  error: unknown,
+  setError: UseFormSetError<OfferLinesFormValues>,
+): boolean {
+  if (!axios.isAxiosError<ApiErrorResponse>(error) || error.response?.status !== 422) {
+    return false
+  }
+
+  const errors = error.response.data?.errors as Record<string, string[]> | undefined
+  let applied = false
+
+  for (const [key, messages] of Object.entries(errors ?? {})) {
+    const message = messages[0]
+    if (message === undefined || (key !== CELL_VALUE_KEY && !key.startsWith(`${CELL_VALUE_KEY}.`))) {
+      continue
+    }
+    const path = `${OFFER_LINES_FIELD}${key.slice(CELL_VALUE_KEY.length)}` as Path<OfferLinesFormValues>
+    setError(path, { type: 'server', message })
+    applied = true
+  }
+
+  return applied
+}
+
 interface UseOfferLinesFormOptions {
-  /** Called after a successful save (the grid refreshes the row from it). */
-  onSaved?: () => void
-  /** Called once the dialog has nothing left to do — a save that succeeded, or a submit with no change. */
-  onDone?: () => void
+  /** The grid row this cell belongs to: replaced wholesale on success, like every other cell edit. */
+  node: IRowNode<TableRow>
+  /** Called once the dialog has nothing left to do — a commit that landed, or a submit with no change. */
+  onDone: () => void
 }
 
 /**
- * RHF/Zod wiring of the grid's "Linee di prodotto" quick edit (user directive
- * 2026-09-07): the SAME per-row schema, the SAME hydration/wire mappers and
- * the SAME `PATCH /request-management/{quote}` the work panel goes through —
- * so a rule fixed on one surface cannot stay wrong on the other. The payload
- * is sparse in the same sense: an untouched collection never travels, and the
- * dialog closes without a request.
+ * RHF/Zod wiring of the "Linee di prodotto" cell editor (user directive
+ * 2026-09-07): the SAME per-row schema and the SAME hydration/wire mappers as
+ * the work panel, committed through the SAME
+ * `PATCH /tables/{domain}/rows/{row}` every other inline-edited cell goes
+ * through — so the row is replaced by the server's re-mapped copy exactly as
+ * `useTableCellEdit` would, and the server-side rules are the engine's own
+ * (`CellValueValidator` -> `updateWork()`), not a second channel's.
+ *
+ * Sparse in the same sense as every other cell: an untouched collection never
+ * travels, and the dialog simply closes.
  */
 export function useOfferLinesForm(
   panel: RequestWorkPanelWithPermissions,
-  { onSaved, onDone }: UseOfferLinesFormOptions = {},
+  { node, onDone }: UseOfferLinesFormOptions,
 ) {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const schema = useMemo(
@@ -99,11 +137,6 @@ export function useOfferLinesForm(
     [vatRatePercentById],
   )
 
-  // A per-row 422 (`offer_lines.0.quantity`) has a matching control — the row
-  // editor binds each field by index — while the cross-row ones (the
-  // single-category cap, the coverage rule) land on the collection root.
-  const errorFields: Path<OfferLinesFormValues>[] = ['offer_lines']
-
   const onSubmit = form.handleSubmit(
     async (values) => {
       setSubmitError(null)
@@ -111,25 +144,34 @@ export function useOfferLinesForm(
       // Step 1: the sparse diff, on the WIRE shape the endpoint reads.
       const lines = toLineInputs(values.offer_lines)
       if (sameLines(lines, originalLineInputs(panel.offer_lines, false))) {
-        onDone?.()
+        onDone()
         return
       }
 
-      // Step 2: the module's own PATCH — the single choke point that drags
-      // coverage, aggregates, derived name and workflow re-resolution
-      // (RequestOfferLineWriter).
+      // Step 2: the generic cell PATCH. `commissions` never travel here (the
+      // rows carry none, the server prohibits them and preserves what the
+      // Offerte form configured), so the value is the plain numeric row the
+      // payload type describes.
       try {
-        const updated = await updateRequestWork(panel.id, { offer_lines: lines })
-        queryClient.setQueryData(requestManagementKeys.panel(panel.id), updated)
-        // The panel's id is the Offerta's; the opportunity detail cache is
-        // keyed on the underlying Opportunity.
-        queryClient.invalidateQueries({ queryKey: opportunityDetailQueryKey(panel.opportunity_id) })
-        toast.success(t('requestManagement.workPanel.saved'))
-        onSaved?.()
-        onDone?.()
+        const row = await updateTableCell(REQUEST_MANAGEMENT_DOMAIN, panel.id, {
+          column: OFFER_LINES_FIELD,
+          value: lines.map((line) => ({
+            ...(line.id !== undefined ? { id: line.id } : {}),
+            product_id: line.product_id,
+            quantity: line.quantity,
+            unit_price: line.unit_price,
+            vat_rate_id: line.vat_rate_id ?? null,
+            sort_order: line.sort_order ?? null,
+          })),
+        })
+
+        // Step 3: the row the server re-mapped, in place — the same
+        // `node.setData` swap `useTableCellEdit` performs for every other cell.
+        node.setData(row)
+        onDone()
       } catch (error) {
-        if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-          setSubmitError(t('requestManagement.workPanel.genericError'))
+        if (!applyCellValidationErrors(error, form.setError)) {
+          setSubmitError(resolveErrorMessage(error, t('table.cellUpdateError')))
         }
       }
     },
@@ -146,4 +188,17 @@ export function useOfferLinesForm(
     vatRatePercentFor,
     rememberVatRatePercent,
   }
+}
+
+/**
+ * The server's own message when it sent one (the engine's D-9 contract), the
+ * generic fallback otherwise — the same resolution the grid's toast applies,
+ * shown inside the dialog instead: the operator is looking at the rows that
+ * were refused, not at the grid behind them.
+ */
+function resolveErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.data?.message) {
+    return error.response.data.message
+  }
+  return fallback
 }

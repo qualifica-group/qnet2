@@ -30,6 +30,26 @@ use RuntimeException;
  */
 class ProductCategoriesSource extends AbstractMigrationSource
 {
+    /**
+     * The qnet ids THIS run created DETACHED, because their external parent
+     * was a forward reference (see resolveParent()). Only these are relinked
+     * by afterImport().
+     *
+     * Scoping the relink pass to them is what keeps it off the nodes it has no
+     * say over — first of all the ones it ADOPTED (adopt(): their position is
+     * qnet's), which are legitimately parentless whenever the static catalogue
+     * seeds them as ROOTS. Without this list, `parent_id IS NULL` alone would
+     * match an adopted "Formazione" or "APL" root and drag it under its legacy
+     * parent on the very next import.
+     *
+     * Same-run scope is the hook's own contract (AbstractMigrationSource::
+     * afterImport: "a self-referential parent processed after its child in the
+     * same run"), and the instance lives for exactly one run.
+     *
+     * @var list<int>
+     */
+    private array $detachedIds = [];
+
     public function __construct(
         ExternalApiClient $client,
         private readonly ProductCategoryService $service,
@@ -148,6 +168,12 @@ class ProductCategoriesSource extends AbstractMigrationSource
         $category->old_id = $externalId;
         $category->save();
 
+        // Created without the parent its external record names: afterImport()
+        // retries it once every node of this run exists.
+        if ($parentId === null && $this->namesAParent($record)) {
+            $this->detachedIds[] = $category->id;
+        }
+
         return MigrationRowOutcome::created($warnings, $category);
     }
 
@@ -214,26 +240,33 @@ class ProductCategoriesSource extends AbstractMigrationSource
     }
 
     /**
-     * Second pass: relink every category that was created detached because its
-     * parent had not been migrated yet. Now that all nodes exist, resolve the
-     * external parent via `old_id` and set it where it is still null. Leaves an
-     * already-linked or genuinely-rootless category untouched (idempotent).
+     * Second pass: relink the categories THIS run created detached because
+     * their parent had not been migrated yet ($detachedIds). Now that all
+     * nodes exist, resolve the external parent via `old_id` and set it where it
+     * is still null. Leaves an already-linked or genuinely-rootless category
+     * untouched (idempotent), and never touches a node it did not create —
+     * an ADOPTED root is parentless by design, not by accident.
      */
     protected function afterImport(MigrationImportContext $context): void
     {
-        $this->eachRecord(function (array $record): void {
-            $externalParent = $record['parent_id'] ?? null;
+        if ($this->detachedIds === []) {
+            return;
+        }
 
-            if ($externalParent === null || $externalParent === '') {
+        $this->eachRecord(function (array $record): void {
+            if (! $this->namesAParent($record)) {
                 return;
             }
 
             $category = ProductCategory::query()
                 ->where('old_id', $this->externalId($record))
+                ->whereIntegerInRaw('id', $this->detachedIds)
                 ->whereNull('parent_id')
                 ->first();
 
-            $parentId = $category === null ? null : $this->resolveOldId(ProductCategory::class, $externalParent);
+            $parentId = $category === null
+                ? null
+                : $this->resolveOldId(ProductCategory::class, $record['parent_id']);
 
             if ($category !== null && $parentId !== null) {
                 $category->update(['parent_id' => $parentId]);
@@ -269,6 +302,19 @@ class ProductCategoriesSource extends AbstractMigrationSource
     }
 
     /**
+     * Whether the external record points at a parent at all — absent or blank
+     * means a legacy ROOT, which is not detached and must never be relinked.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function namesAParent(array $record): bool
+    {
+        $externalParent = $record['parent_id'] ?? null;
+
+        return $externalParent !== null && $externalParent !== '';
+    }
+
+    /**
      * Remap the external parent reference to the qnet parent id via `old_id`.
      * Absent/blank means a root category (null, no warning); a reference that
      * resolves to no migrated parent gets a non-fatal warning, the category is
@@ -286,7 +332,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
         $id = $this->resolveOldId(ProductCategory::class, $externalRef);
 
         if ($id === null) {
-            $warnings[] = "Unresolved parent_id (external id {$externalRef}); category created detached, relinked if the parent is migrated.";
+            $warnings[] = "Unresolved parent_id (external id {$externalRef}); category created detached, relinked at the end of this run if the parent is listed later in it.";
         }
 
         return $id;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Table;
 
+use App\Quotes\QuoteLineRules;
 use App\Support\InputFormat;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -51,6 +52,17 @@ final class CellValueValidator
      */
     private const string PRODUCT_LINES_EDITOR = 'product_lines';
 
+    /**
+     * The `editor` kind whose submitted value is the WHOLE collection of a
+     * quote's REVENUE rows (user directive 2026-09-07): product, quantity,
+     * unit price and VAT rate each, not one scalar. Unlike the pair list
+     * above this is NOT a structural check — the rows reach
+     * `UpdateQuoteData::fromValidated()`, which trusts what it is given — so
+     * the per-row rules are the SAME ones the Offerte FormRequests apply,
+     * read from their one shared definition.
+     */
+    private const string OFFER_LINES_EDITOR = 'offer_lines';
+
     /** The `format` names a column may declare, each mapping to an InputFormat canonicalizer. */
     private const string FORMAT_PERSON_NAME = 'person_name';
 
@@ -78,6 +90,10 @@ final class CellValueValidator
 
         if (($column['editor'] ?? null) === self::PRODUCT_LINES_EDITOR) {
             return $this->validatePairListValue($value);
+        }
+
+        if (($column['editor'] ?? null) === self::OFFER_LINES_EDITOR) {
+            return $this->validateQuoteLineListValue($value);
         }
 
         if (isset($column['relation'])) {
@@ -261,6 +277,52 @@ final class CellValueValidator
         return array_map(static fn (array $pair): array => [
             'business_function_id' => (int) $pair['business_function_id'],
             'product_category_id' => (int) $pair['product_category_id'],
+        ], array_values($value));
+    }
+
+    /**
+     * An `offer_lines` column's value is the whole REVENUE collection (user
+     * directive 2026-09-07): every row validated by
+     * `App\Quotes\QuoteLineRules` — the one definition the Offerte
+     * FormRequests use — with `commissions` PROHIBITED, since this channel
+     * does not own that block and the server preserves what the Offerte form
+     * configured.
+     *
+     * The rows are then projected onto the keys the contract reads, so a
+     * stray key can never travel on to the writer — the same discipline
+     * `$request->safe()->only()` applies on the FormRequest channel.
+     *
+     * The cross-row rules stay where they already live: the `single`-category
+     * cap and the product/category coverage are enforced downstream by the
+     * ONE writer both channels reach (RequestOfferLineWriter ->
+     * QuoteService::update()), exactly like the `select` editor's membership
+     * rule.
+     *
+     * @return array<int, array<string, mixed>>
+     *
+     * @throws ValidationException
+     */
+    private function validateQuoteLineListValue(mixed $value): array
+    {
+        Validator::make(
+            ['value' => $value],
+            [
+                ...QuoteLineRules::fieldRules('value', withCommissions: false),
+                // Overrides the shared `sometimes`: a cell PATCH always
+                // carries its value, and an absent one is a malformed request
+                // rather than an untouched collection.
+                'value' => ['present', 'array', 'max:'.QuoteLineRules::MAX_ROWS],
+            ],
+        )->validate();
+
+        /** @var array<int, array<string, mixed>> $value */
+        return array_map(static fn (array $row): array => [
+            ...(isset($row['id']) ? ['id' => (int) $row['id']] : []),
+            'product_id' => (int) $row['product_id'],
+            'quantity' => $row['quantity'],
+            'unit_price' => $row['unit_price'],
+            'vat_rate_id' => isset($row['vat_rate_id']) ? (int) $row['vat_rate_id'] : null,
+            'sort_order' => isset($row['sort_order']) ? (int) $row['sort_order'] : null,
         ], array_values($value));
     }
 

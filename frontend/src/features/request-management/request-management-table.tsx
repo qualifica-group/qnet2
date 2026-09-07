@@ -375,11 +375,11 @@ export function RequestManagementTable() {
         onSelect={setCategoryId}
       />
 
-      {/* User directive 2026-09-07: the "Linee di prodotto" cell opens the
-          quick edit of the Offerta's own rows. Mounted around the grid (not
-          per cell) so one dialog serves every row, and it refreshes the grid
-          on save — the cell projects the products those rows carry. */}
-      <OfferLinesDialogProvider onSaved={refreshGrid}>
+      {/* User directive 2026-09-07: the "Linee di prodotto" cell is inline
+          editable like the others, and its editor delegates to this dialog
+          (see `OfferLinesCellEditor`). Mounted around the grid, not per cell,
+          so one dialog serves every row. */}
+      <OfferLinesDialogProvider>
         <TableView
           // Keyed by the selection (D-4): switching tabs remounts the whole
           // table so every client-side state (search, filters, layout) restarts

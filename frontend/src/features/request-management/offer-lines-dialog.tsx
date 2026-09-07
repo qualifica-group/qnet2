@@ -15,65 +15,56 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { ResourcePermissionsProvider, useResourcePermissions } from '@/features/authorization/permissions'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import { fetchRequestWorkPanel } from '@/features/request-management/api'
-import { OfferLinesDialogContext } from '@/features/request-management/offer-lines-dialog-context'
+import {
+  OfferLinesDialogContext,
+  type OfferLinesEditTarget,
+} from '@/features/request-management/offer-lines-dialog-context'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { RequestOfferLinesField } from '@/features/request-management/request-offer-lines-section'
 import { useOfferLinesForm } from '@/features/request-management/use-offer-lines-form'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 
-interface OfferLinesDialogProviderProps {
-  children: ReactNode
-  /** Refreshes the grid once a save landed (the row's projected products changed). */
-  onSaved?: () => void
-}
-
 /**
- * Mounts the offer-rows quick edit once for a whole grid and hands its opener
- * down through context (user directive 2026-09-07: "la colonna linee di
- * prodotto ... voglio che nell'edit si possa editare anche tutta la riga
- * dell'offerta").
+ * Mounts the "Linee di prodotto" editor once for a whole grid and hands its
+ * opener down through context, for `OfferLinesCellEditor` to call.
  *
- * Why a dialog and not an AG Grid cell editor: an offer row is picked through
- * `AsyncPaginatedSelect` (product and aliquota), whose Radix popup portals to
- * `document.body` — inside a cell editor `stopEditingWhenCellsLoseFocus` then
- * tears the editor down mid-pick, which is exactly why `ProductLinesCellEditor`
- * and `MultiSelectCellEditor` had to hand-roll in-popup lists. Those pickers
- * DO work in a dialog (`setTrigger` portals them back into the content node),
- * so the dialog is what lets this reuse the Offerte row editor verbatim
- * instead of cloning it.
+ * The dialog is only the SURFACE of an ordinary inline cell edit (user
+ * directive 2026-09-07): the gesture, the per-row gate and the commit are the
+ * grid's own — see `OfferLinesCellEditor` for why the rows cannot be composed
+ * inside a cell popup, and `useOfferLinesForm` for the commit itself.
  */
-export function OfferLinesDialogProvider({ children, onSaved }: OfferLinesDialogProviderProps) {
-  const [quoteId, setQuoteId] = useState<number | null>(null)
+export function OfferLinesDialogProvider({ children }: { children: ReactNode }) {
+  const [target, setTarget] = useState<OfferLinesEditTarget | null>(null)
 
-  const openOfferLines = useCallback((id: number) => setQuoteId(id), [])
+  const openOfferLines = useCallback((next: OfferLinesEditTarget) => setTarget(next), [])
   const value = useMemo(() => ({ openOfferLines }), [openOfferLines])
-  const close = useCallback(() => setQuoteId(null), [])
+  const close = useCallback(() => setTarget(null), [])
 
   return (
     <OfferLinesDialogContext.Provider value={value}>
       {children}
-      <OfferLinesDialog quoteId={quoteId} onClose={close} onSaved={onSaved} />
+      <OfferLinesDialog target={target} onClose={close} />
     </OfferLinesDialogContext.Provider>
   )
 }
 
 interface OfferLinesDialogProps {
-  /** `null` = closed. The Offerta id, which is the grid row's own id (spec 0086). */
-  quoteId: number | null
+  /** `null` = closed. */
+  target: OfferLinesEditTarget | null
   onClose: () => void
-  onSaved?: () => void
 }
 
-function OfferLinesDialog({ quoteId, onClose, onSaved }: OfferLinesDialogProps) {
+function OfferLinesDialog({ target, onClose }: OfferLinesDialogProps) {
   const { t } = useTranslation()
-  const open = quoteId !== null
+  const open = target !== null
 
   // Fresh on open, same contract as the work panel: the rows are edited
-  // against what the server holds now, never against a grid projection that
-  // only carries product names.
+  // against what the server holds now, and the panel is also what carries the
+  // classification scoping the product picker plus the actor's field
+  // permissions — none of which the grid row projects.
   const { data: panel, isLoading, isError, refetch } = useEntityDetail(
-    requestManagementKeys.panel(quoteId),
-    () => fetchRequestWorkPanel(quoteId as number),
+    requestManagementKeys.panel(target?.quoteId ?? null),
+    () => fetchRequestWorkPanel(target?.quoteId as number),
     open,
   )
 
@@ -99,7 +90,7 @@ function OfferLinesDialog({ quoteId, onClose, onSaved }: OfferLinesDialogProps) 
               {t('common.retry')}
             </Button>
           </div>
-        ) : isLoading || !panel ? (
+        ) : isLoading || !panel || target === null ? (
           <div className="grid gap-2 p-4">
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
@@ -112,8 +103,8 @@ function OfferLinesDialog({ quoteId, onClose, onSaved }: OfferLinesDialogProps) 
               // panel, and Radix keeps the subtree mounted across a reopen.
               key={panel.id}
               panel={panel}
+              target={target}
               onClose={onClose}
-              onSaved={onSaved}
             />
           </ResourcePermissionsProvider>
         )}
@@ -124,15 +115,15 @@ function OfferLinesDialog({ quoteId, onClose, onSaved }: OfferLinesDialogProps) 
 
 interface OfferLinesDialogFormProps {
   panel: RequestWorkPanelWithPermissions
+  target: OfferLinesEditTarget
   onClose: () => void
-  onSaved?: () => void
 }
 
-function OfferLinesDialogForm({ panel, onClose, onSaved }: OfferLinesDialogFormProps) {
+function OfferLinesDialogForm({ panel, target, onClose }: OfferLinesDialogFormProps) {
   const { t } = useTranslation()
   const { canResource } = useResourcePermissions()
   const { form, onSubmit, submitError, isSubmitting, vatRatePercentFor, rememberVatRatePercent } =
-    useOfferLinesForm(panel, { onSaved, onDone: onClose })
+    useOfferLinesForm(panel, { node: target.node, onDone: onClose })
 
   return (
     <Form {...form}>

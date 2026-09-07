@@ -34,10 +34,15 @@ che dichiarava ancora "written exclusively by the Offerte module" — falso dal 
   portalato dentro), lo scroller e' il wrapper interno.
 - `use-offer-lines-form.ts`: RHF+Zod sul solo `{product_lines (watch), offer_lines}`; diff sparso —
   collezione invariata = **nessuna PATCH**, il dialog si chiude e basta; 422 mappato su `offer_lines`.
-- `column-renderers.tsx`: `offer_lines` passa da `RefNamesCell` a `OfferLinesCell` — stessi nomi
-  prodotto + matita (hover/focus) che apre il dialog. Visibile anche a cella VUOTA (una richiesta
-  senza righe e' proprio quella che deve poterne acquisire una) e nascosta senza
-  `request-management.update` (affordance UI; l'autorizzazione per-record resta dell'endpoint).
+- `column-renderers.tsx`: `offer_lines` passa da `RefNamesCell` a `OfferLinesCell`. **Correzione
+  utente in corsa (2026-09-07):** niente icona matita — **l'intera cella e' il bottone**, un click e
+  si apre il popup, "come le altre colonne" (`singleClickEdit`). E' un `<button>` vero, non un div
+  cliccabile: deve restare raggiungibile da tastiera come gli editor che sostituisce, e il suo
+  accessible name dice l'AZIONE piu' i prodotti (il testo visibile da solo si annuncerebbe come
+  etichetta). Cliccabile anche a cella VUOTA (una richiesta senza righe e' proprio quella che deve
+  poterne acquisire una). **Gate = `row.editable`**, cioe' `TableDefinition::authorizeUpdate()` per
+  QUELLA riga — la stessa bandiera con cui `resolveEditing()` abilita ogni altra colonna editabile,
+  non l'ability globale: l'affordance compare esattamente dove la scrittura passerebbe.
 
 **Split fatti (riuso, non cloni).**
 - `request-offer-lines-section.tsx` ora esporta `RequestOfferLinesField` (il campo nudo, montato dal
@@ -57,9 +62,9 @@ proibisce e il server preserva quelle configurate dalle Offerte), `sort_order` l
 `request-work-schema.ts` e `request-create-schema.ts`. Vanno ricondotti al primo.
 
 **Verifica ESEGUITA.** Vitest suite completa **594 file / 4370 test passed** (nuovo
-`offer-lines-dialog.test.tsx`, 7 casi: render cella, gating permesso, apertura+idratazione, assenza
-provvigioni, salvataggio con refresh griglia, chiusura senza request se nulla e' cambiato, blocco su
-riga incompleta). `npx tsc -b --force` EXIT=0. ESLint pulito su `features/request-management`,
+`offer-lines-dialog.test.tsx`, 7 casi: cella-bottone, riga non editabile = cella di sola lettura,
+apertura+idratazione, assenza provvigioni, salvataggio con refresh griglia, chiusura senza request se
+nulla e' cambiato, blocco su riga incompleta). `npx tsc -b --force` EXIT=0. ESLint pulito su `features/request-management`,
 `features/table`, `features/quotes/quote-schema.ts`. Pint passed su `OfferLinesColumn.php`.
 
 ## TASK — CLICK SULLE NOTIFICHE (CAMPANELLA) — VERDE, NON COMMITTATO (2026-09-07)
@@ -231,6 +236,98 @@ dopo la correzione del ritaglio — tutti verdi ·
 **Prossimo passo.** Verifica visiva a 375/768/1024 e conferma della scala col cliente
 (la preferenza generale del progetto e' UI compatta: qui l'ampiezza e' richiesta esplicita).
 In attesa di ordine per il commit.
+
+## FIX — L'IMPORT RIAGGANCIAVA UN ROOT ADOTTATO ALL'ALBERO LEGACY — VERDE, NON COMMITTATO (2026-09-07)
+
+**Segnalazione utente.** "vedo apl ancora sotto consulenza", poi precisato: "succede
+quando rilancio il seeder per l'import".
+
+**Cosa dice il DB reale (`qnet2`).** Una sola riga APL (id 20, `old_id` 68): l'adozione
+per nome funziona, nessun duplicato. Workflow APL gia' presente col criterio di ramo su
+id 20 e i 19 stati corretti; prodotto su "Orientamento Specialistico"; funzione aziendale
+APL collegata. **L'unico scostamento e' `APL.parent_id = 17` invece di NULL**, perche' il
+riallineamento del parent gira solo dentro `QualificaCatalogSeeder`, che non e' stato
+rilanciato. Il DB NON e' stato toccato: l'utente non ha approvato la scrittura.
+
+**Il difetto vero, che avevo introdotto io con l'adozione.**
+`ProductCategoriesSource::afterImport()` (pass di relink delle forward reference)
+cercava QUALSIASI categoria con quell'`old_id` e `parent_id IS NULL`. Un nodo ADOTTATO
+che e' un ROOT statico e' esattamente cosi': parentless per costruzione. Risultato: al
+primo import successivo, "Formazione" o "APL" venivano riagganciati sotto il loro parent
+legacy — e l'albero legacy sta sotto "Consulenza". Il guard `$staticRootIds` in
+`QualificaLegacyImportSeeder` copriva solo `nestImportedCategories()`, non questo.
+
+**Fix.** La source tiene ora `private array $detachedIds` — gli id che QUESTA run ha
+creato staccati perche' il parent esterno era una forward reference — e `afterImport()`
+relinka solo quelli (early return se la lista e' vuota). E' anche il contratto dell'hook
+(`AbstractMigrationSource::afterImport`: "a self-referential parent processed after its
+child **in the same run**"). Effetto collaterale voluto: il relink non e' piu'
+"self-healing" tra run diverse — comportamento mai asserito da un test, promesso solo da
+un commento, ora corretto nel testo del warning.
+
+**Test di regressione, verificato che fallisce senza il fix.** "never relinks an ADOPTED
+root into the legacy tree, however many times the import runs": root qnet "APL" adottato
+da un record legacy con `parent_id: 60`, import lanciato DUE volte (la seconda salta per
+`old_id`, ma il pass di relink gira lo stesso). Rimuovendo il guard il test fallisce con
+"Failed asserting that 2 is null"; rimettendolo passa.
+
+**Verifica eseguita.** Pest verde con `XDEBUG_MODE=off`: `Migration` + `Seeding` +
+`Products` + `Unit/Migrations` = **452/452**, 1975 assert. Pint pulito.
+
+**RESTA DA FARE SUL DB DELL'UTENTE.** `php artisan db:seed --class=QualificaCatalogSeeder
+--no-interaction` (o il chain completo `QualificaProductionDataSeeder`): l'unica
+scrittura sara' il reparent di APL a root, tutto il resto risulta gia' allineato nodo per
+nodo. Il solo seeder di import NON promuove APL: la promozione e' nel seeder del
+catalogo.
+
+
+## TASK — APL DIVENTA ROOT A SE' (ANCHE IN MIGRAZIONE) — VERDE, NON COMMITTATO (2026-09-07)
+
+**Richiesta utente.** "APL anche da /migration non deve stare sotto consulenza".
+Chiarito via AskUserQuestion: APL diventa un **terzo root**, accanto a Formazione e
+Consulenza, **senza regole proprie** in CatalogRootRules (quindi default di colonna:
+`management_mode multiple`, piu' offerte per opportunita', `generates_contract true`) —
+esattamente i valori che gia' ereditava da Consulenza, quindi cambia la posizione e non
+il funzionamento.
+
+**Forma finale dell'albero.** `APL` (root, contenitore) -> `Orientamento Specialistico`
+(sottocategoria selezionabile, `SINGLE_OFFER_CATEGORIES`) -> prodotto omonimo. Il
+workflow APL resta sul criterio di **ramo** (il prodotto non sta sul root); ora pero'
+APL e Consulenza sono due rami disgiunti, quindi i due workflow non competono piu'.
+
+**La parte non ovvia — il riallineamento del parent.** `seedCatalogCategory()` usa
+`firstOrCreate`, che scrive `parent_id` SOLO alla creazione: su un DB gia' seedato APL
+sarebbe rimasto sotto Consulenza per sempre. Ora i nodi che il catalogo DICHIARA (root e
+sottocategorie, `realign: true`) riallineano **anche `parent_id`**, non solo
+`is_selectable`. Nessun re-sync delle regole root-owned e' necessario per questa
+promozione: un nodo promosso a root conserva i valori che tutto il suo sottoalbero gia'
+porta (li aveva ereditati dal ramo che lascia), e `CatalogRootRules::apply()` gira dopo
+e ri-sincronizza i rami che dichiara.
+
+**Il lato /migration era gia' coperto.** La guardia `$staticRootIds` aggiunta stamattina
+in `QualificaLegacyImportSeeder` fotografa i root pre-esistenti PRIMA del run ed esclude
+dal nesting quelli adottati per nome: un APL adottato dal gestionale legacy resta root e
+non finisce sotto Consulenza. Il test lo verifica ora esplicitamente su Formazione E su
+APL.
+
+**DA FARE A MANO SUL DB DELL'UTENTE (non automatizzabile senza cancellare dati).** Se
+una `/migration` precedente alla fix di adozione ha gia' creato un **secondo** nodo
+"APL" sotto Consulenza (quello con `old_id` valorizzato), il re-seed NON lo rimuove:
+`firstOrCreate` per nome ne prende uno solo (in genere quello seedato, id piu' basso) e
+promuove quello a root, lasciando il duplicato sotto Consulenza. Va cancellato a mano,
+oppure si ri-seeda da zero.
+
+**Verifica eseguita.** Pest verde con `XDEBUG_MODE=off`: `Products` + `Migration` +
+`ProductCategories` + `QuoteWorkflows` + `Unit/QuoteWorkflows` + `Quotes` +
+`Opportunities` = **1221/1221**, 4581 assert; `Seeding` + `QualificaCatalogSeederTest` +
+`QualificaLegacyImportSeederTest` = 97/97; `ProductTypologies` + `CustomFields` +
+`WorkOrders` = 239/239. Pint pulito sugli 8 file toccati.
+
+**Nuovi test.** `QualificaCatalogSeederTest`: APL root con l'offerta un livello sotto; e
+la **promozione** di un APL che pendeva da Consulenza (installazione della revisione
+precedente). `QualificaLegacyImportSeederTest`: root statici adottati per nome che
+restano root, APL incluso.
+
 
 ## TASK — APL DIVENTA CONTENITORE, OFFERTA SUL TERZO LIVELLO — VERDE, NON COMMITTATO (2026-09-07)
 

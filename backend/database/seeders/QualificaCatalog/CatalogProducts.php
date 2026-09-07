@@ -31,18 +31,16 @@ use App\Services\ProductService;
 final class CatalogProducts
 {
     /**
-     * The categories that host ONE offer of their own instead of a course
+     * The subcategories that host ONE offer of their own instead of a course
      * list: one SERVICE product per category, named exactly like it (user
-     * directive 2026-09-04). "Orientamento Specialistico" is the third-level
-     * offer of the "APL" branch (user directive 2026-09-07) — the others are
-     * subcategories. Cost and price stay 0 and the attributes the node
-     * inherits are left empty: they are filled in later through the CRUD
-     * modules, like every other seeded product.
+     * directive 2026-09-04). "Orientamento Specialistico" is the single offer
+     * of the "APL" root (user directive 2026-09-07). Cost and price stay 0 and
+     * the attributes the node inherits are left empty: they are filled in
+     * later through the CRUD modules, like every other seeded product.
      *
      * QualificaCatalogSeeder::SELECTABLE_SUBCATEGORIES reads this list: a node
      * hosting its own product must be a classification target, never a
-     * container (spec 0074). A third-level entry is one by default, so it
-     * rides along there without needing the exception.
+     * container (spec 0074).
      *
      * @var list<string>
      */

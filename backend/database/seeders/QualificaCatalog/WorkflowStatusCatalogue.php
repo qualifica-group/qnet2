@@ -24,7 +24,7 @@ use InvalidArgumentException;
  *   3. AUTOFINANZIATO  — one list, one category.
  *   4. CONSULENZA      — one list, bound to the "Consulenza" ROOT (user
  *                        decision 2026-07-28).
- *   5. APL             — one list, on the "APL" branch. NOT from the
+ *   5. APL             — one list, bound to the "APL" ROOT. NOT from the
  *                        sheet: the client dictated it with the category
  *                        (user directive 2026-09-07). It reads like the GOL
  *                        base column with "Assegnato" as its positive
@@ -60,9 +60,10 @@ final class WorkflowStatusCatalogue
      * The spec 0092 criterion: the offer line's category OR any ancestor of
      * it. Used by a workflow bound to a CONTAINER rather than to a leaf
      * products actually sit on — "Consulenza" is exactly that (its products
-     * live two levels down, under `ISO` and its siblings) and so is "APL"
-     * (its offer sits on the "Orientamento Specialistico" child), so an
-     * exact-category criterion would never match a single offer.
+     * live two levels down, under `ISO` and its siblings) and so is the "APL"
+     * root (its offer sits on the "Orientamento Specialistico" child), so an
+     * exact-category criterion would never match a single offer. Both are
+     * roots, so the two branches never overlap.
      */
     public const string BRANCH_CRITERION_FIELD = 'product_category_branch_id';
 
@@ -283,13 +284,10 @@ final class WorkflowStatusCatalogue
         // Bound to the "Consulenza" ROOT, whose products sit two levels below
         // it: only the branch criterion reaches them (spec 0092).
         'Consulenza' => ['section' => self::CONSULTING, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
-        // "APL" is a Consulenza subcategory that GROUPS its offers instead of
-        // hosting one (user directive 2026-09-07): its products sit on the
-        // "Orientamento Specialistico" child, so only the branch criterion
-        // reaches them, exactly as for the "Consulenza" root above. Both
-        // workflows then match an APL offer, and QuoteWorkflowResolver keeps
-        // the CLOSEST branch (spec 0092 D-3) — "APL" is one level nearer the
-        // line's category than "Consulenza", so the list below wins.
+        // Bound to the "APL" ROOT, whose offer sits on the "Orientamento
+        // Specialistico" subcategory below it (user directive 2026-09-07):
+        // only the branch criterion reaches it, same shape as "Consulenza"
+        // above. The two never compete — APL is a branch of its own.
         'APL' => ['section' => self::APL, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
     ];
 

@@ -271,3 +271,33 @@ it('never adopts on a partial name match: adoption keys on the exact name', func
     expect($seeded->fresh()->old_id)->toBeNull()
         ->and(ProductCategory::query()->where('old_id', 40)->value('name'))->toBe('APL Servizi');
 });
+
+it('never relinks an ADOPTED root into the legacy tree, however many times the import runs', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 60, 'name' => 'Servizi', 'parent_id' => null],
+                // The legacy twin of a qnet ROOT, filed under a legacy parent.
+                ['id' => 61, 'name' => 'APL', 'parent_id' => 60],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    // The state the static catalogue leaves: "APL" is a root of its own.
+    $seeded = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
+
+    $actor = migrationsSuperAdminActor();
+
+    // Twice: the first run adopts, the second skips by old_id — and the relink
+    // pass runs on BOTH, so a root-level guard that only held within the
+    // adopting run would let the second one move it.
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
+
+    expect($seeded->fresh()->old_id)->toEqual(61)
+        // Adopted, so its position is qnet's: the external `parent_id: 60` has
+        // no say over it.
+        ->and($seeded->fresh()->parent_id)->toBeNull();
+});

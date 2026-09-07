@@ -1,32 +1,33 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ICellRendererParams } from 'ag-grid-community'
+import type { CustomCellEditorProps } from 'ag-grid-react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
+import { OfferLinesCellEditor } from '@/features/request-management/offer-lines-cell-editor'
 import { OfferLinesDialogProvider } from '@/features/request-management/offer-lines-dialog'
 import {
   OFFER_LINE_FIBRA,
   workPanel as panel,
 } from '@/features/request-management/request-work-panel-fixtures'
+import type { TableRow } from '@/features/table/types'
 
 /**
- * Modifica rapida delle "Linee di prodotto" dalla griglia (direttiva utente
- * 2026-09-07): la cella apre il dialog che edita le RIGHE dell'offerta
- * (prodotto, quantita', prezzo, IVA) e salva sullo stesso
- * `PATCH /request-management/{quote}` del pannello Lavora.
+ * "Linee di prodotto" in griglia (direttiva utente 2026-09-07: "l'edit della
+ * cella deve essere lo stesso flusso delle altre colonne"): la cella e' una
+ * cella inline-editabile normale — l'editor delega al dialog e si chiude, e il
+ * commit passa dallo stesso `PATCH /tables/{domain}/rows/{row}` di ogni altra
+ * cella, sostituendo la riga con quella ri-mappata dal server.
  */
 
 const fetchRequestWorkPanelMock = vi.fn()
-const updateRequestWorkMock = vi.fn()
 vi.mock('@/features/request-management/api', () => ({
   fetchRequestWorkPanel: (...args: unknown[]) => fetchRequestWorkPanelMock(...args),
-  updateRequestWork: (...args: unknown[]) => updateRequestWorkMock(...args),
+  updateRequestWork: vi.fn(),
 }))
 
-const canMock = vi.fn(() => true)
-vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: canMock, hasRole: () => false, roles: [], isLoading: false }),
+const updateTableCellMock = vi.fn()
+vi.mock('@/features/table/api', () => ({
+  updateTableCell: (...args: unknown[]) => updateTableCellMock(...args),
 }))
 
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
@@ -35,24 +36,38 @@ vi.mock('@/features/product-categories/use-product-category-tree', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-/** The grid cell as the renderer registry mounts it, inside the provider that owns the dialog. */
-function renderCell(onSaved?: () => void) {
+const setData = vi.fn()
+const stopEditing = vi.fn()
+
+/** The cell editor as AG Grid mounts it, inside the provider that owns the dialog. */
+function renderEditor() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const params = {
-    value: [{ id: 900, name: 'Fibra 1000' }],
-    data: { id: 4001 },
-  } as unknown as ICellRendererParams
+  const props = {
+    data: { id: 4001 } as unknown as TableRow,
+    node: { setData },
+    stopEditing,
+  } as unknown as CustomCellEditorProps<TableRow>
 
   return render(
     <QueryClientProvider client={client}>
-      <OfferLinesDialogProvider onSaved={onSaved}>
-        {requestManagementColumnRenderers.offer_lines(params)}
+      <OfferLinesDialogProvider>
+        <OfferLinesCellEditor {...props} />
       </OfferLinesDialogProvider>
     </QueryClientProvider>,
   )
 }
 
-const EDIT_LABEL = "Modifica le righe dell'offerta"
+/** The row shape the cell endpoint answers with — what replaces the grid row. */
+const REMAPPED_ROW = { id: 4001, offer_lines: [{ id: 900, name: 'Fibra 1000' }] } as unknown as TableRow
+
+const EXPECTED_ROWS = [{
+  id: OFFER_LINE_FIBRA.id,
+  product_id: OFFER_LINE_FIBRA.product_id,
+  quantity: 3,
+  unit_price: 100,
+  vat_rate_id: null,
+  sort_order: 0,
+}]
 
 beforeAll(async () => {
   await i18n.changeLanguage('it')
@@ -60,97 +75,88 @@ beforeAll(async () => {
 
 beforeEach(() => {
   fetchRequestWorkPanelMock.mockReset()
-  updateRequestWorkMock.mockReset()
-  canMock.mockReset()
-  canMock.mockReturnValue(true)
+  updateTableCellMock.mockReset()
+  setData.mockReset()
+  stopEditing.mockReset()
 })
 
-describe('Gestione Richieste — modifica rapida delle linee di prodotto', () => {
-  it('renders the offer products and the quick-edit affordance', () => {
-    renderCell()
-
-    expect(screen.getByText('Fibra 1000')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: EDIT_LABEL })).toBeInTheDocument()
-  })
-
-  it('hides the affordance without the module update permission', () => {
-    canMock.mockReturnValue(false)
-
-    renderCell()
-
-    expect(screen.queryByRole('button', { name: EDIT_LABEL })).not.toBeInTheDocument()
-  })
-
-  it('opens the dialog on the row and hydrates one editable row per persisted offer line', async () => {
+describe('Gestione Richieste — linee di prodotto in griglia', () => {
+  it('hands the row to the dialog and closes the cell editor immediately', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 
-    renderCell()
-    fireEvent.click(screen.getByRole('button', { name: EDIT_LABEL }))
+    renderEditor()
 
+    // Suppressed post-edit navigation: the focus goes into the dialog, not
+    // onto the next cell.
+    expect(stopEditing).toHaveBeenCalledWith(true)
     expect(await screen.findByLabelText('Quantità riga 1')).toHaveValue(1)
-    expect(screen.getByLabelText('Prezzo unitario riga 1')).toHaveValue(100)
     expect(fetchRequestWorkPanelMock).toHaveBeenCalledWith(4001)
   })
 
   it('never offers the provvigioni control: this channel does not own that block', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 
-    renderCell()
-    fireEvent.click(screen.getByRole('button', { name: EDIT_LABEL }))
+    renderEditor()
 
     await screen.findByLabelText('Quantità riga 1')
     expect(screen.queryByRole('button', { name: /Provvigioni/i })).not.toBeInTheDocument()
   })
 
-  it('saves the whole collection and refreshes the grid', async () => {
-    const loaded = panel()
-    fetchRequestWorkPanelMock.mockResolvedValue(loaded)
-    updateRequestWorkMock.mockResolvedValue(loaded)
-    const onSaved = vi.fn()
+  it('commits through the generic cell endpoint and replaces the grid row with the server copy', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+    updateTableCellMock.mockResolvedValue(REMAPPED_ROW)
 
-    renderCell(onSaved)
-    fireEvent.click(screen.getByRole('button', { name: EDIT_LABEL }))
+    renderEditor()
 
     fireEvent.change(await screen.findByLabelText('Quantità riga 1'), { target: { value: '3' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salva' }))
 
-    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    expect(updateRequestWorkMock.mock.calls[0][0]).toBe(4001)
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({
-      offer_lines: [{
-        id: OFFER_LINE_FIBRA.id,
-        product_id: OFFER_LINE_FIBRA.product_id,
-        quantity: 3,
-        unit_price: 100,
-        vat_rate_id: null,
-        sort_order: 0,
-      }],
+    await waitFor(() => expect(updateTableCellMock).toHaveBeenCalled())
+    expect(updateTableCellMock.mock.calls[0][0]).toBe('request-management')
+    expect(updateTableCellMock.mock.calls[0][1]).toBe(4001)
+    expect(updateTableCellMock.mock.calls[0][2]).toEqual({
+      column: 'offer_lines',
+      value: EXPECTED_ROWS,
     })
-    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    await waitFor(() => expect(setData).toHaveBeenCalledWith(REMAPPED_ROW))
   })
 
   it('closes without a request when nothing was touched', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 
-    renderCell()
-    fireEvent.click(screen.getByRole('button', { name: EDIT_LABEL }))
+    renderEditor()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Salva' }))
 
     await waitFor(() => expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument())
-    expect(updateRequestWorkMock).not.toHaveBeenCalled()
+    expect(updateTableCellMock).not.toHaveBeenCalled()
   })
 
   it('blocks the submit on an incomplete row, with the message on that row', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 
-    renderCell()
-    fireEvent.click(screen.getByRole('button', { name: EDIT_LABEL }))
+    renderEditor()
 
     fireEvent.change(await screen.findByLabelText('Quantità riga 1'), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salva' }))
 
     expect(await screen.findByText('La quantità è obbligatoria.')).toBeInTheDocument()
-    expect(updateRequestWorkMock).not.toHaveBeenCalled()
+    expect(updateTableCellMock).not.toHaveBeenCalled()
+  })
+
+  it("maps the engine's per-row 422 (reported on `value`) back onto the edited row", async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+    updateTableCellMock.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 422, data: { errors: { 'value.0.quantity': ['Quantità non valida.'] } } },
+    })
+
+    renderEditor()
+
+    fireEvent.change(await screen.findByLabelText('Quantità riga 1'), { target: { value: '3' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText('Quantità non valida.')).toBeInTheDocument()
+    expect(setData).not.toHaveBeenCalled()
   })
 })

@@ -223,8 +223,8 @@ it('adopts the static catalogue nodes the legacy tree repeats, and never moves a
     seedMigrationsConfig();
     migrationsSuperAdminActor();
 
-    // The legacy catalogue repeats two names the static one already ships: a
-    // ROOT ("Formazione") and a subcategory ("APL").
+    // The legacy catalogue repeats two names the static one already ships,
+    // both ROOTS: "Formazione" and "APL".
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
@@ -238,20 +238,22 @@ it('adopts the static catalogue nodes the legacy tree repeats, and never moves a
 
     seedCatalogThenLegacy();
 
-    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->sole();
     $formazione = ProductCategory::query()->where('name', 'Formazione')->sole();
     $apl = ProductCategory::query()->where('name', 'APL')->sole();
 
     // One row each: the legacy rows were adopted, not duplicated.
     expect($formazione->old_id)->toEqual(55)
         ->and($apl->old_id)->toEqual(56)
-        // The adopted ROOT stays a root: it carries an `old_id` now, but it is
+        // An adopted ROOT stays a root: it carries an `old_id` now, but it is
         // the static catalogue's own node, so the nesting pass must skip it —
-        // moving it would drag the whole GOL branch under "Consulenza".
+        // moving "Formazione" would drag the whole GOL branch under
+        // "Consulenza", and "APL" must never end up there either (user
+        // directive 2026-09-07).
         ->and($formazione->parent_id)->toBeNull()
+        ->and($apl->parent_id)->toBeNull()
         ->and(ProductCategory::query()->where('name', 'GOL')->value('parent_id'))->toBe($formazione->id)
-        // The adopted subcategory keeps the place the catalogue gave it.
-        ->and($apl->parent_id)->toBe($consulenza->id);
+        ->and(ProductCategory::query()->where('name', 'Orientamento Specialistico')->value('parent_id'))
+        ->toBe($apl->id);
 });
 
 it('links the imported attributes onto the imported category in the declared context', function () {

@@ -9,7 +9,8 @@ use App\Services\ProductCategories\ContractGenerationInheritance;
 use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
 
 /**
- * The ROOT-OWNED rules the Qualifica catalogue declares for its two roots.
+ * The ROOT-OWNED rules the Qualifica catalogue declares for two of its three
+ * roots.
  * Split out of QualificaCatalogSeeder (which stayed at its size limit,
  * engineering.md §6) — it holds the map AND the write, since the two are
  * meaningless apart.
@@ -27,6 +28,12 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * Contratti module. "Consulenza" stays unconstrained on all three — listed
  * explicitly rather than left to the column defaults so a re-run realigns it
  * too.
+ *
+ * The third root, "APL", is DELIBERATELY absent (user directive 2026-09-07):
+ * it keeps the column defaults, which are the very values it used to inherit
+ * while it hung under "Consulenza" — so promoting it to a root of its own
+ * changed its position, not its behaviour. Listing it here is what it would
+ * take to give it rules of its own.
  *
  * `manager_labels` (spec 0080) rides along on the same root write but is NOT
  * mirrored on the subtree: descendants resolve it by climbing the tree

@@ -20,17 +20,17 @@ use Illuminate\Database\Seeder;
  *   - the source catalogue (spec 0018): the fixed provenance list used to
  *     classify registry/lead/opportunity records;
  *   - the reward type catalogue (spec 0058): the voucher/reward types in use;
- *   - the reference category catalogue (spec 0017): a two-root category tree
- *     (Formazione / Consulenza) with its subcategories and the regional
- *     declinations under GOL. The first TWO levels — the two roots and every
+ *   - the reference category catalogue (spec 0017): a three-root category tree
+ *     (Formazione / Consulenza / APL) with its subcategories and the regional
+ *     declinations under GOL. The first TWO levels — the three roots and every
  *     subcategory under them — are seeded as CONTAINERS (`is_selectable =
  *     false`, spec 0074): they group the tree and hand their attributes down,
  *     while products, opportunity lines, projects, campaigns and commission
  *     rules are classified on the third level, today the `GOL - <Regione>`
- *     rows and "Orientamento Specialistico" under "APL" — plus the
- *     subcategories that host their offer directly, "Autofinanziato",
- *     "Autoimpiego" and "Yisu" (see SELECTABLE_SUBCATEGORIES). The
- *     "Formazione" branch also carries its
+ *     rows — plus the subcategories that host their offer directly,
+ *     "Autofinanziato", "Autoimpiego", "Yisu" and "Orientamento
+ *     Specialistico" (see SELECTABLE_SUBCATEGORIES). The "Formazione" branch
+ *     also carries its
  *     product-context attributes (spec 0061) — "Ore complessive" and the
  *     "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue —
  *     assigned to the root and inherited by every descendant, then grouped
@@ -44,10 +44,11 @@ use Illuminate\Database\Seeder;
  *     with their price and delivery mode, and the one product each
  *     single-offer category sells ("Autoimpiego", "Yisu" and "Orientamento
  *     Specialistico"). No other product is seeded;
- *   - the ROOT-OWNED rules of the two roots (how many product lines a card
- *     carries, how many offers an opportunity may hold), delegated to
- *     QualificaCatalog\CatalogRootRules once the whole tree exists — it
- *     re-syncs each branch;
+ *   - the ROOT-OWNED rules of the two roots that declare them (how many
+ *     product lines a card carries, how many offers an opportunity may hold),
+ *     delegated to QualificaCatalog\CatalogRootRules once the whole tree
+ *     exists — it re-syncs each branch; the "APL" root declares none and keeps
+ *     the column defaults;
  *   - the "stati di lavorazione" (spec 0047), delegated to
  *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
@@ -144,9 +145,12 @@ class QualificaCatalogSeeder extends Seeder
         'Consulenza' => [
             'Trattative in Corso' => [],
             'Presa Appuntamenti' => [],
-            'APL' => [
-                'Orientamento Specialistico',
-            ],
+        ],
+        // A branch of its own, never under "Consulenza" (user directive
+        // 2026-09-07): it declares no rule in CatalogRootRules, so it keeps
+        // the column defaults — the very values it used to inherit there.
+        'APL' => [
+            'Orientamento Specialistico' => [],
         ],
     ];
 
@@ -157,10 +161,9 @@ class QualificaCatalogSeeder extends Seeder
      * every self-funded course directly on it, so a container there would
      * leave those products under a category nothing can be classified on (user
      * directive 2026-08-03). CatalogProducts::SINGLE_OFFER_CATEGORIES are the
-     * others, for the same reason — its third-level entries ride along
-     * harmlessly, being classification targets by default. Bound by identity to
-     * the catalogues that file the products, so a rename breaks loudly instead
-     * of silently demoting a node.
+     * others, for the same reason. Bound by identity to the catalogues that
+     * file the products, so a rename breaks loudly instead of silently
+     * demoting a node.
      *
      * @var list<string>
      */
@@ -339,12 +342,19 @@ class QualificaCatalogSeeder extends Seeder
      * One catalogue node, idempotent on `name` (the catalogue's natural key).
      *
      * The nodes the catalogue DECLARES itself — the roots and their
-     * subcategories (spec 0074) — have their `is_selectable` REALIGNED on every
-     * run, in both directions, not just written at creation: an installation
-     * seeded before the flag existed must actually see its mother categories
-     * stop being classification targets, and one seeded while "Autofinanziato"
-     * was still filed as a container must see it become a target again. A plain
-     * `firstOrCreate` would silently skip both.
+     * subcategories (spec 0074) — have their `is_selectable` AND their
+     * `parent_id` REALIGNED on every run, in both directions, not just written
+     * at creation: an installation seeded before the flag existed must actually
+     * see its mother categories stop being classification targets, one seeded
+     * while "Autofinanziato" was still filed as a container must see it become
+     * a target again, and one seeded while "APL" still hung under "Consulenza"
+     * must see it promoted to a root of its own. A plain `firstOrCreate` writes
+     * `parent_id` on creation only, so it would silently skip all three.
+     *
+     * The reparent needs no root-owned re-sync: a node promoted to root keeps
+     * the exact values its whole subtree already carries (it inherited them
+     * from the branch it is leaving), and CatalogRootRules::apply() re-syncs
+     * the branches it declares right after the tree is built.
      *
      * A leaf is only ever given the default on creation and never realigned —
      * the catalogue declares the shape of its own two levels, it does not claim
@@ -358,8 +368,22 @@ class QualificaCatalogSeeder extends Seeder
             ['parent_id' => $parentId, 'is_selectable' => $isSelectable],
         );
 
-        if ($realign && $category->is_selectable !== $isSelectable) {
-            $category->update(['is_selectable' => $isSelectable]);
+        if (! $realign) {
+            return $category;
+        }
+
+        $changes = [];
+
+        if ($category->is_selectable !== $isSelectable) {
+            $changes['is_selectable'] = $isSelectable;
+        }
+
+        if ($category->parent_id !== $parentId) {
+            $changes['parent_id'] = $parentId;
+        }
+
+        if ($changes !== []) {
+            $category->update($changes);
         }
 
         return $category;

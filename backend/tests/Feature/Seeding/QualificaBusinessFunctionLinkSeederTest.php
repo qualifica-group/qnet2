@@ -82,7 +82,7 @@ it('picks the lowest id when the legacy catalogue holds the name twice', functio
     expect($formazione()->business_function_id)->toBe($first->id);
 });
 
-it('assigns the "APL" subcategory to the function of the same name, idempotently', function () use ($apl): void {
+it('assigns the "APL" root to the function of the same name, idempotently', function () use ($apl): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $function = BusinessFunction::factory()->create(['name' => 'APL']);
@@ -90,14 +90,11 @@ it('assigns the "APL" subcategory to the function of the same name, idempotently
     test()->seed(QualificaBusinessFunctionLinkSeeder::class);
     test()->seed(QualificaBusinessFunctionLinkSeeder::class); // re-run: already linked, no change.
 
-    // The row sits on the node itself, not on its "Consulenza" root: the
-    // sibling subcategories must not inherit an APL function. Its own child
-    // carries no row either — it resolves the function own-or-inherited.
+    // The row sits on the APL root; its child carries none — it resolves the
+    // function own-or-inherited — and no other branch is touched.
     expect($apl()->business_function_id)->toBe($function->id)
         ->and($apl()->businessFunction->name)->toBe('APL')
         ->and(ProductCategory::query()->where('name', 'Orientamento Specialistico')->value('business_function_id'))
-        ->toBeNull()
-        ->and(ProductCategory::query()->where('name', 'Trattative in Corso')->value('business_function_id'))
         ->toBeNull()
         ->and(ProductCategory::query()->whereNull('parent_id')->where('name', 'Consulenza')->value('business_function_id'))
         ->toBeNull();

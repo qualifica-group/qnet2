@@ -151,9 +151,10 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * The editable columns here today (spec 0054: `next_callback_at`, on the
      * Offerta itself since the user directive 2026-09-04; spec
      * 0055: `operator_ga2` plus the four client anagraphic fields; user
-     * directives 2026-07-23/2026-07-31: `offer_lines` is NOT among them
-     * — AC-021/AC-022 —, `operational_site` and `source`) are each gated per
-     * FIELD on top of this by the role_field_permissions matrix.
+     * directives 2026-07-23/2026-07-31: `operational_site` and `source`; user
+     * directive 2026-09-07: `offer_lines`, which REVOKES spec 0086
+     * AC-021/AC-022) are each gated per FIELD on top of this by the
+     * role_field_permissions matrix.
      */
     public function authorizeUpdate(User $actor, Model $row): bool
     {

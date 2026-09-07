@@ -21,13 +21,23 @@ use Illuminate\Support\Facades\DB;
  * products of the Quote's own REVENUE lines (`Quote::offerLines()`, spec
  * 0065 D-11): a COST line's product never appears here (AC-007).
  *
- * No editor and no `relation` block: the rows behind these products are not a
- * cell value (a product, a quantity, a unit price and a VAT rate each), so
- * they are NOT written through the generic inline-edit engine. The grid's
- * quick edit (user directive 2026-09-07) opens the module's own dialog on
- * `PATCH /api/request-management/{quote}` with `offer_lines` instead — the
- * same choke point the work panel uses since the 2026-08-07 directive, which
- * already revoked spec 0086 AC-022's "read-only in this module".
+ * INLINE-EDITABLE since the user directive 2026-09-07 ("l'edit della cella
+ * deve essere lo stesso flusso delle altre colonne"), which finishes revoking
+ * spec 0086 AC-021/AC-022 — the 2026-08-07 directive had already made these
+ * rows writable from the work panel. The cell enters the generic engine like
+ * every other editable column: same per-row `authorizeUpdate()` gate, same
+ * `editableField` remap, same `PATCH /api/tables/{domain}/rows/{row}`. Its
+ * value is the WHOLE collection of rows (product, quantity, unit price, VAT
+ * rate each), validated by `CellValueValidator`'s `offer_lines` branch
+ * against `App\Quotes\QuoteLineRules` — the same per-row rules the Offerte
+ * FormRequests apply — and written by `WritesInlineEditableCells::updateCell()`
+ * through `updateWork()`, the one choke point the work panel uses too.
+ *
+ * `editable => true` here assumes the consuming domain's authorization
+ * catalogue carries the `offer_lines` field key (request-management does, and
+ * is the only consumer): the engine's own step-3 allow-list refuses the
+ * column otherwise, so a domain adopting this column without that key gets a
+ * 422, never a silent write.
  *
  * Not sortable (no single related row to order by), `set`-filterable by the
  * related product's own `name`, same bound/never-raw discipline as
@@ -58,7 +68,16 @@ final class OfferLinesColumn
             'sortable' => false,
             'filterable' => true,
             'filterType' => 'set',
-            'editable' => false,
+            'editable' => true,
+            // The value is the row collection, not a scalar of the display
+            // `type`: this is what routes both the client's editor lookup and
+            // the server's validation branch away from `text`.
+            'editor' => self::COLUMN_ID,
+            // Permission key AND write key: `offer_lines` is what
+            // RequestManagementAuthorization declares and what updateWork()
+            // recognizes. Identity here, but declared explicitly so the
+            // engine never falls back to the display id.
+            'editableField' => self::COLUMN_ID,
         ];
     }
 

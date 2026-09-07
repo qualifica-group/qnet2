@@ -5,6 +5,7 @@ import {
   type CellEditorKind,
 } from '@/components/data-table/cell-editor-registry'
 import { DateTimeCellEditor } from '@/components/data-table/datetime-cell-editor'
+import { OfferLinesCellEditor } from '@/features/request-management/offer-lines-cell-editor'
 import { ProductLinesCellEditor } from '@/features/product-lines/product-lines-cell-editor'
 import { MultiSelectCellEditor } from '@/components/data-table/multi-select-cell-editor'
 import { RelationCellEditor } from '@/components/data-table/relation-cell-editor'
@@ -258,6 +259,18 @@ describe('resolveCellEditorSpec', () => {
 
       expect(spec?.cellEditor).toBe(ProductLinesCellEditor)
       expect(spec?.cellEditorPopup).toBe(true)
+      expect(spec?.cellEditorParams).toBeUndefined()
+    })
+
+    // User directive 2026-09-07: an offer's whole REVENUE collection. Its
+    // editor renders nothing in the grid — it delegates to a dialog, since the
+    // row's pickers cannot live inside a cell popup — hence NO
+    // `cellEditorPopup`: there is no popup to lay out.
+    it('resolves an `offer_lines` column to the editor that delegates to the dialog', () => {
+      const spec = resolveCellEditorSpec('offer_lines')
+
+      expect(spec?.cellEditor).toBe(OfferLinesCellEditor)
+      expect(spec?.cellEditorPopup).toBeUndefined()
       expect(spec?.cellEditorParams).toBeUndefined()
     })
 

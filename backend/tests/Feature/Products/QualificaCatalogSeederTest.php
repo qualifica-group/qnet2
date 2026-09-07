@@ -57,16 +57,18 @@ it('provisions the reference category catalogue tree, idempotently', function ()
 
     $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->first();
     $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->first();
+    $apl = ProductCategory::query()->where('name', 'APL')->whereNull('parent_id')->first();
 
     expect($formazione)->not->toBeNull()
-        ->and($consulenza)->not->toBeNull();
+        ->and($consulenza)->not->toBeNull()
+        ->and($apl)->not->toBeNull();
 
     $formazioneSubs = ['GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'DIL'];
     foreach ($formazioneSubs as $name) {
         expect(ProductCategory::query()->where('name', $name)->where('parent_id', $formazione->id)->count())->toBe(1);
     }
 
-    foreach (['Trattative in Corso', 'Presa Appuntamenti', 'APL'] as $name) {
+    foreach (['Trattative in Corso', 'Presa Appuntamenti'] as $name) {
         expect(ProductCategory::query()->where('name', $name)->where('parent_id', $consulenza->id)->count())->toBe(1);
     }
 });
@@ -92,16 +94,16 @@ it('provisions the regional GOL declinations as children of the GOL subcategory'
     expect(ProductCategory::query()->where('parent_id', $gol->id)->count())->toBe(count($regions));
 });
 
-it('seeds "APL" as a container with its offer on the third level (user directive 2026-09-07)', function (): void {
+it('seeds "APL" as a root of its own, with its offer one level down (user directive 2026-09-07)', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class); // re-run: firstOrCreate, no duplicates.
 
-    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->firstOrFail();
     $apl = ProductCategory::query()->where('name', 'APL')->firstOrFail();
     $offer = ProductCategory::query()->where('name', 'Orientamento Specialistico')->firstOrFail();
 
-    expect($apl->parent_id)->toBe($consulenza->id)
-        // It groups its offers now, it does not host one.
+    // A branch of its own, never under "Consulenza".
+    expect($apl->parent_id)->toBeNull()
+        // A root groups, it never hosts an offer itself.
         ->and($apl->is_selectable)->toBeFalsy()
         ->and(Product::query()->where('category_id', $apl->id)->exists())->toBeFalse()
         // The offer sits one level down, where the product is filed.
@@ -109,6 +111,19 @@ it('seeds "APL" as a container with its offer on the third level (user directive
         ->and($offer->is_selectable)->toBeTruthy()
         ->and(Product::query()->where('category_id', $offer->id)->pluck('name')->all())
         ->toBe(['Orientamento Specialistico']);
+});
+
+it('promotes "APL" out of "Consulenza" on an installation seeded while it hung there', function (): void {
+    // The state left by the previous revision of this catalogue.
+    $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
+    $apl = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => $consulenza->id]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // `firstOrCreate` writes `parent_id` on creation only: without the
+    // realignment the node would stay where the old revision put it.
+    expect($apl->fresh()->parent_id)->toBeNull()
+        ->and(ProductCategory::query()->where('name', 'APL')->count())->toBe(1);
 });
 
 it('seeds the first two catalogue levels as containers, third level only selectable (spec 0074)', function (): void {

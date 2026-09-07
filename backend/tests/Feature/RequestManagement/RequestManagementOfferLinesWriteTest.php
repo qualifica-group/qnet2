@@ -389,3 +389,88 @@ it('create: a second row on a single-managed classification is refused, nothing 
 
     expect(Opportunity::query()->count())->toBe(0);
 });
+
+// ---------------------------------------------------------------------------
+// GRID CELL — the third channel (user directive 2026-09-07), onto the very
+// same updateWork(): the generic inline-edit engine, whose value is the WHOLE
+// row collection and whose per-row rules are App\Quotes\QuoteLineRules — the
+// one definition the two channels above already validate against.
+// ---------------------------------------------------------------------------
+
+it('cell: PATCH replaces the offer REVENUE rows through the generic engine', function () {
+    $actor = offerLineWriteActor();
+    $category = offerLineCategory();
+    $quote = offerLineRequest($actor, $category);
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'offer_lines',
+        'value' => [['product_id' => $product->id, 'quantity' => 2, 'unit_price' => 150]],
+    ])->assertOk();
+
+    $line = $quote->offerLines()->sole();
+    expect($line->product_id)->toBe($product->id)
+        ->and((float) $line->quantity)->toBe(2.0)
+        ->and((float) $line->unit_price)->toBe(150.0);
+});
+
+it('cell: the value is a ROW collection — a bare list of product ids is refused', function () {
+    $actor = offerLineWriteActor();
+    $category = offerLineCategory();
+    $quote = offerLineRequest($actor, $category);
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'offer_lines',
+        'value' => [$product->id],
+    ])->assertStatus(422)->assertJsonValidationErrors('value.0.product_id');
+
+    expect($quote->offerLines()->count())->toBe(0);
+});
+
+it('cell: a row breaking a shared quote-line rule is refused, never rounded away', function () {
+    $actor = offerLineWriteActor();
+    $category = offerLineCategory();
+    $quote = offerLineRequest($actor, $category);
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    // `quantity` is `gt:0` (AC-034) in the shared definition.
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'offer_lines',
+        'value' => [['product_id' => $product->id, 'quantity' => 0, 'unit_price' => 10]],
+    ])->assertStatus(422)->assertJsonValidationErrors('value.0.quantity');
+});
+
+it('cell: commissions stay this endpoint\'s forbidden block, exactly as on the panel', function () {
+    $actor = offerLineWriteActor();
+    $category = offerLineCategory();
+    $quote = offerLineRequest($actor, $category);
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'offer_lines',
+        'value' => [[
+            'product_id' => $product->id,
+            'quantity' => 1,
+            'unit_price' => 10,
+            'commissions' => [],
+        ]],
+    ])->assertStatus(422)->assertJsonValidationErrors('value.0.commissions');
+});
+
+it('cell: the write needs the module update permission, like every other cell', function () {
+    $actor = offerLineWriteActor(['view', 'viewAll']);
+    $category = offerLineCategory();
+    $quote = offerLineRequest($actor, $category);
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'offer_lines',
+        'value' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]],
+    ])->assertForbidden();
+});

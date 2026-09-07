@@ -206,13 +206,13 @@ it('seeds the APL pick list on the APL branch (user directive 2026-09-07)', func
     $workflow = QuoteWorkflow::query()->where('name', 'APL')->with('criteria')->firstOrFail();
     $category = ProductCategory::query()->where('name', 'APL')->firstOrFail();
 
-    // "APL" GROUPS its offers: the product sits on its "Orientamento
-    // Specialistico" child, so only the branch criterion reaches it. Its
-    // "Consulenza" grandparent matches the same line on its own branch
-    // criterion, and the resolver keeps the CLOSEST one (spec 0092 D-3).
+    // "APL" is a ROOT that groups its offers: the product sits on its
+    // "Orientamento Specialistico" child, so an exact-category criterion would
+    // never match a single offer — only the branch one reaches it.
     expect($workflow->criteria)->toHaveCount(1)
         ->and($workflow->criteria->first()->field)->toBe('product_category_branch_id')
         ->and($workflow->criteria->first()->value_id)->toBe($category->id)
+        ->and($category->parent_id)->toBeNull()
         ->and($category->children()->pluck('name')->all())->toBe(['Orientamento Specialistico']);
 
     $statuses = QuoteWorkflowStatus::query()
