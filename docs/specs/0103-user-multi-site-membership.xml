@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0103-user-multi-site-membership" status="draft" owner="utente" date="2026-09-07">
+
+  <goal>
+    Un utente puo' appartenere a piu' sedi operative: una sede FISICA (al piu' una, opzionale)
+    e zero o piu' sedi REMOTE. L'appartenenza remota e' operativa a tutti gli effetti: chi ha la
+    sede X come remota e' un operatore di X esattamente come chi ce l'ha come fisica.
+  </goal>
+
+  <context>
+    STATO ATTUALE (verificato sul codice, non ipotizzato).
+    La sede dell'utente e' UNA sola e vive su `employment_profiles.operational_site_id`
+    (migrazione 2026_07_04_110000, FK nullable nullOnDelete), relazione
+    `EmploymentProfile::operationalSite()` (Models/EmploymentProfile.php:79). `OperationalSite`
+    (spec 0011) non ha nome proprio: e' il suo indirizzo (HasAddresses) piu' `alias`.
+
+    CONSUMER REALI del legame utente-sede, tutti da rifare sulla pivot:
+    - Services/UserService.php:235-246 - forSelect filtra gli operatori per Sede (spec 0048).
+    - Services/LeadOperatorDistributor.php:32-41 - operatorIdsForSite, smistamento equo.
+    - Services/RequestManagement/RequestCreationService.php:323-325 - actorOperationalSiteId,
+      precompila la Sede della richiesta con quella dell'attore (direttiva 2026-08-04).
+    - Http/Resources/UserForSelectResource.php:46-63 - meta.operational_site_id/_label.
+    - Http/Resources/EmploymentResource.php:42,56-97 - scalare piu' reference {id,label,subtitle}.
+    - Http/Controllers/Auth/AuthController.php:32-38 - /auth/me espone `employment`.
+    - Services/EmploymentWriter.php - unico punto di scrittura del profilo, dentro la
+      transazione di UserService::create/update; gia' oggi sede delle invarianti server-side.
+    - DataObjects/Users/EmploymentData.php:30,61 - DTO tri-state; Http/Requests/Concerns/
+      ValidatesEmployment.php:51,83 - validazione.
+    - Tables/Users/UserEmploymentColumns.php - colonna `operational_site`: cella (:77),
+      filtro testo (:183-203), sort via subquery correlata con JOIN diretto
+      `employment_profiles.operational_site_id = addresses.addressable_id` (:226-234).
+      Dichiarata in Tables/Users/UserColumnCatalog.php:224-231 come CONDITIONS-ONLY
+      (`hasFilterValues:false`, `sortable:true`); eager-load in UsersTableDefinition.php:101.
+    - Stats/OperationalSites/OperationalSitesStatsDefinition.php:30,67 - widget `staffed`
+      via Aggregates::countWithRelated('operational_sites','employment_profiles','operational_site_id').
+    - Authorization/UsersAuthorization.php:72,160 - `employment.operational_site_id` e' una
+      CHIAVE del catalogo field-permission (spec 0006/0008), esposta da GET /api/meta/{resource}
+      e GET /api/authorization/fields, consumata in FE da fieldPermission(...) e usata come
+      gate di sezione in user-form-body.tsx:107. Nessun seeder scrive `role_field_permissions`:
+      le righe le crea solo un amministratore dal form Ruoli (RoleService::syncFieldPermissions).
+    - Migrations/Sources/Concerns/MapsExternalUserRecord.php:144,153,251-292 e
+      Migrations/Sources/UsersSource.php:99,158,179-241 - import legacy, con un passaggio di
+      self-healing che ricollega i soli valori rimasti NULL.
+    - Seeder/factory: QualificaOperatorSiteLinkSeeder.php:60-63,
+      DemoEmploymentProfileSeeder.php:37,104-111, EmploymentProfileFactory.php:33.
+
+    FRONTEND:
+    - features/users/: types.ts:68,72,123; user-schema.ts:38; use-user-form.ts:72,91,209,259;
+      user-form-payload.ts:30; user-form-employment-tabs.tsx:187-198; user-form-body.tsx:107;
+      user-detail.tsx:114-116; for-select-api.ts:12-30,50.
+    - features/auth/types.ts:32 - fetta ridotta dell'attore connesso `{operational_site_id}`,
+      con un solo consumer: features/request-management/use-request-actor-defaults.ts:45.
+    - Legame Sede-Operatore in request-management: request-team-slots.ts:20-57 (regola pura),
+      use-request-site-operator-link.ts:62-99 (cablaggio). L'auto-fill Operatore->Sede a
+      :75-83 sovrascrive INCONDIZIONATAMENTE la Sede corrente.
+    - Lo STESSO legame esiste duplicato, scritto a mano e piu' vecchio, nel form Lead
+      (features/leads/lead-form-body.tsx:187-198 Operatore->Sede, :204-213 Sede->Operatore,
+      :265 filtro operatori; spec 0048 AC-060/061/062), con identico overwrite incondizionato.
+      Nessun legame analogo esiste in Opportunity (verificato).
+    - i18n: tre namespace da estendere - usersFormEmployment.operationalSite*,
+      usersColumnsEmployment.operational_site, usersDetailEmployment.operationalSite.
+
+    DECISIONI GIA' PRESE DALL'UTENTE.
+    D-1 Le sedi remote sono operative a tutti gli effetti: entrano in UserService::forSelect
+        e in LeadOperatorDistributor::operatorIdsForSite.
+    D-2 Pivot unica con flag booleano `is_primary` come sorgente di verita'; niente enum.
+    D-3 Al piu' UNA sede fisica per utente, piu' N remote. La fisica resta opzionale.
+    D-4 /auth/me e form richieste: la fisica resta il default precompilato, ma il select Sede
+        deve permettere di scegliere tra le sedi dell'utente.
+    D-5 `employment_profiles.operational_site_id` va ELIMINATA, con tutti i suoi usages
+        rimpiazzati dalla pivot: niente colonna tenuta come proiezione o cache.
+    D-6 Auto-fill Operatore->Sede: non deve mai sovrascrivere una Sede gia' scelta.
+    D-7 Griglia utenti: la cella `operational_site` mostra la sede FISICA; il filtro trova
+        anche chi ha quella sede come remota.
+
+    DECISIONI DERIVATE, proposte qui e da validare con l'approvazione del piano.
+    D-8 La pivot e' agganciata a `employment_profiles`, non a `users`:
+        `employment_profile_operational_site` (naming alfabetico, precedente
+        `business_function_operational_site`). Motivo: la sede e' sempre stata parte del
+        rapporto di impiego (cancellare il profilo toglie la sede, semantica odierna
+        invariata) e soprattutto il contratto resta annidato sotto `employment`, quindi il
+        path field-permission `employment.<campo>` continua a risolversi come oggi.
+    D-9 Le due chiavi field-permission diventano `employment.primary_operational_site_id` e
+        `employment.remote_operational_site_ids`. I valori correnti si leggono con due
+        accessor `Attribute` PUBBLICI su EmploymentProfile, esattamente il precedente
+        documentato in Models/OperationalSite.php:60-70 (pubblici perche'
+        EnforcesFieldPermissions chiama il metodo dall'esterno per capire se e' una Relation).
+        Cosi' EnforcesFieldPermissions NON va modificato: senza accessor, un leaf-relazione
+        to-one tornerebbe il Model invece dell'id e ogni resubmit dello stesso valore su un
+        campo bloccato diventerebbe un 422 spurio (il ramo e' dichiarato non esercitato nel
+        codice stesso). Rischio oggi non coperto da test: AC-013/AC-014 lo coprono.
+    D-10 L'invariante "al piu' una fisica" e' enforced da EmploymentWriter dentro la
+        transazione, non dallo schema: MySQL non ha unique parziale, e il precedente di casa
+        e' identico (l'invariante di indirizzo unico di OperationalSite e' enforced da
+        AddressService/OperationalSiteService, non dallo schema - Models/OperationalSite.php:14-19).
+        Lo schema porta solo l'unique (employment_profile_id, operational_site_id).
+    D-11 Cancellare una sede NON promuove una remota a fisica: l'utente resta senza sede
+        fisica, esattamente come oggi resta con la colonna a NULL.
+    D-12 Il widget `staffed` conta le sedi con almeno UNA appartenenza, fisica o remota.
+    D-13 La regola D-6 si applica anche al form Lead, che ha lo stesso legame duplicato.
+        Senza, il filtro operatori (che ora include i remoti) produrrebbe li' lo stesso bug
+        che stiamo correggendo in request-management. Modifica gli AC-060/061 della spec 0048.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione 1: crea la pivot `employment_profile_operational_site` (id,
+        employment_profile_id, operational_site_id, is_primary bool default false), FK con
+        cascadeOnDelete su entrambi i lati, unique nominato sulla coppia, indice su
+        operational_site_id per la lookup inversa.</item>
+      <item>Migrazione 2: backfill di ogni `employment_profiles.operational_site_id` non nullo
+        come riga pivot con is_primary=true, poi drop della colonna. Query builder puro, mai
+        Eloquent; down() reversibile. Stile: 2026_09_02_200030_move_project_classification_to_product_lines.php.</item>
+      <item>Migrazione 3: split della chiave in `role_field_permissions` - ogni riga
+        (resource='users', field='employment.operational_site_id') diventa due righe con gli
+        stessi flag, gestendo il conflitto sull'unique (role_id, resource, field). Stile:
+        2026_09_02_230000_rename_request_management_operator_field_permission.php.</item>
+      <item>EmploymentProfile: relazioni `operationalSites()` (BelongsToMany withPivot
+        is_primary), `primaryOperationalSite()`, `remoteOperationalSites()`; accessor pubblici
+        `primaryOperationalSiteId` (int|null) e `remoteOperationalSiteIds` (array int).</item>
+      <item>EmploymentData + ValidatesEmployment: i due nuovi campi, tri-state preservato.</item>
+      <item>EmploymentWriter: sync della pivot nella transazione del chiamante, con
+        l'invariante "al piu' una fisica" applicata lato server e non creduta dalla request.</item>
+      <item>EmploymentResource: i due id piu' i reference {id,label,subtitle}, con la stessa
+        composizione "line1 - city" gia' in uso; whenLoaded per evitare N+1.</item>
+      <item>UserService::forSelect: filtro per sede via pivot, include le remote (D-1).
+        UserForSelectResource.meta: resta singolare e porta la sede FISICA.</item>
+      <item>LeadOperatorDistributor::operatorIdsForSite via pivot, include le remote (D-1).</item>
+      <item>RequestCreationService::actorOperationalSiteId: usa la sede fisica dell'attore.</item>
+      <item>AuthController /auth/me: `employment` espone la fisica piu' l'elenco delle
+        appartenenze con label, per il select del form richieste (D-4).</item>
+      <item>UserEmploymentColumns: cella dalla fisica, filtro testo su TUTTE le appartenenze,
+        sort riscritto contro la pivot (fisica). Catalogo colonna invariato.</item>
+      <item>UsersAuthorization: le due nuove FieldDefinition e le due entry nel ceiling.</item>
+      <item>OperationalSitesStatsDefinition: widget `staffed` sulla pivot (D-12).</item>
+      <item>Import legacy: la sede esterna diventa l'appartenenza fisica; il passaggio di
+        self-healing non deve duplicare righe su re-import.</item>
+      <item>QualificaOperatorSiteLinkSeeder, DemoEmploymentProfileSeeder, EmploymentProfileFactory.</item>
+      <item>FE form utente: select "sede fisica" piu' multi-select "sedi remote", con i due
+        gate field-permission distinti; schema Zod, payload, hydration, scheda utente.</item>
+      <item>FE: auto-fill Operatore-&gt;Sede non sovrascrive una Sede gia' scelta, in
+        request-management (use-request-site-operator-link.ts) e nel form Lead (D-6, D-13).</item>
+      <item>FE features/auth/types.ts: la fetta `employment` dell'attore si allarga alle
+        appartenenze; unico consumer use-request-actor-defaults.ts.</item>
+      <item>i18n: chiavi per sede fisica e sedi remote nei tre namespace esistenti.</item>
+      <item>Test Pest e Vitest aggiornati o nuovi su tutti gli AC, ESEGUITI.</item>
+    </in>
+    <out>
+      <item>La colonna `operational_site_id` sui RECORD di altri moduli (leads, quotes,
+        opportunities, campaigns, projects, request-management, import_run_rows): resta
+        esattamente com'e'. Questa spec tocca solo la sede DELL'UTENTE.</item>
+      <item>Nessun endpoint dedicato alle appartenenze: si scrivono dal form utente.</item>
+      <item>Nessuna promozione automatica di una remota a fisica (D-11).</item>
+      <item>Nessuna data di inizio/fine validita' sull'appartenenza remota.</item>
+      <item>Nessuna modifica all'algoritmo br-balanced dello smistamento equo: cambia solo la
+        popolazione degli operatori, non il modo in cui vengono distribuiti.</item>
+      <item>Nessuna modifica a EnforcesFieldPermissions (D-9 lo rende non necessario).</item>
+      <item>Nessuna colonna nuova nella griglia utenti (niente colonna "sedi remote").</item>
+      <item>Nessuna nuova dipendenza, backend o frontend.</item>
+      <item>Nessun legame Sede-Operatore introdotto in Opportunity, che oggi non ce l'ha.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/users/{user}">
+      <response status="200">
+        data.employment: {
+          ...campi invariati (is_manager, job_description, relationship_type, ...),
+          primary_operational_site_id: number|null,
+          remote_operational_site_ids: number[],
+          primary_operational_site?: { id: number, label: string, subtitle: string|null },
+          remote_operational_sites?: [{ id: number, label: string, subtitle: string|null }]
+        }
+        I due oggetti reference sono emessi solo con la relazione eager-loaded (whenLoaded),
+        come gia' fanno company/business_function. `operational_site_id` e `operational_site`
+        NON esistono piu'.
+      </response>
+    </endpoint>
+
+    <endpoint method="POST|PUT" path="/api/users | /api/users/{user}">
+      <request>
+        employment.primary_operational_site_id: nullable|integer|exists:operational_sites,id
+        employment.remote_operational_site_ids: nullable|array; ogni elemento
+          integer|distinct|exists:operational_sites,id, e diverso da primary_operational_site_id
+      </request>
+      <response status="200">Come GET sopra.</response>
+      <errors>
+        422 remote_operational_site_ids contiene primary_operational_site_id
+        422 id duplicati nell'array, o sede inesistente
+        422 campo bloccato da field-permission con valore CAMBIATO (stesso valore = no-op)
+        403 attore senza users.create/users.update
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/users/for-select">
+      <request>operational_site_id?: number - invariato nel nome e nel tipo</request>
+      <response status="200">
+        Shape invariata. Cambia la SEMANTICA del filtro: restituisce gli utenti che hanno
+        quella sede come fisica O come remota. `meta` resta singolare e porta la sede FISICA:
+        { operational_site_id: number, operational_site_label: string } | null.
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/auth/me">
+      <response status="200">
+        data.employment: {
+          primary_operational_site_id: number|null,
+          operational_sites: [{ id: number, label: string, is_primary: boolean }]
+        }
+        Fetta stretta come oggi: solo cio' che serve al form richieste. `label` composta
+        "line1 - city" come altrove.
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/leads/assign-operators">
+      <request>Invariato.</request>
+      <response status="200">
+        Invariato ({ updated: int }). Cambia solo la popolazione degli operatori di una Sede,
+        che ora include chi ce l'ha come remota.
+      </response>
+      <errors>422 mode=balanced su Sede senza operatori (invariato, ma ora una sede con soli
+        operatori remoti NON e' piu' vuota)</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/users | /api/authorization/fields">
+      <response status="200">
+        Il catalogo campi espone `employment.primary_operational_site_id` e
+        `employment.remote_operational_site_ids` al posto di `employment.operational_site_id`.
+      </response>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">Dato un employment profile con operational_site_id valorizzato,
+      quando gira la migrazione di backfill, allora esiste esattamente una riga pivot per quel
+      profilo con is_primary=true e quella sede, e la colonna non esiste piu' sulla tabella.</criterion>
+    <criterion id="AC-002">Dato un profilo con operational_site_id NULL, quando gira il
+      backfill, allora non viene creata alcuna riga pivot per quel profilo.</criterion>
+    <criterion id="AC-003">Dato lo stato post-migrazione, quando si esegue il down(), allora la
+      colonna torna a esistere e riporta la sede fisica di ogni profilo.</criterion>
+    <criterion id="AC-004">Dato un payload con primary e due remote, quando si salva l'utente,
+      allora esistono tre righe pivot, una sola con is_primary=true.</criterion>
+    <criterion id="AC-005">Dato un utente con sede fisica A, quando si salva con primary=B,
+      allora resta una sola riga is_primary=true e punta a B.</criterion>
+    <criterion id="AC-006">Dato un payload in cui remote_operational_site_ids contiene lo
+      stesso id di primary_operational_site_id, quando si salva, allora 422 e nessuna riga
+      pivot modificata.</criterion>
+    <criterion id="AC-007">Dato un payload con id duplicati nell'array remote, quando si salva,
+      allora 422.</criterion>
+    <criterion id="AC-008">Dato un utente con fisica e remote, quando si salva con
+      primary=null, allora la riga fisica sparisce e le remote restano.</criterion>
+    <criterion id="AC-009">Dato un utente con sedi, quando si legge GET /api/users/{id},
+      allora la response porta i due id e i due reference con label "line1 - city", e non
+      contiene piu' le chiavi operational_site_id/operational_site.</criterion>
+    <criterion id="AC-010">Dati un utente con X come fisica e uno con X come remota, quando si
+      chiama GET /api/users/for-select?operational_site_id=X, allora entrambi compaiono.</criterion>
+    <criterion id="AC-011">Dato l'utente con X come remota e Y come fisica, quando compare in
+      for-select, allora il suo meta.operational_site_id vale Y (la fisica), non X.</criterion>
+    <criterion id="AC-012">Data una Sede X con un solo operatore, che ce l'ha come remota,
+      quando si esegue l'assegnazione mode=balanced su X, allora i lead gli vengono distribuiti
+      e la risposta non e' 422.</criterion>
+    <criterion id="AC-013">Dato un ruolo con `employment.primary_operational_site_id` in sola
+      lettura e un utente con sede fisica A, quando si risalva quell'utente riproponendo A,
+      allora e' un no-op e la risposta e' 200, non 422.</criterion>
+    <criterion id="AC-014">Dato lo stesso ruolo con `employment.remote_operational_site_ids`
+      in sola lettura, quando si risalva riproponendo gli stessi id in ordine diverso, allora
+      e' un no-op e la risposta e' 200; se invece l'insieme cambia davvero, allora 422.</criterion>
+    <criterion id="AC-015">Data una riga in role_field_permissions per
+      `employment.operational_site_id`, quando gira la migrazione di split, allora esistono due
+      righe con gli stessi flag per le due nuove chiavi e l'originale non esiste piu'.</criterion>
+    <criterion id="AC-016">Dato GET /api/meta/users, quando si leggono le chiavi campo, allora
+      compaiono le due nuove e non compare piu' quella vecchia.</criterion>
+    <criterion id="AC-017">Dato un utente con fisica A e remota B, quando si legge la griglia
+      utenti, allora la cella operational_site mostra A.</criterion>
+    <criterion id="AC-018">Dato lo stesso utente, quando si filtra la griglia per il testo
+      dell'indirizzo di B, allora la riga compare comunque.</criterion>
+    <criterion id="AC-019">Dati utenti con e senza sede fisica, quando si ordina per
+      operational_site, allora l'ordinamento e' deterministico e chi non ha sede fisica non
+      rompe la query.</criterion>
+    <criterion id="AC-020">Data una sede con un solo utente che ce l'ha come remota, quando si
+      legge il widget staffed, allora quella sede e' contata.</criterion>
+    <criterion id="AC-021">Dato un utente con la sede A come fisica, quando si cancella A,
+      allora la riga pivot sparisce, l'utente resta senza sede fisica e nessuna remota viene
+      promossa.</criterion>
+    <criterion id="AC-022">Dato /api/auth/me per un utente con fisica e due remote, quando si
+      legge la response, allora `employment` porta primary_operational_site_id e le tre
+      appartenenze con label e flag is_primary.</criterion>
+    <criterion id="AC-023">Dato il form di creazione richiesta con la Sede X gia' scelta,
+      quando si sceglie un operatore la cui sede fisica e' Y, allora la Sede resta X.</criterion>
+    <criterion id="AC-024">Dato lo stesso form con il campo Sede vuoto, quando si sceglie un
+      operatore con sede fisica Y, allora la Sede diventa Y (auto-fill invariato).</criterion>
+    <criterion id="AC-025">Dato il work panel di una richiesta, quando si applicano gli stessi
+      due casi, allora vale la stessa regola.</criterion>
+    <criterion id="AC-026">Dato il form Lead con la Sede gia' scelta, quando si sceglie un
+      operatore di sede fisica diversa, allora la Sede non cambia (D-13).</criterion>
+    <criterion id="AC-027">Dato il form Lead con la Sede vuota, quando si sceglie un operatore,
+      allora l'auto-fill funziona come oggi.</criterion>
+    <criterion id="AC-028">Dato il form utente, quando l'attore ha entrambi i campi visibili,
+      allora vede un select per la sede fisica e un multi-select per le remote, e il payload
+      inviato porta le due chiavi.</criterion>
+    <criterion id="AC-029">Dato un ruolo che vede solo `employment.primary_operational_site_id`,
+      quando apre il form utente, allora il multi-select delle remote non e' renderizzato.</criterion>
+    <criterion id="AC-030">Data la scheda utente, quando l'utente ha fisica e remote, allora
+      entrambe sono mostrate e distinguibili, con l'empty state gia' in uso se mancano.</criterion>
+    <criterion id="AC-031">Dato un record esterno con una sede, quando si esegue l'import
+      legacy due volte, allora esiste una sola riga pivot fisica e nessun duplicato.</criterion>
+    <criterion id="AC-032">Dato un attore con sede fisica A, quando crea una richiesta senza
+      indicare la Sede, allora la richiesta nasce con A (comportamento odierno preservato).</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza, backend o frontend. Solo librerie gia' in composer.json /
+      package.json.</item>
+    <item>Identificatori in inglese: tabella pivot, colonne, relazioni, accessor, chiavi di
+      contratto, chiavi field-permission.</item>
+    <item>Migrazioni: query builder puro, mai Eloquent; schema e dati in migrazioni separate;
+      down() sempre presente, con le asimmetrie dichiarate nel docblock come da precedenti.</item>
+    <item>Mai modificare una migrazione gia' committata: solo migrazioni nuove.</item>
+    <item>Authorization server-side invariata: il ceiling delle due nuove chiavi e' lo stesso
+      di quella che sostituiscono (editable se l'attore puo' scrivere l'utente, altrimenti
+      visible readonly).</item>
+    <item>L'invariante "al piu' una sede fisica" e' applicata lato server in EmploymentWriter,
+      mai creduta dal payload.</item>
+    <item>Ownership disgiunta tra i microtask: due lane in parallelo non scrivono lo stesso file.</item>
+    <item>File entro 300 righe soft / 500 hard. UserEmploymentColumns.php e' gia' a 366 righe:
+      la riscrittura del sort valuta lo split, non gonfia il file.</item>
+    <item>Definition of Done: Pest e Vitest ESEGUITI (non solo scritti), Pint pulito, ESLint
+      pulito, `cd frontend &amp;&amp; npx tsc -b --force` pulito. Mai `tsc --noEmit`.</item>
+    <item>Nessun commit e nessun cambio di branch senza via libera esplicito dell'utente in
+      quel momento (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>
