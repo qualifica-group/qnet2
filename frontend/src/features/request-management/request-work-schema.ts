@@ -9,6 +9,7 @@ import {
   buildAttributeValuesSchema,
   type TypedAttributeValuesSchema,
 } from '@/features/request-management/attribute-values-schema'
+import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import { quoteLineRowSchema } from '@/features/quotes/quote-schema'
 import {
   attributeValuesChanged,
@@ -31,6 +32,14 @@ import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
 
 /** Backend per-tab row ceiling (`max:200`), mirrored from `quote-schema.ts`. */
 const MAX_OFFER_LINES = 200
+
+/**
+ * Spec 0102: the `WorkflowStatusGroup` values a transition into requires at
+ * least one REVENUE row for, mirroring `QuoteWorkflowStatusWriter::apply()`.
+ * `pending` is deliberately absent (AC-045/AC-013): the gate only guards the
+ * three closing/validating groups.
+ */
+const OFFER_LINES_REQUIRED_STATUS_GROUPS = new Set(['closed_won', 'closed_lost', 'validated'])
 
 /**
  * The three collectors below are invoked from the top-level refinement rather
@@ -278,6 +287,25 @@ export function buildRequestWorkSchema(
           code: 'custom',
           path: ['note'],
           message: t('quotes.form.noteRequired'),
+        })
+      }
+
+      // Spec 0102 AC-044/045: mirror of the server gate in
+      // `QuoteWorkflowStatusWriter::apply()` — a transition into a status
+      // whose `group` is one of the three closing/validating ones is
+      // blocked unless at least one REVENUE row is present. Same guard as
+      // the note rule above (a reissued status is not a transition, spec
+      // 0083 AC-026/AC-018); pristine rows do not count (`isPristineLineRow`).
+      if (
+        targetStatusId !== null &&
+        targetStatusId !== original.quote_workflow_status_id &&
+        OFFER_LINES_REQUIRED_STATUS_GROUPS.has(statuses.find((status) => status.id === targetStatusId)?.group ?? '') &&
+        values.offer_lines.every((row) => isPristineLineRow(row))
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['offer_lines'],
+          message: t('quotes.form.offerLinesRequiredForStatus'),
         })
       }
 

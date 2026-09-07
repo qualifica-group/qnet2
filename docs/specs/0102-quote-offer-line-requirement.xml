@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0102-quote-offer-line-requirement" status="draft" owner="nicola" date="2026-09-04">
+
+  <goal>
+    Rendere la riga prodotto dell'Offerta obbligatoria dove il dato deve essere completo
+    (form Offerte, chiusura/validazione dello stato) e visibile dove resta legittimamente
+    assente (tabella Offerte, Gestione Richieste, conversione da Lead), senza rompere i
+    canali che oggi creano Offerte senza righe per progetto.
+  </goal>
+
+  <context>
+    Oggi un'Offerta senza righe prodotto e' uno stato pienamente legittimo e testato:
+    `offer_lines` e' `sometimes` in `ValidatesQuoteLines::quoteLineFieldRules()`,
+    `QuoteLineCoverageWriter::coverOpportunity()` esce a vuoto su zero righe, e
+    `QuoteWorkflowResolver` cade sul set globale di default quando non ci sono categorie
+    da cui risolvere. Questa spec non introduce un divieto globale: introduce una regola
+    DIFFERENZIATA PER CANALE.
+
+    Fatti verificati nel repo (grounding 2026-09-04, non ipotizzati):
+
+    - `Quote` viene istanziata in UN SOLO punto di tutto `backend/app`:
+      `App\Services\QuoteService::create()` (QuoteService.php:164). `QuoteService` e
+      `CreateQuoteData` NON hanno alcun concetto di canale di provenienza. Una regola
+      messa li' colpirebbe indistintamente Offerte, Gestione Richieste e conversione:
+      per questo l'obbligo del form vive nel FormRequest del solo canale Offerte.
+    - `ValidatesQuoteLines::quoteLinesRules()` e' usato SOLO da `StoreQuoteRequest:107` e
+      `UpdateQuoteRequest:93` (canale Offerte); `offerLinesOnlyRules()` SOLO da
+      `RequestManagement\StoreRequestRequest:132` e `UpdateRequestRequest:137`. Gli entry
+      point sono disgiunti: una regola invocata dai soli `withValidator()` delle Offerte
+      non tocca Gestione Richieste.
+    - `UpdateQuoteData::hasOfferLines()` (`offerLines !== null`, UpdateQuoteData.php:191)
+      e' il meccanismo che distingue "chiave assente" (non toccare) da "chiave presente,
+      anche vuota" (full-replace). E' su questa distinzione che poggia il grandfathering.
+    - Gli stati: `WorkflowStatusGroup` ha cinque casi (`open`, `pending`, `validated`,
+      `closed_won`, `closed_lost`, WorkflowStatusGroup.php:19-23). "Validato" NON e' una
+      `system_key`: la migrazione `2026_08_07_120000_drop_validated_system_key_from_
+      quote_workflow_statuses.php` l'ha rimossa e sopravvive solo come `group`. Le tre
+      condizioni bersaglio sono quindi `group` in {`closed_won`, `closed_lost`,
+      `validated`}.
+    - `QuoteWorkflowStatusWriter::apply()` e' il punto di strozzatura UNICO di ogni
+      transizione di stato: ci passano sia il pannello Gestione Richieste
+      (`RequestManagementService::applyWorkflowStatus()`) sia il modulo Offerte
+      (`QuoteWorkflowStatusAssigner::assign()`). L'inline edit della griglia
+      (`WritesInlineEditableCells::updateCell()`) BYPASSA il FormRequest e chiama il
+      service: una regola solo-FormRequest sarebbe scavalcata da li'.
+    - Ordine transazionale gia' verificato: in `QuoteService::update()` la scrittura righe
+      (`lineCoverageWriter->writeSubmitted`, QuoteService.php:262) precede
+      `workflowStatusAssigner->assign()` (QuoteService.php:295); in
+      `RequestManagementService::updateWork()` lo Step 1-ter (righe) precede lo Step 2-ter
+      (stato). `QuoteLineWriter::sync()` chiude con `unsetRelations()`. Quindi un COUNT
+      fresco dentro il writer vede le righe scritte nella STESSA richiesta: il gate non
+      produce falsi 422 quando l'utente aggiunge la riga e chiude nello stesso salvataggio.
+    - Precedente architetturale da copiare per la colonna: la colonna `alert` dei
+      Contratti (`ContractsTableDefinition.php:47,193,318-424`, `ContractAlertResolver`,
+      `ContractColumnCatalog.php:182-191`) — colonna calcolata a runtime, mai persistita,
+      `type: 'badge'`, `sortable: false`, `filterType: 'set'` con enumerazione statica in
+      `distinctValues()`. Lato client: `ContractAlertBadge` + `AlertCell`
+      (`contract-status-badges.tsx:21-40`, `contracts/column-renderers.tsx:11-22`), icona
+      PIU' testo, mai il solo colore.
+    - `Quote::offerLines()` (Quote.php:334) e' gia' scopata a `QuoteLineType::Revenue`.
+      `QuotesTableDefinition::baseQuery()` usa gia' `withCount(['scopedNotes as
+      notes_count'])`: stessa tecnica per `offer_lines_count`, nessun N+1.
+    - `ConvertLeadToOpportunity::createOfferForActor()` (riga 152-157) oggi NON crea
+      l'Offerta quando `$productIds === []`: non crea un'Offerta vuota, non crea proprio
+      nulla. E' asserito da `LeadConversionOfferTest.php` AC-065 (spec 0094), test che
+      passa oggi e che questa spec RISCRIVE (decisione D-1).
+
+    Decisioni prese dall'utente il 2026-09-04, vincolanti:
+    D-1 — la conversione da Lead crea SEMPRE l'Offerta, anche a zero prodotti di
+          interesse: nasce senza righe. Modifica spec 0094 AC-065.
+    D-2 — sul form Offerte l'obbligo vale in creazione e sullo SVUOTAMENTO esplicito, non
+          su ogni salvataggio: un'Offerta storica gia' a zero righe resta salvabile sugli
+          altri campi (grandfathering, stesso precedente di spec 0077 D-5).
+    D-3 — il gate su chiusura/validazione vale su TUTTI i canali, quindi vive nel service
+          writer, non nel FormRequest.
+    D-4 — l'alert e' una colonna dedicata filtrabile della sola tabella Offerte.
+  </context>
+
+  <scope>
+    <in>
+      <item>Colonna calcolata `alert` sulla tabella Offerte, valorizzata `missing_offer_lines` quando l'Offerta non ha righe REVENUE; filtrabile, non ordinabile, visibile di default.</item>
+      <item>Obbligo di almeno una riga REVENUE sul canale Offerte: `POST /api/quotes` sempre; `PATCH /api/quotes/{quote}` solo quando `offer_lines` viaggia ed e' vuoto.</item>
+      <item>Mirror client dell'obbligo negli schemi Zod di creazione e modifica Offerta, con errore a livello di collezione sul campo `offer_lines`.</item>
+      <item>Gate di transizione: nessuno stato di destinazione con `group` in {`closed_won`, `closed_lost`, `validated`} e' raggiungibile se l'Offerta non ha almeno una riga REVENUE. Enforcement in `QuoteWorkflowStatusWriter::apply()`, valido per ogni canale incluso l'inline edit.</item>
+      <item>Mirror del gate nel FormRequest del pannello Gestione Richieste (422 keyed, non solo toast) e nello schema Zod del pannello.</item>
+      <item>La conversione da Lead crea sempre l'Offerta, anche senza prodotti di interesse (D-1), con conseguente riscrittura di spec 0094 AC-065 e del suo test.</item>
+      <item>Messaggi server in `lang/it/quotes.php` e `lang/en/quotes.php`; label client in `it-quotes.ts`/`en-quotes.ts`.</item>
+    </in>
+    <out>
+      <item>Qualsiasi vincolo sulla CREAZIONE da Gestione Richieste: resta senza obbligo di riga prodotto (spec 0086 AC-028 invariata).</item>
+      <item>Qualsiasi vincolo sulle righe COSTO (`cost_lines`): restano opzionali ovunque, come oggi.</item>
+      <item>Regole dentro `QuoteService`, `CreateQuoteData`, `UpdateQuoteData`, `QuoteLineWriter` o `QuoteLineCoverageWriter`: quei componenti sono condivisi da tutti i canali e restano neutri.</item>
+      <item>Migrazioni: nessuna colonna nuova, l'alert e' calcolato a runtime.</item>
+      <item>Bonifica retroattiva dei dati esistenti: le Offerte gia' a zero righe restano, segnalate dalla colonna alert.</item>
+      <item>Colonna alert sulla griglia Gestione Richieste, dove l'assenza di righe e' il caso normale alla creazione.</item>
+      <item>Il gate sul gruppo `pending`: non e' fra le condizioni bersaglio.</item>
+      <item>`POST /api/quotes/form-context`: riceve legittimamente `offer_lines: []` per l'anteprima live degli attributi applicabili (proprio FormRequest, `QuoteFormContextRequest`) e resta senza vincolo. La regola non deve raggiungerlo.</item>
+      <item>Nuove dipendenze: nessuna.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="POST" path="/api/quotes">
+      <request>
+        Invariato nella shape. Cambia la regola: `offer_lines` deve contenere almeno una
+        riga. Chiave assente, `[]`, o array di sole righe scartate = violazione.
+      </request>
+      <response status="201">Invariata (`QuoteResource`).</response>
+      <errors>
+        422 `{ message, errors: { offer_lines: [<lang quotes.offer_line_required>] } }`
+        quando non arriva alcuna riga REVENUE.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/quotes/{quote}">
+      <request>
+        Invariato. La regola colpisce SOLO `offer_lines` presente e vuoto (svuotamento
+        esplicito). Chiave assente = collezione non toccata = nessun errore, anche se
+        l'Offerta ha zero righe persistite (D-2).
+      </request>
+      <response status="200">Invariata.</response>
+      <errors>
+        422 `{ errors: { offer_lines: [<lang quotes.offer_line_required>] } }` sullo
+        svuotamento esplicito.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/request-management/{quote}">
+      <request>
+        Invariato. Nuovo vincolo incrociato: se `quote_workflow_status_id` punta a uno
+        stato con `group` in {closed_won, closed_lost, validated}, allora l'Offerta deve
+        avere almeno una riga REVENUE considerando le `offer_lines` SOTTOMESSE nella
+        stessa richiesta se presenti, altrimenti quelle persistite.
+      </request>
+      <response status="200">Invariata.</response>
+      <errors>
+        422 `{ errors: { offer_lines: [<lang quotes.offer_line_required_for_status>] } }`.
+        Chiave d'errore `offer_lines` (non `quote_workflow_status_id`): e' la riga che
+        manca, ed e' la convenzione gia' usata da `enforceSingleOfferLine`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/tables/{table}/rows/{row}">
+      <request>
+        Inline edit della cella `quote_workflow_status_id` nella griglia Gestione
+        Richieste. Nessun FormRequest attraversato: l'enforcement e' quello del service.
+      </request>
+      <response status="200">Invariata.</response>
+      <errors>
+        422 con `message` = `<lang quotes.offer_line_required_for_status>`. Il client
+        inline (`use-table-cell-edit.tsx:196`) mostra il `message` dell'envelope come
+        toast: nessun campo a cui agganciarlo, ed e' il comportamento gia' in essere per
+        la regola `requires_note`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/quotes/rows">
+      <request>
+        Nuova colonna filtrabile `alert`. Filtro `set` con enumerazione statica di un solo
+        valore: `["missing_offer_lines"]`.
+      </request>
+      <response status="200">
+        Ogni riga espone `alert: "missing_offer_lines" | null`. Definizione di colonna:
+        `{ id: "alert", label: "quotes.columns.alert", type: "badge", visible: true,
+        sortable: false, filterable: true, filterType: "set",
+        options: ["missing_offer_lines"] }`, appesa IN CODA a `QuoteColumnCatalog::columns()`
+        (convenzione append-only, spec 0001).
+      </response>
+      <errors>Invariati (403 senza `quotes.viewAny`).</errors>
+    </endpoint>
+
+    <messages>
+      lang/it/quotes.php:
+        'offer_line_required' => "L'offerta deve contenere almeno una riga prodotto."
+        'offer_line_required_for_status' => "Non puoi portare l'offerta a questo stato senza almeno una riga prodotto."
+      lang/en/quotes.php: gemelle in inglese.
+      it-quotes.ts / en-quotes.ts:
+        `quotes.columns.alert`, `quotes.alerts.missingOfferLines`,
+        `quotes.form.offerLinesRequired`, `quotes.form.offerLinesRequiredForStatus`.
+    </messages>
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">Dato un attore con `quotes.create`, quando invia `POST /api/quotes` senza la chiave `offer_lines`, allora 422 con errore su `offer_lines` e nessuna Offerta persistita.</criterion>
+    <criterion id="AC-002">Dato lo stesso attore, quando invia `POST /api/quotes` con `offer_lines: []`, allora 422 su `offer_lines`.</criterion>
+    <criterion id="AC-003">Dato lo stesso attore, quando invia `POST /api/quotes` con una riga REVENUE valida, allora 201 e l'Offerta ha una riga.</criterion>
+    <criterion id="AC-004">Dato un'Offerta con due righe, quando si invia `PATCH` con `offer_lines: []`, allora 422 su `offer_lines` e le due righe restano persistite.</criterion>
+    <criterion id="AC-005">Dato un'Offerta storica con zero righe, quando si invia `PATCH` con il solo `title`, allora 200 e il titolo cambia (grandfathering D-2). Copre la non-regressione di `QuoteSingleOfferLineTest.php:191`.</criterion>
+    <criterion id="AC-006">Dato un'Offerta storica con zero righe, quando si invia `PATCH` con una riga REVENUE valida, allora 200 e l'Offerta ha una riga.</criterion>
+    <criterion id="AC-007">Dato `POST /api/request-management` senza `offer_lines`, allora 201 e l'Offerta nasce con zero righe: spec 0086 AC-028 resta verde, invariata.</criterion>
+
+    <criterion id="AC-010">Dato un'Offerta con zero righe REVENUE e uno stato di destinazione con `group = closed_won`, quando un qualsiasi canale tenta la transizione, allora 422 con `offer_line_required_for_status` e `quote_workflow_status_id` invariato.</criterion>
+    <criterion id="AC-011">Come AC-010 con `group = closed_lost`.</criterion>
+    <criterion id="AC-012">Come AC-010 con `group = validated`.</criterion>
+    <criterion id="AC-013">Dato un'Offerta con zero righe REVENUE e uno stato di destinazione con `group` in {`open`, `pending`}, quando si effettua la transizione, allora 200: il gate non scatta fuori dalle tre condizioni bersaglio.</criterion>
+    <criterion id="AC-014">Dato un'Offerta con una riga REVENUE, quando si transita a uno stato `closed_won`, allora 200.</criterion>
+    <criterion id="AC-015">Dato un'Offerta con sole righe COSTO e zero REVENUE, quando si transita a `closed_won`, allora 422: le righe costo non soddisfano il vincolo.</criterion>
+    <criterion id="AC-016">Dato un `PATCH /api/request-management/{quote}` che nella STESSA richiesta invia una riga REVENUE e uno stato `closed_won`, allora 200: la riga scritta nello Step 1-ter e' visibile al gate dello Step 2-ter.</criterion>
+    <criterion id="AC-017">Dato l'inline edit della cella stato su una richiesta senza righe verso uno stato `validated`, allora 422 con il messaggio nell'envelope (`message`), stato invariato: il gate non e' scavalcabile dall'inline edit.</criterion>
+    <criterion id="AC-018">Dato un'Offerta gia' in uno stato `closed_won` e con zero righe, quando si reinvia lo STESSO stato, allora nessun errore (AC-026 di spec 0083 resta valida: un rinvio non e' un avanzamento).</criterion>
+    <criterion id="AC-019">Dato un attore senza `notes.create` e uno stato `closed_won` con `requires_note` su un'Offerta senza righe, allora vince il 422 sulle righe: il gate precede la creazione della nota, e nessuna nota viene creata.</criterion>
+
+    <criterion id="AC-020">Dato un Lead con zero prodotti di interesse e un attore valido, quando lo si converte, allora nascono l'Opportunita' E l'Offerta, e l'Offerta ha zero righe (D-1). Riscrive spec 0094 AC-065.</criterion>
+    <criterion id="AC-021">Dato un Lead con due prodotti di interesse, quando lo si converte, allora l'Offerta ha due righe: comportamento invariato (spec 0094 AC-062 resta verde).</criterion>
+    <criterion id="AC-022">Dato la conversione massiva di due Lead senza prodotti, allora entrambe le Opportunita' hanno la propria Offerta a zero righe.</criterion>
+
+    <criterion id="AC-030">Dato un'Offerta senza righe REVENUE, quando si legge la tabella Offerte, allora la sua riga espone `alert: "missing_offer_lines"`.</criterion>
+    <criterion id="AC-031">Dato un'Offerta con almeno una riga REVENUE, allora `alert` e' `null`.</criterion>
+    <criterion id="AC-032">Dato un'Offerta con sole righe COSTO, allora `alert` e' `missing_offer_lines`.</criterion>
+    <criterion id="AC-033">Dato il filtro set `alert = missing_offer_lines`, quando si interroga la tabella, allora tornano solo le Offerte senza righe REVENUE, con `total` coerente.</criterion>
+    <criterion id="AC-034">Dato il caricamento di una pagina di N Offerte, quando si contano le query, allora il conteggio righe non introduce N+1 (`withCount`).</criterion>
+    <criterion id="AC-035">Dato il catalogo colonne, allora `alert` compare in coda, con `sortable: false`, e nessuna colonna preesistente cambia posizione.</criterion>
+    <criterion id="AC-036">Dato una riga con `alert`, quando si renderizza la cella, allora compaiono icona E testo (mai il solo colore) con la label i18n.</criterion>
+
+    <criterion id="AC-040">Dato il form di creazione Offerta appena aperto (una riga vuota seminata), quando non si tocca nulla e si invia, allora lo schema Zod blocca il submit con l'errore su `offer_lines`, non con un errore per-riga.</criterion>
+    <criterion id="AC-041">Dato il form di creazione con una riga compilata, allora lo schema passa.</criterion>
+    <criterion id="AC-042">Dato il form di modifica di un'Offerta con righe, quando si rimuovono tutte, allora lo schema blocca il submit su `offer_lines`.</criterion>
+    <criterion id="AC-043">Dato il form di modifica di un'Offerta storica con zero righe, quando si cambia solo il titolo, allora lo schema passa e il payload NON contiene `offer_lines`.</criterion>
+    <criterion id="AC-044">Dato il pannello Gestione Richieste senza righe, quando si seleziona uno stato con `group` bersaglio, allora lo schema Zod segnala l'errore su `offer_lines` prima dell'invio.</criterion>
+    <criterion id="AC-045">Dato lo stesso pannello senza righe e uno stato `open`/`pending`, allora nessun errore.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza, ne' composer ne' npm.</item>
+    <item>Authz invariata: nessun endpoint nuovo, nessun permesso nuovo. Il gate e' una regola di dominio, non di autorizzazione.</item>
+    <item>Nessuna migrazione: `alert` e' calcolata a runtime, come per i Contratti.</item>
+    <item>Il filtro `alert` si costruisce da allow-list statica: mai `whereRaw` con input (backend.md §8).</item>
+    <item>La regola del form Offerte NON entra in `quoteLineFieldRules()` (condiviso con Gestione Richieste): vive in un metodo dedicato del trait, invocato dai soli `withValidator()` di `StoreQuoteRequest`/`UpdateQuoteRequest`.</item>
+    <item>Il gate di stato conta le righe con una query fresca (`offerLines()->count()`), mai una relazione potenzialmente gia' caricata e stale.</item>
+    <item>Il gate precede la creazione della nota `requires_note` dentro `apply()`, cosi' un rifiuto non lascia note orfane; resta dentro la transazione del chiamante.</item>
+    <item>Lato client, una riga "pristine" non conta come riga: il conteggio riusa `isPristineLineRow`, altrimenti il form di creazione fallirebbe alla prima renderizzazione.</item>
+    <item>I test esistenti non si piegano per farli passare: dove il requisito e' cambiato (i POST senza `offer_lines`, spec 0094 AC-065) si aggiorna il test dichiarandolo; dove non e' cambiato (grandfathering, AC-028) deve restare verde com'e'.</item>
+    <item>Identificatori in inglese; italiano solo nei valori i18n.</item>
+  </constraints>
+
+  <spec_amendments>
+    <item spec="0094" criterion="AC-065">Riscritta da "zero prodotti converte il lead senza generare un'Offerta" a "zero prodotti converte il lead generando comunque l'Offerta, senza righe". Il test `LeadConversionOfferTest.php` va aggiornato di conseguenza (decisione utente D-1 del 2026-09-04).</item>
+    <item spec="0086" criterion="AC-028">Invariata e da mantenere verde: la creazione da Gestione Richieste continua a produrre un'Offerta senza righe.</item>
+    <item spec="0083" criterion="AC-026">Invariata: il rinvio dello stesso stato resta un no-op e non attraversa il nuovo gate.</item>
+  </spec_amendments>
+
+</spec>

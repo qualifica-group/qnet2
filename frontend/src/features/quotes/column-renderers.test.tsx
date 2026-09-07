@@ -78,6 +78,19 @@ describe('quoteColumnRenderers money columns', () => {
   })
 })
 
+describe('quoteColumnRenderers.alert (spec 0102 AC-036)', () => {
+  it('renders an icon AND text for "missing_offer_lines" — never color alone', () => {
+    const { container } = renderCell('alert', 'missing_offer_lines')
+    expect(screen.getByText('Missing offer rows')).toBeInTheDocument()
+    expect(container.querySelector('svg')).not.toBeNull()
+  })
+
+  it('renders nothing when there is no alert', () => {
+    const { container } = renderCell('alert', null)
+    expect(container.textContent).toBe('')
+  })
+})
+
 describe('quoteColumnRenderers wiring', () => {
   it('maps supervisor, managers and created_at to the shared cells', () => {
     expect(quoteColumnRenderers.supervisor).toBeTypeOf('function')

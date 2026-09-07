@@ -96,6 +96,47 @@ trait ValidatesQuoteLines
     }
 
     /**
+     * Spec 0102 AC-001/002/003: the Offerte creation channel requires at
+     * least one REVENUE row on every POST — an absent `offer_lines` key or
+     * an empty array are both a violation. Deliberately NOT folded into
+     * `quoteLineFieldRules()` (shared with request-management, which stays
+     * unconstrained per spec 0086 AC-028): called from StoreQuoteRequest's
+     * own `withValidator()` only.
+     */
+    protected function requireOfferLineOnCreate(Validator $validator): void
+    {
+        $this->assertOfferLineNotEmpty($validator);
+    }
+
+    /**
+     * Spec 0102 D-2/AC-004/005/006: on update the rule fires ONLY when
+     * `offer_lines` is actually SUBMITTED — an explicit full-replace to zero
+     * rows. A key that is ABSENT leaves the collection untouched (the same
+     * `offerLines !== null` semantics as `UpdateQuoteData::hasOfferLines()`)
+     * and must stay silent: that grandfathering keeps a historic zero-line
+     * Offerta saveable on its other fields.
+     */
+    protected function requireOfferLineOnUpdate(Validator $validator): void
+    {
+        if (! $this->has('offer_lines')) {
+            return;
+        }
+
+        $this->assertOfferLineNotEmpty($validator);
+    }
+
+    private function assertOfferLineNotEmpty(Validator $validator): void
+    {
+        $lines = $this->input('offer_lines');
+
+        if (is_array($lines) && $lines !== []) {
+            return;
+        }
+
+        $validator->errors()->add('offer_lines', __('quotes.offer_line_required'));
+    }
+
+    /**
      * The opportunity the submitted offer lines hang from: the quote's own on
      * update (`opportunity_id` is `prohibited` there, AC-025), the submitted
      * id on create. `null` whenever it cannot be resolved — an invalid id is

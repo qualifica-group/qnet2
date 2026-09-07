@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,6 +42,25 @@ if (! function_exists('quoteSupervisorUserWith')) {
         }
 
         return $user;
+    }
+}
+
+if (! function_exists('quoteSupervisorOfferLine')) {
+    /**
+     * Spec 0102: POST /api/quotes now requires at least one offer_lines row.
+     * A category with an EFFECTIVE business function so the auto-add
+     * coverage path never trips the 422 guard (OpportunityProductLineCoverage).
+     *
+     * @return array<int, array<string, int>>
+     */
+    function quoteSupervisorOfferLine(): array
+    {
+        $category = ProductCategory::factory()->create([
+            'business_function_id' => BusinessFunction::factory()->create()->id,
+        ]);
+        $product = Product::factory()->create(['category_id' => $category->id]);
+
+        return [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]];
     }
 }
 
@@ -85,6 +107,7 @@ it('creates an offer whose supervisor is not a Gestore Account of the opportunit
         'title' => 'Supervisore non gestore',
         'opportunity_id' => $opportunity->id,
         'supervisor_id' => $outsider->id,
+        'offer_lines' => quoteSupervisorOfferLine(),
     ])->assertCreated()->assertJsonPath('data.supervisor_id', $outsider->id);
 });
 
@@ -123,6 +146,7 @@ it('inherits the opportunity supervisor even when they hold no Gestore Account s
     $this->postJson('/api/quotes', [
         'title' => 'Eredita comunque',
         'opportunity_id' => $opportunity->id,
+        'offer_lines' => quoteSupervisorOfferLine(),
     ])->assertCreated()->assertJsonPath('data.supervisor_id', $outsider->id);
 });
 
@@ -135,6 +159,7 @@ it('inherits the opportunity supervisor when they are also a Gestore Account', f
     $this->postJson('/api/quotes', [
         'title' => 'Eredita il gestore',
         'opportunity_id' => $opportunity->id,
+        'offer_lines' => quoteSupervisorOfferLine(),
     ])->assertCreated()->assertJsonPath('data.supervisor_id', $manager->id);
 });
 
@@ -148,6 +173,7 @@ it('lets an explicitly submitted supervisor win over the inherited one', functio
         'title' => 'Scelta esplicita',
         'opportunity_id' => $opportunity->id,
         'supervisor_id' => $chosen->id,
+        'offer_lines' => quoteSupervisorOfferLine(),
     ])->assertCreated()->assertJsonPath('data.supervisor_id', $chosen->id);
 });
 
@@ -158,6 +184,7 @@ it('inherits nothing when the opportunity has no supervisor', function () {
     $this->postJson('/api/quotes', [
         'title' => 'Nessun supervisore',
         'opportunity_id' => $opportunity->id,
+        'offer_lines' => quoteSupervisorOfferLine(),
     ])->assertCreated()->assertJsonPath('data.supervisor_id', null);
 });
 

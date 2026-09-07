@@ -26,6 +26,10 @@ export const quotes = {
     companySite: 'Company site',
     operationalSite: 'Operational site',
     nextCallbackAt: 'Next callback',
+    alert: 'Alert',
+  },
+  alerts: {
+    missingOfferLines: 'Missing offer rows',
   },
   advancedFilters: {
     opportunity: 'Opportunity',
@@ -220,6 +224,8 @@ export const quotes = {
       gross: 'Gross',
       marginHint: 'Net revenue minus net cost.',
       commissions: 'Commission Summary',
+      productTypologies: 'Product Typology Summary',
+      noProductTypologies: 'No product typology configured.',
       roles: { commercial: 'Commercial', reporter: 'Reporter', supervisor: 'Supervisor', supplier: 'Supplier' },
     },
     lineProductHeader: 'Product',
@@ -255,6 +261,8 @@ export const quotes = {
     lineAdd: 'Add row',
     linesEmpty: 'No rows added yet.',
     linesMax: 'You can add at most 200 rows per tab.',
+    offerLinesRequired: 'The quote must contain at least one product row.',
+    offerLinesRequiredForStatus: 'You cannot move the quote to this status without at least one product row.',
     commissions: {
       header: 'Commissions',
       action: 'Commissions for line {{n}}',

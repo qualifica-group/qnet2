@@ -300,7 +300,7 @@
     <criterion id="AC-062">Con almeno un prodotto di interesse, la conversione crea UNA Offerta collegata all'Opportunita' con una riga REVENUE per prodotto: quantita' 1, unit_price = products.price, vat_rate_id = products.vat_rate_id, sort_order progressivo.</criterion>
     <criterion id="AC-063">L'unita' di misura delle righe generate e' quella congelata da QuoteLineWriter dal prodotto; nessun unit_of_measure_id viaggia nell'input.</criterion>
     <criterion id="AC-064">L'Offerta generata ha codice, stato iniziale e aggregati prodotti dal normale flusso QuoteService::create (nessuna scorciatoia).</criterion>
-    <criterion id="AC-065">Con zero prodotti di interesse, la conversione crea l'Opportunita' e NESSUNA Offerta.</criterion>
+    <criterion id="AC-065">Con zero prodotti di interesse, la conversione crea l'Opportunita' e comunque l'Offerta, senza righe (riscritta da spec 0102 D-1, 2026-09-04: prima leggeva "la conversione crea l'Opportunita' e NESSUNA Offerta").</criterion>
     <criterion id="AC-066">Nessuna riga duplicata: due prodotti di interesse uguali (o ripetuti nel payload) producono una sola riga.</criterion>
     <criterion id="AC-067">Se le righe risolvono a una radice single e i prodotti di interesse sono 2+, la conversione fallisce con 422 e NON crea ne' Opportunita' ne' Offerta (rollback completo).</criterion>
     <criterion id="AC-068">La conversione massiva produce gli stessi effetti per ogni lead, riusando la stessa azione singola; il fallimento di uno annulla l'intero batch (all-or-nothing invariato).</criterion>

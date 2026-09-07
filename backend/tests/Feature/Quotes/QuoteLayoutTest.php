@@ -1,7 +1,10 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\DocumentLayout;
 use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
@@ -47,6 +50,25 @@ if (! function_exists('quoteLayoutNewStatus')) {
     function quoteLayoutNewStatus(): QuoteWorkflowStatus
     {
         return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
+    }
+}
+
+if (! function_exists('quoteLayoutOfferLine')) {
+    /**
+     * Spec 0102: POST /api/quotes now requires at least one offer_lines row.
+     * A category with an EFFECTIVE business function so the auto-add
+     * coverage path never trips the 422 guard (OpportunityProductLineCoverage).
+     *
+     * @return array<int, array<string, int>>
+     */
+    function quoteLayoutOfferLine(): array
+    {
+        $category = ProductCategory::factory()->create([
+            'business_function_id' => BusinessFunction::factory()->create()->id,
+        ]);
+        $product = Product::factory()->create(['category_id' => $category->id]);
+
+        return [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]];
     }
 }
 
@@ -124,7 +146,7 @@ it('AC-210: create without layout_id resolves the module\'s active default layou
     $opportunity = Opportunity::factory()->create();
     Sanctum::actingAs(quoteLayoutUserWith(['create']));
 
-    $this->postJson('/api/quotes', ['title' => 'Senza layout', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', ['title' => 'Senza layout', 'opportunity_id' => $opportunity->id, 'offer_lines' => quoteLayoutOfferLine()])
         ->assertCreated()
         ->assertJsonPath('data.layout_id', $default->id);
 });
@@ -134,7 +156,7 @@ it('AC-211: create without layout_id when no active default exists succeeds with
     $opportunity = Opportunity::factory()->create();
     Sanctum::actingAs(quoteLayoutUserWith(['create']));
 
-    $this->postJson('/api/quotes', ['title' => 'Nessun layout', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', ['title' => 'Nessun layout', 'opportunity_id' => $opportunity->id, 'offer_lines' => quoteLayoutOfferLine()])
         ->assertCreated()
         ->assertJsonPath('data.layout_id', null);
 });
@@ -150,6 +172,7 @@ it('AC-212: an explicit layout_id wins over the module default', function () {
         'title' => 'Layout esplicito',
         'opportunity_id' => $opportunity->id,
         'layout_id' => $picked->id,
+        'offer_lines' => quoteLayoutOfferLine(),
     ])
         ->assertCreated()
         ->assertJsonPath('data.layout_id', $picked->id);
@@ -276,6 +299,7 @@ it('AC-217: layout_id is NOT inherited from the Opportunity, while the 4 snapsho
     $response = $this->postJson('/api/quotes', [
         'title' => 'Regressione D-8',
         'opportunity_id' => $opportunity->id,
+        'offer_lines' => quoteLayoutOfferLine(),
     ])->assertCreated();
 
     $response

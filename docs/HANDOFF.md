@@ -3,6 +3,70 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK — RIGA PRODOTTO OBBLIGATORIA PER CANALE (spec 0102) — VERDE, NON COMMITTATO (2026-09-04)
+
+**Richiesta utente.** Alert in tabella Offerte per le Offerte senza righe prodotto; riga
+obbligatoria sul form Offerte (create ed edit); importazione/conversione che genera
+comunque l'Offerta senza righe; in Gestione Richieste righe opzionali TRANNE al
+tentativo di passare a esito positivo / negativo / validato.
+
+**Il fatto di partenza, verificato prima di pianificare.** Un'Offerta senza righe NON
+era un bug: era uno stato legittimo e testato (`offer_lines` e' `sometimes`, la
+copertura esce a vuoto su zero righe, il workflow cade sul set globale di default).
+Quindi la spec non introduce un divieto globale ma una regola DIFFERENZIATA PER CANALE.
+
+**I quattro vincoli strutturali che hanno deciso il progetto.**
+1. `Quote` viene istanziata in UN SOLO punto (`QuoteService::create()`, QuoteService.php:164)
+   e ne' `QuoteService` ne' `CreateQuoteData` hanno un concetto di canale di provenienza.
+   Percio' l'obbligo del form vive nel FormRequest del solo canale Offerte, mai nel service.
+2. `ValidatesQuoteLines` e' condiviso, ma gli entry point sono disgiunti: `quoteLinesRules()`
+   solo Offerte, `offerLinesOnlyRules()` solo Gestione Richieste. La regola nuova sta in
+   metodi dedicati (`requireOfferLineOnCreate`/`requireOfferLineOnUpdate`) invocati dai soli
+   `withValidator()` delle Store/UpdateQuoteRequest.
+3. "Validato" NON e' una `system_key` (rimossa dalla migrazione 2026-08-07): esiste solo come
+   `WorkflowStatusGroup::Validated`. Il gate legge SEMPRE `$targetStatus->group`, mai la system_key.
+4. L'inline edit della griglia bypassa i FormRequest, quindi il gate vive in
+   `QuoteWorkflowStatusWriter::apply()` — punto unico attraversato da ogni canale.
+
+**Decisioni utente (D-1..D-4, vincolanti).**
+- D-1: la conversione da Lead crea SEMPRE l'Offerta, anche a zero prodotti. RISCRIVE spec 0094
+  AC-065, che asseriva l'opposto (il vecchio testo e' citato dentro la spec 0094 emendata).
+- D-2: sul form Offerte l'obbligo vale in creazione e sullo SVUOTAMENTO esplicito. Chiave
+  `offer_lines` assente = collezione non toccata = salvabile (grandfathering).
+- D-3: il gate su chiusura/validazione vale su TUTTI i canali.
+- D-4: l'alert e' una colonna dedicata filtrabile della sola tabella Offerte.
+
+**Naming e contratti da rispettare.**
+- Valore alert: `missing_offer_lines`; colonna `alert`, `type: badge`, `sortable: false`,
+  `filterType: set`, appesa IN CODA al catalogo (append-only, spec 0001).
+- Messaggi server: `quotes.offer_line_required`, `quotes.offer_line_required_for_status`.
+- Chiavi client: `quotes.columns.alert`, `quotes.alerts.missingOfferLines`,
+  `quotes.form.offerLinesRequired`, `quotes.form.offerLinesRequiredForStatus`.
+- Chiave d'errore 422 SEMPRE `offer_lines` (anche per il gate stati: e' la riga che manca).
+- `buildUpdateQuoteSchema` ha un parametro RICHIESTO `originalHasOfferLines: boolean` (4o posto,
+  prima di `attributes`): richiesto e non opzionale apposta, cosi' un wire-up dimenticato e' un
+  errore di compilazione e non una regola spenta in silenzio.
+
+**Conseguenza nota, accettata dall'utente.** Sui rami di categoria col flag
+`single_quote_per_opportunity`, l'Offerta creata sempre dalla conversione occupa l'unico slot:
+un successivo `POST /api/quotes` per quell'Opportunita' prende 422. Via d'uscita prevista: PATCH
+sull'Offerta vuota per aggiungerle le righe (D-2).
+
+**Stato verificato (verifier indipendente).** 33/33 AC coperti da test dedicati.
+`php artisan test` intero: 6330 test, 6329 passed, 1 skip preesistente non correlato.
+`npx vitest run` intero: 592 file, 4355 test verdi. `npx tsc -b --force`: exit 0.
+`pint --test`: passed. HEAD ancora `638313a2`: NULLA e' stato committato.
+
+**Cosa verificare al prossimo giro.** La copertura del nucleo (AC-001/002/004/005/006) era
+inizialmente ASSENTE benche' il codice fosse corretto: la suite passava solo perche' i vecchi
+test erano stati corredati di fixture. E' stata colmata da `QuoteOfferLineRequirementTest.php`,
+validato con mutation test. Se si tocca `ValidatesQuoteLines`, ricontrollare che quel file
+diventi rosso disattivando la regola.
+
+**Fuori scope segnalato, non richiesto.** In `it-quotes.ts`/`en-quotes.ts` sono comparse anche
+`summary.productTypologies` e `summary.noProductTypologies`: chiavi gia' usate dal codice della
+spec 0099 ma mai definite. Correzione di un bug preesistente, da confermare o rimuovere.
+
 ## TASK — VOCABOLARIO DI PRODUZIONE + FASE DEGLI STATI (`group`) — VERDE, NON COMMITTATO (2026-09-04)
 
 **Richiesta utente.** Seed di produzione per i configuratori Task (tipologie, categorie,

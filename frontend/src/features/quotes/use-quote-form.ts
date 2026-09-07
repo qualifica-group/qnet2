@@ -144,6 +144,12 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
   // happens: the backend assigns the `open` row itself (AC-020).
   const workflowStatuses = mode.type === 'edit' ? (mode.quote.quote_workflow_statuses ?? EMPTY_STATUSES) : EMPTY_STATUSES
   const originalStatusId = mode.type === 'edit' ? mode.quote.quote_workflow_status_id : null
+  // Spec 0102 D-2/AC-042/043: whether the PERSISTED offer already had at
+  // least one line, the fact `buildUpdateQuoteSchema` needs to mirror the
+  // server's grandfathering (an offer that was already at zero stays
+  // saveable on every other field). Always `false` in create, where the
+  // requirement is unconditional (AC-040/041) and this flag plays no part.
+  const originalHasOfferLines = mode.type === 'edit' ? mode.quote.offer_lines.length > 0 : false
 
   // Lo schema BASE: quello che esiste prima che un prodotto sia scelto, senza
   // alcun attributo dinamico. Serve come seme del resolver — il set applicabile
@@ -152,9 +158,9 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
   const baseSchema = useMemo(
     () =>
       isEdit
-        ? buildUpdateQuoteSchema(t, workflowStatuses, originalStatusId)
+        ? buildUpdateQuoteSchema(t, workflowStatuses, originalStatusId, originalHasOfferLines)
         : buildCreateQuoteSchema(t),
-    [isEdit, t, workflowStatuses, originalStatusId],
+    [isEdit, t, workflowStatuses, originalStatusId, originalHasOfferLines],
   )
 
   const defaultValues = useMemo<QuoteFormValues>(() => {
@@ -250,9 +256,15 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
   const schema = useMemo(
     () =>
       isEdit
-        ? buildUpdateQuoteSchema(t, workflowStatuses, originalStatusId, attributeContext.applicable_attributes)
+        ? buildUpdateQuoteSchema(
+            t,
+            workflowStatuses,
+            originalStatusId,
+            originalHasOfferLines,
+            attributeContext.applicable_attributes,
+          )
         : buildCreateQuoteSchema(t, attributeContext.applicable_attributes),
-    [isEdit, t, workflowStatuses, originalStatusId, attributeContext.applicable_attributes],
+    [isEdit, t, workflowStatuses, originalStatusId, originalHasOfferLines, attributeContext.applicable_attributes],
   )
 
   useEffect(() => {

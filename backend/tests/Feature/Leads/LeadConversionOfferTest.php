@@ -187,7 +187,7 @@ it('AC-064: the generated Offerta carries a QUO- code, an initial workflow statu
     expect((float) $quote->revenue_net)->toBe(50.0);
 });
 
-it('AC-065: zero products of interest converts the lead without generating an Offerta', function () {
+it('AC-065 (spec 0102 D-1/AC-020): zero products of interest still generates an Offerta, born without lines', function () {
     $actor = leadConversionActor(['create'], ['create']);
     $fixture = convertibleLeadFixture();
     Sanctum::actingAs($actor);
@@ -196,7 +196,12 @@ it('AC-065: zero products of interest converts the lead without generating an Of
 
     $opportunity = Opportunity::where('lead_id', $response->json('data.id'))->firstOrFail();
 
-    expect(Quote::where('opportunity_id', $opportunity->id)->count())->toBe(0);
+    expect(Quote::where('opportunity_id', $opportunity->id)->count())->toBe(1);
+
+    $quote = Quote::where('opportunity_id', $opportunity->id)->firstOrFail();
+    $quote->load('offerLines');
+
+    expect($quote->offerLines)->toHaveCount(0);
 });
 
 it('AC-066: a duplicated product of interest produces a single offer line', function () {

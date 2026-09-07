@@ -6,6 +6,7 @@ use App\Models\Contract;
 use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\QuoteLine;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -208,6 +209,8 @@ it('PATCH without request-management.update -> 403, status unchanged', function 
 it('PATCH into a closed_won status creates the Contratto', function () {
     $actor = requestWorkflowActor();
     $quote = requestWorkflowQuote($actor);
+    // Spec 0102, AC-010: closed_won is now gated on a REVENUE line.
+    QuoteLine::factory()->for($quote)->create();
     $closedWon = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     Sanctum::actingAs($actor);
 
@@ -226,6 +229,8 @@ it('PATCH into a closed_won status creates the Contratto', function () {
 it('PATCH back OUT of closed_won suspends the Contratto instead of deleting it', function () {
     $actor = requestWorkflowActor();
     $quote = requestWorkflowQuote($actor);
+    // Spec 0102, AC-010: closed_won is now gated on a REVENUE line.
+    QuoteLine::factory()->for($quote)->create();
     $closedWon = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     $open = requestWorkflowGlobalStatus();
     Sanctum::actingAs($actor);
@@ -249,6 +254,8 @@ it('PATCH back OUT of closed_won suspends the Contratto instead of deleting it',
 it('PATCH of another field on an already closed_won request does not duplicate the Contratto', function () {
     $actor = requestWorkflowActor();
     $quote = requestWorkflowQuote($actor);
+    // Spec 0102, AC-010: closed_won is now gated on a REVENUE line.
+    QuoteLine::factory()->for($quote)->create();
     $closedWon = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     Sanctum::actingAs($actor);
 

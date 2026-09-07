@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
@@ -42,13 +45,39 @@ if (! function_exists('quoteCodeNewStatus')) {
     }
 }
 
+if (! function_exists('quoteCodeRevenueProduct')) {
+    /**
+     * Spec 0102: POST /api/quotes now requires at least one offer_lines row.
+     * A category with an EFFECTIVE business function so the auto-add
+     * coverage path never trips the 422 guard (OpportunityProductLineCoverage).
+     */
+    function quoteCodeRevenueProduct(): Product
+    {
+        $category = ProductCategory::factory()->create([
+            'business_function_id' => BusinessFunction::factory()->create()->id,
+        ]);
+
+        return Product::factory()->create(['category_id' => $category->id]);
+    }
+}
+
+if (! function_exists('quoteCodeOfferLine')) {
+    /**
+     * @return array<int, array<string, int>>
+     */
+    function quoteCodeOfferLine(): array
+    {
+        return [['product_id' => quoteCodeRevenueProduct()->id, 'quantity' => 1, 'unit_price' => 10]];
+    }
+}
+
 it('AC-066: creating without a code (absent) assigns the sequential QUO-0001', function () {
     quoteCodeNewStatus();
     $opportunity = Opportunity::factory()->create();
     $actor = quoteCodeUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id, 'offer_lines' => quoteCodeOfferLine()])
         ->assertCreated()
         ->assertJsonPath('data.code', 'QUO-0001');
 });
@@ -59,10 +88,10 @@ it('AC-066: an explicit null or empty-string code also falls back to the sequent
     $actor = quoteCodeUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', ['title' => 'Uno', 'opportunity_id' => $opportunity->id, 'code' => null])
+    $this->postJson('/api/quotes', ['title' => 'Uno', 'opportunity_id' => $opportunity->id, 'code' => null, 'offer_lines' => quoteCodeOfferLine()])
         ->assertCreated()->assertJsonPath('data.code', 'QUO-0001');
 
-    $this->postJson('/api/quotes', ['title' => 'Due', 'opportunity_id' => $opportunity->id, 'code' => ''])
+    $this->postJson('/api/quotes', ['title' => 'Due', 'opportunity_id' => $opportunity->id, 'code' => '', 'offer_lines' => quoteCodeOfferLine()])
         ->assertCreated()->assertJsonPath('data.code', 'QUO-0002');
 });
 
@@ -72,11 +101,11 @@ it('AC-067: a manual code is persisted as-is and does not break the sequence', f
     $actor = quoteCodeUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', ['title' => 'Manuale', 'opportunity_id' => $opportunity->id, 'code' => 'OFF-2026/1'])
+    $this->postJson('/api/quotes', ['title' => 'Manuale', 'opportunity_id' => $opportunity->id, 'code' => 'OFF-2026/1', 'offer_lines' => quoteCodeOfferLine()])
         ->assertCreated()
         ->assertJsonPath('data.code', 'OFF-2026/1');
 
-    $this->postJson('/api/quotes', ['title' => 'Sequenziale', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', ['title' => 'Sequenziale', 'opportunity_id' => $opportunity->id, 'offer_lines' => quoteCodeOfferLine()])
         ->assertCreated()
         ->assertJsonPath('data.code', 'QUO-0001');
 });
@@ -148,7 +177,7 @@ it('AC-069b: next-code returns QUO-0001 on an empty table and the next free code
     // code is deterministically QUO-0004 — a factory-made row would carry a
     // RANDOM code (QuoteFactory::configure()), unsuited to this assertion.
     foreach (range(1, 3) as $n) {
-        $this->postJson('/api/quotes', ['title' => "Quote {$n}", 'opportunity_id' => $opportunity->id])->assertCreated();
+        $this->postJson('/api/quotes', ['title' => "Quote {$n}", 'opportunity_id' => $opportunity->id, 'offer_lines' => quoteCodeOfferLine()])->assertCreated();
     }
 
     $this->getJson('/api/quotes/next-code')->assertOk()->assertJsonPath('data.code', 'QUO-0004');

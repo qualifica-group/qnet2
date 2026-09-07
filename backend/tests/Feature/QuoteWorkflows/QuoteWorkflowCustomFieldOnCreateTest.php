@@ -1,9 +1,12 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldValue;
 use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
@@ -65,11 +68,22 @@ it('create: resolves the workflow matching a custom relation criterion inherited
     $opportunity = Opportunity::factory()->create();
     CustomFieldValue::factory()->forEntity('opportunities', $opportunity->id)->create(['values' => ['preferred_company' => $company->id]]);
 
+    // Spec 0102: POST /api/quotes now requires at least one offer_lines row.
+    // A category with an EFFECTIVE business function so the auto-add
+    // coverage path never trips the 422 guard (OpportunityProductLineCoverage).
+    $productCategory = ProductCategory::factory()->create([
+        'business_function_id' => BusinessFunction::factory()->create()->id,
+    ]);
+    $product = Product::factory()->create(['category_id' => $productCategory->id]);
+
     Sanctum::actingAs(quoteCreateActor());
 
     $response = $this->postJson('/api/quotes', [
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
     ])->assertCreated();
 
     $expectedOpenStatusId = $workflow->statuses()->where('system_key', 'open')->sole()->id;

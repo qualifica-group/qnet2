@@ -30,6 +30,13 @@ use Illuminate\Support\Facades\Gate;
  * (the site has no label column — its identity is its primary address) and is
  * handled here against the shared OperationalSiteColumn, exactly as
  * OpportunitiesTableDefinition does.
+ *
+ * `alert` (spec 0102, D-4) is specially derived here too, mirroring
+ * ContractsTableDefinition's own `alert`: computed per-row from
+ * `offer_lines_count` (a `withCount` sibling of `notes_count`, no N+1,
+ * AC-034) and `set`-filterable via `whereDoesntHave('offerLines')` — a
+ * static one-value enumeration, never raw SQL (backend.md §8). Deliberately
+ * not sortable (a two-state badge has no ordering worth a subquery).
  */
 class QuotesTableDefinition extends AbstractTableDefinition
 {
@@ -41,6 +48,12 @@ class QuotesTableDefinition extends AbstractTableDefinition
     private const string OPERATIONAL_SITE_FK = 'operational_site_id';
 
     private const string QUOTES_TABLE = 'quotes';
+
+    /** The specially-derived alert column (spec 0102, D-4). */
+    private const string ALERT_COLUMN = 'alert';
+
+    /** Mirrors QuoteColumnCatalog's own single `alert` option (AC-030/AC-033). */
+    private const string ALERT_MISSING_OFFER_LINES = 'missing_offer_lines';
 
     /**
      * The `quote_workflow_status` advanced filter's name
@@ -102,7 +115,9 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // Per-row count for the `notes` action badge: the notes SCOPED to
             // this Offerta (`notes.quote_id`), not the parent Opportunity's
             // whole thread — the dialog this action opens shows exactly these.
-            ->withCount(['scopedNotes as notes_count']);
+            // `offer_lines_count` (spec 0102, AC-034) drives the `alert`
+            // column the same way, with zero extra queries per page.
+            ->withCount(['scopedNotes as notes_count', 'offerLines as offer_lines_count']);
     }
 
     /**
@@ -191,7 +206,18 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // `managers` projection). Never null at the column level: an
             // empty array when the Offerta has no team yet.
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
+            'alert' => $this->resolveAlert($row),
         ];
+    }
+
+    /**
+     * `missing_offer_lines` when the Offerta has zero REVENUE lines, else
+     * `null` (spec 0102, D-4, AC-030..032) — from `offer_lines_count`
+     * (`baseQuery()`'s `withCount`), never a per-row query.
+     */
+    private function resolveAlert(Quote $quote): ?string
+    {
+        return ((int) ($quote->offer_lines_count ?? 0)) === 0 ? self::ALERT_MISSING_OFFER_LINES : null;
     }
 
     /**
@@ -317,7 +343,32 @@ class QuotesTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        if ($columnId === self::ALERT_COLUMN) {
+            $this->applyAlertFilter($query, $filter);
+
+            return true;
+        }
+
         return $this->relationColumns->applyFilter($query, $columnId, $filter);
+    }
+
+    /**
+     * `alert`'s `set` filter (AC-033): the sole allow-listed value narrows to
+     * Offerte with zero REVENUE lines, via `whereDoesntHave` — the exact same
+     * predicate `resolveAlert()` uses to badge the row, so filter and badge
+     * can never disagree. Any other value in the request is ignored (static
+     * allow-list, backend.md §8), never raw SQL.
+     *
+     * @param  Builder<Quote>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyAlertFilter(Builder $query, array $filter): void
+    {
+        $values = $this->filterValues($filter);
+
+        if (in_array(self::ALERT_MISSING_OFFER_LINES, $values, true)) {
+            $query->whereDoesntHave('offerLines');
+        }
     }
 
     /**
@@ -388,7 +439,29 @@ class QuotesTableDefinition extends AbstractTableDefinition
             return $this->operationalSiteColumn->distinctValues($query, self::OPERATIONAL_SITE_FK, $search, $limit);
         }
 
+        if ($columnId === self::ALERT_COLUMN) {
+            return $this->alertDistinctValues($search);
+        }
+
         return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
+    }
+
+    /**
+     * `alert`'s Excel-like distinct values (spec 0004/0005): a static
+     * one-value enumeration, no query needed — mirrors
+     * ContractsTableDefinition::alertDistinctValues().
+     *
+     * @return array<int, string>
+     */
+    private function alertDistinctValues(?string $search): array
+    {
+        $options = [self::ALERT_MISSING_OFFER_LINES];
+
+        if ($search === null || $search === '') {
+            return $options;
+        }
+
+        return array_values(array_filter($options, static fn (string $option): bool => stripos($option, $search) !== false));
     }
 
     /**

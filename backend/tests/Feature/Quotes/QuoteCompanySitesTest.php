@@ -1,11 +1,14 @@
 <?php
 
 use App\Models\Address;
+use App\Models\BusinessFunction;
 use App\Models\City;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
@@ -65,6 +68,25 @@ if (! function_exists('quoteSitesNewStatus')) {
     }
 }
 
+if (! function_exists('quoteSitesOfferLine')) {
+    /**
+     * Spec 0102: POST /api/quotes now requires at least one offer_lines row.
+     * A category with an EFFECTIVE business function so the auto-add
+     * coverage path never trips the 422 guard (OpportunityProductLineCoverage).
+     *
+     * @return array<int, array<string, int>>
+     */
+    function quoteSitesOfferLine(): array
+    {
+        $category = ProductCategory::factory()->create([
+            'business_function_id' => BusinessFunction::factory()->create()->id,
+        ]);
+        $product = Product::factory()->create(['category_id' => $category->id]);
+
+        return [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]];
+    }
+}
+
 // ---------------------------------------------------------------------------
 // create — the 3 FKs and the sede operativa snapshot
 // ---------------------------------------------------------------------------
@@ -83,6 +105,7 @@ it('persists the three submitted relations and exposes them on the resource', fu
         'company_id' => $company->id,
         'company_site_id' => $companySite->id,
         'operational_site_id' => $operationalSite->id,
+        'offer_lines' => quoteSitesOfferLine(),
     ])->assertCreated();
 
     $response->assertJsonPath('data.company_id', $company->id)
@@ -103,6 +126,7 @@ it('inherits the sede operativa from the opportunity when the key is not submitt
     $this->postJson('/api/quotes', [
         'title' => 'Senza sede',
         'opportunity_id' => $opportunity->id,
+        'offer_lines' => quoteSitesOfferLine(),
     ])
         ->assertCreated()
         ->assertJsonPath('data.operational_site_id', $operationalSite->id);
@@ -119,6 +143,7 @@ it('lets an explicitly submitted sede operativa — even null — win over the o
         'title' => 'Sede scelta',
         'opportunity_id' => $opportunity->id,
         'operational_site_id' => $picked->id,
+        'offer_lines' => quoteSitesOfferLine(),
     ])
         ->assertCreated()
         ->assertJsonPath('data.operational_site_id', $picked->id);
@@ -127,6 +152,7 @@ it('lets an explicitly submitted sede operativa — even null — win over the o
         'title' => 'Sede azzerata',
         'opportunity_id' => $opportunity->id,
         'operational_site_id' => null,
+        'offer_lines' => quoteSitesOfferLine(),
     ])
         ->assertCreated()
         ->assertJsonPath('data.operational_site_id', null);
@@ -142,6 +168,7 @@ it('does not re-sync the sede operativa when the opportunity changes later', fun
     $quoteId = $this->postJson('/api/quotes', [
         'title' => 'Snapshot',
         'opportunity_id' => $opportunity->id,
+        'offer_lines' => quoteSitesOfferLine(),
     ])->assertCreated()->json('data.id');
 
     $opportunity->update(['operational_site_id' => $second->id]);

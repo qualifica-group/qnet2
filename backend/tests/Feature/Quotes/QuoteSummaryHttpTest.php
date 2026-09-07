@@ -4,6 +4,7 @@ use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Models\VatRate;
@@ -105,14 +106,15 @@ it('AC-040: summary exposes revenue/cost {net,vat,gross} and margin.net over HTT
 
 it('AC-042: a quote without lines exposes every summary value at 0.00 over HTTP', function () {
     quoteSummaryNewStatus();
-    $opportunity = Opportunity::factory()->create();
-    $actor = quoteSummaryUserWith(['create', 'view']);
+    // Spec 0102: POST now requires at least one REVENUE line, so a zero-line
+    // offer is reachable only as a historic quote (Quote::factory() bypasses
+    // the FormRequest, spec 0102 grandfathering D-2) — the summary behaviour
+    // this test verifies otherwise stays unchanged.
+    $quote = Quote::factory()->create(['title' => 'Vuoto']);
+    $actor = quoteSummaryUserWith(['view']);
     Sanctum::actingAs($actor);
 
-    $created = $this->postJson('/api/quotes', ['title' => 'Vuoto', 'opportunity_id' => $opportunity->id])
-        ->assertCreated();
-
-    $response = $this->getJson('/api/quotes/'.$created->json('data.id'))->assertOk();
+    $response = $this->getJson('/api/quotes/'.$quote->id)->assertOk();
 
     // Spec 0099, AC-052: an offer with no lines still lists every configured
     // typology, each at 0.00 — never an empty block.

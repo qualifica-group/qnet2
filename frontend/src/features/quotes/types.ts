@@ -82,6 +82,14 @@ export interface QuoteRelationRef {
 }
 
 /**
+ * The quotes table's `alert` column (spec 0102 D-4): calculated at read
+ * time, never persisted; `null` when the offer has at least one REVENUE
+ * line. Mirrors `ContractAlert`'s shape, own type since the two domains'
+ * alert enums are unrelated.
+ */
+export type QuoteAlert = 'missing_offer_lines' | null
+
+/**
  * A manager ref carrying its static "G.A. n" `position` (1-based) on top of
  * the person ref (spec 0087, mirrors `OpportunityManagerRef`).
  */

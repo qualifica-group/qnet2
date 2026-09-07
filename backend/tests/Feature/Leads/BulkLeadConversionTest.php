@@ -293,6 +293,19 @@ it('AC-068: converts every selected lead with the same Offerta-generation effect
     }
 });
 
+it('AC-022 (spec 0102): bulk-converting two leads with zero products of interest gives each its own zero-line Offerta', function () {
+    Sanctum::actingAs(bulkConversionActor(['view'], ['create']));
+    $leads = collect([convertibleLead(), convertibleLead()]);
+
+    $this->postJson(BULK_CONVERT_URI, ['lead_ids' => $leads->pluck('id')->all()])->assertOk();
+
+    foreach ($leads as $lead) {
+        $opportunity = Opportunity::where('lead_id', $lead->id)->firstOrFail();
+        $quote = Quote::where('opportunity_id', $opportunity->id)->firstOrFail();
+        expect($quote->offerLines)->toHaveCount(0);
+    }
+});
+
 it('AC-069: a lead already converted (blocked up front) does not generate a second Offerta', function () {
     Sanctum::actingAs(bulkConversionActor(['view'], ['create']));
     $converted = convertibleLeadWithInterest();

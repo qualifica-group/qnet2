@@ -20,6 +20,8 @@ const COLUMN_KEYS = [
   'costNet',
   'marginNet',
   'createdAt',
+  'nextCallbackAt',
+  'alert',
 ] as const
 
 const ADVANCED_FILTER_KEYS = [
@@ -139,5 +141,21 @@ describe('quotes payment method i18n', () => {
     expect(itLocale.quotes.form.sections.notes.title).toBe('Note e pagamenti')
     expect(en.quotes.form.tabs.notes).toBe('Notes and payments')
     expect(en.quotes.form.sections.notes.title).toBe('Notes and payments')
+  })
+})
+
+// Spec 0102 (AC-036/AC-040/AC-044): the `alert` column badge and the client
+// mirrors of the offer-lines-required errors (form + Gestione Richieste).
+describe('quotes offer-line requirement i18n (spec 0102)', () => {
+  it('translates the missing-offer-lines alert badge label', () => {
+    expect(en.quotes.alerts.missingOfferLines).toBeTruthy()
+    expect(itLocale.quotes.alerts.missingOfferLines).toBeTruthy()
+  })
+
+  it('translates the offer-lines-required collection errors', () => {
+    expect(en.quotes.form.offerLinesRequired).toBeTruthy()
+    expect(itLocale.quotes.form.offerLinesRequired).toBeTruthy()
+    expect(en.quotes.form.offerLinesRequiredForStatus).toBeTruthy()
+    expect(itLocale.quotes.form.offerLinesRequiredForStatus).toBeTruthy()
   })
 })

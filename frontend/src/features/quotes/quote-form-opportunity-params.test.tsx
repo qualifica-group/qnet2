@@ -63,6 +63,28 @@ const FORCED_OPPORTUNITY: OpportunityForSelectItem = {
   },
 }
 
+/**
+ * Spec 0102 AC-001: creation now requires at least one real offer line.
+ * Seeded via the deep-link `product_ids` mechanism (`quote-form-body.tsx`,
+ * user directive 2026-08-31, already exercised by
+ * `quote-form-seeded-products.test.tsx`) rather than driving the
+ * product-picker UI, which this file isn't testing.
+ */
+const SEEDED_PRODUCT_ITEM = {
+  id: 42,
+  label: 'Widget Pro',
+  meta: {
+    code: 'WGT',
+    price: '10.00',
+    cost: '5.00',
+    vat_rate_id: null,
+    vat_rate_name: null,
+    vat_rate: null,
+    unit_of_measure: null,
+    product_typology: null,
+  },
+}
+
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -91,6 +113,9 @@ beforeEach(() => {
     if (resource === 'opportunities' && params.ids?.includes(55)) {
       return Promise.resolve({ items: [FORCED_OPPORTUNITY], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null })
     }
+    if (resource === 'products' && params.ids?.includes(SEEDED_PRODUCT_ITEM.id)) {
+      return Promise.resolve({ items: [SEEDED_PRODUCT_ITEM], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null })
+    }
     return Promise.resolve(EMPTY_PAGE)
   })
 })
@@ -105,13 +130,16 @@ describe('QuoteFormBody — Opportunity preset via create params (spec 0067)', (
   })
 
   it('AC-051: the create payload carries the forced opportunity_id', async () => {
-    renderForm({ type: 'create', params: { opportunity_id: 55 } })
+    renderForm({ type: 'create', params: { opportunity_id: 55, product_ids: String(SEEDED_PRODUCT_ITEM.id) } })
 
     fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'QUO-0001' } })
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Quote for OPP_55' } })
     await waitFor(() =>
       expect(screen.getByRole('combobox', { name: 'Opportunity' })).toHaveTextContent('OPP_55'),
     )
+    // Spec 0102 AC-001: wait for the deep-link seeded row before submitting,
+    // or the create schema rejects on an empty `offer_lines` (AC-040).
+    await waitFor(() => expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(1))
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 

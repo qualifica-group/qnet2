@@ -8,6 +8,7 @@ use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -133,14 +134,15 @@ it('AC-011: when the same code is required by one category and optional by anoth
 // ---------------------------------------------------------------------------
 
 it('AC-012: a quote with no offer lines has empty applicable_attributes and a null attribute_layout', function () {
-    $actor = quoteAttributesUserWith(['create']);
+    $actor = quoteAttributesUserWith(['view']);
     Sanctum::actingAs($actor);
 
-    $opportunity = Opportunity::factory()->create();
-    $created = $this->postJson('/api/quotes', [
-        'title' => 'Offerta',
-        'opportunity_id' => $opportunity->id,
-    ])->assertCreated();
+    // Spec 0102: POST now requires at least one REVENUE line, so a zero-line
+    // quote is reachable only as a historic quote (Quote::factory() bypasses
+    // the FormRequest, spec 0102 grandfathering D-2) — the resolution
+    // behaviour this test verifies otherwise stays unchanged.
+    $quote = Quote::factory()->create();
+    $created = $this->getJson("/api/quotes/{$quote->id}")->assertOk();
 
     expect($created->json('data.applicable_attributes'))->toBe([])
         ->and($created->json('data.attribute_layout'))->toBeNull();

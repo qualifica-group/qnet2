@@ -81,10 +81,17 @@ it('AC-020: POST without the 3 commercial roles inherits them from the opportuni
     // inheritable Supervisore (a non-GA one prefills nothing — covered in
     // QuoteSupervisorManagerTest).
     $opportunity->managers()->attach($supervisor->id, ['position' => 1]);
+    $product = quoteHttpRevenueProduct();
     $actor = quoteHttpUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', [
+        'title' => 'Offerta',
+        'opportunity_id' => $opportunity->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
+    ])
         ->assertCreated()
         ->assertJsonPath('data.commercial_id', $commercial->id)
         ->assertJsonPath('data.reporter_id', $reporter->id)
@@ -97,6 +104,7 @@ it('AC-021: an explicitly submitted commercial_id wins over the opportunity snap
     $inherited = Referent::factory()->create();
     $explicit = Referent::factory()->create();
     $opportunity = Opportunity::factory()->create(['commercial_id' => $inherited->id]);
+    $product = quoteHttpRevenueProduct();
     $actor = quoteHttpUserWith(['create']);
     Sanctum::actingAs($actor);
 
@@ -104,6 +112,9 @@ it('AC-021: an explicitly submitted commercial_id wins over the opportunity snap
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'commercial_id' => $explicit->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
     ])
         ->assertCreated()
         ->assertJsonPath('data.commercial_id', $explicit->id);
@@ -112,10 +123,17 @@ it('AC-021: an explicitly submitted commercial_id wins over the opportunity snap
 it('AC-023: POST without quote_workflow_status_id assigns the system open row', function () {
     $newStatus = quoteHttpNewStatus();
     $opportunity = Opportunity::factory()->create();
+    $product = quoteHttpRevenueProduct();
     $actor = quoteHttpUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', [
+        'title' => 'Offerta',
+        'opportunity_id' => $opportunity->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
+    ])
         ->assertCreated()
         ->assertJsonPath('data.quote_workflow_status_id', $newStatus->id)
         ->assertJsonPath('data.quote_workflow_status.name', $newStatus->name);
@@ -124,11 +142,18 @@ it('AC-023: POST without quote_workflow_status_id assigns the system open row', 
 it('AC-024: an opportunity accepts multiple quotes, all readable', function () {
     quoteHttpNewStatus();
     $opportunity = Opportunity::factory()->create();
+    $product = quoteHttpRevenueProduct();
     $actor = quoteHttpUserWith(['create', 'view']);
     Sanctum::actingAs($actor);
 
-    $ids = collect(['Uno', 'Due', 'Tre'])->map(function (string $title) use ($opportunity) {
-        return $this->postJson('/api/quotes', ['title' => $title, 'opportunity_id' => $opportunity->id])
+    $ids = collect(['Uno', 'Due', 'Tre'])->map(function (string $title) use ($opportunity, $product) {
+        return $this->postJson('/api/quotes', [
+            'title' => $title,
+            'opportunity_id' => $opportunity->id,
+            'offer_lines' => [
+                ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+            ],
+        ])
             ->assertCreated()
             ->json('data.id');
     });

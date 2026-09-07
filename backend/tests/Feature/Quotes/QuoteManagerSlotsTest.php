@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
 use App\Support\ManagerPositions;
@@ -38,6 +41,25 @@ if (! function_exists('quoteManagerSlotsActor')) {
     }
 }
 
+if (! function_exists('quoteManagerSlotsOfferLine')) {
+    /**
+     * Spec 0102: POST /api/quotes now requires at least one offer_lines row.
+     * A category with an EFFECTIVE business function so the auto-add
+     * coverage path never trips the 422 guard (OpportunityProductLineCoverage).
+     *
+     * @return array<int, array<string, int>>
+     */
+    function quoteManagerSlotsOfferLine(): array
+    {
+        $category = ProductCategory::factory()->create([
+            'business_function_id' => BusinessFunction::factory()->create()->id,
+        ]);
+        $product = Product::factory()->create(['category_id' => $category->id]);
+
+        return [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]];
+    }
+}
+
 it('AC-001: create without manager_slots inherits the opportunity\'s GA at the same positions', function () {
     $opportunity = Opportunity::factory()->create();
     $ga1 = User::factory()->create();
@@ -48,6 +70,7 @@ it('AC-001: create without manager_slots inherits the opportunity\'s GA at the s
     $response = $this->postJson('/api/quotes', [
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
+        'offer_lines' => quoteManagerSlotsOfferLine(),
     ])->assertCreated();
 
     expect($response->json('data.managers'))->toBe([
@@ -68,6 +91,7 @@ it('AC-002: create WITH manager_slots wins over the opportunity; [] leaves the o
         'title' => 'Offerta con GA espliciti',
         'opportunity_id' => $opportunity->id,
         'manager_slots' => [null, $submitted->id],
+        'offer_lines' => quoteManagerSlotsOfferLine(),
     ])->assertCreated();
 
     expect($withSlots->json('data.managers'))->toBe([
@@ -78,6 +102,7 @@ it('AC-002: create WITH manager_slots wins over the opportunity; [] leaves the o
         'title' => 'Offerta senza GA',
         'opportunity_id' => $opportunity->id,
         'manager_slots' => [],
+        'offer_lines' => quoteManagerSlotsOfferLine(),
     ])->assertCreated();
 
     expect($withEmpty->json('data.managers'))->toBe([]);
@@ -114,6 +139,7 @@ it('AC-004: a manager_slots user who is not a GA of the opportunity -> 422 namin
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'manager_slots' => [$stranger->id],
+        'offer_lines' => quoteManagerSlotsOfferLine(),
     ])->assertStatus(422)->assertJsonValidationErrors('manager_slots');
 
     expect($response->json('errors.manager_slots.0'))->toContain('Persona Estranea');
@@ -131,6 +157,7 @@ it('AC-005: promote_managers_to_opportunity=true appends the user to the opportu
         'opportunity_id' => $opportunity->id,
         'manager_slots' => [$newcomer->id],
         'promote_managers_to_opportunity' => true,
+        'offer_lines' => quoteManagerSlotsOfferLine(),
     ])->assertCreated();
 
     $opportunityManagers = $opportunity->managers()->get();
@@ -149,6 +176,7 @@ it('AC-006: quotes.operator_id mirrors the OPERATOR slot after create and after 
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'manager_slots' => [null, $operator->id],
+        'offer_lines' => quoteManagerSlotsOfferLine(),
     ])->assertCreated();
 
     $quoteId = $created->json('data.id');

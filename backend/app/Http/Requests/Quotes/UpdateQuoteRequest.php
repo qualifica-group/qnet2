@@ -101,6 +101,7 @@ class UpdateQuoteRequest extends FormRequest
             $this->enforceCommissionRecipients($validator, $this->currentQuote());
             $this->enforceCompanySiteBelongsToCompany($validator, $this->currentQuote());
             $this->enforceQuoteLayout($validator, $this->currentQuote());
+            $this->requireOfferLineOnUpdate($validator);
             $this->enforceSingleOfferLine($validator, $this->currentQuote());
             $this->validateManagerSlots($validator);
             $this->validateQuoteWorkflowStatus($validator, $this->currentQuote());

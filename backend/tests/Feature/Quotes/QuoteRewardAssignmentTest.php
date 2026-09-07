@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Reward;
@@ -34,6 +37,25 @@ if (! function_exists('quoteRewardActor')) {
     }
 }
 
+if (! function_exists('quoteRewardOfferLine')) {
+    /**
+     * Spec 0102: POST /api/quotes now requires at least one offer_lines row.
+     * A category with an EFFECTIVE business function so the auto-add
+     * coverage path never trips the 422 guard (OpportunityProductLineCoverage).
+     *
+     * @return array<int, array<string, int>>
+     */
+    function quoteRewardOfferLine(): array
+    {
+        $category = ProductCategory::factory()->create([
+            'business_function_id' => BusinessFunction::factory()->create()->id,
+        ]);
+        $product = Product::factory()->create(['category_id' => $category->id]);
+
+        return [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]];
+    }
+}
+
 it('POST /api/quotes assigns the submitted rewards to the offer, beneficiary the offer reporter', function () {
     $reporter = Referent::factory()->create();
     $opportunity = Opportunity::factory()->create();
@@ -45,6 +67,7 @@ it('POST /api/quotes assigns the submitted rewards to the offer, beneficiary the
         'opportunity_id' => $opportunity->id,
         'reporter_id' => $reporter->id,
         'rewards' => [['reward_type_id' => $type->id]],
+        'offer_lines' => quoteRewardOfferLine(),
     ])->assertCreated()->json('data.id');
 
     $reward = Reward::query()->sole();
@@ -64,7 +87,7 @@ it('POST /api/quotes does NOT inherit the opportunity rewards (user directive 20
     ]);
     Sanctum::actingAs(quoteRewardActor());
 
-    $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id, 'offer_lines' => quoteRewardOfferLine()])
         ->assertCreated()
         ->assertJsonPath('data.rewards', []);
 

@@ -26,6 +26,10 @@ export const quotes = {
     companySite: 'Società sede',
     operationalSite: 'Sede operativa',
     nextCallbackAt: 'Prossimo richiamo',
+    alert: 'Avviso',
+  },
+  alerts: {
+    missingOfferLines: 'Righe offerta mancanti',
   },
   advancedFilters: {
     opportunity: 'Opportunità',
@@ -221,6 +225,8 @@ export const quotes = {
       gross: 'Totale',
       marginHint: 'Ricavi netti meno costi netti.',
       commissions: 'Riepilogo Commissioni',
+      productTypologies: 'Riepilogo per Tipologia Prodotto',
+      noProductTypologies: 'Nessuna tipologia prodotto configurata.',
       roles: { commercial: 'Commerciale', reporter: 'Segnalatore', supervisor: 'Supervisore', supplier: 'Fornitore' },
     },
     lineProductHeader: 'Prodotto',
@@ -256,6 +262,8 @@ export const quotes = {
     lineAdd: 'Aggiungi riga',
     linesEmpty: 'Nessuna riga aggiunta.',
     linesMax: 'Puoi aggiungere al massimo 200 righe per scheda.',
+    offerLinesRequired: "L'offerta deve contenere almeno una riga prodotto.",
+    offerLinesRequiredForStatus: "Non puoi portare l'offerta a questo stato senza almeno una riga prodotto.",
     commissions: {
       header: 'Commissioni',
       action: 'Commissioni della riga {{n}}',

@@ -1,8 +1,24 @@
 import { Briefcase, Building, Building2, Handshake, MapPin, UserRound } from 'lucide-react'
-import { DateTimeCell } from '@/features/table/cell-renderers'
+import type { ICellRendererParams } from 'ag-grid-community'
+import { CELL_WRAPPER, DateTimeCell } from '@/features/table/cell-renderers'
 import { CodeBadgeCell, CurrencyCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserCell, UserStackCell } from '@/features/table/user-cell'
+import { QuoteAlertBadge } from '@/features/quotes/quote-alert-badge'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
+import type { QuoteAlert } from '@/features/quotes/types'
+
+/** The `alert` column cell (spec 0102 D-4): centered like every other badge cell, mirrors `contracts/column-renderers.tsx`'s `AlertCell`. */
+function AlertCell({ value }: ICellRendererParams) {
+  const alert = (value ?? null) as QuoteAlert
+  if (!alert) {
+    return null
+  }
+  return (
+    <div className={CELL_WRAPPER}>
+      <QuoteAlertBadge alert={alert} />
+    </div>
+  )
+}
 
 /**
  * Custom cell renderers keyed by the backend column `id` (spec 0065
@@ -24,7 +40,9 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * `opportunityColumnRenderers.managers` already uses. `next_callback_at`
  * (user directive 2026-09-04, migrated off the Opportunity) reuses the SAME
  * `optionalTime` datetime cell Gestione Richieste renders it with, so the
- * planned callback reads identically in both grids.
+ * planned callback reads identically in both grids. `alert` (spec 0102 D-4)
+ * is the calculated missing-offer-lines indicator, appended last
+ * (append-only convention, spec 0001).
  */
 export const quoteColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
@@ -42,4 +60,5 @@ export const quoteColumnRenderers: TableRendererMap = {
   company_site: (params) => <RelationCell {...params} icon={Building} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
   next_callback_at: (params) => <DateTimeCell {...params} optionalTime />,
+  alert: (params) => <AlertCell {...params} />,
 }

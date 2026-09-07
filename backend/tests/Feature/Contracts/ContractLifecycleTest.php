@@ -1,9 +1,12 @@
 <?php
 
 use App\Enums\WorkflowStatusGroup;
+use App\Models\BusinessFunction;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,6 +42,22 @@ if (! function_exists('contractLifecycleUserWith')) {
     }
 }
 
+if (! function_exists('contractLifecycleRevenueProduct')) {
+    /**
+     * Spec 0102: POST /api/quotes now requires at least one offer_lines row.
+     * A category with an EFFECTIVE business function so the auto-add
+     * coverage path never trips the 422 guard (OpportunityProductLineCoverage).
+     */
+    function contractLifecycleRevenueProduct(): Product
+    {
+        $category = ProductCategory::factory()->create([
+            'business_function_id' => BusinessFunction::factory()->create()->id,
+        ]);
+
+        return Product::factory()->create(['category_id' => $category->id]);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // AC-001/003 — the create branch
 // ---------------------------------------------------------------------------
@@ -47,6 +66,7 @@ it('AC-001: a quote status transition into closed_won creates a contract with th
     $openStatus = QuoteWorkflowStatus::factory()->global()->create(['group' => WorkflowStatusGroup::Open]);
     $closedWonStatus = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     $opportunity = Opportunity::factory()->create();
+    $product = contractLifecycleRevenueProduct();
     $actor = contractLifecycleUserWith(['create', 'update']);
     Sanctum::actingAs($actor);
 
@@ -54,6 +74,9 @@ it('AC-001: a quote status transition into closed_won creates a contract with th
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'quote_workflow_status_id' => $openStatus->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
     ])->assertCreated()->json('data.id');
 
     expect(Contract::where('quote_id', $quoteId)->exists())->toBeFalse();
@@ -71,6 +94,7 @@ it('AC-001: a quote status transition into closed_won creates a contract with th
 it('AC-003: a quote created directly in closed_won already has its contract row, in the same request', function () {
     $closedWonStatus = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     $opportunity = Opportunity::factory()->create();
+    $product = contractLifecycleRevenueProduct();
     $actor = contractLifecycleUserWith(['create']);
     Sanctum::actingAs($actor);
 
@@ -78,6 +102,9 @@ it('AC-003: a quote created directly in closed_won already has its contract row,
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'quote_workflow_status_id' => $closedWonStatus->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
     ])->assertCreated()->json('data.id');
 
     expect(Contract::where('quote_id', $quoteId)->exists())->toBeTrue();
@@ -91,6 +118,7 @@ it('AC-002: re-entering closed_won a second time does not duplicate the contract
     $openStatus = QuoteWorkflowStatus::factory()->global()->create(['group' => WorkflowStatusGroup::Open]);
     $closedWonStatus = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     $opportunity = Opportunity::factory()->create();
+    $product = contractLifecycleRevenueProduct();
     $actor = contractLifecycleUserWith(['create', 'update']);
     Sanctum::actingAs($actor);
 
@@ -98,6 +126,9 @@ it('AC-002: re-entering closed_won a second time does not duplicate the contract
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'quote_workflow_status_id' => $openStatus->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
     ])->assertCreated()->json('data.id');
 
     $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
@@ -118,6 +149,7 @@ it('AC-004: leaving closed_won suspends the contract and remembers its prior sta
     $closedWonStatus = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     $openStatus = QuoteWorkflowStatus::factory()->global()->create(['group' => WorkflowStatusGroup::Open]);
     $opportunity = Opportunity::factory()->create();
+    $product = contractLifecycleRevenueProduct();
     $actor = contractLifecycleUserWith(['create', 'update']);
     Sanctum::actingAs($actor);
 
@@ -125,6 +157,9 @@ it('AC-004: leaving closed_won suspends the contract and remembers its prior sta
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'quote_workflow_status_id' => $closedWonStatus->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
     ])->assertCreated()->json('data.id');
 
     $contract = Contract::where('quote_id', $quoteId)->sole();
@@ -150,6 +185,7 @@ it('AC-005: a suspended contract stays suspended when its quote re-enters closed
     $closedWonStatus = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     $openStatus = QuoteWorkflowStatus::factory()->global()->create(['group' => WorkflowStatusGroup::Open]);
     $opportunity = Opportunity::factory()->create();
+    $product = contractLifecycleRevenueProduct();
     $actor = contractLifecycleUserWith(['create', 'update']);
     Sanctum::actingAs($actor);
 
@@ -157,6 +193,9 @@ it('AC-005: a suspended contract stays suspended when its quote re-enters closed
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'quote_workflow_status_id' => $closedWonStatus->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
     ])->assertCreated()->json('data.id');
 
     $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $openStatus->id])->assertOk();

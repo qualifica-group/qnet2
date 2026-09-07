@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use App\Enums\WorkflowStatusGroup;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteLine;
+use App\Models\QuoteWorkflowStatus;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -32,6 +34,21 @@ use Illuminate\Support\Collection;
 trait ValidatesQuoteWorkflowStatus
 {
     /**
+     * Spec 0102, D-3: mirrors QuoteWorkflowStatusWriter::LINE_REQUIRED_GROUPS
+     * — the destination `group`s that gate the transition on at least one
+     * REVENUE line, keyed here on `offer_lines` (AC-044) rather than
+     * `quote_workflow_status_id`, for a 422 the panel can attach to the
+     * lines block instead of only toasting the writer's own rejection.
+     *
+     * @var list<WorkflowStatusGroup>
+     */
+    private const array LINE_REQUIRED_GROUPS = [
+        WorkflowStatusGroup::ClosedWon,
+        WorkflowStatusGroup::ClosedLost,
+        WorkflowStatusGroup::Validated,
+    ];
+
+    /**
      * @param  Quote|null  $current  the persisted quote on an update (null on
      *                               create), the fallback source for the resolving Opportunity when the
      *                               submission left `offer_lines` untouched (partial PATCH)
@@ -55,6 +72,46 @@ trait ValidatesQuoteWorkflowStatus
                 "The selected status does not belong to the offer's resolved workflow.",
             );
         }
+    }
+
+    /**
+     * Spec 0102, D-3/AC-044/045: the panel's own mirror of
+     * QuoteWorkflowStatusWriter::assertOfferLineForStatus() — same predicate
+     * (a closing/validating `group` demands a REVENUE line), evaluated
+     * against the SUBMITTED `offer_lines` when this payload carries them,
+     * else $current's persisted ones (resolutionQuote()'s own fallback). The
+     * writer stays the enforcing gate for every channel (spec 0102 D-3); this
+     * only lets the panel surface the SAME rejection keyed on `offer_lines`
+     * instead of a generic toast.
+     *
+     * Mirrors the writer's own AC-026 early return (spec 0083): a resend of
+     * $current's OWN status is a no-op there, so it must never 422 here
+     * either (AC-018) — this trait's sole caller, unlike the writer, has no
+     * other reason to reject a same-status resubmission.
+     */
+    protected function validateQuoteWorkflowStatusRequiresOfferLine(Validator $validator, ?Quote $current = null): void
+    {
+        $submitted = $this->input('quote_workflow_status_id');
+
+        if ($submitted === null || ! is_numeric($submitted)) {
+            return;
+        }
+
+        if ($current !== null && (int) $submitted === $current->quote_workflow_status_id) {
+            return; // AC-018: resending the current status is not an advance.
+        }
+
+        $targetStatus = QuoteWorkflowStatus::query()->find((int) $submitted);
+
+        if ($targetStatus === null || ! in_array($targetStatus->group, self::LINE_REQUIRED_GROUPS, true)) {
+            return;
+        }
+
+        if ($this->resolutionQuote($current)->offerLines->isNotEmpty()) {
+            return;
+        }
+
+        $validator->errors()->add('offer_lines', __('quotes.offer_line_required_for_status'));
     }
 
     /**

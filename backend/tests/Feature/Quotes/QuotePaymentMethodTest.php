@@ -1,7 +1,10 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\PaymentMethod;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
@@ -49,6 +52,25 @@ if (! function_exists('quotePaymentNewStatus')) {
     }
 }
 
+if (! function_exists('quotePaymentOfferLine')) {
+    /**
+     * Spec 0102: POST /api/quotes now requires at least one offer_lines row.
+     * A category with an EFFECTIVE business function so the auto-add
+     * coverage path never trips the 422 guard (OpportunityProductLineCoverage).
+     *
+     * @return array<int, array<string, int>>
+     */
+    function quotePaymentOfferLine(): array
+    {
+        $category = ProductCategory::factory()->create([
+            'business_function_id' => BusinessFunction::factory()->create()->id,
+        ]);
+        $product = Product::factory()->create(['category_id' => $category->id]);
+
+        return [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]];
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
@@ -87,6 +109,7 @@ it('create persists a submitted payment_method_id', function () {
         'title' => 'Con pagamento',
         'opportunity_id' => $opportunity->id,
         'payment_method_id' => $method->id,
+        'offer_lines' => quotePaymentOfferLine(),
     ])
         ->assertCreated()
         ->assertJsonPath('data.payment_method_id', $method->id)
@@ -106,6 +129,7 @@ it('create without payment_method_id leaves it null: no default, no inheritance'
     $this->postJson('/api/quotes', [
         'title' => 'Senza pagamento',
         'opportunity_id' => $opportunity->id,
+        'offer_lines' => quotePaymentOfferLine(),
     ])
         ->assertCreated()
         ->assertJsonPath('data.payment_method_id', null)

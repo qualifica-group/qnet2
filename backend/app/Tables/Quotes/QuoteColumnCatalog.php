@@ -27,6 +27,12 @@ namespace App\Tables\Quotes;
  * derived handling. Read-only here: the Offerta's callback is planned from
  * Gestione Richieste, the module that owns the write path (the
  * reminder-marker invariant lives behind RequestManagementService).
+ *
+ * `alert` (spec 0102, D-4/AC-030..036) is specially derived by
+ * QuotesTableDefinition: `missing_offer_lines` when the Offerta has zero
+ * REVENUE lines, else `null` — mirrors ContractColumnCatalog's own `alert`
+ * entry (badge, `set`-filterable, never sortable — no single value to order
+ * a static two-state enumeration by).
  */
 final class QuoteColumnCatalog
 {
@@ -133,6 +139,18 @@ final class QuoteColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
+            ],
+            // Appended LAST for the same reason (spec 0001, AC-035): `alert`
+            // arrived after every other column here.
+            [
+                'id' => 'alert',
+                'label' => 'quotes.columns.alert',
+                'type' => 'badge',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+                'options' => ['missing_offer_lines'],
             ],
         ];
     }

@@ -287,9 +287,31 @@ function addMissingRequiredAttributes(
   }
 }
 
+/**
+ * `true` when at least one row is a real, touched line (spec 0102): a
+ * pristine seeded row (`isPristineLineRow`) never counts, or the create form
+ * — which opens on exactly one such row — could never pass an untouched
+ * submit-time schema.
+ */
+function hasSubmittableLine(lines: QuoteLineFormValues[]): boolean {
+  return lines.some((line) => !isPristineLineRow(line))
+}
+
 export function buildCreateQuoteSchema(t: TFunction, attributes: ApplicableAttributeSummary[] = []) {
   return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
     addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+
+    // Spec 0102 AC-001/002/040/041: creation always requires at least one
+    // REVENUE line. The seeded `EMPTY_LINE_ROW` the create form opens on
+    // (use-quote-form.ts) is pristine, not a row, so it never counts here —
+    // the collection-level issue lands on `offer_lines` itself, not a row.
+    if (!hasSubmittableLine(values.offer_lines)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['offer_lines'],
+        message: t('quotes.form.offerLinesRequired'),
+      })
+    }
   })
 }
 
@@ -302,15 +324,34 @@ export function buildCreateQuoteSchema(t: TFunction, attributes: ApplicableAttri
  * the resolved set — to look the TARGET row up — and the status the quote
  * currently holds: an unchanged status demands nothing, so re-saving a quote
  * already sitting on a `requires_note` row never asks for a note again.
+ *
+ * `originalHasOfferLines` mirrors the server's own gate (spec 0102 D-2/
+ * AC-042/043): the backend 422s only when the `offer_lines` KEY travels and
+ * is empty, and `buildUpdatePayload`/`sameLines` (quote-form-payload.ts) only
+ * put that key on the wire when the row SET changed from what was loaded. An
+ * Offerta that already had zero lines and stays untouched never sends the
+ * key, so it must stay saveable on every other field (grandfathering) — the
+ * client can only tell the two cases apart by knowing what the offer
+ * originally had, since by submit time `values.offer_lines` is the user's
+ * CURRENT (possibly edited) state, not the original one.
  */
 export function buildUpdateQuoteSchema(
   t: TFunction,
   statuses: QuoteWorkflowStatusRef[],
   originalStatusId: number | null,
+  originalHasOfferLines: boolean,
   attributes: ApplicableAttributeSummary[] = [],
 ) {
   return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
     addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+
+    if (originalHasOfferLines && !hasSubmittableLine(values.offer_lines)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['offer_lines'],
+        message: t('quotes.form.offerLinesRequired'),
+      })
+    }
 
     const targetId = values.quote_workflow_status_id
 

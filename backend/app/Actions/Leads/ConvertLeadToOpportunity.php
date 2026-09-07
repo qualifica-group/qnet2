@@ -31,12 +31,15 @@ use Illuminate\Validation\ValidationException;
  * sync, and — spec 0057, D-5 — the `OPP_{id}` name derivation), rather than
  * re-implementing either.
  *
- * Spec 0094, D-3/AC-062: with at least one product of interest, ALSO creates
- * the ONE collegata Offerta, through the SAME QuoteService::create() the
- * quotes module uses — never a second implementation of its code/status/
- * aggregates. D-6/AC-067: a derived classification resolving to a `single`
- * management-mode root accepts one offer row only; that check runs AFTER the
- * Opportunity (and its product lines) are persisted — mirrors
+ * Spec 0094, D-3/AC-062, amended by spec 0102 D-1/AC-020: the conversion
+ * ALWAYS creates the ONE collegata Offerta, through the SAME
+ * QuoteService::create() the quotes module uses — never a second
+ * implementation of its code/status/aggregates — with one REVENUE line per
+ * product of interest, or zero lines when the Lead carries none (spec 0102
+ * D-1 supersedes spec 0094 AC-065, which used to skip the Offerta entirely
+ * on zero products). D-6/AC-067: a derived classification resolving to a
+ * `single` management-mode root accepts one offer row only; that check runs
+ * AFTER the Opportunity (and its product lines) are persisted — mirrors
  * RequestCreationService::assertOfferLinesFitManagementMode(), the same
  * shared OpportunityProductLineCoverage the FormRequest-based
  * ValidatesQuoteLines::enforceSingleOfferLine() cannot reach here, since the
@@ -57,13 +60,14 @@ final class ConvertLeadToOpportunity
      * @param  ?User  $actor  who triggered the conversion, propagated to
      *                        OpportunityService so the assignment notifications
      *                        (spec 0081) can exclude them and name them as the
-     *                        author. Also who the generated Offerta (D-3) is
-     *                        attributed to — QuoteService::create() requires a
-     *                        non-null actor, so a null one here (today: no
-     *                        caller passes one) skips the Offerta entirely
-     *                        rather than crashing; the Opportunity is still
-     *                        created and still carries the transferred
-     *                        products of interest (AC-061).
+     *                        author. Also who the generated Offerta (D-3,
+     *                        always created — spec 0102 D-1) is attributed
+     *                        to — QuoteService::create() requires a non-null
+     *                        actor, so a null one here (today: no caller
+     *                        passes one) skips the Offerta entirely rather
+     *                        than crashing; the Opportunity is still created
+     *                        and still carries the transferred products of
+     *                        interest (AC-061).
      */
     public function handle(Lead $lead, ?User $actor = null): Opportunity
     {
@@ -121,8 +125,9 @@ final class ConvertLeadToOpportunity
         // here rather than through the FormRequest-only ValidatesQuoteLines.
         $this->assertOfferLinesFitManagementMode($opportunity, $productIds);
 
-        // Step 5 (D-3/D-7/AC-062/AC-065): with at least one product of
-        // interest AND a known actor, generate the single collegata Offerta.
+        // Step 5 (D-3/D-7/AC-062, spec 0102 D-1/AC-020): with a known actor,
+        // ALWAYS generate the single collegata Offerta — with one REVENUE
+        // line per product of interest, or zero lines when there are none.
         $this->createOfferForActor($opportunity, $productIds, $actor);
 
         return $opportunity;
@@ -147,11 +152,15 @@ final class ConvertLeadToOpportunity
     }
 
     /**
-     * @param  array<int, int>  $productIds
+     * @param  array<int, int>  $productIds  possibly empty (spec 0102 D-1):
+     *                                       ProductOfferLineResolver::resolve()
+     *                                       returns [] for [], so the Offerta
+     *                                       is created with zero offer lines
+     *                                       rather than skipped.
      */
     private function createOfferForActor(Opportunity $opportunity, array $productIds, ?User $actor): void
     {
-        if ($actor === null || $productIds === []) {
+        if ($actor === null) {
             return;
         }
 

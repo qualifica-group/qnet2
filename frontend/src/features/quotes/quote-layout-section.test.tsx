@@ -58,6 +58,29 @@ const DEFAULT_LAYOUT_ITEM = {
   meta: { is_default: true, code: 'quote_default' },
 }
 
+/**
+ * Spec 0102 AC-001: creation now requires at least one real offer line. Seeds
+ * it via the deep-link `product_ids` mechanism (`quote-form-body.tsx`, user
+ * directive 2026-08-31, already exercised by `quote-form-seeded-products
+ * .test.tsx`) rather than driving the product-picker UI: this avoids the
+ * unrelated unlock-dialog and commission-defaults machinery those tests
+ * would pull in for something this file isn't testing.
+ */
+const SEEDED_PRODUCT_ITEM = {
+  id: 42,
+  label: 'Widget Pro',
+  meta: {
+    code: 'WGT',
+    price: '10.00',
+    cost: '5.00',
+    vat_rate_id: null,
+    vat_rate_name: null,
+    vat_rate: null,
+    unit_of_measure: null,
+    product_typology: null,
+  },
+}
+
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -150,10 +173,17 @@ describe('QuoteLayoutSection — create mode (AC-310)', () => {
 
   it('carries the precompiled layout_id in the create payload', async () => {
     fetchForSelectMock.mockImplementation(
-      (resource: string, params: { params?: Record<string, unknown> }) => {
+      (resource: string, params: { params?: Record<string, unknown>; ids?: number[] }) => {
         if (resource === 'document-layouts' && params.params?.module === 'quotes') {
           return Promise.resolve({
             items: [DEFAULT_LAYOUT_ITEM],
+            pagination: { offset: 0, limit: 25, total: 1 },
+            export_link: null,
+          })
+        }
+        if (resource === 'products' && params.ids?.includes(SEEDED_PRODUCT_ITEM.id)) {
+          return Promise.resolve({
+            items: [SEEDED_PRODUCT_ITEM],
             pagination: { offset: 0, limit: 25, total: 1 },
             export_link: null,
           })
@@ -165,7 +195,7 @@ describe('QuoteLayoutSection — create mode (AC-310)', () => {
     render(
       <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
         <QuoteFormBody
-          mode={{ type: 'create', params: { opportunity_id: 55 } }}
+          mode={{ type: 'create', params: { opportunity_id: 55, product_ids: String(SEEDED_PRODUCT_ITEM.id) } }}
           onSuccess={vi.fn()}
           onCancel={vi.fn()}
           initialCode=""
@@ -177,6 +207,9 @@ describe('QuoteLayoutSection — create mode (AC-310)', () => {
     await waitFor(() =>
       expect(screen.getByRole('combobox', { name: 'Layout' })).toHaveTextContent('Offerta economica'),
     )
+    // Spec 0102 AC-001: wait for the deep-link seeded row before submitting,
+    // or the create schema rejects on an empty `offer_lines` (AC-040).
+    await waitFor(() => expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(1))
 
     fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'QUO-0001' } })
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Quote with default layout' } })

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\Product;
 use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Role;
@@ -64,9 +65,19 @@ it('AC-061: GET show is 403 without quotes.view', function () {
 it('AC-061: POST create is 403 without quotes.create, no row created', function () {
     $actor = quoteAuthUserWith([]);
     $opportunity = Opportunity::factory()->create();
+    $product = Product::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', ['title' => 'Nope', 'opportunity_id' => $opportunity->id])->assertForbidden();
+    // Spec 0102: a valid offer_lines row so the request clears StoreQuoteRequest's
+    // own validation and the 403 asserted below actually comes from the
+    // controller's policy check, not from a 422 on the now-required line.
+    $this->postJson('/api/quotes', [
+        'title' => 'Nope',
+        'opportunity_id' => $opportunity->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
+    ])->assertForbidden();
 
     expect(Quote::count())->toBe(0);
 });

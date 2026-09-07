@@ -265,6 +265,14 @@ class UpdateRequestRequest extends FormRequest
             // carries them (the trait's own transient quote), else against the
             // Offerta's persisted ones.
             $this->validateQuoteWorkflowStatus($validator, $quote);
+            // Spec 0102, D-3/AC-044/045: the panel's mirror of the writer's
+            // own closing/validating-group gate, keyed on `offer_lines` so
+            // the panel can attach the 422 to the lines block instead of a
+            // generic toast. QuoteWorkflowStatusWriter::apply() (reached via
+            // RequestManagementService::applyWorkflowStatus()) stays the
+            // actual enforcing gate — this only pre-empts it with the same
+            // rejection.
+            $this->validateQuoteWorkflowStatusRequiresOfferLine($validator, $quote);
             $this->validateClientProfile($validator);
             // Write-path counterpart of the `permissions` block (spec 0004/
             // 0008): a field the actor's role may not edit is rejected 422
