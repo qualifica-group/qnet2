@@ -1,41 +1,32 @@
 import { useMemo } from 'react'
-import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { FolderTree, ListChecks, Users } from 'lucide-react'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
-import { Form, FormControl, FormDescription } from '@/components/ui/form'
-import { SearchableSelect } from '@/components/ui/searchable-select'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
+import { Form } from '@/components/ui/form'
+import {
+  MAIN_COLUMN_CLASS,
+  PANEL_GRID_CLASS,
+  SIDE_COLUMN_CLASS,
+} from '@/components/record-form/layout'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import { useEffectiveAttributes } from '@/features/product-categories/use-effective-attributes'
-import { useEffectiveManagerLabels } from '@/features/product-categories/use-effective-manager-labels'
 import {
   ROOT_PARENT_VALUE,
   collectSubtreeIds,
   flattenCategoryTree,
 } from '@/features/product-categories/flatten-tree'
+import { useProductCategoryForm } from '@/features/product-categories/use-product-category-form'
+import { ProductCategoryFormHeader } from '@/features/product-categories/product-category-form-header'
+import { ProductCategoryFormSummary } from '@/features/product-categories/product-category-form-summary'
 import {
-  useProductCategoryForm,
-  type ProductCategoryFormValues,
-} from '@/features/product-categories/use-product-category-form'
-import { AttributeAssignmentEditor } from '@/features/product-categories/attribute-assignment-editor'
-import { ManagerLabelEditor, ManagerLabelsInheritanceToggle } from '@/features/product-categories/manager-label-editor'
-import type { AttributeCatalogEntry } from '@/features/attributes/use-attribute-catalog'
-import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
+  ProductCategoryIdentitySection,
+  type ProductCategoryParentPicker,
+} from '@/features/product-categories/product-category-identity-section'
 import { ProductCategoryRulesSection } from '@/features/product-categories/product-category-rules-section'
+import { ProductCategoryAttributesSection } from '@/features/product-categories/product-category-attributes-section'
+import { ProductCategoryManagerLabelsSection } from '@/features/product-categories/product-category-manager-labels-section'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import type {
-  AttributeContext,
-  EffectiveAttribute,
-  ManagerLabels,
   ProductCategoryDetail,
   ProductCategoryFormMode,
-  ProductCategoryInheritedAttribute,
 } from '@/features/product-categories/types'
 
 interface ProductCategoryFormBodyProps {
@@ -44,138 +35,42 @@ interface ProductCategoryFormBodyProps {
   onCancel: () => void
 }
 
-/** Tags each effective-attributes result with the context it was fetched for, into the flat shape `AttributeAssignmentEditor` splits (spec 0061, extended by spec 0098). */
-function toInheritedAttributes(
-  product: EffectiveAttribute[] | undefined,
-  quote: EffectiveAttribute[] | undefined,
-  workOrder: EffectiveAttribute[] | undefined,
-): ProductCategoryInheritedAttribute[] {
-  const tag = (attributes: EffectiveAttribute[] | undefined, context: AttributeContext) =>
-    (attributes ?? []).map((attribute) => ({
-      attribute_id: attribute.id,
-      code: attribute.code,
-      name: attribute.name,
-      type: attribute.type,
-      is_required: attribute.is_required,
-      context,
-    }))
-  return [...tag(product, 'product'), ...tag(quote, 'quote'), ...tag(workOrder, 'work_order')]
-}
-
-/** Hoisted so an opted-out context feeds a stable reference to `toInheritedAttributes`. */
-const EMPTY_ATTRIBUTES: EffectiveAttribute[] = []
-
-/** Hoisted so an opted-out (or root) manager-labels barrier feeds a stable, empty reference. */
-const EMPTY_MANAGER_LABELS: ManagerLabels = {}
-
-/** Hoisted for the same reason, on the create path (no category loaded yet). */
-const EMPTY_KNOWN_ATTRIBUTES: AttributeCatalogEntry[] = []
-
 /**
- * The name/type the loaded category's own assignments already carry: the
- * editor labels its rows from here, so an attribute sitting outside the
- * picker's search window still shows its name instead of a bare `#id`.
+ * DOM id bridging the sticky header's save action to the RHF `<form>` below,
+ * exactly as the other record forms do: the same id serves the footer
+ * actions, so both copies of the button submit this form without either of
+ * them nesting the other.
  */
-function toKnownAttributes(mode: ProductCategoryFormMode): AttributeCatalogEntry[] {
-  if (mode.type !== 'edit') {
-    return EMPTY_KNOWN_ATTRIBUTES
-  }
-
-  return mode.category.attributes.map((assignment) => ({
-    id: assignment.attribute_id,
-    code: assignment.code,
-    name: assignment.name,
-    type: assignment.type,
-  }))
-}
-
-/** The `inherits_*_attributes` field names, one per usage context — RHF path and authorization metadata key alike. */
-const INHERITANCE_FIELD = {
-  product: 'inherits_product_attributes',
-  quote: 'inherits_quote_attributes',
-  work_order: 'inherits_work_order_attributes',
-} as const
-
-interface InheritanceToggleProps {
-  control: Control<ProductCategoryFormValues>
-  context: AttributeContext
-}
+const PRODUCT_CATEGORY_FORM_ID = 'product-category-form'
 
 /**
- * The per-context "inherit from parent" switch, rendered INSIDE the section it
- * governs (spec 0061 follow-up): each usage context carries its own barrier,
- * so the Product list can ignore the ancestry while the Offerta one keeps
- * inheriting. Defined at module level — never inside the form component.
- */
-function InheritanceToggle({ control, context }: InheritanceToggleProps) {
-  const { t } = useTranslation()
-
-  return (
-    <MetaField
-      control={control}
-      name={INHERITANCE_FIELD[context]}
-      metaKey={INHERITANCE_FIELD[context]}
-      label={t('productCategories.form.inheritsAttributes')}
-      description={<FormDescription>{t('productCategories.form.inheritsAttributesHint')}</FormDescription>}
-    >
-      {({ field, disabled }) => (
-        <FormControl>
-          <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
-        </FormControl>
-      )}
-    </MetaField>
-  )
-}
-
-/**
- * The category create/edit form UI: identity fields (name, parent,
- * description) wrapped in `MetaField` (spec 0004), followed by the
- * attribute-assignment editor (own assignments + read-only inherited list).
- * All non-render logic lives in `useProductCategoryForm`.
+ * The category create/edit form UI, built on the SAME record-form skeleton as
+ * Opportunita', Gestione Richieste and Prodotti (`@/components/record-form` —
+ * `RECORD_HEADER_CLASS` through `ProductCategoryFormHeader`,
+ * `PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/`MAIN_COLUMN_CLASS`,
+ * `FIELD_GRID_CLASS`, `SummaryRow`, `RecordFormActions`): the same objects, so
+ * the screens cannot drift apart with a later edit to one of them.
+ *
+ * Main column = identity, the behavioural rules, the attribute assignments,
+ * the G.A. denominations, then the universal custom fields; side column = the
+ * live recap of what the category will impose downstream.
+ *
+ * This file only composes: each card owns its own fields, its own derived
+ * data and its own visibility gate (spec 0004 `MetaField`); all non-render
+ * logic lives in `useProductCategoryForm`. The parent option list is the one
+ * thing resolved here, because three consumers read it (identity bar, side
+ * recap, picker) and it must be the same list in all three.
  */
 export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCategoryFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
   const { form, serverError, onSubmit } = useProductCategoryForm({ mode, onSuccess })
   const treeQuery = useProductCategoryTree()
 
   const parentId = form.watch('parent_id')
-  const inheritsProductAttributes = form.watch('inherits_product_attributes')
-  const inheritsQuoteAttributes = form.watch('inherits_quote_attributes')
-  const inheritsWorkOrderAttributes = form.watch('inherits_work_order_attributes')
-  const knownAttributes = useMemo(() => toKnownAttributes(mode), [mode])
-  const inheritedProductQuery = useEffectiveAttributes(parentId, 'product')
-  const inheritedQuoteQuery = useEffectiveAttributes(parentId, 'quote')
-  const inheritedWorkOrderQuery = useEffectiveAttributes(parentId, 'work_order')
-  // Opting out is a barrier: that context inherits nothing, so the read-only
-  // inherited list must reflect it immediately (not just after save) — and only
-  // for the context whose switch moved, the other side is untouched.
-  // Flat, all three contexts (spec 0061/0098) — `AttributeAssignmentEditor` splits it.
-  const inherited: ProductCategoryInheritedAttribute[] = useMemo(
-    () =>
-      toInheritedAttributes(
-        inheritsProductAttributes ? inheritedProductQuery.data : EMPTY_ATTRIBUTES,
-        inheritsQuoteAttributes ? inheritedQuoteQuery.data : EMPTY_ATTRIBUTES,
-        inheritsWorkOrderAttributes ? inheritedWorkOrderQuery.data : EMPTY_ATTRIBUTES,
-      ),
-    [
-      inheritedProductQuery.data,
-      inheritedQuoteQuery.data,
-      inheritedWorkOrderQuery.data,
-      inheritsProductAttributes,
-      inheritsQuoteAttributes,
-      inheritsWorkOrderAttributes,
-    ],
-  )
+  const { isSubmitting } = form.formState
 
-  const inheritsManagerLabels = form.watch('inherits_manager_labels')
-  const inheritedManagerLabelsQuery = useEffectiveManagerLabels(parentId)
-  // Same immediate-barrier behavior as the attribute contexts above: turning
-  // the switch off drops the inherited preview before the save round-trips.
-  const inheritedManagerLabels = inheritsManagerLabels
-    ? (inheritedManagerLabelsQuery.data ?? EMPTY_MANAGER_LABELS)
-    : EMPTY_MANAGER_LABELS
-
+  // A category may never be reparented under its own subtree: the picker drops
+  // it client-side as an affordance, the server enforces it.
   const parentOptions = useMemo(() => {
     const nodes = treeQuery.data ?? []
     const excluded = mode.type === 'edit' ? collectSubtreeIds(nodes, mode.category.id) : new Set<number>()
@@ -184,187 +79,74 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
       ...flattenCategoryTree(nodes).filter((option) => !excluded.has(option.id)),
     ]
   }, [treeQuery.data, mode, t])
-
-  const identityVisible =
-    fieldPermission('name').visible ||
-    fieldPermission('parent_id').visible ||
-    fieldPermission('description').visible ||
-    fieldPermission('business_function_id').visible
-  const attributesVisible = fieldPermission('attributes').visible
-  const managerLabelsVisible = fieldPermission('manager_labels').visible
+  const parents: ProductCategoryParentPicker = {
+    options: parentOptions,
+    isPending: treeQuery.isPending,
+    isError: treeQuery.isError,
+    onRetry: () => void treeQuery.refetch(),
+  }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
+    <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={FolderTree}
-              title={t('productCategories.form.sections.identity.title')}
-              description={t('productCategories.form.sections.identity.description')}
+        <ProductCategoryFormHeader
+          control={form.control}
+          isEdit={mode.type === 'edit'}
+          parentOptions={parentOptions}
+          formId={PRODUCT_CATEGORY_FORM_ID}
+          isSubmitting={isSubmitting}
+          submitError={serverError}
+          onCancel={onCancel}
+        />
+
+        <div className={PANEL_GRID_CLASS}>
+          {/* First in the DOM so a narrow container reads it before the form,
+              reordered to the right on two columns — the panel's own rule. */}
+          <aside className={SIDE_COLUMN_CLASS}>
+            <ProductCategoryFormSummary control={form.control} parentOptions={parentOptions} />
+          </aside>
+
+          <div className={MAIN_COLUMN_CLASS}>
+            {/* `display: contents`: this native `<form>` only scopes the HTML
+                submit boundary, it must not become an extra flex box. */}
+            <form
+              id={PRODUCT_CATEGORY_FORM_ID}
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="contents"
+              noValidate
             >
-              <MetaField
+              <ProductCategoryIdentitySection
                 control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('productCategories.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
+                mode={mode}
+                parents={parents}
+                parentId={parentId}
+              />
 
-              <MetaField
+              <ProductCategoryRulesSection control={form.control} mode={mode} parentId={parentId} />
+
+              <ProductCategoryAttributesSection
                 control={form.control}
-                name="parent_id"
-                metaKey="parent_id"
-                label={t('productCategories.form.parent')}
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <SearchableSelect
-                      value={field.value ?? ROOT_PARENT_VALUE}
-                      onChange={(next) =>
-                        field.onChange(next === ROOT_PARENT_VALUE ? null : next)
-                      }
-                      options={parentOptions}
-                      isPending={treeQuery.isPending}
-                      isError={treeQuery.isError}
-                      onRetry={() => void treeQuery.refetch()}
-                      disabled={disabled}
-                      labels={{
-                        placeholder: t('productCategories.form.parentPlaceholder'),
-                        searchPlaceholder: t('productCategories.form.parentSearch'),
-                        empty: t('productCategories.form.parentEmpty'),
-                        noMatch: t('productCategories.form.parentNoMatch'),
-                        error: t('productCategories.form.parentError'),
-                        retry: t('common.retry'),
-                      }}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
+                mode={mode}
+                parentId={parentId}
+              />
 
-              <MetaField
-                control={form.control}
-                name="description"
-                metaKey="description"
-                label={t('productCategories.form.description')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
+              <ProductCategoryManagerLabelsSection control={form.control} parentId={parentId} />
 
-              <ProductCategoryBusinessFunctionField control={form.control} mode={mode} parentId={parentId} />
-            </FormSection>
-          )}
+              <CustomFieldsSection resource="product-categories" control={form.control} />
 
-          <ProductCategoryRulesSection control={form.control} mode={mode} parentId={parentId} />
-
-          {attributesVisible && (
-            <FormSection
-              icon={ListChecks}
-              title={t('productCategories.form.sections.attributes.title')}
-              description={t('productCategories.form.sections.attributes.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="attributes"
-                metaKey="attributes"
-                label={t('productCategories.form.attributes')}
-              >
-                {({ field, disabled }) => (
-                  <AttributeAssignmentEditor
-                    value={field.value}
-                    onChange={field.onChange}
-                    known={knownAttributes}
-                    inherited={inherited}
-                    disabled={disabled}
-                    // A root category has no ancestry to inherit from: no switch to show.
-                    productInheritToggle={
-                      parentId !== null ? <InheritanceToggle control={form.control} context="product" /> : null
-                    }
-                    quoteInheritToggle={
-                      parentId !== null ? <InheritanceToggle control={form.control} context="quote" /> : null
-                    }
-                    workOrderInheritToggle={
-                      parentId !== null ? <InheritanceToggle control={form.control} context="work_order" /> : null
-                    }
-                  />
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          {managerLabelsVisible && (
-            <FormSection
-              icon={Users}
-              title={t('productCategories.form.sections.managerLabels.title')}
-              description={t('productCategories.form.sections.managerLabels.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="manager_labels"
-                metaKey="manager_labels"
-                label={t('productCategories.form.sections.managerLabels.title')}
-              >
-                {({ field, disabled }) => (
-                  <ManagerLabelEditor
-                    value={field.value}
-                    onChange={field.onChange}
-                    inherited={inheritedManagerLabels}
-                    disabled={disabled}
-                    // A root category has no ancestry to inherit from: no switch to show.
-                    inheritToggle={
-                      parentId !== null ? <ManagerLabelsInheritanceToggle control={form.control} /> : null
-                    }
-                  />
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          <CustomFieldsSection resource="product-categories" control={form.control} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('productCategories.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting
-                ? t('productCategories.form.saving')
-                : t('productCategories.form.save')}
-            </Button>
+              {/* The same actions the identity bar carries, repeated where the
+                  form ends: it is long enough that the operator finishes typing
+                  far from the sticky bar. */}
+              <RecordFormActions
+                formId={PRODUCT_CATEGORY_FORM_ID}
+                isSubmitting={isSubmitting}
+                submitLabel={t('productCategories.form.save')}
+                submittingLabel={t('productCategories.form.saving')}
+                cancel={{ label: t('productCategories.form.cancel'), onCancel }}
+              />
+            </form>
           </div>
-        </form>
+        </div>
       </Form>
     </div>
   )

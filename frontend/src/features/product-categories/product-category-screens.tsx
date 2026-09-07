@@ -133,6 +133,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   basePath: '/product-categories',
   defaultMode: OPEN_MODE_MODAL,
   labelKey: 'navigation.productCategories',
+  // The form renders its own identity bar (title, subtitle and the
+  // save/cancel actions on one row), so the dedicated page drops its heading
+  // and the Sheet keeps its `SheetHeader` `sr-only`.
+  formOwnsHeader: true,
   DetailScreen: ProductCategoryDetailScreen,
   FormScreen: ProductCategoryFormScreen,
 }

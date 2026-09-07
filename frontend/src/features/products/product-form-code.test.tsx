@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ProductForm } from '@/features/products/product-form'
@@ -207,7 +207,7 @@ describe('ProductForm — manual code (spec 0065 AC-079/AC-080)', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Code' })).toBeInTheDocument())
     fireEvent.change(screen.getByRole('textbox', { name: 'Code' }), { target: { value: '  ACME-2026  ' } })
     completeRequiredCreateFields()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
     const payload = createProductMock.mock.calls[0][0] as Record<string, unknown>
@@ -250,7 +250,7 @@ describe('ProductForm — manual code (spec 0065 AC-079/AC-080)', () => {
     )
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'ThinkPad X1 Gen 2' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateProductMock).toHaveBeenCalledTimes(1))
     const payload = updateProductMock.mock.calls[0][1] as Record<string, unknown>
@@ -289,7 +289,7 @@ describe('ProductForm — 422 duplicate code (spec 0065 AC-081)', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Code' })).toBeInTheDocument())
     fireEvent.change(screen.getByRole('textbox', { name: 'Code' }), { target: { value: 'ACME-2026' } })
     completeRequiredCreateFields()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(screen.getByText('The code has already been taken.')).toBeInTheDocument(),

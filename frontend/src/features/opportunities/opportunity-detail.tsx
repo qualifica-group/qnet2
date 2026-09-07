@@ -1,6 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { History, MessagesSquare, Paperclip } from 'lucide-react'
 import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import {
+  RECORD_BODY_GRID_CLASS,
+  RECORD_BODY_WITH_SIDE_CLASS,
+  RECORD_COLUMN_CLASS,
+} from '@/components/detail/record-layout'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
@@ -151,24 +156,6 @@ function OpportunityDetailCollaboration({ opportunity }: OpportunityDetailCollab
 }
 
 /**
- * Two-column body (user directive 2026-08-05): the record itself on the left,
- * the collaboration surface on the right, stacked in that order while narrow.
- * The side column is only laid out when the actor can actually see one of its
- * tabs — otherwise the record keeps the full width instead of leaving a third
- * of the canvas empty.
- */
-const BODY_GRID_CLASS = 'grid grid-cols-1 items-start gap-4'
-const BODY_GRID_WITH_SIDE_CLASS = '@5xl:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]'
-
-/**
- * Each column is its OWN `@container` so the section/field grids inside break
- * on the COLUMN's width, not the canvas' — without this the left card would
- * still go two-column at the exact width where it just lost a third of its
- * space to the side column.
- */
-const COLUMN_CLASS = '@container flex min-w-0 flex-col gap-4'
-
-/**
  * Read-only detail of a single opportunity, rendered as an enterprise-CRM
  * record (spec 0040 AC-077): the identity/KPI/sections card on the left, the
  * collaboration card (notes/documents/activity, spec 0049 AC-064's
@@ -185,8 +172,8 @@ export function OpportunityDetailView({ opportunity, onEdit }: OpportunityDetail
 
   return (
     <RecordCanvas>
-      <div className={cn(BODY_GRID_CLASS, hasCollaboration && BODY_GRID_WITH_SIDE_CLASS)}>
-        <div className={COLUMN_CLASS}>
+      <div className={cn(RECORD_BODY_GRID_CLASS, hasCollaboration && RECORD_BODY_WITH_SIDE_CLASS)}>
+        <div className={RECORD_COLUMN_CLASS}>
           <RecordCard>
             <OpportunityDetailHeader opportunity={opportunity} onEdit={onEdit} />
             <OpportunityDetailStats opportunity={opportunity} />
@@ -195,7 +182,7 @@ export function OpportunityDetailView({ opportunity, onEdit }: OpportunityDetail
         </div>
 
         {hasCollaboration ? (
-          <div className={COLUMN_CLASS}>
+          <div className={RECORD_COLUMN_CLASS}>
             <OpportunityDetailCollaboration opportunity={opportunity} />
           </div>
         ) : null}

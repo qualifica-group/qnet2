@@ -6,6 +6,7 @@ import i18n from '@/i18n'
 import { OfferLinesCellEditor } from '@/features/request-management/offer-lines-cell-editor'
 import { OfferLinesDialogProvider } from '@/features/request-management/offer-lines-dialog'
 import {
+  FULL_PERMISSIONS,
   OFFER_LINE_FIBRA,
   workPanel as panel,
 } from '@/features/request-management/request-work-panel-fixtures'
@@ -158,5 +159,66 @@ describe('Gestione Richieste — linee di prodotto in griglia', () => {
 
     expect(await screen.findByText('Quantità non valida.')).toBeInTheDocument()
     expect(setData).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Permessi, come per ogni altra colonna: il motore generico li impone su TRE
+ * livelli — colonna (`GET /columns`), riga (`row.editable`) ed endpoint (403).
+ * Qui si verifica il livello che questa superficie possiede davvero: la
+ * matrice per-campo che il pannello restituisce insieme al record, cioe' cio'
+ * che disabilita i controlli invece di far scoprire il divieto a salvataggio
+ * fatto. Gli altri due sono coperti lato server
+ * (RequestManagementOfferLinesWriteTest).
+ */
+/** One field-permission entry, in the full shape the envelope carries. */
+function fieldPermission(visible: boolean, editable: boolean) {
+  return { visible, hidden: !visible, editable, readonly: !editable, required: false, disabled: !editable }
+}
+
+describe('Gestione Richieste — linee di prodotto, permessi', () => {
+  it('locks the editor and the save when the field permission is read-only', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({
+      permissions: {
+        ...FULL_PERMISSIONS,
+        fields: { offer_lines: fieldPermission(true, false) },
+      },
+    }))
+
+    renderEditor()
+
+    expect(await screen.findByLabelText('Quantità riga 1')).toBeDisabled()
+    expect(screen.getByLabelText('Prezzo unitario riga 1')).toBeDisabled()
+    // The row editor keeps its controls in place and inert, rather than
+    // hiding them: a locked field still has to be readable.
+    expect(screen.getByRole('button', { name: /Aggiungi riga/i })).toBeDisabled()
+  })
+
+  it('disables the save when the actor may not update the resource at all', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({
+      permissions: {
+        ...FULL_PERMISSIONS,
+        resource: { ...FULL_PERMISSIONS.resource, update: false },
+      },
+    }))
+
+    renderEditor()
+
+    await screen.findByLabelText('Quantità riga 1')
+    expect(screen.getByRole('button', { name: 'Salva' })).toBeDisabled()
+  })
+
+  it('hides the whole field when the permission makes it invisible', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({
+      permissions: {
+        ...FULL_PERMISSIONS,
+        fields: { offer_lines: fieldPermission(false, false) },
+      },
+    }))
+
+    renderEditor()
+
+    await screen.findByRole('button', { name: 'Salva' })
+    expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
   })
 })

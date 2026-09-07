@@ -115,6 +115,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   basePath: '/products',
   defaultMode: OPEN_MODE_PAGE,
   generateRoutes: false,
+  // The form renders its own identity bar (title, subtitle and the
+  // save/cancel actions on one row), so the Sheet keeps its `SheetHeader`
+  // `sr-only` instead of showing a second heading above it.
+  formOwnsHeader: true,
   labelKey: 'navigation.products',
   DetailScreen: ProductDetailScreen,
   FormScreen: ProductFormScreen,

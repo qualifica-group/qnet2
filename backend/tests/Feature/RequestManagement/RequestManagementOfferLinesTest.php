@@ -60,7 +60,7 @@ if (! function_exists('offerLine')) {
 }
 
 it('AC-008: the config exposes offer_lines, inline editable, and no longer products_of_interest', function () {
-    Sanctum::actingAs(offerLinesActor());
+    Sanctum::actingAs(offerLinesActor(canUpdate: true));
 
     $columns = collect($this->getJson('/api/tables/request-management/columns')->assertOk()->json('data.columns'))
         ->keyBy('id');
@@ -73,11 +73,11 @@ it('AC-008: the config exposes offer_lines, inline editable, and no longer produ
         ->and($column['sortable'])->toBeFalse()
         ->and($column['filterable'])->toBeTrue()
         ->and($column['filterType'])->toBe('set')
-        // Requirement change 2026-09-07: editable, with the collection editor
-        // and the field key the engine remaps permission and write onto.
+        // Requirement change 2026-09-07: editable, and carrying the editor
+        // kind that tells the client its value is the whole row collection.
+        // (`editableField` is internal to the engine and never emitted.)
         ->and($column['editable'])->toBeTrue()
-        ->and($column['editor'])->toBe('offer_lines')
-        ->and($column['editableField'])->toBe('offer_lines');
+        ->and($column['editor'])->toBe('offer_lines');
 });
 
 it("AC-007: offer_lines projects the REVENUE products only, never a COST line's product", function () {

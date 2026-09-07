@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ProductForm } from '@/features/products/product-form'
@@ -125,7 +125,7 @@ describe('ProductFormBody — decimal cost/price hydration', () => {
     )
 
     fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ThinkPad X1 Gen 2' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateProductMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateProductMock.mock.calls[0]

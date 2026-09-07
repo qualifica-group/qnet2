@@ -72,6 +72,11 @@ export const productCategories = {
   title: 'Product Categories',
   subtitle: 'Browse, filter and manage your product categories.',
   forbidden: "You don't have permission to view product categories.",
+  // Identity pills, shared by the form's identity bar and the record.
+  badges: {
+    root: 'Root',
+    notSelectable: 'Not selectable',
+  },
   columns: {
     name: 'Name',
     parent: 'Parent',
@@ -98,6 +103,7 @@ export const productCategories = {
     singleQuotePerOpportunityInherited: 'Inherited from {{category}}',
     generatesContractInherited: 'Inherited from {{category}}',
     managerLabelInherited: 'Inherited',
+    inheritedCount: '+{{count}} inherited',
   },
   bulkMove: {
     tableButton: 'Move under…',
@@ -172,6 +178,9 @@ export const productCategories = {
       'The management mode is inherited from the root category "{{category}}". To change it, edit that category instead.',
     managementModeSingle: 'Single (one line per card)',
     managementModeMultiple: 'Multiple (several lines per card)',
+    // Short form for the side recap, where the row is truncated.
+    managementModeSingleShort: 'Single',
+    managementModeMultipleShort: 'Multiple',
     requiresQuoteInfo:
       'Governs whether the opportunities of this branch go through an offer at all. When on, the Offers module is part of the flow for every product of this category and of its subcategories; when off, the branch is worked without one. The rule belongs to the ROOT category and the whole subtree follows it.',
     requiresQuoteInfoLabel: 'More info about Quoted',
@@ -209,6 +218,10 @@ export const productCategories = {
     inheritsManagerLabelsHint:
       'When off, this category ignores its ancestors: neither it nor its subcategories inherit these labels from above.',
     inheritedManagerLabels: 'Inherited from ancestor categories',
+    summary: {
+      title: 'Summary',
+      description: 'What you are about to save.',
+    },
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
@@ -282,6 +295,10 @@ export const products = {
     required: 'Select at least one product of interest.',
   },
   empty: 'No product selected.',
+  // Price minus cost, shown both on the record (KPI strip) and in the form
+  // (the readout under the two fields, and the side recap row).
+  margin: 'Margin',
+  marginPercent: '{{percent}}% of the price',
   columns: {
     name: 'Name',
     description: 'Description',
@@ -358,10 +375,22 @@ export const products = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the product. Please try again.',
     deleteForbidden: 'You cannot delete this product.',
+    summary: {
+      title: 'Summary',
+      description: 'What you are about to save.',
+    },
     sections: {
       identity: {
-        title: 'Details',
-        description: 'Code, name, description, pricing and category of the product.',
+        title: 'Identity',
+        description: 'Code, name and description of the product.',
+      },
+      classification: {
+        title: 'Classification',
+        description: 'Category, typology, unit of measure and product type.',
+      },
+      pricing: {
+        title: 'Pricing and supply',
+        description: 'Cost, price, VAT rate and supplier.',
       },
     },
     hints: {

@@ -65,16 +65,10 @@ export default function ProductFormPage() {
       <div className="flex flex-1 flex-col gap-4">
         <PageHeader />
 
+        {/* No heading of its own: the form owns the identity bar (title,
+            subtitle and the save/cancel actions on one row), exactly as the
+            `formOwnsHeader` modules do on the generic page. */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-          <header className="flex flex-col gap-1 border-b px-4 py-3">
-            <h2 className="text-base font-semibold">
-              {t(isEdit ? 'products.form.editTitle' : 'products.form.createTitle')}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {t(isEdit ? 'products.form.editSubtitle' : 'products.form.createSubtitle')}
-            </p>
-          </header>
-
           {isError ? (
             <div className="flex flex-col items-start gap-3 p-4">
               <p className="text-sm text-destructive" role="alert">

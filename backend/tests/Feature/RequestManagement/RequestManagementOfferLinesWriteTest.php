@@ -17,6 +17,7 @@ use App\Models\QuoteLine;
 use App\Models\QuoteLineCommission;
 use App\Models\Referent;
 use App\Models\Registry;
+use App\Models\Role;
 use App\Models\Source;
 use App\Models\User;
 use App\Models\VatRate;
@@ -63,6 +64,31 @@ if (! function_exists('offerLineCategory')) {
             'business_function_id' => BusinessFunction::factory()->create()->id,
             'management_mode' => $mode,
         ]);
+    }
+}
+
+if (! function_exists('offerLineMatrixActor')) {
+    /**
+     * A role-bearing actor carrying one `role_field_permissions` row: the DB
+     * matrix only ever restricts actors reached through a role, so a
+     * direct-permission actor cannot exercise this gate.
+     *
+     * @param  array<string, mixed>  $matrixRow
+     */
+    function offerLineMatrixActor(array $matrixRow): User
+    {
+        foreach (['viewAny', 'view', 'create', 'update', 'viewAll'] as $ability) {
+            Permission::findOrCreate("request-management.{$ability}");
+        }
+
+        $role = Role::create(['name' => 'offer-lines-role-'.uniqid()]);
+        $role->givePermissionTo(['request-management.viewAny', 'request-management.update']);
+        $role->fieldPermissions()->create($matrixRow);
+
+        $actor = User::factory()->create();
+        $actor->assignRole($role);
+
+        return $actor;
     }
 }
 
@@ -398,7 +424,9 @@ it('create: a second row on a single-managed classification is refused, nothing 
 // ---------------------------------------------------------------------------
 
 it('cell: PATCH replaces the offer REVENUE rows through the generic engine', function () {
-    $actor = offerLineWriteActor();
+    // The generic table endpoints gate on `viewAny` before anything else
+    // (TableController::updateRow), unlike the module's own PATCH above.
+    $actor = offerLineWriteActor(['viewAny', 'view', 'update', 'viewAll']);
     $category = offerLineCategory();
     $quote = offerLineRequest($actor, $category);
     $product = Product::factory()->create(['category_id' => $category->id]);
@@ -416,7 +444,7 @@ it('cell: PATCH replaces the offer REVENUE rows through the generic engine', fun
 });
 
 it('cell: the value is a ROW collection — a bare list of product ids is refused', function () {
-    $actor = offerLineWriteActor();
+    $actor = offerLineWriteActor(['viewAny', 'view', 'update', 'viewAll']);
     $category = offerLineCategory();
     $quote = offerLineRequest($actor, $category);
     $product = Product::factory()->create(['category_id' => $category->id]);
@@ -431,7 +459,7 @@ it('cell: the value is a ROW collection — a bare list of product ids is refuse
 });
 
 it('cell: a row breaking a shared quote-line rule is refused, never rounded away', function () {
-    $actor = offerLineWriteActor();
+    $actor = offerLineWriteActor(['viewAny', 'view', 'update', 'viewAll']);
     $category = offerLineCategory();
     $quote = offerLineRequest($actor, $category);
     $product = Product::factory()->create(['category_id' => $category->id]);
@@ -445,7 +473,7 @@ it('cell: a row breaking a shared quote-line rule is refused, never rounded away
 });
 
 it('cell: commissions stay this endpoint\'s forbidden block, exactly as on the panel', function () {
-    $actor = offerLineWriteActor();
+    $actor = offerLineWriteActor(['viewAny', 'view', 'update', 'viewAll']);
     $category = offerLineCategory();
     $quote = offerLineRequest($actor, $category);
     $product = Product::factory()->create(['category_id' => $category->id]);
@@ -457,13 +485,15 @@ it('cell: commissions stay this endpoint\'s forbidden block, exactly as on the p
             'product_id' => $product->id,
             'quantity' => 1,
             'unit_price' => 10,
-            'commissions' => [],
+            // Non-empty on purpose: Laravel's `prohibited` passes on an empty
+            // value, so an empty array would prove nothing.
+            'commissions' => [['recipient_role' => 'operator']],
         ]],
     ])->assertStatus(422)->assertJsonValidationErrors('value.0.commissions');
 });
 
 it('cell: the write needs the module update permission, like every other cell', function () {
-    $actor = offerLineWriteActor(['view', 'viewAll']);
+    $actor = offerLineWriteActor(['viewAny', 'view', 'viewAll']);
     $category = offerLineCategory();
     $quote = offerLineRequest($actor, $category);
     $product = Product::factory()->create(['category_id' => $category->id]);
@@ -473,4 +503,35 @@ it('cell: the write needs the module update permission, like every other cell', 
         'column' => 'offer_lines',
         'value' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]],
     ])->assertForbidden();
+});
+
+it('cell: the per-field matrix decides too — offer_lines denied is read-only in the config AND a 403 on write', function () {
+    $actor = offerLineMatrixActor([
+        'resource' => 'request-management',
+        'field' => 'offer_lines',
+        'visible' => true,
+        'editable' => false,
+        'required' => false,
+    ]);
+    $category = offerLineCategory();
+    $quote = offerLineRequest($actor, $category);
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    $columns = collect($this->getJson('/api/tables/request-management/columns')->assertOk()->json('data.columns'))
+        ->keyBy('id');
+
+    // The UI hint first: the cell never offers the editor...
+    expect($columns['offer_lines']['editable'])->toBeFalse()
+        // ...while a sibling editable column is untouched, so this is the ONE
+        // key's gate and not a blanket denial.
+        ->and($columns['next_callback_at']['editable'])->toBeTrue();
+
+    // ...and the endpoint refuses regardless of what the client believes.
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'offer_lines',
+        'value' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]],
+    ])->assertForbidden();
+
+    expect($quote->offerLines()->count())->toBe(0);
 });

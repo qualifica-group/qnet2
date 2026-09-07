@@ -2,7 +2,13 @@ import { useMemo } from 'react'
 import type { TFunction } from 'i18next'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { DetailField, DetailGrid, DetailSection } from '@/components/detail/detail-panel'
+import { SlidersHorizontal } from 'lucide-react'
+import {
+  RecordCard,
+  RecordField,
+  RecordFieldList,
+  RecordSection,
+} from '@/components/detail/record-panel'
 import { Form } from '@/components/ui/form'
 import { AttributeLayoutRenderer } from '@/features/attributes/attribute-layout-renderer'
 import type { AttributeLayoutFormShape, LayoutBlob } from '@/features/attributes/attribute-layout-types'
@@ -46,10 +52,12 @@ function formatAttributeValue(attribute: ApplicableAttribute, value: CustomField
 
 /**
  * Read-only "Attributes" section of the product detail view (spec 0061): one
- * `DetailField` per PRODUCT-context attribute that actually has a value.
- * Renders nothing when the product carries no attribute value (additive
- * feature, zero-code for a product predating attribute assignment). This is
- * the FLAT fallback (AC-007) — byte-for-byte the pre-0062 markup, untouched.
+ * field row per PRODUCT-context attribute that actually has a value. Renders
+ * nothing when the product carries no attribute value (additive feature,
+ * zero-cost for a product predating attribute assignment). This is the FLAT
+ * fallback (AC-007) — same valued-only content as before, now in the record
+ * kit's own card so it sits on the detail canvas exactly like the configured
+ * layout's sections do, instead of a second kit's chrome next to them.
  */
 function ProductAttributeValuesFlat({ attributes, values }: Omit<ProductAttributeValuesSectionProps, 'layout'>) {
   const { t } = useTranslation()
@@ -60,15 +68,19 @@ function ProductAttributeValuesFlat({ attributes, values }: Omit<ProductAttribut
   }
 
   return (
-    <DetailSection title={t('products.form.dynamicFields.title')}>
-      <DetailGrid>
-        {valued.map((attribute) => (
-          <DetailField key={attribute.code} label={attribute.name}>
-            {formatAttributeValue(attribute, values[attribute.code], t)}
-          </DetailField>
-        ))}
-      </DetailGrid>
-    </DetailSection>
+    <RecordCard>
+      <div className="p-4">
+        <RecordSection title={t('products.form.dynamicFields.title')} icon={<SlidersHorizontal />}>
+          <RecordFieldList>
+            {valued.map((attribute) => (
+              <RecordField key={attribute.code} label={attribute.name}>
+                {formatAttributeValue(attribute, values[attribute.code], t)}
+              </RecordField>
+            ))}
+          </RecordFieldList>
+        </RecordSection>
+      </div>
+    </RecordCard>
   )
 }
 

@@ -1,39 +1,41 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Package } from 'lucide-react'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Form, FormControl } from '@/components/ui/form'
-import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Form } from '@/components/ui/form'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { useEnumOptions } from '@/features/config/use-config'
+  MAIN_COLUMN_CLASS,
+  PANEL_GRID_CLASS,
+  SIDE_COLUMN_CLASS,
+} from '@/components/record-form/layout'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import { collectSelectableIds, flattenCategoryTree } from '@/features/product-categories/flatten-tree'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useProductForm } from '@/features/products/use-product-form'
 import { ProductDynamicFields } from '@/features/products/product-dynamic-fields'
+import { ProductFormHeader } from '@/features/products/product-form-header'
+import {
+  ProductFormSummary,
+  type ProductSelectedRelations,
+} from '@/features/products/product-form-summary'
+import { ProductIdentitySection } from '@/features/products/product-identity-section'
+import {
+  ProductClassificationSection,
+  type ProductCategoryPicker,
+} from '@/features/products/product-classification-section'
+import { ProductPricingSection } from '@/features/products/product-pricing-section'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
-import { RelationSelectField } from '@/components/form/relation-select-field'
-import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
-import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
-import { UNITS_OF_MEASURE_FOR_SELECT_RESOURCE } from '@/features/units-of-measure/for-select-api'
-import { PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE } from '@/features/product-typologies/for-select-api'
-import type { ProductDetail, ProductFormMode, ProductType } from '@/features/products/types'
+import type { ProductDetail, ProductFormMode } from '@/features/products/types'
 
 /** Hoisted so the create-mode memo keeps a stable reference across renders. */
 const EMPTY_CATEGORY_IDS: readonly number[] = []
 
-/** Filters the supplier picker's `registries` for-select to `is_supplier` records only. */
-const SUPPLIER_PARAMS: Record<string, string | number> = { is_supplier: 1 }
+/**
+ * DOM id bridging the sticky header's save action to the RHF `<form>` below,
+ * exactly as the Opportunita' and Gestione Richieste screens do: the same id
+ * serves the footer actions, so both copies of the button submit this form
+ * without either of them nesting the other.
+ */
+const PRODUCT_FORM_ID = 'product-form'
 
 interface ProductFormBodyProps {
   mode: ProductFormMode
@@ -43,23 +45,29 @@ interface ProductFormBodyProps {
   initialCode?: string
 }
 
-/** Formats a raw numeric field's RHF value for a controlled `<input type="number">`. */
-function numberInputValue(value: number | null): string {
-  return value === null ? '' : String(value)
-}
-
-/** Placeholder shown for the manual `code` field in create, declaring the server-generation fallback (spec 0065, mirrors `ProjectFormBody`). */
-const CODE_PLACEHOLDER_KEY = 'products.form.codePlaceholder'
-
 /**
- * The product create/edit form UI: generic fields (name, description, cost,
- * price, category) wrapped in `MetaField` (spec 0004), followed by the
- * universal custom fields section (spec 0021). All non-render logic lives in
- * `useProductForm`.
+ * The product create/edit form UI, built on the SAME record-form skeleton as
+ * Opportunita' and Gestione Richieste (`@/components/record-form` —
+ * `RECORD_HEADER_CLASS` through `ProductFormHeader`, `PANEL_GRID_CLASS`/
+ * `SIDE_COLUMN_CLASS`/`MAIN_COLUMN_CLASS`, `FIELD_GRID_CLASS`, `SummaryRow`,
+ * `RecordFormActions`), not a look-alike: the layout primitives are literally
+ * the same objects, so the screens cannot drift apart with a later edit to one
+ * of them.
+ *
+ *  - `@container` + `bg-surface`, sticky identity bar carrying the live
+ *    code/category pills and the save/cancel actions, repeated at the foot;
+ *  - two columns at `@4xl` — the read-only recap FIRST in the DOM (narrow
+ *    containers read it before the long form), reordered to the right;
+ *  - main column = identity, classification, pricing/supply, then the
+ *    category-driven attributes and the universal custom fields.
+ *
+ * This file only composes: each card owns its own fields and its own
+ * visibility gate (spec 0004 `MetaField`), and all non-render logic still
+ * lives in `useProductForm`.
  */
 export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: ProductFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission, canResource } = useResourcePermissions()
+  const { canResource } = useResourcePermissions()
   const {
     form,
     serverError,
@@ -75,7 +83,7 @@ export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: Prod
   // (see `useProductFormMeta`'s docblock) — gate the whole dynamic block on
   // the same ability the save button itself requires.
   const attributesEditable = canResource(mode.type === 'edit' ? 'update' : 'create')
-  const productTypeOptions = useEnumOptions('product_type')
+  const { isSubmitting } = form.formState
 
   // Spec 0074: this picker is a DESTINATION served by the structural tree
   // cache, so it filters client-side. The product's saved category is kept
@@ -96,301 +104,91 @@ export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: Prod
       }),
     [treeQuery.data, savedCategoryIds],
   )
+  const categories: ProductCategoryPicker = {
+    options: categoryOptions,
+    isPending: treeQuery.isPending,
+    isError: treeQuery.isError,
+    onRetry: () => void treeQuery.refetch(),
+  }
 
   // Edit-mode hydration for the relation pickers below: the loaded product's
-  // `{id, name}` projections, already the shape `RelationSelectField` expects.
-  const selectedVatRate = mode.type === 'edit' ? mode.product.vat_rate : null
-  const selectedSupplier = mode.type === 'edit' ? mode.product.supplier : null
-  const selectedUnitOfMeasure = mode.type === 'edit' ? mode.product.unit_of_measure : null
-  const selectedProductTypology = mode.type === 'edit' ? mode.product.product_typology : null
-
-  const identityVisible =
-    fieldPermission('code').visible ||
-    fieldPermission('name').visible ||
-    fieldPermission('description').visible ||
-    fieldPermission('cost').visible ||
-    fieldPermission('price').visible ||
-    fieldPermission('category_id').visible ||
-    fieldPermission('product_type').visible ||
-    fieldPermission('vat_rate_id').visible ||
-    fieldPermission('supplier_id').visible ||
-    fieldPermission('unit_of_measure_id').visible ||
-    fieldPermission('product_typology_id').visible
+  // `{id, name}` projections, already the shape `RelationSelectField` and the
+  // side recap expect.
+  const selectedRelations: ProductSelectedRelations = {
+    vatRate: mode.type === 'edit' ? mode.product.vat_rate : null,
+    supplier: mode.type === 'edit' ? mode.product.supplier : null,
+    unitOfMeasure: mode.type === 'edit' ? mode.product.unit_of_measure : null,
+    productTypology: mode.type === 'edit' ? mode.product.product_typology : null,
+  }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
+    <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={Package}
-              title={t('products.form.sections.identity.title')}
-              description={t('products.form.sections.identity.description')}
+        <ProductFormHeader
+          control={form.control}
+          isEdit={mode.type === 'edit'}
+          categoryOptions={categoryOptions}
+          formId={PRODUCT_FORM_ID}
+          isSubmitting={isSubmitting}
+          submitError={serverError}
+          onCancel={onCancel}
+        />
+
+        <div className={PANEL_GRID_CLASS}>
+          {/* First in the DOM so a narrow container reads it before the form,
+              reordered to the right on two columns — the panel's own rule. */}
+          <aside className={SIDE_COLUMN_CLASS}>
+            <ProductFormSummary
+              control={form.control}
+              categoryOptions={categoryOptions}
+              selected={selectedRelations}
+            />
+          </aside>
+
+          <div className={MAIN_COLUMN_CLASS}>
+            {/* `display: contents`: this native `<form>` only scopes the HTML
+                submit boundary, it must not become an extra flex box. */}
+            <form
+              id={PRODUCT_FORM_ID}
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="contents"
+              noValidate
             >
-              <MetaField
-                control={form.control}
-                name="code"
-                metaKey="code"
-                label={t('products.form.code')}
-                hint={t('products.form.hints.code')}
-                hintLabel={t('products.form.code')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input
-                      autoComplete="off"
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      placeholder={t(CODE_PLACEHOLDER_KEY)}
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
+              <ProductIdentitySection control={form.control} />
 
-              <MetaField
+              <ProductClassificationSection
                 control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('products.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="description"
-                metaKey="description"
-                label={t('products.form.description')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="cost"
-                metaKey="cost"
-                label={t('products.form.cost')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={numberInputValue(field.value)}
-                      onChange={(event) =>
-                        field.onChange(event.target.value === '' ? null : Number(event.target.value))
-                      }
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="price"
-                metaKey="price"
-                label={t('products.form.price')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={numberInputValue(field.value)}
-                      onChange={(event) =>
-                        field.onChange(event.target.value === '' ? null : Number(event.target.value))
-                      }
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="category_id"
-                metaKey="category_id"
-                label={t('products.form.category')}
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <SearchableSelect
-                      value={field.value}
-                      onChange={(next) => {
-                        field.onChange(next)
-                        onCategoryChange(next)
-                      }}
-                      options={categoryOptions}
-                      isPending={treeQuery.isPending}
-                      isError={treeQuery.isError}
-                      onRetry={() => void treeQuery.refetch()}
-                      disabled={disabled}
-                      labels={{
-                        placeholder: t('products.form.categoryPlaceholder'),
-                        searchPlaceholder: t('products.form.categorySearch'),
-                        empty: t('products.form.categoryEmpty'),
-                        noMatch: t('products.form.categoryNoMatch'),
-                        error: t('products.form.categoryError'),
-                        retry: t('common.retry'),
-                      }}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <RelationSelectField
-                control={form.control}
-                name="vat_rate_id"
-                metaKey="vat_rate_id"
-                label={t('products.form.vatRate')}
-                resource={VAT_RATES_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('products.form.vatRateSearch')}
-                selected={selectedVatRate}
-                placeholder={t('products.form.vatRatePlaceholder')}
-                emptyLabel={t('products.form.vatRateEmpty')}
-                errorLabel={t('products.form.vatRateError')}
-                clearLabel={t('common.clear')}
-                retryLabel={t('common.retry')}
+                categories={categories}
+                selected={selectedRelations}
+                onCategoryChange={onCategoryChange}
               />
 
-              <RelationSelectField
+              <ProductPricingSection control={form.control} selected={selectedRelations} />
+
+              <ProductDynamicFields
                 control={form.control}
-                name="supplier_id"
-                metaKey="supplier_id"
-                label={t('products.form.supplier')}
-                resource={REGISTRIES_FOR_SELECT_RESOURCE}
-                params={SUPPLIER_PARAMS}
-                searchPlaceholder={t('products.form.supplierSearch')}
-                selected={selectedSupplier}
-                placeholder={t('products.form.supplierPlaceholder')}
-                emptyLabel={t('products.form.supplierEmpty')}
-                errorLabel={t('products.form.supplierError')}
-                clearLabel={t('common.clear')}
-                retryLabel={t('common.retry')}
+                attributes={productAttributes}
+                layout={productLayout}
+                mode={layoutFormMode}
+                isLoading={productAttributesLoading}
+                disabled={!attributesEditable}
               />
 
-              <RelationSelectField
-                control={form.control}
-                name="unit_of_measure_id"
-                metaKey="unit_of_measure_id"
-                label={t('products.form.unitOfMeasure')}
-                resource={UNITS_OF_MEASURE_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('products.form.unitOfMeasureSearch')}
-                selected={selectedUnitOfMeasure}
-                placeholder={t('products.form.unitOfMeasurePlaceholder')}
-                emptyLabel={t('products.form.unitOfMeasureEmpty')}
-                errorLabel={t('products.form.unitOfMeasureError')}
-                clearLabel={t('common.clear')}
-                retryLabel={t('common.retry')}
+              <CustomFieldsSection resource="products" control={form.control} />
+
+              {/* The same actions the identity bar carries, repeated where the
+                  form ends: it is long enough that the operator finishes typing
+                  far from the sticky bar. */}
+              <RecordFormActions
+                formId={PRODUCT_FORM_ID}
+                isSubmitting={isSubmitting}
+                submitLabel={t('products.form.save')}
+                submittingLabel={t('products.form.saving')}
+                cancel={{ label: t('products.form.cancel'), onCancel }}
               />
-
-              <RelationSelectField
-                control={form.control}
-                name="product_typology_id"
-                metaKey="product_typology_id"
-                label={t('products.form.productTypology')}
-                resource={PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('products.form.productTypologySearch')}
-                selected={selectedProductTypology}
-                placeholder={t('products.form.productTypologyPlaceholder')}
-                emptyLabel={t('products.form.productTypologyEmpty')}
-                errorLabel={t('products.form.productTypologyError')}
-                clearLabel={t('common.clear')}
-                retryLabel={t('common.retry')}
-              />
-
-              <MetaField
-                control={form.control}
-                name="product_type"
-                metaKey="product_type"
-                label={t('products.form.productType')}
-              >
-                {({ field, disabled }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(next) => field.onChange(next as ProductType)}
-                    disabled={disabled}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {productTypeOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          <ProductDynamicFields
-            control={form.control}
-            attributes={productAttributes}
-            layout={productLayout}
-            mode={layoutFormMode}
-            isLoading={productAttributesLoading}
-            disabled={!attributesEditable}
-          />
-
-          <CustomFieldsSection resource="products" control={form.control} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('products.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('products.form.saving') : t('products.form.save')}
-            </Button>
+            </form>
           </div>
-        </form>
+        </div>
       </Form>
     </div>
   )

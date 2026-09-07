@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ProductForm } from '@/features/products/product-form'
@@ -188,7 +188,7 @@ describe('ProductForm — dynamic attribute fields (spec 0061)', () => {
 
     const ramField = await screen.findByRole('spinbutton', { name: 'RAM (GB)' })
     fireEvent.change(ramField, { target: { value: '16' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
     const payload = createProductMock.mock.calls[0][0]
@@ -293,7 +293,7 @@ describe('ProductForm — configured attribute layout (spec 0062 AC-014)', () =>
 
     const ramField = await screen.findByRole('spinbutton', { name: 'RAM (GB)' })
     fireEvent.change(ramField, { target: { value: '16' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
     const payload = createProductMock.mock.calls[0][0]

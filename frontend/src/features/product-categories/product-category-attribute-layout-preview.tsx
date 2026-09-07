@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { DetailSection } from '@/components/detail/detail-panel'
+import { RecordCard, RecordSection } from '@/components/detail/record-panel'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -45,51 +45,55 @@ export function ProductCategoryAttributeLayoutPreview({ categoryId }: ProductCat
   })
 
   return (
-    <DetailSection title={t('section.title')}>
-      <p className="mb-3 text-xs text-muted-foreground">{t('section.description')}</p>
+    <RecordCard>
+      <div className="p-4">
+        <RecordSection title={t('section.title')}>
+          <p className="text-xs text-muted-foreground">{t('section.description')}</p>
 
-      <div className="flex flex-col gap-3">
-        <AttributeLayoutContextModeSelector
-          context={context}
-          onContextChange={setContext}
-          scope={scope}
-          onScopeChange={setScope}
-        />
+          <div className="flex flex-col gap-3">
+            <AttributeLayoutContextModeSelector
+              context={context}
+              onContextChange={setContext}
+              scope={scope}
+              onScopeChange={setScope}
+            />
 
-        {scope !== 'all' && !hasOverride && draft.sections.length > 0 ? (
-          <p className="text-xs text-muted-foreground italic">{t('section.inheritsShared')}</p>
-        ) : null}
+            {scope !== 'all' && !hasOverride && draft.sections.length > 0 ? (
+              <p className="text-xs text-muted-foreground italic">{t('section.inheritsShared')}</p>
+            ) : null}
 
-        {isLoading ? (
-          <div className="flex flex-col gap-1.5" aria-hidden="true">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-24 w-full" />
+            {isLoading ? (
+              <div className="flex flex-col gap-1.5" aria-hidden="true">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : isError ? (
+              <div className="flex flex-col items-start gap-3">
+                <p className="text-sm text-destructive" role="alert">
+                  {t('section.loadError')}
+                </p>
+                <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                  {t('section.retry')}
+                </Button>
+              </div>
+            ) : draft.sections.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">{t('section.previewEmpty')}</p>
+            ) : (
+              <Form {...previewForm}>
+                <form>
+                  <AttributeLayoutRenderer
+                    layout={draft}
+                    attributes={attributes}
+                    control={previewForm.control}
+                    mode={previewModeForScope(scope)}
+                    readOnly
+                  />
+                </form>
+              </Form>
+            )}
           </div>
-        ) : isError ? (
-          <div className="flex flex-col items-start gap-3">
-            <p className="text-sm text-destructive" role="alert">
-              {t('section.loadError')}
-            </p>
-            <Button variant="outline" size="sm" onClick={() => void refetch()}>
-              {t('section.retry')}
-            </Button>
-          </div>
-        ) : draft.sections.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">{t('section.previewEmpty')}</p>
-        ) : (
-          <Form {...previewForm}>
-            <form>
-              <AttributeLayoutRenderer
-                layout={draft}
-                attributes={attributes}
-                control={previewForm.control}
-                mode={previewModeForScope(scope)}
-                readOnly
-              />
-            </form>
-          </Form>
-        )}
+        </RecordSection>
       </div>
-    </DetailSection>
+    </RecordCard>
   )
 }

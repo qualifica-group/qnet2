@@ -130,9 +130,11 @@ describe('ProductCategoryFormBody — attribute-layout NOT mounted (spec 0062 re
       { wrapper: wrapper() },
     )
 
-    // The category form's own submit button IS inside a <form>.
-    const saveButton = await screen.findByRole('button', { name: 'Save' })
-    expect(saveButton.closest('form')).not.toBeNull()
+    // The form's own submit exists twice now (identity bar + footer, spec-wide
+    // record-form skeleton): the footer copy is the one INSIDE the <form>, the
+    // bar's reaches it through the HTML `form=` attribute.
+    const saveButtons = await screen.findAllByRole('button', { name: 'Save' })
+    expect(saveButtons.some((button) => button.closest('form') !== null)).toBe(true)
 
     expect(screen.queryByRole('button', { name: 'Save layout' })).not.toBeInTheDocument()
     await waitFor(() => expect(fetchAttributeLayoutMock).not.toHaveBeenCalled())
@@ -143,7 +145,7 @@ describe('ProductCategoryFormBody — attribute-layout NOT mounted (spec 0062 re
       wrapper: wrapper(),
     })
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     expect(screen.queryByRole('button', { name: 'Save layout' })).not.toBeInTheDocument()
     expect(fetchAttributeLayoutMock).not.toHaveBeenCalled()
@@ -179,7 +181,7 @@ describe('ProductCategoryFormBody — per-context inheritance switches', () => {
       { wrapper: wrapper() },
     )
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     const productSwitch = within(attributeSection('Product attributes')).getByRole('switch')
     const quoteSwitch = within(attributeSection('Quote attributes')).getByRole('switch')
@@ -198,7 +200,7 @@ describe('ProductCategoryFormBody — per-context inheritance switches', () => {
       { wrapper: wrapper() },
     )
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     // Scoped by accessible name: the rules section carries its own, unrelated
     // switches (quote flag, single offer, selectable), which a bare role query
@@ -213,7 +215,7 @@ describe('ProductCategoryFormBody — selectable switch (spec 0074)', () => {
       wrapper: wrapper(),
     })
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     const selectableSwitch = screen.getByRole('switch', { name: 'Selectable' })
     expect(selectableSwitch).toBeChecked()
@@ -236,7 +238,7 @@ describe('ProductCategoryFormBody — selectable switch (spec 0074)', () => {
       { wrapper: wrapper() },
     )
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     const selectableSwitch = screen.getByRole('switch', { name: 'Selectable' })
     expect(selectableSwitch).not.toBeChecked()
@@ -255,7 +257,7 @@ describe('ProductCategoryFormBody — management rules section', () => {
       wrapper: wrapper(),
     })
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     const rules = formSection('Management rules')
 
@@ -274,7 +276,7 @@ describe('ProductCategoryFormBody — management rules section', () => {
       wrapper: wrapper(),
     })
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     expect(within(formSection('Details')).queryAllByRole('switch')).toHaveLength(0)
   })
@@ -286,7 +288,7 @@ describe('ProductCategoryFormBody — manager labels section (spec 0080)', () =>
       wrapper: wrapper(),
     })
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     for (const n of [1, 2, 3, 4]) {
       const input = screen.getByRole('textbox', { name: `A.M. ${n}` })
@@ -305,7 +307,7 @@ describe('ProductCategoryFormBody — manager labels section (spec 0080)', () =>
       { wrapper: wrapper() },
     )
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     expect(screen.getByRole('textbox', { name: 'A.M. 1' })).toHaveValue('Commercial')
     expect(screen.getByRole('textbox', { name: 'A.M. 3' })).toHaveValue('Consultant')
@@ -324,7 +326,7 @@ describe('ProductCategoryFormBody — manager labels section (spec 0080)', () =>
       { wrapper: wrapper() },
     )
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
     await screen.findByText('Operator')
 
     const toggle = within(formSection('Account managers')).getByRole('switch')
@@ -341,7 +343,7 @@ describe('ProductCategoryFormBody — manager labels section (spec 0080)', () =>
       wrapper: wrapper(),
     })
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
     expect(screen.queryByRole('textbox', { name: 'A.M. 5' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Add level' }))
@@ -368,7 +370,7 @@ describe('ProductCategoryFormBody — manager labels section (spec 0080)', () =>
       { wrapper: wrapper() },
     )
 
-    await screen.findByRole('button', { name: 'Save' })
+    await screen.findAllByRole('button', { name: 'Save' })
 
     expect(screen.getByRole('textbox', { name: 'A.M. 12' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add level' })).toBeDisabled()

@@ -72,6 +72,11 @@ export const productCategories = {
   title: 'Categorie Prodotto',
   subtitle: 'Sfoglia, filtra e gestisci le categorie prodotto.',
   forbidden: 'Non hai i permessi per visualizzare le categorie prodotto.',
+  // Pill dell'identita', condivise tra la barra del form e la scheda.
+  badges: {
+    root: 'Radice',
+    notSelectable: 'Non selezionabile',
+  },
   columns: {
     name: 'Nome',
     parent: 'Padre',
@@ -98,6 +103,7 @@ export const productCategories = {
     singleQuotePerOpportunityInherited: 'Ereditata da {{category}}',
     generatesContractInherited: 'Ereditata da {{category}}',
     managerLabelInherited: 'Ereditata',
+    inheritedCount: '+{{count}} ereditati',
   },
   bulkMove: {
     tableButton: 'Sposta sotto…',
@@ -174,6 +180,9 @@ export const productCategories = {
       'La modalità di gestione è ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
     managementModeSingle: 'Singola (una riga per scheda)',
     managementModeMultiple: 'Multipla (più righe per scheda)',
+    // Versione corta per il riepilogo laterale, dove la riga e' troncata.
+    managementModeSingleShort: 'Singola',
+    managementModeMultipleShort: 'Multipla',
     requiresQuoteInfo:
       "Stabilisce se le opportunità di questo ramo passano o meno da un'offerta. Se attivo, il modulo Offerte fa parte del flusso per ogni prodotto di questa categoria e delle sue sottocategorie; se disattivo, il ramo si lavora senza. La regola appartiene alla categoria RADICE e tutto il sottoalbero la segue.",
     requiresQuoteInfoLabel: 'Maggiori informazioni su Prevede preventivo',
@@ -211,6 +220,10 @@ export const productCategories = {
     inheritsManagerLabelsHint:
       'Se disattivato, questa categoria ignora i suoi antenati: né lei né le sue sottocategorie ereditano queste etichette dai livelli superiori.',
     inheritedManagerLabels: 'Ereditate dalle categorie antenate',
+    summary: {
+      title: 'Riepilogo',
+      description: 'Quello che stai per salvare.',
+    },
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
@@ -284,6 +297,10 @@ export const products = {
     required: 'Seleziona almeno un prodotto di interesse.',
   },
   empty: 'Nessun prodotto selezionato.',
+  // Differenza prezzo/costo, mostrata sia nella scheda (KPI) sia nel form
+  // (riquadro sotto i due campi e riga del riepilogo laterale).
+  margin: 'Margine',
+  marginPercent: '{{percent}}% sul prezzo',
   columns: {
     name: 'Nome',
     description: 'Descrizione',
@@ -360,10 +377,22 @@ export const products = {
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il prodotto. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo prodotto.',
+    summary: {
+      title: 'Riepilogo',
+      description: 'Quello che stai per salvare.',
+    },
     sections: {
       identity: {
-        title: 'Dettagli',
-        description: 'Codice, nome, descrizione, prezzi e categoria del prodotto.',
+        title: 'Anagrafica',
+        description: 'Codice, nome e descrizione del prodotto.',
+      },
+      classification: {
+        title: 'Classificazione',
+        description: 'Categoria, tipologia, unita di misura e tipo del prodotto.',
+      },
+      pricing: {
+        title: 'Prezzi e fornitura',
+        description: 'Costo, prezzo, aliquota IVA e fornitore.',
       },
     },
     hints: {

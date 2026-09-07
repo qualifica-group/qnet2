@@ -83,70 +83,283 @@ payload viene scartato e il check si spegne in silenzio: fail-safe, ma silenzios
 coverage preesistente.
 
 
+## GESTIONE RICHIESTE — COLONNA G.A. 3 ACCANTO ALLA GA2 (2026-09-07) — VERDE, NON COMMITTATO
 
-## MODIFICA RAPIDA DELLE LINEE DI PRODOTTO IN GRIGLIA — VERDE, NON COMMITTATO (2026-09-07)
+**Direttiva utente.** "gestione richieste, voglio che si aggiunge una colonna come ga2, voglio un
+ga3. La colonna dovra' essere editabile come il ga2 (ovviamente la colonna sia di ga2 che ga3
+dovra' contenere la label della categoria di appartenenza come succede nel form)."
 
-**Direttiva utente.** "Gestione Richieste - modifica rapida della Linea di Prodotto, la colonna
-linee di prodotto non e' piu' editabile, voglio che ci sia la possibilita' di renderlo editabile.
-So che ora e' una riga di prodotto dell'offerta, voglio che nell'edit si possa editare anche tutta
-la riga dell'offerta". Forma confermata in conversazione: **dialog aperto dalla cella**, non editor
-inline.
+**Cosa c'e' adesso.** Il grid `request-management` ha DUE colonne slot Gestore Account, non piu'
+una: `operator_ga2` (invariata) e la nuova **`manager_ga3`**. Entrambe editabili in-cella con il
+picker `users/for-select`, entrambe rietichettate dal tab categoria attivo.
 
-**Perche' NON un cell editor AG Grid.** Una riga d'offerta si compone con `AsyncPaginatedSelect`
-(prodotto e aliquota), il cui popup Radix portala su `document.body`: dentro un popup di cella
-`stopEditingWhenCellsLoseFocus` smonta l'editor a meta' scelta — e' esattamente la ragione per cui
-`ProductLinesCellEditor`/`MultiSelectCellEditor` hanno liste inline fatte a mano. In un Dialog quei
-picker funzionano (`setTrigger` li riportala dentro `[data-slot="dialog-content"]`), quindi il
-dialog e' cio' che permette di **riusare verbatim** il row editor delle Offerte invece di clonarlo.
+**Nomi da rispettare (nuovi).**
+- colonna: `manager_ga3` — chiave i18n di default `requestManagement.columns.managerGa3`
+  ("Gestore account (GA3)" / "Account manager (GA3)");
+- chiave campo (permesso E write): **`manager_ga3_id`** — `editableField` della colonna,
+  `FieldDefinition` in `RequestManagementAuthorization`, chiave riconosciuta da
+  `updateWork()` (Step 3-bis);
+- posizione: `App\Support\ManagerPositions::GA3` (= 3), unica sede del numero;
+- catalogo: `App\Tables\RequestManagement\RequestManagerColumns` (NUOVO) — dichiara le due
+  colonne G.A. e la mappa `POSITIONS` (posizione -> column id) che il decorator usa per
+  rietichettare. `RequestColumnCatalog` fa lo spread (era a 446 righe, ora 389).
 
-**BACKEND: NESSUNA MODIFICA FUNZIONALE.** Il canale di scrittura esisteva gia' dal 2026-08-07:
-`updateWork(['offer_lines' => ...])` -> `RequestOfferLineWriter` -> `QuoteService::update()`, e il
-permesso di campo `offer_lines` e' gia' in `RequestManagementAuthorization`. `OfferLinesColumn`
-resta `'editable' => false` (il motore inline generico non c'entra): aggiornato solo il docblock,
-che dichiarava ancora "written exclusively by the Offerte module" — falso dal 2026-08-07.
+**Decisioni da NON reinterpretare.**
+1. `manager_ga3_id` e' una chiave di permesso SEPARATA da `manager_slots`: `editableField` e'
+   insieme chiave-permesso e chiave che `updateCell()` riceve, quindi due colonne con la stessa
+   chiave sarebbero indistinguibili in scrittura (la classe di bug "200 silenzioso" di spec 0086
+   mt06). Conseguenza operativa: **restringere `manager_slots` nel matrix ruoli NON restringe
+   GA3**, sono due righe indipendenti.
+2. Il picker GA3 **non** e' filtrato per Sede operativa (nessuno `relation.scope`): nel form solo
+   lo slot Operatore lo e' (`operatorSlotParams`).
+3. Una modifica GA3 **non** manda notifica di assegnazione e non tocca `quotes.operator_id`: GA3
+   non scopa visibilita' (`RequestManagementScope` legge solo `operator_id`) e "un rimescolamento
+   che lascia l'Operatore al suo posto non assegna nessuno" (spec 0097 D-6/AC-007).
+4. Rietichettatura: `RequestManagementScopedTableDefinition::relabelManagerColumns()` cicla su
+   `RequestManagerColumns::POSITIONS`. Una label configurata su una posizione senza colonna
+   propria (es. `manager_labels['4']`) non rietichetta nulla.
 
-**Frontend — cosa e' stato aggiunto.**
-- `offer-lines-dialog-context.ts`: opener imperativo `openOfferLines(quoteId)` via context, no-op di
-  default. Stesso taglio di `use-field-change-request-dialog.ts`: la cella dipende dal solo hook.
-- `offer-lines-dialog.tsx`: `OfferLinesDialogProvider` (montato UNA volta attorno alla `TableView`,
-  `onSaved={refreshGrid}`) + il dialog. Fetch fresh-on-open del pannello (`useEntityDetail`),
-  `ResourcePermissionsProvider` con i permessi dell'envelope, footer Annulla/Salva.
-  **Vincolo rispettato:** nessun `overflow` sul `DialogContent` (il menu dei picker ci viene
-  portalato dentro), lo scroller e' il wrapper interno.
-- `use-offer-lines-form.ts`: RHF+Zod sul solo `{product_lines (watch), offer_lines}`; diff sparso —
-  collezione invariata = **nessuna PATCH**, il dialog si chiude e basta; 422 mappato su `offer_lines`.
-- `column-renderers.tsx`: `offer_lines` passa da `RefNamesCell` a `OfferLinesCell`. **Correzione
-  utente in corsa (2026-09-07):** niente icona matita — **l'intera cella e' il bottone**, un click e
-  si apre il popup, "come le altre colonne" (`singleClickEdit`). E' un `<button>` vero, non un div
-  cliccabile: deve restare raggiungibile da tastiera come gli editor che sostituisce, e il suo
-  accessible name dice l'AZIONE piu' i prodotti (il testo visibile da solo si annuncerebbe come
-  etichetta). Cliccabile anche a cella VUOTA (una richiesta senza righe e' proprio quella che deve
-  poterne acquisire una). **Gate = `row.editable`**, cioe' `TableDefinition::authorizeUpdate()` per
-  QUELLA riga — la stessa bandiera con cui `resolveEditing()` abilita ogni altra colonna editabile,
-  non l'ability globale: l'affordance compare esattamente dove la scrittura passerebbe.
+**Write path.** `manager_ga3` -> `manager_ga3_id` -> `updateWork()` Step 3-bis ->
+`RequestAttributionWriter::applyManagerGa3()` -> `RequestOperatorWriter::applyGa3()` ->
+`QuoteManagerWriter::sync()` con `promoteToOpportunity: true` (come ogni canale di questo modulo).
+`slotsWithOperator()` e' diventato `slotsWithManagerAt($quote, $position, $userId)`, condiviso con
+`apply()` (GA2): stesso comportamento, zero duplicazione. `apply()`/`applySlots()` ora fanno anche
+`unsetRelation('managers')` — `managers` e' diventata una relazione che il grid PROIETTA, quindi
+una copia stale finirebbe nella risposta di fallback di `TableCellUpdateService`.
 
-**Split fatti (riuso, non cloni).**
-- `request-offer-lines-section.tsx` ora esporta `RequestOfferLinesField` (il campo nudo, montato dal
-  dialog) e `RequestOfferLinesSection` (= field + `FormSection`, montato da pannello e create form).
-  Chi cerca il contenuto dentro `FormSection` lo trova nel field.
-- `relationLabel` e' uscito da `rich-cells.tsx` nel nuovo modulo `features/table/relation-label.ts`:
-  esportarlo da un file di componenti fa scattare `react-refresh/only-export-components` (regola NON
-  indebolita).
+**Lettura di riga.** `RequestRowMapper::map()` proietta `manager_ga3` dallo slot 3 del pivot
+(`managerAt()`); `RequestManagementTableDefinition::baseQuery()` eager-loada `managers.avatar`
+(GA3 non ha FK denormalizzata come `operator_id`). Il file e' a **500 righe esatte** — hard limit:
+chi ci aggiunge qualcosa deve splittare.
 
-**Naming/contratti da rispettare.** Il dialog salva `{ offer_lines: QuoteLineInput[] }` sullo stesso
-`PATCH /api/request-management/{quote}` del pannello: `commissions` non viaggiano mai (l'endpoint le
-proibisce e il server preserva quelle configurate dalle Offerte), `sort_order` lo assegna
-`toLineInputs` dalla posizione.
+**Test eseguiti (verdi).**
+- `backend/tests/Feature/RequestManagement/RequestManagementManagerGa3ColumnTest.php` (NUOVO, 9
+  test): catalogo colonna, rietichettatura di entrambe le posizioni, proiezione di riga, PATCH
+  in-cella (assegna / svuota / MUOVE un utente gia' in un altro slot), 403 con
+  `manager_ga3_id` non editabile.
+- `frontend/.../column-renderers.test.tsx`: GA2 e GA3 passano dallo stesso `UserCell`.
+- Suite intere: Pest 6385 test (1 skipped) EXIT=0 — **da lanciare con `XDEBUG_MODE=off`**, con
+  Xdebug attivo la run completa segfaulta (139) senza output, non e' un fallimento dei test.
+  Vitest 4395 test. `tsc -b --force` EXIT=0. Pint pulito.
 
-**Segnalato, NON fatto (fuori scope).** Il tetto 200 righe e' triplicato: `MAX_LINES_PER_TAB`
-(quote-schema, gia' esportato e ora riusato qui) piu' due `MAX_OFFER_LINES` privati identici in
-`request-work-schema.ts` e `request-create-schema.ts`. Vanno ricondotti al primo.
+**Prossimo passo.** Chiedere all'utente se committare (CLAUDE.md §3.6: nessun commit senza
+via libera esplicita).
 
-**Verifica ESEGUITA.** Vitest suite completa **594 file / 4370 test passed** (nuovo
-`offer-lines-dialog.test.tsx`, 7 casi: cella-bottone, riga non editabile = cella di sola lettura,
-apertura+idratazione, assenza provvigioni, salvataggio con refresh griglia, chiusura senza request se
-nulla e' cambiato, blocco su riga incompleta). `npx tsc -b --force` EXIT=0. ESLint pulito su `features/request-management`,
-`features/table`, `features/quotes/quote-schema.ts`. Pint passed su `OfferLinesColumn.php`.
+---
+
+## CATEGORIE PRODOTTO — SCHEDA E FORM RIALLINEATI AI RECORD SCREEN (2026-09-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "fai la stessa cosa http://localhost:5173/product-categories/179,
+http://localhost:5173/product-categories/179/edit" — stesso trattamento appena dato a Prodotti.
+
+**Stesse primitive, nessun design nuovo.** Form: `RECORD_HEADER_CLASS` (via
+`ProductCategoryFormHeader`), `PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/`MAIN_COLUMN_CLASS`/
+`FIELD_GRID_CLASS`, `SummaryRow`, `RecordFormActions`. Scheda: `RecordCanvas`/`RecordCard`/
+`RecordCardHeader`/`RecordStatStrip`/`RecordSectionsGrid`/`RecordField`/`RecordMeta` + le costanti
+condivise di `components/detail/record-layout.ts`.
+
+**Form `/product-categories/:id/edit` e `/new`** (serviti da `ModuleFormPage`, rotte generate).
+- `product-category-form-header.tsx` (nuovo): barra sticky, pill live **padre** (o "Radice") e
+  **"Non selezionabile"** quando `is_selectable` e' off — le due cose che cambiano dove la categoria
+  puo' essere usata e cosa eredita il sottoalbero. Modulo registrato **`formOwnsHeader: true`**.
+- `product-category-form-summary.tsx` (nuovo): riepilogo laterale live. Una categoria e' quasi tutta
+  REGOLE, ognuna in un tile proprio: lette una alla volta non dicono mai "cosa impone questa
+  categoria a valle". Il pannello e' quella risposta (padre, preventivo, modalita', offerta unica,
+  contratto, selezionabile, n. attributi, n. livelli G.A.).
+- Body spezzato: `product-category-identity-section.tsx` (nome+padre su griglia a 2 colonne,
+  descrizione full width, funzione aziendale), `product-category-attributes-section.tsx` (si porta
+  dentro i tre `useEffectiveAttributes` e i tre switch di ereditarieta'),
+  `product-category-manager-labels-section.tsx` (si porta dentro `useEffectiveManagerLabels`).
+  `ProductCategoryRulesSection` invariata: era gia' fatta bene, ora vive nel nuovo scheletro.
+  `product-category-form-body.tsx` **compone e basta**: 153 righe (era 371). L'unica cosa risolta li'
+  e' la lista delle opzioni padre — la leggono in tre (barra, riepilogo, picker) e deve essere la
+  stessa.
+
+**Scheda `/product-categories/:id`.** Banda identita' (monogramma, nome, padre come sottotitolo, pill
+Radice / Non selezionabile), strip KPI **Funzione aziendale | Attributi | Gestori Account** (hint:
+"Ereditata da X", "+N ereditati"), sezioni Anagrafica + Gestori Account, **Regole di gestione** a
+tutta larghezza estratta in `product-category-detail-rules.tsx` (stessa denominazione e stesso ordine
+del form), poi le tre card attributi per contesto e la preview del layout, **Activity log nella
+colonna laterale** solo con `view_activity`, footer `RecordMeta`.
+
+**Re-chrome (stesso motivo di `product-attribute-values-section` su Prodotti):**
+`product-category-detail-attributes.tsx` e `product-category-attribute-layout-preview.tsx` passano da
+`DetailSection` a `RecordCard`+`RecordSection`. Sul canvas devono avere la chrome del record kit —
+la preview rende gia' card proprie, e mescolare i due kit si vedeva.
+
+**i18n (it+en):** `productCategories.badges.{root,notSelectable}`,
+`productCategories.detail.inheritedCount`, `productCategories.form.summary.*`,
+`productCategories.form.managementMode{Single,Multiple}Short` (la riga del riepilogo e' troncata: le
+etichette lunghe si tagliavano).
+
+**Test toccati (solo la query, non l'asserzione):** 7 suite del form usavano
+`getByRole('button', {name:'Save'})`, che ora trova due bottoni (barra + footer) — scoping su
+`within(screen.getByRole('banner'))`, come Opportunita'/Prodotti. Un caso a parte in
+`product-category-form-body.test.tsx`: l'asserzione "il submit e' dentro il `<form>`" e' diventata
+`findAllByRole(...).some(b => b.closest('form') !== null)` — intento identico (il footer e' dentro il
+form, la barra ci arriva con `form=`).
+
+**Stato verificato (eseguito, non presunto):** `npx vitest run` -> **594 file, 4373 test verdi**;
+`npx tsc -b --force --pretty false` -> EXIT 0; `npx eslint` sui file toccati -> pulito.
+
+**Da verificare a mano nel browser:** `/product-categories/179` e `/product-categories/179/edit` a
+375 / 768 / 1024 px, e la stessa coppia aperta come Sheet dalla tabella (il modulo e'
+`defaultMode: modal`, quindi entrambe le superfici montano lo stesso albero).
+
+**Prossimo passo:** attesa dell'OK utente per il commit (§3.6 — non committato).
+
+---
+
+## PRODOTTI — SCHEDA E FORM RIALLINEATI AI RECORD SCREEN (2026-09-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "http://localhost:5173/products/265/edit, migliora il form come nei migliori
+crm in circolazione (rifatti a form gia' completi tipo opportunita', offerte)" + "stessa cosa la
+view http://localhost:5173/products/265". Quindi: **niente design nuovo**, si adottano le stesse
+primitive dei record screen gia' completi.
+
+**Regola seguita (la stessa del 2026-08-05 su Opportunita').** Non somiglianza: i due schermi Prodotti
+usano **gli stessi oggetti** di layout, cosi' non possono divergere con una modifica futura all'altro.
+- Form: `RECORD_HEADER_CLASS` (via `ProductFormHeader`), `PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/
+  `MAIN_COLUMN_CLASS`/`FIELD_GRID_CLASS`, `SummaryRow`, `RecordFormActions`.
+- Scheda: `RecordCanvas`/`RecordCard`/`RecordCardHeader`/`RecordStatStrip`/`RecordSectionsGrid`/
+  `RecordField`/`RecordMeta` + le costanti di griglia condivise.
+
+**Nuovo file condiviso:** `components/detail/record-layout.ts` — `RECORD_BODY_GRID_CLASS`,
+`RECORD_BODY_WITH_SIDE_CLASS`, `RECORD_COLUMN_CLASS`. Erano tre costanti locali in
+`opportunity-detail.tsx`: estratte e ora importate da entrambe le schede (unica modifica fatta
+fuori da `features/products`, meccanica). E' un `.ts`, non un `.tsx`, per non violare
+`react-refresh/only-export-components` su `record-panel.tsx`.
+
+**Form `/products/:id/edit` e `/products/new`.**
+- `product-form-header.tsx` (nuovo): barra identita' sticky con titolo/sottotitolo, **pill live**
+  di codice e categoria lette con `useWatch`, azioni Salva/Annulla e l'errore di submit sotto il
+  bottone premuto. Il modulo e' ora registrato **`formOwnsHeader: true`** in `product-screens.tsx`:
+  `ProductFormPage` non stampa piu' la propria intestazione e lo Sheet tiene lo `SheetHeader`
+  `sr-only`.
+- `product-form-summary.tsx` (nuovo): riepilogo laterale in `SummaryRow`, tutto live dal form.
+  Espone `ProductSelectedRelations` (i ref `{id,name}` idratati), consumato anche dalle sezioni.
+- Il form monolitico a colonna singola e' stato spezzato in tre card su griglia a due colonne:
+  `product-identity-section.tsx` (codice, nome, descrizione), `product-classification-section.tsx`
+  (categoria, tipologia, unita' di misura, tipo), `product-pricing-section.tsx` (costo, prezzo, IVA,
+  fornitore + **margine live**). Ogni sezione tiene il PROPRIO gate di visibilita' `MetaField`:
+  card assente se l'attore non vede nessuno dei suoi campi. `product-form-body.tsx` ora **compone e
+  basta** (195 righe, era 397 a colonna unica).
+- `product-margin.ts` (nuovo): `computeProductMargin(cost, price)` -> `{amount, percent}`, `null` se
+  manca un lato. **Un solo calcolo** per il riquadro del form e il KPI della scheda.
+
+**Scheda `/products/:id`.** `ProductDetailView` ricostruita: banda identita' (monogramma, nome,
+categoria, pill codice/tipo/tipologia), strip KPI **Prezzo | Costo | Margine** (`@2xl:grid-cols-3`,
+margine negativo in `text-destructive`, percentuale come hint), sezioni spec-sheet Anagrafica /
+Classificazione / Prezzi e fornitura (quest'ultima assente se ne' IVA ne' fornitore), attributi di
+categoria come card propria sul canvas, **Activity log nella colonna laterale** solo con
+`permissions.actions.view_activity` (senza, il record tiene tutta la larghezza), footer `RecordMeta`.
+`ProductDetailPage` non e' stata toccata: tiene il suo wrapper e il bottone Modifica, come fa
+`ModuleDetailPage` per Opportunita'.
+
+**`product-attribute-values-section.tsx`:** il ramo FLAT passa da `DetailSection`/`DetailGrid` a
+`RecordCard`/`RecordSection`/`RecordField`. Motivo: sul canvas i due rami devono avere la stessa
+chrome — il ramo con layout configurato rende gia' card proprie. Contenuto invariato (solo attributi
+valorizzati), test invariati.
+
+**i18n (it+en):** nuove chiavi `products.margin`, `products.marginPercent`, `products.form.summary.*`,
+`products.form.sections.classification.*`, `products.form.sections.pricing.*`; `sections.identity`
+ridescritta (ora e' solo anagrafica).
+
+**Test toccati (solo la query, non l'asserzione):** con la barra sticky il bottone Salva esiste due
+volte (header + footer), quindi `getByRole('button', {name:'Save'})` trovava due elementi. Le 4 suite
+del form ora fanno `within(screen.getByRole('banner')).getByRole(...)`, **la stessa forma che usano
+gia' i test di Opportunita'**.
+
+**Stato verificato (eseguito, non presunto):** `npx vitest run` -> **594 file, 4370 test verdi**;
+`npx tsc -b --force --pretty false` -> EXIT 0; `npx eslint` sui file toccati -> pulito.
+
+**Da verificare a mano nel browser:** `/products/265` e `/products/265/edit` a 375 / 768 / 1024 px
+(la barra sticky e il passaggio a due colonne sono `@container`, non viewport).
+
+**Prossimo passo:** attesa dell'OK utente per il commit (§3.6 — non committato).
+
+---
+
+## LINEE DI PRODOTTO INLINE-EDITABILI IN GRIGLIA — VERDE, NON COMMITTATO (2026-09-07)
+
+**Direttive utente, in tre passaggi.** (1) "la colonna linee di prodotto non e' piu' editabile,
+voglio renderlo editabile ... nell'edit si possa editare anche tutta la riga dell'offerta";
+(2) "non voglio l'icona dell'edit, voglio che clicchi ed esce il popup, come le altre colonne";
+(3) **"l'edit della cella deve essere lo stesso flusso delle altre colonne, cambia approccio, va
+bene il popup, ma l'usabilita delle colonne devono essere le stesse"** + "anche permessi (come le
+altre colonne), vedi se a livello di permessi puo editare o meno".
+
+**Il commit `97f04dd9` contiene l'approccio SUPERATO** (cella-bottone bespoke + PATCH del modulo):
+questo lavoro lo sostituisce. Chi legge quel commit non trovera' `OfferLinesCell` ne'
+`features/table/relation-label.ts` (cancellato: esisteva solo per quella cella).
+
+**Approccio finale: la colonna entra nel motore di inline-edit generico.** Nessuna interazione
+inventata — gesto, gating e commit sono quelli di ogni altra colonna editabile.
+
+- **Backend.** `OfferLinesColumn::declaration()` ora dichiara `editable => true`,
+  `editor => 'offer_lines'`, `editableField => 'offer_lines'` (REVOCA definitiva di spec 0086
+  AC-021/AC-022). `CellValueValidator` ha il ramo `offer_lines`: valida l'INTERA collezione di
+  righe e proietta le sole chiavi del contratto. `WritesInlineEditableCells::updateCell()` non
+  cambia — la chiave passa identica a `updateWork()`, quindi il commit arriva a
+  `RequestOfferLineWriter` -> `QuoteService::update()`, lo stesso writer del pannello Lavora.
+- **Regole di riga: UNA definizione.** Nuovo `App\Quotes\QuoteLineRules::fieldRules($field,
+  withCommissions:)`, estratto da `ValidatesQuoteLines` (che ora vi delega e conserva le regole
+  CROSS-riga: cap `single`, "almeno una riga revenue"). Serviva perche' `CellValueValidator` non e'
+  una FormRequest e non puo' usare il trait: una seconda copia sarebbe stata l'invito a correggere
+  un bound su un canale e lasciarlo sbagliato sull'altro. Costante `MAX_ROWS = 200` li'.
+- **Frontend.** `offer-lines-cell-editor.tsx` e' registrato in `CELL_EDITOR_REGISTRY` sul kind
+  `offer_lines`: NON disegna nulla, passa la riga (`quoteId` + `node`) al dialog via context e fa
+  subito `stopEditing(true)`. Il dialog monta `RequestOfferLinesField` (lo split del componente del
+  pannello) e committa con `updateTableCell(...)` + `node.setData(row)` — la stessa sostituzione
+  chirurgica di `useTableCellEdit`. Il 422 del motore arriva sotto la chiave `value`
+  (`value.0.quantity`): `applyCellValidationErrors` la rinomina in `offer_lines.0.quantity` cosi' il
+  messaggio atterra sulla riga giusta.
+- **Perche' un dialog e non un popup di cella.** Una riga d'offerta si compone con
+  `AsyncPaginatedSelect` (prodotto e aliquota): il popup Radix portala su `document.body`, e dentro
+  un cell editor `stopEditingWhenCellsLoseFocus` smonta l'editor a meta' scelta — la ragione per cui
+  `ProductLinesCellEditor`/`MultiSelectCellEditor` hanno liste inline fatte a mano. In un Dialog
+  quei picker funzionano, quindi il dialog e' cio' che permette di RIUSARE il row editor delle
+  Offerte invece di clonarlo. L'editor si chiude subito proprio perche' il focus lascia la griglia:
+  meglio deliberatamente che per teardown.
+
+**Permessi — tre livelli, tutti del motore generico (verificati).**
+1. **Colonna** (`GET /columns`): `editable` true solo con `request-management.update` E la matrice
+   `role_field_permissions` che consente `offer_lines`. Senza `update` la cella non offre editor.
+2. **Riga**: `row.editable` = `TableDefinition::authorizeUpdate()` per QUEL record — AG Grid non
+   apre nemmeno l'editor.
+3. **Endpoint**: step 2 (`authorizeUpdate`) e step 4 (matrice per-campo) di `TableCellUpdateService`
+   -> 403. Piu' `viewAny` che `TableController::updateRow` esige prima di tutto.
+   Nel dialog i controlli seguono la field permission via `MetaField` (readonly = tutto disabilitato,
+   invisibile = campo assente) e Salva e' disabilitato senza `resource.update`.
+
+**Attenzione per chi tocchera' queste aree.** `editableField` NON viene emesso da `GET /columns`
+(chiave interna al motore): non asserirlo li'. E gli endpoint `/api/tables/*` esigono `viewAny`
+PRIMA di ogni altro guard — un attore con solo `update` prende 403 sul PATCH di cella mentre passa
+sulla PATCH del modulo.
+
+**Test — requisito cambiato, dichiarato.** `RequestManagementOfferLinesTest` asseriva
+`editable => false` (spec 0086 AC-021/AC-022): ora asserisce la dichiarazione editabile piu' il
+gating per attore. I casi di scrittura stanno in `RequestManagementOfferLinesWriteTest`, dove
+vivono le fixture coerenti con la regola di copertura: replace via cella, lista di id nuda rifiutata,
+`quantity gt:0`, `commissions` proibite (valore NON vuoto: `prohibited` passa sul vuoto), permesso
+`update` mancante, e la matrice `role_field_permissions` che nega `offer_lines`.
+
+**Verifica ESEGUITA.** Frontend: vitest **594 file / 4373 test passed**, `npx tsc -b --force`
+EXIT=0. Backend: Pint passed; Pest a gruppi (l'intera suite in un colpo va in **segfault**, vedi
+sotto) — gruppo1 1068, Opportunities/Quotes/Products/Projects 1352, RequestManagement+Registries+
+Rewards+Roles 968, piu' i singoli di Migration: tutti verdi.
+
+**PREESISTENTE, non introdotto qui:** due suite del wizard di migrazione vanno in **segfault
+(exit 139)** anche eseguite da sole — `tests/Feature/Migration/MigrationEndpointsTest.php` e
+`tests/Unit/Migrations/`. Sono cio' che fa esplodere la suite completa in un processo unico; non
+toccano nulla di questo lavoro. Non indagato oltre. Tutto il resto (Feature a gruppi + il resto di
+tests/Unit) e' verde.
+
+**Segnalato, NON fatto (fuori scope).** (a) Il tetto 200 righe resta triplicato lato FE:
+`MAX_LINES_PER_TAB` (quote-schema, riusato qui) piu' due `MAX_OFFER_LINES` privati identici in
+`request-work-schema.ts` e `request-create-schema.ts`. (b) Due errori ESLint PREESISTENTI in file non
+toccati: `features/quotes/column-renderers.tsx` (react-refresh/only-export-components) e
+`features/registries/registry-form-metadata.test.tsx` (`_omit` non usata).
 
 ## TASK — CLICK SULLE NOTIFICHE (CAMPANELLA) — VERDE, NON COMMITTATO (2026-09-07)
 
