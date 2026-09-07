@@ -10,6 +10,14 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
+// The real backend .env reaches the test process, so DEFAULT_COUNTRY_ISO2=IT
+// would silently narrow the parentless city-first lookup below (and
+// CountryFactory can mint the code "IT" by chance). International mode is made
+// explicit here; national mode has its own block at the bottom of the file.
+beforeEach(function () {
+    config()->set('geo.default_country_iso2', null);
+});
+
 // ---------------------------------------------------------------------------
 // auth — every geo endpoint is gated by auth:sanctum
 // ---------------------------------------------------------------------------
@@ -338,4 +346,47 @@ it('cities: filters by province_id (the finest level), winning over state_id', f
         ->assertJsonPath('data.0.province_id', $province->id)
         ->assertJsonPath('data.0.state_id', $state->id)
         ->assertJsonStructure(['data' => [['id', 'name', 'state_id', 'province_id']]]);
+});
+
+// ---------------------------------------------------------------------------
+// national mode — only the parentless city-first branch is narrowed; the
+// cascade keeps every country reachable
+// ---------------------------------------------------------------------------
+
+it('cities: national mode bounds the city-first search to the configured country', function () {
+    Sanctum::actingAs(User::factory()->create());
+    $italy = Country::factory()->create(['iso2' => 'IT']);
+    $italianState = State::factory()->for($italy, 'country')->create();
+    City::factory()->forState($italianState)->create(['name' => 'Verona']);
+    City::factory()->forState(State::factory()->create())->create(['name' => 'Vernon']);
+    config()->set('geo.default_country_iso2', 'IT');
+
+    $this->getJson('/api/cities?search=Ver')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'Verona');
+});
+
+it('cities: national mode leaves a state-scoped lookup alone (foreign cascade still works)', function () {
+    Sanctum::actingAs(User::factory()->create());
+    Country::factory()->create(['iso2' => 'IT']);
+    $foreignState = State::factory()->create();
+    City::factory()->forState($foreignState)->create(['name' => 'Vernon']);
+    config()->set('geo.default_country_iso2', 'IT');
+
+    $this->getJson("/api/cities?state_id={$foreignState->id}&search=Ver")
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'Vernon');
+});
+
+it('cities: an unresolvable configured code degrades to the worldwide city-first lookup', function () {
+    Sanctum::actingAs(User::factory()->create());
+    City::factory()->forState(State::factory()->create())->create(['name' => 'Verona']);
+    City::factory()->forState(State::factory()->create())->create(['name' => 'Vernon']);
+    config()->set('geo.default_country_iso2', 'ZZ');
+
+    $this->getJson('/api/cities?search=Ver')
+        ->assertOk()
+        ->assertJsonCount(2, 'data');
 });

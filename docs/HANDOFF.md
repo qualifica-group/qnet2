@@ -3,6 +3,63 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK — FILTRO NAZIONALE SU REGIONI E LOCALITA' — VERDE E COMMITTATO (2026-09-07)
+
+**Richiesta utente.** Nel menu di selezione della Regione comparivano regioni/localita'
+estere; filtrare le voci estere e tenere solo Regioni e localita' italiane. L'utente
+ricordava una modifica "a livello di env" gia' fatta.
+
+**Il fatto di partenza.** Quella modifica (MODALITA' NAZIONALE, 2026-07-30) era
+dichiaratamente **solo UI**: `DEFAULT_COUNTRY_ISO2=IT` preseleziona la nazione nella
+cascata, senza alcun filtro server-side. Le voci estere non sono quindi "tornate": non
+erano mai state filtrate. Sul DB reale: 4043 states e 156.025 cities totali, di cui 20
+regioni e 9852 comuni italiani.
+
+**I due soli punti senza parent (quindi gli unici da filtrare).**
+1. `GET /api/states/for-select` (`StateForSelectController`) — il campo "Regione" di
+   Lead/Progetti/Campagne non ha un campo nazione accanto, quindi la ricerca era libera
+   su tutta la tabella `states`. E' questo il menu segnalato dall'utente.
+2. `GET /api/cities?search=` senza `province_id`/`state_id` (branch city-first di
+   `GeoController::cities`) — ricerca localita' mondiale.
+Gli step della cascata (`states?country_id`, `provinces?state_id`,
+`cities?state_id|province_id`) NON sono stati toccati: il parent li delimita gia' e
+lasciarli aperti e' cio' che tiene raggiungibile un indirizzo estero. Scelta confermata
+dall'utente via AskUserQuestion: filtro su **Regioni + localita'**, campo Nazione
+lasciato completo.
+
+**Contratto (nessun cambio di shape).** Stessi endpoint, stessa risposta: cambia solo
+l'insieme di righe. Nuovo `App\Support\Geo\NationalScope::countryId()` — unica fonte di
+verita': risolve `config('geo.default_country_iso2')` -> id della country. Ritorna `null`
+(= nessun filtro, modalita' internazionale) se il codice e' vuoto o non risolve nessuna
+riga, esattamente come `useDefaultCountryId()` lato client: un codice sbagliato degrada
+al comportamento mondiale precedente, non svuota le tendine.
+
+**Da non rompere.** L'idratazione `ids[]` di `StateForSelectController` **bypassa** il
+filtro (usa `baseQuery()` non filtrata): un record salvato con una regione estera deve
+continuare a mostrare il proprio valore. `NationalScope` costa **una query in piu' su
+`countries`** per richiesta: il test N+1 di `StateForSelectTest` conta le query su
+`countries` e passa perche' quel test gira in modalita' internazionale.
+
+**Test.** `beforeEach` esplicito in `GeoLookupTest` e `StateForSelectTest` che forza
+`geo.default_country_iso2 = null`: il `.env` reale arriva al processo di test (IT) e
+`CountryFactory` puo' generare "IT" per caso — senza quella riga le asserzioni
+preesistenti sarebbero diventate silenziosamente ambigue/flaky. Nessuna asserzione
+esistente modificata. 8 test nuovi (filtro, case-insensitive, ricerca dentro il paese,
+idratazione `ids[]` estera, degrado su codice ignoto, city-first filtrata, cascata estera
+intatta).
+
+**Verifica eseguita.** `pest tests/Feature/Geo` **40/40**; `pest --filter="Config|Geo"`
+**639/639**; controprova anti-falso-verde: neutralizzando `NationalScope::countryId()` i
+5 test nuovi significativi diventano rossi. `pint --dirty` pulito sui file toccati.
+Check end-to-end su MySQL reale: `NationalScope::countryId()` = 107 (Italia).
+
+**Fuori scope, segnalato.** (a) `pint --dirty` ha riformattato
+`backend/app/Tables/TableRegistry.php`, che era gia' dirty per il lavoro in corso su
+spec 0103 (reports): formattazione, nessuna modifica di logica, non e' roba mia.
+(b) Con il filtro attivo il `subtitle` del select Regione e' sempre "Italia" (ridondante,
+lasciato invariato). (c) `GeoResolver`/import non sono filtrati: risolvono da dataset
+mondiale, valutare a parte.
+
 ## TASK — RIGA PRODOTTO OBBLIGATORIA PER CANALE (spec 0102) — VERDE, NON COMMITTATO (2026-09-04)
 
 **Richiesta utente.** Alert in tabella Offerte per le Offerte senza righe prodotto; riga

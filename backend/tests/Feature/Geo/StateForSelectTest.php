@@ -9,6 +9,14 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
+// The real backend .env reaches the test process, so DEFAULT_COUNTRY_ISO2=IT
+// would silently narrow every list below (and CountryFactory can mint the code
+// "IT" by chance). International mode is therefore made explicit here; the
+// national-mode behaviour has its own block at the bottom of the file.
+beforeEach(function () {
+    config()->set('geo.default_country_iso2', null);
+});
+
 // ---------------------------------------------------------------------------
 // auth — no Policy, reference data gated only by auth:sanctum (spec 0023)
 // ---------------------------------------------------------------------------
@@ -97,4 +105,73 @@ it('does not issue one country query per state (eager-loaded)', function () {
     $countryQueries = $queries->filter(fn (string $sql) => str_contains($sql, 'from `countries`') || str_contains($sql, 'from "countries"'));
 
     expect($countryQueries)->toHaveCount(1);
+});
+
+// ---------------------------------------------------------------------------
+// national mode — nothing in the request scopes this list, so
+// DEFAULT_COUNTRY_ISO2 is what keeps foreign regions out of the "Regione" select
+// ---------------------------------------------------------------------------
+
+it('national mode: lists only the regions of the configured country', function () {
+    Sanctum::actingAs(User::factory()->create());
+    $italy = Country::factory()->create(['iso2' => 'IT', 'name' => 'Italy']);
+    $germany = Country::factory()->create(['iso2' => 'DE', 'name' => 'Germany']);
+    $veneto = State::factory()->for($italy, 'country')->create(['name' => 'Veneto']);
+    $bavaria = State::factory()->for($germany, 'country')->create(['name' => 'Bavaria']);
+    config()->set('geo.default_country_iso2', 'IT');
+
+    $response = $this->getJson('/api/states/for-select')->assertOk();
+    $ids = collect($response->json('items'))->pluck('id');
+
+    expect($ids)->toContain($veneto->id)
+        ->and($ids)->not->toContain($bavaria->id)
+        ->and($response->json('pagination.total'))->toBe(1);
+});
+
+it('national mode: matches the configured code case-insensitively', function () {
+    Sanctum::actingAs(User::factory()->create());
+    $italy = Country::factory()->create(['iso2' => 'IT']);
+    $veneto = State::factory()->for($italy, 'country')->create(['name' => 'Veneto']);
+    State::factory()->create(['name' => 'Bavaria']);
+    config()->set('geo.default_country_iso2', ' it ');
+
+    $response = $this->getJson('/api/states/for-select')->assertOk();
+
+    expect(collect($response->json('items'))->pluck('id')->all())->toBe([$veneto->id]);
+});
+
+it('national mode: search stays inside the configured country', function () {
+    Sanctum::actingAs(User::factory()->create());
+    $italy = Country::factory()->create(['iso2' => 'IT']);
+    State::factory()->for($italy, 'country')->create(['name' => 'Alabama Italiana']);
+    $foreign = State::factory()->create(['name' => 'Alabama']);
+    config()->set('geo.default_country_iso2', 'IT');
+
+    $response = $this->getJson('/api/states/for-select?search=Alabama')->assertOk();
+
+    expect(collect($response->json('items'))->pluck('id'))->not->toContain($foreign->id)
+        ->and($response->json('pagination.total'))->toBe(1);
+});
+
+it('national mode: ids[] still hydrates a region saved outside the country', function () {
+    Sanctum::actingAs(User::factory()->create());
+    $italy = Country::factory()->create(['iso2' => 'IT']);
+    State::factory()->for($italy, 'country')->create(['name' => 'Veneto']);
+    $saved = State::factory()->create(['name' => 'Bavaria']);
+    config()->set('geo.default_country_iso2', 'IT');
+
+    $response = $this->getJson("/api/states/for-select?ids[]={$saved->id}")->assertOk();
+
+    expect(collect($response->json('items'))->pluck('id'))->toContain($saved->id)
+        ->and($response->json('pagination.total'))->toBe(1);
+});
+
+it('national mode: an unresolvable code degrades to the worldwide list', function () {
+    Sanctum::actingAs(User::factory()->create());
+    State::factory()->count(2)->create();
+    config()->set('geo.default_country_iso2', 'ZZ');
+
+    $this->getJson('/api/states/for-select')
+        ->assertOk()
+        ->assertJsonPath('pagination.total', 2);
 });

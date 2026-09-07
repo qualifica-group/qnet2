@@ -15,6 +15,7 @@ use App\Models\Country;
 use App\Models\Province;
 use App\Models\State;
 use App\Support\Geo\GeoNameLocalizer;
+use App\Support\Geo\NationalScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -104,6 +105,12 @@ class GeoController extends BaseApiController
      * non-empty `search` is then mandatory, enforced by ListCitiesRequest).
      * Ordered by name, optionally filtered by a name LIKE, returned one page at
      * a time (CITY_RESULT_LIMIT rows); `offset` skips the already-loaded rows.
+     *
+     * The parentless city-first branch is the only one nothing scopes, so in
+     * national mode it is bounded by the configured country (NationalScope) —
+     * without it a two-letter search returns localities from the whole world.
+     * The parent-scoped branches are left alone: their parent already bounds
+     * them, so a foreign city stays reachable through the full cascade.
      */
     public function cities(ListCitiesRequest $request): JsonResponse
     {
@@ -111,11 +118,15 @@ class GeoController extends BaseApiController
             $search = $request->search();
             $provinceId = $request->provinceId();
             $stateId = $request->stateId();
+            $nationalCountryId = ($provinceId === null && $stateId === null)
+                ? NationalScope::countryId()
+                : null;
 
             $cities = City::query()
                 ->select(['id', 'name', 'country_id', 'state_id', 'province_id'])
                 ->when($provinceId !== null, fn ($query) => $query->where('province_id', $provinceId))
                 ->when($provinceId === null && $stateId !== null, fn ($query) => $query->where('state_id', $stateId))
+                ->when($nationalCountryId !== null, fn ($query) => $query->where('country_id', $nationalCountryId))
                 ->when($search !== null, fn ($query) => $this->applyCityNameSearch($query, (string) $search))
                 ->orderBy('name')
                 ->orderBy('id')
