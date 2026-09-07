@@ -71,11 +71,6 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: () => <div />,
 }))
 
-/** Switches the active tab. Radix `TabsTrigger` activates on `mouseDown`. */
-function switchTab(name: string) {
-  fireEvent.mouseDown(screen.getByRole('tab', { name: new RegExp(`^${name}`) }))
-}
-
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -132,7 +127,6 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
 
     fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
-    switchTab('Contact info')
     fireEvent.change(screen.getByLabelText('Email'), {
       target: { value: 'duplicate@example.com' },
     })
@@ -160,7 +154,6 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
       { wrapper: wrapper() },
     )
 
-    switchTab('Contact info')
     fireEvent.change(screen.getByLabelText('Email'), {
       target: { value: 'duplicate@example.com' },
     })

@@ -1,11 +1,8 @@
-import { useState } from 'react'
-import { Building2, Landmark, Settings, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
-import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
-import { FormTabStrip, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/components/form-tab-strip'
+import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { ProfileTabContent } from '@/features/company-sites/company-site-profile-tab'
 import { SettingsTabContent } from '@/features/company-sites/company-site-settings-tab'
@@ -21,28 +18,18 @@ interface CompanySiteFormBodyProps {
   onSiteChange?: () => void
 }
 
-/** One entry in the tab strip: its value, label, icon, and gating flags. */
-/** Tab selected when the form opens. */
-const DEFAULT_TAB = 'profile'
-
-interface CompanySiteFormTab {
-  value: string
-  label: string
-  Icon: LucideIcon
-  visible: boolean
-  hasError: boolean
-}
-
 /**
- * The company-site create/edit form UI, organized into three tabs: Profilo
- * (identity, logo, address, plus the universal custom fields — spec 0021),
- * Impostazioni (responsibles, progressives, read-only quotation ids) and
- * Banche (the inline banks collection, where one bank can be flagged
- * preferred). Every editable field is wrapped in `MetaField` (spec 0004):
- * hidden fields are absent, non-editable fields render disabled, `required`
- * comes from the resolved `ResourcePermissions`. All non-render logic lives in
- * `useCompanySiteForm`; each tab's content lives in a sibling module so this
- * file stays within the size limits (engineering.md §6).
+ * The company-site create/edit form UI, laid out as a SINGLE screen (user
+ * directive 2026-09-07, same move as the Referents/Anagrafiche/Utenti forms):
+ * the profile blocks (identity, logo, contacts, address), the settings
+ * (responsibles, progressives, read-only quotation ids), the inline banks
+ * collection — where one bank can be flagged preferred — and the universal
+ * custom fields (spec 0021) last, all stacked one under the other. Each block
+ * keeps its own visibility gate. Every editable field is wrapped in `MetaField`
+ * (spec 0004): hidden fields are absent, non-editable fields render disabled,
+ * `required` comes from the resolved `ResourcePermissions`. All non-render
+ * logic lives in `useCompanySiteForm`; each section's content lives in a
+ * sibling module so this file stays within the size limits (engineering.md §6).
  */
 export function CompanySiteFormBody({
   mode,
@@ -51,16 +38,12 @@ export function CompanySiteFormBody({
   onSiteChange,
 }: CompanySiteFormBodyProps) {
   const { t } = useTranslation()
-  // Controlled, so the tab strip can hand the selection over to its select
-  // fallback when the tabs no longer fit.
-  const [activeTab, setActiveTab] = useState(DEFAULT_TAB)
   const { field: fieldPermission } = useResourcePermissions()
   const {
     form,
     serverError,
     profileDraft,
     setProfileDraft,
-    profileValid,
     revalidateSignal,
     personalDataFieldPermission,
     banksDraft,
@@ -79,26 +62,14 @@ export function CompanySiteFormBody({
 
   const siteName = useWatch({ control: form.control, name: 'name' }) || ''
 
-  // Whole-tab visibility, read from the same authorization context `MetaField`
-  // uses: a tab is only worth rendering if at least one of its fields is
-  // visible. Profilo has mandatory name/email, so it is always shown.
+  // Section visibility, read from the same authorization context `MetaField`
+  // uses: a section is only worth rendering if at least one of its fields is
+  // visible. The profile blocks carry the mandatory name/email, so they are
+  // always shown.
   const settingsVisible = fieldPermission('company_id').visible
   const banksPermission = fieldPermission('banks')
   const banksVisible = banksPermission.visible
   const banksReadOnly = banksPermission.disabled || !banksPermission.editable
-
-  const errors = form.formState.errors
-  const tabHasErrorsLabel = t('companySites.form.tabs.tabHasErrors')
-  // Profilo error = the mandatory company card is invalid (its buffer lives
-  // outside RHF) or the site's own name/notes carry a validation error.
-  const profileHasError = !profileValid || Boolean(errors.name || errors.notes)
-  const settingsHasError = Boolean(errors.company_id)
-
-  const tabItems: CompanySiteFormTab[] = [
-    { value: 'profile', label: t('companySites.form.tabs.profile'), Icon: Building2, visible: true, hasError: profileHasError },
-    { value: 'settings', label: t('companySites.form.tabs.settings'), Icon: Settings, visible: settingsVisible, hasError: settingsHasError },
-    { value: 'banks', label: t('companySites.form.tabs.banks'), Icon: Landmark, visible: banksVisible, hasError: false },
-  ]
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -108,52 +79,34 @@ export function CompanySiteFormBody({
           className="flex flex-1 flex-col gap-4 p-4"
           noValidate
         >
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col gap-4">
-            <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
-              {tabItems
-                .filter((tab) => tab.visible)
-                .map(({ value, label, Icon, hasError }) => (
-                  <TabsTrigger key={value} value={value} className={FORM_TAB_TRIGGER_CLASS}>
-                    <Icon aria-hidden="true" />
-                    {label}
-                    {hasError && <TabErrorDot label={tabHasErrorsLabel} />}
-                  </TabsTrigger>
-                ))}
-            </FormTabStrip>
+          <ProfileTabContent
+            mode={mode}
+            control={form.control}
+            siteName={siteName}
+            profileDraft={profileDraft}
+            setProfileDraft={setProfileDraft}
+            revalidateSignal={revalidateSignal}
+            personalDataFieldPermission={personalDataFieldPermission}
+            onLogoFileSelected={setPendingLogo}
+            onLogoUpload={handleLogoUpload}
+            onLogoRemove={handleLogoRemove}
+            canUploadLogo={canUploadLogo}
+            canRemoveLogo={canRemoveLogo}
+          />
 
-            <TabsContent value="profile" className="flex flex-col gap-4">
-              <ProfileTabContent
-                mode={mode}
-                control={form.control}
-                siteName={siteName}
-                profileDraft={profileDraft}
-                setProfileDraft={setProfileDraft}
-                revalidateSignal={revalidateSignal}
-                personalDataFieldPermission={personalDataFieldPermission}
-                onLogoFileSelected={setPendingLogo}
-                onLogoUpload={handleLogoUpload}
-                onLogoRemove={handleLogoRemove}
-                canUploadLogo={canUploadLogo}
-                canRemoveLogo={canRemoveLogo}
-              />
-            </TabsContent>
+          {settingsVisible && (
+            <SettingsTabContent control={form.control} selectedCompanyItem={selectedCompanyItem} />
+          )}
 
-            {settingsVisible && (
-              <TabsContent value="settings" className="flex flex-col gap-4">
-                <SettingsTabContent control={form.control} selectedCompanyItem={selectedCompanyItem} />
-              </TabsContent>
-            )}
+          {banksVisible && (
+            <BanksTabContent
+              banksDraft={banksDraft}
+              setBanksDraft={setBanksDraft}
+              readOnly={banksReadOnly}
+            />
+          )}
 
-            {banksVisible && (
-              <TabsContent value="banks" className="flex flex-col gap-4">
-                <BanksTabContent
-                  banksDraft={banksDraft}
-                  setBanksDraft={setBanksDraft}
-                  readOnly={banksReadOnly}
-                />
-              </TabsContent>
-            )}
-          </Tabs>
+          <CustomFieldsSection resource="company-sites" control={form.control} />
 
           {serverError && (
             <p className="text-sm font-medium text-destructive" role="alert">

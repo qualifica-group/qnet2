@@ -67,7 +67,6 @@ import {
   usersDetailEmployment,
   usersFormEmployment,
   usersFormEmploymentSections,
-  usersFormTabs,
 } from './en-users-employment'
 
 export const en = {
@@ -157,7 +156,6 @@ export const en = {
       employment: usersDetailEmployment,
     },
     form: {
-      tabs: usersFormTabs,
       newUser: 'New user',
       avatarLabel: 'Avatar',
       createTitle: 'Create user',

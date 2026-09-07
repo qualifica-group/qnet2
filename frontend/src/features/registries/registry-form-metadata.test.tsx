@@ -4,6 +4,7 @@ import axios, { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RegistryForm } from '@/features/registries/registry-form'
 import type { RegistryDetailWithPermissions } from '@/features/registries/types'
 import type { ResourceMeta } from '@/features/authorization/types'
@@ -89,7 +90,9 @@ function labelFor(text: string): HTMLElement {
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+    </QueryClientProvider>
   )
 }
 
@@ -271,20 +274,22 @@ describe('RegistryForm — metadata-driven authorization (spec 0004)', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
-        <RegistryForm
-          mode={{
-            type: 'edit',
-            registry: registry({
-              permissions: {
-                resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-                fields: ALL_VISIBLE_EDITABLE,
-                actions: {},
-              },
-            }),
-          }}
-          onSuccess={vi.fn()}
-          onCancel={vi.fn()}
-        />
+        <ConfirmDialogProvider>
+          <RegistryForm
+            mode={{
+              type: 'edit',
+              registry: registry({
+                permissions: {
+                  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
+                  fields: ALL_VISIBLE_EDITABLE,
+                  actions: {},
+                },
+              }),
+            }}
+            onSuccess={vi.fn()}
+            onCancel={vi.fn()}
+          />
+        </ConfirmDialogProvider>
       </QueryClientProvider>,
     )
 

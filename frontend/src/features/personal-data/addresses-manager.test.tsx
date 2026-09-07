@@ -68,6 +68,7 @@ vi.mock('@/features/geo/geo-select', () => ({
   GeoSelect: ({
     value,
     onChange,
+    requiredLevels,
   }: {
     value: {
       country_id: number | null
@@ -81,11 +82,14 @@ vi.mock('@/features/geo/geo-select', () => ({
       province_id: number | null
       city_id: number | null
     }) => void
+    // Surfaced so a test can read WHICH levels the cascade was told to mark.
+    requiredLevels?: ReadonlyArray<string>
   }) => (
     <>
       <button
         type="button"
         data-testid="geo-select"
+        data-required-levels={(requiredLevels ?? []).join(',')}
         data-city={value.city_id ?? ''}
         onClick={() => onChange({ country_id: 5, state_id: 6, province_id: 8, city_id: 7 })}
       >
@@ -311,6 +315,25 @@ describe('AddressesManager (createMode)', () => {
 
     expect(screen.queryByRole('button', { name: 'Add address' })).not.toBeInTheDocument()
     expect(screen.getByLabelText(/^Address\*?$/)).toBeInTheDocument()
+  })
+
+  it('marks line1 and the city required only once the address is started', () => {
+    renderWithConfirm(<ControlledAddresses />)
+    // Typed as an input so the assertion can read its `labels` back.
+    const line1 = screen.getByLabelText(/^Address\*?$/) as HTMLInputElement
+
+    // Pristine: the whole address is optional, so nothing claims to be required.
+    expect(line1).toHaveAttribute('aria-required', 'false')
+    expect(line1.labels?.[0].textContent).not.toContain('*')
+
+    expect(screen.getByTestId('geo-select')).toHaveAttribute('data-required-levels', '')
+
+    fireEvent.change(line1, { target: { value: 'Via Roma 1' } })
+
+    // Started: line1 and the city are mandatory from here on, and say so.
+    expect(line1).toHaveAttribute('aria-required', 'true')
+    expect(line1.labels?.[0].textContent).toContain('*')
+    expect(screen.getByTestId('geo-select')).toHaveAttribute('data-required-levels', 'city')
   })
 
   it('creates the sole draft once any field is typed', () => {

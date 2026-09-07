@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -105,11 +105,6 @@ function permissionsWithPippo(): ResourcePermissions {
   }
 }
 
-/** Switches the active tab. Radix `TabsTrigger` activates on `mouseDown`. */
-function switchTab(name: string) {
-  fireEvent.mouseDown(screen.getByRole('tab', { name: new RegExp(`^${name}`) }))
-}
-
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -148,13 +143,11 @@ beforeEach(() => {
 })
 
 describe('UserForm — custom fields (spec 0021)', () => {
-  it('renders the resource custom field control on the Account tab in create mode', async () => {
+  it('renders the resource custom field control in create mode', async () => {
     render(
       <UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
-
-    fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Account/ }))
 
     expect(await screen.findByRole('checkbox', { name: 'Pippo' })).toBeInTheDocument()
   })
@@ -171,8 +164,12 @@ describe('UserForm — custom fields (spec 0021)', () => {
     fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
 
-    switchTab('Account')
-    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'ada@example.com' } })
+    // The contacts block's quick "Email" shares the screen: scope to the
+    // Authentication block.
+    const authentication = screen.getByText('Authentication').closest('section') as HTMLElement
+    fireEvent.change(within(authentication).getByLabelText(/^Email/), {
+      target: { value: 'ada@example.com' },
+    })
     fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'secret123' } })
     fireEvent.change(screen.getByLabelText(/^Confirm password/), { target: { value: 'secret123' } })
 
@@ -195,7 +192,6 @@ describe('UserForm — custom fields (spec 0021)', () => {
       { wrapper: wrapper() },
     )
 
-    switchTab('Account')
 
     expect(await screen.findByRole('checkbox', { name: 'Pippo' })).toBeChecked()
   })

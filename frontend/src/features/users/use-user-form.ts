@@ -393,7 +393,6 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
     setProfileDraft,
     profileQuery,
     profileName,
-    profileValid,
     revalidateSignal,
     blockedSection,
     selectedRoleItems,

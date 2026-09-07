@@ -25,11 +25,6 @@ export const registries = {
     people: 'Referents & account managers',
   },
   form: {
-    tabs: {
-      account: 'Account',
-      contactInfo: 'Contact info',
-      tabHasErrors: 'This tab has validation errors.',
-    },
     newRegistry: 'New registry',
     createTitle: 'Create registry',
     createSubtitle: 'Add a new registry to your organization.',

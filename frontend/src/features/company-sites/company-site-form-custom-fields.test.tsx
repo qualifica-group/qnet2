@@ -12,7 +12,7 @@ import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
 
 /**
  * Spec 0021: the generic custom-fields renderer wired into the Company Sites
- * module — mounting `<CustomFieldsSection>` in the Profilo tab is the ONLY
+ * module — mounting `<CustomFieldsSection>` in the form is the ONLY
  * company-sites-specific integration. Mirrors
  * `company-form-custom-fields.test.tsx` (the pilot module); per-type control
  * rendering is covered by `CustomFieldsSection.test.tsx`.
@@ -27,6 +27,12 @@ vi.mock('@/features/company-sites/api', () => ({
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+// The single screen mounts the settings block too, whose relation select offers
+// the quick-create "+" — gated by the abilities of the logged-in actor.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -161,7 +167,7 @@ beforeEach(() => {
 })
 
 describe('CompanySiteForm — custom fields (spec 0021)', () => {
-  it('renders the resource custom field control in the Profilo tab', async () => {
+  it('renders the resource custom field control', async () => {
     render(
       <CompanySiteForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },

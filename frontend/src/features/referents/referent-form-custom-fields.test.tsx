@@ -140,13 +140,11 @@ beforeEach(() => {
 })
 
 describe('ReferentForm — custom fields (spec 0021)', () => {
-  it('renders the resource custom field control on the Account tab in create mode', async () => {
+  it('renders the resource custom field control in create mode', async () => {
     render(
       <ReferentForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
-
-    fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Account/ }))
 
     expect(await screen.findByRole('textbox', { name: 'Sponsor level' })).toBeInTheDocument()
   })
@@ -164,10 +162,8 @@ describe('ReferentForm — custom fields (spec 0021)', () => {
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
 
     // Creating a referent requires a phone number (user directive 2026-07-31).
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Contact info/ }))
     fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Account/ }))
     fireEvent.change(await screen.findByRole('textbox', { name: 'Sponsor level' }), {
       target: { value: 'Gold' },
     })
@@ -188,8 +184,6 @@ describe('ReferentForm — custom fields (spec 0021)', () => {
       />,
       { wrapper: wrapper() },
     )
-
-    fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Account/ }))
 
     expect(await screen.findByRole('textbox', { name: 'Sponsor level' })).toHaveValue('Platinum')
   })

@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
+import { hasPhoneContact } from '@/features/personal-data/create-validation'
 import { cardToDraft, emptyPersonalDataDraft } from '@/features/personal-data/drafts'
 import {
   describeAddressIssues,
@@ -264,6 +265,13 @@ export function useRegistryForm({ mode, onSuccess }: UseRegistryFormArgs) {
         refuse('contacts', 'personalData.section.contactsInvalid', contactIssues)
         return
       }
+      // An anagrafica must be reachable by phone (user directive 2026-09-07,
+      // same rule the referenti carry); the server twin lives in
+      // StoreRegistryRequest via ValidatesRequiredPhoneContact.
+      if (!hasPhoneContact(profileDraft.contacts)) {
+        setServerError(t('personalData.section.phoneRequired'))
+        return
+      }
     }
 
     try {
@@ -314,7 +322,6 @@ export function useRegistryForm({ mode, onSuccess }: UseRegistryFormArgs) {
     serverError,
     profileDraft,
     setProfileDraft,
-    profileValid,
     revalidateSignal,
     blockedSection,
     selectedItems,

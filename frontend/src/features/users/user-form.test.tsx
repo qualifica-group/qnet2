@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -144,15 +144,22 @@ vi.mock('@/features/personal-data/use-personal-data', () => ({
 
 /* -------------------------------- helpers --------------------------------- */
 
+/** The block a `FormSection` heading names, to scope an ambiguous query to it. */
+function section(title: string): HTMLElement {
+  return screen.getByText(title).closest('section') as HTMLElement
+}
+
 /**
- * Switches the active tab (spec 0015 tabbed redesign). Radix `TabsTrigger`
- * activates on `mouseDown` (and focus, in automatic mode) rather than
- * `click` — see `@radix-ui/react-tabs`.
+ * The sign-in email. On the single-screen form the contacts block's quick
+ * "Email" is mounted alongside it, so the label alone matches both.
  */
-function switchTab(name: string) {
-  // Match by name prefix: a macro tab with a validation error carries an extra
-  // indicator in its accessible name, so an exact match would miss it.
-  fireEvent.mouseDown(screen.getByRole('tab', { name: new RegExp(`^${name}`) }))
+function signInEmail(): HTMLElement {
+  return within(section('Authentication')).getByLabelText(/^Email/)
+}
+
+/** The contacts block's quick email, ambiguous with the sign-in one above. */
+function quickContactEmail(): HTMLElement {
+  return within(section('Contacts')).getByLabelText('Email')
 }
 
 function wrapper() {
@@ -269,7 +276,7 @@ describe('UserForm — atomic personal data', () => {
     )
 
     // No account `name` field: identity comes only from the card. Fill the
-    // required individual fields (Identity is the default-active tab).
+    // required individual fields.
     fireEvent.change(screen.getByLabelText(/^First name/), {
       target: { value: 'Ada' },
     })
@@ -277,9 +284,7 @@ describe('UserForm — atomic personal data', () => {
       target: { value: 'Lovelace' },
     })
 
-    // Credentials live under the Account macro tab (the default-active tab).
-    switchTab('Account')
-    fireEvent.change(screen.getByLabelText(/^Email/), {
+    fireEvent.change(signInEmail(), {
       target: { value: 'ada@example.com' },
     })
     fireEvent.change(screen.getByLabelText(/^Password/), {
@@ -316,8 +321,7 @@ describe('UserForm — atomic personal data', () => {
     )
 
     // All account fields valid, but the mandatory identity fields are left empty.
-    switchTab('Account')
-    fireEvent.change(screen.getByLabelText(/^Email/), {
+    fireEvent.change(signInEmail(), {
       target: { value: 'grace@example.com' },
     })
     fireEvent.change(screen.getByLabelText(/^Password/), {
@@ -349,14 +353,12 @@ describe('UserForm — atomic personal data', () => {
     fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
 
-    switchTab('Account')
-    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'ada@example.com' } })
+    fireEvent.change(signInEmail(), { target: { value: 'ada@example.com' } })
     fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'secret123' } })
     fireEvent.change(screen.getByLabelText(/^Confirm password/), { target: { value: 'secret123' } })
 
-    // A malformed value in the quick email field (Contact info tab).
-    switchTab('Contact info')
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'not-an-email' } })
+    // A malformed value in the quick email field.
+    fireEvent.change(quickContactEmail(), { target: { value: 'not-an-email' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -377,13 +379,11 @@ describe('UserForm — atomic personal data', () => {
     fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
 
-    switchTab('Account')
-    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'ada@example.com' } })
+    fireEvent.change(signInEmail(), { target: { value: 'ada@example.com' } })
     fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'secret123' } })
     fireEvent.change(screen.getByLabelText(/^Confirm password/), { target: { value: 'secret123' } })
 
     // The inline address is started (line1 filled) but no city is chosen.
-    switchTab('Contact info')
     fireEvent.change(screen.getByLabelText(/^Address\*?$/), { target: { value: 'Via Roma 1' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -408,13 +408,12 @@ describe('UserForm — atomic personal data', () => {
       { wrapper: wrapper() },
     )
 
-    // Seeded card fields are present in the form (Identity, the default tab).
+    // Seeded card fields are present in the form.
     await waitFor(() =>
       expect(screen.getByLabelText(/^First name/)).toHaveValue('Ada'),
     )
 
-    // The seeded contact is present on its own tab (spec 0015 tabbed redesign).
-    switchTab('Contact info')
+    // The seeded contact is on the same screen, no tab to open.
     expect(screen.getByText('ada@work.com')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))

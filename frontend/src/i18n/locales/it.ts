@@ -60,7 +60,6 @@ import {
   usersDetailEmployment,
   usersFormEmployment,
   usersFormEmploymentSections,
-  usersFormTabs,
 } from './it-users-employment'
 
 export const it: TranslationResources = {
@@ -148,7 +147,6 @@ export const it: TranslationResources = {
       employment: usersDetailEmployment,
     },
     form: {
-      tabs: usersFormTabs,
       newUser: 'Nuovo utente',
       avatarLabel: 'Avatar',
       createTitle: 'Crea utente',

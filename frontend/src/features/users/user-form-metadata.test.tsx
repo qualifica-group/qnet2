@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -47,7 +47,10 @@ const localeOptions: EnumOption[] = [
   { value: 'it', label: 'Italiano', color: null, icon: null, is_default: false, hidden_on_form: false },
 ]
 
+// The single-screen form mounts the address block too, whose geo cascade reads
+// the app config for the default country: no config, nothing preselected.
 vi.mock('@/features/config/use-config', () => ({
+  useConfig: () => ({ data: undefined }),
   useEnumOptions: () => localeOptions,
 }))
 
@@ -82,22 +85,25 @@ vi.mock('@/features/personal-data/use-personal-data', () => ({
   }),
 }))
 
-/** The `<label>` element whose text starts with `text` (exact-match helper). */
+/** The block a `FormSection` heading names, to scope an ambiguous query to it. */
+function section(title: string): HTMLElement {
+  return screen.getByText(title).closest('section') as HTMLElement
+}
+
+/**
+ * The `<label>` element whose text starts with `text`, inside the
+ * Authentication block. Scoped because the single-screen form mounts the
+ * contacts block's quick "Email" alongside the sign-in one.
+ */
 function labelFor(text: string): HTMLElement {
-  return screen.getByText(
+  return within(section('Authentication')).getByText(
     (_, element) => element?.tagName === 'LABEL' && element.textContent?.startsWith(text) === true,
   )
 }
 
-/**
- * Switches the active tab (spec 0015 tabbed redesign). Radix `TabsTrigger`
- * activates on `mouseDown` (and focus, in automatic mode) rather than
- * `click` — see `@radix-ui/react-tabs`.
- */
-function switchTab(name: string) {
-  // Match by name prefix: a macro tab with a validation error carries an extra
-  // indicator in its accessible name, so an exact match would miss it.
-  fireEvent.mouseDown(screen.getByRole('tab', { name: new RegExp(`^${name}`) }))
+/** The sign-in email, ambiguous with the contacts block's quick one. */
+function signInEmail(): HTMLElement {
+  return within(section('Authentication')).getByLabelText(/^Email/)
 }
 
 function wrapper() {
@@ -173,12 +179,10 @@ describe('UserForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    // Email/password live under the Account macro tab (spec 0015 redesign).
-    await waitFor(() => expect(screen.getByRole('tab', { name: /^Account/ })).toBeInTheDocument())
-    switchTab('Account')
+    await waitFor(() => expect(section('Authentication')).toBeInTheDocument())
 
     // AC11: the hidden field is absent from the DOM.
-    expect(screen.getByLabelText(/^Email/)).toBeInTheDocument()
+    expect(signInEmail()).toBeInTheDocument()
     expect(screen.queryByLabelText(/Roles/)).not.toBeInTheDocument()
 
     // AC12: the readonly/non-editable field renders disabled.
@@ -211,10 +215,9 @@ describe('UserForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    await waitFor(() => expect(screen.getByRole('tab', { name: /^Account/ })).toBeInTheDocument())
-    switchTab('Account')
+    await waitFor(() => expect(section('Authentication')).toBeInTheDocument())
 
-    expect(screen.getByLabelText(/^Email/)).toBeInTheDocument()
+    expect(signInEmail()).toBeInTheDocument()
     // No crash, and the field renders visible + editable (the graceful default).
     expect(screen.getByLabelText(/^Password/)).toBeEnabled()
   })
@@ -258,9 +261,6 @@ describe('UserForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    // The `email` 422 error renders inline in the Credentials tab: it must be
-    // mounted for the message to appear (spec 0015 redesign unmounts inactive tabs).
-    switchTab('Account')
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('field not editable')).toBeInTheDocument())

@@ -23,6 +23,12 @@ vi.mock('@/features/company-sites/api', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+// The single screen mounts the settings block too, whose relation select offers
+// the quick-create "+" — gated by the abilities of the logged-in actor.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
@@ -100,7 +106,7 @@ beforeEach(() => {
 })
 
 describe('CompanySiteForm — metadata-driven authorization (spec 0020)', () => {
-  it('always renders the Profilo tab with a company-locked card (no individual option)', async () => {
+  it('always renders the profile blocks with a company-locked card (no individual option)', async () => {
     fetchResourceMetaMock.mockResolvedValue({
       fields: [],
       permissions: {
@@ -117,9 +123,8 @@ describe('CompanySiteForm — metadata-driven authorization (spec 0020)', () => 
       { wrapper: wrapper() },
     )
 
-    await waitFor(() => expect(screen.getByRole('tab', { name: /Profile/ })).toBeInTheDocument())
     // The site's own scalar name is present.
-    expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText(/^Name/)).toBeInTheDocument())
     // The card is locked to a company: its company_name field shows, the
     // individual-only first-name field never does, and the type toggle is
     // absent (a natural person is never selectable).
@@ -128,7 +133,7 @@ describe('CompanySiteForm — metadata-driven authorization (spec 0020)', () => 
     expect(screen.queryByRole('tab', { name: 'Individual' })).not.toBeInTheDocument()
   })
 
-  it('hides the Impostazioni tab when every one of its fields is hidden', async () => {
+  it('hides the settings block when every one of its fields is hidden', async () => {
     fetchResourceMetaMock.mockResolvedValue({
       fields: [],
       permissions: {
@@ -145,11 +150,11 @@ describe('CompanySiteForm — metadata-driven authorization (spec 0020)', () => 
       { wrapper: wrapper() },
     )
 
-    await waitFor(() => expect(screen.getByRole('tab', { name: /Profile/ })).toBeInTheDocument())
-    expect(screen.queryByRole('tab', { name: /Settings/ })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText(/^Name/)).toBeInTheDocument())
+    expect(screen.queryByText('Company')).not.toBeInTheDocument()
   })
 
-  it('shows the Banche tab (visible "banks" field) with no network call for its rows', async () => {
+  it('shows the banks block (visible "banks" field) with no network call for its rows', async () => {
     fetchResourceMetaMock.mockResolvedValue(permissiveMeta())
 
     render(
@@ -157,7 +162,7 @@ describe('CompanySiteForm — metadata-driven authorization (spec 0020)', () => 
       { wrapper: wrapper() },
     )
 
-    await waitFor(() => expect(screen.getByRole('tab', { name: /Banks/ })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Banks')).toBeInTheDocument())
   })
 
   it('falls back to visible+editable when a field is missing from metadata', async () => {

@@ -1,23 +1,32 @@
-import { useState } from 'react'
-import { IdCard, MapPin, Phone, type LucideIcon } from 'lucide-react'
+import { useRef } from 'react'
+import { IdCard, MapPin, Phone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
-import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
-import { FormTabStrip, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/components/form-tab-strip'
 import { FormSection } from '@/components/form-section'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { AddressesManager } from '@/features/personal-data/addresses-manager'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { PersonalDataCardForm } from '@/features/personal-data/personal-data-card-form'
 import { cardOwnerRef } from '@/features/personal-data/drafts'
-import type { BlockedSection } from '@/features/personal-data/personal-data-issues'
-import { useRevealBlockedSection } from '@/features/personal-data/use-reveal-blocked-section'
+import {
+  anagraphicSectionProps,
+  useRevealBlockedSection,
+} from '@/features/personal-data/use-reveal-blocked-section'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import { DetailsTabContent } from '@/features/registries/registry-form-details-tab'
 import { useRegistryForm } from '@/features/registries/use-registry-form'
+import type { QuickContactType } from '@/features/personal-data/quick-contacts'
 import type { RegistryDetail, RegistryFormMode } from '@/features/registries/types'
+
+/**
+ * An anagrafica must be reachable by phone at creation (user directive
+ * 2026-09-07, same rule the referenti carry): the quick field carries the
+ * asterisk, `useRegistryForm` blocks the save, and StoreRegistryRequest
+ * enforces it server-side.
+ */
+const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
 
 interface RegistryFormBodyProps {
   mode: RegistryFormMode
@@ -25,48 +34,28 @@ interface RegistryFormBodyProps {
   onCancel: () => void
 }
 
-/** One entry in the tab strip: its value, label, icon, and gating flags. */
-/** Tab selected when the form opens. */
-const DEFAULT_TAB = 'account'
-
-/** Which tab owns each anagraphic block, for the reveal on a refused save. */
-const TAB_OF_SECTION: Record<BlockedSection, string> = {
-  card: 'account',
-  contacts: 'contactInfo',
-  addresses: 'contactInfo',
-}
-
-interface RegistryFormTab {
-  value: string
-  label: string
-  Icon: LucideIcon
-  visible: boolean
-  hasError: boolean
-}
-
 /**
- * The registry create/edit form UI, aligned with `ReferentForm`'s look (spec
- * 0020): two macro tabs — Account (the anagraphic card + registry details:
- * relations + business fields) and Contact info (contacts + addresses, with
- * the "site type" select enabled) — over the shared premium tab strip. A
- * macro tab is shown only when at least one of its sections is visible and
- * carries the error dot when any of them is invalid. Contacts/addresses open
- * in the shared dialog and persist immediately when the card already exists
- * (`cardOwnerRef`). Every field is wrapped in `MetaField` (spec 0004); all
- * non-render logic lives in `useRegistryForm`.
+ * The registry create/edit form UI (spec 0020), laid out as a SINGLE screen
+ * like its twin `ReferentForm` (user directive 2026-09-07): anagraphic card,
+ * registry details (relations + business fields), contacts, addresses and
+ * custom fields stacked one under the other in a single column, with no macro
+ * tabs. Each block keeps its own `FormSection` heading and its own visibility
+ * gate. Contacts/addresses open in the shared dialog and persist immediately
+ * when the card already exists (`cardOwnerRef`), with the "site type" select
+ * enabled on the addresses. Every field is wrapped in `MetaField` (spec 0004);
+ * all non-render logic lives in `useRegistryForm`.
  */
 export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBodyProps) {
   const { t } = useTranslation()
-  // Controlled, so the tab strip can hand the selection over to its select
-  // fallback when the tabs no longer fit.
-  const [activeTab, setActiveTab] = useState(DEFAULT_TAB)
   const { field: fieldPermission } = useResourcePermissions()
+  // The form's own scroll container: what a refused save scrolls, and the
+  // boundary that keeps it from scrolling another owner form's blocks.
+  const containerRef = useRef<HTMLDivElement>(null)
   const {
     form,
     serverError,
     profileDraft,
     setProfileDraft,
-    profileValid,
     revalidateSignal,
     blockedSection,
     selectedItems,
@@ -74,13 +63,13 @@ export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBody
     personalDataFieldPermission,
   } = useRegistryForm({ mode, onSuccess })
 
-  // A highlighted field on a hidden tab is no highlight at all: a refused save
-  // brings its own block on screen.
-  useRevealBlockedSection(revalidateSignal, blockedSection, TAB_OF_SECTION, setActiveTab)
+  // The blocks are all on screen, but the offending one can be far above the
+  // save button: a refused save brings it back under the user's eyes.
+  useRevealBlockedSection(revalidateSignal, blockedSection, containerRef)
 
   // Section visibility, read from the same authorization context `MetaField`
-  // uses (the anagraphic card has no permission-gated field, so Account is
-  // always shown).
+  // uses (the anagraphic card has no permission-gated field, so it is always
+  // shown).
   const detailsVisible =
     fieldPermission('source_id').visible ||
     fieldPermission('sector_ids').visible ||
@@ -98,114 +87,89 @@ export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBody
     fieldPermission('employee_count').visible
   const contactsVisible = personalDataFieldPermission('personal_data.contacts').visible
   const addressesVisible = personalDataFieldPermission('personal_data.addresses').visible
-  const contactInfoVisible = contactsVisible || addressesVisible
 
   // `is_qualified_supplier` only makes sense while the registry is a supplier
   // (spec 0020): the form hides the toggle otherwise.
   const isSupplier = form.watch('is_supplier')
 
-  // Account error = the mandatory card is invalid (its buffer lives outside RHF)
-  // or any registry-detail field carries a validation error.
-  const errors = form.formState.errors
-  const accountHasError = !profileValid || Object.keys(errors).length > 0
-
   // Contacts/addresses persist immediately once the card exists; otherwise they
   // stay buffered until the form is saved (parity with the Referents module).
   const persistence = cardOwnerRef(profileDraft)
-  const tabHasErrorsLabel = t('registries.form.tabs.tabHasErrors')
-
-  const tabItems: RegistryFormTab[] = [
-    { value: 'account', label: t('registries.form.tabs.account'), Icon: IdCard, visible: true, hasError: accountHasError },
-    { value: 'contactInfo', label: t('registries.form.tabs.contactInfo'), Icon: Phone, visible: contactInfoVisible, hasError: false },
-  ]
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
+    <div ref={containerRef} className="flex flex-1 flex-col overflow-y-auto">
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-1 flex-col gap-4 p-4"
           noValidate
         >
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col gap-4">
-            <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
-              {tabItems
-                .filter((tab) => tab.visible)
-                .map(({ value, label, Icon, hasError }) => (
-                  <TabsTrigger key={value} value={value} className={FORM_TAB_TRIGGER_CLASS}>
-                    <Icon aria-hidden="true" />
-                    {label}
-                    {hasError && <TabErrorDot label={tabHasErrorsLabel} />}
-                  </TabsTrigger>
-                ))}
-            </FormTabStrip>
+          <div {...anagraphicSectionProps('card')}>
+            <FormSection
+              icon={IdCard}
+              title={t('registries.form.sections.identity.title')}
+              description={t('registries.form.sections.identity.description')}
+            >
+              <PersonalDataCardForm
+                value={profileDraft}
+                onChange={setProfileDraft}
+                fieldPermission={personalDataFieldPermission}
+                revalidateSignal={revalidateSignal}
+              />
+            </FormSection>
+          </div>
 
-            <TabsContent value="account" className="flex flex-col gap-4">
+          {detailsVisible && (
+            <DetailsTabContent
+              control={form.control}
+              selectedItems={selectedItems}
+              isSupplier={isSupplier}
+            />
+          )}
+
+          {contactsVisible && (
+            <div {...anagraphicSectionProps('contacts')}>
               <FormSection
-                icon={IdCard}
-                title={t('registries.form.sections.identity.title')}
-                description={t('registries.form.sections.identity.description')}
+                icon={Phone}
+                title={t('registries.form.sections.contacts.title')}
+                description={t('registries.form.sections.contacts.description')}
+                aside={<Badge variant="secondary">{profileDraft.contacts.length}</Badge>}
               >
-                <PersonalDataCardForm
-                  value={profileDraft}
-                  onChange={setProfileDraft}
+                <ContactsManager
+                  value={profileDraft.contacts}
+                  onChange={(contacts) => setProfileDraft({ ...profileDraft, contacts })}
                   fieldPermission={personalDataFieldPermission}
-                  revalidateSignal={revalidateSignal}
+                  showHeader={false}
+                  persistence={persistence}
+                  createMode={mode.type === 'create'}
+                  requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
                 />
               </FormSection>
+            </div>
+          )}
 
-              {detailsVisible && (
-                <DetailsTabContent
-                  control={form.control}
-                  selectedItems={selectedItems}
-                  isSupplier={isSupplier}
+          {addressesVisible && (
+            <div {...anagraphicSectionProps('addresses')}>
+              <FormSection
+                icon={MapPin}
+                title={t('registries.form.sections.addresses.title')}
+                description={t('registries.form.sections.addresses.description')}
+                aside={<Badge variant="secondary">{profileDraft.addresses.length}</Badge>}
+              >
+                <AddressesManager
+                  value={profileDraft.addresses}
+                  onChange={(addresses) => setProfileDraft({ ...profileDraft, addresses })}
+                  fieldPermission={personalDataFieldPermission}
+                  showHeader={false}
+                  persistence={persistence}
+                  showSiteType
+                  createMode={mode.type === 'create'}
                 />
-              )}
+              </FormSection>
+            </div>
+          )}
 
-              <CustomFieldsSection resource="registries" control={form.control} />
-            </TabsContent>
-
-            {contactInfoVisible && (
-              <TabsContent value="contactInfo" className="flex flex-col gap-4">
-                {contactsVisible && (
-                  <FormSection
-                    icon={Phone}
-                    title={t('registries.form.sections.contacts.title')}
-                    description={t('registries.form.sections.contacts.description')}
-                    aside={<Badge variant="secondary">{profileDraft.contacts.length}</Badge>}
-                  >
-                    <ContactsManager
-                      value={profileDraft.contacts}
-                      onChange={(contacts) => setProfileDraft({ ...profileDraft, contacts })}
-                      fieldPermission={personalDataFieldPermission}
-                      showHeader={false}
-                      persistence={persistence}
-                      createMode={mode.type === 'create'}
-                    />
-                  </FormSection>
-                )}
-
-                {addressesVisible && (
-                  <FormSection
-                    icon={MapPin}
-                    title={t('registries.form.sections.addresses.title')}
-                    description={t('registries.form.sections.addresses.description')}
-                    aside={<Badge variant="secondary">{profileDraft.addresses.length}</Badge>}
-                  >
-                    <AddressesManager
-                      value={profileDraft.addresses}
-                      onChange={(addresses) => setProfileDraft({ ...profileDraft, addresses })}
-                      fieldPermission={personalDataFieldPermission}
-                      showHeader={false}
-                      persistence={persistence}
-                      showSiteType
-                      createMode={mode.type === 'create'}
-                    />
-                  </FormSection>
-                )}
-              </TabsContent>
-            )}
-          </Tabs>
+          <CustomFieldsSection resource="registries" control={form.control} />
 
           {serverError && (
             <p className="text-sm font-medium text-destructive" role="alert">

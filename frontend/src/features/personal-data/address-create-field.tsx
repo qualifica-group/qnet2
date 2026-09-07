@@ -79,6 +79,13 @@ interface AddressCreateFieldProps {
  * it starts blank (optional). Writes the buffer directly on every change: an
  * address with every field empty clears it, any input creates/updates the sole
  * draft. Once started, `line1` and the city are required (validated inline).
+ *
+ * The required markers follow that same rule instead of standing there
+ * permanently (user directive 2026-09-07): on a pristine address the whole
+ * block is optional, so an asterisk on `line1`/city would promise an
+ * obligation that does not exist. They appear the moment the address is
+ * started — which is also the moment the two fields really become mandatory.
+ *
  * Extracted from `AddressesManager` to keep it within the file size limits.
  */
 export function AddressCreateField({
@@ -128,16 +135,18 @@ export function AddressCreateField({
       <div className="flex flex-col gap-1.5">
         <label htmlFor="address-create-line1" className="text-sm font-medium">
           {t('personalData.addresses.line1')}
-          <span className="ml-1 text-destructive" aria-hidden="true">
-            *
-          </span>
+          {started && (
+            <span className="ml-1 text-destructive" aria-hidden="true">
+              *
+            </span>
+          )}
         </label>
         <Input
           id="address-create-line1"
           autoComplete="address-line1"
           value={fields.line1}
           onChange={(event) => commit({ ...fields, line1: event.target.value })}
-          aria-required="true"
+          aria-required={started}
           aria-invalid={line1Error !== null}
           aria-describedby={line1Error ? 'address-create-line1-error' : undefined}
         />
@@ -176,7 +185,7 @@ export function AddressCreateField({
         <GeoSelect
           value={geoValue}
           onChange={(next) => commit({ ...fields, ...next })}
-          requiredLevels={cityRequired ? CITY_REQUIRED_LEVELS : undefined}
+          requiredLevels={cityRequired && started ? CITY_REQUIRED_LEVELS : undefined}
         />
         {cityError && (
           <span role="alert" className="text-sm text-destructive">

@@ -50,6 +50,10 @@ if (! function_exists('minimalRegistryProfilePayload')) {
             'type' => 'individual',
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
+            // An anagrafica must carry a phone number at creation (user
+            // directive 2026-09-07): a payload without one is no longer a
+            // valid create, so the minimal one holds it.
+            'contacts' => [['type' => 'phone', 'value' => '+39 02 1112223', 'is_primary' => true]],
         ], $overrides);
     }
 }
@@ -230,6 +234,78 @@ it('create: 422 when a nested address is missing city_id (product decision: geo-
     ])->assertStatus(422)->assertJsonValidationErrors('personal_data.addresses.0.city_id');
 
     expect(Registry::count())->toBe(0);
+});
+
+// ---------------------------------------------------------------------------
+// create — at least one phone number (user directive 2026-09-07, the rule the
+// referenti already carried since 2026-07-31)
+// ---------------------------------------------------------------------------
+
+it('create: 422 without any contact at all', function () {
+    $actor = registryUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/registries', [
+        'is_supplier' => false,
+        'personal_data' => minimalRegistryProfilePayload(['contacts' => []]),
+    ])->assertStatus(422)->assertJsonValidationErrors('personal_data.contacts');
+
+    expect(Registry::count())->toBe(0);
+});
+
+it('create: 422 when the only contact is not a phone number', function () {
+    $actor = registryUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/registries', [
+        'is_supplier' => false,
+        'personal_data' => minimalRegistryProfilePayload([
+            'contacts' => [['type' => 'email', 'value' => 'ada@example.com', 'is_primary' => true]],
+        ]),
+    ])->assertStatus(422)->assertJsonValidationErrors('personal_data.contacts');
+
+    expect(Registry::count())->toBe(0);
+});
+
+it('create: 201 when the only number is a mobile (mobile counts as a phone number)', function () {
+    $actor = registryUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/registries', [
+        'is_supplier' => false,
+        'personal_data' => minimalRegistryProfilePayload([
+            'contacts' => [['type' => 'mobile', 'value' => '+39 333 1234567', 'is_primary' => true]],
+        ]),
+    ])->assertCreated();
+
+    expect(Registry::count())->toBe(1);
+});
+
+it('create: the missing-phone 422 never masks the 403 of an actor who may not create', function () {
+    $actor = registryUserWith([]);
+    Sanctum::actingAs($actor);
+
+    // No phone in the payload: the phone rule must stand aside so the Policy's
+    // 403 stays the reported failure, never a 422 that leaks payload feedback
+    // to someone who may not create at all.
+    $this->postJson('/api/registries', [
+        'is_supplier' => false,
+        'personal_data' => minimalRegistryProfilePayload(['contacts' => []]),
+    ])->assertForbidden();
+
+    expect(Registry::count())->toBe(0);
+});
+
+it('update: does not require a phone number (the rule gates creation only)', function () {
+    $actor = registryUserWith(['update']);
+    $target = Registry::factory()->create();
+    PersonalData::factory()->for($target, 'personable')->create(['first_name' => 'Ada', 'last_name' => 'Lovelace']);
+    Sanctum::actingAs($actor);
+
+    $this->putJson("/api/registries/{$target->id}", [
+        'is_supplier' => false,
+        'personal_data' => minimalRegistryProfilePayload(['contacts' => []]),
+    ])->assertOk();
 });
 
 it('create: 403 without registries.create', function () {

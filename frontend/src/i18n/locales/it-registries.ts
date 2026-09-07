@@ -25,11 +25,6 @@ export const registries = {
     people: 'Referenti e gestori account',
   },
   form: {
-    tabs: {
-      account: 'Anagrafica',
-      contactInfo: 'Recapiti',
-      tabHasErrors: 'Questa scheda contiene errori di validazione.',
-    },
     newRegistry: 'Nuova anagrafica',
     createTitle: 'Crea anagrafica',
     createSubtitle: 'Aggiungi una nuova anagrafica alla tua organizzazione.',

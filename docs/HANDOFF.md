@@ -3,6 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+
 ## TASK — FILTRO NAZIONALE SU REGIONI E LOCALITA' — VERDE E COMMITTATO (2026-09-07)
 
 **Richiesta utente.** Nel menu di selezione della Regione comparivano regioni/localita'
@@ -59,6 +60,154 @@ spec 0103 (reports): formattazione, nessuna modifica di logica, non e' roba mia.
 (b) Con il filtro attivo il `subtitle` del select Regione e' sempre "Italia" (ridondante,
 lasciato invariato). (c) `GeoResolver`/import non sono filtrati: risolvono da dataset
 mondiale, valutare a parte.
+
+## TASK — ASTERISCO CONDIZIONALE SU VIA/CITTA' DELL'INDIRIZZO INLINE — VERDE, NON COMMITTATO (2026-09-07)
+
+**Richiesta utente.** "Rendilo condizionale", dopo la segnalazione che nel blocco Indirizzo
+`Via` e `Citta'` mostravano l'asterisco fisso pur essendo l'indirizzo FACOLTATIVO nel suo
+insieme: un marcatore che prometteva un obbligo inesistente.
+
+**Cosa e' cambiato.** Solo `personal-data/address-create-field.tsx` (l'indirizzo inline del
+flusso di creazione, montato da tutti e quattro i form anagrafici). Il marcatore ora segue
+la regola che la validazione applicava gia': `started = isStarted(fields)`.
+- `line1`: l'asterisco e `aria-required` passano da fissi a `{started}`.
+- citta': `requiredLevels={cityRequired && started ? CITY_REQUIRED_LEVELS : undefined}`.
+Nessuna regola di validazione toccata: `line1Error`/`cityError` erano gia' condizionati a
+`started`, era solo il MARCATORE a essere fuori sincrono.
+
+**Semantica, per chi la rileggera'.** `isStarted` e' vero se c'e' line1, line2, CAP o citta'
+(NON il paese: `GeoSelect` preseleziona il default nazionale e contarlo marcherebbe come
+iniziato un indirizzo che nessuno ha toccato). Quindi: indirizzo vuoto = zero asterischi,
+primo carattere digitato = compaiono su entrambi i campi.
+
+**Copertura.** Nuovo test in `addresses-manager.test.tsx` ("marks line1 and the city required
+only once the address is started") che verifica `aria-required`, il testo della label e i
+`requiredLevels` passati al cascade. Per leggerli, il mock di `GeoSelect` di quella suite
+ora espone `data-required-levels`. Mutation test fatto: ripristinando i marcatori fissi il
+test diventa rosso.
+
+**Stato verificato.** `npx vitest run` intero: 601 file, 4405 test, tutti verdi.
+`npx tsc -b --force`: pulito. ESLint sui file toccati: pulito. Niente committato.
+
+**Nota di coordinamento.** Una sessione parallela (Configuratore Report, spec 0103) ha
+segnalato un TS2339 su questo stesso file: era la finestra tra la nostra modifica e il fix
+(`getByLabelText(...) as HTMLInputElement`, serve per leggere `.labels`). Gia' risolto,
+risposto alla sessione. Nel working tree ci sono piu' sessioni: mai `git commit -a`.
+
+## TASK — TELEFONO OBBLIGATORIO ALLA CREAZIONE ANCHE PER LE ANAGRAFICHE — VERDE, NON COMMITTATO (2026-09-07)
+
+**Richiesta utente.** "Per i campi obbligatori segnali con *" -> chiarito che l'unico modulo
+col telefono obbligatorio era Referenti (direttiva 2026-07-31) -> "voglio che venga fatto
+anche in anagrafiche". Quindi NON un marcatore cosmetico: obbligo vero, client + server,
+come sui Referenti.
+
+**Come e' stato fatto.** La regola esisteva gia' una volta in
+`StoreReferentRequest::validatePhoneContact`. E' stata ESTRATTA nel concern condiviso
+`App\Http\Requests\Concerns\ValidatesRequiredPhoneContact` e ora la usano entrambe le
+Store request (referenti + anagrafiche). Il metodo si chiama `validateRequiredPhoneContact`.
+Due dettagli che chi lo tocca deve sapere:
+- il concern legge `self::PHONE_CONTACT_TYPES` (phone + mobile), costante di
+  `ValidatesPhoneUniqueness`: l'host DEVE usare anche quel trait, perche' una costante di
+  trait e' raggiungibile solo attraverso la classe che lo compone;
+- l'abilita' del guard e' derivata da `authorizationResource().'.create'`, quindi il 422
+  non maschera mai il 403 di chi non puo' creare (test dedicato su entrambi i moduli).
+
+**Dove NON vale, deliberatamente.** Solo sulla create del FormRequest: update, import,
+conversione da Lead e seeder creano anagrafiche senza contatti e continuano a funzionare.
+Stessa scelta gia' fatta per i Referenti.
+
+**Frontend.** `registry-form-body.tsx` passa `requiredCreateTypes={['phone']}` ->
+asterisco + `aria-required` sul campo Telefono rapido; `use-registry-form.ts` blocca il
+submit con `hasPhoneContact()` (helper gia' condiviso in `personal-data/create-validation.ts`,
+riusato tale e quale) e il messaggio `personalData.section.phoneRequired`, gia' tradotto it/en.
+
+**Ripple sui test, gia' assorbito.** I payload di create validi delle suite Anagrafiche ora
+includono un telefono: aggiornati `minimalRegistryProfilePayload` (definito DUE volte, in
+RegistryCrudTest e RegistryManagerSlotsTest, entrambe patchate), `registryPayloadWith`
+(RegistryIdentityUniquenessTest — numero volutamente DIVERSO da `REGISTRY_PHONE`, che e' la
+fixture di collisione) e `assignmentRegistryPayload`. I test che si aspettano un 422 su un
+altro campo non sono stati toccati: la regola si tira indietro se il validator ha gia' errori.
+
+**Copertura verificata con mutation test.** Disattivando la regola diventano rossi:
+lato server 2 test di `RegistryCrudTest`, lato client 2 di
+`registry-form-required-phone.test.tsx` (file nuovo). Non e' copertura di facciata.
+
+**Stato verificato.** `php artisan test` intero: 6372 test, 6371 passed, 1 skip preesistente.
+`npx vitest run` intero: 601 file, 4404 test, TUTTI verdi (incluso `features/reports`, che
+nel frattempo l'altra sessione ha sistemato). `npx tsc -b --force`: exit pulito, nessun errore.
+`pint --test`: passed. ESLint sui file toccati: pulito. Niente committato.
+
+**Aperto, in attesa di decisione utente.** Nel blocco Indirizzo (tutti e quattro i form)
+`Via` e `Citta'` mostrano l'asterisco fisso pur essendo l'indirizzo facoltativo nel suo
+insieme: sono obbligatori solo se l'utente inizia a compilarlo. Marcatore che promette un
+obbligo inesistente, segnalato e NON toccato.
+
+## TASK — FORM ANAGRAFICI SU UNA SOLA SCHERMATA (niente tab) — VERDE, NON COMMITTATO (2026-09-07)
+
+**Richiesta utente.** "Durante la creazione di un nuovo segnalatore, i dati anagrafici, i
+recapiti e le altre informazioni sono suddivisi in sezioni/tab differenti e richiedono
+diversi passaggi o scorrimenti. Riunire anagrafica, recapiti e informazioni in un'unica
+schermata." Scelte esplicite dell'utente in sessione: (1) applicare a Referenti +
+Anagrafiche + Utenti + Sedi aziendali, non al solo Segnalatore; (2) layout a COLONNA
+SINGOLA con sezioni impilate (NON due colonne `@container` come Opportunita'); (3)
+implementazione diretta, senza file di spec.
+
+**Il fatto di partenza, verificato prima di toccare codice.** "Segnalatore" non e' un
+modulo: ogni `reporter_id` (Opportunita', Offerte, Gestione Richieste, Anagrafiche) punta
+a `REFERENTS_FOR_SELECT_RESOURCE`, quindi creare un segnalatore = creare un REFERENTE.
+`ReferentFormBody` e' un punto unico servito da tre ingressi (pagina `/referents/new`,
+screen modale del module registry, dialog di quick-create "+"): modificarlo li copre tutti.
+In creazione contatti e indirizzo erano GIA' inline (`ContactsCreateFields` email/telefono/
+pec/fax + `AddressCreateField`): l'attrito vero era solo la seconda tab.
+
+**Cosa e' cambiato (solo frontend, nessun contratto API toccato).**
+- Le quattro `*-form-body.tsx` (referents, registries, users, company-sites) non montano
+  piu' `Tabs`/`TabsContent`/`FormTabStrip`: le `FormSection` stanno impilate dentro il
+  `<form>`, ognuna col proprio gate di visibilita' invariato. Ordine uniforme: card
+  anagrafica -> dettagli del modulo -> contatti -> indirizzi -> CAMPI CUSTOM IN FONDO.
+- Per i campi custom in fondo, `<CustomFieldsSection resource="company-sites">` e' stata
+  spostata da `company-site-profile-tab.tsx` al body.
+- Spariti i pallini d'errore per-tab: `profileValid` non serviva ad altro ed e' stato
+  tolto dal RETURN dei quattro hook `use-*-form` (resta interno, gate del submit).
+- `useRevealBlockedSection` non puo' piu' cambiare tab: ora SCROLLA il blocco rifiutato.
+  Firma nuova `(signal, section, containerRef)`; i body marcano i blocchi con
+  `anagraphicSectionProps('card'|'contacts'|'addresses')` -> attributo
+  `data-anagraphic-section`. Lo scope sul ref del form e' VOLUTO: un quick-create di
+  Referente aperto da dentro il form Anagrafica ha gli stessi marcatori, e senza scope
+  scrollerebbe il form sottostante.
+- i18n: rimosse le chiavi morte `form.tabs.*` di referents/registries/companySites e
+  l'export `usersFormTabs` (it/en).
+
+**Conseguenza nota, da decidere con l'utente.** Sul form UTENTI ora convivono a schermo
+DUE campi etichettati "Email": quello di autenticazione e il recapito rapido. Nessun
+altro modulo ha il conflitto (solo Utenti ha le credenziali). Se da' fastidio, e' una
+scelta di copy (es. "Email di accesso" / "Email di contatto"), non un problema tecnico.
+Nei test la disambiguazione e' fatta scopando la query alla sezione "Authentication".
+
+**Effetto collaterale sui test, importante per chi tocchera' questi form.** Montare tutto
+insieme fa montare anche i blocchi che prima stavano su tab inattive, quindi le suite
+hanno dovuto ricevere i provider che quei blocchi pretendono: `ConfirmDialogProvider`
+(lo usa `ContactsManager`), il mock di `useAbilities` (lo usa `Can` dentro il
+quick-create "+" delle relation select) e `useConfig` (lo legge il cascade geo
+dell'indirizzo). Sostituito il describe "UserForm — tabbed layout (AC-014)" con
+"UserForm — single-screen layout", che verifica che i blocchi delle tre ex macro-tab
+siano montati insieme e che le macro-tab non esistano piu'.
+
+**Stato verificato.** `npx vitest run` intero: 596 file, 4385 test, 4383 verdi. I 2 rossi
+sono in `src/features/reports/use-report-columns.test.ts`, modulo NON TRACCIATO e non mio
+(spec 0103 report-builder, lavoro in corso di un'altra sessione nello stesso working tree);
+non importa nulla di cio' che ho toccato. `npx tsc -b --force`: gli unici errori sono in
+`features/reports/*` e `routes/router.tsx` (`ReportsPage` importata e mai usata), stessa
+origine. ESLint sui file toccati: pulito, tranne un errore PREESISTENTE e identico su HEAD
+(`registry-form-metadata.test.tsx:271`, `'_omit' is assigned a value but never used`),
+lasciato dov'era perche' fuori scope.
+
+**Fuori scope segnalato, non implementato.** (1) I file/exports sorelle conservano il nome
+"tab" pur non essendoci piu' tab: `user-form-account-tabs.tsx`, `user-form-employment-tabs.tsx`,
+`user-form-contract-data-tab.tsx`, `referent-form-details-tab.tsx`, `registry-form-details-tab.tsx`,
+`company-site-*-tab.tsx` e i loro `*TabContent`. Rinominarli e' un refactor a se'.
+(2) Questo `docs/HANDOFF.md` e' a 628 KB contro il budget di ~50 KB dichiarato in testa:
+serve un giro di archiviazione in `docs/handoff-archive/`.
 
 ## TASK — RIGA PRODOTTO OBBLIGATORIA PER CANALE (spec 0102) — VERDE, NON COMMITTATO (2026-09-04)
 

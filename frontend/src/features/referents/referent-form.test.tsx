@@ -92,15 +92,8 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 
 /* -------------------------------- helpers --------------------------------- */
 
-/** Switches the active tab. Radix `TabsTrigger` activates on `mouseDown`. */
-function switchTab(name: string) {
-  // Match by name prefix: an error dot adds an indicator to the accessible name.
-  fireEvent.mouseDown(screen.getByRole('tab', { name: new RegExp(`^${name}`) }))
-}
-
 /** Creating a referent requires a phone number (user directive 2026-07-31). */
 function fillRequiredPhone() {
-  switchTab('Contact info')
   fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
 }
 
@@ -185,11 +178,10 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
       { wrapper: wrapper() },
     )
 
-    // Identity is the default-active tab (anagraphic card, PersonalDataCardForm reused).
+    // The anagraphic card (PersonalDataCardForm reused) opens the single screen.
     expect(screen.getByLabelText(/^First name/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Last name/)).toBeInTheDocument()
 
-    switchTab('Account')
     expect(screen.getByTestId('referent-types-value')).toBeInTheDocument()
     expect(screen.getByTestId('users-value')).toBeInTheDocument()
     // contact_scope pre-selects 'internal'.
@@ -214,7 +206,6 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
 
     fillRequiredPhone()
 
-    switchTab('Account')
     fireEvent.click(screen.getByText('select-referent-types-3'))
     fireEvent.click(screen.getByText('select-users-3'))
     fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'VIP sponsor' } })
@@ -256,7 +247,6 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
 
     fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
-    switchTab('Contact info')
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -273,7 +263,6 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
       { wrapper: wrapper() },
     )
 
-    switchTab('Contact info')
 
     expect(screen.getByLabelText(/^Phone/)).toHaveAttribute('aria-required', 'true')
     expect(screen.getByLabelText('Email')).toHaveAttribute('aria-required', 'false')
@@ -289,16 +278,14 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
       { wrapper: wrapper() },
     )
 
-    // Seeded card fields (Identity, the default tab) — no separate fetch needed,
+    // Seeded card fields — no separate fetch needed,
     // `personal_data` arrives embedded in the `show` response (spec 0016).
     expect(screen.getByLabelText(/^First name/)).toHaveValue('Ada')
 
-    switchTab('Account')
     expect(screen.getByTestId('referent-types-value')).toHaveTextContent('3')
     expect(screen.getByTestId('users-value')).toHaveTextContent('9')
     expect(screen.getByLabelText(/^Notes/)).toHaveValue('Some notes')
 
-    switchTab('Contact info')
     expect(screen.getByText('ada@work.com')).toBeInTheDocument()
   })
 
@@ -314,7 +301,6 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
       { wrapper: wrapper() },
     )
 
-    switchTab('Account')
     fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'Updated note' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -336,7 +322,6 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
       { wrapper: wrapper() },
     )
 
-    switchTab('Account')
     fireEvent.click(screen.getByText('clear-users'))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 

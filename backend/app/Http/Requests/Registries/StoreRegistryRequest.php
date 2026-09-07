@@ -8,6 +8,7 @@ use App\Enums\SizeClassEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
+use App\Http\Requests\Concerns\ValidatesRequiredPhoneContact;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Registry;
 use Illuminate\Contracts\Validation\Validator;
@@ -25,12 +26,18 @@ use Illuminate\Validation\Rule;
  * `registries.name`, mirroring StoreReferentRequest). EnforcesFieldPermissions
  * (spec 0004) additionally rejects any submitted field the actor cannot edit
  * (create-context, model = null).
+ *
+ * On top of those, the same two phone rules the referenti carry: the nested
+ * card must hold at least one number at creation (ValidatesRequiredPhoneContact,
+ * user directive 2026-09-07) and that number must be free across the shared
+ * identity namespace (ValidatesPhoneUniqueness).
  */
 class StoreRegistryRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesManagerSlots;
     use ValidatesPhoneUniqueness;
+    use ValidatesRequiredPhoneContact;
     use ValidatesUserProfile;
 
     public function authorize(): bool
@@ -98,13 +105,15 @@ class StoreRegistryRequest extends FormRequest
     }
 
     /**
-     * Apply the per-type contact `value` rules for the nested profile and
-     * the field-level authorization gate (spec 0004).
+     * Apply the per-type contact `value` rules for the nested profile, the
+     * create-time phone requirement and the field-level authorization gate
+     * (spec 0004).
      */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
+            $this->validateRequiredPhoneContact($validator);
             $this->validatePhoneUniqueness($validator);
             $this->validateManagerSlots($validator);
             $this->enforceFieldPermissions($validator);

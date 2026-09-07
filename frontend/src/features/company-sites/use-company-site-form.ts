@@ -310,7 +310,6 @@ export function useCompanySiteForm({ mode, onSuccess, onSiteChange }: UseCompany
     serverError,
     profileDraft,
     setProfileDraft,
-    profileValid,
     revalidateSignal,
     personalDataFieldPermission,
     pendingLogo,

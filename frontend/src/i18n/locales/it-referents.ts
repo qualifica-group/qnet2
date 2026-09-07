@@ -23,11 +23,6 @@ export const referents = {
     details: 'Dettagli',
   },
   form: {
-    tabs: {
-      account: 'Anagrafica',
-      contactInfo: 'Recapiti',
-      tabHasErrors: 'Questa scheda contiene errori di validazione.',
-    },
     newReferent: 'Nuovo referente',
     createTitle: 'Crea referente',
     createSubtitle: 'Aggiungi un nuovo referente alla tua organizzazione.',

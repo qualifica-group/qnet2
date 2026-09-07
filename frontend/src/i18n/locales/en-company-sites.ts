@@ -60,12 +60,6 @@ export const companySites = {
     settingDefault: 'Setting as default…',
     defaultSet: 'This site is now the default one.',
     defaultError: 'Unable to set this site as default. Please try again.',
-    tabs: {
-      profile: 'Profile',
-      settings: 'Settings',
-      banks: 'Banks',
-      tabHasErrors: 'This tab has validation errors',
-    },
     sections: {
       general: {
         title: 'General',

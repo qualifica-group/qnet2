@@ -42,7 +42,13 @@ if (! function_exists('assignmentRegistryPayload')) {
     {
         return array_merge([
             'is_supplier' => false,
-            'personal_data' => ['type' => 'individual', 'first_name' => 'Ada', 'last_name' => 'Lovelace'],
+            // The phone is mandatory at creation (user directive 2026-09-07).
+            'personal_data' => [
+                'type' => 'individual',
+                'first_name' => 'Ada',
+                'last_name' => 'Lovelace',
+                'contacts' => [['type' => 'phone', 'value' => '+39 02 1112223', 'is_primary' => true]],
+            ],
         ], $overrides);
     }
 }

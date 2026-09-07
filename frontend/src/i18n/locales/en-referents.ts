@@ -23,11 +23,6 @@ export const referents = {
     details: 'Details',
   },
   form: {
-    tabs: {
-      account: 'Account',
-      contactInfo: 'Contact info',
-      tabHasErrors: 'This tab has validation errors.',
-    },
     newReferent: 'New referent',
     createTitle: 'Create referent',
     createSubtitle: 'Add a new referent to your organization.',

@@ -285,7 +285,6 @@ export function useReferentForm({ mode, onSuccess }: UseReferentFormArgs) {
     serverError,
     profileDraft,
     setProfileDraft,
-    profileValid,
     revalidateSignal,
     blockedSection,
     selectedReferentTypeItem,

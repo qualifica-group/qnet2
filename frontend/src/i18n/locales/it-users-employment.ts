@@ -1,19 +1,11 @@
 /**
- * User employment profile strings (spec 0015: tab Profilo / Rapporto / Dati
- * contrattuali). Extracted from `it.ts` to keep that file within the
+ * User employment profile strings (spec 0015: sezioni Profilo / Rapporto /
+ * Dati contrattuali). Extracted from `it.ts` to keep that file within the
  * engineering size limits (see `.claude/rules/engineering.md` §6); merged
  * into the `users.*` namespace from there.
  */
 
-/** Labels for the user form's three macro tabs (see the EN file for the grouping). */
-export const usersFormTabs = {
-  account: 'Anagrafica',
-  employment: 'Impiego',
-  contactInfo: 'Recapiti',
-  tabHasErrors: 'Questa scheda contiene errori di validazione.',
-}
-
-/** `FormSection` header (title/description) for the three new employment tabs. */
+/** `FormSection` header (title/description) for the three employment sections. */
 export const usersFormEmploymentSections = {
   profile: {
     title: 'Profilo',

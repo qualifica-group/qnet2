@@ -1,24 +1,11 @@
 /**
  * User employment profile strings (spec 0015: Profile / Contract / Contract
- * data tabs). Extracted from `en.ts` to keep that file within the engineering
+ * data sections). Extracted from `en.ts` to keep that file within the engineering
  * size limits (see `.claude/rules/engineering.md` §6); merged into the
  * `users.*` namespace from there.
  */
 
-/**
- * Labels for the user form's three macro tabs. Each macro tab groups several
- * `FormSection`s (Account = identity/credentials/access, Employment =
- * profile/contract/contract-details, Contact info = contacts/addresses); the
- * per-section headings come from `users.form.sections.*`, not from here.
- */
-export const usersFormTabs = {
-  account: 'Account',
-  employment: 'Employment',
-  contactInfo: 'Contact info',
-  tabHasErrors: 'This tab has validation errors.',
-}
-
-/** `FormSection` header (title/description) for the three new employment tabs. */
+/** `FormSection` header (title/description) for the three employment sections. */
 export const usersFormEmploymentSections = {
   profile: {
     title: 'Profile',

@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { FormControl } from '@/components/ui/form'
 import { MetaField } from '@/features/authorization/MetaField'
-import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import { AddressesManager } from '@/features/personal-data/addresses-manager'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { PersonalDataCardForm } from '@/features/personal-data/personal-data-card-form'
@@ -43,12 +42,13 @@ interface ProfileTabContentProps {
 }
 
 /**
- * Profilo tab: the site's own `name` scalar + `notes` and its logo, then the
- * conventional anagraphic toolkit — the personal-data card (locked to
- * `company`, never a natural person), the contacts manager and a single
- * address. Contacts/addresses open in the shared dialog and persist
- * immediately once the card exists (`cardOwnerRef`), otherwise they stay
- * buffered until the form is saved (mirrors the Registries module).
+ * Profile blocks of the company-site form: the site's own `name` scalar +
+ * `notes` and its logo, then the conventional anagraphic toolkit — the
+ * personal-data card (locked to `company`, never a natural person), the
+ * contacts manager and a single address. Contacts/addresses open in the
+ * shared dialog and persist immediately once the card exists (`cardOwnerRef`),
+ * otherwise they stay buffered until the form is saved (mirrors the Registries
+ * module).
  */
 export function ProfileTabContent({
   mode,
@@ -163,8 +163,6 @@ export function ProfileTabContent({
           />
         </FormSection>
       )}
-
-      <CustomFieldsSection resource="company-sites" control={control} />
     </>
   )
 }

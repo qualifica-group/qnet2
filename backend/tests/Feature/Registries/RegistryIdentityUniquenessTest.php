@@ -59,6 +59,10 @@ function registryPayloadWith(array $identity): array
             'type' => 'individual',
             'first_name' => 'Mario',
             'last_name' => 'Rossi',
+            // Mandatory at creation (user directive 2026-09-07). Deliberately
+            // NOT REGISTRY_PHONE: that number is the collision fixture, and a
+            // default sharing it would fail every payload on uniqueness.
+            'contacts' => [['type' => 'phone', 'value' => '+39 02 1112223', 'is_primary' => true]],
         ], $identity),
     ];
 }

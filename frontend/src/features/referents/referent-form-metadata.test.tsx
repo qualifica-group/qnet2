@@ -160,8 +160,6 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Account/ }))
-
     await waitFor(() => expect(screen.getByLabelText(/^Notes/)).toBeInTheDocument())
     expect(screen.queryByTestId('referent-types-value')).not.toBeInTheDocument()
     expect(screen.getByText('Contact scope').closest('label')?.textContent).toContain('*')
@@ -195,8 +193,6 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Account/ }))
-
     await waitFor(() => expect(screen.getByLabelText(/^Notes/)).toBeInTheDocument())
     expect(screen.getByTestId('referent-types-value')).toBeInTheDocument()
     expect(screen.queryByTestId('users-value')).not.toBeInTheDocument()
@@ -225,8 +221,6 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Account/ }))
-
     const notes = screen.getByLabelText(/^Notes/)
     expect(notes).toBeDisabled()
     expect(notes).toHaveAttribute('readonly')
@@ -252,9 +246,6 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    // `contact_scope` lives on the Details tab (inactive by default): switch to
-    // it so its `FormMessage` mounts and the inline error becomes visible.
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Account/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('field not editable')).toBeInTheDocument())

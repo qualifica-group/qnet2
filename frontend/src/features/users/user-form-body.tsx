@@ -1,10 +1,7 @@
-import { useState } from 'react'
-import { Briefcase, IdCard, Phone, type LucideIcon } from 'lucide-react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
-import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
-import { FormTabStrip, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/components/form-tab-strip'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import {
@@ -19,8 +16,10 @@ import { ContractTabContent, ProfileTabContent } from '@/features/users/user-for
 import { useUserForm } from '@/features/users/use-user-form'
 import type { UserFormMode } from '@/features/users/user-form'
 import type { UserDetail } from '@/features/users/types'
-import type { BlockedSection } from '@/features/personal-data/personal-data-issues'
-import { useRevealBlockedSection } from '@/features/personal-data/use-reveal-blocked-section'
+import {
+  anagraphicSectionProps,
+  useRevealBlockedSection,
+} from '@/features/personal-data/use-reveal-blocked-section'
 
 interface UserFormBodyProps {
   mode: UserFormMode
@@ -29,46 +28,29 @@ interface UserFormBodyProps {
   onAvatarChange?: () => void
 }
 
-/** Tab selected when the form opens. */
-const DEFAULT_TAB = 'account'
-
-/** Which tab owns each anagraphic block, for the reveal on a refused save. */
-const TAB_OF_SECTION: Record<BlockedSection, string> = {
-  card: 'account',
-  contacts: 'contactInfo',
-  addresses: 'contactInfo',
-}
-
-/** One entry in the tab strip: its value, label, icon, and gating flags. */
-interface UserFormTab {
-  value: string
-  label: string
-  Icon: LucideIcon
-  visible: boolean
-  hasError: boolean
-}
-
 /**
- * The user create/edit form UI, organized into three macro tabs that each group
- * several `FormSection`s (a scrollable panel): Account (identity, credentials,
- * access), Employment (profile, contract, contract data) and Contact info
- * (contacts, addresses). A macro tab is shown only when at least one of its
- * sections is visible, and carries the error dot when any of them has one. Every
- * field is wrapped in `MetaField` (spec 0004): hidden fields are absent,
- * non-editable fields render disabled/read-only, `required` comes from the
- * resolved `ResourcePermissions` — no hardcoded permission logic lives here. All
+ * The user create/edit form UI (spec 0015), laid out as a SINGLE screen: the
+ * `FormSection`s that used to be grouped under three macro tabs — identity,
+ * credentials, access, then employment (profile, contract, contract data),
+ * then contacts and addresses, and the custom fields last — are stacked one
+ * under the other in a single column (user directive 2026-09-07, same move as
+ * the Referents/Anagrafiche forms). Each section keeps its own visibility gate,
+ * so a section whose fields are all hidden simply is not rendered. Every field
+ * is wrapped in `MetaField` (spec 0004): hidden fields are absent, non-editable
+ * fields render disabled/read-only, `required` comes from the resolved
+ * `ResourcePermissions` — no hardcoded permission logic lives here. All
  * non-render logic lives in `useUserForm`; each section's content lives in a
  * sibling module (`user-form-account-tabs.tsx`, `user-form-employment-tabs.tsx`,
  * `user-form-contract-data-tab.tsx`) so this file stays within the size limits.
- * `<CustomFieldsSection>` (spec 0021) mounts the resource's admin-defined custom
- * fields on the Account tab, with zero users-specific rendering/validation logic.
+ * `<CustomFieldsSection>` (spec 0021) mounts the resource's admin-defined
+ * custom fields, with zero users-specific rendering/validation logic.
  */
 export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: UserFormBodyProps) {
   const { t } = useTranslation()
-  // Controlled, so the tab strip can hand the selection over to its select
-  // fallback when the tabs no longer fit.
-  const [activeTab, setActiveTab] = useState(DEFAULT_TAB)
   const { field: fieldPermission } = useResourcePermissions()
+  // The form's own scroll container: what a refused save scrolls, and the
+  // boundary that keeps it from scrolling another owner form's blocks.
+  const containerRef = useRef<HTMLDivElement>(null)
   const {
     form,
     isEdit,
@@ -77,7 +59,6 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
     setProfileDraft,
     profileQuery,
     profileName,
-    profileValid,
     revalidateSignal,
     blockedSection,
     selectedRoleItems,
@@ -94,9 +75,9 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
     personalDataFieldPermission,
   } = useUserForm({ mode, onSuccess, onAvatarChange })
 
-  // A highlighted field on a hidden tab is no highlight at all: a refused save
-  // brings its own block on screen.
-  useRevealBlockedSection(revalidateSignal, blockedSection, TAB_OF_SECTION, setActiveTab)
+  // The blocks are all on screen, but the offending one can be far above the
+  // save button: a refused save brings it back under the user's eyes.
+  useRevealBlockedSection(revalidateSignal, blockedSection, containerRef)
 
   // The identity card's data is still loading/failed (edit mode only): show a
   // single skeleton/retry in its place, and hold off on contacts/addresses
@@ -107,10 +88,10 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
   const isProfileLoading = isEdit && (profileQuery.isPending || profileQuery.isFetching)
   const isProfileError = isEdit && profileQuery.isError
 
-  // Whole-tab visibility, read from the same authorization context `MetaField`
-  // uses: a tab is only worth rendering if at least one of its fields is
+  // Section visibility, read from the same authorization context `MetaField`
+  // uses: a section is only worth rendering if at least one of its fields is
   // visible. `MetaField` still gates each field individually — this only
-  // decides whether the surrounding tab is shown at all. Identity has no
+  // decides whether the surrounding section is shown at all. Identity has no
   // permission-gated field of its own, so it is always shown.
   const credentialsVisible =
     fieldPermission('email').visible || fieldPermission('password').visible
@@ -133,142 +114,86 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
   const contactsVisible = personalDataFieldPermission('personal_data.contacts').visible
   const addressesVisible = personalDataFieldPermission('personal_data.addresses').visible
 
-  // Per-tab error indicator (AC-014): RHF field errors for the tab's own
-  // fields, plus the buffered personal-data draft's own (schema-driven)
-  // validity for Identity, since that buffer lives outside RHF.
-  const errors = form.formState.errors
-  const tabHasErrorsLabel = t('users.form.tabs.tabHasErrors')
-  const identityHasError = !profileValid
-  const credentialsHasError = Boolean(
-    errors.email || errors.password || errors.password_confirmation,
-  )
-  const accessHasError = Boolean(errors.roles)
-  const profileHasError = Boolean(
-    errors.employment?.business_function_id ||
-      errors.employment?.is_manager ||
-      errors.employment?.job_description ||
-      errors.employment?.reports_to_id,
-  )
-  const contractHasError = Boolean(
-    errors.employment?.relationship_type ||
-      errors.employment?.company_id ||
-      errors.employment?.operational_site_id,
-  )
-  const contractDataHasError = Boolean(
-    errors.employment?.qualification_type ||
-      errors.employment?.hired_at ||
-      errors.employment?.terminated_at ||
-      errors.employment?.standard_daily_minutes ||
-      errors.employment?.break_daily_minutes,
-  )
-
   // Contacts/addresses live in the buffered personal-data draft, seeded only
   // once the identity card has loaded — so they are gated on the profile query
-  // too, not just field visibility. Shared by both the trigger and its content.
+  // too, not just field visibility.
   const contactsRenderable = !isProfileLoading && !isProfileError && contactsVisible
   const addressesRenderable = !isProfileLoading && !isProfileError && addressesVisible
 
-  // Macro-tab visibility/error = OR over the sections each one groups (Account's
-  // Identity section is always present, so Account is always shown).
-  const employmentVisible = profileVisible || contractVisible || contractDataVisible
-  const contactInfoVisible = contactsRenderable || addressesRenderable
-  const accountHasError = identityHasError || credentialsHasError || accessHasError
-  const employmentHasError = profileHasError || contractHasError || contractDataHasError
-
-  const tabItems: UserFormTab[] = [
-    { value: 'account', label: t('users.form.tabs.account'), Icon: IdCard, visible: true, hasError: accountHasError },
-    { value: 'employment', label: t('users.form.tabs.employment'), Icon: Briefcase, visible: employmentVisible, hasError: employmentHasError },
-    { value: 'contactInfo', label: t('users.form.tabs.contactInfo'), Icon: Phone, visible: contactInfoVisible, hasError: false },
-  ]
-
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
+    <div ref={containerRef} className="flex flex-1 flex-col overflow-y-auto">
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-1 flex-col gap-4 p-4"
           noValidate
         >
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col gap-4">
-            <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
-              {tabItems
-                .filter((tab) => tab.visible)
-                .map(({ value, label, Icon, hasError }) => (
-                  <TabsTrigger key={value} value={value} className={FORM_TAB_TRIGGER_CLASS}>
-                    <Icon aria-hidden="true" />
-                    {label}
-                    {hasError && <TabErrorDot label={tabHasErrorsLabel} />}
-                  </TabsTrigger>
-                ))}
-            </FormTabStrip>
+          <div {...anagraphicSectionProps('card')}>
+            <IdentityTabContent
+              mode={mode}
+              profileName={profileName}
+              isLoading={isProfileLoading}
+              isError={isProfileError}
+              onRetry={() => profileQuery.refetch()}
+              profileDraft={profileDraft}
+              setProfileDraft={setProfileDraft}
+              revalidateSignal={revalidateSignal}
+              personalDataFieldPermission={personalDataFieldPermission}
+              setPendingAvatar={setPendingAvatar}
+              handleAvatarUpload={handleAvatarUpload}
+              handleAvatarRemove={handleAvatarRemove}
+              canUploadAvatar={canUploadAvatar}
+              canRemoveAvatar={canRemoveAvatar}
+            />
+          </div>
 
-            <TabsContent value="account" className="flex flex-col gap-4">
-              <IdentityTabContent
-                mode={mode}
-                profileName={profileName}
-                isLoading={isProfileLoading}
-                isError={isProfileError}
-                onRetry={() => profileQuery.refetch()}
+          {credentialsVisible && <CredentialsTabContent control={form.control} isEdit={isEdit} />}
+
+          {accessVisible && (
+            <AccessTabContent control={form.control} selectedRoleItems={selectedRoleItems} />
+          )}
+
+          {profileVisible && (
+            <ProfileTabContent
+              control={form.control}
+              selectedBusinessFunctionItem={selectedBusinessFunctionItem}
+              selectedReportsToItem={selectedReportsToItem}
+            />
+          )}
+
+          {contractVisible && (
+            <ContractTabContent
+              control={form.control}
+              selectedCompanyItem={selectedCompanyItem}
+              selectedOperationalSiteItem={selectedOperationalSiteItem}
+            />
+          )}
+
+          {contractDataVisible && <ContractDataTabContent control={form.control} />}
+
+          {contactsRenderable && (
+            <div {...anagraphicSectionProps('contacts')}>
+              <ContactsTabContent
                 profileDraft={profileDraft}
                 setProfileDraft={setProfileDraft}
-                revalidateSignal={revalidateSignal}
                 personalDataFieldPermission={personalDataFieldPermission}
-                setPendingAvatar={setPendingAvatar}
-                handleAvatarUpload={handleAvatarUpload}
-                handleAvatarRemove={handleAvatarRemove}
-                canUploadAvatar={canUploadAvatar}
-                canRemoveAvatar={canRemoveAvatar}
+                createMode={!isEdit}
               />
-              {credentialsVisible && (
-                <CredentialsTabContent control={form.control} isEdit={isEdit} />
-              )}
-              {accessVisible && (
-                <AccessTabContent control={form.control} selectedRoleItems={selectedRoleItems} />
-              )}
-              <CustomFieldsSection resource="users" control={form.control} />
-            </TabsContent>
+            </div>
+          )}
 
-            {employmentVisible && (
-              <TabsContent value="employment" className="flex flex-col gap-4">
-                {profileVisible && (
-                  <ProfileTabContent
-                    control={form.control}
-                    selectedBusinessFunctionItem={selectedBusinessFunctionItem}
-                    selectedReportsToItem={selectedReportsToItem}
-                  />
-                )}
-                {contractVisible && (
-                  <ContractTabContent
-                    control={form.control}
-                    selectedCompanyItem={selectedCompanyItem}
-                    selectedOperationalSiteItem={selectedOperationalSiteItem}
-                  />
-                )}
-                {contractDataVisible && <ContractDataTabContent control={form.control} />}
-              </TabsContent>
-            )}
+          {addressesRenderable && (
+            <div {...anagraphicSectionProps('addresses')}>
+              <AddressesTabContent
+                profileDraft={profileDraft}
+                setProfileDraft={setProfileDraft}
+                personalDataFieldPermission={personalDataFieldPermission}
+                createMode={!isEdit}
+              />
+            </div>
+          )}
 
-            {contactInfoVisible && (
-              <TabsContent value="contactInfo" className="flex flex-col gap-4">
-                {contactsRenderable && (
-                  <ContactsTabContent
-                    profileDraft={profileDraft}
-                    setProfileDraft={setProfileDraft}
-                    personalDataFieldPermission={personalDataFieldPermission}
-                    createMode={!isEdit}
-                  />
-                )}
-                {addressesRenderable && (
-                  <AddressesTabContent
-                    profileDraft={profileDraft}
-                    setProfileDraft={setProfileDraft}
-                    personalDataFieldPermission={personalDataFieldPermission}
-                    createMode={!isEdit}
-                  />
-                )}
-              </TabsContent>
-            )}
-          </Tabs>
+          <CustomFieldsSection resource="users" control={form.control} />
 
           {serverError && (
             <p className="text-sm font-medium text-destructive" role="alert">

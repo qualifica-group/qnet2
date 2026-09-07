@@ -13,7 +13,7 @@ import type { PersonalDataCard } from '@/features/personal-data/types'
 
 /**
  * Spec 0021: the generic custom-fields renderer wired into the Registries
- * module — mounting `<CustomFieldsSection>` on the Account tab is the ONLY
+ * module — mounting `<CustomFieldsSection>` in the form is the ONLY
  * registries-specific integration. Mirrors `company-form-custom-fields.test.tsx`
  * (the pilot module); per-type control rendering is covered by
  * `CustomFieldsSection.test.tsx`.
@@ -162,7 +162,7 @@ beforeEach(() => {
 })
 
 describe('RegistryForm — custom fields (spec 0021)', () => {
-  it('renders the resource custom field control on the Account tab in create mode', async () => {
+  it('renders the resource custom field control in create mode', async () => {
     render(
       <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
@@ -182,6 +182,8 @@ describe('RegistryForm — custom fields (spec 0021)', () => {
 
     fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(await screen.findByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
+    // Creating an anagrafica requires a phone number (user directive 2026-09-07).
+    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
     fireEvent.change(await screen.findByRole('textbox', { name: 'Priority level' }), {
       target: { value: 'High' },
     })

@@ -60,12 +60,6 @@ export const companySites = {
     settingDefault: 'Impostazione in corso…',
     defaultSet: 'Questa sede è ora quella predefinita.',
     defaultError: 'Impossibile impostare questa sede come predefinita. Riprova.',
-    tabs: {
-      profile: 'Profilo',
-      settings: 'Impostazioni',
-      banks: 'Banche',
-      tabHasErrors: 'Questa scheda contiene errori di validazione',
-    },
     sections: {
       general: {
         title: 'Generale',

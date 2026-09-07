@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { UserForm } from '@/features/users/user-form'
 import type { UserDetailWithPermissions } from '@/features/users/types'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
@@ -11,8 +12,8 @@ import type { EnumOption } from '@/features/config/types'
 import type { PersonalDataCard } from '@/features/personal-data/types'
 
 /**
- * Spec 0015 acceptance criteria AC-014..019 (frontend): the tabbed user form,
- * the employment fields and their i18n. The pre-existing account behaviour
+ * Spec 0015 acceptance criteria AC-014..019 (frontend): the single-screen user
+ * form, the employment fields and their i18n. The pre-existing account behaviour
  * (payload shaping, personal-data buffering, metadata gating) is covered by
  * `user-form.test.tsx`/`user-form-metadata.test.tsx`; `DurationInput` has its
  * own `duration-input.test.tsx`; the payload builder's `employment` mapping is
@@ -113,21 +114,12 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   ),
 }))
 
-/**
- * Radix `TabsTrigger` activates on `mouseDown` (and focus), not `click`. Exact
- * name match: several tab labels share a prefix ("Contract" / "Contract
- * details"), so a substring/regex match would be ambiguous.
- */
-function switchTab(name: string) {
-  // Match by name prefix: a macro tab with a validation error carries an extra
-  // indicator in its accessible name, so an exact match would miss it.
-  fireEvent.mouseDown(screen.getByRole('tab', { name: new RegExp(`^${name}`) }))
-}
-
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+    </QueryClientProvider>
   )
 }
 
@@ -198,9 +190,18 @@ function fillIdentity() {
   fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
 }
 
+/**
+ * The sign-in email. On the single-screen form the contacts block's quick
+ * "Email" is mounted too, so the label alone is ambiguous: scope the query to
+ * the Authentication block.
+ */
+function signInEmail(): HTMLElement {
+  const section = screen.getByText('Authentication').closest('section') as HTMLElement
+  return within(section).getByLabelText(/^Email/)
+}
+
 function fillCredentials() {
-  switchTab('Account')
-  fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'ada@example.com' } })
+  fireEvent.change(signInEmail(), { target: { value: 'ada@example.com' } })
   fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'secret123' } })
   fireEvent.change(screen.getByLabelText(/^Confirm password/), { target: { value: 'secret123' } })
 }
@@ -220,39 +221,23 @@ beforeEach(() => {
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_ACCESS_PERMISSIONS })
 })
 
-describe('UserForm — tabbed layout (spec 0015 AC-014)', () => {
-  it('renders the three macro tabs, with an error indicator on Account while required identity fields are empty', () => {
+describe('UserForm — single-screen layout (user directive 2026-09-07)', () => {
+  it('mounts the identity, credentials, employment and contact blocks together, with no macro tabs', () => {
     render(<UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
-    // Employment and Contact info are always shown here (full-access metadata).
-    expect(screen.getByRole('tab', { name: 'Employment' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Contact info' })).toBeInTheDocument()
-    // Account carries the error indicator in its accessible name here (empty
-    // mandatory identity fields), so it is matched by prefix.
-    expect(screen.getByRole('tab', { name: /^Account/ })).toBeInTheDocument()
+    // One block per former macro tab, all reachable without a single click.
+    expect(screen.getByLabelText(/^First name/)).toBeInTheDocument()
+    expect(signInEmail()).toBeInTheDocument()
+    expect(screen.getByText('Reports to')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Phone/)).toBeInTheDocument()
 
-    // The Account macro groups the Identity section whose mandatory fields are
-    // empty: its tab carries an error dot; a macro tab with nothing invalid does not.
-    expect(
-      within(screen.getByRole('tab', { name: /^Account/ })).getByRole('img'),
-    ).toBeInTheDocument()
-    expect(
-      within(screen.getByRole('tab', { name: 'Employment' })).queryByRole('img'),
-    ).not.toBeInTheDocument()
-  })
-
-  it('clears the Account error indicator once the mandatory identity fields are filled', () => {
-    render(<UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    fillIdentity()
-
-    expect(
-      within(screen.getByRole('tab', { name: /^Account/ })).queryByRole('img'),
-    ).not.toBeInTheDocument()
+    // The only tabs left on the screen are the card's individual/company
+    // toggle: the macro strip is gone, dots included.
+    expect(screen.queryByRole('tab', { name: /^Account/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Employment' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Contact info' })).not.toBeInTheDocument()
   })
 })
 
@@ -265,10 +250,11 @@ describe('UserForm — is_manager / reports_to (spec 0015 AC-015)', () => {
     fillIdentity()
     fillCredentials()
 
-    switchTab('Employment')
     expect(screen.getByText('Reports to')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('switch'))
+    // Two switches share the single screen now (Active, in the access block):
+    // name the one under test.
+    fireEvent.click(screen.getByRole('switch', { name: 'Manager' }))
     expect(screen.queryByText('Reports to')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -287,7 +273,6 @@ describe('UserForm — is_manager / reports_to (spec 0015 AC-015)', () => {
     fillIdentity()
     fillCredentials()
 
-    switchTab('Employment')
     fireEvent.click(screen.getByText('pick-Reports to'))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -305,13 +290,11 @@ describe('UserForm — employment relation selects (spec 0015 AC-016)', () => {
       { wrapper: wrapper() },
     )
 
-    switchTab('Employment')
     expect(screen.getByTestId('resource-Business function')).toHaveTextContent('business-functions')
     expect(screen.getByTestId('selected-label-Business function')).toHaveTextContent('Engineering')
     expect(screen.getByTestId('resource-Reports to')).toHaveTextContent('users')
     expect(screen.getByTestId('selected-label-Reports to')).toHaveTextContent('Grace Hopper')
 
-    switchTab('Employment')
     expect(screen.getByTestId('resource-Company')).toHaveTextContent('companies')
     expect(screen.getByTestId('selected-label-Company')).toHaveTextContent('Acme Srl')
     expect(screen.getByTestId('resource-Operational site')).toHaveTextContent('operational-sites')
@@ -365,8 +348,6 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
       { wrapper: wrapper() },
     )
 
-    // The Contract tab must be mounted for its FormMessage to render.
-    switchTab('Employment')
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
@@ -384,15 +365,14 @@ describe('UserForm — employment i18n (spec 0015 AC-019)', () => {
     await i18n.changeLanguage('en')
   })
 
-  it('localizes tab labels and the relationship_type enum from the `enums` namespace', () => {
+  it('localizes the employment section headings and the relationship_type enum from the `enums` namespace', () => {
     render(
       <UserForm mode={{ type: 'edit', user: userWithEmployment() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    expect(screen.getByRole('tab', { name: /^Impiego/ })).toBeInTheDocument()
+    expect(screen.getByText('Rapporto contrattuale')).toBeInTheDocument()
 
-    switchTab('Impiego')
     // relationship_type: 'employee' -> localized Italian label, no hardcoded string
     // in the JSX. The Select trigger is queried directly: Radix mirrors the value
     // into a hidden native <option>, so a bare text search would be ambiguous.
