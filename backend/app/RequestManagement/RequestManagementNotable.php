@@ -141,8 +141,36 @@ final class RequestManagementNotable implements NotableEntity
         return (string) $record->name;
     }
 
-    public function deepLinkPath(Model $record): string
+    /**
+     * Per-recipient (decisione utente 2026-09-07), because the three screens
+     * that can show a note of this module answer to two different permission
+     * sets and only one of them shows a note scoped to an Offerta:
+     *
+     * 1. the note's own Offerta — `/request-management/{quote}`, THE landing
+     *    page for a scoped note: the work panel filters its thread on that
+     *    exact `quote_id` (NoteService::applyQuoteScope()), and the route is
+     *    keyed on the Quote, not on the Opportunity (spec 0086, D-1/D-2);
+     * 2. the host Opportunity — `/opportunities/{opportunity}`, whose Notes
+     *    tab is the ONLY screen showing a general note (`quote_id` null);
+     * 3. the module's list, for a general note the recipient cannot reach
+     *    through the Opportunity: the note itself is not readable there, but
+     *    the module they do hold opens instead of a dead row.
+     *
+     * Null closes the chain: no reachable module, no link — the caller then
+     * appends the request-access sentence rather than handing out a 403.
+     */
+    public function deepLinkPath(Model $record, User $recipient, ?int $quoteId): ?string
     {
-        return '/request-management/'.$record->getKey();
+        $canWorkRequests = $recipient->can('request-management.view');
+
+        if ($quoteId !== null && $canWorkRequests) {
+            return '/request-management/'.$quoteId;
+        }
+
+        if ($recipient->can('opportunities.view')) {
+            return '/opportunities/'.$record->getKey();
+        }
+
+        return $canWorkRequests ? '/request-management' : null;
     }
 }

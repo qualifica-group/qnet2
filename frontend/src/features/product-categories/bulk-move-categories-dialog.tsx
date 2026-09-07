@@ -113,7 +113,7 @@ export function BulkMoveCategoriesDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('productCategories.bulkMove.title')}</DialogTitle>
           <DialogDescription>

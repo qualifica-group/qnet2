@@ -93,7 +93,7 @@ export function ContractEditDialog({ open, onOpenChange, contract, onUpdated }: 
         onOpenChange(next)
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('contracts.actions.edit.title')}</DialogTitle>
           <DialogDescription>{t('contracts.actions.edit.description')}</DialogDescription>

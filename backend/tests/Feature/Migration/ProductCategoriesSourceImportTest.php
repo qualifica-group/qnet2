@@ -184,3 +184,90 @@ it('isolates a failed category row (missing name) without blocking the valid one
         ->and($fresh->failed_rows)->toBe(1)
         ->and(collect($fresh->report)->firstWhere('level', 'error'))->not->toBeNull();
 });
+
+it('adopts a category qnet already holds under that name instead of duplicating it', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 20, 'name' => 'APL', 'parent_id' => 99, 'description' => 'Agenzia per il lavoro', 'inherits_attributes' => false, 'is_selectable' => false],
+            ],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    // The state the static catalogue leaves: "APL" is a selectable subcategory
+    // of "Consulenza", with no `old_id`.
+    $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
+    $seeded = ProductCategory::factory()->create([
+        'name' => 'APL',
+        'parent_id' => $consulenza->id,
+        'is_selectable' => true,
+        'description' => null,
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']);
+
+    runMigrationJobFor($run);
+
+    $adopted = $seeded->fresh();
+
+    expect(ProductCategory::query()->where('name', 'APL')->count())->toBe(1)
+        ->and($adopted->old_id)->toEqual(20)
+        // Refreshed from the external record.
+        ->and($adopted->description)->toBe('Agenzia per il lavoro')
+        ->and($adopted->inherits_product_attributes)->toBeFalse()
+        ->and($adopted->inherits_quote_attributes)->toBeFalse()
+        ->and($adopted->inherits_work_order_attributes)->toBeFalse()
+        // Left exactly as the catalogue authored it: adopting never MOVES a
+        // node nor reopens a container.
+        ->and($adopted->parent_id)->toBe($consulenza->id)
+        ->and($adopted->is_selectable)->toBeTrue();
+
+    $fresh = $run->fresh();
+    expect($fresh->created_rows)->toBe(1)
+        ->and($fresh->failed_rows)->toBe(0);
+});
+
+it('adopts each name once: a second external id finds the slot taken and creates its own node', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 30, 'name' => 'APL', 'parent_id' => null],
+                ['id' => 31, 'name' => 'APL', 'parent_id' => null],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $seeded = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
+
+    // The `old_id IS NULL` guard: the adopted row is claimed by 30, so 31 is a
+    // genuinely distinct legacy category and gets its own node.
+    expect($seeded->fresh()->old_id)->toEqual(30)
+        ->and(ProductCategory::query()->where('old_id', 31)->exists())->toBeTrue()
+        ->and(ProductCategory::query()->where('name', 'APL')->count())->toBe(2);
+});
+
+it('never adopts on a partial name match: adoption keys on the exact name', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [['id' => 40, 'name' => 'APL Servizi', 'parent_id' => null]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $seeded = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
+
+    expect($seeded->fresh()->old_id)->toBeNull()
+        ->and(ProductCategory::query()->where('old_id', 40)->value('name'))->toBe('APL Servizi');
+});

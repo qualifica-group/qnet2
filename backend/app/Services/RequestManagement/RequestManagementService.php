@@ -104,6 +104,12 @@ final class RequestManagementService
         // `quotes.supervisor_id` is no longer read by this panel at all
         // (INV-5).
         'operator',
+        // Spec 0086, D-4: the reward assignments the panel's "abbinamento
+        // buono" control rehydrates from — their origin is the Quote, and
+        // SummarizesRewards resolves the type of each row (name/color), so
+        // the relation is loaded with it (Model::preventLazyLoading()
+        // outside production).
+        'rewards.rewardType',
         // Spec 0097: the Offerta's WHOLE team, the block that replaced the
         // lone operator picker in the panel — projected as `managers` by
         // RequestManagementResource, so it must be loaded here (the resource

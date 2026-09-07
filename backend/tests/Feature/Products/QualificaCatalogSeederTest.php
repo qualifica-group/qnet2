@@ -26,9 +26,9 @@ uses(RefreshDatabase::class);
 
 /**
  * Every product the catalogue seeds: the GOL courses, the self-funded ones and
- * one per CatalogProducts::SINGLE_OFFER_SUBCATEGORIES.
+ * one per CatalogProducts::SINGLE_OFFER_CATEGORIES.
  */
-const TOTAL_SEEDED_PRODUCTS = 264;
+const TOTAL_SEEDED_PRODUCTS = 265;
 
 it('provisions the client source catalogue, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
@@ -66,7 +66,7 @@ it('provisions the reference category catalogue tree, idempotently', function ()
         expect(ProductCategory::query()->where('name', $name)->where('parent_id', $formazione->id)->count())->toBe(1);
     }
 
-    foreach (['Trattative in Corso', 'Presa Appuntamenti'] as $name) {
+    foreach (['Trattative in Corso', 'Presa Appuntamenti', 'APL'] as $name) {
         expect(ProductCategory::query()->where('name', $name)->where('parent_id', $consulenza->id)->count())->toBe(1);
     }
 });
@@ -92,6 +92,25 @@ it('provisions the regional GOL declinations as children of the GOL subcategory'
     expect(ProductCategory::query()->where('parent_id', $gol->id)->count())->toBe(count($regions));
 });
 
+it('seeds "APL" as a container with its offer on the third level (user directive 2026-09-07)', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: firstOrCreate, no duplicates.
+
+    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->firstOrFail();
+    $apl = ProductCategory::query()->where('name', 'APL')->firstOrFail();
+    $offer = ProductCategory::query()->where('name', 'Orientamento Specialistico')->firstOrFail();
+
+    expect($apl->parent_id)->toBe($consulenza->id)
+        // It groups its offers now, it does not host one.
+        ->and($apl->is_selectable)->toBeFalsy()
+        ->and(Product::query()->where('category_id', $apl->id)->exists())->toBeFalse()
+        // The offer sits one level down, where the product is filed.
+        ->and($offer->parent_id)->toBe($apl->id)
+        ->and($offer->is_selectable)->toBeTruthy()
+        ->and(Product::query()->where('category_id', $offer->id)->pluck('name')->all())
+        ->toBe(['Orientamento Specialistico']);
+});
+
 it('seeds the first two catalogue levels as containers, third level only selectable (spec 0074)', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
@@ -101,7 +120,7 @@ it('seeds the first two catalogue levels as containers, third level only selecta
     // host their own offer.
     $containers = [
         'Formazione', 'Consulenza',
-        'GOL', 'DIL',
+        'GOL', 'DIL', 'APL',
         'Trattative in Corso', 'Presa Appuntamenti',
     ];
     foreach ($containers as $name) {
@@ -110,7 +129,7 @@ it('seeds the first two catalogue levels as containers, third level only selecta
     }
 
     // The classification targets the catalogue seeds today: the regional GOL
-    // leaves, plus the one subcategory hosting its own products.
+    // leaves, plus the subcategories hosting their own offer.
     $selectable = ProductCategory::query()->where('is_selectable', true)->pluck('name')->sort()->values()->all();
     expect($selectable)->toBe([
         'Autofinanziato',
@@ -118,6 +137,7 @@ it('seeds the first two catalogue levels as containers, third level only selecta
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
+        'Orientamento Specialistico',
         'Yisu',
     ]);
 });
@@ -133,11 +153,11 @@ it('seeds "Autofinanziato" as a classification target, it hosts the self-funded 
         ->toBe(count(SelfFundedCourseCatalogue::COURSES));
 });
 
-it('seeds one product named after each single-offer subcategory, idempotently', function (): void {
+it('seeds one product named after each single-offer category, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class); // re-run: natural key (name, category), no duplicates.
 
-    foreach (CatalogProducts::SINGLE_OFFER_SUBCATEGORIES as $name) {
+    foreach (CatalogProducts::SINGLE_OFFER_CATEGORIES as $name) {
         $category = ProductCategory::query()->where('name', $name)->firstOrFail();
 
         // The reason it must be a classification target: its product is filed
@@ -286,9 +306,10 @@ it('seeds every GOL training course under its own region, idempotently', functio
     }
 
     // Outside the regions: the self-funded courses, plus the one product of
-    // each single-offer subcategory ("Autoimpiego", "Yisu").
+    // each single-offer category ("Autoimpiego", "Yisu", "Orientamento
+    // Specialistico").
     expect(Product::query()->count())
-        ->toBe(array_sum($expectedPerRegion) + count(SelfFundedCourseCatalogue::COURSES) + count(CatalogProducts::SINGLE_OFFER_SUBCATEGORIES));
+        ->toBe(array_sum($expectedPerRegion) + count(SelfFundedCourseCatalogue::COURSES) + count(CatalogProducts::SINGLE_OFFER_CATEGORIES));
 });
 
 it('files each course with its duration in the inherited "Ore complessive" attribute', function (): void {

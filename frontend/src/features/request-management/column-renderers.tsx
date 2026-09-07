@@ -1,9 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- renderer registry module: cells are AG Grid render functions, not route/page components */
 import { useTranslation } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
-import { AlertTriangle, MapPin, Radio } from 'lucide-react'
+import { AlertTriangle, MapPin, Pencil, Radio } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { useAbilities } from '@/features/auth/use-abilities'
+import { useOpenOfferLines } from '@/features/request-management/offer-lines-dialog-context'
 import type { ProductLineCellValue } from '@/features/product-lines/product-lines-cell-editor'
 import {
   BADGE_BASE,
@@ -12,7 +15,8 @@ import {
   EmptyCell,
   badgeColorClass,
 } from '@/features/table/cell-renderers'
-import { BooleanBadgeCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
+import { relationLabel } from '@/features/table/relation-label'
+import { BooleanBadgeCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
@@ -94,6 +98,59 @@ function PendingChangeRequestsCell({ value }: ICellRendererParams) {
 }
 
 /**
+ * The "Linee di prodotto" cell (spec 0086 D-7, made quick-editable by the user
+ * directive 2026-09-07): the products of the Offerta's own REVENUE rows,
+ * comma-joined as `RefNamesCell` renders them, plus a pencil that opens the
+ * quick edit of those ROWS — product, quantita', prezzo unitario, IVA — in the
+ * dialog `OfferLinesDialogProvider` mounts once for the whole grid.
+ *
+ * The pencil shows on hover and on keyboard focus, and it shows on an EMPTY
+ * cell too: a request with no offer row yet is exactly the one that needs to
+ * gain one. It is hidden without `request-management.update`, which is a UI
+ * affordance only — the per-record authorization is the endpoint's own
+ * (`RequestManagementScope`), and it is what actually decides.
+ */
+function OfferLinesCell({ value, data }: ICellRendererParams) {
+  const { t } = useTranslation()
+  const { can } = useAbilities()
+  const { openOfferLines } = useOpenOfferLines()
+
+  const names = Array.isArray(value)
+    ? value.map((entry) => relationLabel(entry)).filter((name): name is string => name !== null)
+    : []
+  const label = names.join(', ')
+  const quoteId = typeof data?.id === 'number' ? data.id : null
+  const editable = quoteId !== null && can('request-management.update')
+  const editLabel = t('requestManagement.offerLines.editAction')
+
+  return (
+    <div className="group/offer-lines flex h-full items-center gap-1 overflow-hidden px-2 py-1">
+      {names.length === 0 ? (
+        <span className="text-muted-foreground">—</span>
+      ) : (
+        <span className="truncate" title={label}>
+          {label}
+        </span>
+      )}
+
+      {editable && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-6 shrink-0 opacity-0 transition-opacity group-hover/offer-lines:opacity-100 focus-visible:opacity-100"
+          aria-label={editLabel}
+          title={editLabel}
+          onClick={() => openOfferLines(quoteId)}
+        >
+          <Pencil className="size-3.5" aria-hidden="true" />
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/**
  * Custom cell renderers keyed by the backend column `id` (spec 0049). `source`
  * ("Fonte", user directive 2026-07-31) is a plain `{id, name}` relation, so it
  * reuses the shared `RelationCell` exactly as the leads grid does for the same
@@ -116,7 +173,7 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   source: (params) => <RelationCell {...params} icon={Radio} />,
   pending_change_requests: (params) => <PendingChangeRequestsCell {...params} />,
   product_categories: (params) => <ProductCategoriesCell {...params} />,
-  offer_lines: (params) => <RefNamesCell {...params} />,
+  offer_lines: (params) => <OfferLinesCell {...params} />,
   general_notes: (params) => <TextCell {...params} />,
   operator_ga2: (params) => <UserCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,

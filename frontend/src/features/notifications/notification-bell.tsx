@@ -65,6 +65,11 @@ export function NotificationBell() {
     void fetchNextPage()
   }, [fetchNextPage])
 
+  // Radix keeps this menu open on a click that is not a DropdownMenuItem, and
+  // the menu is modal: it would sit on top of the page the row just navigated
+  // to, with the body still inert.
+  const closePanel = useCallback(() => setOpen(false), [])
+
   // The backend currently exposes only `all` and `unread`. While the user is
   // viewing `read`, keep fetching `all` pages until at least one read row is
   // visible or the dataset is exhausted.
@@ -164,6 +169,7 @@ export function NotificationBell() {
           hasNextPage={listQuery.hasNextPage}
           isFetchingNextPage={listQuery.isFetchingNextPage}
           onLoadMore={loadMore}
+          onNavigate={closePanel}
         />
       </DropdownMenuContent>
     </DropdownMenu>

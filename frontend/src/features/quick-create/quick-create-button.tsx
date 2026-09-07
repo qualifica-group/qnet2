@@ -62,7 +62,7 @@ export function QuickCreateButton({
         >
           <Plus className="size-3.5" />
         </Button>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{t(entry.descriptionKey)}</DialogDescription>
@@ -74,7 +74,7 @@ export function QuickCreateButton({
             onSubmit through the portal and submits it too (AC-008). The portal
             boundary is the only place that can stop it.
           */}
-          <div onSubmit={(event) => event.stopPropagation()}>
+          <div className="max-h-[75vh] overflow-y-auto" onSubmit={(event) => event.stopPropagation()}>
             <Suspense fallback={<Skeleton className="h-48 w-full" />}>
               <FormComponent onSuccess={handleSuccess} onCancel={() => setOpen(false)} />
             </Suspense>

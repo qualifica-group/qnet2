@@ -27,7 +27,7 @@ export function ResourceActivityDialog({ resource, row, onOpenChange }: Resource
 
   return (
     <Dialog open={row !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>{t('activityLog.title')}</DialogTitle>
         </DialogHeader>

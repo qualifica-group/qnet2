@@ -27,9 +27,10 @@ use Illuminate\Database\Seeder;
  *     false`, spec 0074): they group the tree and hand their attributes down,
  *     while products, opportunity lines, projects, campaigns and commission
  *     rules are classified on the third level, today the `GOL - <Regione>`
- *     rows — plus the subcategories that host their offer directly,
- *     "Autofinanziato", "Autoimpiego" and "Yisu" (see
- *     SELECTABLE_SUBCATEGORIES). The "Formazione" branch also carries its
+ *     rows and "Orientamento Specialistico" under "APL" — plus the
+ *     subcategories that host their offer directly, "Autofinanziato",
+ *     "Autoimpiego" and "Yisu" (see SELECTABLE_SUBCATEGORIES). The
+ *     "Formazione" branch also carries its
  *     product-context attributes (spec 0061) — "Ore complessive" and the
  *     "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue —
  *     assigned to the root and inherited by every descendant, then grouped
@@ -40,9 +41,9 @@ use Illuminate\Database\Seeder;
  *   - every product of the catalogue, delegated to
  *     QualificaCatalog\CatalogProducts once the tree exists: the GOL courses
  *     under their own region, the self-funded ones under "Autofinanziato"
- *     with their price and delivery mode, and one product named after each
- *     single-offer subcategory ("Autoimpiego", "Yisu"). No other product is
- *     seeded;
+ *     with their price and delivery mode, and the one product each
+ *     single-offer category sells ("Autoimpiego", "Yisu" and "Orientamento
+ *     Specialistico"). No other product is seeded;
  *   - the ROOT-OWNED rules of the two roots (how many product lines a card
  *     carries, how many offers an opportunity may hold), delegated to
  *     QualificaCatalog\CatalogRootRules once the whole tree exists — it
@@ -51,10 +52,11 @@ use Illuminate\Database\Seeder;
  *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
  *     category and carrying its own working-state pick list;
- *   - the "Formazione" root's business function link (spec 0023), delegated to
- *     QualificaBusinessFunctionLinkSeeder as the very last step: that function
- *     is imported from the external qnet CRM, not seeded here, so the link is
- *     a documented no-op whenever the import did not run.
+ *   - the business function links (spec 0023) of the "Formazione" root and of
+ *     the "APL" subcategory, delegated to QualificaBusinessFunctionLinkSeeder
+ *     as the very last step: those functions are imported from the external
+ *     qnet CRM, not seeded here, so each link is a documented no-op whenever
+ *     the import did not run.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -142,24 +144,29 @@ class QualificaCatalogSeeder extends Seeder
         'Consulenza' => [
             'Trattative in Corso' => [],
             'Presa Appuntamenti' => [],
+            'APL' => [
+                'Orientamento Specialistico',
+            ],
         ],
     ];
 
     /**
      * The second-level nodes that ARE classification targets, by exception to
      * the container rule above: a subcategory that hosts its own offer instead
-     * of grouping children. "Autofinanziato" is one — seedSelfFundedCourses()
-     * files every self-funded course directly on it, so a container there would
+     * of grouping children. "Autofinanziato" is one — CatalogProducts files
+     * every self-funded course directly on it, so a container there would
      * leave those products under a category nothing can be classified on (user
-     * directive 2026-08-03). CatalogProducts::SINGLE_OFFER_SUBCATEGORIES are the others, for
-     * the same reason. Bound by identity to the catalogues that file the
-     * products, so a rename breaks loudly instead of silently demoting a node.
+     * directive 2026-08-03). CatalogProducts::SINGLE_OFFER_CATEGORIES are the
+     * others, for the same reason — its third-level entries ride along
+     * harmlessly, being classification targets by default. Bound by identity to
+     * the catalogues that file the products, so a rename breaks loudly instead
+     * of silently demoting a node.
      *
      * @var list<string>
      */
     private const array SELECTABLE_SUBCATEGORIES = [
         SelfFundedCourseCatalogue::CATEGORY,
-        ...CatalogProducts::SINGLE_OFFER_SUBCATEGORIES,
+        ...CatalogProducts::SINGLE_OFFER_CATEGORIES,
     ];
 
     /**
@@ -237,9 +244,9 @@ class QualificaCatalogSeeder extends Seeder
             $this->offerLegacyImport();
         }
 
-        // Step 6: the business function link, LAST — the function it looks for
-        // comes from the import above, not from this catalogue. A no-op, never
-        // an error, when that import did not run or has no such function;
+        // Step 6: the business function links, LAST — the functions they look
+        // for come from the import above, not from this catalogue. A no-op,
+        // never an error, when that import did not run or has no such function;
         // QualificaProductionDataSeeder repeats it after its own import.
         $this->call(QualificaBusinessFunctionLinkSeeder::class);
     }

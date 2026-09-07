@@ -1,4 +1,5 @@
 import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 import { XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
@@ -42,23 +43,57 @@ function DialogOverlay({
   )
 }
 
+/**
+ * Width scale of the popups. Single source of truth: a dialog picks a rung
+ * instead of inventing its own `max-w-*`, so the whole system stays coherent.
+ * The rungs are wide on purpose — the previous flat `max-w-md` (448px) forced
+ * every form and list into a column too narrow to consult.
+ *
+ * This node must NEVER clip (`overflow-hidden`/`overflow-y-auto`): the popup
+ * of an `AsyncPaginatedSelect` is portaled into it on purpose (so its wheel
+ * scrolling is not blocked as "outside the modal"), and the centering
+ * `translate` makes this node the containing block of that popup — an
+ * overflow other than `visible` here cuts the dropdown at the dialog border.
+ * A dialog taller than its content area scrolls on an INNER wrapper instead
+ * (`max-h-[70vh] overflow-y-auto`), which the portaled popup escapes.
+ */
+const dialogContentVariants = cva(
+  "fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-background p-4 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+  {
+    variants: {
+      size: {
+        /** Single field / one short question. */
+        sm: "sm:max-w-lg",
+        /** Default: forms and confirmations with a couple of controls. */
+        md: "sm:max-w-2xl",
+        /** Content to read through: lists, history, documents, notes. */
+        lg: "sm:max-w-4xl",
+        /** Tabular content that needs the horizontal room. */
+        xl: "sm:max-w-6xl",
+      },
+    },
+    defaultVariants: {
+      size: "md",
+    },
+  }
+)
+
 function DialogContent({
   className,
   children,
+  size,
   showCloseButton = true,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean
-}) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> &
+  VariantProps<typeof dialogContentVariants> & {
+    showCloseButton?: boolean
+  }) {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
-        className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-background p-4 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          className
-        )}
+        className={cn(dialogContentVariants({ size }), className)}
         {...props}
       >
         {children}

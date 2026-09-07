@@ -93,7 +93,7 @@ export function ContractReactivateDialog({
         onOpenChange(next)
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('contracts.actions.reactivate')}</DialogTitle>
           <DialogDescription>{t(descriptionKey)}</DialogDescription>

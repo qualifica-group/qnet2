@@ -12,6 +12,7 @@ import {
   EmptyCell,
   badgeColorClass,
 } from '@/features/table/cell-renderers'
+import { relationLabel } from '@/features/table/relation-label'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { StatusDescriptionHint } from '@/features/quote-workflows/status-description-hint'
 import { formatDecimal } from '@/features/products/column-renderers'
@@ -30,18 +31,6 @@ import type {
  * so the grids read as one system. Purely presentational: the row value and its
  * semantics are unchanged; only how the value is drawn is enriched here.
  */
-
-/** A hydrated relation carries either a `name` (most) or a composed `label` (operational sites). */
-interface RelationLike {
-  name?: string | null
-  label?: string | null
-}
-
-function relationLabel(value: unknown): string | null {
-  const relation = value as RelationLike | null | undefined
-  const label = relation?.name ?? relation?.label
-  return typeof label === 'string' && label !== '' ? label : null
-}
 
 /**
  * A `{id, name}` (or `{id, label}`) relation: the name, left-aligned, truncated

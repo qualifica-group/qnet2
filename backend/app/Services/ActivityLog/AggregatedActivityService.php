@@ -24,14 +24,21 @@ final class AggregatedActivityService
 
     /**
      * @param  array<int, string>  $relations  dot-path relations declared for this resource
+     * @param  string|null  $event  narrows the feed to a single event (allow-listed by the FormRequest); null = every event
      */
-    public function paginate(Model $root, array $relations, int $perPage, ?ActivityLogCursor $cursor): ActivityLogPage
-    {
+    public function paginate(
+        Model $root,
+        array $relations,
+        int $perPage,
+        ?ActivityLogCursor $cursor,
+        ?string $event = null,
+    ): ActivityLogPage {
         // Step 1: collect the allow-listed (module alias, subject id) pairs
         $subjectIdsByAlias = $this->collectSubjectIds($root, $relations);
 
         // Step 2: query only those subjects, keyset-paginated (created_at desc, id desc)
         $query = $this->subjectsQuery($subjectIdsByAlias)->with('causer');
+        $this->applyEvent($query, $event);
         $this->applyCursor($query, $cursor);
 
         // Step 3: fetch one extra row to detect whether a next page exists
@@ -120,6 +127,22 @@ final class AggregatedActivityService
                 });
             }
         });
+    }
+
+    /**
+     * Narrows the feed to a single event. Filtering server-side (not on the
+     * fetched page) is what keeps the keyset pages full and `next_cursor`
+     * meaningful once a filter is active.
+     *
+     * @param  Builder<Activity>  $query
+     */
+    private function applyEvent(Builder $query, ?string $event): void
+    {
+        if ($event === null) {
+            return;
+        }
+
+        $query->where('event', $event);
     }
 
     /**

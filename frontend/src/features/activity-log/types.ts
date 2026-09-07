@@ -8,6 +8,12 @@
 /** Spatie activitylog event names, as emitted by `LogsModelActivity`. */
 export type ActivityLogEvent = 'created' | 'updated' | 'deleted' | 'restored'
 
+/**
+ * Timeline narrowing sent as the `event` query param; `'all'` is the absence
+ * of the param, not a value the backend accepts.
+ */
+export type ActivityLogEventFilter = 'all' | 'created' | 'updated'
+
 /** Actor who triggered the logged event, resolved server-side. */
 export interface ActivityLogCauser {
   id: number | null

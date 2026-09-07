@@ -24,7 +24,9 @@ use RuntimeException;
  * warning, then relinked in a second pass (afterImport) once every node exists.
  * The category/attribute pivot (attribute_category) is NOT carried here
  * (mirrors SectorsSource: the import creates only the entity itself). Re-import
- * is idempotent (skip by old_id); the name is NOT unique.
+ * is idempotent (skip by old_id); `name` carries no unique index, so a category
+ * qnet ALREADY holds under that name is ADOPTED and refreshed rather than
+ * duplicated (user directive 2026-09-07, mirrors SourcesSource) — see adopt().
  */
 class ProductCategoriesSource extends AbstractMigrationSource
 {
@@ -108,6 +110,17 @@ class ProductCategoriesSource extends AbstractMigrationSource
         }
 
         $warnings = [];
+
+        // Adopt the category qnet already holds under this name and that no
+        // other external id has claimed — the static catalogue seeds part of
+        // the same tree (QualificaCatalogSeeder), and a second row with the
+        // same name would be an unusable duplicate in every select.
+        $adopted = ProductCategory::query()->where('name', $name)->whereNull('old_id')->first();
+
+        if ($adopted !== null) {
+            return $this->adopt($adopted, $externalId, $record);
+        }
+
         $parentId = $this->resolveParent($record['parent_id'] ?? null, $warnings);
 
         // The external system carries a SINGLE inheritance flag; qnet splits it
@@ -136,6 +149,68 @@ class ProductCategoriesSource extends AbstractMigrationSource
         $category->save();
 
         return MigrationRowOutcome::created($warnings, $category);
+    }
+
+    /**
+     * Claims an existing qnet category for $externalId and refreshes it from
+     * the external record, instead of creating a second node under the same
+     * name.
+     *
+     * Only the DESCRIPTIVE fields are refreshed. What the node's own tree
+     * says about itself is qnet's and stays put:
+     *   - `parent_id` — adopting must never MOVE a branch. The external tree
+     *     is nested under one root by QualificaLegacyImportSeeder; a category
+     *     the static catalogue already placed keeps the place it gave it;
+     *   - `requires_quote` — owned by the branch root
+     *     (RequiresQuoteInheritance), never authored on a node with a parent;
+     *   - `is_selectable` — the static catalogue REALIGNS it on every seed run
+     *     (spec 0074), so writing the external value here would only survive
+     *     until the next seed, and would reopen a container in the meantime.
+     *
+     * `old_id` is set directly: it is not fillable, being the migration
+     * engine's own bookkeeping rather than a domain field.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function adopt(ProductCategory $category, int|string $externalId, array $record): MigrationRowOutcome
+    {
+        $category->old_id = $externalId;
+        $category->fill($this->adoptableAttributes($record));
+        $category->save();
+
+        return MigrationRowOutcome::created(
+            [sprintf('Existing category "%s" adopted and refreshed instead of duplicated.', $category->name)],
+            $category,
+        );
+    }
+
+    /**
+     * The fields an adoption refreshes, each only when the external record
+     * carries it — an absent key means "the external system says nothing",
+     * which must not blank the value qnet holds.
+     *
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
+    private function adoptableAttributes(array $record): array
+    {
+        $attributes = [];
+
+        if (array_key_exists('description', $record)) {
+            $attributes['description'] = $this->mapDescription($record['description']);
+        }
+
+        // One external flag, three qnet barriers — same split processRow()
+        // makes on creation.
+        if (array_key_exists('inherits_attributes', $record)) {
+            $inherits = (bool) $record['inherits_attributes'];
+
+            $attributes['inherits_product_attributes'] = $inherits;
+            $attributes['inherits_quote_attributes'] = $inherits;
+            $attributes['inherits_work_order_attributes'] = $inherits;
+        }
+
+        return $attributes;
     }
 
     /**

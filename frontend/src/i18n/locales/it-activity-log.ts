@@ -6,8 +6,15 @@ export const activityLog = {
   title: 'Cronologia attività',
   loadError: "Impossibile caricare la cronologia attività. Riprova.",
   empty: 'Nessuna attività registrata.',
+  emptyFiltered: 'Nessuna attività corrisponde al filtro selezionato.',
   loadMore: 'Carica altro',
   systemCauser: 'Sistema',
+  filter: {
+    label: 'Filtra per tipo di operazione',
+    all: 'Tutto',
+    created: 'Solo creazione',
+    updated: 'Solo modifica',
+  },
   events: {
     created: 'Creazione',
     updated: 'Modifica',

@@ -125,12 +125,12 @@ export function QuoteCommissionsDialog(props: Props) {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-4xl gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b bg-surface p-4">
+      <DialogContent size="xl" className="max-h-[85vh] gap-0 p-0">
+        <DialogHeader className="rounded-t-lg border-b bg-surface p-4">
           <DialogTitle>{t('quotes.form.commissions.title', { product: props.productName, n: props.lineNumber })}</DialogTitle>
           <DialogDescription>{t('quotes.form.commissions.description')}</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-3 overflow-y-auto p-4">
+        <div className="grid gap-3 overflow-y-auto rounded-b-lg p-4">
           {ROLES.map((role) => {
             const commission = byRole.get(role)
             const allowed = recipientFor(role)

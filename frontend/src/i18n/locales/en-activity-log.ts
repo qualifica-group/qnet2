@@ -16,8 +16,15 @@ export const activityLog = {
   title: 'Activity log',
   loadError: 'Unable to load the activity log. Please try again.',
   empty: 'No activity recorded yet.',
+  emptyFiltered: 'No activity matches the selected filter.',
   loadMore: 'Load more',
   systemCauser: 'System',
+  filter: {
+    label: 'Filter by operation type',
+    all: 'All',
+    created: 'Creations only',
+    updated: 'Changes only',
+  },
   events: {
     created: 'Created',
     updated: 'Updated',

@@ -148,3 +148,36 @@ it('PATCH changing reporter_id retargets every existing reward (AC-023, same rul
     $referentIds = Reward::query()->where('source_id', $quote->id)->where('source_type', 'quote')->pluck('referent_id')->unique()->all();
     expect($referentIds)->toBe([$newReporter->id]);
 });
+
+it('GET returns the persisted rewards so the panel rehydrates the chips (spec 0086, D-4)', function () {
+    $actor = rewardAssignmentRmActor(['view']);
+    $reporter = Referent::factory()->create();
+    $zulu = RewardType::factory()->create(['name' => 'Zulu voucher']);
+    $alpha = RewardType::factory()->create(['name' => 'Alpha voucher']);
+    $quote = rewardAssignmentRmSupervisedQuote($actor, $reporter->id);
+    Reward::factory()->for($quote, 'source')->for($reporter)->for($zulu)->create();
+    Reward::factory()->for($quote, 'source')->for($reporter)->for($alpha)->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/request-management/{$quote->id}")
+        ->assertOk()
+        ->assertJsonCount(2, 'data.rewards')
+        ->assertJsonPath('data.rewards.0.reward_type.id', $alpha->id)
+        ->assertJsonPath('data.rewards.0.reward_type.name', $alpha->name)
+        ->assertJsonPath('data.rewards.1.reward_type.id', $zulu->id);
+});
+
+it('PATCH echoes the freshly synced rewards in its own response (spec 0086, D-4)', function () {
+    $actor = rewardAssignmentRmActor(['update']);
+    $reporter = Referent::factory()->create();
+    $rewardType = RewardType::factory()->create();
+    $quote = rewardAssignmentRmSupervisedQuote($actor, $reporter->id);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'rewards' => [['reward_type_id' => $rewardType->id]],
+    ])
+        ->assertOk()
+        ->assertJsonCount(1, 'data.rewards')
+        ->assertJsonPath('data.rewards.0.reward_type.id', $rewardType->id);
+});

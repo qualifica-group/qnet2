@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
@@ -9,6 +9,11 @@ import type { ActivityLogEntry, ActivityLogPage } from '@/features/activity-log/
  * Spec 0034, AC-014: the timeline shows date/time, author, operation type,
  * module and the field-level diff for every entry; loads more pages on
  * demand; covers the loading/empty/error states.
+ *
+ * Requirement change (event filter, spec 0034 follow-up AC-024): the timeline
+ * is preceded by an "All / Creations only / Changes only" strip whose value is
+ * sent to the backend as the `event` query param, so `fetchActivityLog` now
+ * carries a fifth argument.
  *
  * Requirement change (backend now resolves FK labels, spec 0034 follow-up):
  * `ActivityLogChange` grew `old_display`/`new_display`, and the diff row no
@@ -198,6 +203,42 @@ describe('ActivityLogSection', () => {
     )
   })
 
+  it('requests the unfiltered feed by default and narrows it on filter change (AC-024)', async () => {
+    fetchActivityLogMock.mockResolvedValue(page())
+
+    renderSection()
+
+    await waitFor(() => expect(fetchActivityLogMock).toHaveBeenCalledWith('users', 1, null, 25, 'all'))
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Changes only' }))
+
+    await waitFor(() =>
+      expect(fetchActivityLogMock).toHaveBeenLastCalledWith('users', 1, null, 25, 'updated'),
+    )
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Creations only' }))
+
+    await waitFor(() =>
+      expect(fetchActivityLogMock).toHaveBeenLastCalledWith('users', 1, null, 25, 'created'),
+    )
+  })
+
+  it('keeps the filter reachable when the filtered feed is empty (AC-024)', async () => {
+    fetchActivityLogMock.mockResolvedValueOnce(page())
+    fetchActivityLogMock.mockResolvedValueOnce(page({ items: [] }))
+
+    renderSection()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument())
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Creations only' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('No activity matches the selected filter.')).toBeInTheDocument(),
+    )
+    expect(screen.getByRole('tab', { name: 'All' })).toBeInTheDocument()
+  })
+
   it('shows the error state with a retry action', async () => {
     fetchActivityLogMock.mockRejectedValue(new Error('network error'))
 
@@ -225,7 +266,7 @@ describe('ActivityLogSection', () => {
     loadMore.click()
 
     await waitFor(() => expect(fetchActivityLogMock).toHaveBeenCalledTimes(2))
-    expect(fetchActivityLogMock).toHaveBeenLastCalledWith('users', 1, 'cursor-2', 25)
+    expect(fetchActivityLogMock).toHaveBeenLastCalledWith('users', 1, 'cursor-2', 25, 'all')
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument(),
     )

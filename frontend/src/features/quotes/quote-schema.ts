@@ -32,7 +32,7 @@ const CODE_MAX_LENGTH = 32
 const INTERNAL_NOTES_MAX_LENGTH = 5000
 
 /** Backend per-tab row ceiling (`max:200`, AC-035). */
-const MAX_LINES_PER_TAB = 200
+export const MAX_LINES_PER_TAB = 200
 
 /**
  * Spec 0087 (D-1/D-11): the offer's own "G.A. n" manager slot ceiling,

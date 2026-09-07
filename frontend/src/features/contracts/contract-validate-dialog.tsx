@@ -83,7 +83,7 @@ export function ContractValidateDialog({
         onOpenChange(next)
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('contracts.actions.validate')}</DialogTitle>
           <DialogDescription>{t('contracts.actions.validateDialog.description')}</DialogDescription>

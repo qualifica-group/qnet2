@@ -115,7 +115,7 @@ export function FieldChangeRequestDialog({ prompt, onClose }: FieldChangeRequest
         }
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('fieldChangeRequests.dialog.title', { field: fieldLabel })}</DialogTitle>
           <DialogDescription>

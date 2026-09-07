@@ -72,8 +72,17 @@ interface NotableEntity
     public function label(Model $record): string;
 
     /**
-     * SPA-relative deep link path to $record (no host/scheme — the caller
-     * prefixes config('app.frontend_url')).
+     * SPA-relative deep link path to the note identified by $record and
+     * $quoteId, for THIS recipient (no host/scheme — the caller prefixes
+     * config('app.frontend_url') for a mail CTA and nowhere else).
+     *
+     * Per-recipient, and returning null, for the same reason
+     * RecordLinkResolver is (spec 0081): a host module can be reachable
+     * through more than one route gated by more than one permission set, and
+     * a link that lands on a 403 is worse than no link at all. $quoteId is
+     * the note's own scoping unit (spec 0085, D-1), null for a general note:
+     * a host whose deep link is keyed on that unit needs it to point at the
+     * screen where the note is actually readable.
      */
-    public function deepLinkPath(Model $record): string;
+    public function deepLinkPath(Model $record, User $recipient, ?int $quoteId): ?string;
 }

@@ -82,11 +82,16 @@ final class NoteEntityRegistry
         return $this->entityFor($entityType)->label($record);
     }
 
-    public function deepLinkFor(string $entityType, Model $record): string
+    /**
+     * The SPA PATH the mention notification points $recipient to, or null
+     * when no reachable screen shows that note. A path, never an absolute
+     * URL: `action_url` is stored as an internal path across this whole app
+     * (the campanella rejects anything else, see safe-internal-path.ts), and
+     * `config('app.frontend_url')` is prepended in the mail CTA only.
+     */
+    public function deepLinkFor(string $entityType, Model $record, User $recipient, ?int $quoteId): ?string
     {
-        $path = $this->entityFor($entityType)->deepLinkPath($record);
-
-        return rtrim((string) config('app.frontend_url'), '/').$path;
+        return $this->entityFor($entityType)->deepLinkPath($record, $recipient, $quoteId);
     }
 
     /**

@@ -19,6 +19,8 @@ interface NotificationListProps {
   isFetchingNextPage: boolean
   /** Requests the next page; called when the bottom sentinel becomes visible. */
   onLoadMore: () => void
+  /** Forwarded to every row: dismisses the panel once a row has navigated. */
+  onNavigate?: () => void
 }
 
 const SKELETON_ROWS = 4
@@ -51,6 +53,7 @@ export function NotificationList({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
+  onNavigate,
 }: NotificationListProps) {
   const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -118,6 +121,7 @@ export function NotificationList({
           notification={notification}
           onMarkAsRead={onMarkAsRead}
           isMarking={markingId === notification.id}
+          onNavigate={onNavigate}
         />
       ))}
       {isFetchingNextPage ? <NotificationRowSkeleton /> : null}

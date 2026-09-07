@@ -141,7 +141,7 @@ export function FieldChangeRequestActions({
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {openAction === 'reject'

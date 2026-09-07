@@ -219,6 +219,41 @@ it('nests the imported product taxonomy under the Consulenza root, keeping its o
         ->and(ProductCategory::query()->where('name', 'Trattative in Corso')->value('parent_id'))->toBe($consulenza->id);
 });
 
+it('adopts the static catalogue nodes the legacy tree repeats, and never moves an adopted root', function () {
+    seedMigrationsConfig();
+    migrationsSuperAdminActor();
+
+    // The legacy catalogue repeats two names the static one already ships: a
+    // ROOT ("Formazione") and a subcategory ("APL").
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 55, 'name' => 'Formazione', 'parent_id' => null],
+                ['id' => 56, 'name' => 'APL', 'parent_id' => null],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+        fakeMigrationsBaseUrl().'/*' => Http::response(['items' => [], 'pagination' => ['total' => 0]]),
+    ]);
+
+    seedCatalogThenLegacy();
+
+    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->sole();
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->sole();
+    $apl = ProductCategory::query()->where('name', 'APL')->sole();
+
+    // One row each: the legacy rows were adopted, not duplicated.
+    expect($formazione->old_id)->toEqual(55)
+        ->and($apl->old_id)->toEqual(56)
+        // The adopted ROOT stays a root: it carries an `old_id` now, but it is
+        // the static catalogue's own node, so the nesting pass must skip it —
+        // moving it would drag the whole GOL branch under "Consulenza".
+        ->and($formazione->parent_id)->toBeNull()
+        ->and(ProductCategory::query()->where('name', 'GOL')->value('parent_id'))->toBe($formazione->id)
+        // The adopted subcategory keeps the place the catalogue gave it.
+        ->and($apl->parent_id)->toBe($consulenza->id);
+});
+
 it('links the imported attributes onto the imported category in the declared context', function () {
     seedMigrationsConfig();
     migrationsSuperAdminActor();

@@ -5,11 +5,13 @@ namespace App\Http\Requests\ActivityLog;
 use App\DataObjects\ActivityLog\ActivityLogCursor;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
 /**
  * Validates GET /api/activity-log/{resource}/{id} (spec 0034): `per_page`
- * (1..100, default 25) and an opaque, well-formed `cursor`.
+ * (1..100, default 25), an opaque, well-formed `cursor` and the optional
+ * `event` filter (allow-list, absent = every event).
  *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller, which resolves the resource → model via ActivityLogRegistry
@@ -20,6 +22,12 @@ class ActivityLogIndexRequest extends FormRequest
     private const int DEFAULT_PER_PAGE = 25;
 
     private const int MAX_PER_PAGE = 100;
+
+    /**
+     * Events the timeline can be narrowed to. Allow-list, never raw input:
+     * the value reaches a bound `where('event', ...)` (security.md §8).
+     */
+    private const array FILTERABLE_EVENTS = ['created', 'updated'];
 
     public function authorize(): bool
     {
@@ -34,6 +42,7 @@ class ActivityLogIndexRequest extends FormRequest
         return [
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE],
             'cursor' => ['sometimes', 'nullable', 'string'],
+            'event' => ['sometimes', Rule::in(self::FILTERABLE_EVENTS)],
         ];
     }
 
@@ -69,5 +78,15 @@ class ActivityLogIndexRequest extends FormRequest
         $cursor = $this->validated('cursor');
 
         return $cursor === null ? null : ActivityLogCursor::decode($cursor);
+    }
+
+    /**
+     * The event the timeline is narrowed to, or null for every event.
+     */
+    public function event(): ?string
+    {
+        $event = $this->validated('event');
+
+        return $event === null ? null : (string) $event;
     }
 }

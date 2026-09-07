@@ -83,6 +83,55 @@ describe('NotificationItem — action_url navigation (spec 0078, AC-027)', () =>
     expect(onMarkAsRead).toHaveBeenCalledWith('n1')
   })
 
+  it('dismisses the host panel after navigating, so the modal menu does not cover the target page', () => {
+    const onNavigate = vi.fn()
+    render(
+      <NotificationItem
+        notification={buildNotification({
+          data: { title: 'New request', message: null, level: 'info', action_url: '/registries/8' },
+        })}
+        onMarkAsRead={vi.fn()}
+        onNavigate={onNavigate}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /New request/ }))
+
+    expect(navigateMock).toHaveBeenCalledWith('/registries/8')
+    expect(onNavigate).toHaveBeenCalledTimes(1)
+  })
+
+  it('tints the whole row on hover with the AA-safe muted veil, not accent', () => {
+    const { container } = render(
+      <NotificationItem
+        notification={buildNotification({
+          data: { title: 'New request', message: 'Body', level: 'info', action_url: '/registries/8' },
+        })}
+        onMarkAsRead={vi.fn()}
+      />,
+    )
+
+    // The row, not the inner button: the whole strip must react as one item.
+    const row = container.firstElementChild as HTMLElement
+    expect(row).toHaveClass('hover:bg-muted')
+    // `text-muted-foreground` on `--accent` measures 4.17:1 light / 2.71:1
+    // dark — below AA. Guards against a swap back to the accent veil.
+    expect(row).not.toHaveClass('hover:bg-accent')
+  })
+
+  it('shows a pointer cursor on the clickable row (Tailwind 4 gives buttons none)', () => {
+    render(
+      <NotificationItem
+        notification={buildNotification({
+          data: { title: 'New request', message: null, level: 'info', action_url: '/registries/8' },
+        })}
+        onMarkAsRead={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /New request/ })).toHaveClass('cursor-pointer')
+  })
+
   it('navigates but does not re-mark an already read notification', () => {
     const onMarkAsRead = vi.fn()
     render(

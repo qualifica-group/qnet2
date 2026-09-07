@@ -73,7 +73,7 @@ export function ReviewOperatorCell({ data, node, context, readOnly }: ReviewOper
           {displayValue}
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent size="sm">
         <ReviewOperatorDialogBody
           row={data}
           node={node}

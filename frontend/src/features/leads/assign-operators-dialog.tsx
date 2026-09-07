@@ -135,7 +135,7 @@ export function AssignOperatorsDialog({
 }: AssignOperatorsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+      <DialogContent className="gap-0 p-0">
         <AssignOperatorsDialogBody
           selectionCount={selectionCount}
           defaultSiteId={defaultSiteId}
@@ -224,7 +224,7 @@ function AssignOperatorsDialogBody({
   return (
     <>
       {/* Header band: brand-tinted strip with an icon chip for identity. */}
-      <div className="flex items-start gap-3 border-b bg-gradient-to-br from-card to-primary/[0.06] px-4 pt-4 pb-3.5">
+      <div className="flex items-start gap-3 rounded-t-lg border-b bg-gradient-to-br from-card to-primary/[0.06] px-4 pt-4 pb-3.5">
         <span
           aria-hidden="true"
           className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15"
@@ -246,7 +246,7 @@ function AssignOperatorsDialogBody({
             <Label className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {t('leads.assign.mode.label')}
             </Label>
-            <div role="radiogroup" aria-label={t('leads.assign.mode.label')} className="flex flex-col gap-2">
+            <div role="radiogroup" aria-label={t('leads.assign.mode.label')} className="grid gap-2 sm:grid-cols-2">
               {ASSIGNMENT_MODES.map((entry) => {
                 const { mode: value, icon: Icon } = entry
                 const selected = mode === value
@@ -304,7 +304,12 @@ function AssignOperatorsDialogBody({
 
         {/* Step 2: pick the Sede (always) and the Operatore (single, or locked — spec 0079). */}
         {mode !== null && (
-          <div className="space-y-3 rounded-xl border bg-gradient-to-b from-card to-muted/20 p-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1">
+          <div
+            className={cn(
+              'grid gap-3 rounded-xl border bg-gradient-to-b from-card to-muted/20 p-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1',
+              showOperatorField && 'sm:grid-cols-2',
+            )}
+          >
             <div className="space-y-1.5">
               <Label
                 htmlFor="assign-operators-site"
@@ -370,11 +375,11 @@ function AssignOperatorsDialogBody({
         )}
       </div>
 
-      <DialogFooter className="border-t bg-gradient-to-t from-primary/[0.05] to-transparent px-4 py-3.5">
+      <DialogFooter className="rounded-b-lg border-t bg-gradient-to-t from-primary/[0.05] to-transparent px-4 py-3.5">
         <Button
           type="button"
           size="sm"
-          className="w-full gap-1.5 shadow-sm shadow-primary/20 transition-all hover:shadow-md hover:shadow-primary/25 motion-safe:active:translate-y-px"
+          className="w-full gap-1.5 sm:w-auto sm:min-w-44 shadow-sm shadow-primary/20 transition-all hover:shadow-md hover:shadow-primary/25 motion-safe:active:translate-y-px"
           onClick={handleAssign}
           disabled={!canSubmit || isSubmitting}
         >

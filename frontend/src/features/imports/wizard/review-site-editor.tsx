@@ -67,7 +67,7 @@ export function ReviewSiteCell({ data, node, context, readOnly }: ReviewSiteCell
           {displayValue}
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent size="sm">
         <ReviewSiteDialogBody
           row={data}
           node={node}

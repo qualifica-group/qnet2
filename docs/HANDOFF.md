@@ -3,6 +3,435 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MODIFICA RAPIDA DELLE LINEE DI PRODOTTO IN GRIGLIA — VERDE, NON COMMITTATO (2026-09-07)
+
+**Direttiva utente.** "Gestione Richieste - modifica rapida della Linea di Prodotto, la colonna
+linee di prodotto non e' piu' editabile, voglio che ci sia la possibilita' di renderlo editabile.
+So che ora e' una riga di prodotto dell'offerta, voglio che nell'edit si possa editare anche tutta
+la riga dell'offerta". Forma confermata in conversazione: **dialog aperto dalla cella**, non editor
+inline.
+
+**Perche' NON un cell editor AG Grid.** Una riga d'offerta si compone con `AsyncPaginatedSelect`
+(prodotto e aliquota), il cui popup Radix portala su `document.body`: dentro un popup di cella
+`stopEditingWhenCellsLoseFocus` smonta l'editor a meta' scelta — e' esattamente la ragione per cui
+`ProductLinesCellEditor`/`MultiSelectCellEditor` hanno liste inline fatte a mano. In un Dialog quei
+picker funzionano (`setTrigger` li riportala dentro `[data-slot="dialog-content"]`), quindi il
+dialog e' cio' che permette di **riusare verbatim** il row editor delle Offerte invece di clonarlo.
+
+**BACKEND: NESSUNA MODIFICA FUNZIONALE.** Il canale di scrittura esisteva gia' dal 2026-08-07:
+`updateWork(['offer_lines' => ...])` -> `RequestOfferLineWriter` -> `QuoteService::update()`, e il
+permesso di campo `offer_lines` e' gia' in `RequestManagementAuthorization`. `OfferLinesColumn`
+resta `'editable' => false` (il motore inline generico non c'entra): aggiornato solo il docblock,
+che dichiarava ancora "written exclusively by the Offerte module" — falso dal 2026-08-07.
+
+**Frontend — cosa e' stato aggiunto.**
+- `offer-lines-dialog-context.ts`: opener imperativo `openOfferLines(quoteId)` via context, no-op di
+  default. Stesso taglio di `use-field-change-request-dialog.ts`: la cella dipende dal solo hook.
+- `offer-lines-dialog.tsx`: `OfferLinesDialogProvider` (montato UNA volta attorno alla `TableView`,
+  `onSaved={refreshGrid}`) + il dialog. Fetch fresh-on-open del pannello (`useEntityDetail`),
+  `ResourcePermissionsProvider` con i permessi dell'envelope, footer Annulla/Salva.
+  **Vincolo rispettato:** nessun `overflow` sul `DialogContent` (il menu dei picker ci viene
+  portalato dentro), lo scroller e' il wrapper interno.
+- `use-offer-lines-form.ts`: RHF+Zod sul solo `{product_lines (watch), offer_lines}`; diff sparso —
+  collezione invariata = **nessuna PATCH**, il dialog si chiude e basta; 422 mappato su `offer_lines`.
+- `column-renderers.tsx`: `offer_lines` passa da `RefNamesCell` a `OfferLinesCell` — stessi nomi
+  prodotto + matita (hover/focus) che apre il dialog. Visibile anche a cella VUOTA (una richiesta
+  senza righe e' proprio quella che deve poterne acquisire una) e nascosta senza
+  `request-management.update` (affordance UI; l'autorizzazione per-record resta dell'endpoint).
+
+**Split fatti (riuso, non cloni).**
+- `request-offer-lines-section.tsx` ora esporta `RequestOfferLinesField` (il campo nudo, montato dal
+  dialog) e `RequestOfferLinesSection` (= field + `FormSection`, montato da pannello e create form).
+  Chi cerca il contenuto dentro `FormSection` lo trova nel field.
+- `relationLabel` e' uscito da `rich-cells.tsx` nel nuovo modulo `features/table/relation-label.ts`:
+  esportarlo da un file di componenti fa scattare `react-refresh/only-export-components` (regola NON
+  indebolita).
+
+**Naming/contratti da rispettare.** Il dialog salva `{ offer_lines: QuoteLineInput[] }` sullo stesso
+`PATCH /api/request-management/{quote}` del pannello: `commissions` non viaggiano mai (l'endpoint le
+proibisce e il server preserva quelle configurate dalle Offerte), `sort_order` lo assegna
+`toLineInputs` dalla posizione.
+
+**Segnalato, NON fatto (fuori scope).** Il tetto 200 righe e' triplicato: `MAX_LINES_PER_TAB`
+(quote-schema, gia' esportato e ora riusato qui) piu' due `MAX_OFFER_LINES` privati identici in
+`request-work-schema.ts` e `request-create-schema.ts`. Vanno ricondotti al primo.
+
+**Verifica ESEGUITA.** Vitest suite completa **594 file / 4370 test passed** (nuovo
+`offer-lines-dialog.test.tsx`, 7 casi: render cella, gating permesso, apertura+idratazione, assenza
+provvigioni, salvataggio con refresh griglia, chiusura senza request se nulla e' cambiato, blocco su
+riga incompleta). `npx tsc -b --force` EXIT=0. ESLint pulito su `features/request-management`,
+`features/table`, `features/quotes/quote-schema.ts`. Pint passed su `OfferLinesColumn.php`.
+
+## TASK — CLICK SULLE NOTIFICHE (CAMPANELLA) — VERDE, NON COMMITTATO (2026-09-07)
+
+**Segnalazione utente.** Cliccando una notifica relativa a un contatto non succede
+nulla, il cursore non e' pointer, e in alcuni casi la pagina non cambia / non porta
+sul punto di interesse giusto. "Controlla soprattutto parte anagrafica".
+
+**Tre difetti distinti, tutti verificati sul codice.**
+1. `notification-item.tsx`: la riga cliccabile e' un `<button>` senza `cursor-pointer`.
+   Tailwind 4 non da' piu' il pointer ai bottoni e `index.css` non ha regola globale.
+2. `notification-item.tsx` + `notification-bell.tsx`: la riga non e' un
+   `DropdownMenuItem`, quindi Radix non chiudeva il menu dopo `navigate()`. Il menu e'
+   modale -> `pointer-events: none` sul body sopra la pagina di destinazione: il click
+   sembrava non fare nulla.
+3. `NoteEntityRegistry::deepLinkFor()` anteponeva `app.frontend_url` e `NoteService`
+   usava lo STESSO valore per mail e payload database: `action_url` assoluto,
+   rifiutato da `safeInternalPath()` -> riga renderizzata come `<div>`, mai cliccabile.
+   In piu' `RequestManagementNotable::deepLinkPath()` restituiva l'id Opportunity, ma
+   `/request-management/{id}` (SPA e API) e' chiavata sulla **Quote** (spec 0086 D-1/D-2).
+
+**Decisioni utente (AskUserQuestion, 2026-09-07).** Deep link della menzione risolto
+PER DESTINATARIO, come `RecordLinkResolver` (spec 0081):
+1. nota con `quote_id` + `request-management.view` -> `/request-management/{quote_id}`;
+2. altrimenti `opportunities.view` -> `/opportunities/{opportunity_id}` (unica schermata
+   che mostra una nota generale);
+3. altrimenti `request-management.view` -> `/request-management` (la lista: la nota non
+   e' raggiungibile li', ma si apre il modulo che possiede invece di una riga morta);
+4. altrimenti `null` + frase "chiedi l'accesso al modulo".
+Mail e campanella allineate: `app.frontend_url` anteposto SOLO nel CTA della mail.
+
+**Contratti da rispettare.**
+- `NotableEntity::deepLinkPath(Model $record, User $recipient, ?int $quoteId): ?string`
+  (era `(Model): string`). `NoteEntityRegistry::deepLinkFor()` stessa firma + entityType,
+  e restituisce un PATH, mai un URL assoluto.
+- `NoteMentionNotification::__construct(Note, User $author, string $recordLabel,
+  string $entityType, Model $record)` — non piu' `string $actionUrl`.
+- Invariante di tutto il repo: `action_url` e' SEMPRE un path interno che inizia con `/`
+  e non con `//`. Il frontend lo impone in `safe-internal-path.ts`.
+- `NotificationItem`/`NotificationList` hanno una prop `onNavigate?: () => void`; la
+  campanella ci passa `closePanel`.
+
+**File modificati.**
+- BE: `app/Notes/Contracts/NotableEntity.php`, `app/Notes/NoteEntityRegistry.php`,
+  `app/RequestManagement/RequestManagementNotable.php`,
+  `app/Notifications/NoteMentionNotification.php`, `app/Services/Notes/NoteService.php`.
+- FE: `frontend/src/features/notifications/{notification-item,notification-list,notification-bell}.tsx`.
+
+**Aggiunta successiva (stessa sessione): hover sulla riga.** Richiesta utente "quando
+passo il mouse voglio un hover sull'item della notifica". Velo su TUTTA la riga
+(`hover:bg-muted transition-colors`), non sul solo bottone interno, cosi' la striscia
+reagisce come un unico item; incondizionato (il pointer resta il segnale di cio' che e'
+cliccabile). **Token obbligato `--muted`, NON `--accent`:** messaggio e timestamp usano
+`text-muted-foreground` e non ereditano un `accent-foreground`, e quell'inchiostro
+misura 4.54:1 light / 4.55:1 dark sul velo muted ma solo **4.17:1 light / 2.71:1 dark**
+su accent — sotto AA. Coerente con `ui-design.md` §1-bis, che assegna `--muted` all'hover
+di riga e `--accent` all'hover del Button outline. Il bottone "segna come letto" (ghost,
+`hover:bg-accent` = 76 contro il 79 della riga in light, invisibile) prende
+`className="hover:bg-popover"` per risalire alla superficie del pannello (100 / 23).
+Test aggiunto in `notification-item.test.tsx` che blocca il ritorno ad `accent`.
+- Test: nuovo `backend/tests/Feature/Notes/NoteMentionLinkTest.php` (6 casi, i tre rami +
+  fallback null + invariante path). Aggiornata l'asserzione in
+  `NoteMentionNotificationTest.php` (AC-061) che fotografava l'URL assoluto: il requisito
+  e' cambiato, non il test per farlo passare. Aggiunti 2 casi in `notification-item.test.tsx`.
+
+**Verificato (eseguito davvero).** `pest` completa: 6361 test, 6360 passed, 1 skipped.
+`vitest run` completa dopo l'hover: 594 file, 4370 test, tutti verdi (una prima esecuzione
+aveva un flaky in un test di icona, non riprodotto nelle run successive).
+`tsc -b --force` EXIT=0, `eslint` EXIT=0, `pint` passed.
+
+**Da segnalare, NON implementato (fuori scope).**
+- Nessun bottone dell'app ha `cursor: pointer`: `components/ui/button.tsx` non lo dichiara
+  e `index.css` non ha reset globale (solo 4 occorrenze di `cursor-pointer` in tutto
+  `components/ui/`, nei select custom). Aggiungerlo alla base di `buttonVariants` sarebbe
+  una riga e sistemerebbe l'intera app, ma tocca il design system: serve via libera.
+- `DemoNotificationSeeder` crea TUTTE le notifiche demo con `action_url => null`: su dati
+  demo nessuna riga e' cliccabile per costruzione. Se si vuole testare il click in demo,
+  va valorizzato.
+
+**Prossimo passo.** Chiedere all'utente se committare, e se procedere con i due punti sopra.
+
+## TASK — BUONO NON VISIBILE AL RELOAD DEL PANNELLO RICHIESTE — VERDE, NON COMMITTATO (2026-09-07)
+
+**Segnalazione utente.** Su `/request-management/{id}`: si abbina un buono (es. Amazon),
+si salva, si ricarica e la chip non c'e' piu' — ma il buono in DB e' realmente abbinato.
+
+**Causa (lato lettura, non scrittura).** Il contratto di spec 0086 D-4 prevede `rewards`
+letti dal Quote nella GET/PATCH del pannello, ma `RequestManagementResource` non ha MAI
+proiettato quella chiave e `WORK_PANEL_RELATIONS` non caricava la relazione. Il frontend
+idrata con `panel.rewards ?? []` (`request-work-panel.tsx:282`, `use-request-work-form.ts:96`),
+quindi al reload le chip risultavano zero. Effetto collaterale della stessa lacuna: il diff
+di `request-work-payload.ts:225` confrontava `[]` con `[]`, non inviava mai `rewards` e per
+questo il buono gia' persistito sopravviveva a ogni salvataggio (da qui il "in realta' si abbina").
+I test esistenti (`RewardAssignmentRequestManagementTest`) asseravano solo lo stato DB,
+mai il body di risposta: per questo il buco e' passato.
+
+**Fix.**
+- `backend/app/Http/Resources/RequestManagementResource.php` — `use SummarizesRewards` +
+  `'rewards' => $this->summarizeRewards($quote->rewards)` subito dopo `reporter`
+  (stessa proiezione byte-per-byte di `QuoteResource`, ordinata per `reward_type.name`).
+- `backend/app/Services/RequestManagement/RequestManagementService.php` —
+  `'rewards.rewardType'` in `WORK_PANEL_RELATIONS` (niente lazy load: `preventLazyLoading()`).
+- `backend/tests/Feature/Rewards/RewardAssignmentRequestManagementTest.php` — due test nuovi:
+  la GET restituisce le chip ordinate per nome; la PATCH rieccheggia il set appena sincronizzato.
+
+**Verifica eseguita.** `php artisan test tests/Feature/RequestManagement tests/Feature/Rewards`
+-> 477/477 verdi, 1802 assertion. Pint pulito sui file toccati. `npx tsc -b --force` EXIT=0.
+Nessuna modifica frontend necessaria: il tipo `rewards?: RewardAssignmentRef[]` era gia' nel contratto.
+
+**Prossimo passo.** Verifica manuale su `/request-management/1` (abbina buono -> salva ->
+ricarica -> la chip resta). In attesa di ordine esplicito per il commit.
+
+
+## TASK — LARGHEZZA DEI POPUP (SCALA DIALOG) — VERDE, NON COMMITTATO (2026-09-07)
+
+**Richiesta utente.** Il popup "Trasferimento contatto" (e gli altri popup) era troppo
+piccolo e rendeva scomoda la consultazione: ampliarlo.
+
+**Causa.** `components/ui/dialog.tsx` fissava `max-w-md` (448px) come unica larghezza,
+e ogni chiamante reinventava la propria (`max-w-sm`, `sm:max-w-md`, `max-w-2xl`,
+`max-w-4xl`) sparsa nelle schermate: nessuna scala, nessuna fonte di verita'.
+
+**Soluzione (design system, non patch locale).** `DialogContent` ha ora una variante
+`size` via `cva` — unica fonte di verita' della scala:
+`sm` = `sm:max-w-lg` (512) · `md` = `sm:max-w-2xl` (672, default) ·
+`lg` = `sm:max-w-4xl` (896) · `xl` = `sm:max-w-6xl` (1152).
+**Vincolo scoperto strada facendo: `DialogContent` non deve MAI ritagliare.**
+Un primo tentativo aveva messo `max-h-[calc(100dvh-4rem)] overflow-y-auto` sulla base,
+ed e' stato rimosso: il menu di `AsyncPaginatedSelect` viene portalato apposta DENTRO
+`[data-slot="dialog-content"]` (`async-paginated-select.tsx:setTrigger`, cosi' Radix non
+blocca lo scroll della lista come "fuori dal modale"), e la `translate` di centratura
+rende quel nodo il containing block del popup: qualunque `overflow` diverso da `visible`
+li' taglia la tendina al bordo del dialog. Lo scroll verticale va quindi su un wrapper
+INTERNO (`max-h-[70vh] overflow-y-auto`), che il popup portalato scavalca perche' e'
+figlio diretto del content, non dello scroller. Rimosso `overflow-hidden` anche dai
+dialog p-0 che ce l'avevano (assign-operators, notes, documents, quote-commissions):
+gli angoli arrotondati sono ora sulle fasce (`rounded-t-lg` header, `rounded-b-lg`
+footer/scroller), che e' l'effetto che `overflow-hidden` stava comprando.
+`quick-create` ha spostato lo scroll dal content al wrapper interno (`max-h-[75vh]`),
+quindi anche i select dei suoi form lazy non vengono piu' tagliati.
+Conseguenza accettata: un dialog piu' alto della viewport deborda (comportamento
+pre-esistente); chi ne aggiunge uno mette lo scroller interno, non l'overflow sul content.
+
+**Mappatura dei 22 call site** (nessuno resta con un `max-w-*` proprio):
+- `size="sm"` — editor a campo singolo del wizard import (operator/geo/site/products/bulk)
+  e `cell-note-dialog`.
+- default `md` — trasferimento contatto (`assign-operators-dialog`), i 5 dialog contratto
+  di conferma, `convert-leads`, `bulk-move-categories`, `field-change-request*`,
+  `quick-create` (mantiene il suo `max-h-[85vh]`). I tre manager senza className
+  (banks/contacts/addresses) salgono al default automaticamente: 448 -> 672.
+- `size="lg"` — `contract-program`, `resource-activity`, `notes`, `documents`.
+- `size="xl"` — `quote-commissions` (era 4xl).
+
+**Layout del popup di trasferimento.** Ampliato il contenitore, il contenuto e' stato
+adattato o sarebbe rimasto una colonna stretta in mezzo al vuoto: card modalita' in
+`grid sm:grid-cols-2`, Sede/Operatore affiancati (`sm:grid-cols-2`, solo quando il campo
+Operatore c'e'), bottone di conferma non piu' `w-full` a tutta larghezza
+(`w-full sm:w-auto sm:min-w-44`).
+
+**Fuori scope, segnalato.** `components/ui/alert-dialog.tsx` (usato da `confirm-dialog`)
+resta a `sm:max-w-md`: e' un si'/no con due righe di testo, allargarlo non aiuta la
+consultazione. Anche i `Sheet` non sono stati toccati (sono pannelli laterali).
+
+**Verifica eseguita.** `npx tsc -b --force --pretty false` EXIT=0 ·
+`npx vitest run` sulle feature toccate: 140 file / 1057 test, poi 96 file / 710 test
+dopo la correzione del ritaglio — tutti verdi ·
+`npx eslint` sui file toccati: 0 errori (3 warning preesistenti su `form.watch`).
+
+**Prossimo passo.** Verifica visiva a 375/768/1024 e conferma della scala col cliente
+(la preferenza generale del progetto e' UI compatta: qui l'ampiezza e' richiesta esplicita).
+In attesa di ordine per il commit.
+
+## TASK — APL DIVENTA CONTENITORE, OFFERTA SUL TERZO LIVELLO — VERDE, NON COMMITTATO (2026-09-07)
+
+**Cambio di rotta dell'utente** (terza revisione della forma APL, dopo "nuovo root" e
+"sotto Consulenza"): APL e' una **categoria padre**, la sottocategoria e' **Orientamento
+Specialistico**, e il prodotto e' abbinato a Orientamento Specialistico.
+
+**Forma finale dell'albero.** `Consulenza` (root) -> `APL` (contenitore,
+`is_selectable = false`) -> `Orientamento Specialistico` (terzo livello, selezionabile,
+ospita il prodotto omonimo). E' la forma normale del catalogo (root -> contenitore ->
+target di classificazione), la stessa di `Formazione -> GOL -> GOL - <Regione>`.
+
+**Modifiche rispetto alla revisione precedente.**
+- `QualificaCatalogSeeder::CATALOG`: `'APL' => ['Orientamento Specialistico']`.
+- `CatalogProducts::SINGLE_OFFER_SUBCATEGORIES` (mappa categoria => prodotto, introdotta
+  ieri per il caso "prodotto con nome diverso dalla categoria") **e' tornata**
+  `SINGLE_OFFER_CATEGORIES`, una `list<string>`: ora il prodotto si chiama di nuovo come
+  la categoria che lo ospita. Di conseguenza `SELECTABLE_SUBCATEGORIES` e' tornata una
+  **costante** con spread (niente `array_keys()`, che PHP non ammette in
+  un'espressione costante) e il metodo `selectableSubcategories()` e' sparito. Netto:
+  meno codice di prima del cambio di rotta.
+- `WorkflowStatusCatalogue::WORKFLOWS['APL']` passa dal criterio ESATTO al criterio di
+  **ramo** (`product_category_branch_id`): APL non ospita piu' prodotti, un criterio
+  esatto non matcherebbe piu' nessuna offerta.
+
+**Da sapere (non ovvio).** Un'offerta APL matcha ora DUE workflow di ramo: `APL`
+(distanza 1 dalla categoria di riga) e `Consulenza` (distanza 2). Vince APL perche'
+`QuoteWorkflowResolver` tie-breaka sulla distanza minore — comportamento gia' coperto da
+`tests/Unit/QuoteWorkflows/QuoteCategoryBranchCriterionTest` AC-008, quindi non e' stato
+duplicato un test di risoluzione.
+
+**Invariati.** Il link funzione aziendale resta su `APL` (il figlio la risolve
+own-or-inherited, nessuna riga propria). L'adozione per nome in migrazione
+(`ProductCategoriesSource::adopt`) e la guardia sui root statici in
+`QualificaLegacyImportSeeder` non cambiano. `TOTAL_SEEDED_PRODUCTS` resta 265.
+
+**Verifica eseguita.** Pest verde con `XDEBUG_MODE=off`: `tests/Feature/Seeding` +
+`Products` + `Migration` + `ProductCategories` + `QuoteWorkflows` +
+`tests/Unit/QuoteWorkflows` = **761/761**, 3103 assert; poi
+`QualificaBusinessFunctionLinkSeederTest` 7/7 dopo l'ultima asserzione aggiunta. Pint
+pulito sui 6 file toccati.
+
+**Nuovi test.** `QualificaCatalogSeederTest`: "APL" contenitore senza prodotti propri,
+"Orientamento Specialistico" figlio selezionabile che ospita il prodotto.
+`QualificaWorkflowSeederTest`: il workflow APL sul criterio di ramo + il figlio atteso.
+
+
+## TASK — LINK FUNZIONE AZIENDALE APL + ADOZIONE CATEGORIE IN MIGRAZIONE — VERDE, NON COMMITTATO (2026-09-07)
+
+**Richieste utente (seguito del task APL sotto).**
+1. Collegare la categoria "APL" alla funzione aziendale "APL", come gia' si fa per
+   "Formazione".
+2. La `/migration` dall'altro gestionale duplicava la categoria "APL": se la categoria
+   esiste gia' NON deve duplicare, deve aggiornare le info. Vale per tutte le categorie
+   migrate.
+
+**Modifiche — punto 1.**
+- `QualificaBusinessFunctionLinkSeeder`: le due costanti `CATEGORY`/`BUSINESS_FUNCTION`
+  sono diventate la mappa `LINKS = ['Formazione' => 'Formazione', 'APL' => 'APL']`, il
+  corpo e' estratto in `link()` e iterato. La categoria si risolve **per nome a qualsiasi
+  profondita'** (prima c'era `whereNull('parent_id')`): "APL" e' una sottocategoria, non
+  un root. Ogni link e' indipendente: una funzione mancante non blocca l'altra.
+- Il link su "APL" sta sul nodo stesso, non sul root Consulenza: la funzione efficace e'
+  own-or-inherited, quindi la propria vince e i fratelli non ereditano nulla.
+
+**Modifiche — punto 2.**
+- `ProductCategoriesSource::processRow()`: prima di creare, cerca una categoria con lo
+  stesso `name` e `old_id IS NULL` e la **adotta** (`adopt()`), come gia' fa
+  `SourcesSource`. L'adozione rinfresca SOLO i campi descrittivi
+  (`description`, e i tre flag `inherits_*` dall'unico flag esterno).
+- **Non si toccano** `parent_id` (adottare non deve MAI spostare un ramo),
+  `requires_quote` (root-owned) e `is_selectable` (il catalogo statico lo riallinea a
+  ogni seed, scriverlo qui riaprirebbe un contenitore fino al seed successivo).
+- `QualificaLegacyImportSeeder`: nuovo step 3 che fotografa gli **id dei root
+  pre-esistenti** PRIMA del run; `nestImportedCategories($staticRootIds)` li esclude.
+  Senza, un root statico adottato per nome (es. "Formazione", se il gestionale legacy ha
+  una categoria omonima) prenderebbe un `old_id` e verrebbe scambiato per root importato,
+  finendo con tutto il ramo GOL sotto "Consulenza".
+
+**Limite noto (contratto del motore, non un bug).** L'aggiornamento delle info avviene
+alla PRIMA importazione, quella dell'adozione. Da li' in poi la riga ha un `old_id` e
+`existsByOldId()` la salta: e' l'idempotenza documentata di ogni source, non specifica
+delle categorie.
+
+**Verifica eseguita.** Pest verde con `XDEBUG_MODE=off`:
+`tests/Feature/Migration` + `tests/Feature/Seeding` + `tests/Unit/Migrations` +
+`tests/Feature/Products` = 449/449; `tests/Feature/ProductCategories` +
+`tests/Feature/QuoteWorkflows` = 291/291. Pint pulito sugli 8 file toccati.
+**Nota ambiente:** `tests/Feature/Migration/MigrationEndpointsTest.php` va in **segfault
+(exit 139) con Xdebug attivo**, prima di emettere output — e' un artefatto di Xdebug,
+non del codice: con `XDEBUG_MODE=off` passa 21/21. Vale la pena usare `XDEBUG_MODE=off`
+per le run di suite ampie.
+
+**Nuovi test.** `ProductCategoriesSourceImportTest`: adozione senza duplicato con
+posizione/selectability preservate; secondo `old_id` con lo stesso nome che crea il
+proprio nodo (guardia `old_id IS NULL`); nessuna adozione su match parziale del nome.
+`QualificaLegacyImportSeederTest`: root statico adottato che NON viene spostato sotto
+Consulenza. `QualificaBusinessFunctionLinkSeederTest`: link APL idempotente + link
+indipendenti.
+
+
+## TASK — CATEGORIA "APL" + PRODOTTO "ORIENTAMENTO SPECIALISTICO" — VERDE, NON COMMITTATO (2026-09-07)
+
+**Richiesta utente.** Aggiungere al seed di produzione (`QualificaProductionDataSeeder`,
+step 2 `QualificaCatalogSeeder`) la categoria di prodotto "APL", il prodotto
+"Orientamento Specialistico" collegato ad essa e i suoi stati di lavorazione.
+
+**Decisioni utente (prese via AskUserQuestion in questa sessione).**
+- **Posizione:** "APL" e' una SOTTOCATEGORIA di **Consulenza**, selezionabile, che ospita
+  la propria offerta (come Autoimpiego/Yisu sotto Formazione). L'utente aveva prima detto
+  "nuovo root", poi ha corretto in "sotto Consulenza".
+- **Regole:** essendo sotto Consulenza eredita per forza le regole di quel root
+  (`management_mode: multiple`, `single_quote_per_opportunity: false`,
+  **`generates_contract: true`**): le tre regole sono root-owned e ri-sincronizzate da
+  `RootOwnedCategorySetting::syncSubtree()`, nessun override per ramo. Segnalato
+  all'utente il conflitto con la sua risposta precedente ("regole come Formazione"): ha
+  scelto **posizione sotto Consulenza + regole Consulenza**. Quindi una chiusura APL su
+  "Assegnato" APRE un contratto.
+- **Stati:** sezione **dedicata** `apl` in `WorkflowStatusCatalogue::SECTIONS`, non un
+  riuso del blocco GOL, cosi' le descrizioni possono divergere.
+- **"Dati Lavorazione Contatto":** NON provisionato su APL (nessuna modifica a
+  `QualificaContactProcessingSeeder`). Il pannello Offerta/Commessa di un'offerta APL
+  nasce senza campi finche' non si configura dal configuratore categorie.
+
+**Modifiche.**
+- `QualificaCatalogSeeder`: `CATALOG['Consulenza']` ha un terzo nodo `'APL' => []`. La
+  costante `SELECTABLE_SUBCATEGORIES` e' diventata il metodo `selectableSubcategories()`:
+  PHP non ammette chiamate a funzione (`array_keys()`) in un'espressione costante.
+- `CatalogProducts::SINGLE_OFFER_SUBCATEGORIES` da `list<string>` a
+  `array<string, string>` (categoria => nome prodotto): `'APL' => 'Orientamento
+  Specialistico'` e' l'unico nodo la cui offerta non si chiama come la categoria.
+- `WorkflowStatusCatalogue`: nuova sezione `self::APL` con le 19 voci dettate
+  dall'utente (4 aperti + "Assegnato" positivo + 13 negativi + "In Standby"), e
+  `WORKFLOWS['APL'] => ['section' => self::APL]` sul criterio ESATTO
+  (`product_category_id`). Le righe pinned prendono "Da Richiamare" / "Assegnato" /
+  "Percorso 101".
+
+**Da sapere (non ovvio).** L'offerta APL matcha DUE workflow: il proprio (criterio
+esatto) e quello di "Consulenza" (criterio di ramo, spec 0092). Vince il proprio perche'
+`QuoteWorkflowResolver::matchDepth()` da' 0 al criterio esatto e >=1 al ramo. Primo caso
+di workflow annidati nel catalogo: se un domani si tocca la risoluzione, questo e' il
+caso di regressione.
+
+**Verifica eseguita.** Pest verde: `QualificaWorkflowSeederTest` 11/11 (incluso il nuovo
+test "seeds the APL pick list on the exact category"), `QualificaCatalogSeederTest` +
+`QualificaClassroomLayoutSeederTest` 27/27, `QualificaProductionDataSeederTest` +
+`QualificaContactProcessingSeederTest` 19/19. Pint pulito sui 6 file toccati.
+`TOTAL_SEEDED_PRODUCTS` e i due conteggi di `QualificaProductionDataSeederTest` passano
+da 264 a 265.
+
+**Prossimi passi.** Nessuno obbligato. Aperto solo se il cliente lo chiede: assegnare al
+ramo APL un set di attributi di lavorazione proprio.
+
+
+## TASK — FILTRO EVENTO SULLO STORICO ATTIVITA' — VERDE, NON COMMITTATO (2026-09-07)
+
+**Richiesta utente.** Nello "Storico" del contatto comparivano insieme le attivita' di
+creazione e di modifica, rendendolo dispersivo. Filtro a tre stati: tutto / solo
+creazione / solo modifica.
+
+**Dove.** Lo "Storico" del contatto e' il componente GENERICO `ActivityLogSection`
+(`frontend/src/features/referents/referent-detail.tsx:109`, `resource="referents"`),
+montato allo stesso modo da ogni modulo e dal Dialog di row-action. Il filtro e' quindi
+nel componente condiviso e nell'endpoint generico: nessuna patch locale sul referente,
+tutti i moduli lo ereditano.
+
+**Contratto (spec 0034 aggiornata, v3 additiva — shape invariata).**
+`GET /api/activity-log/{resource}/{id}?event=created|updated` — parametro opzionale,
+assente = ogni evento. Allow-list nel FormRequest, fuori allow-list = 422.
+
+**Perche' server-side.** Il feed e' keyset-paginato: filtrare la pagina gia' letta lato
+client darebbe pagine parzialmente vuote e un `next_cursor` fuorviante. Il filtro entra
+nella query (`where('event', ...)`, valore bound, mai interpolato).
+
+**File toccati.**
+- BE: `ActivityLogIndexRequest` (regola `event` + `event()`, const `FILTERABLE_EVENTS`),
+  `AggregatedActivityService::paginate()` (+`?string $event`, `applyEvent()`),
+  `ActivityLogController::index()` (passa `$request->event()`).
+- FE: `features/activity-log/` — `types.ts` (`ActivityLogEventFilter = 'all'|'created'|'updated'`),
+  `api.ts` (5o argomento, `'all'` omette il param), `query-keys.ts` (il filtro fa parte
+  della key), `use-activity-log.ts`, `activity-log-event-filter.tsx` (NUOVO, strip Tabs
+  compatta), `activity-log-section.tsx` (split: `ActivityLogSection` tiene il filtro,
+  `ActivityLogFeed` la timeline — cosi' la strip resta visibile su loading/empty/error).
+- i18n: `activityLog.filter.{label,all,created,updated}` + `activityLog.emptyFiltered`
+  in `it-activity-log.ts` / `en-activity-log.ts`.
+- Spec: `docs/specs/0034-aggregated-activity-log.xml` (param `event`, nota v3, AC-021..AC-024).
+
+**Nomi da rispettare.** `event` (query param), `ActivityLogEventFilter`,
+`ActivityLogEventFilterTabs`, `applyEvent`, `FILTERABLE_EVENTS`,
+`activityLogKeys.list(resource, id, event)`.
+
+**Verifica eseguita.** `php artisan test tests/Feature/ActivityLog/` → 83 passed /
+286 assertions (incluso il nuovo `ActivityLogEventFilterTest`, AC-021..AC-023).
+Vitest intero → 593 file / 4360 test passed. `npx tsc -b --force` EXIT=0. Pint e ESLint
+puliti. Nuovo test FE per AC-024 in `activity-log-section.test.tsx`; l'assert esistente
+su `fetchActivityLog` e' stato aggiornato al 5o argomento (requisito cambiato).
+
+**Prossimi passi.** In attesa di via libera per il commit (CLAUDE.md §3.6). Se in futuro
+servisse filtrare anche `deleted`/`restored`: aggiungere il valore a `FILTERABLE_EVENTS`
+e l'opzione a `FILTER_OPTIONS`, nient'altro.
+
 
 ## TASK — FILTRO NAZIONALE SU REGIONI E LOCALITA' — VERDE E COMMITTATO (2026-09-07)
 

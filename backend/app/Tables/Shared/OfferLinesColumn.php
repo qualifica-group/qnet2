@@ -19,9 +19,15 @@ use Illuminate\Support\Facades\DB;
  *
  * Unlike `products_of_interest` (a pivot, belongsToMany), this projects the
  * products of the Quote's own REVENUE lines (`Quote::offerLines()`, spec
- * 0065 D-11): a COST line's product never appears here (AC-007). Read-only
- * (AC-021/AC-022): no editor, no `relation` block — the offer's lines are
- * written exclusively by the Offerte module, never from this grid.
+ * 0065 D-11): a COST line's product never appears here (AC-007).
+ *
+ * No editor and no `relation` block: the rows behind these products are not a
+ * cell value (a product, a quantity, a unit price and a VAT rate each), so
+ * they are NOT written through the generic inline-edit engine. The grid's
+ * quick edit (user directive 2026-09-07) opens the module's own dialog on
+ * `PATCH /api/request-management/{quote}` with `offer_lines` instead — the
+ * same choke point the work panel uses since the 2026-08-07 directive, which
+ * already revoked spec 0086 AC-022's "read-only in this module".
  *
  * Not sortable (no single related row to order by), `set`-filterable by the
  * related product's own `name`, same bound/never-raw discipline as

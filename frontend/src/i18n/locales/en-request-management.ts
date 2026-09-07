@@ -162,6 +162,10 @@ export const requestManagement = {
    */
   offerLines: {
     hintNoCategory: 'Pick a product category first: it scopes the selectable products.',
+    editAction: 'Edit the offer rows',
+    dialogTitle: 'Offer rows',
+    dialogDescription: 'Edit product, quantity, unit price and VAT of this offer\'s rows.',
+    validationSummary: 'Check the highlighted rows before saving.',
   },
   workPanel: {
     loadError: 'Could not load the record.',

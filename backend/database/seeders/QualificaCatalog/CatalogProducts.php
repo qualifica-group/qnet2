@@ -22,7 +22,7 @@ use App\Services\ProductService;
  *   - the self-funded courses (SelfFundedCourseCatalogue): one per row under
  *     the single "Autofinanziato" subcategory, with its list price, its
  *     duration and its `delivery_mode`;
- *   - the single-offer subcategories (SINGLE_OFFER_SUBCATEGORIES): one product
+ *   - the single-offer categories (SINGLE_OFFER_CATEGORIES): one product
  *     named after the category itself, filed directly on it.
  *
  * Idempotent and non-destructive: the natural key is (name, category), and an
@@ -31,21 +31,25 @@ use App\Services\ProductService;
 final class CatalogProducts
 {
     /**
-     * The subcategories that host ONE offer of their own instead of a course
+     * The categories that host ONE offer of their own instead of a course
      * list: one SERVICE product per category, named exactly like it (user
-     * directive 2026-09-04). Cost and price stay 0 and the "Formazione"
-     * attributes they inherit are left empty — they are filled in later
-     * through the CRUD modules, like every other seeded product.
+     * directive 2026-09-04). "Orientamento Specialistico" is the third-level
+     * offer of the "APL" branch (user directive 2026-09-07) — the others are
+     * subcategories. Cost and price stay 0 and the attributes the node
+     * inherits are left empty: they are filled in later through the CRUD
+     * modules, like every other seeded product.
      *
      * QualificaCatalogSeeder::SELECTABLE_SUBCATEGORIES reads this list: a node
      * hosting its own product must be a classification target, never a
-     * container (spec 0074).
+     * container (spec 0074). A third-level entry is one by default, so it
+     * rides along there without needing the exception.
      *
      * @var list<string>
      */
-    public const array SINGLE_OFFER_SUBCATEGORIES = [
+    public const array SINGLE_OFFER_CATEGORIES = [
         'Autoimpiego',
         'Yisu',
+        'Orientamento Specialistico',
     ];
 
     /**
@@ -70,7 +74,7 @@ final class CatalogProducts
         $this->seedTrainingCourses();
         // Step 2: the self-funded ones, all on a single subcategory.
         $this->seedSelfFundedCourses();
-        // Step 3: the subcategories selling one offer under their own name.
+        // Step 3: the categories selling a single offer of their own.
         $this->seedSingleOfferProducts();
     }
 
@@ -99,7 +103,7 @@ final class CatalogProducts
 
     private function seedSingleOfferProducts(): void
     {
-        foreach (self::SINGLE_OFFER_SUBCATEGORIES as $categoryName) {
+        foreach (self::SINGLE_OFFER_CATEGORIES as $categoryName) {
             $this->seedProduct($this->category($categoryName), $categoryName, 0.0, []);
         }
     }

@@ -13,7 +13,8 @@ use InvalidArgumentException;
  * holds the logic, this file holds the rows.
  *
  * The sheet is organised in four blocks; each becomes one SECTION here, and a
- * section is bound to one or more product categories by WORKFLOWS below:
+ * section is bound to one or more product categories by WORKFLOWS below. A
+ * fifth section came later, off-sheet (user directive 2026-09-07):
  *
  *   1. GOL FORMAZIONE  — one column per region, each a DIFFERENT subset of the
  *                        same status vocabulary, in its own order. Hence the
@@ -23,6 +24,13 @@ use InvalidArgumentException;
  *   3. AUTOFINANZIATO  — one list, one category.
  *   4. CONSULENZA      — one list, bound to the "Consulenza" ROOT (user
  *                        decision 2026-07-28).
+ *   5. APL             — one list, on the "APL" branch. NOT from the
+ *                        sheet: the client dictated it with the category
+ *                        (user directive 2026-09-07). It reads like the GOL
+ *                        base column with "Assegnato" as its positive
+ *                        outcome, but it is transcribed in full rather than
+ *                        borrowed, so the two can diverge without either
+ *                        dragging the other.
  *
  * TRANSCRIPTION NOTES (the sheet is a spreadsheet, not a database):
  *   - The same state is spelled differently across columns. Folded to ONE
@@ -50,10 +58,11 @@ final class WorkflowStatusCatalogue
 
     /**
      * The spec 0092 criterion: the offer line's category OR any ancestor of
-     * it. Used by a workflow bound to a category that is a BRANCH ROOT rather
-     * than a leaf products actually sit on — "Consulenza" is exactly that
-     * (its products live two levels down, under `ISO` and its siblings), so
-     * an exact-category criterion would never match a single offer.
+     * it. Used by a workflow bound to a CONTAINER rather than to a leaf
+     * products actually sit on — "Consulenza" is exactly that (its products
+     * live two levels down, under `ISO` and its siblings) and so is "APL"
+     * (its offer sits on the "Orientamento Specialistico" child), so an
+     * exact-category criterion would never match a single offer.
      */
     public const string BRANCH_CRITERION_FIELD = 'product_category_branch_id';
 
@@ -92,6 +101,8 @@ final class WorkflowStatusCatalogue
     private const string SELF_FUNDED = 'self_funded';
 
     private const string CONSULTING = 'consulting';
+
+    private const string APL = 'apl';
 
     /**
      * Section key => status name => its legend bucket and its description.
@@ -175,6 +186,27 @@ final class WorkflowStatusCatalogue
             'Non pertinente' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non coerente con il servizio, la proposta o il target previsto.'],
             'Numero inesistente' => ['legend' => self::NEGATIVE, 'description' => 'Recapito telefonico errato, inesistente o non valido.'],
         ],
+        self::APL => [
+            'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Contatto da ricontattare per completare la lavorazione o fornire ulteriori informazioni.'],
+            'Attesa esito SFL/ADI' => ['legend' => self::OPEN, 'description' => 'In attesa dell\'esito relativo alla pratica SFL/ADI del candidato.'],
+            'Attesa _ App. CPI' => ['legend' => self::OPEN, 'description' => 'In attesa della definizione dell\'appuntamento presso il CPI.'],
+            'OK App. Fissato CPI' => ['legend' => self::OPEN, 'description' => 'Appuntamento presso CPI fissato e confermato.'],
+            'Assegnato' => ['legend' => self::POSITIVE, 'description' => 'Candidato preso in carico dall\'APL e assegnato al servizio di orientamento specialistico.'],
+            'Percorso 101' => ['legend' => self::NEGATIVE, 'description' => 'Candidato inserito nel percorso 101.'],
+            'Autofinanziato' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che segue un percorso autofinanziato.'],
+            'Associato NO _ Altro Ente' => ['legend' => self::NEGATIVE, 'description' => 'Candidato associato a un altro ente diverso da NOI.'],
+            'NO _ Non ha Requisiti' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non idoneo per mancanza dei requisiti previsti.'],
+            'Frequenta già corso GOL' => ['legend' => self::NEGATIVE, 'description' => 'Candidato già iscritto o frequentante un corso GOL.'],
+            'Non interessato/a' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha comunicato di non essere interessato al percorso.'],
+            'Stato Rinunciatario' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha rinunciato volontariamente al percorso.'],
+            'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Impossibile contattare il candidato dopo i tentativi effettuati.'],
+            'Trasferito altra Sede QG' => ['legend' => self::NEGATIVE, 'description' => 'Candidato trasferito presso un\'altra sede QG.'],
+            'Non pertinente - Altra regione' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non pertinente perché appartenente a un\'altra regione in cui non siamo accreditati.'],
+            'Numero Inesistente/Errato' => ['legend' => self::NEGATIVE, 'description' => 'Recapito telefonico non valido o inesistente.'],
+            'Doppione' => ['legend' => self::NEGATIVE, 'description' => 'Record duplicato presente nel sistema.'],
+            'Doppione già associato' => ['legend' => self::NEGATIVE, 'description' => 'Record duplicato già collegato a un\'associazione esistente.'],
+            'In Standby' => ['legend' => self::OPEN, 'description' => 'Pratica temporaneamente sospesa in attesa di ulteriori sviluppi.'],
+        ],
     ];
 
     /**
@@ -251,6 +283,14 @@ final class WorkflowStatusCatalogue
         // Bound to the "Consulenza" ROOT, whose products sit two levels below
         // it: only the branch criterion reaches them (spec 0092).
         'Consulenza' => ['section' => self::CONSULTING, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
+        // "APL" is a Consulenza subcategory that GROUPS its offers instead of
+        // hosting one (user directive 2026-09-07): its products sit on the
+        // "Orientamento Specialistico" child, so only the branch criterion
+        // reaches them, exactly as for the "Consulenza" root above. Both
+        // workflows then match an APL offer, and QuoteWorkflowResolver keeps
+        // the CLOSEST branch (spec 0092 D-3) — "APL" is one level nearer the
+        // line's category than "Consulenza", so the list below wins.
+        'APL' => ['section' => self::APL, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
     ];
 
     /**

@@ -42,7 +42,7 @@ export function CellNoteDialog({ onConfirm, onCancel }: CellNoteDialogProps) {
 
   return (
     <Dialog open onOpenChange={(next) => (next ? undefined : onCancel())}>
-      <DialogContent className="max-w-sm">
+      <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>{t('table.noteDialog.title')}</DialogTitle>
           <DialogDescription>{t('table.noteDialog.description')}</DialogDescription>

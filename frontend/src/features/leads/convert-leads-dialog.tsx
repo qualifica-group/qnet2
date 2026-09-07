@@ -104,7 +104,7 @@ export function ConvertLeadsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('leads.bulkConvert.title')}</DialogTitle>
           <DialogDescription>

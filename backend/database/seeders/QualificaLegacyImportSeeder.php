@@ -28,10 +28,11 @@ use Illuminate\Database\Seeder;
  * nestImportedCategories().
  *
  * Idempotent by construction: every source skips a record whose `old_id` is
- * already imported, and `sources` — the one catalogue QualificaCatalogSeeder
- * also provisions by name — is adopted rather than duplicated (SourcesSource).
- * Re-running therefore only pulls in what the legacy system has that qnet
- * does not.
+ * already imported, and the catalogues QualificaCatalogSeeder also provisions
+ * by name are adopted rather than duplicated — `sources` (SourcesSource) and,
+ * since the user directive of 2026-09-07, the product categories
+ * (ProductCategoriesSource::adopt). Re-running therefore only pulls in what the
+ * legacy system has that qnet does not.
  *
  * Both preconditions are optional, never fatal: with no external system
  * configured, or no super-admin to act as, the static catalogue stands on its
@@ -107,11 +108,18 @@ class QualificaLegacyImportSeeder extends Seeder
             return;
         }
 
-        // Step 3: one mass run over the fixed source list, executed inline.
+        // Step 3: the top-level categories qnet already has — the static
+        // catalogue's own roots. Taken BEFORE the run because that run may
+        // ADOPT one of them by name (ProductCategoriesSource), which gives it
+        // an `old_id`; step 5 would then mistake it for an imported root and
+        // drag its whole branch under LEGACY_CATEGORY_ROOT.
+        $staticRootIds = ProductCategory::query()->whereNull('parent_id')->pluck('id')->all();
+
+        // Step 4: one mass run over the fixed source list, executed inline.
         $run = app(MigrationService::class)->runMassSync($actor, self::SOURCES);
 
-        // Step 4: reparent the freshly imported taxonomy under the client root.
-        $this->nestImportedCategories();
+        // Step 5: reparent the freshly imported taxonomy under the client root.
+        $this->nestImportedCategories($staticRootIds);
 
         $this->report($run);
     }
@@ -124,11 +132,18 @@ class QualificaLegacyImportSeeder extends Seeder
      * Categories without an `old_id` are the static catalogue's tree and are
      * never touched, so re-running moves nothing a second time.
      *
+     * $staticRootIds are the roots that existed BEFORE the run: an `old_id` on
+     * one of them means the import ADOPTED it by name, not that it came from
+     * the legacy system, and moving it would take the whole static branch —
+     * "Formazione" and everything under it — down one level.
+     *
      * A direct `parent_id` write, mirroring the engine's own relink pass
      * (ProductCategoriesSource::afterImport): the tree is a plain adjacency
      * list with no derived column to maintain.
+     *
+     * @param  list<int>  $staticRootIds
      */
-    private function nestImportedCategories(): void
+    private function nestImportedCategories(array $staticRootIds): void
     {
         $root = ProductCategory::query()
             ->whereNull('parent_id')
@@ -148,6 +163,7 @@ class QualificaLegacyImportSeeder extends Seeder
             ->whereNotNull('old_id')
             ->whereNull('parent_id')
             ->whereKeyNot($root->getKey())
+            ->whereIntegerNotInRaw('id', $staticRootIds)
             ->get();
 
         // Per-model update (not a mass query update) so the activity log

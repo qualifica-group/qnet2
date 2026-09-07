@@ -1,11 +1,18 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, Loader2, User as UserIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime } from '@/lib/formatting/date-display'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ActivityLogEventFilterTabs } from '@/features/activity-log/activity-log-event-filter'
 import { useActivityLog } from '@/features/activity-log/use-activity-log'
-import type { ActivityLogChange, ActivityLogEntry, ActivityLogEvent } from '@/features/activity-log/types'
+import type {
+  ActivityLogChange,
+  ActivityLogEntry,
+  ActivityLogEvent,
+  ActivityLogEventFilter,
+} from '@/features/activity-log/types'
 
 export interface ActivityLogSectionProps {
   /** Registry key of the aggregating resource, e.g. "users". */
@@ -29,8 +36,28 @@ const EVENT_BADGE_VARIANT: Record<ActivityLogEvent, 'default' | 'secondary' | 'd
  * (spec 0034). Mounted both as a `DetailSection` (user detail) and inside a
  * row-action Dialog (users table) — this component owns no gating, callers
  * decide when it is authorized to mount.
+ *
+ * The event filter lives here (not in each caller) so every module gets the
+ * same narrowing, and it stays outside the feed's loading/empty/error states
+ * so it is always reachable.
  */
 export function ActivityLogSection({ resource, id }: ActivityLogSectionProps) {
+  const [eventFilter, setEventFilter] = useState<ActivityLogEventFilter>('all')
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ActivityLogEventFilterTabs value={eventFilter} onChange={setEventFilter} />
+      <ActivityLogFeed resource={resource} id={id} eventFilter={eventFilter} />
+    </div>
+  )
+}
+
+interface ActivityLogFeedProps extends ActivityLogSectionProps {
+  eventFilter: ActivityLogEventFilter
+}
+
+/** The paginated timeline itself, for the currently selected event filter. */
+function ActivityLogFeed({ resource, id, eventFilter }: ActivityLogFeedProps) {
   const { t } = useTranslation()
   const {
     data,
@@ -40,7 +67,7 @@ export function ActivityLogSection({ resource, id }: ActivityLogSectionProps) {
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useActivityLog(resource, id)
+  } = useActivityLog(resource, id, eventFilter)
 
   if (isLoading) {
     return (
@@ -66,7 +93,11 @@ export function ActivityLogSection({ resource, id }: ActivityLogSectionProps) {
   const entries = data?.pages.flatMap((page) => page.items) ?? []
 
   if (entries.length === 0) {
-    return <p className="text-xs text-muted-foreground">{t('activityLog.empty')}</p>
+    return (
+      <p className="text-xs text-muted-foreground">
+        {t(eventFilter === 'all' ? 'activityLog.empty' : 'activityLog.emptyFiltered')}
+      </p>
+    )
   }
 
   return (

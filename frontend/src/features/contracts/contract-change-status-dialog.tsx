@@ -82,7 +82,7 @@ export function ContractChangeStatusDialog({
         onOpenChange(next)
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('contracts.actions.changeStatus')}</DialogTitle>
           <DialogDescription>{t('contracts.actions.changeStatusDialog.description')}</DialogDescription>

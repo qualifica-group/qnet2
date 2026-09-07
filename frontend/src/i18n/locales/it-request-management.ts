@@ -162,6 +162,10 @@ export const requestManagement = {
    */
   offerLines: {
     hintNoCategory: 'Scegli prima una categoria prodotto: limita i prodotti selezionabili.',
+    editAction: 'Modifica le righe dell\'offerta',
+    dialogTitle: 'Linee dell\'offerta',
+    dialogDescription: 'Modifica prodotto, quantità, prezzo unitario e IVA delle righe di questa offerta.',
+    validationSummary: 'Controlla le righe evidenziate prima di salvare.',
   },
   workPanel: {
     loadError: 'Impossibile caricare il record.',

@@ -200,6 +200,67 @@ it('seeds the consulting pick list with the client mapping (user directive 2026-
     expect($statuses->firstWhere('name', 'In trattativa')->system_key)->toBeNull();
 });
 
+it('seeds the APL pick list on the APL branch (user directive 2026-09-07)', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $workflow = QuoteWorkflow::query()->where('name', 'APL')->with('criteria')->firstOrFail();
+    $category = ProductCategory::query()->where('name', 'APL')->firstOrFail();
+
+    // "APL" GROUPS its offers: the product sits on its "Orientamento
+    // Specialistico" child, so only the branch criterion reaches it. Its
+    // "Consulenza" grandparent matches the same line on its own branch
+    // criterion, and the resolver keeps the CLOSEST one (spec 0092 D-3).
+    expect($workflow->criteria)->toHaveCount(1)
+        ->and($workflow->criteria->first()->field)->toBe('product_category_branch_id')
+        ->and($workflow->criteria->first()->value_id)->toBe($category->id)
+        ->and($category->children()->pluck('name')->all())->toBe(['Orientamento Specialistico']);
+
+    $statuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $workflow->id)
+        ->orderBy('sort_order')
+        ->get();
+
+    // The pinned rows anchor the set: `open` first, the two closed outcomes
+    // last, so "Assegnato"/"Percorso 101" sit at the tail rather than mid-list.
+    expect($statuses->pluck('name')->all())->toBe([
+        'Da Richiamare',
+        'Attesa esito SFL/ADI',
+        'Attesa _ App. CPI',
+        'OK App. Fissato CPI',
+        'Autofinanziato',
+        'Associato NO _ Altro Ente',
+        'NO _ Non ha Requisiti',
+        'Frequenta già corso GOL',
+        'Non interessato/a',
+        'Stato Rinunciatario',
+        'Irreperibile',
+        'Trasferito altra Sede QG',
+        'Non pertinente - Altra regione',
+        'Numero Inesistente/Errato',
+        'Doppione',
+        'Doppione già associato',
+        'In Standby',
+        'Assegnato',
+        'Percorso 101',
+    ]);
+
+    // "Assegnato" is the block's ONLY positive outcome, so it takes over the
+    // pinned closed_won row; every other closed state is a loss.
+    expect($statuses->pluck('group')->map(fn (WorkflowStatusGroup $group): string => $group->value)->countBy()->sortKeys()->all())
+        ->toBe([
+            WorkflowStatusGroup::ClosedLost->value => 13,
+            WorkflowStatusGroup::ClosedWon->value => 1,
+            WorkflowStatusGroup::Open->value => 5,
+        ]);
+
+    $assegnato = $statuses->firstWhere('name', 'Assegnato');
+
+    expect($assegnato->system_key)->toBe('closed_won')
+        ->and($assegnato->color)->toBe('green')
+        ->and($statuses->firstWhere('name', 'Percorso 101')->system_key)->toBe('closed_lost')
+        ->and($statuses->first()->system_key)->toBe('open');
+});
+
 it('classifies each status from the sheet legend', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 

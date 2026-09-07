@@ -147,7 +147,12 @@ it('the database payload matches NotificationData and surfaces via the existing 
     $payload = json_decode($row->data, true);
     expect(array_keys($payload))->toEqualCanonicalizing(['title', 'message', 'level', 'action_url']);
     expect($payload['level'])->toBe('info');
-    expect($payload['action_url'])->toBe(rtrim((string) config('app.frontend_url'), '/').'/request-management/'.$opportunity->id);
+    // The note carries no `quote_id` (general note) and this recipient holds
+    // only `request-management.*`, so the module's own list is the landing
+    // page (decisione utente 2026-09-07). A PATH, never an absolute URL: the
+    // campanella rejects anything else (safe-internal-path.ts).
+    expect($payload['action_url'])->toBe('/request-management')
+        ->and($payload['action_url'])->not->toStartWith('http');
     expect($payload['message'])->toContain($actor->name);
     expect($payload['message'])->toContain($opportunity->name);
     expect($payload['message'])->toContain('@Mentioned Person');

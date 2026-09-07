@@ -222,11 +222,13 @@ final class NoteService
         }
 
         $label = $this->registry->labelFor($entityType, $record);
-        $actionUrl = $this->registry->deepLinkFor($entityType, $record);
 
-        DB::afterCommit(function () use ($newRecipientIds, $note, $author, $label, $actionUrl): void {
+        // The deep link is NOT precomputed here: it depends on the recipient's
+        // own abilities, so the notification resolves it per notifiable
+        // (same rule as RecordAssignmentNotification, spec 0081).
+        DB::afterCommit(function () use ($newRecipientIds, $note, $author, $label, $entityType, $record): void {
             $recipients = User::query()->whereIn('id', $newRecipientIds)->get();
-            Notification::send($recipients, new NoteMentionNotification($note, $author, $label, $actionUrl));
+            Notification::send($recipients, new NoteMentionNotification($note, $author, $label, $entityType, $record));
         });
     }
 

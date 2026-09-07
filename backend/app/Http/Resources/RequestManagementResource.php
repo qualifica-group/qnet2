@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\FormMode;
+use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\RequestManagement\ApplicableAttribute;
@@ -64,6 +65,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 #[PreserveKeys]
 class RequestManagementResource extends JsonResource
 {
+    use SummarizesRewards;
+
     /**
      * @param  array{quote: Quote}  $resource
      */
@@ -100,6 +103,11 @@ class RequestManagementResource extends JsonResource
             'source' => $this->summarizeByName($opportunity->source),
             'reporter_id' => $quote->reporter_id,
             'reporter' => $this->summarizeByName($quote->reporter),
+            // Spec 0086, D-4: the "abbinamento buono" chips, whose origin is
+            // the Quote and whose beneficiary is the Segnalatore above — the
+            // same SummarizesRewards projection QuoteResource emits, so the
+            // shared ReporterRewardsField rehydrates identically here.
+            'rewards' => $this->summarizeRewards($quote->rewards),
             // Spec 0097, D-9 (user directive 2026-09-02): the "Supervisore",
             // back on this panel — the Offerta's commission recipient
             // (`CommissionRecipientRole::Supervisor`), NOT the ownership

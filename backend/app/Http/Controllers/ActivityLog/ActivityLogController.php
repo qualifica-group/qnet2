@@ -56,7 +56,13 @@ class ActivityLogController extends BaseApiController
             $authorizer = app($definition->authorizer);
             $authorizer->authorize($actor, $record);
 
-            $page = $this->service->paginate($record, $definition->relations, $request->perPage(), $request->cursor());
+            $page = $this->service->paginate(
+                $record,
+                $definition->relations,
+                $request->perPage(),
+                $request->cursor(),
+                $request->event(),
+            );
             [$hiddenSubjects, $hiddenFields] = $this->activityRedactions($definition, $actor, $record);
 
             return $this->ok([

@@ -38,8 +38,8 @@ use Illuminate\Database\Seeder;
  *   5. QualificaLegacyImportSeeder — the support tables pulled from the legacy
  *                                    system through the Migrazioni engine.
  *   6. QualificaBusinessFunctionLinkSeeder — assigns step 2's "Formazione"
- *                                    root to the business function step 5
- *                                    imports.
+ *                                    root and its "APL" subcategory to the
+ *                                    business functions step 5 imports.
  *   7. QualificaOperatorSiteLinkSeeder — gives step 4's accounts the
  *                                    operational site step 5 imports, so they
  *                                    are selectable as operators.

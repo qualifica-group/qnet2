@@ -24,7 +24,7 @@ export interface RequestOfferLinesFormShape {
   offer_lines: QuoteLineFormValues[]
 }
 
-interface RequestOfferLinesSectionProps<TFieldValues extends RequestOfferLinesFormShape> {
+interface RequestOfferLinesFieldProps<TFieldValues extends RequestOfferLinesFormShape> {
   control: Control<TFieldValues>
   /** The persisted rows, for label hydration (product/aliquota). `[]` on create. */
   knownLines: QuoteLine[]
@@ -37,8 +37,13 @@ interface RequestOfferLinesSectionProps<TFieldValues extends RequestOfferLinesFo
 const EMPTY_TREE: ProductCategoryTreeNode[] = []
 
 /**
- * "Linee dell'offerta" in Gestione Richieste (user directive 2026-08-07):
- * literally the Offerte form's row editor (`QuoteLinesField`, variant
+ * The row editor itself, without the card around it (user directive
+ * 2026-09-07): the grid's quick-edit dialog IS the surface here, so wrapping
+ * the field in a second titled card inside it would repeat the dialog's own
+ * heading. The work panel and the create form keep mounting
+ * `RequestOfferLinesSection` below, which is this field plus that card.
+ *
+ * Literally the Offerte form's row editor (`QuoteLinesField`, variant
  * `revenue`), since the record this module works on IS that Offerta since
  * spec 0086 — same columns, same live net/IVA/totale, same server rules.
  *
@@ -56,13 +61,13 @@ const EMPTY_TREE: ProductCategoryTreeNode[] = []
  * on "Aggiungi riga" exactly as the Offerte tab mirrors it; the server
  * enforces it either way.
  */
-export function RequestOfferLinesSection<TFieldValues extends RequestOfferLinesFormShape>({
+export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFormShape>({
   control,
   knownLines,
   errors,
   vatRatePercentFor,
   rememberVatRatePercent,
-}: RequestOfferLinesSectionProps<TFieldValues>) {
+}: RequestOfferLinesFieldProps<TFieldValues>) {
   const { t } = useTranslation()
   // The shape guarantees both keys on every accepted form, but TS cannot
   // narrow a literal to `Path<TFieldValues>` through the generic (same idiom
@@ -93,23 +98,18 @@ export function RequestOfferLinesSection<TFieldValues extends RequestOfferLinesF
   const knownVatRates = useMemo(() => knownVatRatesFrom(knownLines), [knownLines])
 
   return (
-    <FormSection
-      icon={TrendingUp}
-      title={t('quotes.form.sections.offer.title')}
-      description={t('quotes.form.sections.offer.description')}
+    <MetaField
+      control={control}
+      name={linesField}
+      metaKey="offer_lines"
+      label={t('quotes.form.offerTab.fieldLabel')}
     >
-      <MetaField
-        control={control}
-        name={linesField}
-        metaKey="offer_lines"
-        label={t('quotes.form.offerTab.fieldLabel')}
-      >
-        {({ field, disabled }) => {
-          // Same unavoidable cast as the field path above: the generic keeps
-          // the shape's key but not its value type.
-          const rows = field.value as QuoteLineFormValues[]
+      {({ field, disabled }) => {
+        // Same unavoidable cast as the field path above: the generic keeps
+        // the shape's key but not its value type.
+        const rows = field.value as QuoteLineFormValues[]
 
-          return (
+        return (
           <div className="flex flex-col gap-2">
             <QuoteLinesField
               value={rows}
@@ -134,9 +134,25 @@ export function RequestOfferLinesSection<TFieldValues extends RequestOfferLinesF
                   : t('quotes.form.offerTab.hintScoped')}
             </p>
           </div>
-          )
-        }}
-      </MetaField>
+        )
+      }}
+    </MetaField>
+  )
+}
+
+/** "Linee dell'offerta" as a titled card: the form surfaces (work panel, create form) mount this. */
+export function RequestOfferLinesSection<TFieldValues extends RequestOfferLinesFormShape>(
+  props: RequestOfferLinesFieldProps<TFieldValues>,
+) {
+  const { t } = useTranslation()
+
+  return (
+    <FormSection
+      icon={TrendingUp}
+      title={t('quotes.form.sections.offer.title')}
+      description={t('quotes.form.sections.offer.description')}
+    >
+      <RequestOfferLinesField {...props} />
     </FormSection>
   )
 }
