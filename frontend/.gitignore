@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Vitest v8 coverage report (vite.config.ts -> test.coverage)
+coverage
+
 # Environment files (keep the tracked example)
 .env
 .env.*
