@@ -7,16 +7,24 @@ use App\Models\Company;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * @mixin EmploymentProfile
  *
- * The nested `employment` object (spec 0015): scalar fields, the four
- * relation ids, and each relation's {id,label} reference — emitted only when
- * that relation was eager-loaded (mirrors PersonalDataResource's `whenLoaded`
+ * The nested `employment` object (spec 0015): scalar fields, the relation
+ * ids, and each relation's {id,label} reference — emitted only when that
+ * relation was eager-loaded (mirrors PersonalDataResource's `whenLoaded`
  * discipline, avoiding an N+1 per row).
+ *
+ * The site membership (spec 0103) is no longer a single `operational_site_id`
+ * column: `primary_operational_site_id`/`remote_operational_site_ids` proxy
+ * the profile's own accessors (which read off the `operationalSites` pivot
+ * collection), and the two reference shapes below are derived from that SAME
+ * collection — so eager-loading `operationalSites.addresses.city` covers
+ * every one of the four keys with a single relation.
  */
 class EmploymentResource extends JsonResource
 {
@@ -39,7 +47,8 @@ class EmploymentResource extends JsonResource
             'reports_to_id' => $this->reports_to_id,
             'business_function_id' => $this->business_function_id,
             'company_id' => $this->company_id,
-            'operational_site_id' => $this->operational_site_id,
+            'primary_operational_site_id' => $this->primary_operational_site_id,
+            'remote_operational_site_ids' => $this->remote_operational_site_ids,
 
             'reports_to' => $this->when(
                 $this->relationLoaded('reportsTo') && $this->reportsTo !== null,
@@ -53,11 +62,38 @@ class EmploymentResource extends JsonResource
                 $this->relationLoaded('company') && $this->company !== null,
                 fn (): array => $this->reference($this->company, static fn (Company $company): string => $company->denomination, static fn (Company $company): ?string => $company->vat_number),
             ),
-            'operational_site' => $this->when(
-                $this->relationLoaded('operationalSite') && $this->operationalSite !== null,
-                fn (): array => $this->reference($this->operationalSite, $this->operationalSiteLabel(...), $this->operationalSiteSubtitle(...)),
+            'primary_operational_site' => $this->when(
+                $this->relationLoaded('operationalSites') && $this->primarySite() !== null,
+                fn (): array => $this->reference($this->primarySite(), $this->operationalSiteLabel(...), $this->operationalSiteSubtitle(...)),
+            ),
+            'remote_operational_sites' => $this->when(
+                $this->relationLoaded('operationalSites'),
+                fn (): array => $this->remoteSites()
+                    ->map(fn (OperationalSite $site): array => $this->reference($site, $this->operationalSiteLabel(...), $this->operationalSiteSubtitle(...)))
+                    ->values()
+                    ->all(),
             ),
         ];
+    }
+
+    /**
+     * The at-most-one PHYSICAL site out of the eager-loaded `operationalSites`
+     * collection (D-3) — reads the already-loaded relation, same no-N+1
+     * reasoning as EmploymentProfile::primaryOperationalSiteId().
+     */
+    private function primarySite(): ?OperationalSite
+    {
+        return $this->operationalSites->first(fn (OperationalSite $site): bool => (bool) $site->pivot->is_primary);
+    }
+
+    /**
+     * The zero-or-more REMOTE sites out of the same eager-loaded collection.
+     *
+     * @return Collection<int, OperationalSite>
+     */
+    private function remoteSites(): Collection
+    {
+        return $this->operationalSites->reject(fn (OperationalSite $site): bool => (bool) $site->pivot->is_primary);
     }
 
     /**

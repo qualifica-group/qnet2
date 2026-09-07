@@ -17,6 +17,12 @@ use Illuminate\Validation\Rule;
  * object upserts it; an explicit `employment: null` deletes it (update only —
  * on create it is equivalent to "absent", see EmploymentWriter).
  *
+ * The two site-membership fields (spec 0103) carry a second, per-field
+ * tri-state on top of the above: `primary_operational_site_id`/
+ * `remote_operational_site_ids` absent from the payload leaves that side of
+ * the membership untouched; present with null/empty clears it. See
+ * EmploymentData's docblock and EmploymentWriter::syncSiteMemberships().
+ *
  * @phpstan-require-extends FormRequest
  */
 trait ValidatesEmployment
@@ -30,6 +36,10 @@ trait ValidatesEmployment
     protected function employmentRules(): array
     {
         $currentUserId = $this->route('user')?->id;
+        // Read once so both the notIn() guard below and toEmployment() see
+        // the same value (AC-006: a remote id equal to the primary is a 422,
+        // not a silent drop).
+        $primaryOperationalSiteId = $this->nullableInt('employment.primary_operational_site_id');
 
         return [
             'employment' => ['sometimes', 'nullable', 'array'],
@@ -48,7 +58,20 @@ trait ValidatesEmployment
             'employment.relationship_type' => ['nullable', Rule::enum(RelationshipTypeEnum::class)],
 
             'employment.company_id' => ['nullable', 'integer', Rule::exists('companies', 'id')],
-            'employment.operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
+
+            // Site membership (spec 0103 D-9, replacing the single
+            // `employment.operational_site_id`): at most one physical site
+            // plus any number of remote ones.
+            'employment.primary_operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
+            'employment.remote_operational_site_ids' => ['nullable', 'array'],
+            'employment.remote_operational_site_ids.*' => array_filter([
+                'integer',
+                'distinct',
+                Rule::exists('operational_sites', 'id'),
+                // AC-006: a remote id cannot double as the primary one.
+                $primaryOperationalSiteId !== null ? Rule::notIn([$primaryOperationalSiteId]) : null,
+            ]),
+
             'employment.qualification_type' => ['nullable', Rule::enum(QualificationTypeEnum::class)],
             'employment.hired_at' => ['nullable', 'date'],
             'employment.terminated_at' => ['nullable', 'date', 'after_or_equal:employment.hired_at'],
@@ -80,7 +103,10 @@ trait ValidatesEmployment
             businessFunctionId: $this->nullableInt('employment.business_function_id'),
             relationshipType: RelationshipTypeEnum::tryFrom((string) $this->input('employment.relationship_type')),
             companyId: $this->nullableInt('employment.company_id'),
-            operationalSiteId: $this->nullableInt('employment.operational_site_id'),
+            primaryOperationalSiteIdProvided: $this->has('employment.primary_operational_site_id'),
+            primaryOperationalSiteId: $this->nullableInt('employment.primary_operational_site_id'),
+            remoteOperationalSiteIdsProvided: $this->has('employment.remote_operational_site_ids'),
+            remoteOperationalSiteIds: $this->remoteOperationalSiteIds(),
             qualificationType: QualificationTypeEnum::tryFrom((string) $this->input('employment.qualification_type')),
             hiredAt: $this->input('employment.hired_at'),
             terminatedAt: $this->input('employment.terminated_at'),
@@ -94,5 +120,25 @@ trait ValidatesEmployment
         $value = $this->input($key);
 
         return $value === null || $value === '' ? null : (int) $value;
+    }
+
+    /**
+     * The submitted remote site ids, cast to int, or an empty array when the
+     * key is absent (EmploymentWriter reads the sibling *Provided flag to
+     * tell "absent" from "explicitly emptied").
+     *
+     * @return array<int, int>
+     */
+    private function remoteOperationalSiteIds(): array
+    {
+        if (! $this->has('employment.remote_operational_site_ids')) {
+            return [];
+        }
+
+        return collect((array) $this->input('employment.remote_operational_site_ids'))
+            ->filter(fn (mixed $id): bool => $id !== null && $id !== '')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
     }
 }

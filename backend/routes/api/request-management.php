@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\Route;
 // Declared BEFORE the {quote} routes: a POST to the literal segment must
 // never be swallowed by the wildcard.
 Route::post('request-management/assign-operators', [RequestManagementController::class, 'assignOperators']);
+// Spec 0104 (direttiva utente 2026-09-07): the bulk GA3 ("Tutor") assignment,
+// the Sede-less sibling of assign-operators above. Same "declared before the
+// wildcard" rule as every literal segment in this file.
+Route::post('request-management/assign-manager-ga3', [RequestManagementController::class, 'assignManagerGa3']);
 // Spec 0079: same "declared before the wildcard" rule as assign-operators
 // above — a POST to this literal segment must never be swallowed by the
 // GET/PUT/DELETE `{quote}` routes.

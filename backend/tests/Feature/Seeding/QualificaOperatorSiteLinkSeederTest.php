@@ -6,11 +6,13 @@ use App\Models\User;
 use Database\Seeders\QualificaOperatorSiteLinkSeeder;
 use Database\Seeders\TestUsersSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 // The TestUsersSeeder accounts are given an operational site through their
-// employment profile — the column the Operatore select filters on (spec 0048).
-// The sites come from the external qnet CRM, so the link runs after the import
-// and is never fatal when no site exists.
+// employment profile — as the PHYSICAL membership on the pivot the Operatore
+// select filters on (spec 0103, replacing the former operational_site_id
+// column). The sites come from the external qnet CRM, so the link runs after
+// the import and is never fatal when no site exists.
 uses(RefreshDatabase::class);
 
 $emails = fn (): array => array_column(TestUsersSeeder::TEST_USERS, 'email');
@@ -30,13 +32,14 @@ it('assigns every test account to the imported site, idempotently', function () 
     $site = OperationalSite::factory()->create();
 
     test()->seed(QualificaOperatorSiteLinkSeeder::class);
-    test()->seed(QualificaOperatorSiteLinkSeeder::class); // re-run: already linked, no second profile.
+    test()->seed(QualificaOperatorSiteLinkSeeder::class); // re-run: already linked, no second profile nor a second primary row.
 
-    $profiles = User::query()->whereIn('email', $emails())->with('employment')->get();
+    $profiles = User::query()->whereIn('email', $emails())->with('employment.operationalSites')->get();
 
     expect($profiles)->toHaveCount(count($emails()))
-        ->and($profiles->pluck('employment.operational_site_id')->unique()->all())->toBe([$site->getKey()])
-        ->and(EmploymentProfile::query()->count())->toBe(count($emails()));
+        ->and($profiles->pluck('employment.primaryOperationalSiteId')->unique()->all())->toBe([$site->getKey()])
+        ->and(EmploymentProfile::query()->count())->toBe(count($emails()))
+        ->and(DB::table('employment_profile_operational_site')->count())->toBe(count($emails()));
 });
 
 it('picks the lowest id, never an alias: the legacy catalogue is not ours to pin', function (): void {
@@ -46,8 +49,10 @@ it('picks the lowest id, never an alias: the legacy catalogue is not ours to pin
 
     test()->seed(QualificaOperatorSiteLinkSeeder::class);
 
-    expect(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail()->employment->operational_site_id)
-        ->toBe($first->getKey());
+    $employment = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')
+        ->with('employment.operationalSites')->firstOrFail()->employment;
+
+    expect($employment->primaryOperationalSiteId)->toBe($first->getKey());
 });
 
 it('never steals a site already assigned by hand, nor wipes the rest of the profile', function (): void {
@@ -56,16 +61,14 @@ it('never steals a site already assigned by hand, nor wipes the rest of the prof
     $manual = OperationalSite::factory()->create();
 
     $user = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
-    $user->employment()->create([
-        'operational_site_id' => $manual->getKey(),
-        'job_description' => 'Supervisore',
-    ]);
+    $employment = $user->employment()->create(['job_description' => 'Supervisore']);
+    $employment->operationalSites()->attach($manual->getKey(), ['is_primary' => true]);
 
     test()->seed(QualificaOperatorSiteLinkSeeder::class);
 
-    $employment = $user->employment()->firstOrFail();
+    $employment = $user->employment()->with('operationalSites')->firstOrFail();
 
-    expect($employment->operational_site_id)->toBe($manual->getKey())
+    expect($employment->primaryOperationalSiteId)->toBe($manual->getKey())
         ->and($employment->job_description)->toBe('Supervisore');
 });
 

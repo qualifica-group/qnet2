@@ -5,6 +5,7 @@ import {
   clearManagerSlot,
   operatorSlotParams,
   operatorSlotSite,
+  shouldAutoFillSite,
 } from '@/features/request-management/request-team-slots'
 import { OPERATOR_MANAGER_POSITION } from '@/features/request-management/types'
 
@@ -70,11 +71,15 @@ export function useRequestSiteOperatorLink<TValues extends SiteOperatorLinkValue
   }, [siteId])
 
   // Operatore -> Sede: picking a user on the OPERATOR slot hydrates its own
-  // Sede from `meta` (no extra fetch). A user with no Sede, or a pick on any
-  // other slot, leaves the current value alone.
+  // Sede from `meta` (no extra fetch) — but ONLY while the Sede field is
+  // still empty (spec 0103 D-6). A Sede already on the form is never
+  // overwritten: with remote appartenenze the operator picker, scoped to
+  // that Sede, can return operators whose physical Sede differs from it. A
+  // user with no Sede, or a pick on any other slot, leaves the current value
+  // alone either way.
   const onSlotItemChange = (position: number, item: ForSelectItem | null) => {
     const site = operatorSlotSite(position, item)
-    if (!canPickSite || !site) return
+    if (!canPickSite || !site || !shouldAutoFillSite(siteId)) return
     form.setValue(siteField, site.id as PathValue<TValues, Path<TValues>>, {
       shouldDirty: true,
       shouldValidate: true,

@@ -62,6 +62,8 @@ it('view: eager-loads and returns the nested employment tree', function () {
         ->assertJsonPath('data.employment.job_description', 'Backend engineer');
 });
 
+// AC-009 (multi-site Sede membership) has its own file: UserEmploymentViewTest.php.
+
 it('view: 403 without users.view', function () {
     $actor = userWithUserAbilities([]);
     $target = User::factory()->create();

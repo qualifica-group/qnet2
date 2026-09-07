@@ -46,7 +46,7 @@ if (! function_exists('bulkActionsOperatorAtSite')) {
     function bulkActionsOperatorAtSite(OperationalSite $site): User
     {
         $operator = User::factory()->create();
-        EmploymentProfile::factory()->create(['user_id' => $operator->id, 'operational_site_id' => $site->id]);
+        EmploymentProfile::factory()->physicalSite($site)->create(['user_id' => $operator->id]);
 
         return $operator;
     }

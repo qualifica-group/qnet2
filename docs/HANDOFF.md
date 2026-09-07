@@ -3,6 +3,185 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## APPARTENENZA MULTI-SEDE DELL'UTENTE (2026-09-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Utente puo' avere altre sedi di appartenenza (distinzione tra sede fisica
+(quella che c'e' ora) e sede remota)". Spec congelata e approvata:
+`docs/specs/0103-user-multi-site-membership.xml` (32 AC).
+
+**Cosa e' cambiato.** La sede dell'utente NON e' piu' una colonna. `employment_profiles.operational_site_id`
+e' DROPPATA; le appartenenze vivono sulla pivot **`employment_profile_operational_site`**
+(`employment_profile_id`, `operational_site_id`, `is_primary`; unique `ep_op_site_unique`; FK
+nominate `ep_op_site_employment_fk`/`ep_op_site_site_fk` perche' i nomi auto-generati sforavano
+i 64 char di MySQL). Al piu' UNA sede fisica (`is_primary=true`, opzionale) piu' N remote.
+
+**Le remote sono operative a tutti gli effetti (D-1):** chi ha la sede X come remota compare tra
+gli operatori di X in `UserService::forSelect` ed entra nello smistamento equo di
+`LeadOperatorDistributor::operatorIdsForSite`. L'algoritmo br-balanced non e' cambiato: cambia
+solo la popolazione.
+
+**Contratto (congelato, rispettarlo).**
+- `employment` su GET/POST/PUT `/api/users`: `primary_operational_site_id: number|null`,
+  `remote_operational_site_ids: number[]`, piu' `primary_operational_site?{id,label,subtitle}` e
+  `remote_operational_sites?[{...}]` (whenLoaded). Le chiavi `operational_site_id`/`operational_site`
+  NON esistono piu'.
+- `GET /api/users/for-select?operational_site_id=` — nome e tipo invariati, cambia la SEMANTICA:
+  trova fisica O remota. `meta` resta SINGOLARE e porta sempre la FISICA.
+- `GET /api/auth/me` — `employment: { primary_operational_site_id } | null`. NIENTE elenco di
+  appartenenze: vedi D-4 rivista sotto.
+- Field-permission: `employment.operational_site_id` e' diventata DUE chiavi,
+  `employment.primary_operational_site_id` e `employment.remote_operational_site_ids`. Migrazione
+  `2026_09_07_100200` splitta le righe gia' configurate in `role_field_permissions`.
+
+**Naming da rispettare.** `operationalSites()` (BelongsToMany withPivot `is_primary`),
+`primaryOperationalSite()`, `remoteOperationalSites()`, piu' gli accessor Attribute **PUBBLICI**
+`primaryOperationalSiteId()` / `remoteOperationalSiteIds()` su `EmploymentProfile`.
+
+**Perche' gli accessor sono public — non toccarli (D-9).** `EnforcesFieldPermissions` implementa
+"riproporre lo stesso valore su un campo bloccato e' un no-op, non un 422". Senza quegli accessor
+un leaf-relazione to-one tornerebbe il Model invece dell'id e OGNI resubmit diventerebbe un 422
+spurio per i ruoli con la Sede in sola lettura — verde in tutti i test, rotto in produzione.
+Verificato nel sorgente Laravel: `HasAttributes::isRelation()` controlla `hasAttributeMutator()`
+PRIMA di `method_exists`, quindi un accessor Attribute-style fa ricadere la lettura su
+`getAttribute()`. `EnforcesFieldPermissions` NON e' stato modificato. Coperto da AC-013/AC-014,
+inclusa l'insensibilita' all'ordine degli id (`normalizeArray()` fa `usort` su `json_encode`).
+
+**Invariante "al piu' una fisica" (D-10):** enforced da `EmploymentWriter::syncSiteMemberships()`
+dentro la transazione — calcola l'intera mappa pivot e fa UNA `sync()`, con `is_primary` sempre
+calcolato lato server, mai letto dal payload. NON e' nello schema: MySQL non ha unique parziale,
+e il precedente di casa e' identico (indirizzo unico di `OperationalSite` enforced dal service).
+
+**D-4 RIVISTA in corsa (2026-09-07).** La seconda meta' ("il select Sede mostra in cima le sedi
+dell'utente") e' RITIRATA dall'utente. Era stata implementata come una riga di chip sopra il
+campo — l'unica forma possibile senza modificare `AsyncPaginatedSelect`, condiviso da ogni
+relation picker dell'app — e l'utente l'ha respinta a schermo: non era cio' che aveva approvato.
+Rimossa interamente; il campo Sede e' byte-identico a HEAD. AC-033 eliminato dalla spec, e lo
+scope `out` ora vieta esplicitamente di rimetterci mano. Se un giorno si vuole davvero
+l'ordinamento delle opzioni, e' un lavoro a se' su un componente condiviso.
+
+**Altre decisioni.** D-7 griglia utenti: la cella mostra la FISICA, il filtro trova anche le
+remote (asimmetria voluta). D-11 cancellare una sede non promuove una remota a fisica. D-12 il
+widget `staffed` conta una sede con almeno UNA appartenenza, fisica o remota. D-13 la regola
+"l'auto-fill Operatore->Sede non sovrascrive una Sede gia' scelta" vale ANCHE nel form Lead, che
+aveva lo stesso legame duplicato a mano (modifica gli AC-060/061 della spec 0048).
+
+**Verifica eseguita sullo stato finale.** Backend `pest`: 6441 test, 6440 passed, 1 skipped,
+27202 assertion, ZERO fallimenti. Frontend `vitest`: 600 file, 4415 test, tutti verdi.
+`tsc -b --force` EXIT 0. `pint --test` EXIT 0. Il gate indipendente aveva trovato 2 regressioni
+fuori dai file toccati, entrambe corrette: `RequestManagementBulkActionsTest.php:49` usava ancora
+la colonna droppata via factory (ora `->physicalSite($site)`), e `QuoteWorkflowMigrationTest.php`
+aveva il contatore `--step` hardcoded a 52 (ora 55, le nostre 3 migrazioni sono elencate nel
+commento). **Chi aggiunge una migrazione deve bumpare quel contatore.**
+
+**Aperto, NON risolto.**
+1. `DemoEmploymentProfileSeeder` assegna le sedi remote col 25% di probabilita' PER OGNUNA delle
+   40 sedi: media 11 appartenenze per profilo, punte di 19. Dati demo irrealistici (l'import
+   legacy assegna solo la fisica). Va messo un tetto realistico (0-3 remote).
+2. `Model::preventLazyLoading()` NON e' cablato da nessuna parte (zero occorrenze in `app/`,
+   `bootstrap/`, `config/`), benche' `rules/backend.md` §3 lo prescriva e diciannove commenti nel
+   codice lo diano per attivo — uno cita perfino `AppServiceProvider::preventLazyLoading()` come
+   se esistesse. Fuori scope 0103, ma e' una rete di sicurezza che tutti credono di avere.
+3. `docs/HANDOFF.md` e' a 704 KB contro le ~50 KB dichiarate in testa: le voci vecchie vanno
+   archiviate in `docs/handoff-archive/`.
+
+**Attenzione al commit.** Nel working tree convive la spec 0104 (assegnazione massiva GA3) di
+un'altra sessione: `git add -A` la inghiottirebbe. Committare per elenco esplicito di file.
+
+## ASSEGNAZIONE MASSIVA GA3 / "TUTOR" IN GESTIONE RICHIESTE (2026-09-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "gestione richieste voglio un azione massiva come per operatori, anche
+un azione per assegnazione massiva dei tutor, in quel caso non per sede (ga3)". Spec congelata
+e approvata: `docs/specs/0104-request-management-bulk-ga3-assignment.xml`.
+
+**Cosa esisteva gia' (non reimplementato):** lo slot `ManagerPositions::GA3 = 3`, il writer
+`RequestOperatorWriter::applyGa3()` (muove il solo slot 3, accetta `null`, ha la guardia di
+no-op) e la cella inline `manager_ga3` — il cui picker era gia' senza filtro Sede. Mancava solo
+il canale massivo.
+
+**Contratto congelato.** `POST /api/request-management/assign-manager-ga3`,
+`{ request_ids: number[], manager_ga3_id: number|null }` -> `ok({ assigned }, 'Manager GA3
+assigned')`. Nessun `operational_site_id` e nessun `mode`: solo lo slot GA2 e' legato a una Sede
+(D-1). `manager_ga3_id` e' `present` + `nullable` — la chiave va sempre inviata, `null` SVUOTA lo
+slot su tutto il batch (D-2); `nullable` da solo avrebbe reso "chiave mancante" un comando
+distruttivo silenzioso. Gate: `request-management.update` AND la NUOVA ability
+`request-management.assignManagerGa3` (D-3). Scoping D-3 invariato: gli id irraggiungibili sono
+saltati in silenzio, `assigned` conta le righe RAGGIUNTE.
+
+**Nomi da rispettare.** BE: `RequestManagementPolicy::assignManagerGa3()`,
+`AssignRequestManagerGa3Request` (`requestIds()`/`managerGa3Id()`),
+`RequestAssignmentService::assignManagerGa3()` + `assignManagerGa3ToOne()` (riusa
+`inScopeQuotes()`), `RequestManagementController::assignManagerGa3()`. FE:
+`assignRequestManagerGa3()`, `AssignRequestManagerGa3Payload/Result`, `GA3_MANAGER_POSITION = 3`
+(in `types.ts`, accanto a `OPERATOR_MANAGER_POSITION`), `AssignManagerGa3Dialog`,
+`useRequestManagerGa3Assignment`, i18n `requestManagement.assignManagerGa3.*`.
+
+**IL PERMESSO NASCE NON ASSEGNATO.** `permissions:sync` (via `RolePermissionSeeder`) crea
+`request-management.assignManagerGa3` dal catalogo della Policy, ma nessun ruolo lo riceve: va
+concesso dalla schermata Ruoli, altrimenti la voce di menu non compare a nessuno tranne il
+super-admin. E' il passo di deploy da non dimenticare.
+
+**Etichetta dinamica (D-4).** La voce di menu e il titolo del popup leggono
+`manager_labels[3]` della categoria del tab attivo — la STESSA fonte che rietichetta l'header di
+colonna (spec 0080 esteso a GA3) — con fallback su `requestManagement.columns.managerGa3`. Non
+possono divergere: se domani una categoria rinomina lo slot, si spostano insieme.
+
+**Popup dedicato, non un terzo asse su `AssignOperatorsDialog`.** Quel dialog (392 righe, 4
+chiamanti) e' costruito intorno alla Sede: `operational_site_id` obbligatorio nel tipo,
+`params.operational_site_id` sul select, `siteId !== null` nel gate di submit, piu' il
+`lockedMode` gia' presente. `AssignManagerGa3Dialog` ha UN campo e riusa i mattoni un livello
+sotto (`Dialog*`, `Label`, `Button`, `AsyncPaginatedSelect`), stessa densita' compatta.
+
+**`RequestManagementTable` era a 440 righe**: cablare il flusso inline la portava a 513, oltre
+l'hard limit di 500 (`code-guard.js`). Il flusso vive quindi in
+`useRequestManagerGa3Assignment` (gate + label + stato dialog + mutation), la tabella e' a 468.
+Aggiunta anche `clearSelectionAndRefresh` accanto a `refreshGrid`. La tabella resta sopra il
+soft limit di 300: preesistente, da affrontare a parte.
+
+**Nessuna notifica (D-5), ma activity log si'.** Il GA3 non scopa visibilita' e non e' il
+destinatario operativo — stessa regola che `applyGa3`/`applySlots` seguono gia'. Ogni Offerta
+davvero cambiata scrive una voce sull'Opportunita' con `attributes.manager_ga3_id`/`old`.
+
+**Test esistenti aggiornati (dichiarato, non "aggiustato per farlo passare").** Il modulo ha una
+TERZA voce nel menu Azioni, quindi: i due mock di `@/features/request-management/api` in
+`request-management-table.test.tsx` e `-transfer.test.tsx` hanno guadagnato
+`assignRequestManagerGa3`/`fetchCategoryManagerLabels` (superficie del modulo, non asserzioni), le
+liste attese di chiavi bulk includono `assign-manager-ga3`, e il test "bulk slot unwired" ora nega
+anche la nuova ability per conservare la propria intenzione.
+
+**RIETICHETTATURA DELLE COLONNE G.A. (direttiva utente, stessa data).** Sul tab "Tutte" le due
+colonne si chiamano ora **"Operatore"** (GA2) e **"Tutor"** (GA3): cambiati i soli VALORI i18n
+`requestManagement.columns.operator` e `.managerGa3` (erano "Operatore (GA2)" e "Gestore account
+(GA3)"), in it ed en. Le chiavi, il catalogo colonne e il meccanismo di relabel restano identici:
+sugli altri tab vince sempre `manager_labels[posizione]` della categoria (spec 0080 esteso a GA3),
+il valore i18n e' solo il fallback del tab "Tutte". Di conseguenza anche la voce di menu
+dell'azione massiva legge "Assegna Tutor" su "Tutte" — e' la stessa chiave in fallback, per
+costruzione non possono divergere.
+
+Nota di scope: il fallback generico dell'editor di squadra (`ManagerSlotsField` ->
+`registries.form.managerSlotLabel`, "G.A. n") NON e' stato toccato — e' condiviso con Anagrafiche
+e Offerte, cambiarlo si riverserebbe su quei moduli. Se lo si vuole allineare, e' una decisione
+separata.
+
+**Verifica ESEGUITA.**
+- Backend: `RequestManagementBulkManagerGa3Test` 16 test verdi (52 asserzioni). Suite
+  RequestManagement+Roles+Users+Notifications: 722 test, 716 passed, **6 rossi PREESISTENTI e non
+  miei** (vedi sotto). Pint pulito.
+- Frontend: suite INTERA `npx vitest run` — **601 file, 4423 test, tutti verdi**.
+  `npx tsc -b --force` EXIT=0. ESLint EXIT=0 sui file toccati.
+
+**ROSSO PREESISTENTE DA SEGNALARE (non nostro).** `RequestManagementBulkActionsTest` ha 6 test in
+errore: `table employment_profiles has no column named operational_site_id`. Causa: il lavoro
+NON COMMITTATO di spec 0103 (multi-sede utente) presente nel working tree ha spostato quella
+colonna su pivot (`2026_09_07_100100_move_employment_operational_site_to_pivot.php`) senza
+aggiornare l'helper `bulkActionsOperatorAtSite()` di quel test, che la passa ancora esplicitamente
+alla factory. Appartiene a chi sta lavorando 0103 — decidere li' come si risolve "operatori di una
+Sede" ora che l'appartenenza e' molteplice. Nessun file del nostro diff tocca employment profiles,
+users o migrazioni.
+
+**Prossimi passi.** (1) Concedere `request-management.assignManagerGa3` ai ruoli che devono
+vederla. (2) Chiudere il rosso preesistente sopra dentro il lavoro 0103. (3) Commit: NON fatto,
+in attesa di via libera (CLAUDE.md §3.6).
+
 ## AVVISO DI NUOVA VERSIONE IN PRODUZIONE (2026-09-07) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "voglio che quando faccio push di una modifica, in produzione ci sia un

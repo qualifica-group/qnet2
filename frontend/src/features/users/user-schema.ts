@@ -35,7 +35,10 @@ function buildEmploymentSchema(t: TFunction) {
       business_function_id: z.number().nullable(),
       relationship_type: z.enum(RELATIONSHIP_TYPES).nullable(),
       company_id: z.number().nullable(),
-      operational_site_id: z.number().nullable(),
+      // Site membership (spec 0103): at most one physical site, plus zero or
+      // more remote sites — both operative to the same effect (D-1).
+      primary_operational_site_id: z.number().nullable(),
+      remote_operational_site_ids: z.array(z.number()),
       qualification_type: z.enum(QUALIFICATION_TYPES).nullable(),
       hired_at: z.string(),
       terminated_at: z.string(),

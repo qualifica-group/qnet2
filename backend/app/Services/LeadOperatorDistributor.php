@@ -23,17 +23,20 @@ use InvalidArgumentException;
 class LeadOperatorDistributor
 {
     /**
-     * Operators of a Sede (employment.operational_site_id = $operationalSiteId),
-     * ordered by id ascending (br-balanced step 1). No role/permission filter
-     * (user directive 2026-07-21): any user employed at that Sede qualifies.
+     * Operators of a Sede: any user whose employment profile holds that Sede
+     * on the `employment_profile_operational_site` pivot, PHYSICAL or REMOTE
+     * (spec 0103, D-1 — a remote membership is operative exactly like the
+     * physical one), ordered by id ascending (br-balanced step 1). No
+     * role/permission filter (user directive 2026-07-21): any user employed
+     * at that Sede qualifies.
      *
      * @return array<int, int>
      */
     public function operatorIdsForSite(int $operationalSiteId): array
     {
         return User::query()
-            ->whereHas('employment', function (Builder $employmentQuery) use ($operationalSiteId): void {
-                $employmentQuery->where('operational_site_id', $operationalSiteId);
+            ->whereHas('employment.operationalSites', function (Builder $sitesQuery) use ($operationalSiteId): void {
+                $sitesQuery->where('operational_sites.id', $operationalSiteId);
             })
             ->orderBy('id')
             ->pluck('id')

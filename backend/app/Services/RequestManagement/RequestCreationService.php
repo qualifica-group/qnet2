@@ -312,17 +312,20 @@ final class RequestCreationService
     }
 
     /**
-     * The creating actor's own Sede operativa, from their employment profile
-     * (spec 0015) — `null` when they have no profile or no Sede on it, which
-     * leaves the request without one exactly as before.
+     * The creating actor's own PHYSICAL Sede operativa (spec 0103, D-3: at
+     * most one), from their employment profile — `null` when they have no
+     * profile or no physical Sede on it, which leaves the request without
+     * one exactly as before (AC-032).
      *
-     * `loadMissing`: the authenticated actor arrives with no relations loaded,
-     * and Model::preventLazyLoading() is active outside production
-     * (backend.md §3).
+     * `loadMissing('employment.operationalSites')`: the authenticated actor
+     * arrives with no relations loaded, and Model::preventLazyLoading() is
+     * active outside production (backend.md §3) — primaryOperationalSiteId()
+     * itself reads off the already-loaded `operationalSites` collection, so
+     * the nested eager-load is what keeps it from lazy-loading.
      */
     private function actorOperationalSiteId(User $actor): ?int
     {
-        return $actor->loadMissing('employment')->employment?->operational_site_id;
+        return $actor->loadMissing('employment.operationalSites')->employment?->primary_operational_site_id;
     }
 
     /**

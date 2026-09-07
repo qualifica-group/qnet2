@@ -14,12 +14,15 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Business logic for POST /api/request-management/assign-operators (user
- * directive 2026-07-23, "come nei lead"; migrated onto the Quote by spec
- * 0086): bulk-assign a Sede operativa and the GA2 "Operatore"/Supervisore to
- * many offers at once. Distinct from RequestManagementService (the
- * per-record work panel): this is a bulk, cross-record write, kept in its
- * own Service (SRP).
+ * Business logic for the module's two BULK attribution endpoints — POST
+ * /api/request-management/assign-operators (user directive 2026-07-23, "come
+ * nei lead"; migrated onto the Quote by spec 0086), which assigns a Sede
+ * operativa and the GA2 "Operatore" to many offers at once, and POST
+ * /api/request-management/assign-manager-ga3 (spec 0104), which moves the GA3
+ * slot alone with no Sede in play. Distinct from RequestManagementService
+ * (the per-record work panel): both are bulk, cross-record writes, kept in
+ * their own Service (SRP), and both reach the pivot through the SAME
+ * RequestOperatorWriter the per-row channels use.
  *
  * Two rules are NOT inherited from the leads flow:
  *  - SCOPE (spec 0087, D-9): an offer the actor neither operates nor may see
@@ -78,6 +81,37 @@ final class RequestAssignmentService
     }
 
     /**
+     * Bulk GA3 assignment (spec 0104): every reachable offer gets $userId in
+     * the GA3 slot, or has that slot CLEARED when $userId is null (D-2).
+     * Whole operation is one transaction.
+     *
+     * Three things assignOperators() does that this deliberately does not,
+     * each following what the per-cell GA3 editor already does: it writes no
+     * Sede (only the Operatore slot is bound to one, D-1), it sends no
+     * assignment notification (GA3 scopes no visibility and assigns nobody,
+     * D-5), and it needs no distributor (there is no site-scoped pool to
+     * balance across, so the action has a single mode).
+     *
+     * @param  array<int, int>  $requestIds  Offerta (Quote) ids
+     * @return int the number of offers reached (in scope), the same count
+     *             assignOperators() reports
+     */
+    public function assignManagerGa3(array $requestIds, User $actor, ?int $userId): int
+    {
+        return DB::transaction(function () use ($requestIds, $actor, $userId): int {
+            // Step 1: drop the ids the actor may not reach (D-3 scoping).
+            $quotes = $this->inScopeQuotes($requestIds, $actor);
+
+            // Step 2: move the GA3 slot alone on each of them.
+            foreach ($quotes as $quote) {
+                $this->assignManagerGa3ToOne($quote, $actor, $userId);
+            }
+
+            return $quotes->count();
+        });
+    }
+
+    /**
      * The submitted offers the actor may actually write, in ascending id
      * order (br-balanced step 3 requires a deterministic order).
      *
@@ -86,8 +120,9 @@ final class RequestAssignmentService
      */
     private function inScopeQuotes(array $requestIds, User $actor): Collection
     {
-        // `opportunity` eager-loaded: assignOne() notifies/logs against it
-        // for every offer in the batch (D-9), never a per-row lazy load.
+        // `opportunity` eager-loaded: both per-offer writers log (and
+        // assignOne() notifies) against it for every offer in the batch
+        // (D-9), never a per-row lazy load.
         $query = Quote::query()->with('opportunity')->whereIn('id', $requestIds)->orderBy('id');
 
         return RequestManagementScope::scopeToActor($query, $actor)->get();
@@ -181,5 +216,35 @@ final class RequestAssignmentService
             ->event('updated')
             ->withProperties(['attributes' => $changed, 'old' => $old])
             ->log('Request management bulk assignment');
+    }
+
+    /**
+     * One offer's GA3 slot, through the SAME writer the grid cell uses, so
+     * the bulk channel can never grow a rule the per-row channel lacks. An
+     * offer already carrying $userId in that slot writes nothing at all
+     * (applyGa3's own no-op guard) and therefore logs nothing.
+     *
+     * The activity entry is anchored on the Opportunity, like assignOne()'s:
+     * D-9 keeps the module's whole history there, and the pivot slot is not
+     * a fillable attribute, so no automatic model-event log would ever see
+     * this write.
+     */
+    private function assignManagerGa3ToOne(Quote $quote, User $actor, ?int $userId): void
+    {
+        $changed = [];
+        $old = [];
+
+        $this->operatorWriter->applyGa3($quote, $userId, $changed, $old);
+
+        if ($changed === []) {
+            return;
+        }
+
+        activity($quote->opportunity->getTable())
+            ->performedOn($quote->opportunity)
+            ->causedBy($actor)
+            ->event('updated')
+            ->withProperties(['attributes' => $changed, 'old' => $old])
+            ->log('Request management bulk GA3 assignment');
     }
 }

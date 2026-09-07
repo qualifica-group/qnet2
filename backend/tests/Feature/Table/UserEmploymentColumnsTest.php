@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Address;
 use App\Models\BusinessFunction;
 use App\Models\OperationalSite;
 use App\Models\User;
@@ -13,6 +14,9 @@ uses(RefreshDatabase::class);
  * Feature coverage for the 9 employment-derived grid columns on the `users`
  * domain (spec 0015, AC-011): english ids, allow-listed sort/filter (no
  * orderByRaw/whereRaw from raw input), enumKey for the two enum columns.
+ * `operational_site`'s physical-vs-remote split (spec 0103 D-7, AC-017/018/
+ * 019) is covered separately below, against the
+ * `employment_profile_operational_site` pivot.
  */
 if (! function_exists('employmentTableActor')) {
     function employmentTableActor(array $abilities): User
@@ -35,6 +39,27 @@ if (! function_exists('rowsPayloadForEmployment')) {
     function rowsPayloadForEmployment(array $overrides = []): array
     {
         return array_merge(['startRow' => 0, 'endRow' => 25], $overrides);
+    }
+}
+
+if (! function_exists('operationalSiteWithLine1')) {
+    /**
+     * A bare-bones site (no city) so the composed label is exactly `line1` —
+     * keeps physical-vs-remote assertions below a plain string comparison.
+     */
+    function operationalSiteWithLine1(string $line1): OperationalSite
+    {
+        $site = OperationalSite::factory()->create();
+        Address::factory()->primary()->for($site, 'addressable')->create(['line1' => $line1]);
+
+        return $site;
+    }
+}
+
+if (! function_exists('attachSiteMembership')) {
+    function attachSiteMembership(User $user, OperationalSite $site, bool $isPrimary): void
+    {
+        $user->employment->operationalSites()->attach($site->id, ['is_primary' => $isPrimary]);
     }
 }
 
@@ -120,8 +145,8 @@ it('rows: filters relationship_type via allow-listed enum values (no raw input r
 
 it('rows: operational_site and date columns never crash (no real DB column on users)', function () {
     $actor = employmentTableActor(['viewAny']);
-    $site = OperationalSite::factory()->withAddress()->create();
-    User::factory()->withEmployment(fn ($f) => $f->state(['operational_site_id' => $site->id, 'hired_at' => '2024-01-01']))->create();
+    $user = User::factory()->withEmployment(fn ($f) => $f->state(['hired_at' => '2024-01-01']))->create();
+    attachSiteMembership($user, operationalSiteWithLine1('Via Prova 1'), isPrimary: true);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/tables/users/rows', rowsPayloadForEmployment([
@@ -131,6 +156,78 @@ it('rows: operational_site and date columns never crash (no real DB column on us
     $this->postJson('/api/tables/users/rows', rowsPayloadForEmployment([
         'filterModel' => ['hired_at' => ['filterType' => 'date', 'type' => 'equals', 'dateFrom' => '2024-01-01']],
     ]))->assertOk();
+});
+
+it('rows: operational_site cell shows the PHYSICAL site only, never a remote one (AC-017)', function () {
+    $actor = employmentTableActor(['viewAny']);
+    $user = User::factory()->withEmployment()->create();
+    attachSiteMembership($user, operationalSiteWithLine1('Physical Road 1'), isPrimary: true);
+    attachSiteMembership($user, operationalSiteWithLine1('Remote Road 9'), isPrimary: false);
+    Sanctum::actingAs($actor);
+
+    $row = collect($this->postJson('/api/tables/users/rows', rowsPayloadForEmployment())
+        ->assertOk()->json('items'))->firstWhere('id', $user->id);
+
+    expect($row['operational_site'])->toBe('Physical Road 1');
+});
+
+it('rows: a user with ONLY remote sites has an empty operational_site cell, but is still found by the filter (AC-017/AC-018)', function () {
+    $actor = employmentTableActor(['viewAny']);
+    $user = User::factory()->withEmployment()->create();
+    attachSiteMembership($user, operationalSiteWithLine1('Remote Only Road 5'), isPrimary: false);
+    Sanctum::actingAs($actor);
+
+    $row = collect($this->postJson('/api/tables/users/rows', rowsPayloadForEmployment())
+        ->assertOk()->json('items'))->firstWhere('id', $user->id);
+    expect($row['operational_site'])->toBeNull();
+
+    $filtered = $this->postJson('/api/tables/users/rows', rowsPayloadForEmployment([
+        'filterModel' => ['operational_site' => ['filterType' => 'text', 'filter' => 'Remote Only Road']],
+    ]))->assertOk()->json('items');
+
+    expect(collect($filtered)->pluck('id'))->toContain($user->id);
+});
+
+it('rows: filtering by a REMOTE site address still finds the row, even though the cell keeps showing the physical one (AC-018)', function () {
+    $actor = employmentTableActor(['viewAny']);
+    $user = User::factory()->withEmployment()->create();
+    attachSiteMembership($user, operationalSiteWithLine1('Physical Road 1'), isPrimary: true);
+    attachSiteMembership($user, operationalSiteWithLine1('Remote Road 9'), isPrimary: false);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/users/rows', rowsPayloadForEmployment([
+        'filterModel' => ['operational_site' => ['filterType' => 'text', 'filter' => 'Remote Road']],
+    ]))->assertOk();
+
+    $row = collect($response->json('items'))->firstWhere('id', $user->id);
+
+    expect($row)->not->toBeNull()
+        ->and($row['operational_site'])->toBe('Physical Road 1');
+});
+
+it('rows: sorts by operational_site through the pivot, placing rows without a physical site deterministically first (AC-019)', function () {
+    $actor = employmentTableActor(['viewAny']);
+    $alpha = User::factory()->withEmployment()->create(['name' => 'Alpha']);
+    attachSiteMembership($alpha, operationalSiteWithLine1('Alpha Street'), isPrimary: true);
+
+    $zulu = User::factory()->withEmployment()->create(['name' => 'Zulu']);
+    attachSiteMembership($zulu, operationalSiteWithLine1('Zulu Street'), isPrimary: true);
+
+    $remoteOnly = User::factory()->withEmployment()->create(['name' => 'RemoteOnly']);
+    attachSiteMembership($remoteOnly, operationalSiteWithLine1('Ignored Remote Street'), isPrimary: false);
+    Sanctum::actingAs($actor);
+
+    $names = $this->postJson('/api/tables/users/rows', rowsPayloadForEmployment([
+        'sortModel' => [['colId' => 'operational_site', 'sort' => 'asc']],
+    ]))->assertOk()->json('items.*.name');
+
+    // Rows with no physical site (remote-only, no employment at all, or the
+    // actor itself) sort NULL — both MySQL and SQLite (dev/test) place a
+    // subquery NULL first in ASC, so they precede the two physical rows,
+    // which then order by their address `line1` (Alpha before Zulu). Query
+    // never breaks (no exception), and the relative order is stable.
+    expect(array_search('RemoteOnly', $names, true))->toBeLessThan(array_search('Alpha', $names, true))
+        ->and(array_search('Alpha', $names, true))->toBeLessThan(array_search('Zulu', $names, true));
 });
 
 it('values: business_function distinct values are resolved from real rows, not a whereRaw on `users`', function () {

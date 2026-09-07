@@ -5,6 +5,7 @@ use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -37,10 +38,24 @@ if (! function_exists('leadAssignActor')) {
 }
 
 if (! function_exists('leadAssignOperatorAtSite')) {
-    function leadAssignOperatorAtSite(OperationalSite $site): User
+    /**
+     * An operator whose employment profile holds $site on the
+     * `employment_profile_operational_site` pivot, PHYSICAL by default or
+     * REMOTE when $isPrimary is false (spec 0103, D-1).
+     *
+     * Built off EmploymentProfileFactory::raw() with the still-present
+     * `operational_site_id` key stripped (that dead column no longer exists
+     * on the table; the factory's own cleanup is microtask M11, out of this
+     * lane's scope) instead of the usual factory()->create(), which would
+     * otherwise force-fill that key straight into the insert.
+     */
+    function leadAssignOperatorAtSite(OperationalSite $site, bool $isPrimary = true): User
     {
         $operator = User::factory()->create();
-        EmploymentProfile::factory()->create(['user_id' => $operator->id, 'operational_site_id' => $site->id]);
+        $employment = EmploymentProfile::query()->create(
+            Arr::except(EmploymentProfile::factory()->raw(['user_id' => $operator->id]), ['operational_site_id'])
+        );
+        $employment->operationalSites()->attach($site->id, ['is_primary' => $isPrimary]);
 
         return $operator;
     }
@@ -138,6 +153,23 @@ it('AC-012: mode=balanced on a Sede with zero operators is 422 and modifies noth
 
     expect($lead->fresh()->operator_id)->toBeNull()
         ->and($lead->fresh()->operational_site_id)->toBeNull();
+});
+
+it('AC-012/D-1: mode=balanced on a Sede whose only operator has it as REMOTE distributes leads, not 422', function () {
+    $actor = leadAssignActor(['update']);
+    $site = OperationalSite::factory()->withAddress()->create();
+    $remoteOperator = leadAssignOperatorAtSite($site, isPrimary: false);
+    $lead = Lead::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/leads/assign-operators', [
+        'lead_ids' => [$lead->id],
+        'operational_site_id' => $site->id,
+        'mode' => 'balanced',
+    ])->assertOk()->assertJsonPath('data.assigned', 1);
+
+    expect($lead->fresh()->operator_id)->toBe($remoteOperator->id)
+        ->and($lead->fresh()->operational_site_id)->toBe($site->id);
 });
 
 // ---------------------------------------------------------------------------

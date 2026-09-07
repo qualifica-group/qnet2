@@ -10,6 +10,7 @@ use App\Models\OperationalSite;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -46,10 +47,24 @@ if (! function_exists('balancedAssignActor')) {
 }
 
 if (! function_exists('balancedAssignOperatorAtSite')) {
+    /**
+     * An operator whose employment profile holds $site as its PHYSICAL
+     * membership on the `employment_profile_operational_site` pivot (spec
+     * 0103).
+     *
+     * Built off EmploymentProfileFactory::raw() with the still-present
+     * `operational_site_id` key stripped (that dead column no longer exists
+     * on the table; the factory's own cleanup is microtask M11, out of this
+     * lane's scope) instead of the usual factory()->create(), which would
+     * otherwise force-fill that key straight into the insert.
+     */
     function balancedAssignOperatorAtSite(OperationalSite $site): User
     {
         $operator = User::factory()->create();
-        EmploymentProfile::factory()->create(['user_id' => $operator->id, 'operational_site_id' => $site->id]);
+        $employment = EmploymentProfile::query()->create(
+            Arr::except(EmploymentProfile::factory()->raw(['user_id' => $operator->id]), ['operational_site_id'])
+        );
+        $employment->operationalSites()->attach($site->id, ['is_primary' => true]);
 
         return $operator;
     }

@@ -8,14 +8,21 @@ use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\EmploymentProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * A user's employment profile (spec 0015): Profile (manager flag, job
  * description, reports-to), Contractual relationship (function, type,
- * company, site, qualification, dates) and Contractual data (daily minutes).
- * One row per user (hasOne on User via HasEmployment).
+ * company, qualification, dates) and Contractual data (daily minutes). One
+ * row per user (hasOne on User via HasEmployment).
+ *
+ * The site membership (spec 0103) is no longer a column on this table: a
+ * profile holds at most one PHYSICAL site and any number of REMOTE ones, via
+ * the `employment_profile_operational_site` pivot (see operationalSites()
+ * below).
  */
 #[Fillable([
     'user_id',
@@ -25,7 +32,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'business_function_id',
     'relationship_type',
     'company_id',
-    'operational_site_id',
     'qualification_type',
     'hired_at',
     'terminated_at',
@@ -76,8 +82,81 @@ class EmploymentProfile extends BaseModel
         return $this->belongsTo(Company::class);
     }
 
-    public function operationalSite(): BelongsTo
+    /**
+     * All the sites this profile is a member of (spec 0103): at most one
+     * PHYSICAL (`is_primary` true) plus any number of REMOTE ones, on the
+     * `employment_profile_operational_site` pivot.
+     */
+    public function operationalSites(): BelongsToMany
     {
-        return $this->belongsTo(OperationalSite::class);
+        return $this->belongsToMany(OperationalSite::class, 'employment_profile_operational_site')
+            ->withPivot('is_primary');
+    }
+
+    /**
+     * The at-most-one PHYSICAL site (D-3). Not a BelongsTo: the source of
+     * truth is the pivot flag, not a column on this table. The invariant
+     * itself ("at most one") is enforced by EmploymentWriter (D-10), not
+     * here.
+     */
+    public function primaryOperationalSite(): BelongsToMany
+    {
+        return $this->operationalSites()->wherePivot('is_primary', true);
+    }
+
+    /**
+     * The zero-or-more REMOTE sites (D-1): operative exactly like the
+     * physical one for every consumer (UserService::forSelect,
+     * LeadOperatorDistributor::operatorIdsForSite).
+     */
+    public function remoteOperationalSites(): BelongsToMany
+    {
+        return $this->operationalSites()->wherePivot('is_primary', false);
+    }
+
+    /**
+     * Read-only proxy onto the pivot for the field-permission catalogue
+     * (spec 0103 D-9, replacing the former `operational_site_id` column):
+     * EnforcesFieldPermissions::readNestedPath() resolves
+     * `employment.primary_operational_site_id` down to this accessor via
+     * Model::getAttribute(), and needs a scalar id back, not a Model —
+     * without it a resubmit of the SAME site on a locked field would always
+     * look "changed" (spec 0008) and 422 spuriously (AC-013).
+     *
+     * PUBLIC (not the usual `protected` accessor convention), same reason as
+     * OperationalSite::line1() &c.: EnforcesFieldPermissions::isRelation()
+     * calls the method directly to probe whether it is a Relation — a
+     * protected method would fatal on that external call.
+     *
+     * Reads off the already-loaded operationalSites collection rather than
+     * primaryOperationalSite()->first(), so that when the caller has
+     * eager-loaded operationalSites this triggers no extra query, and a
+     * second call to remoteOperationalSiteIds() below reuses the same
+     * cached collection (mirrors OperationalSite::primaryAddress()).
+     */
+    public function primaryOperationalSiteId(): Attribute
+    {
+        return Attribute::get(
+            fn (): ?int => $this->operationalSites
+                ->first(fn (OperationalSite $site): bool => (bool) $site->pivot->is_primary)
+                ?->id
+        );
+    }
+
+    /**
+     * Read-only proxy onto the pivot, counterpart of
+     * primaryOperationalSiteId() above for the remote memberships (spec 0103
+     * D-9). Same PUBLIC-accessor and no-N+1 reasoning applies.
+     *
+     * @return array<int, int>
+     */
+    public function remoteOperationalSiteIds(): Attribute
+    {
+        return Attribute::get(
+            fn (): array => $this->operationalSites
+                ->reject(fn (OperationalSite $site): bool => (bool) $site->pivot->is_primary)
+                ->pluck('id')
+                ->all()
+        );
     }
 }

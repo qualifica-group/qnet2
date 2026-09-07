@@ -7,12 +7,12 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 
 /**
- * Gives every TestUsersSeeder account an operational site, through the
- * employment profile that holds the relation (spec 0015 —
- * `employment_profiles.operational_site_id`).
+ * Gives every TestUsersSeeder account an operational site, as the PHYSICAL
+ * membership on the `employment_profile_operational_site` pivot (spec 0103,
+ * replacing the former `employment_profiles.operational_site_id` column).
  *
  * Without it those accounts are invisible as operators: the Operatore select
- * filters users on that very column when a Sede is picked (spec 0048,
+ * filters users on that very membership when a Sede is picked (spec 0048,
  * UserService::forSelect), so an account with no employment profile never
  * appears in the list.
  *
@@ -47,20 +47,26 @@ class QualificaOperatorSiteLinkSeeder extends Seeder
         }
 
         // Step 2: the accounts TestUsersSeeder owns, by their natural key.
+        // operationalSites is eager-loaded so the "already has a physical
+        // site" check below reads off the loaded collection instead of lazy
+        // loading per user.
         $users = User::query()
             ->whereIn('email', array_column(TestUsersSeeder::TEST_USERS, 'email'))
-            ->with('employment')
+            ->with('employment.operationalSites')
             ->orderBy('id')
             ->get();
 
-        // Step 3: fill only a free slot. updateOrCreate on the hasOne creates
-        // the profile for an account that has none yet, which is the normal
-        // case here — TestUsersSeeder seeds the account alone.
+        // Step 3: fill only a free slot — an account already carrying a
+        // physical site (assigned by hand, or by an earlier run) keeps it.
+        // firstOrCreate on the hasOne creates the profile for an account
+        // that has none yet, which is the normal case here — TestUsersSeeder
+        // seeds the account alone.
         $assigned = $users
-            ->reject(fn (User $user): bool => $user->employment?->operational_site_id !== null)
-            ->each(fn (User $user) => $user->employment()->updateOrCreate([], [
-                'operational_site_id' => $site->getKey(),
-            ]))
+            ->reject(fn (User $user): bool => $user->employment?->primaryOperationalSiteId !== null)
+            ->each(function (User $user) use ($site): void {
+                $user->employment()->firstOrCreate([])
+                    ->operationalSites()->syncWithoutDetaching([$site->getKey() => ['is_primary' => true]]);
+            })
             ->count();
 
         if ($assigned === 0) {

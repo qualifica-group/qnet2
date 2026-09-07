@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import axios from 'axios'
-import { ArrowRightLeft, MessagesSquare, Paperclip, Plus, UserCog } from 'lucide-react'
+import { ArrowRightLeft, GraduationCap, MessagesSquare, Paperclip, Plus, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -24,10 +24,12 @@ import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actio
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { assignRequestOperators, deleteRequest, transferRequests } from '@/features/request-management/api'
+import { AssignManagerGa3Dialog } from '@/features/request-management/assign-manager-ga3-dialog'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
 import { OfferLinesDialogProvider } from '@/features/request-management/offer-lines-dialog'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
+import { useRequestManagerGa3Assignment } from '@/features/request-management/use-request-manager-ga3-assignment'
 import type { TransferRequestsPayload } from '@/features/request-management/request-write-types'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 
@@ -117,6 +119,12 @@ export function RequestManagementTable() {
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
+  // What every bulk write does once it lands: re-read the rows and drop the
+  // now-stale checkbox selection.
+  const clearSelectionAndRefresh = useCallback(() => {
+    refreshGrid()
+    tableRef.current?.clearSelection()
+  }, [refreshGrid])
   const { openCreate, openView, sheet } = useModuleOpener(REQUEST_MANAGEMENT_DOMAIN, {
     onSaved: refreshGrid,
   })
@@ -270,12 +278,20 @@ export function RequestManagementTable() {
     setAssignOpen(true)
   }, [])
 
+  // Bulk GA3 assignment (spec 0104): the Sede-less sibling of the flow above —
+  // one chosen user onto every selected row, or `null` to clear the slot. Its
+  // whole flow (gate, label, dialog state, mutation) lives in its own hook.
+  const managerGa3 = useRequestManagerGa3Assignment({
+    categoryId: selectedCategoryId,
+    onAssigned: clearSelectionAndRefresh,
+  })
+
   // Surfaced inside the generic table's single "Actions" dropdown, alongside
   // the built-in "elimina selezionati". Each entry gated on its own ability;
   // `undefined` (not a function returning an empty array) when neither is
   // reachable, so the checkbox column stays off entirely.
   const getBulkActions =
-    canAssignOperators || canTransferContact
+    canAssignOperators || managerGa3.canAssign || canTransferContact
       ? (selection: TableSelection): BulkAction[] => [
           ...(canAssignOperators
             ? [
@@ -284,6 +300,16 @@ export function RequestManagementTable() {
                   label: t('requestManagement.assign.tableButton'),
                   icon: UserCog,
                   onSelect: () => openAssignDialog(selection),
+                },
+              ]
+            : []),
+          ...(managerGa3.canAssign
+            ? [
+                {
+                  key: 'assign-manager-ga3',
+                  label: t('requestManagement.assignManagerGa3.tableButton', { label: managerGa3.label }),
+                  icon: GraduationCap,
+                  onSelect: () => managerGa3.openDialog(selection.ids),
                 },
               ]
             : []),
@@ -405,6 +431,14 @@ export function RequestManagementTable() {
         defaultSite={assignDefaultSite}
         copy={assignCopy}
         onAssign={handleAssign}
+      />
+
+      <AssignManagerGa3Dialog
+        open={managerGa3.open}
+        onOpenChange={managerGa3.setOpen}
+        selectionCount={managerGa3.selectionCount}
+        label={managerGa3.label}
+        onAssign={managerGa3.assign}
       />
 
       <AssignOperatorsDialog

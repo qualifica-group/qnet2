@@ -31,6 +31,15 @@ export type ManagerLabels = Record<string, string>
  */
 export const OPERATOR_MANAGER_POSITION = 2
 
+/**
+ * The GA3 slot (spec 0104): 1-based pivot position, mirrors
+ * `ManagerPositions::GA3`. Unlike the Operatore it projects onto no column
+ * and is bound to no Sede — it is just position 3 of the Offerta's team, the
+ * one the grid names with the scoped category's `manager_labels[3]` ("Tutor"
+ * where configured so).
+ */
+export const GA3_MANAGER_POSITION = 3
+
 /** A team member of the request's Offerta: the pivot `{id, name, position}` triple, mirrors `QuoteManagerRef`. */
 export interface RequestManagerRef {
   id: number

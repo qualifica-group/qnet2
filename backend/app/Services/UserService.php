@@ -34,9 +34,12 @@ class UserService
         'employment.businessFunction',
         'employment.company',
         // The operational-site label is "line1[- city]" (EmploymentResource),
-        // so its primary address and city must be eager-loaded too, or
-        // reading them would lazy-load (blocked outside production).
-        'employment.operationalSite.addresses.city',
+        // so the pivot's sites, their primary address and city must all be
+        // eager-loaded, or reading them would lazy-load (blocked outside
+        // production). One relation covers both the physical and every
+        // remote site (spec 0103): EmploymentResource tells them apart via
+        // the pivot's `is_primary` flag, not via separate relations.
+        'employment.operationalSites.addresses.city',
     ];
 
     public function __construct(
@@ -227,21 +230,24 @@ class UserService
      * appended deduplicated AFTER the page, bypass the search filter, and do NOT
      * inflate the total (edit-mode hydration).
      *
-     * `$query->operationalSiteId` (spec 0048), when set, restricts the list to
-     * users whose employment profile points to that Sede. The employment/site/
+     * `$query->operationalSiteId` (spec 0048, widened by spec 0103 D-1), when
+     * set, restricts the list to users whose employment profile is a member
+     * — physical OR remote — of that Sede via the
+     * `employment_profile_operational_site` pivot. The employment/sites/
      * address/city relations are always eager-loaded (filtered or not) so
-     * UserForSelectResource can emit the operator's Sede `meta` without N+1.
+     * UserForSelectResource can emit the operator's PHYSICAL Sede `meta`
+     * without N+1.
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
         $base = User::query()
             ->select(['id', 'name', 'email'])
-            ->with(['avatar', 'employment.operationalSite.addresses.city']);
+            ->with(['avatar', 'employment.operationalSites.addresses.city']);
 
         if ($query->operationalSiteId !== null) {
             $siteId = $query->operationalSiteId;
-            $base->whereHas('employment', function (Builder $employmentQuery) use ($siteId): void {
-                $employmentQuery->where('operational_site_id', $siteId);
+            $base->whereHas('employment.operationalSites', function (Builder $sitesQuery) use ($siteId): void {
+                $sitesQuery->where('operational_sites.id', $siteId);
             });
         }
 
@@ -277,7 +283,7 @@ class UserService
      * already on the page, deduplicated. They bypass every narrowing filter
      * (search, `operational_site_id`) — same precedent as ProductCategoryService/
      * OperationalSiteService's own hydration — but eager-load the SAME
-     * employment/site/address/city tree as the main query, so their `meta`
+     * employment/sites/address/city tree as the main query, so their `meta`
      * resolves without N+1. Total is unaffected.
      *
      * @param  Collection<int, User>  $page
@@ -299,7 +305,7 @@ class UserService
         /** @var Collection<int, User> $hydrated */
         $hydrated = User::query()
             ->select(['id', 'name', 'email'])
-            ->with(['avatar', 'employment.operationalSite.addresses.city'])
+            ->with(['avatar', 'employment.operationalSites.addresses.city'])
             ->whereIn('id', $missingIds)
             ->orderBy('name')
             ->orderBy('id')

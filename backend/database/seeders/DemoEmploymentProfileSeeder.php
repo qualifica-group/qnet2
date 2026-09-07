@@ -6,6 +6,7 @@ use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Models\BusinessFunction;
 use App\Models\Company;
+use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\User;
 use Database\Seeders\Concerns\SeedsDevelopmentUsers;
@@ -62,7 +63,7 @@ class DemoEmploymentProfileSeeder extends Seeder
 
     private function seedManager(Generator $faker, User $manager): void
     {
-        $manager->employment()->updateOrCreate([], [
+        $employment = $manager->employment()->updateOrCreate([], [
             'is_manager' => true,
             'reports_to_id' => null,
             'relationship_type' => RelationshipTypeEnum::Employee->value,
@@ -72,6 +73,8 @@ class DemoEmploymentProfileSeeder extends Seeder
             'break_daily_minutes' => 30,
             ...$this->contractualAttributes($faker),
         ]);
+
+        $this->assignOperationalSites($faker, $employment);
     }
 
     /**
@@ -82,7 +85,7 @@ class DemoEmploymentProfileSeeder extends Seeder
         /** @var User $manager */
         $manager = $managers[$index % $managers->count()];
 
-        $user->employment()->updateOrCreate([], [
+        $employment = $user->employment()->updateOrCreate([], [
             'is_manager' => false,
             'reports_to_id' => $manager->id,
             'relationship_type' => $faker->randomElement(RelationshipTypeEnum::values()),
@@ -92,12 +95,16 @@ class DemoEmploymentProfileSeeder extends Seeder
             'break_daily_minutes' => 30,
             ...$this->contractualAttributes($faker),
         ]);
+
+        $this->assignOperationalSites($faker, $employment);
     }
 
     /**
-     * The contractual-section FKs (function / company / operational site),
-     * each an optional pick from the seeded lookups so the demo covers both
-     * the set and the nullable state. Empty entries when a lookup is unseeded.
+     * The contractual-section FKs (function / company), each an optional
+     * pick from the seeded lookups so the demo covers both the set and the
+     * nullable state. Empty entries when a lookup is unseeded. The
+     * operational site membership is a separate pivot (spec 0103), assigned
+     * by assignOperationalSites() below.
      *
      * @return array<string, int|null>
      */
@@ -106,8 +113,35 @@ class DemoEmploymentProfileSeeder extends Seeder
         return [
             'business_function_id' => $this->maybePick($faker, $this->businessFunctionIds),
             'company_id' => $this->maybePick($faker, $this->companyIds),
-            'operational_site_id' => $this->maybePick($faker, $this->operationalSiteIds),
         ];
+    }
+
+    /**
+     * Site membership (spec 0103): at most one PHYSICAL pick, same 75% odds
+     * as the other contractual FKs, plus a handful of REMOTE ones (25% odds
+     * each, excluding the physical) so the demo data exercises the multi-site
+     * case, not just the single-site one. `sync()` on every run, keyed off
+     * the reseeded Faker sequence, so a re-run recomputes the identical set
+     * instead of stacking rows (idempotent, spec 0015/0103).
+     */
+    private function assignOperationalSites(Generator $faker, EmploymentProfile $employment): void
+    {
+        if ($this->operationalSiteIds->isEmpty()) {
+            return;
+        }
+
+        $physicalId = $this->maybePick($faker, $this->operationalSiteIds);
+
+        $membership = $this->operationalSiteIds
+            ->reject(fn (int $id): bool => $id === $physicalId)
+            ->filter(fn (): bool => $faker->boolean(25))
+            ->mapWithKeys(fn (int $id): array => [$id => ['is_primary' => false]]);
+
+        if ($physicalId !== null) {
+            $membership->put($physicalId, ['is_primary' => true]);
+        }
+
+        $employment->operationalSites()->sync($membership);
     }
 
     /**

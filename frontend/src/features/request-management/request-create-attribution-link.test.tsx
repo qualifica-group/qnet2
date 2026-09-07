@@ -207,6 +207,18 @@ describe('Create form — Operatore auto-fills the Sede', () => {
     await waitFor(() => expect(operatorField()).toHaveTextContent(String(OPERATOR_WITH_SITE.id)))
   })
 
+  /** AC-023: a Sede already picked on the create form is never overwritten by the operator picker. */
+  it("does not overwrite a freshly picked Sede with the operator's own Sede", async () => {
+    renderForm()
+    fireEvent.click(siteField())
+    await waitFor(() => expect(siteField()).toHaveTextContent(String(SITE_A.id)))
+
+    fireEvent.click(operatorField())
+
+    await waitFor(() => expect(operatorField()).toHaveTextContent(String(OPERATOR_WITH_SITE.id)))
+    expect(siteField()).toHaveTextContent(String(SITE_A.id))
+  })
+
   it('leaves the Sede untouched for an operator with no Sede', async () => {
     renderForm()
     // The stub picks OPERATOR_WITH_SITE first, then OPERATOR_NO_SITE.

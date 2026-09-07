@@ -173,10 +173,12 @@ it('spec 0008/0015: users.fields contains exactly the 4 existing + 13 personal_d
         'personal_data.vat_number', 'personal_data.sdi_code', 'personal_data.birth_date',
         'personal_data.birth_city_id', 'personal_data.residence_city_id', 'personal_data.gender',
         'personal_data.contacts', 'personal_data.addresses',
-        // spec 0015 — the 12 employment.* keys.
+        // spec 0015 — the employment.* keys; spec 0103 (D-9) split the single
+        // employment.operational_site_id into primary/remote.
         'employment.is_manager', 'employment.job_description', 'employment.reports_to_id',
         'employment.business_function_id', 'employment.relationship_type', 'employment.company_id',
-        'employment.operational_site_id', 'employment.qualification_type', 'employment.hired_at',
+        'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
+        'employment.qualification_type', 'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
     ]);
 

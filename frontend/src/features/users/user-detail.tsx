@@ -111,8 +111,21 @@ export function UserDetailView({ userId }: UserDetailProps) {
             <DetailField label={t('users.detail.employment.company')} icon={<Building2 />}>
               {employment.company?.label ?? <DetailEmpty />}
             </DetailField>
-            <DetailField label={t('users.detail.employment.operationalSite')} icon={<MapPin />}>
-              {employment.operational_site?.label ?? <DetailEmpty />}
+            <DetailField label={t('users.detail.employment.primaryOperationalSite')} icon={<MapPin />}>
+              {employment.primary_operational_site?.label ?? <DetailEmpty />}
+            </DetailField>
+            <DetailField label={t('users.detail.employment.remoteOperationalSites')} icon={<MapPin />} full>
+              {employment.remote_operational_sites && employment.remote_operational_sites.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {employment.remote_operational_sites.map((site) => (
+                    <Badge key={site.id} variant="secondary" className="max-w-full truncate">
+                      {site.label}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <DetailEmpty />
+              )}
             </DetailField>
             <DetailField label={t('users.detail.employment.relationshipType')}>
               {employment.relationship_type ? (

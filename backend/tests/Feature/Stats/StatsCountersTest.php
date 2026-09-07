@@ -16,6 +16,7 @@ use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -107,27 +108,41 @@ it('company-sites: `withBank` and `companies` (distinct, non-null) (AC-005)', fu
 // operational-sites
 // ---------------------------------------------------------------------------
 
-it('operational-sites: `withAddress`, `staffed` and `leads` (AC-005)', function () {
+it('operational-sites: `withAddress`, `staffed` and `leads` (AC-005, AC-020)', function () {
     $addressed = OperationalSite::factory()->withAddress()->create();
     $bare = OperationalSite::factory()->create();
+    $remoteOnly = OperationalSite::factory()->create();
 
-    // Staff assignment lives on the employment profile, not on the site.
-    EmploymentProfile::factory()->create(['operational_site_id' => $addressed->id]);
-    EmploymentProfile::factory()->create(['operational_site_id' => $addressed->id]);
-    EmploymentProfile::factory()->create(['operational_site_id' => null]);
+    // Staff assignment lives on the employment_profile_operational_site
+    // pivot, not on a column of either side (spec 0103, D-9/D-12): two
+    // memberships (one physical, one remote) on the SAME site, one lone
+    // remote membership on another site (AC-020), and an unstaffed profile.
+    $onSite = EmploymentProfile::factory()->create();
+    $remoteOnSameSite = EmploymentProfile::factory()->create();
+    $remoteOnlyProfile = EmploymentProfile::factory()->create();
+    EmploymentProfile::factory()->create();
 
+    DB::table('employment_profile_operational_site')->insert([
+        ['employment_profile_id' => $onSite->id, 'operational_site_id' => $addressed->id, 'is_primary' => true],
+        ['employment_profile_id' => $remoteOnSameSite->id, 'operational_site_id' => $addressed->id, 'is_primary' => false],
+        ['employment_profile_id' => $remoteOnlyProfile->id, 'operational_site_id' => $remoteOnly->id, 'is_primary' => false],
+    ]);
+
+    // `$bare` gets no membership at all: it must NOT be counted as staffed.
     Lead::factory()->count(3)->create(['operational_site_id' => $bare->id]);
     Lead::factory()->create(['operational_site_id' => null]);
 
     $widgets = statsWidgets('operational-sites');
 
-    expect(statsWidget($widgets, 'total')['value'])->toBe(2)
+    expect(statsWidget($widgets, 'total')['value'])->toBe(3)
         ->and(statsWidget($widgets, 'with_address'))->toMatchArray([
             'label' => 'operationalSites.stats.withAddress', 'value' => 1,
         ])
-        // Two profiles on the SAME site: the site counts once.
+        // Two profiles on the SAME site: the site counts once. The
+        // remote-only site counts too (D-12); the unstaffed `$bare` site
+        // does not.
         ->and(statsWidget($widgets, 'staffed'))->toMatchArray([
-            'label' => 'operationalSites.stats.staffed', 'value' => 1,
+            'label' => 'operationalSites.stats.staffed', 'value' => 2,
         ])
         ->and(statsWidget($widgets, 'leads'))->toMatchArray([
             'label' => 'operationalSites.stats.leads', 'value' => 3,

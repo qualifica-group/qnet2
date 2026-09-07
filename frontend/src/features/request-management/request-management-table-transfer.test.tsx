@@ -54,6 +54,10 @@ vi.mock('@/features/request-management/api', () => ({
   updateRequestWork: vi.fn(),
   deleteRequest: (...args: unknown[]) => deleteRequestMock(...args),
   assignRequestOperators: (...args: unknown[]) => assignRequestOperatorsMock(...args),
+  // Spec 0104: pulled in by the table's bulk GA3 flow; this suite
+  // exercises neither, it only has to satisfy the module surface.
+  assignRequestManagerGa3: vi.fn(),
+  fetchCategoryManagerLabels: vi.fn(),
   transferRequests: (...args: unknown[]) => transferRequestsMock(...args),
   fetchRequestManagementCategories: (...args: unknown[]) => fetchRequestManagementCategoriesMock(...args),
 }))
@@ -201,7 +205,12 @@ describe('RequestManagementTable — bulk "transfer-contact" action (spec 0079 A
     canMock.mockImplementation((permission) => permission !== 'request-management.transferContact')
     renderTable()
 
-    expect(capturedBulkActions?.(bulkSelection).map((entry) => entry.key)).toEqual(['assign-operators'])
+    // Spec 0104 added a third entry to the same menu, gated on its own
+    // ability: denying `transferContact` drops that one entry alone.
+    expect(capturedBulkActions?.(bulkSelection).map((entry) => entry.key)).toEqual([
+      'assign-operators',
+      'assign-manager-ga3',
+    ])
   })
 
   it('transfers every selected id, refreshes the grid and clears the selection', async () => {

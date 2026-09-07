@@ -63,7 +63,8 @@ const emptyEmployment: UserFormValues['employment'] = {
   business_function_id: null,
   relationship_type: null,
   company_id: null,
-  operational_site_id: null,
+  primary_operational_site_id: null,
+  remote_operational_site_ids: [],
   qualification_type: null,
   hired_at: '',
   terminated_at: '',
@@ -198,7 +199,8 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
           business_function_id: 3,
           relationship_type: 'employee',
           company_id: 5,
-          operational_site_id: 8,
+          primary_operational_site_id: 8,
+          remote_operational_site_ids: [11, 12],
           qualification_type: 'coordinator',
           hired_at: '2026-01-15',
           terminated_at: '',
@@ -217,13 +219,29 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
       business_function_id: 3,
       relationship_type: 'employee',
       company_id: 5,
-      operational_site_id: 8,
+      primary_operational_site_id: 8,
+      remote_operational_site_ids: [11, 12],
       qualification_type: 'coordinator',
       hired_at: '2026-01-15',
       terminated_at: null,
       standard_daily_minutes: 480,
       break_daily_minutes: 30,
     })
+  })
+
+  /** Spec 0103 AC-028: the empty-remote-sites case serializes as `[]`, never omitted. */
+  it('AC-028 — serializes an empty remote-sites selection as [], not omitted', () => {
+    const payload = buildCreatePayload(
+      {
+        ...formValues,
+        employment: { ...emptyEmployment, primary_operational_site_id: 8 },
+      },
+      draft(),
+    )
+
+    expect(payload.employment.primary_operational_site_id).toBe(8)
+    expect('remote_operational_site_ids' in payload.employment).toBe(true)
+    expect(payload.employment.remote_operational_site_ids).toEqual([])
   })
 
   it('AC-015 — force-nulls reports_to_id client-side when is_manager is true', () => {
@@ -267,12 +285,34 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
       business_function_id: null,
       relationship_type: null,
       company_id: null,
-      operational_site_id: null,
+      primary_operational_site_id: null,
+      remote_operational_site_ids: [],
       qualification_type: null,
       hired_at: null,
       terminated_at: null,
       standard_daily_minutes: null,
       break_daily_minutes: null,
     })
+  })
+
+  /** Spec 0103 AC-028: the PATCH payload always carries both site-membership keys. */
+  it('AC-028 — carries primary + remote site keys on the PATCH payload', () => {
+    const payload = buildUpdatePayload(
+      {
+        ...formValues,
+        password: '',
+        password_confirmation: '',
+        employment: {
+          ...emptyEmployment,
+          primary_operational_site_id: 8,
+          remote_operational_site_ids: [11, 12],
+        },
+      },
+      original(),
+      draft(),
+    )
+
+    expect(payload.employment?.primary_operational_site_id).toBe(8)
+    expect(payload.employment?.remote_operational_site_ids).toEqual([11, 12])
   })
 })

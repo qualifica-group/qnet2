@@ -13,7 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RelationSelectField } from '@/components/form/relation-select-field'
-import { toRelationFieldRef } from '@/components/form/relation-field-ref'
+import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
+import { toRelationFieldRef, toRelationFieldRefs } from '@/components/form/relation-field-ref'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { MetaField } from '@/features/authorization/MetaField'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
@@ -119,14 +120,21 @@ export function ProfileTabContent({
 
 interface ContractTabContentProps extends EmploymentTabProps {
   selectedCompanyItem: ForSelectItem | null
-  selectedOperationalSiteItem: ForSelectItem | null
+  selectedPrimaryOperationalSiteItem: ForSelectItem | null
+  selectedRemoteOperationalSiteItems: ForSelectItem[]
 }
 
-/** Contract tab: relationship type, company and operational site. */
+/**
+ * Contract tab: relationship type, company, physical site and remote sites.
+ * The physical site is at most one (spec 0103 D-3); the remote sites are a
+ * multi-select fed by the same for-select resource (D-1: operative exactly
+ * like the physical one).
+ */
 export function ContractTabContent({
   control,
   selectedCompanyItem,
-  selectedOperationalSiteItem,
+  selectedPrimaryOperationalSiteItem,
+  selectedRemoteOperationalSiteItems,
 }: ContractTabContentProps) {
   const { t } = useTranslation()
 
@@ -186,16 +194,31 @@ export function ContractTabContent({
 
       <RelationSelectField
         control={control}
-        name="employment.operational_site_id"
-        metaKey="employment.operational_site_id"
-        label={t('users.form.employment.operationalSite')}
+        name="employment.primary_operational_site_id"
+        metaKey="employment.primary_operational_site_id"
+        label={t('users.form.employment.primaryOperationalSite')}
         resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
-        searchPlaceholder={t('users.form.employment.operationalSiteSearch')}
-        selected={toRelationFieldRef(selectedOperationalSiteItem)}
-        placeholder={t('users.form.employment.operationalSitePlaceholder')}
-        emptyLabel={t('users.form.employment.operationalSiteEmpty')}
-        errorLabel={t('users.form.employment.operationalSiteError')}
+        searchPlaceholder={t('users.form.employment.primaryOperationalSiteSearch')}
+        selected={toRelationFieldRef(selectedPrimaryOperationalSiteItem)}
+        placeholder={t('users.form.employment.primaryOperationalSitePlaceholder')}
+        emptyLabel={t('users.form.employment.primaryOperationalSiteEmpty')}
+        errorLabel={t('users.form.employment.primaryOperationalSiteError')}
         clearLabel={t('common.clear')}
+        retryLabel={t('common.retry')}
+      />
+
+      <RelationMultiSelectField
+        control={control}
+        name="employment.remote_operational_site_ids"
+        metaKey="employment.remote_operational_site_ids"
+        label={t('users.form.employment.remoteOperationalSites')}
+        resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
+        searchPlaceholder={t('users.form.employment.remoteOperationalSitesSearch')}
+        selected={toRelationFieldRefs(selectedRemoteOperationalSiteItems)}
+        placeholder={t('users.form.employment.remoteOperationalSitesPlaceholder')}
+        emptyLabel={t('users.form.employment.remoteOperationalSitesEmpty')}
+        errorLabel={t('users.form.employment.remoteOperationalSitesError')}
+        removeLabel={t('users.form.employment.remoteOperationalSitesRemove')}
         retryLabel={t('common.retry')}
       />
     </FormSection>

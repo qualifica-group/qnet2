@@ -42,7 +42,7 @@ export const OPERATIONAL_SITES_VIEW_ANY_PERMISSION = 'operational-sites.viewAny'
 export function useRequestActorAttributionDefaults(form: UseFormReturn<RequestCreateFormValues>): void {
   const { user } = useAuth()
   const { can } = useAbilities()
-  const actorSiteId = user?.employment?.operational_site_id ?? null
+  const actorSiteId = user?.employment?.primary_operational_site_id ?? null
   const seededOperatorRef = useRef(false)
   const seededSiteRef = useRef(false)
 

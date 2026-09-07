@@ -65,11 +65,16 @@ export interface EmploymentDetail {
   reports_to_id: number | null
   business_function_id: number | null
   company_id: number | null
-  operational_site_id: number | null
+  /** The user's single physical site (spec 0103 D-3), at most one, optional. */
+  primary_operational_site_id: number | null
+  /** The user's remote sites (spec 0103 D-1): operative exactly like the physical one. */
+  remote_operational_site_ids: number[]
   reports_to: EmploymentRelationRef | null
   business_function: EmploymentRelationRef | null
   company: EmploymentRelationRef | null
-  operational_site: EmploymentRelationRef | null
+  /** Present only when the relation is eager-loaded (whenLoaded), like `company`. */
+  primary_operational_site?: EmploymentRelationRef | null
+  remote_operational_sites?: EmploymentRelationRef[]
 }
 
 /**
@@ -120,7 +125,10 @@ export interface EmploymentPayload {
   business_function_id: number | null
   relationship_type: RelationshipType | null
   company_id: number | null
-  operational_site_id: number | null
+  /** At most one physical site (spec 0103 D-3); mirrors `EmploymentDetail`. */
+  primary_operational_site_id: number | null
+  /** Zero or more remote sites (spec 0103 D-1). */
+  remote_operational_site_ids: number[]
   qualification_type: QualificationType | null
   hired_at: string | null
   terminated_at: string | null

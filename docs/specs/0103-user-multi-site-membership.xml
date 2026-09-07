@@ -65,8 +65,13 @@
         e in LeadOperatorDistributor::operatorIdsForSite.
     D-2 Pivot unica con flag booleano `is_primary` come sorgente di verita'; niente enum.
     D-3 Al piu' UNA sede fisica per utente, piu' N remote. La fisica resta opzionale.
-    D-4 /auth/me e form richieste: la fisica resta il default precompilato, ma il select Sede
-        deve permettere di scegliere tra le sedi dell'utente.
+    D-4 /auth/me e form richieste: la fisica resta il default precompilato.
+        RIVISTA dall'utente il 2026-09-07: la seconda meta' della decisione (il select Sede che
+        mostra in cima le sedi dell'utente) e' RITIRATA, il campo Sede resta esattamente com'era.
+        Motivo: l'unica implementazione possibile senza toccare AsyncPaginatedSelect — condiviso
+        da ogni relation picker dell'app — era una riga di chip sopra il campo, che non e' cio'
+        che la decisione descriveva e che l'utente ha respinto vedendola a schermo.
+        Conseguenza: /auth/me NON espone l'elenco delle appartenenze, che resterebbe senza lettori.
     D-5 `employment_profiles.operational_site_id` va ELIMINATA, con tutti i suoi usages
         rimpiazzati dalla pivot: niente colonna tenuta come proiezione o cache.
     D-6 Auto-fill Operatore->Sede: non deve mai sovrascrivere una Sede gia' scelta.
@@ -127,8 +132,9 @@
         UserForSelectResource.meta: resta singolare e porta la sede FISICA.</item>
       <item>LeadOperatorDistributor::operatorIdsForSite via pivot, include le remote (D-1).</item>
       <item>RequestCreationService::actorOperationalSiteId: usa la sede fisica dell'attore.</item>
-      <item>AuthController /auth/me: `employment` espone la fisica piu' l'elenco delle
-        appartenenze con label, per il select del form richieste (D-4).</item>
+      <item>AuthController /auth/me: `employment` espone la SOLA sede fisica
+        (`primary_operational_site_id`), che alimenta la precompilazione del form richieste
+        come faceva la colonna prima della 0103. Nessun elenco di appartenenze (D-4 rivista).</item>
       <item>UserEmploymentColumns: cella dalla fisica, filtro testo su TUTTE le appartenenze,
         sort riscritto contro la pivot (fisica). Catalogo colonna invariato.</item>
       <item>UsersAuthorization: le due nuove FieldDefinition e le due entry nel ceiling.</item>
@@ -158,6 +164,10 @@
       <item>Nessuna colonna nuova nella griglia utenti (niente colonna "sedi remote").</item>
       <item>Nessuna nuova dipendenza, backend o frontend.</item>
       <item>Nessun legame Sede-Operatore introdotto in Opportunity, che oggi non ce l'ha.</item>
+      <item>Nessuna modifica al picker Sede del form richieste: ne' ordinamento delle opzioni,
+        ne' elementi aggiunti attorno al campo. Ordinare le opzioni per appartenenza richiederebbe
+        di modificare AsyncPaginatedSelect, condiviso da ogni relation picker dell'applicazione:
+        e' un lavoro a se', non parte di questa spec (D-4 rivista).</item>
     </out>
   </scope>
 
@@ -204,12 +214,9 @@
 
     <endpoint method="GET" path="/api/auth/me">
       <response status="200">
-        data.employment: {
-          primary_operational_site_id: number|null,
-          operational_sites: [{ id: number, label: string, is_primary: boolean }]
-        }
-        Fetta stretta come oggi: solo cio' che serve al form richieste. `label` composta
-        "line1 - city" come altrove.
+        data.employment: { primary_operational_site_id: number|null } | null
+        Fetta stretta come prima della 0103: solo cio' che serve alla precompilazione della Sede
+        nel form richieste. NIENTE elenco di appartenenze (D-4 rivista 2026-09-07).
       </response>
     </endpoint>
 
@@ -286,8 +293,8 @@
       allora la riga pivot sparisce, l'utente resta senza sede fisica e nessuna remota viene
       promossa.</criterion>
     <criterion id="AC-022">Dato /api/auth/me per un utente con fisica e due remote, quando si
-      legge la response, allora `employment` porta primary_operational_site_id e le tre
-      appartenenze con label e flag is_primary.</criterion>
+      legge la response, allora `employment` porta primary_operational_site_id con la sede fisica
+      e NON contiene alcun elenco di appartenenze.</criterion>
     <criterion id="AC-023">Dato il form di creazione richiesta con la Sede X gia' scelta,
       quando si sceglie un operatore la cui sede fisica e' Y, allora la Sede resta X.</criterion>
     <criterion id="AC-024">Dato lo stesso form con il campo Sede vuoto, quando si sceglie un

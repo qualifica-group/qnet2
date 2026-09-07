@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0105-request-management-site-visibility" status="draft" owner="utente" date="2026-09-07">
+
+  <goal>
+    Gestione Richieste acquisisce un TERZO livello di visibilita': il permesso
+    `request-management.viewSite` fa vedere — e operare — le richieste delle sedi di
+    appartenenza dell'attore, anche quando non ne e' il Gestore Account (GA2 "Operatore").
+    Restano due permessi distinti e indipendenti: `viewAll` (vede tutto) e `viewSite`
+    (vede le proprie sedi).
+  </goal>
+
+  <context>
+    STATO ATTUALE (verificato sul codice, non ipotizzato).
+
+    LA REGOLA. `App\Services\RequestManagement\RequestManagementScope` e' l'UNICA
+    implementazione della visibilita' del modulo, dichiarata tale nel suo docblock: tre
+    forme della STESSA regola (guardia d'endpoint, query builder, predicato in memoria)
+    perche' non possano divergere. Oggi la regola e' binaria: `request-management.viewAll`
+    -> vede ogni Offerta; altrimenti solo le Offerte di cui e' il GA2 Operatore
+    (`quotes.operator_id`, spec 0087 D-9). Fail-closed non negoziabile: un attore null
+    degrada a risultato sempre vuoto (`whereNull('quotes.id')`), mai a "vede tutto".
+    - `assertInScope(User, Quote)` (:38) — abort 403.
+    - `isOperatorOf(User, Quote)` (:57) — predicato senza side effect.
+    - `scopeToActor(Builder, ?User)` (:79) — statica e stateless, chiamata inline con
+      `Auth::user()` senza wiring DI.
+
+    CONSUMER DELLA REGOLA, tutti da ereditare senza modifiche (chiamano scopeToActor):
+    - Tables/RequestManagementTableDefinition.php:244 — baseQuery della griglia.
+    - Services/RequestManagement/RequestCategoryTabsResolver.php:44 — conteggi dei tab
+      categoria.
+    - Services/RequestManagement/RequestAssignmentService.php:128 — filtro in-scope della
+      bulk "assegna operatori"/"assegna GA3".
+    - Services/RequestManagement/RequestTransferService.php:109 — filtro in-scope della
+      bulk "trasferisci contatto".
+    - RequestManagement/RequestManagementActivityAuthorizer.php:42 — log attivita'.
+    - RequestManagement/RequestManagementNotable.php:69 — lettura del thread note.
+    - Http/Controllers/RequestManagement/RequestManagementController.php:154 (`show`),
+      :175 (`update`), :248 (`destroy`) — via `assertInScope`.
+
+    PUNTI CHE DUPLICANO IL TEST `viewAll` FUORI DALLA CLASSE (da allineare a mano):
+    - RequestManagement/RequestManagementNotable.php:62 — corto circuito `viewAll` in
+      `authorizeRead`, che esiste per un motivo preciso: per un attore viewAll
+      scopeToActor non restringe nulla, quindi `exists()` risponderebbe "questa
+      Opportunita' ha almeno un'Offerta", negando il thread di un'Opportunita' con zero
+      Offerte anche al super-admin.
+    - RequestManagement/RequestManagementNotable.php:98 — `mentionableUsersQuery`, i
+      destinatari menzionabili: super-admin, oppure chi ha `request-management.view` ed
+      e' operatore di almeno un'Offerta o ha `viewAll`.
+    - Tables/QuotesTableDefinition.php:331 (`allowsNotes`) e
+      Tables/OpportunitiesTableDefinition.php:314 (`allowsNotes`) — affordance dell'azione
+      di riga "note" sulle griglie Offerte e Opportunita'. I loro docblock impongono che
+      l'affordance combaci con la regola dell'endpoint, per non offrire un'azione che
+      apre un 403 dentro il dialog.
+
+    LA SEDE DELLA RIGA. `quotes.operational_site_id` — FK reale su `quotes`, nullable,
+    nullOnDelete (migrazione 2026_07_30_120000, spec 0086 D-6). La griglia la proietta
+    con la colonna condivisa `App\Tables\Shared\OperationalSiteColumn` (la sede non ha
+    nome proprio: e' indirizzo + alias). Spec 0079: la "Trasferisci contatto" SPOSTA la
+    richiesta su un'altra Sede, assegnando l'Operatore di quella sede.
+
+    LE SEDI DELL'ATTORE. Spec 0103 e' in codice: pivot
+    `employment_profile_operational_site` con flag `is_primary`. `EmploymentProfile`
+    (Models/EmploymentProfile.php) espone `operationalSites()` :90 (tutte le
+    appartenenze, `withPivot('is_primary')`), `primaryOperationalSite()` :102,
+    `remoteOperationalSites()` :112, piu' gli accessor PUBBLICI
+    `primaryOperationalSiteId` :137 e `remoteOperationalSiteIds` :153. Il profilo pende
+    da `User` via il concern `Models/Concerns/HasEmployment.php:41` (`hasOne`).
+    `Model::preventLazyLoading()` e' attivo fuori produzione (backend.md 3), e l'attore
+    autenticato arriva senza relazioni caricate: il precedente di casa e'
+    Services/RequestManagement/RequestCreationService.php:328, che fa
+    `loadMissing('employment.operationalSites')` prima di leggere.
+
+    IL CATALOGO PERMESSI. `RequestManagementPolicy::abilities()` (:118) e' la sorgente:
+    `App\Console\Commands\SyncPermissions` scopre le policy e crea le righe con
+    `permissions:sync` (invocato da `RolePermissionSeeder`). Da li' il permesso entra
+    automaticamente in `AssignablePermissionCatalogue` e nell'esploratore a due pannelli
+    del form Ruoli (`PermissionCatalogueBuilder`, spec 0076). Le ability fuori dalle
+    canoniche (`CANONICAL_ABILITIES`) sono accodate in ordine alfabetico. Lato FE
+    l'etichetta e' l'unica cosa da aggiungere: `permissions.abilities.<ability>` nei due
+    file `frontend/src/i18n/locales/it-permissions.ts` e `en-permissions.ts`, con la
+    lista `CATALOGUE_ABILITIES` del test di parita'
+    `frontend/src/i18n/locales/permissions-i18n-parity.test.ts:87`.
+
+    DECISIONI PRESE DALL'UTENTE (2026-09-07).
+    D-1 Nome del permesso: `request-management.viewSite`. Etichetta IT "Visualizza per
+        sede", EN "View by site".
+    D-2 Il permesso allarga TUTTO lo scope operativo, non la sola lettura: le righe della
+        propria sede diventano in-scope a ogni effetto (griglia, tab, pannello, note,
+        attivita', modifica, eliminazione, azioni bulk), sempre subordinate al possesso
+        del relativo permesso d'azione (`update`, `delete`, `assignOperator`,
+        `transferContact`, `assignManagerGa3`). Motivo: RequestManagementScope resta
+        l'unica regola, con una sola forma per ciascuna delle tre shape; separare lettura
+        e scrittura significherebbe due predicati e la divergenza che il modulo ha gia'
+        pagato una volta.
+    D-3 Una richiesta con `quotes.operational_site_id` NULL non appartiene ad alcuna
+        sede: invisibile a chi ha solo `viewSite` (fail-closed).
+    D-4 Contano TUTTE le appartenenze, fisica e remote, coerentemente con la spec 0103
+        D-1 ("le sedi remote sono operative a tutti gli effetti", gia' applicata a
+        `UserService::forSelect` e `LeadOperatorDistributor::operatorIdsForSite`).
+
+    DECISIONI DERIVATE, proposte qui e da validare con l'approvazione del piano.
+    D-5 I due permessi sono INDIPENDENTI e non gerarchici nel catalogo: `viewAll`
+        continua a corto-circuitare da solo (nessun codice richiede che chi ha viewAll
+        abbia anche viewSite), e `viewSite` da solo non implica nulla di `viewAll`. Chi
+        li possiede entrambi vede tutto: e' `viewAll` a vincere, valutato per primo.
+    D-6 Lo scope non-viewAll diventa un'UNIONE: "sono l'Operatore della riga" OPPURE
+        "la sede della riga e' una delle mie". Un attore con `viewSite` non perde mai le
+        richieste che opera in una sede che non e' la sua (tipicamente dopo un
+        trasferimento, spec 0079). In `scopeToActor` la disgiunzione va racchiusa in una
+        closure `where(...)`: senza, l'OR sfuggirebbe alle condizioni gia' accumulate sul
+        builder dai chiamanti (filtri di griglia, `opportunity_id`, tab categoria) e
+        allargherebbe la visibilita' invece di restringerla.
+    D-7 Le sedi dell'attore si risolvono UNA volta per chiamata dentro
+        RequestManagementScope, con `loadMissing('employment.operationalSites')` (il
+        precedente di RequestCreationService:328). Nessun nuovo accessor su
+        `EmploymentProfile`: gli id di tutte le appartenenze sono gia' derivabili dalla
+        relazione caricata, e un accessor in piu' entrerebbe nella superficie che
+        `EnforcesFieldPermissions` sonda (spec 0103 D-9) senza che nessuno lo chieda.
+    D-8 `RequestManagementNotable::authorizeRead` NON acquisisce un corto circuito
+        `viewSite`: il ramo `exists()` risponde gia' correttamente per un attore
+        site-scoped (deve avere almeno un'Offerta della propria sede sotto
+        quell'Opportunita'). Il corto circuito di `viewAll` resta l'eccezione che era,
+        per la sola Opportunita' con zero Offerte.
+    D-9 `mentionableUsersQuery` acquisisce il terzo ramo: chi ha `viewSite` ed e' membro
+        di una delle sedi delle Offerte di quell'Opportunita'. Senza, un collega
+        site-scoped potrebbe leggere il thread ma non essere menzionato — la
+        distribuzione delle menzioni divergerebbe dalla lettura.
+    D-10 L'affordance "note" sulla griglia OPPORTUNITA' si allinea con un
+        `withExists` sulle Offerte della riga filtrate per le sedi dell'attore, aggiunto
+        in `baseQuery` (le Offerte non sono eager-caricate li'): una sottoquery per
+        pagina, zero query per riga. NON si usa `opportunities.operational_site_id`: puo'
+        divergere dalla sede dell'Offerta, e la regola del modulo e' sulle Offerte. Sulla
+        griglia OFFERTE il confronto e' diretto sulla colonna della riga, gia' presente.
+    D-11 Il ruolo demo "Commerciale" di `TestUsersSeeder`
+        (COMMERCIAL_DENIED_MODULE_ABILITIES) NON riceve `viewSite`: la direttiva utente
+        2026-07-31 dice che un Commerciale vede SOLO le richieste che opera, e questa
+        spec non la rivede. Il permesso va aggiunto alla lista dei negati con la sua
+        motivazione, altrimenti il ruolo lo erediterebbe in silenzio dal catalogo.
+  </context>
+
+  <scope>
+    <in>
+      <item>`RequestManagementPolicy`: nuova ability `viewSite` (metodo + voce in
+        `abilities()`), sul modello di `viewAll`, con il docblock che ne dichiara la
+        semantica e il rapporto con `viewAll` (D-5).</item>
+      <item>`RequestManagementScope`: costanti dei due permessi; risoluzione delle sedi
+        dell'attore (D-7); estensione delle TRE forme della regola — `assertInScope`,
+        un nuovo predicato `isInActorSites(User, Quote)` accanto a `isOperatorOf`, e
+        `scopeToActor` con la disgiunzione racchiusa (D-6). Docblock riscritto: la
+        regola non e' piu' binaria.</item>
+      <item>`RequestManagementNotable::mentionableUsersQuery`: terzo ramo per i
+        site-scoped (D-9).</item>
+      <item>`QuotesTableDefinition::allowsNotes`: ramo sede sulla colonna della riga
+        (D-10).</item>
+      <item>`OpportunitiesTableDefinition`: `withExists` in `baseQuery` + ramo sede in
+        `allowsNotes` (D-10).</item>
+      <item>`TestUsersSeeder`: `viewSite` fra le ability negate al Commerciale, con
+        motivazione nel docblock della costante (D-11).</item>
+      <item>i18n permessi: `abilities.viewSite` in `it-permissions.ts` e
+        `en-permissions.ts`, piu' la voce nella lista `CATALOGUE_ABILITIES` del test di
+        parita'.</item>
+      <item>Test Pest: nuovo file `tests/Feature/RequestManagement/RequestManagementSiteVisibilityTest.php`
+        che copre AC-001..AC-012.</item>
+    </in>
+    <out>
+      <item>Nuovi endpoint, nuove rotte, nuovi campi di risposta: la feature non cambia
+        alcuna shape HTTP.</item>
+      <item>Migrazioni e modifiche di schema: nessuna. La pivot (0103) e
+        `quotes.operational_site_id` (0086) esistono gia'.</item>
+      <item>Nuovi accessor o relazioni su `User`/`EmploymentProfile` (D-7).</item>
+      <item>La matrice per-campo (`RequestManagementAuthorization`,
+        `role_field_permissions`): la visibilita' di RIGA non tocca i permessi di
+        CAMPO. Un attore site-scoped scrive esattamente i campi che la sua matrice gia'
+        gli concede.</item>
+      <item>`receiveTransferNotifications`: la lista di distribuzione delle notifiche di
+        trasferimento resta governata dal suo permesso, non da `viewSite`.</item>
+      <item>Il modulo Commesse (`WorkOrderVisibilityScope`), che ha la propria regola
+        `work-orders.viewAll` e cita RequestManagementScope solo per analogia.</item>
+      <item>Le griglie Opportunita' e Offerte nel loro complesso: restano governate da
+        `opportunities.*` / `quotes.*`. Di quelle griglie si tocca la SOLA affordance
+        "note", che gia' oggi legge i permessi di request-management.</item>
+      <item>Qualsiasi UI nuova: il permesso compare nell'esploratore Ruoli da solo
+        (spec 0076), serve la sola etichetta i18n.</item>
+      <item>Un permesso simmetrico "per sede" su altri moduli (lead, opportunita',
+        commesse).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo e nessuna shape modificata. Cio' che si congela e' il
+         VOCABOLARIO del permesso e la regola di visibilita' che governa gli endpoint
+         esistenti: e' quello il contratto che backend e frontend condividono. -->
+
+    <permission name="request-management.viewSite">
+      <semantics>
+        Ability di RISORSA (nessun argomento), esposta da `RequestManagementPolicy` e
+        creata da `permissions:sync`. Concede la visibilita' sulle Offerte la cui
+        `quotes.operational_site_id` e' una delle sedi di appartenenza dell'attore
+        (pivot `employment_profile_operational_site`, `is_primary` true O false).
+        Non concede alcuna azione: ogni scrittura resta subordinata al proprio permesso.
+      </semantics>
+      <labels>
+        it: `permissions.abilities.viewSite` = "Visualizza per sede"
+        en: `permissions.abilities.viewSite` = "View by site"
+      </labels>
+    </permission>
+
+    <visibility_rule name="RequestManagementScope">
+      <!-- Le tre forme esprimono questa stessa regola, valutata in quest'ordine. -->
+      <step n="1">attore null -> FUORI SCOPE (query: condizione che non matcha mai).</step>
+      <step n="2">`request-management.viewAll` -> DENTRO, sempre, nessun'altra
+        valutazione (query: nessuna restrizione).</step>
+      <step n="3">`quotes.operator_id` = id attore -> DENTRO.</step>
+      <step n="4">`request-management.viewSite` E `quotes.operational_site_id` NON NULL
+        E appartenente all'insieme delle sedi dell'attore -> DENTRO.</step>
+      <step n="5">altrimenti FUORI SCOPE (403 sull'endpoint, riga assente dalla query).</step>
+      <query_shape>
+        La disgiunzione dei passi 3-4 e' racchiusa in una singola closure `where(...)`,
+        mai appesa in `orWhere` alla radice del builder ricevuto.
+      </query_shape>
+    </visibility_rule>
+
+    <endpoint method="*" path="(invariati)">
+      <request>Nessun parametro nuovo.</request>
+      <response status="200">Envelope e shape invariati: cambia solo QUALI righe
+        rientrano e quali 403 non scattano piu'.</response>
+      <errors>403 invariato come forma (`{ success:false, message }`), emesso ora solo
+        quando nessuno dei passi 2-4 e' soddisfatto.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un attore con `request-management.viewAny|view` e
+      `viewSite`, membro FISICO della sede S, quando chiama `POST /api/tables/request-management`,
+      allora la risposta include le Offerte con `operational_site_id = S` di cui NON e'
+      Operatore, e non include quelle di un'altra sede.</criterion>
+
+    <criterion id="AC-002">Dato lo stesso attore con la sede S come appartenenza REMOTA
+      (pivot `is_primary` false) e nessuna sede fisica, quando chiama la stessa griglia,
+      allora vede le Offerte della sede S esattamente come in AC-001 (D-4).</criterion>
+
+    <criterion id="AC-003">Dato un attore con `viewSite` e sedi {S1, S2}, quando chiama
+      la griglia, allora vede le Offerte di S1 e di S2 e nessuna di S3.</criterion>
+
+    <criterion id="AC-004">Dato un attore con `viewSite` e sede S, quando esiste
+      un'Offerta con `operational_site_id` NULL, allora quell'Offerta NON compare in
+      griglia e `GET /api/request-management/{quote}` su di essa risponde 403 (D-3).</criterion>
+
+    <criterion id="AC-005">Dato un attore con `viewSite` e sede S, quando e' l'Operatore
+      (`operator_id`) di un'Offerta di una sede DIVERSA da S, allora quell'Offerta resta
+      visibile in griglia e apribile: lo scope e' un'unione, non una sostituzione (D-6).</criterion>
+
+    <criterion id="AC-006">Dato un attore SENZA `viewSite` e senza `viewAll`, membro
+      della sede S, quando chiama la griglia, allora vede solo le Offerte di cui e'
+      Operatore: il comportamento odierno e' invariato senza il permesso.</criterion>
+
+    <criterion id="AC-007">Dato un attore con `viewSite` e sede S, quando la griglia e'
+      chiamata con un filtro (es. per stato) che restringe il risultato, allora il
+      filtro continua ad applicarsi e la disgiunzione di scope non riporta righe che il
+      filtro esclude (D-6, closure di raggruppamento).</criterion>
+
+    <criterion id="AC-008">Dato un attore con `viewSite` + `request-management.update` e
+      sede S, quando chiama `PATCH /api/request-management/{quote}` su un'Offerta di S
+      che non opera, allora la scrittura riesce (200) e il valore e' persistito; senza
+      `update` la stessa chiamata risponde 403 (D-2).</criterion>
+
+    <criterion id="AC-009">Dato un attore con `viewSite` + `request-management.delete` e
+      sede S, quando chiama `DELETE /api/request-management/{quote}` su un'Offerta di S
+      che non opera, allora l'Offerta e' eliminata e l'Opportunita' sopravvive; su
+      un'Offerta di un'altra sede la stessa chiamata risponde 403.</criterion>
+
+    <criterion id="AC-010">Dato un attore con `viewSite` e sede S, quando esegue la bulk
+      "assegna operatori" (o "trasferisci contatto") su una selezione mista di Offerte
+      di S e di altre sedi, allora l'azione tocca le sole Offerte di S e le altre sono
+      silenziosamente saltate, come gia' avviene per le righe fuori scope.</criterion>
+
+    <criterion id="AC-011">Dato un attore con `viewSite` e sede S, quando i tab categoria
+      vengono calcolati (`RequestCategoryTabsResolver`), allora i conteggi includono le
+      Offerte di S che non opera e non quelle di altre sedi.</criterion>
+
+    <criterion id="AC-012">Dato un attore con `viewSite`, `request-management.view` e
+      sede S, quando legge il thread note di un'Opportunita' che ha almeno un'Offerta in
+      S, allora la lettura riesce; e l'attore compare fra i menzionabili di
+      quell'Opportunita' (D-9). Su un'Opportunita' senza Offerte in S la lettura resta
+      403 e l'attore non e' menzionabile.</criterion>
+
+    <criterion id="AC-013">Dato un attore null (nessuna autenticazione) nelle chiamate
+      interne a `RequestManagementScope::scopeToActor`, quando la query e' costruita,
+      allora il risultato resta vuoto: il ramo fail-closed non e' stato indebolito dalla
+      nuova disgiunzione.</criterion>
+
+    <criterion id="AC-014">Dato il comando `php artisan permissions:sync` su un database
+      dove il permesso non esiste, quando viene eseguito, allora la riga
+      `request-management.viewSite` e' creata ed e' assegnabile dal form Ruoli
+      (`AssignablePermissionCatalogue::isAssignable`).</criterion>
+
+    <criterion id="AC-015">Dato il ruolo demo "Commerciale" seminato da `TestUsersSeeder`,
+      quando se ne ispezionano i permessi, allora `request-management.viewSite` NON e'
+      fra questi (D-11).</criterion>
+
+    <criterion id="AC-016">Dato il test di parita' i18n dei permessi, quando viene
+      eseguito (`npx vitest run src/i18n/locales/permissions-i18n-parity.test.ts`),
+      allora passa con `viewSite` presente in entrambi i locale e nella lista
+      `CATALOGUE_ABILITIES`.</criterion>
+
+    <criterion id="AC-017">Dato l'attore autenticato con `Model::preventLazyLoading()`
+      attivo (ambiente di test), quando una qualsiasi delle superfici scoped viene
+      chiamata, allora non viene sollevata `LazyLoadingViolationException`: le sedi
+      dell'attore sono risolte con `loadMissing` (D-7).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (composer/npm). Nessuna migrazione, nessun cambio di
+      schema.</item>
+    <item>`RequestManagementScope` resta l'UNICA implementazione della regola: le tre
+      forme devono restare l'una la traduzione dell'altra. Ogni nuovo test del permesso
+      va scritto su tutte e tre le superfici (query, endpoint, predicato).</item>
+    <item>Fail-closed non negoziabile: attore null -> vuoto; sede NULL sulla riga -> fuori
+      scope; permesso assente -> comportamento odierno invariato.</item>
+    <item>Authz server-side: il permesso e' un gate di RIGA, non un gate di UI. Nessuna
+      logica di visibilita' nuova lato frontend.</item>
+    <item>Nessun `whereRaw`/`orderByRaw`: la sede si confronta con `whereIn` su una
+      colonna reale e su id interi (backend.md 8, security.md 8).</item>
+    <item>Zero N+1: le sedi dell'attore si risolvono una volta per richiesta; l'affordance
+      note sulla griglia Opportunita' usa `withExists`, non una query per riga.</item>
+    <item>Definition of Done: Pest eseguito davvero, Pint pulito, e per la parte FE
+      `cd frontend &amp;&amp; npx tsc -b --force` (mai `tsc --noEmit`) piu' Vitest sul test
+      di parita'.</item>
+  </constraints>
+
+</spec>

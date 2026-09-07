@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0104-request-management-bulk-ga3-assignment" status="draft" owner="nicola" date="2026-09-07">
+
+  <goal>
+    Gestione Richieste guadagna una SECONDA azione massiva accanto a "Assegna operatori":
+    l'assegnazione massiva dello slot GA3 (il "tutor" nella nomenclatura del committente)
+    sulle righe selezionate in griglia. A differenza dell'azione operatori, questa NON ha
+    la dimensione Sede: nessun select Sede, nessun filtro `operational_site_id` sugli
+    utenti candidati, nessuno smistamento equo (direttiva utente 2026-09-07).
+  </goal>
+
+  <context>
+    Fatti verificati nel repo (grounding 2026-09-07, non ipotizzati):
+
+    - Lo slot esiste gia': `App\Support\ManagerPositions::GA3 = 3`, posizione 3 del pivot
+      `quote_user`. Non ha colonna denormalizzata su `quotes`, non scopa nulla
+      (`RequestManagementScope` legge il solo `operator_id`) e non notifica nessuno.
+    - Il writer esiste gia': `RequestOperatorWriter::applyGa3(Quote, ?int $userId,
+      array &$changed, array &$old)` — muove il solo slot 3 via
+      `QuoteManagerWriter::sync(..., promoteToOpportunity: true)`, supporta `null`
+      (svuota lo slot), fa `unsetRelation('managers')` e riporta la transizione sotto la
+      chiave wire `manager_ga3_id`. Guardia di no-op inclusa (occupante uguale = nessuna
+      scrittura). NON va duplicato ne' aggirato: questa spec lo RIUSA.
+    - Il canale singolo esiste gia': cella inline `manager_ga3` della griglia
+      (`RequestManagerColumns::GA3_COLUMN_ID`, `editableField` = `manager_ga3_id`,
+      `relation` = `{'resource' => 'users'}` SENZA `scope` — cioe' il picker della cella
+      elenca gia' oggi tutti gli utenti, non quelli della Sede). Manca solo il canale
+      massivo.
+    - L'azione massiva operatori esiste: `POST /api/request-management/assign-operators`
+      -> `RequestManagementController::assignOperators()` ->
+      `RequestAssignmentService::assignOperators()`. Gate: `request-management.update`
+      AND `request-management.assignOperator`. Scoping D-3: `inScopeQuotes()` filtra gli
+      id irraggiungibili in silenzio (mai 403 sul batch), ritorna il conteggio scritto.
+      Log: `activity($quote->opportunity->getTable())->performedOn($quote->opportunity)`
+      con `['attributes' => $changed, 'old' => $old]`.
+    - Catalogo permessi: `RequestManagementPolicy::abilities()` e' la UNICA vocabolario
+      del modulo; `php artisan permissions:sync` (invocato da `RolePermissionSeeder`)
+      crea i permessi da li'. Le ability di modulo esistenti: `viewAll`, `viewDocuments`,
+      `assignOperator`, `transferContact`, `receiveTransferNotifications`.
+    - Lato client la tabella e' `frontend/src/features/request-management/
+      request-management-table.tsx` (440 righe): possiede la selezione, il menu "Azioni"
+      generico (`getBulkActions`, `BulkAction[]`), la mutation e il feedback. Riusa
+      `AssignOperatorsDialog` (features/leads) per assegna-operatori e per il transfer
+      (`lockedMode="single"`).
+    - `AssignOperatorsDialog` (392 righe) e' costruito INTORNO alla Sede:
+      `AssignOperatorsDialogInput.operational_site_id` e' obbligatorio nel tipo, il
+      select Operatore passa `params={{ operational_site_id: siteId }}`, e il gate di
+      submit richiede sempre `siteId !== null`. Ha gia' un asse opzionale (`lockedMode`,
+      spec 0079).
+    - Il relabel per categoria esiste su entrambi i lati: server
+      `RequestManagementScopedTableDefinition::relabelManagerColumns()` (spec 0080 esteso
+      a GA3), client `useActiveCategoryManagerLabels(categoryId)` ->
+      `ManagerLabels = Record<string, string>` con chiave = posizione. La tabella ha gia'
+      `selectedCategoryId` da `useRequestManagementCategoryTab()`.
+    - Etichetta di fallback della colonna: i18n `requestManagement.columns.managerGa3`
+      ("Gestore account (GA3)" / "Account manager (GA3)").
+
+    DECISIONI UTENTE (2026-09-07), vincolanti:
+    D-1 — Una sola modalita': "assegna tutti a un GA3". Nessuno smistamento equo: senza
+          Sede il pool di partenza sarebbe "tutti gli utenti", un bilanciamento contro il
+          segnale sbagliato.
+    D-2 — Lo slot e' SVUOTABILE in massa: confermare senza utente scelto scollega il GA3
+          da tutte le righe selezionate (`applyGa3` gia' accetta `null`).
+    D-3 — Gate server-side: NUOVA ability dedicata `request-management.assignManagerGa3`,
+          richiesta IN AGGIUNTA a `request-management.update`. Sulla falsariga di
+          `assignOperator`/`transferContact`: e' un atto di supervisione, e va poter
+          essere concesso separatamente dall'assegnazione operatori.
+    D-4 — Etichetta dinamica: la voce di menu e il titolo del popup usano
+          `manager_labels[3]` della categoria del tab attivo (quindi "Tutor" dove
+          configurato cosi'), con fallback su `requestManagement.columns.managerGa3`.
+          Stessa fonte dell'header di colonna: non possono divergere.
+    D-5 — Nessuna notifica di assegnazione. Il GA3 non scopa visibilita' e non e' il
+          destinatario operativo: e' la stessa regola che `applyGa3` e `applySlots`
+          seguono gia' (spec 0097 D-6/AC-007). L'attivita' invece SI' e' registrata.
+    D-6 — Nessun `throttle` sull'endpoint (backend.md 2: solo endpoint credenziali).
+  </context>
+
+  <scope>
+    DENTRO:
+    - `backend/app/Policies/RequestManagementPolicy.php` — nuova ability `assignManagerGa3`.
+    - `backend/app/Http/Requests/RequestManagement/AssignRequestManagerGa3Request.php` — nuovo.
+    - `backend/app/Http/Controllers/RequestManagement/RequestManagementController.php` —
+      nuovo metodo `assignManagerGa3()`.
+    - `backend/routes/api/request-management.php` — nuova rotta, DICHIARATA PRIMA delle
+      rotte `{quote}` (convenzione del file: un segmento letterale non deve mai essere
+      inghiottito dal wildcard).
+    - `backend/app/Services/RequestManagement/RequestAssignmentService.php` — nuovo metodo
+      `assignManagerGa3()`, riusa `inScopeQuotes()` e `RequestOperatorWriter::applyGa3()`.
+    - `frontend/src/features/request-management/assign-manager-ga3-dialog.tsx` — nuovo.
+    - `frontend/src/features/request-management/api.ts` + `request-write-types.ts` —
+      nuova funzione client + tipi payload/result.
+    - `frontend/src/features/request-management/request-management-table.tsx` — nuova voce
+      nel menu "Azioni", mutation, feedback.
+    - `frontend/src/i18n/locales/{it,en}-request-management.ts` — blocco
+      `requestManagement.assignManagerGa3.*`.
+    - Test: Pest sull'endpoint (happy/error/authz/scope/null), Vitest sul dialog e sulla
+      tabella.
+
+    FUORI:
+    - `AssignOperatorsDialog` e ogni chiamante esistente (leads, import, transfer):
+      byte-for-byte invariati.
+    - La cella inline `manager_ga3` e il pannello di lavoro: invariati.
+    - Le altre posizioni G.A. (GA1, GA4+): nessuna azione massiva, non richiesta.
+    - Assegnazione dei ruoli: creare il permesso NON lo concede a nessuno; chi lo deve
+      avere si configura dalla schermata Ruoli.
+  </scope>
+
+  <data_contract>
+
+    <!-- (A) Ability (nuova) -->
+    <permission name="request-management.assignManagerGa3">
+      Dichiarata in `RequestManagementPolicy::abilities()` + metodo
+      `assignManagerGa3(User): bool`. Materializzata da `php artisan permissions:sync`.
+      Nessun ruolo la riceve automaticamente (super-admin la ottiene per la sua regola
+      esistente di bypass/assegnazione totale).
+    </permission>
+
+    <!-- (B) Endpoint (nuovo) -->
+    <endpoint method="POST" path="/api/request-management/assign-manager-ga3">
+      <auth>
+        `auth:sanctum` (gruppo del file) + `abort_unless($user->can('request-management.update'))`
+        + `abort_unless($user->can('request-management.assignManagerGa3'))`. Nessun throttle (D-6).
+      </auth>
+      <request><![CDATA[
+        {
+          "request_ids": number[],          // required, array, min:1, ogni id exists:quotes,id
+          "manager_ga3_id": number | null   // PRESENTE e nullable; se non-null exists:users,id
+        }
+      ]]></request>
+      <behavior>
+        Una transazione. Step 1: `inScopeQuotes()` (D-3 scoping esistente) scarta in
+        silenzio gli id che l'attore non puo' raggiungere; batch vuoto -> `{ assigned: 0 }`.
+        Step 2: per ogni Offerta rimasta, `RequestOperatorWriter::applyGa3($quote,
+        $managerGa3Id, $changed, $old)`. Step 3: quando `$changed` non e' vuoto, una voce
+        di activity log ancorata all'Opportunita' (stesso pattern di `assignOne()`),
+        `log('Request management bulk GA3 assignment')`. Nessuna notifica (D-5).
+        Il conteggio ritornato e' il numero di Offerte RAGGIUNTE (in scope), non quelle
+        effettivamente cambiate: stessa semantica di `assignOperators`.
+      </behavior>
+      <response>200 `ok(['assigned' => int], 'Manager GA3 assigned')` — envelope
+        `{ success, message, data }` di `BaseApiController`.</response>
+      <errors>
+        403 senza una delle due ability. 422 su payload invalido (`request_ids` vuoto/
+        assente, id inesistente, `manager_ga3_id` non-null inesistente, chiave assente).
+      </errors>
+    </endpoint>
+
+    <!-- (C) Client -->
+    <client>
+      `AssignRequestManagerGa3Payload = { request_ids: number[]; manager_ga3_id: number | null }`
+      e `AssignRequestManagerGa3Result = { assigned: number }` in `request-write-types.ts`;
+      `assignRequestManagerGa3(payload)` in `api.ts` (POST, ritorna `data.data`).
+    </client>
+
+    <!-- (D) Popup dedicato -->
+    <component name="AssignManagerGa3Dialog" path="frontend/src/features/request-management/assign-manager-ga3-dialog.tsx">
+      Nuovo componente, NON un terzo asse opzionale su `AssignOperatorsDialog`: quel
+      popup e' costruito intorno alla Sede (`operational_site_id` obbligatorio nel tipo,
+      `params.operational_site_id` sul select, `siteId !== null` nel gate di submit) e ha
+      gia' `lockedMode`; renderla site-less significherebbe rendere opzionali tre assi in
+      un file di 392 righe usato da quattro chiamanti (ui-design.md 6.2 chiede riuso dei
+      MATTONI, non di un flusso con premesse diverse). Il riuso avviene un livello sotto:
+      `Dialog*`, `Label`, `Button`, `AsyncPaginatedSelect` da `components/ui`, con lo
+      stesso `SELECT_CLASS` compatto e la stessa fascia header del popup operatori.
+
+      Props: `{ open, onOpenChange, selectionCount, label, onAssign }` dove `label` e'
+      l'etichetta risolta (D-4) e `onAssign: (managerGa3Id: number | null) => Promise<void>`.
+      Un solo campo: `AsyncPaginatedSelect` su `USERS_FOR_SELECT_RESOURCE`, `showAvatar`,
+      SENZA `params` (nessun filtro Sede — il punto della direttiva). Azzerabile: valore
+      `null` = "nessun {label}", e la conferma resta ABILITATA (D-2), con un testo di
+      avviso esplicito quando si sta per svuotare. Corpo dello stato in un sotto-componente
+      montato dentro `DialogContent`, come `AssignOperatorsDialogBody`: Radix smonta il
+      sottoalbero alla chiusura, ed e' cosi' che ogni apertura riparte pulita.
+    </component>
+
+    <!-- (E) Etichetta dinamica -->
+    <label-resolution>
+      `useActiveCategoryManagerLabels(selectedCategoryId)` -> `ManagerLabels`;
+      `labels?.[String(GA3_MANAGER_POSITION)]` con `GA3_MANAGER_POSITION = 3` esportata
+      da `features/request-management/types.ts` accanto all'esistente
+      `OPERATOR_MANAGER_POSITION = 2` (specchia `ManagerPositions::GA3`). Fallback:
+      `t('requestManagement.columns.managerGa3')`. Tab "Tutte" (`categoryId` null) o
+      categoria che non definisce la posizione 3 -> fallback.
+    </label-resolution>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- Backend -->
+    <ac id="AC-001">`RequestManagementPolicy::abilities()` include `assignManagerGa3`;
+      dopo `permissions:sync` il permesso `request-management.assignManagerGa3` esiste.</ac>
+    <ac id="AC-002">POST /request-management/assign-manager-ga3 con N id in scope e
+      `manager_ga3_id` = U -> ognuna delle N Offerte ha U in posizione 3 di `quote_user`;
+      response `{ assigned: N }`.</ac>
+    <ac id="AC-003">Gli altri slot restano intatti: un'Offerta con GA2 = X conserva X in
+      posizione 2 dopo l'assegnazione del GA3.</ac>
+    <ac id="AC-004">`manager_ga3_id: null` -> la posizione 3 viene svuotata su tutte le
+      Offerte del batch; nessun altro slot toccato; `{ assigned: N }`.</ac>
+    <ac id="AC-005">Un id fuori dallo scope dell'attore (ne' operata ne' coperta da
+      `request-management.viewAll`) e' saltato in silenzio, non scritto, e non conteggiato;
+      nessun 403 sul batch.</ac>
+    <ac id="AC-006">Attore senza `request-management.assignManagerGa3` (ma con `update`)
+      -> 403, nessuna scrittura. Idem senza `update` (ma con la nuova ability).</ac>
+    <ac id="AC-007">Payload invalido -> 422: `request_ids` assente/vuoto, id inesistente,
+      `manager_ga3_id` valorizzato con un utente inesistente.</ac>
+    <ac id="AC-008">Ogni Offerta effettivamente cambiata produce UNA voce di activity log
+      sull'Opportunita' con `attributes.manager_ga3_id` = nuovo valore e
+      `old.manager_ga3_id` = precedente. Un'Offerta che aveva gia' quel GA3 non produce
+      alcuna voce (guardia di no-op di `applyGa3`).</ac>
+    <ac id="AC-009">Nessuna notifica di assegnazione viene emessa dall'endpoint (D-5).</ac>
+    <ac id="AC-010">Un GA3 che non e' Gestore Account dell'Opportunita' padre viene
+      promosso sul primo slot LIBERO di quella (comportamento gia' garantito da
+      `promoteToOpportunity: true`), mai sovrascrivendone uno occupato.</ac>
+
+    <!-- Frontend -->
+    <ac id="AC-020">Con selezione non vuota e permessi `update` + `assignManagerGa3`, il
+      menu "Azioni" della tabella mostra una voce in piu' accanto ad "Assegna operatori";
+      senza uno dei due permessi la voce non compare.</ac>
+    <ac id="AC-021">L'etichetta della voce e il titolo del popup usano il `manager_labels`
+      posizione 3 della categoria del tab attivo (es. "Tutor"); sul tab "Tutte", o su una
+      categoria che non definisce quella posizione, usano "Gestore account (GA3)".</ac>
+    <ac id="AC-022">Il popup ha UN SOLO campo (utente), nessun select Sede, nessun
+      selettore di modalita'; il select non e' filtrato per Sede.</ac>
+    <ac id="AC-023">Confermare senza utente selezionato invia `manager_ga3_id: null` e
+      l'interfaccia dichiara esplicitamente che lo slot verra' svuotato.</ac>
+    <ac id="AC-024">Al successo: toast con il conteggio, refresh SSRM della griglia,
+      selezione azzerata, popup chiuso. Al fallimento: toast d'errore, popup aperto con le
+      scelte intatte.</ac>
+    <ac id="AC-025">`AssignOperatorsDialog` e i suoi quattro chiamanti esistenti restano
+      invariati: i test di leads/import/transfer passano senza modifiche.</ac>
+  </acceptance_criteria>
+
+  <constraints>
+    - Identificatori in inglese (engineering.md 1.2): `assignManagerGa3`,
+      `manager_ga3_id`, `AssignManagerGa3Dialog`. "Tutor" e' un VALORE di dominio
+      configurato in `manager_labels`, mai un identificatore.
+    - Nessuna dipendenza nuova, ne' composer ne' npm.
+    - `RequestAssignmentService` cresce di un metodo pubblico + un privato: verificare la
+      soglia 300 righe (engineering.md 6) e proporre lo split se superata.
+    - Nessuna modifica a `AssignOperatorsDialog`, `RequestOperatorWriter`,
+      `QuoteManagerWriter`, `RequestManagementScope`.
+    - Definition of Done: Pest ed ESEGUITO, Vitest ESEGUITO, Pint pulito, ESLint pulito
+      sui file toccati, `cd frontend && npx tsc -b --force` EXIT=0.
+  </constraints>
+
+  <microtasks>
+    <task id="MT-01" lane="backend" depends-on="">
+      Ability + endpoint: `RequestManagementPolicy::assignManagerGa3()` e `abilities()`;
+      `AssignRequestManagerGa3Request`; `RequestAssignmentService::assignManagerGa3()`;
+      `RequestManagementController::assignManagerGa3()`; rotta prima del wildcard.
+      Test Pest: AC-001..AC-010.
+    </task>
+    <task id="MT-02" lane="frontend" depends-on="">
+      Contratto client: tipi payload/result, `assignRequestManagerGa3()`,
+      `GA3_MANAGER_POSITION`, chiavi i18n it/en. Lavorabile in parallelo a MT-01 (il
+      contratto e' congelato qui sopra).
+    </task>
+    <task id="MT-03" lane="frontend" depends-on="MT-02">
+      `AssignManagerGa3Dialog` + test Vitest (campo singolo, nessuna Sede, conferma
+      abilitata a vuoto, submit `null`).
+    </task>
+    <task id="MT-04" lane="frontend" depends-on="MT-03">
+      Cablaggio in `request-management-table.tsx`: voce di menu gated, etichetta dinamica,
+      mutation, toast/refresh/clearSelection. Test Vitest AC-020..AC-025.
+    </task>
+    <task id="MT-05" lane="verifier" depends-on="MT-01,MT-04">
+      Cancello indipendente: Pest, Vitest, Pint, ESLint, `tsc -b --force`; riprova degli
+      AC sui test reali; conferma che i test di leads/import/transfer non si sono mossi.
+    </task>
+  </microtasks>
+
+</spec>

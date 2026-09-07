@@ -69,7 +69,8 @@ const SERVER_ERROR_FIELDS = [
   'employment.business_function_id',
   'employment.relationship_type',
   'employment.company_id',
-  'employment.operational_site_id',
+  'employment.primary_operational_site_id',
+  'employment.remote_operational_site_ids',
   'employment.qualification_type',
   'employment.hired_at',
   'employment.terminated_at',
@@ -80,6 +81,13 @@ const SERVER_ERROR_FIELDS = [
 /** Locale is not user-editable on the form; new users default to Italian. */
 const DEFAULT_LOCALE: UserLocale = 'it'
 
+/**
+ * Stable module-level default for the remote-sites array field: an inline
+ * `[]` would create a new reference on every render and break memoized
+ * dependents (rule engineering.md §1 / frontend.md §10).
+ */
+const EMPTY_REMOTE_SITE_IDS: number[] = []
+
 /** A blank employment sub-form, used for both create and an edit user with no profile yet. */
 const EMPTY_EMPLOYMENT: EmploymentFormValues = {
   is_manager: false,
@@ -88,7 +96,8 @@ const EMPTY_EMPLOYMENT: EmploymentFormValues = {
   business_function_id: null,
   relationship_type: null,
   company_id: null,
-  operational_site_id: null,
+  primary_operational_site_id: null,
+  remote_operational_site_ids: EMPTY_REMOTE_SITE_IDS,
   qualification_type: null,
   hired_at: '',
   terminated_at: '',
@@ -96,11 +105,24 @@ const EMPTY_EMPLOYMENT: EmploymentFormValues = {
   break_daily_minutes: null,
 }
 
+/** No sites loaded: stable module-level reference, mirrors `EMPTY_REMOTE_SITE_IDS`. */
+const EMPTY_RELATION_REFS: ForSelectItem[] = []
+
 /** Maps a loaded `{id, label}` relation ref to the AsyncPaginatedSelect hydration prop. */
 function relationToForSelectItem(
   ref: EmploymentRelationRef | null | undefined,
 ): ForSelectItem | null {
   return ref ? { id: ref.id, label: ref.label, subtitle: ref.subtitle ?? null } : null
+}
+
+/** Array counterpart of {@link relationToForSelectItem}, for multi-select hydration. */
+function relationsToForSelectItems(
+  refs: EmploymentRelationRef[] | null | undefined,
+): ForSelectItem[] {
+  if (!refs || refs.length === 0) {
+    return EMPTY_RELATION_REFS
+  }
+  return refs.map((ref) => ({ id: ref.id, label: ref.label, subtitle: ref.subtitle ?? null }))
 }
 
 export type UserFormValues = CreateUserFormValues & UpdateUserFormValues
@@ -206,7 +228,8 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
               business_function_id: employment.business_function_id,
               relationship_type: employment.relationship_type,
               company_id: employment.company_id,
-              operational_site_id: employment.operational_site_id,
+              primary_operational_site_id: employment.primary_operational_site_id,
+              remote_operational_site_ids: employment.remote_operational_site_ids,
               qualification_type: employment.qualification_type,
               hired_at: employment.hired_at ?? '',
               terminated_at: employment.terminated_at ?? '',
@@ -253,11 +276,18 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
     () => (mode.type === 'edit' ? relationToForSelectItem(mode.user.employment?.company) : null),
     [mode],
   )
-  const selectedOperationalSiteItem = useMemo(
+  const selectedPrimaryOperationalSiteItem = useMemo(
     () =>
       mode.type === 'edit'
-        ? relationToForSelectItem(mode.user.employment?.operational_site)
+        ? relationToForSelectItem(mode.user.employment?.primary_operational_site)
         : null,
+    [mode],
+  )
+  const selectedRemoteOperationalSiteItems = useMemo(
+    () =>
+      mode.type === 'edit'
+        ? relationsToForSelectItems(mode.user.employment?.remote_operational_sites)
+        : EMPTY_RELATION_REFS,
     [mode],
   )
   const selectedReportsToItem = useMemo(
@@ -399,7 +429,8 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
     // Employment relation selects hydration (spec 0015, AC-016).
     selectedBusinessFunctionItem,
     selectedCompanyItem,
-    selectedOperationalSiteItem,
+    selectedPrimaryOperationalSiteItem,
+    selectedRemoteOperationalSiteItems,
     selectedReportsToItem,
     onSubmit,
     handleAvatarUpload,

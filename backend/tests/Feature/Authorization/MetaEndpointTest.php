@@ -65,7 +65,8 @@ it('200: returns the field catalogue and the full permissions block (create-cont
 
     // Spec 0008: the users field catalogue now also carries the 11
     // personal_data.* keys (morph card + contacts/addresses sections).
-    // Spec 0015 adds the 12 employment.* keys.
+    // Spec 0015 adds the employment.* keys; spec 0103 (D-9) split the single
+    // employment.operational_site_id into primary/remote.
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
     expect($keys)->toEqualCanonicalizing([
         'email', 'locale', 'is_active', 'roles', 'password',
@@ -76,7 +77,8 @@ it('200: returns the field catalogue and the full permissions block (create-cont
         'personal_data.contacts', 'personal_data.addresses',
         'employment.is_manager', 'employment.job_description', 'employment.reports_to_id',
         'employment.business_function_id', 'employment.relationship_type', 'employment.company_id',
-        'employment.operational_site_id', 'employment.qualification_type', 'employment.hired_at',
+        'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
+        'employment.qualification_type', 'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
     ]);
 

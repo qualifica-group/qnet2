@@ -88,12 +88,20 @@ class UpdateUserRequest extends FormRequest
         return 'users';
     }
 
+    /**
+     * The field-permission diff (spec 0008) reads
+     * `employment.primary_operational_site_id` and
+     * `employment.remote_operational_site_ids`, which since spec 0103 are
+     * accessors over the site-membership pivot rather than plain columns.
+     * Loading the relation here keeps that comparison to the queries this
+     * request already needs, instead of one lazy load per checked field.
+     */
     protected function authorizationModel(): ?Model
     {
         /** @var User $user */
         $user = $this->route('user');
 
-        return $user;
+        return $user->loadMissing('employment.operationalSites');
     }
 
     /**

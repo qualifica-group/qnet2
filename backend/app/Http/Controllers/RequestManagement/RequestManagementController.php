@@ -10,6 +10,7 @@ use App\DataObjects\RequestManagement\CreateRequestData;
 use App\Enums\FormMode;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\RequestManagement\AssignRequestManagerGa3Request;
 use App\Http\Requests\RequestManagement\AssignRequestOperatorsRequest;
 use App\Http\Requests\RequestManagement\RequestFormContextRequest;
 use App\Http\Requests\RequestManagement\StoreRequestRequest;
@@ -285,6 +286,42 @@ class RequestManagementController extends BaseApiController
             );
 
             return $this->ok(['assigned' => $assigned], 'Operators assigned');
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
+     * POST /api/request-management/assign-manager-ga3 (spec 0104, direttiva
+     * utente 2026-09-07) — moves the GA3 slot of one or many Offerte onto a
+     * single chosen user, or CLEARS it when `manager_ga3_id` is null. No
+     * Sede, no mode: only the GA2 Operatore slot is bound to a Sede, so this
+     * action has neither a site to pick nor a site-scoped pool to balance
+     * across (D-1).
+     *
+     * Same D-3 skip-in-scope semantics as assignOperators() above: an id the
+     * actor may not reach is silently excluded, never a 403/404 on the batch
+     * (`assigned` reports what was actually reached).
+     *
+     * `assignManagerGa3` on top of `update`, mirroring `assignOperator`: a
+     * bulk write resolves no per-field permission, so restricting the
+     * `manager_ga3_id` field alone would leave this endpoint as the way
+     * around that restriction.
+     */
+    public function assignManagerGa3(AssignRequestManagerGa3Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            abort_unless($user->can('request-management.update'), 403);
+            abort_unless($user->can('request-management.assignManagerGa3'), 403);
+
+            $assigned = $this->assignmentService->assignManagerGa3(
+                $request->requestIds(),
+                $user,
+                $request->managerGa3Id(),
+            );
+
+            return $this->ok(['assigned' => $assigned], 'Manager GA3 assigned');
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

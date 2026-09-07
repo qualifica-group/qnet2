@@ -2,6 +2,8 @@ import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
+  AssignRequestManagerGa3Payload,
+  AssignRequestManagerGa3Result,
   AssignRequestOperatorsPayload,
   AssignRequestOperatorsResult,
   CreateRequestPayload,
@@ -100,6 +102,23 @@ export async function assignRequestOperators(
 ): Promise<AssignRequestOperatorsResult> {
   const { data } = await apiClient.post<ApiResponse<AssignRequestOperatorsResult>>(
     '/request-management/assign-operators',
+    payload,
+  )
+  return data.data
+}
+
+/**
+ * Bulk GA3 assignment (spec 0104): puts `manager_ga3_id` in the GA3 slot of
+ * every request in `request_ids`, or CLEARS that slot when it is `null`. No
+ * Sede and no mode — only the GA2 Operatore is bound to a Sede. Returns how
+ * many requests were actually reached; ids outside the actor's scope are
+ * skipped, same D-3 rule as `assignRequestOperators`.
+ */
+export async function assignRequestManagerGa3(
+  payload: AssignRequestManagerGa3Payload,
+): Promise<AssignRequestManagerGa3Result> {
+  const { data } = await apiClient.post<ApiResponse<AssignRequestManagerGa3Result>>(
+    '/request-management/assign-manager-ga3',
     payload,
   )
   return data.data

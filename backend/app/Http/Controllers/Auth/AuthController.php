@@ -17,6 +17,7 @@ use App\Services\AuthService;
 use App\Services\AvatarService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -30,12 +31,30 @@ class AuthController extends BaseApiController
      * profilo/avatar deve avere le stesse chiavi di quello di `me()`.
      *
      * `employment` serve al form di creazione richieste, che precompila la
-     * Sede operativa con `employment.operational_site_id` dell'utente connesso
-     * (direttiva utente 2026-08-04).
+     * Sede operativa con `employment.primary_operational_site_id` (direttiva
+     * utente 2026-08-04). Fetta stretta invariata rispetto a prima della spec
+     * 0103 — l'elenco delle appartenenze e' stato tolto (decisione utente
+     * 2026-09-07: la riga di chip del picker Sede e' stata rimossa, nessun
+     * consumer resta per `operational_sites`) — solo servita dalla pivot
+     * (`EmploymentProfile::primaryOperationalSiteId()`) invece che dalla
+     * colonna. Diversa dalla shape di EmploymentResource (usata da
+     * GET /api/users/{user}, che espone anche le remote e i reference): per
+     * questo si risolve UserResource e si sovrascrive `employment` invece di
+     * riusarlo cosi' com'e' — resta comunque un Resource a monte, mai il
+     * model raw.
      */
-    private function authenticatedUserPayload(User $user): UserResource
+    private function authenticatedUserPayload(User $user): array
     {
-        return new UserResource($user->loadMissing('employment'));
+        $resource = new UserResource($user->loadMissing('employment.operationalSites'));
+
+        $payload = $this->withCustomFields($resource);
+        $payload = $payload instanceof JsonResource ? $payload->resolve() : $payload;
+
+        if ($user->employment !== null) {
+            $payload['employment'] = ['primary_operational_site_id' => $user->employment->primary_operational_site_id];
+        }
+
+        return $payload;
     }
 
     /**

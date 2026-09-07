@@ -4,9 +4,7 @@ namespace App\Tables\Users;
 
 use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
-use App\Models\Address;
 use App\Models\EmploymentProfile;
-use App\Models\OperationalSite;
 use App\Models\User;
 use App\Services\Table\FilterApplier;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +17,9 @@ use InvalidArgumentException;
  * business_function/company/reports_to (related NAMES), relationship_type/
  * qualification_type (enums), is_manager (boolean), hired_at/terminated_at
  * (dates) and operational_site (formatted address line, CONDITIONS-ONLY —
- * mirrors `primary_address`, spec 0005 UX decision).
+ * mirrors `primary_address`, spec 0005 UX decision; cell/filter/sort split
+ * physical-vs-remote per spec 0103 D-7, delegated to
+ * UserOperationalSiteColumn below).
  *
  * None of these has a real column on `users`: every filter/sort/distinct-
  * values resolution goes through `employment` (a hasOne), matched via
@@ -53,7 +53,10 @@ class UserEmploymentColumns
 
     private const array DATE_COLUMNS = ['hired_at', 'terminated_at'];
 
-    public function __construct(private readonly FilterApplier $filterApplier) {}
+    public function __construct(
+        private readonly FilterApplier $filterApplier,
+        private readonly UserOperationalSiteColumn $operationalSiteColumn,
+    ) {}
 
     public function isEmploymentColumn(string $columnId): bool
     {
@@ -74,7 +77,7 @@ class UserEmploymentColumns
         return [
             'business_function' => $employment?->businessFunction?->name,
             'company' => $employment?->company?->denomination,
-            'operational_site' => $this->operationalSiteLabel($employment?->operationalSite),
+            'operational_site' => $this->operationalSiteColumn->label($employment),
             'relationship_type' => $employment?->relationship_type?->value,
             'qualification_type' => $employment?->qualification_type?->value,
             'is_manager' => $employment?->is_manager ?? false,
@@ -135,7 +138,7 @@ class UserEmploymentColumns
         }
 
         if ($columnId === 'operational_site') {
-            $this->applyOperationalSiteFilter($query, $filter);
+            $this->operationalSiteColumn->applyFilter($query, $filter);
         }
     }
 
@@ -172,37 +175,6 @@ class UserEmploymentColumns
     }
 
     /**
-     * `operational_site` CONDITIONS-ONLY text filter: bound LIKE on the site's
-     * primary address street/postal/city-name (mirrors UserPersonalDataColumns
-     * ::applyAddressFilter — no Set/checklist, spec 0005 UX decision, hence
-     * declared `hasFilterValues:false` on the column).
-     *
-     * @param  Builder<User>  $query
-     * @param  array<string, mixed>  $filter
-     */
-    private function applyOperationalSiteFilter(Builder $query, array $filter): void
-    {
-        $value = $filter['filter'] ?? null;
-
-        if (! is_scalar($value) || $value === '') {
-            return;
-        }
-
-        $needle = '%'.$this->filterApplier->escapeLike((string) $value).'%';
-
-        $query->whereHas('employment.operationalSite.addresses', static function (Builder $addressQuery) use ($needle): void {
-            $addressQuery->where('is_primary', true)
-                ->where(function (Builder $match) use ($needle): void {
-                    $match->where('line1', 'like', $needle)
-                        ->orWhere('postal_code', 'like', $needle)
-                        ->orWhereHas('city', static function (Builder $cityQuery) use ($needle): void {
-                            $cityQuery->where('name', 'like', $needle);
-                        });
-                });
-        });
-    }
-
-    /**
      * ORDER BY the employment-derived value via a correlated subquery scoped
      * to `employment_profiles.user_id`, so sorting never needs a row-
      * multiplying JOIN (employment is truly 1:1, but every related name is a
@@ -224,13 +196,7 @@ class UserEmploymentColumns
         }
 
         if ($columnId === 'operational_site') {
-            return $this->correlateToEmployment(
-                Address::query()
-                    ->select('addresses.line1')
-                    ->join('employment_profiles', 'employment_profiles.operational_site_id', '=', 'addresses.addressable_id')
-                    ->where('addresses.addressable_type', (new OperationalSite)->getMorphClass())
-                    ->where('addresses.is_primary', true),
-            );
+            return $this->operationalSiteColumn->sortSubquery();
         }
 
         return null;
@@ -263,15 +229,6 @@ class UserEmploymentColumns
             'reports_to' => 'reports_to_id',
             default => throw new InvalidArgumentException("Unknown related-name column [{$columnId}]."),
         };
-    }
-
-    /**
-     * @param  Builder<Model>  $subquery
-     * @return Builder<Model>
-     */
-    private function correlateToEmployment(Builder $subquery): Builder
-    {
-        return $subquery->whereColumn('employment_profiles.user_id', 'users.id')->limit(1);
     }
 
     /**
@@ -345,22 +302,5 @@ class UserEmploymentColumns
             ->pluck($column['nameColumn'])
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
-    }
-
-    /**
-     * Format the operational site's primary address as "line1[- city]", or
-     * null when the site/address is missing (spec 0015 label contract).
-     */
-    private function operationalSiteLabel(?OperationalSite $site): ?string
-    {
-        $address = $site?->primaryAddress;
-
-        if ($address === null) {
-            return null;
-        }
-
-        $city = $address->city?->localizedName();
-
-        return $city !== null ? "{$address->line1} - {$city}" : $address->line1;
     }
 }

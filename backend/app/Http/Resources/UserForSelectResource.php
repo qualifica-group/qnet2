@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Abstracts\ForSelectResource;
 use App\Models\Address;
+use App\Models\OperationalSite;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -15,14 +16,17 @@ use Illuminate\Http\Request;
  * service projecting only the fields needed by the select plus the eager-loaded
  * avatar relation — never a full UserResource.
  *
- * `meta` (spec 0048) carries the operator's Sede — {operational_site_id,
- * operational_site_label} — so the Lead form can auto-fill the Sede when an
- * Operatore is picked first. Label composed "{line1} - {city}" from the
- * site's primary address, the SAME composition
- * OperationalSiteForSelectResource/LeadOperationalSiteColumn use (no shared
- * helper — replicated for minimal blast radius). Omitted when the user has
- * no employment profile or no Sede. Relies on the service eager-loading
- * `employment.operationalSite.addresses.city`.
+ * `meta` (spec 0048, kept singular by spec 0103 AC-011) carries the operator's
+ * PHYSICAL Sede — {operational_site_id, operational_site_label} — so the Lead
+ * form can auto-fill the Sede when an Operatore is picked first. The list
+ * itself may include the operator because of a REMOTE membership (D-1), but
+ * `meta` always names the physical one, read off the pivot's `is_primary`
+ * flag. Label composed "{line1} - {city}" from the site's primary address,
+ * the SAME composition OperationalSiteForSelectResource/
+ * LeadOperationalSiteColumn use (no shared helper — replicated for minimal
+ * blast radius). Omitted when the user has no employment profile or no
+ * physical Sede. Relies on the service eager-loading
+ * `employment.operationalSites.addresses.city`.
  *
  * @mixin User
  */
@@ -47,7 +51,8 @@ class UserForSelectResource extends ForSelectResource
      */
     private function composeMeta(): ?array
     {
-        $site = $this->employment?->operationalSite;
+        $site = $this->employment?->operationalSites
+            ->first(fn (OperationalSite $site): bool => (bool) $site->pivot->is_primary);
 
         if ($site === null) {
             return null;

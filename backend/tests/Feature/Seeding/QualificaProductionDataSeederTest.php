@@ -60,10 +60,13 @@ it('gives the testers an operational site, so they are selectable as operators',
 
     test()->seed(QualificaProductionDataSeeder::class);
 
-    // Spec 0048: the Operatore select filters users on this very column, so an
-    // account without an employment profile never appears in the list.
-    expect(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail()->employment->operational_site_id)
-        ->toBe($site->getKey());
+    // Spec 0103: the Operatore select filters users on this very pivot
+    // membership, so an account without an employment profile never appears
+    // in the list.
+    $employment = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')
+        ->with('employment.operationalSites')->firstOrFail()->employment;
+
+    expect($employment->primaryOperationalSiteId)->toBe($site->getKey());
 });
 
 it('leaves the sample pipeline unseeded when the catalogue derives no business function', function (): void {

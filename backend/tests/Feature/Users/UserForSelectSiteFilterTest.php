@@ -11,10 +11,13 @@ use Spatie\Permission\Models\Permission;
 uses(RefreshDatabase::class);
 
 /**
- * Spec 0048 (A): GET /api/users/for-select gains an optional
- * `operational_site_id` filter (employment.operational_site_id) plus a Sede
- * `meta` on every item. Distinct file from UserForSelectTest.php (existing
- * for-select coverage, untouched).
+ * Spec 0048 (A) + spec 0103 (D-1): GET /api/users/for-select gains an
+ * optional `operational_site_id` filter, widened by 0103 to match a user
+ * whose employment profile holds that Sede as PHYSICAL *or* REMOTE on the
+ * `employment_profile_operational_site` pivot, plus a Sede `meta` on every
+ * item that ALWAYS names the physical one (AC-011), regardless of which
+ * membership matched the filter. Distinct file from UserForSelectTest.php
+ * (existing for-select coverage, untouched).
  */
 if (! function_exists('siteFilterActor')) {
     function siteFilterActor(): User
@@ -29,7 +32,7 @@ if (! function_exists('siteFilterActor')) {
 
 // ---------------------------------------------------------------------------
 // AC-001 — no operational_site_id: unchanged (every user, meta only when the
-// operator actually has a Sede).
+// operator actually has a physical Sede).
 // ---------------------------------------------------------------------------
 
 it('AC-001: without operational_site_id, every user is returned and meta is absent without a Sede', function () {
@@ -46,7 +49,8 @@ it('AC-001: without operational_site_id, every user is returned and meta is abse
 });
 
 // ---------------------------------------------------------------------------
-// AC-002 — operational_site_id filters to users employed at that Sede only.
+// AC-002 / AC-010 — operational_site_id restricts the list to users employed
+// at that Sede, physical OR remote.
 // ---------------------------------------------------------------------------
 
 it('AC-002: operational_site_id restricts the list to users employed at that Sede', function () {
@@ -54,9 +58,9 @@ it('AC-002: operational_site_id restricts the list to users employed at that Sed
     $siteA = OperationalSite::factory()->withAddress()->create();
     $siteB = OperationalSite::factory()->withAddress()->create();
     $atSiteA = User::factory()->create();
-    EmploymentProfile::factory()->create(['user_id' => $atSiteA->id, 'operational_site_id' => $siteA->id]);
+    EmploymentProfile::factory()->physicalSite($siteA)->create(['user_id' => $atSiteA->id]);
     $atSiteB = User::factory()->create();
-    EmploymentProfile::factory()->create(['user_id' => $atSiteB->id, 'operational_site_id' => $siteB->id]);
+    EmploymentProfile::factory()->physicalSite($siteB)->create(['user_id' => $atSiteB->id]);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson("/api/users/for-select?operational_site_id={$siteA->id}")->assertOk();
@@ -77,16 +81,41 @@ it('AC-002: rejects an operational_site_id that does not exist (422)', function 
         ->assertJsonValidationErrors('operational_site_id');
 });
 
+it('AC-010: a user with the Sede as PHYSICAL and one with it as REMOTE both appear', function () {
+    $actor = siteFilterActor();
+    $siteX = OperationalSite::factory()->withAddress()->create();
+    $otherSite = OperationalSite::factory()->withAddress()->create();
+
+    $physicalOperator = User::factory()->create();
+    EmploymentProfile::factory()->physicalSite($siteX)->create(['user_id' => $physicalOperator->id]);
+
+    $remoteOperator = User::factory()->create();
+    EmploymentProfile::factory()
+        ->physicalSite($otherSite)
+        ->remoteSites($siteX)
+        ->create(['user_id' => $remoteOperator->id]);
+
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/users/for-select?operational_site_id={$siteX->id}")->assertOk();
+
+    $ids = collect($response->json('items'))->pluck('id');
+
+    expect($ids)->toContain($physicalOperator->id)
+        ->and($ids)->toContain($remoteOperator->id);
+});
+
 // ---------------------------------------------------------------------------
-// AC-003 — meta.operational_site_id + composed label; null without a Sede.
+// AC-003 / AC-011 — meta.operational_site_id + composed label always names
+// the PHYSICAL Sede, even when the filter matched a REMOTE membership.
 // ---------------------------------------------------------------------------
 
-it('AC-003: an operator with a Sede exposes meta {operational_site_id, operational_site_label}', function () {
+it('AC-003: an operator with a physical Sede exposes meta {operational_site_id, operational_site_label}', function () {
     $actor = siteFilterActor();
     $city = City::factory()->create(['name' => 'Springfield']);
     $site = OperationalSite::factory()->withAddress($city)->create();
     $operator = User::factory()->create();
-    EmploymentProfile::factory()->create(['user_id' => $operator->id, 'operational_site_id' => $site->id]);
+    EmploymentProfile::factory()->physicalSite($site)->create(['user_id' => $operator->id]);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/users/for-select')->assertOk();
@@ -103,7 +132,7 @@ it('AC-003: an operator with a Sede exposes meta {operational_site_id, operation
 it('AC-003: an operator without a Sede omits meta entirely', function () {
     $actor = siteFilterActor();
     $operator = User::factory()->create();
-    EmploymentProfile::factory()->create(['user_id' => $operator->id, 'operational_site_id' => null]);
+    EmploymentProfile::factory()->create(['user_id' => $operator->id]);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/users/for-select')->assertOk();
@@ -111,4 +140,42 @@ it('AC-003: an operator without a Sede omits meta entirely', function () {
     $item = collect($response->json('items'))->firstWhere('id', $operator->id);
 
     expect(array_key_exists('meta', $item))->toBeFalse();
+});
+
+it('AC-011: filtering by a REMOTE Sede still reports the operator\'s PHYSICAL Sede in meta', function () {
+    $actor = siteFilterActor();
+    $physicalCity = City::factory()->create(['name' => 'Physicalville']);
+    $siteY = OperationalSite::factory()->withAddress($physicalCity)->create();
+    $siteX = OperationalSite::factory()->withAddress()->create();
+
+    $operator = User::factory()->create();
+    EmploymentProfile::factory()
+        ->physicalSite($siteY)
+        ->remoteSites($siteX)
+        ->create(['user_id' => $operator->id]);
+
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/users/for-select?operational_site_id={$siteX->id}")->assertOk();
+
+    $item = collect($response->json('items'))->firstWhere('id', $operator->id);
+
+    expect($item['meta']['operational_site_id'])->toBe($siteY->id);
+});
+
+it('AC-011: an operator with ONLY a remote Sede (no physical) omits meta entirely', function () {
+    $actor = siteFilterActor();
+    $siteX = OperationalSite::factory()->withAddress()->create();
+
+    $operator = User::factory()->create();
+    EmploymentProfile::factory()->remoteSites($siteX)->create(['user_id' => $operator->id]);
+
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/users/for-select?operational_site_id={$siteX->id}")->assertOk();
+
+    $item = collect($response->json('items'))->firstWhere('id', $operator->id);
+
+    expect($item)->not->toBeNull()
+        ->and(array_key_exists('meta', $item))->toBeFalse();
 });

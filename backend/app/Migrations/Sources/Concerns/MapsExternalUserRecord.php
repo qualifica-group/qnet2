@@ -127,6 +127,12 @@ trait MapsExternalUserRecord
      * warning and leaves that link null. An unknown relationship/
      * qualification type is likewise a non-fatal warning.
      *
+     * The external system carries a SINGLE site per user (spec 0103 context):
+     * it becomes the PHYSICAL membership, so `primaryOperationalSiteIdProvided`
+     * is always true on a create — the resolved id, or null when absent/
+     * unresolved, is the whole desired state of that side. The remote side is
+     * left unprovided: the external system has no notion of it.
+     *
      * @param  array<string, mixed>  $record
      * @return array{0: ?EmploymentData, 1: array<int, string>}
      */
@@ -150,7 +156,8 @@ trait MapsExternalUserRecord
             businessFunctionId: $businessFunctionId,
             relationshipType: $this->resolveRelationshipType($record['relationship_type'] ?? null, $warnings),
             companyId: $companyId,
-            operationalSiteId: $operationalSiteId,
+            primaryOperationalSiteIdProvided: true,
+            primaryOperationalSiteId: $operationalSiteId,
             qualificationType: $this->resolveQualificationType($record['qualification_type'] ?? null, $warnings),
             hiredAt: $this->blankToNull($record['hired_at'] ?? null),
             terminatedAt: $this->blankToNull($record['terminated_at'] ?? null),
@@ -171,6 +178,11 @@ trait MapsExternalUserRecord
      * were migrated, and the self-referential manager (`reports_to_id`) whose
      * record is processed after the subordinate — both are fixed by simply
      * running the users import again once every parent exists.
+     *
+     * The site membership (spec 0103) is no longer one of these NULL columns:
+     * its own "fill once, never overwrite" counterpart is
+     * backfillPhysicalSite() below, keyed off the pivot instead of a column —
+     * see resolveAndBackfillEmployment() for how the two combine.
      *
      * @param  array<string, mixed>  $record
      * @return array<int, string>
@@ -205,9 +217,12 @@ trait MapsExternalUserRecord
 
     /**
      * Re-resolve the record's employment relations and back-fill any that are
-     * still NULL on the already-existing user. Returns how many columns were
-     * filled and the resolution warnings — shared by the re-import skip path
-     * and the end-of-import relinking pass, which surface them differently.
+     * still unset on the already-existing user: the plain columns via
+     * nullRelationBackfill(), the site membership via backfillPhysicalSite()
+     * (spec 0103 — a pivot row, not a column, so it needs its own gate).
+     * Returns how many references were filled in total and the resolution
+     * warnings — shared by the re-import skip path and the end-of-import
+     * relinking pass, which surface them differently.
      *
      * @param  array<string, mixed>  $record
      * @return array{0: int, 1: array<int, string>}
@@ -219,7 +234,7 @@ trait MapsExternalUserRecord
         }
 
         /** @var User|null $user */
-        $user = User::query()->where('old_id', $externalId)->with('employment')->first();
+        $user = User::query()->where('old_id', $externalId)->with('employment.operationalSites')->first();
 
         if ($user?->employment === null) {
             return [0, []];
@@ -232,19 +247,26 @@ trait MapsExternalUserRecord
         }
 
         $fill = $this->nullRelationBackfill($user->employment, $employment);
+        $filled = count($fill);
 
         if ($fill !== []) {
             $user->employment->update($fill);
         }
 
-        return [count($fill), $warnings];
+        if ($this->backfillPhysicalSite($user->employment, $employment)) {
+            $filled++;
+        }
+
+        return [$filled, $warnings];
     }
 
     /**
-     * The employment relation columns still NULL on the existing row that now
-     * resolve to a qnet id — filled once, never overwriting. A manager can
-     * never report to someone (the EmploymentWriter invariant), so
-     * `reports_to_id` is back-filled only for non-managers.
+     * The plain employment relation columns still NULL on the existing row
+     * that now resolve to a qnet id — filled once, never overwriting. The
+     * site membership (spec 0103) is no longer one of these columns: its own
+     * counterpart is backfillPhysicalSite() below. A manager can never report
+     * to someone (the EmploymentWriter invariant), so `reports_to_id` is
+     * back-filled only for non-managers.
      *
      * @return array<string, int>
      */
@@ -253,7 +275,6 @@ trait MapsExternalUserRecord
         $candidates = [
             'business_function_id' => $desired->businessFunctionId,
             'company_id' => $desired->companyId,
-            'operational_site_id' => $desired->operationalSiteId,
         ];
 
         if (! $desired->isManager) {
@@ -269,6 +290,35 @@ trait MapsExternalUserRecord
         }
 
         return $fill;
+    }
+
+    /**
+     * Self-healing counterpart of nullRelationBackfill() for the site
+     * membership (spec 0103 D-5/AC-031): a profile with no PHYSICAL site yet
+     * gets the resolved external site attached to
+     * `employment_profile_operational_site` as `is_primary = true` — the same
+     * "fill once, never overwrite" property translated from a NULL column to
+     * an absent pivot row. A profile that already has a physical site
+     * (assigned by hand, or by an earlier import pass) is left untouched:
+     * this is what keeps a manual assignment surviving re-import, and what
+     * makes re-importing the same record idempotent — the attach only ever
+     * happens the first time a physical site is missing.
+     *
+     * `syncWithoutDetaching` (not `attach`) so that a site already present as
+     * REMOTE on this profile is promoted in place instead of colliding with
+     * the pivot's unique (employment_profile_id, operational_site_id) pair.
+     */
+    private function backfillPhysicalSite(EmploymentProfile $existing, EmploymentData $desired): bool
+    {
+        if ($desired->primaryOperationalSiteId === null || $existing->primary_operational_site_id !== null) {
+            return false;
+        }
+
+        $existing->operationalSites()->syncWithoutDetaching([
+            $desired->primaryOperationalSiteId => ['is_primary' => true],
+        ]);
+
+        return true;
     }
 
     /**

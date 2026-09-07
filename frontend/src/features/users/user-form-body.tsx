@@ -64,7 +64,8 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
     selectedRoleItems,
     selectedBusinessFunctionItem,
     selectedCompanyItem,
-    selectedOperationalSiteItem,
+    selectedPrimaryOperationalSiteItem,
+    selectedRemoteOperationalSiteItems,
     selectedReportsToItem,
     onSubmit,
     setPendingAvatar,
@@ -104,7 +105,8 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
   const contractVisible =
     fieldPermission('employment.relationship_type').visible ||
     fieldPermission('employment.company_id').visible ||
-    fieldPermission('employment.operational_site_id').visible
+    fieldPermission('employment.primary_operational_site_id').visible ||
+    fieldPermission('employment.remote_operational_site_ids').visible
   const contractDataVisible =
     fieldPermission('employment.qualification_type').visible ||
     fieldPermission('employment.hired_at').visible ||
@@ -165,7 +167,8 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
             <ContractTabContent
               control={form.control}
               selectedCompanyItem={selectedCompanyItem}
-              selectedOperationalSiteItem={selectedOperationalSiteItem}
+              selectedPrimaryOperationalSiteItem={selectedPrimaryOperationalSiteItem}
+              selectedRemoteOperationalSiteItems={selectedRemoteOperationalSiteItems}
             />
           )}
 

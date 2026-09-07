@@ -254,6 +254,55 @@ describe('LeadFormBody — Operatore auto-fills the Sede (AC-061)', () => {
   })
 })
 
+describe('LeadFormBody — a Sede already chosen is never overwritten (AC-026/AC-027, spec 0103 D-13)', () => {
+  it('AC-026: leaves an already-chosen Sede untouched when the picked Operator has a different physical Sede', async () => {
+    render(
+      <LeadForm
+        mode={{
+          type: 'edit',
+          lead: lead({
+            operational_site_id: SITE_A.id,
+            operational_site: { id: SITE_A.id, label: SITE_A.label },
+          }),
+        }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await waitFor(() => expect(screen.getByTestId('select-Site')).toHaveTextContent(String(SITE_A.id)))
+
+    // OPERATOR_WITH_SITE's own employment Sede (66) differs from the Sede
+    // already on the form (77): with remote memberships (spec 0103) that
+    // operator can legitimately show up in this Sede's filtered list, so the
+    // Sede must NOT flip to the operator's physical one.
+    fireEvent.click(screen.getByTestId('select-Operator'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('select-Operator')).toHaveTextContent(String(OPERATOR_WITH_SITE.id)),
+    )
+    expect(screen.getByTestId('select-Site')).toHaveTextContent(String(SITE_A.id))
+  })
+
+  it('AC-027: still auto-fills an empty Sede from the picked Operator', async () => {
+    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByTestId('select-Operator')).toBeInTheDocument())
+    expect(screen.getByTestId('select-Site')).toHaveTextContent('')
+
+    fireEvent.click(screen.getByTestId('select-Operator'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('select-Site')).toHaveTextContent(
+        String(OPERATOR_WITH_SITE.meta?.operational_site_id),
+      ),
+    )
+  })
+})
+
 describe('LeadFormBody — changing the Sede clears the Operatore (AC-062)', () => {
   it('clears a previously picked Operator once the Sede changes to a different value', async () => {
     render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {

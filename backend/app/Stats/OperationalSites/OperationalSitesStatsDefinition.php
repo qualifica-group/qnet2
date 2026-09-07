@@ -26,8 +26,11 @@ class OperationalSitesStatsDefinition extends AbstractStatsDefinition
 
     private const string ADDRESSES_TABLE = 'addresses';
 
-    /** The staff assignment lives on the employment profile, not on the site. */
-    private const string EMPLOYMENT_TABLE = 'employment_profiles';
+    /**
+     * The staff assignment lives on the employment-profile <-> site pivot
+     * (spec 0103, D-9), not on a column of either side.
+     */
+    private const string EMPLOYMENT_SITE_TABLE = 'employment_profile_operational_site';
 
     private const string LEADS_TABLE = 'leads';
 
@@ -62,9 +65,13 @@ class OperationalSitesStatsDefinition extends AbstractStatsDefinition
                 ),
                 icon: 'map-pin',
             ),
+            // A site is "staffed" as soon as it holds ONE membership,
+            // physical or remote (D-12): no `is_primary` filter. `EXISTS`
+            // never duplicates the outer row even when a site has several
+            // memberships, so this stays a site count, not a membership one.
             $this->stat(
                 key: 'staffed',
-                value: Aggregates::countWithRelated(self::TABLE, self::EMPLOYMENT_TABLE, 'operational_site_id'),
+                value: Aggregates::countWithRelated(self::TABLE, self::EMPLOYMENT_SITE_TABLE, 'operational_site_id'),
                 icon: 'users',
             ),
             $this->stat(

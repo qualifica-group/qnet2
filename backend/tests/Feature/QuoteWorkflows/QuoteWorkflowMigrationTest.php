@@ -72,9 +72,16 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_04_100700_create_task_watcher_table` (50th),
     // `2026_09_04_110000_move_next_callback_from_opportunities_to_quotes_table`
     // (51st), and spec 0101 D-5's rectification
-    // `2026_09_04_120000_add_group_to_task_statuses_table` (52nd).
+    // `2026_09_04_120000_add_group_to_task_statuses_table` (52nd), and the
+    // user multi-site membership spec's three,
+    // `2026_09_07_100000_create_employment_profile_operational_site_table`
+    // (53rd),
+    // `2026_09_07_100100_move_employment_operational_site_to_pivot` (54th)
+    // and
+    // `2026_09_07_100200_split_employment_operational_site_field_permission`
+    // (55th).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 52]);
+    Artisan::call('migrate:rollback', ['--step' => 55]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

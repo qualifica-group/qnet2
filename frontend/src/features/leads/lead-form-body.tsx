@@ -95,10 +95,17 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
       onCampaignApplied: applyCampaignSitePrefill,
     })
 
-  // Operatore -> Sede (AC-061): picking an Operatore hydrates its own Sede
-  // from `meta` (no extra fetch), mirroring the Campaign->Sede chain above.
-  // An operator with no Sede leaves the current value untouched.
+  // Operatore -> Sede (AC-061, gated by D-6/AC-026/AC-027 since spec 0103):
+  // picking an Operatore hydrates its own Sede from `meta` (no extra fetch),
+  // mirroring the Campaign->Sede chain above, but ONLY while the Sede field
+  // is still empty. With remote memberships (spec 0103) the Operatore list
+  // scoped to a Sede can include people whose PHYSICAL Sede differs, so once
+  // a Sede is chosen it is never overwritten by this fill — `previousSiteIdRef`
+  // then needs no separate update here: it is only ever written in this
+  // branch, which now only runs when the field was empty, so it always stays
+  // equal to the field's actual value (see the skipped branch below).
   const handleOperatorItemChange = (item: ForSelectItem | null) => {
+    if (siteId != null) return
     const operator = item as UserForSelectItem | null
     const site = operator?.meta
     if (site?.operational_site_id == null) return

@@ -98,7 +98,11 @@ class UsersTableDefinition extends AbstractTableDefinition
                 'employment.businessFunction',
                 'employment.company',
                 'employment.reportsTo',
-                'employment.operationalSite' => function ($query): void {
+                // Spec 0103 D-7: the CELL always shows the PHYSICAL site only
+                // (never a remote membership), so only the pivot-scoped
+                // `primaryOperationalSite` relation is eager-loaded here —
+                // UserOperationalSiteColumn::label() reads it from memory.
+                'employment.primaryOperationalSite' => function ($query): void {
                     $query->with(['addresses' => function ($addressQuery): void {
                         $addressQuery->where('is_primary', true)->with('city:id,name');
                     }]);

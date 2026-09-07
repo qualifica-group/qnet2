@@ -84,19 +84,39 @@ it('returns the authenticated user on /me with a UserResource', function () {
 /**
  * The client caches this payload as the current user, and the
  * request-management create form defaults the Sede operativa from
- * `employment.operational_site_id` (user directive 2026-08-04) — so the key
- * must be there, not only on the Users module's own endpoints.
+ * `employment.primary_operational_site_id` (user directive 2026-08-04) — so
+ * the key must be there, not only on the Users module's own endpoints.
+ * AC-022 (revised 2026-09-07): the picker's chip row was removed, so
+ * `employment` is back to the SAME narrow, scalar-only shape it had before
+ * spec 0103 — only now served off the pivot
+ * (EmploymentProfile::primaryOperationalSiteId()) instead of the dropped
+ * column. `operational_sites` has no consumer left and must NOT be emitted.
  */
-it('exposes the authenticated user employment Sede on /me', function () {
+it('exposes only the authenticated user\'s physical Sede id on /me (AC-022)', function () {
     $user = User::factory()->create();
-    $site = OperationalSite::factory()->create();
-    EmploymentProfile::factory()->create(['user_id' => $user->id, 'operational_site_id' => $site->id]);
+    $physical = OperationalSite::factory()->create();
+    $remote = OperationalSite::factory()->create();
+    EmploymentProfile::factory()
+        ->physicalSite($physical)
+        ->remoteSites($remote)
+        ->create(['user_id' => $user->id]);
 
     Sanctum::actingAs($user);
 
     $this->getJson('/api/auth/me')
         ->assertOk()
-        ->assertJsonPath('data.employment.operational_site_id', $site->id);
+        ->assertJsonPath('data.employment.primary_operational_site_id', $physical->id)
+        ->assertJsonMissingPath('data.employment.operational_sites');
+});
+
+it('omits employment on /me for a user with no employment profile', function () {
+    $user = User::factory()->create();
+
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/auth/me')
+        ->assertOk()
+        ->assertJsonMissingPath('data.employment');
 });
 
 it('blocks /me without authentication', function () {

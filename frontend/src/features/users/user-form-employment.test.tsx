@@ -153,11 +153,16 @@ function userWithEmployment(): UserDetailWithPermissions {
       reports_to_id: 2,
       business_function_id: 3,
       company_id: 5,
-      operational_site_id: 8,
+      primary_operational_site_id: 8,
+      remote_operational_site_ids: [9, 10],
       reports_to: { id: 2, label: 'Grace Hopper' },
       business_function: { id: 3, label: 'Engineering' },
       company: { id: 5, label: 'Acme Srl' },
-      operational_site: { id: 8, label: 'Via Roma 1' },
+      primary_operational_site: { id: 8, label: 'Via Roma 1' },
+      remote_operational_sites: [
+        { id: 9, label: 'Via Milano 2' },
+        { id: 10, label: 'Via Torino 3' },
+      ],
     },
   })
 }
@@ -297,8 +302,6 @@ describe('UserForm — employment relation selects (spec 0015 AC-016)', () => {
 
     expect(screen.getByTestId('resource-Company')).toHaveTextContent('companies')
     expect(screen.getByTestId('selected-label-Company')).toHaveTextContent('Acme Srl')
-    expect(screen.getByTestId('resource-Operational site')).toHaveTextContent('operational-sites')
-    expect(screen.getByTestId('selected-label-Operational site')).toHaveTextContent('Via Roma 1')
   })
 })
 
@@ -321,7 +324,8 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
       business_function_id: null,
       relationship_type: null,
       company_id: null,
-      operational_site_id: null,
+      primary_operational_site_id: null,
+      remote_operational_site_ids: [],
       qualification_type: null,
       hired_at: null,
       terminated_at: null,

@@ -261,7 +261,15 @@ describe('Work panel — Operatore auto-fills the Sede', () => {
     await waitFor(() => expect(siteField()).toHaveTextContent(String(OPERATOR_WITH_SITE.meta?.operational_site_id)))
   })
 
-  it('leaves the Sede untouched for an operator with no Sede', async () => {
+  /**
+   * AC-023 (spec 0103 D-6): the requirement changed here — a persisted Sede
+   * used to be overwritten unconditionally by any operator pick, which this
+   * test used to assert (`toHaveTextContent('66')`). It now stays put,
+   * proven across both an operator carrying its own Sede AND one with none,
+   * since with remote appartenenze the operator picker can return operators
+   * whose physical Sede differs from the one already on the record.
+   */
+  it('keeps a persisted Sede across operator picks, whether or not the operator has one', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(
       panel({ operational_site_id: 77, operational_site: { id: 77, label: 'Warehouse A' } }),
     )
@@ -269,11 +277,27 @@ describe('Work panel — Operatore auto-fills the Sede', () => {
     renderPanel()
     // The stub picks OPERATOR_WITH_SITE first, then OPERATOR_NO_SITE.
     fireEvent.click(await screen.findByTestId(`select-${OPERATOR_SLOT_LABEL}`))
-    await waitFor(() => expect(siteField()).toHaveTextContent('66'))
+    await waitFor(() => expect(operatorField()).toHaveTextContent(String(OPERATOR_WITH_SITE.id)))
+    expect(siteField()).toHaveTextContent('77')
+
     fireEvent.click(operatorField())
 
     await waitFor(() => expect(operatorField()).toHaveTextContent(String(OPERATOR_NO_SITE.id)))
-    expect(siteField()).toHaveTextContent('66')
+    expect(siteField()).toHaveTextContent('77')
+  })
+
+  /** AC-023/AC-025: same rule when the Sede was just picked interactively, not persisted. */
+  it('does not let a freshly picked Sede be overwritten by the operator picker', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+
+    renderPanel()
+    fireEvent.click(await screen.findByTestId('select-Operational site'))
+    await waitFor(() => expect(siteField()).toHaveTextContent(String(SITE_A.id)))
+
+    fireEvent.click(await screen.findByTestId(`select-${OPERATOR_SLOT_LABEL}`))
+
+    await waitFor(() => expect(operatorField()).toHaveTextContent(String(OPERATOR_WITH_SITE.id)))
+    expect(siteField()).toHaveTextContent(String(SITE_A.id))
   })
 
   it('does NOT clear the operator it just auto-filled the Sede from', async () => {
@@ -287,6 +311,27 @@ describe('Work panel — Operatore auto-fills the Sede', () => {
 })
 
 describe('Work panel — changing the Sede clears the Operatore', () => {
+  /**
+   * Pins `previousSiteIdRef` after a SKIPPED auto-fill (spec 0103 D-6): the
+   * ref must still hold the true previous Sede, so a later real pick clears
+   * the operator slot exactly as it would have without the skip.
+   */
+  it('still clears the operator on a real Sede change after a skipped auto-fill', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({ operational_site_id: 77, operational_site: { id: 77, label: 'Warehouse A' } }),
+    )
+
+    renderPanel()
+    fireEvent.click(await screen.findByTestId(`select-${OPERATOR_SLOT_LABEL}`)) // operator 5, Sede 66 -- skipped, Sede stays 77
+    await waitFor(() => expect(operatorField()).toHaveTextContent(String(OPERATOR_WITH_SITE.id)))
+    expect(siteField()).toHaveTextContent('77')
+
+    fireEvent.click(siteField()) // a REAL Sede pick, 77 -> 88
+
+    await waitFor(() => expect(siteField()).toHaveTextContent(String(SITE_B.id)))
+    expect(operatorField().textContent).toBe('')
+  })
+
   it('clears an operator belonging to the previous Sede', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 

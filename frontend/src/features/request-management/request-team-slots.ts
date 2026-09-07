@@ -30,6 +30,9 @@ export function operatorSlotParams(
  * The Sede the picked user belongs to, read from the item's own `meta` (no
  * extra fetch). `null` — nothing to hydrate — when the pick was made on any
  * other slot, when the slot was cleared, or when that user has no Sede.
+ *
+ * A non-null result is a CANDIDATE only: whether it actually gets applied is
+ * {@link shouldAutoFillSite}'s call, not this function's.
  */
 export function operatorSlotSite(
   position: number,
@@ -45,6 +48,17 @@ export function operatorSlotSite(
   }
 
   return { id: meta.operational_site_id, label: meta.operational_site_label ?? `#${meta.operational_site_id}` }
+}
+
+/**
+ * Whether an Operatore pick may hydrate the Sede: only when none is chosen
+ * yet (spec 0103 D-6). A Sede already on the form is never overwritten by
+ * the picked operator's own — with remote appartenenze (spec 0103), the
+ * operator picker scoped to a Sede can return operators whose PHYSICAL Sede
+ * differs from the one already chosen, which the overwrite used to erase.
+ */
+export function shouldAutoFillSite(currentSiteId: number | null): boolean {
+  return currentSiteId === null
 }
 
 /**
