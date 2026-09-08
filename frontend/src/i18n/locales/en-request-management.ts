@@ -342,5 +342,9 @@ export const requestManagement = {
     operatorsSummary: '· {{selected}}/{{total}} operators',
     loadError: 'Unable to load the dashboard.',
     empty: 'No charts to show for this selection.',
+    overall: 'Overall',
+    indicatorsChartTitle: 'Indicators',
+    tilesTitle: 'Summary',
+    chartsTitle: 'Charts ({{count}})',
   },
 }

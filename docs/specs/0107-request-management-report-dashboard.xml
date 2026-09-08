@@ -4,7 +4,7 @@
   Dipende da 0106 (report CSV): ne RIUSA il calcolo, non lo duplica.
   Prosa italiana senza accenti; identificatori inglesi (engineering.md §1.2).
 -->
-<spec id="0107-request-management-report-dashboard" status="draft" owner="utente" date="2026-09-08">
+<spec id="0107-request-management-report-dashboard" status="draft" owner="utente" date="2026-09-08" rev="3">
 
   <goal>
     Dare a chi lavora in Gestione Richieste una dashboard con grafici che mostri gli stessi
@@ -181,6 +181,58 @@
       valori di dominio e NON si traducono. La riga senza operatore usa la stessa etichetta
       "Non assegnato" del CSV.
     </decision>
+
+    <decision id="D-10" rev="3">
+      RIORGANIZZAZIONE PER CATEGORIA (direttiva utente 2026-09-08). La risposta non e' piu' piatta:
+      `summary` (le schede complessive sull'unione, D-8 invariato) resta in cima, e sotto c'e' una
+      LISTA di sezioni, una per categoria selezionata, nell'ordine dei rami di
+      `config/request-management-report.php`. Ogni sezione porta le PROPRIE schede (la riga TOTALE
+      del suo ramo) e i PROPRI grafici. I grafici di confronto tra categorie spariscono: il
+      confronto tra categorie ora si legge scorrendo le sezioni, che hanno tutte le stesse barre
+      nello stesso ordine.
+      Con `row_mode`:
+      - `total_only`  -> la sezione ha UN grafico `scope=indicator`: una barra per colonna
+                         indicatore, in ordine di colonna del report (NON per valore: due sezioni
+                         devono restare confrontabili barra per barra);
+      - `operators_only` -> la sezione ha un grafico `scope=operator` per ogni colonna indicatore,
+                         una barra per GA2, ordinato per valore desc / etichetta asc (AC-007);
+      - `all`         -> entrambi, il grafico indicatore per primo.
+      Il caso `scope=category` non esiste piu': l'enum `RequestManagementDashboardChartScope`
+      diventa `Indicator|Operator`, e `DashboardChart` perde `categoryKey`/`categoryLabel` (la
+      categoria e' la sezione che lo contiene).
+    </decision>
+
+    <decision id="D-11" rev="3">
+      TUTTE LE COLONNE, ANCHE A 0 (direttiva utente 2026-09-08): AC-008 e' ROVESCIATO. Un grafico
+      o una scheda non viene piu' scartato perche' vale 0, e le colonne non applicabili al ramo
+      non vengono piu' filtrate via: si emettono sempre tutte e 11 le colonne di
+      `config('request-management-report.indicator_columns')`, esattamente come il CSV che stampa
+      `0` in quella cella (spec 0106 D-15). Anche una categoria senza alcun dato ha la sua sezione.
+      VINCOLO: cambia solo cio' che si MOSTRA, mai cio' che si CALCOLA. `ReportBranch::$columns`
+      resta l'allow-list di calcolo (una colonna fuori dall'allow-list non viene interrogata), e la
+      dashboard legge lo 0 che `ReportBranchRowsBuilder` gia' scrive in `ReportRow::$values`. Cosi'
+      la parita' col CSV (AC-010) regge senza aggiungere una sola query.
+      UNICA eccezione superstite: un ramo senza NESSUNA riga GA2 non produce grafici `operator` —
+      un grafico senza barre non e' disegnabile.
+    </decision>
+
+    <decision id="D-12" rev="3">
+      SEZIONI E BLOCCHI COLLASSABILI, CON STATO PERSISTITO (direttiva utente 2026-09-08:
+      "possibilita' di collapsare le sezioni dove stanno le categorie e all'interno di collapsare
+      le dashboard, tutto questo cachato"). Tre livelli indipendenti: la sezione di categoria (e
+      quella del riepilogo complessivo), il blocco schede e il blocco grafici al suo interno.
+      Default alla prima apertura: sezioni e schede APERTE, grafici CHIUSI — il pannello si apre
+      sui numeri e i grafici (la parte alta) si aprono a richiesta.
+      Persistenza: UNA sola voce di `localStorage` (`request-management.dashboard-collapse`) con
+      mappa piatta `${sectionKey}:${block} -> open`, scritta solo per i blocchi che l'utente ha
+      davvero toccato; un blocco mai toccato ricade sul default invece di essere serializzato.
+      Lettura difensiva come `useStatsPanel`: storage non disponibile o valore non booleano ->
+      default, mai un crash. Lo stato vive nel pannello (un hook per tutto il pannello), non nella
+      singola sezione, cosi' sopravvive allo smontaggio di una sezione durante un refetch.
+      Markup: `Collapsible` di Radix gia' in `components/ui/`, con il trigger DENTRO l'heading
+      (`h2`/`h3` > `button`) — un `button` non puo' contenere un heading, il contrario si', e cosi'
+      si conservano sia il livello di intestazione sia `aria-expanded`.
+    </decision>
   </decisions>
 
   <scope>
@@ -216,27 +268,31 @@
         Il range e' inclusivo su entrambi gli estremi, come 0106.
       </request>
       <response status="200">
-        `{ success: true, message, data: { applied, summary, charts } }`
+        `{ success: true, message, data: { applied, summary, categories } }` (rev-3, D-10)
 
-        applied : `{ date_from, date_to, category_keys, row_mode }` — eco dei filtri applicati, cosi'
-                  il client puo' scartare una risposta arrivata fuori ordine.
+        applied : `{ date_from, date_to, category_keys, row_mode, operator_keys }` — eco dei filtri
+                  applicati, cosi' il client puo' scartare una risposta arrivata fuori ordine.
 
-        summary : `[ { key, label, value } ]` — una voce per indicatore applicabile ad almeno una
-                  categoria selezionata. `value` e' il totale REALE sull'unione dei rami (D-8), non
-                  la somma delle categorie. `label` tradotto server-side (D-9).
+        summary : `[ { key, label, value } ]` — schede COMPLESSIVE, una per OGNI colonna indicatore
+                  (tutte e 11, anche a 0 — D-11). `value` e' il totale REALE sull'unione dei rami
+                  (D-8), non la somma delle categorie. `label` tradotto server-side (D-9).
 
-        charts  : `[ { id, scope, category_key, category_label, indicator_key, indicator_label,
-                       points: [ { label, value } ] } ]`
-                  - `scope: "category"` -> `category_key`/`category_label` sono `null`, e `points` ha
-                    una voce per categoria selezionata (`label` = nome della categoria).
-                  - `scope: "operator"` -> `category_key`/`category_label` identificano la categoria,
-                    e `points` ha una voce per GA2 (`label` = `users.name`, oppure "Non assegnato").
-                  Quali `scope` compaiono lo decide `row_mode` (D-3).
-                  `points` ordinati per `value` decrescente, poi per `label` crescente a parita' di
-                  valore (ordinamento deterministico: un grafico che cambia ordine tra due refresh
-                  a dati invariati e' un difetto).
-                  Un grafico i cui `points` sono tutti a 0 NON viene emesso: sarebbe rumore. Se
-                  nessun grafico sopravvive, `charts` e' `[]` e il client mostra lo stato vuoto.
+        categories : `[ { key, label, summary, charts } ]` — una sezione per categoria selezionata,
+                  nell'ordine dei rami di config, SEMPRE presente anche se ogni suo numero e' 0.
+                  `summary` ha la stessa forma di quello complessivo ma vale la riga TOTALE di quel
+                  ramo; `label` e' il nome di dominio della categoria (mai i18n, D-9).
+
+        charts (dentro una sezione) :
+                  `[ { id, scope, indicator_key, indicator_label, points: [ { label, value } ] } ]`
+                  - `scope: "indicator"` -> `indicator_key`/`indicator_label` sono `null` e `points`
+                    ha una voce per colonna indicatore (`label` = intestazione del CSV), in ordine
+                    di colonna del report.
+                  - `scope: "operator"` -> `indicator_key`/`indicator_label` identificano
+                    l'indicatore, e `points` ha una voce per GA2 (`label` = `users.name`, oppure
+                    "Non assegnato"), ordinata per valore desc, poi etichetta asc.
+                  Quali `scope` compaiono lo decide `row_mode` (D-3/D-10).
+                  Un grafico tutto a 0 VIENE emesso (D-11); un ramo senza alcuna riga GA2 non
+                  produce grafici `operator`, quindi in `operators_only` la sua `charts` e' `[]`.
       </response>
       <errors>
         403 — attore senza `request-management.report`.
@@ -277,21 +333,29 @@
   </data_contract>
 
   <acceptance_criteria>
-    <criterion id="AC-001">Un attore con `request-management.report` che chiama l'endpoint con filtri validi riceve 200 con `applied`, `summary` e `charts`; un attore senza il permesso riceve 403.</criterion>
+    <criterion id="AC-001">Un attore con `request-management.report` che chiama l'endpoint con filtri validi riceve 200 con `applied`, `summary` e `categories`; un attore senza il permesso riceve 403.</criterion>
     <criterion id="AC-002">Filtri mancanti, `date_to` anteriore a `date_from`, `category_keys` vuoto o con una chiave non in config, e `row_mode` fuori dai tre valori: 422.</criterion>
     <criterion id="AC-003">`applied` riflette esattamente i filtri ricevuti.</criterion>
-    <criterion id="AC-004">Con `row_mode = total_only` tutti i `charts` hanno `scope = "category"`; con `operators_only` tutti hanno `scope = "operator"`; con `all` compaiono entrambi, con quelli per categoria prima.</criterion>
-    <criterion id="AC-005">Con `scope = "category"`, `points` ha una voce per ogni categoria selezionata che abbia almeno un valore non nullo, con `label` uguale al nome di dominio della categoria.</criterion>
-    <criterion id="AC-006">Con `scope = "operator"`, `points` ha una voce per ogni GA2 del ramo, con `label` uguale a `users.name`; le richieste senza operatore compaiono con la stessa etichetta "Non assegnato" usata dal CSV.</criterion>
-    <criterion id="AC-007">I `points` sono ordinati per valore decrescente e, a parita' di valore, per etichetta crescente: due chiamate identiche restituiscono lo stesso ordine.</criterion>
-    <criterion id="AC-008">Un grafico i cui punti sono tutti a 0 non viene emesso; se nessun grafico sopravvive, `charts` e' `[]` e la risposta resta 200.</criterion>
+    <criterion id="AC-004" rev="3">Con `row_mode = total_only` tutti i grafici di ogni sezione hanno `scope = "indicator"`; con `operators_only` tutti hanno `scope = "operator"`; con `all` compaiono entrambi, con quello `indicator` per primo dentro la sezione.</criterion>
+    <criterion id="AC-005" rev="3">Con `scope = "indicator"`, `points` ha una voce per OGNI colonna indicatore (tutte e 11), in ordine di colonna del report, con `label` uguale all'intestazione del CSV, e `indicator_key` null.</criterion>
+    <criterion id="AC-006">Con `scope = "operator"`, `points` ha una voce per ogni GA2 della sezione, con `label` uguale a `users.name`; le richieste senza operatore compaiono con la stessa etichetta "Non assegnato" usata dal CSV.</criterion>
+    <criterion id="AC-007" rev="3">I `points` di un grafico `operator` sono ordinati per valore decrescente e, a parita' di valore, per etichetta crescente; quelli di un grafico `indicator` seguono l'ordine di colonna del report. In entrambi i casi due chiamate identiche restituiscono lo stesso ordine.</criterion>
+    <criterion id="AC-008" rev="3">ROVESCIATO da D-11: un grafico i cui punti sono tutti a 0 VIENE emesso, e una categoria senza alcun dato ha comunque la sua sezione con schede e grafico a 0. Unica eccezione: un ramo senza alcuna riga GA2 non produce grafici `operator` (`charts: []` in `operators_only`).</criterion>
     <criterion id="AC-009">La dashboard rispetta `RequestManagementScope`: un attore che vede solo le proprie richieste ottiene numeri calcolati sul solo suo perimetro, e un ramo che non puo' vedere non compare tra i `points`.</criterion>
     <criterion id="AC-010">VINCOLO DI CALCOLO CONDIVISO (D-2): per gli stessi filtri, ogni valore della dashboard coincide con il valore della cella corrispondente del CSV generato da 0106. Il test genera ENTRAMBI gli output e li confronta valore per valore, non a parole.</criterion>
-    <criterion id="AC-011">Il `summary` non e' la somma delle categorie: con una richiesta classificata su due categorie entrambe selezionate, il valore di riepilogo e' MINORE della somma dei due totali di categoria (D-8).</criterion>
+    <criterion id="AC-011">Il `summary` complessivo non e' la somma delle sezioni: con una richiesta classificata su due categorie entrambe selezionate, il valore di riepilogo e' MINORE della somma dei due totali di categoria (D-8).</criterion>
     <criterion id="AC-012">Nessun indicatore e' reimplementato: la dashboard non contiene condizioni di stato, di data o di categoria proprie. Verificabile per ispezione — il servizio della dashboard non deve costruire query sulle quote, ma solo consumare `ReportRow`.</criterion>
     <criterion id="AC-013">`GET /api/request-management/report/dashboard` risolve all'endpoint della dashboard e non allo `show` di 0106 con `exportRun = "dashboard"`; un test lo verifica con un round-trip HTTP reale.</criterion>
     <criterion id="AC-014">Nessun `throttle` sulla rotta, coerentemente con la decisione utente 2026-07-15.</criterion>
     <criterion id="AC-015">I 55 test esistenti di 0106 continuano a passare senza modifiche: la dashboard non cambia il comportamento del report.</criterion>
+
+    <criterion id="AC-016" rev="3">`categories` ha una voce per ogni categoria selezionata, nell'ordine dei rami di config e non in quello passato dal client, con `key`/`label` del ramo.</criterion>
+    <criterion id="AC-017" rev="3">Ogni `summary` (complessivo e di sezione) espone tutte e 11 le colonne indicatore in ordine di colonna, incluse quelle fuori dall'allow-list del ramo, che valgono 0 — lo stesso valore che il CSV stampa nella cella corrispondente.</criterion>
+    <criterion id="AC-018" rev="3">Il pannello mostra le schede complessive in cima e poi una sezione per categoria (titolo = nome della categoria, schede, grafici); ogni sezione e' una `region` con nome accessibile.</criterion>
+
+    <criterion id="AC-019" rev="3">Ogni sezione (riepilogo complessivo e categorie) si collassa dal proprio titolo; dentro una sezione di categoria, il blocco schede e il blocco grafici si collassano indipendentemente l'uno dall'altro.</criterion>
+    <criterion id="AC-020" rev="3">Alla prima apertura, senza nulla in `localStorage`, sezioni e schede sono aperte e i grafici chiusi: i titoli dei grafici non sono nel DOM finche' il blocco non viene aperto.</criterion>
+    <criterion id="AC-021" rev="3">Ogni collasso e' persistito e ripristinato al mount successivo (anche dopo lo smontaggio del pannello); uno `localStorage` non disponibile o un valore non booleano degradano al default senza errori.</criterion>
 
     <criterion id="AC-040">Nella pagina Gestione Richieste compare lo `StatsToggleButton` nelle `actions` del `PageHeader`, con lo stesso aspetto e la stessa semantica di Opportunita' (`aria-expanded`, `aria-controls`); e' visibile solo con `request-management.report` (D-6).</criterion>
     <criterion id="AC-041">Il pannello e' chiuso di default; al click si espande tra intestazione e tabella, e lo stato aperto/chiuso e' persistito per dominio come negli altri moduli.</criterion>

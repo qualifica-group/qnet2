@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
@@ -60,17 +60,39 @@ function dashboardData(overrides: Partial<RequestDashboardData> = {}): RequestDa
       operator_keys: null,
     },
     summary: [{ key: 'phone_calls', label: 'N. Telefonate Effettuate', value: 12 }],
-    charts: [
+    categories: [
       {
-        id: 'category-phone_calls',
-        scope: 'category',
-        category_key: null,
-        category_label: null,
-        indicator_key: 'phone_calls',
-        indicator_label: 'N. Telefonate Effettuate',
-        points: [
-          { label: 'GOL', value: 8 },
-          { label: 'Consulenza', value: 4 },
+        key: 'gol',
+        label: 'GOL',
+        summary: [
+          { key: 'phone_calls', label: 'N. Telefonate Effettuate', value: 8 },
+          { key: 'aule_gestione', label: 'Aule in gestione', value: 0 },
+        ],
+        charts: [
+          {
+            id: 'indicator-gol',
+            scope: 'indicator',
+            indicator_key: null,
+            indicator_label: null,
+            points: [
+              { label: 'N. Telefonate Effettuate', value: 8 },
+              { label: 'Aule in gestione', value: 0 },
+            ],
+          },
+        ],
+      },
+      {
+        key: 'consulenza',
+        label: 'Consulenza',
+        summary: [{ key: 'phone_calls', label: 'N. Telefonate Effettuate', value: 4 }],
+        charts: [
+          {
+            id: 'operator-consulenza-phone_calls',
+            scope: 'operator',
+            indicator_key: 'phone_calls',
+            indicator_label: 'N. Telefonate Effettuate',
+            points: [{ label: 'Ada Rossi', value: 4 }],
+          },
         ],
       },
     ],
@@ -218,7 +240,10 @@ describe('RequestDashboardPanel', () => {
 
     resolveDashboard(dashboardData())
 
-    expect(await screen.findByRole('heading', { name: 'N. Telefonate Effettuate' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'GOL' })).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: 'GOL' })).getByRole('heading', { name: 'Charts (1)' }),
+    ).toBeInTheDocument()
     expect(container.querySelector('[data-slot="skeleton"]')).not.toBeInTheDocument()
   })
 
@@ -232,14 +257,78 @@ describe('RequestDashboardPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
 
-    expect(await screen.findByRole('heading', { name: 'N. Telefonate Effettuate' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'GOL' })).toBeInTheDocument()
   })
 
-  it('shows an explicit empty message when no chart survives (AC-048)', async () => {
-    fetchRequestManagementDashboardMock.mockResolvedValue(dashboardData({ charts: [] }))
+  it('shows an explicit empty message in a section with no chart (AC-048)', async () => {
+    fetchRequestManagementDashboardMock.mockResolvedValue(
+      dashboardData({
+        categories: [{ key: 'gol', label: 'GOL', summary: [], charts: [] }],
+      }),
+    )
 
     renderPanel(true)
 
     expect(await screen.findByText('No charts to show for this selection.')).toBeInTheDocument()
+  })
+
+  it('renders a section per category, with every indicator tile including the zeros (rev-3 D-10/D-11)', async () => {
+    renderPanel(true)
+
+    // Overall tiles first, then one section per selected category.
+    const headings = await screen.findAllByRole('heading', { level: 2 })
+    expect(headings.map((heading) => heading.textContent)).toEqual(['Overall', 'GOL', 'Consulenza'])
+
+    const gol = screen.getByRole('region', { name: 'GOL' })
+    // A 0 column is a tile like any other since rev-3.
+    expect(within(gol).getByText('Aule in gestione')).toBeInTheDocument()
+
+    // Charts start folded, so opening the block is what reveals their titles.
+    fireEvent.click(within(gol).getByRole('button', { name: 'Charts (1)' }))
+    expect(await within(gol).findByRole('heading', { name: 'Indicators' })).toBeInTheDocument()
+
+    // An operator chart keeps its own indicator as the title, the category
+    // being the section it sits in.
+    const consulenza = screen.getByRole('region', { name: 'Consulenza' })
+    fireEvent.click(within(consulenza).getByRole('button', { name: 'Charts (1)' }))
+    expect(
+      await within(consulenza).findByRole('heading', { name: 'N. Telefonate Effettuate' }),
+    ).toBeInTheDocument()
+  })
+
+  it('opens on the tiles and keeps the charts folded away (user directive 2026-09-08)', async () => {
+    renderPanel(true)
+
+    const gol = await screen.findByRole('region', { name: 'GOL' })
+
+    expect(within(gol).getByRole('button', { name: 'Summary' })).toHaveAttribute('aria-expanded', 'true')
+    expect(within(gol).getByRole('button', { name: 'Charts (1)' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(gol).getByText('N. Telefonate Effettuate')).toBeInTheDocument() // the tile
+    expect(within(gol).queryByRole('heading', { name: 'Indicators' })).not.toBeInTheDocument()
+  })
+
+  it('persists every collapse toggle and restores it on the next mount (user directive 2026-09-08)', async () => {
+    const { unmount } = renderPanel(true)
+
+    const gol = await screen.findByRole('region', { name: 'GOL' })
+    fireEvent.click(within(gol).getByRole('button', { name: 'Summary' })) // fold the tiles
+    fireEvent.click(within(gol).getByRole('button', { name: 'GOL' })) // fold the whole section
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'GOL' })).toHaveAttribute('aria-expanded', 'false'),
+    )
+    unmount()
+
+    renderPanel(true)
+
+    const restored = await screen.findByRole('region', { name: 'GOL' })
+    expect(within(restored).getByRole('button', { name: 'GOL' })).toHaveAttribute('aria-expanded', 'false')
+
+    // Re-opening the section shows the tiles still folded from the last session.
+    fireEvent.click(within(restored).getByRole('button', { name: 'GOL' }))
+    expect(await within(restored).findByRole('button', { name: 'Summary' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
   })
 })

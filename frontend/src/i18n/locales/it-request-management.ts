@@ -342,5 +342,9 @@ export const requestManagement = {
     operatorsSummary: '· {{selected}}/{{total}} operatori',
     loadError: 'Impossibile caricare la dashboard.',
     empty: 'Nessun grafico da mostrare per questa selezione.',
+    overall: 'Totale complessivo',
+    indicatorsChartTitle: 'Indicatori',
+    tilesTitle: 'Riepilogo',
+    chartsTitle: 'Grafici ({{count}})',
   },
 }

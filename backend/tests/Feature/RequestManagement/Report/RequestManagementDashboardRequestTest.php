@@ -65,7 +65,7 @@ if (! function_exists('dashboardQuery')) {
 // AC-001
 // ---------------------------------------------------------------------------
 
-it('200s with applied/summary/charts for an authorized actor (AC-001)', function () {
+it('200s with applied/summary/categories for an authorized actor (AC-001)', function () {
     dashboardCategoryTree();
     $actor = dashboardActorWith(['report', 'viewAll']);
     Sanctum::actingAs($actor);
@@ -74,7 +74,13 @@ it('200s with applied/summary/charts for an authorized actor (AC-001)', function
         ->assertOk();
 
     $response->assertJsonPath('success', true)
-        ->assertJsonStructure(['data' => ['applied', 'summary', 'charts']]);
+        ->assertJsonStructure([
+            'data' => [
+                'applied',
+                'summary' => [['key', 'label', 'value']],
+                'categories' => [['key', 'label', 'summary' => [['key', 'label', 'value']], 'charts']],
+            ],
+        ]);
 });
 
 it('403s without request-management.report (AC-001)', function () {
@@ -202,7 +208,7 @@ it('a real HTTP round-trip actually resolves the dashboard, never show(exportRun
     $response = $this->getJson('/api/request-management/report/dashboard?'.http_build_query(dashboardQuery()))
         ->assertOk();
 
-    $response->assertJsonStructure(['data' => ['summary', 'charts']])
+    $response->assertJsonStructure(['data' => ['summary', 'categories']])
         ->assertJsonMissingPath('data.export_run');
 });
 

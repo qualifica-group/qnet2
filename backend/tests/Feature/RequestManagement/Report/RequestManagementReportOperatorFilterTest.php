@@ -277,6 +277,20 @@ it('excludes unassigned requests when the key is not selected (AC-005)', functio
         ->and(operatorFilterCell($rows, 'GOL', 'TOTALE', 'telefonate'))->toBe(3);
 });
 
+if (! function_exists('operatorFilterIndicatorKeyOf')) {
+    /** The indicator key whose CSV header is $label — the dashboard labels its indicator bars with it. */
+    function operatorFilterIndicatorKeyOf(string $label): string
+    {
+        foreach ((array) config('request-management-report.indicator_columns') as $key) {
+            if (__("request-management-report.headers.{$key}") === $label) {
+                return $key;
+            }
+        }
+
+        throw new RuntimeException("No indicator column labelled [{$label}].");
+    }
+}
+
 // ---------------------------------------------------------------------------
 // AC-006 — CSV/dashboard parity holds UNDER the filter too
 // ---------------------------------------------------------------------------
@@ -303,14 +317,17 @@ it('keeps every dashboard point equal to its CSV cell under an operator filter (
         $operators,
     );
 
-    expect($result->charts)->not->toBeEmpty();
+    expect($result->categories)->not->toBeEmpty();
 
-    foreach ($result->charts as $chart) {
-        foreach ($chart->points as $point) {
-            $categoryLabel = $chart->categoryLabel ?? $point->label;
-            $ga2Label = $chart->categoryLabel === null ? 'TOTALE' : $point->label;
+    foreach ($result->categories as $category) {
+        foreach ($category->charts as $chart) {
+            foreach ($chart->points as $point) {
+                $isIndicatorScope = $chart->indicatorKey === null;
+                $ga2Label = $isIndicatorScope ? 'TOTALE' : $point->label;
+                $indicatorKey = $isIndicatorScope ? operatorFilterIndicatorKeyOf($point->label) : $chart->indicatorKey;
 
-            expect($point->value)->toBe(operatorFilterCell($rows, $categoryLabel, $ga2Label, $chart->indicatorKey));
+                expect($point->value)->toBe(operatorFilterCell($rows, $category->label, $ga2Label, $indicatorKey));
+            }
         }
     }
 });

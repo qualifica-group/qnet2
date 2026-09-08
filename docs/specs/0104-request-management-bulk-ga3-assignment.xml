@@ -270,4 +270,61 @@
     </task>
   </microtasks>
 
+  <!-- ==================== AMENDMENT 1 — LO SLOT DIVENTA GA1 ==================== -->
+  <!-- Direttiva utente 2026-09-08, DOPO la consegna verde dell'impianto base.
+       Non riscrive quanto sopra: ne SOSTITUISCE la posizione e i nomi. Ovunque il corpo
+       della spec dica "GA3"/"posizione 3"/"manager_labels[3]", si legga "GA1"/"posizione
+       1"/"manager_labels[1]"; ogni altra decisione (D-1..D-n) e ogni AC restano validi
+       parola per parola. -->
+  <amendment id="A1" date="2026-09-08" status="approved">
+
+    <goal>
+      In Gestione Richieste, al posto del GA3 si espone il GA1: sia la colonna di griglia
+      sia l'azione massiva di assegnazione lavorano sulla posizione 1 del pivot
+      `quote_user`, non piu' sulla 3. Perimetro confermato dall'utente: solo tabella +
+      funzione di assegnazione (il pannello "Lavora" continua a editare l'intera squadra
+      via `manager_slots`, invariato; report CSV e dashboard non espongono lo slot).
+    </goal>
+
+    <decisions source="user 2026-09-08">
+      <d1>Rinomina COMPLETA, non solo il numero: tenere i nomi `...ga3` su uno slot che
+          vale 1 sarebbe naming drift (engineering.md §1.2). Mappa vincolante:
+          `ManagerPositions::GA3 = 3` -> `ManagerPositions::GA1 = 1`;
+          colonna `manager_ga3` -> `manager_ga1`;
+          chiave campo/permesso `manager_ga3_id` -> `manager_ga1_id`;
+          rotta `POST /api/request-management/assign-manager-ga3` ->
+          `.../assign-manager-ga1`;
+          ability `request-management.assignManagerGa3` -> `...assignManagerGa1`;
+          i18n `requestManagement.columns.managerGa3` -> `...managerGa1` e
+          `requestManagement.assignManagerGa3.*` -> `assignManagerGa1.*`;
+          FE `GA3_MANAGER_POSITION = 3` -> `GA1_MANAGER_POSITION = 1`,
+          `AssignManagerGa3Dialog` -> `AssignManagerGa1Dialog`,
+          `useRequestManagerGa3Assignment` -> `useRequestManagerGa1Assignment`.</d1>
+      <d2>Le due tabelle che portano i vecchi nomi come DATO seguono con una migrazione di
+          rinomina in place — `permissions` (l'ability, che conserva id e grant in
+          `role_has_permissions`) e `role_field_permissions` (la chiave di campo, che
+          conserva i flag visible/editable/required):
+          `2026_09_08_100000_rename_request_management_manager_ga3_to_ga1`. Senza,
+          la configurazione dell'amministratore diventerebbe un orfano silenzioso — la
+          stessa lezione della migrazione `2026_09_02_230000`.</d2>
+      <d3>NESSUNA migrazione di dati su `quote_user`: chi oggi occupa la posizione 3 ci
+          resta (il pannello "Lavora" continua a mostrarlo), la griglia legge la 1. Spostare
+          gli occupanti sovrascriverebbe i GA1 gia' assegnati, che nessuno ha chiesto di
+          toccare.</d3>
+      <d4>Il fallback i18n della colonna resta il testo "Tutor": l'intestazione reale
+          continua ad arrivare da `manager_labels[1]` della categoria del tab, e cambiare
+          il testo di ripiego non era parte della direttiva.</d4>
+    </decisions>
+
+    <verification date="2026-09-08">
+      Pest `tests/Feature/RequestManagement` 583 passati; Quotes/Registries/
+      ProductCategories/Opportunities/Tables/Roles/Unit/Seeding verdi; Pint pulito;
+      Vitest 4487 passati; ESLint pulito; `tsc -b --force` senza errori sui file di
+      questo dominio (resta un errore preesistente e non correlato in
+      `request-report-operator-filter.test.tsx`, `charts` su `RequestDashboardData`,
+      da lavoro in corso su un'altra spec).
+    </verification>
+
+  </amendment>
+
 </spec>

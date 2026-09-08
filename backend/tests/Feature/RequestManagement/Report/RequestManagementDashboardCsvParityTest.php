@@ -129,6 +129,20 @@ if (! function_exists('parityCsvCell')) {
     }
 }
 
+if (! function_exists('parityIndicatorKeyOf')) {
+    /** The indicator key whose CSV header is $label — the dashboard labels its indicator bars with it. */
+    function parityIndicatorKeyOf(string $label): string
+    {
+        foreach ((array) config('request-management-report.indicator_columns') as $key) {
+            if (__("request-management-report.headers.{$key}") === $label) {
+                return $key;
+            }
+        }
+
+        throw new RuntimeException("No indicator column labelled [{$label}].");
+    }
+}
+
 // ---------------------------------------------------------------------------
 // AC-010 — every dashboard value equals the corresponding CSV cell
 // ---------------------------------------------------------------------------
@@ -160,16 +174,22 @@ it('every dashboard point equals the corresponding CSV cell, for the same filter
     // Build the dashboard for the IDENTICAL filters.
     $result = app(RequestManagementDashboardBuilder::class)->build($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::All);
 
-    expect($result->charts)->not->toBeEmpty();
+    expect($result->categories)->not->toBeEmpty();
 
-    foreach ($result->charts as $chart) {
-        foreach ($chart->points as $point) {
-            $categoryLabel = $chart->categoryLabel ?? $point->label; // scope=category: the point IS the category
-            $ga2Label = $chart->categoryLabel === null ? 'TOTALE' : $point->label;
+    foreach ($result->categories as $category) {
+        foreach ($category->charts as $chart) {
+            foreach ($chart->points as $point) {
+                // scope=indicator: the point IS the indicator, on the branch's
+                // TOTALE row. scope=operator: the point is the GA2 row of the
+                // chart's own indicator.
+                $isIndicatorScope = $chart->indicatorKey === null;
+                $ga2Label = $isIndicatorScope ? 'TOTALE' : $point->label;
+                $indicatorKey = $isIndicatorScope ? parityIndicatorKeyOf($point->label) : $chart->indicatorKey;
 
-            $csvValue = (int) parityCsvCell($rows, $categoryLabel, $ga2Label, $chart->indicatorKey);
+                $csvValue = (int) parityCsvCell($rows, $category->label, $ga2Label, $indicatorKey);
 
-            expect($point->value)->toBe($csvValue);
+                expect($point->value)->toBe($csvValue);
+            }
         }
     }
 });
@@ -209,8 +229,9 @@ it('summary is LESS than the sum of the two category totals when a request is sh
 
     $summaryValue = collect($result->summary)->first(fn ($item) => $item->key === 'nuovi_contatti')->value;
 
-    $categoryChart = collect($result->charts)->first(fn ($c) => $c->indicatorKey === 'nuovi_contatti');
-    $sumOfCategories = array_sum(array_map(fn ($p) => $p->value, $categoryChart->points));
+    // Rev-3: the per-category totals live in each section's own tiles.
+    $sumOfCategories = collect($result->categories)
+        ->sum(fn ($category) => collect($category->summary)->firstWhere('key', 'nuovi_contatti')->value);
 
     expect($summaryValue)->toBe(2) // the shared quote + the GOL-only one, counted ONCE each
         ->and($sumOfCategories)->toBe(3) // gol=2 (shared + own) + autoimpiego=1 (shared) — double-counts the shared quote

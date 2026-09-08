@@ -15,13 +15,13 @@ use App\Services\RequestManagement\Report\ReportRow;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 
 /**
- * Assembles the dashboard's `summary` + `charts` (spec 0107, D-2 — the
- * central constraint): every number comes from `ReportRow::$values`,
- * produced by the SAME `ReportBranchRowsBuilder::build()` the CSV uses
- * (spec 0106). This class builds NO query, checks NO workflow status, reads
- * NO date column — it only selects, sorts and reshapes already-computed
- * rows. If a rule ever needs to change here, it needs to change in
- * `Indicators/*` instead — this class has nowhere for it to live.
+ * Assembles the dashboard's overall `summary` + per-category sections (spec
+ * 0107, D-2 — the central constraint): every number comes from
+ * `ReportRow::$values`, produced by the SAME `ReportBranchRowsBuilder::build()`
+ * the CSV uses (spec 0106). This class builds NO query, checks NO workflow
+ * status, reads NO date column — it only selects, sorts and reshapes
+ * already-computed rows. If a rule ever needs to change here, it needs to
+ * change in `Indicators/*` instead — this class has nowhere for it to live.
  *
  * Branch selection is NOT reimplemented here (spec 0107 D-2-bis, point 1):
  * `RequestManagementReportGenerator::rows()` is the ONE place that filters
@@ -30,10 +30,17 @@ use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
  *
  * The same holds for the operator selection (spec 0108, D-1): $operators is
  * handed down UNTOUCHED to all three calls below — the two `rows()` and the
- * synthetic summary branch — so the tiles, the per-category charts and the
+ * synthetic summary branch — so the tiles, the section tiles and the
  * per-operator charts are all computed on the same narrowed perimeter, and
  * none of them can end up describing a different set of operators than the
  * CSV generated from the very same filters.
+ *
+ * Rev-3 (user directive 2026-09-08) changed only the SHAPE, never a value:
+ * every indicator column is emitted even when it is 0 (D-11), and the charts
+ * hang off their own category (D-10) instead of comparing categories.
+ * WHAT is computed is untouched — a column outside `ReportBranch::$columns`
+ * is still never queried, it simply renders as the 0 the row already carries
+ * (spec 0106 D-15), which is exactly what the CSV prints for it.
  */
 final class RequestManagementDashboardBuilder
 {
@@ -56,147 +63,162 @@ final class RequestManagementDashboardBuilder
         $operators ??= ReportOperatorFilter::all();
 
         // Step 1: every selected branch's own TOTALE row — also the source
-        // of the selected-branch list itself (summary needs it regardless
-        // of $rowMode, D-3).
+        // of the selected-branch list itself (the overall tiles need it
+        // regardless of $rowMode, D-3).
         $totalsByBranch = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::TotalOnly, $operators);
         $branches = array_map(static fn (array $pair): ReportBranch => $pair['branch'], $totalsByBranch);
         $range = ReportDateRange::fromRequest($dateFrom, $dateTo);
 
-        // Step 2: the summary cards — the SAME builder, on a synthetic
-        // union branch (D-8), never a sum of the per-category totals.
-        $summary = $this->buildSummary($branches, $actor, $range, $operators);
+        // Step 2: the overall tiles — the SAME builder, on a synthetic union
+        // branch (D-8), never a sum of the per-category totals.
+        $summary = $this->buildOverallSummary($branches, $actor, $range, $operators);
 
-        // Step 3: charts — which scopes appear is decided by $rowMode (D-3).
-        $charts = [];
+        // Step 3: the GA2 rows of each branch, fetched only when $rowMode
+        // actually asks for an operator breakdown (D-3).
+        $operatorRows = $rowMode === RequestManagementReportRowMode::TotalOnly
+            ? []
+            : $this->operatorRowsByBranchKey($actor, $dateFrom, $dateTo, $categoryKeys, $operators);
 
-        if ($rowMode !== RequestManagementReportRowMode::OperatorsOnly) {
-            $charts = [...$charts, ...$this->buildCategoryCharts($totalsByBranch)];
-        }
+        // Step 4: one section per selected category, in the report's own
+        // branch order (D-10).
+        $categories = array_map(
+            fn (array $pair): DashboardCategory => $this->buildCategory($pair['branch'], $pair['rows'][0], $operatorRows, $rowMode),
+            $totalsByBranch,
+        );
 
-        if ($rowMode !== RequestManagementReportRowMode::TotalOnly) {
-            $operatorsByBranch = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::OperatorsOnly, $operators);
-            $charts = [...$charts, ...$this->buildOperatorCharts($operatorsByBranch)];
-        }
-
-        return new RequestManagementDashboardResult($summary, $charts);
+        return new RequestManagementDashboardResult($summary, $categories);
     }
 
     /**
      * D-8: categoryIds = union of the selected branches' own (already
-     * subtree-expanded) ids; columns = union of their applicability lists.
-     * Feeding this into ReportBranchRowsBuilder::build() is the SAME
-     * `count(distinct quotes.id)` a real branch gets — a synthetic branch
-     * is not a shortcut, it is the mechanism D-8 specifies.
+     * subtree-expanded) ids; columns = union of their applicability lists, so
+     * nothing gets QUERIED that a real branch would not query. What is
+     * EMITTED is the full column list either way (D-11): a column outside the
+     * union is the 0 the row already holds.
      *
      * @param  array<int, ReportBranch>  $branches
      * @return array<int, DashboardSummaryItem>
      */
-    private function buildSummary(array $branches, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): array
+    private function buildOverallSummary(array $branches, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): array
     {
         $synthetic = new ReportBranch(
             key: '__summary__',
             label: '',
             categoryIds: $this->unionOf($branches, static fn (ReportBranch $b): array => $b->categoryIds),
-            columns: $this->orderedIndicatorKeys($branches),
+            columns: $this->unionOf($branches, static fn (ReportBranch $b): array => $b->columns),
         );
 
         /** @var ReportRow $total */
         [$total] = $this->rowsBuilder->build($synthetic, $actor, $range, RequestManagementReportRowMode::TotalOnly, $operators);
 
-        return array_map(
-            static fn (string $key): DashboardSummaryItem => new DashboardSummaryItem(
-                $key,
-                __("request-management-report.headers.{$key}"),
-                $total->values[$key],
-            ),
-            $synthetic->columns,
+        return $this->summaryOf($total);
+    }
+
+    /**
+     * One section: the branch's own TOTALE row as tiles, plus its charts.
+     *
+     * @param  array<string, array<int, ReportRow>>  $operatorRows
+     */
+    private function buildCategory(ReportBranch $branch, ReportRow $total, array $operatorRows, RequestManagementReportRowMode $rowMode): DashboardCategory
+    {
+        return new DashboardCategory(
+            key: $branch->key,
+            label: $branch->label,
+            summary: $this->summaryOf($total),
+            charts: $this->chartsOf($branch, $total, $operatorRows[$branch->key] ?? [], $rowMode),
         );
     }
 
     /**
-     * One chart per indicator applicable to at least one selected branch:
-     * one point per selected category, its OWN already-computed TOTALE row.
-     *
-     * @param  array<int, array{branch: ReportBranch, rows: array<int, ReportRow>}>  $totalsByBranch
+     * @param  array<int, ReportRow>  $operatorRows
      * @return array<int, DashboardChart>
      */
-    private function buildCategoryCharts(array $totalsByBranch): array
+    private function chartsOf(ReportBranch $branch, ReportRow $total, array $operatorRows, RequestManagementReportRowMode $rowMode): array
     {
-        $branches = array_map(static fn (array $pair): ReportBranch => $pair['branch'], $totalsByBranch);
-
-        $totalRowByBranchKey = [];
-        foreach ($totalsByBranch as $pair) {
-            [$total] = $pair['rows']; // total_only always emits exactly one row.
-            $totalRowByBranchKey[$pair['branch']->key] = $total;
-        }
-
         $charts = [];
 
-        foreach ($this->orderedIndicatorKeys($branches) as $indicatorKey) {
-            $points = $this->sorted(array_map(
-                static fn (ReportBranch $branch): DashboardPoint => new DashboardPoint(
-                    $branch->label,
-                    $totalRowByBranchKey[$branch->key]->values[$indicatorKey],
-                ),
-                $branches,
-            ));
+        if ($rowMode !== RequestManagementReportRowMode::OperatorsOnly) {
+            $charts[] = $this->indicatorChart($branch, $total);
+        }
 
-            if ($this->allZero($points)) {
-                continue; // AC-008: no noise from an indicator nobody has.
+        // A branch with neither a named GA2 nor an unassigned request has no
+        // operator rows at all: a chart with no bar cannot be drawn, and is
+        // the ONE case rev-3 still leaves out.
+        if ($rowMode !== RequestManagementReportRowMode::TotalOnly && $operatorRows !== []) {
+            foreach ($this->indicatorKeys() as $indicatorKey) {
+                $charts[] = $this->operatorChart($branch, $operatorRows, $indicatorKey);
             }
-
-            $charts[] = new DashboardChart(
-                id: "category-{$indicatorKey}",
-                scope: RequestManagementDashboardChartScope::Category,
-                categoryKey: null,
-                categoryLabel: null,
-                indicatorKey: $indicatorKey,
-                indicatorLabel: __("request-management-report.headers.{$indicatorKey}"),
-                points: $points,
-            );
         }
 
         return $charts;
     }
 
     /**
-     * One chart per (selected category, applicable indicator): one point
-     * per GA2 of that branch's OWN already-computed operator rows
-     * (including "Non assegnato", itself a GA2 row — spec 0106 D-13).
-     *
-     * @param  array<int, array{branch: ReportBranch, rows: array<int, ReportRow>}>  $operatorsByBranch
-     * @return array<int, DashboardChart>
+     * The category's own indicators side by side, in the report's canonical
+     * column order — NOT sorted by value: two sections must stay comparable
+     * bar by bar, and the order is deterministic either way (AC-007).
      */
-    private function buildOperatorCharts(array $operatorsByBranch): array
+    private function indicatorChart(ReportBranch $branch, ReportRow $total): DashboardChart
     {
-        $charts = [];
+        return new DashboardChart(
+            id: "indicator-{$branch->key}",
+            scope: RequestManagementDashboardChartScope::Indicator,
+            indicatorKey: null,
+            indicatorLabel: null,
+            points: array_map(
+                fn (string $key): DashboardPoint => new DashboardPoint($this->indicatorLabel($key), $total->values[$key]),
+                $this->indicatorKeys(),
+            ),
+        );
+    }
 
-        foreach ($operatorsByBranch as $pair) {
-            $branch = $pair['branch'];
+    /**
+     * One indicator of this category, broken down by GA2 (including "Non
+     * assegnato", itself a GA2 row — spec 0106 D-13).
+     *
+     * @param  array<int, ReportRow>  $operatorRows
+     */
+    private function operatorChart(ReportBranch $branch, array $operatorRows, string $indicatorKey): DashboardChart
+    {
+        return new DashboardChart(
+            id: "operator-{$branch->key}-{$indicatorKey}",
+            scope: RequestManagementDashboardChartScope::Operator,
+            indicatorKey: $indicatorKey,
+            indicatorLabel: $this->indicatorLabel($indicatorKey),
+            points: $this->sorted(array_map(
+                static fn (ReportRow $row): DashboardPoint => new DashboardPoint($row->label, $row->values[$indicatorKey]),
+                $operatorRows,
+            )),
+        );
+    }
 
-            foreach ($this->orderedIndicatorKeys([$branch]) as $indicatorKey) {
-                $points = $this->sorted(array_map(
-                    static fn (ReportRow $row): DashboardPoint => new DashboardPoint($row->label, $row->values[$indicatorKey]),
-                    $pair['rows'],
-                ));
+    /**
+     * @param  array<int, string>  $categoryKeys
+     * @return array<string, array<int, ReportRow>>
+     */
+    private function operatorRowsByBranchKey(?User $actor, string $dateFrom, string $dateTo, array $categoryKeys, ReportOperatorFilter $operators): array
+    {
+        $rowsByKey = [];
 
-                if ($points === [] || $this->allZero($points)) {
-                    continue; // no GA2 at all, or every one of them is 0 (AC-008).
-                }
-
-                $charts[] = new DashboardChart(
-                    id: "operator-{$branch->key}-{$indicatorKey}",
-                    scope: RequestManagementDashboardChartScope::Operator,
-                    categoryKey: $branch->key,
-                    categoryLabel: $branch->label,
-                    indicatorKey: $indicatorKey,
-                    indicatorLabel: __("request-management-report.headers.{$indicatorKey}"),
-                    points: $points,
-                );
-            }
+        foreach ($this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::OperatorsOnly, $operators) as $pair) {
+            $rowsByKey[$pair['branch']->key] = $pair['rows'];
         }
 
-        return $charts;
+        return $rowsByKey;
+    }
+
+    /**
+     * D-11: EVERY indicator column becomes a tile, zeros included — the same
+     * eleven cells the CSV prints for the same row.
+     *
+     * @return array<int, DashboardSummaryItem>
+     */
+    private function summaryOf(ReportRow $row): array
+    {
+        return array_map(
+            fn (string $key): DashboardSummaryItem => new DashboardSummaryItem($key, $this->indicatorLabel($key), $row->values[$key]),
+            $this->indicatorKeys(),
+        );
     }
 
     /**
@@ -215,34 +237,23 @@ final class RequestManagementDashboardBuilder
     }
 
     /**
-     * @param  array<int, DashboardPoint>  $points
-     */
-    private function allZero(array $points): bool
-    {
-        foreach ($points as $point) {
-            if ($point->value !== 0) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * The union of $branches' `columns`, reordered to the report's
-     * canonical indicator order — `config('request-management-report.
-     * indicator_columns')`, the SAME neutral source ReportSheetBuilder reads,
-     * never a new order of its own (spec 0107 D-2-bis, point 3).
+     * The report's canonical indicator order — `config('request-management-
+     * report.indicator_columns')`, the SAME neutral source ReportSheetBuilder
+     * reads, never an order of its own (spec 0107 D-2-bis, point 3). Every
+     * key is present in every `ReportRow` (spec 0106 D-15), so no
+     * applicability intersection is needed to read one.
      *
-     * @param  array<int, ReportBranch>  $branches
      * @return array<int, string>
      */
-    private function orderedIndicatorKeys(array $branches): array
+    private function indicatorKeys(): array
     {
-        return array_values(array_intersect(
-            (array) config('request-management-report.indicator_columns'),
-            $this->unionOf($branches, static fn (ReportBranch $b): array => $b->columns),
-        ));
+        return (array) config('request-management-report.indicator_columns');
+    }
+
+    /** The CSV's own header label (D-9): titles and headings cannot diverge. */
+    private function indicatorLabel(string $key): string
+    {
+        return __("request-management-report.headers.{$key}");
     }
 
     /**

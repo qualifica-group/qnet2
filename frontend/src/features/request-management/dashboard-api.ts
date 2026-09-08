@@ -16,8 +16,8 @@ export interface RequestDashboardSummaryItem {
   value: number
 }
 
-/** `category` -> one point per selected branch; `operator` -> one point per GA2 of one branch. */
-export type RequestDashboardChartScope = 'category' | 'operator'
+/** `indicator` -> one point per indicator column of the category; `operator` -> one point per GA2 on ONE indicator. */
+export type RequestDashboardChartScope = 'indicator' | 'operator'
 
 export interface RequestDashboardChartPoint {
   label: string
@@ -27,13 +27,22 @@ export interface RequestDashboardChartPoint {
 export interface RequestDashboardChart {
   id: string
   scope: RequestDashboardChartScope
-  /** Set only for `scope: 'operator'` — the branch the operator breakdown belongs to. */
-  category_key: string | null
-  category_label: string | null
-  indicator_key: string
-  indicator_label: string
-  /** Already ordered by value desc, then label asc (rev-2 AC-007) — never re-sort. */
+  /** Null for `scope: 'indicator'` — there the indicator IS the series, one bar each. */
+  indicator_key: string | null
+  indicator_label: string | null
+  /**
+   * `indicator` charts follow the report's own column order, `operator` ones
+   * value desc then label asc (rev-2 AC-007) — never re-sort either.
+   */
   points: RequestDashboardChartPoint[]
+}
+
+/** One category section (rev-3 D-10): its own tiles and its own charts. */
+export interface RequestDashboardCategory {
+  key: string
+  label: string
+  summary: RequestDashboardSummaryItem[]
+  charts: RequestDashboardChart[]
 }
 
 /** Response of `GET /request-management/report/dashboard` (envelope `data`). */
@@ -44,8 +53,10 @@ export interface RequestDashboardData {
    * when none was sent, i.e. "every operator" (spec 0109 D-2/AC-009).
    */
   applied: Omit<RequestDashboardQuery, 'operator_keys'> & { operator_keys: string[] | null }
+  /** Overall tiles over the union of the selected branches (D-8), every indicator column included (rev-3 D-11). */
   summary: RequestDashboardSummaryItem[]
-  charts: RequestDashboardChart[]
+  /** One section per selected category, in the report's own branch order (rev-3 D-10). */
+  categories: RequestDashboardCategory[]
 }
 
 /**

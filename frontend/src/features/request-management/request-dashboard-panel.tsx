@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
-import { ReportBarChart } from '@/components/ui/report-bar-chart'
 import { Skeleton } from '@/components/ui/skeleton'
-import { StatCard } from '@/components/ui/stat-card'
-import type { RequestDashboardChart, RequestDashboardData } from '@/features/request-management/dashboard-api'
+import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
 import { RequestDashboardFilterBar } from '@/features/request-management/request-dashboard-filter-bar'
+import {
+  DashboardCategorySection,
+  DashboardOverallSection,
+} from '@/features/request-management/request-dashboard-section'
 import { RequestReportFiltersDialog } from '@/features/request-management/request-report-filters-dialog'
 import {
   isRequestReportQueryReady,
@@ -14,6 +16,7 @@ import {
 } from '@/features/request-management/request-report-schema'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { useRequestDashboard } from '@/features/request-management/use-request-dashboard'
+import { useRequestDashboardCollapse } from '@/features/request-management/use-request-dashboard-collapse'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
 import { useRequestReportOperators } from '@/features/request-management/use-request-report-operators'
 import {
@@ -28,29 +31,17 @@ import type { UseQueryResult } from '@tanstack/react-query'
 const COLLAPSIBLE_CONTENT_CLASS =
   'overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up motion-reduce:animate-none'
 
-const SUMMARY_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'
-const CHARTS_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2'
+const SKELETON_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
 const SKELETON_TILE_COUNT = 4
 
 /** Hoisted so an unloaded operator list keeps a STABLE identity across renders. */
 const EMPTY_KEYS: string[] = []
 
-/** A chart's card title: the indicator alone for a per-category series, category + indicator for a per-operator one (rev-2 D-3). */
-function chartTitle(chart: RequestDashboardChart): string {
-  return chart.scope === 'operator' && chart.category_label
-    ? `${chart.category_label} — ${chart.indicator_label}`
-    : chart.indicator_label
-}
-
-function formatCount(value: number): string {
-  return value.toLocaleString()
-}
-
 /** Placeholder rows shaped like the eventual tiles/charts, shown while the aggregates load. */
 function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-3">
-      <div className={SUMMARY_GRID_CLASS}>
+      <div className={SKELETON_GRID_CLASS}>
         {Array.from({ length: SKELETON_TILE_COUNT }).map((_, index) => (
           <div key={index} className="flex flex-col gap-2 rounded-xl border bg-card p-3">
             <Skeleton className="h-3 w-16" />
@@ -69,15 +60,20 @@ interface DashboardResultsProps {
 
 /**
  * The three states an open panel can be in (spec 0107 AC-048): loading
- * skeleton, an explicit empty message when `charts` is `[]` (AC-008's
- * all-zero charts are dropped server-side, so this is a legitimate outcome,
- * not an error), and a retryable error. Summary tiles render independently
- * of the charts' empty state — a branch can have every chart suppressed
- * while its totals are still meaningfully zero.
+ * skeleton, a retryable error, and the results — the overall tiles over the
+ * union of the selected categories (D-8), then one section per category
+ * (rev-3 D-10). Since rev-3 nothing is dropped for being 0, so a section is
+ * always rendered for every selected category: an empty week is an answer.
+ *
+ * Every section, and the two blocks inside it, fold independently; the state
+ * is owned HERE (one hook for the whole panel) rather than per section, so it
+ * survives a section unmounting on a refetch and is persisted in a single
+ * storage entry (user directive 2026-09-08).
  */
 function DashboardResults({ query }: DashboardResultsProps) {
   const { t } = useTranslation()
   const { data, isLoading, isError, refetch } = query
+  const collapse = useRequestDashboardCollapse()
 
   return (
     <div aria-busy={isLoading} className="flex flex-col gap-3">
@@ -95,24 +91,12 @@ function DashboardResults({ query }: DashboardResultsProps) {
       ) : null}
 
       {data && data.summary.length > 0 ? (
-        <div className={SUMMARY_GRID_CLASS}>
-          {data.summary.map((item) => (
-            <StatCard key={item.key} label={item.label} value={formatCount(item.value)} />
-          ))}
-        </div>
+        <DashboardOverallSection items={data.summary} collapse={collapse} />
       ) : null}
 
-      {data && data.charts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('requestManagement.dashboard.empty')}</p>
-      ) : null}
-
-      {data && data.charts.length > 0 ? (
-        <div className={CHARTS_GRID_CLASS}>
-          {data.charts.map((chart) => (
-            <ReportBarChart key={chart.id} title={chartTitle(chart)} points={chart.points} formatValue={formatCount} />
-          ))}
-        </div>
-      ) : null}
+      {data?.categories.map((category) => (
+        <DashboardCategorySection key={category.key} category={category} collapse={collapse} />
+      ))}
     </div>
   )
 }

@@ -7,12 +7,19 @@ namespace App\Services\RequestManagement\Report\Dashboard;
 use App\Enums\RequestManagementDashboardChartScope;
 
 /**
- * One chart of the dashboard response (spec 0107 data_contract): a single
- * indicator, either compared ACROSS the selected categories (`scope =
- * category`, `categoryKey`/`categoryLabel` null) or broken down by GA2
- * WITHIN one category (`scope = operator`). `points` is already sorted
- * (value desc, label asc — AC-007) and never all-zero (AC-008: such a chart
- * is dropped before construction, see RequestManagementDashboardBuilder).
+ * One chart of a category section (spec 0107 data_contract, rev-3): either
+ * that category's own indicators side by side (`scope = indicator`, one bar
+ * per indicator column — `indicatorKey`/`indicatorLabel` null, since the
+ * indicator IS the series), or the GA2 breakdown of a SINGLE indicator of
+ * that category (`scope = operator`).
+ *
+ * The category is not carried here any more: a chart is nested INSIDE its
+ * `DashboardCategory`, which owns the key and the label.
+ *
+ * Points of an `operator` chart are sorted value desc, label asc (AC-007);
+ * those of an `indicator` chart keep the report's canonical column order, so
+ * two categories stay comparable bar by bar. Since rev-3 an all-zero chart is
+ * NOT dropped (AC-008 reversed by user directive 2026-09-08).
  */
 final class DashboardChart
 {
@@ -22,10 +29,8 @@ final class DashboardChart
     public function __construct(
         public readonly string $id,
         public readonly RequestManagementDashboardChartScope $scope,
-        public readonly ?string $categoryKey,
-        public readonly ?string $categoryLabel,
-        public readonly string $indicatorKey,
-        public readonly string $indicatorLabel,
+        public readonly ?string $indicatorKey,
+        public readonly ?string $indicatorLabel,
         public readonly array $points,
     ) {}
 }

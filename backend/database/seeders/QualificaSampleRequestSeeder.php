@@ -37,8 +37,9 @@ use Illuminate\Support\Collection;
  * the whole batch every request would land on the same GA2 and the module
  * would look empty to everybody else, since RequestManagementScope's tier-2
  * is exactly `quotes.operator_id === actor` (spec 0105). Rotating three
- * distinct accounts over G.A.1 / GA2 "Operatore" / GA3 spreads the batch over
- * the roster instead, and fills the two slots the grid shows as columns.
+ * distinct accounts over the GA1 / GA2 "Operatore" / third slot spreads the
+ * batch over the roster instead, and fills the two slots the grid shows as
+ * columns.
  *
  * Each request carries ONE priced offer row (user directive 2026-09-08),
  * handed to QuoteService verbatim through `offerLines` — the channel the user

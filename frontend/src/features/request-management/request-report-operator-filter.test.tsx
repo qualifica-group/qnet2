@@ -55,7 +55,7 @@ const DASHBOARD_DATA: RequestDashboardData = {
     operator_keys: null,
   },
   summary: [],
-  charts: [],
+  categories: [],
 }
 
 beforeAll(async () => {

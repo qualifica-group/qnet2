@@ -3,6 +3,113 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE: LO SLOT GA3 DIVENTA GA1 (spec 0104 amendment A1, 2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "bisogna sostituire in gestione richieste, al posto di ga3, ga1, sia sulle
+tabelle che sulla funzione di assegnazione". Scelte confermate in sessione: rinomina COMPLETA
+degli identificatori (non solo il numero di posizione), perimetro limitato a griglia + azione
+massiva (il pannello "Lavora" continua a editare tutta la squadra via `manager_slots`; report e
+dashboard non espongono lo slot).
+
+**Mappa della rinomina (vincolante, riusare questi nomi).** `ManagerPositions::GA3 = 3` ->
+`ManagerPositions::GA1 = 1` (unico posto dove vive il numero); colonna di griglia `manager_ga3`
+-> `manager_ga1` (`RequestManagerColumns::GA1_COLUMN_ID`); chiave campo/permesso
+`manager_ga3_id` -> `manager_ga1_id` (`RequestManagementAuthorization`,
+`RequestOperatorWriter::GA1_FIELD`); rotta `POST /api/request-management/assign-manager-ga3` ->
+`.../assign-manager-ga1`; ability `request-management.assignManagerGa3` ->
+`...assignManagerGa1`; `RequestOperatorWriter::applyGa3()` -> `applyGa1()`;
+`RequestAttributionWriter::applyManagerGa3()` -> `applyManagerGa1()`;
+`RequestAssignmentService::assignManagerGa3()` -> `assignManagerGa1()`;
+`AssignRequestManagerGa3Request` -> `AssignRequestManagerGa1Request`. Frontend:
+`GA3_MANAGER_POSITION = 3` -> `GA1_MANAGER_POSITION = 1`, `assign-manager-ga1-dialog.tsx`,
+`use-request-manager-ga1-assignment.ts`, i18n `requestManagement.columns.managerGa1` e
+`requestManagement.assignManagerGa1.*`.
+
+**Migrazione.** `2026_09_08_100000_rename_request_management_manager_ga3_to_ga1`: rinomina IN
+PLACE la riga di `permissions` (id conservato -> i grant in `role_has_permissions`
+sopravvivono) e le righe di `role_field_permissions` (flag visible/editable/required
+conservati), con la stessa gestione del conflitto sull'indice unico della migrazione
+`2026_09_02_230000`. `down()` e' lo specchio esatto.
+
+**Cosa NON e' stato toccato, deliberatamente.** Nessuna migrazione di dati su `quote_user`: chi
+occupa oggi la posizione 3 ci resta (visibile nel pannello "Lavora"), la griglia legge la
+posizione 1 — spostare gli occupanti sovrascriverebbe i GA1 gia' assegnati. Il fallback i18n
+della colonna resta il testo "Tutor" (l'intestazione vera arriva da `manager_labels[1]` della
+categoria del tab): se il committente vuole un altro testo di ripiego, e' un cambio di una riga
+in `it-/en-request-management.ts`. `QualificaSampleRequestSeeder::MANAGER_SLOTS` non deriva piu'
+da `ManagerPositions` (la costante valeva 3 come CONTEGGIO di slot): ora e' un `3` esplicito con
+il commento che dice perche'.
+
+**Verifica eseguita (2026-09-08).** Pest `tests/Feature/RequestManagement` 583/583; Quotes 298,
+Opportunities 230, ProductCategories 220, Registries 91, Roles 52, Tables 6, Seeding 81, Unit
+(per sottodirectory) verdi; Pint pulito; Vitest 4487/4487; ESLint pulito; `tsc -b --force` senza
+errori sui file di questo dominio. NOTA: `tsc` segnala un errore PREESISTENTE e non correlato in
+`request-report-operator-filter.test.tsx` (`charts` non esiste su `RequestDashboardData`), da
+lavoro in corso su un'altra spec; `tests/Unit/Migrations/ExternalApiClientTest.php` va in
+segfault (signal 11) anche prima di questa modifica — problema d'ambiente, non del codice.
+
+**Prossimi passi.** Nessuno aperto sul dominio. Da valutare col committente solo il testo di
+fallback della colonna e se qualche categoria vada riconfigurata per definire
+`manager_labels[1]`.
+
+## DASHBOARD GESTIONE RICHIESTE PER CATEGORIA (spec 0107 rev-3, 2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "nella dashboard voglio tutte le colonne e dashboard anche se sono a 0.
+Voglio che vengano riorganizzate per categoria e ogni categoria abbia la propria dashboard e
+chart". Scelte confermate in sessione: il riepilogo complessivo (unione dei rami, D-8) RESTA in
+cima; sotto, una sezione per categoria; il grafico della categoria e' UNO con una barra per
+indicatore (11 barre), e i grafici di confronto tra categorie spariscono.
+
+**Meccanismo (D-10/D-11, spec aggiornata a rev-3).** Cambia solo cio' che si MOSTRA, mai cio' che
+si CALCOLA: `ReportBranch::$columns` resta l'allow-list di calcolo, e la dashboard emette tutte e
+11 le colonne di `config('request-management-report.indicator_columns')` leggendo lo 0 che
+`ReportBranchRowsBuilder` gia' scrive in `ReportRow::$values` (spec 0106 D-15) — nessuna query
+nuova, parita' col CSV (AC-010) intatta.
+- Contratto: `data: { applied, summary, categories }`. `categories[]` =
+  `{ key, label, summary[], charts[] }`, una per ramo selezionato nell'ordine di config, SEMPRE
+  presente anche a zero.
+- `DashboardChart` perde `categoryKey`/`categoryLabel` (la categoria e' la sezione) e ha
+  `indicatorKey`/`indicatorLabel` NULLABILI: null sullo `scope=indicator`, dove l'indicatore e' la
+  serie. Enum `RequestManagementDashboardChartScope`: `Category` -> `Indicator`.
+- Ordinamento: `scope=indicator` segue l'ordine di colonna del report (due sezioni confrontabili
+  barra per barra), `scope=operator` resta valore desc / etichetta asc (AC-007).
+- AC-008 ROVESCIATO: niente viene piu' scartato perche' vale 0. Unica eccezione: un ramo senza
+  NESSUNA riga GA2 non produce grafici `operator` (grafico senza barre non disegnabile).
+
+**File toccati.** BE: `app/Enums/RequestManagementDashboardChartScope.php`,
+`Services/RequestManagement/Report/Dashboard/{DashboardCategory (nuovo),DashboardChart,RequestManagementDashboardResult,RequestManagementDashboardBuilder}.php`,
+`Http/Resources/RequestManagementDashboardResource.php`. FE: `features/request-management/{dashboard-api.ts,request-dashboard-panel.tsx}`,
+`i18n/locales/{it,en}-request-management.ts` (`dashboard.overall`, `dashboard.indicatorsChartTitle`).
+Test aggiornati: `RequestManagementDashboard{Charts,CsvParity,Request}Test.php`,
+`RequestManagementReportOperatorFilterTest.php`, `request-dashboard-panel.test.tsx`,
+`request-report-operator-filter.test.tsx`.
+
+**UI.** Ogni sezione e' un contenitore rung 2 (`bg-surface`) che ospita card rung 3 (tiles e
+grafici), con `aria-label` = nome categoria (role `region`) e `h2` come titolo; le tile passano a
+`xl:grid-cols-6` perche' ora sono 11 per sezione.
+
+**Collasso persistito (D-12, stessa sessione).** Sezione categoria + riepilogo complessivo
+collassabili; dentro la sezione, blocco SCHEDE e blocco GRAFICI collassabili in modo indipendente.
+Default prima apertura: sezioni e schede aperte, grafici CHIUSI (il pannello si apre sui numeri).
+Stato in UNA voce `localStorage` `request-management.dashboard-collapse`, mappa piatta
+`${sectionKey}:${block} -> open` (`block` = `section|tiles|charts`, sectionKey = chiave ramo oppure
+`__overall__`); si scrive solo cio' che l'utente tocca, il resto ricade sul default. Hook
+`use-request-dashboard-collapse.ts`, stato tenuto nel pannello (non nella sezione) per sopravvivere
+ai refetch. Markup: trigger DENTRO l'heading (`h2`/`h3` > `button`), mai il contrario.
+Nuovi file FE: `use-request-dashboard-collapse.ts`, `request-dashboard-section.tsx` (le sezioni sono
+uscite dal pannello, che scende a 207 righe). i18n aggiunte: `dashboard.tilesTitle`,
+`dashboard.chartsTitle` (con `{{count}}`).
+
+**Verificato (eseguito).** `php artisan test tests/Feature/RequestManagement` 587 passed;
+`vitest run src/features/request-management src/components/ui/report-bar-chart.test.tsx` 323
+passed (include AC-019/020/021 sul collasso e sul ripristino da localStorage);
+`npx tsc -b --force --pretty false` EXIT=0; Pint e ESLint puliti.
+
+**Da verificare a mano.** In `row_mode=all` una sezione emette 1 grafico indicatore + 11 grafici
+operatore: con 6 categorie selezionate sono ~72 grafici. Il collasso di D-12 li tiene chiusi di
+default, quindi il pannello non si allunga finche' non li apri; se anche cosi' risultasse troppo,
+la leva resta l'UI (es. limitare gli indicatori nei grafici operatore), non il builder.
+
 ## CAMPAGNA DAL FILE NELL'IMPORT LEAD (spec 0108, 2026-09-08) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "nell'import leads id campagna su file per fare match con campagna [...] si
