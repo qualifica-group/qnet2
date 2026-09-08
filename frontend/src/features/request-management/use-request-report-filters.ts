@@ -1,5 +1,9 @@
-import { useCallback, useState } from 'react'
-import type { RequestReportCategory, RequestReportRowMode } from '@/features/request-management/report-api'
+import { useCallback, useState, type SetStateAction } from 'react'
+import type {
+  RequestReportCategory,
+  RequestReportOperator,
+  RequestReportRowMode,
+} from '@/features/request-management/report-api'
 import {
   ROW_MODES,
   requestReportDefaultValues,
@@ -10,8 +14,13 @@ const STORAGE_KEY = 'request-management.report-filters'
 
 /**
  * Guards the parsed payload: anything written by an older shape, or hand-edited,
- * is discarded rather than fed to the query as-is. Only the four contract fields
+ * is discarded rather than fed to the query as-is. Only the contract fields
  * are kept — they travel straight to `/report/dashboard` as query params.
+ *
+ * `operator_keys` (spec 0109) is checked OPTIONALLY on purpose (D-11): a
+ * payload written before that spec has no such key, and rejecting it would
+ * throw away the dates and branches the operator was working on because of a
+ * field that did not exist when they picked them.
  */
 function isStoredFilters(value: unknown): value is RequestReportFormValues {
   if (typeof value !== 'object' || value === null) {
@@ -24,7 +33,10 @@ function isStoredFilters(value: unknown): value is RequestReportFormValues {
     typeof candidate.date_to === 'string' &&
     Array.isArray(candidate.category_keys) &&
     candidate.category_keys.every((key) => typeof key === 'string') &&
-    ROW_MODES.includes(candidate.row_mode as RequestReportRowMode)
+    ROW_MODES.includes(candidate.row_mode as RequestReportRowMode) &&
+    (candidate.operator_keys === undefined ||
+      (Array.isArray(candidate.operator_keys) &&
+        candidate.operator_keys.every((key) => typeof key === 'string')))
   )
 }
 
@@ -45,6 +57,7 @@ function readStoredFilters(): RequestReportFormValues | null {
           date_to: parsed.date_to,
           category_keys: parsed.category_keys,
           row_mode: parsed.row_mode,
+          operator_keys: parsed.operator_keys ?? [],
         }
       : null
   } catch {
@@ -73,6 +86,35 @@ export function reconcileCategoryKeys(
 }
 
 /**
+ * Twin of {@see reconcileCategoryKeys} for the GA2 list (spec 0109, D-11):
+ * drops operators the report no longer offers and, when nothing survives,
+ * seeds the whole list — which is how "everything selected" becomes the
+ * default the payload builder then omits from the wire (D-2).
+ */
+export function reconcileOperatorKeys(
+  filters: RequestReportFormValues,
+  operators: RequestReportOperator[],
+): RequestReportFormValues {
+  const allKeys = operators.map((operator) => operator.key)
+
+  // No GA2 at all is a legitimate state (nothing assigned yet): there is
+  // nothing to reconcile against, and seeding an empty list would only churn
+  // the state. The branch twin leaves this case to its caller; here it is
+  // handled inline because an empty operator list must NOT block the filters.
+  if (allKeys.length === 0) {
+    return filters
+  }
+
+  const kept = filters.operator_keys.filter((key) => allKeys.includes(key))
+
+  if (kept.length === filters.operator_keys.length && kept.length > 0) {
+    return filters
+  }
+
+  return { ...filters, operator_keys: kept.length > 0 ? kept : allKeys }
+}
+
+/**
  * Persists the filters applied to the Gestione Richieste dashboard across
  * reloads (user directive 2026-09-08), so reopening the panel comes back to
  * the selection the operator was working on instead of the current week with
@@ -87,14 +129,34 @@ export function useRequestReportFilters() {
     () => readStoredFilters() ?? requestReportDefaultValues(),
   )
 
-  const setFilters = useCallback((next: RequestReportFormValues) => {
-    setFiltersState(next)
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-    } catch {
-      // Storage can be unavailable (private mode, quota): the filters still
-      // apply for this session.
-    }
+  /**
+   * Accepts an updater, exactly like `useState` (spec 0109): the panel
+   * reconciles the branch list and the operator list in two INDEPENDENT
+   * effects, and both can land in the same commit — a plain value computed
+   * from the render's `filters` would make the second write clobber the
+   * first with a stale copy. Resolving against the live state is what keeps
+   * the two reconciles composable, and it also means neither effect needs
+   * `filters` in its dependency list.
+   */
+  const setFilters = useCallback((next: SetStateAction<RequestReportFormValues>) => {
+    setFiltersState((current) => {
+      const resolved = typeof next === 'function' ? next(current) : next
+
+      // Same reference back = nothing changed (both reconcilers signal it that
+      // way): React bails out of the re-render and there is nothing to persist.
+      if (resolved === current) {
+        return current
+      }
+
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(resolved))
+      } catch {
+        // Storage can be unavailable (private mode, quota): the filters still
+        // apply for this session.
+      }
+
+      return resolved
+    })
   }, [])
 
   return { filters, setFilters }

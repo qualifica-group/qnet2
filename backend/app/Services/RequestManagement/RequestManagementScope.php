@@ -31,7 +31,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * The tier-3 grant is a ROW gate, not an action grant: it widens WHICH offers
  * are in scope, never WHAT may be done to them (D-2). Every write keeps
  * asking for its own ability (`update`, `delete`, `assignOperator`,
- * `transferContact`, `assignManagerGa3`) on top.
+ * `transferContact`, `assignManagerGa1`) on top.
  *
  * FAIL-CLOSED (constraints, non-negotiable): a null actor never widens
  * visibility. `scopeToActor()` degrades a null/non-viewAll actor to an

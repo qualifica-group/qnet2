@@ -27,6 +27,7 @@ function filters(overrides: Partial<RequestReportFormValues> = {}): RequestRepor
     date_to: '2026-09-30',
     category_keys: ['gol'],
     row_mode: 'total_only',
+    operator_keys: [],
     ...overrides,
   }
 }

@@ -10,6 +10,7 @@ use App\Http\Requests\RequestManagement\RequestDashboardRequest;
 use App\Http\Resources\RequestManagementDashboardResource;
 use App\Models\User;
 use App\Services\RequestManagement\Report\Dashboard\RequestManagementDashboardBuilder;
+use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -40,6 +41,7 @@ class RequestManagementDashboardController extends BaseApiController
             /** @var array<int, string> $categoryKeys */
             $categoryKeys = (array) $request->validated('category_keys');
             $rowMode = (string) $request->validated('row_mode');
+            $operatorKeys = $request->operatorKeys();
 
             $result = $this->builder->build(
                 $actor,
@@ -47,6 +49,7 @@ class RequestManagementDashboardController extends BaseApiController
                 $dateTo,
                 $categoryKeys,
                 RequestManagementReportRowMode::from($rowMode),
+                ReportOperatorFilter::fromKeysOrAll($operatorKeys),
             );
 
             return $this->ok([
@@ -55,6 +58,9 @@ class RequestManagementDashboardController extends BaseApiController
                     'date_to' => $dateTo,
                     'category_keys' => $categoryKeys,
                     'row_mode' => $rowMode,
+                    // null echoes back "every operator" (spec 0108 D-2), so the
+                    // client can tell an unfiltered response from a filtered one.
+                    'operator_keys' => $operatorKeys,
                 ],
                 ...(new RequestManagementDashboardResource($result))->resolve(),
             ]);

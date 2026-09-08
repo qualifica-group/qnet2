@@ -30,7 +30,7 @@ final class ReportCategoryAvailabilityResolver
         $available = [];
 
         foreach ($this->branches->resolve() as $branch) {
-            if ($this->branchQuery->build($branch->categoryIds, $actor)->exists()) {
+            if ($this->branchQuery->build($branch->categoryIds, $actor, ReportOperatorFilter::all())->exists()) {
                 $available[] = ['key' => $branch->key, 'label' => $branch->label];
             }
         }

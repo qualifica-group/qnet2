@@ -38,6 +38,7 @@ export const imports = {
       province: 'Province',
       city: 'City',
       notes: 'Notes',
+      campaign_code: 'Campaign code',
     },
     global: {
       campaign_id: 'Campaign',

@@ -5,11 +5,11 @@ namespace App\Http\Requests\Import;
 use App\Imports\ImportDefinition;
 use App\Imports\ImportRegistry;
 use App\Imports\Leads\LeadImportProductCoherence;
+use App\Imports\Leads\LeadRowCampaign;
 use App\Imports\Staging\StagedRowBuilder;
-use App\Models\City;
 use App\Models\ImportRun;
-use App\Models\Province;
-use App\Models\State;
+use App\Models\ImportRunRow;
+use App\Support\Import\GeoPinValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -29,7 +29,9 @@ use Illuminate\Validation\Validator;
  * reviser re-run the fuzzy GeoRecognizer — validated here for existence
  * (`exists:`) and hierarchical coherence (a child id must actually belong to
  * its declared parent, the same rule GeoSelect enforces client-side), so an
- * incoherent pin never reaches StagedRowReviser.
+ * incoherent pin never reaches StagedRowReviser — those two checks live in
+ * App\Support\Import\GeoPinValidator, keeping this class under the 300-line
+ * soft limit (engineering.md §6).
  *
  * `operator_id`/`operational_site_id` (spec 0045, the latter mirrored): the
  * per-row Operator/Operational Site overrides — both nullable (a present,
@@ -38,14 +40,21 @@ use Illuminate\Validation\Validator;
  * `required_without_all`), because the built-in rule cannot tell "submitted
  * as null to clear" apart from "not submitted at all".
  *
+ * `campaign_id` (spec 0108, D-5): the campaign an operator pins on a row
+ * whose file code did not match — accepted ONLY on a run that reads campaigns
+ * from a file column (on a global-campaign run the campaign belongs to the
+ * run, not to the row), nullable to unpin. Unlike the overrides above it is
+ * not a plain column write: StagedRowReviser replays the staging pipeline, so
+ * it can change the row's status/messages/duplicate.
+ *
  * `product_ids` (spec 0094, D-4/AC-054): the per-row "Prodotti di interesse"
  * override, mirroring operator_id/operational_site_id's three-state
  * semantics but for an ARRAY — not submitted = row untouched, `null` =
  * explicitly revert to inheriting the run's global `product_ids`, `[]` =
  * this row carries none. Every submitted id must exist AND sit inside the
- * effective product categories of the RUN's `global_config.campaign_id`
- * (LeadImportProductCoherence — the same coherence rule
- * ConfigureImportRequest applies to the global value, never duplicated).
+ * effective product categories of the ROW's campaign (LeadImportProductCoherence
+ * — the same coherence rule ConfigureImportRequest applies to the global
+ * value, never duplicated).
  *
  * The {domain}/{importRun} route segments resolve BEFORE any rule below runs
  * (unknown domain -> 404 via bootstrap/app.php; unknown/unbound importRun ->
@@ -55,9 +64,6 @@ use Illuminate\Validation\Validator;
  */
 class UpdateImportRowRequest extends FormRequest
 {
-    /** The only keys `geo` accepts — any other one is rejected (AC-004). */
-    private const array GEO_KEYS = ['country_id', 'state_id', 'province_id', 'city_id'];
-
     private ?ImportDefinition $resolvedDefinition = null;
 
     public function authorize(): bool
@@ -82,6 +88,7 @@ class UpdateImportRowRequest extends FormRequest
             'operational_site_id' => ['sometimes', 'nullable', 'integer', 'exists:operational_sites,id'],
             'product_ids' => ['sometimes', 'nullable', 'array'],
             'product_ids.*' => ['integer', 'exists:products,id'],
+            'campaign_id' => ['sometimes', 'nullable', 'integer', 'exists:campaigns,id'],
         ];
     }
 
@@ -90,9 +97,9 @@ class UpdateImportRowRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->validateAtLeastOneSubmitted($validator);
             $this->validateValuesAllowList($validator);
-            $this->validateGeoKeys($validator);
-            $this->validateGeoHierarchy($validator);
+            $this->geoPinValidator()->validate($validator, $this->input('geo'));
             $this->validateProductIdsCoverage($validator);
+            $this->validateCampaignIsPerRow($validator);
         });
     }
 
@@ -105,17 +112,19 @@ class UpdateImportRowRequest extends FormRequest
      */
     private function validateAtLeastOneSubmitted(Validator $validator): void
     {
-        if ($this->has('values') || $this->has('geo') || $this->has('operator_id') || $this->has('operational_site_id') || $this->has('product_ids')) {
+        if ($this->has('values') || $this->has('geo') || $this->has('operator_id') || $this->has('operational_site_id') || $this->has('product_ids') || $this->has('campaign_id')) {
             return;
         }
 
-        $validator->errors()->add('values', 'At least one of values, geo, operator_id, operational_site_id or product_ids is required.');
+        $validator->errors()->add('values', 'At least one of values, geo, operator_id, operational_site_id, product_ids or campaign_id is required.');
     }
 
     /**
      * AC-054: a submitted, non-empty `product_ids` must sit inside the
-     * effective product categories of the RUN's own `global_config.
-     * campaign_id` — `null` (revert to the global default) and `[]`
+     * effective product categories of THIS ROW's campaign — its own resolved
+     * one on a run reading campaigns from a file column (spec 0108, D-6,
+     * including a campaign pinned in the very same payload), the run's global
+     * one otherwise. `null` (revert to the global default) and `[]`
      * (explicitly none) both need no coverage check.
      */
     private function validateProductIdsCoverage(Validator $validator): void
@@ -126,18 +135,57 @@ class UpdateImportRowRequest extends FormRequest
             return;
         }
 
-        $importRun = $this->route('importRun');
-        $campaignId = $importRun instanceof ImportRun ? ($importRun->global_config['campaign_id'] ?? null) : null;
-
         $coherence = app(LeadImportProductCoherence::class);
         $offending = $coherence->offendingProducts(
-            $campaignId === null ? null : (int) $campaignId,
+            $this->rowCampaignId(),
             array_map(static fn (mixed $id): int => (int) $id, $productIds),
         );
 
         if ($offending !== []) {
             $validator->errors()->add('product_ids', $coherence->message($offending));
         }
+    }
+
+    /**
+     * Spec 0108 (D-5): a row-level campaign only exists on a run whose
+     * `column_mapping` feeds `campaign_code` from the file. On a global run
+     * the campaign is the run's, and pinning one row would silently split a
+     * run the rest of the pipeline still treats as single-campaign.
+     */
+    private function validateCampaignIsPerRow(Validator $validator): void
+    {
+        $importRun = $this->route('importRun');
+
+        if (! $this->has('campaign_id') || ! $importRun instanceof ImportRun) {
+            return;
+        }
+
+        if (! LeadRowCampaign::isPerRow($importRun->column_mapping ?? [])) {
+            $validator->errors()->add('campaign_id', 'This import takes its campaign from the run configuration, not from a file column: a per-row campaign cannot be set.');
+        }
+    }
+
+    private function geoPinValidator(): GeoPinValidator
+    {
+        return app(GeoPinValidator::class);
+    }
+
+    /** The campaign this row will end up on: a campaign pinned in this payload wins, then the row's own, then the run's global one. */
+    private function rowCampaignId(): ?int
+    {
+        $pinned = $this->input('campaign_id');
+
+        if ($pinned !== null) {
+            return (int) $pinned;
+        }
+
+        $importRun = $this->route('importRun');
+        $row = $this->route('row');
+
+        return LeadRowCampaign::resolve(
+            $row instanceof ImportRunRow ? ($row->mapped_values ?? []) : [],
+            $importRun instanceof ImportRun ? ($importRun->global_config ?? []) : [],
+        );
     }
 
     private function validateValuesAllowList(Validator $validator): void
@@ -157,80 +205,6 @@ class UpdateImportRowRequest extends FormRequest
                     "The field [{$key}] is not mapped nor an extra column for this import.",
                 );
             }
-        }
-    }
-
-    private function validateGeoKeys(Validator $validator): void
-    {
-        $geo = $this->input('geo');
-
-        if (! is_array($geo)) {
-            return;
-        }
-
-        foreach (array_keys($geo) as $key) {
-            if (! in_array($key, self::GEO_KEYS, true)) {
-                $validator->errors()->add("geo.{$key}", "The field [geo.{$key}] is not a recognized geo level.");
-            }
-        }
-    }
-
-    /**
-     * A child id is only coherent when its declared parent id resolves to
-     * the SAME ancestor the child actually belongs to (spec 0038 AC-003) —
-     * the province is an optional level: a city with no province instead
-     * agrees directly with its state (mirroring GeoResolver's own
-     * province-optional scoping).
-     */
-    private function validateGeoHierarchy(Validator $validator): void
-    {
-        $geo = $this->input('geo');
-
-        if (! is_array($geo)) {
-            return;
-        }
-
-        $countryId = $geo['country_id'] ?? null;
-        $stateId = $geo['state_id'] ?? null;
-        $provinceId = $geo['province_id'] ?? null;
-        $cityId = $geo['city_id'] ?? null;
-
-        if ($stateId !== null) {
-            if ($countryId === null) {
-                $validator->errors()->add('geo.state_id', 'A state requires a country.');
-            } elseif (($state = State::find($stateId)) !== null && $state->country_id !== (int) $countryId) {
-                $validator->errors()->add('geo.state_id', 'The selected state does not belong to the given country.');
-            }
-        }
-
-        if ($provinceId !== null) {
-            if ($stateId === null) {
-                $validator->errors()->add('geo.province_id', 'A province requires a state.');
-            } elseif (($province = Province::find($provinceId)) !== null && $province->state_id !== (int) $stateId) {
-                $validator->errors()->add('geo.province_id', 'The selected province does not belong to the given state.');
-            }
-        }
-
-        if ($cityId === null) {
-            return;
-        }
-
-        if ($stateId === null) {
-            $validator->errors()->add('geo.city_id', 'A city requires a state.');
-
-            return;
-        }
-
-        $city = City::find($cityId);
-
-        if ($city === null) {
-            return;
-        }
-
-        $belongs = $provinceId !== null ? $city->province_id === (int) $provinceId : $city->state_id === (int) $stateId;
-
-        if (! $belongs) {
-            $validator->errors()->add('geo.city_id', 'The selected city does not belong to the given province/state.');
         }
     }
 

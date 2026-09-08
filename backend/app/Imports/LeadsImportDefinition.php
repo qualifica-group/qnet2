@@ -8,6 +8,7 @@ use App\Imports\Leads\LeadDuplicateMatcher;
 use App\Imports\Leads\LeadImportFieldCatalog;
 use App\Imports\Leads\LeadRowPersister;
 use App\Imports\Leads\LeadRowValidator;
+use App\Imports\Recognition\CampaignRecognizer;
 use App\Imports\Recognition\GeoRecognizer;
 use App\Imports\Recognition\NameSplitRecognizer;
 use App\Models\ImportRunRow;
@@ -65,7 +66,7 @@ class LeadsImportDefinition extends AbstractImportDefinition
     }
 
     /**
-     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed}>
+     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed, required_unless_mapped: ?string}>
      */
     public function globalConfig(): array
     {
@@ -93,7 +94,7 @@ class LeadsImportDefinition extends AbstractImportDefinition
      */
     public function recognizers(): array
     {
-        return [NameSplitRecognizer::class, GeoRecognizer::class];
+        return [CampaignRecognizer::class, NameSplitRecognizer::class, GeoRecognizer::class];
     }
 
     public function supportsExtraFields(): bool
@@ -185,7 +186,7 @@ class LeadsImportDefinition extends AbstractImportDefinition
             'meta' => [
                 'registry_id' => $match->registryId,
                 'registry_name' => $match->registryName,
-                'lead_id' => $this->duplicateMatcher->existingLeadId($match->registryId, $globalConfig),
+                'lead_id' => $this->duplicateMatcher->existingLeadId($match->registryId, $mapped, $globalConfig),
                 'matched_on' => $match->matchedOn,
             ],
         ];

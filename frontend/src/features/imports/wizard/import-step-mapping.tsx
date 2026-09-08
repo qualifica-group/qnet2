@@ -11,6 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { FieldHint } from '@/components/field-hint'
 import { StepAlert, StepSectionHeader } from '@/features/imports/wizard/wizard-ui'
+import { ImportCampaignSource } from '@/features/imports/wizard/import-campaign-source'
+import {
+  fileBackedGlobalFields,
+  globalFieldIdsFromFile,
+} from '@/features/imports/wizard/global-field-source'
 import { ImportConfigFields } from '@/features/imports/wizard/import-config-fields'
 import {
   type ImportConfigFormValues,
@@ -27,10 +32,39 @@ import {
   SaveAsTemplateToggle,
 } from '@/features/imports/wizard/mapping-template-controls'
 import { EXTRA_TARGET, IGNORE_TARGET } from '@/features/imports/wizard/types'
-import type { DetectedColumn, ImportRunDetail } from '@/features/imports/wizard/types'
+import type {
+  DetectedColumn,
+  ImportGlobalFieldDescriptor,
+  ImportRunDetail,
+} from '@/features/imports/wizard/types'
 
 /** Stable empty fallback so the `columns` useMemo dependency keeps its identity. */
 const EMPTY_COLUMNS: DetectedColumn[] = []
+
+/**
+ * Drops from the submitted `global_config` every field now fed per row from a
+ * file column, plus whatever `depends_on` one of them (spec 0108 AC-032): the
+ * backend rejects both outright, and sending a leftover value would turn a
+ * correct configuration into a 422.
+ */
+function stripFileBackedConfig(
+  globalConfig: ImportConfigFormValues,
+  globalFields: ImportGlobalFieldDescriptor[],
+  fromFileFieldIds: string[],
+): ImportConfigFormValues {
+  if (fromFileFieldIds.length === 0) {
+    return globalConfig
+  }
+
+  const excluded = new Set([
+    ...fromFileFieldIds,
+    ...globalFields
+      .filter((field) => field.depends_on != null && fromFileFieldIds.includes(field.depends_on))
+      .map((field) => field.id),
+  ])
+
+  return Object.fromEntries(Object.entries(globalConfig).filter(([fieldId]) => !excluded.has(fieldId)))
+}
 
 export interface ImportStepMappingProps {
   run: ImportRunDetail | null
@@ -109,6 +143,14 @@ export function ImportStepMapping({
   const [saveAsTemplate, setSaveAsTemplate] = useState(false)
   const [templateName, setTemplateName] = useState('')
 
+  // Spec 0108 (D-2): global fields that can be fed per row from a mapped file
+  // column instead of run-wide. The chosen source is DERIVED from the mapping
+  // (mapping the column IS choosing "from file", AC-031); this state only
+  // carries the intent while no column is mapped yet, so the radio can be
+  // switched before the column is picked.
+  const fileBackedFields = useMemo(() => fileBackedGlobalFields(globalFields), [globalFields])
+  const [intendedFromFile, setIntendedFromFile] = useState<string[]>([])
+
   const mappingValues = form.watch('mapping')
   // Re-key the index-based form values back to the real column keys for the
   // signals (which reason per column key). Computed inline every render (not
@@ -120,16 +162,51 @@ export function ImportStepMapping({
   }
   const signals = computeMappingSignals(columns, fields, keyedMapping)
 
+  const mappedFromFileIds = globalFieldIdsFromFile(globalFields, Object.values(keyedMapping))
+  const fromFileFieldIds = [...new Set([...mappedFromFileIds, ...intendedFromFile])]
+  // "From file" chosen, but no column carries that field yet: the run cannot
+  // be configured this way, and the request is never sent (AC-033).
+  const fieldsMissingColumn = fromFileFieldIds.filter((fieldId) => !mappedFromFileIds.includes(fieldId))
+
+  // Switching a field's source keeps the two representations in sync: going
+  // back to "one per run" unmaps the column that fed it, going to "from file"
+  // clears the run-wide value and whatever depends on it.
+  function handleSourceChange(field: (typeof fileBackedFields)[number], source: 'run' | 'file') {
+    if (source === 'file') {
+      setIntendedFromFile((current) => [...new Set([...current, field.id])])
+      form.setValue(`global_config.${field.id}` as FieldPath<ImportMappingFormValues>, null)
+      for (const dependent of globalFields.filter((candidate) => candidate.depends_on === field.id)) {
+        form.setValue(
+          `global_config.${dependent.id}` as FieldPath<ImportMappingFormValues>,
+          dependent.multiple ? [] : null,
+        )
+      }
+      return
+    }
+
+    setIntendedFromFile((current) => current.filter((fieldId) => fieldId !== field.id))
+    for (const column of columns) {
+      if (keyedMapping[column.key] === field.required_unless_mapped) {
+        form.setValue(`mapping.${column.index}` as FieldPath<ImportMappingFormValues>, IGNORE_TARGET)
+      }
+    }
+  }
+
   const handleSubmit = form.handleSubmit((values) => {
+    if (fieldsMissingColumn.length > 0) {
+      return
+    }
+
     const realMapping: Record<string, string> = {}
     for (const column of columns) {
       realMapping[column.key] = values.mapping[String(column.index)] ?? IGNORE_TARGET
     }
+    const globalConfig = stripFileBackedConfig(values.global_config, globalFields, mappedFromFileIds)
     const trimmedTemplateName = templateName.trim()
     if (saveAsTemplate && trimmedTemplateName.length > 0) {
-      onSubmit(realMapping, values.dedup_strategy, values.global_config, { name: trimmedTemplateName })
+      onSubmit(realMapping, values.dedup_strategy, globalConfig, { name: trimmedTemplateName })
     } else {
-      onSubmit(realMapping, values.dedup_strategy, values.global_config)
+      onSubmit(realMapping, values.dedup_strategy, globalConfig)
     }
   })
 
@@ -252,7 +329,24 @@ export function ImportStepMapping({
                   title={t('config.title')}
                   description={t('config.subtitle')}
                 />
-                <ImportConfigFields globalFields={globalFields} control={form.control} />
+                {fileBackedFields.map((fileBackedField) => (
+                  <ImportCampaignSource
+                    key={fileBackedField.id}
+                    label={tLabel(fileBackedField.label)}
+                    mappedFieldLabel={tLabel(
+                      fields.find((candidate) => candidate.id === fileBackedField.required_unless_mapped)?.label ??
+                        fileBackedField.required_unless_mapped,
+                    )}
+                    value={fromFileFieldIds.includes(fileBackedField.id) ? 'file' : 'run'}
+                    onChange={(source) => handleSourceChange(fileBackedField, source)}
+                    columnMissing={fieldsMissingColumn.includes(fileBackedField.id)}
+                  />
+                ))}
+                <ImportConfigFields
+                  globalFields={globalFields}
+                  control={form.control}
+                  fromFileFieldIds={fromFileFieldIds}
+                />
               </>
             ) : null}
 

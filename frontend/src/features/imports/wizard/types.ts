@@ -59,6 +59,13 @@ export interface ImportGlobalFieldDescriptor {
    * absent means no dependency, the legacy behaviour.
    */
   depends_on?: string | null
+  /**
+   * Id of a MAPPABLE field that, once a file column is mapped onto it, makes
+   * this global field not just optional but forbidden (spec 0108 D-2):
+   * `campaign_id` names `campaign_code`, because the campaign is then read
+   * per row from the file. `null`/absent means the field is always run-wide.
+   */
+  required_unless_mapped?: string | null
 }
 
 /** Mapping target sentinel: the column is intentionally not imported. */
@@ -207,6 +214,15 @@ export interface ImportRunRowItem {
   /** Hydrated projection of `product_ids` (`{id,label}` per product), `[]` when unset/empty. */
   products: ImportRunRowProduct[]
   /**
+   * The campaign THIS row resolved from the file's `campaign_code` (spec
+   * 0108). `null` on a run whose campaign is global — there is no per-row
+   * campaign then — and on a row whose code matched nothing, which is
+   * exactly the case the review grid lets the operator fix.
+   */
+  campaign_id?: number | null
+  /** Hydrated projection of `campaign_id`, `null` when unset/unmatched. */
+  campaign?: ImportRunRowCampaign | null
+  /**
    * Keyed by field id (mapped) or original column name (extra). Mostly
    * strings, but the geo fields (spec 0038) also carry the resolved
    * `country_id`/`state_id`/`province_id`/`city_id` as numbers (or `null`
@@ -225,6 +241,13 @@ export interface ImportRunRowOperator {
 /** Minimal projection of the row's overridden operational site, hydrated alongside `operational_site_id`. */
 export interface ImportRunRowOperationalSite {
   id: number
+  name: string
+}
+
+/** Minimal projection of the row's resolved campaign, hydrated alongside `campaign_id`. */
+export interface ImportRunRowCampaign {
+  id: number
+  code: string
   name: string
 }
 

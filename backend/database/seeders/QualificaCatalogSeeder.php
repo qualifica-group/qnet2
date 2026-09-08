@@ -6,10 +6,12 @@ use App\Enums\AttributeContext;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
+use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\CatalogRootRules;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Illuminate\Database\Seeder;
 
@@ -30,14 +32,16 @@ use Illuminate\Database\Seeder;
  *     rows — plus the subcategories that host their offer directly,
  *     "Autofinanziato", "Autoimpiego", "Yisu" and "Orientamento
  *     Specialistico" (see SELECTABLE_SUBCATEGORIES). The "Formazione" branch
- *     also carries its
- *     product-context attributes (spec 0061) — "Ore complessive" and the
- *     "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue —
- *     assigned to the root and inherited by every descendant, then grouped
- *     into form sections by QualificaClassroomLayoutSeeder (spec 0062). The
- *     counterpart of the OFFERTA and COMMESSA contexts ("Dati Lavorazione
- *     Contatto", scoped to Formazione / Autofinanziato / the two Consulenza
- *     leaves) is delegated to QualificaContactProcessingSeeder;
+ *     also carries its OFFERTA-context attributes (spec 0061/0084) — the
+ *     "Dati corso" pair of QualificaCatalog\CourseDataAttributeCatalogue and
+ *     the "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue,
+ *     both moved off the PRODUCT by the user directive 2026-09-08 — assigned
+ *     to the root and inherited by every descendant. The rest of the same
+ *     context, plus the whole COMMESSA one ("Dati Lavorazione Contatto",
+ *     scoped to Formazione / Autofinanziato / the two Consulenza leaves), is
+ *     delegated to QualificaContactProcessingSeeder, and the offer FORM that
+ *     groups all three sets into sections (spec 0062) to
+ *     QualificaQuoteLayoutSeeder;
  *   - every product of the catalogue, delegated to
  *     QualificaCatalog\CatalogProducts once the tree exists: the GOL courses
  *     under their own region, the self-funded ones under "Autofinanziato"
@@ -75,6 +79,7 @@ use Illuminate\Database\Seeder;
  */
 class QualificaCatalogSeeder extends Seeder
 {
+    use RetiresAttributes;
     use SeedsCategoryAttributes;
 
     /**
@@ -173,9 +178,9 @@ class QualificaCatalogSeeder extends Seeder
     ];
 
     /**
-     * Product-context attributes (spec 0061): category name => list of
+     * OFFERTA-context attributes (spec 0061/0084): category name => list of
      * catalogue attribute specs. The assignment is made at the HIGHEST node
-     * that needs the field, because `inherits_product_attributes` defaults to
+     * that needs the field, because `inherits_quote_attributes` defaults to
      * true and a category's EFFECTIVE attributes are its own UNION every
      * ancestor's — so "Ore complessive" reaches the whole "Formazione" branch
      * (its subcategories AND the regional GOL children) from a single pivot
@@ -184,7 +189,15 @@ class QualificaCatalogSeeder extends Seeder
      *
      * The "Dati Aula" fields (ClassroomAttributeCatalogue) ride on the same
      * root assignment, for the same reason: they describe the classroom
-     * edition of ANY Formazione product, regional or self-funded.
+     * edition of ANY Formazione course, regional or self-funded.
+     *
+     * THE CONTEXT IS THE OFFERTA, NOT THE PRODUCT (user directive
+     * 2026-09-08). Both sets used to be assigned in `AttributeContext::Product`
+     * and rendered on the product form — the duration and the delivery mode
+     * even written onto every seeded course by CatalogProducts. They describe
+     * the deal being closed, not the catalogue entry, so they moved whole:
+     * nothing assigns them on the product side any more, and no seeded product
+     * carries a value for them.
      *
      * `code` is the English identifier (the catalogue's natural key, and its
      * `^[a-z0-9_]+$` format); `name` is the user-facing label, kept in its
@@ -194,17 +207,12 @@ class QualificaCatalogSeeder extends Seeder
      *
      * @var array<string, list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, relation_target?: array<string, mixed>}>>
      */
-    private const array CATALOG_PRODUCT_ATTRIBUTES = [
+    private const array CATALOG_QUOTE_ATTRIBUTES = [
         'Formazione' => [
-            ['code' => CatalogProducts::TOTAL_HOURS_ATTRIBUTE, 'name' => 'Ore complessive', 'type' => 'integer'],
+            ...CourseDataAttributeCatalogue::TRAINING_ATTRIBUTES,
             ...ClassroomAttributeCatalogue::ATTRIBUTES,
         ],
-        SelfFundedCourseCatalogue::CATEGORY => [
-            ['code' => CatalogProducts::DELIVERY_MODE_ATTRIBUTE, 'name' => 'Modalità di svolgimento', 'type' => 'enum', 'options' => [
-                ['value' => SelfFundedCourseCatalogue::IN_PERSON, 'label' => 'In presenza'],
-                ['value' => SelfFundedCourseCatalogue::ONLINE, 'label' => 'Online'],
-            ]],
-        ],
+        SelfFundedCourseCatalogue::CATEGORY => CourseDataAttributeCatalogue::SELF_FUNDED_ATTRIBUTES,
     ];
 
     /**
@@ -226,21 +234,23 @@ class QualificaCatalogSeeder extends Seeder
         // Step 2: the category tree and the attribute the courses below need.
         $this->seedCatalog();
 
-        // Step 3: the products, which resolve their category from step 2 and
-        // their attributes from the assignments it sets up.
+        // Step 3: the products, which resolve their category from step 2.
+        // They carry no attribute value: the branch's fields are the offer's.
         app(CatalogProducts::class)->seed();
 
         // Step 4: the "stati di lavorazione", which key their matching
         // criterion on the categories of step 2.
         $this->call(QualificaWorkflowSeeder::class);
 
-        // Step 4-bis: the "Dati Aula" form section, which places the
-        // attributes step 2 assigned onto every category of the branch.
-        $this->call(QualificaClassroomLayoutSeeder::class);
-
-        // Step 4-ter: the Offerta/Commessa set, which resolves the same
-        // categories of step 2 and adopts the q-crm rows when they are there.
+        // Step 4-bis: the rest of the Offerta set (and the whole Commessa
+        // one), which resolves the same categories of step 2 and adopts the
+        // q-crm rows when they are there.
         $this->call(QualificaContactProcessingSeeder::class);
+
+        // Step 4-ter: the offer FORM, after every `quote` assignment above —
+        // it composes one section per catalogue and AttributeLayoutService
+        // validates each code against the category's effective set.
+        $this->call(QualificaQuoteLayoutSeeder::class);
 
         // Step 5: the optional follow-up, on demand.
         if ($askForLegacyImport) {
@@ -318,14 +328,43 @@ class QualificaCatalogSeeder extends Seeder
 
         // The attributes come after the WHOLE tree: an assignment can target
         // any node, at any depth, not just the root being built above.
-        foreach (self::CATALOG_PRODUCT_ATTRIBUTES as $categoryName => $specs) {
+        foreach (self::CATALOG_QUOTE_ATTRIBUTES as $categoryName => $specs) {
             $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
-            $this->seedCategoryAttributes($category, $specs, AttributeContext::Product);
+            $this->seedCategoryAttributes($category, $specs, AttributeContext::Quote);
         }
+
+        // ...and the same codes leave the PRODUCT side, where an earlier
+        // revision of this catalogue put them. Without this the move is
+        // invisible on an installation already seeded: the assignments are
+        // additive, so the fields would show up in BOTH forms.
+        $this->retireProductAttributes();
 
         // The root-owned rules come last: they re-sync the whole subtree, so
         // every node must already exist.
         app(CatalogRootRules::class)->apply();
+    }
+
+    /**
+     * Withdraws every code of CATALOG_QUOTE_ATTRIBUTES from the PRODUCT
+     * context — the one subtractive step of this seeder (user directive
+     * 2026-09-08: "spostati", not "aggiunti").
+     *
+     * Scoped to that context on purpose: the very same codes have just been
+     * assigned on the Offerta side, and a context-agnostic retirement would
+     * undo the assignment above. The attribute rows, their options and any
+     * value already stored in `products.attribute_values` are left untouched;
+     * what goes is the assignment and the product-form section built on it.
+     *
+     * A no-op on a clean database, where the codes were never assigned there.
+     */
+    private function retireProductAttributes(): void
+    {
+        $codes = array_merge(...array_map(
+            static fn (array $specs): array => array_column($specs, 'code'),
+            array_values(self::CATALOG_QUOTE_ATTRIBUTES),
+        ));
+
+        $this->retireAttributeCodes($codes, AttributeContext::Product);
     }
 
     /**

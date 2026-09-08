@@ -12,7 +12,7 @@ import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actio
 import type { TableRow } from '@/features/table/types'
 
 /**
- * Bulk "Assegna GA3" action (spec 0104, AC-020 -> AC-025): the Sede-less
+ * Bulk "Assegna GA1" action (spec 0104, AC-020 -> AC-025): the Sede-less
  * sibling of the operators assignment. `<TableView>` is stubbed (its own
  * suites cover the generic bulk-actions slot) and so is `AsyncPaginatedSelect`,
  * exactly as the transfer suite does, so the REAL dialog runs its own
@@ -42,14 +42,14 @@ vi.mock('@/components/page-header', () => ({
   PageHeader: ({ actions }: { actions?: ReactNode }) => <div>{actions}</div>,
 }))
 
-const assignRequestManagerGa3Mock = vi.fn()
+const assignRequestManagerGa1Mock = vi.fn()
 const fetchRequestManagementCategoriesMock = vi.fn()
 vi.mock('@/features/request-management/api', () => ({
   fetchRequestWorkPanel: vi.fn(),
   updateRequestWork: vi.fn(),
   deleteRequest: vi.fn(),
   assignRequestOperators: vi.fn(),
-  assignRequestManagerGa3: (...args: unknown[]) => assignRequestManagerGa3Mock(...args),
+  assignRequestManagerGa1: (...args: unknown[]) => assignRequestManagerGa1Mock(...args),
   transferRequests: vi.fn(),
   fetchCategoryManagerLabels: vi.fn(),
   fetchRequestManagementCategories: (...args: unknown[]) =>
@@ -130,18 +130,18 @@ beforeEach(() => {
   canMock.mockReturnValue(true)
   refreshMock.mockReset()
   clearSelectionMock.mockReset()
-  assignRequestManagerGa3Mock.mockReset()
-  assignRequestManagerGa3Mock.mockResolvedValue({ assigned: 2 })
+  assignRequestManagerGa1Mock.mockReset()
+  assignRequestManagerGa1Mock.mockResolvedValue({ assigned: 2 })
   fetchRequestManagementCategoriesMock.mockReset()
   fetchRequestManagementCategoriesMock.mockResolvedValue([])
-  managerLabels = { '3': 'Referente GOL' }
+  managerLabels = { '1': 'Referente GOL' }
   vi.mocked(toast.success).mockClear()
   vi.mocked(toast.error).mockClear()
 })
 
-describe('RequestManagementTable — bulk GA3 assignment (spec 0104)', () => {
-  it('is gated on request-management.update AND request-management.assignManagerGa3 (AC-020)', () => {
-    canMock.mockImplementation((permission) => permission !== 'request-management.assignManagerGa3')
+describe('RequestManagementTable — bulk GA1 assignment (spec 0104)', () => {
+  it('is gated on request-management.update AND request-management.assignManagerGa1 (AC-020)', () => {
+    canMock.mockImplementation((permission) => permission !== 'request-management.assignManagerGa1')
     const { unmount } = renderTable()
     expect(screen.queryByRole('button', { name: 'Assign Referente GOL' })).not.toBeInTheDocument()
     unmount()
@@ -151,13 +151,13 @@ describe('RequestManagementTable — bulk GA3 assignment (spec 0104)', () => {
     expect(screen.queryByRole('button', { name: 'Assign Referente GOL' })).not.toBeInTheDocument()
   })
 
-  it('names the action after the active category label for position 3 (AC-021)', () => {
+  it('names the action after the active category label for position 1 (AC-021)', () => {
     renderTable()
 
     expect(screen.getByRole('button', { name: 'Assign Referente GOL' })).toBeInTheDocument()
   })
 
-  it('falls back to the column label when the category defines no position 3 (AC-021)', () => {
+  it('falls back to the column label when the category defines no position 1 (AC-021)', () => {
     managerLabels = { '2': 'Operatore' }
     renderTable()
 
@@ -186,10 +186,10 @@ describe('RequestManagementTable — bulk GA3 assignment (spec 0104)', () => {
 
     // Asserted on the first argument alone: TanStack hands the mutationFn a
     // second, internal context object.
-    await waitFor(() => expect(assignRequestManagerGa3Mock).toHaveBeenCalled())
-    expect(assignRequestManagerGa3Mock.mock.calls[0][0]).toEqual({
+    await waitFor(() => expect(assignRequestManagerGa1Mock).toHaveBeenCalled())
+    expect(assignRequestManagerGa1Mock.mock.calls[0][0]).toEqual({
       request_ids: [11, 22],
-      manager_ga3_id: USER_PICK_ID,
+      manager_ga1_id: USER_PICK_ID,
     })
     await waitFor(() => expect(refreshMock).toHaveBeenCalled())
     expect(clearSelectionMock).toHaveBeenCalled()
@@ -206,15 +206,15 @@ describe('RequestManagementTable — bulk GA3 assignment (spec 0104)', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
-    await waitFor(() => expect(assignRequestManagerGa3Mock).toHaveBeenCalled())
-    expect(assignRequestManagerGa3Mock.mock.calls[0][0]).toEqual({
+    await waitFor(() => expect(assignRequestManagerGa1Mock).toHaveBeenCalled())
+    expect(assignRequestManagerGa1Mock.mock.calls[0][0]).toEqual({
       request_ids: [11, 22],
-      manager_ga3_id: null,
+      manager_ga1_id: null,
     })
   })
 
   it('keeps the popup open with the current pick when the write fails (AC-024)', async () => {
-    assignRequestManagerGa3Mock.mockRejectedValue(new Error('boom'))
+    assignRequestManagerGa1Mock.mockRejectedValue(new Error('boom'))
     renderTable()
 
     fireEvent.click(screen.getByRole('button', { name: 'Assign Referente GOL' }))

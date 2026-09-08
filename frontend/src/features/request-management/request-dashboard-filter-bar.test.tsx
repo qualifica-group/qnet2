@@ -5,7 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { RequestDashboardFilterBar } from '@/features/request-management/request-dashboard-filter-bar'
-import { requestReportDefaultValues } from '@/features/request-management/request-report-schema'
+import {
+  requestReportDefaultValues,
+  toRequestReportFilterPayload,
+} from '@/features/request-management/request-report-schema'
 import type { RequestReportRun } from '@/features/request-management/report-api'
 
 /**
@@ -43,6 +46,15 @@ const APPLIED_FILTERS = {
   date_from: '2026-09-01',
   date_to: '2026-09-30',
 }
+
+/**
+ * What the panel actually hands the bar (spec 0109 D-9): the NORMALIZED
+ * payload, with `operator_keys` already dropped because every operator is
+ * selected. The file must be generated from this, not from the raw form
+ * values — otherwise the CSV and the charts would read the selection
+ * differently.
+ */
+const APPLIED_PAYLOAD = toRequestReportFilterPayload(APPLIED_FILTERS, [])
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -90,7 +102,9 @@ function renderBar(filtersReady = true) {
   render(
     <RequestDashboardFilterBar
       filters={APPLIED_FILTERS}
+      payload={APPLIED_PAYLOAD}
       categoryCount={2}
+      operatorCount={0}
       filtersReady={filtersReady}
       onEdit={onEdit}
     />,

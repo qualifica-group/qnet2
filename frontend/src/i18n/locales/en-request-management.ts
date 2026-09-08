@@ -19,7 +19,7 @@ export const requestManagement = {
     offerLines: 'Product lines',
     generalNotes: 'General notes',
     operator: 'Operator',
-    managerGa3: 'Tutor',
+    managerGa1: 'Tutor',
     operationalSite: 'Operational site',
     firstName: 'First name',
     lastName: 'Last name',
@@ -64,7 +64,7 @@ export const requestManagement = {
       generic: 'Unable to assign the operators. Please try again.',
     },
   },
-  assignManagerGa3: {
+  assignManagerGa1: {
     tableButton: 'Assign {{label}}',
     title: 'Assign {{label}}',
     description: '{{count}} request(s) selected.',
@@ -294,6 +294,9 @@ export const requestManagement = {
       categories: 'Categories',
       // rev-2 AC-055: tri-state control at the top of the category group.
       selectAllCategories: 'Select all',
+      // Spec 0109: the GA2 group, shown only for the row modes that emit operator rows.
+      operators: 'Operators',
+      selectAllOperators: 'Select all',
       rowMode: 'Rows to include',
     },
     // rev-2 D-13: the three mutually exclusive `row_mode` options.
@@ -306,6 +309,7 @@ export const requestManagement = {
       processing: 'Generating…',
       completed: 'Report generated: the download started automatically.',
       loadingCategories: 'Loading categories…',
+      loadingOperators: 'Loading operators…',
     },
     buttons: {
       processing: 'Generating…',
@@ -320,6 +324,9 @@ export const requestManagement = {
       categoriesRequired: 'Select at least one category.',
       categoriesEmpty: 'No categories available: there are no visible requests to include in the report.',
       categoriesLoadFailed: 'Unable to load categories. Please try again.',
+      // Spec 0109 AC-044: no request fires with zero operators selected.
+      operatorsRequired: 'Select at least one operator.',
+      operatorsLoadFailed: 'Unable to load operators. Please try again.',
       forbidden: "You don't have permission to generate this report.",
       validation: 'The dates entered are invalid.',
       generic: 'Unable to generate the report. Please try again.',
@@ -332,6 +339,7 @@ export const requestManagement = {
     regionLabel: 'Request Management dashboard',
     editFilters: 'Filters',
     filtersSummary: 'From {{from}} to {{to}} · {{selected}}/{{total}} categories · {{rowMode}}',
+    operatorsSummary: '· {{selected}}/{{total}} operators',
     loadError: 'Unable to load the dashboard.',
     empty: 'No charts to show for this selection.',
   },

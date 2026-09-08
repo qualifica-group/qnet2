@@ -12,7 +12,6 @@ use App\Models\User;
 use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\RequestManagement\RequestCreationService;
-use App\Support\ManagerPositions;
 use Database\Seeders\Concerns\PicksDemoOffers;
 use Database\Seeders\Concerns\PicksFreeRegistries;
 use Faker\Factory as FakerFactory;
@@ -80,8 +79,12 @@ class QualificaSampleRequestSeeder extends Seeder
 
     private const int MAX_OFFER_QUANTITY = 5;
 
-    /** G.A. 1, the GA2 "Operatore" and the GA3 the grid shows as its own column. */
-    private const int MANAGER_SLOTS = ManagerPositions::GA3;
+    /**
+     * The two slots the Gestione Richieste grid shows as their own columns —
+     * the GA1 (`ManagerPositions::GA1`) and the GA2 "Operatore" — plus a
+     * third G.A., so the demo team is never exactly the pair on screen.
+     */
+    private const int MANAGER_SLOTS = 3;
 
     public function __construct(
         private readonly RequestCreationService $requests,

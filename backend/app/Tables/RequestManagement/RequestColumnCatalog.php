@@ -35,8 +35,8 @@ use App\Tables\Shared\OfferLinesColumn;
  *    same `note`-carrying path spec 0054 D-5 built for the Opportunity's
  *    former `workflow_status` column (removed by spec 0083 D-2 with the
  *    dimension it addressed, restored here on the record this module now IS).
- *  - `operator_ga2` ("Operatore") and `manager_ga3` (direttiva utente
- *    2026-09-07) — the offer's own GA2/GA3 Gestori Account, two slots of the
+ *  - `operator_ga2` ("Operatore") and `manager_ga1` (direttiva utente
+ *    2026-09-07) — the offer's own GA2/GA1 Gestori Account, two slots of the
  *    `quote_user` pivot, inline-editable and relabelled per category tab.
  *    Declared together in RequestManagerColumns (see its docblock for the
  *    write-key and scoping rules that differ between the two).
@@ -223,7 +223,7 @@ final class RequestColumnCatalog
                 'filterable' => true,
                 'filterType' => 'boolean',
             ],
-            // The two Gestore Account SLOT columns (GA2 "Operatore", GA3):
+            // The two Gestore Account SLOT columns (GA2 "Operatore", GA1):
             // declared together in RequestManagerColumns, which also owns the
             // position->column map the per-tab header relabel reads.
             ...RequestManagerColumns::columns(),

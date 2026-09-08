@@ -125,18 +125,18 @@ final class RequestAttributionWriter
     }
 
     /**
-     * The GA3 slot (direttiva utente 2026-09-07): the grid's second Gestore
-     * Account cell, delegated to the SAME RequestOperatorWriter as the
-     * Operatore above. NO notification follows it, deliberately — GA3 scopes
+     * The GA1 slot (direttiva utente 2026-09-07, moved onto position 1 by
+     * the direttiva utente 2026-09-08): the grid's other Gestore Account cell, delegated to the SAME RequestOperatorWriter as the
+     * Operatore above. NO notification follows it, deliberately — GA1 scopes
      * no visibility and assigns nobody, exactly like a reshuffle of the other
      * slots in applyTeam() (spec 0097, D-6/AC-007).
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      */
-    public function applyManagerGa3(Quote $quote, mixed $value, array &$changed, array &$old): void
+    public function applyManagerGa1(Quote $quote, mixed $value, array &$changed, array &$old): void
     {
-        $this->operatorWriter->applyGa3($quote, $value === null ? null : (int) $value, $changed, $old);
+        $this->operatorWriter->applyGa1($quote, $value === null ? null : (int) $value, $changed, $old);
     }
 
     /**

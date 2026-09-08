@@ -262,24 +262,27 @@ class ImportController extends BaseApiController
             $this->authorizeImport($definition, $actor);
             $this->assertReviewing($importRun);
 
-            $data = $request->safe()->only(['values', 'geo', 'operator_id', 'operational_site_id', 'product_ids']);
+            $data = $request->safe()->only(['values', 'geo', 'operator_id', 'operational_site_id', 'product_ids', 'campaign_id']);
             $operatorIdSubmitted = array_key_exists('operator_id', $data);
             $siteIdSubmitted = array_key_exists('operational_site_id', $data);
             $productIdsSubmitted = array_key_exists('product_ids', $data);
+            $campaignIdSubmitted = array_key_exists('campaign_id', $data);
 
             $updated = $this->rowReviser->revise(
-                $definition,
-                $actor,
-                $importRun,
-                $row,
-                $data['values'] ?? null,
-                $data['geo'] ?? null,
-                $operatorIdSubmitted,
-                $operatorIdSubmitted ? $data['operator_id'] : null,
-                $siteIdSubmitted,
-                $siteIdSubmitted ? $data['operational_site_id'] : null,
-                $productIdsSubmitted,
-                $productIdsSubmitted ? $data['product_ids'] : null,
+                definition: $definition,
+                actor: $actor,
+                run: $importRun,
+                row: $row,
+                editedValues: $data['values'] ?? null,
+                geo: $data['geo'] ?? null,
+                operatorIdSubmitted: $operatorIdSubmitted,
+                operatorId: $operatorIdSubmitted ? $data['operator_id'] : null,
+                siteIdSubmitted: $siteIdSubmitted,
+                siteId: $siteIdSubmitted ? $data['operational_site_id'] : null,
+                productIdsSubmitted: $productIdsSubmitted,
+                productIds: $productIdsSubmitted ? $data['product_ids'] : null,
+                campaignIdSubmitted: $campaignIdSubmitted,
+                campaignId: $campaignIdSubmitted ? $data['campaign_id'] : null,
             );
             $this->service->recomputeCounts($importRun->fresh());
 

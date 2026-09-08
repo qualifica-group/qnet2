@@ -15,8 +15,20 @@ use Illuminate\Support\Facades\DB;
 
 // The client's "Dati Lavorazione Contatto" set: scoped per category, adopting
 // the q-crm rows where the import already created them, and provisioned in the
-// two contexts that read it — the Offerta and the Commessa.
+// two contexts that read it — the Offerta and the Commessa. The Offerta FORM
+// is composed by QualificaQuoteLayoutSeeder (this catalogue's section sits
+// there next to "Dati corso" and "Dati Aula"); this seeder writes the Commessa
+// one.
 uses(RefreshDatabase::class);
+
+/**
+ * This catalogue's section inside a layout blob, wherever the composition put
+ * it: first on the Commessa, last on the Offerta.
+ */
+function contactSectionOf(array $blob): array
+{
+    return collect($blob['sections'])->firstWhere('id', 'contact-processing');
+}
 
 /**
  * @return list<string>
@@ -126,7 +138,7 @@ it('places each appointment time right under its own date', function (): void {
 
         return array_map(
             static fn (array $row): array => array_column($row['items'], 'attribute_code'),
-            $blob['sections'][0]['rows'],
+            contactSectionOf($blob)['rows'],
         );
     };
 
@@ -239,7 +251,7 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
     $layout = $service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All);
-    $section = $layout['sections'][0];
+    $section = contactSectionOf($layout);
 
     expect($section['title'])->toBe('Dati Lavorazione Contatto')
         ->and($section['columns'])->toBe(2)
@@ -251,7 +263,7 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
     $trattative = ProductCategory::query()->where('name', 'Trattative in Corso')->firstOrFail();
     $consulting = $service->resolveExact($trattative, AttributeContext::Quote, LayoutFormScope::All);
 
-    $placed = fn (array $blob): array => collect($blob['sections'][0]['rows'])
+    $placed = fn (array $blob): array => collect(contactSectionOf($blob)['rows'])
         ->flatMap(fn (array $row): array => array_column($row['items'], 'attribute_code'))
         ->all();
 
@@ -263,31 +275,6 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
     $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
     expect($placed($service->resolveExact($autofinanziato, AttributeContext::Quote, LayoutFormScope::All)))
         ->toContain('course_time_preference', 'price', 'cpi');
-});
-
-it('never overwrites an opportunity layout configured by hand', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $service = app(AttributeLayoutService::class);
-    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-
-    $configured = $service->upsert($molise, AttributeContext::Quote, LayoutFormScope::All, [
-        'sections' => [[
-            'id' => 'by-hand',
-            'title' => 'Configurata a mano',
-            'description' => null,
-            'variant' => 'highlighted',
-            'collapsible' => true,
-            'default_collapsed' => true,
-            'columns' => 1,
-            'sort_order' => 0,
-            'rows' => [['id' => 'by-hand-0', 'items' => [['attribute_code' => 'cpi', 'width' => 'full']]]],
-        ]],
-    ]);
-
-    test()->seed(QualificaContactProcessingSeeder::class);
-
-    expect($service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All))->toBe($configured);
 });
 
 it('mirrors the whole set into the Commessa context, on the same categories', function (): void {
@@ -331,7 +318,7 @@ it('mirrors the whole set into the Commessa context, on the same categories', fu
     }
 });
 
-it('seeds the Commessa section per contributing category, identical to the Offerta one', function (): void {
+it('seeds the Commessa section per contributing category, alone in its own form', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaContactProcessingSeeder::class); // re-run: the layout is left alone.
 
@@ -342,19 +329,27 @@ it('seeds the Commessa section per contributing category, identical to the Offer
     expect(AttributeLayout::query()->where('context', AttributeContext::WorkOrder->value)->count())->toBe(18);
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-    $section = $service->resolveExact($molise, AttributeContext::WorkOrder, LayoutFormScope::All)['sections'][0];
+    $blob = $service->resolveExact($molise, AttributeContext::WorkOrder, LayoutFormScope::All);
 
-    expect($section['title'])->toBe('Dati Lavorazione Contatto')
-        ->and(array_column($section['rows'][0]['items'], 'attribute_code'))
+    // Nothing else contributes to the Commessa form: this catalogue's section
+    // is the whole of it, unlike the Offerta where it comes third.
+    expect(array_column($blob['sections'], 'id'))->toBe(['contact-processing'])
+        ->and($blob['sections'][0]['title'])->toBe('Dati Lavorazione Contatto')
+        ->and(array_column($blob['sections'][0]['rows'][0]['items'], 'attribute_code'))
         ->toBe(['data_scelta_cpi', 'data_app_apl']);
 
-    // Same catalogue, same effective set: the two blobs come out identical, so
-    // a divergence here means one context resolved something the other did not.
+    // Same catalogue, same effective set in both contexts: the section comes
+    // out identical, so a divergence here means one context resolved something
+    // the other did not. Only its position differs — the Offerta stacks it
+    // after the two training sections, when the category has them.
     foreach (['GOL - Lazio', 'Autofinanziato', 'Trattative in Corso'] as $name) {
         $category = ProductCategory::query()->where('name', $name)->firstOrFail();
 
-        expect($service->resolveExact($category, AttributeContext::WorkOrder, LayoutFormScope::All))
-            ->toBe($service->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All));
+        $commessa = contactSectionOf($service->resolveExact($category, AttributeContext::WorkOrder, LayoutFormScope::All));
+        $offerta = contactSectionOf($service->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All));
+
+        expect(array_diff_key($commessa, ['sort_order' => null]))
+            ->toBe(array_diff_key($offerta, ['sort_order' => null]), $name);
     }
 });
 

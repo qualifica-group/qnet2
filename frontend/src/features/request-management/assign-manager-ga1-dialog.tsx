@@ -17,28 +17,28 @@ import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 /** Crisp, compact styling of the single select, shared with the operators popup. */
 const SELECT_CLASS = 'h-8 bg-card text-xs shadow-sm transition-colors hover:border-ring/50'
 
-export interface AssignManagerGa3DialogProps {
+export interface AssignManagerGa1DialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** How many rows are selected; drives the description copy. */
   selectionCount: number
   /**
-   * The resolved name of the slot — the scoped category's `manager_labels[3]`
-   * ("Tutor" where configured so), or the column's own i18n fallback. Resolved
-   * by the consumer, which is what owns the active category tab.
+   * The resolved name of the slot — the scoped category's `manager_labels[1]`,
+   * or the column's own i18n fallback. Resolved by the consumer, which is what
+   * owns the active category tab.
    */
   label: string
   /**
-   * Wired by the consumer to `POST /request-management/assign-manager-ga3`.
+   * Wired by the consumer to `POST /request-management/assign-manager-ga1`.
    * `null` means "clear the slot on the whole selection". A rejection is
    * assumed already surfaced by the caller (toast) and just keeps the dialog
    * open with the current pick so the user can retry.
    */
-  onAssign: (managerGa3Id: number | null) => Promise<void>
+  onAssign: (managerGa1Id: number | null) => Promise<void>
 }
 
 /**
- * Bulk GA3 assignment popup (spec 0104). A deliberately narrower flow than
+ * Bulk GA1 assignment popup (spec 0104). A deliberately narrower flow than
  * `AssignOperatorsDialog`: ONE field, no Sede and no mode picker, because only
  * the GA2 Operatore slot is bound to a Sede operativa (D-1) and without one
  * there is no pool to balance across. It is a sibling of that dialog, not a
@@ -49,17 +49,17 @@ export interface AssignManagerGa3DialogProps {
  * one (D-2): it clears the slot on every selected request, and the copy says
  * so before the click.
  */
-export function AssignManagerGa3Dialog({
+export function AssignManagerGa1Dialog({
   open,
   onOpenChange,
   selectionCount,
   label,
   onAssign,
-}: AssignManagerGa3DialogProps) {
+}: AssignManagerGa1DialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 p-0">
-        <AssignManagerGa3DialogBody
+        <AssignManagerGa1DialogBody
           selectionCount={selectionCount}
           label={label}
           onAssign={onAssign}
@@ -70,10 +70,10 @@ export function AssignManagerGa3Dialog({
   )
 }
 
-interface AssignManagerGa3DialogBodyProps {
+interface AssignManagerGa1DialogBodyProps {
   selectionCount: number
   label: string
-  onAssign: AssignManagerGa3DialogProps['onAssign']
+  onAssign: AssignManagerGa1DialogProps['onAssign']
   onClose: () => void
 }
 
@@ -82,19 +82,19 @@ interface AssignManagerGa3DialogBodyProps {
  * in its own component — rather than in the dialog the consumer keeps mounted
  * across opens — is what makes every open start from a clean selection.
  */
-function AssignManagerGa3DialogBody({
+function AssignManagerGa1DialogBody({
   selectionCount,
   label,
   onAssign,
   onClose,
-}: AssignManagerGa3DialogBodyProps) {
+}: AssignManagerGa1DialogBodyProps) {
   const { t } = useTranslation()
-  const [managerGa3Id, setManagerGa3Id] = useState<number | null>(null)
+  const [managerGa1Id, setManagerGa1Id] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function handleAssign() {
     setIsSubmitting(true)
-    onAssign(managerGa3Id)
+    onAssign(managerGa1Id)
       .then(() => onClose())
       .catch(() => {
         // Already surfaced via toast by the caller; keep the pick so the user
@@ -115,10 +115,10 @@ function AssignManagerGa3DialogBody({
         </span>
         <DialogHeader className="flex-1 gap-1">
           <DialogTitle className="text-sm">
-            {t('requestManagement.assignManagerGa3.title', { label })}
+            {t('requestManagement.assignManagerGa1.title', { label })}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {t('requestManagement.assignManagerGa3.description', { count: selectionCount })}
+            {t('requestManagement.assignManagerGa1.description', { count: selectionCount })}
           </DialogDescription>
         </DialogHeader>
       </div>
@@ -126,33 +126,33 @@ function AssignManagerGa3DialogBody({
       <div className="px-4 py-4">
         <div className="grid gap-3 rounded-xl border bg-gradient-to-b from-card to-muted/20 p-3">
           <div className="space-y-1.5">
-            <Label htmlFor="assign-manager-ga3-user" className="text-xs font-medium">
+            <Label htmlFor="assign-manager-ga1-user" className="text-xs font-medium">
               {label}
             </Label>
-            {/* No `params`: the GA3 is bound to no Sede, so the picker lists
-                every user — exactly what the grid's own `manager_ga3` cell does. */}
+            {/* No `params`: the GA1 is bound to no Sede, so the picker lists
+                every user — exactly what the grid's own `manager_ga1` cell does. */}
             <AsyncPaginatedSelect
-              id="assign-manager-ga3-user"
+              id="assign-manager-ga1-user"
               resource={USERS_FOR_SELECT_RESOURCE}
-              value={managerGa3Id}
-              onChange={setManagerGa3Id}
+              value={managerGa1Id}
+              onChange={setManagerGa1Id}
               showAvatar
               disabled={isSubmitting}
               className={SELECT_CLASS}
               labels={{
-                placeholder: t('requestManagement.assignManagerGa3.placeholder'),
-                searchPlaceholder: t('requestManagement.assignManagerGa3.searchPlaceholder'),
-                empty: t('requestManagement.assignManagerGa3.empty'),
-                error: t('requestManagement.assignManagerGa3.selectError'),
-                clearLabel: t('requestManagement.assignManagerGa3.selectClear'),
+                placeholder: t('requestManagement.assignManagerGa1.placeholder'),
+                searchPlaceholder: t('requestManagement.assignManagerGa1.searchPlaceholder'),
+                empty: t('requestManagement.assignManagerGa1.empty'),
+                error: t('requestManagement.assignManagerGa1.selectError'),
+                clearLabel: t('requestManagement.assignManagerGa1.selectClear'),
                 triggerLabel: label,
-                retry: t('requestManagement.assignManagerGa3.retry'),
+                retry: t('requestManagement.assignManagerGa1.retry'),
               }}
             />
             <p className="text-[11px] text-muted-foreground">
-              {managerGa3Id === null
-                ? t('requestManagement.assignManagerGa3.clearHint')
-                : t('requestManagement.assignManagerGa3.hint', { label })}
+              {managerGa1Id === null
+                ? t('requestManagement.assignManagerGa1.clearHint')
+                : t('requestManagement.assignManagerGa1.hint', { label })}
             </p>
           </div>
         </div>
@@ -168,8 +168,8 @@ function AssignManagerGa3DialogBody({
         >
           <UserCog className="size-3.5" aria-hidden="true" />
           {isSubmitting
-            ? t('requestManagement.assignManagerGa3.assigning')
-            : t('requestManagement.assignManagerGa3.confirm')}
+            ? t('requestManagement.assignManagerGa1.assigning')
+            : t('requestManagement.assignManagerGa1.confirm')}
         </Button>
       </DialogFooter>
     </>

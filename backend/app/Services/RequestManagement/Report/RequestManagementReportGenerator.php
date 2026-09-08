@@ -24,6 +24,11 @@ use App\Models\User;
  * Invoked by GenerateRequestManagementReportJob, which has already frozen
  * the actor (Auth::setUser) and the locale (App::setLocale) before calling
  * this.
+ *
+ * $operators (spec 0108) is LAST and optional on both entry points, and a
+ * null normalises to ReportOperatorFilter::all(): that is what makes an
+ * ExportRun frozen before spec 0108 — its state has no `operator_keys` —
+ * generate exactly the file it always did (D-2, AC-014).
  */
 final class RequestManagementReportGenerator
 {
@@ -45,9 +50,10 @@ final class RequestManagementReportGenerator
         RequestManagementReportRowMode $rowMode,
         ExportFormat $format,
         string $absolutePath,
+        ?ReportOperatorFilter $operators = null,
     ): int {
         // Step 1: every selected branch's already-computed rows — the reusable core.
-        $branchRows = $this->rows($actor, $dateFrom, $dateTo, $categoryKeys, $rowMode);
+        $branchRows = $this->rows($actor, $dateFrom, $dateTo, $categoryKeys, $rowMode, $operators);
 
         // Step 2: open the format's own writer, translated header row first.
         $writer = $this->writers->make($format);
@@ -86,14 +92,16 @@ final class RequestManagementReportGenerator
         string $dateTo,
         array $categoryKeys,
         RequestManagementReportRowMode $rowMode,
+        ?ReportOperatorFilter $operators = null,
     ): array {
         $branches = $this->selectedBranches($categoryKeys);
         $range = ReportDateRange::fromRequest($dateFrom, $dateTo);
+        $operators ??= ReportOperatorFilter::all();
 
         return array_map(
             fn (ReportBranch $branch): array => [
                 'branch' => $branch,
-                'rows' => $this->rowsBuilder->build($branch, $actor, $range, $rowMode),
+                'rows' => $this->rowsBuilder->build($branch, $actor, $range, $rowMode, $operators),
             ],
             $branches,
         );

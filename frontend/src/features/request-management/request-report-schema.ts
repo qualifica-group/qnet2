@@ -1,12 +1,33 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import type { RequestReportCategory, RequestReportRowMode } from '@/features/request-management/report-api'
+import type {
+  RequestReportCategory,
+  RequestReportFilterPayload,
+  RequestReportRowMode,
+} from '@/features/request-management/report-api'
 
 /** Display order of the three row-mode options (rev-2 D-13, AC-052). */
 export const ROW_MODES: readonly RequestReportRowMode[] = ['total_only', 'operators_only', 'all']
 
-/** `YYYY-MM-DD`, the wire format `POST /request-management/report` expects (spec 0106). */
-export function buildRequestReportSchema(t: TFunction) {
+/**
+ * True when the operator selection is a REQUIREMENT for these values: only
+ * for the row modes that actually emit operator rows (spec 0109, D-4), and
+ * only once the picker has options to offer — with an empty list there is
+ * nothing to deselect, so an empty selection is "all of nothing", not an
+ * error the user could ever clear.
+ */
+function operatorsAreRequired(rowMode: RequestReportRowMode, availableOperatorKeys: string[]): boolean {
+  return rowMode !== 'total_only' && availableOperatorKeys.length > 0
+}
+
+/**
+ * `YYYY-MM-DD`, the wire format `POST /request-management/report` expects
+ * (spec 0106). `availableOperatorKeys` (spec 0109) is what the picker
+ * currently offers: passing it is what turns "at least one operator" into a
+ * real rule, and its default of `[]` keeps the schema usable (and the rule
+ * inert) wherever the list is irrelevant.
+ */
+export function buildRequestReportSchema(t: TFunction, availableOperatorKeys: string[] = []) {
   return z
     .object({
       date_from: z.string().min(1, t('requestManagement.report.errors.dateFromRequired')),
@@ -15,11 +36,19 @@ export function buildRequestReportSchema(t: TFunction) {
       // never a request left for the server to 422 (AC-051).
       category_keys: z.array(z.string()).min(1, t('requestManagement.report.errors.categoriesRequired')),
       row_mode: z.enum(['total_only', 'operators_only', 'all']),
+      operator_keys: z.array(z.string()),
     })
     .refine((value) => value.date_from === '' || value.date_to === '' || value.date_to >= value.date_from, {
       message: t('requestManagement.report.errors.dateToBeforeDateFrom'),
       path: ['date_to'],
     })
+    .refine(
+      (value) => !operatorsAreRequired(value.row_mode, availableOperatorKeys) || value.operator_keys.length > 0,
+      {
+        message: t('requestManagement.report.errors.operatorsRequired'),
+        path: ['operator_keys'],
+      },
+    )
 }
 
 export type RequestReportFormValues = z.infer<ReturnType<typeof buildRequestReportSchema>>
@@ -69,8 +98,16 @@ export function currentWeekReportRange(now: Date = new Date()): { date_from: str
  * `date_from`/`date_to` default to the current week's Monday/Friday (rev-2
  * AC-056) — both stay freely editable, this is a default, not a constraint.
  */
-export function requestReportDefaultValues(categoryKeys: string[] = []): RequestReportFormValues {
-  return { ...currentWeekReportRange(), category_keys: categoryKeys, row_mode: 'all' }
+export function requestReportDefaultValues(
+  categoryKeys: string[] = [],
+  operatorKeys: string[] = [],
+): RequestReportFormValues {
+  return {
+    ...currentWeekReportRange(),
+    category_keys: categoryKeys,
+    row_mode: 'all',
+    operator_keys: operatorKeys,
+  }
 }
 
 /**
@@ -107,11 +144,43 @@ export function categoriesAreBlocked(
  * `enabled: isValid` query could still fire with an empty `category_keys`,
  * exactly the empty-selection request AC-044 forbids.
  */
-export function isRequestReportQueryReady(values: RequestReportFormValues): boolean {
+export function isRequestReportQueryReady(
+  values: RequestReportFormValues,
+  availableOperatorKeys: string[] = [],
+): boolean {
   return (
     values.date_from !== '' &&
     values.date_to !== '' &&
     values.date_to >= values.date_from &&
-    values.category_keys.length > 0
+    values.category_keys.length > 0 &&
+    (!operatorsAreRequired(values.row_mode, availableOperatorKeys) || values.operator_keys.length > 0)
   )
+}
+
+/**
+ * The ONE place that decides what `operator_keys` looks like on the wire
+ * (spec 0109, D-9), used by BOTH consumers — the dashboard query (and its
+ * cache key) and the report file — so the charts and the CSV can never
+ * disagree about the very filter meant to unite them.
+ *
+ * The field is DROPPED, not sent empty, in the three cases that all mean
+ * "every operator": `total_only` (no operator rows to narrow, D-4), an empty
+ * picker, and a full selection. Dropping it on a full selection is deliberate
+ * (D-2): an explicit list would freeze the roster at the moment the panel
+ * loaded, and an operator added later would silently vanish from the report.
+ */
+export function toRequestReportFilterPayload(
+  values: RequestReportFormValues,
+  availableOperatorKeys: string[],
+): RequestReportFilterPayload {
+  const { operator_keys: selected, ...filters } = values
+
+  const isEveryOperator =
+    availableOperatorKeys.length > 0 && availableOperatorKeys.every((key) => selected.includes(key))
+
+  if (values.row_mode === 'total_only' || availableOperatorKeys.length === 0 || isEveryOperator) {
+    return filters
+  }
+
+  return { ...filters, operator_keys: selected }
 }

@@ -3,6 +3,7 @@
 namespace App\Imports\Leads;
 
 use App\Enums\ContactTypeEnum;
+use App\Imports\Recognition\CampaignRecognizer;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -15,6 +16,12 @@ use Illuminate\Support\Facades\Validator;
  * $mapped is the field-id-keyed value set AFTER recognizers ran (mapped
  * values merged with NameSplitRecognizer/GeoRecognizer output — the same
  * shape `resolveDuplicate()` receives).
+ *
+ * Spec 0108 (D-4) adds the campaign check, the one place a row is rejected
+ * for its campaign: a run taking the campaign from a file column stages every
+ * row with a `campaign_code` KEY (empty cell included), so its presence — not
+ * a new parameter — tells the two modes apart. A Lead structurally cannot
+ * exist without a campaign, hence an error and never a warning/placeholder.
  */
 final class LeadRowValidator
 {
@@ -30,7 +37,30 @@ final class LeadRowValidator
             $errors[] = 'A row needs a first name + last name, a company name, or at least one contact (email, phone or mobile).';
         }
 
-        return array_merge($errors, $this->contactFormatErrors($mapped));
+        return array_merge($errors, $this->campaignErrors($mapped), $this->contactFormatErrors($mapped));
+    }
+
+    /**
+     * @param  array<string, mixed>  $mapped
+     * @return array<int, string>
+     */
+    private function campaignErrors(array $mapped): array
+    {
+        if (! array_key_exists(CampaignRecognizer::CAMPAIGN_CODE_FIELD, $mapped)) {
+            return [];
+        }
+
+        $code = CampaignRecognizer::normalizeCode($mapped[CampaignRecognizer::CAMPAIGN_CODE_FIELD]);
+
+        if ($code === null) {
+            return ['The campaign code is empty: this import reads the campaign from a file column, so every row needs one.'];
+        }
+
+        if (($mapped[CampaignRecognizer::CAMPAIGN_ID_FIELD] ?? null) === null) {
+            return ["No campaign matches the code \"{$code}\"."];
+        }
+
+        return [];
     }
 
     /**

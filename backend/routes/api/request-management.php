@@ -26,10 +26,11 @@ use Illuminate\Support\Facades\Route;
 // Declared BEFORE the {quote} routes: a POST to the literal segment must
 // never be swallowed by the wildcard.
 Route::post('request-management/assign-operators', [RequestManagementController::class, 'assignOperators']);
-// Spec 0104 (direttiva utente 2026-09-07): the bulk GA3 ("Tutor") assignment,
-// the Sede-less sibling of assign-operators above. Same "declared before the
+// Spec 0104 (direttiva utente 2026-09-07, moved onto position 1 by the
+// direttiva utente 2026-09-08): the bulk GA1 assignment, the Sede-less
+// sibling of assign-operators above. Same "declared before the
 // wildcard" rule as every literal segment in this file.
-Route::post('request-management/assign-manager-ga3', [RequestManagementController::class, 'assignManagerGa3']);
+Route::post('request-management/assign-manager-ga1', [RequestManagementController::class, 'assignManagerGa1']);
 // Spec 0079: same "declared before the wildcard" rule as assign-operators
 // above — a POST to this literal segment must never be swallowed by the
 // GET/PUT/DELETE `{quote}` routes.
@@ -57,6 +58,10 @@ Route::get('request-management/report/categories', [RequestManagementReportContr
 // Spec 0107 (D-1/D-5): the dashboard's own synchronous endpoint — same
 // "declared before report/{exportRun}" rule as report/categories above.
 Route::get('request-management/report/dashboard', RequestManagementDashboardController::class);
+
+// Spec 0108: the GA2 Operatore the report may be filtered by. Same
+// "declared before report/{exportRun}" rule as the two literal segments above.
+Route::get('request-management/report/operators', [RequestManagementReportController::class, 'operators']);
 // ->whereNumber() on top of the declaration order (rev-2 routing_trap):
 // the order alone works until the file gets reorganised, the constraint
 // does not.

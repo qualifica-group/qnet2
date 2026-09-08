@@ -20,11 +20,12 @@ import {
   type RequestReportFormValues,
 } from '@/features/request-management/request-report-schema'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
+import { useRequestReportOperators } from '@/features/request-management/use-request-report-operators'
 
 /** Narrow form: the sheet opens at this width until the user resizes it (mirrors `ExportDialog`). */
 const REPORT_SHEET_DEFAULT_WIDTH = 440
 
-/** Brand-tinted header strip with the icon chip, same band as `AssignManagerGa3Dialog`. */
+/** Brand-tinted header strip with the icon chip, same band as `AssignManagerGa1Dialog`. */
 const HEADER_BAND_CLASS =
   'flex items-start gap-3 border-b bg-gradient-to-br from-card to-primary/[0.06] px-4 pt-4 pr-12 pb-3.5'
 const HEADER_ICON_CLASS =
@@ -67,9 +68,13 @@ export function RequestReportFiltersDialog({
   onApply,
 }: RequestReportFiltersDialogProps) {
   const { t } = useTranslation()
-  const schema = buildRequestReportSchema(t)
   const categoriesQuery = useRequestReportCategories(open)
   const categories = categoriesQuery.data
+  const operatorsQuery = useRequestReportOperators(open)
+  const operators = operatorsQuery.data
+  // The picker's own list is what makes "at least one operator" a real rule
+  // (spec 0109): with nothing on offer there is nothing to require.
+  const schema = buildRequestReportSchema(t, (operators ?? []).map((operator) => operator.key))
 
   const form = useForm<RequestReportFormValues>({
     resolver: zodResolver(schema),
@@ -129,6 +134,9 @@ export function RequestReportFiltersDialog({
                 categoriesLoading={categoriesQuery.isLoading}
                 categoriesError={categoriesQuery.isError}
                 categoriesEmpty={categoriesEmpty}
+                operators={operators}
+                operatorsLoading={operatorsQuery.isLoading}
+                operatorsError={operatorsQuery.isError}
                 disabled={categoriesBlocked}
               />
             </div>

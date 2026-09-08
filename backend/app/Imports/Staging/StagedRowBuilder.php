@@ -6,7 +6,6 @@ use App\Enums\ImportDedupMode;
 use App\Enums\ImportRowStatus;
 use App\Imports\ImportDefinition;
 use App\Imports\ImportRowContext;
-use App\Imports\Recognition\GeoRecognizer;
 use App\Imports\Recognition\RowRecognizer;
 use App\Models\User;
 
@@ -60,19 +59,21 @@ final class StagedRowBuilder
      *
      * @param  array<string, mixed>  $mappedValues
      * @param  array<string, string>|null  $extraValues
-     * @param  bool  $skipGeoRecognizer  spec 0038: true when the caller
-     *                                   (StagedRowReviser, via GeoPinResolver) already pinned country/region/
-     *                                   province/city + their `*_id`s onto $mappedValues from authoritative
-     *                                   ids — GeoRecognizer's fuzzy re-match would just redo (and could
-     *                                   contradict) a choice the operator already made explicit.
+     * @param  array<int, class-string>  $skipRecognizers  recognizers the caller has already
+     *                                                     superseded with an authoritative pin: GeoRecognizer when
+     *                                                     StagedRowReviser pinned country/region/province/city via
+     *                                                     GeoPinResolver (spec 0038), CampaignRecognizer when it
+     *                                                     pinned the row's campaign via CampaignPinResolver (spec
+     *                                                     0108). Re-running them would redo — and could contradict —
+     *                                                     a choice the operator already made explicit.
      */
-    public function resolve(int $rowNumber, array $mappedValues, ?array $extraValues, bool $skipGeoRecognizer = false): StageOutcome
+    public function resolve(int $rowNumber, array $mappedValues, ?array $extraValues, array $skipRecognizers = []): StageOutcome
     {
         // Step 2: run the definition's recognizers, merging resolved values
         // into BOTH the mapped values (so validateRow/persistRow see them
         // directly) and the row's own `resolved` record (for the review UI).
         $context = new ImportRowContext($rowNumber, $this->actor);
-        [$resolved, $messages, $needsReview] = $this->runRecognizers($context, $mappedValues, $skipGeoRecognizer);
+        [$resolved, $messages, $needsReview] = $this->runRecognizers($context, $mappedValues, $skipRecognizers);
         $mappedValues = [...$mappedValues, ...$resolved];
 
         // Step 2.5: any field still blank but required for creation defaults
@@ -141,16 +142,17 @@ final class StagedRowBuilder
 
     /**
      * @param  array<string, mixed>  $mapped
+     * @param  array<int, class-string>  $skipRecognizers
      * @return array{0: array<string, mixed>, 1: array<int, string>, 2: bool}
      */
-    private function runRecognizers(ImportRowContext $context, array $mapped, bool $skipGeoRecognizer = false): array
+    private function runRecognizers(ImportRowContext $context, array $mapped, array $skipRecognizers = []): array
     {
         $resolved = [];
         $messages = [];
         $needsReview = false;
 
         foreach ($this->definition->recognizers() as $recognizerClass) {
-            if ($skipGeoRecognizer && $recognizerClass === GeoRecognizer::class) {
+            if (in_array($recognizerClass, $skipRecognizers, true)) {
                 continue;
             }
 

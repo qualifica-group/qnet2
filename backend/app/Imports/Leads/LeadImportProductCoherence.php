@@ -3,7 +3,9 @@
 namespace App\Imports\Leads;
 
 use App\Models\Campaign;
+use App\Models\ImportRunRow;
 use App\Services\Opportunities\ProductCategoryCoherence;
+use Illuminate\Support\Collection;
 
 /**
  * Validates a submitted "Prodotti di interesse" id set against a Campaign's
@@ -39,6 +41,47 @@ final class LeadImportProductCoherence
         }
 
         return $this->coherence->offendingProducts($productIds, $this->effectiveCategoryIds($campaignId));
+    }
+
+    /**
+     * The `row_number`s among $rows whose OWN campaign (spec 0108, D-6 —
+     * per-row when the run reads campaigns from a file column, the run's
+     * global one otherwise) does not cover $productIds. Backs the bulk
+     * assignment's all-or-nothing rule: a run can now span several campaigns,
+     * so one shared verdict no longer exists and the request must name the
+     * rows that would break.
+     *
+     * Grouped by campaign, so the cost is one coherence resolution per
+     * DISTINCT campaign, never one per row.
+     *
+     * @param  Collection<int, ImportRunRow>  $rows
+     * @param  array<string, mixed>  $globalConfig
+     * @param  array<int, int>  $productIds
+     * @return array<int, int>
+     */
+    public function offendingRowNumbers(Collection $rows, array $globalConfig, array $productIds): array
+    {
+        if ($productIds === []) {
+            return [];
+        }
+
+        $offendingRows = [];
+
+        foreach ($rows->groupBy(static fn (ImportRunRow $row): string => (string) LeadRowCampaign::resolve($row->mapped_values ?? [], $globalConfig)) as $campaignKey => $group) {
+            $campaignId = $campaignKey === '' ? null : (int) $campaignKey;
+
+            if ($this->offendingProducts($campaignId, $productIds) === []) {
+                continue;
+            }
+
+            foreach ($group as $row) {
+                $offendingRows[] = $row->row_number;
+            }
+        }
+
+        sort($offendingRows);
+
+        return $offendingRows;
     }
 
     /**

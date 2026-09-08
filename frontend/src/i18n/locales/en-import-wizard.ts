@@ -67,6 +67,20 @@ export const importWizard = {
       remove: 'Remove',
       retry: 'Retry',
       disabledHint: 'Choose a Campaign first to select its products.',
+      perRowDependencyHint:
+        'Not available: {{field}} is read from the file, so it changes row by row. Assign products in the review step.',
+    },
+    source: {
+      legend: '{{field}} source',
+      run: {
+        title: 'One for the whole file',
+        description: 'Pick {{field}} here and every imported row uses it.',
+      },
+      file: {
+        title: 'From the file ({{field}})',
+        description: 'Each row uses the value of the column you map to {{field}}.',
+      },
+      columnMissing: 'Map a column to {{field}} to use this mode.',
     },
   },
   mapping: {
@@ -127,6 +141,7 @@ export const importWizard = {
       rowNumber: '#',
       status: 'Status',
       resolution: 'Duplicate',
+      campaign: 'Campaign',
       operator: 'Operator',
       site: 'Site',
       products: 'Products',
@@ -164,6 +179,21 @@ export const importWizard = {
       description: 'Pick the country, region, province and city for this row.',
       apply: 'Apply',
       cancel: 'Cancel',
+    },
+    campaign: {
+      editLabel: 'Edit campaign',
+      title: 'Campaign',
+      description: "This row takes its campaign from the code in the file. Pick a campaign to fix it.",
+      missing: 'Missing campaign code',
+      placeholder: 'Select…',
+      searchPlaceholder: 'Search…',
+      empty: 'No results.',
+      selectError: 'Could not load the options.',
+      selectClear: 'Clear selection',
+      useFileCode: 'Use the file code',
+      apply: 'Apply',
+      cancel: 'Cancel',
+      retry: 'Retry',
     },
     operator: {
       editLabel: 'Edit operator',

@@ -28,6 +28,12 @@ use Illuminate\Support\Collection;
  * That config key is the neutral source both this (calculation) class and
  * ReportSheetBuilder (formatting) read from — this class never depends on the
  * formatting one for it (spec 0107 D-2-bis, point 3).
+ *
+ * $operators (spec 0108, D-1) is handed straight down to the indicators and
+ * never inspected here: it restricts WHAT IS COMPUTED, upstream in
+ * ReportBranchQuery, so the operator rows this class ends up emitting are
+ * simply the ones the (already narrowed) breakdown still contains — no row is
+ * filtered out after the fact.
  */
 final class ReportBranchRowsBuilder
 {
@@ -36,10 +42,10 @@ final class ReportBranchRowsBuilder
     /**
      * @return array<int, ReportRow>
      */
-    public function build(ReportBranch $branch, ?User $actor, ReportDateRange $range, RequestManagementReportRowMode $rowMode): array
+    public function build(ReportBranch $branch, ?User $actor, ReportDateRange $range, RequestManagementReportRowMode $rowMode, ReportOperatorFilter $operators): array
     {
         // Step 1: compute every REAL (non-stub) applicable indicator once for the whole branch.
-        $results = $this->computeIndicators($branch, $actor, $range);
+        $results = $this->computeIndicators($branch, $actor, $range, $operators);
 
         // Step 2: the GA2 breakdown to emit — union of operator ids across every computed indicator.
         $operatorIds = $this->operatorIds($results);
@@ -69,7 +75,7 @@ final class ReportBranchRowsBuilder
     /**
      * @return array<string, IndicatorResult>
      */
-    private function computeIndicators(ReportBranch $branch, ?User $actor, ReportDateRange $range): array
+    private function computeIndicators(ReportBranch $branch, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): array
     {
         $results = [];
 
@@ -77,7 +83,7 @@ final class ReportBranchRowsBuilder
             $indicator = $this->indicators->resolve($column);
 
             if ($indicator !== null) {
-                $results[$column] = $indicator->compute($branch->categoryIds, $actor, $range);
+                $results[$column] = $indicator->compute($branch->categoryIds, $actor, $range, $operators);
             }
         }
 

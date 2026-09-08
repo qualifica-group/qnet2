@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Can } from '@/features/auth/can'
 import type { ExportFormat } from '@/features/exports/types'
+import type { RequestReportFilterPayload } from '@/features/request-management/report-api'
 import type { RequestReportFormValues } from '@/features/request-management/request-report-schema'
 import { useRequestReport } from '@/features/request-management/use-request-report'
 import { formatDate } from '@/lib/formatting/date-display'
@@ -66,10 +67,18 @@ function ReportStatusNote({ tone, children }: { tone: ReportStatusTone; children
 }
 
 export interface RequestDashboardFilterBarProps {
-  /** Filters currently applied to the charts; the report file is generated for these same values. */
+  /** Filters currently applied to the charts, for the human-readable summary. */
   filters: RequestReportFormValues
+  /**
+   * The SAME normalized payload the charts were fetched with (spec 0109 D-9):
+   * the file must be generated from it, not from `filters`, or the two would
+   * apply the operator selection differently.
+   */
+  payload: RequestReportFilterPayload
   /** Branches the report offers in total; the summary reads "selected/total". */
   categoryCount: number
+  /** GA2 the report offers in total; the summary reads "selected/total". */
+  operatorCount: number
   /** False while the applied filters cannot drive a request (branch list not seeded yet). */
   filtersReady: boolean
   onEdit: () => void
@@ -88,7 +97,9 @@ export interface RequestDashboardFilterBarProps {
  */
 export function RequestDashboardFilterBar({
   filters,
+  payload,
   categoryCount,
+  operatorCount,
   filtersReady,
   onEdit,
 }: RequestDashboardFilterBarProps) {
@@ -107,6 +118,12 @@ export function RequestDashboardFilterBar({
             total: categoryCount,
             rowMode: t(`requestManagement.report.rowModes.${filters.row_mode}`),
           })}
+          {filters.row_mode !== 'total_only' && operatorCount > 0
+            ? ` ${t('requestManagement.dashboard.operatorsSummary', {
+                selected: filters.operator_keys.length,
+                total: operatorCount,
+              })}`
+            : null}
         </p>
 
         <div className="flex items-center gap-2">
@@ -128,7 +145,7 @@ export function RequestDashboardFilterBar({
                   const Icon = FORMAT_ICON[format]
 
                   return (
-                    <DropdownMenuItem key={format} onSelect={() => report.create({ ...filters, format })}>
+                    <DropdownMenuItem key={format} onSelect={() => report.create({ ...payload, format })}>
                       <Icon aria-hidden="true" />
                       {t(`exports.formats.${format}`)}
                     </DropdownMenuItem>

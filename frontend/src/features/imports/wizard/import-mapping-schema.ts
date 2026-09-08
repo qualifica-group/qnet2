@@ -53,7 +53,16 @@ export function buildImportMappingSchema(
         })
       }
 
+      const mappedTargets = Object.values(values.mapping)
+
       for (const field of globalFields) {
+        // Spec 0108 (D-2): a global field whose `required_unless_mapped`
+        // field is mapped takes its value per row from that column, so the
+        // run-wide control is neither required nor submitted.
+        if (field.required_unless_mapped && mappedTargets.includes(field.required_unless_mapped)) {
+          continue
+        }
+
         if (field.required && isGlobalConfigValueMissing(values.global_config[field.id])) {
           ctx.addIssue({
             code: 'custom',

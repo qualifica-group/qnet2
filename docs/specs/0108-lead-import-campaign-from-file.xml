@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0108 — Campagna dal file nell'import lead.
+  Contract-first: il data_contract e' congelato PRIMA del dispatch.
+  Prosa italiana senza accenti; identificatori inglesi (engineering.md §1.2).
+-->
+<spec id="0108-lead-import-campaign-from-file" status="draft" owner="utente" date="2026-09-08">
+
+  <goal>
+    Nel wizard di import lead la campagna deve poter essere decisa in due modi alternativi: come
+    oggi, scegliendola una volta sola per tutto il file, oppure dichiarando che il codice della
+    campagna sta SU UNA COLONNA DEL FILE, cosi' che ogni riga venga agganciata alla propria
+    campagna. Una riga il cui codice non trova una campagna esistente viene invalidata e non
+    importata.
+  </goal>
+
+  <context>
+    <entity name="Campagna sul run (stato attuale)">
+      `campaign_id` e' oggi un campo GLOBALE del run: `LeadImportFieldCatalog::GLOBAL_FIELDS`
+      (backend/app/Imports/Leads/LeadImportFieldCatalog.php) e il valore scelto nello step di
+      mapping finisce in `import_runs.global_config`. Lo leggono `LeadRowPersister::attachLead()`,
+      `LeadDuplicateMatcher::existingLeadId()`, `ConfigureImportRequest`,
+      `UpdateImportRowRequest`/`BulkAssignRequest` (coerenza prodotti) e
+      `ImportOpportunityConvertibility::assess()`.
+    </entity>
+
+    <entity name="Codice campagna">
+      `campaigns.code` e' `string(32) unique`, generato dal servizio (CMP-0001...) e fuori da
+      `#[Fillable]`. E' gia' esposto agli operatori: `CampaignForSelectResource` lo pubblica come
+      `subtitle`. Non esiste scoping per attore sulle campagne (`CampaignPolicy` e' a permessi,
+      `CampaignService::forSelectBaseQuery()` non filtra per utente): il match per codice non
+      allarga la visibilita' di nessuno.
+    </entity>
+
+    <entity name="Risoluzione di un valore di colonna in un id (pattern esistente)">
+      Un `RowRecognizer` legge i valori mappati e restituisce un `RecognitionResult` i cui
+      `resolved` vengono fusi in `mapped_values` E in `resolved` dallo `StagedRowBuilder`.
+      `GeoRecognizer` fa esattamente questo per country/region/province/city -> `*_id`.
+      `StagedRowBuilder::resolve()` manda la riga in `ImportRowStatus::Error` non appena
+      `validateRow()` restituisce un errore.
+    </entity>
+
+    <entity name="Correzione di una riga in review (pattern esistente)">
+      La spec 0038 ha gia' risolto "il recognizer non ce l'ha fatta, l'operatore sceglie l'id
+      giusto": il PATCH di riga accetta un blocco `geo` di id autoritativi, `GeoPinResolver` li
+      trasforma nelle stesse chiavi di `mapped_values`, e la pipeline viene rigiocata saltando
+      GeoRecognizer. Gli override a colonna dedicata (`operator_id`, `operational_site_id`,
+      `product_ids`) sono l'altro pattern: scrivono una colonna e non rigiocano la pipeline.
+    </entity>
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo campo mappabile `campaign_code` nel catalogo dei lead, con alias di header e presenza nel template CSV.</item>
+      <item>Modalita' "campagna dal file" derivata dal `column_mapping`, con `global_config.campaign_id` non piu' obbligatorio (e non ammesso) in quella modalita'.</item>
+      <item>`CampaignRecognizer`: risoluzione `campaign_code` -> `campaign_id` in staging, per riga.</item>
+      <item>Invalidazione (status `error`) delle righe senza codice o con codice che non fa match.</item>
+      <item>Correzione della campagna di una riga nella review (blocco `campaign_id` nel PATCH di riga + colonna Campagna editabile nella review grid).</item>
+      <item>Adeguamento a "campagna effettiva di riga" di: persistenza del Lead, match duplicati, coerenza prodotti (per riga e bulk), readiness di conversione in opportunita'.</item>
+      <item>Disabilitazione del campo globale `product_ids` in modalita' "campagna dal file".</item>
+      <item>i18n IT/EN per ogni stringa nuova.</item>
+    </in>
+    <out>
+      <item>Match su `campaigns.name` o su `campaigns.id`: la chiave e' il CODICE e basta (D-1).</item>
+      <item>Creazione automatica di una campagna mancante dall'import.</item>
+      <item>Estensione della bimodalita' ad altri campi globali o ad altri domini di import.</item>
+      <item>Modifiche a `campaigns` (schema, servizio, for-select) e ai template di mapping salvati.</item>
+      <item>Modifiche al modulo storico import e ai suoi filtri.</item>
+    </out>
+  </scope>
+
+  <decisions>
+    <decision id="D-1">
+      La colonna contiene il CODICE campagna (`campaigns.code`, CMP-0001), non l'id numerico e non
+      il nome (direttiva utente 2026-09-08). Match esatto su codice normalizzato (trim + uppercase);
+      `code` e' unique, quindi mai ambiguo.
+    </decision>
+
+    <decision id="D-2">
+      La modalita' NON e' un flag a parte: e' DERIVATA dal `column_mapping`. Una colonna mappata su
+      `campaign_code` = modalita' per riga, altrimenti modalita' globale (invariata). Il descrittore
+      di un campo globale acquisisce `required_unless_mapped: string|null` (id del field che, se
+      mappato, ne toglie l'obbligo); su `leads`: `campaign_id` -> `campaign_code`. Le due modalita'
+      sono MUTUAMENTE ESCLUSIVE: con `campaign_code` mappato, un `global_config.campaign_id`
+      valorizzato e' 422, mai un fallback silenzioso.
+    </decision>
+
+    <decision id="D-3">
+      Risoluzione in staging con `CampaignRecognizer` (`App\Imports\Recognition`), registrato in
+      `LeadsImportDefinition::recognizers()`, che produce `resolved['campaign_id']` come
+      GeoRecognizer produce `country_id`. NESSUNA nuova colonna su `import_run_rows` e nessuna
+      migrazione: la campagna di riga influenza validazione e dedup, quindi vive dove la pipeline
+      la rilegge (`mapped_values`). `campaign_id` NON e' un field mappabile.
+    </decision>
+
+    <decision id="D-4">
+      Riga senza campagna risolta = `ImportRowStatus::Error`, mai warning ne' placeholder: un lead
+      senza campagna non e' rappresentabile. Tre casi con messaggi distinti (codice inesistente /
+      cella vuota / nessuna campagna). Il controllo vive in `LeadRowValidator`, che riconosce la
+      modalita' dalla presenza della CHIAVE `campaign_code` in `mapped_values`.
+    </decision>
+
+    <decision id="D-5">
+      La riga invalidata e' correggibile nella review (direttiva utente 2026-09-08) col pattern del
+      pin geo della 0038: `PATCH .../rows/{row}` accetta `campaign_id`; `CampaignPinResolver` scrive
+      `campaign_id` + il `campaign_code` canonico in `mapped_values`; la pipeline viene rigiocata
+      saltando `CampaignRecognizer`. Conseguenza tecnica: `skipGeoRecognizer` di
+      `StagedRowBuilder::resolve()`/`StagedRowReviser::revise()` diventa
+      `skipRecognizers: array&lt;class-string&gt;` — rename di parametro, non cambio di comportamento.
+    </decision>
+
+    <decision id="D-6">
+      In modalita' per riga il campo globale `product_ids` e' DISABILITATO (scelta utente
+      2026-09-08): dipende da `campaign_id` e senza campagna unica non c'e' nulla contro cui
+      validarne la coerenza. Server-side 422; client-side il controllo si disabilita con un testo
+      che spiega il motivo. L'override per riga resta e viene validato contro la campagna DELLA
+      RIGA; il bulk assign valida ogni riga bersaglio e riporta 422 elencando le righe incoerenti
+      invece di applicare a meta'.
+    </decision>
+
+    <decision id="D-7">
+      "Campagna effettiva della riga" = `mapped_values['campaign_id']` altrimenti
+      `global_config['campaign_id']`. Un solo helper condiviso (`LeadRowCampaign`), usato da
+      persister, matcher e convertibility. `LeadRowPersister` mantiene la sua `RuntimeException`
+      come invariante ultima.
+    </decision>
+
+    <decision id="D-8">
+      `ImportOpportunityConvertibility::assess()` in modalita' per riga considera vero
+      `campaignDerivesProductLine` solo se OGNI campagna distinta delle righe creabili deriva una
+      product line. La readiness resta una condizione di RUN. La difesa per riga in
+      `LeadRowPersister::shouldConvert()` e' gia' per campagna e resta invariata.
+    </decision>
+
+    <decision id="D-9">
+      Ergonomia: alias di header per `campaign_code` in `config('imports.column_aliases')` e
+      presenza nel template CSV. L'alias "campagna" resta un alias del CODICE: un file con il NOME
+      in quella colonna produce righe in errore con messaggio esplicito.
+    </decision>
+  </decisions>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/imports/{domain}/{importRun}">
+      <response status="200">
+        `data.fields[]` acquisisce `campaign_code` (label `imports.leads.fields.campaign_code`,
+        required false, group `lead`, type `text`). Ogni descrittore di `data.global_fields[]`
+        acquisisce `required_unless_mapped: string|null`; su `leads` `campaign_id` vale
+        `campaign_code`, gli altri `null`.
+      </response>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/imports/{domain}/{importRun}/configure">
+      <request>Shape invariata; `campaign_code` e' un target di colonna ammesso come ogni altro field id.</request>
+      <errors>
+        422 `global_config.campaign_id` — obbligatorio SOLO senza colonna mappata su `campaign_code`.
+        422 `global_config.campaign_id` — valorizzato mentre `campaign_code` e' mappato (D-2).
+        422 `global_config.product_ids` — non vuoto mentre `campaign_code` e' mappato (D-6).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/imports/{domain}/{importRun}/rows">
+      <response status="200">
+        Ogni `row` acquisisce `campaign_id: int|null` e `campaign: {id, code, name}|null`, risolti
+        in UNA query batch per pagina (schema di `products`, mai N+1). `values.campaign_code`
+        contiene il valore grezzo del file.
+      </response>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/imports/{domain}/{importRun}/rows/{row}">
+      <request>
+        Acquisisce `campaign_id: int|null` (`sometimes`, `exists:campaigns,id`), che entra nella
+        regola "almeno uno presente". Presente = pin (rigioca la pipeline saltando
+        CampaignRecognizer); `null` = unpin (la riga torna in mano al recognizer). Puo' cambiare
+        `status`, `messages`, `duplicate_of_id`.
+      </request>
+      <errors>
+        422 `campaign_id` — id inesistente.
+        422 `campaign_id` — presente su un run in modalita' GLOBALE.
+        422 `product_ids` — prodotti fuori dalle categorie della campagna DELLA RIGA.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/imports/{domain}/{importRun}/rows/bulk-assign">
+      <errors>422 `product_ids` — una sola riga bersaglio incoerente rifiuta il batch, elencando i `row_number`; nulla viene applicato.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/imports/{domain}/template">
+      <response status="200">Header CSV con la colonna `campaign_code` in coda ai campi lead.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">`GET .../{importRun}` espone `campaign_code` fra i `fields` e `required_unless_mapped: 'campaign_code'` sul descrittore globale `campaign_id`; gli altri hanno `null`.</criterion>
+    <criterion id="AC-002">`PUT .../configure` senza colonna mappata su `campaign_code` e senza `global_config.campaign_id` risponde 422 su `global_config.campaign_id`.</criterion>
+    <criterion id="AC-003">`PUT .../configure` con `campaign_code` mappato e senza `global_config.campaign_id` risponde 200 e il run passa in staging.</criterion>
+    <criterion id="AC-004">`PUT .../configure` con `campaign_code` mappato E `global_config.campaign_id` valorizzato risponde 422.</criterion>
+    <criterion id="AC-005">`PUT .../configure` con `campaign_code` mappato e `global_config.product_ids` non vuoto risponde 422 su `global_config.product_ids`.</criterion>
+    <criterion id="AC-006">Staging con codici validi: ogni riga ha `resolved.campaign_id` della propria campagna; righe con codici diversi producono `campaign_id` diversi nello stesso run.</criterion>
+    <criterion id="AC-007">Il match e' case-insensitive e tollerante agli spazi e memorizza il codice canonico.</criterion>
+    <criterion id="AC-008">Una riga con codice inesistente va in `error`, non viene importata, e il messaggio cita il codice.</criterion>
+    <criterion id="AC-009">Una riga con cella `campaign_code` vuota va in `error` con messaggio di codice mancante (mai placeholder, mai warning).</criterion>
+    <criterion id="AC-010">Il commit crea ogni Lead sulla campagna della PROPRIA riga; le righe in `error` non producono Lead.</criterion>
+    <criterion id="AC-011">Il match duplicati usa la campagna della riga: stesso contatto duplicato su A ma non su B.</criterion>
+    <criterion id="AC-012">In modalita' globale il comportamento pre-0108 e' invariato (non-regressione).</criterion>
+    <criterion id="AC-013">`PATCH .../rows/{row}` con `campaign_id` valido su una riga in `error` la riporta valida, con `is_edited` true e `mapped_values` aggiornati.</criterion>
+    <criterion id="AC-014">`PATCH .../rows/{row}` con `campaign_id: null` sgancia il pin: la riga viene rivalutata dal recognizer e torna in `error` se il codice resta invalido.</criterion>
+    <criterion id="AC-015">`campaign_id` su un run in modalita' globale risponde 422; un id inesistente risponde 422.</criterion>
+    <criterion id="AC-016">Il pin di campagna non tocca la geo gia' pinnata.</criterion>
+    <criterion id="AC-017">`product_ids` per riga e' validato contro la campagna DELLA RIGA.</criterion>
+    <criterion id="AC-018">Il bulk assign su righe di campagne diverse risponde 422 se una sola e' incoerente, elenca i `row_number` e non applica nulla.</criterion>
+    <criterion id="AC-019">La readiness di conversione e' vera solo se OGNI campagna distinta delle righe creabili deriva una product line.</criterion>
+    <criterion id="AC-020">`POST .../rows` espone `campaign_id` e `campaign` per riga con UNA sola query di risoluzione etichette per pagina.</criterion>
+    <criterion id="AC-021">Il template CSV contiene `campaign_code`; l'auto-mapping lo propone per un header "Codice campagna"/"campaign code"/"Campagna".</criterion>
+    <criterion id="AC-022">Authz invariata: nessuna nuova rotta, nessun nuovo permesso.</criterion>
+
+    <criterion id="AC-030">Lo step di mapping presenta due scelte esclusive per la campagna; scegliendo "dal file" il select globale sparisce.</criterion>
+    <criterion id="AC-031">Mappare una colonna su `campaign_code` seleziona da solo la modalita' "dal file".</criterion>
+    <criterion id="AC-032">In modalita' "dal file" il submit non invia `campaign_id` ne' `product_ids`; in modalita' globale il payload e' identico a quello odierno.</criterion>
+    <criterion id="AC-033">In modalita' "dal file" senza colonna mappata il form mostra un errore e non invia la richiesta.</criterion>
+    <criterion id="AC-034">In modalita' "dal file" il campo "Prodotti di interesse" globale e' disabilitato con un testo che ne spiega il motivo.</criterion>
+    <criterion id="AC-035">La review grid mostra una colonna "Campagna" SOLO in modalita' per riga, con codice + nome o il codice non risolto marcato.</criterion>
+    <criterion id="AC-036">La cella apre un picker e applicare invia `PATCH .../rows/{row}` con `campaign_id`, aggiornando la riga con lo stato del server.</criterion>
+    <criterion id="AC-037">Ogni controllo nuovo ha la triade ARIA; stringhe sotto `importWizard.*` / `imports.leads.*` con parita' IT/EN.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza e nessuna nuova migrazione.</item>
+    <item>Nessun `whereRaw`/interpolazione: match parametrizzato su colonna unique.</item>
+    <item>Lookup memoizzato per codice distinto (CampaignRecognizer scoped nel container), mai una query per riga.</item>
+    <item>Authz server-side invariata; nessun allargamento di visibilita'.</item>
+    <item>File entro 300 righe soft / 500 hard: se un'aggiunta li supera si estrae un collaboratore.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint, ESLint, `cd frontend &amp;&amp; npx tsc -b --force`.</item>
+  </constraints>
+
+</spec>

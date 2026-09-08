@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @phpstan-type ImportColumn array{id: string, required: bool}
  * @phpstan-type ImportField array{id: string, label: string, required: bool, group: ?string, type: string}
- * @phpstan-type ImportGlobalField array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed}
+ * @phpstan-type ImportGlobalField array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed, required_unless_mapped: ?string}
  * @phpstan-type ImportReviewField array{id: string, label: string}
  */
 interface ImportDefinition

@@ -20,8 +20,9 @@ use Illuminate\Support\Collection;
  * Decorator that scopes the `request-management` domain to a single product
  * category (spec 0064's category tab strip), appends that category's
  * `attr.<code>` flexible columns, and relabels its Gestore Account columns
- * (`operator_ga2`/`manager_ga3`) for it (spec 0080, extended to GA3 by the
- * direttiva utente 2026-09-07).
+ * (`operator_ga2`/`manager_ga1`) for it (spec 0080, extended to GA1 by the
+ * direttiva utente 2026-09-07, which named position 3 until the direttiva
+ * utente 2026-09-08 moved the column onto position 1).
  *
  * The `attr.*` half was removed by spec 0084 D-1, which moved "Informazioni
  * aggiuntive" from the Opportunity to the Offerta, and is RESTORED by the
@@ -193,7 +194,7 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     }
 
     /**
-     * Spec 0080 (extended to GA3, direttiva utente 2026-09-07): rewrites the
+     * Spec 0080 (extended to GA1, direttiva utente 2026-09-07/2026-09-08): rewrites the
      * `label` of each Gestore Account column to the scoped category's RAW
      * TEXT for the position it names — every other column, and every other
      * property of these two, stay untouched. The "Tutte" tab
@@ -373,7 +374,7 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     /**
      * The scoped category's EFFECTIVE labels, restricted to the positions the
      * grid exposes as their own column (RequestManagerColumns::POSITIONS —
-     * `ManagerPositions::OPERATOR` and `::GA3`). Empty when there is no scope,
+     * `ManagerPositions::OPERATOR` and `::GA1`). Empty when there is no scope,
      * the category no longer exists, or it defines no label for any of them.
      *
      * Spec 0087, D-10: the positions come from `ManagerPositions`, never the

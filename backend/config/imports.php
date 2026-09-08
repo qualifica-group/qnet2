@@ -99,6 +99,10 @@ return [
         'province' => ['provincia'],
         'city' => ['citta', 'comune'],
         'notes' => ['note'],
+        // Spec 0108: the column carries the campaign CODE (CMP-0001), never
+        // its name — "campagna" is an alias of the code column on purpose,
+        // a file holding names there produces motivated per-row errors.
+        'campaign_code' => ['codice campagna', 'campagna', 'campaign code', 'cod campagna'],
     ],
 
 ];

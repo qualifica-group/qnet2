@@ -99,7 +99,7 @@ function PendingChangeRequestsCell({ value }: ICellRendererParams) {
  * reuses the shared `RelationCell` exactly as the leads grid does for the same
  * entity; `general_notes` is free text, truncated by the local `TextCell` with
  * the full note as its native tooltip. The two Gestore
- * Account slot columns, `operator_ga2` (GA2) and `manager_ga3` (GA3,
+ * Account slot columns, `operator_ga2` (GA2) and `manager_ga1` (GA1,
  * direttiva utente 2026-09-07), render as the shared `UserCell` (avatar +
  * hover-card that opens the user's profile Sheet — same component as the
  * opportunities `supervisor` column); their HEADER is relabelled server-side
@@ -121,7 +121,7 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   offer_lines: (params) => <RefNamesCell {...params} />,
   general_notes: (params) => <TextCell {...params} />,
   operator_ga2: (params) => <UserCell {...params} />,
-  manager_ga3: (params) => <UserCell {...params} />,
+  manager_ga1: (params) => <UserCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
   // Spec 0079: a system flag, not auto-mounted by `resolveCellRenderer`
   // (only `type: 'badge'`/`enum` are) — without this row the cell would show

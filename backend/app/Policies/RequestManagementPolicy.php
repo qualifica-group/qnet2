@@ -93,22 +93,22 @@ class RequestManagementPolicy extends BasePolicy
     }
 
     /**
-     * Resource-level gate for the BULK "Assegna GA3" action (spec 0104,
-     * direttiva utente 2026-09-07): moves the GA3 slot of many Offerte at
-     * once, the slot the grid labels with the scoped category's
-     * `manager_labels[3]` ("Tutor" where configured so). Required ON TOP OF
+     * Resource-level gate for the BULK "Assegna GA1" action (spec 0104,
+     * direttiva utente 2026-09-07, moved onto position 1 by the direttiva
+     * utente 2026-09-08): moves the GA1 slot of many Offerte at once, the
+     * slot the grid labels with the scoped category's `manager_labels[1]`. Required ON TOP OF
      * `update`, exactly as `assignOperator` and `transferContact` above.
      *
      * Its own ability and not a reuse of `assignOperator` (D-3): deciding who
      * tutors a batch of requests is a separate grant from deciding who
      * operates them, and a role must be able to hold one without the other.
-     * Restricting the `manager_ga3_id` FIELD does not gate this endpoint —
+     * Restricting the `manager_ga1_id` FIELD does not gate this endpoint —
      * a bulk write resolves no per-field permission, the same hole this
      * module already closes for the Sede+Operatore pair.
      */
-    public function assignManagerGa3(User $user): bool
+    public function assignManagerGa1(User $user): bool
     {
-        return $user->can($this->permission('assignManagerGa3'));
+        return $user->can($this->permission('assignManagerGa1'));
     }
 
     /**
@@ -149,6 +149,6 @@ class RequestManagementPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewDocuments', 'assignOperator', 'assignManagerGa3', 'transferContact', 'receiveTransferNotifications', 'report'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewDocuments', 'assignOperator', 'assignManagerGa1', 'transferContact', 'receiveTransferNotifications', 'report'];
     }
 }

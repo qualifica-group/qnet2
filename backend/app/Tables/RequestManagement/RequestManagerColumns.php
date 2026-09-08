@@ -8,14 +8,15 @@ use App\Support\ManagerPositions;
 
 /**
  * The Gestori Account SLOT columns of the `request-management` grid: the GA2
- * "Operatore" (spec 0055/0086/0087/0097) and the GA3 (direttiva utente
- * 2026-09-07). Each is an in-cell `users/for-select` picker over ONE position
+ * "Operatore" (spec 0055/0086/0087/0097) and the GA1 (direttiva utente
+ * 2026-09-07, moved from position 3 onto position 1 by the direttiva utente
+ * 2026-09-08). Each is an in-cell `users/for-select` picker over ONE position
  * of the offer's `quote_user` team, and each carries the same three
  * peculiarities no other column of this domain has:
  *  - its WRITE lands on a pivot row, never on a column of the row's own
  *    table, so it travels through RequestManagementService::updateWork();
  *  - its HEADER is rewritten per category tab, from that category's effective
- *    `manager_labels` (spec 0080, extended to GA3) — POSITIONS below is the
+ *    `manager_labels` (spec 0080, extended to GA1) — POSITIONS below is the
  *    map RequestManagementScopedTableDefinition relabels through, so the
  *    "which position names which column" answer lives in ONE place;
  *  - it is neither sortable nor filterable (AC-011: this domain never ordered
@@ -31,8 +32,8 @@ final class RequestManagerColumns
     /** The GA2 "Operatore" column id — never changes, only its `label` does (spec 0080). */
     public const string OPERATOR_COLUMN_ID = 'operator_ga2';
 
-    /** The GA3 column id (direttiva utente 2026-09-07). */
-    public const string GA3_COLUMN_ID = 'manager_ga3';
+    /** The GA1 column id (direttiva utente 2026-09-07). */
+    public const string GA1_COLUMN_ID = 'manager_ga1';
 
     /**
      * The `manager_labels` position each column is named after: the single
@@ -42,7 +43,7 @@ final class RequestManagerColumns
      */
     public const array POSITIONS = [
         ManagerPositions::OPERATOR => self::OPERATOR_COLUMN_ID,
-        ManagerPositions::GA3 => self::GA3_COLUMN_ID,
+        ManagerPositions::GA1 => self::GA1_COLUMN_ID,
     ];
 
     /**
@@ -102,8 +103,9 @@ final class RequestManagerColumns
                 'nullable' => true,
             ],
             [
-                // GA3 (direttiva utente 2026-09-07): the slot right after the
-                // Operatore, editable in-cell exactly like it — same picker,
+                // GA1 (direttiva utente 2026-09-08, which moved this column
+                // off position 3): the slot right before the Operatore,
+                // editable in-cell exactly like it — same picker,
                 // same nullable "clear the slot" semantics, same per-tab
                 // relabel. Three deliberate differences, each mirroring how
                 // the FORM already treats the two slots:
@@ -111,7 +113,7 @@ final class RequestManagerColumns
                 //    the Sede operativa (`operatorSlotParams`), so this picker
                 //    lists every user, like every other slot of
                 //    ManagerSlotsField;
-                //  - its own field key `manager_ga3_id` instead of
+                //  - its own field key `manager_ga1_id` instead of
                 //    `manager_slots`: `editableField` is both the permission
                 //    key and the key `updateCell()` receives, so two columns
                 //    sharing one key would be indistinguishable at write time
@@ -119,18 +121,18 @@ final class RequestManagerColumns
                 //    documents). The role matrix therefore gates this slot on
                 //    its own row — configure it alongside `manager_slots`;
                 //  - no denormalized column and no assignment notification:
-                //    GA3 scopes nothing (RequestManagementScope reads
+                //    GA1 scopes nothing (RequestManagementScope reads
                 //    `operator_id` alone), and a move that leaves the operator
                 //    in place assigns nobody — the rule the whole-team editor
                 //    already follows (spec 0097, D-6/AC-007).
-                'id' => self::GA3_COLUMN_ID,
-                'label' => 'requestManagement.columns.managerGa3',
+                'id' => self::GA1_COLUMN_ID,
+                'label' => 'requestManagement.columns.managerGa1',
                 'type' => 'text',
                 'visible' => true,
                 'sortable' => false,
                 'filterable' => false,
                 'editable' => true,
-                'editableField' => 'manager_ga3_id',
+                'editableField' => 'manager_ga1_id',
                 'relation' => ['resource' => 'users'],
                 'nullable' => true,
             ],

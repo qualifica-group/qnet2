@@ -13,6 +13,13 @@ import type { ImportGlobalFieldDescriptor } from '@/features/imports/wizard/type
 interface ImportConfigFieldsProps {
   globalFields: ImportGlobalFieldDescriptor[]
   control: Control<ImportMappingFormValues>
+  /**
+   * Global field ids whose value comes from a mapped file column, per row
+   * (spec 0108 D-2): they are not rendered at all — there is no run-wide
+   * value to pick — and whatever `depends_on` them renders disabled, with the
+   * reason spelled out (AC-034).
+   */
+  fromFileFieldIds?: string[]
 }
 
 /**
@@ -23,14 +30,16 @@ interface ImportConfigFieldsProps {
  * form under the `global_config.<id>` path, so the single mapping submit
  * persists these together with the column mapping and dedup strategy.
  */
-export function ImportConfigFields({ globalFields, control }: ImportConfigFieldsProps) {
+export function ImportConfigFields({ globalFields, control, fromFileFieldIds = [] }: ImportConfigFieldsProps) {
   // Global-field labels arrive from the backend as default-namespace i18n keys
   // (`imports.leads.global.*`) — resolve them through the default translator.
   const { t: tLabel } = useTranslation()
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {globalFields.map((globalField) => (
+      {globalFields
+        .filter((globalField) => !fromFileFieldIds.includes(globalField.id))
+        .map((globalField) => (
         <FormField
           key={globalField.id}
           control={control}
@@ -52,6 +61,9 @@ export function ImportConfigFields({ globalFields, control }: ImportConfigFields
                   value={field.value as number | number[] | null}
                   onChange={field.onChange}
                   triggerLabel={tLabel(globalField.label)}
+                  dependencyFromFile={
+                    globalField.depends_on != null && fromFileFieldIds.includes(globalField.depends_on)
+                  }
                 />
               </FormControl>
               <FormMessage role="alert" />
@@ -77,6 +89,8 @@ interface ImportConfigFieldControlProps extends AccessibleControlProps {
   value: number | number[] | null
   onChange: (next: number | number[] | null) => void
   triggerLabel: string
+  /** True when this field's `depends_on` target is fed per row from the file (spec 0108). */
+  dependencyFromFile?: boolean
 }
 
 /** Branches a single global field's control by descriptor shape (`multiple` / relation / plain number). */
@@ -87,6 +101,7 @@ function ImportConfigFieldControl({
   value,
   onChange,
   triggerLabel,
+  dependencyFromFile,
   id,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
@@ -96,6 +111,7 @@ function ImportConfigFieldControl({
       <ImportConfigDependentMultiSelect
         field={field}
         dependsOnFieldId={field.depends_on}
+        dependencyFromFile={dependencyFromFile}
         globalFields={globalFields}
         control={control}
         value={(value as number[] | null) ?? []}
@@ -148,6 +164,8 @@ function ImportConfigFieldControl({
 interface ImportConfigDependentMultiSelectProps extends AccessibleControlProps {
   field: ImportGlobalFieldDescriptor
   dependsOnFieldId: string
+  /** True when the dependency is resolved per row from a file column, not run-wide (spec 0108). */
+  dependencyFromFile?: boolean
   globalFields: ImportGlobalFieldDescriptor[]
   control: Control<ImportMappingFormValues>
   value: number[]
@@ -168,6 +186,7 @@ interface ImportConfigDependentMultiSelectProps extends AccessibleControlProps {
 function ImportConfigDependentMultiSelect({
   field,
   dependsOnFieldId,
+  dependencyFromFile,
   globalFields,
   control,
   value,
@@ -178,6 +197,7 @@ function ImportConfigDependentMultiSelect({
   'aria-invalid': ariaInvalid,
 }: ImportConfigDependentMultiSelectProps) {
   const { t } = useTranslation('importWizard')
+  const { t: tDefault } = useTranslation()
   const dependsOnField = globalFields.find((candidate) => candidate.id === dependsOnFieldId)
 
   const dependsOnValue = useWatch({
@@ -194,7 +214,10 @@ function ImportConfigDependentMultiSelect({
   const dependencyItem = dependsOnValue != null ? (dependencyItems.get(dependsOnValue) ?? null) : null
   const categoryIds = useMemo(() => dependencyProductCategoryIds(dependencyItem), [dependencyItem])
   const params = useMemo(() => ({ category_ids: categoryIds }), [categoryIds])
-  const disabled = dependsOnValue == null
+  // Spec 0108 (D-6/AC-034): a dependency read per row from the file leaves
+  // this field nothing run-wide to scope against — disabled for a DIFFERENT
+  // reason than "not chosen yet", and the hint says which.
+  const disabled = dependencyFromFile === true || dependsOnValue == null
 
   return (
     <div className="flex flex-col gap-1">
@@ -209,7 +232,15 @@ function ImportConfigDependentMultiSelect({
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
       />
-      {disabled ? <p className="text-xs text-muted-foreground">{t('config.multiSelect.disabledHint')}</p> : null}
+      {disabled ? (
+        <p className="text-xs text-muted-foreground">
+          {dependencyFromFile
+            ? t('config.multiSelect.perRowDependencyHint', {
+                field: dependsOnField ? tDefault(dependsOnField.label) : dependsOnFieldId,
+              })
+            : t('config.multiSelect.disabledHint')}
+        </p>
+      ) : null}
     </div>
   )
 }

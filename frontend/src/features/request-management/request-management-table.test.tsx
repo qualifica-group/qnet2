@@ -158,9 +158,9 @@ vi.mock('@/features/request-management/api', () => ({
   updateRequestWork: vi.fn(),
   deleteRequest: (...args: unknown[]) => deleteRequestMock(...args),
   assignRequestOperators: (...args: unknown[]) => assignRequestOperatorsMock(...args),
-  // Spec 0104: pulled in by the table's bulk GA3 flow; this suite
+  // Spec 0104: pulled in by the table's bulk GA1 flow; this suite
   // exercises neither, it only has to satisfy the module surface.
-  assignRequestManagerGa3: vi.fn(),
+  assignRequestManagerGa1: vi.fn(),
   fetchCategoryManagerLabels: vi.fn(),
   transferRequests: (...args: unknown[]) => transferRequestsMock(...args),
   fetchRequestManagementCategories: (...args: unknown[]) => fetchRequestManagementCategoriesMock(...args),
@@ -276,18 +276,18 @@ describe('RequestManagementTable (spec 0049 AC-060)', () => {
     canMock.mockImplementation((permission) => permission !== 'request-management.assignOperator')
     renderTable()
 
-    // The GA3 entry (spec 0104) hangs off its OWN ability, so it survives.
+    // The GA1 entry (spec 0104) hangs off its OWN ability, so it survives.
     expect(capturedBulkActions?.({ ids: [ROW.id], rows: [ROW] }).map((entry) => entry.key)).toEqual([
-      'assign-manager-ga3',
+      'assign-manager-ga1',
       'transfer-contact',
     ])
   })
 
-  it('leaves the bulk slot unwired when the actor has no assign, GA3 or transfer ability', () => {
+  it('leaves the bulk slot unwired when the actor has no assign, GA1 or transfer ability', () => {
     canMock.mockImplementation(
       (permission) =>
         permission !== 'request-management.assignOperator' &&
-        permission !== 'request-management.assignManagerGa3' &&
+        permission !== 'request-management.assignManagerGa1' &&
         permission !== 'request-management.transferContact',
     )
     renderTable()

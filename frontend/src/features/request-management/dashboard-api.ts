@@ -1,17 +1,13 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import type { RequestReportRowMode } from '@/features/request-management/report-api'
+import type { RequestReportFilterPayload } from '@/features/request-management/report-api'
 
 /**
  * Dashboard contract (spec 0107): synchronous JSON, the SAME filter shape as
- * the CSV report (spec 0106) but no `ExportRun`/polling — D-5.
+ * the CSV report (spec 0106/0109) but no `ExportRun`/polling — D-5. The type
+ * is literally the report's own payload, so the two can never drift.
  */
-export interface RequestDashboardQuery {
-  date_from: string
-  date_to: string
-  category_keys: string[]
-  row_mode: RequestReportRowMode
-}
+export type RequestDashboardQuery = RequestReportFilterPayload
 
 /** One KPI tile: `label` already translated server-side (D-9), `value` the real total (D-8). */
 export interface RequestDashboardSummaryItem {
@@ -42,8 +38,12 @@ export interface RequestDashboardChart {
 
 /** Response of `GET /request-management/report/dashboard` (envelope `data`). */
 export interface RequestDashboardData {
-  /** Echo of the applied filters — compare against the current query to discard an out-of-order response. */
-  applied: RequestDashboardQuery
+  /**
+   * Echo of the applied filters — compare against the current query to
+   * discard an out-of-order response. `operator_keys` is `null` (not absent)
+   * when none was sent, i.e. "every operator" (spec 0109 D-2/AC-009).
+   */
+  applied: Omit<RequestDashboardQuery, 'operator_keys'> & { operator_keys: string[] | null }
   summary: RequestDashboardSummaryItem[]
   charts: RequestDashboardChart[]
 }

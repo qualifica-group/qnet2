@@ -39,6 +39,7 @@ final class LeadImportFieldCatalog
         'province' => ['group' => 'address', 'type' => 'text'],
         'city' => ['group' => 'address', 'type' => 'text'],
         'notes' => ['group' => 'lead', 'type' => 'textarea'],
+        'campaign_code' => ['group' => 'lead', 'type' => 'text'],
     ];
 
     /**
@@ -54,10 +55,17 @@ final class LeadImportFieldCatalog
      * still overridable per row (`import_run_rows.product_ids`, review
      * grid) — never mapped from a file column.
      *
-     * @var array<int, array{id: string, required: bool, for_select_resource: string, multiple?: bool, depends_on?: string}>
+     * `campaign_id` (spec 0108, D-2) is required ONLY when no file column is
+     * mapped to `campaign_code`: `required_unless_mapped` names that field, and
+     * ConfigureImportRequest reads it off this catalogue instead of hardcoding
+     * the pair. With the column mapped, the campaign is resolved per row by
+     * CampaignRecognizer and a global value is rejected outright — the two
+     * modes are mutually exclusive, never a silent fallback.
+     *
+     * @var array<int, array{id: string, required: bool, for_select_resource: string, multiple?: bool, depends_on?: string, required_unless_mapped?: string}>
      */
     private const array GLOBAL_FIELDS = [
-        ['id' => 'campaign_id', 'required' => true, 'for_select_resource' => 'campaigns'],
+        ['id' => 'campaign_id', 'required' => true, 'for_select_resource' => 'campaigns', 'required_unless_mapped' => 'campaign_code'],
         ['id' => 'source_id', 'required' => false, 'for_select_resource' => 'sources'],
         ['id' => 'product_ids', 'required' => false, 'for_select_resource' => 'products', 'multiple' => true, 'depends_on' => 'campaign_id'],
     ];
@@ -105,7 +113,7 @@ final class LeadImportFieldCatalog
     }
 
     /**
-     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed}>
+     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed, required_unless_mapped: ?string}>
      */
     public function globalConfig(): array
     {
@@ -118,6 +126,7 @@ final class LeadImportFieldCatalog
                 'multiple' => $field['multiple'] ?? false,
                 'depends_on' => $field['depends_on'] ?? null,
                 'default' => null,
+                'required_unless_mapped' => $field['required_unless_mapped'] ?? null,
             ],
             self::GLOBAL_FIELDS,
         );

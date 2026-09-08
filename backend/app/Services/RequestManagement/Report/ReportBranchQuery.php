@@ -19,14 +19,18 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  * `count(notes.id)`, AC-016's "one product line match, one count"), then the
  * module's OWN visibility rule (RequestManagementScope::scopeToActor,
  * security.md — mandatory on every query of this report, no exceptions; the
- * disjunction it applies is already wrapped in its own closure there).
+ * disjunction it applies is already wrapped in its own closure there),
+ * and finally the selected GA2 Operatore (spec 0108 D-1) — the ONE place the
+ * operator filter enters the report, which is why no indicator had to learn
+ * anything about it. Applied LAST, after the scope, so it can only ever
+ * narrow what the actor may already see.
  */
 final class ReportBranchQuery
 {
     /**
      * @param  array<int, int>  $categoryIds
      */
-    public function build(array $categoryIds, ?User $actor): Builder
+    public function build(array $categoryIds, ?User $actor, ReportOperatorFilter $operators): Builder
     {
         $query = Quote::query()
             ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
@@ -37,6 +41,6 @@ final class ReportBranchQuery
                     ->whereIn('opportunity_product_lines.product_category_id', $categoryIds);
             });
 
-        return RequestManagementScope::scopeToActor($query, $actor);
+        return $operators->applyTo(RequestManagementScope::scopeToActor($query, $actor));
     }
 }

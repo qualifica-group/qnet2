@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * /api/request-management/assign-operators (user directive 2026-07-23, "come
  * nei lead"; migrated onto the Quote by spec 0086), which assigns a Sede
  * operativa and the GA2 "Operatore" to many offers at once, and POST
- * /api/request-management/assign-manager-ga3 (spec 0104), which moves the GA3
+ * /api/request-management/assign-manager-ga1 (spec 0104), which moves the GA1
  * slot alone with no Sede in play. Distinct from RequestManagementService
  * (the per-record work panel): both are bulk, cross-record writes, kept in
  * their own Service (SRP), and both reach the pivot through the SAME
@@ -81,14 +81,14 @@ final class RequestAssignmentService
     }
 
     /**
-     * Bulk GA3 assignment (spec 0104): every reachable offer gets $userId in
-     * the GA3 slot, or has that slot CLEARED when $userId is null (D-2).
+     * Bulk GA1 assignment (spec 0104): every reachable offer gets $userId in
+     * the GA1 slot, or has that slot CLEARED when $userId is null (D-2).
      * Whole operation is one transaction.
      *
      * Three things assignOperators() does that this deliberately does not,
-     * each following what the per-cell GA3 editor already does: it writes no
+     * each following what the per-cell GA1 editor already does: it writes no
      * Sede (only the Operatore slot is bound to one, D-1), it sends no
-     * assignment notification (GA3 scopes no visibility and assigns nobody,
+     * assignment notification (GA1 scopes no visibility and assigns nobody,
      * D-5), and it needs no distributor (there is no site-scoped pool to
      * balance across, so the action has a single mode).
      *
@@ -96,15 +96,15 @@ final class RequestAssignmentService
      * @return int the number of offers reached (in scope), the same count
      *             assignOperators() reports
      */
-    public function assignManagerGa3(array $requestIds, User $actor, ?int $userId): int
+    public function assignManagerGa1(array $requestIds, User $actor, ?int $userId): int
     {
         return DB::transaction(function () use ($requestIds, $actor, $userId): int {
             // Step 1: drop the ids the actor may not reach (D-3 scoping).
             $quotes = $this->inScopeQuotes($requestIds, $actor);
 
-            // Step 2: move the GA3 slot alone on each of them.
+            // Step 2: move the GA1 slot alone on each of them.
             foreach ($quotes as $quote) {
-                $this->assignManagerGa3ToOne($quote, $actor, $userId);
+                $this->assignManagerGa1ToOne($quote, $actor, $userId);
             }
 
             return $quotes->count();
@@ -219,22 +219,22 @@ final class RequestAssignmentService
     }
 
     /**
-     * One offer's GA3 slot, through the SAME writer the grid cell uses, so
+     * One offer's GA1 slot, through the SAME writer the grid cell uses, so
      * the bulk channel can never grow a rule the per-row channel lacks. An
      * offer already carrying $userId in that slot writes nothing at all
-     * (applyGa3's own no-op guard) and therefore logs nothing.
+     * (applyGa1's own no-op guard) and therefore logs nothing.
      *
      * The activity entry is anchored on the Opportunity, like assignOne()'s:
      * D-9 keeps the module's whole history there, and the pivot slot is not
      * a fillable attribute, so no automatic model-event log would ever see
      * this write.
      */
-    private function assignManagerGa3ToOne(Quote $quote, User $actor, ?int $userId): void
+    private function assignManagerGa1ToOne(Quote $quote, User $actor, ?int $userId): void
     {
         $changed = [];
         $old = [];
 
-        $this->operatorWriter->applyGa3($quote, $userId, $changed, $old);
+        $this->operatorWriter->applyGa1($quote, $userId, $changed, $old);
 
         if ($changed === []) {
             return;
@@ -245,6 +245,6 @@ final class RequestAssignmentService
             ->causedBy($actor)
             ->event('updated')
             ->withProperties(['attributes' => $changed, 'old' => $old])
-            ->log('Request management bulk GA3 assignment');
+            ->log('Request management bulk GA1 assignment');
     }
 }

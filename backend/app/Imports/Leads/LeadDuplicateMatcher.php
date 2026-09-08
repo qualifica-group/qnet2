@@ -49,15 +49,18 @@ final class LeadDuplicateMatcher
     }
 
     /**
-     * The id of the Lead already tying the given Registry to the run's
+     * The id of the Lead already tying the given Registry to the row's
      * campaign, or null when none exists (either no lead at all, or only on
-     * a DIFFERENT campaign) — spec 0036 AC-002.
+     * a DIFFERENT campaign) — spec 0036 AC-002. Spec 0108: "the row's
+     * campaign" is the row's own resolved one when the run reads campaigns
+     * from a file column, the run's global one otherwise (LeadRowCampaign).
      *
+     * @param  array<string, mixed>  $mapped
      * @param  array<string, mixed>  $globalConfig
      */
-    public function existingLeadId(int $registryId, array $globalConfig): ?int
+    public function existingLeadId(int $registryId, array $mapped, array $globalConfig): ?int
     {
-        $campaignId = $this->campaignId($globalConfig);
+        $campaignId = LeadRowCampaign::resolve($mapped, $globalConfig);
 
         if ($campaignId === null) {
             return null;
@@ -233,15 +236,5 @@ final class LeadDuplicateMatcher
         }
 
         return (int) $card->personable_id;
-    }
-
-    /**
-     * @param  array<string, mixed>  $globalConfig
-     */
-    private function campaignId(array $globalConfig): ?int
-    {
-        $value = $globalConfig['campaign_id'] ?? null;
-
-        return $value === null || $value === '' ? null : (int) $value;
     }
 }

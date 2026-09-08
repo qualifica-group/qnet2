@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Imports\Recognition\CampaignRecognizer;
+use App\Models\Campaign;
 use App\Models\ImportRunRow;
 use App\Models\OperationalSite;
 use App\Models\Product;
@@ -23,6 +25,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * per-row Operator/Operational Site overrides — null on a row that still
  * defers to the run's global value.
  *
+ * `campaign_id`/`campaign` (spec 0108): the campaign THIS row resolved from
+ * the file's `campaign_code` — both null on a run whose campaign is global
+ * (there is no per-row campaign then) and on a row whose code found nothing.
+ * Labels are batched per page exactly like `products` below.
+ *
  * `product_ids`/`products` (spec 0094, D-4/AC-054): the per-row "Prodotti di
  * interesse" override, same null-defers-to-global semantics — `products` is
  * null when `product_ids` is null (nothing of THIS row's own to label), an
@@ -36,17 +43,22 @@ class ImportRunRowResource extends JsonResource
     /** Product id => name, primed once per collection() call (never leaks across instances — instance property, not static). */
     private ?array $productNamesByPage = null;
 
+    /** Campaign id => {id, code, name}, primed the same way as $productNamesByPage. */
+    private ?array $campaignsByPage = null;
+
     /**
      * @param  mixed  $resource
      */
     public static function collection($resource)
     {
         $productNames = self::batchProductNames($resource);
+        $campaigns = self::batchCampaigns($resource);
 
-        return tap(parent::collection($resource), function ($collection) use ($productNames): void {
+        return tap(parent::collection($resource), function ($collection) use ($productNames, $campaigns): void {
             /** @var self $item */
             foreach ($collection->collection as $item) {
                 $item->productNamesByPage = $productNames;
+                $item->campaignsByPage = $campaigns;
             }
         });
     }
@@ -71,11 +83,75 @@ class ImportRunRowResource extends JsonResource
             'operator' => $row->operator === null ? null : ['id' => $row->operator->id, 'name' => $row->operator->name],
             'operational_site_id' => $row->operational_site_id,
             'operational_site' => $row->operationalSite === null ? null : ['id' => $row->operationalSite->id, 'name' => $this->siteLabel($row->operationalSite)],
+            'campaign_id' => $this->rowCampaignId($row),
+            'campaign' => $this->resolveCampaign($this->rowCampaignId($row)),
             'product_ids' => $row->product_ids,
             'products' => $row->product_ids === null ? null : $this->resolveProducts($row->product_ids),
             'values' => [...($row->mapped_values ?? []), ...($row->extra_values ?? [])],
             'messages' => $row->messages ?? [],
         ];
+    }
+
+    private function rowCampaignId(ImportRunRow $row): ?int
+    {
+        $campaignId = ($row->mapped_values ?? [])[CampaignRecognizer::CAMPAIGN_ID_FIELD] ?? null;
+
+        return $campaignId === null || $campaignId === '' ? null : (int) $campaignId;
+    }
+
+    /**
+     * @return array{id: int, code: string, name: string}|null
+     */
+    private function resolveCampaign(?int $campaignId): ?array
+    {
+        if ($campaignId === null) {
+            return null;
+        }
+
+        $campaigns = $this->campaignsByPage ?? self::campaignsById([$campaignId]);
+
+        return $campaigns[$campaignId] ?? null;
+    }
+
+    /**
+     * One query for every campaign id across the whole page's rows — the
+     * collection()-level N+1 guard, mirroring batchProductNames().
+     *
+     * @return array<int, array{id: int, code: string, name: string}>
+     */
+    private static function batchCampaigns(mixed $resource): array
+    {
+        $ids = collect($resource)
+            ->map(static fn (ImportRunRow $row): mixed => ($row->mapped_values ?? [])[CampaignRecognizer::CAMPAIGN_ID_FIELD] ?? null)
+            ->filter(static fn (mixed $id): bool => $id !== null && $id !== '')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        return self::campaignsById($ids);
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     * @return array<int, array{id: int, code: string, name: string}>
+     */
+    private static function campaignsById(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return Campaign::query()
+            ->whereIn('id', $ids)
+            ->get(['id', 'code', 'name'])
+            ->keyBy('id')
+            ->map(static fn (Campaign $campaign): array => [
+                'id' => $campaign->id,
+                'code' => $campaign->code,
+                'name' => $campaign->name,
+            ])
+            ->all();
     }
 
     /**

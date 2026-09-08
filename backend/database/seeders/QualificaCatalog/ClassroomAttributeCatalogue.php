@@ -3,13 +3,17 @@
 namespace Database\Seeders\QualificaCatalog;
 
 /**
- * The client's "Dati Aula (Formalab)" product attributes: the classroom-edition
- * data tracked on every Formazione product — the teacher, the classroom state,
- * the course and its edition, the course/exam dates and the internship
- * placement. Pure data, like SelfFundedCourseCatalogue: QualificaCatalogSeeder
- * creates and assigns them (PRODUCT context, on the Formazione root, so the
- * whole branch inherits them), QualificaClassroomLayoutSeeder groups them into
- * the form section named below.
+ * The client's "Dati Aula (Formalab)" attributes: the classroom-edition data
+ * tracked on every Formazione offer — the teacher, the classroom state, the
+ * course and its edition, the course/exam dates and the internship placement.
+ * Pure data, like CourseDataAttributeCatalogue: QualificaCatalogSeeder creates
+ * and assigns them (OFFERTA context, on the Formazione root, so the whole
+ * branch inherits them), QualificaQuoteLayoutSeeder groups them into the form
+ * section named below.
+ *
+ * OFFERTA, NOT PRODUCT (user directive 2026-09-08): a classroom edition is
+ * what a single deal delivers, not a property of the catalogue entry, so these
+ * moved off the product form together with the "Dati corso" pair.
  *
  * `code` is the English identifier (the catalogue's natural key, and its
  * `^[a-z0-9_]+$` format); `name` is the user-facing label, kept in its

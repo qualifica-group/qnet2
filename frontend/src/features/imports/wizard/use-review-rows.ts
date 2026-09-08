@@ -119,6 +119,11 @@ export function useReviewRows({ domain, importRunId, onRowUpdated }: UseReviewRo
       updateImportRunRow(domain, importRunId, rowId, { product_ids: productIds }),
   })
 
+  const updateRowCampaignMutation = useMutation({
+    mutationFn: ({ rowId, campaignId }: { rowId: number; campaignId: number | null }) =>
+      updateImportRunRow(domain, importRunId, rowId, { campaign_id: campaignId }),
+  })
+
   const resolveRowMutation = useMutation({
     mutationFn: ({ rowId, resolution }: { rowId: number; resolution: ImportRowResolution }) =>
       resolveImportRunRow(domain, importRunId, rowId, resolution),
@@ -280,6 +285,24 @@ export function useReviewRows({ domain, importRunId, onRowUpdated }: UseReviewRo
     [onRowUpdated, updateRowProductsMutation],
   )
 
+  // Step 1: PATCH the popup's chosen campaign id (or `null` to unpin it and
+  // let the backend re-read the file's own code) as `campaign_id`, mirroring
+  // `handleApplyProducts`. Unlike the other per-row popups this one can
+  // change the row's STATUS (an unmatched row becomes valid, and vice versa),
+  // which is why the summary query is invalidated too: the conversion
+  // readiness is computed across the campaigns of the rows (spec 0108 D-8).
+  // On failure reject unchanged (no `setData`) so the popup — the only
+  // caller — can surface the error itself.
+  const handleApplyCampaign = useCallback(
+    (row: ImportRunRowItem, campaignId: number | null, node: IRowNode<ImportRunRowItem>) =>
+      updateRowCampaignMutation.mutateAsync({ rowId: row.id, campaignId }).then((result) => {
+        node.setData(result.row)
+        onRowUpdated(result.row, result.counts)
+        void queryClient.invalidateQueries({ queryKey: importWizardKeys.summary(domain, importRunId) })
+      }),
+    [domain, importRunId, onRowUpdated, queryClient, updateRowCampaignMutation],
+  )
+
   // Step 1: PATCH the combined bulk assignment (operator and/or site, or
   // products — spec 0094 bulk delta) for the current selection
   // (`select_all`/`row_ids` mirror AG Grid's own server-side selection state
@@ -314,6 +337,7 @@ export function useReviewRows({ domain, importRunId, onRowUpdated }: UseReviewRo
     handleApplyOperator,
     handleApplySite,
     handleApplyProducts,
+    handleApplyCampaign,
     handleBulkAssign,
     isSaving: updateRowMutation.isPending,
     hasSaveError: updateRowMutation.isError,

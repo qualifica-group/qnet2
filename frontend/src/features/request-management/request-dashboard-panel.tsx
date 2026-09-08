@@ -8,12 +8,17 @@ import { StatCard } from '@/components/ui/stat-card'
 import type { RequestDashboardChart, RequestDashboardData } from '@/features/request-management/dashboard-api'
 import { RequestDashboardFilterBar } from '@/features/request-management/request-dashboard-filter-bar'
 import { RequestReportFiltersDialog } from '@/features/request-management/request-report-filters-dialog'
-import { isRequestReportQueryReady } from '@/features/request-management/request-report-schema'
+import {
+  isRequestReportQueryReady,
+  toRequestReportFilterPayload,
+} from '@/features/request-management/request-report-schema'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { useRequestDashboard } from '@/features/request-management/use-request-dashboard'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
+import { useRequestReportOperators } from '@/features/request-management/use-request-report-operators'
 import {
   reconcileCategoryKeys,
+  reconcileOperatorKeys,
   useRequestReportFilters,
 } from '@/features/request-management/use-request-report-filters'
 import { statsPanelId } from '@/features/stats/use-stats-panel'
@@ -26,6 +31,9 @@ const COLLAPSIBLE_CONTENT_CLASS =
 const SUMMARY_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'
 const CHARTS_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2'
 const SKELETON_TILE_COUNT = 4
+
+/** Hoisted so an unloaded operator list keeps a STABLE identity across renders. */
+const EMPTY_KEYS: string[] = []
 
 /** A chart's card title: the indicator alone for a per-category series, category + indicator for a per-operator one (rev-2 D-3). */
 function chartTitle(chart: RequestDashboardChart): string {
@@ -129,30 +137,46 @@ function RequestDashboardPanelBody() {
 
   const categoriesQuery = useRequestReportCategories(true)
   const categories = categoriesQuery.data
+  const operatorsQuery = useRequestReportOperators(true)
+  const operators = operatorsQuery.data
+  const operatorKeys = operators ? operators.map((operator) => operator.key) : EMPTY_KEYS
 
-  // One shot per branch-list load, so a background refetch can never wipe the
-  // user's own picks: a restored selection keeps only the branches that still
-  // exist, and an empty one falls back to all of them (rev-2 AC-050).
-  const reconciled = useRef(false)
+  // One shot per list load, so a background refetch can never wipe the user's
+  // own picks: a restored selection keeps only the entries that still exist,
+  // and an empty one falls back to all of them (rev-2 AC-050, spec 0109 D-11).
+  const reconciledCategories = useRef(false)
   useEffect(() => {
-    if (!categories || categories.length === 0 || reconciled.current) {
+    if (!categories || categories.length === 0 || reconciledCategories.current) {
       return
     }
-    reconciled.current = true
-    const next = reconcileCategoryKeys(filters, categories)
-    if (next !== filters) {
-      setFilters(next)
-    }
-  }, [categories, filters, setFilters])
+    reconciledCategories.current = true
+    setFilters((current) => reconcileCategoryKeys(current, categories))
+  }, [categories, setFilters])
 
-  const filtersReady = isRequestReportQueryReady(filters)
-  const dashboardQuery = useRequestDashboard(filters, filtersReady)
+  const reconciledOperators = useRef(false)
+  useEffect(() => {
+    if (!operators || reconciledOperators.current) {
+      return
+    }
+    reconciledOperators.current = true
+    setFilters((current) => reconcileOperatorKeys(current, operators))
+  }, [operators, setFilters])
+
+  const filtersReady = isRequestReportQueryReady(filters, operatorKeys)
+  // ONE normalization for both consumers (spec 0109 D-9): the charts fetch it
+  // and the file is generated from it, so they cannot read the selection
+  // differently. It is also the query key, so a changed selection is a
+  // different cache entry.
+  const payload = toRequestReportFilterPayload(filters, operatorKeys)
+  const dashboardQuery = useRequestDashboard(payload, filtersReady)
 
   return (
     <div className="flex flex-col gap-4">
       <RequestDashboardFilterBar
         filters={filters}
+        payload={payload}
         categoryCount={categories?.length ?? 0}
+        operatorCount={operators?.length ?? 0}
         filtersReady={filtersReady}
         onEdit={() => setFiltersOpen(true)}
       />

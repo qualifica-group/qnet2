@@ -13,6 +13,7 @@ use App\Jobs\GenerateRequestManagementReportJob;
 use App\Models\ExportRun;
 use App\Models\User;
 use App\Services\RequestManagement\Report\ReportCategoryAvailabilityResolver;
+use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,10 @@ class RequestManagementReportController extends BaseApiController
 
     private const string RESOURCE = 'request-management-report';
 
-    public function __construct(private readonly ReportCategoryAvailabilityResolver $availability) {}
+    public function __construct(
+        private readonly ReportCategoryAvailabilityResolver $availability,
+        private readonly ReportOperatorAvailabilityResolver $operatorAvailability,
+    ) {}
 
     /**
      * GET /api/request-management/report/categories — the branches
@@ -59,6 +63,24 @@ class RequestManagementReportController extends BaseApiController
     }
 
     /**
+     * GET /api/request-management/report/operators — the GA2 Operatore the
+     * actor may filter by (spec 0108, D-6). Same literal-segment-before-
+     * wildcard rule as report/categories above (AC-013).
+     */
+    public function operators(Request $request): JsonResponse
+    {
+        try {
+            /** @var User $actor */
+            $actor = $request->user();
+            abort_unless($actor->can(self::PERMISSION), 403);
+
+            return $this->ok(['operators' => $this->operatorAvailability->available($actor)]);
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
      * POST /api/request-management/report — create the run and dispatch the
      * async job.
      */
@@ -74,6 +96,7 @@ class RequestManagementReportController extends BaseApiController
             /** @var array<int, string> $categoryKeys */
             $categoryKeys = (array) $request->validated('category_keys');
             $rowMode = (string) $request->validated('row_mode');
+            $operatorKeys = $request->operatorKeys();
             $format = ExportFormat::from((string) $request->validated('format'));
 
             $run = ExportRun::create([
@@ -88,6 +111,10 @@ class RequestManagementReportController extends BaseApiController
                     'locale' => app()->getLocale(),
                     'category_keys' => $categoryKeys,
                     'row_mode' => $rowMode,
+                    // Written ONLY when the actor filtered (spec 0108 D-2): an
+                    // absent key is what the job reads as "every operator", the
+                    // very shape every run frozen before this spec already has.
+                    ...($operatorKeys === null ? [] : ['operator_keys' => $operatorKeys]),
                 ],
             ]);
 

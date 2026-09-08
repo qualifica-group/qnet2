@@ -64,6 +64,20 @@ export const importWizard = {
       remove: 'Rimuovi',
       retry: 'Riprova',
       disabledHint: 'Scegli prima una Campagna per selezionare i suoi prodotti.',
+      perRowDependencyHint:
+        'Non disponibile: {{field}} viene letta dal file, quindi cambia riga per riga. I prodotti si assegnano nella revisione.',
+    },
+    source: {
+      legend: 'Origine del campo {{field}}',
+      run: {
+        title: 'Una sola per tutto il file',
+        description: 'Scegli qui {{field}} e vale per ogni riga importata.',
+      },
+      file: {
+        title: 'Dal file ({{field}})',
+        description: 'Ogni riga usa il valore della colonna che mappi su {{field}}.',
+      },
+      columnMissing: 'Mappa una colonna su {{field}} per usare questa modalità.',
     },
   },
   mapping: {
@@ -125,6 +139,7 @@ export const importWizard = {
       rowNumber: '#',
       status: 'Stato',
       resolution: 'Duplicato',
+      campaign: 'Campagna',
       operator: 'Operatore',
       site: 'Sede',
       products: 'Prodotti',
@@ -162,6 +177,22 @@ export const importWizard = {
       description: 'Scegli nazione, regione, provincia e città per questa riga.',
       apply: 'Applica',
       cancel: 'Annulla',
+    },
+    campaign: {
+      editLabel: 'Modifica campagna',
+      title: 'Campagna',
+      description:
+        'Questa riga prende la campagna dal codice presente nel file. Scegli una campagna per correggerla.',
+      missing: 'Codice campagna mancante',
+      placeholder: 'Seleziona…',
+      searchPlaceholder: 'Cerca…',
+      empty: 'Nessun risultato.',
+      selectError: 'Impossibile caricare le opzioni.',
+      selectClear: 'Rimuovi selezione',
+      useFileCode: 'Usa il codice del file',
+      apply: 'Applica',
+      cancel: 'Annulla',
+      retry: 'Riprova',
     },
     operator: {
       editLabel: 'Modifica operatore',

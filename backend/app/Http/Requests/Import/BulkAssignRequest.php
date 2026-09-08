@@ -7,6 +7,7 @@ use App\Imports\Leads\LeadImportProductCoherence;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -44,9 +45,12 @@ use Illuminate\Validation\Validator;
  * `operator_id`/`operational_site_id`: never `null`, never `[]` (`min:1`) —
  * clearing/emptying a single row's override stays PATCH .../rows/{row}.
  * Every submitted id must sit inside the effective product categories of the
- * run's `global_config.campaign_id`, checked via the SAME
- * `LeadImportProductCoherence` service `UpdateImportRowRequest` already
- * applies to the per-row override — never re-implemented here.
+ * campaign of EVERY targeted row (spec 0108, D-6: a run can now span several
+ * campaigns), checked via the SAME `LeadImportProductCoherence` service
+ * `UpdateImportRowRequest` already applies to the per-row override — never
+ * re-implemented here. All-or-nothing: one incoherent row rejects the whole
+ * batch, naming the offending `row_number`s, rather than assigning half of a
+ * selection the operator made in one gesture.
  */
 class BulkAssignRequest extends FormRequest
 {
@@ -93,32 +97,52 @@ class BulkAssignRequest extends FormRequest
 
     /**
      * Bulk-only mirror of UpdateImportRowRequest::validateProductIdsCoverage()
-     * (AC-054's per-row coherence rule): every submitted product must sit
-     * inside the effective product categories of the run's own
-     * `global_config.campaign_id` — same `LeadImportProductCoherence`
+     * (AC-054's per-row coherence rule), evaluated against the campaign of
+     * every TARGETED row (spec 0108, D-6) — same `LeadImportProductCoherence`
      * service, never re-implemented here. `[]` is already rejected by the
      * `min:1` rule, so only a non-empty array reaches this check.
      */
     private function validateProductIdsCoverage(Validator $validator): void
     {
         $productIds = $this->input('product_ids');
+        $importRun = $this->route('importRun');
 
-        if (! is_array($productIds) || $productIds === []) {
+        if (! is_array($productIds) || $productIds === [] || ! $importRun instanceof ImportRun) {
             return;
         }
 
-        $importRun = $this->route('importRun');
-        $campaignId = $importRun instanceof ImportRun ? ($importRun->global_config['campaign_id'] ?? null) : null;
-
-        $coherence = app(LeadImportProductCoherence::class);
-        $offending = $coherence->offendingProducts(
-            $campaignId === null ? null : (int) $campaignId,
+        $offendingRows = app(LeadImportProductCoherence::class)->offendingRowNumbers(
+            $this->targetedRows($importRun),
+            $importRun->global_config ?? [],
             array_map(static fn (mixed $id): int => (int) $id, $productIds),
         );
 
-        if ($offending !== []) {
-            $validator->errors()->add('product_ids', $coherence->message($offending));
+        if ($offendingRows !== []) {
+            $validator->errors()->add(
+                'product_ids',
+                'The selected products are outside the campaign of rows '.implode(', ', $offendingRows).': nothing was assigned.',
+            );
         }
+    }
+
+    /**
+     * The rows this request targets, with the same select_all/row_ids
+     * semantics ImportService::bulkAssign() applies when writing — read here
+     * so the check and the write can never disagree on WHICH rows are in play.
+     *
+     * @return Collection<int, ImportRunRow>
+     */
+    private function targetedRows(ImportRun $importRun): Collection
+    {
+        $rowIds = $this->rowIds();
+        $selectAll = $this->selectAll();
+
+        return ImportRunRow::query()
+            ->select(['id', 'row_number', 'mapped_values'])
+            ->where('import_run_id', $importRun->id)
+            ->when(! $selectAll, fn ($query) => $query->whereIn('id', $rowIds))
+            ->when($selectAll && $rowIds !== [], fn ($query) => $query->whereNotIn('id', $rowIds))
+            ->get();
     }
 
     private function validateRowIdsRequiredWhenNotSelectAll(Validator $validator): void

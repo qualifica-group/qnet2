@@ -15,6 +15,7 @@ import { AG_GRID_LOCALE_EN, AG_GRID_LOCALE_IT } from '@ag-grid-community/locale'
 import { setupAgGrid } from '@/components/data-table/ag-grid-setup'
 import { buildReviewColumnDefs } from '@/features/imports/wizard/review-columns'
 import { ReviewBulkAssignBar, type ReviewBulkSelectionState } from '@/features/imports/wizard/review-bulk-assign-bar'
+import type { ReviewCampaignGridContext } from '@/features/imports/wizard/review-campaign-editor'
 import type { ReviewGeoGridContext } from '@/features/imports/wizard/review-geo-editor'
 import type { ReviewOperatorGridContext } from '@/features/imports/wizard/review-operator-editor'
 import type { ReviewProductsGridContext } from '@/features/imports/wizard/review-products-editor'
@@ -148,6 +149,7 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
     handleApplyOperator,
     handleApplySite,
     handleApplyProducts,
+    handleApplyCampaign,
     handleBulkAssign: handleBulkAssignRows,
   } = useReviewRows({
     domain,
@@ -175,7 +177,11 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
   // prop-drilled per column either; `globalDefaultSiteId` is always `null`
   // (the operational site has no global-config default, spec delta).
   const gridContext = useMemo<
-    ReviewGeoGridContext & ReviewOperatorGridContext & ReviewSiteGridContext & ReviewProductsGridContext
+    ReviewGeoGridContext &
+      ReviewOperatorGridContext &
+      ReviewSiteGridContext &
+      ReviewProductsGridContext &
+      ReviewCampaignGridContext
   >(
     () => ({
       onApplyGeo: handleApplyGeo,
@@ -184,6 +190,7 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
       onApplySite: handleApplySite,
       globalDefaultSiteId: null,
       onApplyProducts: handleApplyProducts,
+      onApplyCampaign: handleApplyCampaign,
       hasGlobalDefaultProducts: globalDefaultProductIds.length > 0,
       campaignCategoryIds,
     }),
@@ -193,6 +200,7 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
       globalDefaultOperatorId,
       handleApplySite,
       handleApplyProducts,
+      handleApplyCampaign,
       globalDefaultProductIds,
       campaignCategoryIds,
     ],

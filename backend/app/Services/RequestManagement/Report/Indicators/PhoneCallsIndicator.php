@@ -11,6 +11,7 @@ use App\Services\RequestManagement\Report\QuoteCountAggregator;
 use App\Services\RequestManagement\Report\ReportBranchQuery;
 use App\Services\RequestManagement\Report\ReportDateRange;
 use App\Services\RequestManagement\Report\ReportIndicator;
+use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -31,20 +32,20 @@ final class PhoneCallsIndicator implements ReportIndicator
         private readonly QuoteCountAggregator $aggregator,
     ) {}
 
-    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range): IndicatorResult
+    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): IndicatorResult
     {
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range), 'notes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range), 'notes.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators), 'notes.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators), 'notes.id'),
         );
     }
 
     /**
      * @param  array<int, int>  $categoryIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportDateRange $range): Builder
+    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor)
+        return $this->branchQuery->build($categoryIds, $actor, $operators)
             ->join('notes', 'notes.quote_id', '=', 'quotes.id')
             ->whereNull('notes.deleted_at')
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')

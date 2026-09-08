@@ -20,7 +20,7 @@ export const requestManagement = {
     offerLines: 'Linee di prodotto',
     generalNotes: 'Note generali',
     operator: 'Operatore',
-    managerGa3: 'Tutor',
+    managerGa1: 'Tutor',
     operationalSite: 'Sede operativa',
     firstName: 'Nome',
     lastName: 'Cognome',
@@ -65,7 +65,7 @@ export const requestManagement = {
       generic: 'Impossibile assegnare gli operatori. Riprova.',
     },
   },
-  assignManagerGa3: {
+  assignManagerGa1: {
     tableButton: 'Assegna {{label}}',
     title: 'Assegna {{label}}',
     description: '{{count}} richieste selezionate.',
@@ -294,6 +294,9 @@ export const requestManagement = {
       categories: 'Categorie',
       // rev-2 AC-055: controllo tri-stato in testa al gruppo categorie.
       selectAllCategories: 'Seleziona tutto',
+      // Spec 0109: gruppo GA2, mostrato solo nelle modalita' che emettono righe per operatore.
+      operators: 'Operatori',
+      selectAllOperators: 'Seleziona tutto',
       rowMode: 'Righe da includere',
     },
     // rev-2 D-13: le tre opzioni mutuamente esclusive di `row_mode`.
@@ -306,6 +309,7 @@ export const requestManagement = {
       processing: 'Generazione in corso…',
       completed: 'Report generato: il download è partito automaticamente.',
       loadingCategories: 'Caricamento categorie…',
+      loadingOperators: 'Caricamento operatori…',
     },
     buttons: {
       processing: 'Generazione…',
@@ -320,6 +324,9 @@ export const requestManagement = {
       categoriesRequired: 'Seleziona almeno una categoria.',
       categoriesEmpty: 'Nessuna categoria disponibile: non ci sono richieste visibili da includere nel report.',
       categoriesLoadFailed: 'Impossibile caricare le categorie. Riprova.',
+      // Spec 0109 AC-044: nessuna richiesta parte con zero operatori selezionati.
+      operatorsRequired: 'Seleziona almeno un operatore.',
+      operatorsLoadFailed: 'Impossibile caricare gli operatori. Riprova.',
       forbidden: 'Non hai il permesso di generare questo report.',
       validation: 'Le date inserite non sono valide.',
       generic: 'Impossibile generare il report. Riprova.',
@@ -332,6 +339,7 @@ export const requestManagement = {
     regionLabel: 'Dashboard di Gestione Richieste',
     editFilters: 'Filtri',
     filtersSummary: 'Dal {{from}} al {{to}} · {{selected}}/{{total}} categorie · {{rowMode}}',
+    operatorsSummary: '· {{selected}}/{{total}} operatori',
     loadError: 'Impossibile caricare la dashboard.',
     empty: 'Nessun grafico da mostrare per questa selezione.',
   },

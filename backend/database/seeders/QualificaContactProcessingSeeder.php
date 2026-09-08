@@ -5,10 +5,10 @@ namespace Database\Seeders;
 use App\Enums\AttributeContext;
 use App\Enums\LayoutFormScope;
 use App\Models\Attribute;
-use App\Models\AttributeLayout;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsAttributeLayouts;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
@@ -32,13 +32,21 @@ use Illuminate\Database\Seeder;
  * sharing one: withdrawing a field from the Commessa afterwards, from the
  * category configurator, leaves the Offerta untouched.
  *
- * ONE LAYOUT ROW PER CATEGORY AND CONTEXT, not one on the root: like the
- * Product side, a layout is not inherited — AttributeLayoutMerger reads the
- * layout of each category CONTRIBUTING to the record (its product lines'
- * categories), never an ancestor's. A single root row would render nowhere.
- * Each category's section is built from its OWN effective attributes in that
- * context, so "Autofinanziato" carries the training set AND its own two
- * fields, while a Consulenza leaf carries only the company-appointment ones.
+ * IT OWNS THE COMMESSA LAYOUT ONLY. On the Offerta side this set shares the
+ * form with two more catalogues ("Dati corso" and "Dati Aula", moved off the
+ * product by the user directive 2026-09-08) and a category holds ONE layout
+ * row per context, so composing that row is QualificaQuoteLayoutSeeder's job —
+ * whichever seeder wrote it first would otherwise leave the others' fields to
+ * the renderer's synthesized, collapsed section. Nothing else contributes to
+ * the Commessa form, which is why this one stays here.
+ *
+ * ONE LAYOUT ROW PER CATEGORY, not one on the root: a layout is not inherited
+ * — AttributeLayoutMerger reads the layout of each category CONTRIBUTING to
+ * the record (its product lines' categories), never an ancestor's. A single
+ * root row would render nowhere. Each category's section is built from its OWN
+ * effective attributes, so "Autofinanziato" carries the training set AND its
+ * own two fields, while a Consulenza leaf carries only the
+ * company-appointment ones.
  *
  * Idempotent AND non-destructive: attributes keyed on `code` (an imported
  * q-crm row is adopted, never duplicated), assignments and options additive, a
@@ -52,18 +60,27 @@ use Illuminate\Database\Seeder;
  */
 class QualificaContactProcessingSeeder extends Seeder
 {
+    use RetiresAttributes;
     use SeedsAttributeLayouts;
     use SeedsCategoryAttributes;
 
     private const string SECTION_ID = 'contact-processing';
 
     /**
-     * The contexts the set is provisioned in, in order. Adding one here is all
-     * it takes: every step below iterates it instead of naming a context.
+     * The contexts the ATTRIBUTES are assigned in, in order. Adding one here
+     * is all it takes: the assignment step iterates it instead of naming a
+     * context.
      *
      * @var list<AttributeContext>
      */
     private const array CONTEXTS = [AttributeContext::Quote, AttributeContext::WorkOrder];
+
+    /**
+     * The context whose LAYOUT this seeder writes — the Commessa only. The
+     * Offerta form is composed by QualificaQuoteLayoutSeeder, which places
+     * this catalogue's section alongside "Dati corso" and "Dati Aula".
+     */
+    private const AttributeContext LAYOUT_CONTEXT = AttributeContext::WorkOrder;
 
     public function __construct(
         private readonly AttributeLayoutService $layouts,
@@ -101,99 +118,24 @@ class QualificaContactProcessingSeeder extends Seeder
         // the categories an earlier revision put them on.
         $this->retireAttributes();
 
-        // Step 3: the section, on every category that can contribute to a
-        // record. AFTER step 2 for BOTH contexts, never interleaved with it:
+        // Step 3: the Commessa section, on every category that can contribute
+        // to a record. AFTER step 2, never interleaved with it:
         // AttributeLayoutService validates each code against the category's
         // effective set in that context, so the assignments have to be there
         // first.
         foreach ($this->layoutCategories() as $category) {
-            foreach (self::CONTEXTS as $context) {
-                $this->seedLayout($category, $context);
-            }
+            $this->seedLayout($category);
         }
     }
 
     /**
-     * Withdraws every RETIRED_ATTRIBUTES code, in two passes because the two
-     * places that can still surface the field are independent:
-     *   - the assignments, so no category resolves the code any more and the
-     *     work panel stops rendering it (context-agnostic on purpose: the
-     *     directive is "in every category", not "in this context");
-     *   - the persisted layout blobs, because a stale item is not merely
-     *     invisible — AttributeLayoutMerger does drop it at
-     *     render time, but AttributeLayoutValidator rejects a code outside the
-     *     category's effective set on WRITE, so leaving it there would 422 the
-     *     next save from the layout configurator.
-     *
-     * A no-op on a clean database, where the code was never created.
+     * Withdraws every RETIRED_ATTRIBUTES code from every context: the
+     * directive is "in every category", not "in this context". A no-op on a
+     * clean database, where the code was never created.
      */
     private function retireAttributes(): void
     {
-        $retired = Attribute::query()
-            ->whereIn('code', ContactProcessingAttributeCatalogue::RETIRED_ATTRIBUTES)
-            ->get();
-
-        if ($retired->isEmpty()) {
-            return;
-        }
-
-        foreach ($retired as $attribute) {
-            $attribute->categories()->detach();
-        }
-
-        $this->stripFromLayouts($retired->pluck('code')->all());
-    }
-
-    /**
-     * Rewrites the blob of every layout still placing one of $codes, pruning
-     * the rows and sections left empty. Written straight onto the model rather
-     * than through AttributeLayoutService::upsert(): that path validates the
-     * WHOLE blob against the category's effective set, which is exactly what a
-     * hand-configured layout may legitimately fail on for an unrelated reason —
-     * and a retirement must never take a user's layout down with it.
-     *
-     * @param  list<string>  $codes
-     */
-    private function stripFromLayouts(array $codes): void
-    {
-        AttributeLayout::query()->each(function (AttributeLayout $row) use ($codes): void {
-            $sections = $this->withoutCodes($row->layout['sections'] ?? [], $codes);
-
-            if ($sections === ($row->layout['sections'] ?? [])) {
-                return;
-            }
-
-            // An emptied layout means "back to flat" (AttributeLayoutService),
-            // which is a deleted row, not a blob with zero sections.
-            $sections === []
-                ? $row->delete()
-                : $row->update(['layout' => ['sections' => $sections]]);
-        });
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $sections
-     * @param  list<string>  $codes
-     * @return array<int, array<string, mixed>>
-     */
-    private function withoutCodes(array $sections, array $codes): array
-    {
-        $pruned = array_map(static function (array $section) use ($codes): array {
-            $rows = array_map(static function (array $row) use ($codes): array {
-                $row['items'] = array_values(array_filter(
-                    $row['items'] ?? [],
-                    static fn (array $item): bool => ! in_array($item['attribute_code'] ?? null, $codes, true),
-                ));
-
-                return $row;
-            }, $section['rows'] ?? []);
-
-            $section['rows'] = array_values(array_filter($rows, static fn (array $row): bool => $row['items'] !== []));
-
-            return $section;
-        }, $sections);
-
-        return array_values(array_filter($pruned, static fn (array $section): bool => $section['rows'] !== []));
+        $this->retireAttributeCodes(ContactProcessingAttributeCatalogue::RETIRED_ATTRIBUTES);
     }
 
     /**
@@ -242,15 +184,15 @@ class QualificaContactProcessingSeeder extends Seeder
             ->get();
     }
 
-    private function seedLayout(ProductCategory $category, AttributeContext $context): void
+    private function seedLayout(ProductCategory $category): void
     {
         // A configured layout is user data: leave it exactly as it is.
-        if ($this->layouts->resolveExact($category, $context, LayoutFormScope::All) !== null) {
+        if ($this->layouts->resolveExact($category, self::LAYOUT_CONTEXT, LayoutFormScope::All) !== null) {
             return;
         }
 
         $effective = $this->hierarchy
-            ->effectiveAttributes($category, $context)
+            ->effectiveAttributes($category, self::LAYOUT_CONTEXT)
             ->pluck('code')
             ->all();
 
@@ -260,7 +202,7 @@ class QualificaContactProcessingSeeder extends Seeder
             return;
         }
 
-        $this->layouts->upsert($category, $context, LayoutFormScope::All, [
+        $this->layouts->upsert($category, self::LAYOUT_CONTEXT, LayoutFormScope::All, [
             'sections' => [
                 $this->layoutSection(
                     self::SECTION_ID,

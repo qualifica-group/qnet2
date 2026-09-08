@@ -148,10 +148,14 @@ final class LeadRowPersister
         bool $convertToOpportunity,
         ?array $productIdsOverride,
     ): void {
-        $campaignId = $this->id($globalConfig, 'campaign_id');
+        // Spec 0108 (D-7): the row's own resolved campaign wins over the
+        // run's global one. The exception stays as the last invariant — a row
+        // with neither is rejected at staging (LeadRowValidator) and never
+        // reaches the commit phase.
+        $campaignId = LeadRowCampaign::resolve($mapped, $globalConfig);
 
         if ($campaignId === null) {
-            throw new RuntimeException('LeadsImportDefinition::persistRow requires a campaign_id in the global configuration.');
+            throw new RuntimeException('LeadsImportDefinition::persistRow requires a campaign_id on the row or in the global configuration.');
         }
 
         $sourceId = $this->id($globalConfig, 'source_id');

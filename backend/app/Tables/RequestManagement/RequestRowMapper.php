@@ -95,12 +95,13 @@ final class RequestRowMapper
             // real FK on `quotes` (`operator_id`), denormalized from the
             // `quote_user` pivot.
             'operator_ga2' => $this->userSummary($row->operator),
-            // GA3 (direttiva utente 2026-09-07): the slot right after the
-            // Operatore, read from the `quote_user` pivot itself — unlike GA2
+            // GA1 (direttiva utente 2026-09-08, which moved this column off
+            // position 3): the slot right before the Operatore, read from the
+            // `quote_user` pivot itself — unlike GA2
             // it has no denormalized column on `quotes` to shortcut through,
             // and it needs none: the team is eager-loaded by the definition
             // for the whole page, so this costs no per-row query.
-            'manager_ga3' => $this->userSummary($this->managerAt($row, ManagerPositions::GA3)),
+            'manager_ga1' => $this->userSummary($this->managerAt($row, ManagerPositions::GA1)),
             // Spec 0056/0086 D-6: the Sede operativa is now the OFFER's own
             // FK — the site has no own name, so its label is composed
             // server-side from its primary address.

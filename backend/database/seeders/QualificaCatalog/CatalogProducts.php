@@ -9,21 +9,28 @@ use App\Models\ProductCategory;
 use App\Services\ProductService;
 
 /**
- * Every product the Qualifica catalogue seeds, and the two attribute codes
- * they write. Split out of QualificaCatalogSeeder (which stayed at its size
- * limit, engineering.md §6) — it holds the three product sources AND the
- * single upsert they share, since the two are meaningless apart. The category
- * tree they file onto is still the seeder's, and must exist before seed() runs.
+ * Every product the Qualifica catalogue seeds. Split out of
+ * QualificaCatalogSeeder (which stayed at its size limit, engineering.md §6) —
+ * it holds the three product sources AND the single upsert they share, since
+ * the two are meaningless apart. The category tree they file onto is still the
+ * seeder's, and must exist before seed() runs.
  *
  * Three sources, one shape (a SERVICE product on a catalogue node):
  *   - the GOL courses (TrainingCourseCatalogue): one per row, in its own
  *     region's `GOL - <Regione>` category, priced 0 — a funded course is not
- *     sold to the learner — and carrying its duration in `total_hours`;
+ *     sold to the learner;
  *   - the self-funded courses (SelfFundedCourseCatalogue): one per row under
- *     the single "Autofinanziato" subcategory, with its list price, its
- *     duration and its `delivery_mode`;
+ *     the single "Autofinanziato" subcategory, with its list price;
  *   - the single-offer categories (SINGLE_OFFER_CATEGORIES): one product
  *     named after the category itself, filed directly on it.
+ *
+ * NO ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
+ * the delivery mode used to be seeded here, onto the product; they moved to
+ * the OFFERTA together with the "Dati Aula" set
+ * (QualificaCatalog\CourseDataAttributeCatalogue), so the codes are no longer
+ * part of a product's applicable set and ProductService would reject them.
+ * A course's hours survive in TrainingCourseCatalogue only as the
+ * discriminator of a repeated name — see disambiguate().
  *
  * Idempotent and non-destructive: the natural key is (name, category), and an
  * already-seeded product is left untouched so a manual edit survives a re-run.
@@ -34,9 +41,9 @@ final class CatalogProducts
      * The subcategories that host ONE offer of their own instead of a course
      * list: one SERVICE product per category, named exactly like it (user
      * directive 2026-09-04). "Orientamento Specialistico" is the single offer
-     * of the "APL" root (user directive 2026-09-07). Cost and price stay 0 and
-     * the attributes the node inherits are left empty: they are filled in
-     * later through the CRUD modules, like every other seeded product.
+     * of the "APL" root (user directive 2026-09-07). Cost and price stay 0:
+     * they are filled in later through the CRUD modules, like every other
+     * seeded product.
      *
      * QualificaCatalogSeeder::SELECTABLE_SUBCATEGORIES reads this list: a node
      * hosting its own product must be a classification target, never a
@@ -49,20 +56,6 @@ final class CatalogProducts
         'Yisu',
         'Orientamento Specialistico',
     ];
-
-    /**
-     * `attribute_values` key (an Attribute `code`) holding a training course's
-     * duration — shared with the assignment QualificaCatalogSeeder makes on the
-     * "Formazione" root.
-     */
-    public const string TOTAL_HOURS_ATTRIBUTE = 'total_hours';
-
-    /**
-     * `attribute_values` key (an Attribute `code`) holding a self-funded
-     * course's delivery mode — shared with the assignment QualificaCatalogSeeder
-     * makes on the "Autofinanziato" subcategory.
-     */
-    public const string DELIVERY_MODE_ATTRIBUTE = 'delivery_mode';
 
     public function __construct(private readonly ProductService $products) {}
 
@@ -80,9 +73,7 @@ final class CatalogProducts
     {
         foreach (TrainingCourseCatalogue::COURSES as $categoryName => $courses) {
             foreach ($this->disambiguate($courses) as $course) {
-                $this->seedProduct($this->category($categoryName), $course['name'], 0.0, [
-                    self::TOTAL_HOURS_ATTRIBUTE => $course['hours'],
-                ]);
+                $this->seedProduct($this->category($categoryName), $course['name'], 0.0);
             }
         }
     }
@@ -92,17 +83,14 @@ final class CatalogProducts
         $category = $this->category(SelfFundedCourseCatalogue::CATEGORY);
 
         foreach (SelfFundedCourseCatalogue::COURSES as $course) {
-            $this->seedProduct($category, $course['name'], $course['price'], [
-                self::TOTAL_HOURS_ATTRIBUTE => $course['hours'],
-                self::DELIVERY_MODE_ATTRIBUTE => $course['delivery_mode'],
-            ]);
+            $this->seedProduct($category, $course['name'], $course['price']);
         }
     }
 
     private function seedSingleOfferProducts(): void
     {
         foreach (self::SINGLE_OFFER_CATEGORIES as $categoryName) {
-            $this->seedProduct($this->category($categoryName), $categoryName, 0.0, []);
+            $this->seedProduct($this->category($categoryName), $categoryName, 0.0);
         }
     }
 
@@ -139,10 +127,7 @@ final class CatalogProducts
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $attributeValues
-     */
-    private function seedProduct(ProductCategory $category, string $name, float $price, array $attributeValues): void
+    private function seedProduct(ProductCategory $category, string $name, float $price): void
     {
         // Natural key (name, category) — scoped to the category because the
         // SAME course runs in several regions. An already-seeded product is
@@ -164,7 +149,6 @@ final class CatalogProducts
             price: $price,
             categoryId: $category->id,
             productType: ProductType::Service,
-            attributeValues: $attributeValues,
         ));
     }
 }

@@ -24,14 +24,14 @@ import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actio
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { assignRequestOperators, deleteRequest, transferRequests } from '@/features/request-management/api'
-import { AssignManagerGa3Dialog } from '@/features/request-management/assign-manager-ga3-dialog'
+import { AssignManagerGa1Dialog } from '@/features/request-management/assign-manager-ga1-dialog'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
 import { OfferLinesDialogProvider } from '@/features/request-management/offer-lines-dialog'
 import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
 import { RequestDashboardToggle } from '@/features/request-management/request-dashboard-toggle'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
-import { useRequestManagerGa3Assignment } from '@/features/request-management/use-request-manager-ga3-assignment'
+import { useRequestManagerGa1Assignment } from '@/features/request-management/use-request-manager-ga1-assignment'
 import type { TransferRequestsPayload } from '@/features/request-management/request-write-types'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
@@ -282,10 +282,10 @@ export function RequestManagementTable() {
     setAssignOpen(true)
   }, [])
 
-  // Bulk GA3 assignment (spec 0104): the Sede-less sibling of the flow above —
+  // Bulk GA1 assignment (spec 0104): the Sede-less sibling of the flow above —
   // one chosen user onto every selected row, or `null` to clear the slot. Its
   // whole flow (gate, label, dialog state, mutation) lives in its own hook.
-  const managerGa3 = useRequestManagerGa3Assignment({
+  const managerGa1 = useRequestManagerGa1Assignment({
     categoryId: selectedCategoryId,
     onAssigned: clearSelectionAndRefresh,
   })
@@ -295,7 +295,7 @@ export function RequestManagementTable() {
   // `undefined` (not a function returning an empty array) when neither is
   // reachable, so the checkbox column stays off entirely.
   const getBulkActions =
-    canAssignOperators || managerGa3.canAssign || canTransferContact
+    canAssignOperators || managerGa1.canAssign || canTransferContact
       ? (selection: TableSelection): BulkAction[] => [
           ...(canAssignOperators
             ? [
@@ -307,13 +307,13 @@ export function RequestManagementTable() {
                 },
               ]
             : []),
-          ...(managerGa3.canAssign
+          ...(managerGa1.canAssign
             ? [
                 {
-                  key: 'assign-manager-ga3',
-                  label: t('requestManagement.assignManagerGa3.tableButton', { label: managerGa3.label }),
+                  key: 'assign-manager-ga1',
+                  label: t('requestManagement.assignManagerGa1.tableButton', { label: managerGa1.label }),
                   icon: GraduationCap,
-                  onSelect: () => managerGa3.openDialog(selection.ids),
+                  onSelect: () => managerGa1.openDialog(selection.ids),
                 },
               ]
             : []),
@@ -447,12 +447,12 @@ export function RequestManagementTable() {
         onAssign={handleAssign}
       />
 
-      <AssignManagerGa3Dialog
-        open={managerGa3.open}
-        onOpenChange={managerGa3.setOpen}
-        selectionCount={managerGa3.selectionCount}
-        label={managerGa3.label}
-        onAssign={managerGa3.assign}
+      <AssignManagerGa1Dialog
+        open={managerGa1.open}
+        onOpenChange={managerGa1.setOpen}
+        selectionCount={managerGa1.selectionCount}
+        label={managerGa1.label}
+        onAssign={managerGa1.assign}
       />
 
       <AssignOperatorsDialog

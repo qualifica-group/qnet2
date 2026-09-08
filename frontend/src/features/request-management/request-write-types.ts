@@ -236,18 +236,18 @@ export interface AssignRequestOperatorsResult {
 }
 
 /**
- * Body of POST /request-management/assign-manager-ga3 (spec 0104): the bulk
- * GA3 assignment, the Sede-less sibling of the payload above — no
+ * Body of POST /request-management/assign-manager-ga1 (spec 0104): the bulk
+ * GA1 assignment, the Sede-less sibling of the payload above — no
  * `operational_site_id` and no `mode`, because only the GA2 Operatore slot is
- * bound to a Sede. `manager_ga3_id` is always sent and `null` CLEARS the slot
+ * bound to a Sede. `manager_ga1_id` is always sent and `null` CLEARS the slot
  * on the whole selection (D-2).
  */
-export interface AssignRequestManagerGa3Payload {
+export interface AssignRequestManagerGa1Payload {
   request_ids: number[]
-  manager_ga3_id: number | null
+  manager_ga1_id: number | null
 }
 
 /** Response of the same endpoint: how many requests the write actually reached. */
-export interface AssignRequestManagerGa3Result {
+export interface AssignRequestManagerGa1Result {
   assigned: number
 }

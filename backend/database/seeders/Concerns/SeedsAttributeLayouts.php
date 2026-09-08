@@ -7,9 +7,9 @@ use App\Enums\LayoutSectionVariant;
 
 /**
  * Builds a layout blob's sections (spec 0062, layout-contract) for the seeders
- * that group the client's reference attributes into form sections — the
- * Product-context "Dati Aula" (QualificaClassroomLayoutSeeder) and the
- * "Dati Lavorazione Contatto" of the Offerta and Commessa contexts
+ * that group the client's reference attributes into form sections — the whole
+ * Offerta form (QualificaQuoteLayoutSeeder: "Dati corso", "Dati Aula" and
+ * "Dati Lavorazione Contatto") and the Commessa one
  * (QualificaContactProcessingSeeder).
  *
  * Only the BLOB is built here: each seeder owns which categories it writes to

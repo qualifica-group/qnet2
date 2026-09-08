@@ -193,7 +193,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // column's inline avatar for the shared UserCell, no per-row
             // query.
             'operator.avatar',
-            // `manager_ga3` (direttiva utente 2026-09-07): the GA3 slot has no
+            // `manager_ga1` (direttiva utente 2026-09-07): the GA1 slot has no
             // denormalized FK, so the pivot itself is loaded — one query.
             'managers.avatar',
             // Spec 0056/0086, D-6: operationalSite's address+city for the

@@ -26,6 +26,10 @@ import type {
  * `product_ids` sets/clears the row's per-row products-of-interest override
  * (spec 0094 D-4): `null` reverts to the run's global `product_ids` default,
  * `[]` is an explicit "no products on this row" override.
+ * `campaign_id` pins the row's campaign (spec 0108 D-5) on a run that reads
+ * campaigns from a file column — `null` unpins it, handing the row back to
+ * the backend's own code resolution. Unlike the overrides above it re-runs
+ * the row's validation, so the response can come back with a new status.
  */
 export interface UpdateImportRunRowPayload {
   values?: Record<string, string>
@@ -33,6 +37,7 @@ export interface UpdateImportRunRowPayload {
   operator_id?: number | null
   operational_site_id?: number | null
   product_ids?: number[] | null
+  campaign_id?: number | null
 }
 
 /**

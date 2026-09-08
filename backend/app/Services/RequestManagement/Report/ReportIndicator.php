@@ -18,5 +18,5 @@ interface ReportIndicator
     /**
      * @param  array<int, int>  $categoryIds
      */
-    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range): IndicatorResult;
+    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): IndicatorResult;
 }

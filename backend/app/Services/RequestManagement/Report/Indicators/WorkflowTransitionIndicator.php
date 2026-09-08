@@ -12,6 +12,7 @@ use App\Services\RequestManagement\Report\QuoteCountAggregator;
 use App\Services\RequestManagement\Report\ReportBranchQuery;
 use App\Services\RequestManagement\Report\ReportDateRange;
 use App\Services\RequestManagement\Report\ReportIndicator;
+use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
@@ -55,13 +56,13 @@ final class WorkflowTransitionIndicator implements ReportIndicator
         private readonly array $groups,
     ) {}
 
-    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range): IndicatorResult
+    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): IndicatorResult
     {
         $targetIds = $this->targetStatusIds();
 
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $targetIds), 'distinct quotes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $targetIds), 'distinct quotes.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $targetIds), 'distinct quotes.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $targetIds), 'distinct quotes.id'),
         );
     }
 
@@ -84,9 +85,9 @@ final class WorkflowTransitionIndicator implements ReportIndicator
      * @param  array<int, int>  $categoryIds
      * @param  array<int, int>  $targetIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, array $targetIds): Builder
+    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, array $targetIds): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor)
+        return $this->branchQuery->build($categoryIds, $actor, $operators)
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
             ->whereExists(function (QueryBuilder $sub) use ($targetIds, $range): void {
                 $sub->selectRaw('1')

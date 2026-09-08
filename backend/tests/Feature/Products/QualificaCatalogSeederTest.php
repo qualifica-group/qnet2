@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AttributeContext;
+use App\Enums\LayoutFormScope;
 use App\Enums\ProductType;
 use App\Models\Attribute;
 use App\Models\MassMigrationRun;
@@ -10,6 +11,7 @@ use App\Models\RewardType;
 use App\Models\Role;
 use App\Models\Source;
 use App\Models\User;
+use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategoryService;
 use App\Services\UserService;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
@@ -222,7 +224,7 @@ it('never re-selects a third-level node an operator has deliberately turned into
     expect(ProductCategory::query()->where('name', 'GOL - Molise')->value('is_selectable'))->toBeFalsy();
 });
 
-it('assigns the "Ore complessive" product attribute to the whole Formazione branch', function (): void {
+it('assigns the "Ore complessive" offer attribute to the whole Formazione branch', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicate attribute nor pivot row.
 
@@ -234,31 +236,34 @@ it('assigns the "Ore complessive" product attribute to the whole Formazione bran
 
     $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
 
-    // One single assignment, on the root, in the PRODUCT context.
+    // One single assignment, on the root, in the OFFERTA context (user
+    // directive 2026-09-08: it used to be a product attribute).
     $pivot = DB::table('attribute_category')->where('attribute_id', $attribute->first()->id)->get();
 
     expect($pivot)->toHaveCount(1)
         ->and($pivot->first()->category_id)->toBe($formazione->id)
-        ->and($pivot->first()->context)->toBe(AttributeContext::Product->value);
+        ->and($pivot->first()->context)->toBe(AttributeContext::Quote->value);
 
     // Inherited all the way down: subcategory and regional grandchild resolve it.
     $service = app(ProductCategoryService::class);
 
     foreach (['GOL', 'GOL - Molise', 'DIL'] as $name) {
         $category = ProductCategory::query()->where('name', $name)->firstOrFail();
-        $effective = $service->effectiveAttributes($category, AttributeContext::Product);
+        $effective = $service->effectiveAttributes($category, AttributeContext::Quote);
 
         expect($effective->pluck('code')->all())->toContain('total_hours')
             ->and($effective->firstWhere('code', 'total_hours')['inherited'])->toBeTrue($name);
     }
 
-    // Not leaked onto the other root.
+    // Not leaked onto the other root, and gone from the product context.
     $consulenza = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
-    expect($service->effectiveAttributes($consulenza, AttributeContext::Product)->pluck('code')->all())
+    expect($service->effectiveAttributes($consulenza, AttributeContext::Quote)->pluck('code')->all())
+        ->not->toContain('total_hours')
+        ->and($service->effectiveAttributes($formazione, AttributeContext::Product)->pluck('code')->all())
         ->not->toContain('total_hours');
 });
 
-it('assigns the "Dati Aula" product attributes to the Formazione root', function (): void {
+it('assigns the "Dati Aula" offer attributes to the Formazione root', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicate attribute, option nor pivot row.
 
@@ -284,23 +289,27 @@ it('assigns the "Dati Aula" product attributes to the Formazione root', function
             ['value' => 'closed', 'label' => 'Chiusa'],
         ]);
 
-    // One single assignment each, on the root, in the PRODUCT context.
+    // One single assignment each, on the root, in the OFFERTA context (user
+    // directive 2026-09-08: they used to be product attributes).
     $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
 
     $pivot = DB::table('attribute_category')->whereIn('attribute_id', $attributes->pluck('id'))->get();
 
     expect($pivot)->toHaveCount(count($codes))
         ->and($pivot->pluck('category_id')->unique()->all())->toBe([$formazione->id])
-        ->and($pivot->pluck('context')->unique()->all())->toBe([AttributeContext::Product->value]);
+        ->and($pivot->pluck('context')->unique()->all())->toBe([AttributeContext::Quote->value]);
 
-    // Inherited down the branch, not leaked onto the other root.
+    // Inherited down the branch, not leaked onto the other root, and gone from
+    // the product context.
     $service = app(ProductCategoryService::class);
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
     $consulenza = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
 
-    expect($service->effectiveAttributes($molise, AttributeContext::Product)->pluck('code')->all())
+    expect($service->effectiveAttributes($molise, AttributeContext::Quote)->pluck('code')->all())
         ->toContain(...$codes)
-        ->and($service->effectiveAttributes($consulenza, AttributeContext::Product)->pluck('code')->all())
+        ->and($service->effectiveAttributes($consulenza, AttributeContext::Quote)->pluck('code')->all())
+        ->not->toContain('teacher')
+        ->and($service->effectiveAttributes($molise, AttributeContext::Product)->pluck('code')->all())
         ->not->toContain('teacher');
 });
 
@@ -327,23 +336,23 @@ it('seeds every GOL training course under its own region, idempotently', functio
         ->toBe(array_sum($expectedPerRegion) + count(SelfFundedCourseCatalogue::COURSES) + count(CatalogProducts::SINGLE_OFFER_CATEGORIES));
 });
 
-it('files each course with its duration in the inherited "Ore complessive" attribute', function (): void {
+it('files each course with no attribute value of its own', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
     $course = Product::query()->where('name', 'Alfabetizzazione Digitale')->where('category_id', $molise->id)->firstOrFail();
 
-    expect($course->attribute_values['total_hours'])->toEqual(60)
+    // User directive 2026-09-08: the duration moved to the Offerta, so the
+    // product carries nothing — writing it would now be rejected outright,
+    // the code being outside the product's applicable set.
+    expect($course->attribute_values)->toBeEmpty()
         ->and($course->product_type)->toBe(ProductType::Service)
         // Cost/price are filled in later through the CRUD modules.
         ->and((float) $course->cost)->toBe(0.0)
         ->and((float) $course->price)->toBe(0.0);
 
-    // The 10 Lombardia rows quoting "150 / 140" keep the first value.
-    $lombardia = ProductCategory::query()->where('name', 'GOL - Lombardia')->firstOrFail();
-    $cuoco = Product::query()->where('name', 'Cuoco')->where('category_id', $lombardia->id)->firstOrFail();
-
-    expect($cuoco->attribute_values['total_hours'])->toEqual(150);
+    expect(Product::query()->get()->filter(fn (Product $product): bool => filled($product->attribute_values)))
+        ->toBeEmpty();
 });
 
 it('keeps a course name repeated inside one region as two distinct products', function (): void {
@@ -368,10 +377,7 @@ it('keeps the same course name in different regions as separate products', funct
     $courses = Product::query()->where('name', 'Italiano per Stranieri')->with('category')->get();
 
     expect($courses->pluck('category.name')->sort()->values()->all())
-        ->toBe(['GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise'])
-        // Same course, different regional duration: Lazio funds 50 hours, the other two 60.
-        ->and($courses->firstWhere('category.name', 'GOL - Lazio')->attribute_values['total_hours'])->toEqual(50)
-        ->and($courses->firstWhere('category.name', 'GOL - Molise')->attribute_values['total_hours'])->toEqual(60);
+        ->toBe(['GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise']);
 });
 
 it('assigns the "Modalità di svolgimento" enum to the Autofinanziato subcategory only', function (): void {
@@ -392,28 +398,28 @@ it('assigns the "Modalità di svolgimento" enum to the Autofinanziato subcategor
 
     $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
 
-    // One single assignment, on the subcategory, in the PRODUCT context.
+    // One single assignment, on the subcategory, in the OFFERTA context.
     $pivot = DB::table('attribute_category')->where('attribute_id', $attribute->first()->id)->get();
 
     expect($pivot)->toHaveCount(1)
         ->and($pivot->first()->category_id)->toBe($autofinanziato->id)
-        ->and($pivot->first()->context)->toBe(AttributeContext::Product->value);
+        ->and($pivot->first()->context)->toBe(AttributeContext::Quote->value);
 
     // Confined to its own subtree: a sibling of Autofinanziato does not see it,
     // while the branch attribute assigned higher up still reaches both.
     $service = app(ProductCategoryService::class);
 
-    expect($service->effectiveAttributes($autofinanziato, AttributeContext::Product)->pluck('code')->all())
+    expect($service->effectiveAttributes($autofinanziato, AttributeContext::Quote)->pluck('code')->all())
         ->toContain('delivery_mode')
         ->toContain('total_hours');
 
     $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
 
-    expect($service->effectiveAttributes($dil, AttributeContext::Product)->pluck('code')->all())
+    expect($service->effectiveAttributes($dil, AttributeContext::Quote)->pluck('code')->all())
         ->not->toContain('delivery_mode');
 });
 
-it('seeds the self-funded courses with price, duration and delivery mode, idempotently', function (): void {
+it('seeds the self-funded courses with their list price, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class); // re-run: natural key (name, category), no duplicates.
 
@@ -431,8 +437,8 @@ it('seeds the self-funded courses with price, duration and delivery mode, idempo
         ->and((float) $oss->price)->toBe(1900.0)
         // Cost is filled in later through the CRUD modules.
         ->and((float) $oss->cost)->toBe(0.0)
-        ->and($oss->attribute_values['total_hours'])->toEqual(1000)
-        ->and($oss->attribute_values['delivery_mode'])->toBe('in_person');
+        // Duration and delivery mode are the Offerta's now.
+        ->and($oss->attribute_values)->toBeEmpty();
 
     $aggiornamento = Product::query()
         ->where('name', 'Aggiornamento ASO')
@@ -440,8 +446,58 @@ it('seeds the self-funded courses with price, duration and delivery mode, idempo
         ->firstOrFail();
 
     expect((float) $aggiornamento->price)->toBe(130.0)
-        ->and($aggiornamento->attribute_values['total_hours'])->toEqual(10)
-        ->and($aggiornamento->attribute_values['delivery_mode'])->toBe('online');
+        ->and($aggiornamento->attribute_values)->toBeEmpty();
+});
+
+it('withdraws the moved codes from the product side of an installation seeded earlier', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // The state the previous revision left: the same codes assigned in the
+    // PRODUCT context, with the form section built on them.
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
+
+    foreach (Attribute::query()->whereIn('code', ['total_hours', 'teacher', 'exam_date'])->get() as $attribute) {
+        $formazione->attributes()->attach($attribute->id, [
+            'context' => AttributeContext::Product->value,
+            'is_required' => false,
+            'sort_order' => 0,
+        ]);
+    }
+
+    $layouts = app(AttributeLayoutService::class);
+    $layouts->upsert($molise, AttributeContext::Product, LayoutFormScope::All, [
+        'sections' => [[
+            'id' => 'classroom-data',
+            'title' => 'Dati Aula',
+            'description' => null,
+            'variant' => 'default',
+            'collapsible' => false,
+            'default_collapsed' => false,
+            'columns' => 2,
+            'sort_order' => 0,
+            'rows' => [['id' => 'classroom-data-0', 'items' => [
+                ['attribute_code' => 'teacher', 'width' => 'half'],
+                ['attribute_code' => 'exam_date', 'width' => 'half'],
+            ]]],
+        ]],
+    ]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // Gone from the product context — assignments AND the section built on
+    // them, which is an emptied layout, hence a deleted row.
+    expect(DB::table('attribute_category')->where('context', AttributeContext::Product->value)->count())->toBe(0)
+        ->and($layouts->resolveExact($molise, AttributeContext::Product, LayoutFormScope::All))->toBeNull();
+
+    // The Offerta side is untouched by the retirement: same codes, still there.
+    $service = app(ProductCategoryService::class);
+    expect($service->effectiveAttributes($molise, AttributeContext::Quote)->pluck('code')->all())
+        ->toContain('total_hours', 'teacher', 'exam_date');
+
+    // The attribute rows themselves survive: a code may be shared with the
+    // q-crm import that owns it.
+    expect(Attribute::query()->whereIn('code', ['total_hours', 'teacher', 'exam_date'])->count())->toBe(3);
 });
 
 // The follow-up prompt (user request): launched on its own, the seeder offers

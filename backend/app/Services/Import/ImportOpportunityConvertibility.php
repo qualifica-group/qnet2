@@ -7,6 +7,7 @@ namespace App\Services\Import;
 use App\DataObjects\Import\ImportConversionReadiness;
 use App\Enums\ImportRowResolution;
 use App\Enums\ImportRowStatus;
+use App\Imports\Leads\LeadRowCampaign;
 use App\Models\Campaign;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
@@ -29,9 +30,9 @@ final class ImportOpportunityConvertibility
     private const array ALWAYS_CREATABLE_STATUSES = [ImportRowStatus::Valid, ImportRowStatus::Warning];
 
     /**
-     * Per-instance memoization: a run's global_config carries a single
-     * campaign_id, so every row asks the same question during commit — never
-     * re-querying the Campaign per row.
+     * Per-instance memoization: every row of a run asks the same question
+     * during commit, and since spec 0108 a run can span several campaigns —
+     * the memo makes the cost O(distinct campaigns), never one query per row.
      *
      * @var array<int, bool>
      */
@@ -55,7 +56,7 @@ final class ImportOpportunityConvertibility
         );
 
         return new ImportConversionReadiness(
-            campaignDerivesProductLine: $campaignId !== null && $this->campaignDerivesProductLine($campaignId),
+            campaignDerivesProductLine: $this->everyCampaignDerivesProductLine($creatableRows, $campaignId),
             creatableRowsCount: $creatableRows->count(),
             rowsWithoutOperatorCount: $rowsWithoutOperator->count(),
             rowsWithoutOperatorNumbers: $rowsWithoutOperator->pluck('row_number')->values()->all(),
@@ -85,6 +86,32 @@ final class ImportOpportunityConvertibility
 
         return $this->campaignProductLineCache[$campaignId] = $campaign !== null
             && $this->defaultsResolver->campaignDerivesProductLine($campaign);
+    }
+
+    /**
+     * Spec 0108 (D-8): with the campaign read from a file column a run spans
+     * several campaigns, so the readiness holds only when EVERY campaign the
+     * creatable rows point at derives a product line — a single non-deriving
+     * campaign withdraws the conversion for the whole run, the gate being one
+     * per run. A run with no creatable row falls back to the global campaign,
+     * so the single-campaign mode behaves exactly as before this spec.
+     *
+     * @param  Collection<int, ImportRunRow>  $creatableRows
+     */
+    private function everyCampaignDerivesProductLine(Collection $creatableRows, ?int $globalCampaignId): bool
+    {
+        $campaignIds = $creatableRows
+            ->map(static fn (ImportRunRow $row): ?int => LeadRowCampaign::resolve($row->mapped_values ?? [], ['campaign_id' => $globalCampaignId]))
+            ->filter(static fn (?int $id): bool => $id !== null)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($campaignIds === []) {
+            $campaignIds = $globalCampaignId === null ? [] : [$globalCampaignId];
+        }
+
+        return $campaignIds !== [] && array_all($campaignIds, fn (int $id): bool => $this->campaignDerivesProductLine($id));
     }
 
     /**

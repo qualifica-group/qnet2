@@ -20,9 +20,12 @@ import type { RequestReportCategory } from '@/features/request-management/report
  */
 
 const fetchRequestManagementReportCategoriesMock = vi.fn()
+const fetchRequestManagementReportOperatorsMock = vi.fn()
 vi.mock('@/features/request-management/report-api', () => ({
   fetchRequestManagementReportCategories: (...args: unknown[]) =>
     fetchRequestManagementReportCategoriesMock(...args),
+  fetchRequestManagementReportOperators: (...args: unknown[]) =>
+    fetchRequestManagementReportOperatorsMock(...args),
 }))
 
 /** The two branches most tests load; both applied by default (AC-050 seeding lives in the panel). */
@@ -37,6 +40,9 @@ beforeAll(async () => {
 
 beforeEach(() => {
   fetchRequestManagementReportCategoriesMock.mockReset().mockResolvedValue(DEFAULT_CATEGORIES)
+  // Spec 0109: no GA2 by default, so the operator group stays out of the way
+  // of the branch-group assertions; the tests that need it opt in.
+  fetchRequestManagementReportOperatorsMock.mockReset().mockResolvedValue([])
 })
 
 function wrapper() {
@@ -78,6 +84,7 @@ describe('RequestReportFiltersDialog', () => {
       date_to: '2026-03-06',
       category_keys: ['consulenza'],
       row_mode: 'total_only',
+      operator_keys: [],
     })
     await waitForCategories()
 
@@ -97,11 +104,14 @@ describe('RequestReportFiltersDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
 
     await waitFor(() =>
+      // `operator_keys` joined the form values in spec 0109; empty here
+      // because this test's picker offers no GA2.
       expect(onApply).toHaveBeenCalledWith({
         date_from: '2026-09-01',
         date_to: '2026-09-30',
         category_keys: ['gol', 'consulenza'],
         row_mode: 'all',
+        operator_keys: [],
       }),
     )
     expect(onOpenChange).toHaveBeenCalledWith(false)

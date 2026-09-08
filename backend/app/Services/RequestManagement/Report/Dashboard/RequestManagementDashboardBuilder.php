@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\RequestManagement\Report\ReportBranch;
 use App\Services\RequestManagement\Report\ReportBranchRowsBuilder;
 use App\Services\RequestManagement\Report\ReportDateRange;
+use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use App\Services\RequestManagement\Report\ReportRow;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 
@@ -26,6 +27,13 @@ use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
  * `RequestManagementReportGenerator::rows()` is the ONE place that filters
  * the six branches by `category_keys`, reused verbatim — the CSV and this
  * dashboard can never see a different set of branches for the same filters.
+ *
+ * The same holds for the operator selection (spec 0108, D-1): $operators is
+ * handed down UNTOUCHED to all three calls below — the two `rows()` and the
+ * synthetic summary branch — so the tiles, the per-category charts and the
+ * per-operator charts are all computed on the same narrowed perimeter, and
+ * none of them can end up describing a different set of operators than the
+ * CSV generated from the very same filters.
  */
 final class RequestManagementDashboardBuilder
 {
@@ -43,17 +51,20 @@ final class RequestManagementDashboardBuilder
         string $dateTo,
         array $categoryKeys,
         RequestManagementReportRowMode $rowMode,
+        ?ReportOperatorFilter $operators = null,
     ): RequestManagementDashboardResult {
+        $operators ??= ReportOperatorFilter::all();
+
         // Step 1: every selected branch's own TOTALE row — also the source
         // of the selected-branch list itself (summary needs it regardless
         // of $rowMode, D-3).
-        $totalsByBranch = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::TotalOnly);
+        $totalsByBranch = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::TotalOnly, $operators);
         $branches = array_map(static fn (array $pair): ReportBranch => $pair['branch'], $totalsByBranch);
         $range = ReportDateRange::fromRequest($dateFrom, $dateTo);
 
         // Step 2: the summary cards — the SAME builder, on a synthetic
         // union branch (D-8), never a sum of the per-category totals.
-        $summary = $this->buildSummary($branches, $actor, $range);
+        $summary = $this->buildSummary($branches, $actor, $range, $operators);
 
         // Step 3: charts — which scopes appear is decided by $rowMode (D-3).
         $charts = [];
@@ -63,7 +74,7 @@ final class RequestManagementDashboardBuilder
         }
 
         if ($rowMode !== RequestManagementReportRowMode::TotalOnly) {
-            $operatorsByBranch = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::OperatorsOnly);
+            $operatorsByBranch = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::OperatorsOnly, $operators);
             $charts = [...$charts, ...$this->buildOperatorCharts($operatorsByBranch)];
         }
 
@@ -80,7 +91,7 @@ final class RequestManagementDashboardBuilder
      * @param  array<int, ReportBranch>  $branches
      * @return array<int, DashboardSummaryItem>
      */
-    private function buildSummary(array $branches, ?User $actor, ReportDateRange $range): array
+    private function buildSummary(array $branches, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): array
     {
         $synthetic = new ReportBranch(
             key: '__summary__',
@@ -90,7 +101,7 @@ final class RequestManagementDashboardBuilder
         );
 
         /** @var ReportRow $total */
-        [$total] = $this->rowsBuilder->build($synthetic, $actor, $range, RequestManagementReportRowMode::TotalOnly);
+        [$total] = $this->rowsBuilder->build($synthetic, $actor, $range, RequestManagementReportRowMode::TotalOnly, $operators);
 
         return array_map(
             static fn (string $key): DashboardSummaryItem => new DashboardSummaryItem(

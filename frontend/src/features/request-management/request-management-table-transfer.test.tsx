@@ -54,9 +54,9 @@ vi.mock('@/features/request-management/api', () => ({
   updateRequestWork: vi.fn(),
   deleteRequest: (...args: unknown[]) => deleteRequestMock(...args),
   assignRequestOperators: (...args: unknown[]) => assignRequestOperatorsMock(...args),
-  // Spec 0104: pulled in by the table's bulk GA3 flow; this suite
+  // Spec 0104: pulled in by the table's bulk GA1 flow; this suite
   // exercises neither, it only has to satisfy the module surface.
-  assignRequestManagerGa3: vi.fn(),
+  assignRequestManagerGa1: vi.fn(),
   fetchCategoryManagerLabels: vi.fn(),
   transferRequests: (...args: unknown[]) => transferRequestsMock(...args),
   fetchRequestManagementCategories: (...args: unknown[]) => fetchRequestManagementCategoriesMock(...args),
@@ -209,7 +209,7 @@ describe('RequestManagementTable — bulk "transfer-contact" action (spec 0079 A
     // ability: denying `transferContact` drops that one entry alone.
     expect(capturedBulkActions?.(bulkSelection).map((entry) => entry.key)).toEqual([
       'assign-operators',
-      'assign-manager-ga3',
+      'assign-manager-ga1',
     ])
   })
 

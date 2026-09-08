@@ -3,6 +3,231 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CAMPAGNA DAL FILE NELL'IMPORT LEAD (spec 0108, 2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "nell'import leads id campagna su file per fare match con campagna [...] si
+puo' decidere se selezionare direttamente la campagna oppure dire che si inserira' l'id della
+campagna sul file [...] se non fa match invalidera' quelle righe". Scelte confermate in sessione:
+match sul CODICE campagna (`campaigns.code`, CMP-0001), prodotti globali disabilitati in quella
+modalita', righe non abbinate correggibili nella review. Spec congelata in
+`docs/specs/0108-lead-import-campaign-from-file.xml`.
+
+**Meccanismo.** La modalita' NON e' un flag: e' derivata dal `column_mapping`. Nuovo campo
+mappabile `campaign_code`; il descrittore dei campi globali acquisisce `required_unless_mapped`
+(su `leads`: `campaign_id` -> `campaign_code`), letto da `ConfigureImportRequest` — con la colonna
+mappata il `global_config.campaign_id` non e' piu' obbligatorio ed e' RIFIUTATO (422), come
+`product_ids` che ne dipende. In staging `CampaignRecognizer` (scoped nel container, memo per
+codice distinto) risolve `campaign_code` -> `campaign_id` dentro `mapped_values`/`resolved`, come
+GeoRecognizer fa per i geo id: nessuna colonna nuova su `import_run_rows`, nessuna migrazione.
+`LeadRowValidator` e' l'unico punto che invalida (`error`, mai warning) una riga con codice vuoto
+o inesistente. `LeadRowCampaign::resolve($mapped, $globalConfig)` e' l'UNICA lettura di "campagna
+di questa riga" — usata da `LeadRowPersister`, `LeadDuplicateMatcher::existingLeadId()` (firma
+cambiata: ora riceve anche `$mapped`) e `ImportOpportunityConvertibility`.
+
+**Review.** `PATCH .../rows/{row}` accetta `campaign_id` (pin, pattern della spec 0038):
+`CampaignPinResolver` scrive id + codice canonico in `mapped_values` e la pipeline viene rigiocata
+saltando `CampaignRecognizer`; `campaign_id: null` sgancia il pin e rimette il codice grezzo del
+file da `raw_values`. Il parametro `skipGeoRecognizer` di `StagedRowBuilder::resolve()`/
+`StagedRowReviser::revise()` e' diventato `skipRecognizers: array<class-string>`.
+`ImportRunRowResource` espone `campaign_id` + `campaign {id, code, name}` batchati per pagina.
+La coerenza prodotti (per riga e bulk) guarda ora la campagna DELLA RIGA: il bulk assign su righe
+di campagne diverse e' all-or-nothing e nomina i `row_number` incoerenti.
+
+**Frontend.** Lo step di mapping mostra due scelte esclusive (`import-campaign-source.tsx`, con i
+puri `global-field-source.ts`): "una per tutto il file" oppure "dal file". Mappare la colonna
+seleziona la modalita' da sola; in modalita' file il select campagna sparisce, i prodotti globali
+sono disabilitati con la spiegazione, e il payload non manda ne' `campaign_id` ne' `product_ids`.
+La review grid guadagna la colonna Campagna (solo in modalita' per riga) con
+`review-campaign-editor.tsx` sul modello dell'editor operatore.
+
+**Nomi da rispettare.** `campaign_code` (field mappabile), `required_unless_mapped` (descrittore
+globale, BE+FE), `CampaignRecognizer`, `LeadRowCampaign`, `CampaignPinResolver`, `GeoPinValidator`
+(estratto da `UpdateImportRowRequest` per stare sotto le 300 righe), `skipRecognizers`,
+`isCampaignPerRow`, `fileBackedGlobalFields`/`globalFieldIdsFromFile`, i18n
+`importWizard.config.source.*`, `importWizard.review.campaign.*`,
+`imports.leads.fields.campaign_code`.
+
+**Test aggiornato (requisito cambiato, dichiarato).** `LeadsImportDefinitionTest` asseriva la lista
+esatta dei recognizer: ora include `CampaignRecognizer` in testa.
+
+**Verificato (eseguito, non "dovrebbe").** `pest tests/Feature/Imports tests/Unit tests/Feature/Leads`
+= 1249 passed. `vitest src/features/imports/wizard` = 199 passed (26 file). `tsc -b --force` pulito,
+ESLint 0 errori sui file toccati, Pint applicato.
+
+**ATTENZIONE — il working tree e' stato ripulito due volte da fuori durante questa sessione**
+(modifiche non committate perse, una volta anche lo stash droppato). Copia di sicurezza completa in
+`/private/tmp/claude-501/-Users-Repository-qnet-2/1908e10c-3f87-4b21-8c23-5e02e9f3bc49/scratchpad/backup-0108/`
+(`new/` = file nuovi, `mine.patch` = diff dei soli file tracked di questa feature). Se sparisce di
+nuovo: `cp -a new/backend/. backend/ && cp -a new/frontend/. frontend/ && cp -a new/docs/. docs/`
+poi `git apply --3way mine.patch`.
+
+**Prossimi passi.** Committare (in attesa di via libera esplicito). Non c'e' migrazione, quindi
+niente da rilasciare oltre al codice.
+
+## CAMPI FLESSIBILI FORMAZIONE: DAL PRODOTTO ALL'OFFERTA (2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Campi flessibili su prodotto che vengono inseriti nel seedProduction di
+formazione devono essere spostati in offerte in una sezione dedicata" — poi, alla domanda su quali
+campi: "dati corso e dati aula, tutto"; contesto: solo Offerta (`quote`), NON Commessa; installazioni
+gia' seedate: indifferente (nessun passo di ritiro implementato).
+
+**Cosa e' cambiato.** Gli attributi che `QualificaCatalogSeeder` assegnava in
+`AttributeContext::Product` sul ramo Formazione ora vivono in `AttributeContext::Quote`:
+`total_hours` + `delivery_mode` ("Dati corso") e i 10 campi di `ClassroomAttributeCatalogue`
+("Dati Aula"). Il ramo Formazione **non ha piu' alcun attributo ne' alcun layout in contesto
+product** (asserito da un test).
+
+**File.**
+- NUOVO `QualificaCatalog/CourseDataAttributeCatalogue.php`: `SECTION_TITLE = 'Dati corso'`,
+  `TOTAL_HOURS`/`DELIVERY_MODE`, `IN_PERSON`/`ONLINE`, `TRAINING_ATTRIBUTES`,
+  `SELF_FUNDED_ATTRIBUTES`, `ROWS`. Assorbe le costanti dei due codici, prima su `CatalogProducts`.
+- `QualificaCatalogSeeder`: `CATALOG_PRODUCT_ATTRIBUTES` -> **`CATALOG_QUOTE_ATTRIBUTES`**,
+  assegnate con `AttributeContext::Quote`. Ordine: step 4 workflow, 4-bis contact-processing,
+  **4-ter `QualificaQuoteLayoutSeeder`** (il layout viene dopo TUTTE le assegnazioni quote).
+- NUOVO `QualificaQuoteLayoutSeeder` (sostituisce `QualificaClassroomLayoutSeeder`, **eliminato**):
+  unico proprietario dei layout in contesto `quote`. Compone, in quest'ordine,
+  `course-data` "Dati corso" -> `classroom-data` "Dati Aula" -> `contact-processing`
+  "Dati Lavorazione Contatto", ciascuna filtrata con `keepAllowedCodes` sugli attributi effettivi
+  della categoria. Categorie: ramo Formazione (16) + le 2 foglie Consulenza = 18 righe.
+  Skip non distruttivo su layout gia' configurato.
+- `QualificaContactProcessingSeeder`: assegnazioni invariate su `quote` + `work_order`; il suo
+  step layout scrive ora **solo** `work_order` (nuova costante `LAYOUT_CONTEXT`). Regola:
+  layout Offerta -> `QualificaQuoteLayoutSeeder`, layout Commessa -> contact-processing.
+- `CatalogProducts`: `seedProduct()` non prende ne' scrive piu' `attributeValues`. Obbligatorio:
+  `ProductService::applyAttributeValues` valida contro il set applicabile PRODUCT e
+  `AttributeValueValidator::assertKnownCodes` lancerebbe su ogni corso seedato.
+- `SelfFundedCourseCatalogue`: rimossi `hours` e `delivery_mode` dalle 10 righe (dead data dopo lo
+  spostamento; i valori restano recuperabili da git). `TrainingCourseCatalogue.hours` **resta**: e'
+  il discriminante di `CatalogProducts::disambiguate()` per i nomi ripetuti nella stessa regione.
+
+**Conseguenza accettata dall'utente.** I 265 prodotti seedati (252 GOL + 10 autofinanziati + 3
+single-offer) nascono con `attribute_values` VUOTO: ore complessive e modalita' di svolgimento si
+compilano d'ora in poi sulla singola offerta.
+
+**Nomi da rispettare.** `CourseDataAttributeCatalogue`, `QualificaQuoteLayoutSeeder`,
+`CATALOG_QUOTE_ATTRIBUTES`, `LAYOUT_CONTEXT`, section id `course-data` / `classroom-data` /
+`contact-processing`, titoli "Dati corso" / "Dati Aula" / "Dati Lavorazione Contatto".
+
+**Test.** `QualificaClassroomLayoutSeederTest` -> **`QualificaQuoteLayoutSeederTest`** (nuovo):
+18 layout quote, ordine sezioni per categoria, `delivery_mode` solo su Autofinanziato, zero layout
+product, invariante "placed == effective" (nessun attributo lasciato alla sezione sintetizzata),
+layout a mano intatto. `QualificaCatalogSeederTest`: asserzioni passate a `AttributeContext::Quote`,
+prodotti con `attribute_values` vuoto. `QualificaContactProcessingSeederTest`: le sezioni si
+cercano per id (`contactSectionOf`), il confronto Offerta/Commessa e' ora sulla sola sezione
+condivisa, tolto il test ridondante sul layout Offerta a mano.
+
+**Verifica ESEGUITA.** `php -d xdebug.mode=off vendor/bin/pest` intero: **6592 test, 6590 passed,
+1 skipped, 1 failed**. L'unico rosso e' `LeadsImportDefinitionTest` (frozen contract dei recognizer
+senza `CampaignRecognizer`) — **lavoro non committato di un'altra sessione, estraneo a questa
+modifica**. Mirati: 42/42 sui tre test dei seeder Qualifica; 261/261 su `Products` + `Seeding` +
+`Migration/QualificaLegacyImportSeederTest` + `CustomFields/QualificaTemplateSeederTest`.
+Pint `--test` pulito sui 13 file toccati. Nessuna modifica frontend: i form leggono layout e set
+applicabile dall'API.
+
+**Attenzione working tree.** All'avvio di questa sessione il tree NON era pulito (report operator
+filter + lead import campaign di un'altra sessione). Un `pint --dirty` lanciato una volta ha
+riformattato `RequestDashboardRequest.php` e `RequestReportRequest.php` (solo
+`class_attributes_separation`), file non miei.
+
+**CONVERGENZA DELLE INSTALLAZIONI GIA' SEEDATE (aggiunta 2026-09-08, dopo verifica sul DB reale).**
+Il primo giro non convergeva: i seeder sono additivi, quindi su un database gia' seedato i campi
+restavano ANCHE sul prodotto e il layout offerta esistente faceva scattare lo skip. Due passi
+sottrattivi, entrambi coperti da test:
+- NUOVO concern `Concerns/RetiresAttributes.php`: `retireAttributeCodes(codes, ?context)` stacca le
+  assegnazioni e pota i blob di layout, cancellando le righe rimaste vuote. Estratto da
+  `QualificaContactProcessingSeeder`, che ora lo usa (context-agnostic) al posto delle sue copie
+  private di `stripFromLayouts`/`withoutCodes`.
+- `QualificaCatalogSeeder::retireProductAttributes()`: ritira i codici di
+  `CATALOG_QUOTE_ATTRIBUTES` dal SOLO contesto `product` (scoped, altrimenti annullerebbe
+  l'assegnazione appena fatta sull'offerta). Righe attributo, opzioni e
+  `products.attribute_values` restano intatti.
+- `QualificaQuoteLayoutSeeder::isPreviousComposition()`: riconosce byte per byte il blob della
+  revisione precedente (sola sezione `contact-processing`) e lo ricompone; qualsiasi altro layout
+  resta intoccato perche' e' lavoro umano.
+
+**ATTENZIONE — un `git reset --hard` (reflog `293dc822 HEAD@{2026-09-08 15:47:17}`) ha cancellato
+questa modifica una prima volta**, lasciando in piedi i soli file non tracciati. Il seed
+dell'utente girava quindi sul codice vecchio. Tutto riapplicato; se i campi ricompaiono sul
+prodotto, la PRIMA cosa da verificare e' che `QualificaCatalogSeeder` contenga ancora
+`CATALOG_QUOTE_ATTRIBUTES`.
+
+**Come applicarlo a un database.** `php artisan migrate:fresh --seed` NON basta: `DatabaseSeeder` e'
+il seed pulito e non contiene i seeder Qualifica. Serve
+`php artisan db:seed --class=QualificaProductionDataSeeder` (oppure `--class=QualificaCatalogSeeder`
+per il solo catalogo).
+
+**Prossimi passi.** I campi non compaiono sul form Commessa, come richiesto.
+
+## FILTRO PER OPERATORE SU REPORT + DASHBOARD GESTIONE RICHIESTE (2026-09-08) — VERDE, NON COMMITTATO
+
+**Spec.** `docs/specs/0109-request-management-report-operator-filter.xml` (approvata dall'utente).
+Numerata 0109 e non 0108: `0108-lead-import-campaign-from-file.xml` era gia' occupata da un'altra
+feature in corso nello stesso working tree.
+
+**Direttiva utente.** "voglio che il report e dashboard sia disponibile anche per singolo operatore
+(quando si seleziona solo operatori nei filtri mi piacerebbe poter selezionare anche un operatore o
+piu operatori specifici oppure tutti)". Due risposte date in pianificazione, VINCOLANTI:
+(1) il filtro RESTRINGE IL CALCOLO, non nasconde righe a valle; (2) il selettore compare con
+`row_mode` `operators_only` E `all`, mai con `total_only`.
+
+**Meccanismo (un solo `where`).** Tutti e cinque gli indicatori di 0106 partono da
+`ReportBranchQuery::build()`: il filtro entra li', DOPO `RequestManagementScope::scopeToActor()`
+(restringere una query gia' scopata non puo' allargare la visibilita'), avvolto nella propria
+closure `where()` — mai un `orWhere` a livello radice. Nessuna formula di indicatore e' stata
+toccata: il diff su `Report/Indicators/**` e' solo firma + passaggio del parametro, e un test lo
+blinda (AC-016 asserisce che `operator_id` non compaia in nessun indicatore).
+
+**Campo di contratto.** `operator_keys`, `array<string>`, FACOLTATIVO su
+`POST /request-management/report` e `GET /request-management/report/dashboard`. Ogni voce e' un id
+utente come stringa oppure la costante `unassigned` ("Non assegnato" E' una riga GA2, spec 0106
+D-13). **Assente = TUTTI**, mai "nessuno": e' cio' che rende compatibili le `ExportRun` congelate
+prima di questa spec e che fa si' che "tutti" includa anche gli operatori assunti dopo. Il client
+OMETTE il campo quando sono tutti selezionati o con `total_only`. Allow-list obbligatoria
+(`ReportOperatorAvailabilityResolver`), risolta SOLO se il campo e' presente.
+
+**Nomi da rispettare.** Backend: `ReportOperatorFilter` (`all()`/`fromKeys()`/`fromKeysOrAll()`/
+`applyTo()`, costante `UNASSIGNED_KEY = 'unassigned'`), `ReportOperatorAvailabilityResolver`,
+`RequestManagementReportController::operators()`, rotta `GET request-management/report/operators`
+(dichiarata PRIMA di `report/{exportRun}`), `ExportRun.state['operator_keys']`.
+Frontend: `RequestReportKeyGroup` (gruppo checkbox estratto, usato per rami E operatori),
+`toRequestReportFilterPayload()`, `reconcileOperatorKeys()`, `useRequestReportOperators()`,
+`requestManagementKeys.reportOperators()`, i18n `requestManagement.report.fields.operators` /
+`selectAllOperators` / `status.loadingOperators` / `errors.operatorsRequired` /
+`errors.operatorsLoadFailed` / `requestManagement.dashboard.operatorsSummary`.
+
+**Due difetti trovati e corretti durante l'implementazione (da non reintrodurre).**
+1. `FormControl` (Radix `Slot`) inietta `id`/`aria-invalid`/`aria-describedby` sul figlio: estrarre
+   il `<fieldset>` in un componente che NON inoltra le prop native ha silenziosamente perso
+   l'annuncio dell'errore di gruppo. `RequestReportKeyGroup` estende ora
+   `ComponentPropsWithRef<'fieldset'>` e fa spread sul fieldset.
+2. I due reconcile (rami e operatori) sono effect INDIPENDENTI che possono atterrare nello stesso
+   commit: con `setFilters(valore)` il secondo sovrascriveva il primo con una copia stale (le
+   categorie tornavano a 0/1). `setFilters` accetta ora un updater come `useState`, e i due effect
+   non hanno piu' `filters` fra le dipendenze.
+
+**Test modificati (requisito cambiato, dichiarato — non "aggiustati per farli passare").**
+`RequestManagementDashboardRequestTest` AC-003: `applied` porta ora `operator_keys` (null quando
+non inviato). Lato frontend le fixture di `RequestReportFormValues` guadagnano `operator_keys`, i
+mock di `report-api` guadagnano `fetchRequestManagementReportOperators`, e
+`request-dashboard-filter-bar.test.tsx` passa il payload NORMALIZZATO (non i form values).
+
+**Verifica eseguita.** Backend: `tests/Feature/RequestManagement` 583/583; suite completa 6613/6615
+(1 skip; l'unico fallimento e' `DemoOpportunitySeederTest`, che passa 230/230 quando
+`tests/Feature/Opportunities` gira da sola — dipendenza d'ordine nell'area seeder demo che un'altra
+feature in corso sta modificando, estranea a questo lavoro). Pint pulito.
+Frontend: Vitest 4486/4486 su 608 file, ESLint pulito, `npx tsc -b --force` pulito **sui file di
+questo lavoro** — restano 2 errori in `features/imports/wizard/review-campaign-editor.test.tsx`,
+file NON tracciato appartenente alla feature lead-import in corso, mai toccato qui.
+
+**Nota di igiene (errore commesso, da non ripetere).** Un `pint app` a tappeto ha riformattato file
+estranei allo scope appartenenti a un'altra sessione attiva sullo stesso working tree. Pint va
+lanciato SOLO sui path dello scope. Il tentativo di ripristino con `git checkout -- <path>` e' stato
+innocuo solo perche' quei file erano staged (checkout ripristina dall'INDEX, non da HEAD): la
+formattazione resta applicata. Non e' stato perso lavoro altrui.
+
+**Prossimi passi.** Nessun commit e nessun cambio di branch effettuato (CLAUDE.md §3.6): la
+modifica e' verde e in attesa del via libera dell'utente.
+
 ## SPLASH DI AVVIO + AVVISO NUOVA VERSIONE, RICOPIATI DA q-net (2026-09-08) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "prendi questa repository [`/Users/Repository/q-net`], voglio che ricopi il

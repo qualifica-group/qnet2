@@ -10,6 +10,7 @@ import type { TFunction } from 'i18next'
 import { AlertTriangle } from 'lucide-react'
 import i18n from '@/i18n'
 import { Badge } from '@/components/ui/badge'
+import { ReviewCampaignCell } from '@/features/imports/wizard/review-campaign-editor'
 import { ReviewGeoCell } from '@/features/imports/wizard/review-geo-editor'
 import { ReviewOperatorCell } from '@/features/imports/wizard/review-operator-editor'
 import { ReviewProductsCell } from '@/features/imports/wizard/review-products-editor'
@@ -33,6 +34,18 @@ const EXTRA_COLUMN_PREFIX = 'extra:'
  * `agTextCellEditor`/`onCellValueChanged`.
  */
 const GEO_FIELD_IDS: ReadonlySet<string> = new Set(['country', 'region', 'province', 'city'])
+
+/**
+ * The mappable field whose presence in `column_mapping` puts the run in
+ * per-row campaign mode (spec 0108 D-2) — the campaign column only exists
+ * then, since on a global run every row shares the run's campaign.
+ */
+const CAMPAIGN_CODE_FIELD_ID = 'campaign_code'
+
+/** Whether this run reads its campaign from a file column. */
+export function isCampaignPerRow(run: ImportRunDetail): boolean {
+  return Object.values(run.column_mapping ?? {}).includes(CAMPAIGN_CODE_FIELD_ID)
+}
 
 /** Badge variant per row status (`App\Enums\ImportRowStatus` mirror). */
 const STATUS_BADGE_VARIANT: Record<ImportRowStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -197,6 +210,10 @@ function resolveEditableFields(run: ImportRunDetail): Array<{ id: string; label:
  * is a per-row-only field, set via this column's popup or the grid's bulk
  * assign bar.
  *
+ * A `campaign` column follows `status` — ONLY on a run reading campaigns from
+ * a file column (spec 0108 AC-035): `ReviewCampaignCell` shows the campaign the
+ * row resolved (or flags the unmatched code) and opens a picker to pin one.
+ *
  * A `products` column follows `site` (spec 0094 D-4/AC-055): a non-editable
  * button cell (`ReviewProductsCell`) showing the row's own products-of-interest
  * override, the run's "uses default" hint, or "no products" — opening a popup
@@ -237,6 +254,21 @@ export function buildReviewColumnDefs(
       flex: 0,
       cellRenderer: ReviewStatusCell,
     },
+    ...(isCampaignPerRow(run)
+      ? [
+          {
+            colId: 'campaign',
+            headerName: t('review.columns.campaign'),
+            editable: false,
+            sortable: false,
+            filter: false,
+            minWidth: 220,
+            flex: 0,
+            cellRenderer: ReviewCampaignCell,
+            cellRendererParams: { readOnly },
+          } satisfies ColDef<ImportRunRowItem>,
+        ]
+      : []),
     {
       colId: 'resolution',
       headerName: t('review.columns.resolution'),

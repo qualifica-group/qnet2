@@ -14,10 +14,12 @@ namespace Database\Seeders\QualificaCatalog;
  * and renaming a region there breaks loudly here instead of silently dropping
  * its courses.
  *
- * `hours` feeds the `total_hours` ("Ore complessive") product attribute the
- * Formazione root carries (spec 0061). Course names are user-facing domain
- * values, kept in their original language, and are the natural key for the
- * idempotent per-category upsert.
+ * `hours` is no longer written anywhere (user directive 2026-09-08 moved
+ * "Ore complessive" from the product to the OFFERTA, where the operator
+ * records it per deal): it survives as the DISCRIMINATOR of a course name
+ * repeated inside one region — see CatalogProducts::disambiguate(). Course
+ * names are user-facing domain values, kept in their original language, and
+ * are the natural key for the idempotent per-category upsert.
  *
  * Two transcription rules applied to the source list, both user decisions:
  *   - a course quoting two durations ("150 / 140", 10 rows in Lombardia) keeps

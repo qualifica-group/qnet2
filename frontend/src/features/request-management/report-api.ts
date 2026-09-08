@@ -27,10 +27,26 @@ export interface RequestReportCategory {
   label: string
 }
 
+/**
+ * One selectable GA2 Operatore (spec 0109): `key` is a user id as a string,
+ * or the literal `unassigned` — "Non assegnato" IS a GA2 row (spec 0106
+ * D-13), so it is selectable like any other. `label` comes from the server
+ * (a user's name, or the report's own "Non assegnato" catalogue entry) and is
+ * rendered as-is — NEVER through i18next.
+ */
+export interface RequestReportOperator {
+  key: string
+  label: string
+}
+
 /** Which rows a branch emits (rev-2 D-13). */
 export type RequestReportRowMode = 'total_only' | 'operators_only' | 'all'
 
-export interface CreateRequestReportPayload {
+/**
+ * The four filter dimensions, as they travel on the wire — shared by the CSV
+ * report and the dashboard, which is the point (spec 0107 D-4).
+ */
+export interface RequestReportFilterPayload {
   /** `YYYY-MM-DD`, inclusive lower bound. */
   date_from: string
   /** `YYYY-MM-DD`, inclusive upper bound. */
@@ -38,6 +54,16 @@ export interface CreateRequestReportPayload {
   /** Branch keys to include, min 1, each in the server's config allow-list. */
   category_keys: string[]
   row_mode: RequestReportRowMode
+  /**
+   * GA2 keys to narrow the CALCULATION to (spec 0109, D-1). OMITTED means
+   * every operator — including ones hired after this selection was made
+   * (D-2) — so it is left out whenever all are selected, and under
+   * `total_only`, where there are no operator rows to narrow (D-4).
+   */
+  operator_keys?: string[]
+}
+
+export interface CreateRequestReportPayload extends RequestReportFilterPayload {
   /** File the run produces (user directive 2026-09-08): `csv` or `xlsx`. */
   format: ExportFormat
 }
@@ -65,6 +91,18 @@ export async function fetchRequestManagementReportCategories(): Promise<RequestR
     '/request-management/report/categories',
   )
   return data.data.categories
+}
+
+/**
+ * Loads the GA2 the actor may filter by (spec 0109, D-6): all-time and
+ * independent of both the dates and the branches picked, exactly like the
+ * branch list above. `GET /request-management/report/operators`.
+ */
+export async function fetchRequestManagementReportOperators(): Promise<RequestReportOperator[]> {
+  const { data } = await apiClient.get<ApiResponse<{ operators: RequestReportOperator[] }>>(
+    '/request-management/report/operators',
+  )
+  return data.data.operators
 }
 
 /** Polls the current state of a report run (`GET /request-management/report/{id}`). */

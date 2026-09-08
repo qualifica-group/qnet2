@@ -12,7 +12,7 @@ use App\Support\ManagerPositions;
 /**
  * Writes an offer's Gestori Account from the request-management module —
  * apply() moves the GA2 "Operatore" slot alone (the grid cell, the bulk
- * assign, the transfer), applyGa3() the GA3 slot alone (its own grid cell,
+ * assign, the transfer), applyGa1() the GA1 slot alone (its own grid cell,
  * direttiva utente 2026-09-07), applySlots() replaces the WHOLE team (the
  * work panel, spec 0097). All three funnel into the same single writer, so
  * the channels can never grow divergent rules.
@@ -48,12 +48,12 @@ use App\Support\ManagerPositions;
 final class RequestOperatorWriter
 {
     /**
-     * The wire-facing key the GA3 transition is reported under — the same key
+     * The wire-facing key the GA1 transition is reported under — the same key
      * the grid column declares as its `editableField` and
      * RequestManagementAuthorization catalogues, so the operational history
      * reads with the vocabulary the write channel used.
      */
-    private const string GA3_FIELD = 'manager_ga3_id';
+    private const string GA1_FIELD = 'manager_ga1_id';
 
     public function __construct(private readonly QuoteManagerWriter $managerWriter) {}
 
@@ -71,7 +71,7 @@ final class RequestOperatorWriter
      * (TableCellUpdateService::update() falls back to the in-memory $quote
      * when the post-write re-fetch comes back empty). That fallback instance
      * must already reflect the new team, or the response ships the OLD one
-     * under a 200 — `managers` included, being what the `manager_ga3` column
+     * under a 200 — `managers` included, being what the `manager_ga1` column
      * projects.
      *
      * @param  array<string, mixed>  $changed
@@ -94,36 +94,36 @@ final class RequestOperatorWriter
     }
 
     /**
-     * The GA3 slot alone (direttiva utente 2026-09-07, the grid's
-     * `manager_ga3` cell): the same single-slot move apply() performs on the
+     * The GA1 slot alone (direttiva utente 2026-09-07, the grid's
+     * `manager_ga1` cell): the same single-slot move apply() performs on the
      * Operatore, through the same writer and the same
      * `promoteToOpportunity: true` this module always opts into — every other
      * slot, the Operatore included, survives untouched.
      *
      * THREE things apply() does that this deliberately does not: it reads the
-     * current occupant off the pivot rather than a denormalized column (GA3
+     * current occupant off the pivot rather than a denormalized column (GA1
      * has none, and needs none), it drops the `managers` relation instead of
-     * `operator` (the projection the GA3 cell re-renders from), and its
-     * caller sends no assignment notification — GA3 scopes no visibility, and
+     * `operator` (the projection the GA1 cell re-renders from), and its
+     * caller sends no assignment notification — GA1 scopes no visibility, and
      * a move that leaves the Operatore in place assigns nobody, the rule
      * applySlots() already follows (spec 0097, D-6/AC-007).
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      */
-    public function applyGa3(Quote $quote, ?int $userId, array &$changed, array &$old): void
+    public function applyGa1(Quote $quote, ?int $userId, array &$changed, array &$old): void
     {
-        $current = $this->currentPositions($quote)[ManagerPositions::GA3] ?? null;
+        $current = $this->currentPositions($quote)[ManagerPositions::GA1] ?? null;
 
         if ($current === $userId) {
             return;
         }
 
-        $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, ManagerPositions::GA3, $userId), promoteToOpportunity: true);
+        $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, ManagerPositions::GA1, $userId), promoteToOpportunity: true);
         $quote->unsetRelation('managers');
 
-        $old[self::GA3_FIELD] = $current;
-        $changed[self::GA3_FIELD] = $userId;
+        $old[self::GA1_FIELD] = $current;
+        $changed[self::GA1_FIELD] = $userId;
     }
 
     /**

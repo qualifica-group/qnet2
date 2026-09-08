@@ -5,6 +5,7 @@ use App\Enums\ImportDedupMode;
 use App\Enums\PersonalDataTypeEnum;
 use App\Imports\ImportRowContext;
 use App\Imports\LeadsImportDefinition;
+use App\Imports\Recognition\CampaignRecognizer;
 use App\Imports\Recognition\GeoRecognizer;
 use App\Imports\Recognition\NameSplitRecognizer;
 use App\Models\Campaign;
@@ -321,7 +322,10 @@ it('registers `leads` in config/imports.php as LeadsImportDefinition', function 
 it('exposes recognizers()/supportsExtraFields()/dedupModes() per the frozen contract', function () {
     $definition = app(LeadsImportDefinition::class);
 
+    // Spec 0108: CampaignRecognizer joins the list (campaign code -> id, per
+    // row) — the frozen contract changed, the assertion follows it.
     expect($definition->recognizers())->toBe([
+        CampaignRecognizer::class,
         NameSplitRecognizer::class,
         GeoRecognizer::class,
     ])

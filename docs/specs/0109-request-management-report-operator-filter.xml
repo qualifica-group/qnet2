@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0109 — Filtro per operatore su report CSV/XLSX e dashboard di Gestione Richieste.
+  Estende 0106 (report) e 0107 (dashboard): aggiunge UNA dimensione ai filtri gia' esistenti,
+  senza toccare nessuna formula di indicatore.
+  Prosa italiana senza accenti; identificatori inglesi (engineering.md 1.2).
+-->
+<spec id="0109-request-management-report-operator-filter" status="draft" owner="utente" date="2026-09-08">
+
+  <goal>
+    Rendere report e dashboard di Gestione Richieste disponibili "per singolo operatore": oltre a
+    range di date, categorie e scelta righe, si sceglie QUALI GA2 Operatore includere — uno, alcuni,
+    o tutti. La selezione vale contemporaneamente per i grafici e per il file scaricato, perche' i
+    due gia' condividono un'unica sorgente di filtri.
+  </goal>
+
+  <user_directive date="2026-09-08">
+    "su gestione richieste, voglio che il report e dashboard sia disponibile anche per singolo
+    operatore (quando si seleziona solo operatori nei filtri mi piacerebbe poter selezionare anche
+    un operatore o piu operatori specifici oppure tutti)".
+    Due risposte date in fase di pianificazione, vincolanti:
+    - Il filtro RESTRINGE IL CALCOLO, non nasconde soltanto delle righe (vedi D-1).
+    - Il selettore compare con `row_mode` = `operators_only` E `all`, non con `total_only` (D-4).
+  </user_directive>
+
+  <context>
+    <entity name="Dove vive gia' la partizione per operatore">
+      `quotes.operator_id` e' la colonna che partiziona il breakdown GA2 di 0106:
+      `QuoteCountAggregator::byOperator()` fa `groupBy('quotes.operator_id')`, e un'offerta senza
+      operatore diventa il gruppo "Non assegnato" per costruzione (NULL e' un suo proprio gruppo).
+      E' la STESSA colonna su cui `RequestManagementScope::scopeToActor()` fa il tier 2 della
+      visibilita'. Quindi il filtro nuovo non introduce un concetto: seleziona sui valori di una
+      dimensione che il report gia' calcola.
+    </entity>
+
+    <entity name="Il collo di bottiglia unico">
+      Tutti e cinque gli indicatori reali costruiscono la loro query partendo da
+      `ReportBranchQuery::build($categoryIds, $actor)` — verificato per ispezione:
+      `PhoneCallsIndicator:47`, `UnhandledCallbacksIndicator:42`, `UnhandledNewContactsIndicator:42`,
+      `CompaniesAddedIndicator:49`, `WorkflowTransitionIndicator:89`. Un `where` applicato li' e'
+      applicato a ogni indicatore, in un punto solo, senza riscrivere nessuna formula.
+    </entity>
+
+    <entity name="Il frontend ha gia' un'unica sorgente di filtri">
+      Dopo la direttiva 2026-09-08 di 0107 esiste UNO stato applicato, `RequestReportFormValues`,
+      posseduto da `RequestDashboardPanelBody` (`request-dashboard-panel.tsx`) e persistito da
+      `useRequestReportFilters` in `localStorage`. Da li' partono ENTRAMBI i consumatori:
+      `useRequestDashboard(filters)` per i grafici e `report.create({ ...filters, format })` in
+      `RequestDashboardFilterBar` per il file. Aggiungere un campo a quel tipo lo porta a tutti e
+      due senza cablaggio nuovo. La modifica avviene in `RequestReportFiltersDialog`, che monta
+      `RequestReportFilters` (il componente condiviso di 0107 D-4).
+    </entity>
+
+    <entity name="Vincoli di compatibilita' gia' in essere">
+      - `ExportRun.state` congela i filtri al momento della creazione e
+        `GenerateRequestManagementReportJob::write()` li rilegge (AC-035 di 0106). Le run gia'
+        persistite NON hanno il campo nuovo: il job deve tollerarne l'assenza.
+      - I test di 0106/0107 invocano `RequestManagementReportGenerator::generate()` e
+        `RequestManagementDashboardBuilder::build()` posizionalmente, senza il parametro nuovo
+        (`RequestManagementDashboardCsvParityTest:157/161/202`, i quattro test che chiamano il job).
+        0107 AC-015 impone che passino senza modifiche.
+    </entity>
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Il filtro RESTRINGE IL CALCOLO (risposta utente 2026-09-08), non filtra le righe a valle.
+      Entra in `ReportBranchQuery::build()`, subito DOPO `RequestManagementScope::scopeToActor()`:
+      restringere ulteriormente una query gia' scopata non puo' allargare la visibilita'.
+      Conseguenze volute:
+      - righe per operatore: solo quelle selezionate;
+      - riga TOTALE del CSV (`row_mode` = `all`): totale dei soli operatori selezionati;
+      - schede di riepilogo della dashboard: totali dei soli operatori selezionati.
+      Selezionando un solo operatore, report e dashboard sono davvero "di quell'operatore".
+      Con tutti selezionati il comportamento e' identico a oggi, bit per bit.
+      NON e' una nuova formula: nessun indicatore viene toccato, il `where` e' uno solo.
+    </decision>
+
+    <decision id="D-2">
+      Il valore assente significa TUTTI (nessuna restrizione), non "nessuno". Tre ragioni:
+      1. compatibilita' con le `ExportRun` gia' persistite, che non hanno il campo;
+      2. compatibilita' con i test di 0106/0107, che chiamano i servizi senza il parametro
+         (0107 AC-015);
+      3. semantica onesta di "tutti": una lista esplicita congelerebbe l'insieme al momento in cui
+         il pannello ha caricato la lista, e un operatore aggiunto dopo sparirebbe in silenzio dal
+         report. "Tutti" deve voler dire tutti, anche quelli futuri.
+      Il client, quando ha tutto selezionato, OMETTE il campo (D-9).
+    </decision>
+
+    <decision id="D-3">
+      Nome e forma del campo: `operator_keys`, `array<string>`. Ogni voce e' l'id numerico di uno
+      `users` come stringa, oppure la costante `unassigned`.
+      Perche' `keys` e non `ids`: "Non assegnato" E' una riga GA2 a tutti gli effetti (0106 D-13) e
+      deve poter essere selezionata come le altre; una lista chiamata `operator_ids` che contiene
+      la stringa `unassigned` sarebbe un nome che mente. `operator_keys` e' anche la stessa forma
+      opaca di `category_keys`, quindi il gruppo di checkbox e' letteralmente lo stesso componente.
+      Alternative scartate: due campi (`operator_ids` + `include_unassigned`) — la doppia sorgente
+      obbliga a una regola di default sull'incrocio dei due, per zero guadagno.
+    </decision>
+
+    <decision id="D-4">
+      Il selettore compare con `row_mode` = `operators_only` e `all` (risposta utente 2026-09-08),
+      cioe' esattamente nelle modalita' che emettono righe per operatore. Con `total_only` non
+      compare, il client non invia `operator_keys` e il calcolo torna su tutti gli operatori.
+      La selezione resta pero' in memoria nello stato dei filtri: tornando su `operators_only` si
+      riapplica quella di prima, senza farla riscegliere.
+      Il backend non conosce questa regola: applica quello che riceve, in qualunque `row_mode`.
+      La modalita' e' una decisione di UI, e duplicarla server-side creerebbe due posti dove puo'
+      cambiare.
+    </decision>
+
+    <decision id="D-5">
+      Allow-list obbligatoria sui valori (backend.md 8, come per `category_keys`): la lista
+      ammessa e' quella prodotta da `ReportOperatorAvailabilityResolver`, la STESSA che alimenta il
+      selettore. Un id fuori lista e' 422, non una query. La lista si calcola SOLO quando
+      `operator_keys` e' presente nella richiesta: chi non filtra non paga la query in piu'.
+    </decision>
+
+    <decision id="D-6">
+      Nuovo endpoint `GET /api/request-management/report/operators`, gemello per forma e regole di
+      `report/categories` (0106 rev-2 D-11/D-12): stessa risposta `{ key, label }`, stesso permesso,
+      ALL-TIME e indipendente dalle date e dalle categorie selezionate (il selettore si popola prima
+      che l'utente scelga alcunche', e una lista che cambia sotto le mani mentre si spostano le date
+      e' peggio di una lista stabile con qualche voce a zero).
+      Contenuto: gli operatori che sono GA2 di almeno una richiesta nel perimetro visibile
+      dell'attore, ordinati per `users.name`; piu' la voce `unassigned` in coda, e SOLO se esiste
+      almeno una richiesta in perimetro senza operatore — stessa condizione con cui il CSV emette
+      la riga "Non assegnato".
+      L'etichetta di quella voce arriva dal backend (`request-management-report.labels.unassigned`),
+      non da i18next: e' la stessa stringa che finisce nella cella del CSV e nell'asse del grafico,
+      e due cataloghi separati divergerebbero (0107 D-9). I nomi utente sono valori di dominio e
+      non si traducono.
+      Il perimetro e' quello di `ReportBranchQuery` riusato verbatim, sull'unione delle categorie di
+      tutti i rami: il resolver non puo' mostrare un operatore che il report non mostrerebbe.
+    </decision>
+
+    <decision id="D-7">
+      `ReportOperatorFilter`, value object immutabile, e' l'unico posto che sa tradurre le chiavi in
+      SQL. `all()` non tocca la query; `fromKeys()` produce una disgiunzione
+      (`whereIn('quotes.operator_id', $ids)` piu' `orWhereNull` se `unassigned` e' selezionato)
+      AVVOLTA nella sua closure `where()`, mai appesa alla radice del builder — la stessa lezione
+      gia' scritta in `RequestManagementScope::scopeToActor()` (D-6 di 0105): un `orWhere` a livello
+      radice scavalcherebbe le condizioni del chiamante e ALLARGEREBBE la visibilita' invece di
+      restringerla. Fail-closed per costruzione: una selezione vuota produce `whereIn(..., [])`, che
+      non matcha nulla, mai una query non filtrata.
+    </decision>
+
+    <decision id="D-8">
+      Threading del parametro. `ReportIndicator::compute()`, `ReportBranchRowsBuilder::build()` e
+      `ReportBranchQuery::build()` ricevono il filtro come parametro OBBLIGATORIO: sono interni,
+      nessun test li invoca direttamente (verificato), e un default nascosto su una firma di calcolo
+      e' il modo in cui un filtro si perde per strada senza che nessuno se ne accorga.
+      I due punti di ingresso pubblici — `RequestManagementReportGenerator::generate()`/`rows()` e
+      `RequestManagementDashboardBuilder::build()` — lo ricevono invece come ULTIMO parametro
+      opzionale `?ReportOperatorFilter $operators = null`, normalizzato a `all()`: e' quello che
+      rende vera la compatibilita' di D-2 e lascia intatti i test di 0106/0107 (AC-015 di 0107).
+    </decision>
+
+    <decision id="D-9">
+      Normalizzazione del payload in UN punto sul client: `toRequestReportFilterPayload(values,
+      allOperatorKeys)` decide se `operator_keys` viaggia o viene omesso — omesso quando
+      `row_mode = total_only` (D-4) o quando sono selezionati TUTTI gli operatori disponibili (D-2).
+      La usano sia la query della dashboard sia la creazione del file, cosi' come sia la chiave di
+      cache di TanStack Query: e' l'equivalente per il payload di quello che 0107 D-4 e' per i
+      controlli. Due normalizzazioni diverse farebbero divergere grafici e CSV proprio sul filtro
+      che dovrebbe unirli.
+    </decision>
+
+    <decision id="D-10">
+      Il gruppo di checkbox (card, "seleziona tutto" tri-stato, contatore `n/tot`, lista
+      scrollabile) oggi e' inline dentro `request-report-filters.tsx`, che e' a 242 righe. Servendo
+      ora a due gruppi identici per forma, si estrae in `request-report-key-group.tsx` con props
+      `{ label, options, value, onChange, disabled, selectAllLabel }`. Motivo doppio: e' ripetizione
+      REALE su due call-site (engineering.md 3, DRY sulla ripetizione reale, non ipotetica) e senza
+      estrazione il file supererebbe il soft limit di 300 righe.
+      Resta un componente di feature, non un atomo di `components/ui/`: e' specifico del report e
+      non e' usato da altre schermate (ui-design.md 6.2 impone l'estrazione a 2+ SCHERMATE, qui
+      siamo dentro la stessa).
+      L'estrazione e' a comportamento invariato: markup, etichette e ruoli accessibili restano
+      identici, cosi' i test della modale di 0106 passano senza modifiche.
+    </decision>
+
+    <decision id="D-11">
+      Selezione persistita: `useRequestReportFilters` accetta `operator_keys` come campo
+      FACOLTATIVO nella guardia dello storage. Un payload salvato dalla versione precedente non ha
+      il campo e NON deve essere scartato — scartarlo azzererebbe date e categorie dell'utente per
+      colpa di un campo nuovo. Assente diventa `[]`, che `reconcileOperatorKeys` risemina a "tutti"
+      alla prima lista disponibile, esattamente come fa gia' `reconcileCategoryKeys` per i rami.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>`ReportOperatorFilter` (VO) e sua applicazione in `ReportBranchQuery::build()`.</item>
+      <item>Threading del filtro attraverso indicatori, rows builder, generator, dashboard builder (D-8).</item>
+      <item>`operator_keys` in `RequestReportRequest` (POST report) e `RequestDashboardRequest` (GET dashboard), con allow-list.</item>
+      <item>Congelamento di `operator_keys` in `ExportRun.state` e rilettura tollerante nel job.</item>
+      <item>`ReportOperatorAvailabilityResolver` + `GET /request-management/report/operators` + rotta prima di `report/{exportRun}`.</item>
+      <item>Estrazione di `RequestReportKeyGroup` e secondo gruppo "Operatori" in `RequestReportFilters`, visibile solo con `row_mode` diverso da `total_only`.</item>
+      <item>`operator_keys` nello schema Zod, nei default, nella persistenza, nella chiave di query e nel payload normalizzato.</item>
+      <item>Riepilogo dei filtri in `RequestDashboardFilterBar` esteso al conteggio operatori.</item>
+      <item>Chiavi i18n nuove sotto `requestManagement.report.*`, parita' IT/EN.</item>
+      <item>Test Pest e Vitest sugli AC sotto.</item>
+    </in>
+    <out>
+      <item>Qualsiasi modifica alle formule degli indicatori di 0106: nessun file in `Report/Indicators/` cambia oltre alla firma di `compute()` e al passaggio del filtro.</item>
+      <item>Il framework stats (0026) e il framework tabellare: intatti.</item>
+      <item>Un permesso nuovo: si resta su `request-management.report` (0107 D-6).</item>
+      <item>Filtro per Sede operativa, per GA3, o per qualsiasi altra dimensione non richiesta.</item>
+      <item>Nuove dipendenze. Migrazioni: nessuna (`ExportRun.state` e' gia' un json).</item>
+      <item>Grafici nuovi: quelli di 0107 restano gli stessi, con meno punti.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <shared_field name="operator_keys">
+      `array<string>`, FACOLTATIVO in entrambi gli endpoint. Assente o omesso = tutti gli operatori,
+      "Non assegnato" incluso (D-2). Presente = `min:1`, ogni voce nella allow-list di
+      `ReportOperatorAvailabilityResolver` (D-5): id numerico di uno `users` come stringa, oppure la
+      costante `unassigned`. Fuori lista: 422, mai una query.
+    </shared_field>
+
+    <endpoint method="GET" path="/api/request-management/report/operators">
+      <request>Nessun parametro.</request>
+      <response status="200">
+        `{ success: true, message, data: { operators: [ { key, label } ] } }`
+        `key` = id utente come stringa, oppure `unassigned`. `label` = `users.name`, oppure
+        l'etichetta "Non assegnato" del catalogo del CSV (D-6). Ordine: per `name` crescente, con
+        `unassigned` sempre in coda. La voce `unassigned` compare solo se esiste almeno una
+        richiesta in perimetro senza operatore.
+      </response>
+      <errors>403 senza `request-management.report`. Nessun 404.</errors>
+      <routing_trap>
+        Segmento letterale sotto `report/{exportRun}`: va dichiarato PRIMA, come gia'
+        `report/categories` e `report/dashboard`. Il `->whereNumber('exportRun')` resta la seconda
+        difesa. Entrambe valgono.
+      </routing_trap>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/request-management/report">
+      <delta>
+        Accetta in piu' `operator_keys` (shared_field). Il valore validato viene congelato in
+        `ExportRun.state['operator_keys']` insieme agli altri filtri; assente = chiave non scritta.
+        `GenerateRequestManagementReportJob` la rilegge con `$state['operator_keys'] ?? null`: una
+        run creata prima di questa spec continua a generarsi identica.
+      </delta>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/request-management/report/dashboard">
+      <delta>
+        Accetta in piu' `operator_keys` (shared_field). `applied` guadagna il campo
+        `operator_keys: string[] | null` — `null` quando non e' stato inviato, cioe' "tutti".
+        `summary` e `charts` sono calcolati sul perimetro ristretto (D-1).
+      </delta>
+    </endpoint>
+
+    <client>
+      <component name="RequestReportKeyGroup" path="frontend/src/features/request-management/request-report-key-group.tsx">
+        Estratto da `RequestReportFilters` a comportamento invariato (D-10). Presentazionale puro:
+        riceve `options: { key, label }[]`, `value: string[]` e `onChange`, non conosce ne' rami ne'
+        operatori. Usato due volte.
+      </component>
+      <component name="RequestReportFilters" path="frontend/src/features/request-management/request-report-filters.tsx">
+        Guadagna il gruppo "Operatori", montato SOLO quando `row_mode !== 'total_only'` (D-4) e la
+        lista operatori e' disponibile, con gli stessi tre avvisi inline (caricamento / errore /
+        lista vuota) gia' usati per i rami. Resta layout-agnostico: emette celle piatte, il
+        contenitore le dispone.
+      </component>
+      <component name="request-report-schema.ts">
+        `operator_keys: z.array(z.string())` nel tipo. Regola: richiesto `min:1` SOLO quando
+        `row_mode !== 'total_only'` (via `superRefine`, path `['operator_keys']`), perche' in
+        `total_only` il campo non e' ne' mostrato ne' inviato.
+        `isRequestReportQueryReady()` estende lo stesso controllo: con `operators_only`/`all` e zero
+        operatori selezionati, NESSUNA richiesta parte — l'equivalente per operatore di quello che
+        AC-044 di 0107 impone per le categorie.
+        `requestReportDefaultValues()` accetta anche `operatorKeys`, default `[]`.
+        Nuova `toRequestReportFilterPayload()` (D-9).
+      </component>
+      <component name="use-request-report-filters.ts">
+        `operator_keys` facoltativo nella guardia (D-11); nuova `reconcileOperatorKeys()`, gemella
+        di `reconcileCategoryKeys()`: scarta le chiavi che non esistono piu' e risemina a "tutti"
+        quando non ne resta nessuna.
+      </component>
+      <component name="use-request-report-operators.ts">
+        `useQuery` sulla lista operatori, chiave `requestManagementKeys.reportOperators()`, stessa
+        forma di `useRequestReportCategories`.
+      </component>
+    </client>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Senza `operator_keys`, per gli stessi filtri, CSV e dashboard producono valori IDENTICI a quelli prodotti prima di questa spec: il default non cambia nulla (D-2). Verificato con i test di 0106/0107 invariati.</criterion>
+    <criterion id="AC-002">Con `operator_keys` = un solo operatore e `row_mode = operators_only`, ogni ramo del CSV emette al massimo la riga di quell'operatore, e nessun'altra riga GA2.</criterion>
+    <criterion id="AC-003">Con `operator_keys` = un solo operatore e `row_mode = all`, la riga TOTALE del ramo e' uguale alla riga di quell'operatore: il filtro restringe il calcolo, non solo le righe emesse (D-1).</criterion>
+    <criterion id="AC-004">Le schede `summary` della dashboard, con lo stesso filtro, riflettono il solo perimetro degli operatori selezionati: date due richieste su operatori diversi, selezionandone uno il valore scende di conseguenza (D-1).</criterion>
+    <criterion id="AC-005">`operator_keys` contenente `unassigned` include le richieste senza operatore; NON contenendolo, le esclude. Selezionando solo `unassigned`, il risultato contiene esclusivamente richieste con `quotes.operator_id` NULL.</criterion>
+    <criterion id="AC-006">Parita' CSV/dashboard sotto filtro (estende AC-010 di 0107): per gli stessi filtri CON `operator_keys`, ogni valore della dashboard coincide con la cella corrispondente del file. Il test genera entrambi gli output e li confronta valore per valore.</criterion>
+    <criterion id="AC-007">`operator_keys` con una chiave non nella allow-list, o array vuoto: 422 su ENTRAMBI gli endpoint, senza che alcuna query venga eseguita con quel valore.</criterion>
+    <criterion id="AC-008">Il filtro non puo' allargare la visibilita': un attore scopato al proprio perimetro che seleziona un operatore fuori dal proprio perimetro riceve 422 (fuori allow-list); e in nessun caso una `operator_keys` produce righe che `RequestManagementScope` non consentirebbe.</criterion>
+    <criterion id="AC-009">`applied.operator_keys` riflette esattamente quanto ricevuto, ed e' `null` quando il campo non e' stato inviato.</criterion>
+    <criterion id="AC-010">`GET /report/operators` con `request-management.report` restituisce 200 con gli operatori GA2 in perimetro ordinati per nome; senza il permesso, 403.</criterion>
+    <criterion id="AC-011">`GET /report/operators` NON e' filtrato per data ne' per categoria (D-6), e rispetta il perimetro: un attore che vede solo le proprie richieste non vede nella lista operatori che non gli appartengono.</criterion>
+    <criterion id="AC-012">La voce `unassigned` compare nella lista SOLO se esiste almeno una richiesta in perimetro senza operatore, e la sua `label` e' la stessa stringa che il CSV usa per la riga "Non assegnato" (nessun catalogo parallelo).</criterion>
+    <criterion id="AC-013">`GET /api/request-management/report/operators` risolve al nuovo endpoint e non allo `show` di 0106 con `exportRun = "operators"`; verificato con un round-trip HTTP reale.</criterion>
+    <criterion id="AC-014">Una `ExportRun` il cui `state` NON contiene `operator_keys` (run creata prima di questa spec) genera il file su tutti gli operatori, senza errori.</criterion>
+    <criterion id="AC-015">`operator_keys` inviata a `POST /report` viene congelata in `ExportRun.state` e RILETTA dal job: il file riflette il filtro anche se il job gira molto dopo.</criterion>
+    <criterion id="AC-016">Nessuna formula reimplementata: il diff su `Report/Indicators/**` si limita alla firma di `compute()` e al passaggio del filtro a `ReportBranchQuery::build()`. Nessuna condizione di stato, data o categoria viene aggiunta o duplicata. Verificabile per ispezione.</criterion>
+    <criterion id="AC-017">Nessun `throttle` sulle rotte nuove (decisione utente 2026-07-15).</criterion>
+    <criterion id="AC-018">I test esistenti di 0106 e 0107 passano SENZA modifiche. Se un test va toccato, e' il segnale che il comportamento e' cambiato: fermarsi e segnalarlo.</criterion>
+
+    <criterion id="AC-040">Nella modale filtri, il gruppo "Operatori" compare con `row_mode` = `operators_only` e `all`, e NON compare con `total_only` (D-4).</criterion>
+    <criterion id="AC-041">Il gruppo ha gli stessi affordance del gruppo rami: "seleziona tutto" tri-stato, contatore `selezionati/totale`, lista scrollabile, checkbox raggiungibili da tastiera.</criterion>
+    <criterion id="AC-042">Al primo caricamento sono selezionati TUTTI gli operatori; con tutti selezionati il payload NON contiene `operator_keys` (D-2/D-9), verificato sulla richiesta effettiva.</criterion>
+    <criterion id="AC-043">Deselezionando un operatore, i grafici si aggiornano e il payload contiene esattamente le chiavi rimaste.</criterion>
+    <criterion id="AC-044">Deselezionando TUTTI gli operatori con `row_mode` diverso da `total_only`: errore di validazione mostrato e NESSUNA richiesta di rete parte.</criterion>
+    <criterion id="AC-045">Passando a `total_only` il payload non contiene `operator_keys` anche se una selezione parziale e' in memoria; tornando a `operators_only` la selezione precedente e' ancora quella (D-4).</criterion>
+    <criterion id="AC-046">La stessa selezione applicata ai grafici viaggia nel file generato dal menu del report: una sola sorgente di filtri, nessuna divergenza possibile.</criterion>
+    <criterion id="AC-047">Un payload salvato in `localStorage` dalla versione precedente (senza `operator_keys`) viene ancora accettato: date e categorie dell'utente sopravvivono, e gli operatori si riseminano a "tutti" (D-11).</criterion>
+    <criterion id="AC-048">La modale CSV e la dashboard continuano a funzionare identicamente dopo l'estrazione di `RequestReportKeyGroup`: i test esistenti passano senza modifiche.</criterion>
+    <criterion id="AC-049">Tutte le stringhe nuove passano da i18next con parita' IT/EN; i nomi degli operatori e l'etichetta "Non assegnato" NON passano da i18next (arrivano dal backend, D-6).</criterion>
+    <criterion id="AC-050">`request-report-filters.tsx` resta sotto le 300 righe dopo l'aggiunta del secondo gruppo (D-10).</criterion>
+    <criterion id="AC-051">`cd frontend &amp;&amp; npx tsc -b --force --pretty false` pulito (mai `--noEmit`).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <constraint>D-1 non autorizza a scrivere logica di calcolo: il filtro e' UN `where` in `ReportBranchQuery`. Se per farlo funzionare servisse duplicare una condizione di indicatore, fermarsi e segnalarlo.</constraint>
+    <constraint>Il `where` va applicato DOPO `RequestManagementScope::scopeToActor()` e avvolto nella propria closure (D-7): mai un `orWhere` a livello radice.</constraint>
+    <constraint>Allow-list obbligatoria su `operator_keys` (backend.md 8): nessun input grezzo verso SQL, nemmeno un id numerico.</constraint>
+    <constraint>FormRequest per la validazione; autorizzazione server-side su ogni rotta, `request-management.report` riusato.</constraint>
+    <constraint>File entro 300 righe soft / 500 hard. Orchestrazione con `// Step N`, sotto-metodi a singola responsabilita'.</constraint>
+    <constraint>Identificatori in inglese; nessuna emoticon; nessun file `.md` nuovo.</constraint>
+    <constraint>Definition of Done: Pest e Vitest ESEGUITI, Pint, ESLint e `tsc -b --force` puliti.</constraint>
+    <constraint>Git: nessun commit e nessun cambio di branch senza via libera esplicito dell'utente in quel momento.</constraint>
+  </constraints>
+
+  <microtasks>
+    <task id="MT-01" lane="backend" depends-on="">`ReportOperatorFilter` (VO, D-7) + applicazione in `ReportBranchQuery::build()`; threading del parametro attraverso `ReportIndicator::compute()` (5 implementazioni), `ReportBranchRowsBuilder::build()`, `RequestManagementReportGenerator::generate()/rows()` e `RequestManagementDashboardBuilder::build()` secondo D-8.</task>
+    <task id="MT-02" lane="backend" depends-on="">`ReportOperatorAvailabilityResolver` (D-6) + metodo `operators()` sul controller report + rotta dichiarata prima di `report/{exportRun}`.</task>
+    <task id="MT-03" lane="backend" depends-on="MT-01,MT-02">`operator_keys` nei due FormRequest con allow-list lazy (D-5); controller che costruiscono il filtro; congelamento in `ExportRun.state` e rilettura tollerante nel job; `applied.operator_keys` nella risposta dashboard.</task>
+    <task id="MT-04" lane="backend" depends-on="MT-03">Pest: AC-001..AC-018, con AC-006 (parita' CSV/dashboard sotto filtro) e AC-014 (run legacy senza il campo) come casi centrali.</task>
+    <task id="MT-05" lane="frontend" depends-on="">Estrazione di `RequestReportKeyGroup` a comportamento invariato (D-10); i test esistenti devono passare senza modifiche.</task>
+    <task id="MT-06" lane="frontend" depends-on="MT-05">Schema/default/`isRequestReportQueryReady`/`toRequestReportFilterPayload` (D-9); persistenza e `reconcileOperatorKeys` (D-11); `useRequestReportOperators` e chiave di query.</task>
+    <task id="MT-07" lane="frontend" depends-on="MT-06">Gruppo "Operatori" in `RequestReportFilters` con la condizione di `row_mode` (D-4); riepilogo esteso in `RequestDashboardFilterBar`; chiavi i18n IT/EN.</task>
+    <task id="MT-08" lane="frontend" depends-on="MT-07">Vitest: AC-040..AC-051.</task>
+    <task id="MT-20" lane="verifier" depends-on="MT-04,MT-08">Cancello indipendente: riesegue tutto, verifica gli AC uno per uno, e in particolare ISPEZIONA il diff su `Report/Indicators/**` per confermare AC-016 (nessuna formula toccata) e rilegge i test di 0106/0107 per confermare AC-018 (nessuna modifica).</task>
+  </microtasks>
+
+</spec>

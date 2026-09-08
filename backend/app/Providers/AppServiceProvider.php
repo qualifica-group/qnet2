@@ -7,6 +7,7 @@ use App\CustomFields\CustomFieldEntityRegistry;
 use App\CustomFields\CustomFieldProvider;
 use App\CustomFields\CustomFieldRequestBag;
 use App\FieldChangeRequests\ProtectedFieldRegistry;
+use App\Imports\Recognition\CampaignRecognizer;
 use App\Mail\StagingMailRedirector;
 use App\Models\Address;
 use App\Models\Attachment;
@@ -125,6 +126,14 @@ class AppServiceProvider extends ServiceProvider
         // second per-quote memo. Scoped, not singleton: a reparented category
         // must not be resolved against a stale tree forever on a worker.
         $this->app->scoped(CategoryBranchResolver::class);
+
+        // Scoped so an import run resolves each DISTINCT campaign code once
+        // (spec 0108): StagedRowBuilder resolves every recognizer through the
+        // container once per staged row, so a fresh instance would turn one
+        // lookup per code into one query per row. Scoped, not singleton: a
+        // campaign created while a worker is up must be resolvable by the
+        // next job, not shadowed by a memo that never expires.
+        $this->app->scoped(CampaignRecognizer::class);
 
         // Singleton, same reasoning as FieldPermissionRepository above: the
         // protected-fields config (spec 0078) is parsed once per request even

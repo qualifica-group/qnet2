@@ -73,6 +73,7 @@ class ConfigureImportRequest extends FormRequest
             $this->assertMappingKeysAndTargetsAllowed($validator, $definition);
             $this->assertRequiredFieldsMapped($validator, $definition);
             $this->assertRequiredGlobalConfigPresent($validator, $definition);
+            $this->assertMappedModeExcludesGlobals($validator, $definition);
             $this->assertGlobalProductIdsCoherent($validator, $definition);
         });
     }
@@ -139,6 +140,14 @@ class ConfigureImportRequest extends FormRequest
                 continue;
             }
 
+            // Spec 0108 (D-2): a global field whose `required_unless_mapped`
+            // field IS mapped takes its value from that file column, per row —
+            // the run-wide value is then not just optional but forbidden (see
+            // assertMappedModeExcludesGlobals below).
+            if ($this->isMapped($field['required_unless_mapped'] ?? null)) {
+                continue;
+            }
+
             $value = is_array($globalConfig) ? ($globalConfig[$field['id']] ?? null) : null;
 
             // AC-052: an empty array is as absent as null/'' for a required
@@ -148,6 +157,65 @@ class ConfigureImportRequest extends FormRequest
                 $validator->errors()->add("global_config.{$field['id']}", "The [{$field['id']}] global field is required.");
             }
         }
+    }
+
+    /**
+     * Spec 0108 (D-2/D-6), the mirror of the rule above: once a file column
+     * feeds a global field per row, that field's run-wide value is rejected
+     * instead of silently ignored — and so is any global field DEPENDING on
+     * it (`depends_on`), which has nothing left to be validated against: on
+     * `leads`, mapping `campaign_code` rules out both `global_config.
+     * campaign_id` and `global_config.product_ids`. Both rules read the
+     * catalogue's own descriptors, never a hardcoded field pair.
+     */
+    private function assertMappedModeExcludesGlobals(Validator $validator, ImportDefinition $definition): void
+    {
+        $globalFields = $definition->globalConfig();
+
+        foreach ($globalFields as $field) {
+            $mappedField = $field['required_unless_mapped'] ?? null;
+
+            if (! $this->isMapped($mappedField)) {
+                continue;
+            }
+
+            if ($this->hasGlobalValue($field['id'])) {
+                $validator->errors()->add(
+                    "global_config.{$field['id']}",
+                    "The [{$field['id']}] global field cannot be set: [{$mappedField}] is mapped from a file column, so each row carries its own value.",
+                );
+            }
+
+            foreach ($globalFields as $dependent) {
+                if (($dependent['depends_on'] ?? null) === $field['id'] && $this->hasGlobalValue($dependent['id'])) {
+                    $validator->errors()->add(
+                        "global_config.{$dependent['id']}",
+                        "The [{$dependent['id']}] global field cannot be set: it depends on [{$field['id']}], which varies per row when [{$mappedField}] is mapped from a file column.",
+                    );
+                }
+            }
+        }
+    }
+
+    /** Whether a file column is currently mapped onto the given field id (null = no such field). */
+    private function isMapped(?string $fieldId): bool
+    {
+        if ($fieldId === null) {
+            return false;
+        }
+
+        $mapping = $this->input('column_mapping');
+
+        return is_array($mapping) && in_array($fieldId, array_values($mapping), true);
+    }
+
+    /** Whether `global_config.<id>` carries an actual value — `[]` counts as absent, as in AC-052. */
+    private function hasGlobalValue(string $fieldId): bool
+    {
+        $globalConfig = $this->input('global_config', []);
+        $value = is_array($globalConfig) ? ($globalConfig[$fieldId] ?? null) : null;
+
+        return $value !== null && $value !== '' && $value !== [];
     }
 
     /**

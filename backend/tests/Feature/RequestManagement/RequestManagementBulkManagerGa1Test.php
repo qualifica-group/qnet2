@@ -12,8 +12,8 @@ use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 
 /**
- * POST /api/request-management/assign-manager-ga3 — spec 0104, direttiva
- * utente 2026-09-07: l'azione massiva sullo slot GA3 (il "Tutor" nella
+ * POST /api/request-management/assign-manager-ga1 — spec 0104, direttiva
+ * utente 2026-09-07: l'azione massiva sullo slot GA1 (il "Tutor" nella
  * nomenclatura del committente), sorella SENZA SEDE dell'assegnazione
  * operatori.
  *
@@ -23,13 +23,13 @@ use Spatie\Permission\Models\Permission;
  */
 uses(RefreshDatabase::class);
 
-if (! function_exists('bulkGa3Actor')) {
+if (! function_exists('bulkGa1Actor')) {
     /**
      * @param  array<int, string>  $abilities
      */
-    function bulkGa3Actor(array $abilities): User
+    function bulkGa1Actor(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'viewAll', 'assignOperator', 'assignManagerGa3'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'viewAll', 'assignOperator', 'assignManagerGa1'] as $ability) {
             Permission::findOrCreate("request-management.{$ability}");
         }
 
@@ -43,7 +43,7 @@ if (! function_exists('bulkGa3Actor')) {
     }
 }
 
-if (! function_exists('bulkGa3Quote')) {
+if (! function_exists('bulkGa1Quote')) {
     /**
      * An Offerta whose own `quote_user` team is $slots (position => user id),
      * with `quotes.operator_id` mirroring the OPERATOR slot as
@@ -52,7 +52,7 @@ if (! function_exists('bulkGa3Quote')) {
      *
      * @param  array<int, int>  $slots
      */
-    function bulkGa3Quote(array $slots = []): Quote
+    function bulkGa1Quote(array $slots = []): Quote
     {
         $opportunity = Opportunity::factory()->create();
         $quote = Quote::factory()->for($opportunity)->create([
@@ -68,11 +68,11 @@ if (! function_exists('bulkGa3Quote')) {
     }
 }
 
-if (! function_exists('bulkGa3ManagerOf')) {
-    /** The user currently sitting in the Offerta's GA3 slot, or null. */
-    function bulkGa3ManagerOf(Quote $quote): ?int
+if (! function_exists('bulkGa1ManagerOf')) {
+    /** The user currently sitting in the Offerta's GA1 slot, or null. */
+    function bulkGa1ManagerOf(Quote $quote): ?int
     {
-        $manager = $quote->fresh()->managers()->wherePivot('position', ManagerPositions::GA3)->first();
+        $manager = $quote->fresh()->managers()->wherePivot('position', ManagerPositions::GA1)->first();
 
         return $manager?->id;
     }
@@ -82,49 +82,49 @@ if (! function_exists('bulkGa3ManagerOf')) {
 // AC-001 — the ability enters the catalogue
 // ---------------------------------------------------------------------------
 
-it('publishes request-management.assignManagerGa3 through the policy catalogue (AC-001)', function () {
+it('publishes request-management.assignManagerGa1 through the policy catalogue (AC-001)', function () {
     Artisan::call('permissions:sync');
 
-    expect(Permission::query()->where('name', 'request-management.assignManagerGa3')->exists())->toBeTrue();
+    expect(Permission::query()->where('name', 'request-management.assignManagerGa1')->exists())->toBeTrue();
 });
 
 // ---------------------------------------------------------------------------
 // AC-002/AC-003 — the assignment itself
 // ---------------------------------------------------------------------------
 
-it('assigns the chosen user to the GA3 slot of every selected request (AC-002)', function () {
-    $actor = bulkGa3Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa3']);
+it('assigns the chosen user to the GA1 slot of every selected request (AC-002)', function () {
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
     $tutor = User::factory()->create();
-    $first = bulkGa3Quote();
-    $second = bulkGa3Quote();
+    $first = bulkGa1Quote();
+    $second = bulkGa1Quote();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$first->id, $second->id],
-        'manager_ga3_id' => $tutor->id,
+        'manager_ga1_id' => $tutor->id,
     ])->assertOk()->assertJsonPath('data.assigned', 2);
 
-    expect(bulkGa3ManagerOf($first))->toBe($tutor->id)
-        ->and(bulkGa3ManagerOf($second))->toBe($tutor->id);
+    expect(bulkGa1ManagerOf($first))->toBe($tutor->id)
+        ->and(bulkGa1ManagerOf($second))->toBe($tutor->id);
 });
 
 it('leaves every other slot of the team untouched, the GA2 Operatore included (AC-003)', function () {
-    $actor = bulkGa3Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa3']);
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
     $operator = User::factory()->create();
     $tutor = User::factory()->create();
-    $quote = bulkGa3Quote([ManagerPositions::OPERATOR => $operator->id]);
+    $quote = bulkGa1Quote([ManagerPositions::OPERATOR => $operator->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$quote->id],
-        'manager_ga3_id' => $tutor->id,
+        'manager_ga1_id' => $tutor->id,
     ])->assertOk();
 
     $quote->refresh();
 
     expect($quote->operator_id)->toBe($operator->id)
         ->and($quote->managers()->wherePivot('position', ManagerPositions::OPERATOR)->first()?->id)->toBe($operator->id)
-        ->and(bulkGa3ManagerOf($quote))->toBe($tutor->id)
+        ->and(bulkGa1ManagerOf($quote))->toBe($tutor->id)
         // No Sede is part of this contract (D-1): the endpoint accepts none
         // and writes none.
         ->and($quote->operational_site_id)->toBeNull();
@@ -134,21 +134,21 @@ it('leaves every other slot of the team untouched, the GA2 Operatore included (A
 // AC-004 — clearing the slot in bulk
 // ---------------------------------------------------------------------------
 
-it('clears the GA3 slot on the whole batch when manager_ga3_id is null (AC-004)', function () {
-    $actor = bulkGa3Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa3']);
+it('clears the GA1 slot on the whole batch when manager_ga1_id is null (AC-004)', function () {
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
     $operator = User::factory()->create();
     $tutor = User::factory()->create();
-    $first = bulkGa3Quote([ManagerPositions::OPERATOR => $operator->id, ManagerPositions::GA3 => $tutor->id]);
-    $second = bulkGa3Quote([ManagerPositions::GA3 => $tutor->id]);
+    $first = bulkGa1Quote([ManagerPositions::OPERATOR => $operator->id, ManagerPositions::GA1 => $tutor->id]);
+    $second = bulkGa1Quote([ManagerPositions::GA1 => $tutor->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$first->id, $second->id],
-        'manager_ga3_id' => null,
+        'manager_ga1_id' => null,
     ])->assertOk()->assertJsonPath('data.assigned', 2);
 
-    expect(bulkGa3ManagerOf($first))->toBeNull()
-        ->and(bulkGa3ManagerOf($second))->toBeNull()
+    expect(bulkGa1ManagerOf($first))->toBeNull()
+        ->and(bulkGa1ManagerOf($second))->toBeNull()
         ->and($first->fresh()->operator_id)->toBe($operator->id);
 });
 
@@ -157,51 +157,51 @@ it('clears the GA3 slot on the whole batch when manager_ga3_id is null (AC-004)'
 // ---------------------------------------------------------------------------
 
 it('skips a request outside the actor D-3 scope instead of failing the batch (AC-005)', function () {
-    $actor = bulkGa3Actor(['viewAny', 'update', 'assignManagerGa3']);
+    $actor = bulkGa1Actor(['viewAny', 'update', 'assignManagerGa1']);
     $tutor = User::factory()->create();
-    $ownRequest = bulkGa3Quote([ManagerPositions::OPERATOR => $actor->id]);
-    $outOfScope = bulkGa3Quote([ManagerPositions::OPERATOR => User::factory()->create()->id]);
+    $ownRequest = bulkGa1Quote([ManagerPositions::OPERATOR => $actor->id]);
+    $outOfScope = bulkGa1Quote([ManagerPositions::OPERATOR => User::factory()->create()->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$ownRequest->id, $outOfScope->id],
-        'manager_ga3_id' => $tutor->id,
+        'manager_ga1_id' => $tutor->id,
     ])->assertOk()->assertJsonPath('data.assigned', 1);
 
-    expect(bulkGa3ManagerOf($ownRequest))->toBe($tutor->id)
-        ->and(bulkGa3ManagerOf($outOfScope))->toBeNull();
+    expect(bulkGa1ManagerOf($ownRequest))->toBe($tutor->id)
+        ->and(bulkGa1ManagerOf($outOfScope))->toBeNull();
 });
 
 // ---------------------------------------------------------------------------
 // AC-006 — the two gates
 // ---------------------------------------------------------------------------
 
-it('is 403 without request-management.assignManagerGa3, even holding assignOperator (AC-006)', function () {
-    $actor = bulkGa3Actor(['viewAny', 'viewAll', 'update', 'assignOperator']);
+it('is 403 without request-management.assignManagerGa1, even holding assignOperator (AC-006)', function () {
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $tutor = User::factory()->create();
-    $quote = bulkGa3Quote();
+    $quote = bulkGa1Quote();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$quote->id],
-        'manager_ga3_id' => $tutor->id,
+        'manager_ga1_id' => $tutor->id,
     ])->assertForbidden();
 
-    expect(bulkGa3ManagerOf($quote))->toBeNull();
+    expect(bulkGa1ManagerOf($quote))->toBeNull();
 });
 
 it('is 403 without request-management.update (AC-006)', function () {
-    $actor = bulkGa3Actor(['viewAny', 'viewAll', 'view', 'assignManagerGa3']);
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'view', 'assignManagerGa1']);
     $tutor = User::factory()->create();
-    $quote = bulkGa3Quote();
+    $quote = bulkGa1Quote();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$quote->id],
-        'manager_ga3_id' => $tutor->id,
+        'manager_ga1_id' => $tutor->id,
     ])->assertForbidden();
 
-    expect(bulkGa3ManagerOf($quote))->toBeNull();
+    expect(bulkGa1ManagerOf($quote))->toBeNull();
 });
 
 // ---------------------------------------------------------------------------
@@ -209,17 +209,17 @@ it('is 403 without request-management.update (AC-006)', function () {
 // ---------------------------------------------------------------------------
 
 it('rejects an invalid payload with 422 (AC-007)', function (array $payload, string $invalidKey) {
-    Sanctum::actingAs(bulkGa3Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa3']));
+    Sanctum::actingAs(bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']));
 
-    $this->postJson('/api/request-management/assign-manager-ga3', $payload)
+    $this->postJson('/api/request-management/assign-manager-ga1', $payload)
         ->assertStatus(422)
         ->assertJsonValidationErrors($invalidKey);
 })->with([
-    'empty selection' => [['request_ids' => [], 'manager_ga3_id' => null], 'request_ids'],
-    'missing selection' => [['manager_ga3_id' => null], 'request_ids'],
-    'unknown request id' => [['request_ids' => [99999], 'manager_ga3_id' => null], 'request_ids.0'],
-    'unknown user' => [['request_ids' => [], 'manager_ga3_id' => 99999], 'manager_ga3_id'],
-    'missing key' => [['request_ids' => []], 'manager_ga3_id'],
+    'empty selection' => [['request_ids' => [], 'manager_ga1_id' => null], 'request_ids'],
+    'missing selection' => [['manager_ga1_id' => null], 'request_ids'],
+    'unknown request id' => [['request_ids' => [99999], 'manager_ga1_id' => null], 'request_ids.0'],
+    'unknown user' => [['request_ids' => [], 'manager_ga1_id' => 99999], 'manager_ga1_id'],
+    'missing key' => [['request_ids' => []], 'manager_ga1_id'],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -227,16 +227,16 @@ it('rejects an invalid payload with 422 (AC-007)', function (array $payload, str
 // ---------------------------------------------------------------------------
 
 it('writes one activity entry per changed offer, on the Opportunity (AC-008)', function () {
-    $actor = bulkGa3Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa3']);
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
     $previousTutor = User::factory()->create();
     $tutor = User::factory()->create();
-    $quote = bulkGa3Quote([ManagerPositions::GA3 => $previousTutor->id]);
+    $quote = bulkGa1Quote([ManagerPositions::GA1 => $previousTutor->id]);
     $opportunity = $quote->opportunity;
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$quote->id],
-        'manager_ga3_id' => $tutor->id,
+        'manager_ga1_id' => $tutor->id,
     ])->assertOk();
 
     $activities = Activity::query()
@@ -247,37 +247,37 @@ it('writes one activity entry per changed offer, on the Opportunity (AC-008)', f
 
     expect($activities)->toHaveCount(1)
         ->and($activities->first()->causer_id)->toBe($actor->id)
-        ->and($activities->first()->properties->get('attributes'))->toBe(['manager_ga3_id' => $tutor->id])
-        ->and($activities->first()->properties->get('old'))->toBe(['manager_ga3_id' => $previousTutor->id]);
+        ->and($activities->first()->properties->get('attributes'))->toBe(['manager_ga1_id' => $tutor->id])
+        ->and($activities->first()->properties->get('old'))->toBe(['manager_ga1_id' => $previousTutor->id]);
 });
 
-it('writes nothing at all when the offer already carries that GA3 (AC-008)', function () {
-    $actor = bulkGa3Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa3']);
+it('writes nothing at all when the offer already carries that GA1 (AC-008)', function () {
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
     $tutor = User::factory()->create();
-    $quote = bulkGa3Quote([ManagerPositions::GA3 => $tutor->id]);
+    $quote = bulkGa1Quote([ManagerPositions::GA1 => $tutor->id]);
     $opportunity = $quote->opportunity;
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$quote->id],
-        'manager_ga3_id' => $tutor->id,
+        'manager_ga1_id' => $tutor->id,
     ])->assertOk()->assertJsonPath('data.assigned', 1);
 
     expect(Activity::query()->where('subject_id', $opportunity->id)->where('event', 'updated')->count())->toBe(0)
-        ->and(bulkGa3ManagerOf($quote))->toBe($tutor->id);
+        ->and(bulkGa1ManagerOf($quote))->toBe($tutor->id);
 });
 
-it('sends no assignment notification: the GA3 scopes nothing and assigns nobody (AC-009)', function () {
+it('sends no assignment notification: the GA1 scopes nothing and assigns nobody (AC-009)', function () {
     Notification::fake();
 
-    $actor = bulkGa3Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa3']);
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
     $tutor = User::factory()->create();
-    $quote = bulkGa3Quote();
+    $quote = bulkGa1Quote();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$quote->id],
-        'manager_ga3_id' => $tutor->id,
+        'manager_ga1_id' => $tutor->id,
     ])->assertOk();
 
     Notification::assertNothingSent();
@@ -287,16 +287,16 @@ it('sends no assignment notification: the GA3 scopes nothing and assigns nobody 
 // AC-010 — appartenenza all'Opportunita'
 // ---------------------------------------------------------------------------
 
-it('promotes a GA3 who is not yet a manager onto the Opportunity first FREE slot (AC-010)', function () {
-    $actor = bulkGa3Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa3']);
+it('promotes a GA1 who is not yet a manager onto the Opportunity first FREE slot (AC-010)', function () {
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
     $accountManager = User::factory()->create();
     $tutor = User::factory()->create();
-    $quote = bulkGa3Quote([1 => $accountManager->id]);
+    $quote = bulkGa1Quote([1 => $accountManager->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/request-management/assign-manager-ga3', [
+    $this->postJson('/api/request-management/assign-manager-ga1', [
         'request_ids' => [$quote->id],
-        'manager_ga3_id' => $tutor->id,
+        'manager_ga1_id' => $tutor->id,
     ])->assertOk();
 
     // Slot 1 of the Opportunity survives untouched (D-13); the tutor is only
