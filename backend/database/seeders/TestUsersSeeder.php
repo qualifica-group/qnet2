@@ -120,6 +120,13 @@ class TestUsersSeeder extends Seeder
      *    bulk POST /request-management/assign-operators, which writes Sede AND
      *    Operatore at once.
      *
+     *
+     * `appendTeamMember` is deliberately NOT here (direttiva utente
+     * 2026-09-08): the role receives it, and receives it through this very
+     * module-wide filter. It is what turns the `manager_slots` row below from
+     * "invisible" into "visible, frozen, only additions allowed" — see
+     * COMMERCIAL_READONLY_FIELDS.
+     *
      * @var array<int, string>
      */
     private const array COMMERCIAL_DENIED_MODULE_ABILITIES = [
@@ -229,12 +236,18 @@ class TestUsersSeeder extends Seeder
      * 0006 `role_field_permissions` matrix, resource => field keys the role
      * neither sees nor writes.
      *
-     * User directive 2026-08-03: the "Sede operativa" and the GA2 "Operatore"
-     * of a request are supervisory attribution — decided FOR a Commercial, not
-     * BY them. Spec 0097, D-3: the operator's field key is now the TEAM's
-     * (`manager_slots`), the block that absorbed him — restricting it closes
-     * exactly the same channels, the grid's `operator_ga2` cell included. Supervisor and Marketing are untouched (no row = the full code
-     * ceiling, spec 0006's "unrestricted" default).
+     * User directive 2026-08-03: the "Sede operativa" of a request is
+     * supervisory attribution — decided FOR a Commercial, not BY them.
+     * Supervisor and Marketing are untouched (no row = the full code ceiling,
+     * spec 0006's "unrestricted" default).
+     *
+     * `manager_slots` was hidden here under the same 2026-08-03 directive
+     * (the GA2 "Operatore" is a slot of the team that absorbed him). The
+     * direttiva utente 2026-09-08 REVERSES that half and only that half: the
+     * Commercial now SEES the squadra and may add to it — see
+     * COMMERCIAL_READONLY_FIELDS, which is where the key moved. Nothing about
+     * the Sede changes, and nothing about the team becomes writable: the
+     * members already assigned stay untouchable on every channel.
      *
      * The matrix only ever RESTRICTS the ceiling
      * (AbstractResourceAuthorization::fieldPermissions() intersects the two),
@@ -249,7 +262,32 @@ class TestUsersSeeder extends Seeder
      * @var array<string, array<int, string>>
      */
     private const array COMMERCIAL_HIDDEN_FIELDS = [
-        'request-management' => ['operational_site_id', 'manager_slots'],
+        'request-management' => ['operational_site_id'],
+    ];
+
+    /**
+     * Fields the role SEES but may not write: the `visible: true,
+     * editable: false` half of the same spec 0006 matrix.
+     *
+     * `manager_slots` (direttiva utente 2026-09-08) is the whole reason this
+     * list exists. Locked-but-visible is exactly the state
+     * `request-management.appendTeamMember` completes: the grant is meaningful
+     * only while the field is readable and non-editable — with an editable
+     * team it adds nothing, with a hidden one it grants nothing
+     * (UpdateRequestRequest checks both). So the two halves must be seeded
+     * together or the role gets a permission that does nothing.
+     *
+     * What stays closed is what the 2026-08-03 directive closed: no
+     * reassignment, no reorder, no removal — on the work panel (the matrix
+     * gate in UpdateRequestRequest), on the grid's `operator_ga2` cell (same
+     * key, `editable: false` = no inline edit) and on the create form (whose
+     * team block hangs off `assignOperator`, still denied above). What opens
+     * is only the tail of the squadra, and only in the work panel.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const array COMMERCIAL_READONLY_FIELDS = [
+        'request-management' => ['manager_slots'],
     ];
 
     /**
@@ -342,8 +380,8 @@ class TestUsersSeeder extends Seeder
         $commercial = $this->syncRole(self::COMMERCIAL_ROLE, 'Commerciale', $this->commercialPermissions($catalogue));
         $this->syncRole(self::MARKETING_ROLE, 'Marketing', $this->marketingPermissions($catalogue));
 
-        // Step 2-bis: the only per-FIELD restriction of the three roles.
-        $this->syncHiddenFields($commercial, self::COMMERCIAL_HIDDEN_FIELDS);
+        // Step 2-bis: the only per-FIELD restrictions of the three roles.
+        $this->syncFieldPermissions($commercial, self::COMMERCIAL_HIDDEN_FIELDS, self::COMMERCIAL_READONLY_FIELDS);
 
         // Step 3: the accounts themselves, upserted by email.
         foreach (self::TEST_USERS as $account) {
@@ -453,24 +491,39 @@ class TestUsersSeeder extends Seeder
     }
 
     /**
-     * Replaces the role's WHOLE field-permission matrix with $hiddenFields —
+     * Replaces the role's WHOLE field-permission matrix with the two lists —
      * a full sync, exactly like syncPermissions() above and like
      * RoleService::syncFieldPermissions() on the admin UI path. A re-run
-     * therefore converges, and a field dropped from the list stops being
-     * restricted instead of leaving an orphan row behind.
+     * therefore converges, and a field dropped from either list stops being
+     * restricted instead of leaving an orphan row behind. ONE writer for both
+     * degrees, because the delete-then-create is what makes the sync
+     * convergent: a second writer would wipe the first one's rows.
      *
-     * @param  array<string, array<int, string>>  $hiddenFields  resource => field keys
+     * @param  array<string, array<int, string>>  $hiddenFields  resource => field keys the role never sees
+     * @param  array<string, array<int, string>>  $readonlyFields  resource => field keys the role sees but cannot write
      */
-    private function syncHiddenFields(Role $role, array $hiddenFields): void
+    private function syncFieldPermissions(Role $role, array $hiddenFields, array $readonlyFields = []): void
     {
         $role->fieldPermissions()->delete();
 
-        foreach ($hiddenFields as $resource => $fields) {
+        $this->createFieldPermissions($role, $hiddenFields, visible: false);
+        $this->createFieldPermissions($role, $readonlyFields, visible: true);
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $fieldsByResource
+     */
+    private function createFieldPermissions(Role $role, array $fieldsByResource, bool $visible): void
+    {
+        foreach ($fieldsByResource as $resource => $fields) {
             foreach ($fields as $field) {
                 $role->fieldPermissions()->create([
                     'resource' => $resource,
                     'field' => $field,
-                    'visible' => false,
+                    'visible' => $visible,
+                    // Never editable on either list: this seeder only ever
+                    // RESTRICTS (spec 0006 — the matrix intersects the code
+                    // ceiling, it cannot widen it).
                     'editable' => false,
                     'required' => false,
                 ]);

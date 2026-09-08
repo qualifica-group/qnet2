@@ -26,6 +26,14 @@ use Laravel\Sanctum\Sanctum;
  * same three channels stay closed, the grid's `operator_ga2` cell included
  * (its `editableField` moved to the same new key).
  *
+ * Direttiva utente 2026-09-08: the TEAM half of that rule is narrowed, and the
+ * narrowing is declared rather than silent. `manager_slots` is no longer
+ * hidden from the Commercial — it is VISIBLE and locked, plus the
+ * `appendTeamMember` grant — so the role now sees the squadra and may add to
+ * its tail. Everything the 2026-08-03 directive actually protects is
+ * unchanged and still asserted below: no reassignment, no reorder, no removal,
+ * on any channel. The Sede operativa stays hidden outright.
+ *
  * The restriction is seeded by TestUsersSeeder (the role matrix is the source
  * of truth, not a hard-coded rule), so it is exercised against the real seeded
  * roles. Three layers close it, one per channel:
@@ -54,7 +62,7 @@ if (! function_exists('requestOperatedBy')) {
     }
 }
 
-it('hides both fields from the commercial work panel envelope', function () {
+it('hides the Sede from the commercial work panel envelope', function () {
     $this->seed(TestUsersSeeder::class);
 
     $actor = restrictedCommercial();
@@ -65,15 +73,52 @@ it('hides both fields from the commercial work panel envelope', function () {
         ->assertOk()
         ->json('permissions.fields');
 
-    foreach (['operational_site_id', 'manager_slots'] as $field) {
-        expect($fields[$field]['visible'])->toBeFalse($field)
-            ->and($fields[$field]['hidden'])->toBeTrue($field)
-            ->and($fields[$field]['editable'])->toBeFalse($field);
-    }
+    expect($fields['operational_site_id']['visible'])->toBeFalse()
+        ->and($fields['operational_site_id']['hidden'])->toBeTrue()
+        ->and($fields['operational_site_id']['editable'])->toBeFalse();
 
     // The rest of the attribution block is untouched by the restriction.
     expect($fields['source_id']['visible'])->toBeTrue()
         ->and($fields['reporter_id']['editable'])->toBeTrue();
+});
+
+it('shows the commercial a locked team it may only append to', function () {
+    // Direttiva utente 2026-09-08: the two halves of the append-only state,
+    // asserted together — a locked-but-visible `manager_slots` is what makes
+    // the grant meaningful, and the grant is what makes the lock partial.
+    $this->seed(TestUsersSeeder::class);
+
+    $actor = restrictedCommercial();
+    $quote = requestOperatedBy($actor);
+    Sanctum::actingAs($actor);
+
+    $permissions = $this->getJson("/api/request-management/{$quote->id}")
+        ->assertOk()
+        ->json('permissions');
+
+    expect($permissions['fields']['manager_slots']['visible'])->toBeTrue()
+        ->and($permissions['fields']['manager_slots']['editable'])->toBeFalse()
+        ->and($permissions['actions']['append_team_member'])->toBeTrue();
+});
+
+it('lets the commercial append a manager past the persisted team', function () {
+    $this->seed(TestUsersSeeder::class);
+
+    $actor = restrictedCommercial();
+    // The actor operates the request (slot 2), so the frozen prefix is the
+    // first two positions and the third is theirs to fill.
+    $quote = requestOperatedBy($actor);
+    $newcomer = User::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'manager_slots' => [null, $actor->id, $newcomer->id, null],
+    ])->assertOk();
+
+    expect($quote->fresh()->managers()->get()
+        ->mapWithKeys(static fn (User $manager): array => [(int) $manager->pivot->position => (int) $manager->id])
+        ->all())
+        ->toBe([2 => $actor->id, 3 => $newcomer->id]);
 });
 
 it('leaves both fields visible and editable for the supervisor', function () {

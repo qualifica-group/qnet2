@@ -8,11 +8,21 @@ import type { RequestWorkPanelWithPermissions } from '@/features/request-managem
 
 /**
  * Spec 0080 AC-045 (work panel side), rebound by spec 0097 AC-001: the TEAM
- * slots relabel from the request's own `manager_labels`, preferring it over a
- * fetch — the work panel already carries it. With no resolved label each slot
- * keeps the editor's default "Account manager n" denomination. Mirrors the
- * minimal panel/mock shape of `request-attribution-operator-link.test.tsx`.
+ * slots carry the G.A. denominations of the request's categories. With none
+ * resolved each slot keeps the editor's default "Account manager n". Mirrors
+ * the minimal panel/mock shape of `request-attribution-operator-link.test.tsx`.
+ *
+ * User directive 2026-09-08: the names follow the FORM, not the load — the
+ * categoria prodotto is editable two sections above, and the server-resolved
+ * `manager_labels` only stands in while the live resolution has nothing to
+ * say (the rule itself is covered by `use-request-manager-labels.test.tsx`).
  */
+
+const fetchCategoryManagerLabelsMock = vi.fn()
+vi.mock('@/features/opportunities/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/opportunities/api')>()),
+  fetchCategoryManagerLabels: (...args: unknown[]) => fetchCategoryManagerLabelsMock(...args),
+}))
 
 const fetchRequestWorkPanelMock = vi.fn()
 vi.mock('@/features/request-management/api', () => ({
@@ -104,7 +114,18 @@ beforeAll(async () => {
 
 beforeEach(() => {
   fetchRequestWorkPanelMock.mockReset()
+  fetchCategoryManagerLabelsMock.mockReset()
+  fetchCategoryManagerLabelsMock.mockResolvedValue({})
 })
+
+/** One "funzione aziendale + categoria prodotto" row, the classification the labels resolve from. */
+function productLine(categoryId: number) {
+  return {
+    id: 1,
+    business_function: { id: 1, name: 'Energy' },
+    product_category: { id: categoryId, name: 'Photovoltaic' },
+  }
+}
 
 describe('Work panel — team slot labels (spec 0080/0097)', () => {
   it('keeps the default denominations when the request has no resolved manager_labels', async () => {
@@ -159,5 +180,36 @@ describe('Work panel — team slot labels (spec 0080/0097)', () => {
     expect(await screen.findByRole('button', { name: 'Consultant' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Senior consultant' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Account manager 2' })).not.toBeInTheDocument()
+  })
+
+  /**
+   * User directive 2026-09-08: the categoria prodotto the FORM carries names
+   * the slots, even when the server resolved something else for the record as
+   * persisted — the field is editable, `manager_labels` is not recomputed
+   * until the save.
+   */
+  it("resolves the labels of the form's own categoria prodotto over the loaded ones", async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({ manager_labels: { '2': 'Consultant' }, product_lines: [productLine(9)] }),
+    )
+    fetchCategoryManagerLabelsMock.mockResolvedValue({ '2': 'Energy manager' })
+
+    renderPanel()
+
+    expect(await screen.findByRole('button', { name: 'Energy manager' })).toBeInTheDocument()
+    expect(fetchCategoryManagerLabelsMock).toHaveBeenCalledWith(9)
+    expect(screen.queryByRole('button', { name: 'Consultant' })).not.toBeInTheDocument()
+  })
+
+  /** Until that resolution settles the loaded labels stand in, so no slot flashes its default denomination. */
+  it('keeps the loaded labels while the category resolution is in flight', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({ manager_labels: { '2': 'Consultant' }, product_lines: [productLine(9)] }),
+    )
+    fetchCategoryManagerLabelsMock.mockReturnValue(new Promise(() => {}))
+
+    renderPanel()
+
+    expect(await screen.findByRole('button', { name: 'Consultant' })).toBeInTheDocument()
   })
 })

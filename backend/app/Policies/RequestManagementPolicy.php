@@ -112,6 +112,26 @@ class RequestManagementPolicy extends BasePolicy
     }
 
     /**
+     * Resource-level gate for the THIRD state of the work panel's team block
+     * (direttiva utente 2026-09-08): the actor SEES the squadra and may only
+     * ADD members to it — the ones already there stay untouchable, neither
+     * reassigned, nor moved to another slot, nor removed.
+     *
+     * An ability of its own and not a third degree of the per-field matrix
+     * (`role_field_permissions` only expresses visible/editable/required):
+     * widening FieldPermission would change the shape EVERY module's matrix
+     * speaks, for a rule that belongs to this one panel. Required ON TOP OF
+     * `update`, exactly as `assignOperator`/`transferContact` above, and
+     * meaningful only WHILE `manager_slots` is visible but not editable for
+     * the actor — an editable team already allows strictly more, and a hidden
+     * one grants nothing to append to (UpdateRequestRequest checks both).
+     */
+    public function appendTeamMember(User $user): bool
+    {
+        return $user->can($this->permission('appendTeamMember'));
+    }
+
+    /**
      * Distribution-list ability (spec 0081, decisione utente 2026-08-04):
      * who is copied on the "contatto trasferito" notifications. It authorizes
      * NO endpoint — it decides recipients, which is why nothing calls it
@@ -149,6 +169,6 @@ class RequestManagementPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewDocuments', 'assignOperator', 'assignManagerGa1', 'transferContact', 'receiveTransferNotifications', 'report'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewDocuments', 'assignOperator', 'assignManagerGa1', 'transferContact', 'appendTeamMember', 'receiveTransferNotifications', 'report'];
     }
 }

@@ -37,6 +37,9 @@ export const permissions = {
     // Oltre il CRUD di BasePolicy: l'atto da supervisore di assegnare
     // l'Operatore (GA2) in creazione (direttiva utente 2026-07-29).
     assignOperator: 'Assegna operatore',
+    // Direttiva utente 2026-09-08: terzo stato del blocco Team del pannello
+    // "Lavora" — squadra visibile, membri già assegnati congelati, sola aggiunta.
+    appendTeamMember: 'Aggiungi al team',
     impersonate: 'Impersona',
     // Ability non canoniche introdotte dalla spec 0078: `manage` governa
     // l'approvazione/rifiuto di una richiesta di modifica campo

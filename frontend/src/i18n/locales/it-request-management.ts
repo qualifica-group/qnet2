@@ -231,6 +231,9 @@ export const requestManagement = {
       supervisor: 'Supervisore',
       supervisorSearch: 'Cerca supervisori…',
       managers: 'Gestori account',
+      // Direttiva utente 2026-09-08: sostituisce la nota "campo non modificabile"
+      // quando il permesso concede la sola aggiunta (`append_team_member`).
+      appendOnly: 'Puoi solo aggiungere nuovi gestori: quelli già assegnati non sono modificabili.',
       operatorFilteredBySite: 'Solo gli operatori della sede selezionata.',
       selectPlaceholder: 'Seleziona',
       selectEmpty: 'Nessun risultato',

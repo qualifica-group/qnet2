@@ -41,6 +41,20 @@ interface ManagerSlotsFieldProps {
    */
   onItemChange?: (position: number, item: ForSelectItem | null) => void
   /**
+   * Direttiva utente 2026-09-08: how many LEADING slots are frozen — shown,
+   * but neither re-picked, nor moved, nor removed. It is the append-only
+   * state of Gestione richieste (`request-management.appendTeamMember`): the
+   * team already assigned stays as it is and the actor may only add to its
+   * tail. Expressed as a count and not as a per-row flag because the frozen
+   * set is always a PREFIX: positions are 1-based and the persisted
+   * arrangement occupies the first `n` of them, gaps included — the same
+   * shape the server compares against (UpdateRequestRequest).
+   *
+   * Independent of `disabled`, which still wins over everything: a field the
+   * actor cannot write at all is locked whole, count or no count.
+   */
+  lockedSlots?: number
+  /**
    * Spec 0096: per-module overrides for the strings that NAME the people being
    * assigned. The defaults say "gestore account", which reads wrong wherever
    * the slots are not Gestori Account — Commesse assigns "Partecipanti".
@@ -69,7 +83,9 @@ interface ManagerSlotsFieldProps {
  * namespace, generic enough that "G.A." reads the same across modules. Spec
  * 0080 lets a caller override the per-slot denomination via `labels`, and spec
  * 0096 the noun-bearing strings around them via `strings` — Commesse assigns
- * "Partecipanti", not "Gestori account".
+ * "Partecipanti", not "Gestori account". `lockedSlots` (direttiva utente
+ * 2026-09-08) freezes the leading rows so a caller can offer additions
+ * without offering edits.
  */
 export function ManagerSlotsField({
   value,
@@ -79,6 +95,7 @@ export function ManagerSlotsField({
   labels,
   paramsFor,
   onItemChange,
+  lockedSlots = 0,
   strings,
 }: ManagerSlotsFieldProps) {
   const { t } = useTranslation()
@@ -93,6 +110,9 @@ export function ManagerSlotsField({
   // per row: a mixed column would be ragged. Callers with no `labels` at all
   // (Registries, decision 2) keep the compact number badge unchanged.
   const hasResolvedLabels = labels !== undefined && Object.keys(labels).length > 0
+
+  /** Frozen rows are the first `lockedSlots` ones (see the prop's own note). */
+  const isLocked = (index: number) => index < lockedSlots
 
   const setSlot = (index: number, id: number | null) =>
     onChange(value.map((slot, i) => (i === index ? id : slot)))
@@ -142,7 +162,7 @@ export function ManagerSlotsField({
                 params={paramsFor?.(index + 1)}
                 selectedItem={selectedItemFor(slot)}
                 showAvatar
-                disabled={disabled}
+                disabled={disabled || isLocked(index)}
                 labels={{
                   placeholder: t('registries.form.managerSlotEmpty'),
                   searchPlaceholder: strings?.search ?? t('registries.form.managersSearch'),
@@ -152,7 +172,7 @@ export function ManagerSlotsField({
                   triggerLabel: slotLabel(index),
                   retry: t('common.retry'),
                 }}
-                action={renderAction((ref) => setSlot(index, ref.id), disabled)}
+                action={renderAction((ref) => setSlot(index, ref.id), disabled || isLocked(index))}
               />
             </div>
             <div className="flex shrink-0 gap-1">
@@ -161,7 +181,7 @@ export function ManagerSlotsField({
                 variant="ghost"
                 size="icon-sm"
                 aria-label={t('registries.form.managerMoveUp')}
-                disabled={disabled || index === 0}
+                disabled={disabled || index === 0 || isLocked(index) || isLocked(index - 1)}
                 onClick={() => swap(index, index - 1)}
               >
                 <ArrowUp aria-hidden="true" />
@@ -171,7 +191,7 @@ export function ManagerSlotsField({
                 variant="ghost"
                 size="icon-sm"
                 aria-label={t('registries.form.managerMoveDown')}
-                disabled={disabled || index === value.length - 1}
+                disabled={disabled || index === value.length - 1 || isLocked(index)}
                 onClick={() => swap(index, index + 1)}
               >
                 <ArrowDown aria-hidden="true" />
@@ -181,7 +201,7 @@ export function ManagerSlotsField({
                 variant="ghost"
                 size="icon-sm"
                 aria-label={t('registries.form.managerRemoveSlot')}
-                disabled={disabled}
+                disabled={disabled || isLocked(index)}
                 onClick={() => removeSlot(index)}
               >
                 <Trash2 aria-hidden="true" />

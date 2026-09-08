@@ -26,8 +26,13 @@ function distinctProductIds(offerLines: QuoteLineFormValues[]): number[] {
  * the mapping is read live off the products for-select cache instead —
  * `category_id` in its `meta` (spec 0075 AC-012), via the shared
  * `productCategoryIdOf` reader.
+ *
+ * Exported because Gestione Richieste edits these very rows (user directive
+ * 2026-08-07) and names its own G.A. from them with the same precedence
+ * (`use-request-manager-labels.ts`): one reader, so the two forms never
+ * disagree about which category a picked product belongs to.
  */
-function useRevenueCategoryIds(offerLines: QuoteLineFormValues[]): { categoryIds: number[]; isLoading: boolean } {
+export function useRevenueCategoryIds(offerLines: QuoteLineFormValues[]): { categoryIds: number[]; isLoading: boolean } {
   const productIds = useMemo(() => distinctProductIds(offerLines), [offerLines])
   const products = useForSelectLabels({
     resource: PRODUCTS_FOR_SELECT_RESOURCE,
@@ -80,6 +85,37 @@ function useOpportunityCategoryIds(opportunityId: number | null): { categoryIds:
 }
 
 /**
+ * The effective G.A. labels $categoryIds resolve to, plus whether that answer
+ * is FINAL: `isResolved` is false while any category's own fetch — or the
+ * caller's upstream resolution (`isLoading`, e.g. product -> category) — is
+ * still in flight. A caller holding a better provisional value (the server's
+ * own persisted `manager_labels`) keeps showing it while that is false,
+ * instead of flashing the default denominations.
+ *
+ * Shared by every form that names its slots from its own current categories
+ * (this one, `use-request-manager-labels.ts`): the univocity rule itself is
+ * `resolveManagerLabels`', one copy on purpose (lib/utils).
+ */
+export function useCategoryManagerLabels(
+  categoryIds: number[],
+  isLoading: boolean,
+): { labels: Record<string, string>; isResolved: boolean } {
+  const results = useQueries({
+    queries: categoryIds.map((categoryId) => ({
+      queryKey: categoryManagerLabelsQueryKey(categoryId),
+      queryFn: () => fetchCategoryManagerLabels(categoryId),
+      staleTime: 5 * 60 * 1000,
+      retry: false,
+    })),
+  })
+
+  if (isLoading || results.some((result) => !result.data)) {
+    return { labels: {}, isResolved: false }
+  }
+  return { labels: resolveManagerLabels(results.map((result) => result.data as Record<string, string>)), isResolved: true }
+}
+
+/**
  * Resolves the G.A. labels for the quote form's CURRENT REVENUE rows (spec
  * 0087 D-8/D-11): the offer's own product categories win; while it has no
  * REVENUE rows yet, the picked Opportunity's product-line categories stand
@@ -101,17 +137,5 @@ export function useQuoteManagerLabels(
   const categoryIds = usingFallback ? fallback.categoryIds : revenue.categoryIds
   const isLoading = revenue.isLoading || (usingFallback && fallback.isLoading)
 
-  const results = useQueries({
-    queries: categoryIds.map((categoryId) => ({
-      queryKey: categoryManagerLabelsQueryKey(categoryId),
-      queryFn: () => fetchCategoryManagerLabels(categoryId),
-      staleTime: 5 * 60 * 1000,
-      retry: false,
-    })),
-  })
-
-  if (isLoading || results.length === 0 || results.some((result) => !result.data)) {
-    return {}
-  }
-  return resolveManagerLabels(results.map((result) => result.data as Record<string, string>))
+  return useCategoryManagerLabels(categoryIds, isLoading).labels
 }

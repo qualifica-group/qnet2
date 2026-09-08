@@ -169,7 +169,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['export', 'view_activity', 'transfer_contact'];
+        return ['export', 'view_activity', 'transfer_contact', 'append_team_member'];
     }
 
     /**
@@ -227,6 +227,21 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'transfer_contact' => $model !== null
                 && $actor->can('request-management.update')
                 && $actor->can('request-management.transferContact'),
+            // Direttiva utente 2026-09-08: the RAW grant behind the team
+            // block's third state — squadra visible, members already there
+            // frozen, only additions allowed. Per-record like the two above:
+            // there is nothing to freeze on the create form ($model === null),
+            // whose own team stays governed by `manager_slots` alone.
+            //
+            // Deliberately NOT crossed with the field's own permission here:
+            // this flag answers "does the actor hold the grant", and the
+            // precedence (an editable `manager_slots` already allows more, a
+            // hidden one allows nothing) is resolved where both values are
+            // read — RequestTeamSection on the read side,
+            // UpdateRequestRequest on the write side.
+            'append_team_member' => $model !== null
+                && $actor->can('request-management.update')
+                && $actor->can('request-management.appendTeamMember'),
         ];
     }
 }

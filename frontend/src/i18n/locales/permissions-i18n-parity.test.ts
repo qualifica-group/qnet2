@@ -102,6 +102,9 @@ const CATALOGUE_ABILITIES = [
   'viewSite',
   'viewDocuments',
   'assignOperator',
+  // Direttiva utente 2026-09-08: `request-management.appendTeamMember` (see
+  // the squadra's append-only state in the work panel).
+  'appendTeamMember',
   'impersonate',
   // Spec 0106: `request-management.report` (generate/download the CSV report).
   'report',

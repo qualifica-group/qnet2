@@ -37,6 +37,7 @@ export const permissions = {
     // Beyond BasePolicy's CRUD: the supervisory act of assigning the GA2
     // Operator at creation (user directive 2026-07-29).
     assignOperator: 'Assign operator',
+    appendTeamMember: 'Add to team',
     impersonate: 'Impersonate',
     // Non-canonical abilities introduced by spec 0078: `manage` gates
     // approve/reject on a field-change-request (FieldChangeRequestPolicy);

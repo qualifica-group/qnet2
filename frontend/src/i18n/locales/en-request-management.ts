@@ -231,6 +231,7 @@ export const requestManagement = {
       supervisor: 'Supervisor',
       supervisorSearch: 'Search supervisors…',
       managers: 'Account managers',
+      appendOnly: 'You may only add new managers: the ones already assigned cannot be changed.',
       operatorFilteredBySite: 'Only the operators of the selected site.',
       selectPlaceholder: 'Select',
       selectEmpty: 'No results',

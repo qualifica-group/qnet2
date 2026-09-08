@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Info, Users } from 'lucide-react'
-import type { Control } from 'react-hook-form'
+import { useWatch, type Control } from 'react-hook-form'
 import { toManagerSlotLabels } from '@/lib/utils'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -12,6 +12,7 @@ import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 import { useActiveCategoryManagerLabels } from '@/features/request-management/use-active-category-manager-labels'
+import { useRequestManagerLabels } from '@/features/request-management/use-request-manager-labels'
 import { useRequestManagementCategoryPreference } from '@/features/request-management/use-request-management-category-preference'
 
 /** Hoisted: a create form has no persisted pivot to hydrate the slot triggers from. */
@@ -55,9 +56,14 @@ interface RequestCreateTeamSectionProps {
  * supervisory and keeps its own ability gate (user directive 2026-08-03), the
  * same the store endpoint enforces.
  *
- * G.A. relabeling (spec 0080): no persisted request exists yet to resolve the
- * labels from, so they come from the module's currently active category tab —
- * the same univocal context the table's own column header relies on.
+ * G.A. relabeling (spec 0080, revised by the user directive 2026-09-08):
+ * resolved from what the FORM carries — the offer rows' product categories,
+ * or the "categoria prodotto" rows when there is no offer row yet
+ * (`useRequestManagerLabels`, the work panel's own rule) — so picking a
+ * category renames the slots on the spot. The module's active category tab
+ * only stands in until the form has a category of its own: with no persisted
+ * request there is nothing else to resolve from, and it is the same univocal
+ * context the table's own column header relies on.
  *
  * The scoping hint sits with the SLOTS, not with the Sede that produces it: it
  * describes which users the operator slot lists. Never shown without the Sede
@@ -74,7 +80,10 @@ export function RequestCreateTeamSection({
   const { t } = useTranslation()
   const { categoryId: activeCategoryId } = useRequestManagementCategoryPreference()
   const { data: activeCategoryManagerLabels } = useActiveCategoryManagerLabels(activeCategoryId)
-  const slotLabels = toManagerSlotLabels(activeCategoryManagerLabels ?? EMPTY_MANAGER_LABELS)
+  const offerLines = useWatch({ control, name: 'offer_lines' })
+  const productLines = useWatch({ control, name: 'product_lines' })
+  const liveLabels = useRequestManagerLabels(offerLines, productLines)
+  const slotLabels = toManagerSlotLabels(liveLabels ?? activeCategoryManagerLabels ?? EMPTY_MANAGER_LABELS)
   const supervisorQuickCreate = useQuickCreateAction(USERS_FOR_SELECT_RESOURCE)
 
   const selectLabels = {

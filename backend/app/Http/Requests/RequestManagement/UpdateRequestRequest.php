@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\RequestManagement;
 
+use App\Authorization\AuthorizationRegistry;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
@@ -244,7 +245,124 @@ class UpdateRequestRequest extends FormRequest
         ksort($incoming);
         ksort($persisted);
 
-        return $incoming === $persisted ? $submitted : self::MANAGER_SLOTS_CHANGED;
+        if ($incoming === $persisted) {
+            return $submitted;
+        }
+
+        // Direttiva utente 2026-09-08: the append-only grant is expressed HERE,
+        // in the same "did this actually change?" answer the gate consumes,
+        // because the third state it introduces is not a different value of
+        // `manager_slots` — it is a different SET OF CHANGES allowed on the
+        // very field the matrix already locked. A pure append is reported as
+        // "unchanged" so the locked field lets it through; anything else keeps
+        // falling into the sentinel below and is rejected 422, unchanged.
+        if ($this->mayOnlyAppendTeamMembers($quote) && $this->isPureTeamAppend($quote, $incoming, $persisted)) {
+            return $submitted;
+        }
+
+        return self::MANAGER_SLOTS_CHANGED;
+    }
+
+    /**
+     * Whether the actor holds the append-only grant on THIS record's team:
+     * `request-management.appendTeamMember` AND a `manager_slots` the role
+     * matrix still shows them. The visibility half matters — the grant reads
+     * "vedere la squadra e potervi solo aggiungere", so a role that hid the
+     * block entirely must not be able to append to it through a crafted
+     * payload. Nothing is checked about `editable`: this method is only ever
+     * reached from a gate that already skipped every editable field.
+     */
+    private function mayOnlyAppendTeamMembers(Quote $quote): bool
+    {
+        /** @var User $actor */
+        $actor = $this->user();
+
+        if (! $actor->can('request-management.appendTeamMember')) {
+            return false;
+        }
+
+        $permissions = app(AuthorizationRegistry::class)
+            ->resolve($this->authorizationResource())
+            ->fieldPermissions($actor, $quote);
+
+        return ($permissions[self::MANAGER_SLOTS_FIELD] ?? null)?->visible ?? false;
+    }
+
+    /**
+     * Whether the submitted team only ADDS to the persisted one: every
+     * position up to the highest one currently occupied must come back
+     * carrying exactly the same user (or the same emptiness), and only the
+     * positions BEYOND it may differ.
+     *
+     * That prefix rule is the whole grant (decisione utente 2026-09-08,
+     * "congelati, si aggiunge in coda"): a removal empties a frozen position,
+     * a reassignment replaces its occupant and a reorder swaps two of them —
+     * all three break the comparison below, and none of them can be dressed
+     * up as an addition. The gaps a removed manager left behind are frozen
+     * too: an empty slot inside the prefix is part of the arrangement the
+     * actor may not touch, only the tail is theirs.
+     *
+     * @param  array<int, array{position: int}>  $incoming  userId => pivot, as ManagerPositions::syncMap() builds it
+     * @param  array<int, array{position: int}>  $persisted  same shape, read off `quote_user`
+     */
+    private function isPureTeamAppend(Quote $quote, array $incoming, array $persisted): bool
+    {
+        $before = $this->frozenSlots($quote, $persisted);
+        $after = $this->slotsByPosition($incoming);
+        $frozenUpTo = $before === [] ? 0 : max(array_keys($before));
+
+        for ($position = 1; $position <= $frozenUpTo; $position++) {
+            if (($after[$position] ?? null) !== ($before[$position] ?? null)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * The arrangement the append-only actor may not touch: the `quote_user`
+     * pivot, PLUS the OPERATOR slot whenever `quotes.operator_id` names one.
+     *
+     * Both sources, not just the pivot, because the operator is the one slot
+     * that is also a denormalized column (spec 0087, INV-2) and the only one
+     * that decides row VISIBILITY (spec 0049, D-3): handing it over is the
+     * heaviest write this block can make, so it must stay frozen even on a
+     * record whose pivot lost the row. The column can only ever ADD the
+     * position here — where the pivot already fills it the two agree by
+     * INV-2, and the pivot stays the reading of every other slot.
+     *
+     * @param  array<int, array{position: int}>  $persisted  userId => pivot, read off `quote_user`
+     * @return array<int, int>  position => userId
+     */
+    private function frozenSlots(Quote $quote, array $persisted): array
+    {
+        $slots = $this->slotsByPosition($persisted);
+        $operatorId = $quote->operator_id === null ? null : (int) $quote->operator_id;
+
+        if ($operatorId !== null && ! isset($slots[ManagerPositions::OPERATOR])) {
+            $slots[ManagerPositions::OPERATOR] = $operatorId;
+        }
+
+        return $slots;
+    }
+
+    /**
+     * Flips a `userId => ['position' => n]` sync map into the `position =>
+     * userId` reading the prefix comparison needs.
+     *
+     * @param  array<int, array{position: int}>  $syncMap
+     * @return array<int, int>
+     */
+    private function slotsByPosition(array $syncMap): array
+    {
+        $slots = [];
+
+        foreach ($syncMap as $userId => $pivot) {
+            $slots[$pivot['position']] = (int) $userId;
+        }
+
+        return $slots;
     }
 
     public function withValidator(Validator $validator): void

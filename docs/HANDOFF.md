@@ -3,6 +3,130 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE: LE LABEL G.A. SEGUONO IL FORM, NON IL CARICAMENTO (direttiva utente 2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "form in gestione richieste, i gestori account, quando cambio categoria
+prodotto non cambiano la label (forse la prendono dal prodotto in offerte ma e' sbagliato)".
+Scelte confermate in sessione: **precedenza INVARIATA** (categorie dei prodotti delle linee
+d'offerta prima, categorie prodotto della richiesta come fallback — la stessa regola di
+`QuoteManagerLabelResolver`/`QuoteClassificationSource`), ma risolta **live dai campi del form**;
+**nessuna modifica allo "Stato di lavorazione"**, che l'utente ha indicato come comportamento di
+riferimento gia' corretto. Perimetro **solo frontend**: nessun endpoint, nessuna Resource,
+nessun resolver PHP toccato.
+
+**Causa.** `RequestWorkPanel.manager_labels` e' calcolato UNA volta lato server sul record come
+persistito; il pannello lo passava tale e quale a `RequestTeamSection`. Cambiare "Categoria
+prodotto" (campo `product_lines`, due sezioni piu' su) non rietichettava nulla fino al salvataggio,
+e con linee d'offerta presenti le categorie dei prodotti vincevano comunque. Il form Offerte e il
+form Opportunita' risolvevano gia' live (`useQuoteManagerLabels`/`useOpportunityManagerLabels`).
+
+**Nomi da rispettare (vincolanti).** Nuovo hook `useRequestManagerLabels(offerLines, productLines)`
+in `frontend/src/features/request-management/use-request-manager-labels.ts`: ritorna `ManagerLabels`
+oppure **`null`** = "il form non ha ancora nulla da dire" (nessuna categoria risolvibile, o
+risoluzione in volo) — il chiamante tiene allora il proprio valore provvisorio. Due helper estratti
+ed **esportati** da `frontend/src/features/quotes/use-quote-manager-labels.ts`:
+`useRevenueCategoryIds(offerLines)` (product_id -> category_id via `meta.category_id` del
+for-select) e `useCategoryManagerLabels(categoryIds, isLoading)` -> `{ labels, isResolved }`.
+`useQuoteManagerLabels` e' invariata nel comportamento.
+
+**Innesti.** `request-team-section.tsx`: `useWatch` su `offer_lines`/`product_lines`, label =
+`liveLabels ?? managerLabels ?? {}` — la prop `managerLabels` (dal server) resta come valore
+provvisorio finche' la risoluzione live non e' settled, cosi' nessuno slot lampeggia sul default
+"G.A. n". `request-create-team-section.tsx`: stessa risoluzione live, con il tab categoria attivo
+(`useActiveCategoryManagerLabels`) declassato a ripiego finche' il form non porta una categoria
+propria. `useActiveCategoryManagerLabels` resta usato anche da `use-request-manager-ga1-assignment.ts`.
+
+**Da verificare / prossimi passi.** Verde: `npx vitest run` 610 file / 4502 test, `npx tsc -b
+--force` EXIT 0, `npx eslint src/features/request-management src/features/quotes` pulito sui file
+toccati (l'unico errore, `react-refresh/only-export-components` in
+`src/features/quotes/column-renderers.tsx`, e' PREESISTENTE: file non modificato). Nuovi test:
+`use-request-manager-labels.test.tsx` (5 casi: risoluzione dalla categoria, rietichettatura al
+cambio categoria, precedenza delle linee d'offerta, `null` senza categoria, `null` finche' in volo)
+e due casi aggiunti a `request-attribution-manager-label.test.tsx`. NON committato (CLAUDE.md
+§3.6). Nota aperta: dopo il salvataggio il server ricalcola comunque `manager_labels` con la
+propria precedenza — coerente, ma se un giorno la categoria prodotto dovesse vincere sulle linee
+d'offerta va cambiato `QuoteManagerLabelResolver`, non il frontend.
+
+## GESTIONE RICHIESTE: PERMESSO "SOLO AGGIUNTA" SULLA SQUADRA (direttiva utente 2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "c'e' il permesso se puoi modificare il team oppure no. c'e' bisogno di un
+nuovo permesso ossia di poter vedere il team, disabilitate le persone del team (ne' posizione ne'
+eliminazione) ma solo aggiunta". Scelte confermate in sessione: perimetro SOLO pannello "Lavora"
+(griglia GA1/Operatore, azione massiva e form di creazione restano come sono); semantica
+"congelati, si aggiunge in coda" (uno slot VUOTO gia' esistente resta vuoto, il grant vale solo
+sulla coda); forma = nuova ability di modulo, NON un terzo flag nella matrice campi.
+
+**Nomi vincolanti (riusare questi).** Ability spatie `request-management.appendTeamMember`
+(`RequestManagementPolicy::appendTeamMember()` + `abilities()`); azione di metadata
+`permissions.actions.append_team_member` (`RequestManagementAuthorization::actions()`);
+prop del componente condiviso `ManagerSlotsField.lockedSlots` (numero di righe di TESTA congelate);
+i18n `requestManagement.workPanel.team.appendOnly` e `permissions.abilities.appendTeamMember`.
+
+**Meccanismo.** Lo stato e' la COMBINAZIONE di due segnali gia' esistenti, non un nuovo valore di
+`FieldPermission`: `manager_slots` visibile-ma-non-editabile (matrice `role_field_permissions`) +
+ability concessa. Precedenza risolta dove entrambi i segnali sono leggibili — `RequestTeamSection`
+in lettura, `UpdateRequestRequest` in scrittura: con `manager_slots` editabile il grant e'
+irrilevante (permette gia' di piu'), con il campo nascosto non concede nulla (niente da vedere,
+niente a cui aggiungere).
+- BE: il gate resta `EnforcesFieldPermissions`. `UpdateRequestRequest::currentManagerSlots()`
+  riporta "invariato" quando il payload e' un append PURO e l'attore ha il grant; tutto il resto
+  cade nel sentinella `manager_slots:changed` e prende 422 come prima. Regola del prefisso in
+  `isPureTeamAppend()`: ogni posizione fino alla PIU' ALTA occupata deve tornare identica (utente
+  o vuoto), solo oltre si puo' scrivere. Rimozione, riassegnazione, riordino e riempimento di un
+  buco interno rompono tutti quel confronto.
+- FE: `lockedSlots` congela le prime N righe (picker, frecce, cestino) e lascia attivo "Aggiungi";
+  le frecce non possono mai spostare una riga congelata (nemmeno dalla prima riga libera).
+  `RequestTeamSection` calcola `lockedSlots = managerSlotsFromRefs(managers).length` (la posizione
+  piu' alta persistita, buchi inclusi — lo stesso prefisso del server) e sostituisce la nota
+  generica "campo non modificabile" con `team.appendOnly`.
+
+**File toccati.** BE: `app/Policies/RequestManagementPolicy.php`,
+`app/Authorization/RequestManagementAuthorization.php`,
+`app/Http/Requests/RequestManagement/UpdateRequestRequest.php`,
+`database/seeders/TestUsersSeeder.php`. FE:
+`components/form/manager-slots-field.tsx`, `features/request-management/request-team-section.tsx`,
+`i18n/locales/{it,en}-request-management.ts`, `i18n/locales/{it,en}-permissions.ts`,
+`i18n/locales/permissions-i18n-parity.test.ts`. Nuovi test:
+`tests/Feature/RequestManagement/RequestManagementTeamAppendOnlyTest.php` (11),
+`features/request-management/request-team-append-only.test.tsx` (5). Test aggiornato:
+`RequestManagementCommercialAttributionRestrictionTest` (requisito cambiato: il commerciale vede
+la squadra; due casi nuovi per lo stato append-only e per l'append reale).
+NESSUNA migrazione: il permesso nasce da `permissions:sync` (gia' eseguito sul DB di sviluppo,
+1 riga creata), come ogni altra ability di policy.
+
+**Verifica eseguita (2026-09-08).** Pest: `RequestManagement`+`Users`+`FieldChangeRequests`+
+`Notifications`+`Seeding` 976/976, `Authorization`+`Policies`+`Roles` 158/158; Pint pulito su
+tutto il backend; Vitest 4495/4495; `tsc -b --force` senza errori; ESLint pulito sui file toccati.
+
+**Seeder: il ruolo `commercial` lo ha (direttiva utente 2026-09-08, stessa sessione).**
+`TestUsersSeeder` — l'ability arrivava GIA' da sola (`commercialPermissions()` e' deny-list sul
+modulo e `appendTeamMember` non e' nella deny-list); il blocco vero era la matrice, che teneva
+`manager_slots` NASCOSTO. Quindi: `COMMERCIAL_HIDDEN_FIELDS` resta con il solo
+`operational_site_id`, nuova costante `COMMERCIAL_READONLY_FIELDS` con `manager_slots`
+(visible: true, editable: false), e `syncHiddenFields()` diventa
+`syncFieldPermissions($role, $hidden, $readonly)` — UN solo writer, perche' il
+delete-then-create e' cio' che rende il sync convergente.
+**CONFLITTO DICHIARATO:** questo rovescia meta' della direttiva utente 2026-08-03 ("il commerciale
+non VEDE ne' scrive Sede e Operatore"). Resta intatto tutto cio' che quella direttiva protegge
+davvero (niente riassegnazione, riordino o rimozione, su nessun canale) e la Sede resta nascosta;
+cambia solo che ora la squadra si vede e si puo' allungare.
+
+**Slot OPERATOR congelato da DUE fonti (scoperto da un test esistente).** `requestOperatedBy()`
+crea un Quote con `operator_id` valorizzato ma pivot `quote_user` VUOTO: con la sola lettura del
+pivot quella posizione risultava libera e un append poteva prendersi l'Operatore.
+`UpdateRequestRequest::frozenSlots()` ora legge pivot + colonna `quotes.operator_id` (spec 0087
+INV-2): la colonna puo' solo AGGIUNGERE la posizione OPERATOR al prefisso congelato. E' lo slot che
+decide la visibilita' di riga (spec 0049 D-3), quindi non deve mai passare di mano via append.
+
+**Prossimi passi.** Il permesso e' nel catalogo (`permissions:sync`, gia' eseguito sul DB di
+sviluppo). Per applicare la nuova matrice ai ruoli seminati sul DB di sviluppo serve
+`php artisan db:seed --class=TestUsersSeeder` — NON eseguito: quel seeder ri-scrive anche le
+password degli account di test, va lanciato con cognizione. Da valutare col committente se lo
+stesso stato serva anche sul form di creazione o sulle celle di griglia (oggi deliberatamente
+fuori perimetro; sulla griglia il commerciale ora VEDE in sola lettura la colonna Operatore, che
+prima gli era nascosta — conseguenza diretta del fatto che la colonna e la squadra condividono la
+chiave `manager_slots`).
+
 ## GESTIONE RICHIESTE: LO SLOT GA3 DIVENTA GA1 (spec 0104 amendment A1, 2026-09-08) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "bisogna sostituire in gestione richieste, al posto di ga3, ga1, sia sulle
