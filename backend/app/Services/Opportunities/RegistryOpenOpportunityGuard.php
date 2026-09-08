@@ -20,8 +20,8 @@ use Illuminate\Validation\ValidationException;
  * OpportunityStatusScope — the query side of that same computation — with
  * ACTIVE_GROUPS, so "aperta" here means exactly what the badge and the table
  * filter mean: at least one quote outside the two terminal outcomes
- * (`closed_won`/`closed_lost`), or no quote at all (which displays the global
- * default workflow's `open` row).
+ * (`closed_won`/`closed_lost`), or no quote at all (which displays the `open`
+ * row of the workflow its own product category resolves to).
  *
  * User directive 2026-08-31 (refinement): an open opportunity managed on a
  * SINGLE product category does NOT block. That mode is the one-shot deal
@@ -121,7 +121,15 @@ final class RegistryOpenOpportunityGuard
 
         $opportunities = Opportunity::query()->whereIn('registry_id', $registryIds);
 
-        OpportunityStatusScope::whereGroupIn($opportunities, OpportunityStatusScope::ACTIVE_GROUPS);
+        // The quote-less branch resolves a workflow per row (it is the row's
+        // own product category that decides it), so it is handed the SAME
+        // registry restriction instead of every quote-less opportunity there
+        // is — this runs on every opportunity creation.
+        OpportunityStatusScope::whereGroupIn(
+            $opportunities,
+            OpportunityStatusScope::ACTIVE_GROUPS,
+            Opportunity::query()->whereIn('registry_id', $registryIds),
+        );
 
         return $opportunities
             ->orderBy('id')

@@ -61,6 +61,7 @@ use App\Models\User;
 use App\Models\UserTablePreference;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
+use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\QuoteWorkflows\CategoryBranchResolver;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -81,17 +82,21 @@ class AppServiceProvider extends ServiceProvider
         // EnforcesFieldPermissions AND the controller's permissions block).
         $this->app->singleton(FieldPermissionRepository::class);
 
-        // Scoped so OpportunityStatusResolver::defaultEntry() — the GLOBAL
-        // default workflow's `open` row, the D-8 fallback every quote-less
-        // Opportunity resolves to — is queried at most once per request.
-        // Its memoization is per-INSTANCE, and four resources build the
-        // computed status with a fresh `app()` call PER ROW (RewardResource,
+        // Scoped so the quote-less fallback of the computed Opportunity
+        // status (D-8) costs its queries once per request. Four resources
+        // build that status with a fresh `app()` call PER ROW (RewardResource,
         // RequestManagementResource, OpportunityResource, RecordDetails): a
-        // new instance per row meant a new query per row, so a page of N
-        // quote-less rows cost N queries instead of one. Scoped, not
-        // singleton: the cached row must not outlive the request (a queue
-        // worker would otherwise serve a stale name/color forever).
+        // new instance per row would mean re-reading the workflow set per row,
+        // so a page of N quote-less rows cost N times what one costs.
+        // OpportunityDefaultStatusResolver is scoped for the same reason and
+        // additionally because the two SIDES of the status (this badge and
+        // the `status` set filter, OpportunityStatusScope/
+        // OpportunityStatusColumn, which reach it through the container) must
+        // share the one memoized workflow set. Scoped, not singleton: the
+        // memo must not outlive the request (a queue worker would otherwise
+        // serve a stale name/color, or a stale workflow, forever).
         $this->app->scoped(OpportunityStatusResolver::class);
+        $this->app->scoped(OpportunityDefaultStatusResolver::class);
 
         // Singleton so the custom-fieldable entity map (spec 0021) — built by
         // intersecting config/tables.php with config/authorization.php and

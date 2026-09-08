@@ -85,9 +85,11 @@ class RewardResource extends JsonResource
                         'registry',
                         'productLines.productCategory',
                         // Spec 0082/0083: the computed status reads the
-                        // quotes' own workflow statuses (falling back to the
-                        // global default `open` row when there are none).
-                        'quotes.quoteWorkflowStatus',
+                        // quotes' own workflow statuses — and, with none, the
+                        // opportunity's own classification (user directive
+                        // 2026-09-08). Both sides come from the resolver's own
+                        // constant, so this list cannot drift from it.
+                        ...OpportunityStatusResolver::EAGER_LOADS,
                         'managers.avatar',
                     ],
                     // The Offerta origin (2026-08-31 directive): its own
@@ -95,7 +97,12 @@ class RewardResource extends JsonResource
                     // shows as the cross-reference (`related`).
                     Quote::class => [
                         'opportunity.registry',
-                        'opportunity.quotes.quoteWorkflowStatus',
+                        // The same computed status, one hop up: the parent
+                        // Opportunity's own relations, prefixed.
+                        ...array_map(
+                            static fn (string $relation): string => "opportunity.{$relation}",
+                            OpportunityStatusResolver::EAGER_LOADS,
+                        ),
                         'quoteWorkflowStatus',
                         'offerLines.product.category',
                         // Spec 0087, D-9/D-10: the "operator" context field

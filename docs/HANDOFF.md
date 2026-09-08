@@ -77,6 +77,78 @@ ma il build id e' quello dell'avvio del dev server: il check e' quindi inerte in
 in staging. (3) Gate coverage globale preesistente.
 
 
+## OPPORTUNITA' SENZA OFFERTA: STATO DAL WORKFLOW DELLA SUA CATEGORIA (2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "In opportunita', come in gestione richieste, se non c'e' il prodotto
+dell'offerta, gli stati di lavorazione devono prendere il collegamento dalla categoria di
+prodotto dell'opportunita'."
+
+**Il pezzo che mancava.** Il fallback del 2026-09-08 (`QuoteClassificationSource`) vale per ogni
+Offerta senza riga ricavo, quindi `/request-management` (dove ogni riga E' un'Offerta) era gia'
+a posto. In `/opportunities` restava scoperto il caso in cui l'Offerta non c'e' PROPRIO:
+`OpportunityStatusResolver` ripiegava sulla riga `open` del SET GLOBALE, senza mai guardare la
+categoria dell'Opportunita'. Misurato sul DB di sviluppo: 44 opportunita' su 161 sono senza
+Offerta e 44/44 risolvono su un workflow reale (GOL - Molise, Abruzzo, Calabria, Campania,
+Lombardia, Lazio, Umbria, Autoimpiego, Yisu, Autofinanziato) la cui riga `open` e'
+"Da Richiamare": prima mostravano tutte lo stato globale.
+
+**Cosa e' cambiato.**
+1. NUOVO `App\Services\Opportunities\OpportunityDefaultStatusResolver` — l'Offerta che non
+   esiste viene sostituita da un Quote TRANSIENTE (opportunita' come padre, zero righe offerta),
+   stessa forma della probe di `ValidatesQuoteWorkflowStatus`: cosi' `QuoteClassificationSource`
+   legge le `productLines` dell'Opportunita' e `QuoteWorkflowResolver::targetStatus()` restituisce
+   la riga `open` del set risolto. La regola non e' reimplementata, e' solo alimentata. Set
+   globale solo quando nessun workflow matcha (comportamento invariato per le opportunita' senza
+   classificazione).
+2. `OpportunityStatusResolver` — `defaultEntry()` e' ora per-riga (memo del set globale rimossa,
+   era diventata sbagliata); `EAGER_LOADS` include `productLines`/`customFieldValueRow` via
+   `...OpportunityDefaultStatusResolver::EAGER_LOADS` (un solo elenco per griglie e dettaglio).
+3. `OpportunityStatusScope` — la branch "senza offerta" non e' piu' `orWhereDoesntHave('quotes')`:
+   la scelta del workflow e' una classifica (specificita', poi distanza di branch) che in SQL non
+   esiste, quindi gli id si risolvono in PHP e rientrano con un `whereIn`. NUOVO parametro
+   OBBLIGATORIO `$quoteLessSource`: la query STANDALONE su cui risolvere. Serve perche'
+   `RewardedReferentAdvancedFilterApplier` invoca lo scope su una subquery CORRELATA, che non si
+   puo' eseguire da sola (era il 500 emerso in suite). Passare piu' righe del necessario costa
+   tempo, mai correttezza: gli id finiscono in un ramo OR di una query che applica comunque tutti
+   gli altri vincoli.
+   Call site: griglia -> `(clone $query)`; `RegistryOpenOpportunityGuard` -> la sua stessa
+   restrizione per `registry_id` (gira a ogni creazione opportunita'); rewarded-referents ->
+   `Opportunity::query()`.
+4. `OpportunityStatusColumn::distinctValues` — i nomi delle righe senza Offerta sono risolti per
+   riga (`defaultOpenName()` cancellata): l'elenco del filtro set mostra i nomi realmente esposti.
+5. `RewardResource::eagerLoad()` — aggiunge le relazioni del fallback su entrambi i rami del
+   morph (`...OpportunityStatusResolver::EAGER_LOADS`, e la versione prefissata `opportunity.*`
+   per l'origine Offerta). Senza, il dettaglio buoni tornava a 1 query per riga: lo ha beccato
+   l'invariante `RewardDetailEndpointTest` AC-017 (19 query per 10 buoni contro 11 per 2).
+
+**Costo misurato.** Pagina di 25 opportunita' senza Offerta: 14 query totali (4 fisse + 1 per
+workflow DISTINTO risolto, memoizzato), non 1 per riga. `OpportunityDefaultStatusResolver` e'
+registrato `scoped` proprio perche' badge e filtro condividano quell'unico set memoizzato.
+
+**Niente da rilanciare sui dati.** Le opportunita' senza Offerta non hanno stato persistito: il
+calcolo e' a runtime. Resta invece pendente, dalla voce precedente, il comando una-tantum sulle
+OFFERTE gia' esistenti: `php artisan quotes:resync-workflow-status`.
+
+**File toccati.** `app/Services/Opportunities/OpportunityDefaultStatusResolver.php` (nuovo),
+`OpportunityStatusResolver.php`, `OpportunityStatusScope.php`,
+`RegistryOpenOpportunityGuard.php`, `app/Tables/Opportunities/OpportunityStatusColumn.php`,
+`app/Tables/RewardedReferents/RewardedReferentAdvancedFilterApplier.php`,
+`app/Http/Resources/RewardResource.php`, `app/Providers/AppServiceProvider.php`.
+
+**Test (ESEGUITI).** Suite backend completa: 6569 test, 6568 passed / 1 skipped / 0 failed,
+Pint pulito. Nuovi: 3 casi in `tests/Unit/Services/Opportunities/OpportunityStatusResolverTest.php`
+(riga `open` del workflow risolto; il ramo quotes resta intoccato; pagina senza Offerta risolta
+dai soli `EAGER_LOADS`) e 3 in `tests/Feature/Opportunities/OpportunityComputedStatusTest.php`
+(filtro set che separa workflow risolto e set globale; cella `status` della riga senza Offerta;
+elenco valori del filtro). Verificati ROSSI disattivando il fix, poi verdi: nessun falso verde.
+Aggiornati (requisito cambiato, non test piegati) i titoli/commenti dei 2 casi che dicevano
+"ogni opportunita' senza offerta mostra LA STESSA riga globale": ora dicono "quando nessun
+workflow la matcha".
+
+**Da sapere.** Il ramo senza Offerta dello scope esegue una query: chi chiama
+`OpportunityStatusScope` deve passare una query STANDALONE come `$quoteLessSource` — una subquery
+correlata la manda in errore SQL. E' scritto nel docblock della classe.
+
 ## STATI DI LAVORAZIONE — NUOVA LEGENDA A 5 COLORI (2026-09-08) — VERDE, NON COMMITTATO
 
 **Fonte.** `REPORT_potenziali Prossimi Associati (1).pdf` (fornito dall'utente). I colori NON sono

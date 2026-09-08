@@ -2,9 +2,11 @@
 
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
+use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Quote;
+use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Registry;
 use App\Models\User;
@@ -22,9 +24,10 @@ use Spatie\Permission\Models\Permission;
  *
  * Spec 0083 (D-2/D-8) re-targets the fallback source: the Opportunity no
  * longer carries its own working-state FK at all — a quote-less opportunity
- * displays the GLOBAL default quote-workflow set's `open` row, a real,
- * user-configurable QuoteWorkflowStatus row (`quote_workflow_id IS NULL`),
- * never a per-opportunity override.
+ * displays the `open` row of the workflow its own product category resolves
+ * to (user directive 2026-09-08), and the GLOBAL default set's own `open` row
+ * only when no workflow matches it. Always a real, user-configurable
+ * QuoteWorkflowStatus row, never a per-opportunity override.
  */
 uses(RefreshDatabase::class);
 
@@ -58,6 +61,46 @@ if (! function_exists('computedStatusCreatePayload')) {
                 ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
             ],
             'products_of_interest' => [Product::factory()->create(['category_id' => $category->id])->id],
+        ];
+    }
+}
+
+if (! function_exists('computedStatusQuoteLessOnWorkflow')) {
+    /**
+     * A quote-less opportunity classified on a category a workflow matches —
+     * the shape the 2026-09-08 directive is about: no offer, hence no
+     * product, so the workflow is resolved through the opportunity's own
+     * product line.
+     *
+     * @return array{opportunity: Opportunity, open: QuoteWorkflowStatus}
+     */
+    function computedStatusQuoteLessOnWorkflow(string $openName): array
+    {
+        $businessFunction = BusinessFunction::factory()->create();
+        $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
+
+        $workflow = QuoteWorkflow::factory()->create();
+        foreach (['open', 'closed_won', 'closed_lost'] as $key) {
+            QuoteWorkflowStatus::factory()->system($key)->create([
+                'quote_workflow_id' => $workflow->id,
+                'name' => $key === 'open' ? $openName : ucfirst($key),
+            ]);
+        }
+        $workflow->criteria()->create(['field' => 'product_category_id', 'value_id' => $category->id]);
+
+        $opportunity = Opportunity::factory()->create();
+        OpportunityProductLine::factory()->create([
+            'opportunity_id' => $opportunity->id,
+            'business_function_id' => $businessFunction->id,
+            'product_category_id' => $category->id,
+        ]);
+
+        return [
+            'opportunity' => $opportunity,
+            'open' => QuoteWorkflowStatus::query()
+                ->where('quote_workflow_id', $workflow->id)
+                ->where('system_key', 'open')
+                ->sole(),
         ];
     }
 }
@@ -168,13 +211,13 @@ it('rows: the `status` set filter matches the DISPLAYED status, quotes branch (A
         ->and($ids)->not->toContain($quoteless->id);
 });
 
-it('rows: the `status` set filter matches the GLOBAL default open row ONLY for quote-less rows (AC-008, spec 0083 D-8)', function () {
+it('rows: the `status` set filter matches the GLOBAL default open row ONLY for quote-less rows with no matching workflow (AC-008, spec 0083 D-8)', function () {
     $globalOpen = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
     $globalOpen->update(['name' => 'Da lavorare']);
 
-    // Every quote-less opportunity displays the SAME global default `open`
-    // row (D-8) — there is no per-opportunity working-state override any
-    // more (the Opportunity's own working-state column no longer exists).
+    // A quote-less opportunity with no product line matches no workflow, so
+    // it displays the GLOBAL default `open` row (D-8) — the factory creates
+    // no classification of its own.
     $quoteless = Opportunity::factory()->create();
 
     // Has a quote -> the quote's own status is what it displays, so the
@@ -196,7 +239,7 @@ it('rows: the `status` set filter matches the GLOBAL default open row ONLY for q
     expect($ids)->toBe([$quoteless->id]);
 });
 
-it('values: the `status` option list unions quote statuses and the global default open row (spec 0083 D-8)', function () {
+it('values: the `status` option list unions quote statuses and the row a quote-less opportunity displays (spec 0083 D-8)', function () {
     $quoteStatus = QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare']);
     $globalOpen = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
     $globalOpen->update(['name' => 'Da lavorare']);
@@ -214,6 +257,62 @@ it('values: the `status` option list unions quote statuses and the global defaul
         ->assertOk()->json('data.values');
 
     expect($values)->toBe(['Da approvare', 'Da lavorare']);
+});
+
+it('rows: the `status` set filter matches the workflow a quote-less opportunity resolves to (user directive 2026-09-08)', function () {
+    $globalOpen = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
+    $globalOpen->update(['name' => 'Da lavorare']);
+
+    ['opportunity' => $onWorkflow] = computedStatusQuoteLessOnWorkflow('Da Richiamare');
+    // No product line at all -> nothing matches it, so it stays on the global set.
+    $onGlobalDefault = Opportunity::factory()->create();
+
+    Sanctum::actingAs(computedStatusActor());
+
+    $matchingWorkflow = collect($this->postJson('/api/tables/opportunities/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['status' => ['filterType' => 'set', 'values' => ['Da Richiamare']]],
+    ])->assertOk()->json('items'))->pluck('id')->all();
+
+    $matchingGlobal = collect($this->postJson('/api/tables/opportunities/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['status' => ['filterType' => 'set', 'values' => ['Da lavorare']]],
+    ])->assertOk()->json('items'))->pluck('id')->all();
+
+    expect($matchingWorkflow)->toBe([$onWorkflow->id])
+        ->and($matchingGlobal)->toBe([$onGlobalDefault->id]);
+});
+
+it('rows: the `status` cell of a quote-less opportunity carries its own workflow row (user directive 2026-09-08)', function () {
+    ['opportunity' => $opportunity, 'open' => $open] = computedStatusQuoteLessOnWorkflow('Da Richiamare');
+
+    Sanctum::actingAs(computedStatusActor());
+
+    $row = collect($this->postJson('/api/tables/opportunities/rows', ['startRow' => 0, 'endRow' => 25])
+        ->assertOk()->json('items'))->firstWhere('id', $opportunity->id);
+
+    expect($row['status']['source'])->toBe('default')
+        ->and($row['status']['entries'])->toBe([[
+            'id' => $open->id,
+            'name' => 'Da Richiamare',
+            'color' => $open->color,
+            'group' => $open->group->value,
+            'count' => 0,
+        ]]);
+});
+
+it('values: the `status` option list carries the workflow row a quote-less opportunity displays (user directive 2026-09-08)', function () {
+    $globalOpen = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
+    $globalOpen->update(['name' => 'Da lavorare']);
+
+    computedStatusQuoteLessOnWorkflow('Da Richiamare');
+
+    Sanctum::actingAs(computedStatusActor());
+
+    $values = $this->postJson('/api/tables/opportunities/values', ['columnId' => 'status'])
+        ->assertOk()->json('data.values');
+
+    expect($values)->toBe(['Da Richiamare']);
 });
 
 // ---------------------------------------------------------------------------

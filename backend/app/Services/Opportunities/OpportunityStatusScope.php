@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Opportunities;
 
 use App\Enums\WorkflowStatusGroup;
-use App\Enums\WorkflowStatusSystemKey;
 use App\Models\QuoteWorkflowStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -18,9 +17,23 @@ use Illuminate\Database\Eloquent\Model;
  * with the badge next to it.
  *
  * The predicate is always the same OR: the row has a quote in a matching
- * workflow status, or — only when it has NO quote at all — the GLOBAL
- * default workflow set's `open` row itself matches (D-8: every quote-less
- * opportunity displays that SAME row, never a per-row lookup).
+ * workflow status, or it has NO quote at all and the row
+ * OpportunityDefaultStatusResolver resolves for it matches (D-8, user
+ * directive 2026-09-08). That second branch is a per-row resolution — the
+ * workflow a quote-less opportunity displays depends on its own product
+ * category, and the winner is picked by a ranking (specificity, then branch
+ * distance) that has no SQL form — so those ids are resolved in PHP and bound
+ * back with a `whereIn`.
+ *
+ * WHICH quote-less rows get resolved is the caller's call, hence the
+ * mandatory `$quoteLessSource`: a STANDALONE (never correlated) query the
+ * resolution is allowed to EXECUTE. Callers with a narrowing already in hand
+ * pass it (RegistryOpenOpportunityGuard: the registries it is asking about;
+ * the grid: its own filtered query), a caller constraining a correlated
+ * subquery — which cannot be executed on its own — passes the whole
+ * `Opportunity::query()`. Passing more rows than needed only costs time, never
+ * correctness: the ids land in an OR branch of a query that still applies
+ * every other constraint on top.
  *
  * Values are always bound through `whereIn`/parameter binding — never
  * interpolated (backend.md §8).
@@ -45,64 +58,75 @@ final class OpportunityStatusScope
     /**
      * @param  Builder<Model>  $opportunities
      * @param  array<int, string>  $names
+     * @param  Builder<Model>  $quoteLessSource  standalone query the quote-less branch resolves over
      */
-    public static function whereNameIn(Builder $opportunities, array $names): void
+    public static function whereNameIn(Builder $opportunities, array $names, Builder $quoteLessSource): void
     {
-        self::whereDisplayed($opportunities, 'name', $names);
+        self::whereDisplayed($opportunities, 'name', $names, $quoteLessSource);
     }
 
     /**
      * @param  Builder<Model>  $opportunities
      * @param  array<int, string>  $groups
+     * @param  Builder<Model>  $quoteLessSource  standalone query the quote-less branch resolves over
      */
-    public static function whereGroupIn(Builder $opportunities, array $groups): void
+    public static function whereGroupIn(Builder $opportunities, array $groups, Builder $quoteLessSource): void
     {
-        self::whereDisplayed($opportunities, 'group', $groups);
+        self::whereDisplayed($opportunities, 'group', $groups, $quoteLessSource);
     }
 
     /**
      * @param  Builder<Model>  $opportunities
      * @param  array<int, string>  $values
+     * @param  Builder<Model>  $quoteLessSource
      */
-    private static function whereDisplayed(Builder $opportunities, string $column, array $values): void
+    private static function whereDisplayed(Builder $opportunities, string $column, array $values, Builder $quoteLessSource): void
     {
         if ($values === []) {
             return;
         }
 
-        $opportunities->where(static function (Builder $outer) use ($column, $values): void {
+        $quoteLessIds = self::quoteLessIdsMatching($quoteLessSource, $column, $values);
+
+        $opportunities->where(static function (Builder $outer) use ($column, $values, $quoteLessIds): void {
             $outer->whereHas('quotes.quoteWorkflowStatus', static function (Builder $related) use ($column, $values): void {
                 $related->whereIn($column, $values);
             });
 
-            // D-8: a quote-less opportunity always displays the GLOBAL
-            // default set's `open` row — it matches the filter only when
-            // THAT row's own value is among $values, never per-row.
-            if (self::defaultOpenMatches($column, $values)) {
-                $outer->orWhereDoesntHave('quotes');
+            if ($quoteLessIds !== []) {
+                $outer->orWhereIn('opportunities.id', $quoteLessIds);
             }
         });
     }
 
     /**
+     * The ids of the quote-less rows of $source whose DISPLAYED status carries
+     * one of $values in $column — the same rows, resolved by the same
+     * collaborator, the badge would show that status on.
+     *
+     * @param  Builder<Model>  $source
      * @param  array<int, string>  $values
+     * @return array<int, int>
      */
-    private static function defaultOpenMatches(string $column, array $values): bool
+    private static function quoteLessIdsMatching(Builder $source, string $column, array $values): array
     {
-        $value = QuoteWorkflowStatus::query()
-            ->whereNull('quote_workflow_id')
-            ->where('system_key', WorkflowStatusSystemKey::Open->value)
-            ->value($column);
+        $statuses = app(OpportunityDefaultStatusResolver::class)->statusesForQuoteLess($source);
 
-        if ($value === null) {
-            return false;
-        }
+        return array_keys(array_filter(
+            $statuses,
+            static fn (QuoteWorkflowStatus $status): bool => in_array(self::displayedValue($status, $column), $values, true),
+        ));
+    }
 
-        // `group` is cast to WorkflowStatusGroup on the model, so
-        // Builder::value() (which hydrates via first()) returns the enum,
-        // not the raw string, for that column — `name` stays a plain string.
-        $scalar = $value instanceof WorkflowStatusGroup ? $value->value : $value;
+    /**
+     * $status' own value for the filtered $column. `group` is cast to
+     * WorkflowStatusGroup on the model, so it is unwrapped to the raw string
+     * the client filters on; `name` is already one.
+     */
+    private static function displayedValue(QuoteWorkflowStatus $status, string $column): string
+    {
+        $value = $status->getAttribute($column);
 
-        return in_array($scalar, $values, true);
+        return $value instanceof WorkflowStatusGroup ? $value->value : (string) $value;
     }
 }

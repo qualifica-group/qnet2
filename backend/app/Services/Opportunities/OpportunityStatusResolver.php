@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Opportunities;
 
-use App\Enums\WorkflowStatusSystemKey;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
@@ -14,9 +13,11 @@ use Illuminate\Support\Collection;
  * The Opportunity's status, COMPUTED (spec 0082, re-targeted at the Quote
  * workflow by spec 0083 D-2/D-8): an Opportunity carries no status FK of its
  * own — its state is read off the `quote_workflow_status` of its Quotes,
- * falling back to the GLOBAL default quote-workflow set's `open` row when it
- * has no Quote yet (a real, user-configurable row, never a hardcoded
- * string).
+ * falling back — when it has no Quote yet — to the `open` row of the workflow
+ * its OWN classification resolves to (user directive 2026-09-08, delegated to
+ * OpportunityDefaultStatusResolver), and only to the GLOBAL default set when
+ * nothing matches it. Always a real, user-configurable row, never a hardcoded
+ * string.
  *
  * The single source of truth for BR-1..BR-4: every consumer (OpportunityResource,
  * OpportunitiesTableDefinition, RequestManagementResource, RewardResource,
@@ -26,31 +27,29 @@ use Illuminate\Support\Collection;
  * path is the only one that stays O(1) in queries across a table page. On a
  * bare, route-bound model the resolver falls back to ONE explicit aggregate
  * query (never a lazy relation access, so Model::preventLazyLoading() stays
- * satisfied). The GLOBAL default `open` row itself is memoized per instance:
- * identical for every quote-less Opportunity a caller resolves within the
- * same request (e.g. a whole grid page via OpportunitiesTableDefinition's
- * injected singleton-per-request instance).
+ * satisfied). The quote-less fallback resolves in memory too, on the
+ * workflow set OpportunityDefaultStatusResolver memoizes for the whole
+ * request — a page of quote-less rows costs the workflow queries once, not
+ * once per row.
  */
 final class OpportunityStatusResolver
 {
     /** At least one Quote: the status is described by the quotes' own workflow statuses. */
     public const string SOURCE_QUOTES = 'quotes';
 
-    /** No Quote at all: the status falls back to the global default workflow's `open` row. */
+    /** No Quote at all: the status falls back to the `open` row of the workflow resolved for the Opportunity itself. */
     public const string SOURCE_DEFAULT = 'default';
 
     /**
-     * The relations resolve() reads. Eager-load these whenever the resolver
-     * runs over more than one Opportunity.
+     * The relations resolve() reads — its own, plus the ones the quote-less
+     * fallback resolves through. Eager-load these whenever the resolver runs
+     * over more than one Opportunity.
      *
      * @var array<int, string>
      */
-    public const array EAGER_LOADS = ['quotes.quoteWorkflowStatus'];
+    public const array EAGER_LOADS = ['quotes.quoteWorkflowStatus', ...OpportunityDefaultStatusResolver::EAGER_LOADS];
 
-    /**
-     * @var array{id: int, name: string, color: string|null, group: string, count: int}|null
-     */
-    private ?array $defaultEntryCache = null;
+    public function __construct(private readonly OpportunityDefaultStatusResolver $defaultStatus) {}
 
     /**
      * @return array{source: string, distinct_count: int, entries: array<int, array{id: int, name: string, color: string|null, group: string, count: int}>}
@@ -64,9 +63,10 @@ final class OpportunityStatusResolver
             return $this->summary(self::SOURCE_QUOTES, $entries);
         }
 
-        // Step 2 (D-8): no quote — fall back to the global default set's
-        // `open` row, a single entry with count 0.
-        return $this->summary(self::SOURCE_DEFAULT, [$this->defaultEntry()]);
+        // Step 2 (D-8): no quote — fall back to the `open` row of the
+        // workflow this Opportunity's own classification resolves to, a
+        // single entry with count 0.
+        return $this->summary(self::SOURCE_DEFAULT, [$this->defaultEntry($opportunity)]);
     }
 
     /**
@@ -150,31 +150,19 @@ final class OpportunityStatusResolver
     }
 
     /**
-     * The fallback entry (D-8): the GLOBAL default quote-workflow set's
-     * `open` row, `count` always 0 (there is no quote to count). Memoized:
-     * the SAME row for every quote-less opportunity resolved by this
-     * instance.
+     * The fallback entry (D-8, user directive 2026-09-08): the `open` row of
+     * the workflow OpportunityDefaultStatusResolver resolves for
+     * $opportunity — its product lines' categories being what a quote-less
+     * row has to be classified by — with `count` always 0 (there is no quote
+     * to count).
      *
      * @return array{id: int, name: string, color: string|null, group: string, count: int}
      */
-    private function defaultEntry(): array
+    private function defaultEntry(Opportunity $opportunity): array
     {
-        if ($this->defaultEntryCache !== null) {
-            return $this->defaultEntryCache;
-        }
+        $status = $this->defaultStatus->statusFor($opportunity);
 
-        $status = QuoteWorkflowStatus::query()
-            ->whereNull('quote_workflow_id')
-            ->where('system_key', WorkflowStatusSystemKey::Open->value)
-            ->first();
-
-        if ($status === null) {
-            // Defense in depth: the global set is always seeded with its
-            // `open` row (AC-004/AC-005) — should never happen.
-            abort(500, 'The global default quote workflow status set has no open system row.');
-        }
-
-        return $this->defaultEntryCache = [
+        return [
             'id' => (int) $status->id,
             'name' => (string) $status->name,
             'color' => $status->color,

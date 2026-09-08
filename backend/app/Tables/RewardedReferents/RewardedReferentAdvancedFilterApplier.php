@@ -172,7 +172,13 @@ final class RewardedReferentAdvancedFilterApplier
             $query->whereHas('rewards', static function (Builder $rewards) use ($names): void {
                 RewardOriginScope::whereOpportunity(
                     $rewards,
-                    static fn (Builder $source) => OpportunityStatusScope::whereNameIn($source, $names),
+                    // $source is a CORRELATED subquery (it references the
+                    // reward row it hangs off), so it cannot be executed on
+                    // its own: the quote-less branch is handed a standalone
+                    // query instead. Resolving more rows than this filter can
+                    // return costs time, never correctness — the ids land in
+                    // an OR branch of the correlated predicate.
+                    static fn (Builder $source) => OpportunityStatusScope::whereNameIn($source, $names, Opportunity::query()),
                 );
             });
         }

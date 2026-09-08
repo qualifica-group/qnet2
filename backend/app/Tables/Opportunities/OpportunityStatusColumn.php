@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tables\Opportunities;
 
+use App\Models\QuoteWorkflowStatus;
+use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -20,10 +22,10 @@ use Illuminate\Support\Facades\DB;
  *
  * The set filter (BR-5) matches the status actually DISPLAYED: an opportunity
  * with quotes shows its quotes' workflow statuses, one without shows the
- * GLOBAL default workflow set's `open` row (D-8, spec 0083). So the option
- * list here is the union of both, and the matching itself is delegated to
- * the shared OpportunityStatusScope — the same predicate every other
- * consumer uses.
+ * `open` row of the workflow its own product category resolves to (D-8, user
+ * directive 2026-09-08). So the option list here is the union of both, and
+ * the matching itself is delegated to the shared OpportunityStatusScope —
+ * the same predicate every other consumer uses.
  */
 final class OpportunityStatusColumn
 {
@@ -60,14 +62,17 @@ final class OpportunityStatusColumn
             return;
         }
 
-        OpportunityStatusScope::whereNameIn($query, $values);
+        // The grid query is standalone (and already carries the actor's own
+        // visibility), so the quote-less branch resolves over exactly the rows
+        // this grid can show — never the whole table.
+        OpportunityStatusScope::whereNameIn($query, $values, (clone $query));
     }
 
     /**
      * Excel-like distinct values (spec 0004/0005): every quote-workflow-
-     * status name in use among the matching rows' quotes, plus — when at
-     * least one matching row has no quote (D-8) — the GLOBAL default
-     * workflow set's `open` row name, the ONE value every such row displays.
+     * status name in use among the matching rows' quotes, plus the names the
+     * QUOTE-LESS rows display (D-8) — resolved per row, since each of them
+     * follows its own product category's workflow.
      *
      * @param  Builder<Model>  $query
      * @return array<int, string>
@@ -87,11 +92,8 @@ final class OpportunityStatusColumn
             ->pluck('quote_workflow_statuses.name')
             ->map(static fn (mixed $name): string => (string) $name);
 
-        $hasQuoteLessRow = (clone $query)->whereDoesntHave('quotes')->exists();
-        $defaultOpenName = $hasQuoteLessRow ? self::defaultOpenName($search) : null;
-
         return $quoteStatusNames
-            ->when($defaultOpenName !== null, static fn ($collection) => $collection->push($defaultOpenName))
+            ->merge(self::quoteLessNames($query, $search))
             ->unique()
             ->sort()
             ->values()
@@ -100,27 +102,23 @@ final class OpportunityStatusColumn
     }
 
     /**
-     * The GLOBAL default workflow set's `open` row name (D-8) — the ONE
-     * value every quote-less opportunity's status resolves to — or null when
-     * $search does not match it (or the row is somehow missing, defense in
-     * depth; never expected — AC-004/AC-005).
+     * The distinct names the quote-less rows of $query display, filtered by
+     * $search the same way the SQL side filters the quotes' own names.
+     *
+     * @param  Builder<Model>  $query
+     * @return array<int, string>
      */
-    private static function defaultOpenName(?string $search): ?string
+    private static function quoteLessNames(Builder $query, ?string $search): array
     {
-        $name = DB::table('quote_workflow_statuses')
-            ->whereNull('quote_workflow_id')
-            ->where('system_key', 'open')
-            ->value('name');
+        $names = collect(app(OpportunityDefaultStatusResolver::class)->statusesForQuoteLess($query))
+            ->map(static fn (QuoteWorkflowStatus $status): string => (string) $status->name);
 
-        if (! is_string($name)) {
-            return null;
+        if ($search !== null && $search !== '') {
+            $needle = mb_strtolower($search);
+            $names = $names->filter(static fn (string $name): bool => str_contains(mb_strtolower($name), $needle));
         }
 
-        if ($search !== null && $search !== '' && ! str_contains(mb_strtolower($name), mb_strtolower($search))) {
-            return null;
-        }
-
-        return $name;
+        return $names->unique()->values()->all();
     }
 
     /** Escape LIKE wildcards in user input so they are treated literally. */
