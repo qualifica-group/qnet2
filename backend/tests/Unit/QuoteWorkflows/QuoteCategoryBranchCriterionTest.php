@@ -260,7 +260,7 @@ it('still tie-breaks by id asc at equal criteria count AND equal depth (AC-011)'
     expect(workflowResolver()->resolve($quote)?->id)->toBe(min($first->id, $second->id));
 });
 
-it('does not match a branch criterion when the quote has no offer line (AC-013)', function () {
+it('does not match a branch criterion when the quote has no offer line and its opportunity no product line (AC-013)', function () {
     ['root' => $root] = consulenzaBranch();
     $quote = quoteForNewOpportunity();
 

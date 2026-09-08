@@ -11,12 +11,14 @@ use App\Policies\Abstracts\BasePolicy;
  * Opportunity records, but access is authorized through its OWN permission
  * set (`request-management.*`), never `opportunities.*`.
  *
- * Two additions beyond BasePolicy: `viewAll` lifts the manager-scoping guard
- * (spec 0049 D-3, `RequestManagementScope`) so the actor sees every
- * opportunity instead of only the ones where they are Account Manager, and
- * `viewDocuments` gates the documents surface (the reused polymorphic
- * Attachment subsystem) with this module's OWN permission, exactly as
- * OpportunityPolicy does for `opportunities.viewDocuments`.
+ * Three additions beyond BasePolicy: `viewAll` lifts the manager-scoping
+ * guard (spec 0049 D-3, `RequestManagementScope`) so the actor sees every
+ * opportunity instead of only the ones where they are Account Manager,
+ * `viewSite` widens that same guard to the actor's own Sedi operative without
+ * lifting it (spec 0105), and `viewDocuments` gates the documents surface
+ * (the reused polymorphic Attachment subsystem) with this module's OWN
+ * permission, exactly as OpportunityPolicy does for
+ * `opportunities.viewDocuments`.
  */
 class RequestManagementPolicy extends BasePolicy
 {
@@ -33,6 +35,24 @@ class RequestManagementPolicy extends BasePolicy
     public function viewAll(User $user): bool
     {
         return $user->can($this->permission('viewAll'));
+    }
+
+    /**
+     * Resource-level gate for the THIRD visibility tier (spec 0105, D-1): the
+     * actor sees the requests whose Sede operativa
+     * (`quotes.operational_site_id`) is one of their own memberships —
+     * physical or remote alike (spec 0103 D-1) — even where they are not the
+     * GA2 "Operatore".
+     *
+     * Independent of `viewAll`, not a weaker degree of it (D-5): holding one
+     * implies nothing about the other, and an actor who holds both is served
+     * by `viewAll`, which RequestManagementScope evaluates first. Like
+     * `viewAll` it is a ROW gate and grants no action: every write still asks
+     * for its own ability on top (D-2).
+     */
+    public function viewSite(User $user): bool
+    {
+        return $user->can($this->permission('viewSite'));
     }
 
     /**
@@ -111,10 +131,24 @@ class RequestManagementPolicy extends BasePolicy
     }
 
     /**
+     * Resource-level gate for generating/downloading the CSV report (spec
+     * 0106): a standalone capability, independent of `viewAll`/`viewSite`
+     * (which widen ROW visibility) — the report aggregates over the actor's
+     * OWN visibility scope (RequestManagementScope), it grants no wider read
+     * than the grid already does. NOT implied by, nor implying,
+     * `request-management.export` (grid row export): two distinct
+     * capabilities (data_contract, permission.semantics).
+     */
+    public function report(User $user): bool
+    {
+        return $user->can($this->permission('report'));
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'assignOperator', 'assignManagerGa3', 'transferContact', 'receiveTransferNotifications'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewDocuments', 'assignOperator', 'assignManagerGa3', 'transferContact', 'receiveTransferNotifications', 'report'];
     }
 }

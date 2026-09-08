@@ -149,7 +149,7 @@ it('quoteValues() extracts distinct values from the OFFER lines for business_fun
         ->and($productCategoryValues)->toEqualCanonicalizing([$categoryA1->id, $categoryA2->id, $categoryB->id]);
 });
 
-it('quoteValues() returns an empty array when the quote has no offer lines', function () {
+it('quoteValues() returns an empty array when neither the offer lines nor the opportunity product lines carry one', function () {
     $opportunity = Opportunity::factory()->create();
     $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
     $quote->load('offerLines.product.category');

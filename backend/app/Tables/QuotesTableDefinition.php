@@ -7,6 +7,7 @@ use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\QuoteService;
+use App\Services\RequestManagement\RequestManagementScope;
 use App\Tables\Quotes\QuoteAdvancedFilterCatalog;
 use App\Tables\Quotes\QuoteColumnCatalog;
 use App\Tables\Quotes\QuoteRelationColumns;
@@ -320,6 +321,11 @@ class QuotesTableDefinition extends AbstractTableDefinition
      * this migration; mirrors OpportunitiesTableDefinition::allowsNotes'
      * shape, not its source any more. This action is an affordance only, the
      * endpoint authorizes for real.
+     *
+     * Spec 0105: the third tier is delegated to RequestManagementScope rather
+     * than re-spelled here — `operational_site_id` is a real column on the
+     * row, so the check costs no query, and the actor's own Sedi are resolved
+     * once per request by the scope's loadMissing.
      */
     private function allowsNotes(User $actor, Quote $quote): bool
     {
@@ -328,7 +334,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
         }
 
         return $actor->can('request-management.viewAll')
-            || $quote->operator_id === $actor->id;
+            || $quote->operator_id === $actor->id
+            || RequestManagementScope::isInActorSites($actor, $quote);
     }
 
     /**

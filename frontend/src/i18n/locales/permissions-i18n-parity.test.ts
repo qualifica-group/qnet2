@@ -99,9 +99,12 @@ const CATALOGUE_ABILITIES = [
   'changeStatus',
   'reactivate',
   'viewAll',
+  'viewSite',
   'viewDocuments',
   'assignOperator',
   'impersonate',
+  // Spec 0106: `request-management.report` (generate/download the CSV report).
+  'report',
 ]
 
 describe('permissions i18n parity (spec 0076 AC-020, AC-021)', () => {

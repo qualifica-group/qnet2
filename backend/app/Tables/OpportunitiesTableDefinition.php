@@ -6,6 +6,7 @@ use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityStatusResolver;
+use App\Services\RequestManagement\RequestManagementScope;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
 use App\Tables\Opportunities\OpportunityColumnCatalog;
 use App\Tables\Opportunities\OpportunityRelationColumns;
@@ -15,6 +16,7 @@ use App\Tables\Shared\ProductsOfInterestColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -103,7 +105,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         // Eager-load every relation mapRow touches to avoid N+1 across the page.
         // supervisor/managers pull their avatar relation too, so each row can
         // project the inline avatar (data URI) without a per-row query.
-        return Opportunity::query()
+        $query = Opportunity::query()
             ->with([
                 'registry', 'referent', 'commercial', 'supervisor.avatar', 'source',
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',
@@ -125,6 +127,40 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             // replies, soft-deleted excluded — same projection Gestione
             // Richieste carries.
             ->withCount('notes');
+
+        // Spec 0105, D-10: the third visibility tier of Gestione Richieste
+        // read from this grid. The rule is on the OFFERTE, not on
+        // `opportunities.operational_site_id` (which can diverge from theirs),
+        // and this list eager-loads no quotes — hence one EXISTS subquery for
+        // the whole page instead of a query per row. Added only for an actor
+        // who can actually use it: allowsNotes() reads the flag as absent.
+        $siteIds = $this->actorRequestSiteIds();
+
+        if ($siteIds !== []) {
+            $query->withExists([
+                'quotes as site_scoped_quote_exists' => fn (Builder $quotes): Builder => $quotes->whereIn('operational_site_id', $siteIds),
+            ]);
+        }
+
+        return $query;
+    }
+
+    /**
+     * The Sedi operative of the current actor when they hold
+     * `request-management.viewSite`, `[]` otherwise (spec 0105, D-10) — the
+     * one input of the EXISTS subquery above.
+     *
+     * @return array<int, int>
+     */
+    private function actorRequestSiteIds(): array
+    {
+        $actor = Auth::user();
+
+        if ($actor === null || ! $actor->can('request-management.viewSite')) {
+            return [];
+        }
+
+        return RequestManagementScope::actorSiteIds($actor);
     }
 
     /**
@@ -296,14 +332,19 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
 
     /**
      * The SAME rule RequestManagementNotable::authorizeRead applies when the
-     * note endpoints re-check the thread: `request-management.view` AND either
-     * `request-management.viewAll` or being that opportunity's GA2 Operatore.
+     * note endpoints re-check the thread: `request-management.view` AND one of
+     * `request-management.viewAll`, being that opportunity's GA2 Operatore, or
+     * (spec 0105) reaching one of its Offerte through `viewSite`.
      * The full rule is evaluated here — unlike the request-management table,
      * this list is NOT already scoped to the actor's own opportunities, so
      * checking only `request-management.view` would offer the action on rows
      * whose thread the actor cannot read (a 403 inside the dialog). Reads the
      * eager-loaded `managers` collection via `operatorManager()`, the single
      * expression of the "position 2 = operator" rule: no per-row query.
+     *
+     * Spec 0105: the third tier reads `site_scoped_quote_exists`, the EXISTS
+     * flag baseQuery() projects for a `viewSite` holder — absent (hence
+     * false) for every other actor.
      */
     private function allowsNotes(User $actor, Opportunity $row): bool
     {
@@ -312,7 +353,8 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         }
 
         return $actor->can('request-management.viewAll')
-            || $row->operatorManager()?->id === $actor->id;
+            || $row->operatorManager()?->id === $actor->id
+            || (bool) ($row->site_scoped_quote_exists ?? false);
     }
 
     /**

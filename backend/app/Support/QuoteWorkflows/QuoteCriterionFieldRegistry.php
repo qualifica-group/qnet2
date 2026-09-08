@@ -21,11 +21,16 @@ use InvalidArgumentException;
  * only ever come from THIS registry, never from raw request input).
  *
  * D-7: `product_category_id`/`business_function_id` are resolved from the
- * Quote's own REVENUE offer lines (`Quote::offerLines`, never `cost_lines`),
- * while `source_id` and every custom `relation` field have NO counterpart on
- * the Quote at all: they are resolved by INHERITANCE from the parent
- * Opportunity (`quote.opportunity`). `inherited` in the catalogue shape
- * (AC-016) marks exactly this split, so the client can tell the two apart.
+ * Quote's own REVENUE offer lines (`Quote::offerLines`, never `cost_lines`)
+ * and — when it has none — from its Opportunita's product lines (user
+ * directive 2026-09-08, delegated to QuoteClassificationSource, which owns
+ * both sources and the rule between them), while `source_id` and every custom
+ * `relation` field have NO counterpart on the Quote at all: they are resolved
+ * by INHERITANCE from the parent Opportunity (`quote.opportunity`).
+ * `inherited` in the catalogue shape (AC-016) marks exactly this split, so
+ * the client can tell the two apart — the fallback does NOT make the two
+ * category fields inherited ones: they stay the offer's own whenever the
+ * offer has anything of its own to say.
  *
  * The former `state_id` (Regione) criterion is GONE with the Opportunity's
  * own Regione column (user directive 2026-09-01).
@@ -97,6 +102,7 @@ final class QuoteCriterionFieldRegistry
         private readonly CustomFieldEntityRegistry $entityRegistry,
         private readonly CustomFieldRelationLabelResolver $relationLabelResolver,
         private readonly CategoryBranchResolver $branchResolver,
+        private readonly QuoteClassificationSource $classification,
     ) {}
 
     /**
@@ -154,15 +160,16 @@ final class QuoteCriterionFieldRegistry
     /**
      * The distinct value(s) $quote actually carries for $field (AC-010/011/
      * 012): the resolving Opportunity's own value for an INHERITED field
-     * (empty when null or the opportunity is missing), the distinct,
-     * non-null values across every `offerLines()` row's product for
-     * `business_function_id`/`product_category_id`, that same set WIDENED to
-     * every ancestor for `product_category_branch_id` (spec 0092 D-2,
-     * delegated to CategoryBranchResolver), or — for a custom
-     * relation field (also inherited, D-7) — the Opportunity's normalized
+     * (empty when null or the opportunity is missing), the offer's own
+     * classification for `business_function_id`/`product_category_id`
+     * (QuoteClassificationSource: its revenue lines' products, or its
+     * Opportunita's product lines when the offer has no revenue line), that
+     * same set WIDENED to every ancestor for `product_category_branch_id`
+     * (spec 0092 D-2, delegated to CategoryBranchResolver), or - for a custom
+     * relation field (also inherited, D-7) - the Opportunity's normalized
      * (int[]) `custom_fields` value. Assumes `offerLines.product.category`/
-     * `opportunity.customFieldValueRow` are already eager-loaded by the
-     * caller (no N+1 query here).
+     * `opportunity.productLines`/`opportunity.customFieldValueRow` are
+     * already eager-loaded by the caller (no N+1 query here).
      *
      * @return array<int, int>
      */
@@ -184,23 +191,9 @@ final class QuoteCriterionFieldRegistry
             return array_keys($this->branchResolver->distancesFor($quote));
         }
 
-        return $this->offerLineValues($quote, $field);
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    private function offerLineValues(Quote $quote, string $field): array
-    {
-        return $quote->offerLines
-            ->map(static fn ($line): mixed => $field === 'product_category_id'
-                ? $line->product?->category_id
-                : $line->product?->category?->business_function_id)
-            ->filter()
-            ->unique()
-            ->values()
-            ->map(static fn (mixed $value): int => (int) $value)
-            ->all();
+        return $field === 'product_category_id'
+            ? $this->classification->categoryIds($quote)
+            : $this->classification->businessFunctionIds($quote);
     }
 
     /**

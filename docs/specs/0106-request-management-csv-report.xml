@@ -1,0 +1,736 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0106 — Report CSV di Gestione Richieste.
+  Contract-first: il data_contract e' congelato PRIMA del dispatch dei teammate.
+  Prosa italiana senza accenti; identificatori inglesi (engineering.md §1.2).
+-->
+<spec id="0106-request-management-csv-report" status="draft" owner="utente" date="2026-09-07">
+
+  <goal>
+    Dare a chi lavora in Gestione Richieste un report CSV scaricabile, filtrato per range di
+    date, che aggrega gli indicatori di lavorazione per categoria di prodotto e, dentro ogni
+    categoria, per singolo GA2 (Operatore). Serve a confrontare il risultato complessivo di una
+    categoria con quello prodotto da ciascun operatore nel periodo.
+  </goal>
+
+  <context>
+    <!-- Nomi verificati sul repo, non ipotizzati. File:riga citati per ogni affermazione. -->
+
+    <entity name="Quote">
+      La riga di Gestione Richieste e' una `Quote` (spec 0086 D-1/D-2), non una `Opportunity`:
+      `RequestManagementTableDefinition::modelClass()` -> `Quote::class`
+      (backend/app/Tables/RequestManagementTableDefinition.php:110), `domain()` -> 'request-management' (:104).
+      Colonne usate qui: `quotes.opportunity_id`, `quotes.operator_id` (il GA2, nullable),
+      `quotes.quote_workflow_status_id`, `quotes.next_callback_at`, `quotes.created_at`.
+    </entity>
+
+    <entity name="GA2">
+      GA1/GA2/GA3 NON sono colonne: sono posizioni del pivot `quote_user`, e i numeri vivono solo in
+      `App\Support\ManagerPositions` (`OPERATOR = 2`, `GA3 = 3`). Il GA2 e' pero' denormalizzato su
+      `quotes.operator_id`, l'unica colonna su cui la visibilita' scopa. Relazione
+      `Quote::operator()` (backend/app/Models/Quote.php:234) -> `User`; l'etichetta e' `users.name`,
+      colonna singola: nessun accessor `full_name` esiste
+      (backend/app/Tables/RequestManagement/RequestRowMapper.php:198-205,
+      backend/app/Http/Resources/UserForSelectResource.php:42, ADR 0011).
+    </entity>
+
+    <entity name="Categoria">
+      Le sei categorie del report sono nodi reali di `product_categories`, seedati da
+      `QualificaCatalogSeeder::CATALOG` (backend/database/seeders/QualificaCatalogSeeder.php:126-155):
+      `GOL` (container sotto `Formazione`, con 10 figli regionali `GOL - <Regione>`), `Autoimpiego`,
+      `Yisu`, `Autofinanziato` (sotto `Formazione`), `Consulenza` (root), `APL` (root, con figlio
+      `Orientamento Specialistico`). I sei rami sono DISGIUNTI.
+
+      Il nome reale e' `Yisu` (non "YISU") e `APL` (la voce del brief "APL - Orientamento
+      specialistico" e' il ramo APL, il cui unico figlio classificabile e' `Orientamento Specialistico`).
+
+      La classificazione di una richiesta passa dalla catena a livello Opportunity, la stessa che
+      il modulo usa gia' per i tab e per il filtro di categoria:
+      `quotes.opportunity_id -> opportunities.id -> opportunity_product_lines.opportunity_id ->
+      opportunity_product_lines.product_category_id -> product_categories.id`
+      (backend/app/Services/RequestManagement/RequestCategoryTabsResolver.php:31-50,
+      backend/app/Tables/RequestManagement/RequestManagementScopedTableDefinition.php:140-142).
+      NON si usa la catena `quote_lines -> products.category_id`: quella serve solo alla risoluzione
+      del workflow (`CategoryBranchResolver`) e darebbe numeri diversi da quelli che l'utente vede
+      nei tab.
+
+      `opportunity_product_lines` e' one-to-many: una richiesta puo' essere classificata su PIU'
+      categorie e conta in ognuna (docblock RequestCategoryTabsResolver.php:16-17, AC-037 della 0077).
+      Il de-dup e' `count(distinct quotes.id)`, INTRA-categoria.
+
+      Espansione del ramo: `CategoryHierarchy::descendantIds(int $categoryId): array`
+      (backend/app/Services/ProductCategories/CategoryHierarchy.php:182) esiste gia' ed esclude se
+      stesso: il ramo completo e' `array_merge([$rootId], descendantIds($rootId))`, come fa gia'
+      `ProductCategoryForSelectResolver.php:93`. Il metodo NON e' memoizzato (rifa' la query a ogni
+      chiamata) e `CategoryHierarchy` NON e' registrato scoped nel container: va iniettata una volta
+      sola e i sei array vanno risolti una volta per richiesta.
+    </entity>
+
+    <entity name="Stato di lavorazione">
+      Gli stati vivono in `quote_workflow_statuses` (`system_key`, `group`, `sort_order`,
+      `quote_workflow_id` nullable = set globale di default).
+      - `App\Enums\WorkflowStatusSystemKey`: solo `open`, `closed_won`, `closed_lost`.
+      - `App\Enums\WorkflowStatusGroup`: `open`, `pending`, `validated`, `closed_won`, `closed_lost`.
+      - PRIMO STATO = la riga con `system_key = 'open'`. Garantito unico per set dall'unique
+        `qw_statuses_workflow_system_key_unique`, creato sempre per primo da
+        `WorkflowStatusWriter::createWithCustoms()`
+        (backend/app/Services/QuoteWorkflows/WorkflowStatusWriter.php:49-56), presente anche nel set
+        globale, indistruttibile (le pinned row non sono cancellabili, :250-259) e con `abort(500)`
+        di difesa se manca (`QuoteWorkflowResolver.php:178-185`). Il seeder cliente ne PROMUOVE
+        l'etichetta ("Da Richiamare"), ma `system_key='open'` resta.
+      - ESITO POSITIVO = `group = 'closed_won'` (nessuna colonna `closed_at`/`outcome`/`won_at`
+        esiste nel database: verificato).
+      - Catalogo reale del cliente in
+        backend/database/seeders/QualificaCatalog/WorkflowStatusCatalogue.php: cinque sezioni
+        (`gol`, `self_employment` per Autoimpiego+Yisu, `self_funded`, `consulting`, `apl`).
+        Il gruppo `validated` e' usato da due soli stati: `OK_Da Caricare` (self_employment) e
+        `In trattativa` (consulting) (VALIDATED_STATUSES, :325-330). Il gruppo `pending` non e'
+        usato da NESSUNO stato del cliente.
+    </entity>
+
+    <entity name="Note">
+      Tabella `notes` (2026_07_22_150100 + 2026_08_06_110000): `notable_type`/`notable_id`
+      (morph, alias), **`quote_id`** nullable (null = nota generale sull'opportunita'), `parent_id`,
+      **`user_id`** (l'autore; non esiste `created_by`), `body`, `edited_at`, timestamps,
+      `deleted_at` (softDeletes).
+    </entity>
+
+    <entity name="Storico dei cambi di stato">
+      NON esiste una tabella di storico transizioni, ne' alcuna colonna di data di transizione
+      (verificato: nessun match per histor/transition/status_history nelle migrazioni).
+      L'unica traccia e' `activity_log`, scritta da
+      `RequestManagementService::logOperationalChange()`
+      (backend/app/Services/RequestManagement/RequestManagementService.php:423-435):
+        activity($opportunity->getTable())->performedOn($opportunity)->causedBy($actor)
+          ->event('updated')->withProperties(['attributes' => $changed, 'old' => $old])
+          ->log('Request management work update');
+      con `$old['quote_workflow_status_id']` / `$changed['quote_workflow_status_id']` riempiti da
+      `applyWorkflowStatus()` (:331-332).
+      Quindi: `log_name = 'opportunities'`, `subject_type = 'opportunity'` (alias della morph map
+      strict, AppServiceProvider.php:147,177), `subject_id = opportunities.id`, `event = 'updated'`,
+      `properties` con le sole chiavi `attributes` e `old`. **`quote_id` non compare da nessuna parte.**
+
+      TRE LIMITI NOTI E ACCETTATI (decisione utente D-1):
+      1. Il subject e' l'Opportunity: senza `quote_id` l'attribuzione a una singola Offerta non e'
+         diretta. Mitigazione in D-3.
+      2. Il modulo Offerte NON logga i cambi di stato (zero `activity(` in
+         backend/app/Services/QuoteService.php e in backend/app/Services/Quotes/), e
+         `quote_workflow_status_id` e' deliberatamente fuori da `#[Fillable]` (Quote.php:54-60,
+         105-117) quindi invisibile a `logFillable()` (LogsModelActivity.php:26-33). Le transizioni
+         fatte da li' sono assenti dal report.
+      3. Retention 365 giorni (config/activitylog.php).
+      L'inline edit della griglia NON e' un terzo canale: `WritesInlineEditableCells::updateCell()`
+      instrada su `updateWork()` (app/Tables/RequestManagement/Concerns/WritesInlineEditableCells.php:75-95).
+    </entity>
+
+    <entity name="Visibilita'">
+      `RequestManagementScope` e' l'UNICA implementazione della regola (spec 0105) e ha 7 consumer.
+      Il report DEVE passare da `RequestManagementScope::scopeToActor($query, $actor)`: un report che
+      non ci passa diverge dalla regola e diventa un canale di fuga di dati fuori scope.
+      Fail-closed: attore null -> `whereNull('quotes.id')`; sede NULL sulla riga -> fuori scope.
+      La disgiunzione va racchiusa in una closure `where(...)`, mai `orWhere` sulla radice.
+    </entity>
+
+    <entity name="Formato CSV del progetto">
+      `CsvExportWriter` (backend/app/Exports/CsvExportWriter.php:13-39): BOM UTF-8 scritto per primo
+      (:16, :29), `fputcsv($row, ',', '"', '')` — delimitatore virgola, enclosure doppio apice,
+      escape vuoto (RFC 4180). Il nuovo report replica ESATTAMENTE questo formato.
+    </entity>
+
+    <entity name="Perche' un endpoint dedicato">
+      backend/routes/api/request-management.php dichiara in testa: "No list/export/activity route
+      here: those are served by the generic tables/exports/activity-log framework". La deroga qui e'
+      motivata e va dichiarata: il motore di export generico (spec 0014) esporta le RIGHE di una
+      `TableDefinition` (`ExportService::generate()` -> `TableQueryBuilder::build()` -> `lazy()`),
+      mentre questo e' un AGGREGATO con struttura propria (righe TOTALE + dettaglio per GA2, colonne
+      che non sono colonne di griglia). Il framework `stats` (spec 0026) aggrega ma restituisce
+      widget JSON, non un CSV. Nessuno dei due si presta senza deformarlo.
+    </entity>
+
+    <entity name="Rate limiting">
+      Decisione utente 2026-07-15: `throttle` SOLO sugli endpoint di credenziali auth. NON va
+      applicato a questo endpoint.
+    </entity>
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Le date di transizione di stato si leggono da `activity_log`, senza creare una tabella di
+      storico. Decisione utente 2026-09-07, presa dopo che i tre limiti (subject Opportunity senza
+      quote_id, modulo Offerte cieco, retention 365gg) sono stati esposti esplicitamente.
+    </decision>
+    <decision id="D-2">
+      "N. Potenziali associati" = richieste entrate, nel range, in uno stato il cui `group` e'
+      `pending` o `validated`. Decisione utente: "sono gli stati di validazione, nel concreto sono
+      chiavi di sistema degli stati di lavorazione". Conseguenza accettata: nel catalogo attuale
+      solo `self_employment` (Autoimpiego, Yisu) e `consulting` (Consulenza) hanno uno stato
+      `validated`; per GOL, Autofinanziato e APL la colonna vale 0 finche' il cliente non classifica
+      uno stato in quei gruppi. La colonna si popolera' da sola il giorno che il catalogo cambia:
+      nessun nome di stato e' cablato nel codice.
+    </decision>
+    <decision id="D-3">
+      Attribuzione di una transizione loggata alla singola Offerta. La riga di `activity_log` porta
+      solo `subject_id = opportunities.id`. Si attribuisce alle Quote di quella Opportunity il cui
+      workflow corrente coincide con il workflow dello stato di destinazione loggato, cioe':
+      `quote_workflow_statuses.quote_workflow_id` dello stato corrente della Quote ==
+      `quote_workflow_statuses.quote_workflow_id` dello stato loggato in
+      `properties->attributes->quote_workflow_status_id`.
+
+      L'ambiguita' residua e' molto piu' piccola di quanto sembri: `single_quote_per_opportunity`
+      vale **true** su tutto il ramo `Formazione` (CatalogRootRules.php:53-55, propagato al
+      sottoalbero da `SingleQuotePerOpportunityInheritance`), quindi per GOL, Autoimpiego, Yisu e
+      Autofinanziato l'Opportunity ha una sola Offerta e l'attribuzione e' ESATTA. Vale **false**
+      per `Consulenza` (:70, esplicito) e per `APL` (root deliberatamente non dichiarata, tiene il
+      default `false`). APL non ha alcun indicatore basato sulle transizioni, quindi l'ambiguita'
+      tocca in pratica la sola `Consulenza`.
+      Limite dichiarato: il flag e' enforced solo alla creazione via `POST /api/quotes`
+      (`ValidatesSingleQuotePerOpportunity`, usato dal solo `StoreQuoteRequest`) e con grandfathering
+      esplicito (`OpportunityQuoteLimit.php:23-26`), quindi Opportunity anteriori al 2026-08-07
+      possono avere piu' Offerte anche in Formazione.
+    </decision>
+    <decision id="D-4">
+      "N. Richiami non gestiti" = `next_callback_at` nel range E richiesta ancora nel PRIMO stato
+      (`system_key = 'open'`). Decisione utente. Nota: `next_callback_reminded_at` NON e' utilizzabile
+      come marcatore di "gia' gestito" — l'unica scrittura in tutto il backend e' un azzeramento
+      (`RequestManagementService.php:407`), il job promemoria non esiste, la colonna e' NULL su ogni
+      riga.
+    </decision>
+    <decision id="D-5">
+      "Presa Appuntamenti" (Consulenza) resta a 0. Decisione utente: "tienilo a 0 poi vediamo". Motivo
+      tecnico: gli stati citati dal brief ("OK App. Fissato" -> "ASSEGNATO") non appartengono al
+      catalogo Consulenza — `Assegnato` esiste solo nella sezione `apl` (dov'e' l'esito positivo) e
+      gli `OK App. Fissato APL/CPI` sono della sezione `gol`. Consulenza ha `Appuntamento Fissato`
+      (aperto) e `VINTO` (positivo).
+    </decision>
+    <decision id="D-6">
+      "Aziende inserite" (Consulenza) e' REINTERPRETATA e la reinterpretazione va dichiarata a chi
+      legge il report: non "aziende inserite dall'utente" (dato che il sistema non possiede: nessuna
+      colonna `created_by`/`user_id`/`owner_id` esiste su `registries`, `companies`, `contacts`,
+      `personal_data`, `leads`; e `activity_log` non copre lo storico — 1 sola riga `created` per
+      `registries` a fronte di 21 anagrafiche, per giunta con `causer_id` NULL), ma "anagrafiche di
+      tipo Azienda, create nel range, collegate alle richieste di quel GA2". Decisione utente.
+      Catena: `quotes.opportunity_id -> opportunities.registry_id -> registries.id`, con
+      `personal_data.personable_type = 'registry' AND personable_id = registries.id AND type = 'company'`
+      (`App\Enums\PersonalDataTypeEnum`: `individual|company`).
+    </decision>
+    <decision id="D-7">
+      Il GA2 di una richiesta e' quello CORRENTE (`quotes.operator_id`). Lo storico delle
+      riassegnazioni non e' ricostruibile per indicatore: `RequestAssignmentService` logga i cambi di
+      operatore in `activity_log` ma senza `quote_id` (stesso limite di D-3), e nessuna colonna
+      temporale di assegnazione esiste. Una richiesta riassegnata a meta' periodo compare per intero
+      sotto l'operatore attuale.
+    </decision>
+    <decision id="D-8">
+      Consegna ASINCRONA con il ciclo create/poll/download, decisione utente 2026-09-07.
+
+      Si RIUSANO i pezzi del motore di export (spec 0014) senza modificarne il flusso: il model
+      `ExportRun`, l'enum `ExportStatus` (`Processing`/`Completed`/`Failed`), `CsvExportWriter` e la
+      configurazione di storage di `config/exports.php` (`disk: 'local'`, `directory: 'exports'`).
+      Si NON riusano `ExportController`/`ExportService`/`GenerateExportJob`: sono legati a una
+      `TableDefinition` (`authorizeExport()` risolve `$definition->modelClass()`,
+      `generate()` passa da `TableQueryBuilder::build()`), e piegarli a un aggregato li deformerebbe.
+      Il report ha quindi controller, rotte e job propri dentro il modulo, e `ExportRun.resource`
+      vale `request-management-report` — un valore che non e' un domain di `config/tables.php`,
+      quindi le rotte generiche `/api/exports/{domain}` non lo servono e falliscono chiuse.
+
+      DUE TRAPPOLE DELLA CODA, entrambe obbligatorie e verificate sul motore esistente:
+      1. `Auth::setUser($actor)` nel job PRIMA di qualunque query. `RequestManagementScope` e'
+         fail-closed e legge l'auth guard: su un worker reale, senza questa riga, il report esce
+         VUOTO invece di fallire. E' esattamente il motivo per cui `ExportService::generate()` la
+         chiama a :82.
+      2. `App::setLocale()` nel job, dal locale CONGELATO nello stato del run. Il middleware
+         `SetLocale` non passa mai in coda, quindi `config('app.locale')` = `en`: e' il motivo per
+         cui oggi i booleani dell'export escono "Yes"/"No" a un utente italiano
+         (`ExportValueFormatter.php:49`). Le intestazioni del report sono tradotte server-side, in
+         coda: senza questo il CSV esce in inglese.
+      L'attore e il locale si congelano in `ExportRun.state` insieme a `date_from`/`date_to`.
+      Su eccezione il job segna `ExportStatus::Failed`, come `GenerateExportJob` a :41.
+    </decision>
+    <decision id="D-9" superseded-by="D-15">
+      ANNULLATA da D-15 (rev-2, direttiva utente 2026-09-08: tutto 0, mai vuoto). Conservata per
+      tracciare il perche' del cambio, non va implementata.
+      Celle non applicabili a una categoria: stringa VUOTA, non 0. Il brief consente entrambi; la
+      distinzione separa "non applicabile" da "misurato zero", che e' informazione utile a chi legge.
+      Gli stub previsti dal brief (Aule in gestione, Aule in partenza, Presa Appuntamenti, Invio
+      Presa in carico) sono invece 0 esplicito: sono applicabili, semplicemente non ancora calcolati.
+    </decision>
+    <decision id="D-10">
+      Il TOTALE di categoria NON e' la somma delle righe GA2 quando le righe possono duplicarsi, ma
+      dentro un singolo ramo la somma e' esatta per costruzione: `quotes.operator_id` e' una colonna
+      singola, quindi il raggruppamento per operatore PARTIZIONA le richieste distinte del ramo
+      (compreso il gruppo `operator_id IS NULL`). Il totale si calcola comunque con la propria
+      aggregazione sull'intero insieme del ramo, come impone il brief, e i test verificano che le
+      due strade coincidano (AC-014). Fa eccezione "Aziende inserite": la stessa anagrafica puo'
+      essere collegata a richieste di operatori diversi, quindi il suo totale ha una query dedicata
+      con `count(distinct registries.id)` e puo' essere MINORE della somma delle righe GA2 (AC-015).
+      Tra rami diversi la somma non e' mai valida: una richiesta classificata su due categorie conta
+      in entrambe.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Tre endpoint sotto `/api/request-management/report`: creazione del run (POST), polling (GET), download del CSV (GET .../download).</item>
+      <item>Job in coda che genera il CSV, riusando `ExportRun`, `ExportStatus`, `CsvExportWriter` e lo storage di `config/exports.php`.</item>
+      <item>Nuova ability `report` in `RequestManagementPolicy::abilities()` -> permesso `request-management.report`, con etichette i18n IT/EN.</item>
+      <item>Servizi di calcolo degli indicatori, sotto `backend/app/Services/RequestManagement/Report/`.</item>
+      <item>Config dei sei rami del report e delle colonne applicabili per ramo.</item>
+      <item>Cataloghi di traduzione `backend/lang/{it,en}/request-management-report.php` per le intestazioni.</item>
+      <item>Dialog frontend di selezione range date + download, agganciato alla toolbar della griglia.</item>
+      <item>Chiavi i18n frontend nel blocco `requestManagement.report`.</item>
+      <item>Test Pest sugli AC e test Vitest sul dialog.</item>
+    </in>
+    <out>
+      <item>Qualsiasi tabella di storico delle transizioni di stato (esclusa da D-1).</item>
+      <item>Qualsiasi modifica a `QuoteService` / `app/Services/Quotes/` per aggiungere il log dei cambi di stato.</item>
+      <item>Colonna `created_by` su `registries` o altrove (esclusa da D-6).</item>
+      <item>Logica reale di "Aule in gestione", "Aule in partenza", "Presa Appuntamenti", "Invio Presa in carico": restano 0 (D-5).</item>
+      <item>Export XLSX o altri formati: solo CSV.</item>
+      <item>Modifiche a `RequestManagementScope` o alla regola di visibilita' (spec 0105): il report la CONSUMA, non la cambia.</item>
+      <item>Modifiche a `ExportController`, `ExportService`, `GenerateExportJob`, `CreateExportRequest` o alle rotte `/api/exports/{domain}` (spec 0014): del motore generico si riusano solo model, enum, writer e storage. Nessuna modifica al framework stats (spec 0026).</item>
+      <item>Migrazioni: nessuna. `ExportRun` copre il caso senza cambi di schema.</item>
+      <item>Schedulazione/invio automatico del report.</item>
+      <item>Il test mancante della spec 0105 (`RequestManagementSiteVisibilityTest.php`): segnalato, fuori scope qui.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/request-management/report">
+      <request>
+        Body JSON:
+          date_from : string, required, formato `Y-m-d`
+          date_to   : string, required, formato `Y-m-d`, >= date_from
+        Il range e' INCLUSIVO su entrambi gli estremi: sulle colonne datetime il confronto e'
+        `>= date_from 00:00:00` e `< date_to + 1 giorno`, mai un `BETWEEN` su date che
+        taglierebbe le ore dell'ultimo giorno.
+        Nessun altro parametro: il report non accetta filtri di categoria o di operatore — il
+        perimetro e' interamente determinato dalla visibilita' dell'attore.
+      </request>
+      <response status="201">
+        `{ success: true, message, data: { export_run: { id, status, file_name, created_at } } }`
+        `status` = `processing`. La generazione e' dispatchata in coda.
+        `ExportRun.resource` = `request-management-report`; `ExportRun.state` congela
+        `date_from`, `date_to` e il `locale` dell'attore (D-8).
+      </response>
+      <errors>
+        403 — attore senza `request-management.report`.
+        422 — date mancanti, malformate, o `date_to` anteriore a `date_from`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/request-management/report/{exportRun}">
+      <request>Nessun parametro oltre alla rotta.</request>
+      <response status="200">
+        `{ success: true, message, data: { export_run: { id, status, file_name, created_at } } }`
+        con `status` in `processing|completed|failed`. E' l'endpoint di polling.
+      </response>
+      <errors>
+        403 — attore senza `request-management.report`.
+        404 — run di un altro utente, o `resource` diverso da `request-management-report`.
+              Mai 403 in questi due casi: l'esistenza del run non va rivelata
+              (stessa scelta di `ExportController::assertOwnedRun()`).
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/request-management/report/{exportRun}/download">
+      <request>Nessun parametro oltre alla rotta.</request>
+      <response status="200">
+        Content-Type: text/csv; charset=UTF-8
+        Content-Disposition: attachment; filename="request-management-report-{date_from}_{date_to}.csv"
+        Corpo: BOM UTF-8, poi righe `fputcsv($row, ',', '"', '')`.
+        Il file su disco e' `exports/{uuid}.csv` sul disk `local`, privato, mai esposto: il nome
+        utente-visibile vive solo nel `Content-Disposition`, come fa gia' `ExportService::start()`.
+
+        UNA riga di intestazione, poi le righe dati. Struttura di colonna FISSA e identica per
+        tutte le categorie (13 colonne, in quest'ordine):
+
+          1  Categoria
+          2  GA2
+          3  N. Telefonate Effettuate
+          4  N. Richiami non gestiti
+          5  N. Nuovi contatti non gestiti
+          6  N. Potenziali associati
+          7  Aule in gestione
+          8  Aule in partenza
+          9  Associati
+          10 Aziende inserite
+          11 Presa Appuntamenti
+          12 Trattative Concluse
+          13 Invio Presa in carico
+
+        Ordine delle righe: le sei categorie nell'ordine di config
+        (GOL, Autoimpiego, Yisu, Autofinanziato, Consulenza, APL); dentro ogni categoria prima la
+        riga TOTALE, poi una riga per GA2, ordinate per `users.name` crescente, e infine — se
+        esistono richieste senza operatore — una riga con l'etichetta tradotta "Non assegnato".
+        Una categoria senza alcuna richiesta nel range emette comunque la sola riga TOTALE a zero,
+        cosi' la struttura del file non dipende dai dati.
+      </response>
+      <errors>
+        403 — attore senza il permesso `request-management.report`.
+        404 — run di un altro utente, `resource` diverso, run non ancora `completed`, o file assente
+              sul disco (`assertHasFile()` fa lo stesso).
+        Gli errori NON espongono nomi di classi o di model
+        (`BaseApiController::handleControllerException`), e l'envelope e' `{success:false,message}`.
+      </errors>
+    </endpoint>
+
+    <applicability>
+      <!-- Quali colonne sono applicabili a quale categoria. Una colonna non elencata esce
+           comunque a 0, non vuota (D-15 annulla D-9): l'elenco resta utile per sapere quale 0
+           e' "non pertinente" e quale e' misurato, ma il file non li distingue piu'. -->
+      <category key="gol"             columns="telefonate, richiami, nuovi_contatti, potenziali, aule_gestione, aule_partenza, associati"/>
+      <category key="autoimpiego"     columns="telefonate, richiami, nuovi_contatti, potenziali, aule_gestione, aule_partenza, associati"/>
+      <category key="yisu"            columns="telefonate, richiami, nuovi_contatti, potenziali, aule_gestione, aule_partenza, associati"/>
+      <category key="autofinanziato"  columns="telefonate, richiami, nuovi_contatti, potenziali, aule_partenza, associati"/>
+      <category key="consulenza"      columns="telefonate, richiami, nuovi_contatti, potenziali, aziende_inserite, presa_appuntamenti, trattative_concluse"/>
+      <category key="apl"             columns="telefonate, richiami, nuovi_contatti, invio_presa_in_carico"/>
+    </applicability>
+
+    <indicators>
+      <!--
+        BASE comune a ogni indicatore, per il ramo C e il range [F, T]:
+          quotes q
+            join opportunities o               on o.id  = q.opportunity_id
+            join opportunity_product_lines opl on opl.opportunity_id = o.id
+          where opl.product_category_id in (branch_ids(C))
+          + RequestManagementScope::scopeToActor($query, $actor)
+        Riga di dettaglio GA2: stessa formula + `q.operator_id = :user_id` (D-10).
+        Salvo dove indicato, il conteggio e' `count(distinct q.id)`.
+      -->
+      <indicator key="telefonate" date_anchor="notes.created_at">
+        Numero di note (NON di richieste: `count(notes.id)`) create nel range su richieste che NON
+        sono nel primo stato. Join `notes n on n.quote_id = q.id` con `n.deleted_at is null`.
+        Condizione di stato: `(qws.system_key is null or qws.system_key <> 'open')` — l'`IS NULL`
+        e' obbligatorio, gli stati custom hanno `system_key = NULL` e in SQL `NULL <> 'open'`
+        vale NULL, non TRUE.
+      </indicator>
+      <indicator key="richiami" date_anchor="quotes.next_callback_at">
+        `q.next_callback_at` nel range E stato corrente con `system_key = 'open'` (D-4).
+      </indicator>
+      <indicator key="nuovi_contatti" date_anchor="quotes.created_at">
+        `q.created_at` nel range E stato corrente con `system_key = 'open'`.
+      </indicator>
+      <indicator key="potenziali" date_anchor="activity_log.created_at">
+        Esiste una transizione, nel range, verso uno stato con `group in ('pending','validated')`,
+        risolta come da D-3 (D-2).
+      </indicator>
+      <indicator key="associati" date_anchor="activity_log.created_at">
+        Esiste una transizione, nel range, verso uno stato con `group = 'closed_won'` (D-3).
+      </indicator>
+      <indicator key="trattative_concluse" date_anchor="activity_log.created_at">
+        Stessa identica formula di `associati`: il brief le distingue solo per etichetta di
+        categoria (Consulenza). Una sola implementazione, due colonne.
+      </indicator>
+      <indicator key="aziende_inserite" date_anchor="registries.created_at">
+        `count(distinct r.id)` su `registries r on r.id = o.registry_id`, join
+        `personal_data pd on pd.personable_type = 'registry' and pd.personable_id = r.id and
+        pd.type = 'company'`, con `r.created_at` nel range (D-6). Il totale ha query propria (D-10).
+        Il join e' INNER di proposito: una `registry` priva di scheda `personal_data` non e'
+        classificabile ne' come azienda ne' come persona e resta fuori dal conteggio. Il caso
+        esiste davvero sui dati (21 registries, 20 schede), quindi e' dichiarato, non scoperto poi.
+      </indicator>
+      <indicator key="aule_gestione">Costante 0 (brief).</indicator>
+      <indicator key="aule_partenza">Costante 0 (brief).</indicator>
+      <indicator key="presa_appuntamenti">Costante 0 (D-5).</indicator>
+      <indicator key="invio_presa_in_carico">Costante 0 (brief).</indicator>
+    </indicators>
+
+    <transition_resolution>
+      <!-- D-3, forma della query. Idioma JSON PORTABILE: arrow operator del query builder. -->
+      <step n="1">
+        Gli id degli stati bersaglio si risolvono PRIMA, in una query su `quote_workflow_statuses`
+        filtrata per `group`, e si passano come lista di interi.
+      </step>
+      <step n="2">
+        `whereExists` su `activity_log a` con:
+          a.log_name = 'opportunities'
+          a.subject_type = 'opportunity'
+          a.subject_id = q.opportunity_id
+          a.created_at nel range
+          a.properties->attributes->quote_workflow_status_id  IN (target_ids)
+      </step>
+      <step n="3">
+        Disambiguazione D-3: lo stato bersaglio loggato deve appartenere allo stesso
+        `quote_workflow_id` dello stato corrente della Quote.
+        Il confronto e' NULL-SAFE (`uguali OR entrambi NULL`), non un `=` nudo: il set GLOBALE di
+        default ha `quote_workflow_id IS NULL`, e in SQL `NULL = NULL` non e' mai vero. Un `=`
+        letterale azzererebbe "potenziali" e "associati" per ogni categoria priva di workflow
+        dedicato — nel catalogo attuale `DIL`, che il seeder lascia deliberatamente sul set
+        globale (WorkflowStatusCatalogue, note di trascrizione); `GOL - Abruzzo` ha invece
+        un workflow proprio dal 2026-09-08.
+        Rilevato in implementazione il 2026-09-07.
+      </step>
+      <constraint>
+        L'accesso a `properties` usa l'ARROW OPERATOR del query builder
+        (`where('properties->attributes->quote_workflow_status_id', ...)`), mai `whereRaw`/`json_extract`:
+        prod e' MySQL, test e' SQLite (phpunit.xml) e l'arrow operator e' l'unico idioma gia'
+        praticato su entrambi nel repo (`AttributeDateFilterApplier.php:52-84`). `json_extract` raw
+        compare solo nel DDL degli indici, MySQL-only (`CustomFieldIndexDdlBuilder.php:88,100`).
+        Nessun input utente entra mai in SQL grezzo (backend.md §8).
+      </constraint>
+    </transition_resolution>
+
+    <permission name="request-management.report">
+      <semantics>
+        Consente di generare e scaricare il report CSV. Ability `report` aggiunta a
+        `RequestManagementPolicy::abilities()`, l'unico vocabolario del modulo; le righe si
+        materializzano con `php artisan permissions:sync` (via `RolePermissionSeeder`) e da li'
+        entrano da sole in `AssignablePermissionCatalogue` e nell'esploratore Ruoli (spec 0076).
+        NON implica ne' e' implicato da `request-management.export` (righe di griglia): sono due
+        capacita' distinte.
+      </semantics>
+      <deploy_step>
+        Un permesso nuovo nasce NON assegnato a nessun ruolo: dopo il sync va assegnato ai ruoli che
+        devono vederlo, altrimenti il pulsante non compare a nessuno. E' il passo dimenticabile,
+        gia' inciampato con `assignManagerGa3`.
+      </deploy_step>
+      <labels>
+        `frontend/src/i18n/locales/it-permissions.ts` e `en-permissions.ts` (parita' verificata dal
+        test `permissions-i18n-parity.test.ts`, gia' presente).
+      </labels>
+    </permission>
+
+    <client>
+      <component name="RequestReportDialog" path="frontend/src/features/request-management/request-report-dialog.tsx">
+        Sheet con form React Hook Form + Zod (`request-report-schema.ts`), due `<Input type="date">`
+        (from/to). NON si introduce alcuna libreria di date: nel progetto non esistono
+        `react-day-picker`, `date-fns`, `dayjs` ne' `luxon`, e il pattern del codebase e' l'input
+        nativo (`project-planning-section.tsx:52-63`, `date-range-field.tsx`). Nuove dipendenze
+        richiedono autorizzazione esplicita (CLAUDE.md §0).
+        Accessibilita' obbligatoria (frontend.md §10): ogni campo con
+        `aria-describedby={errorId} aria-invalid={!!error}` e `<span id={errorId} role="alert">`.
+      </component>
+      <mount>
+        Voce nel menu opzioni della toolbar, passata dall'adapter tramite la prop libera
+        `importSlot` di `TableView` (dichiarata a `table-view.tsx:96-100`, inoltrata alla toolbar a
+        `:459`, oggi non usata da nessun adapter). Il `<DropdownMenuItem>` deve chiamare
+        `event.preventDefault()` in `onSelect`, altrimenti Radix chiude il menu prima che il dialog
+        monti — lo stesso accorgimento che `TableView` usa gia' per l'export (`:415-425`).
+        Gate UI con `<Can permission="request-management.report">`: l'UI nasconde, il backend
+        autorizza (frontend.md §7).
+      </mount>
+      <download>
+        Ciclo create -> poll -> download, modellato su `features/exports/use-export.ts` senza
+        riusarlo (quello e' legato a `exportKeys` e alle rotte `/exports/{domain}`):
+        1. `POST /request-management/report` con le due date;
+        2. polling di `GET /request-management/report/{id}` con `refetchInterval`, fermato quando
+           `status` diventa `completed` o `failed`;
+        3. `GET /request-management/report/{id}/download` con `responseType: 'blob'`, filename da
+           `Content-Disposition` via `filenameFromContentDisposition()` e salvataggio con
+           `saveBlob()`, entrambi gia' in `frontend/src/lib/download.ts:12,18`.
+        Nessun nuovo helper di download. Query key dedicata (`requestManagementKeys.reportRun(id)`),
+        aggiunta a `query-keys.ts` accanto alle esistenti.
+        `status: 'failed'` mostra un errore leggibile e ferma il polling: non deve restare a girare.
+      </download>
+    </client>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend: AC-001..AC-020 -->
+    <criterion id="AC-001">Un attore con `request-management.report` che chiama `POST /api/request-management/report` con `date_from=2026-09-01` e `date_to=2026-09-30` riceve 201 con `status = processing`, e viene creato un `ExportRun` con `resource = 'request-management-report'` il cui `state` contiene le due date e il locale dell'attore.</criterion>
+    <criterion id="AC-002">Un attore autenticato SENZA `request-management.report` riceve 403 su tutte e tre le rotte (create, show, download), con envelope `{success:false,message}` e nessun nome di classe o di model nel messaggio.</criterion>
+    <criterion id="AC-003">Chiamate senza `date_from`, senza `date_to`, con formato non `Y-m-d`, o con `date_to` anteriore a `date_from`, ricevono 422.</criterion>
+    <criterion id="AC-003-bis">Eseguito il job, `GET /api/request-management/report/{id}` riporta `status = completed`, e `GET .../download` restituisce 200 con `Content-Type: text/csv`, `Content-Disposition` con filename `request-management-report-2026-09-01_2026-09-30.csv`, e corpo che inizia con il BOM UTF-8.</criterion>
+    <criterion id="AC-003-ter">`GET .../{id}` e `GET .../{id}/download` su un run di un ALTRO utente rispondono 404, non 403; lo stesso per un `ExportRun` con `resource` diverso da `request-management-report`. Il download di un run non ancora `completed`, o il cui file non esiste sul disco, risponde 404.</criterion>
+    <criterion id="AC-003-quater">Il job esegue le query come l'attore congelato nel run: eseguito SENZA sessione HTTP (worker), il CSV contiene le stesse righe che l'attore vedrebbe, non un file vuoto. E' la verifica della prima trappola di D-8 — un test che gira dentro la request non la coglierebbe.</criterion>
+    <criterion id="AC-003-quinquies">Il job traduce le intestazioni nel locale congelato nel run, non in `config('app.locale')`: per un attore con `locale = 'it'` le intestazioni sono italiane anche quando il job gira con locale applicativo `en`. E' la verifica della seconda trappola di D-8.</criterion>
+    <criterion id="AC-003-sexies">Se il job solleva un'eccezione, il run passa a `status = failed`, il polling lo vede e nessun file parziale resta scaricabile.</criterion>
+    <criterion id="AC-004">La riga di intestazione ha esattamente le 13 colonne del contratto, nell'ordine dichiarato, tradotte nel locale della richiesta (IT per un utente italiano, EN per uno inglese).</criterion>
+    <criterion id="AC-005">Il file contiene, per ognuna delle sei categorie di config e nell'ordine di config, una riga con GA2 = "TOTALE"; una categoria priva di richieste nel range emette comunque la sua riga TOTALE con tutti gli indicatori applicabili a 0.</criterion>
+    <criterion id="AC-006">Per una categoria con richieste di due operatori diversi nel range, il file contiene la riga TOTALE seguita da una riga per operatore, ordinate per `users.name` crescente, con l'etichetta presa da `users.name`.</criterion>
+    <criterion id="AC-007">Se nel ramo esistono richieste con `operator_id` NULL, viene emessa una riga con l'etichetta tradotta "Non assegnato", dopo le righe degli operatori nominati.</criterion>
+    <criterion id="AC-008">SOSTITUITO da rev-2 / D-15. Ogni cella numerica esce come `0`: colonne non applicabili alla categoria (es. "Aziende inserite" per GOL), stub (Aule in gestione/partenza, Presa Appuntamenti, Invio Presa in carico) e aggregazioni nulle. Nessuna cella numerica e' mai vuota o `null`; le sole colonne di testo sono `Categoria` e `GA2`.</criterion>
+    <criterion id="AC-009">"N. Telefonate Effettuate" conta le NOTE, non le richieste: due note create nel range sulla stessa richiesta non nel primo stato producono 2, non 1.</criterion>
+    <criterion id="AC-010">"N. Telefonate Effettuate" esclude le note su richieste ancora nel primo stato, le note con `deleted_at` valorizzato, le note con `quote_id` NULL, e le note create fuori dal range.</criterion>
+    <criterion id="AC-011">"N. Telefonate Effettuate" INCLUDE le note su richieste il cui stato corrente e' uno stato custom (`system_key IS NULL`): e' il caso che una condizione `system_key <> 'open'` scritta ingenuamente perderebbe.</criterion>
+    <criterion id="AC-012">"N. Richiami non gestiti" conta una richiesta con `next_callback_at` dentro il range e stato corrente `system_key='open'`, ed esclude la stessa richiesta se il suo stato e' avanzato oltre il primo, o se `next_callback_at` cade fuori dal range.</criterion>
+    <criterion id="AC-013">"N. Nuovi contatti non gestiti" conta le richieste con `created_at` nel range ancora nel primo stato; una richiesta creata nel range ma gia' avanzata non e' contata.</criterion>
+    <criterion id="AC-014">Per ogni categoria e ogni indicatore diverso da "Aziende inserite", il valore della riga TOTALE e' uguale alla somma dei valori delle righe GA2 della stessa categoria, compresa la riga "Non assegnato" (verifica di D-10).</criterion>
+    <criterion id="AC-015">Una anagrafica azienda collegata a richieste di due operatori diversi produce 1 nel TOTALE di "Aziende inserite" e 1 in ciascuna delle due righe GA2: il totale e' MINORE della somma delle righe, ed e' corretto cosi' (D-10).</criterion>
+    <criterion id="AC-015-bis">Una anagrafica priva di scheda `personal_data`, collegata a una richiesta nel range, non e' contata in "Aziende inserite" e non fa fallire la query (join INNER voluto).</criterion>
+    <criterion id="AC-016">Una richiesta classificata su due categorie del report (due `opportunity_product_lines`) e' contata una volta in CIASCUNA delle due categorie; una richiesta con due righe prodotto sulla STESSA categoria e' contata una volta sola in quella categoria.</criterion>
+    <criterion id="AC-017">Una richiesta classificata su `GOL - Lombardia` (figlio) rientra nella categoria `GOL` del report: il ramo e' espanso ai discendenti, non limitato al nodo radice.</criterion>
+    <criterion id="AC-018">"N. Potenziali associati" conta una richiesta per cui `activity_log` registra, nel range, una transizione verso uno stato con `group` `pending` o `validated`, e non la conta se la stessa transizione e' avvenuta fuori dal range.</criterion>
+    <criterion id="AC-019">"Associati" (e "Trattative Concluse") conta una richiesta per cui `activity_log` registra nel range una transizione verso uno stato `closed_won`; una richiesta oggi chiusa positiva ma la cui transizione e' avvenuta prima del range NON e' contata.</criterion>
+    <criterion id="AC-020">Su una Opportunity con DUE Offerte in workflow diversi, una transizione loggata verso uno stato del workflow A e' attribuita alla sola Offerta che si trova nel workflow A (D-3), non a entrambe.</criterion>
+    <criterion id="AC-021">Il report rispetta `RequestManagementScope`: un attore senza `viewAll` che e' operatore di una sola richiesta vede quella richiesta nei conteggi e non vede quelle di altri operatori fuori dalle sue sedi; un attore con `viewSite` vede anche le richieste delle proprie sedi. Le stesse righe che la griglia gli mostrerebbe, non una in piu'.</criterion>
+    <criterion id="AC-022">Il range e' inclusivo su entrambi gli estremi: una nota creata alle 23:30 del giorno `date_to` e' contata.</criterion>
+    <criterion id="AC-023">Nessuna query del report usa `whereRaw`/`orderByRaw`/`json_extract`: l'intera suite passa sia su SQLite (default dei test) sia, per le query su `properties`, con l'arrow operator del builder.</criterion>
+    <criterion id="AC-024">Le tre rotte sono dichiarate PRIMA delle rotte con segmento `{quote}` in `backend/routes/api/request-management.php`, cosi' che `report` non venga inghiottito dal wildcard; un test lo verifica risolvendo le rotte.</criterion>
+    <criterion id="AC-025">Nessun `throttle` e' applicato a nessuna delle tre rotte (decisione utente 2026-07-15).</criterion>
+
+    <!-- Frontend: AC-040..AC-048 -->
+    <criterion id="AC-040">La voce che apre il report compare nel menu opzioni della toolbar solo se l'attore ha `request-management.report`, ed e' assente altrimenti.</criterion>
+    <criterion id="AC-041">Selezionando la voce, il dialog si apre e resta montato (l'`onSelect` chiama `event.preventDefault()`).</criterion>
+    <criterion id="AC-042">Il dialog espone due campi data, entrambi obbligatori, interrogabili per ruolo accessibile (nessun `data-testid`: quello e' riservato all'E2E Playwright).</criterion>
+    <criterion id="AC-043">Inviando con `date_to` anteriore a `date_from`, il form mostra un errore di validazione client e non invia la richiesta.</criterion>
+    <criterion id="AC-044">Ogni errore di campo e' cablato con `aria-invalid`, `aria-describedby` e un elemento `role="alert"` con l'id corrispondente.</criterion>
+    <criterion id="AC-045">Alla conferma il client esegue il ciclo completo: `POST` di creazione, polling dello `show` finche' `status` e' `processing`, poi `download` con `responseType: 'blob'` e salvataggio col nome ricavato da `Content-Disposition`.</criterion>
+    <criterion id="AC-045-bis">Quando lo `show` riporta `status = failed`, il polling si ferma, non parte alcun download, e viene mostrato un errore leggibile.</criterion>
+    <criterion id="AC-045-ter">Durante l'attesa il dialog mostra uno stato di elaborazione e il pulsante di conferma e' disabilitato, cosi' che una doppia conferma non crei due run.</criterion>
+    <criterion id="AC-046">Un 403 dal server produce un messaggio di errore leggibile e non un crash; il dialog resta aperto.</criterion>
+    <criterion id="AC-047">Tutte le stringhe del dialog passano da i18next sotto `requestManagement.report.*`, con parita' IT/EN.</criterion>
+    <criterion id="AC-048">`npx tsc -b --force --pretty false` e' pulito (mai `tsc --noEmit`, che in questo repo restituisce sempre EXIT=0 ed e' un falso verde).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <constraint>Nessuna nuova dipendenza, ne' backend ne' frontend (CLAUDE.md §0). In particolare nessuna libreria di date lato client.</constraint>
+    <constraint>Autorizzazione server-side obbligatoria su ogni chiamata; `RequestManagementScope::scopeToActor` applicato a OGNI query del report, senza eccezioni. Un indicatore che dimentica lo scope e' una fuga di dati, non un bug di conteggio.</constraint>
+    <constraint>FormRequest obbligatorio per la validazione (`RequestReportRequest`); mai `$request->only()` da solo.</constraint>
+    <constraint>Nessun nome di stato, di categoria o di gruppo cablato nel codice: i rami del report stanno in `backend/config/request-management-report.php`, legati per identita' ai nomi di `QualificaCatalogSeeder::CATALOG`; i gruppi di stato si leggono da `WorkflowStatusGroup`. Niente magic value (engineering.md §6).</constraint>
+    <constraint>`CategoryHierarchy` non e' memoizzata su `descendantIds()` e non e' registrata scoped: va iniettata una volta e i sei rami risolti una sola volta per richiesta.</constraint>
+    <constraint>File entro 300 righe soft / 500 hard; l'hook `code-guard.js` blocca oltre 500. Il calcolo degli indicatori va spezzato per responsabilita', non concentrato in una classe unica.</constraint>
+    <constraint>Orchestrazione leggibile: un metodo `handle()`/`build()` con `// Step N`, sotto-metodi a singola responsabilita' e testabili (engineering.md §2).</constraint>
+    <constraint>Identificatori in inglese, prosa e valori esposti all'utente in italiano via i18n (engineering.md §1.2).</constraint>
+    <constraint>Nessuna emoticon nel codice o nei commenti; nessun file `.md` nuovo.</constraint>
+    <constraint>Definition of Done: Pest e Vitest ESEGUITI (non solo scritti), Pint pulito, ESLint pulito, `npx tsc -b --force` pulito.</constraint>
+    <constraint>Git: nessun commit e nessun cambio di branch senza via libera esplicito dell'utente in quel momento (CLAUDE.md §3.6). A stato verde si aggiorna `docs/HANDOFF.md` e ci si ferma a chiedere.</constraint>
+  </constraints>
+
+  <microtasks>
+    <!--
+      Il contratto e' congelato: le lane backend e frontend partono INSIEME.
+      Ownership di file DISGIUNTA, nessun file toccato da due lane.
+        backend  : backend/app/**, backend/config/**, backend/lang/**, backend/routes/**, backend/tests/**
+        frontend : frontend/src/**  (incluse le chiavi i18n del modulo e dei permessi)
+        verifier : nulla in produzione; esegue e riporta.
+    -->
+    <task id="MT-01" lane="backend" depends-on="">Config `request-management-report.php` (sei rami + colonne applicabili) e risolutore dei rami su `CategoryHierarchy::descendantIds`.</task>
+    <task id="MT-02" lane="backend" depends-on="MT-01">Servizi di calcolo degli indicatori: base scoped, i tre indicatori diretti (telefonate, richiami, nuovi contatti), quelli su `activity_log` (potenziali, associati) e aziende inserite.</task>
+    <task id="MT-03" lane="backend" depends-on="MT-02">Assemblaggio righe (TOTALE + GA2 + non assegnato), scrittura CSV con `CsvExportWriter`, cataloghi `lang/{it,en}`.</task>
+    <task id="MT-04" lane="backend" depends-on="MT-03">Job in coda: `Auth::setUser()` + `App::setLocale()` dal run congelato, esito `Completed`/`Failed`.</task>
+    <task id="MT-05" lane="backend" depends-on="MT-04">Ability `report` nella Policy, FormRequest, Controller (create/show/download), tre rotte prima di `{quote}`, Resource del run.</task>
+    <task id="MT-06" lane="backend" depends-on="MT-05">Pest: AC-001..AC-025, con i casi limite (AC-003-quater job senza sessione, AC-003-quinquies locale in coda, AC-011 system_key NULL, AC-016 multi-categoria, AC-020 due offerte, AC-021 scope, AC-022 estremo inclusivo).</task>
+    <task id="MT-10" lane="frontend" depends-on="">Schema Zod, api client (create/show/download), hook del ciclo create-poll-download, query key dedicata.</task>
+    <task id="MT-11" lane="frontend" depends-on="MT-10">Dialog con i due input date e stato di elaborazione, aggancio via `importSlot`, gate `Can`, chiavi i18n IT/EN del modulo e del permesso.</task>
+    <task id="MT-12" lane="frontend" depends-on="MT-11">Vitest: AC-040..AC-048, query per ruolo accessibile.</task>
+    <task id="MT-20" lane="verifier" depends-on="MT-06,MT-12">Cancello indipendente: riesegue Pest e Vitest, verifica gli AC uno per uno contro i test reali, poi Pint, ESLint e `npx tsc -b --force --pretty false`. Riporta verde/rosso con evidenza.</task>
+  </microtasks>
+
+  <revision id="rev-2" date="2026-09-08" reason="Direttiva utente: selezione delle categorie da includere e scelta di quali righe emettere.">
+    <summary>
+      Il report smette di essere sempre integrale su tutte e sei le categorie. Alla generazione si
+      sceglie QUALI categorie includere (tra quelle che hanno almeno una richiesta) e QUALI righe
+      emettere (solo TOTALE, solo operatori, oppure tutto). Il perimetro di visibilita' non cambia:
+      resta quello dell'attore (`RequestManagementScope`), e la selezione puo' solo RESTRINGERLO,
+      mai allargarlo.
+    </summary>
+
+    <decision id="D-11">
+      Le categorie selezionabili sono i SEI RAMI DEL REPORT (le chiavi di
+      `config/request-management-report.php`), non i nodi grezzi di `product_categories`. Una riga
+      del CSV e' per definizione `Categoria | GA2 | ...` dove Categoria e' uno dei sei rami: offrire
+      "GOL - Lombardia" nel selettore sarebbe incoerente con la struttura del file.
+      Un ramo compare nell'elenco se almeno una richiesta IN SCOPE ricade nel suo sottoalbero.
+    </decision>
+
+    <decision id="D-12">
+      La disponibilita' di un ramo si valuta SENZA filtro di data (tutto lo storico visibile
+      all'attore), non sul range scelto nel dialog. Due motivi: l'elenco si carica all'apertura del
+      dialog, prima che le date siano state scelte, e un elenco che si ricarica a ogni tasto digitato
+      nei campi data sarebbe instabile da usare. E' anche il comportamento che l'utente gia' conosce
+      dai tab di categoria, che sono all-time.
+      Conseguenza accettata: si puo' selezionare un ramo che nel range scelto non ha nulla; il suo
+      blocco esce con la riga TOTALE a zero, che e' informazione, non un errore.
+    </decision>
+
+    <decision id="D-13">
+      `row_mode` ha tre valori: `total_only` (solo la riga TOTALE di ogni categoria selezionata),
+      `operators_only` (solo le righe per GA2, senza TOTALE), `all` (default, comportamento
+      attuale). La riga "Non assegnato" e' a tutti gli effetti una riga operatore: compare in
+      `operators_only` e in `all`, non in `total_only`.
+      In `operators_only` una categoria senza alcun operatore nel range non emette alcuna riga: e'
+      l'unico caso in cui una categoria selezionata puo' non comparire nel file.
+    </decision>
+
+    <decision id="D-15" overrides="D-9">
+      OGNI cella numerica del CSV esce come `0`, mai vuota e mai `null`. Direttiva utente 2026-09-08:
+      "nelle righe dove non c'e' alcuna formula o c'e' un null, di default deve uscire 0".
+      Questo ANNULLA D-9, che distingueva "non applicabile" (cella vuota) da "misurato zero" (`0`).
+      Vale per tutti e tre i casi: colonna non applicabile alla categoria (es. "Aziende inserite"
+      per GOL), stub non ancora implementati (Aule in gestione/partenza, Presa Appuntamenti, Invio
+      Presa in carico) e qualunque aggregazione che tornerebbe `null` invece di un intero.
+      Conseguenza da accettare consapevolmente: dal file non si distingue piu' "questa colonna non
+      vale per questa categoria" da "vale ed e' zero". E' la scelta dell'utente, che privilegia un
+      foglio interamente numerico su cui si puo' sommare senza incontrare celle vuote.
+      Le uniche due colonne di testo restano `Categoria` e `GA2`.
+    </decision>
+
+    <decision id="D-14">
+      L'elenco dei rami disponibili e' servito da un endpoint dedicato, perche' l'associazione
+      ramo -> sottoalbero di categorie vive in `config/request-management-report.php` (backend) e
+      il client non deve replicarla. NON si riusa `GET /request-management/product-categories`
+      (tab): quello restituisce i nodi reali, non i rami del report.
+    </decision>
+
+    <data_contract_delta>
+      <endpoint method="GET" path="/api/request-management/report/categories">
+        <request>Nessun parametro.</request>
+        <response status="200">
+          `{ success: true, message, data: { categories: [ { key, label } ] } }`
+          `key` = chiave del ramo in config (`gol`, `autoimpiego`, `yisu`, `autofinanziato`,
+          `consulenza`, `apl`); `label` = il nome di dominio del ramo (`GOL`, `Autoimpiego`,
+          `Yisu`, `Autofinanziato`, `Consulenza`, `APL`), che NON si traduce: e' un valore di
+          dominio esposto all'utente, come i nomi di categoria altrove.
+          Solo i rami con almeno una richiesta in scope (D-11, D-12); ordine = quello di config.
+          Un attore la cui visibilita' non raggiunge alcuna richiesta riceve una lista vuota.
+        </response>
+        <errors>403 — attore senza `request-management.report`.</errors>
+      </endpoint>
+
+      <endpoint method="POST" path="/api/request-management/report">
+        <request>
+          Il body acquisisce DUE campi, entrambi required (nessun default implicito lato server:
+          il client manda sempre una scelta esplicita):
+            category_keys : array di stringhe, min 1, ogni valore in ALLOW-LIST delle chiavi di
+                            config. Una chiave sconosciuta e' 422 — l'input non entra mai in una
+                            query, si traduce prima in ids di categoria via config (backend.md §8).
+            row_mode      : stringa, uno di `total_only` | `operators_only` | `all`.
+          `date_from`/`date_to` invariati.
+        </request>
+        <response status="201">Invariata. `ExportRun.state` congela ANCHE `category_keys` e `row_mode`.</response>
+      </endpoint>
+
+      <routing_trap>
+        `report/categories` va dichiarata PRIMA di `report/{exportRun}`, altrimenti il segmento
+        letterale viene inghiottito dal wildcard e `GET .../report/categories` finisce nello `show`
+        con `exportRun = "categories"`. Oltre all'ordine, `{exportRun}` va vincolata con
+        `->whereNumber('exportRun')`: l'ordine da solo funziona ma si rompe in silenzio alla prima
+        riorganizzazione del file, il vincolo no.
+      </routing_trap>
+    </data_contract_delta>
+
+    <acceptance_addendum>
+      <criterion id="AC-026">`GET /api/request-management/report/categories` restituisce i soli rami con almeno una richiesta in scope, con `key` e `label`, nell'ordine di config; un attore senza il permesso riceve 403.</criterion>
+      <criterion id="AC-027">L'elenco rispetta lo scope: un attore che vede solo richieste di categoria Consulenza NON riceve gli altri rami; un attore la cui visibilita' non raggiunge nulla riceve `categories: []`.</criterion>
+      <criterion id="AC-028">L'elenco e' indipendente dal range: un ramo con richieste solo fuori dal periodo che verra' scelto compare comunque (D-12).</criterion>
+      <criterion id="AC-029">Un ramo compare se la richiesta e' classificata su un suo DISCENDENTE (es. `GOL - Lombardia` fa comparire `GOL`), non solo sul nodo radice.</criterion>
+      <criterion id="AC-030">`POST` con `category_keys` mancante, vuoto, o contenente una chiave non in config risponde 422; nessuna query viene eseguita con quel valore.</criterion>
+      <criterion id="AC-031">`POST` con `row_mode` mancante o diverso da `total_only|operators_only|all` risponde 422.</criterion>
+      <criterion id="AC-032">Selezionando due sole categorie, il CSV contiene i blocchi di quelle due e di nessun'altra; i valori delle righe emesse sono IDENTICI a quelli che le stesse righe avevano nel report integrale (la selezione filtra, non ricalcola).</criterion>
+      <criterion id="AC-033">`row_mode = total_only` emette per ogni categoria selezionata la sola riga TOTALE, nessuna riga operatore e nessuna riga "Non assegnato". `row_mode = operators_only` emette le righe operatore e "Non assegnato" ma nessuna riga TOTALE. `row_mode = all` emette entrambe, come prima della revisione.</criterion>
+      <criterion id="AC-034">In `operators_only`, una categoria selezionata senza alcuna richiesta nel range non emette alcuna riga (D-13); in `total_only` e `all` emette la sua riga TOTALE a zero.</criterion>
+      <criterion id="AC-035">`ExportRun.state` del run creato contiene `category_keys` e `row_mode`, e il job li rilegge da li' (non da un default): un run creato con due categorie produce, quando eseguito in coda, un CSV con quelle due.</criterion>
+      <criterion id="AC-036">`GET /api/request-management/report/categories` risolve all'endpoint dell'elenco e NON allo `show` con `exportRun = "categories"`; un test lo verifica risolvendo la rotta.</criterion>
+
+      <criterion id="AC-049">All'apertura del dialog il client carica l'elenco dei rami; durante il caricamento il pulsante di conferma e' disabilitato.</criterion>
+      <criterion id="AC-050">I rami sono selezionabili singolarmente e in gruppo (piu' categorie insieme); di default sono tutti selezionati.</criterion>
+      <criterion id="AC-051">Deselezionando tutte le categorie il form mostra un errore di validazione e non invia la richiesta (nessun 422 evitabile lasciato al server).</criterion>
+      <criterion id="AC-052">La scelta delle righe e' esposta con le tre opzioni (solo totale / solo operatori / tutto), con `all` preselezionato, e viene inviata come `row_mode`.</criterion>
+      <criterion id="AC-053">Se l'elenco dei rami torna vuoto, il dialog lo dice in modo esplicito e non permette di generare un report vuoto.</criterion>
+      <criterion id="AC-056">All'apertura del dialog i due campi data sono precompilati con il LUNEDI' e il VENERDI' della settimana corrente (direttiva utente 2026-09-08), entrambi modificabili. La settimana comincia di lunedi': la domenica appartiene alla settimana iniziata il lunedi' PRECEDENTE, non a quella successiva (offset `(getDay() + 6) % 7`). Di sabato e domenica il venerdi' proposto e' quindi nel passato, ed e' corretto cosi'.</criterion>
+      <criterion id="AC-057">Il calcolo dei default usa i componenti di data LOCALI, mai `toISOString()`: quest'ultimo converte in UTC e a est di Greenwich sposta il giorno indietro, proponendo la domenica al posto del lunedi'. Un test con orario locale vicino alla mezzanotte lo verifica.</criterion>
+      <criterion id="AC-055">Il gruppo delle categorie ha un controllo "seleziona/deseleziona tutto" (direttiva utente 2026-09-08): con tutte selezionate lo deseleziona tutte, altrimenti le seleziona tutte. E' TRI-STATO: spuntato con tutte selezionate, indeterminato con una selezione parziale, vuoto con nessuna. Non e' una categoria e non entra mai in `category_keys`. Deselezionando tutto si ricade in AC-051 (errore di validazione, conferma disabilitata), non in una richiesta vuota al server.</criterion>
+      <criterion id="AC-054">Ogni controllo del form ha la triade ARIA (`aria-invalid`, `aria-describedby`, elemento `role="alert"`), inclusi il gruppo di checkbox delle categorie e il gruppo di scelta delle righe; le stringhe stanno sotto `requestManagement.report.*` con parita' IT/EN.</criterion>
+    </acceptance_addendum>
+
+    <scope_delta>
+      <out>
+        <item>Filtri diversi da categoria e righe: nessun filtro per operatore, sede, stato o testo libero. Il perimetro resta la visibilita' dell'attore.</item>
+        <item>Nessuna modifica alle formule degli indicatori: la selezione FILTRA l'output, non cambia il calcolo (AC-032 lo verifica).</item>
+        <item>Nessun salvataggio delle preferenze di selezione tra una generazione e l'altra.</item>
+      </out>
+    </scope_delta>
+  </revision>
+
+</spec>

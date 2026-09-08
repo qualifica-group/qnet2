@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Models\BusinessFunction;
 use App\Models\Contract;
 use App\Models\Note;
 use App\Models\Opportunity;
+use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteLine;
+use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -268,4 +271,43 @@ it('PATCH of another field on an already closed_won request does not duplicate t
     ])->assertOk();
 
     expect(Contract::where('quote_id', $quote->id)->count())->toBe(1);
+});
+
+// ---------------------------------------------------------------------------
+// Re-resolution on a classification change (user directive 2026-09-08)
+// ---------------------------------------------------------------------------
+
+it('PATCH product_lines re-resolves the working status onto the workflow the new category matches', function () {
+    $actor = requestWorkflowActor();
+    $quote = requestWorkflowQuote($actor);
+    $globalStatusId = $quote->quote_workflow_status_id;
+
+    // The classification the request is about to carry, and the workflow
+    // keyed on it. The offer has no revenue line of its own, so this pair is
+    // the ONLY thing the resolver can match on.
+    $category = ProductCategory::factory()->create([
+        'business_function_id' => BusinessFunction::factory()->create()->id,
+    ]);
+    $workflow = QuoteWorkflow::factory()->create();
+
+    foreach (['open', 'closed_won', 'closed_lost'] as $key) {
+        QuoteWorkflowStatus::factory()->system($key)->create(['quote_workflow_id' => $workflow->id]);
+    }
+
+    $workflow->criteria()->create(['field' => 'product_category_id', 'value_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->patchJson("/api/request-management/{$quote->id}", [
+        'product_lines' => [[
+            'business_function_id' => $category->business_function_id,
+            'product_category_id' => $category->id,
+        ]],
+    ])->assertOk();
+
+    $resolvedOpen = $workflow->statuses()->where('system_key', 'open')->sole();
+
+    expect($resolvedOpen->id)->not->toBe($globalStatusId)
+        ->and($response->json('data.quote_workflow_status_id'))->toBe($resolvedOpen->id)
+        ->and($response->json('data.quote_workflow_status.id'))->toBe($resolvedOpen->id)
+        ->and($quote->fresh()->quote_workflow_status_id)->toBe($resolvedOpen->id);
 });

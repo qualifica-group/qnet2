@@ -3,6 +3,446 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DASHBOARD E GRAFICI DI GESTIONE RICHIESTE (2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** Bottone statistiche su Gestione Richieste (lo stesso di Opportunita') che apre
+una dashboard con grafici sugli stessi dati del report CSV, filtrabile con i campi della modale, con
+i calcoli LEGATI a quelli del report per non doverli modificare in due posti.
+Spec: `docs/specs/0107-request-management-report-dashboard.xml` (D-1..D-9 + D-2-bis, ~25 AC).
+
+**Il vincolo che tiene in piedi tutto (D-2).** La dashboard NON contiene logica di calcolo: consuma
+`RequestManagementReportGenerator::rows()` e `ReportBranchRowsBuilder::build()`, gli stessi del CSV,
+e legge `ReportRow::$values`. Se cambia una regola in un indicatore di 0106, la dashboard cambia da
+sola. Blindato da due test: `RequestManagementDashboardCsvParityTest` genera DAVVERO il CSV e la
+dashboard per gli stessi filtri e confronta ogni punto con la cella corrispondente; un test di
+ispezione statica asserisce che il builder non contenga `Quote::`, `DB::`, `->where(`, `->join(`.
+Chi tocca questa parte non deve mai introdurre una query nella dashboard.
+
+**Endpoint.** `GET /api/request-management/report/dashboard?date_from&date_to&category_keys[]&row_mode`,
+SINCRONO (niente `ExportRun`, niente coda, quindi nessuna delle due trappole di 0106). Permesso
+riusato: `request-management.report`, nessun permesso nuovo. Rotta dichiarata prima di
+`report/{exportRun}`, protetta anche dal `->whereNumber('exportRun')`.
+Risposta: `data: { applied, summary, charts }`. `charts[].scope` e' `category` o `operator`, deciso
+da `row_mode` (D-3): `total_only` -> confronto tra categorie, `operators_only` -> confronto tra GA2,
+`all` -> entrambi.
+
+**REFACTORING DI 0106 FATTO QUI (D-2-bis), a comportamento invariato.**
+- `RequestManagementReportGenerator::rows(...)` estratto da `generate()`, che ora lo chiama e scrive.
+  Il filtro su `category_keys` vive in UN solo punto (`selectedBranches()`), usato da entrambi i
+  consumatori. EFFETTO COLLATERALE ACCETTATO: il CSV non e' piu' scritto in streaming, le righe si
+  accumulano prima (qualche decina di VO, irrilevante).
+- Le 11 colonne indicatore sono passate da `ReportCsvBuilder::INDICATOR_COLUMNS` alla chiave
+  `indicator_columns` di `config/request-management-report.php`. La costante NON esiste piu': calcolo,
+  formattazione CSV e dashboard leggono tutti dalla config. Non reintrodurre la dipendenza
+  calcolo -> formattazione.
+- NON e' stato aggiunto alcun discriminante a `ReportRow`: la dashboard separa totale e operatori
+  invocando `build()` due volte con `row_mode` diverso. Non distinguere MAI le righe confrontando
+  `ReportRow::$label`, che e' una stringa gia' tradotta.
+
+**Cose da NON rompere lato frontend.**
+- Il fetch della dashboard NON va gated su `formState.isValid` di RHF: e' asincrono e ha un render di
+  ritardo, e faceva partire richieste con `category_keys` vuoto nell'istante in cui si deselezionava
+  l'ultima categoria. Si usa `isRequestReportQueryReady(values)`, sincrona sugli stessi valori del
+  render. Coperto da test.
+- `report-bar-chart.tsx` non deve MAI importare recharts: solo `report-bar-chart-impl.tsx`, via
+  `React.lazy`. Un test legge il sorgente e lo asserisce, come gia' fa `stat-chart.test.tsx`.
+- `StatsToggleButton`, `useStatsPanel` e tutto `features/stats/**` sono RIUSATI, mai modificati.
+  Differenza voluta rispetto agli altri moduli: qui il bottone e' avvolto da
+  `<Can permission="request-management.report">` perche' quel permesso nasce non assegnato.
+- I controlli di filtro sono condivisi tra modale CSV e dashboard in `RequestReportFilters`: una
+  modifica li' vale per entrambi. E' l'equivalente frontend di D-2.
+
+**DEBITO SEGNALATO, non risolto.** `frontend/src/features/request-management/request-management-table.tsx`
+e' a 489 righe contro l'hard limit di 500 dell'hook `code-guard.js` (era gia' a 474 prima di questo
+lavoro). Il bottone e' stato estratto in `request-dashboard-toggle.tsx` proprio per non sforare:
+restano 11 righe di margine, la prossima aggiunta richiede uno split vero.
+
+**Verifica (eseguita, non dichiarata).** Suite `Report/` 77/77 (55 di 0106 invariati + 22 nuovi);
+suite backend completa 6561 test, 1 skip preesistente, 0 falliti; Vitest 606 file / 4459 test verdi;
+`tsc -b --force` pulito; Pint ed ESLint puliti. Verifica indipendente del `verifier` con lettura
+integrale del builder e grep propri per confermare l'assenza di logica di calcolo.
+
+## RESTYLING MODALE "GENERA REPORT" — /request-management (2026-09-08) — VERDE, NON COMMITTATO
+
+**Cosa e' cambiato (solo presentazione, contratto e comportamento invariati).**
+1. `frontend/src/features/request-management/request-report-dialog.tsx` — banda header
+   con chip icona (`FileSpreadsheet`) e gradiente `from-card to-primary/[0.06]`, stessa
+   lingua di `assign-manager-ga3-dialog.tsx`; corpo su `bg-surface` (rung 2) con i gruppi
+   filtro su `bg-card` (rung 3); i due campi data condividono una riga via
+   `FILTERS_GRID_CLASS` (`[&>*:nth-child(n+3)]:col-span-2`, verificato nel CSS emesso);
+   gli stati run (in corso / completato / fallito / errori) passano da `<p>` nudi a
+   `ReportStatusNote` (icona + tono token, `role="alert"` SOLO sul tono `error`);
+   footer come banda con gradiente. Larghezza default 420 -> 440.
+2. `frontend/src/features/request-management/request-report-filters.tsx` — label compatte
+   `text-xs`, gruppo categorie come card (legend + riga "seleziona tutto" con contatore
+   `n/tot` + righe hover/selezionate, lista `max-h-52 overflow-y-auto`), `row_mode` come
+   segmented control orizzontale al posto dei tre bottoni impilati, avvisi lista rami con
+   icona (`Loader2` / `CircleAlert`).
+
+**Vincoli rispettati (non romperli).** Il file dei filtri resta un FRAGMENT piatto, un
+elemento per gruppo: `RequestDashboardPanel` li dispone come celle della propria griglia
+a 4 colonne, quindi nessun contenitore puo' essere aggiunto li' dentro (il layout a due
+colonne del modale vive nel dialog). Un solo `role="group"` nell'albero (il `fieldset`
+categorie) e un solo `role="alert"` per volta: i test AC-051/AC-053/AC-054 usano
+`getByRole('group')` / `findByRole('alert')` al singolare. Nomi accessibili invariati
+("Generate", "Select all", etichette rami, tre radio row-mode). Nessuna chiave i18n nuova.
+
+**Verificato (eseguito).** `npx vitest run src/features/request-management` -> 47 file /
+290 test verdi; `npx tsc -b --force --pretty false` EXIT=0; `npx eslint` sui due file
+EXIT=0; `npx vite build` per confermare che Tailwind genera la variante arbitraria.
+NON verificato a schermo (nessuno screenshot dell'app reale).
+
+**Segnalato, non implementato (fuori scope).** Preset rapidi di intervallo (questa
+settimana / settimana scorsa / questo mese) nel modale: sarebbero il tocco CRM mancante,
+ma aggiungono chiavi i18n e comportamento, quindi vanno chiesti esplicitamente.
+
+## STATO DI LAVORAZIONE SENZA PRODOTTO: FALLBACK SULLA CATEGORIA DELL'OPPORTUNITA' (2026-09-08) — VERDE, NON COMMITTATO
+
+**Difetto segnalato.** In alcuni tab di `/request-management` certe gestioni richieste
+mostravano lo stato di lavorazione di DEFAULT. Causa: la risoluzione del workflow
+(`QuoteWorkflowResolver`) leggeva `product_category_id`/`business_function_id`/
+`product_category_branch_id` SOLO dalle righe ricavo dell'Offerta. Un'Offerta senza righe
+non matchava nessun criterio di categoria -> nessun workflow -> set globale di default.
+Paradosso: la stessa riga era gia' elencata sotto il suo tab di categoria, perche'
+`RequestCategoryTabsResolver` legge `opportunity_product_lines`. La classificazione era
+nota; solo la risoluzione del workflow si rifiutava di guardarla.
+
+**Cosa e' cambiato.**
+1. NUOVO `App\Support\QuoteWorkflows\QuoteClassificationSource` — due sorgenti in ordine:
+   (1) le categorie dei prodotti sulle righe RICAVO dell'Offerta; (2) FALLBACK, solo quando
+   l'Offerta non ha nessuna riga ricavo, le coppie `productLines` della sua Opportunita'.
+   Stessa forma e stesso trigger del precedente `QuoteManagerLabelResolver` (spec 0087 D-8).
+   `quote_lines.product_id` e' NOT NULL, quindi "nessuna riga ricavo" == "nessun prodotto".
+2. `QuoteCriterionFieldRegistry` (via il nuovo collaboratore, `offerLineValues()` rimosso) e
+   `CategoryBranchResolver` (step 1) leggono ORA dalla stessa sorgente: un criterio branch e
+   uno di categoria esatta non possono piu' dissentire sulla stessa Offerta.
+3. `QuoteWorkflowResolver::resolve()` eager-loada anche `opportunity.productLines`.
+   Le due griglie che risolvono per riga (`RequestManagementTableDefinition::baseQuery`) e
+   `QuoteService::DETAIL_RELATIONS` la caricavano gia': nessun N+1 nuovo.
+4. `RequestManagementService::updateWork()` — nuovo Step 1-quater: quando
+   `RequestProductLineWriter::apply()` riporta un cambio reale, il baseline dello stato viene
+   ri-risolto via `QuoteWorkflowStatusAssigner::assign($quote, null, null, $actor)`, come gia'
+   fa `QuoteService::update()`. Senza, dopo il fallback una riga avrebbe conservato uno stato
+   fuori dal proprio set risolto (la select inline avrebbe offerto destinazioni che escludono
+   il valore mostrato). `applyWorkflowStatus()` usa ora `$old[...] ??=` per non sovrascrivere
+   lo stato di partenza registrato dal rebaseline nello stesso PATCH.
+   Le modifiche a `offer_lines` erano gia' coperte: passano da `QuoteService::update()`.
+
+**DA ESEGUIRE UNA VOLTA SUI DATI ESISTENTI.** `quotes.quote_workflow_status_id` e' persistita e
+si ri-risolve solo in scrittura: le righe nate prima del fix restano sullo stato globale.
+Comando nuovo, idempotente, limitato alle Offerte SENZA righe ricavo (le uniche che il
+fallback cambia):
+
+    php artisan quotes:resync-workflow-status --dry-run   # anteprima
+    php artisan quotes:resync-workflow-status
+
+Riusa `QuoteWorkflowResolver` verbatim (stessa precedenza di `targetStatus()`: stato attuale se
+ancora nel set, altrimenti remap per `system_key`, altrimenti la riga `open` del set).
+
+**File toccati.** `app/Support/QuoteWorkflows/QuoteClassificationSource.php` (nuovo),
+`QuoteCriterionFieldRegistry.php`, `CategoryBranchResolver.php`,
+`app/Services/Quotes/QuoteWorkflowResolver.php`,
+`app/Services/RequestManagement/RequestManagementService.php`,
+`app/Console/Commands/ResyncQuoteWorkflowStatuses.php` (nuovo).
+
+**Test (ESEGUITI).** Suite backend completa: 6538 passed / 1 skipped / 0 failed, Pint pulito.
+Nuovi: `tests/Unit/QuoteWorkflows/QuoteOpportunityClassificationFallbackTest.php` (6 casi —
+categoria, funzione aziendale, branch su antenato, unione di piu' linee, le righe ricavo
+VINCONO sul fallback, e nessuna delle due sorgenti -> set globale);
+`tests/Feature/Quotes/ResyncQuoteWorkflowStatusCommandTest.php` (3 casi);
+`tests/Feature/RequestManagement/RequestManagementWorkflowStatusTest.php` +1 caso (PATCH
+`product_lines` ri-risolve lo stato). I 4 casi di fallback e il caso PATCH sono stati
+verificati ROSSI disattivando il fix, poi verdi: nessun falso verde.
+Rinominati (solo il nome, il corpo e' invariato) due test il cui titolo era diventato
+impreciso: `Foundation0047Test` e `QuoteCategoryBranchCriterionTest` ora dicono "ne' le righe
+offerta ne' le linee prodotto dell'opportunita'".
+
+**Da sapere.** `RequestManagementService.php` e' a 481 righe: sotto il limite hard di 500 ma
+con poco margine (engineering.md §6). Il prossimo blocco che vi si aggiunge va estratto in un
+writer suo, come gia' fatto per attribution/product-line/offer-line/client-profile.
+
+## STATI DI LAVORAZIONE PER "GOL - ABRUZZO" (2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** Nel seed di produzione mancavano gli stati di lavorazione di
+`GOL - Abruzzo`, che ha "gli stessi stati di GOL - Calabria".
+
+**Cosa e' cambiato.** `WorkflowStatusCatalogue::WORKFLOWS` ha ora una voce
+`'GOL - Abruzzo' => ['section' => GOL, 'statuses' => GOL_BASE_STATUSES]`: Abruzzo riusa la
+costante gia' condivisa da Molise/Puglia/Calabria/Basilicata invece di una trascrizione propria,
+quindi resta allineato a Calabria per costruzione. Nessuna modifica al seeder: la voce basta,
+`QualificaWorkflowSeeder` itera su `WORKFLOWS` e crea il workflow via `QuoteWorkflowService::create()`
+(idempotente per nome/criteria signature — un DB gia' seedato NON riceve il nuovo workflow finche'
+non si ri-esegue su un DB pulito o si crea a mano).
+Aggiornate le note di trascrizione: fuori dal set globale di default resta il solo `DIL`.
+
+**Test toccati** (`tests/Feature/Seeding/QualificaWorkflowSeederTest.php`): `GOL - Abruzzo` esce da
+"leaves the categories absent from the sheet on the global default set" ed entra nella lista delle
+regioni che condividono la colonna base (requisito cambiato, non test tampering).
+Nota illustrativa in `docs/specs/0106-request-management-csv-report.xml` allineata (cita solo `DIL`).
+
+**Verifica eseguita.** `pest tests/Feature/Seeding tests/Feature/Products` -> 243 passed,
+1237 assertions. `pint --dirty` -> passed.
+
+**Prossimo passo.** Nulla di aperto. Da valutare solo se il DB di produzione gia' seedato vada
+allineato (il seeder idempotente non ritocca un workflow esistente, ma qui il workflow Abruzzo non
+esiste affatto: una ri-esecuzione di `QualificaWorkflowSeeder` lo crea senza toccare gli altri).
+
+## SEED DI PRODUZIONE RIPULITO DAI DATI FINTI (2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** `QualificaProductionDataSeeder` creava opportunita'/lead/anagrafiche finte:
+toglierle da li' e metterle in un seeder nuovo, insieme alle gestioni richieste.
+
+**Cosa e' cambiato.** `QualificaProductionDataSeeder` scende da 9 a 7 passi: gli ex step 8/9
+(`QualificaSampleLeadSeeder`, `QualificaSampleOpportunitySeeder`) sono usciti dalla catena. Il seed
+di produzione ora non produce NESSUNA riga fabbricata — solo struttura, reference data, tester,
+import legacy e i due link post-import.
+
+**Nuovo entry point on-demand**: `php artisan db:seed --class=QualificaSampleDataSeeder`, che
+orchestra tre passi in ordine di dipendenza:
+1. `QualificaSampleLeadSeeder` (invariato) — 40 lead, 12 convertiti, un'Anagrafica per lead;
+2. `QualificaSampleOpportunitySeeder` (invariato nella logica) — 10 trattative dirette;
+3. `QualificaSampleRequestSeeder` (NUOVO) — 8 richieste di Gestione Richieste.
+
+**Il seeder nuovo.** Passa da `RequestCreationService::create()`, lo STESSO path di
+`POST /api/request-management`: ogni richiesta nasce come Opportunita' + Offerta in una
+transazione, con `code`, nome derivato `OPP_{id}` e `quote_workflow_status_id` prodotti dal write
+path reale — mai un insert a mano. Ogni Offerta porta UNA riga d'offerta valorizzata (direttiva
+utente 2026-09-08), passata a `QuoteService` via `offerLines`: il canale aperto sull'endpoint dalla
+direttiva 2026-08-07, quindi l'"offerta senza righe" di spec 0086 AC-028 resta il default
+dell'ENDPOINT, non di questo seeder. Il prodotto della riga esce dai `products_of_interest` della
+richiesta stessa, quindi la coverage e' gia' soddisfatta da una categoria che l'Opportunita' porta;
+prezzo e IVA dal prodotto (spec 0065, D-6).
+
+**Esattamente una riga, mai due**: una classificazione a gestione `single` accetta una sola riga
+d'offerta (spec 0077) e `RequestCreationService::assertOfferLinesFitManagementMode()` RIFIUTA il
+batch invece di troncarlo. Chi alza il numero di righe deve prima distinguere le categorie
+`single` da quelle `multiple`.
+
+**Cose da NON rompere in futuro.**
+- I `managerSlots` sono riempiti ESPLICITAMENTE (GA1 / GA2 "Operatore" / GA3) ruotando su account
+  distinti. Lasciarli al default del service significa mettere l'attore creante nello slot GA2 di
+  TUTTE le righe: siccome `RequestManagementScope` tier-2 e' esattamente
+  `quotes.operator_id === actor` (spec 0105), il modulo risulterebbe vuoto per chiunque altro.
+  Stessa ragione per cui `operational_site_id` e' sempre valorizzato (tier-3 `viewSite`, D-3).
+- Un'anagrafica porta UNA opportunita' aperta per volta (direttiva 2026-08-31): i passi 2 e 3
+  condividono il pool tramite il nuovo trait `Database\Seeders\Concerns\PicksFreeRegistries`,
+  che passa dal vero `RegistryOpenOpportunityGuard` (non da un `whereDoesntHave` fatto a mano, che
+  perderebbe l'esenzione single-mode). Chi aggiunge un quarto passo che crea opportunita' usa quel
+  trait, non ne riscrive uno.
+- Un `QualificaSampleDataSeeder` su database vergine NON e' un errore: ogni passo si salta da se'
+  con un warning. Il prerequisito e' `QualificaProductionDataSeeder` (albero categorie con funzioni
+  aziendali effettive, account, sedi operative).
+- **La catena ACCUMULA, non converge** (direttiva utente 2026-09-08): i tre guard "already seeded:
+  nothing to add" sono stati RIMOSSI, ogni run aggiunge un batch. Non reintrodurli: servono per
+  generare tante righe rilanciando. Riusati per nome restano solo il progetto e la campagna di
+  esempio (uno soltanto per tutto il dataset). Rimosse anche le costanti `FAKER_SEED` dei tre
+  seeder: a seed fisso ogni run sarebbe una fotocopia del primo.
+- Il vero limite di un run e' il pool di anagrafiche libere, non un guard: esaurito il pool il
+  batch e' vuoto. Il passo 1 ne crea `--leads` nuove a ogni run, che e' cio' che tiene alimentati
+  i passi 2 e 3.
+
+**Quantita' da terminale (direttiva utente 2026-09-08).** Nuovo comando
+`php artisan qualifica:seed-sample --leads=200 --converted-leads=60 --opportunities=50
+--requests=30` (`app/Console/Commands/SeedSampleData.php`). E' un FRONT-END, non una seconda
+implementazione: i flag diventano i parametri di `run()` dei seeder, che `QualificaSampleDataSeeder`
+inoltra con `callWith()` (stesso meccanismo gia' usato da `QualificaProductionDataSeeder` per
+`askForLegacyImport`). `db:seed --class=QualificaSampleDataSeeder` continua a funzionare e prende i
+default, che vivono nelle costanti `DEFAULT_LEADS`/`DEFAULT_CONVERTED_LEADS`/
+`DEFAULT_OPPORTUNITIES`/`DEFAULT_REQUESTS` dei rispettivi seeder — UNA sola fonte, il comando le
+legge da li'.
+
+**Cose da NON rompere nel comando.**
+- `--leads=abc` deve FALLIRE (exit 2), non castare a 0 e seminare un batch vuoto riportando
+  successo: e' un silent failure, non un default. Coperto da test.
+- `ConfirmableTrait`: in produzione il comando chiede conferma prima di scrivere righe finte.
+  Non toglierlo per comodita'.
+- Valutata e SCARTATA la strada delle env var (`SAMPLE_LEADS=...` in `config/seeding.php`):
+  l'utente ha chiesto esplicitamente i flag da terminale. Non reintrodurla in parallelo.
+
+**File.** Nuovi: `app/Console/Commands/SeedSampleData.php`,
+`tests/Feature/Seeding/SeedSampleDataCommandTest.php`,
+`database/seeders/QualificaSampleDataSeeder.php`,
+`database/seeders/QualificaSampleRequestSeeder.php`,
+`database/seeders/Concerns/PicksFreeRegistries.php`,
+`tests/Feature/Seeding/QualificaSampleDataSeederTest.php`,
+`tests/Feature/Seeding/QualificaSampleRequestSeederTest.php`. Modificati:
+`QualificaProductionDataSeeder`, `QualificaSampleLeadSeeder` + `QualificaSampleOpportunitySeeder`
+(docblock + trait condiviso), `tests/Feature/Seeding/QualificaProductionDataSeederTest.php`
+(ora pinna che la catena di produzione NON semina lead/opportunita'/offerte), `backend/README.md`
+(tabella dei passi allineata ai 7 reali + sezione nuova).
+
+**Verifica eseguita.** `php artisan test tests/Feature/Seeding` -> 70/70 verdi, 445 asserzioni.
+`vendor/bin/pint database/seeders tests/Feature/Seeding` -> pulito.
+
+**Prossimo passo.** Chiedere all'utente se committare (§3.6: mai commit senza via libera esplicito).
+
+## REPORT CSV DI GESTIONE RICHIESTE (2026-09-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** Report CSV filtrabile per range di date, con gli indicatori aggregati per
+categoria e, dentro ogni categoria, per singolo GA2. Spec congelata e approvata:
+`docs/specs/0106-request-management-csv-report.xml` (10 decisioni D-1..D-10, ~40 AC).
+
+**Cosa e' stato costruito.** Tre rotte nel modulo, ciclo asincrono create -> poll -> download:
+`POST /api/request-management/report`, `GET .../report/{exportRun}`, `GET .../report/{exportRun}/download`,
+dichiarate PRIMA di `{quote}` e senza `throttle`. Nuova ability `report` in
+`RequestManagementPolicy::abilities()` -> permesso `request-management.report`.
+Si riusano `ExportRun`, `ExportStatus`, `CsvExportWriter` e lo storage di `config/exports.php`;
+NON si tocca `ExportController`/`ExportService`/`GenerateExportJob` (legati a una `TableDefinition`,
+mentre questo e' un aggregato). Nessuna migrazione.
+
+**DA FARE AL DEPLOY (passo dimenticabile).** Il permesso `request-management.report` nasce NON
+assegnato a nessun ruolo: dopo `php artisan permissions:sync` va assegnato, altrimenti la voce non
+compare a nessuno e il report sembra non implementato.
+
+**Cose da NON rompere in futuro.**
+- Ogni query del report passa da `ReportBranchQuery::build()`, unico entry point, che applica
+  `RequestManagementScope::scopeToActor`. Un indicatore che si costruisce una query propria e'
+  una FUGA DI DATI, non un errore di conteggio.
+- Il job DEVE fare `Auth::setUser()` e `App::setLocale()` dal run congelato PRIMA di qualunque
+  query: lo scope e' fail-closed e legge l'auth guard (senza -> CSV vuoto su worker reale), e in
+  coda il middleware `SetLocale` non passa mai (senza -> intestazioni in inglese). Coperti da
+  `RequestManagementReportJobTrapsTest.php:157` e `:186`, che girano FUORI dal contesto della
+  request: un test dentro la request passerebbe anche col bug presente.
+- "Non nel primo stato" si scrive `(system_key IS NULL OR system_key <> 'open')`. Gli stati custom
+  hanno `system_key = NULL` e in SQL `NULL <> 'open'` vale NULL, non TRUE.
+- Il confronto di workflow in `WorkflowTransitionIndicator` e' NULL-SAFE: il set globale di default
+  ha `quote_workflow_id IS NULL` e `NULL = NULL` non e' mai vero. Un `=` nudo azzererebbe
+  "potenziali"/"associati" per le categorie senza workflow dedicato (GOL - Abruzzo, DIL).
+- Categoria: catena `quotes -> opportunities -> opportunity_product_lines.product_category_id`,
+  la stessa dei tab. NON `quote_lines -> products.category_id` (quella e' del workflow).
+- Query su `activity_log.properties`: solo arrow operator del builder, mai `whereRaw`/`json_extract`
+  (prod MySQL, test SQLite).
+
+**Limiti dichiarati e accettati dall'utente (non sono bug).**
+- Le date di transizione vengono da `activity_log` (D-1): il modulo Offerte non logga i cambi di
+  stato, il subject e' l'Opportunity senza `quote_id`, retention 365 giorni. L'attribuzione e'
+  esatta per GOL/Autoimpiego/Yisu/Autofinanziato (`single_quote_per_opportunity = true` su
+  Formazione); ambigua solo per Consulenza, mitigata dal confronto di workflow (D-3).
+- `pending` non e' usato da nessuno stato del cliente e `validated` esiste solo per
+  Autoimpiego/Yisu e Consulenza: "Potenziali associati" e' 0 altrove finche' il catalogo non cambia
+  (D-2). Nessun nome di stato e' cablato: la colonna si popola da sola.
+- "Presa Appuntamenti" a 0 (D-5): gli stati citati dal brief non appartengono a Consulenza.
+- "Aziende inserite" e' REINTERPRETATA (D-6): non "inserite dall'utente" — nessuna colonna di
+  autore esiste su `registries` — ma "anagrafiche azienda create nel range e collegate alle
+  richieste di quel GA2".
+- Il GA2 e' quello CORRENTE (D-7): lo storico delle riassegnazioni non e' ricostruibile.
+
+**REV-2 (2026-09-08) — selezione categorie, scelta righe, tutto a 0.** Direttive utente successive
+al primo verde, tutte nel blocco `<revision id="rev-2">` della spec (D-11..D-15, AC-026..AC-036,
+AC-049..AC-057):
+- Nuovo `GET /api/request-management/report/categories`: i RAMI del report (non i nodi grezzi
+  dell'albero) che hanno almeno una richiesta in scope, valutati ALL-TIME e non sul range (D-12:
+  l'elenco si carica prima che le date siano scelte). Riusa `ReportBranchQuery` verbatim, quindi
+  nessuna nuova superficie di fuga.
+- `POST /report` acquisisce `category_keys` (allow-list dalle chiavi di config: una chiave ignota
+  e' 422 e non raggiunge mai una query) e `row_mode` (`total_only|operators_only|all`). Entrambi
+  congelati in `ExportRun.state` e RILETTI da li' dal job, mai da un default.
+- La selezione FILTRA rami gia' risolti e calcolati, NON ricalcola: i valori di una riga devono
+  restare identici a quelli del report integrale (verificato valore per valore, non a parole).
+- **D-15 ANNULLA D-9**: ogni cella numerica esce `0`, mai vuota e mai null. Le sole colonne di
+  testo sono `Categoria` e `GA2`. Non si distingue piu' "non applicabile" da "zero misurato": e'
+  la scelta dell'utente, per avere un foglio sommabile senza celle vuote.
+- Frontend: selettore multiplo con "seleziona/deseleziona tutto" TRI-STATO (Radix
+  `checked="indeterminate"`, mai due booleani; non e' una categoria e non entra in `category_keys`),
+  scelta delle righe, e campi data precompilati con LUNEDI'-VENERDI' della settimana corrente.
+
+**Trappole gia' pagate in rev-2, non reintrodurle.**
+- Rotte: `report/categories` DEVE stare prima di `report/{exportRun}`, altrimenti finisce nello
+  `show` con id `"categories"`. Oltre all'ordine c'e' `->whereNumber('exportRun')`: l'ordine da solo
+  si rompe in silenzio al primo riordino del file.
+- Default settimana: offset `(getDay() + 6) % 7`, MAI `getDay() - 1` (di domenica sbaglia di sei
+  giorni, e funziona negli altri sei — un test scritto di mercoledi' non lo vede). E mai
+  `toISOString()` per la stringa `YYYY-MM-DD`: converte in UTC e a est di Greenwich propone il
+  giorno prima. Coperti da test con domenica e mezzanotte a Tokyo.
+- Helper condivisi dei test Pest: le firme di `reportQuote`/`reportActorWith` e affini devono
+  restare IDENTICHE in tutti i file di `tests/Feature/RequestManagement/Report/`. Sono protetti da
+  `function_exists` e Pest carica i file in ordine alfabetico: una firma piu' corta nel primo file
+  vince su tutti gli altri e PHP scarta gli argomenti in eccesso in silenzio. E' gia' costato 13
+  test che fallivano SOLO a cartella intera e passavano file per file.
+
+**Verifica (eseguita, non dichiarata).** rev-2: suite report 55/55; suite backend completa 6529
+test, 6528 passed, 1 skip preesistente, 0 falliti (misurazione indipendente della lane backend);
+Vitest 603 file / 4441 test verdi; `tsc -b --force` pulito; Pint ed ESLint puliti. Verifica
+indipendente del `verifier` con mappatura AC -> test file:riga.
+Nota: una misurazione intermedia del verifier aveva visto 3 rossi nei seeder
+`QualificaSample{Lead,Opportunity,Request}SeederTest` — NON imputabili a 0106: un'altra sessione
+stava riscrivendo quei file durante il run (il nome del test fallito non esiste piu'). Rimisurati
+poi a 0 falliti.
+
+**Verifica del primo giro.** Suite report 38/38; suite backend completa 6494 test,
+1 skip preesistente, 0 fallimenti imputabili (un timeout LibreOffice su `QuoteDocumentPdfTest`,
+preesistente e ambientale); Vitest 602 file / 4426 test verdi; `tsc -b --force` pulito; Pint ed
+ESLint puliti. Verifica indipendente del `verifier` con mappatura AC -> test file:riga.
+
+**Nota fuori scope.** I file i18n del modulo sono a 312 righe, 12 oltre il soft limit di 300:
+segnalato, non splittato.
+
+## VISIBILITA' PER SEDE SU GESTIONE RICHIESTE (2026-09-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "gestioni richieste, voglio un Permesso di vedere gestioni richieste della
+propria sede anche se non sono un gestore account. Voglio quindi un permesso per vedere tutto,
+uno per sedi di appartenenza". Spec congelata e approvata:
+`docs/specs/0105-request-management-site-visibility.xml` (17 AC).
+
+**Contratto congelato.** Nessun endpoint nuovo, nessuna shape modificata, nessuna migrazione: il
+contratto e' il permesso `request-management.viewSite` piu' la regola di visibilita', ora a TRE
+livelli valutati in quest'ordine in `RequestManagementScope`:
+1. attore null -> fuori scope (query: condizione che non matcha mai);
+2. `request-management.viewAll` -> dentro, sempre;
+3. `quotes.operator_id` = attore -> dentro;
+4. `viewSite` E `quotes.operational_site_id` non NULL E fra le sedi dell'attore -> dentro;
+5. altrimenti 403 / riga assente.
+Etichette: IT "Visualizza per sede", EN "View by site" (`permissions.abilities.viewSite`).
+
+**Decisioni utente da rispettare.**
+- I livelli 3 e 4 sono un'UNIONE, mai una sostituzione: chi ha `viewSite` non perde le richieste
+  che opera in una sede non sua (stato tipico dopo un trasferimento, spec 0079).
+- Contano TUTTE le appartenenze, fisica e remote (spec 0103 D-1). Sede NULL = fuori scope per
+  tutti (fail-closed).
+- `viewSite` allarga QUALI righe, mai COSA si puo' fare: ogni scrittura continua a chiedere la
+  propria ability (`update`, `delete`, `assignOperator`, `transferContact`, `assignManagerGa3`).
+- `viewAll` e `viewSite` sono indipendenti, non gerarchici.
+
+**File toccati.** `Policies/RequestManagementPolicy.php` (ability `viewSite`) ·
+`Services/RequestManagement/RequestManagementScope.php` (le tre forme della regola + `actorSiteIds`
+statico con `loadMissing('employment.operationalSites')`) · `RequestManagement/RequestManagementNotable.php`
+(terzo ramo di `mentionableUsersQuery`) · `Tables/QuotesTableDefinition.php` e
+`Tables/OpportunitiesTableDefinition.php` (affordance "note"; sulla griglia Opportunita' via
+`withExists` `site_scoped_quote_exists` in `baseQuery`) · `database/seeders/TestUsersSeeder.php`
+(`viewSite` fra le ability negate al Commerciale) · FE `i18n/locales/{it,en}-permissions.ts` +
+`permissions-i18n-parity.test.ts`.
+
+**DUE TRAPPOLE INCONTRATE, da non ripetere.**
+1. Lo scope spatie `permission('nome')` SOLLEVA `PermissionDoesNotExist` se la riga non esiste:
+   in `mentionableUsersQuery` il ramo `viewSite` e' aggiunto solo dopo aver verificato l'esistenza
+   della riga, e la verifica va fatta su nome **E guard** (`Guard::getDefaultName(User::class)`,
+   lo stesso che lo scope passa a `findByName`). Un lookup per solo nome pesca la riga sbagliata.
+2. Nei test: creare un attore DOPO `Sanctum::actingAs(...)` fa nascere le righe permesso sotto il
+   guard `sanctum` invece di `web`, e l'attore successivo non le possiede. Tutti gli attori si
+   creano PRIMA del primo `actingAs`.
+
+**Verifica eseguita.** Suite backend completa `XDEBUG_MODE=off php artisan test`: 6456 test, 6455
+passati, 1 skipped, 0 falliti. `RequestManagementSiteVisibilityTest` (nuovo): 15/15.
+Pint pulito. FE: `npx vitest run src/i18n/locales/permissions-i18n-parity.test.ts` 64/64 e
+`npx tsc -b --force --pretty false` EXIT=0.
+
+**Debito segnalato, NON toccato (fuori scope).** `app/Tables/RequestManagementTableDefinition.php`
+e' a 499 righe contro il hard limit 500 di `code-guard.js`: come da HEAD precedente era gia' a 500
+e QUALSIASI modifica al file veniva bloccata dall'hook. Va splittato prima del prossimo intervento
+su quel file. Anche `QuotesTableDefinition.php` e' vicino (484).
+
+**Rilievo del verifier accolto, da decidere a parte.** AC-017 della spec 0105 e' marcato
+`status="revised"`: `Model::preventLazyLoading()` NON e' cablato globalmente in questo repo
+(nessuna chiamata in `AppServiceProvider::boot()`; unico opt-in per test in
+`tests/Feature/Authorization/EmploymentFieldPermissionsTest.php:189-210`), mentre
+`.claude/rules/backend.md 3` lo da' per attivo fuori produzione. E' la REGOLA a essere
+disallineata dal codice: va deciso se cablare la strictness o correggere la regola. Non toccato
+qui.
+
+**Prossimo passo.** Assegnare `request-management.viewSite` ai ruoli reali dalla schermata Ruoli
+(nessun seeder lo assegna: il Commerciale lo ha esplicitamente negato). Poi decidere se serve un
+permesso "per sede" simmetrico su altri moduli (lead, opportunita', commesse) — oggi fuori scope.
+
 ## APPARTENENZA MULTI-SEDE DELL'UTENTE (2026-09-07) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "Utente puo' avere altre sedi di appartenenza (distinzione tra sede fisica

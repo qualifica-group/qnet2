@@ -281,4 +281,55 @@ export const requestManagement = {
       summary: 'Cannot save: check these fields — {{fields}}.',
     },
   },
+  // Asynchronous CSV report (spec 0106): the date-range dialog, mounted in
+  // the toolbar's options menu via `importSlot`.
+  report: {
+    title: 'CSV Report',
+    description: 'Generates a report aggregated by category and operator over a date range; the file downloads automatically once ready.',
+    action: 'Generate report',
+    fields: {
+      dateFrom: 'From',
+      dateTo: 'To',
+      // rev-2: branch and row selection.
+      categories: 'Categories',
+      // rev-2 AC-055: tri-state control at the top of the category group.
+      selectAllCategories: 'Select all',
+      rowMode: 'Rows to include',
+    },
+    // rev-2 D-13: the three mutually exclusive `row_mode` options.
+    rowModes: {
+      total_only: 'Total only',
+      operators_only: 'Operators only',
+      all: 'Everything',
+    },
+    status: {
+      processing: 'Generating…',
+      completed: 'Report generated: the download started automatically.',
+      loadingCategories: 'Loading categories…',
+    },
+    buttons: {
+      confirm: 'Generate',
+      processing: 'Generating…',
+    },
+    errors: {
+      dateFromRequired: 'Select the start date.',
+      dateToRequired: 'Select the end date.',
+      dateToBeforeDateFrom: 'The end date cannot be earlier than the start date.',
+      // rev-2 AC-051/AC-053: category-group errors.
+      categoriesRequired: 'Select at least one category.',
+      categoriesEmpty: 'No categories available: there are no visible requests to include in the report.',
+      categoriesLoadFailed: 'Unable to load categories. Please try again.',
+      forbidden: "You don't have permission to generate this report.",
+      validation: 'The dates entered are invalid.',
+      generic: 'Unable to generate the report. Please try again.',
+      jobFailed: 'Report generation failed. Please try again.',
+    },
+  },
+  // Charts dashboard (spec 0107): opened by the existing StatsToggleButton;
+  // category/operator names stay domain values, never i18n keys.
+  dashboard: {
+    regionLabel: 'Request Management dashboard',
+    loadError: 'Unable to load the dashboard.',
+    empty: 'No charts to show for this selection.',
+  },
 }

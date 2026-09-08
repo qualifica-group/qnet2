@@ -18,7 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 // fixture that expects the full batch seeds SAMPLE_OPPORTUNITIES of them.
 uses(RefreshDatabase::class);
 
-/** The size of the seeder's own batch (QualificaSampleOpportunitySeeder::OPPORTUNITIES). */
+/** The seeder's own default batch size (QualificaSampleOpportunitySeeder::DEFAULT_OPPORTUNITIES). */
 const SAMPLE_OPPORTUNITIES = 10;
 
 $seedOffer = function (): void {
@@ -123,7 +123,34 @@ it('gives a single-mode card exactly one product line (spec 0077 INV-3)', functi
         ->and($lineCounts)->toBe([1]);
 });
 
-it('is idempotent: a second run adds nothing', function () use ($seedOffer): void {
+it('appends a second batch on re-run, on the anagrafiche still free', function () use ($seedOffer): void {
+    // User directive 2026-09-08: the seeder ACCUMULATES. What caps a run is
+    // the pool of free anagrafiche, never a guard — so a pool twice the batch
+    // size yields two full batches.
+    $seedOffer();
+    Registry::factory()->count(SAMPLE_OPPORTUNITIES * 2)->create();
+
+    test()->seed(QualificaSampleOpportunitySeeder::class);
+    test()->seed(QualificaSampleOpportunitySeeder::class);
+
+    expect(Opportunity::query()->count())->toBe(SAMPLE_OPPORTUNITIES * 2);
+});
+
+it('sizes its batch from the run() argument, so one run can be made bigger', function () use ($seedOffer): void {
+    // `--opportunities` of qualifica:seed-sample lands here — the alternative
+    // to launching the chain several times.
+    $seedOffer();
+    Registry::factory()->count(SAMPLE_OPPORTUNITIES)->create();
+
+    app(QualificaSampleOpportunitySeeder::class)->run(opportunities: 3);
+
+    expect(Opportunity::query()->count())->toBe(3);
+});
+
+it('seeds nothing more once every anagrafica carries an open deal', function () use ($seedOffer): void {
+    // The pool IS the cap: an anagrafica carries ONE open opportunity at a
+    // time (user directive 2026-08-31), so a second run over an exhausted
+    // pool is an empty batch, not a duplicated one.
     $seedOffer();
     Registry::factory()->count(SAMPLE_OPPORTUNITIES)->create();
 

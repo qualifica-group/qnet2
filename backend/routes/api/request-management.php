@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\RequestManagement\ProductCategoryTabsController;
 use App\Http\Controllers\RequestManagement\RequestManagementController;
+use App\Http\Controllers\RequestManagement\RequestManagementDashboardController;
+use App\Http\Controllers\RequestManagement\RequestManagementReportController;
 use Illuminate\Support\Facades\Route;
 
 // Request Management work panel (spec 0049; migrated onto the Quote by spec
@@ -45,6 +47,21 @@ Route::post('request-management/form-context', [RequestManagementController::cla
 // {quote} to conflict with (creation), but declared here too for
 // consistency with the file's own convention.
 Route::post('request-management', [RequestManagementController::class, 'store']);
+// Spec 0106: the CSV report's own create/poll/download endpoints. Same
+// "declared before the wildcard" rule as every literal segment above.
+Route::post('request-management/report', [RequestManagementReportController::class, 'store']);
+// Spec 0106 rev-2 (D-14): the branch picker's data source. Declared BEFORE
+// report/{exportRun} below — otherwise this literal segment is swallowed by
+// that route's own wildcard, resolving to show() with exportRun="categories".
+Route::get('request-management/report/categories', [RequestManagementReportController::class, 'categories']);
+// Spec 0107 (D-1/D-5): the dashboard's own synchronous endpoint — same
+// "declared before report/{exportRun}" rule as report/categories above.
+Route::get('request-management/report/dashboard', RequestManagementDashboardController::class);
+// ->whereNumber() on top of the declaration order (rev-2 routing_trap):
+// the order alone works until the file gets reorganised, the constraint
+// does not.
+Route::get('request-management/report/{exportRun}', [RequestManagementReportController::class, 'show'])->whereNumber('exportRun');
+Route::get('request-management/report/{exportRun}/download', [RequestManagementReportController::class, 'download'])->whereNumber('exportRun');
 Route::get('request-management/{quote}', [RequestManagementController::class, 'show']);
 Route::delete('request-management/{quote}', [RequestManagementController::class, 'destroy']);
 Route::match(['put', 'patch'], 'request-management/{quote}', [RequestManagementController::class, 'update']);

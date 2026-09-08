@@ -22,4 +22,23 @@ export const requestManagementKeys = {
   /** Query key of the active category tab's resolved G.A. labels (spec 0080), the create form's own fetch. */
   categoryManagerLabels: (categoryId: number | null) =>
     ['request-management', 'category-manager-labels', categoryId] as const,
+  /**
+   * Query key of a CSV report run's poll (spec 0106). `null` before a run
+   * exists yet — a stable, inert key `useRequestReport` disables the query on.
+   */
+  reportRun: (reportRunId: number | null) => ['request-management', 'report', reportRunId] as const,
+  /** Query key of the report's selectable branches (spec 0106 rev-2). */
+  reportCategories: () => ['request-management', 'report-categories'] as const,
+  /**
+   * Query key of the dashboard's aggregates (spec 0107), scoped by the
+   * applied filter values themselves: changing a filter is a different key,
+   * so TanStack Query fetches/caches it independently — the mechanism
+   * AC-044's "graphs update on filter change" runs on.
+   */
+  dashboard: (query: {
+    date_from: string
+    date_to: string
+    category_keys: string[]
+    row_mode: string
+  }) => ['request-management', 'dashboard', query] as const,
 }

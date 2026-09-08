@@ -16,11 +16,13 @@ use Illuminate\Support\Collection;
  * their Opportunity (D-2: an offer with N categories counts in all N,
  * AC-037).
  *
- * The scope reuses RequestManagementScope::scopeToActor() verbatim (D-3:
- * `request-management.viewAll` sees everything, otherwise only the offers
- * where the actor is `quotes.supervisor_id`) — the SAME rule every other
- * scoped query in this module applies, so this resolver can never drift from
- * them. This class lives on its own lane (spec 0064 write-surface split),
+ * The scope reuses RequestManagementScope::scopeToActor() verbatim — the SAME
+ * rule every other scoped query in this module applies, so this resolver can
+ * never drift from them. Its three tiers are documented there and nowhere
+ * else, deliberately: this comment used to restate them and went stale twice
+ * over (it still named `quotes.supervisor_id`, dropped as the ownership
+ * column by spec 0087 D-9, and predated the `request-management.viewSite`
+ * tier of spec 0105). This class lives on its own lane (spec 0064 write-surface split),
  * never touching the TableDefinition.
  */
 final class RequestCategoryTabsResolver
@@ -40,7 +42,7 @@ final class RequestCategoryTabsResolver
             ->join('opportunities', 'opportunities.id', '=', 'opportunity_product_lines.opportunity_id')
             ->join('quotes', 'quotes.opportunity_id', '=', 'opportunities.id');
 
-        // Step 2: apply the D-3 supervisor scope, unless the actor holds viewAll.
+        // Step 2: apply the module's visibility scope, whatever its tiers are.
         RequestManagementScope::scopeToActor($query, $user);
 
         // Step 3: only categories with a non-zero count in scope, ordered by name.

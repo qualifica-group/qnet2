@@ -65,15 +65,32 @@ it('converts part of the batch, leaving the rest as plain leads', function () us
         ->and(Opportunity::query()->first()->productLines()->count())->toBe(1);
 });
 
-it('is idempotent: a second run adds nothing', function () use ($seedClassification): void {
+it('sizes its batch from the run() arguments, so one run can be made bigger', function () use ($seedClassification): void {
+    // User directive 2026-09-08: `SAMPLE_LEADS`/`SAMPLE_CONVERTED_LEADS` on
+    // `--leads`/`--converted-leads` of qualifica:seed-sample land here as
+    // run() arguments — the alternative to launching the chain several times.
+    $seedClassification();
+
+    app(QualificaSampleLeadSeeder::class)->run(leads: 9, convertedLeads: 2);
+
+    expect(Lead::query()->count())->toBe(9)
+        ->and(Lead::query()->has('opportunity')->count())->toBe(2)
+        // The batch the campaign is aiming at follows the same knob.
+        ->and(Campaign::query()->sole()->target_lead)->toBe(9);
+});
+
+it('appends a second batch on re-run, reusing the one project and campaign', function () use ($seedClassification): void {
+    // User directive 2026-09-08: the seeder ACCUMULATES, so it can be launched
+    // again whenever more rows are wanted. Only the project/campaign pair is
+    // looked up by name and reused — never duplicated per run.
     $seedClassification();
 
     test()->seed(QualificaSampleLeadSeeder::class);
     test()->seed(QualificaSampleLeadSeeder::class);
 
-    expect(Lead::query()->count())->toBe(40)
-        ->and(Registry::query()->count())->toBe(40)
-        ->and(Opportunity::query()->count())->toBe(12)
+    expect(Lead::query()->count())->toBe(80)
+        ->and(Registry::query()->count())->toBe(80)
+        ->and(Opportunity::query()->count())->toBe(24)
         ->and(Project::query()->count())->toBe(1)
         ->and(Campaign::query()->count())->toBe(1);
 });

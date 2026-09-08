@@ -100,6 +100,12 @@ class TestUsersSeeder extends Seeder
      *    RequestAssignmentService all widen to every request for an actor who
      *    holds it. It is a supervisor-level ability, which is why the
      *    Supervisor role (whose matrix is deny-list based) keeps it.
+     *  - `viewSite` (spec 0105, D-11): the same 2026-07-31 directive, read
+     *    against the third visibility tier — a Commercial sees ONLY what they
+     *    operate, so belonging to a Sede must not show them their colleagues'
+     *    requests in it. Listed explicitly because the ability is assignable
+     *    from the catalogue: left out of this list the role would inherit it
+     *    silently the day the deny-list stops being exhaustive.
      *  - `updateSource` (spec 0078, D-1): a Commercial does not write the
      *    Fonte of an existing request directly on any of the three write
      *    channels — they PROPOSE a change instead (COMMERCIAL_EXTRA_PERMISSIONS
@@ -119,6 +125,7 @@ class TestUsersSeeder extends Seeder
     private const array COMMERCIAL_DENIED_MODULE_ABILITIES = [
         'delete',
         'viewAll',
+        'viewSite',
         'updateSource',
         'assignOperator',
     ];

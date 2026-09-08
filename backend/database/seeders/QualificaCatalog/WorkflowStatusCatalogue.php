@@ -40,9 +40,13 @@ use InvalidArgumentException;
  *     altra Regione" -> "Non pertinente - Altra regione", "Numero Inesistente"
  *     -> "Numero Inesistente/Errato". A per-column variant would otherwise
  *     produce distinct statuses for one and the same state.
- *   - "GOL - Abruzzo" and "DIL" have no column in the sheet: no workflow is
- *     seeded for them, so their opportunities fall back to the GLOBAL default
- *     status set (QuoteWorkflowResolver).
+ *   - "GOL - Abruzzo" has no column in the sheet either, but the client
+ *     dictated it off-sheet as "the same states as GOL - Calabria" (user
+ *     directive 2026-09-08): it borrows GOL_BASE_STATUSES instead of a
+ *     transcription of its own.
+ *   - "DIL" has no column in the sheet: no workflow is seeded for it, so its
+ *     opportunities fall back to the GLOBAL default status set
+ *     (QuoteWorkflowResolver).
  *   - Descriptions come from the sheet's second page and are scoped PER
  *     SECTION: the same name ("Da Richiamare", "Irreperibile", "Doppione")
  *     carries a different description in each block.
@@ -213,7 +217,9 @@ final class WorkflowStatusCatalogue
     /**
      * The column shared verbatim by Molise, Puglia, Calabria and Basilicata —
      * extracted rather than copied four times, since the sheet itself gives
-     * them one and the same list.
+     * them one and the same list. Abruzzo, absent from the sheet, was bound to
+     * the same list off-sheet ("gli stessi stati di GOL - Calabria", user
+     * directive 2026-09-08).
      *
      * @var list<string>
      */
@@ -278,6 +284,7 @@ final class WorkflowStatusCatalogue
         'GOL - Puglia' => ['section' => self::GOL, 'statuses' => self::GOL_BASE_STATUSES],
         'GOL - Calabria' => ['section' => self::GOL, 'statuses' => self::GOL_BASE_STATUSES],
         'GOL - Basilicata' => ['section' => self::GOL, 'statuses' => self::GOL_BASE_STATUSES],
+        'GOL - Abruzzo' => ['section' => self::GOL, 'statuses' => self::GOL_BASE_STATUSES],
         'Autoimpiego' => ['section' => self::SELF_EMPLOYMENT],
         'Yisu' => ['section' => self::SELF_EMPLOYMENT],
         'Autofinanziato' => ['section' => self::SELF_FUNDED],

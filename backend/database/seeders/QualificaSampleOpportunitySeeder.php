@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\Models\OperationalSite;
-use App\Models\Opportunity;
 use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
@@ -12,6 +11,7 @@ use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\OpportunityService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\Concerns\PicksDemoOffers;
+use Database\Seeders\Concerns\PicksFreeRegistries;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
@@ -23,9 +23,9 @@ use Illuminate\Support\Collection;
  * diretta" creation path — as opposed to the converted ones
  * QualificaSampleLeadSeeder produces through spec 0044.
  *
- * Like its sibling this is fabricated data, not client reference data; it is
- * the LAST step of QualificaProductionDataSeeder because it reuses the
- * Anagrafiche that step seeds, rather than creating a second set of its own.
+ * Like its siblings this is fabricated data, not client reference data; it is
+ * the second step of QualificaSampleDataSeeder because it reuses the
+ * Anagrafiche step 1 seeds, rather than creating a second set of its own.
  *
  * Every row satisfies the opportunity form's two mandatory collections
  * (`product_lines` and `products_of_interest`, both min:1 in
@@ -35,17 +35,22 @@ use Illuminate\Support\Collection;
  * DemoOpportunitySeeder on purpose — the draw is the same one, and a second
  * copy would drift.
  *
- * Idempotent by presence: a database that already holds a lead-less
- * opportunity short-circuits the run, so re-seeding neither duplicates the
- * batch nor deletes deals created on top of it.
+ * ACCUMULATES, it does not converge (user directive 2026-09-08): every run
+ * appends deals on whatever Anagrafiche are still free, so the seeder can be
+ * launched again whenever more rows are wanted. The batch size is a `run()`
+ * parameter — `php artisan qualifica:seed-sample --opportunities=50` — so one
+ * run can also be made bigger instead of repeated. What caps a run is the pool
+ * itself, never a guard: with no free anagrafica left the batch is empty and
+ * the seeder says so. The Faker generator is deliberately UNSEEDED for the
+ * same reason — a fixed seed would make every run a carbon copy of the first.
  */
 class QualificaSampleOpportunitySeeder extends Seeder
 {
     use PicksDemoOffers;
+    use PicksFreeRegistries;
 
-    private const int OPPORTUNITIES = 10;
-
-    private const int FAKER_SEED = 20260731;
+    /** The batch size when the caller names none (`--opportunities` of qualifica:seed-sample). */
+    public const int DEFAULT_OPPORTUNITIES = 10;
 
     public function __construct(
         private readonly OpportunityService $opportunities,
@@ -53,22 +58,15 @@ class QualificaSampleOpportunitySeeder extends Seeder
         private readonly RegistryOpenOpportunityGuard $openOpportunityGuard,
     ) {}
 
-    public function run(): void
+    public function run(int $opportunities = self::DEFAULT_OPPORTUNITIES): void
     {
-        // Step 1: nothing to add once a standalone deal exists.
-        if (Opportunity::query()->whereNull('lead_id')->exists()) {
-            $this->command?->info('Sample opportunities already seeded: nothing to add.');
-
-            return;
-        }
-
         // User directive 2026-08-31: an anagrafica carries ONE open
         // opportunity at a time, and the lead step right before this one has
         // already converted some of its own registries — those are off limits.
-        $registries = $this->freeRegistries();
+        $registries = $this->freeRegistries($this->openOpportunityGuard);
         $this->loadOffers($this->hierarchy);
 
-        // Step 2: without the mandatory Anagrafica (spec 0040, D-4) or an
+        // Step 1: without the mandatory Anagrafica (spec 0040, D-4) or an
         // offer to fill the two mandatory collections with, a seeded row
         // would be one the form itself refuses to submit.
         if ($registries->isEmpty() || ! $this->hasOffers()) {
@@ -78,7 +76,6 @@ class QualificaSampleOpportunitySeeder extends Seeder
         }
 
         $faker = FakerFactory::create('it_IT');
-        $faker->seed(self::FAKER_SEED);
 
         $lookups = [
             'sources' => Source::query()->orderBy('id')->get(),
@@ -86,34 +83,16 @@ class QualificaSampleOpportunitySeeder extends Seeder
             'managers' => User::query()->orderBy('id')->get(),
         ];
 
-        // Step 3: the batch itself — one deal per anagrafica (user directive
+        // Step 2: the batch itself — one deal per anagrafica (user directive
         // 2026-08-31: an anagrafica carries one open opportunity at a time), so
         // the batch is capped by how many registries exist.
-        $count = min(self::OPPORTUNITIES, $registries->count());
+        $count = min($opportunities, $registries->count());
 
         for ($index = 0; $index < $count; $index++) {
             $this->seedOpportunity($faker, $index, $registries[$index], $lookups);
         }
 
         $this->command?->info(sprintf('%d sample opportunities seeded with no lead behind them.', $count));
-    }
-
-    /**
-     * The anagrafiche with no open opportunity yet, in id order — the only
-     * ones a new deal may hang on.
-     *
-     * @return Collection<int, Registry>
-     */
-    private function freeRegistries(): Collection
-    {
-        /** @var Collection<int, Registry> $registries */
-        $registries = Registry::query()->orderBy('id')->get();
-
-        $busy = $this->openOpportunityGuard->openOpportunityIdsByRegistry($registries->modelKeys());
-
-        return $registries
-            ->reject(static fn (Registry $registry): bool => isset($busy[$registry->getKey()]))
-            ->values();
     }
 
     /**

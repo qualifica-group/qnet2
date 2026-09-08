@@ -30,6 +30,9 @@ export const permissions = {
     changeStatus: 'Cambia stato',
     reactivate: 'Riapri',
     viewAll: 'Visualizza tutti',
+    // Spec 0105: terzo livello di visibilità di Gestione Richieste — le
+    // richieste delle sedi di appartenenza, anche senza esserne il gestore.
+    viewSite: 'Visualizza per sede',
     viewDocuments: 'Visualizza documenti',
     // Oltre il CRUD di BasePolicy: l'atto da supervisore di assegnare
     // l'Operatore (GA2) in creazione (direttiva utente 2026-07-29).
@@ -43,6 +46,9 @@ export const permissions = {
     // generato come `request-management.updateSource`).
     manage: 'Gestire',
     updateSource: 'Modificare la Fonte',
+    // Spec 0106: genera/scarica il report CSV di Gestione Richieste
+    // (`request-management.report`), indipendente da `export` (righe di griglia).
+    report: 'Genera report',
   },
   resources: {
     users: 'Utenti',

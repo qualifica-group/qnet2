@@ -28,7 +28,7 @@ use Illuminate\Support\Collection;
  * is being resolved.
  *
  * Perf constraint (spec 0083): the caller MUST eager-load
- * `offerLines.product.category` and `opportunity` (+ its
+ * `offerLines.product.category` and `opportunity` (+ its `productLines` and
  * `customFieldValueRow`) in ONE query before resolving a batch — this
  * resolver's own `resolve()` step 1 only ever `loadMissing()`s them, a no-op
  * once already loaded.
@@ -61,10 +61,16 @@ final class QuoteWorkflowResolver
     public function resolve(Quote $quote): ?QuoteWorkflow
     {
         // Step 1: make sure offerLines.product.category (business_function_id/
-        // product_category_id, D-7) and opportunity(+customFieldValueRow)
-        // (the inherited source_id/custom.* criteria, D-7) are
-        // available without triggering a query per workflow candidate.
-        $quote->loadMissing(['offerLines.product.category', 'opportunity.customFieldValueRow']);
+        // product_category_id, D-7), opportunity.productLines (the fallback
+        // classification of an offer with no revenue line, user directive
+        // 2026-09-08) and opportunity(+customFieldValueRow) (the inherited
+        // source_id/custom.* criteria, D-7) are available without triggering
+        // a query per workflow candidate.
+        $quote->loadMissing([
+            'offerLines.product.category',
+            'opportunity.productLines',
+            'opportunity.customFieldValueRow',
+        ]);
 
         // Step 2: every active workflow, with its criteria eager-loaded (no
         // N+1 across the candidate set) — memoized (see class docblock).

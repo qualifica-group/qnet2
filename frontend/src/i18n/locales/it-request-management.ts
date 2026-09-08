@@ -281,4 +281,55 @@ export const requestManagement = {
       summary: 'Impossibile salvare: controlla questi campi — {{fields}}.',
     },
   },
+  // Report CSV asincrono (spec 0106): dialog di selezione date, agganciato
+  // al menu opzioni della toolbar via `importSlot`.
+  report: {
+    title: 'Report CSV',
+    description: 'Genera un report aggregato per categoria e operatore in un intervallo di date; il file si scarica automaticamente al termine.',
+    action: 'Genera report',
+    fields: {
+      dateFrom: 'Dal',
+      dateTo: 'Al',
+      // rev-2: selezione dei rami e delle righe da includere.
+      categories: 'Categorie',
+      // rev-2 AC-055: controllo tri-stato in testa al gruppo categorie.
+      selectAllCategories: 'Seleziona tutto',
+      rowMode: 'Righe da includere',
+    },
+    // rev-2 D-13: le tre opzioni mutuamente esclusive di `row_mode`.
+    rowModes: {
+      total_only: 'Solo totale',
+      operators_only: 'Solo operatori',
+      all: 'Tutto',
+    },
+    status: {
+      processing: 'Generazione in corso…',
+      completed: 'Report generato: il download è partito automaticamente.',
+      loadingCategories: 'Caricamento categorie…',
+    },
+    buttons: {
+      confirm: 'Genera',
+      processing: 'Generazione…',
+    },
+    errors: {
+      dateFromRequired: 'Seleziona la data di inizio.',
+      dateToRequired: 'Seleziona la data di fine.',
+      dateToBeforeDateFrom: 'La data di fine non può essere precedente alla data di inizio.',
+      // rev-2 AC-051/AC-053: errori del gruppo categorie.
+      categoriesRequired: 'Seleziona almeno una categoria.',
+      categoriesEmpty: 'Nessuna categoria disponibile: non ci sono richieste visibili da includere nel report.',
+      categoriesLoadFailed: 'Impossibile caricare le categorie. Riprova.',
+      forbidden: 'Non hai il permesso di generare questo report.',
+      validation: 'Le date inserite non sono valide.',
+      generic: 'Impossibile generare il report. Riprova.',
+      jobFailed: 'La generazione del report non è riuscita. Riprova.',
+    },
+  },
+  // Dashboard grafici (spec 0107): pannello aperto dallo StatsToggleButton
+  // esistente, i nomi di categoria/operatore restano valori di dominio.
+  dashboard: {
+    regionLabel: 'Dashboard di Gestione Richieste',
+    loadError: 'Impossibile caricare la dashboard.',
+    empty: 'Nessun grafico da mostrare per questa selezione.',
+  },
 }

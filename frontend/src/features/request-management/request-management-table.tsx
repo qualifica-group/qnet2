@@ -27,11 +27,15 @@ import { assignRequestOperators, deleteRequest, transferRequests } from '@/featu
 import { AssignManagerGa3Dialog } from '@/features/request-management/assign-manager-ga3-dialog'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
 import { OfferLinesDialogProvider } from '@/features/request-management/offer-lines-dialog'
+import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
+import { RequestDashboardToggle } from '@/features/request-management/request-dashboard-toggle'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
+import { RequestReportSlot } from '@/features/request-management/request-report-slot'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
 import { useRequestManagerGa3Assignment } from '@/features/request-management/use-request-manager-ga3-assignment'
 import type { TransferRequestsPayload } from '@/features/request-management/request-write-types'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { useStatsPanel } from '@/features/stats/use-stats-panel'
 
 /**
  * Domain icon overrides for the `documents`/`notes`/`transfer-contact` row
@@ -116,6 +120,7 @@ export function RequestManagementTable() {
   const { can } = useAbilities()
 
   const { categories, selectedCategoryId, setCategoryId } = useRequestManagementCategoryTab()
+  const dashboard = useStatsPanel(REQUEST_MANAGEMENT_DOMAIN)
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -386,12 +391,19 @@ export function RequestManagementTable() {
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         actions={
-          <Can permission="request-management.create">
-            <Button onClick={openCreate}>
-              <Plus aria-hidden="true" />
-              {t('requestManagement.form.newRequest')}
-            </Button>
-          </Can>
+          <>
+            <RequestDashboardToggle
+              domain={REQUEST_MANAGEMENT_DOMAIN}
+              isOpen={dashboard.isOpen}
+              onToggle={dashboard.toggle}
+            />
+            <Can permission="request-management.create">
+              <Button onClick={openCreate}>
+                <Plus aria-hidden="true" />
+                {t('requestManagement.form.newRequest')}
+              </Button>
+            </Can>
+          </>
         }
       />
 
@@ -400,6 +412,8 @@ export function RequestManagementTable() {
         selectedCategoryId={selectedCategoryId}
         onSelect={setCategoryId}
       />
+
+      <RequestDashboardPanel isOpen={dashboard.isOpen} />
 
       {/* User directive 2026-09-07: the "Linee di prodotto" cell is inline
           editable like the others, and its editor delegates to this dialog
@@ -419,6 +433,7 @@ export function RequestManagementTable() {
           isBusy={isBusy}
           iconMap={REQUEST_MANAGEMENT_ACTION_ICONS}
           getBulkActions={getBulkActions}
+          importSlot={<RequestReportSlot />}
         />
       </OfferLinesDialogProvider>
 

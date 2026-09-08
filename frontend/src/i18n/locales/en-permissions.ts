@@ -30,6 +30,9 @@ export const permissions = {
     changeStatus: 'Change status',
     reactivate: 'Reopen',
     viewAll: 'View all',
+    // Spec 0105: Request Management's third visibility tier — the requests of
+    // the actor's own Sedi, with no need to manage them.
+    viewSite: 'View by site',
     viewDocuments: 'View documents',
     // Beyond BasePolicy's CRUD: the supervisory act of assigning the GA2
     // Operator at creation (user directive 2026-07-29).
@@ -42,6 +45,9 @@ export const permissions = {
     // (RequestManagementPolicy, generated as `request-management.updateSource`).
     manage: 'Manage',
     updateSource: 'Edit the Source',
+    // Spec 0106: generate/download Request Management's CSV report
+    // (`request-management.report`), independent of `export` (grid rows).
+    report: 'Generate report',
   },
   resources: {
     users: 'Users',

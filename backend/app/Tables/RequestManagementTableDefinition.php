@@ -41,9 +41,8 @@ use Illuminate\Support\Facades\Auth;
  *    QuotePolicy -> `quotes.viewAny`, the WRONG permission for this domain. A
  *    direct `request-management.viewAny` permission check replaces it
  *    (fail-closed: no permission registered -> false, never fail-open).
- *  - `baseQuery()` scopes to the offers the actor is the GA2 Operatore of
- *    (`quotes.operator_id`, spec 0087 D-9) UNLESS they hold
- *    `request-management.viewAll` — delegated to
+ *  - `baseQuery()` scopes to the offers the actor operates (`quotes.operator_id`)
+ *    or whose Sede is theirs (spec 0105), UNLESS `request-management.viewAll`; via
  *    `App\Services\RequestManagement\RequestManagementScope::scopeToActor()`,
  *    THE single implementation of this rule shared by every one of the six
  *    callers the spec enumerates (context, "Scoping non-supervisore riscritto

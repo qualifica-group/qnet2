@@ -307,7 +307,7 @@ it('scopes the descriptions per block, so one name reads differently per categor
         ->toStartWith('Contatto da ricontattare per fornire informazioni');
 });
 
-it('gives the four regions sharing one column the same status list', function (): void {
+it('gives the regions sharing one column the same status list', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $names = static fn (string $workflowName): array => QuoteWorkflowStatus::query()
@@ -318,7 +318,9 @@ it('gives the four regions sharing one column the same status list', function ()
 
     $molise = $names('GOL - Molise');
 
-    foreach (['GOL - Puglia', 'GOL - Calabria', 'GOL - Basilicata'] as $workflowName) {
+    // Abruzzo has no column of its own: it was bound to the same list
+    // off-sheet (user directive 2026-09-08).
+    foreach (['GOL - Puglia', 'GOL - Calabria', 'GOL - Basilicata', 'GOL - Abruzzo'] as $workflowName) {
         expect($names($workflowName))->toBe($molise, $workflowName);
     }
 
@@ -331,7 +333,7 @@ it('leaves the categories absent from the sheet on the global default set', func
 
     // No column in the sheet: no workflow, so their opportunities fall back to
     // the global default set (QuoteWorkflowResolver).
-    foreach (['GOL - Abruzzo', 'DIL', 'Formazione', 'Trattative in Corso', 'Presa Appuntamenti'] as $categoryName) {
+    foreach (['DIL', 'Formazione', 'Trattative in Corso', 'Presa Appuntamenti'] as $categoryName) {
         expect(QuoteWorkflow::query()->where('name', $categoryName)->exists())->toBeFalse($categoryName);
     }
 });

@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0107 — Dashboard e grafici di Gestione Richieste.
+  Dipende da 0106 (report CSV): ne RIUSA il calcolo, non lo duplica.
+  Prosa italiana senza accenti; identificatori inglesi (engineering.md §1.2).
+-->
+<spec id="0107-request-management-report-dashboard" status="draft" owner="utente" date="2026-09-08">
+
+  <goal>
+    Dare a chi lavora in Gestione Richieste una dashboard con grafici che mostri gli stessi
+    indicatori del report CSV (spec 0106), filtrabile con gli stessi campi (range di date,
+    categorie, scelta righe). Il calcolo deve essere UNO SOLO: se cambia una regola, cambia in un
+    punto e si riflette su entrambi.
+  </goal>
+
+  <context>
+    <entity name="Dipendenza da 0106">
+      Tutto il calcolo esiste gia' in `backend/app/Services/RequestManagement/Report/`. La cucitura
+      tra calcolo e formattazione CSV e' pulita e va sfruttata cosi' com'e':
+      - `ReportBranchResolver::resolve(): array<int, ReportBranch>` — i sei rami da config, con il
+        sottoalbero di categorie gia' espanso.
+      - `ReportBranchRowsBuilder::build(ReportBranch $branch, ?User $actor, ReportDateRange $range,
+        RequestManagementReportRowMode $rowMode): array<int, ReportRow>` — le righe GIA' CALCOLATE
+        di un ramo. E' il punto di riuso.
+      - `ReportRow` = `{ public readonly string $label, public readonly array $values }` — value
+        object NEUTRO: nessuna stringa CSV, nessun ordine di colonna, nessuna intestazione.
+      - `IndicatorResult` = `{ int $total, array $byOperator }` con `valueFor(?int)` e
+        `operatorIds()`: il breakdown per operatore c'e' gia', non va ricalcolato.
+      - `ReportBranchQuery::build(array $categoryIds, ?User $actor): Builder` applica
+        `RequestManagementScope::scopeToActor`.
+      - `ReportCsvBuilder` e' l'UNICO pezzo CSV-specifico: la dashboard non lo tocca.
+      Le etichette delle colonne stanno in `backend/lang/{it,en}/request-management-report.php`,
+      gia' usate dal CSV.
+    </entity>
+
+    <entity name="Framework stats esistente (spec 0026)">
+      `GET /api/stats/{domain}` (`backend/routes/api.php:212`) -> `StatsController::__invoke()`, che
+      chiama `$definition->widgets()`. **`StatsDefinition::widgets()` NON accetta parametri**, e
+      `config/stats.php` registra 14 domini. Aggiungere filtri a quella firma li impatterebbe tutti,
+      per un bisogno che ha solo questo modulo.
+      C'e' anche una trappola nota: `AbstractStatsDefinition::authorizeViewAny()` fa
+      `Gate::allows('viewAny', $this->modelClass())`, che per Gestione Richieste risolverebbe su
+      `Quote` -> `quotes.viewAny`, il permesso SBAGLIATO.
+    </entity>
+
+    <entity name="Il bottone e il pannello di Opportunita'">
+      `StatsToggleButton` (`frontend/src/features/stats/stats-toggle-button.tsx:22-45`):
+      `Button variant="outline" size="icon"`, icona `BarChart3`, `aria-expanded`, `aria-controls`.
+      Sta nelle `actions` del `PageHeader`, non nella toolbar
+      (`frontend/src/features/opportunities/opportunities-table.tsx:167-187`).
+      NON naviga e non apre un dialog: espande un pannello inline (Radix `Collapsible`) tra header e
+      tabella. `useStatsPanel(domain)` (`features/stats/use-stats-panel.ts:35-49`) tiene `isOpen` e
+      lo persiste in `localStorage` per dominio (`stats-panel:{domain}`), chiuso di default, con
+      try/catch sullo storage.
+    </entity>
+
+    <entity name="Grafici disponibili">
+      `recharts ^3.9.2` e' gia' in `frontend/package.json`: nessuna nuova dipendenza serve.
+      Oggi lo usa UN SOLO file di produzione, `components/ui/stat-chart-impl.tsx:10` (`AreaChart`),
+      caricato con `React.lazy` da `components/ui/stat-chart.tsx:25` dentro un `Suspense` con
+      `Skeleton`. Il test `stat-chart.test.tsx` ASSERISCE che il wrapper non importi recharts in
+      modo eager (AC-013 della 0026): la stessa disciplina di bundle vale per i grafici nuovi.
+      NON esiste `components/ui/chart.tsx` (il wrapper shadcn): il progetto ha il proprio boundary.
+      Il widget `distribution` NON e' un grafico: `components/ui/stat-bar-list.tsx:78-93` disegna
+      barre CSS con `role="meter"`.
+    </entity>
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Endpoint DEDICATO al modulo, non estensione del framework stats. `widgets()` e' senza
+      parametri e i domini registrati sono 14: cambiarne la firma per un bisogno di un solo modulo
+      e' un costo su tutti gli altri, e la trappola di `authorizeViewAny` andrebbe comunque
+      aggirata. Il framework stats resta intatto (nessuna riga toccata in `app/Stats/`,
+      `config/stats.php`, `StatsController`).
+    </decision>
+
+    <decision id="D-2">
+      CALCOLO CONDIVISO, vincolo non negoziabile e ragione d'essere di questa spec. La dashboard
+      consuma `ReportBranchResolver` + `ReportBranchRowsBuilder` — gli stessi oggetti del CSV — e
+      legge i valori da `ReportRow::$values`. E' VIETATO:
+      reimplementare un indicatore, duplicare una condizione di stato o di data, costruire una
+      query propria sulle quote, o ricalcolare il breakdown per operatore.
+      Se una regola cambia in un indicatore di 0106, la dashboard deve cambiare da sola senza che
+      nessuno la tocchi. AC-010 lo blinda con un test che confronta i due output.
+    </decision>
+
+    <decision id="D-2-bis">
+      REFACTORING MINIMO di 0106 autorizzato il 2026-09-08, a comportamento invariato, perche' senza
+      di esso il riuso di D-2 non e' realizzabile pulito. Tre interventi, e solo questi:
+      1. `RequestManagementReportGenerator::generate()` scrive in STREAMING (apre il file prima del
+         loop, `fputcsv` a ogni riga): non esiste mai una collezione completa di righe da riusare.
+         Si estrae un metodo pubblico `rows(...): array<int, array{branch: ReportBranch, rows: array<int, ReportRow>}>`;
+         `generate()` lo chiama e scrive. Cosi' il filtro su `categoryKeys` vive in UN punto invece
+         di essere ricopiato nella dashboard.
+         Effetto collaterale accettato: le righe vengono accumulate prima della scrittura invece che
+         streammate. Il volume e' di poche decine di righe (6 rami), quindi irrilevante.
+      2. SUPERATO in implementazione (2026-09-08), e la soluzione trovata e' migliore di quella
+         proposta qui: il discriminante di riga non serve, perche' `row_mode` lo fornisce gia'.
+         La dashboard invoca `ReportBranchRowsBuilder::build(..., TotalOnly)` quando vuole la riga
+         totale e `build(..., OperatorsOnly)` quando vuole quelle per operatore, ottenendo insiemi
+         gia' separati alla fonte. Nessun campo aggiunto a `ReportRow`, nessun confronto su stringhe
+         localizzate, nessun meccanismo nuovo: si riusa quello che esiste. Il punto 2 resta scritto
+         per memoria del problema, ma NON va implementato.
+         Il testo originale del problema:
+         `ReportRow::$label` e' GIA' LOCALIZZATA e opaca (`__('labels.total')`, `$operator->name`,
+         `__('labels.unassigned')`), e l'`operatorId` viene buttato via invece di finire nel VO.
+         Un consumatore diverso dal CSV sarebbe costretto a distinguere le righe confrontando
+         STRINGHE TRADOTTE — un bug latente che si manifesta cambiando lingua. Si aggiunge quindi a
+         `ReportRow` l'informazione strutturale che oggi va persa: `operatorId` (`?int`) e un
+         discriminante esplicito del tipo di riga (totale / operatore / non assegnato) come enum,
+         mai come stringa. `label` resta invariata per il CSV.
+      3. L'elenco delle 11 colonne indicatore vive in `ReportCsvBuilder::INDICATOR_COLUMNS`, quindi
+         il layer di CALCOLO (`ReportBranchRowsBuilder`) dipende dal layer di FORMATTAZIONE per
+         sapere quali colonne esistono. Con due consumatori la direzione va raddrizzata: l'elenco si
+         sposta in un punto neutro e il CSV lo legge da li'. Nessun cambio all'ordine delle colonne.
+      Vincolo: i 55 test di 0106 devono passare SENZA modifiche. Se un test va toccato, e' il
+      segnale che il comportamento e' cambiato: fermarsi e segnalarlo.
+    </decision>
+
+    <decision id="D-3">
+      `row_mode` decide la VISTA (direttiva utente 2026-09-08), cosi' che il campo significhi la
+      stessa cosa nella modale CSV e nella dashboard:
+      - `total_only` -> grafici di confronto TRA CATEGORIE (una barra per categoria, per indicatore);
+      - `operators_only` -> grafici di confronto TRA GA2, uno per categoria selezionata;
+      - `all` -> entrambi, prima quelli per categoria.
+      Le schede numeriche di riepilogo si mostrano sempre, in tutti e tre i modi.
+    </decision>
+
+    <decision id="D-4">
+      Barra filtri DENTRO il pannello (direttiva utente): il bottone espande il pannello come in
+      Opportunita', e in cima ci sono gli stessi controlli della modale. I controlli (range date,
+      selezione categorie con "seleziona tutto" tri-stato, scelta righe) vanno ESTRATTI in un
+      componente condiviso usato sia da `RequestReportDialog` sia dalla barra filtri, cosi' che
+      restino allineati da soli. E' l'equivalente frontend di D-2.
+      Anche i default sono condivisi: `currentWeekReportRange()` (lunedi'-venerdi' della settimana
+      corrente) e "tutte le categorie selezionate".
+    </decision>
+
+    <decision id="D-5">
+      Consegna SINCRONA: JSON, non un file. Nessun `ExportRun`, nessuna coda, nessun polling — e
+      quindi nessuna delle due trappole della coda di 0106 (l'attore e il locale sono quelli della
+      richiesta). Il fetch parte SOLO a pannello aperto (`enabled: isOpen`), come gia' fa
+      `use-module-stats`: il pannello e' chiuso di default e non deve costare nulla a chi non lo apre.
+    </decision>
+
+    <decision id="D-6">
+      Permesso: si riusa `request-management.report`. La dashboard espone esattamente gli stessi
+      aggregati del CSV: un permesso separato permetterebbe di vedere i numeri a chi non puo'
+      scaricarli, distinzione senza sostanza.
+      A differenza degli altri moduli — dove `StatsToggleButton` NON e' avvolto da `<Can>` perche' la
+      pagina intera e' gia' gated — qui il bottone VA gated con `<Can permission="request-management.report">`:
+      il permesso nasce non assegnato, e un bottone che apre un pannello sempre in errore e' peggio
+      di un bottone assente. L'autorizzazione server-side resta comunque obbligatoria (l'UI nasconde,
+      il backend autorizza).
+    </decision>
+
+    <decision id="D-7">
+      Grafici con recharts, con la STESSA disciplina di bundle di `stat-chart`: il componente che
+      importa recharts sta in un file separato caricato con `React.lazy` dentro `Suspense`, e il
+      wrapper non lo importa in modo eager. Un test lo asserisce, come gia' fa `stat-chart.test.tsx`.
+      Tipo di grafico: barre orizzontali (`BarChart` `layout="vertical"`), perche' le etichette sono
+      nomi di categoria e nomi di persona, che su un asse X verticale diventano illeggibili.
+    </decision>
+
+    <decision id="D-8">
+      Le schede di riepilogo NON sono la somma delle categorie. Una richiesta classificata su due
+      categorie conta in entrambe (0106 AC-016), quindi sommare i totali di categoria gonfierebbe il
+      numero. Il riepilogo si ottiene invocando lo STESSO `ReportBranchRowsBuilder` su un ramo
+      sintetico i cui `categoryIds` sono l'UNIONE dei rami selezionati (e le cui colonne sono
+      l'unione delle loro colonne): stesso codice, stesso `count(distinct quotes.id)`, nessuna nuova
+      formula. AC-011 verifica che il riepilogo sia MINORE della somma quando c'e' una richiesta
+      condivisa tra due categorie selezionate.
+    </decision>
+
+    <decision id="D-9">
+      Etichette. Gli indicatori riusano il catalogo del CSV
+      (`backend/lang/{it,en}/request-management-report.php`) risolto server-side con `__()` sul
+      locale della richiesta: cosi' i titoli dei grafici e le intestazioni del CSV non possono
+      divergere. I nomi di categoria (`GOL`, `Autoimpiego`, ...) e di operatore (`users.name`) sono
+      valori di dominio e NON si traducono. La riga senza operatore usa la stessa etichetta
+      "Non assegnato" del CSV.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Endpoint `GET /api/request-management/report/dashboard` con gli stessi filtri della modale.</item>
+      <item>Servizio che assembla serie e riepilogo dai `ReportRow` gia' calcolati (nessun calcolo nuovo).</item>
+      <item>`StatsToggleButton` nel `PageHeader` di Gestione Richieste + pannello collassabile con barra filtri e grafici.</item>
+      <item>Estrazione dei controlli di filtro in un componente condiviso con `RequestReportDialog` (D-4).</item>
+      <item>Componente grafico a barre orizzontali, con recharts lazy-loaded (D-7).</item>
+      <item>Chiavi i18n sotto `requestManagement.dashboard.*`, parita' IT/EN.</item>
+      <item>Test Pest sugli AC backend e Vitest su quelli frontend.</item>
+    </in>
+    <out>
+      <item>Qualsiasi modifica al framework stats (spec 0026): `app/Stats/**`, `config/stats.php`, `StatsController`, `features/stats/**` restano intatti. Del frontend stats si RIUSA `StatsToggleButton` e `useStatsPanel` senza modificarli.</item>
+      <item>Qualsiasi modifica alle formule degli indicatori di 0106: la dashboard le consuma, non le cambia.</item>
+      <item>Nuove dipendenze: recharts c'e' gia'.</item>
+      <item>Export della dashboard in immagine o PDF.</item>
+      <item>Nuovi indicatori o nuovi grafici oltre a quelli derivabili dalle 11 colonne esistenti.</item>
+      <item>Persistenza dei filtri della dashboard tra sessioni (solo `isOpen` e' persistito, ed e' gia' cosi' per tutti i moduli).</item>
+      <item>Migrazioni: nessuna.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/request-management/report/dashboard">
+      <request>
+        Query string, identica per semantica ai campi della modale CSV:
+          date_from     : required, `Y-m-d`
+          date_to       : required, `Y-m-d`, >= date_from
+          category_keys : required, array, min 1, ogni valore nella ALLOW-LIST di
+                          `config/request-management-report.php` (422 se sconosciuta; mai in query)
+          row_mode      : required, `total_only|operators_only|all`
+        Il range e' inclusivo su entrambi gli estremi, come 0106.
+      </request>
+      <response status="200">
+        `{ success: true, message, data: { applied, summary, charts } }`
+
+        applied : `{ date_from, date_to, category_keys, row_mode }` — eco dei filtri applicati, cosi'
+                  il client puo' scartare una risposta arrivata fuori ordine.
+
+        summary : `[ { key, label, value } ]` — una voce per indicatore applicabile ad almeno una
+                  categoria selezionata. `value` e' il totale REALE sull'unione dei rami (D-8), non
+                  la somma delle categorie. `label` tradotto server-side (D-9).
+
+        charts  : `[ { id, scope, category_key, category_label, indicator_key, indicator_label,
+                       points: [ { label, value } ] } ]`
+                  - `scope: "category"` -> `category_key`/`category_label` sono `null`, e `points` ha
+                    una voce per categoria selezionata (`label` = nome della categoria).
+                  - `scope: "operator"` -> `category_key`/`category_label` identificano la categoria,
+                    e `points` ha una voce per GA2 (`label` = `users.name`, oppure "Non assegnato").
+                  Quali `scope` compaiono lo decide `row_mode` (D-3).
+                  `points` ordinati per `value` decrescente, poi per `label` crescente a parita' di
+                  valore (ordinamento deterministico: un grafico che cambia ordine tra due refresh
+                  a dati invariati e' un difetto).
+                  Un grafico i cui `points` sono tutti a 0 NON viene emesso: sarebbe rumore. Se
+                  nessun grafico sopravvive, `charts` e' `[]` e il client mostra lo stato vuoto.
+      </response>
+      <errors>
+        403 — attore senza `request-management.report`.
+        422 — filtri mancanti, malformati, `date_to` anteriore a `date_from`, `category_keys` vuoto
+              o con chiave ignota, `row_mode` fuori dai tre valori.
+        Nessun 404. Errori senza nomi di classi o model.
+      </errors>
+      <routing_trap>
+        `report/dashboard` e' un segmento letterale sotto `report/{exportRun}`: va dichiarata PRIMA,
+        e il `->whereNumber('exportRun')` gia' presente da 0106 rev-2 la protegge comunque. Valgono
+        entrambe le difese, come per `report/categories`.
+      </routing_trap>
+    </endpoint>
+
+    <client>
+      <component name="RequestReportFilters" path="frontend/src/features/request-management/request-report-filters.tsx">
+        Estratto da `RequestReportDialog` (D-4): range date, gruppo categorie con "seleziona tutto"
+        tri-stato, scelta righe. Usato da entrambi i consumatori. Lo schema Zod e i default
+        (`currentWeekReportRange()`) restano condivisi in `request-report-schema.ts`.
+        L'estrazione NON deve cambiare il comportamento della modale: i test esistenti di 0106
+        devono continuare a passare senza modifiche sostanziali.
+      </component>
+      <component name="RequestDashboardPanel" path="frontend/src/features/request-management/request-dashboard-panel.tsx">
+        Pannello collassabile montato tra `PageHeader` e `TableView` in
+        `request-management-table.tsx`, aperto dallo `StatsToggleButton` esistente via
+        `useStatsPanel(REQUEST_MANAGEMENT_DOMAIN)` — entrambi riusati, non modificati.
+        Fetch con TanStack Query, `enabled` legato a `isOpen` (D-5). Stati: skeleton, vuoto, errore
+        con retry, come fa `ModuleStatsPanel`.
+      </component>
+      <component name="ReportBarChart" path="frontend/src/components/ui/report-bar-chart.tsx">
+        Wrapper che NON importa recharts; l'implementazione sta in `report-bar-chart-impl.tsx`,
+        caricata con `React.lazy` dentro `Suspense` con `Skeleton` (D-7). Barre orizzontali,
+        colori dai token del tema (`var(--chart-N)`), mai esadecimali.
+        Accessibilita': il grafico e' `aria-hidden` e accanto c'e' un equivalente testuale in
+        `sr-only` con le coppie etichetta/valore, esattamente come fa `stat-chart-impl.tsx`.
+      </component>
+    </client>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Un attore con `request-management.report` che chiama l'endpoint con filtri validi riceve 200 con `applied`, `summary` e `charts`; un attore senza il permesso riceve 403.</criterion>
+    <criterion id="AC-002">Filtri mancanti, `date_to` anteriore a `date_from`, `category_keys` vuoto o con una chiave non in config, e `row_mode` fuori dai tre valori: 422.</criterion>
+    <criterion id="AC-003">`applied` riflette esattamente i filtri ricevuti.</criterion>
+    <criterion id="AC-004">Con `row_mode = total_only` tutti i `charts` hanno `scope = "category"`; con `operators_only` tutti hanno `scope = "operator"`; con `all` compaiono entrambi, con quelli per categoria prima.</criterion>
+    <criterion id="AC-005">Con `scope = "category"`, `points` ha una voce per ogni categoria selezionata che abbia almeno un valore non nullo, con `label` uguale al nome di dominio della categoria.</criterion>
+    <criterion id="AC-006">Con `scope = "operator"`, `points` ha una voce per ogni GA2 del ramo, con `label` uguale a `users.name`; le richieste senza operatore compaiono con la stessa etichetta "Non assegnato" usata dal CSV.</criterion>
+    <criterion id="AC-007">I `points` sono ordinati per valore decrescente e, a parita' di valore, per etichetta crescente: due chiamate identiche restituiscono lo stesso ordine.</criterion>
+    <criterion id="AC-008">Un grafico i cui punti sono tutti a 0 non viene emesso; se nessun grafico sopravvive, `charts` e' `[]` e la risposta resta 200.</criterion>
+    <criterion id="AC-009">La dashboard rispetta `RequestManagementScope`: un attore che vede solo le proprie richieste ottiene numeri calcolati sul solo suo perimetro, e un ramo che non puo' vedere non compare tra i `points`.</criterion>
+    <criterion id="AC-010">VINCOLO DI CALCOLO CONDIVISO (D-2): per gli stessi filtri, ogni valore della dashboard coincide con il valore della cella corrispondente del CSV generato da 0106. Il test genera ENTRAMBI gli output e li confronta valore per valore, non a parole.</criterion>
+    <criterion id="AC-011">Il `summary` non e' la somma delle categorie: con una richiesta classificata su due categorie entrambe selezionate, il valore di riepilogo e' MINORE della somma dei due totali di categoria (D-8).</criterion>
+    <criterion id="AC-012">Nessun indicatore e' reimplementato: la dashboard non contiene condizioni di stato, di data o di categoria proprie. Verificabile per ispezione — il servizio della dashboard non deve costruire query sulle quote, ma solo consumare `ReportRow`.</criterion>
+    <criterion id="AC-013">`GET /api/request-management/report/dashboard` risolve all'endpoint della dashboard e non allo `show` di 0106 con `exportRun = "dashboard"`; un test lo verifica con un round-trip HTTP reale.</criterion>
+    <criterion id="AC-014">Nessun `throttle` sulla rotta, coerentemente con la decisione utente 2026-07-15.</criterion>
+    <criterion id="AC-015">I 55 test esistenti di 0106 continuano a passare senza modifiche: la dashboard non cambia il comportamento del report.</criterion>
+
+    <criterion id="AC-040">Nella pagina Gestione Richieste compare lo `StatsToggleButton` nelle `actions` del `PageHeader`, con lo stesso aspetto e la stessa semantica di Opportunita' (`aria-expanded`, `aria-controls`); e' visibile solo con `request-management.report` (D-6).</criterion>
+    <criterion id="AC-041">Il pannello e' chiuso di default; al click si espande tra intestazione e tabella, e lo stato aperto/chiuso e' persistito per dominio come negli altri moduli.</criterion>
+    <criterion id="AC-042">A pannello chiuso NON parte alcuna richiesta di rete verso la dashboard; parte solo alla prima apertura (D-5).</criterion>
+    <criterion id="AC-043">La barra filtri del pannello espone gli stessi controlli della modale CSV, con gli stessi default (lunedi'-venerdi' della settimana corrente, tutte le categorie selezionate, righe "tutto").</criterion>
+    <criterion id="AC-044">Cambiando un filtro i grafici si aggiornano; deselezionando tutte le categorie viene mostrato l'errore di validazione e NON parte alcuna richiesta.</criterion>
+    <criterion id="AC-045">La modale CSV di 0106 continua a funzionare identicamente dopo l'estrazione dei controlli condivisi: i suoi test passano.</criterion>
+    <criterion id="AC-046">Il wrapper del grafico NON importa recharts in modo eager: un test lo asserisce, come gia' fa `stat-chart.test.tsx` per `stat-chart`.</criterion>
+    <criterion id="AC-047">Ogni grafico ha un equivalente testuale accessibile (`sr-only`) con le coppie etichetta/valore, e l'area del grafico e' `aria-hidden`.</criterion>
+    <criterion id="AC-048">Il pannello gestisce i tre stati: caricamento (skeleton), vuoto (`charts: []`) con messaggio esplicito, errore con possibilita' di riprovare.</criterion>
+    <criterion id="AC-049">Tutte le stringhe passano da i18next sotto `requestManagement.dashboard.*` con parita' IT/EN; i nomi di categoria e di operatore NON passano da i18next (sono valori di dominio).</criterion>
+    <criterion id="AC-050">`npx tsc -b --force --pretty false` pulito (mai `--noEmit`).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <constraint>Nessuna nuova dipendenza: recharts e' gia' presente e va usato solo tramite un file lazy-loaded.</constraint>
+    <constraint>D-2 e' il vincolo centrale: la dashboard NON puo' contenere logica di calcolo. Se per farla funzionare serve duplicare una regola, fermarsi e segnalarlo invece di duplicarla.</constraint>
+    <constraint>Il framework stats (spec 0026) e i servizi di 0106 non vanno modificati, salvo eventuale estrazione a comportamento invariato concordata prima.</constraint>
+    <constraint>Autorizzazione server-side su ogni chiamata; `RequestManagementScope` applicato dal riuso di `ReportBranchQuery`, mai reimplementato.</constraint>
+    <constraint>FormRequest obbligatorio per la validazione; allow-list per `category_keys`, mai input grezzo in query.</constraint>
+    <constraint>File entro 300 righe soft / 500 hard. Orchestrazione con `// Step N`, sotto-metodi a singola responsabilita'.</constraint>
+    <constraint>Identificatori in inglese; nessuna emoticon; nessun file `.md` nuovo.</constraint>
+    <constraint>Colori dei grafici dai token del tema (`var(--chart-N)`), mai esadecimali: il pannello deve restare leggibile in tema chiaro e scuro.</constraint>
+    <constraint>Definition of Done: Pest e Vitest ESEGUITI, Pint, ESLint e `tsc -b --force` puliti.</constraint>
+    <constraint>Git: nessun commit e nessun cambio di branch senza via libera esplicito dell'utente in quel momento.</constraint>
+  </constraints>
+
+  <microtasks>
+    <!--
+      Ownership disgiunta. MT-01 e' un prerequisito del frontend: va fatto per primo e
+      comunicato, perche' tocca file che la lane frontend usera'.
+    -->
+    <task id="MT-01" lane="frontend" depends-on="">Estrarre `RequestReportFilters` da `RequestReportDialog` a comportamento invariato (D-4); i test di 0106 devono passare senza modifiche sostanziali.</task>
+    <task id="MT-02" lane="backend" depends-on="">Servizio dashboard: consuma `ReportBranchResolver` + `ReportBranchRowsBuilder`, costruisce `summary` (ramo sintetico unione, D-8) e `charts` per `scope`, con ordinamento deterministico e scarto dei grafici tutti a zero.</task>
+    <task id="MT-03" lane="backend" depends-on="MT-02">FormRequest, Controller, Resource, rotta prima di `{exportRun}`; permesso `request-management.report`.</task>
+    <task id="MT-04" lane="backend" depends-on="MT-03">Pest: AC-001..AC-015, con AC-010 (confronto dashboard vs CSV) e AC-011 (riepilogo non sommabile) come casi centrali.</task>
+    <task id="MT-05" lane="frontend" depends-on="MT-01">`ReportBarChart` + `report-bar-chart-impl` lazy, con equivalente testuale accessibile.</task>
+    <task id="MT-06" lane="frontend" depends-on="MT-05">`RequestDashboardPanel` + `StatsToggleButton` nel `PageHeader`, fetch `enabled: isOpen`, stati skeleton/vuoto/errore, chiavi i18n.</task>
+    <task id="MT-07" lane="frontend" depends-on="MT-06">Vitest: AC-040..AC-050.</task>
+    <task id="MT-20" lane="verifier" depends-on="MT-04,MT-07">Cancello indipendente: riesegue tutto, verifica gli AC uno per uno, e in particolare ISPEZIONA il codice della dashboard per confermare che non contenga alcuna logica di calcolo propria (AC-012).</task>
+  </microtasks>
+
+</spec>

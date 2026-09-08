@@ -8,12 +8,13 @@ use Illuminate\Database\Seeder;
  * The client's production-like dataset, and the single entry point for it:
  * `php artisan db:seed --class=QualificaProductionDataSeeder`.
  *
- * Steps 1 to 7 are not fake data — as opposed to every `Demo*` seeder, which
- * fabricates fixtures. They are the real structure, the real hard-coded
- * reference rows and the real legacy catalogues. Steps 8 and 9 (`*Sample*`)
- * are the one deliberate exception, added on user directive 2026-07-31: a
- * fabricated commercial pipeline, so the Lead and Opportunity grids are not
- * empty on a fresh install.
+ * NOTHING here is fake data — as opposed to every `Demo*` seeder, which
+ * fabricates fixtures. These are the real structure, the real hard-coded
+ * reference rows and the real legacy catalogues. The fabricated commercial
+ * pipeline (Anagrafiche, Lead, Opportunita', Gestione Richieste) used to be
+ * appended here as two `*Sample*` steps; the user directive 2026-09-08 moved
+ * it out to its own on-demand entry point, `QualificaSampleDataSeeder`, so a
+ * production seed produces no demo row at all.
  *
  * The order their dependencies allow:
  *
@@ -43,13 +44,6 @@ use Illuminate\Database\Seeder;
  *   7. QualificaOperatorSiteLinkSeeder — gives step 4's accounts the
  *                                    operational site step 5 imports, so they
  *                                    are selectable as operators.
- *   8. QualificaSampleLeadSeeder   — the sample pipeline: one project, one
- *                                    campaign, one Anagrafica per lead, and a
- *                                    batch of leads part of which is already
- *                                    converted into an opportunity.
- *   9. QualificaSampleOpportunitySeeder — the other creation path: deals with
- *                                    no lead behind them, on step 8's
- *                                    Anagrafiche.
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's source catalogue by name instead of duplicating
@@ -61,13 +55,7 @@ use Illuminate\Database\Seeder;
  *     yet), which is why it is repeated — not moved — after step 5;
  *   - step 7 needs both sides too: step 4's accounts and step 5's sites. It is
  *     a separate step rather than part of step 4 for exactly that reason —
- *     step 4 has to precede the import, the sites only exist after it;
- *   - step 8 needs step 2's product category tree (the conversion derives the
- *     opportunity's product line from the campaign's business function and
- *     category, spec 0044 AC-012) and takes step 5's operational sites and
- *     step 4's accounts as the leads' sede/operatore;
- *   - step 9 reuses step 8's Anagrafiche instead of seeding a second set, so
- *     it comes last.
+ *     step 4 has to precede the import, the sites only exist after it.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Step 5 is a no-op with
@@ -89,7 +77,5 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaLegacyImportSeeder::class);
         $this->call(QualificaBusinessFunctionLinkSeeder::class);
         $this->call(QualificaOperatorSiteLinkSeeder::class);
-        $this->call(QualificaSampleLeadSeeder::class);
-        $this->call(QualificaSampleOpportunitySeeder::class);
     }
 }

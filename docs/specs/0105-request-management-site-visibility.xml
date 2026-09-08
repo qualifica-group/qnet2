@@ -303,10 +303,25 @@
       allora passa con `viewSite` presente in entrambi i locale e nella lista
       `CATALOGUE_ABILITIES`.</criterion>
 
-    <criterion id="AC-017">Dato l'attore autenticato con `Model::preventLazyLoading()`
-      attivo (ambiente di test), quando una qualsiasi delle superfici scoped viene
-      chiamata, allora non viene sollevata `LazyLoadingViolationException`: le sedi
-      dell'attore sono risolte con `loadMissing` (D-7).</criterion>
+    <criterion id="AC-017" status="revised">RIVISTO in esecuzione. Testo originale: "Dato
+      l'attore autenticato con `Model::preventLazyLoading()` attivo (ambiente di test),
+      quando una qualsiasi delle superfici scoped viene chiamata, allora non viene
+      sollevata `LazyLoadingViolationException`". Il criterio non e' verificabile per
+      esecuzione, per due vincoli scoperti implementando:
+      (a) `Model::preventLazyLoading()` NON e' cablato globalmente in questo repo — nessuna
+      chiamata in `AppServiceProvider::boot()`, solo opt-in per singolo test (il precedente
+      e' `tests/Feature/Authorization/EmploymentFieldPermissionsTest.php:189-210`, che lo
+      dichiara esplicitamente). `backend.md 3` afferma il contrario: e' la REGOLA a essere
+      disallineata dal codice, non questa feature, e va deciso a parte se cablarlo o
+      correggere la regola;
+      (b) anche cablandolo, la guardia non scatterebbe qui: `Builder::hydrate()` la marca
+      solo quando `count($items) > 1`, e l'attore autenticato piu' la sua `employment`
+      (hasOne) sono letture a riga singola.
+      Verifica sostitutiva: ispezione del codice — `RequestManagementScope::actorSiteIds()`
+      passa da `loadMissing('employment.operationalSites')` una volta per chiamata, sul
+      precedente di `RequestCreationService::actorOperationalSiteId()`. Il rischio N+1 reale
+      resta sulle GRIGLIE che elencano molti utenti, superficie non toccata da questa
+      spec.</criterion>
   </acceptance_criteria>
 
   <constraints>

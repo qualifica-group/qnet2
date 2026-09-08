@@ -14,6 +14,7 @@ use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Contracts\ContractLifecycleManager;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Quotes\QuoteAttributeValueWriter;
+use App\Services\Quotes\QuoteWorkflowStatusAssigner;
 use App\Services\Quotes\QuoteWorkflowStatusWriter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -142,6 +143,7 @@ final class RequestManagementService
         private readonly RequestAttributeResolver $attributeResolver,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
+        private readonly QuoteWorkflowStatusAssigner $workflowStatusAssigner,
         private readonly ContractLifecycleManager $contractLifecycleManager,
     ) {}
 
@@ -185,8 +187,11 @@ final class RequestManagementService
 
             // Step 1: funzione aziendale + categoria prodotto (user directive
             // 2026-07-31), still an Opportunity-level classification (D-2).
+            $classificationChanged = false;
+
             if (array_key_exists('product_lines', $data)) {
-                $this->productLineWriter->apply($opportunity, (array) $data['product_lines'], $changed, $old);
+                $classificationChanged = $this->productLineWriter
+                    ->apply($opportunity, (array) $data['product_lines'], $changed, $old);
             }
 
             // Step 1-bis: the coherence rule (user directive 2026-07-31) —
@@ -204,6 +209,17 @@ final class RequestManagementService
             // (D-1) and the workflow set resolves on them (spec 0083).
             if (array_key_exists('offer_lines', $data)) {
                 $this->offerLineWriter->apply($quote, $actor, (array) $data['offer_lines'], $changed, $old);
+            }
+
+            // Step 1-quater (user directive 2026-09-08): for an offer with no
+            // revenue line of its own the Opportunita's classification IS the
+            // workflow criterion (QuoteClassificationSource), so replacing it
+            // can move the offer onto another workflow — re-resolved here as
+            // QuoteService::update() already does for a replaced `offer_lines`
+            // (which reaches it through RequestOfferLineWriter). Without it
+            // the row would keep a status outside its own resolved set.
+            if ($classificationChanged) {
+                $this->rebaselineWorkflowStatus($quote, $actor, $changed, $old);
             }
 
             // Step 2: next planned callback (spec 0052 D-1/D-4; user
@@ -328,10 +344,39 @@ final class RequestManagementService
             return;
         }
 
-        $old['quote_workflow_status_id'] = $previousStatusId;
+        // `??=`: a rebaseline earlier in this same PATCH already recorded the
+        // status the request STARTED from — the audit entry must keep that
+        // one, not the intermediate value the rebaseline produced.
+        $old['quote_workflow_status_id'] ??= $previousStatusId;
         $changed['quote_workflow_status_id'] = $quote->quote_workflow_status_id;
         // The projection the panel re-renders from is the relation, not the
         // column: a stale loaded copy would send back the PREVIOUS status.
+        $quote->unsetRelation('quoteWorkflowStatus');
+    }
+
+    /**
+     * Re-resolve the offer's workflow baseline after its classification
+     * changed, reporting the move into the caller's audit arrays (D-9).
+     * Goes through QuoteWorkflowStatusAssigner with NO submitted id — the
+     * same single write-side entry point QuoteService uses — so it stops at
+     * the baseline and an explicit client choice still advances FROM it at
+     * Step 2-ter.
+     *
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     */
+    private function rebaselineWorkflowStatus(Quote $quote, User $actor, array &$changed, array &$old): void
+    {
+        $previousStatusId = $quote->quote_workflow_status_id;
+
+        $this->workflowStatusAssigner->assign($quote, null, null, $actor);
+
+        if ($quote->quote_workflow_status_id === $previousStatusId) {
+            return;
+        }
+
+        $old['quote_workflow_status_id'] = $previousStatusId;
+        $changed['quote_workflow_status_id'] = $quote->quote_workflow_status_id;
         $quote->unsetRelation('quoteWorkflowStatus');
     }
 

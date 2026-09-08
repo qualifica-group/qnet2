@@ -8,6 +8,7 @@ use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\Source;
 use App\Models\User;
 use App\Services\UserService;
@@ -19,8 +20,10 @@ use Illuminate\Support\Facades\Storage;
 // The single entry point for the client's production-like dataset. Each step
 // is covered by its own suite (QualificaTemplateSeederTest,
 // QualificaCatalogSeederTest, TestUsersSeederTest,
-// QualificaLegacyImportSeederTest); what is pinned HERE is that the four run
-// together, in the order their dependencies require.
+// QualificaLegacyImportSeederTest); what is pinned HERE is that they run
+// together, in the order their dependencies require — and, since the user
+// directive 2026-09-08, that the chain produces NO fabricated row: the sample
+// pipeline is QualificaSampleDataSeeder's own business now.
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -69,29 +72,18 @@ it('gives the testers an operational site, so they are selectable as operators',
     expect($employment->primaryOperationalSiteId)->toBe($site->getKey());
 });
 
-it('leaves the sample pipeline unseeded when the catalogue derives no business function', function (): void {
-    // The functions come from the legacy import, a no-op here: with none, no
-    // category derives a product line and a converted lead is impossible
-    // (spec 0044, AC-012) — steps 7/8 skip instead of half-seeding.
-    test()->seed(QualificaProductionDataSeeder::class);
-
-    expect(Lead::query()->count())->toBe(0)
-        ->and(Opportunity::query()->count())->toBe(0);
-});
-
-it('seeds the sample pipeline on top of the catalogue', function (): void {
-    // Stand in the business function the import would have brought, so step 5
-    // can assign it to the "Formazione" root the whole GOL branch inherits.
+it('seeds no fabricated row: the sample pipeline is a separate entry point', function (): void {
+    // User directive 2026-09-08: the two *Sample* steps left this chain for
+    // QualificaSampleDataSeeder. Standing in the business function the import
+    // would have brought is what USED to make them seed — with it present and
+    // the grids still empty, the split is pinned, not merely untested.
     BusinessFunction::factory()->create(['name' => 'Formazione']);
 
     test()->seed(QualificaProductionDataSeeder::class);
 
-    // Steps 7/8 (user directive 2026-07-31): the leads hang from the
-    // catalogue's own product tree, and both creation paths of an
-    // opportunity are represented — converted from a lead, and standalone.
-    expect(Lead::query()->count())->toBe(40)
-        ->and(Lead::query()->has('opportunity')->count())->toBe(12)
-        ->and(Opportunity::query()->whereNull('lead_id')->count())->toBe(10);
+    expect(Lead::query()->count())->toBe(0)
+        ->and(Opportunity::query()->count())->toBe(0)
+        ->and(Quote::query()->count())->toBe(0);
 });
 
 it('is idempotent: a second run duplicates nothing', function (): void {
@@ -103,9 +95,7 @@ it('is idempotent: a second run duplicates nothing', function (): void {
     expect(Source::query()->count())->toBe(10)
         ->and(Product::query()->count())->toBe(265)
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)
-        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1)
-        ->and(Lead::query()->count())->toBe(40)
-        ->and(Opportunity::query()->count())->toBe(22);
+        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1);
 });
 
 it('runs the q-crm import once, without the catalogue step asking again', function (): void {

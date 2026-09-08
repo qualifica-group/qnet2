@@ -27,12 +27,12 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
 /**
- * The one SAMPLE dataset of the Qualifica chain (user directive 2026-07-31):
- * a batch of leads, part of them already converted into an opportunity, so the
- * Lead and Opportunity grids are not empty on a fresh install. Unlike every
- * other Qualifica* step it is NOT client reference data — it is fabricated,
- * which is why it lives in its own step and is named `Sample`, and why the
- * orchestrator's docblock now says so.
+ * The first step of the SAMPLE dataset (user directive 2026-07-31): a batch of
+ * leads, part of them already converted into an opportunity, so the Lead and
+ * Opportunity grids are not empty on a fresh install. Unlike the
+ * QualificaProductionDataSeeder chain it is NOT client reference data — it is
+ * fabricated, which is why it is named `Sample` and why the user directive
+ * 2026-09-08 moved it out of that chain into QualificaSampleDataSeeder.
  *
  * It also creates the two rows the leads cannot exist without: a Lead's
  * `registry_id`/`campaign_id` are mandatory (spec 0024, BR-1) and neither
@@ -53,23 +53,28 @@ use Illuminate\Support\Collection;
  * of spec 0044, so the converted leads go through ConvertLeadToOpportunity
  * inside LeadService's own transaction, never a hand-rolled insert.
  *
- * Idempotent by presence, not by delete: a campaign that already carries its
- * leads short-circuits the whole run, so re-seeding neither duplicates the
- * batch nor throws away opportunities built on top of it.
+ * ACCUMULATES, it does not converge (user directive 2026-09-08): every run
+ * appends a fresh batch, so the seeder can be launched again whenever more
+ * rows are wanted. The batch size is a `run()` parameter — `php artisan
+ * qualifica:seed-sample --leads=200 --converted-leads=60` — so one run can
+ * also be made bigger instead of repeated. Only the project and the campaign are looked
+ * up by name and reused — one pair for the whole sample dataset, never a
+ * second copy per run. The Faker generator is deliberately UNSEEDED for the
+ * same reason: a fixed seed would make every run a carbon copy of the first.
  */
 class QualificaSampleLeadSeeder extends Seeder
 {
     use ResolvesCategoryBusinessFunction;
 
-    private const int LEADS = 40;
+    /** The batch size when the caller names none (`--leads` of qualifica:seed-sample). */
+    public const int DEFAULT_LEADS = 40;
 
-    private const int CONVERTED_LEADS = 12;
+    /** How many of that batch convert at most (`--converted-leads`). */
+    public const int DEFAULT_CONVERTED_LEADS = 12;
 
     private const string PROJECT_NAME = 'Progetto commerciale di esempio';
 
     private const string CAMPAIGN_NAME = 'Campagna lead di esempio';
-
-    private const int FAKER_SEED = 20260731;
 
     private const int CITY_SAMPLE = 200;
 
@@ -79,7 +84,7 @@ class QualificaSampleLeadSeeder extends Seeder
         private readonly LeadService $leads,
     ) {}
 
-    public function run(): void
+    public function run(int $leads = self::DEFAULT_LEADS, int $convertedLeads = self::DEFAULT_CONVERTED_LEADS): void
     {
         // Step 1: the classification pair the conversion derives its product
         // line from. Without one no lead could ever convert (AC-012), so this
@@ -93,17 +98,9 @@ class QualificaSampleLeadSeeder extends Seeder
         }
 
         // Step 2: the mandatory owners of a Lead (BR-1), provisioned once.
-        $campaign = $this->ensureCampaign($pair);
-
-        // Step 3: a campaign that already carries its batch is done.
-        if (Lead::query()->where('campaign_id', $campaign->getKey())->exists()) {
-            $this->command?->info('Sample leads already seeded: nothing to add.');
-
-            return;
-        }
+        $campaign = $this->ensureCampaign($pair, $leads);
 
         $faker = FakerFactory::create('it_IT');
-        $faker->seed(self::FAKER_SEED);
 
         $lookups = [
             'sources' => Source::query()->orderBy('id')->get(),
@@ -112,19 +109,19 @@ class QualificaSampleLeadSeeder extends Seeder
             'cities' => City::query()->orderBy('id')->limit(self::CITY_SAMPLE)->get(),
         ];
 
-        // Step 4: the batch itself.
+        // Step 3: the batch itself.
         $converted = 0;
 
-        for ($index = 0; $index < self::LEADS; $index++) {
-            // Every third lead converts, up to the target: interleaved with
-            // the plain ones instead of clustered at the head of the grid.
-            $convert = $converted < self::CONVERTED_LEADS && $index % 3 === 0;
+        for ($index = 0; $index < $leads; $index++) {
+            // Every third lead converts, up to the cap: interleaved with the
+            // plain ones instead of clustered at the head of the grid.
+            $convert = $converted < $convertedLeads && $index % 3 === 0;
             $converted += $convert ? 1 : 0;
 
             $this->seedLead($faker, $index, $campaign, $lookups, $convert);
         }
 
-        $this->command?->info(sprintf('%d sample leads seeded, %d of them converted to an opportunity.', self::LEADS, $converted));
+        $this->command?->info(sprintf('%d sample leads seeded, %d of them converted to an opportunity.', $leads, $converted));
     }
 
     /**
@@ -135,7 +132,7 @@ class QualificaSampleLeadSeeder extends Seeder
      *
      * @param  array{product_category_id: int, business_function_id: int}  $pair
      */
-    private function ensureCampaign(array $pair): Campaign
+    private function ensureCampaign(array $pair, int $leads): Campaign
     {
         $existing = Campaign::query()->where('name', self::CAMPAIGN_NAME)->first();
 
@@ -145,7 +142,7 @@ class QualificaSampleLeadSeeder extends Seeder
 
         return $this->campaigns->create(new CreateCampaignData(
             code: null,
-            projectId: $this->ensureProject($pair)->getKey(),
+            projectId: $this->ensureProject($pair, $leads)->getKey(),
             name: self::CAMPAIGN_NAME,
             description: 'Campagna di esempio a supporto dei lead dimostrativi.',
             partnerId: null,
@@ -159,14 +156,14 @@ class QualificaSampleLeadSeeder extends Seeder
             startDate: null,
             endDate: null,
             totalBudget: null,
-            targetLead: self::LEADS,
+            targetLead: $leads,
         ));
     }
 
     /**
      * @param  array{product_category_id: int, business_function_id: int}  $pair
      */
-    private function ensureProject(array $pair): Project
+    private function ensureProject(array $pair, int $leads): Project
     {
         $existing = Project::query()->where('name', self::PROJECT_NAME)->first();
 
@@ -188,7 +185,7 @@ class QualificaSampleLeadSeeder extends Seeder
             startDate: null,
             endDate: null,
             totalBudget: null,
-            targetLead: self::LEADS,
+            targetLead: $leads,
             countryId: null,
             provinceId: null,
             cityId: null,

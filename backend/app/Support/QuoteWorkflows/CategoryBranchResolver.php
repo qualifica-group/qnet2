@@ -5,14 +5,19 @@ declare(strict_types=1);
 namespace App\Support\QuoteWorkflows;
 
 use App\Models\Quote;
-use App\Models\QuoteLine;
 use App\Services\ProductCategories\CategoryHierarchy;
 
 /**
  * The product-category BRANCH a Quote belongs to (spec 0092): for every
- * offer line's own category, that category plus every ancestor above it,
- * each with the SHORTEST distance from a line's own category (0 = the line's
- * own category, 1 = its parent, ...).
+ * category the offer is classified by, that category plus every ancestor
+ * above it, each with the SHORTEST distance from the classifying category
+ * (0 = that category itself, 1 = its parent, ...).
+ *
+ * WHICH categories those are is QuoteClassificationSource's decision, never
+ * this class': the offer's own revenue lines, or — when it has none — its
+ * Opportunita's product lines (user directive 2026-09-08). Reading the lines
+ * directly here would let a branch criterion disagree with an
+ * exact-category one about the very same offer.
  *
  * Two consumers share it, which is why it is a collaborator rather than more
  * code inside either: QuoteCriterionFieldRegistry reads the KEYS (which
@@ -26,8 +31,9 @@ use App\Services\ProductCategories\CategoryHierarchy;
  * not outlive the request (a reparented category would otherwise be resolved
  * against a stale tree forever on a queue worker).
  *
- * Assumes the caller already eager-loaded `offerLines.product` — the same
- * contract QuoteCriterionFieldRegistry states for every other native field.
+ * Assumes the caller already eager-loaded `offerLines.product` and
+ * `opportunity.productLines` — the same contract QuoteCriterionFieldRegistry
+ * states for every other native field.
  */
 final class CategoryBranchResolver
 {
@@ -40,11 +46,15 @@ final class CategoryBranchResolver
      */
     private array $distances = [];
 
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly CategoryHierarchy $hierarchy,
+        private readonly QuoteClassificationSource $classification,
+    ) {}
 
     /**
      * $quote's whole branch as `category id => shortest distance`, empty when
-     * the quote has no offer line carrying a product category.
+     * neither the offer's revenue lines nor its Opportunita's product lines
+     * carry a product category.
      *
      * @return array<int, int>
      */
@@ -58,25 +68,20 @@ final class CategoryBranchResolver
      */
     private function build(Quote $quote): array
     {
-        // Step 1: the categories the quote sits on directly (revenue lines
-        // only, never cost lines — same source as offerLineValues()).
-        $lineCategoryIds = $quote->offerLines
-            ->map(static fn (QuoteLine $line): ?int => $line->product?->category_id)
-            ->filter()
-            ->unique()
-            ->map(static fn (mixed $categoryId): int => (int) $categoryId)
-            ->all();
+        // Step 1: the categories the quote sits on directly — the SAME set
+        // the exact-category criterion matches on, fallback included.
+        $categoryIds = $this->classification->categoryIds($quote);
 
-        if ($lineCategoryIds === []) {
+        if ($categoryIds === []) {
             return [];
         }
 
         // Step 2: climb from each of them, keeping the shortest distance when
-        // two lines reach the same ancestor from different depths.
+        // two of them reach the same ancestor from different depths.
         $parents = $this->hierarchy->parentIdMap();
         $distances = [];
 
-        foreach ($lineCategoryIds as $categoryId) {
+        foreach ($categoryIds as $categoryId) {
             $this->climb($categoryId, $parents, $distances);
         }
 
