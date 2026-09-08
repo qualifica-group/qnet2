@@ -58,18 +58,17 @@ export interface RequestReportFiltersProps {
 }
 
 /**
- * Shared filter controls of spec 0106/0107 (rev-2 D-4, 0107 D-4): date
- * range, branch checkbox group with a tri-state "select all", and the
- * row-mode choice. Extracted from `RequestReportDialog` at BEHAVIOR-INVARIANT
- * parity (0107 AC-045) so the CSV modal and the dashboard's filter bar can
- * never drift apart — the same reason 0106's indicators live in one shared
- * backend service instead of two.
+ * Filter controls of spec 0106/0107 (rev-2 D-4, 0107 D-4): date range,
+ * branch checkbox group with a tri-state "select all", and the row-mode
+ * choice. One selection now drives both consumers — the charts and the CSV
+ * (user directive 2026-09-08) — so `RequestReportDialog` is its only host;
+ * the file stays split off it purely for size.
  *
  * Presentational only: the caller owns the `useForm()` instance, the branch
  * fetch (`useRequestReportCategories`), and must render this inside its own
  * `<Form {...form}>` (the `FormField`s below read RHF context from it).
- * Renders a FLAT fragment of one element per group — the dashboard lays them
- * out as cells of its own grid, so nothing here may wrap them in a container.
+ * Renders a FLAT fragment of one element per group — the host lays them out
+ * as cells of its own grid, so nothing here may wrap them in a container.
  */
 export function RequestReportFilters({
   control,

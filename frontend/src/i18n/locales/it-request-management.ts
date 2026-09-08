@@ -284,9 +284,9 @@ export const requestManagement = {
   // Report CSV asincrono (spec 0106): dialog di selezione date, agganciato
   // al menu opzioni della toolbar via `importSlot`.
   report: {
-    title: 'Report CSV',
-    description: 'Genera un report aggregato per categoria e operatore in un intervallo di date; il file si scarica automaticamente al termine.',
+    title: 'Filtri report e statistiche',
     action: 'Genera report',
+    description: 'Intervallo, categorie e righe: la stessa selezione vale per i grafici e per il report CSV.',
     fields: {
       dateFrom: 'Dal',
       dateTo: 'Al',
@@ -308,8 +308,9 @@ export const requestManagement = {
       loadingCategories: 'Caricamento categorie…',
     },
     buttons: {
-      confirm: 'Genera',
       processing: 'Generazione…',
+      // Applica i filtri ai grafici e chiude la modale (direttiva utente 2026-09-08).
+      apply: 'Applica',
     },
     errors: {
       dateFromRequired: 'Seleziona la data di inizio.',
@@ -329,6 +330,8 @@ export const requestManagement = {
   // esistente, i nomi di categoria/operatore restano valori di dominio.
   dashboard: {
     regionLabel: 'Dashboard di Gestione Richieste',
+    editFilters: 'Filtri',
+    filtersSummary: 'Dal {{from}} al {{to}} · {{selected}}/{{total}} categorie · {{rowMode}}',
     loadError: 'Impossibile caricare la dashboard.',
     empty: 'Nessun grafico da mostrare per questa selezione.',
   },

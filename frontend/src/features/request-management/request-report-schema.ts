@@ -100,14 +100,12 @@ export function categoriesAreBlocked(
 
 /**
  * Same rules `buildRequestReportSchema` enforces, computed SYNCHRONOUSLY
- * from the current watched values (spec 0107 D-5/AC-044). The dashboard's
- * filter bar has no submit button, so it gates its live fetch on this
- * instead of RHF's `formState.isValid`: the resolver runs asynchronously,
- * so `isValid` can still read `true` for one render after `values` already
- * went invalid (e.g. the instant a branch is unchecked) — a window where an
- * `enabled: isValid` query would fire with an empty `category_keys`, exactly
- * the empty-selection request AC-044 forbids. Reading the values directly
- * has no such lag.
+ * from a plain set of values (spec 0107 D-5/AC-044). The dashboard holds its
+ * applied filters as state, outside any form, and gates the aggregates query
+ * on this — never on RHF's `formState.isValid`, which belongs to the sheet
+ * and lags the values it validates by a render (the resolver is async): an
+ * `enabled: isValid` query could still fire with an empty `category_keys`,
+ * exactly the empty-selection request AC-044 forbids.
  */
 export function isRequestReportQueryReady(values: RequestReportFormValues): boolean {
   return (

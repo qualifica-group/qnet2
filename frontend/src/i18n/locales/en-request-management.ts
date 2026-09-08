@@ -284,9 +284,9 @@ export const requestManagement = {
   // Asynchronous CSV report (spec 0106): the date-range dialog, mounted in
   // the toolbar's options menu via `importSlot`.
   report: {
-    title: 'CSV Report',
-    description: 'Generates a report aggregated by category and operator over a date range; the file downloads automatically once ready.',
+    title: 'Report and statistics filters',
     action: 'Generate report',
+    description: 'Date range, categories and rows: the same selection drives the charts and the CSV report.',
     fields: {
       dateFrom: 'From',
       dateTo: 'To',
@@ -308,8 +308,9 @@ export const requestManagement = {
       loadingCategories: 'Loading categories…',
     },
     buttons: {
-      confirm: 'Generate',
       processing: 'Generating…',
+      // Applies the filters to the charts and closes the sheet (user directive 2026-09-08).
+      apply: 'Apply',
     },
     errors: {
       dateFromRequired: 'Select the start date.',
@@ -329,6 +330,8 @@ export const requestManagement = {
   // category/operator names stay domain values, never i18n keys.
   dashboard: {
     regionLabel: 'Request Management dashboard',
+    editFilters: 'Filters',
+    filtersSummary: 'From {{from}} to {{to}} · {{selected}}/{{total}} categories · {{rowMode}}',
     loadError: 'Unable to load the dashboard.',
     empty: 'No charts to show for this selection.',
   },

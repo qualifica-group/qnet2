@@ -3,6 +3,59 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FILTRI IN MODALE + REPORT CSV NELLA BARRA STATISTICHE (2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente (in tre passaggi, stato finale).** I filtri della dashboard di /request-management
+non si vedono piu' inline: un bottone apre la modale, con la grafica della vecchia modale report.
+Il bottone "Genera report" sparisce dal menu della tabella e sta **di fianco al bottone Filtri**,
+non dentro la modale. I tab categoria stanno **sotto** le statistiche.
+
+**Struttura finale (frontend; nessun cambio al contratto backend).**
+- Ordine di pagina: `PageHeader` -> `RequestDashboardPanel` -> `RequestManagementCategoryTabs` ->
+  `TableView`.
+- `RequestDashboardPanel` OWNS i filtri applicati come `useState<RequestReportFormValues>` (non piu'
+  un `useForm`), fa il seeding one-shot delle categorie e gate la query su `isRequestReportQueryReady`
+  (`filtersReady`, passato anche alla barra). Nessun altro tiene una copia di quello stato.
+- NUOVO `request-dashboard-filter-bar.tsx`: riepilogo read-only dei filtri applicati
+  (`dashboard.filtersSummary`) + bottone "Genera report" (`report.action`, dentro
+  `<Can permission="request-management.report">`) + bottone "Filtri" (`dashboard.editFilters`), e
+  sotto le note di stato del run. Possiede `useRequestReport()` e genera il CSV sui filtri APPLICATI:
+  non ha un form proprio, quindi file e grafici non possono descrivere selezioni diverse.
+  `ReportStatusNote` vive qui adesso, non piu' nella modale.
+- `request-report-dialog.tsx` -> RINOMINATO `request-report-filters-dialog.tsx`, componente
+  `RequestReportFiltersDialog`: puro editor CONTROLLATO dei filtri (props `value` + `onApply`),
+  footer Annulla / Applica. Non conosce piu' `useRequestReport`. Il `storageKey` della larghezza
+  sheet e' rimasto `sheet-width:request-management-report` per non perdere la preferenza utente.
+- Sync del form: `form.reset(value)` sulla transizione di apertura E su un cambio di `value` mentre
+  il form e' pristine (`!formState.isDirty`). Il secondo ramo NON e' decorativo: aprendo la modale
+  prima che la lista rami sia atterrata, il form nascerebbe con `category_keys: []` e resterebbe
+  vuoto. `isDirty` impedisce che l'Applica resetti il form sotto le mani dell'utente.
+- NUOVO `use-request-report-filters.ts`: i filtri applicati sono PERSISTITI in localStorage
+  (`request-management.report-filters`, JSON), stessa forma di
+  `useRequestManagementCategoryPreference` — hook "muto" che fa solo round-trip, con guardia di
+  shape sul payload letto (scarta forme vecchie/manomesse e tiene solo i 4 campi del contratto,
+  che finiscono dritti nei query param). La riconciliazione con la lista rami vive nel chiamante:
+  `reconcileCategoryKeys` scarta le chiavi non piu' offerte e, se non sopravvive nulla, ricade su
+  tutte (e' li' che vive ora il seeding AC-050). Il pannello la applica one-shot al primo load
+  della lista e scrive solo se qualcosa cambia davvero.
+- `request-report-slot.tsx` e il suo test sono ELIMINATI; `request-management-table.tsx` non passa
+  piu' `importSlot` (488 righe, 12 di margine sull'hard limit).
+- i18n: `report.title`/`description` ora descrivono i filtri condivisi; `report.action` (riusata dalla
+  barra) resta; nuove `report.buttons.apply`, `dashboard.editFilters`, `dashboard.filtersSummary`;
+  RIMOSSA `report.buttons.confirm`, senza piu' consumatori.
+
+**Limite noto (segnalato, non risolto).** Se il fetch delle categorie fallisce, il pannello non
+mostra piu' l'errore inline: restano barra e bottoni, e l'avviso e' leggibile aprendo la modale.
+
+**Verifica (eseguita).** Vitest completo 607 file / 4470 test verdi; `tsc -b --force` pulito; ESLint
+pulito. Test: `request-dashboard-filter-bar.test.tsx` NUOVO (ciclo create->poll->download, run
+fallito, 403/422, gate `Can`, disabilitato finche' i filtri non sono pronti);
+`request-report-filters-dialog.test.tsx` riscritto sul contratto controllato;
+`request-dashboard-panel.test.tsx` apre la modale per editare e copre il ripristino da
+sessione precedente (con `localStorage.clear()` nel `beforeEach`, altrimenti i filtri di un test
+sarebbero il seed del successivo); `use-request-report-filters.test.ts` NUOVO. I test AC-056/AC-057 duplicati nella
+modale sono stati tolti: restano in `request-report-schema.test.ts`.
+
 ## DASHBOARD E GRAFICI DI GESTIONE RICHIESTE (2026-09-08) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** Bottone statistiche su Gestione Richieste (lo stesso di Opportunita') che apre

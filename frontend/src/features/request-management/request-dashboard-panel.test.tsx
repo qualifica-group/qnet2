@@ -10,17 +10,31 @@ import type { RequestDashboardData } from '@/features/request-management/dashboa
 /**
  * Spec 0107 AC-041..AC-044, AC-048: the dashboard panel, driven entirely
  * through the frozen `/request-management/report/dashboard` contract and the
- * shared branch endpoint. Both API modules are mocked; every assertion
- * queries by accessible role/label, never `data-testid`. Dates are read from
- * the rendered fields rather than hardcoded — AC-056/AC-057 (current week)
+ * shared branch endpoint. Since the user directive of 2026-09-08 the panel
+ * OWNS the applied filters and shows them as a summary; editing them happens
+ * in the sheet behind the "Filters" button, and the CSV action sits beside it
+ * (`request-dashboard-filter-bar.test.tsx`). Both API modules are mocked;
+ * every assertion queries by
+ * accessible role/label, never `data-testid`. Dates are read from the
+ * rendered fields rather than hardcoded — AC-056/AC-057 (current week)
  * already have their own dedicated, fake-timer-based coverage in
- * `request-report-schema.test.ts`/`request-report-dialog.test.tsx`.
+ * `request-report-schema.test.ts`.
  */
 
 const fetchRequestManagementReportCategoriesMock = vi.fn()
 vi.mock('@/features/request-management/report-api', () => ({
   fetchRequestManagementReportCategories: (...args: unknown[]) =>
     fetchRequestManagementReportCategoriesMock(...args),
+  // Pulled in by the filter sheet's `useRequestReport`; no test here drives a run.
+  createRequestManagementReport: vi.fn(),
+  getRequestManagementReport: vi.fn(),
+  downloadRequestManagementReport: vi.fn(),
+}))
+
+// The filter bar renders the CSV action behind `<Can>`; without this the real
+// hook would reach for the auth context this test does not mount.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, isLoading: false }),
 }))
 
 const fetchRequestManagementDashboardMock = vi.fn()
@@ -60,6 +74,9 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  // The applied filters are persisted (user directive 2026-09-08): without this
+  // one test's selection would seed the next one's mount.
+  window.localStorage.clear()
   fetchRequestManagementReportCategoriesMock.mockReset().mockResolvedValue(CATEGORIES)
   fetchRequestManagementDashboardMock.mockReset().mockResolvedValue(dashboardData())
 })
@@ -75,6 +92,12 @@ function renderPanel(isOpen: boolean) {
   return render(<RequestDashboardPanel isOpen={isOpen} />, { wrapper: wrapper() })
 }
 
+/** Opens the shared filter sheet and waits for its branch checkboxes. */
+async function openFilters() {
+  fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+  return screen.findByRole('checkbox', { name: 'GOL' })
+}
+
 describe('RequestDashboardPanel', () => {
   it('issues no request while the panel is closed (AC-042)', () => {
     renderPanel(false)
@@ -83,10 +106,44 @@ describe('RequestDashboardPanel', () => {
     expect(fetchRequestManagementDashboardMock).not.toHaveBeenCalled()
   })
 
+  it('shows the applied filters as a summary instead of the controls (user directive 2026-09-08)', async () => {
+    renderPanel(true)
+
+    await waitFor(() => expect(screen.getByText(/2\/2 categories/)).toHaveTextContent('Everything'))
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    // The CSV action sits next to the one that opens the sheet, not in the table.
+    expect(screen.getByRole('button', { name: 'Generate report' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
+  })
+
+  it('restores the filters applied in a previous session and fetches on them', async () => {
+    window.localStorage.setItem(
+      'request-management.report-filters',
+      JSON.stringify({
+        date_from: '2026-03-02',
+        date_to: '2026-03-06',
+        category_keys: ['consulenza'],
+        row_mode: 'total_only',
+      }),
+    )
+
+    renderPanel(true)
+
+    await waitFor(() =>
+      expect(fetchRequestManagementDashboardMock).toHaveBeenCalledWith({
+        date_from: '2026-03-02',
+        date_to: '2026-03-06',
+        category_keys: ['consulenza'],
+        row_mode: 'total_only',
+      }),
+    )
+    expect(await screen.findByText(/1\/2 categories/)).toHaveTextContent('Total only')
+  })
+
   it('prefills the same defaults as the CSV modal once opened (AC-043)', async () => {
     renderPanel(true)
 
-    const gol = await screen.findByRole('checkbox', { name: 'GOL' })
+    const gol = await openFilters()
     expect(gol).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Consulenza' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Everything' })).toHaveAttribute('aria-checked', 'true')
@@ -98,9 +155,8 @@ describe('RequestDashboardPanel', () => {
     expect(dateTo.value >= dateFrom.value).toBe(true)
   })
 
-  it('fetches the dashboard once the filters settle valid, and refetches on a filter change (AC-044)', async () => {
+  it('fetches the dashboard on the seeded filters, and refetches on an applied change (AC-044)', async () => {
     renderPanel(true)
-    await screen.findByRole('checkbox', { name: 'GOL' })
 
     await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1))
     const initialQuery = fetchRequestManagementDashboardMock.mock.calls[0][0]
@@ -111,7 +167,9 @@ describe('RequestDashboardPanel', () => {
       row_mode: 'all',
     })
 
+    await openFilters()
     fireEvent.change(screen.getByLabelText(/^To/), { target: { value: '2099-01-31' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
 
     await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(2))
     expect(fetchRequestManagementDashboardMock).toHaveBeenLastCalledWith(
@@ -121,23 +179,17 @@ describe('RequestDashboardPanel', () => {
 
   it('blocks the fetch and shows the validation error when every branch is deselected (AC-044)', async () => {
     renderPanel(true)
-    const gol = await screen.findByRole('checkbox', { name: 'GOL' })
-    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalled())
+    const gol = await openFilters()
+    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1))
 
     fireEvent.click(gol)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Consulenza' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Select at least one category.')
-    // Deselecting one branch at a time crosses a legitimately valid
-    // intermediate state (one branch still checked), which the query key
-    // correctly refetches on its own — AC-044's actual requirement is that
-    // the FINAL, fully-empty selection never reaches the server: no call was
-    // ever made with an empty `category_keys`, at any point in the sequence.
-    await waitFor(() =>
-      expect(
-        fetchRequestManagementDashboardMock.mock.calls.every((call) => call[0].category_keys.length > 0),
-      ).toBe(true),
-    )
+    // An empty selection is never applied, so it never reaches the server:
+    // the panel is still on the filters of the only call made so far.
+    expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1)
   })
 
   it('shows a skeleton while loading, then the summary tiles and charts (AC-048)', async () => {
@@ -149,7 +201,6 @@ describe('RequestDashboardPanel', () => {
     )
 
     const { container } = renderPanel(true)
-    await screen.findByRole('checkbox', { name: 'GOL' })
 
     await waitFor(() => expect(container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument())
 
@@ -163,7 +214,6 @@ describe('RequestDashboardPanel', () => {
     fetchRequestManagementDashboardMock.mockRejectedValueOnce(new Error('network')).mockResolvedValue(dashboardData())
 
     renderPanel(true)
-    await screen.findByRole('checkbox', { name: 'GOL' })
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Unable to load the dashboard.')

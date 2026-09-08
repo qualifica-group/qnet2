@@ -1,26 +1,21 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useForm, useWatch } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
-import { Form } from '@/components/ui/form'
 import { ReportBarChart } from '@/components/ui/report-bar-chart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatCard } from '@/components/ui/stat-card'
 import type { RequestDashboardChart, RequestDashboardData } from '@/features/request-management/dashboard-api'
-import { RequestReportFilters } from '@/features/request-management/request-report-filters'
-import {
-  buildRequestReportSchema,
-  categoriesAreBlocked,
-  isCategoriesEmpty,
-  isRequestReportQueryReady,
-  requestReportDefaultValues,
-  type RequestReportFormValues,
-} from '@/features/request-management/request-report-schema'
+import { RequestDashboardFilterBar } from '@/features/request-management/request-dashboard-filter-bar'
+import { RequestReportFiltersDialog } from '@/features/request-management/request-report-filters-dialog'
+import { isRequestReportQueryReady } from '@/features/request-management/request-report-schema'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { useRequestDashboard } from '@/features/request-management/use-request-dashboard'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
+import {
+  reconcileCategoryKeys,
+  useRequestReportFilters,
+} from '@/features/request-management/use-request-report-filters'
 import { statsPanelId } from '@/features/stats/use-stats-panel'
 import type { UseQueryResult } from '@tanstack/react-query'
 
@@ -28,7 +23,6 @@ import type { UseQueryResult } from '@tanstack/react-query'
 const COLLAPSIBLE_CONTENT_CLASS =
   'overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up motion-reduce:animate-none'
 
-const FILTERS_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'
 const SUMMARY_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'
 const CHARTS_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2'
 const SKELETON_TILE_COUNT = 4
@@ -119,56 +113,58 @@ function DashboardResults({ query }: DashboardResultsProps) {
  * The data-fetching body (spec 0107 D-5). Mounted by `<CollapsibleContent>`
  * only while the panel is open, mirroring `ModuleStatsPanelBody`: a
  * closed-at-load panel never mounts this, so nothing here ever runs and no
- * request is issued (AC-042). Owns its OWN `useForm()` instance — a sibling
- * of the CSV dialog's, never shared state — filled with the same defaults
- * (rev-2 D-4) and validated live (`mode: 'onChange'`) so the dashboard fetch
- * can gate on `formState.isValid` instead of a submit button that does not
- * exist here.
+ * request is issued (AC-042).
+ *
+ * Owns the APPLIED filters (user directive 2026-09-08), restored from the
+ * operator's last session by `useRequestReportFilters`. They are plain state,
+ * not a `useForm()` instance: editing happens in `RequestReportFiltersDialog`,
+ * which receives them and hands back a set already validated by the shared Zod
+ * schema — so the query still gates on `isRequestReportQueryReady`, never on
+ * unvalidated input. `RequestDashboardFilterBar` generates the CSV from the
+ * same state, which is why nothing else may hold a copy of it.
  */
 function RequestDashboardPanelBody() {
-  const { t } = useTranslation()
-  const schema = buildRequestReportSchema(t)
-
-  const form = useForm<RequestReportFormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: requestReportDefaultValues(),
-    mode: 'onChange',
-  })
+  const { filters, setFilters } = useRequestReportFilters()
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const categoriesQuery = useRequestReportCategories(true)
   const categories = categoriesQuery.data
-  const categoriesEmpty = isCategoriesEmpty(categories, categoriesQuery.isLoading, categoriesQuery.isError)
-  const categoriesBlocked = categoriesAreBlocked(categoriesQuery.isLoading, categoriesQuery.isError, categoriesEmpty)
 
-  // Same one-shot seeding as `RequestReportDialog` (rev-2 AC-050): every
-  // branch selected by default, applied once per branch-list load.
-  const seededFor = useRef(false)
+  // One shot per branch-list load, so a background refetch can never wipe the
+  // user's own picks: a restored selection keeps only the branches that still
+  // exist, and an empty one falls back to all of them (rev-2 AC-050).
+  const reconciled = useRef(false)
   useEffect(() => {
-    if (categories && categories.length > 0 && !seededFor.current) {
-      seededFor.current = true
-      form.reset({ ...form.getValues(), category_keys: categories.map((category) => category.key) })
+    if (!categories || categories.length === 0 || reconciled.current) {
+      return
     }
-  }, [categories, form])
+    reconciled.current = true
+    const next = reconcileCategoryKeys(filters, categories)
+    if (next !== filters) {
+      setFilters(next)
+    }
+  }, [categories, filters, setFilters])
 
-  const values = useWatch({ control: form.control }) as RequestReportFormValues
-  const dashboardQuery = useRequestDashboard(values, isRequestReportQueryReady(values))
+  const filtersReady = isRequestReportQueryReady(filters)
+  const dashboardQuery = useRequestDashboard(filters, filtersReady)
 
   return (
     <div className="flex flex-col gap-4">
-      <Form {...form}>
-        <div className={FILTERS_GRID_CLASS}>
-          <RequestReportFilters
-            control={form.control}
-            categories={categories}
-            categoriesLoading={categoriesQuery.isLoading}
-            categoriesError={categoriesQuery.isError}
-            categoriesEmpty={categoriesEmpty}
-            disabled={categoriesBlocked}
-          />
-        </div>
-      </Form>
+      <RequestDashboardFilterBar
+        filters={filters}
+        categoryCount={categories?.length ?? 0}
+        filtersReady={filtersReady}
+        onEdit={() => setFiltersOpen(true)}
+      />
 
       <DashboardResults query={dashboardQuery} />
+
+      <RequestReportFiltersDialog
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        value={filters}
+        onApply={setFilters}
+      />
     </div>
   )
 }

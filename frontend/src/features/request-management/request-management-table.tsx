@@ -30,7 +30,6 @@ import { OfferLinesDialogProvider } from '@/features/request-management/offer-li
 import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
 import { RequestDashboardToggle } from '@/features/request-management/request-dashboard-toggle'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
-import { RequestReportSlot } from '@/features/request-management/request-report-slot'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
 import { useRequestManagerGa3Assignment } from '@/features/request-management/use-request-manager-ga3-assignment'
 import type { TransferRequestsPayload } from '@/features/request-management/request-write-types'
@@ -407,13 +406,14 @@ export function RequestManagementTable() {
         }
       />
 
+      {/* User directive 2026-09-08: statistics above, category strip below it. */}
+      <RequestDashboardPanel isOpen={dashboard.isOpen} />
+
       <RequestManagementCategoryTabs
         categories={categories}
         selectedCategoryId={selectedCategoryId}
         onSelect={setCategoryId}
       />
-
-      <RequestDashboardPanel isOpen={dashboard.isOpen} />
 
       {/* User directive 2026-09-07: the "Linee di prodotto" cell is inline
           editable like the others, and its editor delegates to this dialog
@@ -433,7 +433,6 @@ export function RequestManagementTable() {
           isBusy={isBusy}
           iconMap={REQUEST_MANAGEMENT_ACTION_ICONS}
           getBulkActions={getBulkActions}
-          importSlot={<RequestReportSlot />}
         />
       </OfferLinesDialogProvider>
 
