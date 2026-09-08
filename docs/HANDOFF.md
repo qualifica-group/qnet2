@@ -3,6 +3,184 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPLASH DI AVVIO + AVVISO NUOVA VERSIONE, RICOPIATI DA q-net (2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "prendi questa repository [`/Users/Repository/q-net`], voglio che ricopi il
+loading iniziale e voglio che ricopi l'aggiornamento dell'applicazione in base al versioning e
+voglio che elimini quello che hai programmato tu sul versioning". Sostituzione, non affiancamento.
+
+**RIMOSSO (il versioning precedente, commit `0e616f2e`).** Backend: `Version/VersionController.php`,
+rotta pubblica `GET /api/version`, `'version' => env('APP_VERSION')` in `config/app.php`,
+`APP_VERSION` in `.env.example`, `tests/Feature/Version/`. Frontend: tutta
+`src/features/app-version/` (api, hook, banner, baseline, query-keys, types e i loro test),
+`vite/build-version.ts` + plugin + `define __APP_BUILD_VERSION__`, `VITE_VERSION_POLL_INTERVAL`,
+e le voci `buildVersion` / `isProductionBuild` / `versionPollInterval` di `config/env.ts`.
+Non esistono piu' ne' `GET /api/version` ne' `dist/version.json`: **il check e' solo frontend**.
+`routes/lazy-route.ts` (recupero dei chunk stale dopo un deploy) e' stato TENUTO di proposito: non
+e' il check di versione, e senza di esso una route non ancora caricata muore dopo ogni deploy.
+
+**Meccanismo nuovo (identico a q-net).** Il plugin Vite inline `inject-app-build-meta`
+(`vite.config.ts`) stampa in `index.html` `<meta name="app-build-id" content="<ISO timestamp>">`.
+`VersionUpdateBanner` (`src/components/version-update-banner.tsx`, montato in `app-layout.tsx` sopra
+`ImpersonationBanner`) legge quel meta dal documento caricato, poi ogni **60s** fa
+`fetch('/index.html?__version_check=<ts>', { cache: 'no-store' })` e confronta il build id servito.
+Diverso -> toast **persistente** (`duration: Infinity`, id `app-version-update`) con azione
+"Aggiorna ora": scrive il build id in `sessionStorage['app-version-update-dismissed-build']`, svuota
+le `caches` del browser e fa `location.assign(...?__refresh=<ts>)`. Nessuna chiamata API: funziona
+anche a sessione scaduta. Il componente **non renderizza nulla** (ritorna `null`), la UI e' il toast.
+
+**Loading iniziale (splash di q-net dentro il `ConfigGate` esistente).**
+`src/components/app-splash-screen.tsx` + i keyframes `app-splash-*` in `index.css`: il logo entra
+ruotato di 180 gradi e si assesta, `logo_parziale.svg` compare di fianco, e a fine boot lo schermo
+sale come una tenda. `APP_SPLASH_MIN_DURATION_MS = 1800`, `APP_SPLASH_EXIT_DURATION_MS = 650`
+(quest'ultima DEVE restare allineata all'animazione in `index.css`). Il `ConfigGate` mantiene
+l'ordine di ADR 0009: figli montati solo a config caricata, schermata di errore con Retry invariata;
+appena la config arriva i figli montano **sotto** lo splash, che resta fino al minimo e poi esce.
+Lo sfondo bianco e' una deroga consapevole alla scala di superfici di `ui-design.md 1-bis`: i marchi
+sono asset a colori fissi (navy `#183e7a`, contrografie bianche) e sparirebbero su tema scuro.
+
+**Nomi da rispettare.** `VersionUpdateBanner`, `AppSplashScreen`, `APP_SPLASH_MIN_DURATION_MS`,
+`APP_SPLASH_EXIT_DURATION_MS`, meta `app-build-id`, plugin `inject-app-build-meta`, chiave
+`app-version-update-dismissed-build`, i18n `appVersion.available` / `appVersion.description` /
+`appVersion.update` (la vecchia `appVersion.reload` NON esiste piu').
+
+**Scostamenti dal sorgente q-net (dichiarati).** (1) Il flag morto `VERSION_UPDATE_BANNER_ENABLED`
+e il `return null` prima degli hook non sono stati ricopiati (violano le regole degli hook).
+(2) Il build id corrente si legge con un initializer lazy di `useState`, non in un `useEffect` che
+chiama `setState`: `react-hooks/set-state-in-effect` bocciava la versione originale.
+(3) Il ramo "Updating..." dell'etichetta era irraggiungibile (il toast non viene riemesso) ed e'
+stato tolto; `isUpdatingRef` resta come guardia di rientranza. (4) I colori slate hard-coded del
+toast sono stati lasciati ai token del `Toaster` del progetto.
+
+**Test aggiornati (dichiarato, requisito cambiato — non "aggiustati per farli passare").**
+`config-gate.test.tsx` ora copre il ciclo dello splash con fake timer (minimo, uscita, e nessuna
+uscita finche' la config e' pending); nell'integration test e' caduta l'asserzione "nessun
+`role=status` dopo il successo", perche' ora i figli montano sotto lo splash — la garanzia d'ordine
+(`/auth/me` mai prima della config) e' invariata e resta asserita. Nuovo
+`version-update-banner.test.tsx`: prompt su build diverso, silenzio su build uguale, silenzio su
+build gia' aggiornato (sessionStorage), silenzio su fetch fallita, e clear cache + reload sull'azione.
+
+**Verifica ESEGUITA.**
+- Backend: `php -d xdebug.mode=off vendor/bin/pest` intero — **6563 test, 6562 passed, 1 skipped**.
+  Pint `--test` pulito. `php artisan route:list | grep api/version` -> **0 risultati**.
+  (Con Xdebug attivo la suite intera va in segfault 139: preesistente, non il codice.)
+- Frontend: `npx vitest run` — **605 file, 4464 test, tutti verdi**. `npx tsc -b --force` EXIT=0.
+  `npx eslint` sui file toccati EXIT=0. `npx vite build` EXIT=0: `dist/index.html` contiene
+  `<meta name="app-build-id" content="2026-09-08T10:24:08.320Z">` e `dist/version.json` non esiste piu'.
+- Coverage dei file nuovi/toccati (banner + splash + gate): **94.25% righe, 95.23% funzioni**.
+- **Gate coverage globale ROSSO e PREESISTENTE**: 74.3% righe contro soglia 85% (era 74.59% prima).
+  Non e' causato da questa modifica; da affrontare separatamente.
+
+**Prossimi passi.** (1) Il deploy deve pubblicare `index.html` NON cachato (o con `must-revalidate`),
+altrimenti il poll rilegge la copia vecchia e l'avviso non parte mai. (2) In `vite dev` il meta c'e'
+ma il build id e' quello dell'avvio del dev server: il check e' quindi inerte in sviluppo, verificarlo
+in staging. (3) Gate coverage globale preesistente.
+
+
+## STATI DI LAVORAZIONE — NUOVA LEGENDA A 5 COLORI (2026-09-08) — VERDE, NON COMMITTATO
+
+**Fonte.** `REPORT_potenziali Prossimi Associati (1).pdf` (fornito dall'utente). I colori NON sono
+stati letti a occhio: estratti dal content stream del PDF (fill `rg` + rect) e riverificati
+campionando i pixel del render a 150 dpi. Nomi e ordine delle 9 colonne GOL e dei 3 blocchi bassi
+coincidono al 100% con il catalogo esistente: **cambia solo la classificazione**, piu' un rename.
+
+**La legenda (blocco "LEGENDA" del foglio, business -> Stato di Sistema):**
+
+| Colore | RGB | Business | `WorkflowStatusGroup` | badge token |
+|---|---|---|---|---|
+| nessun fill | `#FFFFFF` | Aperto | `open` | `slate` |
+| azzurro | `#C0E6F5` | Potenziali Prossimi Associati | `pending` | `blue` |
+| verde chiaro | `#B5E6A2` | Associati del giorno/settimana/mese | `closed_won` | `green` |
+| pesca | `#FBE2D5` | Chiuso | `closed_lost` | `red` |
+| verde acceso | `#47D359` | "solo per ok da caricare" | `validated` | `emerald` |
+
+Il vecchio `regional` (giallo, "aperto ma solo per la regione di pertinenza") **non esiste piu'**:
+quelle celle sono azzurre, cioe' `pending`.
+
+**File toccati (3).**
+- `backend/database/seeders/QualificaCatalog/WorkflowStatusCatalogue.php` (438 righe) —
+  `LEGEND` a 5 bucket; 22 stati riclassificati; nuovo stato `Orientamento`; **rimossi**
+  `VALIDATED_STATUSES` + `validatedStatusNameFor()` + l'override in `statusesFor()`: il colore
+  porta da solo il gruppo `validated`, l'override era diventato codice morto.
+- `backend/tests/Feature/Seeding/QualificaWorkflowSeederTest.php` — attese aggiornate (il
+  requisito e' cambiato: nuova legenda del cliente) + 1 test nuovo sullo split Orientamento.
+- `docs/specs/0106-request-management-csv-report.xml` — le due note di grounding su
+  `pending`/`validated` erano diventate false (vedi sotto).
+
+**Decisioni utente 2026-09-08 (prese in chat, non deducibili dal foglio).**
+1. `Orientamento` (Lazio, Sicilia, azzurro=`pending`) e `APL-Orientamento` (Campania, pesca=
+   `closed_lost`) restano **due stati distinti**, contro la regola di folding delle altre varianti
+   di spelling: un solo nome non puo' portare due classificazioni. Descrizione condivisa.
+2. La sezione `apl` (fuori foglio, dettata il 2026-09-07) **resta invariata**. Conseguenza
+   accettata: `Attesa _ App. CPI` / `OK App. Fissato CPI` sono `pending` in GOL e `open` in APL,
+   e `Percorso 101` e' `open` in GOL e `closed_lost` in APL.
+
+**Conseguenze da conoscere (non sono bug).**
+- Le pinned row `closed_lost` cambiano etichetta dove il primo "chiuso" della colonna e' cambiato:
+  GOL `Percorso 101` -> **`Autofinanziato`** (Percorso 101 ora e' bianco = `open`);
+  Autofinanziato `Irreperibile` -> **`Non risponde`**.
+- `LINE_REQUIRED_GROUPS` (`closed_won`/`closed_lost`/`validated`) e' il gate "serve una riga
+  REVENUE": `Percorso 101` (GOL) e `In trattativa` (Consulenza) ne **escono**, `Non risponde`
+  (Autofinanziato e Consulenza) ci **entra**.
+- Spec 0106, D-2: la colonna "N. Potenziali associati" contava `pending`+`validated` e valeva 0
+  per GOL/Autofinanziato/APL. Ora si popola da sola per tutte le sezioni del foglio, senza aver
+  toccato una riga del report. Resta a 0 solo `apl`.
+- Il seeder e' idempotente per nome/signature: **un database gia' seedato non viene riclassificato**.
+  Per allineare un'installazione esistente serve un passaggio dedicato (`ResyncQuoteWorkflowStatuses`
+  o una migrazione dati) — NON fatto qui, non richiesto.
+
+**Verifica eseguita.**
+- `pest tests/Feature/Seeding` -> 81 passed, 485 assertions.
+- `pest tests/Feature/Products + RequestManagementReportJobTrapsTest` -> 167 passed, 772 assertions.
+- `pest tests/Feature/Seeding/QualificaWorkflowSeederTest.php` -> 12 passed, 141 assertions.
+- `pint` -> passed su entrambi i file PHP. Nessun file frontend toccato.
+
+**Prossimo passo.** Chiedere all'utente se `apl` va riallineata e se serve il resync sui dati
+gia' seedati. Nessun commit fatto (CLAUDE.md §3.6).
+
+## REPORT IN CSV O EXCEL, A SCELTA (2026-09-08) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Come in tabella ti fa scegliere tra csv o excel": il report di Gestione
+Richieste non e' piu' solo CSV, il formato si sceglie al momento di generarlo.
+
+**Nessuna dipendenza nuova.** `openspout/openspout` e `phpoffice/phpspreadsheet` sono gia' in
+`composer.json`, e soprattutto esistevano gia' `App\Exports\XlsxExportWriter`, l'interfaccia
+`ExportWriter`, `ExportWriterFactory` (registry `config('exports.writers')`) e l'enum `ExportFormat`
+con `extension()`/`contentType()`. Il lavoro e' stato collegare il report a quella catena, non
+scriverne una nuova.
+
+**Contratto (spec 0106 aggiornata).** `POST /api/request-management/report` acquisisce un terzo
+campo required, `format`, allow-listato su `config('exports.formats')` con la STESSA riga di regola
+di `CreateExportRequest`. Non entra in `ExportRun.state`: vive nella colonna `ExportRun.format`, che
+gia' guidava estensione e Content-Type — una seconda copia potrebbe solo divergere.
+
+**Backend.**
+- `RequestManagementReportGenerator::generate()` prende un `ExportFormat` e risolve il writer da
+  `ExportWriterFactory` invece di avere `CsvExportWriter` iniettato. Le righe sono IDENTICHE nei due
+  formati: cambia solo il writer, quindi la parita' con la dashboard (0107 D-2) resta intatta.
+- `ReportCsvBuilder` -> RINOMINATO `ReportSheetBuilder`: costruisce header e celle, non un CSV.
+- Il job legge `$run->format` per l'estensione del file e la passa al generator.
+- Il controller salva il formato richiesto sul run e nomina il file con `$format->extension()`.
+
+**Frontend.** Il bottone "Genera report" nella barra statistiche e' ora un `DropdownMenu` con due
+voci, CSV ed Excel (XLSX), riusando le i18n gia' esistenti `exports.formats.*` e le stesse icone del
+wizard di export della tabella (`FileText`/`FileSpreadsheet`). Il formato NON entra nei filtri
+persistiti: cambia il file, mai i grafici, quindi non deve finire nei query param della dashboard.
+
+**Verifica (eseguita).** Backend: suite completa 6567 test, 6562 passati, 1 skip preesistente e
+**4 fallimenti NON miei** — `Tests\Feature\Version\VersionEndpointTest` va in 404 perche' nel
+working tree qualcuno ha rimosso (non committato) la rotta `version` da `routes/api.php` e la
+relativa config da `config/app.php`. Suite `RequestManagementReport` 60/60, `Report` 142/142,
+`Export` 118/118, Pint pulito. Frontend: Vitest completo 607 file / 4471 test verdi, `tsc -b --force`
+pulito, ESLint pulito sui file toccati.
+NOTA AMBIENTE: `php artisan test`/`pest` con Xdebug attivo va in SIGSEGV su questa macchina; con
+`XDEBUG_MODE=off` la suite gira fino in fondo.
+
+**Altri file modificati nel working tree che NON appartengono a questo lavoro** (segnalati, non
+toccati): `backend/database/seeders/QualificaCatalog/WorkflowStatusCatalogue.php`,
+`backend/tests/Feature/Seeding/QualificaWorkflowSeederTest.php`, `backend/routes/api.php`,
+`backend/config/app.php` e la sezione "legenda stati" di `docs/specs/0106-...xml`.
+
 ## FILTRI IN MODALE + REPORT CSV NELLA BARRA STATISTICHE (2026-09-08) — VERDE, NON COMMITTATO
 
 **Direttiva utente (in tre passaggi, stato finale).** I filtri della dashboard di /request-management
@@ -674,86 +852,6 @@ users o migrazioni.
 **Prossimi passi.** (1) Concedere `request-management.assignManagerGa3` ai ruoli che devono
 vederla. (2) Chiudere il rosso preesistente sopra dentro il lavoro 0103. (3) Commit: NON fatto,
 in attesa di via libera (CLAUDE.md §3.6).
-
-## AVVISO DI NUOVA VERSIONE IN PRODUZIONE (2026-09-07) — VERDE, NON COMMITTATO
-
-**Direttiva utente.** "voglio che quando faccio push di una modifica, in produzione ci sia un
-sistema che se c'e' una nuova versione, il sistema ti dice di aggiornare, cosi' da evitare
-disguidi". Scelte confermate dall'utente: **banner fisso in alto** (non un toast, non un modale) e
-copertura **frontend + backend** (un deploy del solo Laravel deve comunque avvisare).
-
-**Contratto congelato.**
-- `GET /api/version` — PUBBLICO, fuori da `auth:sanctum` (una sessione scaduta deve comunque poter
-  scoprire di essere vecchia), nessun `throttle` (non e' un endpoint credenziali, `backend.md 2`).
-  Envelope standard: `{ success, message, data: { version: string|null } }` + `Cache-Control:
-  no-store`. Il valore e' `config('app.version')` <- `APP_VERSION` in `.env`. **Non impostato =
-  null = meta' backend del check spenta**, cosi' un ambiente non configurato non mostra mai un
-  avviso spurio. Il deploy deve valorizzare `APP_VERSION` (es. SHA del commit rilasciato).
-- `GET /version.json` — emesso in `dist/` dal plugin Vite `build-version` a ogni `vite build`.
-  `{ "version": "<git short SHA>" }`, fallback timestamp fuori da un checkout git. Lo STESSO valore
-  e' iniettato nel bundle come `__APP_BUILD_VERSION__` (`define`): il client confronta la versione
-  che **sta eseguendo** con quella **deployata**.
-
-**Due segnali indipendenti, o l'uno o l'altro accende il banner.**
-- FRONTEND: `env.buildVersion` vs `version.json`. Riferimento compilato, nessuno stato.
-- BACKEND: versione deployata vs **la prima osservata in questo page load** — il client non ha un
-  build id del backend baked-in, quindi il riferimento e' la prima risposta vista. Vive in
-  `features/app-version/backend-baseline.ts`, **module-scoped di proposito**: appartiene al page
-  load, sopravvive a re-render/remount e si azzera al reload che il banner chiede. `sessionStorage`
-  sopravviverebbe a quel reload lasciando il banner acceso per sempre; lo stato React non e'
-  scrivibile dal render senza violare `react-hooks/refs` / `set-state-in-effect` (provati
-  entrambi, bocciati dal lint). Scritto dentro la `queryFn` (confine effettuale), letto in render.
-- `hasChanged()` richiede che ENTRAMBI i lati siano noti: una sonda fallita o un `APP_VERSION`
-  non configurato non avvisano mai. Un falso "ricarica" e' peggio di uno mancato.
-
-**Nomi da rispettare.** `useAppVersion(enabled)` (l'`enabled` e' un parametro, non una lettura
-interna di env: il chiamante decide, e l'hook resta testabile), `AppVersionBanner`,
-`fetchDeployedVersions`, `DeployedVersions { frontend, backend }`, `appVersionKeys.deployed`,
-`rememberBackendVersion`/`backendBaselineVersion`, `lazyRoute`, i18n `appVersion.available` /
-`appVersion.reload`.
-
-**Sonde advisory: falliscono in silenzio DI PROPOSITO** (`api.ts`). Ogni sonda cattura il proprio
-errore e risolve a `null`: e' polling di background, una rete instabile o un riavvio dell'API deve
-degradare a "nessun aggiornamento rilevato", mai rompere l'app ne' abbattere la meta' che funziona.
-Il tick successivo riprova. `version.json` NON passa da `apiClient` (il cui `baseURL` punta all'host
-API): e' un file dell'origine della SPA, quindi `axios` diretto, con cache-busting doppio (query
-param + header) perche' un manifest cachato congelerebbe il client sulla propria versione.
-
-**Recupero dei chunk stale (`routes/lazy-route.ts`).** Dopo un deploy i chunk hash-ati della build
-precedente non esistono piu': navigare verso una route non ancora caricata falliva l'`import()` e
-lasciava una schermata morta. `lazyRoute` sostituisce `lazy` sui 60 moduli di route in `router.tsx`
-e ricarica UNA volta (guard in `sessionStorage`, chiave `app:chunk-reload`), cosi' un chunk rotto
-per altri motivi mostra l'errore invece di ciclare all'infinito. Rimossa da `router.tsx` la
-direttiva `eslint-disable react-refresh/only-export-components`, diventata inutilizzata (la regola
-non riconosce piu' component inline nel file) e segnalata come errore dal lint.
-
-**Montaggio.** `AppVersionBanner` in `app-layout.tsx` sopra `ImpersonationBanner`, in flusso e non
-`fixed`, cosi' non si sovrappone mai all'header. Non dismissibile: il punto e' che nessuno continui
-a operare su un client vecchio. Colori da token (`border-primary/40`, `bg-primary/10`,
-`text-foreground`), non dalla palette Tailwind grezza.
-
-**Env nuove.** `APP_VERSION` (backend, vuota = check spento) e `VITE_VERSION_POLL_INTERVAL`
-(frontend, default 60000), entrambe documentate nei rispettivi `.env.example`. Il check gira solo
-in bundle di produzione (`env.isProductionBuild` = `import.meta.env.PROD`): in `vite dev` e sotto
-Vitest non esiste nulla di deployato con cui confrontarsi.
-
-**Verifica ESEGUITA.**
-- Backend: `vendor/bin/pest` intero — **6385 test, 6384 passed, 1 skipped**. (`composer test` va in
-  segfault, signal 11: e' Xdebug, non il codice — con `xdebug.mode=off` passa.) Pint pulito.
-- Frontend: `npm run test:coverage` — **598 file, 4395 test, tutti verdi**. `npx tsc -b --force`
-  EXIT=0. `npx eslint` sui file toccati EXIT=0. `npx vite build` EXIT=0 e `dist/version.json`
-  contiene lo SHA reale (`f3e2ae8e`), presente anche nel bundle.
-- **Gate coverage globale ROSSO e PREESISTENTE**: 74.59% righe contro soglia 85%. Non e' causato da
-  questa modifica — i file nuovi stanno al 96.66% (app-version) e 94.44% (lazy-route), sopra la
-  media, quindi l'hanno alzata. Da affrontare separatamente: CI (`npm run test:coverage`) e' rosso
-  su `main` finche' non si copre il resto.
-
-**Prossimi passi.** (1) Impostare `APP_VERSION` nel deploy di produzione, altrimenti solo la meta'
-frontend del check e' attiva. (2) Verificare che il deploy pubblichi `dist/version.json` accanto a
-`index.html` e che il rewrite SPA non lo intercetti (se lo intercetta il client legge HTML, il
-payload viene scartato e il check si spegne in silenzio: fail-safe, ma silenzioso). (3) Il gate
-coverage preesistente.
-
 
 ## GESTIONE RICHIESTE — COLONNA G.A. 3 ACCANTO ALLA GA2 (2026-09-07) — VERDE, NON COMMITTATO
 

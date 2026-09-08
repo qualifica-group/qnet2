@@ -7,6 +7,7 @@ use App\Models\QuoteWorkflowStatus;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 
 // The client's "stati di lavorazione" (spec 0047), transcribed from the
 // "Stati di Lavorazione_Commerciale" sheet: one workflow per product category,
@@ -88,11 +89,13 @@ it('labels the pinned system rows with the sheet states, never the generic defau
 
     // Each pinned row takes over the FIRST state its block classifies under
     // the same group. In AUTOIMPIEGO/YISU that is not "OK_Da Caricare": the
-    // catalogue classifies it under the `validated` group, which is pinned to
-    // nothing (user directive 2026-08-07), so closed_won falls to the next
-    // green state.
+    // sheet paints it verde acceso, i.e. the `validated` group, which is
+    // pinned to nothing (user directive 2026-08-07), so closed_won falls to
+    // the next verde chiaro state.
     expect($pinned('GOL - Lombardia'))->toBe([
-        'closed_lost' => 'Percorso 101',
+        // "Percorso 101" is unfilled in the 2026-09-08 sheet, i.e. OPEN: the
+        // first loss of the column is the one below it.
+        'closed_lost' => 'Autofinanziato',
         'closed_won' => 'Associato SI _ NOI',
         'open' => 'Da Richiamare',
     ]);
@@ -116,7 +119,7 @@ it('labels the pinned system rows with the sheet states, never the generic defau
     ]);
 
     expect($pinned('Autofinanziato'))->toBe([
-        'closed_lost' => 'Irreperibile',
+        'closed_lost' => 'Non risponde',
         'closed_won' => 'OK_Iscritto',
         'open' => 'Da Richiamare',
     ]);
@@ -183,11 +186,11 @@ it('seeds the consulting pick list with the client mapping (user directive 2026-
     expect($statuses->mapWithKeys(fn (QuoteWorkflowStatus $status): array => [$status->name => $status->group->value])->all())
         ->toBe([
             'Da Richiamare' => WorkflowStatusGroup::Open->value,
-            'In trattativa' => WorkflowStatusGroup::Validated->value,
-            'Appuntamento Fissato' => WorkflowStatusGroup::Open->value,
+            'In trattativa' => WorkflowStatusGroup::Pending->value,
+            'Appuntamento Fissato' => WorkflowStatusGroup::Pending->value,
             'Rimandata' => WorkflowStatusGroup::Open->value,
             'Annullata' => WorkflowStatusGroup::ClosedLost->value,
-            'Non risponde' => WorkflowStatusGroup::Open->value,
+            'Non risponde' => WorkflowStatusGroup::ClosedLost->value,
             'Irreperibile' => WorkflowStatusGroup::ClosedLost->value,
             'Non pertinente' => WorkflowStatusGroup::ClosedLost->value,
             'Numero inesistente' => WorkflowStatusGroup::ClosedLost->value,
@@ -195,8 +198,9 @@ it('seeds the consulting pick list with the client mapping (user directive 2026-
             'Persa' => WorkflowStatusGroup::ClosedLost->value,
         ]);
 
-    // 'In trattativa' is `validated`, a plain GROUP on a custom row (user
-    // directive 2026-08-07): it is pinned to nothing.
+    // 'In trattativa' is azzurro in the 2026-09-08 sheet, i.e. `pending`: a
+    // plain GROUP on a custom row, pinned to nothing. It lost the `validated`
+    // classification the retired VALIDATED_STATUSES override gave it.
     expect($statuses->firstWhere('name', 'In trattativa')->system_key)->toBeNull();
 });
 
@@ -261,30 +265,67 @@ it('seeds the APL pick list on the APL branch (user directive 2026-09-07)', func
         ->and($statuses->first()->system_key)->toBe('open');
 });
 
-it('classifies each status from the sheet legend', function (): void {
+it('classifies each status from the sheet legend (2026-09-08 revision)', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
-    $workflow = QuoteWorkflow::query()->where('name', 'GOL - Lombardia')->firstOrFail();
-    $statuses = QuoteWorkflowStatus::query()
-        ->where('quote_workflow_id', $workflow->id)
-        ->get()
-        ->keyBy('name');
+    $byName = function (string $workflowName): Collection {
+        $workflow = QuoteWorkflow::query()->where('name', $workflowName)->firstOrFail();
 
-    // No fill: "stato di lavorazione aperto".
+        return QuoteWorkflowStatus::query()
+            ->where('quote_workflow_id', $workflow->id)
+            ->get()
+            ->keyBy('name');
+    };
+
+    $statuses = $byName('GOL - Lombardia');
+
+    // No fill: "Aperto".
     expect($statuses['In Standby']->group)->toBe(WorkflowStatusGroup::Open)
         ->and($statuses['In Standby']->color)->toBe('slate')
-        // Yellow: open, but used only by the region it belongs to.
-        ->and($statuses['Attesa Attivazione DOTE']->group)->toBe(WorkflowStatusGroup::Open)
-        ->and($statuses['Attesa Attivazione DOTE']->color)->toBe('yellow')
-        // Green: "Esito Positivo".
+        // Azzurro: "Potenziali Prossimi Associati" — the working phase.
+        ->and($statuses['Attesa Attivazione DOTE']->group)->toBe(WorkflowStatusGroup::Pending)
+        ->and($statuses['Attesa Attivazione DOTE']->color)->toBe('blue')
+        // Verde chiaro: "Associati del giorno/settimana/mese".
         ->and($statuses['Associato SI _ NOI']->group)->toBe(WorkflowStatusGroup::ClosedWon)
         ->and($statuses['Associato SI _ NOI']->color)->toBe('green')
-        // Pink: "Esito Negativo".
+        // Pesca: "Chiuso".
         ->and($statuses['Irreperibile']->group)->toBe(WorkflowStatusGroup::ClosedLost)
         ->and($statuses['Irreperibile']->color)->toBe('red');
 
+    // Verde acceso, the sheet's own "solo per ok da caricare": the ONE state
+    // painted `validated`, and a plain custom row — no system key is pinned to
+    // that group (user directive 2026-08-07).
+    $autoimpiego = $byName('Autoimpiego');
+
+    expect($autoimpiego['OK_Da Caricare']->group)->toBe(WorkflowStatusGroup::Validated)
+        ->and($autoimpiego['OK_Da Caricare']->color)->toBe('emerald')
+        ->and($autoimpiego['OK_Da Caricare']->system_key)->toBeNull();
+
     // Never note-requiring: the sheet carries no such marker.
     expect($statuses->pluck('requires_note')->unique()->all())->toBe([false]);
+});
+
+it('splits Orientamento from APL-Orientamento, which the sheet paints differently', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $status = function (string $workflowName, string $statusName): ?QuoteWorkflowStatus {
+        $workflow = QuoteWorkflow::query()->where('name', $workflowName)->firstOrFail();
+
+        return QuoteWorkflowStatus::query()
+            ->where('quote_workflow_id', $workflow->id)
+            ->where('name', $statusName)
+            ->first();
+    };
+
+    // Campania keeps the sheet's own "APL-Orientamento", pesca: a closed loss.
+    expect($status('GOL - Campania', 'APL-Orientamento')->group)->toBe(WorkflowStatusGroup::ClosedLost)
+        ->and($status('GOL - Campania', 'Orientamento'))->toBeNull();
+
+    // Lazio and Sicilia call it "Orientamento" and paint it azzurro: pending.
+    foreach (['GOL - Lazio', 'GOL - Sicilia'] as $workflowName) {
+        expect($status($workflowName, 'Orientamento')->group)->toBe(WorkflowStatusGroup::Pending, $workflowName)
+            ->and($status($workflowName, 'APL-Orientamento'))->toBeNull($workflowName);
+    }
 });
 
 it('scopes the descriptions per block, so one name reads differently per category', function (): void {

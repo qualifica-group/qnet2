@@ -130,8 +130,9 @@ describe('ConfigGate order guarantee (integration)', () => {
       </App>,
     )
 
+    // Children mount as soon as the config lands; the splash is still covering
+    // them until its minimum duration elapses, which is a purely visual layer.
     expect(await screen.findByText('app-children')).toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
     // Now that children mounted, the auth query is allowed to run.
     await waitFor(() => expect(meWasCalled()).toBe(true))
   })

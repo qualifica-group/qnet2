@@ -112,7 +112,7 @@ describe('RequestDashboardPanel', () => {
     await waitFor(() => expect(screen.getByText(/2\/2 categories/)).toHaveTextContent('Everything'))
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     // The CSV action sits next to the one that opens the sheet, not in the table.
-    expect(screen.getByRole('button', { name: 'Generate report' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Generate report/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
   })
 

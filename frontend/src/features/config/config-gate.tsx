@@ -1,7 +1,11 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { FullScreenLoader } from '@/components/full-screen-loader'
+import {
+  APP_SPLASH_EXIT_DURATION_MS,
+  APP_SPLASH_MIN_DURATION_MS,
+  AppSplashScreen,
+} from '@/components/app-splash-screen'
 import { useConfig } from '@/features/config/use-config'
 
 /**
@@ -9,13 +13,42 @@ import { useConfig } from '@/features/config/use-config'
  * the first call and nothing downstream — in particular the AuthProvider's `me`
  * fetch — mounts until the config has loaded.
  *
- * - pending: full-screen splash, children withheld.
+ * - pending: brand splash, children withheld.
  * - error: full-screen message with a Retry button, children withheld.
- * - success: children rendered.
+ * - success: children mount immediately, but the splash stays until the minimum
+ *   duration has elapsed and then lifts away, so a fast boot is not a flash and
+ *   the app is already painted underneath when the curtain goes up.
  */
 export function ConfigGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const { isError, isSuccess, refetch } = useConfig()
+  const [hasMinDurationElapsed, setHasMinDurationElapsed] = useState(false)
+  const [hasCompletedExit, setHasCompletedExit] = useState(false)
+
+  // Treat any non-success state as "still booting": withhold children until the
+  // config is in the cache. Covers the initial pending load and keeps children
+  // unmounted across a manual refetch triggered after an error.
+  const isBooting = !isSuccess || !hasMinDurationElapsed
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setHasMinDurationElapsed(true)
+    }, APP_SPLASH_MIN_DURATION_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (isBooting || hasCompletedExit) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setHasCompletedExit(true)
+    }, APP_SPLASH_EXIT_DURATION_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [hasCompletedExit, isBooting])
 
   if (isError) {
     return (
@@ -34,11 +67,24 @@ export function ConfigGate({ children }: { children: ReactNode }) {
     )
   }
 
-  // Treat any non-success state as "still booting": withhold children until the
-  // config is in the cache. Covers the initial pending load and keeps children
-  // unmounted across a manual refetch triggered after an error.
-  if (!isSuccess) {
-    return <FullScreenLoader />
+  if (isBooting) {
+    return isSuccess ? (
+      <>
+        {children}
+        <AppSplashScreen />
+      </>
+    ) : (
+      <AppSplashScreen />
+    )
+  }
+
+  if (!hasCompletedExit) {
+    return (
+      <>
+        {children}
+        <AppSplashScreen isExiting />
+      </>
+    )
   }
 
   return <>{children}</>

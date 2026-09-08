@@ -40,6 +40,12 @@ use InvalidArgumentException;
  *     altra Regione" -> "Non pertinente - Altra regione", "Numero Inesistente"
  *     -> "Numero Inesistente/Errato". A per-column variant would otherwise
  *     produce distinct statuses for one and the same state.
+ *   - "APL-Orientamento" (Campania) and "Orientamento" (Lazio, Sicilia) are
+ *     NOT folded together, unlike the pairs above: the 2026-09-08 sheet paints
+ *     them differently — Campania's is pesca (a closed loss), the other two
+ *     azzurro (pending) — so one name could not carry both classifications
+ *     (user decision 2026-09-08). The description is shared: the sheet's
+ *     second page describes the phase once.
  *   - "GOL - Abruzzo" has no column in the sheet either, but the client
  *     dictated it off-sheet as "the same states as GOL - Calabria" (user
  *     directive 2026-09-08): it borrows GOL_BASE_STATUSES instead of a
@@ -77,23 +83,36 @@ final class WorkflowStatusCatalogue
      * plus the badge colour token (BADGE_COLOR_TOKENS) that keeps the sheet's
      * own reading in the grid.
      *
-     * `Regional` is the sheet's yellow fill — "stato di lavorazione aperto,
-     * usato solo dalla regione di pertinenza". It is an OPEN state like the
-     * unfilled one; the distinction survives only as the badge colour, since
-     * every workflow here is already scoped to a single region.
+     * The 2026-09-08 revision of the sheet retired the old four-colour key —
+     * where yellow meant "aperto, ma usato solo dalla regione di pertinenza" —
+     * for the five buckets its own "LEGENDA" block spells out, business
+     * meaning first and "Stato di Sistema" second:
+     *
+     *   nessun fill  #FFFFFF  "Aperto"                           -> open
+     *   azzurro      #C0E6F5  "Potenziali Prossimi Associati"    -> pending
+     *   verde chiaro #B5E6A2  "Associati del giorno/sett./mese"  -> closed_won
+     *   pesca        #FBE2D5  "Chiuso"                           -> closed_lost
+     *   verde acceso #47D359  "solo per ok da caricare"          -> validated
+     *
+     * The fill colour is now the ONLY classifier: the fifth bucket is exactly
+     * what used to need a per-section override (the retired VALIDATED_STATUSES
+     * of 2026-08-03/2026-09-01), so no state is classified anywhere but here.
      *
      * @var array<string, array{group: string, color: string}>
      */
     public const array LEGEND = [
         self::OPEN => ['group' => WorkflowStatusGroup::Open->value, 'color' => 'slate'],
-        self::REGIONAL => ['group' => WorkflowStatusGroup::Open->value, 'color' => 'yellow'],
+        self::PENDING => ['group' => WorkflowStatusGroup::Pending->value, 'color' => 'blue'],
+        self::VALIDATED => ['group' => WorkflowStatusGroup::Validated->value, 'color' => 'emerald'],
         self::POSITIVE => ['group' => WorkflowStatusGroup::ClosedWon->value, 'color' => 'green'],
         self::NEGATIVE => ['group' => WorkflowStatusGroup::ClosedLost->value, 'color' => 'red'],
     ];
 
     private const string OPEN = 'open';
 
-    private const string REGIONAL = 'regional';
+    private const string PENDING = 'pending';
+
+    private const string VALIDATED = 'validated';
 
     private const string POSITIVE = 'positive';
 
@@ -120,19 +139,20 @@ final class WorkflowStatusCatalogue
         self::GOL => [
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Contatto da ricontattare per completare la lavorazione o fornire ulteriori informazioni.'],
             'Attesa esito SFL/ADI' => ['legend' => self::OPEN, 'description' => 'In attesa dell\'esito relativo alla pratica SFL/ADI del candidato.'],
-            'Attesa Attivazione DOTE' => ['legend' => self::REGIONAL, 'description' => 'In attesa dell\'attivazione della DOTE necessaria per procedere.'],
-            'Attesa DOC APL' => ['legend' => self::REGIONAL, 'description' => 'In attesa della documentazione da parte del settore APL.'],
-            'Inviata MAIL APL' => ['legend' => self::REGIONAL, 'description' => 'Comunicazione inviata all\'APL in attesa di riscontro.'],
-            'Attesa _ App. APL' => ['legend' => self::REGIONAL, 'description' => 'In attesa della definizione e fissazione dell\'appuntamento presso l\'APL per procedere con le attività previste.'],
-            'OK App. Fissato APL' => ['legend' => self::REGIONAL, 'description' => 'Appuntamento con APL fissato e confermato.'],
-            'APL-Orientamento' => ['legend' => self::REGIONAL, 'description' => 'Candidato preso in carico dall\'APL per lo svolgimento dell\'attività di orientamento prevista.'],
-            'Attesa _ App. CPI' => ['legend' => self::OPEN, 'description' => 'In attesa della definizione dell\'appuntamento presso il CPI.'],
-            'OK App. Fissato CPI' => ['legend' => self::OPEN, 'description' => 'Appuntamento presso CPI fissato e confermato.'],
-            'Attesa ok Assegno GOL' => ['legend' => self::REGIONAL, 'description' => 'In attesa della conferma/autorizzazione dell\'Assegno GOL necessaria per procedere con il percorso del candidato.'],
-            'Attesa Iscrizione SIUF' => ['legend' => self::REGIONAL, 'description' => 'In attesa del caricamento su piattaforma SIUF.'],
-            'In attesa aggancio BES' => ['legend' => self::REGIONAL, 'description' => 'Candidato in attesa dell\'associazione/aggancio al servizio BES per poter procedere con le attività previste del percorso.'],
+            'Attesa Attivazione DOTE' => ['legend' => self::PENDING, 'description' => 'In attesa dell\'attivazione della DOTE necessaria per procedere.'],
+            'Attesa DOC APL' => ['legend' => self::PENDING, 'description' => 'In attesa della documentazione da parte del settore APL.'],
+            'Inviata MAIL APL' => ['legend' => self::PENDING, 'description' => 'Comunicazione inviata all\'APL in attesa di riscontro.'],
+            'Attesa _ App. APL' => ['legend' => self::PENDING, 'description' => 'In attesa della definizione e fissazione dell\'appuntamento presso l\'APL per procedere con le attività previste.'],
+            'OK App. Fissato APL' => ['legend' => self::PENDING, 'description' => 'Appuntamento con APL fissato e confermato.'],
+            'APL-Orientamento' => ['legend' => self::NEGATIVE, 'description' => 'Candidato preso in carico dall\'APL per lo svolgimento dell\'attività di orientamento prevista.'],
+            'Orientamento' => ['legend' => self::PENDING, 'description' => 'Candidato preso in carico dall\'APL per lo svolgimento dell\'attività di orientamento prevista.'],
+            'Attesa _ App. CPI' => ['legend' => self::PENDING, 'description' => 'In attesa della definizione dell\'appuntamento presso il CPI.'],
+            'OK App. Fissato CPI' => ['legend' => self::PENDING, 'description' => 'Appuntamento presso CPI fissato e confermato.'],
+            'Attesa ok Assegno GOL' => ['legend' => self::PENDING, 'description' => 'In attesa della conferma/autorizzazione dell\'Assegno GOL necessaria per procedere con il percorso del candidato.'],
+            'Attesa Iscrizione SIUF' => ['legend' => self::PENDING, 'description' => 'In attesa del caricamento su piattaforma SIUF.'],
+            'In attesa aggancio BES' => ['legend' => self::PENDING, 'description' => 'Candidato in attesa dell\'associazione/aggancio al servizio BES per poter procedere con le attività previste del percorso.'],
             'Associato SI _ NOI' => ['legend' => self::POSITIVE, 'description' => 'Candidato associato correttamente al percorso/ente NOI.'],
-            'Percorso 101' => ['legend' => self::NEGATIVE, 'description' => 'Candidato inserito nel percorso 101.'],
+            'Percorso 101' => ['legend' => self::OPEN, 'description' => 'Candidato inserito nel percorso 101.'],
             'Autofinanziato' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che segue un percorso autofinanziato.'],
             'Associato NO _ Altro Ente' => ['legend' => self::NEGATIVE, 'description' => 'Candidato associato a un altro ente diverso da NOI.'],
             'Frequenta già corso GOL' => ['legend' => self::NEGATIVE, 'description' => 'Candidato già iscritto o frequentante un corso GOL.'],
@@ -149,12 +169,12 @@ final class WorkflowStatusCatalogue
         ],
         self::SELF_EMPLOYMENT => [
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Candidato da ricontattare per completare la lavorazione, fornire informazioni o aggiornare la pratica.'],
-            'Attesa Documenti' => ['legend' => self::OPEN, 'description' => 'In attesa della ricezione della documentazione necessaria per procedere con la gestione della pratica.'],
+            'Attesa Documenti' => ['legend' => self::PENDING, 'description' => 'In attesa della ricezione della documentazione necessaria per procedere con la gestione della pratica.'],
             'Problema DOC' => ['legend' => self::OPEN, 'description' => 'Documentazione mancante, incompleta, errata o con anomalie che impediscono il proseguimento della pratica.'],
-            'Attesa App. CPI' => ['legend' => self::OPEN, 'description' => 'In attesa della definizione e fissazione dell\'appuntamento presso il CPI.'],
-            'OK_ App CPI Fissato' => ['legend' => self::OPEN, 'description' => 'Appuntamento presso il CPI fissato e confermato.'],
+            'Attesa App. CPI' => ['legend' => self::PENDING, 'description' => 'In attesa della definizione e fissazione dell\'appuntamento presso il CPI.'],
+            'OK_ App CPI Fissato' => ['legend' => self::PENDING, 'description' => 'Appuntamento presso il CPI fissato e confermato.'],
             'Attesa Termine APL' => ['legend' => self::OPEN, 'description' => 'In attesa del completamento delle attività previste da parte dell\'APL o della conclusione delle verifiche necessarie.'],
-            'OK_Da Caricare' => ['legend' => self::POSITIVE, 'description' => 'Pratica verificata e pronta per essere caricata/inserita su piattaforma.'],
+            'OK_Da Caricare' => ['legend' => self::VALIDATED, 'description' => 'Pratica verificata e pronta per essere caricata/inserita su piattaforma.'],
             'Associato SI _ NOI' => ['legend' => self::POSITIVE, 'description' => 'Candidato correttamente associato al percorso/ente NOI.'],
             'Non ha i Requisiti' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non idoneo in quanto non possiede i requisiti previsti per l\'accesso al percorso.'],
             'Non Interessato' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha comunicato di non essere interessato a proseguire con il percorso proposto.'],
@@ -165,11 +185,11 @@ final class WorkflowStatusCatalogue
         ],
         self::SELF_FUNDED => [
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Candidato da ricontattare per completare la gestione del contatto, fornire informazioni o procedere con le attività successive.'],
-            'Pre-Iscrizione' => ['legend' => self::OPEN, 'description' => 'Candidato che ha manifestato interesse ed è stato inserito nella fase iniziale di raccolta dati e avvio della procedura di iscrizione.'],
+            'Pre-Iscrizione' => ['legend' => self::PENDING, 'description' => 'Candidato che ha manifestato interesse ed è stato inserito nella fase iniziale di raccolta dati e avvio della procedura di iscrizione.'],
             'Appuntamento' => ['legend' => self::OPEN, 'description' => 'Appuntamento fissato con il candidato per approfondire la proposta, verificare l\'interesse o procedere con la fase successiva.'],
-            'In trattativa' => ['legend' => self::OPEN, 'description' => 'Candidato in fase di valutazione della proposta, con contatti e approfondimenti ancora in corso prima della definizione dell\'esito.'],
+            'In trattativa' => ['legend' => self::PENDING, 'description' => 'Candidato in fase di valutazione della proposta, con contatti e approfondimenti ancora in corso prima della definizione dell\'esito.'],
             'OK_Iscritto' => ['legend' => self::POSITIVE, 'description' => 'Candidato che ha completato correttamente l\'iscrizione ed è stato confermato nel percorso.'],
-            'Non risponde' => ['legend' => self::OPEN, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
+            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non raggiungibile dopo diversi tentativi di contatto tramite i recapiti disponibili.'],
             'Esito negativo - prezzo' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che non ha aderito per motivazioni legate al costo o al prezzo della proposta.'],
             'Esito negativo - altri motivi' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che non ha aderito per motivazioni diverse dal prezzo.'],
@@ -180,13 +200,13 @@ final class WorkflowStatusCatalogue
         ],
         self::CONSULTING => [
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Contatto da ricontattare per fornire informazioni, aggiornamenti o proseguire la gestione della trattativa.'],
-            'In trattativa' => ['legend' => self::OPEN, 'description' => 'Opportunità in fase di valutazione/negoziazione, con attività ancora in corso prima della definizione dell\'esito finale.'],
-            'Appuntamento Fissato' => ['legend' => self::OPEN, 'description' => 'Appuntamento fissato con il cliente/candidato per approfondire la proposta o procedere con la fase successiva.'],
+            'In trattativa' => ['legend' => self::PENDING, 'description' => 'Opportunità in fase di valutazione/negoziazione, con attività ancora in corso prima della definizione dell\'esito finale.'],
+            'Appuntamento Fissato' => ['legend' => self::PENDING, 'description' => 'Appuntamento fissato con il cliente/candidato per approfondire la proposta o procedere con la fase successiva.'],
             'Rimandata' => ['legend' => self::OPEN, 'description' => 'Trattativa o contatto posticipato a una data successiva in attesa di un nuovo confronto o aggiornamento.'],
             'VINTO' => ['legend' => self::POSITIVE, 'description' => 'Trattativa conclusa positivamente.'],
             'Persa' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa conclusa negativamente senza finalizzazione.'],
             'Annullata' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa o appuntamento annullato e non più proseguito.'],
-            'Non risponde' => ['legend' => self::OPEN, 'description' => 'Nessuna risposta ricevuta dopo i tentativi di contatto effettuati.'],
+            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Nessuna risposta ricevuta dopo i tentativi di contatto effettuati.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non raggiungibile dopo diversi tentativi tramite i recapiti disponibili.'],
             'Non pertinente' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non coerente con il servizio, la proposta o il target previsto.'],
             'Numero inesistente' => ['legend' => self::NEGATIVE, 'description' => 'Recapito telefonico errato, inesistente o non valido.'],
@@ -261,14 +281,14 @@ final class WorkflowStatusCatalogue
         ]],
         'GOL - Lazio' => ['section' => self::GOL, 'statuses' => [
             'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
-            'OK App. Fissato APL', 'APL-Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
+            'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
             'Stato Rinunciatario', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Sicilia' => ['section' => self::GOL, 'statuses' => [
             'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
-            'OK App. Fissato APL', 'APL-Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
+            'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
             'Stato Rinunciatario', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
@@ -315,28 +335,6 @@ final class WorkflowStatusCatalogue
     ];
 
     /**
-     * Section key => the ONE state classified under the `validated` GROUP
-     * rather than the one its legend colour would give it. Only "OK_Da
-     * Caricare" is — "pratica verificata e pronta per essere caricata" is
-     * exactly the working phase's last step, esito accertato ma non ancora
-     * chiuso (user directive 2026-08-03); the sheet paints it green, which
-     * would otherwise classify it as a closed positive outcome.
-     *
-     * It is a plain CUSTOM row like any other (user directive 2026-08-07:
-     * `validated` is a group, not a system key). Being out of the closed_won
-     * group also takes it out of that promotion, so the positive outcome
-     * falls to the next green state ("Associato SI _ NOI").
-     *
-     * @var array<string, string>
-     */
-    private const array VALIDATED_STATUSES = [
-        self::SELF_EMPLOYMENT => 'OK_Da Caricare',
-        // User directive 2026-09-01: the consulting block's own working phase
-        // — the negotiation is live, its outcome not yet decided.
-        self::CONSULTING => 'In trattativa',
-    ];
-
-    /**
      * The criterion field $categoryName's workflow matches on: the exact
      * category by default, the whole branch for the categories that declare
      * it (WORKFLOWS `criterion_field`).
@@ -369,17 +367,6 @@ final class WorkflowStatusCatalogue
         }
 
         return $promoted;
-    }
-
-    /**
-     * The state $categoryName's section classifies as `validated`, or null
-     * when it declares none (VALIDATED_STATUSES).
-     */
-    private static function validatedStatusNameFor(string $categoryName): ?string
-    {
-        $workflow = self::WORKFLOWS[$categoryName] ?? throw new InvalidArgumentException("Unknown workflow category [{$categoryName}].");
-
-        return self::VALIDATED_STATUSES[$workflow['section']] ?? null;
     }
 
     /**
@@ -427,10 +414,9 @@ final class WorkflowStatusCatalogue
         $workflow = self::WORKFLOWS[$categoryName] ?? throw new InvalidArgumentException("Unknown workflow category [{$categoryName}].");
         $section = self::SECTIONS[$workflow['section']];
         $names = $workflow['statuses'] ?? array_keys($section);
-        $validatedName = self::validatedStatusNameFor($categoryName);
 
         return array_map(
-            static function (string $name) use ($section, $categoryName, $validatedName): array {
+            static function (string $name) use ($section, $categoryName): array {
                 // A region listing a name the section never defines means the
                 // two halves of the sheet drifted apart: fail loudly rather
                 // than seed a status with no description nor classification.
@@ -441,10 +427,7 @@ final class WorkflowStatusCatalogue
                     'name' => $name,
                     'description' => $status['description'],
                     'color' => $legend['color'],
-                    // The legend classifies by fill colour alone, so the one
-                    // "validated" state of a section overrides it (see
-                    // VALIDATED_STATUSES).
-                    'group' => $name === $validatedName ? WorkflowStatusGroup::Validated->value : $legend['group'],
+                    'group' => $legend['group'],
                     // Nothing in the sheet marks a state as note-requiring.
                     'requires_note' => false,
                 ];

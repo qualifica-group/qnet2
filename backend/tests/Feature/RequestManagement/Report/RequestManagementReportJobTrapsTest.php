@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ExportFormat;
 use App\Enums\ExportStatus;
 use App\Enums\WorkflowStatusGroup;
 use App\Jobs\GenerateRequestManagementReportJob;
@@ -17,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 
 // GenerateRequestManagementReportJob (spec 0106, D-8): the two mandatory
 // queue traps — AC-003-quater (no HTTP session), AC-003-quinquies (frozen
@@ -218,4 +220,51 @@ it('fails the run on an unhandled exception, leaving no completed file (AC-003-s
 
     expect($run->fresh()->status)->toBe(ExportStatus::Failed)
         ->and($run->fresh()->file_path)->toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// File format (user directive 2026-09-08) — csv or xlsx, same rows
+// ---------------------------------------------------------------------------
+
+it('writes a real xlsx, with the same translated header row, when the run format is xlsx', function () {
+    reportCategoryTree();
+
+    $actor = User::factory()->create();
+    // Built inline, not through createReportRun(): four copies of that helper
+    // exist across the report tests behind function_exists, so only the first
+    // file loaded defines it and its signature cannot be extended from here.
+    $run = ExportRun::factory()->create([
+        'user_id' => $actor->id,
+        'resource' => 'request-management-report',
+        'format' => ExportFormat::Xlsx,
+        'state' => [
+            'date_from' => '2026-09-01',
+            'date_to' => '2026-09-30',
+            'locale' => 'it',
+            'category_keys' => array_keys((array) config('request-management-report.branches')),
+            'row_mode' => 'all',
+        ],
+    ]);
+
+    runReportJob($run);
+
+    $path = $run->fresh()->file_path;
+    expect($path)->toEndWith('.xlsx');
+
+    $reader = new XlsxReader;
+    $reader->open(Storage::disk('local')->path($path));
+
+    $headers = [];
+    foreach ($reader->getSheetIterator() as $sheet) {
+        foreach ($sheet->getRowIterator() as $row) {
+            $headers = $row->toArray();
+            break 2;
+        }
+    }
+    $reader->close();
+
+    // Not a CSV renamed: openspout parsed the ZIP/XML and gave back the very
+    // header row the CSV path produces.
+    expect($headers[0])->toBe('Categoria')
+        ->and($headers[2])->toBe('N. Telefonate Effettuate');
 });

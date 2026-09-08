@@ -1,8 +1,24 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, CircleAlert, FileDown, Loader2, SlidersHorizontal } from 'lucide-react'
+import {
+  CheckCircle2,
+  ChevronDown,
+  CircleAlert,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Can } from '@/features/auth/can'
+import type { ExportFormat } from '@/features/exports/types'
 import type { RequestReportFormValues } from '@/features/request-management/request-report-schema'
 import { useRequestReport } from '@/features/request-management/use-request-report'
 import { formatDate } from '@/lib/formatting/date-display'
@@ -11,6 +27,14 @@ import { cn } from '@/lib/utils'
 /** Rung 2 under the page body, so the rung-3 (`bg-card`) buttons read as raised on it. */
 const BAR_CLASS = 'flex flex-col gap-2 rounded-xl border bg-surface px-3 py-2'
 const BAR_ROW_CLASS = 'flex flex-wrap items-center justify-between gap-2'
+
+/** The formats the backend enables (`config('exports.formats')`) — the same two the table export offers. */
+const REPORT_FORMATS: readonly ExportFormat[] = ['csv', 'xlsx']
+
+const FORMAT_ICON: Record<ExportFormat, typeof FileText> = {
+  csv: FileText,
+  xlsx: FileSpreadsheet,
+}
 
 const STATUS_NOTE_CLASS = 'flex items-start gap-2 rounded-lg border px-3 py-2 text-xs'
 
@@ -42,7 +66,7 @@ function ReportStatusNote({ tone, children }: { tone: ReportStatusTone; children
 }
 
 export interface RequestDashboardFilterBarProps {
-  /** Filters currently applied to the charts; the CSV is generated for these same values. */
+  /** Filters currently applied to the charts; the report file is generated for these same values. */
   filters: RequestReportFormValues
   /** Branches the report offers in total; the summary reads "selected/total". */
   categoryCount: number
@@ -54,11 +78,13 @@ export interface RequestDashboardFilterBarProps {
 /**
  * Replaces the filter controls the dashboard used to render inline (user
  * directive 2026-09-08): a read-only summary of what the charts below show,
- * the CSV action, and the button that opens the sheet where the filters are
- * edited. The report runs on the APPLIED filters — the same values the charts
+ * the report action, and the button that opens the sheet where the filters
+ * are edited. The report runs on the APPLIED filters — the same values the charts
  * were built from, so the file and the screen can never disagree — through
  * the create -> poll -> download cycle of `useRequestReport`; the file lands
  * automatically once the run completes, there is no separate download step.
+ * The format is picked from the action itself (user directive 2026-09-08),
+ * not stored with the filters: it changes the file, never the charts.
  */
 export function RequestDashboardFilterBar({
   filters,
@@ -87,18 +113,29 @@ export function RequestDashboardFilterBar({
           {/* The permission ships unassigned by default, and the backend
               re-authorizes the three report routes regardless (spec 0106). */}
           <Can permission="request-management.report">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={isBusy}
-              onClick={() => report.create(filters)}
-            >
-              <FileDown aria-hidden="true" className="size-3.5" />
-              {report.isCreating || report.isProcessing
-                ? t('requestManagement.report.buttons.processing')
-                : t('requestManagement.report.action')}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" size="sm" variant="outline" disabled={isBusy}>
+                  <FileDown aria-hidden="true" className="size-3.5" />
+                  {report.isCreating || report.isProcessing
+                    ? t('requestManagement.report.buttons.processing')
+                    : t('requestManagement.report.action')}
+                  <ChevronDown aria-hidden="true" className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {REPORT_FORMATS.map((format) => {
+                  const Icon = FORMAT_ICON[format]
+
+                  return (
+                    <DropdownMenuItem key={format} onSelect={() => report.create({ ...filters, format })}>
+                      <Icon aria-hidden="true" />
+                      {t(`exports.formats.${format}`)}
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </Can>
 
           <Button type="button" size="sm" variant="outline" onClick={onEdit}>

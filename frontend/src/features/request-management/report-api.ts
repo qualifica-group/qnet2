@@ -1,11 +1,14 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
+import type { ExportFormat } from '@/features/exports/types'
 import { filenameFromContentDisposition, saveBlob } from '@/lib/download'
 
 /**
- * The CSV report's own async cycle (spec 0106 D-8), a module-owned sibling of
- * the generic `features/exports` types: the contract shape differs
+ * The report's own async cycle (spec 0106 D-8), a module-owned sibling of the
+ * generic `features/exports` types: the contract shape differs
  * (`file_name`/no `format`/no `row_count`), so it is not the same `ExportRun`.
+ * The `ExportFormat` union IS shared with them — the backend allow-lists both
+ * against the same `config('exports.formats')`.
  */
 export type RequestReportStatus = 'processing' | 'completed' | 'failed'
 
@@ -35,6 +38,8 @@ export interface CreateRequestReportPayload {
   /** Branch keys to include, min 1, each in the server's config allow-list. */
   category_keys: string[]
   row_mode: RequestReportRowMode
+  /** File the run produces (user directive 2026-09-08): `csv` or `xlsx`. */
+  format: ExportFormat
 }
 
 /** Creates the run and dispatches the backend job (`POST /request-management/report`). */

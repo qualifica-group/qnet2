@@ -7,7 +7,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { NotificationBell } from '@/features/notifications/notification-bell'
 import { useAuth } from '@/features/auth/use-auth'
 import { ImpersonationBanner } from '@/features/auth/impersonation-banner'
-import { AppVersionBanner } from '@/features/app-version/app-version-banner'
+import { VersionUpdateBanner } from '@/components/version-update-banner'
 import { Separator } from '@/components/ui/separator'
 import {
   SidebarInset,
@@ -25,7 +25,7 @@ export function AppLayout() {
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          <AppVersionBanner />
+          <VersionUpdateBanner />
           <ImpersonationBanner />
           <header className="relative flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground">
             <SidebarSeamToggle />

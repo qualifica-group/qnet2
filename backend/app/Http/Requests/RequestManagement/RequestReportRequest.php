@@ -15,6 +15,11 @@ use Illuminate\Validation\Rule;
  * (rev-2 D-13) are BOTH required — no server-side default, the client
  * always sends an explicit choice (AC-030/AC-031).
  *
+ * `format` (user directive 2026-09-08) is allow-listed against
+ * `config('exports.formats')`, the same rule line CreateExportRequest uses:
+ * the choice picks an ExportWriter, so an unknown value must 422 here rather
+ * than reach ExportWriterFactory.
+ *
  * `category_keys.*` is validated against the config allow-list
  * (backend.md §8): an unknown key 422s HERE, before it can ever reach a
  * query — the controller/generator translate the validated keys to
@@ -46,6 +51,7 @@ class RequestReportRequest extends FormRequest
                 static fn (RequestManagementReportRowMode $mode): string => $mode->value,
                 RequestManagementReportRowMode::cases(),
             ))],
+            'format' => ['required', 'string', Rule::in(config('exports.formats'))],
         ];
     }
 

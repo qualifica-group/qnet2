@@ -9,7 +9,7 @@ namespace App\Services\RequestManagement\Report;
  * ("TOTALE"/a user's name/"Non assegnato") plus the value of EVERY one of
  * the eleven indicator columns (ReportBranchRowsBuilder fills every one,
  * defaulting to 0 for a column not applicable to the branch — D-15, rev-2,
- * overrides the former D-9 empty-cell distinction). ReportCsvBuilder never
+ * overrides the former D-9 empty-cell distinction). ReportSheetBuilder never
  * needs to fall back to a default itself.
  */
 final class ReportRow

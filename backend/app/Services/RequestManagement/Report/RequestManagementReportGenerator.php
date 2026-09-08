@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement\Report;
 
+use App\Enums\ExportFormat;
 use App\Enums\RequestManagementReportRowMode;
-use App\Exports\CsvExportWriter;
+use App\Exports\ExportWriterFactory;
 use App\Models\User;
 
 /**
- * Top-level orchestrator of the report's CSV generation (spec 0106,
+ * Top-level orchestrator of the report's file generation (spec 0106,
  * MT-01..MT-03; rev-2 D-11/D-13). `rows()` (spec 0107 D-2-bis, point 1) is
  * the reusable core — resolves the six branches ONCE, keeps only the ones in
  * $categoryKeys (AC-032 — a FILTER on which already-computed branches/rows
  * are written, never a different calculation) and builds every one of their
- * ReportRow — while `generate()` is `rows()` plus the CSV-specific part:
- * streaming the result through the project's own CsvExportWriter (spec
- * 0014, reused verbatim per D-8 — BOM, ',', '"', no escape).
+ * ReportRow — while `generate()` is `rows()` plus the file-specific part:
+ * streaming the result through the ExportWriter the requested $format
+ * resolves to (spec 0014's own registry, reused verbatim per D-8). The rows
+ * are IDENTICAL whatever the format: only the writer changes (user directive
+ * 2026-09-08, csv or xlsx).
  *
  * Invoked by GenerateRequestManagementReportJob, which has already frozen
  * the actor (Auth::setUser) and the locale (App::setLocale) before calling
@@ -27,8 +30,8 @@ final class RequestManagementReportGenerator
     public function __construct(
         private readonly ReportBranchResolver $branches,
         private readonly ReportBranchRowsBuilder $rowsBuilder,
-        private readonly ReportCsvBuilder $csvBuilder,
-        private readonly CsvExportWriter $writer,
+        private readonly ReportSheetBuilder $sheetBuilder,
+        private readonly ExportWriterFactory $writers,
     ) {}
 
     /**
@@ -40,26 +43,28 @@ final class RequestManagementReportGenerator
         string $dateTo,
         array $categoryKeys,
         RequestManagementReportRowMode $rowMode,
+        ExportFormat $format,
         string $absolutePath,
     ): int {
         // Step 1: every selected branch's already-computed rows — the reusable core.
         $branchRows = $this->rows($actor, $dateFrom, $dateTo, $categoryKeys, $rowMode);
 
-        // Step 2: open the writer, translated header row first.
-        $this->writer->open($absolutePath);
-        $this->writer->writeHeaders($this->csvBuilder->headers());
+        // Step 2: open the format's own writer, translated header row first.
+        $writer = $this->writers->make($format);
+        $writer->open($absolutePath);
+        $writer->writeHeaders($this->sheetBuilder->headers());
 
         // Step 3: one selected branch at a time — TOTALE/GA2/"Non assegnato" rows, as $rowMode allowed.
         $rowCount = 0;
 
         foreach ($branchRows as $branchRow) {
             foreach ($branchRow['rows'] as $row) {
-                $this->writer->writeRow($this->csvBuilder->row($branchRow['branch']->label, $row));
+                $writer->writeRow($this->sheetBuilder->row($branchRow['branch']->label, $row));
                 $rowCount++;
             }
         }
 
-        $this->writer->close();
+        $writer->close();
 
         return $rowCount;
     }

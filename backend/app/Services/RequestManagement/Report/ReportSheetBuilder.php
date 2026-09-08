@@ -17,7 +17,7 @@ namespace App\Services\RequestManagement\Report;
  * the same neutral source ReportBranchRowsBuilder reads — this class is
  * just one more reader, never the source of truth other layers depend on.
  */
-final class ReportCsvBuilder
+final class ReportSheetBuilder
 {
     /**
      * @return array<int, string>

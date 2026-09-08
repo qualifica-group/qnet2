@@ -9,12 +9,14 @@ import { requestReportDefaultValues } from '@/features/request-management/reques
 import type { RequestReportRun } from '@/features/request-management/report-api'
 
 /**
- * Spec 0106 AC-040/AC-041, AC-045..AC-046: the CSV action, which the user
+ * Spec 0106 AC-040/AC-041, AC-045..AC-046: the report action, which the user
  * directive of 2026-09-08 moved out of the table's options menu and next to
  * the dashboard's "Filters" button. It runs on the APPLIED filters — no form
  * of its own — through the frozen `/request-management/report` contract, and
- * stays gated by `request-management.report`. The API module is mocked; every
- * assertion queries by accessible role/label, never `data-testid`.
+ * stays gated by `request-management.report`. The format (csv or xlsx) is
+ * picked from the action's own menu, like the table export offers. The API
+ * module is mocked; every assertion queries by accessible role/label, never
+ * `data-testid`.
  */
 
 const createRequestManagementReportMock = vi.fn()
@@ -70,6 +72,19 @@ function wrapper() {
   )
 }
 
+/** Radix' DropdownMenu trigger opens on `pointerdown`, not `click`. */
+function openReportMenu() {
+  fireEvent.pointerDown(screen.getByRole('button', { name: /Generate report/ }), {
+    button: 0,
+    ctrlKey: false,
+  })
+}
+
+function generate(format: 'CSV' | 'Excel (XLSX)') {
+  openReportMenu()
+  fireEvent.click(screen.getByRole('menuitem', { name: format }))
+}
+
 function renderBar(filtersReady = true) {
   const onEdit = vi.fn()
   render(
@@ -99,7 +114,7 @@ describe('RequestDashboardFilterBar', () => {
     canMock.mockReturnValue(false)
     renderBar()
 
-    expect(screen.queryByRole('button', { name: 'Generate report' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Generate report/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
   })
 
@@ -108,7 +123,7 @@ describe('RequestDashboardFilterBar', () => {
     getRequestManagementReportMock.mockResolvedValue(run({ status: 'completed' }))
 
     renderBar()
-    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+    generate('CSV')
 
     await waitFor(() =>
       expect(createRequestManagementReportMock).toHaveBeenCalledWith({
@@ -116,6 +131,7 @@ describe('RequestDashboardFilterBar', () => {
         date_to: '2026-09-30',
         category_keys: ['gol', 'consulenza'],
         row_mode: 'all',
+        format: 'csv',
       }),
     )
 
@@ -134,7 +150,7 @@ describe('RequestDashboardFilterBar', () => {
     getRequestManagementReportMock.mockResolvedValue(run({ status: 'failed' }))
 
     renderBar()
-    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+    generate('CSV')
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Report generation failed. Please try again.',
@@ -151,7 +167,7 @@ describe('RequestDashboardFilterBar', () => {
     )
 
     renderBar()
-    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+    generate('CSV')
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       "You don't have permission to generate this report.",
@@ -167,15 +183,28 @@ describe('RequestDashboardFilterBar', () => {
     )
 
     renderBar()
-    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+    generate('CSV')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The dates entered are invalid.')
+  })
+
+  it('asks the backend for xlsx when Excel is picked (user directive 2026-09-08)', async () => {
+    createRequestManagementReportMock.mockResolvedValue(run({ status: 'processing' }))
+
+    renderBar()
+    generate('Excel (XLSX)')
+
+    await waitFor(() =>
+      expect(createRequestManagementReportMock).toHaveBeenCalledWith(
+        expect.objectContaining({ format: 'xlsx' }),
+      ),
+    )
   })
 
   it('cannot generate before the filters are usable (AC-049)', () => {
     renderBar(false)
 
-    expect(screen.getByRole('button', { name: 'Generate report' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Generate report/ })).toBeDisabled()
     expect(createRequestManagementReportMock).not.toHaveBeenCalled()
   })
 })

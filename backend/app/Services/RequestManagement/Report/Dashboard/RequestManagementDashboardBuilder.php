@@ -220,7 +220,7 @@ final class RequestManagementDashboardBuilder
     /**
      * The union of $branches' `columns`, reordered to the report's
      * canonical indicator order — `config('request-management-report.
-     * indicator_columns')`, the SAME neutral source ReportCsvBuilder reads,
+     * indicator_columns')`, the SAME neutral source ReportSheetBuilder reads,
      * never a new order of its own (spec 0107 D-2-bis, point 3).
      *
      * @param  array<int, ReportBranch>  $branches

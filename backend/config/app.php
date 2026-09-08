@@ -17,24 +17,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Deployed Application Version
-    |--------------------------------------------------------------------------
-    |
-    | Identifier of the currently deployed backend build, served by the PUBLIC
-    | endpoint GET /api/version. The SPA polls it and prompts the user to
-    | reload when it changes mid-session, so nobody keeps running an old client
-    | against a redeployed API.
-    |
-    | The deploy pipeline sets it (e.g. the released commit SHA). Left unset it
-    | is null and the client simply skips the backend half of the check, so an
-    | unconfigured environment never shows a spurious update prompt.
-    |
-    */
-
-    'version' => env('APP_VERSION'),
-
-    /*
-    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

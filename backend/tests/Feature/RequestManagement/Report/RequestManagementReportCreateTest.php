@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ExportFormat;
 use App\Enums\ExportStatus;
 use App\Jobs\GenerateRequestManagementReportJob;
 use App\Models\ExportRun;
@@ -37,7 +38,7 @@ if (! function_exists('reportActorWith')) {
 if (! function_exists('reportPayload')) {
     /**
      * A valid POST body: the two dates plus rev-2's two REQUIRED fields
-     * (category_keys/row_mode), overridable per test.
+     * (category_keys/row_mode) and the file format, overridable per test.
      *
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
@@ -49,6 +50,7 @@ if (! function_exists('reportPayload')) {
             'date_to' => '2026-09-30',
             'category_keys' => array_keys((array) config('request-management-report.branches')),
             'row_mode' => 'all',
+            'format' => 'csv',
         ], $overrides);
     }
 }
@@ -223,4 +225,57 @@ it('never throttles the create endpoint across many rapid requests (AC-025)', fu
     for ($i = 0; $i < 20; $i++) {
         $this->postJson('/api/request-management/report', reportPayload())->assertCreated();
     }
+});
+
+// ---------------------------------------------------------------------------
+// Format allow-list (user directive 2026-09-08)
+// ---------------------------------------------------------------------------
+
+it('stores the requested xlsx format on the run, extension included', function () {
+    $actor = reportActorWith(['report']);
+    Sanctum::actingAs($actor);
+    Queue::fake();
+
+    $response = $this->postJson('/api/request-management/report', reportPayload(['format' => 'xlsx']))
+        ->assertCreated();
+
+    $run = ExportRun::query()->findOrFail($response->json('data.export_run.id'));
+
+    expect($run->format)->toBe(ExportFormat::Xlsx)
+        ->and($run->original_filename)->toBe('request-management-report-2026-09-01_2026-09-30.xlsx');
+});
+
+it('stores the requested csv format on the run, extension included', function () {
+    $actor = reportActorWith(['report']);
+    Sanctum::actingAs($actor);
+    Queue::fake();
+
+    $response = $this->postJson('/api/request-management/report', reportPayload(['format' => 'csv']))
+        ->assertCreated();
+
+    $run = ExportRun::query()->findOrFail($response->json('data.export_run.id'));
+
+    expect($run->format)->toBe(ExportFormat::Csv)
+        ->and($run->original_filename)->toBe('request-management-report-2026-09-01_2026-09-30.csv');
+});
+
+it('422s when format is missing', function () {
+    $actor = reportActorWith(['report']);
+    Sanctum::actingAs($actor);
+
+    $payload = reportPayload();
+    unset($payload['format']);
+
+    $this->postJson('/api/request-management/report', $payload)
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('format');
+});
+
+it('422s when format is outside config(exports.formats)', function () {
+    $actor = reportActorWith(['report']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management/report', reportPayload(['format' => 'pdf']))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('format');
 });

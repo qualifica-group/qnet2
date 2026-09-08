@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
- * The request-management CSV report's own create/poll/download endpoints
+ * The request-management report's own create/poll/download endpoints
  * (spec 0106, D-8) — a bespoke controller, deliberately not ExportController
  * (spec 0014): `resource = 'request-management-report'` is not a
  * config/tables.php domain, so the generic `/api/exports/{domain}` routes
@@ -74,13 +74,14 @@ class RequestManagementReportController extends BaseApiController
             /** @var array<int, string> $categoryKeys */
             $categoryKeys = (array) $request->validated('category_keys');
             $rowMode = (string) $request->validated('row_mode');
+            $format = ExportFormat::from((string) $request->validated('format'));
 
             $run = ExportRun::create([
                 'resource' => self::RESOURCE,
                 'user_id' => $actor->id,
                 'status' => ExportStatus::Processing,
-                'format' => ExportFormat::Csv,
-                'original_filename' => $this->fileName($dateFrom, $dateTo),
+                'format' => $format,
+                'original_filename' => $this->fileName($dateFrom, $dateTo, $format),
                 'state' => [
                     'date_from' => $dateFrom,
                     'date_to' => $dateTo,
@@ -116,7 +117,7 @@ class RequestManagementReportController extends BaseApiController
 
     /**
      * GET /api/request-management/report/{exportRun}/download — stream the
-     * generated CSV.
+     * generated file, with the Content-Type of its own format.
      */
     public function download(Request $request, ExportRun $exportRun): StreamedResponse|JsonResponse
     {
@@ -135,9 +136,9 @@ class RequestManagementReportController extends BaseApiController
         }
     }
 
-    private function fileName(string $dateFrom, string $dateTo): string
+    private function fileName(string $dateFrom, string $dateTo, ExportFormat $format): string
     {
-        return "request-management-report-{$dateFrom}_{$dateTo}.csv";
+        return "request-management-report-{$dateFrom}_{$dateTo}.{$format->extension()}";
     }
 
     /**

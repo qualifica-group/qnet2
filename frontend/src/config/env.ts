@@ -35,21 +35,4 @@ export const env = {
    */
   notificationsPollInterval:
     Number(import.meta.env.VITE_NOTIFICATIONS_POLL_INTERVAL ?? '') || 30000,
-  /**
-   * Build identifier of the bundle currently running, injected by Vite at build
-   * time (see vite/build-version.ts). Compared against the deployed one to
-   * detect that a newer build has shipped mid-session.
-   */
-  buildVersion: __APP_BUILD_VERSION__,
-  /**
-   * True only in a bundle produced by `vite build`. The deploy check needs the
-   * emitted `version.json`, which exists only in a build: in `vite dev` and
-   * under Vitest there is nothing deployed to compare against.
-   */
-  isProductionBuild: import.meta.env.PROD,
-  /**
-   * Polling interval (ms) for the deployed-version check. Falls back to 60s when
-   * unset or non-numeric.
-   */
-  versionPollInterval: Number(import.meta.env.VITE_VERSION_POLL_INTERVAL ?? '') || 60000,
 } as const

@@ -94,9 +94,9 @@ export const it: TranslationResources = {
     },
   },
   appVersion: {
-    available:
-      "È disponibile una nuova versione dell'applicazione. Aggiorna per continuare a lavorare su quella corrente.",
-    reload: 'Aggiorna',
+    available: 'Nuova versione disponibile',
+    description: "È disponibile una nuova versione. Aggiorna per ricaricare l'applicazione.",
+    update: 'Aggiorna ora',
   },
   navigation,
   theme: {

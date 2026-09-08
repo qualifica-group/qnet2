@@ -281,12 +281,12 @@ export const requestManagement = {
       summary: 'Impossibile salvare: controlla questi campi — {{fields}}.',
     },
   },
-  // Report CSV asincrono (spec 0106): dialog di selezione date, agganciato
-  // al menu opzioni della toolbar via `importSlot`.
+  // Report asincrono CSV/Excel (spec 0106): dialog dei filtri, agganciato
+  // alla barra filtri del pannello statistiche.
   report: {
     title: 'Filtri report e statistiche',
     action: 'Genera report',
-    description: 'Intervallo, categorie e righe: la stessa selezione vale per i grafici e per il report CSV.',
+    description: 'Intervallo, categorie e righe: la stessa selezione vale per i grafici e per il report.',
     fields: {
       dateFrom: 'Dal',
       dateTo: 'Al',

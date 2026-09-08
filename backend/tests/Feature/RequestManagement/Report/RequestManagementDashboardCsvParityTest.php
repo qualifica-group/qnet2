@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ExportFormat;
 use App\Enums\RequestManagementReportRowMode;
 use App\Enums\WorkflowStatusGroup;
 use App\Models\BusinessFunction;
@@ -110,7 +111,7 @@ if (! function_exists('parityCsvRows')) {
 if (! function_exists('parityCsvCell')) {
     /**
      * The CSV cell for ($categoryLabel, $ga2Label, $indicatorKey) — column
-     * position resolved from ReportCsvBuilder's own public contract order.
+     * position resolved from ReportSheetBuilder's own public contract order.
      *
      * @param  array<int, array<int, string>>  $rows
      */
@@ -153,7 +154,7 @@ it('every dashboard point equals the corresponding CSV cell, for the same filter
     // Generate the CSV via the SAME 0106 pipeline (no queue: call the
     // generator directly, mirroring GenerateRequestManagementReportJob).
     $csvPath = Storage::disk('local')->path('parity-test.csv');
-    app(RequestManagementReportGenerator::class)->generate($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::All, $csvPath);
+    app(RequestManagementReportGenerator::class)->generate($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::All, ExportFormat::Csv, $csvPath);
     $rows = parityCsvRows(Storage::disk('local')->get('parity-test.csv'));
 
     // Build the dashboard for the IDENTICAL filters.

@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Async generation of the request-management CSV report (spec 0106, D-8): a
+ * Async generation of the request-management report file (spec 0106, D-8): a
  * bespoke job, deliberately NOT GenerateExportJob (that one is tied to a
  * TableDefinition and would deform this aggregate's shape).
  *
@@ -76,7 +76,8 @@ class GenerateRequestManagementReportJob implements ShouldQueue
     }
 
     /**
-     * Step 2 of handle(): generate the CSV, persist the completed run.
+     * Step 2 of handle(): generate the file in the run's own format, persist
+     * the completed run.
      */
     private function write(ExportRun $run, User $actor, RequestManagementReportGenerator $generator): void
     {
@@ -87,17 +88,21 @@ class GenerateRequestManagementReportJob implements ShouldQueue
         $directory = (string) config('exports.directory');
         $disk->makeDirectory($directory);
 
-        $path = $directory.'/'.Str::uuid().'.csv';
+        // The format is read from the run itself, not from the frozen state:
+        // ExportRun::$format is already its own column and drives the download's
+        // Content-Type, so a second copy could only ever disagree with it.
+        $path = $directory.'/'.Str::uuid().'.'.$run->format->extension();
 
         // AC-035: category_keys/row_mode are RE-READ from the frozen state,
         // never a default — a run created with two categories must produce
-        // a CSV with exactly those two, however it later gets executed.
+        // a file with exactly those two, however it later gets executed.
         $rowCount = $generator->generate(
             $actor,
             $state['date_from'],
             $state['date_to'],
             $state['category_keys'],
             RequestManagementReportRowMode::from($state['row_mode']),
+            $run->format,
             $disk->path($path),
         );
 

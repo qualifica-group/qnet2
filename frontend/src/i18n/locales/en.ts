@@ -101,8 +101,9 @@ export const en = {
     },
   },
   appVersion: {
-    available: 'A new version of the application is available. Reload to keep working on the current one.',
-    reload: 'Update',
+    available: 'New version available',
+    description: 'A new version is available. Click update to refresh the app.',
+    update: 'Update now',
   },
   navigation,
   theme: {

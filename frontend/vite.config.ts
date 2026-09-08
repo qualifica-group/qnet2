@@ -3,19 +3,27 @@ import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { buildVersionPlugin, resolveBuildVersion } from './vite/build-version'
 
-// Resolved once per config load and used twice: baked into the bundle as
-// `__APP_BUILD_VERSION__` (the version the client is RUNNING) and emitted to
-// dist/version.json (the version currently DEPLOYED). The client compares them.
-const buildVersion = resolveBuildVersion()
+// Identifier of this build, stamped into index.html as <meta name="app-build-id">.
+// The running client polls index.html and compares the two: a different id means
+// a newer bundle has been deployed under the open session.
+const appBuildId = new Date().toISOString()
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), buildVersionPlugin(buildVersion)],
-  define: {
-    __APP_BUILD_VERSION__: JSON.stringify(buildVersion),
-  },
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'inject-app-build-meta',
+      transformIndexHtml(html) {
+        return html.replace(
+          '</head>',
+          `  <meta name="app-build-id" content="${appBuildId}" />\n  </head>`,
+        )
+      },
+    },
+  ],
   server: process.env.PORT ? { port: Number(process.env.PORT), strictPort: true } : undefined,
   resolve: {
     alias: {

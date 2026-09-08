@@ -281,12 +281,12 @@ export const requestManagement = {
       summary: 'Cannot save: check these fields — {{fields}}.',
     },
   },
-  // Asynchronous CSV report (spec 0106): the date-range dialog, mounted in
-  // the toolbar's options menu via `importSlot`.
+  // Asynchronous CSV/Excel report (spec 0106): the filters dialog, mounted in
+  // the statistics panel's own filter bar.
   report: {
     title: 'Report and statistics filters',
     action: 'Generate report',
-    description: 'Date range, categories and rows: the same selection drives the charts and the CSV report.',
+    description: 'Date range, categories and rows: the same selection drives the charts and the report.',
     fields: {
       dateFrom: 'From',
       dateTo: 'To',

@@ -26,7 +26,7 @@ use Illuminate\Support\Collection;
  * overrides the former D-9 empty-cell distinction) whether the column is a
  * stub, not applicable to this branch, or simply not computed for this row.
  * That config key is the neutral source both this (calculation) class and
- * ReportCsvBuilder (formatting) read from — this class never depends on the
+ * ReportSheetBuilder (formatting) read from — this class never depends on the
  * formatting one for it (spec 0107 D-2-bis, point 3).
  */
 final class ReportBranchRowsBuilder

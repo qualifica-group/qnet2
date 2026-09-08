@@ -83,9 +83,10 @@
       - Catalogo reale del cliente in
         backend/database/seeders/QualificaCatalog/WorkflowStatusCatalogue.php: cinque sezioni
         (`gol`, `self_employment` per Autoimpiego+Yisu, `self_funded`, `consulting`, `apl`).
-        Il gruppo `validated` e' usato da due soli stati: `OK_Da Caricare` (self_employment) e
-        `In trattativa` (consulting) (VALIDATED_STATUSES, :325-330). Il gruppo `pending` non e'
-        usato da NESSUNO stato del cliente.
+        Dalla revisione 2026-09-08 della legenda del foglio: `validated` e' usato da un solo
+        stato, `OK_Da Caricare` (self_employment, verde acceso); `pending` copre tutti gli stati
+        azzurri ("Potenziali Prossimi Associati") delle quattro sezioni del foglio — GOL,
+        self_employment, self_funded, consulting. La sezione `apl` e' fuori foglio e non ne usa.
     </entity>
 
     <entity name="Note">
@@ -162,11 +163,12 @@
     <decision id="D-2">
       "N. Potenziali associati" = richieste entrate, nel range, in uno stato il cui `group` e'
       `pending` o `validated`. Decisione utente: "sono gli stati di validazione, nel concreto sono
-      chiavi di sistema degli stati di lavorazione". Conseguenza accettata: nel catalogo attuale
-      solo `self_employment` (Autoimpiego, Yisu) e `consulting` (Consulenza) hanno uno stato
-      `validated`; per GOL, Autofinanziato e APL la colonna vale 0 finche' il cliente non classifica
-      uno stato in quei gruppi. La colonna si popolera' da sola il giorno che il catalogo cambia:
-      nessun nome di stato e' cablato nel codice.
+      chiavi di sistema degli stati di lavorazione". La conseguenza accettata (colonna a 0 per GOL,
+      Autofinanziato e APL finche' il cliente non classificava uno stato in quei gruppi) e' rientrata
+      da sola il 2026-09-08: la nuova legenda del foglio dipinge di azzurro
+      ("Potenziali Prossimi Associati" = `pending`) la fase di lavorazione di tutte le sezioni del
+      foglio. Resta a 0 solo `apl`, che nel foglio non c'e'. Nessun nome di stato e' cablato nel
+      codice: la colonna ha iniziato a popolarsi senza toccare il report.
     </decision>
     <decision id="D-3">
       Attribuzione di una transizione loggata alla singola Offerta. La riga di `activity_log` porta
@@ -686,9 +688,17 @@
                             config. Una chiave sconosciuta e' 422 — l'input non entra mai in una
                             query, si traduce prima in ids di categoria via config (backend.md §8).
             row_mode      : stringa, uno di `total_only` | `operators_only` | `all`.
+          Dalla direttiva utente 2026-09-08 se ne aggiunge un TERZO, anch'esso required:
+            format        : stringa in ALLOW-LIST `config('exports.formats')` (`csv` | `xlsx`),
+                            stessa riga di regola di CreateExportRequest. Sceglie l'ExportWriter
+                            (spec 0014), non il calcolo: le righe sono identiche nei due formati.
           `date_from`/`date_to` invariati.
         </request>
-        <response status="201">Invariata. `ExportRun.state` congela ANCHE `category_keys` e `row_mode`.</response>
+        <response status="201">
+          Invariata. `ExportRun.state` congela ANCHE `category_keys` e `row_mode`; `format` NON sta
+          nello state ma nella colonna `ExportRun.format`, gia' esistente, che guida estensione del
+          file e Content-Type del download — una seconda copia potrebbe solo divergere.
+        </response>
       </endpoint>
 
       <routing_trap>
