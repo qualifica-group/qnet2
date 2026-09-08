@@ -90,8 +90,7 @@ export function RequestDashboardFilterBar({
             <Button
               type="button"
               size="sm"
-              variant="secondary"
-              className="gap-1.5"
+              variant="outline"
               disabled={isBusy}
               onClick={() => report.create(filters)}
             >
