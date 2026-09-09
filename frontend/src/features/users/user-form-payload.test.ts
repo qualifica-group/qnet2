@@ -65,6 +65,7 @@ const emptyEmployment: UserFormValues['employment'] = {
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
+  product_category_ids: [],
   qualification_type: null,
   hired_at: '',
   terminated_at: '',
@@ -221,6 +222,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
       company_id: 5,
       primary_operational_site_id: 8,
       remote_operational_site_ids: [11, 12],
+      product_category_ids: [],
       qualification_type: 'coordinator',
       hired_at: '2026-01-15',
       terminated_at: null,
@@ -242,6 +244,19 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     expect(payload.employment.primary_operational_site_id).toBe(8)
     expect('remote_operational_site_ids' in payload.employment).toBe(true)
     expect(payload.employment.remote_operational_site_ids).toEqual([])
+  })
+
+  /** Spec 0110 AC-040: the competence ids ride on the same employment object. */
+  it('AC-040 — carries the product-category competence ids', () => {
+    const payload = buildCreatePayload(
+      {
+        ...formValues,
+        employment: { ...emptyEmployment, product_category_ids: [21, 22] },
+      },
+      draft(),
+    )
+
+    expect(payload.employment.product_category_ids).toEqual([21, 22])
   })
 
   it('AC-015 — force-nulls reports_to_id client-side when is_manager is true', () => {
@@ -287,6 +302,7 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
       company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
+      product_category_ids: [],
       qualification_type: null,
       hired_at: null,
       terminated_at: null,

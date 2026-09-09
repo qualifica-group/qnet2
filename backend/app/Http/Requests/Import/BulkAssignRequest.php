@@ -6,8 +6,9 @@ use App\Enums\LeadAssignmentMode;
 use App\Imports\Leads\LeadImportProductCoherence;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
+use App\Services\Assignment\ImportRunRowSelection;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -126,23 +127,20 @@ class BulkAssignRequest extends FormRequest
     }
 
     /**
-     * The rows this request targets, with the same select_all/row_ids
-     * semantics ImportService::bulkAssign() applies when writing — read here
-     * so the check and the write can never disagree on WHICH rows are in play.
+     * The rows this request targets, through the SAME ImportRunRowSelection
+     * ImportService::bulkAssign() reads when writing — so the check and the
+     * write can never disagree on WHICH rows are in play.
      *
      * @return Collection<int, ImportRunRow>
      */
     private function targetedRows(ImportRun $importRun): Collection
     {
-        $rowIds = $this->rowIds();
-        $selectAll = $this->selectAll();
-
-        return ImportRunRow::query()
-            ->select(['id', 'row_number', 'mapped_values'])
-            ->where('import_run_id', $importRun->id)
-            ->when(! $selectAll, fn ($query) => $query->whereIn('id', $rowIds))
-            ->when($selectAll && $rowIds !== [], fn ($query) => $query->whereNotIn('id', $rowIds))
-            ->get();
+        return app(ImportRunRowSelection::class)->rows(
+            $importRun,
+            $this->selectAll(),
+            $this->rowIds(),
+            ['id', 'row_number', 'mapped_values'],
+        );
     }
 
     private function validateRowIdsRequiredWhenNotSelectAll(Validator $validator): void

@@ -15,6 +15,8 @@ import {
   useRevealBlockedSection,
 } from '@/features/personal-data/use-reveal-blocked-section'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
+import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
+import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
 import { DetailsTabContent } from '@/features/registries/registry-form-details-tab'
 import { useRegistryForm } from '@/features/registries/use-registry-form'
 import type { QuickContactType } from '@/features/personal-data/quick-contacts'
@@ -66,6 +68,10 @@ export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBody
   // The blocks are all on screen, but the offending one can be far above the
   // save button: a refused save brings it back under the user's eyes.
   useRevealBlockedSection(revalidateSignal, blockedSection, containerRef)
+  const { matches: duplicateMatches } = useIdentityDuplicateCheck({
+    enabled: mode.type === 'create',
+    profileDraft,
+  })
 
   // Section visibility, read from the same authorization context `MetaField`
   // uses (the anagraphic card has no permission-gated field, so it is always
@@ -170,6 +176,8 @@ export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBody
           )}
 
           <CustomFieldsSection resource="registries" control={form.control} />
+
+          <IdentityDuplicateWarning matches={duplicateMatches} />
 
           {serverError && (
             <p className="text-sm font-medium text-destructive" role="alert">

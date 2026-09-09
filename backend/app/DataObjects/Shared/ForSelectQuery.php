@@ -41,6 +41,12 @@ namespace App\DataObjects\Shared;
  *   so the work-order edit form keeps offering its own already-selected
  *   rows. Null by default (no exclusion widening) so every other consumer
  *   is unaffected.
+ * - `competenceCategoryIds` (spec 0110): ADDITIVE, consumed ONLY by
+ *   UserService::forSelect (users/for-select narrowed to the operators
+ *   competent for a record's required categories, INV-3/INV-4) — empty means
+ *   no filter, so every other consumer is unaffected. It only ever NARROWS
+ *   (INV-5): it is applied as an exclusion on top of the existing filters,
+ *   never as a widening OR.
  * - `includeInactive` (spec 0101, T-03c): ADDITIVE, consumed ONLY by the five
  *   Task configurator services, which otherwise serve `is_active = true`
  *   rows only. The reorder sheet needs EVERY row, active or not: the server
@@ -54,6 +60,7 @@ final readonly class ForSelectQuery
      * @param  array<int, int>  $ids
      * @param  array<int, int>  $categoryIds
      * @param  array<int, string>  $statusGroups
+     * @param  array<int, int>  $competenceCategoryIds
      */
     public function __construct(
         public ?string $search,
@@ -68,6 +75,7 @@ final readonly class ForSelectQuery
         public ?int $quoteId = null,
         public ?int $exceptWorkOrderId = null,
         public bool $includeInactive = false,
+        public array $competenceCategoryIds = [],
     ) {}
 
     /**
@@ -91,6 +99,12 @@ final readonly class ForSelectQuery
             (array) ($data['category_ids'] ?? []),
         )));
 
+        /** @var array<int, int> $competenceCategoryIds */
+        $competenceCategoryIds = array_values(array_unique(array_map(
+            static fn ($id): int => (int) $id,
+            (array) ($data['competence_category_ids'] ?? []),
+        )));
+
         /** @var array<int, string> $statusGroups */
         $statusGroups = array_values(array_unique(array_map(
             static fn ($group): string => (string) $group,
@@ -110,7 +124,13 @@ final readonly class ForSelectQuery
             quoteId: isset($data['quote_id']) ? (int) $data['quote_id'] : null,
             exceptWorkOrderId: isset($data['except_work_order_id']) ? (int) $data['except_work_order_id'] : null,
             includeInactive: (bool) ($data['include_inactive'] ?? false),
+            competenceCategoryIds: $competenceCategoryIds,
         );
+    }
+
+    public function hasCompetenceCategoryIds(): bool
+    {
+        return $this->competenceCategoryIds !== [];
     }
 
     public function hasCategoryIds(): bool

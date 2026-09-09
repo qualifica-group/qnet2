@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement;
 
+use App\DataObjects\Assignment\AssignmentOutcome;
 use App\Enums\LeadAssignmentMode;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\Assignment\OperatorCompetence;
+use App\Services\Assignment\QuoteCompetence;
 use App\Services\LeadOperatorDistributor;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Support\ManagerPositions;
@@ -41,6 +44,8 @@ final class RequestAssignmentService
         private readonly RequestOperatorWriter $operatorWriter,
         private readonly LeadOperatorDistributor $distributor,
         private readonly AssignmentNotifier $assignmentNotifier,
+        private readonly QuoteCompetence $quoteCompetence,
+        private readonly OperatorCompetence $competence,
     ) {}
 
     /**
@@ -50,19 +55,21 @@ final class RequestAssignmentService
      * Whole operation is one transaction.
      *
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
-     * @return int the number of offers assigned
      */
-    public function assignOperators(array $requestIds, User $actor, int $operationalSiteId, LeadAssignmentMode $mode, ?int $operatorId): int
+    public function assignOperators(array $requestIds, User $actor, int $operationalSiteId, LeadAssignmentMode $mode, ?int $operatorId): AssignmentOutcome
     {
-        return DB::transaction(function () use ($requestIds, $actor, $operationalSiteId, $mode, $operatorId): int {
+        return DB::transaction(function () use ($requestIds, $actor, $operationalSiteId, $mode, $operatorId): AssignmentOutcome {
             // Step 1: drop the ids the actor may not reach (D-3 scoping).
             $quotes = $this->inScopeQuotes($requestIds, $actor);
 
             if ($quotes->isEmpty()) {
-                return 0;
+                return new AssignmentOutcome(assigned: 0);
             }
 
-            // Step 2: resolve the operator of each offer, per mode.
+            // Step 2: resolve the operator of each offer, per mode. An offer
+            // ABSENT from the map is one `balanced` found no competent
+            // operator for (spec 0110, AC-021): it keeps the operator it
+            // already had, which a null would instead have cleared.
             $operatorPerQuote = $mode === LeadAssignmentMode::Single
                 ? array_fill_keys($quotes->modelKeys(), $operatorId)
                 : $this->distributeBalanced($quotes->modelKeys(), $operationalSiteId);
@@ -73,10 +80,19 @@ final class RequestAssignmentService
             // (Quote column + `quote_user` pivot slot sync, spec 0087 D-9)
             // on each offer.
             foreach ($quotes as $quote) {
-                $this->assignOne($quote, $actor, $operationalSiteId, $operatorPerQuote[$quote->id] ?? null);
+                $this->assignOne(
+                    $quote,
+                    $actor,
+                    $operationalSiteId,
+                    $operatorPerQuote[$quote->id] ?? null,
+                    array_key_exists($quote->id, $operatorPerQuote),
+                );
             }
 
-            return $quotes->count();
+            return new AssignmentOutcome(
+                assigned: count($operatorPerQuote),
+                skipped: $quotes->count() - count($operatorPerQuote),
+            );
         });
     }
 
@@ -93,8 +109,7 @@ final class RequestAssignmentService
      * balance across, so the action has a single mode).
      *
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
-     * @return int the number of offers reached (in scope), the same count
-     *             assignOperators() reports
+     * @return int the number of offers reached (in scope)
      */
     public function assignManagerGa1(array $requestIds, User $actor, ?int $userId): int
     {
@@ -130,7 +145,12 @@ final class RequestAssignmentService
 
     /**
      * br-balanced over the Sede's operators, weighted by the offers each
-     * already operates.
+     * already operates and NARROWED by competence (spec 0110, AC-024): every
+     * offer is distributed only among the operators competent for the product
+     * categories of its own opportunity's lines (INV-1). An offer nobody is
+     * competent for is absent from the returned map — the caller reports it
+     * as `skipped` rather than forcing it onto an incompetent operator. The
+     * 422 stays reserved for a Sede with no operators at all (AC-022).
      *
      * @param  array<int, int>  $quoteIds  ordered ascending
      * @return array<int, int> quoteId => operatorId
@@ -143,7 +163,17 @@ final class RequestAssignmentService
             abort(422, 'The selected Sede has no operators to distribute requests to.');
         }
 
-        return $this->distributor->distribute($operatorIds, $this->currentLoads($operatorIds), $quoteIds);
+        $requiredByQuote = $this->quoteCompetence->requiredByQuote($quoteIds);
+
+        $candidatesByQuote = $this->competence->competentByRequirement(
+            $operatorIds,
+            array_combine($quoteIds, array_map(
+                static fn (int $quoteId): array => $requiredByQuote[$quoteId] ?? [],
+                $quoteIds,
+            )),
+        );
+
+        return $this->distributor->distributeAmong($candidatesByQuote, $this->currentLoads($operatorIds));
     }
 
     /**
@@ -169,8 +199,13 @@ final class RequestAssignmentService
      * One offer: the Sede column then the GA2 Operatore (Quote column +
      * `quote_user` pivot slot sync), with the same explicit activity entry the work panel
      * writes, anchored on the Opportunity (D-9).
+     *
+     * `$writeOperator` false leaves the Operatore slot entirely alone (spec
+     * 0110): the offer was skipped for lack of a competent candidate, which
+     * must not be confused with an explicit "clear the operator" — it still
+     * receives the Sede, like every other offer in the batch.
      */
-    private function assignOne(Quote $quote, User $actor, int $operationalSiteId, ?int $operatorId): void
+    private function assignOne(Quote $quote, User $actor, int $operationalSiteId, ?int $operatorId, bool $writeOperator = true): void
     {
         $changed = [];
         $old = [];
@@ -185,7 +220,9 @@ final class RequestAssignmentService
         $quote->operational_site_id = $operationalSiteId;
         $quote->save();
 
-        $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
+        if ($writeOperator) {
+            $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
+        }
 
         if ($changed === []) {
             return;

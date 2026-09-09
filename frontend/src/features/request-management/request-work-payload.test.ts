@@ -47,6 +47,7 @@ function panel(overrides: Partial<RequestWorkPanel> = {}): RequestWorkPanel {
 function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWorkFormValues {
   return {
     next_callback_at: null,
+    general_notes: '',
     client_identity: null,
     client_contacts: [],
     client_address: [],

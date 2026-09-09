@@ -60,6 +60,8 @@ export const requestManagement = {
       singleHint: 'Assegna tutte le richieste selezionate allo stesso operatore.',
     },
     success: 'Operatori assegnati a {{count}} richieste.',
+    successWithSkipped:
+      'Operatori assegnati a {{count}} richieste. {{skipped}} senza operatore competente.',
     errors: {
       noOperators: 'Nessun operatore trovato per la Sede selezionata.',
       generic: 'Impossibile assegnare gli operatori. Riprova.',
@@ -195,6 +197,7 @@ export const requestManagement = {
     genericError: 'Si è verificato un errore. Riprova.',
     generalNotes: {
       title: 'Note generali',
+      placeholder: 'Cosa ha chiesto il cliente, con le sue parole…',
     },
     callback: {
       title: 'Prossimo richiamo',

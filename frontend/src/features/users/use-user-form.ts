@@ -71,6 +71,7 @@ const SERVER_ERROR_FIELDS = [
   'employment.company_id',
   'employment.primary_operational_site_id',
   'employment.remote_operational_site_ids',
+  'employment.product_category_ids',
   'employment.qualification_type',
   'employment.hired_at',
   'employment.terminated_at',
@@ -88,6 +89,9 @@ const DEFAULT_LOCALE: UserLocale = 'it'
  */
 const EMPTY_REMOTE_SITE_IDS: number[] = []
 
+/** Same stable-reference reasoning for the competence array field (spec 0110). */
+const EMPTY_PRODUCT_CATEGORY_IDS: number[] = []
+
 /** A blank employment sub-form, used for both create and an edit user with no profile yet. */
 const EMPTY_EMPLOYMENT: EmploymentFormValues = {
   is_manager: false,
@@ -98,6 +102,7 @@ const EMPTY_EMPLOYMENT: EmploymentFormValues = {
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: EMPTY_REMOTE_SITE_IDS,
+  product_category_ids: EMPTY_PRODUCT_CATEGORY_IDS,
   qualification_type: null,
   hired_at: '',
   terminated_at: '',
@@ -230,6 +235,8 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
               company_id: employment.company_id,
               primary_operational_site_id: employment.primary_operational_site_id,
               remote_operational_site_ids: employment.remote_operational_site_ids,
+              product_category_ids:
+                employment.product_category_ids ?? EMPTY_PRODUCT_CATEGORY_IDS,
               qualification_type: employment.qualification_type,
               hired_at: employment.hired_at ?? '',
               terminated_at: employment.terminated_at ?? '',
@@ -287,6 +294,13 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
     () =>
       mode.type === 'edit'
         ? relationsToForSelectItems(mode.user.employment?.remote_operational_sites)
+        : EMPTY_RELATION_REFS,
+    [mode],
+  )
+  const selectedProductCategoryItems = useMemo(
+    () =>
+      mode.type === 'edit'
+        ? relationsToForSelectItems(mode.user.employment?.product_categories)
         : EMPTY_RELATION_REFS,
     [mode],
   )
@@ -431,6 +445,7 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
     selectedCompanyItem,
     selectedPrimaryOperationalSiteItem,
     selectedRemoteOperationalSiteItems,
+    selectedProductCategoryItems,
     selectedReportsToItem,
     onSubmit,
     handleAvatarUpload,

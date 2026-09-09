@@ -30,11 +30,17 @@ use App\Enums\RelationshipTypeEnum;
  * columns re-upserted wholesale on every write while the membership is a
  * separate set of pivot rows that EmploymentWriter must be told whether to
  * touch at all (see EmploymentWriter::syncSiteMemberships()).
+ *
+ * `productCategoryIds` (spec 0110, the assignment competence) carries the
+ * SAME per-field tri-state, for the same reason: it is a third set of pivot
+ * rows (`employment_profile_product_category`), independent from the site
+ * membership and from the scalar columns.
  */
 final readonly class EmploymentData
 {
     /**
      * @param  array<int, int>  $remoteOperationalSiteIds
+     * @param  array<int, int>  $productCategoryIds
      */
     public function __construct(
         public bool $delete = false,
@@ -48,6 +54,8 @@ final readonly class EmploymentData
         public ?int $primaryOperationalSiteId = null,
         public bool $remoteOperationalSiteIdsProvided = false,
         public array $remoteOperationalSiteIds = [],
+        public bool $productCategoryIdsProvided = false,
+        public array $productCategoryIds = [],
         public ?QualificationTypeEnum $qualificationType = null,
         public ?string $hiredAt = null,
         public ?string $terminatedAt = null,

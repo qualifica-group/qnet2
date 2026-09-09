@@ -166,6 +166,14 @@ vi.mock('@/features/request-management/api', () => ({
   fetchRequestManagementCategories: (...args: unknown[]) => fetchRequestManagementCategoriesMock(...args),
 }))
 
+// Opening the shared popup resolves the selection's competence requirement
+// (spec 0110 AC-041); this suite is not about that filter — it only has to
+// keep the lookup off the network. Covered by
+// `request-management-table-assign-competence.test.tsx`.
+vi.mock('@/features/assignment/api', () => ({
+  fetchRequiredCategories: vi.fn().mockResolvedValue([]),
+}))
+
 function renderTable() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(

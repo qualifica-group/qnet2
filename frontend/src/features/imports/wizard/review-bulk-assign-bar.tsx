@@ -9,6 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useRequiredCategories } from '@/features/assignment/use-required-categories'
+import type { RequiredCategoriesPayload } from '@/features/assignment/types'
 import {
   AssignOperatorsDialog,
   type AssignOperatorsDialogInput,
@@ -26,8 +28,28 @@ export interface ReviewBulkSelectionState {
   toggledNodes: string[]
 }
 
+/**
+ * Maps the SSRM selection onto the body of `POST /assignment/required-categories`
+ * (spec 0110 AC-041), with the very same `select_all`/`row_ids` semantics as
+ * `buildBulkAssignPayload`: the operator picker is then filtered on exactly
+ * the rows the assignment is about to target.
+ */
+function buildRequiredCategoriesSelection(
+  selection: ReviewBulkSelectionState,
+  importRunId: number,
+): RequiredCategoriesPayload {
+  return {
+    domain: 'import_rows',
+    import_run_id: importRunId,
+    select_all: selection.selectAll,
+    row_ids: selection.toggledNodes.map(Number),
+  }
+}
+
 export interface ReviewBulkAssignBarProps {
   selection: ReviewBulkSelectionState
+  /** The run the selected rows belong to; scopes the competence lookup (spec 0110). */
+  importRunId: number
   /**
    * Total staged rows in the run. The selection state above carries no total
    * of its own, so it is the only way to approximate a selection count while
@@ -77,6 +99,7 @@ function resolveSelectionCount(selection: ReviewBulkSelectionState, totalRows: n
  */
 export function ReviewBulkAssignBar({
   selection,
+  importRunId,
   totalRows,
   defaultSiteId,
   campaignCategoryIds,
@@ -87,6 +110,14 @@ export function ReviewBulkAssignBar({
   const [operatorsOpen, setOperatorsOpen] = useState(false)
   const [productsOpen, setProductsOpen] = useState(false)
   const selectionCount = resolveSelectionCount(selection, totalRows)
+
+  // Competence filter of the popup's Operatore picker (spec 0110 AC-041),
+  // resolved only while the popup is open: a selection on its own — which
+  // changes on every checkbox toggle — must not hit the endpoint.
+  const { competenceCategoryIds, isResolving } = useRequiredCategories({
+    selection: buildRequiredCategoriesSelection(selection, importRunId),
+    enabled: operatorsOpen,
+  })
 
   return (
     <div
@@ -120,6 +151,8 @@ export function ReviewBulkAssignBar({
         onOpenChange={setOperatorsOpen}
         selectionCount={selectionCount}
         defaultSiteId={defaultSiteId}
+        competenceCategoryIds={competenceCategoryIds}
+        isResolvingCompetence={isResolving}
         onAssign={onAssign}
       />
 

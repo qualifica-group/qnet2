@@ -154,14 +154,6 @@ export interface RequestWorkContext {
   estimated_value: string | number | null
   expected_close_date: string | null
   success_probability: number | null
-  /**
-   * "Note generali" (user directive 2026-07-27): the opportunity's free-text
-   * notes, inherited from the originating lead. READ-ONLY in this module —
-   * highlighted at the top of the side column because operators rely on it.
-   * Optional for the same fixture-compatibility reason as `rewards` below;
-   * treat a missing key the same as `null`.
-   */
-  general_notes?: string | null
 }
 
 /**
@@ -171,6 +163,14 @@ export interface RequestWorkContext {
 export interface RequestWorkPanel {
   /** The Offerta (Quote) id — this module's own record id since spec 0086. */
   id: number
+  /**
+   * "Note generali" (user directive 2026-07-27): the opportunity's free-text
+   * notes, inherited from the originating lead. EDITABLE from this panel since
+   * the direttiva utente 2026-09-09 — which is why it sits here and no longer
+   * in the read-only `context` block below. Optional for the same
+   * fixture-compatibility reason as `rewards`; treat a missing key as `null`.
+   */
+  general_notes?: string | null
   /**
    * Spec 0086 D-9: the underlying Opportunity's id, the identifier of the
    * COLLABORATIVE record — documents, notes, activity history and field

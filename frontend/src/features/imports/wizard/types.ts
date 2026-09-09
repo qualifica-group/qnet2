@@ -318,9 +318,15 @@ export interface BulkAssignImportRowPayload {
   row_ids: number[]
 }
 
-/** Response shape of `PATCH .../rows/assign` (envelope `data`). */
+/**
+ * Response shape of `PATCH .../rows/assign` (envelope `data`): how many rows
+ * were written, plus (spec 0110, additive) how many `balanced` left without an
+ * operator because no operator of the Sede is competent for them — always 0 in
+ * `single` mode, and absent altogether on a response predating the delta.
+ */
 export interface BulkAssignImportRowResult {
   updated: number
+  skipped?: number
 }
 
 /** Response shape of `GET /imports/{domain}/{importRun}/summary` (envelope `data.summary`). */

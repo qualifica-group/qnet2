@@ -181,8 +181,10 @@ it('PATCH source with an unknown id -> 422, nothing written', function () {
 });
 
 // 422, not 403: the column is absent from the engine's editable allow-list
-// altogether (a STRUCTURAL rejection, before any field-permission check) —
-// this module never owns `general_notes`, the opportunities form does.
+// altogether (a STRUCTURAL rejection, before any field-permission check).
+// The field IS writable from the work panel since the direttiva utente
+// 2026-09-09 — but only from there: no inline cell editor was asked for, and
+// the grid contract is unchanged.
 it('general_notes is not writable inline', function () {
     $actor = worklistColumnsActor(['viewAny', 'update']);
     $quote = worklistColumnsRequest($actor);

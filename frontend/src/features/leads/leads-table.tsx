@@ -19,8 +19,10 @@ import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actio
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
+import { useRequiredCategories } from '@/features/assignment/use-required-categories'
 import { leadColumnRenderers } from '@/features/leads/column-renderers'
 import { deleteLead } from '@/features/leads/api'
+import { resolveAssignFeedback } from '@/features/leads/assign-feedback'
 import { useLeadConversion } from '@/features/leads/use-lead-conversion'
 import {
   AssignOperatorsDialog,
@@ -155,9 +157,17 @@ export function LeadsTable() {
   const [assignDefaultSite, setAssignDefaultSite] = useState<AssignOperatorsDialogSite | null>(null)
   const canAssignOperators = can('leads.update')
 
+  // Competence filter of the popup's Operatore picker (spec 0110 AC-041):
+  // resolved here, not in the dialog, which stays domain-agnostic. Gated on
+  // the popup being open so a selection alone never issues the request.
+  const { competenceCategoryIds, isResolving } = useRequiredCategories({
+    selection: assignIds.length > 0 ? { domain: 'leads', ids: assignIds } : null,
+    enabled: assignOpen,
+  })
+
   const assignMutation = useAssignOperators({
     onSuccess: (result) => {
-      toast.success(t('leads.assign.success', { count: result.assigned }))
+      toast.success(resolveAssignFeedback(t, 'leads.assign', result))
       refreshGrid()
       tableRef.current?.clearSelection()
       invalidateStats()
@@ -284,6 +294,8 @@ export function LeadsTable() {
         onOpenChange={setAssignOpen}
         selectionCount={assignIds.length}
         defaultSite={assignDefaultSite}
+        competenceCategoryIds={competenceCategoryIds}
+        isResolvingCompetence={isResolving}
         onAssign={handleAssign}
       />
 

@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\DataObjects\Assignment\AssignmentOutcome;
 use App\Enums\LeadAssignmentMode;
 use App\Models\Lead;
+use App\Services\Assignment\LeadCompetence;
+use App\Services\Assignment\OperatorCompetence;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -16,7 +19,11 @@ use Illuminate\Support\Facades\DB;
  */
 class LeadAssignmentService
 {
-    public function __construct(private readonly LeadOperatorDistributor $distributor) {}
+    public function __construct(
+        private readonly LeadOperatorDistributor $distributor,
+        private readonly LeadCompetence $leadCompetence,
+        private readonly OperatorCompetence $competence,
+    ) {}
 
     /**
      * Every lead in $leadIds always receives $operationalSiteId. In
@@ -25,11 +32,10 @@ class LeadAssignmentService
      * operators — see assignBalanced()). Whole operation is one transaction.
      *
      * @param  array<int, int>  $leadIds
-     * @return int the number of leads assigned
      */
-    public function assignOperators(array $leadIds, int $operationalSiteId, LeadAssignmentMode $mode, ?int $operatorId): int
+    public function assignOperators(array $leadIds, int $operationalSiteId, LeadAssignmentMode $mode, ?int $operatorId): AssignmentOutcome
     {
-        return DB::transaction(function () use ($leadIds, $operationalSiteId, $mode, $operatorId): int {
+        return DB::transaction(function () use ($leadIds, $operationalSiteId, $mode, $operatorId): AssignmentOutcome {
             // Step 1: every targeted lead gets the chosen Sede regardless of mode.
             Lead::query()->whereIn('id', $leadIds)->update(['operational_site_id' => $operationalSiteId]);
 
@@ -41,17 +47,30 @@ class LeadAssignmentService
     }
 
     /**
+     * `single` assigns the chosen operator to every targeted lead without
+     * checking their competence (spec 0110, AC-023: user decision R-1), hence
+     * nothing is ever skipped on this branch.
+     *
      * @param  array<int, int>  $leadIds
      */
-    private function assignSingleOperator(array $leadIds, ?int $operatorId): int
+    private function assignSingleOperator(array $leadIds, ?int $operatorId): AssignmentOutcome
     {
-        return Lead::query()->whereIn('id', $leadIds)->update(['operator_id' => $operatorId]);
+        return new AssignmentOutcome(
+            assigned: Lead::query()->whereIn('id', $leadIds)->update(['operator_id' => $operatorId]),
+        );
     }
 
     /**
+     * br-balanced narrowed by competence (spec 0110, AC-024): the Sede stays
+     * the outer filter, but each lead is distributed only among the operators
+     * competent for ITS OWN required categories (INV-1). A lead nobody is
+     * competent for keeps its current operator and is counted as `skipped`;
+     * it still received the Sede in step 1 of assignOperators(). The 422
+     * stays reserved for a Sede with no operators at all.
+     *
      * @param  array<int, int>  $leadIds
      */
-    private function assignBalanced(array $leadIds, int $operationalSiteId): int
+    private function assignBalanced(array $leadIds, int $operationalSiteId): AssignmentOutcome
     {
         $operatorIds = $this->distributor->operatorIdsForSite($operationalSiteId);
 
@@ -59,14 +78,26 @@ class LeadAssignmentService
             abort(422, 'The selected Sede has no operators to distribute leads to.');
         }
 
-        $loads = $this->distributor->currentLoads($operatorIds);
-        $orderedLeadIds = collect($leadIds)->sort()->values()->all();
-        $assignments = $this->distributor->distribute($operatorIds, $loads, $orderedLeadIds);
+        $orderedLeadIds = collect($leadIds)->unique()->sort()->values()->all();
+        $requiredByLead = $this->leadCompetence->requiredByLead($orderedLeadIds);
+
+        $candidatesByLead = $this->competence->competentByRequirement(
+            $operatorIds,
+            array_combine($orderedLeadIds, array_map(
+                static fn (int $leadId): array => $requiredByLead[$leadId] ?? [],
+                $orderedLeadIds,
+            )),
+        );
+
+        $assignments = $this->distributor->distributeAmong($candidatesByLead, $this->distributor->currentLoads($operatorIds));
 
         foreach ($this->distributor->groupByOperator($assignments) as $assignedOperatorId => $ids) {
             Lead::query()->whereIn('id', $ids)->update(['operator_id' => $assignedOperatorId]);
         }
 
-        return count($assignments);
+        return new AssignmentOutcome(
+            assigned: count($assignments),
+            skipped: count($orderedLeadIds) - count($assignments),
+        );
     }
 }

@@ -202,6 +202,7 @@ export const importWizard = {
       placeholder: 'Seleziona…',
       searchPlaceholder: 'Cerca…',
       empty: 'Nessun risultato.',
+      emptyCompetent: 'Nessun operatore competente per questa riga.',
       selectError: 'Impossibile caricare le opzioni.',
       selectClear: 'Rimuovi selezione',
       useDefault: 'Usa predefinito',
@@ -243,6 +244,8 @@ export const importWizard = {
       actionsLabel: 'Azioni ({{count}})',
       assign: 'Assegna operatori',
       success: 'Assegnato a {{count}} riga/e.',
+      successWithSkipped:
+        'Assegnato a {{count}} riga/e. {{skipped}} senza operatore competente.',
       products: {
         menuLabel: 'Assegna prodotti',
         title: 'Assegna prodotti',

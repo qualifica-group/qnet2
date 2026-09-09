@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0110-operator-competence-assignment" status="approved" owner="utente" date="2026-09-09">
+
+  <goal>
+    Dare a ogni utente una competenza operativa — la funzione aziendale che gia' possiede piu'
+    un nuovo insieme di categorie prodotto — e usarla per restringere CHI puo' ricevere un
+    record in assegnazione: le righe dell'import lead, i lead reali e le offerte di Gestione
+    richieste vanno all'operatore competente per la categoria prodotto del record, non a un
+    operatore qualsiasi della Sede.
+  </goal>
+
+  <context>
+    Decisioni di prodotto congelate con l'utente (AskUserQuestion, 2026-09-09):
+      1. L'associazione vive sull'EMPLOYMENT PROFILE: si riusa `employment_profiles.business_function_id`
+         (gia' esistente, singola) e si aggiunge SOLO il lato categorie prodotto (multiplo).
+      2. Non nasce una terza modalita' di assegnazione: le due esistenti — `balanced` ("equa") e
+         `single` ("per utente") — diventano entrambe competence-aware.
+      3. Requisito della riga = categorie dei suoi "Prodotti di interesse"; se la riga non ne ha,
+         le categorie effettive della sua campagna.
+      4. Criterio: funzione aziendale E categoria prodotto. Nessun candidato -> record NON assegnato.
+      5. `single`: SOLO picker filtrato lato UI, nessun rifiuto server (scelta esplicita dell'utente;
+         vedi <risks> R-1).
+      6. `balanced`: la Sede resta un filtro, la competenza si aggiunge (Sede AND competenza).
+      7. Perimetro: ovunque si assegnano operatori — import lead, lead reali, Gestione richieste.
+      8. Record che non esprime nessuna categoria richiesta -> nessun filtro (tutti candidati).
+      9. Utente senza categorie configurate (o senza funzione) -> "jolly", competente per tutto:
+         evita che al rilascio ogni assegnazione trovi zero candidati.
+
+    Codebase esistente da rispettare (nomi verificati sul codice reale, non ipotizzati):
+      - `employment_profiles` (spec 0015): colonna `business_function_id` nullable `nullOnDelete`.
+        Model `App\Models\EmploymentProfile` (`#[Fillable]` esplicito), relazione `businessFunction()`.
+        Il profilo appartiene a `User` via il concern `App\Models\Concerns\HasEmployment` (`$user->employment`).
+      - Precedente diretto per un pivot sul profilo: `employment_profile_operational_site` (spec 0103) —
+        FK nominate a mano (il nome di default supera i 64 caratteri MySQL), cascade su entrambi i lati,
+        unique sulla coppia. Model: `operationalSites()`, `primaryOperationalSiteId()`/
+        `remoteOperationalSiteIds()` come `Attribute` PUBBLICI letti dalla collection gia' caricata.
+      - Scrittura: `App\Services\Users\EmploymentWriter` (`write()`, `syncSiteMemberships()`,
+        `targetMemberships()`), DTO `App\DataObjects\Users\EmploymentData` con tri-state per-campo
+        (`remoteOperationalSiteIdsProvided`), concern `App\Http\Requests\Concerns\ValidatesEmployment`.
+      - Lettura: `App\Http\Resources\EmploymentResource` (ids + reference `{id,label}` con `whenLoaded`).
+      - Permessi di campo: `App\Authorization\UsersAuthorization` — 13 `FieldDefinition('employment.*')`
+        con sezione `employment` e relativo ceiling.
+      - Tassonomia: `product_categories` (adjacency list `parent_id`) con `business_function_id`
+        EREDITATO transitivamente (spec 0023). Risalita e derivate in
+        `App\Services\ProductCategories\CategoryHierarchy`: `effectiveBusinessFunction(ProductCategory)`
+        -> `array{id,name,inherited,source_category}|null`, `descendantIds(int)`, `parentIdMap()`.
+      - `products.category_id` (Model `Product::category()`), `restrictOnDelete`.
+      - Requisito dei record:
+        * riga import: `import_run_rows.product_ids` (colonna JSON, tri-state — null eredita il
+          `global_config` del run), campagna per-riga o globale via
+          `App\Imports\Leads\LeadRowCampaign::resolve($mappedValues, $globalConfig)` (spec 0108 D-6).
+          Categorie effettive della campagna: progetto-first, come in
+          `App\Imports\Leads\LeadImportProductCoherence::effectiveCategoryIds()` e
+          `CampaignForSelectResource::effectiveProductCategoryIds()`.
+        * lead reale: `Lead::productsOfInterest()` (pivot `lead_product`), `Lead::campaign()`.
+        * offerta: `Quote` -> Opportunity -> `opportunity_product_lines`
+          (coppie uniche `business_function_id` + `product_category_id`, spec 0040 rev.3).
+      - Assegnazione (le tre superfici, oggi identiche nella logica):
+        * `PATCH /api/imports/{domain}/{importRun}/rows/assign` — `ImportController::bulkAssign`,
+          `BulkAssignRequest` (semantica `select_all`/`row_ids` di AG Grid SSRM),
+          `ImportService::bulkAssign()`/`bulkAssignBalanced()`. Risponde `{ updated }`.
+        * `POST /api/leads/assign-operators` — `LeadController::assignOperators`,
+          `AssignOperatorsRequest`, `LeadAssignmentService::assignOperators()`. Risponde `{ assigned }`.
+        * `POST /api/request-management/assign-operators` — `RequestManagementController::assignOperators`,
+          `AssignRequestOperatorsRequest`, `RequestAssignmentService::assignOperators()` (scope D-3:
+          le offerte non raggiungibili dall'attore sono saltate in silenzio). Risponde `{ assigned }`.
+        * Algoritmo condiviso: `App\Services\LeadOperatorDistributor` — `operatorIdsForSite()`
+          (utenti con quella Sede sul pivot, PHYSICAL o REMOTE), `currentLoads()`, `distribute()`
+          (greedy sul meno carico, pareggio all'id piu' basso), `groupByOperator()`.
+          `LeadAssignmentMode`: `single` | `balanced`.
+      - Picker utenti: `GET /api/users/for-select` — `UserForSelectRequest` +
+        `App\DataObjects\Shared\ForSelectQuery` (parametri ADDITIVI gia' presenti:
+        `operational_site_id`, `business_function_id`, `category_ids`, ...) + `UserService::forSelect()`.
+        Lato FE: `USERS_FOR_SELECT_RESOURCE` (`features/users/for-select-api.ts`) consumato da
+        `AsyncPaginatedSelect`; popup condivisa `features/leads/assign-operators-dialog.tsx`
+        (usata da tabella Lead, wizard import via `review-bulk-assign-bar.tsx`, e Gestione richieste);
+        picker per-riga import `features/imports/wizard/review-operator-editor.tsx`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: pivot `employment_profile_product_category` (FK nominate, unique, index), sul modello di `employment_profile_operational_site`.</item>
+      <item>`EmploymentProfile`: relazione `productCategories(): BelongsToMany` + accessor pubblico `productCategoryIds(): Attribute` (proxy per il catalogo permessi di campo).</item>
+      <item>`EmploymentData` + `ValidatesEmployment` + `EmploymentWriter`: tri-state `product_category_ids` (assente = non toccare, `[]` = svuota, array = sostituisce), sincronizzato dentro la stessa transazione di scrittura utente.</item>
+      <item>`EmploymentResource`: `product_category_ids` e `product_categories: [{id,label}]` (solo quando la relazione e' eager-loaded).</item>
+      <item>`UsersAuthorization`: `FieldDefinition('employment.product_category_ids', 'multiselect', 'employment')` + voce nel ceiling.</item>
+      <item>Nuovo servizio di dominio `App\Services\Assignment\OperatorCompetence` con la regola unica di competenza (INV-1..INV-4), piu' tre resolver del requisito: `ImportRowCompetence`, `LeadCompetence`, `QuoteCompetence`.</item>
+      <item>`LeadOperatorDistributor`: nuovo metodo per la distribuzione PER-RECORD su insiemi di candidati diversi riga per riga, senza duplicare l'algoritmo greedy esistente.</item>
+      <item>`mode=balanced` competence-aware sulle tre superfici (import rows, lead reali, offerte); record senza candidati lasciati senza operatore.</item>
+      <item>Risposta additiva `skipped` sui tre endpoint di assegnazione.</item>
+      <item>`GET /api/users/for-select`: parametro additivo `competence_category_ids[]`.</item>
+      <item>Nuovo endpoint `POST /api/assignment/required-categories` (un solo controller per i tre domini) che risolve le categorie richieste da una selezione.</item>
+      <item>Frontend: campo multi-select categorie nel form utente (tab Profilo); picker operatore filtrato per competenza nella popup condivisa, nel picker per-riga dell'import e nella tabella Lead / Gestione richieste; i18n it/en.</item>
+      <item>Trasferimento contatto (spec 0079, `POST /api/request-management/transfer`): picker filtrato per competenza. RILEVATO IN CORSO D'OPERA — `RequestTransferService::transferOne()` scrive `operator_id` attraverso lo stesso `RequestOperatorWriter` delle altre superfici, quindi assegna lo stesso slot GA2 e ricade nella direttiva "ovunque si assegnano operatori". E' `single` only: solo picker filtrato, nessuna modifica al backend.</item>
+      <item>Test Pest (backend) e Vitest (frontend) mappati 1:1 sugli acceptance criteria.</item>
+    </in>
+    <out>
+      <item>Rifiuto server-side per `mode=single` (decisione utente: solo picker filtrato). Vedi R-1.</item>
+      <item>Assegnazione automatica in fase di staging dell'import: le righe continuano a nascere senza operatore.</item>
+      <item>Nuova modalita' di assegnazione: `LeadAssignmentMode` resta `single` | `balanced`.</item>
+      <item>Slot manager GA1/GA3 (`POST /request-management/assign-manager-ga1`, spec 0104) e ogni altro campo utente che non sia l'Operatore GA2. NB: il trasferimento contatto NON rientra in questa esclusione — scrive proprio l'Operatore GA2 (vedi scope/in).</item>
+      <item>Il pivot `business_function_user` (spec 0010) e la funzione multipla: il match legge SOLO `employment_profiles.business_function_id`.</item>
+      <item>Backfill/seed delle competenze sugli utenti di produzione (mitigato dalla regola jolly INV-4).</item>
+      <item>Competenza su Task, Work order, Contratti, Referenti e ogni altro modulo che assegna utenti.</item>
+      <item>Colonne SSRM "competenza" sulla tabella Utenti e filtri avanzati relativi.</item>
+      <item>Notifiche di assegnazione: `AssignmentNotifier` resta invariato, notifica solo cio' che viene effettivamente assegnato.</item>
+    </out>
+  </scope>
+
+  <invariants>
+    <item id="INV-1">Requisito di un record = insieme di categorie prodotto richieste. Riga import: categorie dei `product_ids` effettivi della riga (override di riga, altrimenti globale del run); se vuoto, categorie effettive della campagna della riga. Lead: categorie dei `productsOfInterest`; se vuoto, categorie effettive della campagna. Offerta: `product_category_id` delle righe `opportunity_product_lines` dell'opportunita'.</item>
+    <item id="INV-2">Competenza dell'utente = chiusura discendente delle categorie sul suo employment profile: una categoria configurata copre se stessa e tutti i suoi discendenti (`CategoryHierarchy`), coerente con l'ereditarieta' di spec 0023.</item>
+    <item id="INV-3">Un utente e' competente per un record se esiste una categoria richiesta C tale che C appartiene alla chiusura delle sue categorie E `employment.business_function_id` coincide con la funzione EFFETTIVA di C (`CategoryHierarchy::effectiveBusinessFunction`). Se C non ha funzione effettiva, la condizione si riduce alla sola categoria.</item>
+    <item id="INV-4">Deroghe, nell'ordine: (a) record senza nessuna categoria richiesta -> nessun filtro, tutti i candidati restano; (b) utente senza categorie configurate OPPURE senza `business_function_id` -> jolly, competente per qualunque record.</item>
+    <item id="INV-5">Il filtro di competenza NARROWS soltanto: non aggiunge mai un candidato che i filtri preesistenti (Sede, ricerca, `ids[]` di idratazione) avevano escluso.</item>
+  </invariants>
+
+  <data_contract>
+
+    <endpoint method="POST" path="/api/users" note="e PUT /api/users/{user} — solo la delta employment">
+      <request>
+        employment: {
+          ...campi esistenti invariati...,
+          product_category_ids?: number[]   // tri-state: chiave assente = non toccare;
+                                            // [] = svuota; array = sostituisce l'insieme
+        }
+      </request>
+      <response status="200">
+        { success, message, data: { ...user..., employment: {
+            ...campi esistenti invariati...,
+            product_category_ids: number[],
+            product_categories?: [{ id: number, label: string }]  // solo se eager-loaded
+        } } }
+      </response>
+      <errors>
+        403 senza permesso sul campo (`employment.product_category_ids` bloccato dalla matrice per-ruolo);
+        422 id categoria inesistente o duplicato.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/users/for-select">
+      <request>
+        ...parametri esistenti invariati (search, offset, limit, ids[], operational_site_id)...,
+        competence_category_ids?: number[]  // ADDITIVO: restringe ai soli utenti competenti
+                                            // per almeno una di queste categorie (INV-3/INV-4).
+                                            // Assente o [] = nessun filtro (retro-compat totale).
+      </request>
+      <response status="200">
+        { success, data: { items: [{ id, label, subtitle, meta }], total, offset, limit } }
+        // shape invariata: cambia solo QUALI utenti compaiono
+      </response>
+      <errors>422 su id categoria inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/assignment/required-categories">
+      <request>
+        {
+          domain: 'import_rows' | 'leads' | 'quotes',   // required
+          // domain=import_rows: selezione con la STESSA semantica di BulkAssignRequest
+          import_run_id?: number,        // required_if:domain,import_rows
+          select_all?: boolean,          // default false
+          row_ids?: number[],            // target quando select_all=false, esclusioni quando true
+          // domain=leads | quotes:
+          ids?: number[]                 // required_if:domain,leads|quotes — min:1
+        }
+      </request>
+      <response status="200">
+        { success, data: { product_category_ids: number[] } }
+        // UNIONE dei requisiti dei record selezionati (D-14), ordinata crescente, deduplicata.
+        // [] significa "nessun requisito": il chiamante NON passa competence_category_ids.
+      </response>
+      <errors>
+        403 senza il permesso di lettura del dominio (`imports.*` per import_rows / `leads.viewAny`
+        / `request-management.viewAny`), 404 run inesistente o di un altro attore,
+        422 dominio sconosciuto o selezione incoerente.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/imports/{domain}/{importRun}/rows/assign">
+      <request>...invariata (operator_id, operational_site_id, product_ids, mode, select_all, row_ids)...</request>
+      <response status="200">
+        { success, data: { updated: number, skipped: number } }
+        // `skipped` (ADDITIVO): righe targettate che `mode=balanced` ha lasciato senza operatore
+        // perche' nessun operatore della Sede e' competente. Sempre 0 con mode=single.
+      </response>
+      <errors>422 Sede senza operatori (invariato), 422 coerenza prodotti (invariato), 403/404 invariati.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/leads/assign-operators">
+      <request>...invariata (lead_ids, operational_site_id, mode, operator_id)...</request>
+      <response status="200">{ success, message, data: { assigned: number, skipped: number } }</response>
+      <errors>422 Sede senza operatori (invariato), 403 per lead non aggiornabile (invariato).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/request-management/assign-operators">
+      <request>...invariata (request_ids, operational_site_id, mode, operator_id)...</request>
+      <response status="200">{ success, message, data: { assigned: number, skipped: number } }</response>
+      <errors>422 Sede senza operatori (invariato), 403 senza `request-management.assignOperator` (invariato).</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">Dato un utente con employment profile, quando PUT /api/users/{user} invia `employment.product_category_ids: [A,B]`, allora il pivot `employment_profile_product_category` contiene esattamente le due righe e la risposta espone `product_category_ids: [A,B]`.</criterion>
+    <criterion id="AC-002">Dato un utente con categorie [A,B], quando il payload NON contiene la chiave `employment.product_category_ids`, allora il pivot resta invariato (tri-state "assente = non toccare", come `remote_operational_site_ids`).</criterion>
+    <criterion id="AC-003">Dato un utente con categorie [A,B], quando il payload contiene `employment.product_category_ids: []`, allora il pivot viene svuotato.</criterion>
+    <criterion id="AC-004">Quando si cancella una categoria prodotto referenziata da una competenza, allora le righe del pivot spariscono con essa e nessun altro record viene toccato; cancellando l'employment profile spariscono le sue competenze.</criterion>
+    <criterion id="AC-005">Dato un ruolo a cui la matrice per-ruolo blocca `employment.product_category_ids`, quando quell'attore invia un valore diverso da quello corrente, allora risponde 422 e nulla viene scritto; reinviare il valore IDENTICO non produce errore.</criterion>
+
+    <criterion id="AC-010">Dato un record che richiede la categoria C con funzione effettiva F, un utente con `business_function_id = F` e categorie contenenti C e' competente; un utente con categorie contenenti C ma `business_function_id != F` NON lo e'; un utente con `business_function_id = F` ma categorie che non contengono C (e non vuote) NON lo e'. (INV-3)</criterion>
+    <criterion id="AC-011">Dato un utente competente per la categoria padre P e un record che richiede il figlio C discendente di P, allora l'utente e' competente. (INV-2)</criterion>
+    <criterion id="AC-012">Dato un record che non esprime nessuna categoria richiesta, allora l'insieme dei candidati e' identico a quello pre-feature (nessun filtro). (INV-4a)</criterion>
+    <criterion id="AC-013">Dato un utente senza nessuna categoria configurata, oppure con categorie ma senza `business_function_id`, allora e' competente per qualunque record. (INV-4b)</criterion>
+    <criterion id="AC-014">Data una riga di import con `product_ids` propri, allora il requisito e' l'insieme delle `products.category_id` di quei prodotti e la campagna NON viene consultata; con `product_ids` vuoti/assenti, il requisito e' l'insieme delle categorie effettive della campagna della riga (per-riga se il run legge la campagna da colonna, globale altrimenti). (INV-1)</criterion>
+    <criterion id="AC-015">Dato un lead reale, il requisito e' l'insieme delle categorie dei suoi `productsOfInterest`, con fallback alle categorie effettive della sua campagna; data un'offerta, e' l'insieme dei `product_category_id` delle righe `opportunity_product_lines` della sua opportunita'. (INV-1)</criterion>
+
+    <criterion id="AC-020">Dato `PATCH .../rows/assign` con `mode=balanced` su righe che richiedono categorie diverse, allora ogni riga finisce a un operatore della Sede competente per QUELLA riga, e il carico e' bilanciato dentro ciascun sottoinsieme di candidati (stesso greedy di `LeadOperatorDistributor::distribute`, pareggio all'id piu' basso).</criterion>
+    <criterion id="AC-021">Dato `mode=balanced` e una riga per cui nessun operatore della Sede e' competente, allora quella riga NON riceve operatore, riceve comunque la Sede, e la risposta la conta in `skipped`; le altre righe della stessa chiamata vengono assegnate regolarmente (nessun all-or-nothing).</criterion>
+    <criterion id="AC-022">Dato `mode=balanced` su una Sede senza NESSUN operatore, allora la risposta resta 422 con il messaggio odierno (comportamento invariato).</criterion>
+    <criterion id="AC-023">Dato `mode=single`, allora il server assegna l'operatore indicato a tutte le righe targettate senza verificarne la competenza, `skipped` vale 0 e il comportamento e' identico a quello pre-feature (decisione utente; vedi R-1).</criterion>
+    <criterion id="AC-024">AC-020/AC-021 valgono identici su `POST /api/leads/assign-operators` e su `POST /api/request-management/assign-operators`, quest'ultimo mantenendo lo scope D-3 (le offerte non raggiungibili restano escluse e non compaiono ne' in `assigned` ne' in `skipped`).</criterion>
+    <criterion id="AC-025">Dato un parco utenti in cui nessuno ha competenze configurate, allora le tre assegnazioni `balanced` producono esattamente le assegnazioni pre-feature e `skipped` vale 0 (non-regressione garantita da INV-4b).</criterion>
+
+    <criterion id="AC-030">Dato `GET /api/users/for-select?competence_category_ids[]=C`, allora rispondono solo gli utenti competenti per C (piu' i jolly), il totale riflette il filtro e la shape della risposta e' invariata.</criterion>
+    <criterion id="AC-031">Dato `GET /api/users/for-select` senza `competence_category_ids`, allora la risposta e' identica a quella pre-feature; combinato con `operational_site_id` i due filtri si sommano (AND). (INV-5)</criterion>
+    <criterion id="AC-032">Dato `POST /api/assignment/required-categories` con `domain=import_rows`, `import_run_id` e una selezione, allora risponde l'unione ordinata e deduplicata delle categorie richieste dalle righe targettate, con la stessa semantica `select_all`/`row_ids` dell'endpoint di assegnazione; `domain=leads`/`quotes` fanno lo stesso su `ids[]`.</criterion>
+    <criterion id="AC-033">Dato `POST /api/assignment/required-categories` invocato da un attore senza il permesso di lettura del dominio richiesto, allora risponde 403 e nessun dato di altri record trapela; un `import_run_id` di un altro attore risponde 404.</criterion>
+
+    <criterion id="AC-040">Dato il form utente, tab Profilo, allora accanto alla funzione aziendale compare un multi-select "Categorie prodotto" alimentato dal for-select categorie; salvando, il payload porta `employment.product_category_ids` e in modifica il campo e' precompilato con le categorie correnti.</criterion>
+    <criterion id="AC-041">Data la popup "Assegna operatori" aperta da una selezione, allora il picker Operatore propone solo gli utenti competenti per almeno un record selezionato (unione, D-14), risolta via `POST /api/assignment/required-categories`; quando l'endpoint risponde `[]` il picker non applica nessun filtro.</criterion>
+    <criterion id="AC-042">Dato il picker operatore per-riga del wizard import, allora propone solo gli utenti competenti per QUELLA riga.</criterion>
+    <criterion id="AC-043">Dato un contesto in cui il filtro non lascia nessun candidato, allora il picker mostra uno stato vuoto esplicito ("nessun operatore competente") e il pulsante di conferma resta disabilitato, senza chiamate fallite.</criterion>
+    <criterion id="AC-044">Dopo un'assegnazione `balanced` che ha lasciato indietro dei record, allora l'utente vede un feedback che riporta quanti sono stati assegnati e quanti saltati per mancanza di operatori competenti (i18n it/en, nessuna stringa hardcoded).</criterion>
+    <criterion id="AC-045">Data la popup "Trasferisci contatto" (spec 0079, `single` only), aperta dalla tabella Gestione richieste o dal work panel, allora il picker del nuovo operatore propone solo gli utenti competenti per le offerte trasferite, risolte con `domain: 'quotes'`; il backend del trasferimento resta invariato.</criterion>
+
+  </acceptance_criteria>
+
+  <risks>
+    <item id="R-1">`mode=single` non ha difesa server-side (decisione utente): una chiamata costruita a mano, o una selezione cambiata dopo l'apertura della popup, puo' assegnare un operatore non competente. Non e' un'escalation di permessi — e' una regola di coerenza di dominio — ma resta un buco per cui il dato puo' divergere dalla regola. Chiuderlo in seguito costa un `Validator::after` sul FormRequest, senza toccare il resto della feature.</item>
+    <item id="R-2">La regola jolly (INV-4b) rende la feature invisibile finche' nessuno configura le competenze, ma significa anche che un utente configurato a meta' (funzione sì, categorie no) resta candidato ovunque. E' il prezzo di un rilascio senza blocchi; il segnale per accorgersene e' `skipped` costantemente a 0.</item>
+    <item id="R-3">Il filtro sul picker con `select_all` su run molto grandi risolve l'unione dei requisiti scorrendo le righe targettate: va costruito su una query aggregata (product_ids + campagna), non caricando i modelli, altrimenti la popup diventa lenta al crescere del run.</item>
+  </risks>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: solo cio' che e' gia' in `composer.json` / `package.json`.</item>
+    <item>Identificatori in inglese (tabelle, colonne, rotte, classi, campi API). Prosa e stringhe utente in it/en via i18next.</item>
+    <item>Authz server-side su ogni endpoint: il nuovo `POST /api/assignment/required-categories` riusa i gate del dominio richiesto, non ne introduce di propri.</item>
+    <item>Nessun SQL grezzo, nessun `whereRaw`/`orderByRaw` su input: il filtro di competenza si costruisce da id gia' validati (`exists:`).</item>
+    <item>L'algoritmo greedy di `LeadOperatorDistributor::distribute()` NON si duplica: la variante per-record lo riusa.</item>
+    <item>Retro-compatibilita': ogni parametro e ogni campo di risposta introdotti sono ADDITIVI; un chiamante che li ignora vede il comportamento odierno.</item>
+    <item>File entro 300 righe (soft) / 500 (hard); nessun file di documentazione oltre questa spec e l'aggiornamento di `docs/HANDOFF.md`.</item>
+    <item>Definition of Done: Pest + Vitest eseguiti davvero, Pint pulito, `cd frontend && npx tsc -b --force` pulito.</item>
+  </constraints>
+
+</spec>

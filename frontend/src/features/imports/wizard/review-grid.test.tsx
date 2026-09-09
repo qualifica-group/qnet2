@@ -83,6 +83,18 @@ vi.mock('@/features/imports/wizard/use-review-products-scope', () => ({
   useReviewProductsScope: () => ({ globalDefaultProductIds: [], campaignCategoryIds: [] }),
 }))
 
+// Same reason for the competence lookup the bulk-assign bar now performs
+// (spec 0110 AC-041): it is a TanStack Query hook, and this file mounts
+// `ReviewGrid` without a provider. Its own contract is covered by
+// `review-bulk-assign-bar.test.tsx` and `use-required-categories.test.tsx`.
+vi.mock('@/features/assignment/use-required-categories', () => ({
+  useRequiredCategories: () => ({
+    competenceCategoryIds: undefined,
+    isResolving: false,
+    isError: false,
+  }),
+}))
+
 const SITE_PICK_ID = 84
 const OPERATOR_PICK_ID = 42
 

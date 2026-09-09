@@ -113,7 +113,10 @@ vi.mock('@/features/table/table-view', () => ({
   }),
 }))
 
-/** Mirrors `assign-operators-dialog.test.tsx`'s stub: a plain button per picker. */
+/**
+ * Mirrors `assign-operators-dialog.test.tsx`'s stub: a plain button per
+ * picker, also surfacing the `params` the competence filter drives (spec 0110).
+ */
 const SITE_PICK_ID = 7
 const OPERATOR_PICK_ID = 42
 vi.mock('@/components/ui/async-paginated-select', () => ({
@@ -121,21 +124,31 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
     resource,
     value,
     onChange,
+    params,
     labels,
   }: {
     resource: string
     value: number | null
     onChange: (value: number | null) => void
+    params?: Record<string, string | number | string[] | number[]>
     labels: { triggerLabel: string }
   }) => (
     <button
       type="button"
       aria-label={labels.triggerLabel}
+      data-params={params ? JSON.stringify(params) : ''}
       onClick={() => onChange(resource === 'operational-sites' ? SITE_PICK_ID : OPERATOR_PICK_ID)}
     >
       {value ?? 'none'}
     </button>
   ),
+}))
+
+// `useRequiredCategories` (spec 0110 AC-041) resolves the selection's
+// requirement through this endpoint; every test drives it explicitly.
+const fetchRequiredCategoriesMock = vi.fn()
+vi.mock('@/features/assignment/api', () => ({
+  fetchRequiredCategories: (...args: unknown[]) => fetchRequiredCategoriesMock(...args),
 }))
 
 function renderTable() {
@@ -181,6 +194,8 @@ beforeEach(() => {
   fetchLeadMock.mockReset()
   deleteLeadMock.mockReset()
   assignLeadOperatorsMock.mockReset()
+  fetchRequiredCategoriesMock.mockReset()
+  fetchRequiredCategoriesMock.mockResolvedValue([])
   capturedIsRowSelectable = undefined
   capturedGetBulkActions = undefined
   bulkActionSelection = { ids: [11, 22], rows: [leadRow({ id: 11 }), leadRow({ id: 22 })] }
@@ -323,5 +338,78 @@ describe('LeadsTable — popup Sede precompile (AC-031)', () => {
     openAndPickBalanced()
 
     expect(screen.getByRole('button', { name: 'Site' })).toHaveTextContent('none')
+  })
+})
+
+/**
+ * Spec 0110 AC-041/AC-044: the Lead table resolves the competence of its own
+ * selection and hands it to the shared popup, and its feedback names the
+ * leads a balanced split left without a competent operator.
+ */
+describe('LeadsTable — competence-aware assignment (spec 0110)', () => {
+  it('resolves the requirement of the selected leads only once the popup is open', async () => {
+    renderTable()
+
+    expect(fetchRequiredCategoriesMock).not.toHaveBeenCalled()
+
+    openPopup()
+
+    await waitFor(() =>
+      expect(fetchRequiredCategoriesMock).toHaveBeenCalledWith({ domain: 'leads', ids: [11, 22] }),
+    )
+  })
+
+  it('narrows the operator picker to the competent users (AC-041)', async () => {
+    fetchRequiredCategoriesMock.mockResolvedValue([4, 9])
+    renderTable()
+
+    openPopup()
+    fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+        'data-params',
+        JSON.stringify({ operational_site_id: SITE_PICK_ID, competence_category_ids: [4, 9] }),
+      ),
+    )
+  })
+
+  it('applies no filter when the selection expresses no requirement', async () => {
+    renderTable()
+
+    openPopup()
+    fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
+
+    await waitFor(() => expect(fetchRequiredCategoriesMock).toHaveBeenCalledTimes(1))
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+      'data-params',
+      JSON.stringify({ operational_site_id: SITE_PICK_ID }),
+    )
+  })
+
+  it('reports the leads left without a competent operator (AC-044)', async () => {
+    assignLeadOperatorsMock.mockResolvedValue({ assigned: 1, skipped: 1 })
+    renderTable()
+
+    assignBalanced()
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        'Operators assigned to 1 lead(s). 1 left without a competent operator.',
+      ),
+    )
+  })
+
+  it('keeps the plain feedback when nothing was skipped', async () => {
+    assignLeadOperatorsMock.mockResolvedValue({ assigned: 2, skipped: 0 })
+    renderTable()
+
+    assignBalanced()
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('Operators assigned to 2 lead(s).'),
+    )
   })
 })

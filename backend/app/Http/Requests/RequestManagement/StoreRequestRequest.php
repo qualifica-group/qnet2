@@ -7,6 +7,7 @@ namespace App\Http\Requests\RequestManagement;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\RequestManagement\CreateRequestData;
 use App\DataObjects\Users\ProfileData;
+use App\Http\Requests\Concerns\ValidatesClientIdentityUniqueness;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
@@ -24,7 +25,11 @@ use Illuminate\Validation\Rule;
  * `registry_id` (an existing Registry, untouched) or `client_identity` (+
  * optional `client_contacts`/`client_address`), which creates a brand-new
  * Registry+PersonalData. `product_lines` reuses ValidatesProductLines
- * VERBATIM (D-3, same rules as the opportunities form).
+ * VERBATIM (D-3, same rules as the opportunities form). That new Registry goes
+ * through the SAME identity gate the anagrafica form applies
+ * (ValidatesClientIdentityUniqueness, user directive 2026-09-09): a CF, a
+ * P.IVA or a phone number already held inside the namespace is refused, so the
+ * operator picks the existing anagrafica instead of forking it.
  *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller, mirroring every other action of this module —
@@ -44,6 +49,7 @@ use Illuminate\Validation\Rule;
  */
 class StoreRequestRequest extends FormRequest
 {
+    use ValidatesClientIdentityUniqueness;
     use ValidatesManagerSlots;
     use ValidatesProductLines;
     use ValidatesQuoteLines;
@@ -152,13 +158,17 @@ class StoreRequestRequest extends FormRequest
         $rules['client_contacts'][] = Rule::prohibitedIf(fn (): bool => $this->filled('registry_id'));
         $rules['client_address'][] = Rule::prohibitedIf(fn (): bool => $this->filled('registry_id'));
 
-        return $rules;
+        // The new-client branch creates a real Anagrafica, so it carries the
+        // same identity gate that form carries (user directive 2026-09-09):
+        // CF/P.IVA here, the phone rows in withValidator().
+        return $this->withClientIdentityUniquenessRules($rules);
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
             $this->validateClientProfile($validator);
+            $this->validateClientIdentityUniqueness($validator);
             $this->validateProductLines($validator);
             $this->validateManagerSlots($validator);
             // null opportunity: on create there is nothing persisted, so only

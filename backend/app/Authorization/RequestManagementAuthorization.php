@@ -161,6 +161,12 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // ValidatesQuoteLines, not in the role matrix. NOT mandatory: an
             // offer with no row is a legitimate state (spec 0086 AC-028).
             new FieldDefinition('offer_lines', 'custom'),
+            // "Note generali" (direttiva utente 2026-09-09): the Opportunity's
+            // own free text, editable from the work panel too — it used to be
+            // read-only here, projected inside the panel's `context` block.
+            // It stays a plain, never-mandatory field: a request with no note
+            // is the normal state, and the create form has always written it.
+            new FieldDefinition('general_notes', 'textarea'),
         ];
     }
 
@@ -200,6 +206,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'quote_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'general_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

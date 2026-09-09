@@ -35,7 +35,8 @@ export interface UserForSelectItem extends ForSelectItem {
  * the item carries `label` (name) and `subtitle` (email). `params.operational_site_id`
  * (spec 0048) filters to the operators of that Sede, `params.opportunity_id` (directive
  * 2026-08-06) to that opportunity's Gestori Account — the only users an Offerta accepts as
- * Supervisore. Omitted, every user is returned.
+ * Supervisore, `params.competence_category_ids` (spec 0110) to the users competent
+ * for at least one of those product categories. Omitted, every user is returned.
  */
 export function fetchUsersForSelect(
   params: ForSelectParams = {},
@@ -47,8 +48,13 @@ interface UseUsersForSelectOptions {
   search: string
   ids?: number[]
   enabled?: boolean
-  /** Extra query params, e.g. `{ operational_site_id }` (spec 0048) to scope the Sede's operators. */
-  params?: Record<string, string | number>
+  /**
+   * Extra query params, e.g. `{ operational_site_id }` (spec 0048) to scope the
+   * Sede's operators, or `{ competence_category_ids }` (spec 0110) to scope them
+   * to a product competence. Array values are serialized as repeated `key[]=`
+   * params (Laravel convention), like the underlying `ForSelectParams`.
+   */
+  params?: Record<string, string | number | string[] | number[]>
 }
 
 /**

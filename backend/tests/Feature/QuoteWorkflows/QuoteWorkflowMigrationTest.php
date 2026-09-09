@@ -79,9 +79,14 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_07_100100_move_employment_operational_site_to_pivot` (54th)
     // and
     // `2026_09_07_100200_split_employment_operational_site_field_permission`
-    // (55th).
+    // (55th), spec 0104's
+    // `2026_09_08_100000_rename_request_management_manager_ga3_to_ga1` (56th)
+    // — which landed without bumping this counter, leaving the test red
+    // before spec 0110 ever touched it — and spec 0110's
+    // `2026_09_09_100000_create_employment_profile_product_category_table`
+    // (57th).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 55]);
+    Artisan::call('migrate:rollback', ['--step' => 57]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

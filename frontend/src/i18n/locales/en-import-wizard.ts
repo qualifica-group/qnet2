@@ -203,6 +203,7 @@ export const importWizard = {
       placeholder: 'Select…',
       searchPlaceholder: 'Search…',
       empty: 'No results.',
+      emptyCompetent: 'No operator is competent for this row.',
       selectError: 'Unable to load options.',
       selectClear: 'Clear selection',
       useDefault: 'Use default',
@@ -244,6 +245,8 @@ export const importWizard = {
       actionsLabel: 'Actions ({{count}})',
       assign: 'Assign operators',
       success: 'Assigned to {{count}} row(s).',
+      successWithSkipped:
+        'Assigned to {{count}} row(s). {{skipped}} left without a competent operator.',
       products: {
         menuLabel: 'Assign products',
         title: 'Assign products',

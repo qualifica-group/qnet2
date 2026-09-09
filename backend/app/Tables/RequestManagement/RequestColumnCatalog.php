@@ -182,10 +182,11 @@ final class RequestColumnCatalog
             // OPPORTUNITY_SCALAR_COLUMNS), and `hasFilterValues: false` skips
             // the generic distinct-values fallback, which has no `quotes`
             // column to SELECT DISTINCT on (mirrors ContractColumnCatalog's
-            // QUOTE_SCALAR_COLUMNS precedent). Display-only, mirroring
-            // RequestGeneralNotesCallout in the work panel: this module never
-            // writes the field (the opportunities form owns it), so it is
-            // deliberately absent from RequestManagementAuthorization::fields().
+            // QUOTE_SCALAR_COLUMNS precedent). Display-only IN THE GRID: the
+            // field IS writable from the work panel since the direttiva utente
+            // 2026-09-09 (and catalogued in RequestManagementAuthorization),
+            // but no inline cell editor was asked for — a 5000-char free text
+            // is not a cell-sized edit.
             [
                 'id' => 'general_notes',
                 'label' => 'requestManagement.columns.generalNotes',

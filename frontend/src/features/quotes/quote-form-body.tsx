@@ -31,7 +31,7 @@ import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-statu
 import { QuoteLayoutSection } from '@/features/quotes/quote-layout-section'
 import { QuoteLiveSummary } from '@/features/quotes/quote-summary'
 import { parseQuoteCreateProductIds } from '@/features/quotes/quote-create-params'
-import { EMPTY_LINE_ROW, lineValuesFromProduct } from '@/features/quotes/use-quote-lines-field'
+import { DEFAULT_LINE_QUANTITY, EMPTY_LINE_ROW, lineValuesFromProduct } from '@/features/quotes/use-quote-lines-field'
 import { useQuoteForm } from '@/features/quotes/use-quote-form'
 import { useAllProductTypologies } from '@/features/product-typologies/for-select-api'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
@@ -54,13 +54,6 @@ const NOTES_TAB = 'notes'
 
 /** Empty placeholders when the form's own `formState.errors` has no array-level issue for that tab. */
 const NO_ROW_ERRORS: undefined = undefined
-
-/**
- * The quantity a deep-link-seeded offer row starts on (user directive
- * 2026-08-31): the operator asked for THAT product, so one of it is the only
- * sensible starting point — and the field stays editable like any other.
- */
-const SEEDED_LINE_QUANTITY = 1
 
 /**
  * The quote create/edit form UI (spec 0065 AC-070): testata fields (code,
@@ -208,7 +201,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
           rememberProductTypology(item.id, item.meta.product_typology.id)
         }
 
-        return { ...EMPTY_LINE_ROW, ...lineValuesFromProduct(item, 'revenue'), quantity: SEEDED_LINE_QUANTITY }
+        return { ...EMPTY_LINE_ROW, ...lineValuesFromProduct(item, 'revenue'), quantity: DEFAULT_LINE_QUANTITY }
       }),
       { shouldDirty: true },
     )

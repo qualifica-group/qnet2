@@ -6,6 +6,7 @@ use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -83,6 +84,20 @@ class EmploymentProfileFactory extends Factory
         return $this->afterCreating(function (EmploymentProfile $profile) use ($sites): void {
             $profile->operationalSites()->syncWithoutDetaching(
                 collect($sites)->mapWithKeys(fn (OperationalSite $site): array => [$site->id => ['is_primary' => false]])->all()
+            );
+        });
+    }
+
+    /**
+     * Attaches the given categories as the assignment competence (spec
+     * 0110): same `afterCreating` timing as the site states above, and
+     * freely combinable with them.
+     */
+    public function competentIn(ProductCategory ...$categories): static
+    {
+        return $this->afterCreating(function (EmploymentProfile $profile) use ($categories): void {
+            $profile->productCategories()->syncWithoutDetaching(
+                collect($categories)->pluck('id')->all()
             );
         });
     }

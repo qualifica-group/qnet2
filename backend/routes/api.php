@@ -147,6 +147,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // required from WITHIN this group so every route there still inherits
     // `auth:sanctum`, exactly as if inlined here.
     require __DIR__.'/api/imports.php';
+    require __DIR__.'/api/assignment.php'; // spec 0110, same context (see file header)
 
     // Generic, domain-driven export engine (spec 0014), mirroring
     // tables/{domain} / imports/{domain}: one controller serves every domain
@@ -347,6 +348,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // file stays within the 500-line hard limit. Required INSIDE this
     // auth:sanctum group so every route there inherits the same context.
     require __DIR__.'/api/registries.php';
+    require __DIR__.'/api/identity.php'; // Live identity duplicate check, shared by the anagrafica/referente create forms
     require __DIR__.'/api/projects.php'; // Project statuses / Projects / Campaigns CRUD (spec 0023)
     require __DIR__.'/api/leads.php'; // Leads CRUD (spec 0024) + opportunity-defaults (spec 0040)
     require __DIR__.'/api/opportunities.php'; // Opportunities CRUD (spec 0040)

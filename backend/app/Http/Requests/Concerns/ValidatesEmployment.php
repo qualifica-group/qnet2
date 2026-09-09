@@ -22,6 +22,8 @@ use Illuminate\Validation\Rule;
  * `remote_operational_site_ids` absent from the payload leaves that side of
  * the membership untouched; present with null/empty clears it. See
  * EmploymentData's docblock and EmploymentWriter::syncSiteMemberships().
+ * `product_category_ids` (spec 0110, the assignment competence) behaves
+ * identically, on its own pivot.
  *
  * @phpstan-require-extends FormRequest
  */
@@ -72,6 +74,16 @@ trait ValidatesEmployment
                 $primaryOperationalSiteId !== null ? Rule::notIn([$primaryOperationalSiteId]) : null,
             ]),
 
+            // Assignment competence (spec 0110): same per-field tri-state as
+            // the site membership above — absent leaves the pivot untouched,
+            // an empty array clears it.
+            'employment.product_category_ids' => ['nullable', 'array'],
+            'employment.product_category_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('product_categories', 'id'),
+            ],
+
             'employment.qualification_type' => ['nullable', Rule::enum(QualificationTypeEnum::class)],
             'employment.hired_at' => ['nullable', 'date'],
             'employment.terminated_at' => ['nullable', 'date', 'after_or_equal:employment.hired_at'],
@@ -106,7 +118,9 @@ trait ValidatesEmployment
             primaryOperationalSiteIdProvided: $this->has('employment.primary_operational_site_id'),
             primaryOperationalSiteId: $this->nullableInt('employment.primary_operational_site_id'),
             remoteOperationalSiteIdsProvided: $this->has('employment.remote_operational_site_ids'),
-            remoteOperationalSiteIds: $this->remoteOperationalSiteIds(),
+            remoteOperationalSiteIds: $this->submittedIds('employment.remote_operational_site_ids'),
+            productCategoryIdsProvided: $this->has('employment.product_category_ids'),
+            productCategoryIds: $this->submittedIds('employment.product_category_ids'),
             qualificationType: QualificationTypeEnum::tryFrom((string) $this->input('employment.qualification_type')),
             hiredAt: $this->input('employment.hired_at'),
             terminatedAt: $this->input('employment.terminated_at'),
@@ -123,19 +137,21 @@ trait ValidatesEmployment
     }
 
     /**
-     * The submitted remote site ids, cast to int, or an empty array when the
+     * The ids submitted under $key, cast to int, or an empty array when the
      * key is absent (EmploymentWriter reads the sibling *Provided flag to
-     * tell "absent" from "explicitly emptied").
+     * tell "absent" from "explicitly emptied"). Shared by the remote sites
+     * and the product-category competence, whose payloads have the same
+     * shape.
      *
      * @return array<int, int>
      */
-    private function remoteOperationalSiteIds(): array
+    private function submittedIds(string $key): array
     {
-        if (! $this->has('employment.remote_operational_site_ids')) {
+        if (! $this->has($key)) {
             return [];
         }
 
-        return collect((array) $this->input('employment.remote_operational_site_ids'))
+        return collect((array) $this->input($key))
             ->filter(fn (mixed $id): bool => $id !== null && $id !== '')
             ->map(fn (mixed $id): int => (int) $id)
             ->values()

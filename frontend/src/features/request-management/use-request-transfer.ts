@@ -6,6 +6,7 @@ import type { AssignOperatorsDialogInput } from '@/features/leads/assign-operato
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { transferRequests } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { useQuoteOperatorCompetence } from '@/features/request-management/use-quote-operator-competence'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 
 /**
@@ -62,6 +63,11 @@ export function useRequestTransfer(panel: RequestWorkPanel) {
     [transferMutation, t],
   )
 
+  // Same competence filter as the table's transfer/assign popups (spec 0110
+  // AC-041): this endpoint writes the very same GA2 Operatore slot, on this
+  // one offer.
+  const competence = useQuoteOperatorCompetence([panel.id], isOpen)
+
   const copy = useMemo(
     () => ({
       title: t('requestManagement.transfer.title'),
@@ -78,6 +84,7 @@ export function useRequestTransfer(panel: RequestWorkPanel) {
     onOpenChange: setIsOpen,
     defaultSite: panel.operational_site,
     copy,
+    competence,
     handleTransfer,
   }
 }

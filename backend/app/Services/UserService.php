@@ -9,6 +9,7 @@ use App\DataObjects\Users\EmploymentData;
 use App\DataObjects\Users\ProfileData;
 use App\DataObjects\Users\UpdateUserData;
 use App\Models\User;
+use App\Services\Assignment\OperatorCompetence;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -40,12 +41,16 @@ class UserService
         // remote site (spec 0103): EmploymentResource tells them apart via
         // the pivot's `is_primary` flag, not via separate relations.
         'employment.operationalSites.addresses.city',
+        // Spec 0110: the competence pivot, so EmploymentResource can emit
+        // `product_category_ids`/`product_categories` without lazy-loading.
+        'employment.productCategories',
     ];
 
     public function __construct(
         private readonly RoleAssignmentGuard $guard,
         private readonly ProfileWriter $profileWriter,
         private readonly EmploymentWriter $employmentWriter,
+        private readonly OperatorCompetence $competence,
     ) {}
 
     /**
@@ -251,6 +256,15 @@ class UserService
             });
         }
 
+        // Spec 0110 (AC-030/AC-031): competence NARROWS, and only when asked
+        // for. Expressed as an exclusion because that is the shape
+        // OperatorCompetence answers in — enumerating the competent users
+        // instead would drop every wildcard operator (INV-4b), i.e. everyone
+        // who has not configured a competence yet.
+        if ($query->hasCompetenceCategoryIds()) {
+            $base->whereNotIn('id', $this->competence->excludedUserIds($query->competenceCategoryIds));
+        }
+
         if ($query->hasSearch()) {
             $term = '%'.$query->search.'%';
             $base->where(function ($q) use ($term): void {
@@ -281,7 +295,10 @@ class UserService
     /**
      * Append the explicitly-requested `ids[]` (edit-mode hydration) that are not
      * already on the page, deduplicated. They bypass every narrowing filter
-     * (search, `operational_site_id`) — same precedent as ProductCategoryService/
+     * (search, `operational_site_id`, `competence_category_ids`) — an
+     * already-assigned operator must stay visible in the field that shows
+     * them, even once they stop matching the current filters — same
+     * precedent as ProductCategoryService/
      * OperationalSiteService's own hydration — but eager-load the SAME
      * employment/sites/address/city tree as the main query, so their `meta`
      * resolves without N+1. Total is unaffected.

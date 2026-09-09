@@ -20,6 +20,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
+import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { RELATIONSHIP_TYPES, type RelationshipType } from '@/features/users/types'
 import type { UserFormValues } from '@/features/users/use-user-form'
@@ -33,17 +34,20 @@ interface EmploymentTabProps {
 
 interface ProfileTabContentProps extends EmploymentTabProps {
   selectedBusinessFunctionItem: ForSelectItem | null
+  selectedProductCategoryItems: ForSelectItem[]
   selectedReportsToItem: ForSelectItem | null
 }
 
 /**
- * Profile tab: organizational role (business function, manager status, job
- * description) and the reporting line. `reports_to` is hidden and its value
- * force-nulled at the payload boundary whenever `is_manager` is true (AC-015).
+ * Profile tab: organizational role (business function, the product categories
+ * the user is competent for, manager status, job description) and the
+ * reporting line. `reports_to` is hidden and its value force-nulled at the
+ * payload boundary whenever `is_manager` is true (AC-015).
  */
 export function ProfileTabContent({
   control,
   selectedBusinessFunctionItem,
+  selectedProductCategoryItems,
   selectedReportsToItem,
 }: ProfileTabContentProps) {
   const { t } = useTranslation()
@@ -67,6 +71,21 @@ export function ProfileTabContent({
         emptyLabel={t('users.form.employment.businessFunctionEmpty')}
         errorLabel={t('users.form.employment.businessFunctionError')}
         clearLabel={t('common.clear')}
+        retryLabel={t('common.retry')}
+      />
+
+      <RelationMultiSelectField
+        control={control}
+        name="employment.product_category_ids"
+        metaKey="employment.product_category_ids"
+        label={t('users.form.employment.productCategories')}
+        resource={PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE}
+        searchPlaceholder={t('users.form.employment.productCategoriesSearch')}
+        selected={toRelationFieldRefs(selectedProductCategoryItems)}
+        placeholder={t('users.form.employment.productCategoriesPlaceholder')}
+        emptyLabel={t('users.form.employment.productCategoriesEmpty')}
+        errorLabel={t('users.form.employment.productCategoriesError')}
+        removeLabel={t('users.form.employment.productCategoriesRemove')}
         retryLabel={t('common.retry')}
       />
 

@@ -9,7 +9,7 @@ use App\Enums\ContactTypeEnum;
  * before two of them are compared for equality (spec 0037): email
  * lowercase+trim, phone/mobile/fax/pec/website digits+`+` only, tax_code
  * uppercase+trim. Extracted from `LeadDuplicateMatcher` (spec 0033/0036) so
- * the leads-import duplicate check and `ReferentDuplicateFinder` (spec 0037)
+ * the leads-import duplicate check and `IdentityDuplicateFinder` (spec 0037)
  * share the EXACT same semantics — never fork.
  */
 final class ContactValueNormalizer

@@ -331,6 +331,45 @@ describe('useReviewRows — bulk assign (operator + site)', () => {
     expect(toastSuccessMock).toHaveBeenCalledTimes(1)
   })
 
+  // Spec 0110 AC-044: `balanced` can leave rows behind when no operator of
+  // the Sede is competent for them, and the feedback has to say so.
+  it('names the rows left without a competent operator when the response reports some', async () => {
+    bulkAssignImportRowMock.mockResolvedValue({ updated: 4, skipped: 2 })
+
+    const { result: hookResult } = renderHook(
+      () => useReviewRows({ domain: 'leads', importRunId: 7, onRowUpdated: vi.fn() }),
+      { wrapper: wrapper() },
+    )
+
+    await act(async () =>
+      hookResult.current.handleBulkAssign({
+        operational_site_id: 84,
+        mode: 'balanced',
+        select_all: false,
+        row_ids: [1, 2, 3, 4, 5, 6],
+      }),
+    )
+
+    expect(toastSuccessMock).toHaveBeenCalledWith(
+      'Assigned to 4 row(s). 2 left without a competent operator.',
+    )
+  })
+
+  it('keeps the plain success feedback when nothing was skipped', async () => {
+    bulkAssignImportRowMock.mockResolvedValue({ updated: 4, skipped: 0 })
+
+    const { result: hookResult } = renderHook(
+      () => useReviewRows({ domain: 'leads', importRunId: 7, onRowUpdated: vi.fn() }),
+      { wrapper: wrapper() },
+    )
+
+    await act(async () =>
+      hookResult.current.handleBulkAssign({ select_all: false, row_ids: [1], operator_id: 42 }),
+    )
+
+    expect(toastSuccessMock).toHaveBeenCalledWith('Assigned to 4 row(s).')
+  })
+
   it('toasts an error and rejects when the bulk PATCH fails', async () => {
     bulkAssignImportRowMock.mockRejectedValue({ isAxiosError: true, response: { status: 422 } })
 

@@ -27,6 +27,13 @@ vi.mock('@/features/request-management/api', () => ({
   transferRequests: (...args: unknown[]) => transferRequestsMock(...args),
 }))
 
+// The transfer popup narrows its Operatore picker by competence (spec 0110
+// AC-041): the lookup is driven explicitly here, never over the wire.
+const fetchRequiredCategoriesMock = vi.fn()
+vi.mock('@/features/assignment/api', () => ({
+  fetchRequiredCategories: (...args: unknown[]) => fetchRequiredCategoriesMock(...args),
+}))
+
 vi.mock('@/features/personal-data/api', () => ({
   createContact: vi.fn(),
   updateContact: vi.fn(),
@@ -102,6 +109,8 @@ beforeEach(() => {
   fetchRequestWorkPanelMock.mockReset()
   updateRequestWorkMock.mockReset()
   transferRequestsMock.mockReset()
+  fetchRequiredCategoriesMock.mockReset()
+  fetchRequiredCategoriesMock.mockResolvedValue([])
   vi.mocked(toast.success).mockClear()
   vi.mocked(toast.error).mockClear()
 })
@@ -204,5 +213,39 @@ describe('RequestWorkPanelScreen — "Trasferisci contatto" button (spec 0079 ad
       expect(toast.error).toHaveBeenCalledWith('Unable to transfer the contact. Please try again.'),
     )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Spec 0110 AC-041: the panel's own transfer writes the same GA2 Operatore
+ * slot as the bulk assignment, so its picker is narrowed the same way — on
+ * this one offer, and only once the popup is open.
+ */
+describe('RequestWorkPanelScreen — transfer competence filter (spec 0110)', () => {
+  async function openTransferDialog(id: number) {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({ id, permissions: { ...FULL_PERMISSIONS, actions: { transfer_contact: true } } }),
+    )
+    renderPanel()
+    const [headerButton] = await screen.findAllByRole('button', { name: 'Transfer contact' })
+    fireEvent.click(headerButton)
+  }
+
+  it('resolves the requirement of that single offer when the popup opens', async () => {
+    await openTransferDialog(9)
+
+    await waitFor(() =>
+      expect(fetchRequiredCategoriesMock).toHaveBeenCalledWith({ domain: 'quotes', ids: [9] }),
+    )
+  })
+
+  it('does not resolve anything while the popup stays closed', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({ id: 9, permissions: { ...FULL_PERMISSIONS, actions: { transfer_contact: true } } }),
+    )
+    renderPanel()
+
+    await screen.findAllByRole('button', { name: 'Transfer contact' })
+    expect(fetchRequiredCategoriesMock).not.toHaveBeenCalled()
   })
 })

@@ -70,16 +70,6 @@ export const referents = {
         description: 'Sedi e indirizzi di fatturazione.',
       },
     },
-    duplicateWarning: {
-      title: 'Possibile duplicato',
-      entry: '{{name}} potrebbe essere un duplicato ({{criteria}}).',
-      criteria: {
-        email: 'email',
-        phone: 'telefono',
-        mobile: 'cellulare',
-        taxCode: 'codice fiscale',
-      },
-    },
   },
 }
 

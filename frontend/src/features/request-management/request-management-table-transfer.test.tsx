@@ -62,6 +62,14 @@ vi.mock('@/features/request-management/api', () => ({
   fetchRequestManagementCategories: (...args: unknown[]) => fetchRequestManagementCategoriesMock(...args),
 }))
 
+// Opening either popup resolves the selection's competence requirement
+// (spec 0110 AC-041); this suite is not about that filter — it only keeps the
+// lookup off the network. Covered by
+// `request-management-table-assign-competence.test.tsx`.
+vi.mock('@/features/assignment/api', () => ({
+  fetchRequiredCategories: vi.fn().mockResolvedValue([]),
+}))
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const refreshMock = vi.fn()

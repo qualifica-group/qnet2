@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\DataObjects\Assignment\AssignmentOutcome;
 use App\Enums\ImportRowStatus;
 use App\Enums\ImportStatus;
 use App\Enums\LeadAssignmentMode;
@@ -16,7 +17,11 @@ use App\Jobs\ValidateImportJob;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
 use App\Models\User;
+use App\Services\Assignment\ImportRowCompetence;
+use App\Services\Assignment\ImportRunRowSelection;
+use App\Services\Assignment\OperatorCompetence;
 use App\Services\Import\ImportOpportunityConvertibility;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -44,6 +49,9 @@ class ImportService
     public function __construct(
         private readonly ImportOpportunityConvertibility $convertibility,
         private readonly LeadOperatorDistributor $distributor,
+        private readonly ImportRunRowSelection $rowSelection,
+        private readonly ImportRowCompetence $rowCompetence,
+        private readonly OperatorCompetence $competence,
     ) {}
 
     /**
@@ -238,11 +246,14 @@ class ImportService
      * would break the JSON column, so it is `json_encode()`d explicitly
      * before being handed to `update()`.
      *
+     * Returns an AssignmentOutcome, not a plain count (spec 0110): `balanced`
+     * can now leave a row without an operator when nobody at the Sede is
+     * competent for it, and the caller must be able to tell the two apart.
+     *
      * @param  array<int, int>  $rowIds
      * @param  array<int, int>|null  $productIds
-     * @return int the number of rows updated
      */
-    public function bulkAssign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?int $operationalSiteId, ?array $productIds = null): int
+    public function bulkAssign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?int $operationalSiteId, ?array $productIds = null): AssignmentOutcome
     {
         if ($mode === LeadAssignmentMode::Balanced) {
             // BulkAssignRequest guarantees operational_site_id is present
@@ -257,14 +268,15 @@ class ImportService
         ];
 
         if ($attributes === []) {
-            return 0;
+            return new AssignmentOutcome(assigned: 0);
         }
 
-        return ImportRunRow::query()
-            ->where('import_run_id', $run->id)
-            ->when(! $selectAll, fn ($query) => $query->whereIn('id', $rowIds))
-            ->when($selectAll && $rowIds !== [], fn ($query) => $query->whereNotIn('id', $rowIds))
+        // `single` never checks competence (spec 0110, AC-023: user decision
+        // R-1) — hence `skipped` is structurally 0 on this branch.
+        $updated = $this->rowSelection->query($run, $selectAll, $rowIds)
             ->update([...$attributes, 'is_edited' => true]);
+
+        return new AssignmentOutcome(assigned: $updated);
     }
 
     /**
@@ -278,21 +290,24 @@ class ImportService
      * `json_encode()` treatment as the `single` branch (see bulkAssign()'s
      * docblock for the JSON-cast mass-update gotcha).
      *
+     * Competence-aware since spec 0110 (AC-020/AC-021): the Sede is still the
+     * outer filter, but each row is distributed only among the operators
+     * competent for ITS OWN required categories. A row nobody is competent
+     * for is reported as `skipped` and keeps its current operator — the 422
+     * above stays reserved for a Sede with no operators AT ALL (AC-022), so a
+     * partially-covered selection is never all-or-nothing.
+     *
      * @param  array<int, int>  $rowIds
      * @param  array<int, int>|null  $productIds
      */
-    private function bulkAssignBalanced(ImportRun $run, bool $selectAll, array $rowIds, int $operationalSiteId, ?array $productIds = null): int
+    private function bulkAssignBalanced(ImportRun $run, bool $selectAll, array $rowIds, int $operationalSiteId, ?array $productIds = null): AssignmentOutcome
     {
-        $targetRowIds = ImportRunRow::query()
-            ->where('import_run_id', $run->id)
-            ->when(! $selectAll, fn ($query) => $query->whereIn('id', $rowIds))
-            ->when($selectAll && $rowIds !== [], fn ($query) => $query->whereNotIn('id', $rowIds))
-            ->orderBy('id')
-            ->pluck('id')
-            ->all();
+        // Step 1: the targeted rows, read once with everything the
+        // requirement resolver needs (INV-1).
+        $rows = $this->rowSelection->rows($run, $selectAll, $rowIds, ['id', 'row_number', 'product_ids', 'mapped_values']);
 
-        if ($targetRowIds === []) {
-            return 0;
+        if ($rows->isEmpty()) {
+            return new AssignmentOutcome(assigned: 0);
         }
 
         $operatorIds = $this->distributor->operatorIdsForSite($operationalSiteId);
@@ -301,19 +316,73 @@ class ImportService
             abort(422, 'The selected Sede has no operators to distribute rows to.');
         }
 
-        $loads = $this->distributor->currentLoads($operatorIds);
-        $assignments = $this->distributor->distribute($operatorIds, $loads, $targetRowIds);
+        // Step 2: narrow the Sede's operators to the ones competent for each
+        // individual row (spec 0110, AC-020), then distribute inside those
+        // pools with the shared load map.
+        $candidatesByRow = $this->competence->competentByRequirement(
+            $operatorIds,
+            $this->rowCompetence->requiredByRow($this->withAssignedProducts($rows, $productIds), $run->global_config ?? []),
+        );
 
+        $assignments = $this->distributor->distributeAmong($candidatesByRow, $this->distributor->currentLoads($operatorIds));
+
+        // Step 3: one mass UPDATE per operator, plus one for the rows nobody
+        // is competent for — those still receive the Sede and the products
+        // (AC-021), only the operator is left untouched.
         foreach ($this->distributor->groupByOperator($assignments) as $assignedOperatorId => $ids) {
             ImportRunRow::query()->whereIn('id', $ids)->update([
                 'operator_id' => $assignedOperatorId,
-                'operational_site_id' => $operationalSiteId,
-                ...($productIds !== null ? ['product_ids' => json_encode($productIds)] : []),
-                'is_edited' => true,
+                ...$this->balancedRowAttributes($operationalSiteId, $productIds),
             ]);
         }
 
-        return count($assignments);
+        $skippedRowIds = array_values(array_diff($rows->modelKeys(), array_keys($assignments)));
+
+        if ($skippedRowIds !== []) {
+            ImportRunRow::query()->whereIn('id', $skippedRowIds)->update($this->balancedRowAttributes($operationalSiteId, $productIds));
+        }
+
+        return new AssignmentOutcome(assigned: count($assignments), skipped: count($skippedRowIds));
+    }
+
+    /**
+     * The bulk `product_ids` override, when submitted, IS the rows' effective
+     * "Prodotti di interesse" the moment this call lands — so the competence
+     * requirement must be read from it, not from the value it is about to
+     * replace (INV-1). Applied in memory only: these rows are never saved,
+     * the mass UPDATEs below do the writing.
+     *
+     * @param  Collection<int, ImportRunRow>  $rows
+     * @param  array<int, int>|null  $productIds
+     * @return Collection<int, ImportRunRow>
+     */
+    private function withAssignedProducts(Collection $rows, ?array $productIds): Collection
+    {
+        if ($productIds === null) {
+            return $rows;
+        }
+
+        return $rows->each(static function (ImportRunRow $row) use ($productIds): void {
+            $row->product_ids = $productIds;
+        });
+    }
+
+    /**
+     * The attributes every targeted row receives in `balanced` mode,
+     * competent or not. `product_ids` is a JSON column written through the
+     * query builder, which applies no Eloquent cast — see bulkAssign()'s
+     * docblock for the json_encode() gotcha.
+     *
+     * @param  array<int, int>|null  $productIds
+     * @return array<string, mixed>
+     */
+    private function balancedRowAttributes(int $operationalSiteId, ?array $productIds): array
+    {
+        return [
+            'operational_site_id' => $operationalSiteId,
+            ...($productIds !== null ? ['product_ids' => json_encode($productIds)] : []),
+            'is_edited' => true,
+        ];
     }
 
     /**

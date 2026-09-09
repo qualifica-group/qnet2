@@ -120,6 +120,26 @@ describe('work panel — Linee dell\'offerta', () => {
     expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('offer_lines')
   })
 
+  it('opens on one empty row when the request carries no line yet, and still saves without it', async () => {
+    const loaded = panel({ offer_lines: [] })
+    fetchRequestWorkPanelMock.mockResolvedValue(loaded)
+    updateRequestWorkMock.mockResolvedValue(loaded)
+
+    renderPanel()
+
+    // Direttiva utente 2026-09-09: la riga vuota c'e' gia', non si passa da
+    // "Aggiungi riga". Restando intatta non viaggia (`toLineInputs` la scarta).
+    expect(await screen.findByLabelText('Quantità riga 1')).toHaveValue(null)
+
+    fireEvent.change(screen.getByLabelText(/Data del richiamo/i), {
+      target: { value: '2026-09-01' },
+    })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Salva' })[0])
+
+    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
+    expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('offer_lines')
+  })
+
   it('blocks the submit on an incomplete row, with the message on that row', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 

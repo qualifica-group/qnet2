@@ -4,7 +4,10 @@ import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
-import { originalLineInputs, sameLines, toLineInputs } from '@/features/quotes/quote-line-values'
+import { linesToFormValues, originalLineInputs, sameLines, toLineInputs } from '@/features/quotes/quote-line-values'
+import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
+import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
+import type { QuoteLine } from '@/features/quotes/types'
 import { toProductLinesPayload } from '@/features/request-management/request-create-payload'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type {
@@ -19,6 +22,23 @@ import type {
   RequestProductLine,
   RequestWorkPanel,
 } from '@/features/request-management/types'
+
+/**
+ * The offer rows a panel-backed form OPENS on: the persisted ones, or ONE
+ * pristine row when the request carries none (user directive 2026-09-09,
+ * extending to the edit surfaces the seed the create form has had since
+ * 2026-09-01). Pressing "Aggiungi riga" before the first row was pure
+ * friction; an offer-less request stays saveable untouched, since
+ * `toLineInputs` drops a pristine row on the way to the wire.
+ *
+ * `commissions` are omitted like everywhere else in this module: the endpoint
+ * prohibits the block and the server preserves what the Offerte form set up.
+ */
+export function openingOfferLines(lines: QuoteLine[]): QuoteLineFormValues[] {
+  const rows = linesToFormValues(lines, false)
+
+  return rows.length > 0 ? rows : [EMPTY_LINE_ROW]
+}
 
 /**
  * The panel's loaded funzione/categoria pairs in the row shape the field
@@ -190,6 +210,15 @@ export function buildRequestWorkPayload(
 
   if (values.next_callback_at !== (panel.next_callback_at ?? null)) {
     payload.next_callback_at = values.next_callback_at
+  }
+
+  // "Note generali" (direttiva utente 2026-09-09): trimmed on both sides so
+  // stray whitespace is not a change, and sent as `null` once emptied — the
+  // endpoint clears the column on null, and '' would persist an empty string
+  // where every other channel stores nothing.
+  const generalNotes = values.general_notes.trim()
+  if (generalNotes !== (panel.general_notes ?? '').trim()) {
+    payload.general_notes = generalNotes === '' ? null : generalNotes
   }
 
   // Sent only when the client actually has a card: without one there is no

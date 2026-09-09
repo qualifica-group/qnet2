@@ -28,7 +28,7 @@ import { RequestAttributionSection } from '@/features/request-management/request
 import { RequestTeamSection } from '@/features/request-management/request-team-section'
 import { RequestCallbackSection } from '@/features/request-management/request-callback-section'
 import { RequestClientSection } from '@/features/request-management/request-client-section'
-import { RequestGeneralNotesCallout } from '@/features/request-management/request-general-notes-callout'
+import { RequestGeneralNotesField } from '@/features/request-management/request-general-notes-field'
 import { RequestOfferLinesSection } from '@/features/request-management/request-offer-lines-section'
 import { RequestProductLinesSection } from '@/features/request-management/request-product-lines-section'
 import { RequestWorkCollaboration } from '@/features/request-management/request-work-collaboration'
@@ -188,42 +188,49 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
         onTransfer={transfer.open}
       />
 
-      <div className={PANEL_GRID_CLASS}>
-        {/* Read-only commercial context: first in the DOM so a narrow container
-            reads it before the form, reordered to the right on two columns. */}
-        <aside className={SIDE_COLUMN_CLASS}>
-          {/* Directive 2026-07-27: the "Note generali" lead the side column —
-              operators read them before anything else. */}
-          <RequestGeneralNotesCallout notes={panel.context.general_notes ?? null} />
-          <RequestWorkSummary panel={panel} />
+      {/* The RHF provider wraps BOTH columns: the "Note generali" field lives
+          in the side column (direttiva utente 2026-09-09) while every other
+          control sits in the native <form> below, and they are one form. */}
+      <Form {...form}>
+        <div className={PANEL_GRID_CLASS}>
+          {/* Read-only commercial context: first in the DOM so a narrow container
+              reads it before the form, reordered to the right on two columns. */}
+          <aside className={SIDE_COLUMN_CLASS}>
+            {/* Directive 2026-07-27: the "Note generali" lead the side column —
+                operators read them before anything else. EDITABLE since the
+                direttiva utente 2026-09-09, so the block is part of the panel's
+                form even though it sits in the read-only column: the note is
+                written from where it is read, and a request carrying none opens
+                on an empty field instead of nothing at all. */}
+            <RequestGeneralNotesField control={form.control} name="general_notes" />
+            <RequestWorkSummary panel={panel} />
 
-          {/* Field-change-request proposals on this record (spec 0078
-              AC-048), generic and domain-agnostic (`RecordFieldChangeRequests`
-              only knows `(resource, subjectId)`) — the panel is the only
-              thing that knows it is request-management's own record. `id`,
-              NOT `opportunity_id` (spec 0086 D-10, revised): unlike
-              documents/notes/activity, field change requests are keyed
-              through this module's own TableDefinition, whose subject is the
-              Quote — `source_id` is exposed on it as a read-through virtual
-              attribute. */}
-          <FormSection
-            icon={ListChecks}
-            title={t('fieldChangeRequests.section.title', { defaultValue: 'Change requests' })}
-            description={t('fieldChangeRequests.section.description', {
-              defaultValue: 'Proposals awaiting approval on this record.',
-            })}
-            className="min-w-0"
-          >
-            <RecordFieldChangeRequests
-              resource={REQUEST_MANAGEMENT_DOMAIN}
-              subjectId={panel.id}
-              onHandled={handleChangeRequestHandled}
-            />
-          </FormSection>
-        </aside>
+            {/* Field-change-request proposals on this record (spec 0078
+                AC-048), generic and domain-agnostic (`RecordFieldChangeRequests`
+                only knows `(resource, subjectId)`) — the panel is the only
+                thing that knows it is request-management's own record. `id`,
+                NOT `opportunity_id` (spec 0086 D-10, revised): unlike
+                documents/notes/activity, field change requests are keyed
+                through this module's own TableDefinition, whose subject is the
+                Quote — `source_id` is exposed on it as a read-through virtual
+                attribute. */}
+            <FormSection
+              icon={ListChecks}
+              title={t('fieldChangeRequests.section.title', { defaultValue: 'Change requests' })}
+              description={t('fieldChangeRequests.section.description', {
+                defaultValue: 'Proposals awaiting approval on this record.',
+              })}
+              className="min-w-0"
+            >
+              <RecordFieldChangeRequests
+                resource={REQUEST_MANAGEMENT_DOMAIN}
+                subjectId={panel.id}
+                onHandled={handleChangeRequestHandled}
+              />
+            </FormSection>
+          </aside>
 
-        <div className={MAIN_COLUMN_CLASS}>
-          <Form {...form}>
+          <div className={MAIN_COLUMN_CLASS}>
             {/* `display: contents`: this native `<form>` only scopes the HTML submit
                 boundary, it must not become an extra flex box in the stack below. */}
             {/* Section order = the operator's working order (user directive
@@ -332,15 +339,15 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 />
               )}
             </form>
-          </Form>
 
           {/* Notes/documents/history: own authorization (spec 0052 D-6), shown to
               any actor who can read the record. The notes composer has its own
               native `<form>`, so it cannot nest inside the one above (see
               REQUEST_WORK_FORM_ID). */}
           <RequestWorkCollaboration panel={panel} canViewActivity={canViewActivity} />
+          </div>
         </div>
-      </div>
+      </Form>
 
       {/* Same dialog the table's row/bulk "Trasferisci contatto" drives
           (spec 0079), locked to this one record: a row transfer is just a
@@ -352,6 +359,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
         defaultSite={transfer.defaultSite}
         lockedMode="single"
         copy={transfer.copy}
+        {...transfer.competence}
         onAssign={transfer.handleTransfer}
       />
     </div>

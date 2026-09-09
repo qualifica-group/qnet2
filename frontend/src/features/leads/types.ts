@@ -169,9 +169,16 @@ export interface AssignOperatorsPayload {
   operator_id?: number
 }
 
-/** Response of POST /leads/assign-operators: how many leads were updated. */
+/**
+ * Response of POST /leads/assign-operators: how many leads were updated, plus
+ * (spec 0110, additive) how many `balanced` left without an operator because
+ * no operator of the Sede is competent for them — always 0 in `single` mode.
+ * Optional because the field is additive: a response predating the delta
+ * simply omits it, and the feedback then reads exactly as before.
+ */
 export interface AssignOperatorsResult {
   assigned: number
+  skipped?: number
 }
 
 /** Payload for POST /leads/convert-to-opportunities (spec 0071), the table's mass conversion. */

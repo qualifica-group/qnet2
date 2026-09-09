@@ -149,10 +149,13 @@ export const leads = {
       placeholder: 'Select an operator…',
       searchPlaceholder: 'Search operators…',
       empty: 'No results found.',
+      emptyCompetent: 'No operator is competent for the selected records.',
       selectError: 'Unable to load the options.',
       selectClear: 'Clear selection',
       retry: 'Retry',
       hint: 'Only operators from the chosen Site.',
+      competenceHint: 'Only Site operators competent for the selected records.',
+      resolvingHint: 'Looking up the competent operators…',
       disabledHint: 'Choose a Site first to see its operators.',
     },
     mode: {
@@ -167,6 +170,8 @@ export const leads = {
       assigning: 'Assigning…',
     },
     success: 'Operators assigned to {{count}} lead(s).',
+    successWithSkipped:
+      'Operators assigned to {{count}} lead(s). {{skipped}} left without a competent operator.',
     errors: {
       noOperators: 'No operator found for the selected Site.',
       generic: 'Unable to assign the operators. Please try again.',

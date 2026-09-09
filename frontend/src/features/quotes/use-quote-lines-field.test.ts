@@ -1,6 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import { lineValuesFromProduct } from '@/features/quotes/use-quote-lines-field'
+import { act, renderHook } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  DEFAULT_LINE_QUANTITY,
+  lineValuesFromProduct,
+  useQuoteLinesField,
+} from '@/features/quotes/use-quote-lines-field'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
+import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 
 /**
  * Spec 0088: the line's own `unit_of_measure_id` is congelated server-side on
@@ -45,5 +51,40 @@ describe('lineValuesFromProduct', () => {
     const product = { ...PRODUCT, meta: { ...PRODUCT.meta, unit_of_measure: null } }
 
     expect(lineValuesFromProduct(product, 'revenue').unit_of_measure).toBeNull()
+  })
+})
+
+describe('useQuoteLinesField.setProduct', () => {
+  const EMPTY_ROW: QuoteLineFormValues = {
+    product_id: null,
+    quantity: null,
+    unit_of_measure: null,
+    unit_price: null,
+    vat_rate_id: null,
+    commissions: [],
+  }
+
+  function pickProductOn(row: QuoteLineFormValues): QuoteLineFormValues[] {
+    const onChange = vi.fn()
+    const { result } = renderHook(() =>
+      useQuoteLinesField({
+        value: [row],
+        onChange,
+        variant: 'revenue',
+        rememberVatRatePercent: vi.fn(),
+      }),
+    )
+
+    act(() => result.current.setProduct(0, PRODUCT.id, PRODUCT))
+
+    return onChange.mock.calls[0][0] as QuoteLineFormValues[]
+  }
+
+  it('opens an empty quantity on 1, so the picked row is savable as it stands', () => {
+    expect(pickProductOn(EMPTY_ROW)[0]).toMatchObject({ product_id: 42, quantity: DEFAULT_LINE_QUANTITY })
+  })
+
+  it('never overwrites a quantity the operator already typed', () => {
+    expect(pickProductOn({ ...EMPTY_ROW, quantity: 5 })[0]).toMatchObject({ quantity: 5 })
   })
 })

@@ -29,6 +29,7 @@ function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload
     company_id: values.company_id,
     primary_operational_site_id: values.primary_operational_site_id,
     remote_operational_site_ids: values.remote_operational_site_ids,
+    product_category_ids: values.product_category_ids,
     qualification_type: values.qualification_type,
     hired_at: values.hired_at || null,
     terminated_at: values.terminated_at || null,

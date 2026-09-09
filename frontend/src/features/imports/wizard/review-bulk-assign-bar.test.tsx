@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import '@/features/imports/wizard/i18n'
 import { ReviewBulkAssignBar } from '@/features/imports/wizard/review-bulk-assign-bar'
@@ -21,26 +22,42 @@ const SITE_PICK_ID = 7
 const OPERATOR_PICK_ID = 42
 const PRODUCT_PICK_ID = 9
 
+// The stub also surfaces the props the competence filter drives (spec 0110):
+// the forwarded `params` and the picker's `disabled`/`empty` state.
 vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: ({
     resource,
     value,
     onChange,
+    disabled,
+    params,
     labels,
   }: {
     resource: string
     value: number | null
     onChange: (value: number | null) => void
-    labels: { triggerLabel: string }
+    disabled?: boolean
+    params?: Record<string, string | number | string[] | number[]>
+    labels: { triggerLabel: string; empty: string }
   }) => (
     <button
       type="button"
       aria-label={labels.triggerLabel}
+      disabled={disabled}
+      data-params={params ? JSON.stringify(params) : ''}
+      data-empty={labels.empty}
       onClick={() => onChange(resource === 'operational-sites' ? SITE_PICK_ID : OPERATOR_PICK_ID)}
     >
       {value ?? 'none'}
     </button>
   ),
+}))
+
+// `useRequiredCategories` (spec 0110 AC-041) resolves the selection's
+// requirement through this endpoint; every test drives it explicitly.
+const fetchRequiredCategoriesMock = vi.fn()
+vi.mock('@/features/assignment/api', () => ({
+  fetchRequiredCategories: (...args: unknown[]) => fetchRequiredCategoriesMock(...args),
 }))
 
 vi.mock('@/components/ui/async-paginated-multi-select', () => ({
@@ -71,20 +88,29 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  fetchRequiredCategoriesMock.mockResolvedValue([])
 })
+
+/** The run the staged rows belong to; scopes the competence lookup (spec 0110). */
+const IMPORT_RUN_ID = 55
 
 function renderBar(overrides: Partial<ComponentProps<typeof ReviewBulkAssignBar>> = {}) {
   const onAssign = overrides.onAssign ?? vi.fn().mockResolvedValue(undefined)
   const onAssignProducts = overrides.onAssignProducts ?? vi.fn().mockResolvedValue(undefined)
+  // One client per test (never per render), so the cache never leaks across cases.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
-    <ReviewBulkAssignBar
-      selection={{ selectAll: false, toggledNodes: ['1', '2', '3'] }}
-      totalRows={10}
-      campaignCategoryIds={[]}
-      onAssign={onAssign}
-      onAssignProducts={onAssignProducts}
-      {...overrides}
-    />,
+    <QueryClientProvider client={client}>
+      <ReviewBulkAssignBar
+        selection={{ selectAll: false, toggledNodes: ['1', '2', '3'] }}
+        importRunId={IMPORT_RUN_ID}
+        totalRows={10}
+        campaignCategoryIds={[]}
+        onAssign={onAssign}
+        onAssignProducts={onAssignProducts}
+        {...overrides}
+      />
+    </QueryClientProvider>,
   )
   return { onAssign, onAssignProducts }
 }
@@ -174,6 +200,9 @@ describe('ReviewBulkAssignBar — "Assign operators" entry (unchanged behavior)'
     openAssignOperatorsDialog()
     fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
     fireEvent.click(screen.getByRole('button', { name: 'Site' }))
+    // The picker only opens up once the selection's competence requirement is
+    // resolved (spec 0110 AC-043); before that it is deliberately disabled.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Operator' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Operator' }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
@@ -218,5 +247,96 @@ describe('ReviewBulkAssignBar — "Assign products" entry (spec 0094 bulk delta)
     await waitFor(() =>
       expect(screen.queryByText('Assign products of interest to 2 selected row(s).')).not.toBeInTheDocument(),
     )
+  })
+})
+
+/**
+ * Spec 0110 AC-041/AC-043: the shared popup's Operatore picker only proposes
+ * the users competent for the selection, resolved from the SAME
+ * `select_all`/`row_ids` state the bulk assignment itself targets.
+ */
+describe('ReviewBulkAssignBar — competence filter (spec 0110)', () => {
+  it('resolves the requirement only once the operators popup is open', async () => {
+    renderBar({ selection: { selectAll: false, toggledNodes: ['1', '2'] } })
+
+    expect(fetchRequiredCategoriesMock).not.toHaveBeenCalled()
+
+    openAssignOperatorsDialog()
+
+    await waitFor(() =>
+      expect(fetchRequiredCategoriesMock).toHaveBeenCalledWith({
+        domain: 'import_rows',
+        import_run_id: IMPORT_RUN_ID,
+        select_all: false,
+        row_ids: [1, 2],
+      }),
+    )
+  })
+
+  it('mirrors a select-all selection, whose row ids are the EXCLUDED ones', async () => {
+    renderBar({ selection: { selectAll: true, toggledNodes: ['9'] } })
+    openAssignOperatorsDialog()
+
+    await waitFor(() =>
+      expect(fetchRequiredCategoriesMock).toHaveBeenCalledWith({
+        domain: 'import_rows',
+        import_run_id: IMPORT_RUN_ID,
+        select_all: true,
+        row_ids: [9],
+      }),
+    )
+  })
+
+  it('forwards the resolved categories to the picker alongside the Sede scope', async () => {
+    fetchRequiredCategoriesMock.mockResolvedValue([4, 9])
+    renderBar({ selection: { selectAll: false, toggledNodes: ['1'] } })
+    openAssignOperatorsDialog()
+    fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+        'data-params',
+        JSON.stringify({ operational_site_id: SITE_PICK_ID, competence_category_ids: [4, 9] }),
+      ),
+    )
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+      'data-empty',
+      'No operator is competent for the selected records.',
+    )
+  })
+
+  it('applies no filter when the selection expresses no requirement (AC-041 empty union)', async () => {
+    renderBar({ selection: { selectAll: false, toggledNodes: ['1'] } })
+    openAssignOperatorsDialog()
+    fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
+
+    await waitFor(() => expect(fetchRequiredCategoriesMock).toHaveBeenCalledTimes(1))
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+      'data-params',
+      JSON.stringify({ operational_site_id: SITE_PICK_ID }),
+    )
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute('data-empty', 'No results found.')
+  })
+
+  it('keeps the picker disabled, with the confirm action, while the requirement resolves (AC-043)', async () => {
+    let resolveCategories: (ids: number[]) => void = () => {}
+    fetchRequiredCategoriesMock.mockReturnValue(
+      new Promise<number[]>((resolve) => {
+        resolveCategories = resolve
+      }),
+    )
+    renderBar({ selection: { selectAll: false, toggledNodes: ['1'] } })
+    openAssignOperatorsDialog()
+    fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
+
+    expect(screen.getByRole('button', { name: 'Operator' })).toBeDisabled()
+    // No operator can be picked yet, so the confirm action stays unreachable.
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
+
+    resolveCategories([4])
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Operator' })).toBeEnabled())
   })
 })

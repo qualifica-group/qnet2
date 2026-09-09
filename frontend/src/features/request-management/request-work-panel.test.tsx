@@ -283,22 +283,21 @@ describe('RequestWorkPanelScreen — activity log tab (spec 0049 D-7 amended)', 
     expect(screen.queryByRole('tab', { name: 'History' })).not.toBeInTheDocument()
   })
 
-  /** Directive 2026-07-27: read-only "Note generali" highlighted in the side column. */
-  it('shows the general notes from the read-only context block', async () => {
+  /**
+   * Directive 2026-07-27: "Note generali" highlighted in the side column —
+   * EDITABLE since the direttiva utente 2026-09-09, so the persisted note is
+   * the field's own value. Its write path has its own suite
+   * (request-general-notes-field.test.tsx).
+   */
+  it('shows the general notes in the side column field', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(
-      panel({
-        context: {
-          estimated_value: null,
-          expected_close_date: null,
-          success_probability: null,
-          general_notes: 'Recall the client in September',
-        },
-      }),
+      panel({ general_notes: 'Recall the client in September' }),
     )
 
     renderPanel()
 
-    const region = await screen.findByRole('region', { name: 'General notes' })
-    expect(region).toHaveTextContent('Recall the client in September')
+    expect(await screen.findByRole('textbox', { name: 'General notes' })).toHaveValue(
+      'Recall the client in September',
+    )
   })
 })

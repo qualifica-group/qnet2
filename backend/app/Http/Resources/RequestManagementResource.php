@@ -177,16 +177,17 @@ class RequestManagementResource extends JsonResource
             'quote_workflow_status_id' => $quote->quote_workflow_status_id,
             'quote_workflow_status' => $this->summarizeWorkflowStatus($quote->quoteWorkflowStatus),
             'quote_workflow_statuses' => $this->resolveWorkflowStatuses($quote),
+            // "Note generali" (user directive 2026-07-27): the Opportunity's
+            // free text. TOP-LEVEL since the direttiva utente 2026-09-09 made
+            // it editable from the work panel — it used to sit in the
+            // read-only `context` block below precisely because this module
+            // never wrote it, so leaving it there would now advertise a
+            // writable field as commercial context.
+            'general_notes' => $opportunity->general_notes,
             'context' => [
                 'estimated_value' => $opportunity->estimated_value,
                 'expected_close_date' => $opportunity->expected_close_date?->format('Y-m-d'),
                 'success_probability' => $opportunity->success_probability,
-                // "Note generali" (user directive 2026-07-27): READ-ONLY here.
-                // It joins the context block rather than the editable fields
-                // above because this module never writes it — the opportunity
-                // form owns that, mirroring D-5's treatment of the sales
-                // dimensions.
-                'general_notes' => $opportunity->general_notes,
             ],
         ];
     }

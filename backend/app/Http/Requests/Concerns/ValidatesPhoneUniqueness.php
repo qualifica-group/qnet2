@@ -19,11 +19,11 @@ use Illuminate\Foundation\Http\FormRequest;
  * two: the same number cannot sit on one card's landline and on another's
  * mobile. This supersedes the per-channel, referent-only scope of 2026-08-03.
  *
- * Distinct from `ReferentDuplicateFinder` (spec 0037), which answers the live,
- * NON-blocking duplicate panel on the referent create form: this one is the
- * blocking gate on write. Both compare through `ContactValueNormalizer`, so the
- * two never fork on what "the same number" means — but the gate is now the
- * wider of the two, and may reject a number the panel did not flag.
+ * Distinct from `IdentityDuplicateFinder` (spec 0037), which answers the live,
+ * NON-blocking duplicate panel on the anagrafica/referente create forms: this
+ * one is the blocking gate on write. Both compare through
+ * `ContactValueNormalizer` and both search the same namespace, so the panel can
+ * no longer stay silent on a number the gate then refuses.
  *
  * Reads the owner of the card under edit from `ValidatesUserProfile`
  * (`identityUniquenessOwner`/`identityUniquenessOwnerId`), which every host
@@ -47,6 +47,17 @@ trait ValidatesPhoneUniqueness
     ];
 
     /**
+     * The payload key holding the contact rows to check. Surfaces nesting them
+     * elsewhere override it — the request-management create form carries the
+     * client's contacts under `client_contacts`, not under a `personal_data`
+     * card.
+     */
+    protected function phoneUniquenessContactsKey(): string
+    {
+        return 'personal_data.contacts';
+    }
+
+    /**
      * After-hook: every submitted phone/mobile row is checked against the cards
      * in the namespace AND against the rest of the same payload (submitting the
      * same number twice on one card is the same violation, caught before the
@@ -60,8 +71,10 @@ trait ValidatesPhoneUniqueness
             return;
         }
 
+        $key = $this->phoneUniquenessContactsKey();
+
         /** @var array<int, mixed> $rows */
-        $rows = (array) $this->input('personal_data.contacts', []);
+        $rows = (array) $this->input($key, []);
         $seen = [];
 
         foreach ($rows as $index => $row) {
@@ -81,7 +94,7 @@ trait ValidatesPhoneUniqueness
 
             if (isset($seen[$normalized])) {
                 $validator->errors()->add(
-                    "personal_data.contacts.{$index}.value",
+                    "{$key}.{$index}.value",
                     __('The phone number is repeated on this card.'),
                 );
 
@@ -92,7 +105,7 @@ trait ValidatesPhoneUniqueness
 
             if ($this->phoneValueTaken($normalized)) {
                 $validator->errors()->add(
-                    "personal_data.contacts.{$index}.value",
+                    "{$key}.{$index}.value",
                     __('The phone number is already assigned to another record.'),
                 );
             }
@@ -106,7 +119,7 @@ trait ValidatesPhoneUniqueness
      * The candidate set is fetched and compared in PHP rather than in SQL:
      * phone formatting varies too much for a portable transform, and
      * legacy/migrated rows were never canonicalized by `InputFormat`. Mirrors
-     * `ReferentDuplicateFinder::matchPhoneLike` verbatim.
+     * `IdentityDuplicateFinder::matchPhoneLike` verbatim.
      */
     private function phoneValueTaken(string $normalized): bool
     {

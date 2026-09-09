@@ -326,6 +326,7 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
       company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
+      product_category_ids: [],
       qualification_type: null,
       hired_at: null,
       terminated_at: null,

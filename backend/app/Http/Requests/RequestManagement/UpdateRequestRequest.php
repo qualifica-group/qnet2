@@ -76,8 +76,13 @@ class UpdateRequestRequest extends FormRequest
     /** The team field's wire key, gated by the field-permission matrix (spec 0097, D-3). */
     private const string MANAGER_SLOTS_FIELD = 'manager_slots';
 
-    /** The one catalogued field that still lives on the parent Opportunity (spec 0086, D-2). */
-    private const string PRODUCT_LINES_FIELD = 'product_lines';
+    /**
+     * The catalogued fields that still live on the parent Opportunity (spec
+     * 0086, D-2): the classification rows and — since the direttiva utente
+     * 2026-09-09 made it writable from this panel — the "Note generali" free
+     * text. Both are read through `quote.opportunity` by currentFieldValue().
+     */
+    private const array OPPORTUNITY_FIELDS = ['product_lines', 'general_notes'];
 
     /**
      * The "the persisted team is NOT what was submitted" marker
@@ -132,6 +137,13 @@ class UpdateRequestRequest extends FormRequest
             // enforced by QuoteWorkflowStatusWriter (AC-023).
             'quote_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
             'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            // "Note generali" (direttiva utente 2026-09-09): the Opportunity's
+            // free text, writable from the panel that used to only display it.
+            // Byte-for-byte the rule UpdateOpportunityRequest declares for the
+            // same column — one field, one shape, two forms. Sparse like every
+            // key here, and `null` DOES clear it (an empty note is a legitimate
+            // state, unlike `source_id` above).
+            'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             // "Linee dell'offerta" (user directive 2026-08-07): the REVENUE
             // rows, full-replace when submitted (D-8) and untouched when the
             // key is absent — the same convention the quotes PATCH follows.
@@ -186,8 +198,9 @@ class UpdateRequestRequest extends FormRequest
      * EnforcesFieldPermissions' generic dot-path reader only understands
      * relations/attributes declared on $model directly (spec 0008). Two of
      * this endpoint's catalogued fields no longer live on the route-bound
-     * Quote (spec 0086, D-2): `product_lines` stayed Opportunity-level
-     * (read through the Quote's own `opportunity` relation).
+     * Quote (spec 0086, D-2): `product_lines` and `general_notes` stayed
+     * Opportunity-level (read through the Quote's own `opportunity`
+     * relation) — see OPPORTUNITY_FIELDS.
      * `next_callback_at` left that set with the user directive 2026-09-04 —
      * a real Quote column now, read by the generic reader. `source_id` needs
      * no override: Quote's own virtual `sourceId()` accessor (D-10) already
@@ -208,7 +221,7 @@ class UpdateRequestRequest extends FormRequest
             return $this->currentManagerSlots($model);
         }
 
-        if ($model instanceof Quote && $field === self::PRODUCT_LINES_FIELD) {
+        if ($model instanceof Quote && in_array($field, self::OPPORTUNITY_FIELDS, true)) {
             return $this->traitCurrentFieldValue($model->opportunity, $field);
         }
 
@@ -333,7 +346,7 @@ class UpdateRequestRequest extends FormRequest
      * INV-2, and the pivot stays the reading of every other slot.
      *
      * @param  array<int, array{position: int}>  $persisted  userId => pivot, read off `quote_user`
-     * @return array<int, int>  position => userId
+     * @return array<int, int> position => userId
      */
     private function frozenSlots(Quote $quote, array $persisted): array
     {

@@ -11,6 +11,7 @@ import { activityLog } from './it-activity-log'
 import { attachments } from './it-attachments'
 import { exports } from './it-exports'
 import { table } from './it-table'
+import { identityDuplicates } from './it-identity-duplicates'
 import { referents, referentTypes } from './it-referents'
 import { registries } from './it-registries'
 import { attributes, productCategories, products } from './it-products'
@@ -374,6 +375,7 @@ export const it: TranslationResources = {
   imports,
   activityLog,
   exports,
+  identityDuplicates,
   referents: { ...referents, stats: moduleStats.referents },
   referentTypes,
   registries: { ...registries, stats: moduleStats.registries },

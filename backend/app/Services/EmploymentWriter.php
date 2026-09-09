@@ -19,7 +19,9 @@ use App\Models\User;
  *  - at most ONE `employment_profile_operational_site` row is ever
  *    `is_primary = true` (spec 0103 D-10): MySQL has no partial unique
  *    index for this, so it is enforced here, applying the two site fields'
- *    tri-state instead of trusting whatever shape the payload sends.
+ *    tri-state instead of trusting whatever shape the payload sends;
+ *  - the assignment competence (spec 0110) is written on its own pivot,
+ *    with the same tri-state discipline (see syncProductCategories()).
  *
  * The caller (UserService::create/update) is responsible for the surrounding
  * transaction, mirroring ProfileWriter.
@@ -41,8 +43,9 @@ class EmploymentWriter
         }
 
         if ($employment->delete) {
-            // Cascades onto employment_profile_operational_site (FK
-            // cascadeOnDelete), so the site memberships go with the row.
+            // Cascades onto employment_profile_operational_site and
+            // employment_profile_product_category (FK cascadeOnDelete), so
+            // the site memberships and the competence go with the row.
             $user->employment()->delete();
 
             return;
@@ -53,6 +56,26 @@ class EmploymentWriter
 
         // Step 2: apply the site-membership tri-state onto the pivot.
         $this->syncSiteMemberships($profile, $employment);
+
+        // Step 3: apply the competence tri-state onto its own pivot.
+        $this->syncProductCategories($profile, $employment);
+    }
+
+    /**
+     * Apply the `product_category_ids` tri-state (spec 0110) onto
+     * `employment_profile_product_category`: absent leaves the pivot alone,
+     * any submitted array replaces it wholesale (an empty one clears it).
+     * Simpler than syncSiteMemberships() above because there is no second,
+     * independently-touched side to carry over — the competence is one flat
+     * set with no pivot payload.
+     */
+    private function syncProductCategories(EmploymentProfile $profile, EmploymentData $employment): void
+    {
+        if (! $employment->productCategoryIdsProvided) {
+            return;
+        }
+
+        $profile->productCategories()->sync($employment->productCategoryIds);
     }
 
     /**

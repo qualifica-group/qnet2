@@ -16,6 +16,7 @@ import { activityLog } from './en-activity-log'
 import { attachments } from './en-attachments'
 import { exports } from './en-exports'
 import { table } from './en-table'
+import { identityDuplicates } from './en-identity-duplicates'
 import { referents, referentTypes } from './en-referents'
 import { registries } from './en-registries'
 import { attributes, productCategories, products } from './en-products'
@@ -388,6 +389,7 @@ export const en = {
   imports,
   activityLog,
   exports,
+  identityDuplicates,
   referents: { ...referents, stats: moduleStats.referents },
   referentTypes,
   registries: { ...registries, stats: moduleStats.registries },

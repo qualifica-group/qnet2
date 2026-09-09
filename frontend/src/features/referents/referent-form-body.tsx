@@ -16,8 +16,8 @@ import {
   useRevealBlockedSection,
 } from '@/features/personal-data/use-reveal-blocked-section'
 import { DetailsTabContent } from '@/features/referents/referent-form-details-tab'
-import { ReferentDuplicateWarning } from '@/features/referents/referent-duplicate-warning'
-import { useReferentDuplicateCheck } from '@/features/referents/use-referent-duplicate-check'
+import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
+import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
 import { useReferentForm } from '@/features/referents/use-referent-form'
 import type { QuickContactType } from '@/features/personal-data/quick-contacts'
 import type { ReferentDetail, ReferentFormMode } from '@/features/referents/types'
@@ -71,7 +71,10 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
   // The blocks are all on screen, but the offending one can be far above the
   // save button: a refused save brings it back under the user's eyes.
   useRevealBlockedSection(revalidateSignal, blockedSection, containerRef)
-  const { matches: duplicateMatches } = useReferentDuplicateCheck({ mode, profileDraft })
+  const { matches: duplicateMatches } = useIdentityDuplicateCheck({
+    enabled: mode.type === 'create',
+    profileDraft,
+  })
 
   // Section visibility, read from the same authorization context `MetaField`
   // uses (the anagraphic card has no permission-gated field, so it is always
@@ -162,7 +165,7 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
 
           <CustomFieldsSection resource="referents" control={form.control} />
 
-          <ReferentDuplicateWarning matches={duplicateMatches} />
+          <IdentityDuplicateWarning matches={duplicateMatches} />
 
           {serverError && (
             <p className="text-sm font-medium text-destructive" role="alert">

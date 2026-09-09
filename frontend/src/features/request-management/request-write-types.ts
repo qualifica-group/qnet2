@@ -72,6 +72,12 @@ export interface RequestClientAddressPayload {
 export interface UpdateRequestWorkPayload {
   next_callback_at?: string | null
   /**
+   * "Note generali" (direttiva utente 2026-09-09): the Opportunity's free
+   * text, written from the panel that used to only display it. Sent only when
+   * it changed; `null` clears it (an empty note is a legitimate state).
+   */
+  general_notes?: string | null
+  /**
    * "Funzione aziendale" + "categoria prodotto" (user directive 2026-07-31),
    * AUTHORITATIVE when sent: the collection is fully replaced, and it may
    * never be cleared (`min:1` server-side).
@@ -230,9 +236,15 @@ export interface AssignRequestOperatorsPayload {
   operator_id?: number
 }
 
-/** Response of the same endpoint: how many requests were actually written. */
+/**
+ * Response of the same endpoint: how many requests were actually written,
+ * plus (spec 0110, additive) how many `balanced` left without an operator
+ * because no operator of the Sede is competent for them — always 0 in
+ * `single` mode, and absent on a response predating the delta.
+ */
 export interface AssignRequestOperatorsResult {
   assigned: number
+  skipped?: number
 }
 
 /**

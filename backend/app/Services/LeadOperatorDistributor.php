@@ -84,14 +84,46 @@ class LeadOperatorDistributor
             throw new InvalidArgumentException('At least one operator is required to distribute targets.');
         }
 
+        return $this->distributeAmong(array_fill_keys($targetIds, $operatorIds), $initialLoads);
+    }
+
+    /**
+     * distribute() when every target has its OWN candidate pool (spec 0110):
+     * the competence filter narrows the Sede's operators record by record, so
+     * the greedy must pick the least-loaded operator AMONG THAT RECORD'S
+     * candidates while the load map stays shared across the whole batch —
+     * otherwise two records with disjoint pools would each rebalance in
+     * isolation. Same algorithm, same tie-break, one implementation.
+     *
+     * A target whose candidate list is EMPTY (nobody is competent for it) is
+     * SKIPPED: it is absent from the result, which is how the caller counts
+     * it as `skipped` instead of forcing it onto an incompetent operator.
+     *
+     * @param  array<int, array<int, int>>  $candidatesByTarget  targetId => candidate operator ids
+     * @param  array<int, int>  $initialLoads  operatorId => load (missing = 0)
+     * @return array<int, int> targetId => operatorId
+     */
+    public function distributeAmong(array $candidatesByTarget, array $initialLoads): array
+    {
+        // Step 1: one shared load map over the union of every pool, keyed in
+        // ascending operator id so leastLoadedOperatorId()'s insertion-order
+        // tie-break resolves to the LOWEST id (br-balanced step 3).
         $loads = [];
-        foreach ($operatorIds as $operatorId) {
+        foreach ($this->unionOfCandidates($candidatesByTarget) as $operatorId) {
             $loads[$operatorId] = $initialLoads[$operatorId] ?? 0;
         }
 
+        // Step 2: walk the targets in ascending order — the distribution must
+        // not depend on the order the caller happened to collect them in.
+        ksort($candidatesByTarget);
+
         $assignments = [];
-        foreach ($targetIds as $targetId) {
-            $operatorId = $this->leastLoadedOperatorId($loads);
+        foreach ($candidatesByTarget as $targetId => $candidateIds) {
+            if ($candidateIds === []) {
+                continue;
+            }
+
+            $operatorId = $this->leastLoadedOperatorId(array_intersect_key($loads, array_flip($candidateIds)));
             $assignments[$targetId] = $operatorId;
             $loads[$operatorId]++;
         }
@@ -115,6 +147,21 @@ class LeadOperatorDistributor
         }
 
         return $grouped;
+    }
+
+    /**
+     * Every operator appearing in at least one pool, ascending.
+     *
+     * @param  array<int, array<int, int>>  $candidatesByTarget
+     * @return array<int, int>
+     */
+    private function unionOfCandidates(array $candidatesByTarget): array
+    {
+        $union = array_unique(array_merge(...array_values($candidatesByTarget) ?: [[]]));
+
+        sort($union);
+
+        return $union;
     }
 
     /**

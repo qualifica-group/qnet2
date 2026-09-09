@@ -83,3 +83,46 @@ it('groupByOperator inverts a target=>operator map into operator=>[targets]', fu
 
     expect($grouped)->toBe([1 => [10, 12], 2 => [11]]);
 });
+
+/**
+ * Spec 0110 — distributeAmong(): the same greedy when every target carries
+ * its OWN candidate pool (the competence filter narrows the Sede's operators
+ * record by record). distribute() is now a thin wrapper over it, so the block
+ * above doubles as its regression net.
+ */
+it('0110 AC-020: distributeAmong balances inside each pool while sharing one load map', function () {
+    $distributor = new LeadOperatorDistributor;
+
+    $assignments = $distributor->distributeAmong(
+        candidatesByTarget: [10 => [1, 2], 11 => [1, 2], 12 => [3], 13 => [1, 2]],
+        initialLoads: [],
+    );
+
+    // 1 and 2 alternate on their own three targets; 3 only ever receives the
+    // target it is the sole candidate for, idle as the others may be.
+    expect($assignments)->toBe([10 => 1, 11 => 2, 12 => 3, 13 => 1]);
+});
+
+it('0110 AC-020: distributeAmong breaks a tie inside a pool by the LOWEST operator id', function () {
+    $distributor = new LeadOperatorDistributor;
+
+    $assignments = $distributor->distributeAmong([7 => [8, 5, 2]], [2 => 3, 5 => 3, 8 => 3]);
+
+    expect($assignments)->toBe([7 => 2]);
+});
+
+it('0110 AC-021: distributeAmong SKIPS a target with an empty candidate pool', function () {
+    $distributor = new LeadOperatorDistributor;
+
+    $assignments = $distributor->distributeAmong([10 => [1], 11 => [], 12 => [1]], []);
+
+    expect($assignments)->toBe([10 => 1, 12 => 1]);
+});
+
+it('0110: distributeAmong walks the targets in ascending id order regardless of the caller\'s order', function () {
+    $distributor = new LeadOperatorDistributor;
+
+    $assignments = $distributor->distributeAmong([12 => [1, 2], 10 => [1, 2], 11 => [1, 2]], []);
+
+    expect($assignments)->toBe([10 => 1, 11 => 2, 12 => 1]);
+});

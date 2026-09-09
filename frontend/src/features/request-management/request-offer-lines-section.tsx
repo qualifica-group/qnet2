@@ -10,8 +10,9 @@ import { useProductCategoryTree } from '@/features/product-categories/use-produc
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 import { QuoteLinesField, knownProductsFrom, knownVatRatesFrom } from '@/features/quotes/quote-lines-field'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
-import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
+import { MAX_LINES_PER_TAB, type QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteLine } from '@/features/quotes/types'
+import { useOfferLinesAutofill } from '@/features/request-management/use-offer-lines-autofill'
 
 /**
  * The two controls this section drives. Any form carrying them mounts it
@@ -93,6 +94,18 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
   // which is where the mode lives.
   const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
   const singleCategoryMode = resolveManagementMode(categoryTree, categoryIds) === 'single'
+
+  // A category exposing exactly ONE product fills its row by itself (user
+  // directive 2026-09-09): picking the classification is the whole gesture,
+  // there is nothing left for the operator to choose in that picker. Capped
+  // by the same `single`-mode ceiling "Aggiungi riga" mirrors above.
+  useOfferLinesAutofill({
+    control,
+    name: linesField,
+    categoryIds,
+    maxRows: singleCategoryMode ? 1 : MAX_LINES_PER_TAB,
+    rememberVatRatePercent,
+  })
 
   const knownProducts = useMemo(() => knownProductsFrom(knownLines), [knownLines])
   const knownVatRates = useMemo(() => knownVatRatesFrom(knownLines), [knownLines])

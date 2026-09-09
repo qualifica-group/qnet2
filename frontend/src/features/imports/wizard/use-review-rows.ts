@@ -19,6 +19,7 @@ import { importWizardKeys } from '@/features/imports/wizard/query-keys'
 import { reviewValueKeyOf } from '@/features/imports/wizard/review-columns'
 import type { ReviewBulkSelectionState } from '@/features/imports/wizard/review-bulk-assign-bar'
 import type { AssignOperatorsDialogInput } from '@/features/leads/assign-operators-dialog'
+import { resolveAssignFeedback } from '@/features/leads/assign-feedback'
 import { resolveImportWizardErrorMessage } from '@/features/imports/wizard/resolve-error-message'
 import type {
   BulkAssignImportRowPayload,
@@ -318,7 +319,9 @@ export function useReviewRows({ domain, importRunId, onRowUpdated }: UseReviewRo
       bulkAssignMutation.mutateAsync(payload).then(
         (result) => {
           void queryClient.invalidateQueries({ queryKey: importWizardKeys.summary(domain, importRunId) })
-          toast.success(t('review.bulkAssign.success', { count: result.updated }))
+          toast.success(
+            resolveAssignFeedback(t, 'review.bulkAssign', { assigned: result.updated, skipped: result.skipped }),
+          )
           return result
         },
         (error: unknown) => {

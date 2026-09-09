@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { useRequiredCategories } from '@/features/assignment/use-required-categories'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { resolveImportWizardErrorMessage } from '@/features/imports/wizard/resolve-error-message'
 import type { ImportRunRowItem } from '@/features/imports/wizard/types'
@@ -32,6 +33,8 @@ export interface ReviewOperatorGridContext {
     node: IRowNode<ImportRunRowItem>,
   ) => Promise<void>
   globalDefaultOperatorId: number | null
+  /** The run the rows belong to; scopes the per-row competence lookup (spec 0110 AC-042). */
+  importRunId: number
 }
 
 export interface ReviewOperatorCellParams
@@ -77,6 +80,7 @@ export function ReviewOperatorCell({ data, node, context, readOnly }: ReviewOper
         <ReviewOperatorDialogBody
           row={data}
           node={node}
+          importRunId={context.importRunId}
           onApplyOperator={context.onApplyOperator}
           onClose={() => setOpen(false)}
         />
@@ -88,6 +92,7 @@ export function ReviewOperatorCell({ data, node, context, readOnly }: ReviewOper
 interface ReviewOperatorDialogBodyProps {
   row: ImportRunRowItem
   node: IRowNode<ImportRunRowItem>
+  importRunId: number
   onApplyOperator: ReviewOperatorGridContext['onApplyOperator']
   onClose: () => void
 }
@@ -99,11 +104,25 @@ interface ReviewOperatorDialogBodyProps {
  * and the dialog's own close affordances never call `onApplyOperator` — only
  * the Applica click does.
  */
-function ReviewOperatorDialogBody({ row, node, onApplyOperator, onClose }: ReviewOperatorDialogBodyProps) {
+function ReviewOperatorDialogBody({
+  row,
+  node,
+  importRunId,
+  onApplyOperator,
+  onClose,
+}: ReviewOperatorDialogBodyProps) {
   const { t } = useTranslation('importWizard')
   const [operatorId, setOperatorId] = useState<number | null>(row.operator_id)
   const [isApplying, setIsApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Competence filter of THIS row (spec 0110 AC-042). Radix unmounts the
+  // dialog's subtree while closed, so this body — and its lookup — only
+  // exists while the popup is open: one request per opened cell, never one
+  // per rendered row.
+  const { competenceCategoryIds, isResolving } = useRequiredCategories({
+    selection: { domain: 'import_rows', import_run_id: importRunId, select_all: false, row_ids: [row.id] },
+  })
 
   // Step 1: PATCH the popup's current operator id (or `null` to revert to
   // the run default) as `operator_id`. Step 2: on success, close the popup
@@ -131,12 +150,13 @@ function ReviewOperatorDialogBody({ row, node, onApplyOperator, onClose }: Revie
         value={operatorId}
         onChange={setOperatorId}
         selectedItem={row.operator ? { id: row.operator.id, label: row.operator.name } : null}
-        disabled={isApplying}
+        disabled={isApplying || isResolving}
         showAvatar
+        params={competenceCategoryIds ? { competence_category_ids: competenceCategoryIds } : undefined}
         labels={{
           placeholder: t('review.operator.placeholder'),
           searchPlaceholder: t('review.operator.searchPlaceholder'),
-          empty: t('review.operator.empty'),
+          empty: competenceCategoryIds ? t('review.operator.emptyCompetent') : t('review.operator.empty'),
           error: t('review.operator.selectError'),
           clearLabel: t('review.operator.selectClear'),
           triggerLabel: t('review.operator.title'),

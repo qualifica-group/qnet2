@@ -124,9 +124,10 @@ it('GET as the offer supervisor returns the full work-panel shape (AC-020)', fun
             'estimated_value' => $opportunity->estimated_value,
             'expected_close_date' => $opportunity->expected_close_date?->format('Y-m-d'),
             'success_probability' => $opportunity->success_probability,
-            // User directive 2026-07-27: read-only in this module.
-            'general_notes' => $opportunity->general_notes,
         ])
+        // Direttiva utente 2026-09-09: editable now, so it sits at the top
+        // level and no longer inside the read-only context block above.
+        ->assertJsonPath('data.general_notes', $opportunity->general_notes)
         ->assertJsonStructure([
             'data' => ['status', 'product_lines'],
             'permissions' => ['resource', 'fields', 'actions'],
@@ -189,11 +190,16 @@ it('GET without request-management.view -> 403 even for a supervised quote (AC-0
 
 // ---------------------------------------------------------------------------
 // User directive 2026-07-27 — the opportunity's "Note generali" surface in the
-// work panel's read-only context block (the FE highlights them at the top of
-// the side column). This module never writes the field.
+// work panel (the FE highlights them at the top of the side column).
+//
+// REQUIREMENT CHANGED (direttiva utente 2026-09-09): the field is EDITABLE
+// from this module now, so it left the read-only `context` block for the top
+// level of the payload. The write channel and its field-permission gate live
+// in RequestManagementGeneralNotesTest; what this file still owns is the read
+// projection the panel opens on.
 // ---------------------------------------------------------------------------
 
-it('context.general_notes carries the opportunity notes, read-only', function () {
+it('general_notes carries the opportunity notes at the top level of the panel', function () {
     $actor = requestManagementUserWith(['view', 'viewAll']);
     $opportunity = Opportunity::factory()->create([
         'registry_id' => Registry::factory()->create()->id,
@@ -204,21 +210,7 @@ it('context.general_notes carries the opportunity notes, read-only', function ()
 
     $this->getJson("/api/request-management/{$quote->id}")
         ->assertOk()
-        ->assertJsonPath('data.context.general_notes', 'Il cliente richiama a settembre.');
-});
-
-it('a PATCH attempting to write general_notes from this module leaves the field untouched', function () {
-    $actor = requestManagementUserWith(['view', 'viewAll', 'update']);
-    $opportunity = Opportunity::factory()->create([
-        'registry_id' => Registry::factory()->create()->id,
-        'general_notes' => 'Nota originale',
-    ]);
-    $quote = Quote::factory()->for($opportunity)->create();
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$quote->id}", ['general_notes' => 'Riscritta']);
-
-    expect($opportunity->fresh()->general_notes)->toBe('Nota originale');
+        ->assertJsonPath('data.general_notes', 'Il cliente richiama a settembre.');
 });
 
 // ---------------------------------------------------------------------------

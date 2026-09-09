@@ -201,6 +201,12 @@ export function buildRequestWorkSchema(
   return z
     .object({
       next_callback_at: z.string().nullable(),
+      // "Note generali" (direttiva utente 2026-09-09): the Opportunity's free
+      // text, editable from this panel now. A plain string like the create
+      // form's own field — the empty one becomes the `null` that clears it on
+      // the wire (`buildRequestWorkPayload`); the 5000-char ceiling stays a
+      // server rule, surfaced as a 422 on this very field.
+      general_notes: z.string(),
       // The three buffered client blocks carry no field-level rule: they are
       // checked by the refinement below, which alone knows whether they travel.
       client_identity: z.custom<PersonalDataDraft | null>(),

@@ -41,6 +41,52 @@ it('AC-001: resolveDuplicateMatch matches an existing Registry by normalized tax
         ->and($match['meta']['matched_on'])->toBe(['tax_code']);
 });
 
+// ---------------------------------------------------------------------------
+// AC-101 (user directive 2026-09-09) — vat_number is a match channel too
+// ---------------------------------------------------------------------------
+
+it('AC-101: resolveDuplicateMatch matches an existing Registry by normalized vat_number', function () {
+    $registry = Registry::factory()->create();
+    PersonalData::factory()->company()->for($registry, 'personable')->create([
+        'tax_code' => null,
+        'vat_number' => '01234567890',
+    ]);
+
+    $match = app(LeadsImportDefinition::class)->resolveDuplicateMatch(['vat_number' => ' 01234567890 '], []);
+
+    expect($match['id'])->toBe($registry->id)
+        ->and($match['meta']['registry_id'])->toBe($registry->id)
+        ->and($match['meta']['matched_on'])->toBe(['vat_number']);
+});
+
+it('AC-101: a row matching on both fiscal identifiers reports them cumulatively', function () {
+    $registry = Registry::factory()->create();
+    PersonalData::factory()->company()->for($registry, 'personable')->create([
+        'tax_code' => 'RSSMRA80A01H501U',
+        'vat_number' => '01234567890',
+    ]);
+
+    $match = app(LeadsImportDefinition::class)->resolveDuplicateMatch([
+        'tax_code' => 'rssmra80a01h501u',
+        'vat_number' => '01234567890',
+    ], []);
+
+    expect($match['meta']['matched_on'])->toBe(['tax_code', 'vat_number']);
+});
+
+it('AC-101: a vat_number nobody carries is not a duplicate', function () {
+    $registry = Registry::factory()->create();
+    PersonalData::factory()->company()->for($registry, 'personable')->create([
+        'tax_code' => null,
+        'vat_number' => '01234567890',
+    ]);
+
+    $match = app(LeadsImportDefinition::class)->resolveDuplicateMatch(['vat_number' => '09876543210'], []);
+
+    expect($match['id'])->toBeNull()
+        ->and($match['meta'])->toBeNull();
+});
+
 it('AC-001: staging a tax_code-matching row under the manual strategy resolves to duplicate with duplicate_meta', function () {
     $registry = Registry::factory()->create();
     PersonalData::factory()->individual()->for($registry, 'personable')->create(['tax_code' => 'RSSMRA80A01H501U']);

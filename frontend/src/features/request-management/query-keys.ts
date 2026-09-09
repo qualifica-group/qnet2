@@ -19,6 +19,14 @@ export const requestManagementKeys = {
    * back re-reads the cache instead of refetching.
    */
   formContext: (criteriaKey: string) => ['request-management', 'form-context', criteriaKey] as const,
+  /**
+   * Query key of a category's "does it expose exactly one product?" probe
+   * (user directive 2026-09-09). Its OWN key and not `forSelectKeys.list`:
+   * that one belongs to the pickers' infinite query, whose cached shape is a
+   * page list, not the single product resolved here.
+   */
+  categorySoleProduct: (categoryId: number) =>
+    ['request-management', 'category-sole-product', categoryId] as const,
   /** Query key of the active category tab's resolved G.A. labels (spec 0080), the create form's own fetch. */
   categoryManagerLabels: (categoryId: number | null) =>
     ['request-management', 'category-manager-labels', categoryId] as const,

@@ -29,14 +29,15 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
     value: number | null
     onChange: (value: number | null) => void
     disabled?: boolean
-    params?: Record<string, string | number>
-    labels: { triggerLabel: string }
+    params?: Record<string, string | number | string[] | number[]>
+    labels: { triggerLabel: string; empty: string }
   }) => (
     <button
       type="button"
       aria-label={labels.triggerLabel}
       disabled={disabled}
       data-params={params ? JSON.stringify(params) : ''}
+      data-empty={labels.empty}
       onClick={() => onChange(resource === 'operational-sites' ? SITE_PICK_ID : OPERATOR_PICK_ID)}
     >
       {value ?? 'none'}
@@ -323,5 +324,82 @@ describe('AssignOperatorsDialog — lockedMode (spec 0079)', () => {
       'data-params',
       JSON.stringify({ operational_site_id: SITE_PICK_ID }),
     )
+  })
+})
+
+/**
+ * Spec 0110 AC-041/AC-043: the dialog stays dumb — the CALL SITE resolves the
+ * competence of the selection and hands it down; the dialog only forwards it
+ * to the picker, disables it while the resolution is in flight, and names the
+ * empty state for what it is.
+ */
+describe('AssignOperatorsDialog — competence filter (spec 0110)', () => {
+  function renderWithCompetence(props: {
+    competenceCategoryIds?: number[]
+    isResolvingCompetence?: boolean
+  }) {
+    render(
+      <AssignOperatorsDialog
+        open
+        onOpenChange={vi.fn()}
+        selectionCount={2}
+        onAssign={vi.fn().mockResolvedValue(undefined)}
+        {...props}
+      />,
+    )
+    pickMode('Assign to operator')
+  }
+
+  it('adds the competence filter to the Sede scope of the operator picker', () => {
+    renderWithCompetence({ competenceCategoryIds: [4, 9] })
+    pickSite()
+
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+      'data-params',
+      JSON.stringify({ operational_site_id: SITE_PICK_ID, competence_category_ids: [4, 9] }),
+    )
+  })
+
+  it('keeps the picker on the plain Sede scope when there is no requirement', () => {
+    renderWithCompetence({})
+    pickSite()
+
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+      'data-params',
+      JSON.stringify({ operational_site_id: SITE_PICK_ID }),
+    )
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+      'data-empty',
+      'No results found.',
+    )
+  })
+
+  it('names the competence empty state, and keeps confirm disabled with no candidate (AC-043)', () => {
+    renderWithCompetence({ competenceCategoryIds: [4] })
+    pickSite()
+
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+      'data-empty',
+      'No operator is competent for the selected records.',
+    )
+    // Nothing can be picked from an empty list, so `single` cannot be confirmed.
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
+  })
+
+  it('disables the picker, and explains why, while the requirement is being resolved (AC-043)', () => {
+    renderWithCompetence({ isResolvingCompetence: true })
+    pickSite()
+
+    expect(screen.getByRole('button', { name: 'Operator' })).toBeDisabled()
+    expect(screen.getByText('Looking up the competent operators…')).toBeInTheDocument()
+  })
+
+  it('tells the user the list is competence-scoped once the filter applies', () => {
+    renderWithCompetence({ competenceCategoryIds: [4] })
+    pickSite()
+
+    expect(
+      screen.getByText('Only Site operators competent for the selected records.'),
+    ).toBeInTheDocument()
   })
 })

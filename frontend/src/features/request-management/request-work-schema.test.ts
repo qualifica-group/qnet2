@@ -25,6 +25,7 @@ function original(overrides: Partial<RequestWorkOriginalState> = {}): RequestWor
 function values(overrides: Record<string, unknown> = {}) {
   return {
     next_callback_at: null,
+    general_notes: '',
     client_identity: null,
     client_contacts: [],
     client_address: [],

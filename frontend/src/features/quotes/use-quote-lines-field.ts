@@ -16,6 +16,17 @@ export const EMPTY_LINE_ROW: QuoteLineFormValues = {
   commissions: [],
 }
 
+/**
+ * The quantity a row opens on as soon as it carries a product, wherever the
+ * product lands on it: manual pick (`setProduct` below), deep-link seeding
+ * (`quote-form-body.tsx`) and the mono-product autofill of Gestione Richieste
+ * (`use-offer-lines-autofill.ts`). Both the schema (`quote-schema.ts`) and the
+ * backend (`QuoteLineRules`, `gt:0`) reject an empty quantity AND 0, so a
+ * picked row left empty simply blocks the save until the operator types the
+ * only value that is ever the starting point (user directive 2026-09-09).
+ */
+export const DEFAULT_LINE_QUANTITY = 1
+
 interface UseQuoteLinesFieldArgs {
   value: QuoteLineFormValues[]
   onChange: (rows: QuoteLineFormValues[]) => void
@@ -75,8 +86,9 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
 
   /**
    * Precompiles `unit_price`/`vat_rate_id`/`unit_of_measure` from the picked product's `meta`
-   * (AC-074, D-6); clearing the product only clears its own id, leaving
-   * quantity/price/rate exactly as the user left them.
+   * (AC-074, D-6) and opens an empty quantity on `DEFAULT_LINE_QUANTITY`;
+   * clearing the product only clears its own id, leaving quantity/price/rate
+   * exactly as the user left them.
    */
   const setProduct = (
     index: number,
@@ -101,7 +113,14 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
     onChange(
       value.map((row, rowIndex) =>
         rowIndex === index
-          ? { ...row, ...lineValuesFromProduct(item, variant), ...(commissions ? { commissions } : {}) }
+          ? {
+              ...row,
+              ...lineValuesFromProduct(item, variant),
+              // A quantity the operator has already typed is never
+              // overwritten: only an empty row gets the default.
+              ...(row.quantity === null ? { quantity: DEFAULT_LINE_QUANTITY } : {}),
+              ...(commissions ? { commissions } : {}),
+            }
           : row,
       ),
     )

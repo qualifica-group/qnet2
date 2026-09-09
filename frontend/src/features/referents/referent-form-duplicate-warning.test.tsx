@@ -11,25 +11,25 @@ import type { EnumOption } from '@/features/config/types'
 /**
  * Integration coverage of spec 0037 through the real create form (AC-007,
  * AC-008, AC-009): the unit behaviour of the hook/component is covered by
- * `use-referent-duplicate-check.test.tsx` and `referent-duplicate-warning.test.tsx`;
+ * `use-identity-duplicate-check.test.tsx` and `identity-duplicate-warning.test.tsx`;
  * this suite only asserts the wiring — typing a matching email surfaces the
  * warning and the save action stays enabled and functional.
  */
 
 const createReferentMock = vi.fn()
-const checkReferentDuplicatesMock = vi.fn()
+const checkIdentityDuplicatesMock = vi.fn()
 
 vi.mock('@/features/referents/api', () => ({
   createReferent: (...args: unknown[]) => createReferentMock(...args),
 }))
 
-vi.mock('@/features/referents/duplicate-check-api', async () => {
+vi.mock('@/features/identity-duplicates/duplicate-check-api', async () => {
   const actual = await vi.importActual<
-    typeof import('@/features/referents/duplicate-check-api')
-  >('@/features/referents/duplicate-check-api')
+    typeof import('@/features/identity-duplicates/duplicate-check-api')
+  >('@/features/identity-duplicates/duplicate-check-api')
   return {
     ...actual,
-    checkReferentDuplicates: (...args: unknown[]) => checkReferentDuplicatesMock(...args),
+    checkIdentityDuplicates: (...args: unknown[]) => checkIdentityDuplicatesMock(...args),
   }
 })
 
@@ -88,8 +88,8 @@ beforeEach(() => {
   createReferentMock.mockReset()
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_ACCESS_PERMISSIONS })
-  checkReferentDuplicatesMock.mockReset()
-  checkReferentDuplicatesMock.mockResolvedValue({ matches: [] })
+  checkIdentityDuplicatesMock.mockReset()
+  checkIdentityDuplicatesMock.mockResolvedValue({ matches: [] })
 })
 
 describe('ReferentForm — duplicate warning (spec 0037)', () => {
@@ -100,13 +100,13 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
     )
 
     await new Promise((resolve) => setTimeout(resolve, 350))
-    expect(checkReferentDuplicatesMock).not.toHaveBeenCalled()
+    expect(checkIdentityDuplicatesMock).not.toHaveBeenCalled()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('shows a non-blocking, role="status" warning after typing a matching email, and the save stays usable (AC-007, AC-009)', async () => {
-    checkReferentDuplicatesMock.mockResolvedValue({
-      matches: [{ referent_id: 9, name: 'Existing Referent', matched_on: ['email'] }],
+    checkIdentityDuplicatesMock.mockResolvedValue({
+      matches: [{ owner_type: 'referent', owner_id: 9, name: 'Existing Referent', matched_on: ['email'] }],
     })
     createReferentMock.mockResolvedValue({
       id: 1,
@@ -134,7 +134,7 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
     fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
 
     const status = await screen.findByRole('status')
-    expect(status).toHaveTextContent('Existing Referent might be a duplicate (email).')
+    expect(status).toHaveTextContent('Referent Existing Referent might be a duplicate (email).')
 
     const saveButton = screen.getByRole('button', { name: 'Save' })
     expect(saveButton).not.toBeDisabled()
@@ -145,8 +145,8 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
   })
 
   it('hides the warning again once the matching field is cleared (AC-008)', async () => {
-    checkReferentDuplicatesMock.mockResolvedValue({
-      matches: [{ referent_id: 9, name: 'Existing Referent', matched_on: ['email'] }],
+    checkIdentityDuplicatesMock.mockResolvedValue({
+      matches: [{ owner_type: 'referent', owner_id: 9, name: 'Existing Referent', matched_on: ['email'] }],
     })
 
     render(
@@ -159,7 +159,7 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
     })
     await screen.findByRole('status')
 
-    checkReferentDuplicatesMock.mockResolvedValue({ matches: [] })
+    checkIdentityDuplicatesMock.mockResolvedValue({ matches: [] })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: '' } })
 
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())

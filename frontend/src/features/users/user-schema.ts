@@ -39,6 +39,9 @@ function buildEmploymentSchema(t: TFunction) {
       // more remote sites — both operative to the same effect (D-1).
       primary_operational_site_id: z.number().nullable(),
       remote_operational_site_ids: z.array(z.number()),
+      // Assignment competence (spec 0110): the product categories the user is
+      // competent for, on the same per-field tri-state as the remote sites.
+      product_category_ids: z.array(z.number()),
       qualification_type: z.enum(QUALIFICATION_TYPES).nullable(),
       hired_at: z.string(),
       terminated_at: z.string(),

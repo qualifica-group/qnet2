@@ -111,4 +111,40 @@
     <item>Se `referent-form-body.tsx` supera le 300 righe con l'avviso, estrarre `referent-duplicate-warning.tsx`.</item>
   </constraints>
 
+  <amendment id="A1" date="2026-09-09" owner="utente">
+    <directive>
+      "Controllo contatto, duplicazione gestirla anche per cf o p.iva non solo per telefono."
+      Due decisioni prese con l'utente in sessione: (1) il pannello live cerca in TUTTO il
+      namespace identita' (utenti + anagrafiche + referenti), non piu' solo fra i referenti;
+      (2) in creazione richiesta il controllo BLOCCA il salvataggio, non avvisa soltanto.
+    </directive>
+    <changes>
+      <item>Criteri: si aggiunge `vat_number` — la voce "vat_number" in &lt;out&gt; sopra e' SUPERATA.
+            MATCH_ORDER = email, phone, mobile, tax_code, vat_number.</item>
+      <item>Ambito: `ReferentDuplicateFinder` diventa `IdentityDuplicateFinder` e interroga
+            `IdentityUniquenessScope` (users + registries + referents), lo stesso namespace del
+            gate bloccante in scrittura (direttiva 2026-08-06). Prima il pannello era piu' STRETTO
+            del gate: l'operatore leggeva "nessun duplicato" e poi si vedeva rifiutare il salvataggio.
+            Le card fuori namespace (es. CompanySite) restano escluse.</item>
+      <item>Endpoint: `POST /api/identity/duplicate-check` SOSTITUISCE
+            `POST /api/referents/duplicate-check` (rimosso). Request: `{ tax_code?, vat_number?,
+            contacts? }`. Response match: `{ owner_type: "user"|"registry"|"referent", owner_id,
+            name, matched_on }` — `referent_id` non esiste piu'. Authz: `registries.create` OR
+            `referents.create` (il check alimenta entrambi i form). Il divieto di PII in risposta
+            (AC-005) resta invariato, esteso a `vat_number`.</item>
+      <item>Superfici: il pannello e' ora anche sul form Anagrafiche. FE: modulo condiviso
+            `features/identity-duplicates/` (i tre file referent-only sono cancellati); l'hook
+            prende `enabled: boolean` invece del `mode`; i18n nel namespace `identityDuplicates`
+            (non piu' sotto `referents`), con l'etichetta del tipo di titolare nel messaggio.</item>
+      <item>Import lead: `LeadDuplicateMatcher` matcha anche su `vat_number` (colonne fiscali da
+            allow-list, priorita' invariata: prima i contatti).</item>
+      <item>Creazione richiesta (`POST /api/request-management`, ramo `client_*`): nuovo concern
+            `ValidatesClientIdentityUniqueness` — CF/P.IVA/telefono gia' presenti nel namespace
+            producono 422 su `client_identity.tax_code` / `client_identity.vat_number` /
+            `client_contacts.{i}.value`. Il ramo creava un'Anagrafica vera senza alcun controllo.
+            FUORI SCOPE dichiarato: il PATCH del pannello di lavorazione (servirebbe l'owner id
+            della Registry esistente, altrimenti la card collide con se stessa).</item>
+    </changes>
+  </amendment>
+
 </spec>

@@ -3,6 +3,287 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMPETENZA OPERATORE PER L'ASSEGNAZIONE (spec 0110) — COMPLETA, NON COMMITTATA
+
+**Spec.** `docs/specs/0110-operator-competence-assignment.xml`, `status="approved"`. Decisioni
+congelate con l'utente il 2026-09-09; contratto congelato PRIMA del dispatch delle lane.
+
+**Regola unica (INV-1..INV-5).** Requisito di un record = insieme di CATEGORIE PRODOTTO. Riga
+import -> categorie dei `product_ids` effettivi, fallback alle categorie effettive della campagna
+della riga; lead -> `productsOfInterest`, stesso fallback; offerta -> `product_category_id` delle
+`opportunity_product_lines`. Un utente e' competente se copre una categoria richiesta (chiusura
+DISCENDENTE delle sue categorie) E la sua `employment.business_function_id` coincide con la
+funzione EFFETTIVA di quella categoria (spec 0023). Deroghe: record senza requisito -> nessun
+filtro; utente senza categorie O senza funzione -> jolly, competente per tutto.
+
+**Naming da rispettare (verificato).** Pivot `employment_profile_product_category` (FK nominate
+`ep_prod_cat_employment_fk`/`ep_prod_cat_category_fk`, unique `ep_prod_cat_unique`: il nome di
+default supera i 64 char MySQL). Campo API `employment.product_category_ids` (tri-state come
+`remote_operational_site_ids`). `App\Services\Assignment\{OperatorCompetence, CompetenceProfile,
+ImportRowCompetence, LeadCompetence, QuoteCompetence, ImportRunRowSelection}`,
+`App\DataObjects\Assignment\AssignmentOutcome`, `App\Services\Campaigns\CampaignProductCategories`,
+`App\Enums\AssignmentDomain`. FE: `features/assignment/` (`useRequiredCategories`),
+`features/request-management/use-quote-operator-competence.ts`.
+
+**Contratto (additivo, un chiamante che lo ignora vede il comportamento odierno).**
+- `employment.product_category_ids` sul write utente; `product_category_ids` + `product_categories`
+  in lettura (solo con `productCategories` eager-loaded).
+- `GET /api/users/for-select` + `competence_category_ids[]` -> applicato come `whereNotIn` sugli
+  ESCLUSI (non come whereIn dei competenti: la regola jolly renderebbe l'elenco enorme e la
+  deroga si invertirebbe). Entra PRIMA del `count`, quindi il totale e' coerente.
+- `POST /api/assignment/required-categories` (`domain` = import_rows|leads|quotes) -> unione
+  ordinata e deduplicata; `[]` = nessun requisito, il chiamante non filtra.
+- Assegnazione: `{ updated, skipped }` (import), `{ assigned, skipped }` (lead, richieste).
+  `skipped` = record lasciati senza operatore per assenza di competenti (solo `balanced`).
+
+**Decisioni da NON reinterpretare.**
+- `mode=single` NON ha difesa server-side: solo picker filtrato (decisione utente). Vedi R-1 nella
+  spec. Chiuderlo in futuro costa un `Validator::after`, non tocca il resto.
+- Il trasferimento contatto (spec 0079) E' in perimetro: `RequestTransferService::transferOne()`
+  scrive lo stesso slot GA2 via `RequestOperatorWriter`. Rilevato in corso d'opera, spec
+  aggiornata con AC-045. La direttiva utente ("ovunque si assegnano operatori") batte l'elenco
+  delle superfici che la spec enumerava.
+- Un'offerta saltata MANTIENE l'operatore che aveva (passare `null` l'avrebbe cancellato); le
+  offerte fuori scope D-3 non entrano ne' in `assigned` ne' in `skipped`.
+- Se la stessa PATCH porta `product_ids`, la competenza si calcola su QUEI prodotti (i nuovi),
+  non su quelli che sta sostituendo.
+
+**Test aggiornati per cambio di requisito (dichiarato, non manomissione).**
+- `FieldCatalogueEndpointTest` e `MetaEndpointTest`: la lista dei campi `users` ora contiene
+  `employment.product_category_ids` (12 -> 14 chiavi employment).
+- `QuoteWorkflowMigrationTest`: contatore di rollback 55 -> 57. ERA GIA' ROSSO PRIMA della 0110:
+  `2026_09_08_100000_rename_request_management_manager_ga3_to_ga1` fu committata senza bumpare il
+  contatore. La 0110 aggiunge la seconda.
+
+**Debiti segnalati, NON eseguiti (fuori scope).**
+- `app/Services/ImportService.php` da 371 a 440 righe: oltre il soft limit 300. Proposta: estrarre
+  il ramo balanced in `App\Services\Import\ImportRowBalancedAssignment`.
+- `frontend/src/features/request-management/request-management-table.tsx` a 498 righe: a due righe
+  dall'hard limit, prossimo candidato allo split per il suo owner.
+- `tests/Unit/Migrations/ExternalApiClientTest.php` e `tests/Feature/Migration/` vanno in segfault
+  in questo ambiente: PREESISTENTE, indipendente dalla 0110.
+
+**Stato.** Tutti gli AC verdi, eseguiti davvero. Il commit lo fa l'utente: nell'albero convivono
+anche le modifiche di altre sessioni (feature duplicati di identita'), quindi va fatto SELETTIVO
+PER PATH sui file della 0110.
+
+## GESTIONE RICHIESTE — "NOTE GENERALI" EDITABILI IN LAVORAZIONE (direttiva utente 2026-09-09) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "In gestione richieste in modalita' lavora, se non c'e' una nota generale voglio
+che ci sia il componente e che possa essere inserita o modificata (come anche in creazione)" +
+chiarimento: "in creazione gia' esiste, voglio solo replicarlo in edit". Quindi: **il form di
+creazione NON e' stato toccato**; cambia solo il pannello di lavorazione (e il contratto che serve).
+
+**Contratto (congelato prima di implementare).**
+- `GET/PATCH /api/request-management/{quote}`: `general_notes` passa da `data.context.general_notes`
+  (blocco di sola lettura) a **`data.general_notes` top-level** — un campo scrivibile non puo' restare
+  dentro il blocco "contesto commerciale in sola lettura".
+- Nuova chiave PATCH `general_notes`: `['sometimes','nullable','string','max:5000']` — identica a
+  `UpdateOpportunityRequest`. Sparse: assente = intatto, `null` = cancella.
+
+**Backend.**
+- `RequestManagementAuthorization`: nuovo `FieldDefinition('general_notes', 'textarea')` + ceiling
+  `$mayWrite ? visibleEditable : visibleReadonly`. Prima il campo era deliberatamente FUORI dal
+  catalogo perche' il modulo non lo scriveva.
+- `UpdateRequestRequest`: regola + `PRODUCT_LINES_FIELD` sostituito da **`OPPORTUNITY_FIELDS =
+  ['product_lines','general_notes']`** in `currentFieldValue()`. Serve: il campo vive su
+  `opportunities`, non sulla Quote route-bound, e senza l'override il gate leggerebbe `null` dalla
+  Quote e considererebbe OGNI invio un cambiamento (422 anche su un campo bloccato ma non modificato).
+  Test dedicato su entrambe le meta' (bloccato+modificato -> 422; bloccato+invariato -> 200).
+- `RequestManagementController::update()`: `general_notes` aggiunto alla allow-list `safe()->only([...])`.
+- `RequestManagementService::updateWork()` Step 0-bis: `$opportunity->fill(['general_notes' => ...])`.
+  E' in `Opportunity::$fillable`, quindi l'activity log automatico lo prende da solo — nessuna voce
+  `$changed` esplicita, che lo doppierebbe (stesso precedente di `source_id`).
+- Griglia INVARIATA: la colonna `general_notes` resta display-only (nessun editor inline richiesto);
+  il test "non scrivibile inline" resta verde, aggiornato solo il commento.
+
+**Frontend.**
+- NUOVO `request-general-notes-field.tsx` (`RequestGeneralNotesField`): stesso callout ambra
+  (`GENERAL_NOTES_CALLOUT_CLASS`/`GENERAL_NOTES_TITLE_CLASS`) della create e delle Opportunita', ma
+  dentro `MetaField` (`metaKey: 'general_notes'`) — un ruolo readonly vede la nota e l'avviso "non
+  modificabile". CANCELLATO `request-general-notes-callout.tsx` (+ suite): renderizzava `null` quando
+  non c'era nota, cioe' esattamente il caso della direttiva.
+- `request-work-panel.tsx`: **`<Form {...form}>` risalito a wrappare TUTTA la griglia** (aside +
+  colonna principale). Il campo sta nella colonna laterale ma e' dello stesso form del `<form>`
+  submit; senza il provider comune `useFormField()` va in crash. Il `<form id=...>` resta dov'era.
+- `request-work-schema.ts` `general_notes: z.string()`; default `panel.general_notes ?? ''`;
+  `buildRequestWorkPayload` invia `trim()` diffato su entrambi i lati, `null` quando svuotato.
+- i18n: nuova `requestManagement.workPanel.generalNotes.placeholder` (it + en).
+
+**Decisioni da rispettare.**
+- La **create resta invariata**: componente, schema e payload suoi. Il duplicato di chrome tra
+  `request-create-general-notes.tsx`, il nuovo campo e `OpportunityGeneralNotesSection` e' noto e
+  SEGNALATO, non risolto (fuori scope: unificarli tocca tre moduli).
+- `''` non viaggia mai: si invia `null`, come ogni altro canale che scrive quella colonna.
+
+**Verifica eseguita.** Backend `php artisan test --filter=RequestManagement` -> 650 test verdi (di cui
+8 nuovi in `RequestManagementGeneralNotesTest`), Pint pulito. Frontend suite completa
+`npx vitest run` -> 612 file / 4518 test verdi; `npx tsc -b --force` EXIT=0; eslint pulito sui file
+toccati.
+
+## CONTROLLO CONTATTO/DUPLICATI ANCHE SU CF E P.IVA (direttiva utente 2026-09-09) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Controllo contatto, duplicazione gestirla anche per cf o p.iva non solo per
+telefono". Il repo aveva QUATTRO superfici di controllo duplicati con copertura diversa; scelte con
+l'utente in sessione: si interviene su **tutte e quattro**, il pannello live cerca **in tutto il
+namespace identita'** (utenti + anagrafiche + referenti, come il gate bloccante della direttiva
+2026-08-06), e in creazione richiesta il controllo **blocca** il salvataggio (422), non avvisa.
+
+**1) Pannello live duplicati — da referent-only a namespace-wide, + P.IVA.**
+`ReferentDuplicateFinder` -> **`IdentityDuplicateFinder`**; DTO in `App\DataObjects\Identity\`
+(`IdentityDuplicateCriteria` con `taxCode`/`vatNumber`/`contacts`, `IdentityDuplicateMatch` con
+`ownerType`/`ownerId`). Endpoint **`POST /api/identity/duplicate-check`** (`routes/api/identity.php`,
+richiesto da `api.php`) al posto di `POST /api/referents/duplicate-check`, che NON esiste piu'.
+Autorizzazione: `registries.create` **OR** `referents.create` (il check alimenta i due form; un
+gate solo referenti avrebbe chiuso fuori gli operatori dell'altro). Risposta:
+`{ owner_type: 'user'|'registry'|'referent', owner_id, name, matched_on }` — mai un valore di
+contatto/CF/P.IVA (no PII leak, AC-005 di spec 0037 conservato). `MATCH_ORDER` =
+`email, phone, mobile, tax_code, vat_number`. La ricerca passa da `IdentityUniquenessScope::cards()`,
+quindi le card fuori namespace (es. `CompanySite`) restano escluse per costruzione.
+**Perche':** prima il pannello era piu' STRETTO del gate in scrittura — l'operatore leggeva "nessun
+duplicato" e poi si vedeva rifiutare il salvataggio sullo stesso identico valore.
+
+**2) Pannello live anche sul form Anagrafiche.** Nuovo modulo condiviso
+`frontend/src/features/identity-duplicates/` (`duplicate-check-api.ts`,
+`use-identity-duplicate-check.ts`, `identity-duplicate-warning.tsx`); i tre file referent-only sono
+**cancellati**. L'hook non prende piu' il `mode` del form ma un `enabled: boolean` (i due form
+passano `mode.type === 'create'`): il check resta solo in creazione. Cablato in
+`referent-form-body.tsx` e `registry-form-body.tsx`. i18n: nuovo namespace top-level
+**`identityDuplicates`** (`it/en-identity-duplicates.ts`, importati in `it.ts`/`en.ts`); rimosso
+`referents.form.duplicateWarning` (dead code). Il messaggio ora nomina anche il TIPO di titolare:
+"Anagrafica Mario Rossi potrebbe essere un duplicato (partita IVA)."
+
+**3) Import lead — la P.IVA e' un canale di match.** `LeadDuplicateMatcher`: `matchByTaxCode()` ->
+`matchByFiscalColumns()`/`matchByFiscalColumn()` su `FISCAL_COLUMNS = ['tax_code','vat_number']`
+(allow-list: il nome colonna non arriva mai dall'input), `matchedOn` cumulativo su entrambe.
+Priorita' invariata: prima i contatti, poi le colonne fiscali. Il wizard NON rende `matched_on` a
+schermo, quindi nessuna etichetta i18n da aggiungere lato import.
+
+**4) Creazione richiesta — il buco chiuso.** Il ramo `client_identity`/`client_contacts` di
+`POST /api/request-management` creava un'Anagrafica vera **senza alcun controllo di identita'**: era
+l'unica porta del namespace senza serratura. Nuovo concern
+`ValidatesClientIdentityUniqueness` (compone `ValidatesPhoneUniqueness`, dichiara owner =
+`Registry::class` / id null, chiave contatti `client_contacts`) composto da `StoreRequestRequest`:
+CF/P.IVA via `UniquePersonalDataIdentifier` **appesi** alle regole di formato esistenti (mai
+assegnati, o `TaxCode`/`VatNumber` sparirebbero), telefono nell'after-hook. `ValidatesPhoneUniqueness`
+ha ora `phoneUniquenessContactsKey()` (default `personal_data.contacts`) perche' questa e' l'unica
+superficie che nidifica i contatti altrove.
+
+**Limite noto, dichiarato:** il **PATCH del pannello di lavorazione** (`client_*` sull'update) NON e'
+coperto — resta fuori dallo scope concordato (la direttiva parlava della creazione). Chi lo aggiunge
+deve passare l'id della Registry esistente a `identityUniquenessOwnerId()`, altrimenti la card
+collide con se stessa e il pannello non salva piu'.
+
+**Semantica telefono (non e' un bug).** `ContactValueNormalizer`/`InputFormat::phone` conservano il
+`+`: `+39 333 1234567` e `3331234567` NON sono lo stesso numero per il sistema. I test rispettano
+questa semantica, non la aggirano.
+
+**Chiamante nascosto trovato.** `tests/Feature/Users/TestUsersSeederTest.php` interrogava il vecchio
+`/api/referents/duplicate-check` per verificare il "+" quick-create del ruolo commerciale: aggiornato
+al nuovo path (il gate `referents.create` continua a bastare).
+
+**Test eseguiti.** Backend: `tests/Feature/Identity/IdentityDuplicateCheckTest.php` (16, riscritto
+dal vecchio `ReferentDuplicateCheckTest`), `LeadDuplicateMatchTest` (+3 AC-101),
+`RequestManagementClientUniquenessTest.php` (8, nuovo). Frontend: `identity-duplicates/*` (2 file
+portati + copertura fiscale), `referent-form-duplicate-warning.test.tsx` aggiornato,
+`registry-form-duplicate-warning.test.tsx` nuovo. Pint, ESLint e `tsc -b --force` puliti.
+
+**Fuori scope, segnalato:** `registry-form-metadata.test.tsx:271` ha un errore ESLint PREESISTENTE
+(`'_omit' is assigned a value but never used`, commit ee2797de). Non toccato.
+
+**Attenzione a chi legge questo working tree.** Durante questa sessione una SECONDA sessione stava
+modificando in parallelo `RequestManagementResource` / `UpdateRequestRequest` /
+`RequestManagementAuthorization` / `RequestManagementService` su `general_notes`, con i suoi test
+ancora rossi (3 fallimenti in `RequestManagementShowTest` + `RequestManagementCreateOperativeFieldsTest`).
+NON sono di questo lavoro: verificato eseguendo le SOLE modifiche di questa sessione su un worktree
+pulito a HEAD -> **6650 test backend verdi**, TUTTA la suite girata a blocchi (Unit 909; Feature
+ActivityLog..Geo 1237; Leads..Projects 1535; Quotes..WorkOrders 1780; il blocco impattato
+RequestManagement + Identity + Referents + Registries + Imports + Users 1189). Unico rosso:
+`QuoteWorkflowMigrationTest::AC-004` (rollback delle 7 migrazioni), che fallisce **anche su HEAD
+immacolato**, senza alcuna modifica applicata -> PREESISTENTE, non toccarlo credendolo una regressione.
+
+**Nota ambiente.** `php artisan test` sull'INTERA suite si impianta in locale (processo a 0% CPU; in
+una run precedente SIGSEGV, signal 11), anche su HEAD pulito. I blocchi per directory girano
+regolarmente: verificare cosi', non concludere che la suite sia rotta.
+
+## RIGA D'OFFERTA/COSTO — QUANTITA' 1 ALLA SCELTA DEL PRODOTTO (direttiva utente 2026-09-09) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Gestione richieste, quando si assegna un prodotto voglio quantita' venga
+inserita su 1, il sistema tra l'altro non accetta gli 0". Perimetro deciso con l'utente: **ovunque**,
+non solo Gestione Richieste (l'editor riga e' lo stesso), e **solo se la quantita' e' vuota**.
+
+**Cosa e' stato fatto** (solo frontend, nessun tocco al contratto ne' al backend).
+- `frontend/src/features/quotes/use-quote-lines-field.ts`: nuova costante esportata
+  `DEFAULT_LINE_QUANTITY = 1`; `setProduct` la applica alla riga **solo quando `row.quantity === null`**,
+  accanto alla precompilazione gia' esistente di `unit_price`/`vat_rate_id`/`unit_of_measure`.
+  Vale per tutte le superfici che montano `QuoteLinesField`: Gestione Richieste (pannello, form di
+  creazione, quick-edit della griglia) e Offerte (tab Offerta e tab Costi).
+- Deduplicate le due copie locali dello stesso 1: `SEEDED_LINE_QUANTITY` (`quote-form-body.tsx`,
+  seeding da deep-link) e `SEEDED_ROW_QUANTITY` (`use-offer-lines-autofill.ts`, autofill mono-prodotto)
+  ora importano `DEFAULT_LINE_QUANTITY`. Nessun cambio di comportamento su quei due percorsi.
+- Test: `use-quote-lines-field.test.ts` copre i due casi (riga vuota -> 1; quantita' gia' digitata -> intatta).
+
+**Decisioni da rispettare (non riaprirle senza direttiva).**
+- **Lo 0 resta rifiutato, di proposito.** Non e' un bug da correggere: `quote-schema.ts`
+  (`quantity <= 0` -> `lineQuantityInvalid`) e `backend/app/Quotes/QuoteLineRules.php:48` (`'gt:0'`)
+  concordano — una riga con quantita' 0 varrebbe 0. La direttiva si risolve col default 1, NON
+  allentando la regola.
+- **Mai sovrascrivere una quantita' digitata.** Cambiare prodotto su una riga che ne porta gia' una
+  (anche 0, che il form segnala come non valida) lascia il valore com'e'.
+
+**Verifica eseguita.** `npx vitest run src/features/quotes src/features/request-management` -> 84 file /
+590 test verdi; `npx tsc -b --force --pretty false` -> EXIT=0; eslint sui 4 file toccati -> pulito.
+
+## GESTIONE RICHIESTE — RIGA D'OFFERTA: AUTOFILL SU CATEGORIA MONO-PRODOTTO + RIGA VUOTA DI DEFAULT (direttiva utente 2026-09-09) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** (1) "Quando una categoria ha solo un prodotto e seleziono la categoria, voglio
+che in automatico si crea la riga prodotto"; (2) "Voglio che di default ci sia una riga di offerta
+vuota da inserire quando non c'e' prodotto". Perimetro: solo frontend, modulo Gestione Richieste —
+nessuna modifica al contratto API ne' al backend.
+
+**Cosa e' stato fatto.**
+- NUOVO `frontend/src/features/request-management/use-offer-lines-autofill.ts`: `useOfferLinesAutofill`
+  (+ la pura `seedSoleProductRows`, esportata per il test). Sonda `GET /products/for-select` con
+  `category_ids: [id]` e `limit: 2` — bastano due righe per distinguere "esattamente uno" da "piu' di
+  uno" — e legge `pagination.total === 1`. Chiave dedicata `requestManagementKeys.categorySoleProduct`,
+  NON `forSelectKeys.list` (quella e' della infinite query dei picker, altra shape in cache).
+- `request-offer-lines-section.tsx` monta l'hook in `RequestOfferLinesField`, cioe' l'unico punto
+  condiviso dalle tre superfici (pannello di lavorazione, form di creazione, dialog di quick-edit
+  della griglia). Tetto righe = `singleCategoryMode ? 1 : MAX_LINES_PER_TAB`, lo stesso che
+  "Aggiungi riga" gia' rispecchia.
+- `request-work-payload.ts`: nuovo `openingOfferLines(lines)` = le righe persistite, oppure UNA riga
+  pristine quando non ce ne sono. Usato da `use-request-work-form.ts` e `use-offer-lines-form.ts`
+  (il form di creazione apriva gia' su `[EMPTY_LINE_ROW]` dalla direttiva 2026-09-01).
+
+**Decisioni da rispettare (non riaprirle senza direttiva).**
+- **Solo le categorie selezionate IN SESSIONE.** Quelle con cui il form si apre non vengono ne'
+  sondate ne' seminate: idratare una richiesta persistita non deve aggiungere righe accanto a quelle
+  che gia' porta. Effetto collaterale voluto: zero richieste extra all'apertura del pannello.
+- **Una categoria si semina UNA volta sola** (`seededCategoryIds`, ref): la sonda resta in cache, e
+  riseminare renderebbe la riga impossibile da cancellare.
+- **`quantity: 1` sulla riga creata.** Con `quantity: null` la riga fallisce `quoteLineRowSchema`
+  (`lineQuantityRequired`) e bloccherebbe OGNI salvataggio della richiesta finche' l'operatore non
+  la compila — l'opposto di cio' che l'automatismo serve. `unit_price`/`vat_rate_id`/`unit_of_measure`
+  arrivano da `lineValuesFromProduct(product, 'revenue')`, identici a una scelta manuale.
+- **Autorizzazione:** l'hook rispecchia la stessa derivazione di `MetaField`
+  (`visible && editable && !disabled` su `offer_lines`) e non scrive un campo bloccato.
+- **Riga vuota di default:** resta pristine finche' non la si tocca, e `toLineInputs` la scarta —
+  quindi una richiesta senza offerta continua a salvarsi intatta (test dedicato).
+
+**Limite noto (non e' un bug).** Sulla riga seminata la colonna read-only "Codice" mostra `—` finche'
+la richiesta non viene ricaricata: `QuoteLineRow` legge il codice da `pickedCode` (solo scelta
+manuale) o da `knownProduct` (solo righe persistite). Nessun impatto sul salvataggio.
+
+**Verifica eseguita.** `npx tsc -b --force --pretty false` pulito; ESLint pulito sui file toccati;
+`npx vitest run` intero: **611 file, 4510 test, tutti verdi**. Nuovi test:
+`use-offer-lines-autofill.test.tsx` (7: autofill mono-prodotto, nessun autofill su categoria con
+piu' prodotti, nessuna sonda sulla categoria d'apertura, riga cancellabile, + 3 unit su
+`seedSoleProductRows`) e un caso in `request-work-panel-offer-lines.test.tsx` (pannello senza righe
+persistite apre su una riga vuota e salva senza mandare `offer_lines`).
+
+**Pre-esistente, fuori scope:** ESLint segnala `react-refresh/only-export-components` su
+`frontend/src/features/quotes/column-renderers.tsx` — file non toccato da questo lavoro.
+
 ## REPORT GESTIONE RICHIESTE: "N. TELEFONATE EFFETTUATE" = SOLO LE NOTE DEL GA2 (direttiva utente 2026-09-09) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "nelle statistiche e report c'e' la colonna N. Telefonate Effettuate. Questa

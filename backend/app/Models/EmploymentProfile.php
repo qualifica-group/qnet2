@@ -115,6 +115,32 @@ class EmploymentProfile extends BaseModel
     }
 
     /**
+     * The product categories this profile is operative on (spec 0110): the
+     * category half of the assignment competence, the business function
+     * above being the other half (INV-3).
+     */
+    public function productCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(ProductCategory::class, 'employment_profile_product_category');
+    }
+
+    /**
+     * Read-only proxy onto the competence pivot (spec 0110), counterpart of
+     * remoteOperationalSiteIds() below: same PUBLIC-accessor reasoning (the
+     * field-permission catalogue resolves `employment.product_category_ids`
+     * through Model::getAttribute() and needs scalar ids back), and the same
+     * no-N+1 read off the already-loaded collection.
+     *
+     * @return array<int, int>
+     */
+    public function productCategoryIds(): Attribute
+    {
+        return Attribute::get(
+            fn (): array => $this->productCategories->pluck('id')->all()
+        );
+    }
+
+    /**
      * Read-only proxy onto the pivot for the field-permission catalogue
      * (spec 0103 D-9, replacing the former `operational_site_id` column):
      * EnforcesFieldPermissions::readNestedPath() resolves

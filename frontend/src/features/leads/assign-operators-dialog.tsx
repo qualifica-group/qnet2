@@ -80,6 +80,43 @@ const ASSIGNMENT_MODES: ReadonlyArray<{
 /** Crisp, compact styling shared by the Sede/Operatore selects. */
 const SELECT_CLASS = 'h-8 bg-card text-xs shadow-sm transition-colors hover:border-ring/50'
 
+/**
+ * Query params of the Operatore picker: the Sede scope (spec 0048) plus, when
+ * the call site resolved one, the competence filter (spec 0110 AC-041).
+ * `undefined` while no Sede is picked — the field is disabled anyway, and an
+ * unscoped list would be the wrong one to preload.
+ */
+function buildOperatorParams(
+  siteId: number | null,
+  competenceCategoryIds: number[] | undefined,
+): Record<string, number | number[]> | undefined {
+  if (siteId === null) {
+    return undefined
+  }
+  return competenceCategoryIds === undefined
+    ? { operational_site_id: siteId }
+    : { operational_site_id: siteId, competence_category_ids: competenceCategoryIds }
+}
+
+/**
+ * Which sentence sits under the Operatore picker: no Sede yet, competence
+ * still being resolved (spec 0110 AC-043), competence filter applied, or the
+ * plain Sede-only scope.
+ */
+function operatorHintKey(
+  siteId: number | null,
+  isResolvingCompetence: boolean,
+  hasCompetenceFilter: boolean,
+): string {
+  if (siteId === null) {
+    return 'leads.assign.operator.disabledHint'
+  }
+  if (isResolvingCompetence) {
+    return 'leads.assign.operator.resolvingHint'
+  }
+  return hasCompetenceFilter ? 'leads.assign.operator.competenceHint' : 'leads.assign.operator.hint'
+}
+
 export interface AssignOperatorsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -102,6 +139,20 @@ export interface AssignOperatorsDialogProps {
    * (AC-029).
    */
   lockedMode?: AssignmentMode
+  /**
+   * Product categories the current selection requires (spec 0110 AC-041),
+   * resolved by the CALL SITE via `useRequiredCategories` — the dialog stays
+   * dumb and only forwards them to the picker. `undefined` means NO
+   * competence filter (nothing selected, still resolving, or a selection that
+   * expresses no requirement), so the picker behaves exactly as before.
+   */
+  competenceCategoryIds?: number[]
+  /**
+   * True while the call site is still resolving the categories above: the
+   * Operatore picker stays disabled rather than briefly listing operators the
+   * filter is about to exclude (spec 0110 AC-043).
+   */
+  isResolvingCompetence?: boolean
   /**
    * Wired by the consumer to its own endpoint (the Lead table via
    * `useAssignOperators`, the import review bar via its own PATCH). The
@@ -131,6 +182,8 @@ export function AssignOperatorsDialog({
   defaultSite,
   copy,
   lockedMode,
+  competenceCategoryIds,
+  isResolvingCompetence = false,
   onAssign,
 }: AssignOperatorsDialogProps) {
   return (
@@ -142,6 +195,8 @@ export function AssignOperatorsDialog({
           defaultSite={defaultSite}
           copy={copy}
           lockedMode={lockedMode}
+          competenceCategoryIds={competenceCategoryIds}
+          isResolvingCompetence={isResolvingCompetence}
           onAssign={onAssign}
           onClose={() => onOpenChange(false)}
         />
@@ -156,6 +211,8 @@ interface AssignOperatorsDialogBodyProps {
   defaultSite?: AssignOperatorsDialogSite | null
   copy?: AssignOperatorsDialogCopy
   lockedMode?: AssignmentMode
+  competenceCategoryIds?: number[]
+  isResolvingCompetence: boolean
   onAssign: AssignOperatorsDialogProps['onAssign']
   onClose: () => void
 }
@@ -172,6 +229,8 @@ function AssignOperatorsDialogBody({
   defaultSite,
   copy,
   lockedMode,
+  competenceCategoryIds,
+  isResolvingCompetence,
   onAssign,
   onClose,
 }: AssignOperatorsDialogBodyProps) {
@@ -353,13 +412,16 @@ function AssignOperatorsDialogBody({
                   value={operatorId}
                   onChange={setOperatorId}
                   showAvatar
-                  disabled={isSubmitting || siteId === null}
-                  params={siteId !== null ? { operational_site_id: siteId } : undefined}
+                  disabled={isSubmitting || siteId === null || isResolvingCompetence}
+                  params={buildOperatorParams(siteId, competenceCategoryIds)}
                   className={SELECT_CLASS}
                   labels={{
                     placeholder: t('leads.assign.operator.placeholder'),
                     searchPlaceholder: t('leads.assign.operator.searchPlaceholder'),
-                    empty: t('leads.assign.operator.empty'),
+                    empty:
+                      competenceCategoryIds === undefined
+                        ? t('leads.assign.operator.empty')
+                        : t('leads.assign.operator.emptyCompetent'),
                     error: t('leads.assign.operator.selectError'),
                     clearLabel: t('leads.assign.operator.selectClear'),
                     triggerLabel: t('leads.assign.operator.label'),
@@ -367,7 +429,9 @@ function AssignOperatorsDialogBody({
                   }}
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  {siteId === null ? t('leads.assign.operator.disabledHint') : t('leads.assign.operator.hint')}
+                  {t(
+                    operatorHintKey(siteId, isResolvingCompetence, competenceCategoryIds !== undefined),
+                  )}
                 </p>
               </div>
             )}

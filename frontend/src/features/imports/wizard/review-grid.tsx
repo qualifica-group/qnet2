@@ -187,6 +187,7 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
       onApplyGeo: handleApplyGeo,
       onApplyOperator: handleApplyOperator,
       globalDefaultOperatorId,
+      importRunId: run.id,
       onApplySite: handleApplySite,
       globalDefaultSiteId: null,
       onApplyProducts: handleApplyProducts,
@@ -198,6 +199,7 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
       handleApplyGeo,
       handleApplyOperator,
       globalDefaultOperatorId,
+      run.id,
       handleApplySite,
       handleApplyProducts,
       handleApplyCampaign,
@@ -291,6 +293,7 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
       {hasSelection ? (
         <ReviewBulkAssignBar
           selection={selection}
+          importRunId={run.id}
           totalRows={run.total_rows}
           defaultSiteId={defaultSiteId}
           campaignCategoryIds={campaignCategoryIds}

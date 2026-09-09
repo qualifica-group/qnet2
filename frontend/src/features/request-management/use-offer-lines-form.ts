@@ -7,7 +7,6 @@ import { z } from 'zod'
 import type { IRowNode } from 'ag-grid-community'
 import type { ApiErrorResponse } from '@/api/types'
 import {
-  linesToFormValues,
   originalLineInputs,
   sameLines,
   toLineInputs,
@@ -16,7 +15,7 @@ import {
 import { MAX_LINES_PER_TAB, quoteLineRowSchema } from '@/features/quotes/quote-schema'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { ProductLineRow } from '@/features/product-lines/types'
-import { toProductLineRows } from '@/features/request-management/request-work-payload'
+import { openingOfferLines, toProductLineRows } from '@/features/request-management/request-work-payload'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 import { updateTableCell } from '@/features/table/api'
@@ -44,8 +43,9 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): OfferLinesF
   return {
     product_lines: toProductLineRows(panel.product_lines),
     // The SAME hydration the work panel uses, minus the provvigioni block the
-    // endpoint prohibits on this channel.
-    offer_lines: linesToFormValues(panel.offer_lines, false),
+    // endpoint prohibits on this channel — one empty row included when the
+    // request carries no line yet (user directive 2026-09-09).
+    offer_lines: openingOfferLines(panel.offer_lines),
   }
 }
 

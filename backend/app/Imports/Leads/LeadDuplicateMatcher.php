@@ -11,10 +11,11 @@ use App\Support\ContactValueNormalizer;
 
 /**
  * Resolves the EXISTING Registry (Anagrafica) a staged row collides with, by
- * email/phone/mobile (spec 0033 decision) or, additionally (spec 0036), by
- * `personal_data.tax_code`. Spec 0041 D-1: the contact matched is a Registry,
+ * email/phone/mobile (spec 0033 decision) or, additionally, by the card's
+ * fiscal identifiers — `tax_code` (spec 0036) and `vat_number` (user directive
+ * 2026-09-09). Spec 0041 D-1: the contact matched is a Registry,
  * not a Referent. Values are compared NORMALIZED (case/whitespace for email/
- * tax_code, digits-only for phone/mobile) rather than via a raw SQL LIKE/
+ * tax_code/vat_number, digits-only for phone/mobile) rather than via a raw SQL LIKE/
  * collation trick, mirroring GeoResolver::findByName()/
  * CompaniesImportDefinition::existsInDatabase() — fetch the (bounded)
  * candidate set via Eloquent, compare in PHP, never interpolate the row's
@@ -24,7 +25,17 @@ use App\Support\ContactValueNormalizer;
 final class LeadDuplicateMatcher
 {
     /** Canonical, deterministic order for `LeadDuplicateMatch::$matchedOn`. */
-    private const array MATCH_ORDER = ['email', 'phone', 'mobile', 'tax_code'];
+    private const array MATCH_ORDER = ['email', 'phone', 'mobile', 'tax_code', 'vat_number'];
+
+    /**
+     * The fiscal identifiers a row is matched on, in lookup order (user
+     * directive 2026-09-09: a partita IVA identifies a client just as a codice
+     * fiscale does). Both are card COLUMNS, allow-listed here so a mapped field
+     * id can never decide which column is read.
+     *
+     * @var array<int, string>
+     */
+    private const array FISCAL_COLUMNS = ['tax_code', 'vat_number'];
 
     /**
      * The row's dominant Registry match — id, display name, and every
@@ -35,9 +46,9 @@ final class LeadDuplicateMatcher
     public function match(array $mapped): ?LeadDuplicateMatch
     {
         // Step 1: an email/phone/mobile Contact match takes priority
-        // (unchanged pre-0036 lookup); tax_code is tried only when no
-        // contact channel hits, keeping the existing semantics intact.
-        $registryId = $this->matchByContact($mapped) ?? $this->matchByTaxCode($mapped);
+        // (unchanged pre-0036 lookup); the fiscal columns are tried only when
+        // no contact channel hits, keeping the existing semantics intact.
+        $registryId = $this->matchByContact($mapped) ?? $this->matchByFiscalColumns($mapped);
 
         if ($registryId === null) {
             return null;
@@ -114,11 +125,31 @@ final class LeadDuplicateMatcher
     }
 
     /**
+     * The first Registry carrying either fiscal identifier of the row, tried
+     * in FISCAL_COLUMNS order.
+     *
      * @param  array<string, mixed>  $mapped
      */
-    private function matchByTaxCode(array $mapped): ?int
+    private function matchByFiscalColumns(array $mapped): ?int
     {
-        $target = $this->normalizedTaxCode($mapped);
+        foreach (self::FISCAL_COLUMNS as $column) {
+            $registryId = $this->matchByFiscalColumn($column, $mapped);
+
+            if ($registryId !== null) {
+                return $registryId;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  string  $column  one of FISCAL_COLUMNS
+     * @param  array<string, mixed>  $mapped
+     */
+    private function matchByFiscalColumn(string $column, array $mapped): ?int
+    {
+        $target = $this->normalizedFiscalValue($column, $mapped);
 
         if ($target === null) {
             return null;
@@ -126,11 +157,11 @@ final class LeadDuplicateMatcher
 
         $cards = PersonalData::query()
             ->where('personable_type', (new Registry)->getMorphClass())
-            ->whereNotNull('tax_code')
-            ->get(['id', 'tax_code', 'personable_id']);
+            ->whereNotNull($column)
+            ->get(['id', $column, 'personable_id']);
 
         foreach ($cards as $card) {
-            if (ContactValueNormalizer::taxCode((string) $card->tax_code) === $target) {
+            if (ContactValueNormalizer::taxCode((string) $card->{$column}) === $target) {
                 return (int) $card->personable_id;
             }
         }
@@ -167,7 +198,6 @@ final class LeadDuplicateMatcher
         }
 
         $targets = $this->normalizedTargets($mapped);
-        $taxTarget = $this->normalizedTaxCode($mapped);
         $matched = [];
 
         foreach ($card->contacts as $contact) {
@@ -183,8 +213,12 @@ final class LeadDuplicateMatcher
             }
         }
 
-        if ($taxTarget !== null && $card->tax_code !== null && ContactValueNormalizer::taxCode((string) $card->tax_code) === $taxTarget) {
-            $matched[] = 'tax_code';
+        foreach (self::FISCAL_COLUMNS as $column) {
+            $target = $this->normalizedFiscalValue($column, $mapped);
+
+            if ($target !== null && $card->{$column} !== null && ContactValueNormalizer::taxCode((string) $card->{$column}) === $target) {
+                $matched[] = $column;
+            }
         }
 
         return array_values(array_intersect(self::MATCH_ORDER, $matched));
@@ -212,11 +246,17 @@ final class LeadDuplicateMatcher
     }
 
     /**
+     * The row's own value for a fiscal column, normalized, or null when blank.
+     * `ContactValueNormalizer::taxCode` (upper + trim) is what the write gate
+     * `UniquePersonalDataIdentifier` applies to BOTH columns, so the import and
+     * the forms can never disagree on "the same P.IVA".
+     *
+     * @param  string  $column  one of FISCAL_COLUMNS
      * @param  array<string, mixed>  $mapped
      */
-    private function normalizedTaxCode(array $mapped): ?string
+    private function normalizedFiscalValue(string $column, array $mapped): ?string
     {
-        $value = trim((string) ($mapped['tax_code'] ?? ''));
+        $value = trim((string) ($mapped[$column] ?? ''));
 
         return $value === '' ? null : ContactValueNormalizer::taxCode($value);
     }

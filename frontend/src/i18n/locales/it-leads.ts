@@ -149,10 +149,13 @@ export const leads = {
       placeholder: 'Seleziona un operatore…',
       searchPlaceholder: 'Cerca operatori…',
       empty: 'Nessun risultato.',
+      emptyCompetent: 'Nessun operatore competente per i record selezionati.',
       selectError: 'Impossibile caricare le opzioni.',
       selectClear: 'Rimuovi selezione',
       retry: 'Riprova',
       hint: 'Solo gli operatori della Sede scelta.',
+      competenceHint: 'Solo gli operatori della Sede competenti per i record selezionati.',
+      resolvingHint: 'Individuazione degli operatori competenti…',
       disabledHint: 'Scegli prima una Sede per vedere i suoi operatori.',
     },
     mode: {
@@ -167,6 +170,8 @@ export const leads = {
       assigning: 'Assegnazione…',
     },
     success: 'Operatori assegnati a {{count}} lead.',
+    successWithSkipped:
+      'Operatori assegnati a {{count}} lead. {{skipped}} senza operatore competente.',
     errors: {
       noOperators: 'Nessun operatore trovato per la Sede selezionata.',
       generic: 'Impossibile assegnare gli operatori. Riprova.',

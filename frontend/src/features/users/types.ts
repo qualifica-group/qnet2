@@ -69,12 +69,20 @@ export interface EmploymentDetail {
   primary_operational_site_id: number | null
   /** The user's remote sites (spec 0103 D-1): operative exactly like the physical one. */
   remote_operational_site_ids: number[]
+  /**
+   * Assignment competence (spec 0110): the product categories this user is
+   * competent for. Optional because the backend emits it only when the
+   * `productCategories` relation was eager-loaded (`whenLoaded` discipline).
+   */
+  product_category_ids?: number[]
   reports_to: EmploymentRelationRef | null
   business_function: EmploymentRelationRef | null
   company: EmploymentRelationRef | null
   /** Present only when the relation is eager-loaded (whenLoaded), like `company`. */
   primary_operational_site?: EmploymentRelationRef | null
   remote_operational_sites?: EmploymentRelationRef[]
+  /** Hydration labels for the competence multi-select, same `whenLoaded` discipline. */
+  product_categories?: EmploymentRelationRef[]
 }
 
 /**
@@ -129,6 +137,8 @@ export interface EmploymentPayload {
   primary_operational_site_id: number | null
   /** Zero or more remote sites (spec 0103 D-1). */
   remote_operational_site_ids: number[]
+  /** Assignment competence (spec 0110): the product categories the user covers. */
+  product_category_ids: number[]
   qualification_type: QualificationType | null
   hired_at: string | null
   terminated_at: string | null

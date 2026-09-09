@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Referents\ReferentController;
-use App\Http\Controllers\Referents\ReferentDuplicateCheckController;
 use App\Http\Controllers\Referents\ReferentForSelectController;
 use App\Http\Controllers\Referents\ReferentRewardsController;
 use Illuminate\Support\Facades\Route;
@@ -27,13 +26,6 @@ use Illuminate\Support\Facades\Route;
 // `for-select` segment wins over the bound wildcard. The only gate is
 // auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('referents/for-select', ReferentForSelectController::class);
-
-// Live, non-blocking duplicate check for the referent create form (spec
-// 0037): given a tax_code and/or email/phone/mobile contacts, returns the
-// existing referents that collide. Declared ABOVE referents/{referent} for
-// the same literal-segment-wins reason as for-select. Gated by
-// referents.create server-side in ReferentDuplicateCheckController.
-Route::post('referents/duplicate-check', ReferentDuplicateCheckController::class);
 
 Route::get('referents/{referent}', [ReferentController::class, 'show']);
 Route::post('referents', [ReferentController::class, 'store']);

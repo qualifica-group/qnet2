@@ -215,6 +215,11 @@ class RequestManagementController extends BaseApiController
                         'attribute_values',
                         'quote_workflow_status_id',
                         'note',
+                        // "Note generali" (direttiva utente 2026-09-09): the
+                        // Opportunity's free text, edited from the panel that
+                        // used to only display it. Sparse like the rest —
+                        // absent means untouched, `null` clears it.
+                        'general_notes',
                     ]),
                     // Typed DTOs (ContactInput/AddressInput), not raw arrays:
                     // the client anagraphic block never reaches the service as
@@ -269,6 +274,10 @@ class RequestManagementController extends BaseApiController
      * two dimensions a role may be restricted on per-field — `update` alone
      * would have been a way around that restriction, since a bulk write
      * resolves no field permission.
+     *
+     * `skipped` (spec 0110, additive): the reachable offers `mode=balanced`
+     * left without an operator for lack of a competent one. An UNREACHABLE
+     * offer is in neither counter (D-3): it does not exist for this actor.
      */
     public function assignOperators(AssignRequestOperatorsRequest $request): JsonResponse
     {
@@ -277,7 +286,7 @@ class RequestManagementController extends BaseApiController
             abort_unless($user->can('request-management.update'), 403);
             abort_unless($user->can('request-management.assignOperator'), 403);
 
-            $assigned = $this->assignmentService->assignOperators(
+            $outcome = $this->assignmentService->assignOperators(
                 $request->requestIds(),
                 $user,
                 $request->operationalSiteId(),
@@ -285,7 +294,7 @@ class RequestManagementController extends BaseApiController
                 $request->operatorId(),
             );
 
-            return $this->ok(['assigned' => $assigned], 'Operators assigned');
+            return $this->ok(['assigned' => $outcome->assigned, 'skipped' => $outcome->skipped], 'Operators assigned');
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

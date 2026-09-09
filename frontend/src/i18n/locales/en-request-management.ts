@@ -59,6 +59,8 @@ export const requestManagement = {
       singleHint: 'Assigns every selected request to the same operator.',
     },
     success: 'Operators assigned to {{count}} request(s).',
+    successWithSkipped:
+      'Operators assigned to {{count}} request(s). {{skipped}} left without a competent operator.',
     errors: {
       noOperators: 'No operator found for the selected Site.',
       generic: 'Unable to assign the operators. Please try again.',
@@ -195,6 +197,7 @@ export const requestManagement = {
     genericError: 'Something went wrong. Please try again.',
     generalNotes: {
       title: 'General notes',
+      placeholder: 'What the client asked for, in their own words…',
     },
     callback: {
       title: 'Next callback',

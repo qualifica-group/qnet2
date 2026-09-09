@@ -336,8 +336,10 @@ it('lets the commercial role create a referent, for the create form quick-create
     Sanctum::actingAs(User::query()->where('email', 'campania@commerciale.com')->firstOrFail());
 
     // Both endpoints behind the "+" are gated by `referents.create`: the live
-    // duplicate check the dialog runs while typing, and the write itself.
-    $this->postJson('/api/referents/duplicate-check', ['tax_code' => 'RSSMRA80A01H501U'])->assertOk();
+    // duplicate check the dialog runs while typing (shared with the anagrafica
+    // form since the directive 2026-09-09, hence the `identity/` path), and the
+    // write itself.
+    $this->postJson('/api/identity/duplicate-check', ['tax_code' => 'RSSMRA80A01H501U'])->assertOk();
 
     // `GET /meta/referents` (the dialog's field/permission envelope) rides on
     // the pre-existing `referents.viewAny`.

@@ -162,7 +162,7 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{next_callback_at?: string|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_ga1_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
+     * @param  array{next_callback_at?: string|null, general_notes?: string|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_ga1_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array
@@ -184,6 +184,17 @@ final class RequestManagementService
             // "Segnalatore"/Sede operativa on the Quote (D-3/D-4).
             $this->attributionWriter->applySource($opportunity, $data);
             $this->attributionWriter->applyQuoteAttribution($quote, $data, $changed, $old);
+
+            // Step 0-bis: "Note generali" (direttiva utente 2026-09-09) — the
+            // Opportunity's free text, written from this panel too. Like
+            // `source_id` above it IS in Opportunity::$fillable, so the
+            // automatic activity log picks the diff up on save
+            // (LogsModelActivity::logFillable()) and no explicit $changed entry
+            // is added, which would double-log it. Persisted by the shared
+            // `$opportunity->save()` below.
+            if (array_key_exists('general_notes', $data)) {
+                $opportunity->fill(['general_notes' => $data['general_notes']]);
+            }
 
             // Step 1: funzione aziendale + categoria prodotto (user directive
             // 2026-07-31), still an Opportunity-level classification (D-2).

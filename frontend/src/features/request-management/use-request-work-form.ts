@@ -9,14 +9,14 @@ import { managerSlotsFromRefs, padManagerSlots } from '@/lib/utils'
 import { seedAttributeValues, toAttributeValuesMap } from '@/features/attributes/attribute-values'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { opportunityDetailQueryKey } from '@/features/opportunities/api'
-import { linesToFormValues, vatRatePercentsFromLines } from '@/features/quotes/quote-line-values'
+import { vatRatePercentsFromLines } from '@/features/quotes/quote-line-values'
 import { DEFAULT_MANAGER_SLOTS } from '@/features/quotes/quote-schema'
 import { addressToDraft } from '@/features/personal-data/drafts'
 import type { ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { updateRequestWork } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { describeInvalidFields } from '@/features/request-management/request-work-invalid-fields'
-import { buildRequestWorkPayload, toProductLineRows } from '@/features/request-management/request-work-payload'
+import { buildRequestWorkPayload, openingOfferLines, toProductLineRows } from '@/features/request-management/request-work-payload'
 import {
   buildRequestWorkSchema,
   type RequestWorkFormValues,
@@ -71,6 +71,10 @@ function toContactDraft(contact: RequestContact): ContactDraft {
 function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWorkFormValues {
   return {
     next_callback_at: panel.next_callback_at ?? null,
+    // "Note generali" (direttiva utente 2026-09-09): '' when the request
+    // carries none — the field is always rendered, precisely so an empty note
+    // can be typed in.
+    general_notes: panel.general_notes ?? '',
     client_identity: panel.client_identity ? toIdentityDraft(panel.client_identity) : null,
     client_contacts: panel.client_contacts.items.map(toContactDraft),
     // 0-or-1 array: the shape `AddressCreateField` reads, empty when the
@@ -80,8 +84,9 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     // "Linee dell'offerta" (user directive 2026-08-07): hydrated by the SAME
     // mapper the Offerte form uses, minus the provvigioni block — this
     // channel neither renders nor sends it (the endpoint prohibits it and the
-    // server preserves what is persisted).
-    offer_lines: linesToFormValues(panel.offer_lines, false),
+    // server preserves what is persisted). A request with no persisted line
+    // opens on one empty row (user directive 2026-09-09).
+    offer_lines: openingOfferLines(panel.offer_lines),
     // Seeded over the APPLICABLE codes, never the raw stored map: the Zod
     // object is built from those codes and a missing key aborts the submit
     // silently (see `seedAttributeValues`).

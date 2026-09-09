@@ -41,4 +41,19 @@ describe('users for-select wrappers', () => {
       enabled: true,
     })
   })
+
+  it('forwards the competence filter (spec 0110) as an array param', () => {
+    useForSelect.mockReturnValue({})
+    renderHook(() =>
+      useUsersForSelect({
+        search: '',
+        params: { operational_site_id: 4, competence_category_ids: [3, 7] },
+      }),
+    )
+    expect(useForSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { operational_site_id: 4, competence_category_ids: [3, 7] },
+      }),
+    )
+  })
 })

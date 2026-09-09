@@ -6,6 +6,7 @@ use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -25,6 +26,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * collection), and the two reference shapes below are derived from that SAME
  * collection — so eager-loading `operationalSites.addresses.city` covers
  * every one of the four keys with a single relation.
+ *
+ * The assignment competence (spec 0110) follows the same discipline:
+ * `product_category_ids` and `product_categories` are emitted only when
+ * `productCategories` was eager-loaded, since reading the ids goes through
+ * that very collection (EmploymentProfile::productCategoryIds()).
  */
 class EmploymentResource extends JsonResource
 {
@@ -49,6 +55,10 @@ class EmploymentResource extends JsonResource
             'company_id' => $this->company_id,
             'primary_operational_site_id' => $this->primary_operational_site_id,
             'remote_operational_site_ids' => $this->remote_operational_site_ids,
+            'product_category_ids' => $this->when(
+                $this->relationLoaded('productCategories'),
+                fn (): array => $this->product_category_ids,
+            ),
 
             'reports_to' => $this->when(
                 $this->relationLoaded('reportsTo') && $this->reportsTo !== null,
@@ -65,6 +75,13 @@ class EmploymentResource extends JsonResource
             'primary_operational_site' => $this->when(
                 $this->relationLoaded('operationalSites') && $this->primarySite() !== null,
                 fn (): array => $this->reference($this->primarySite(), $this->operationalSiteLabel(...), $this->operationalSiteSubtitle(...)),
+            ),
+            'product_categories' => $this->when(
+                $this->relationLoaded('productCategories'),
+                fn (): array => $this->productCategories
+                    ->map(fn (ProductCategory $category): array => $this->reference($category, static fn (ProductCategory $item): string => $item->name))
+                    ->values()
+                    ->all(),
             ),
             'remote_operational_sites' => $this->when(
                 $this->relationLoaded('operationalSites'),

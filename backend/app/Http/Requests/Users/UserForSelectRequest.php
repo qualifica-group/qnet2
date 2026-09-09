@@ -18,6 +18,12 @@ use Illuminate\Foundation\Http\FormRequest;
  * Sede-filtered Operatore select and the "Assegna operatori" popup. It rides
  * ForSelectQuery::operationalSiteId (fromValidated picks it up automatically),
  * consumed only by UserService::forSelect.
+ *
+ * `competence_category_ids` (spec 0110, ADDITIVE): the categories a selected
+ * record requires — the list narrows to the operators competent for at least
+ * one of them (INV-3), wildcards included (INV-4b). Absent or empty means no
+ * filter at all, so every pre-0110 caller is unaffected. `exists:` on each id
+ * because an unknown category must be a 422, never a silently empty picker.
  */
 class UserForSelectRequest extends FormRequest
 {
@@ -41,6 +47,8 @@ class UserForSelectRequest extends FormRequest
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
             'operational_site_id' => ['sometimes', 'integer', 'exists:operational_sites,id'],
+            'competence_category_ids' => ['sometimes', 'array'],
+            'competence_category_ids.*' => ['integer', 'exists:product_categories,id'],
         ];
     }
 

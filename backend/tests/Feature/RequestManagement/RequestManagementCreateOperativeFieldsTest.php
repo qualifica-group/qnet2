@@ -116,7 +116,7 @@ it('create: next_callback_at and general_notes are persisted and read back', fun
     ])->assertCreated();
 
     expect($response->json('data.next_callback_at'))->toBe('2026-09-01T10:30');
-    expect($response->json('data.context.general_notes'))->toBe('Il cliente richiama a settembre.');
+    expect($response->json('data.general_notes'))->toBe('Il cliente richiama a settembre.');
 
     // The callback lands on the created Offerta (user directive 2026-09-04),
     // the general notes stay on the Opportunity.

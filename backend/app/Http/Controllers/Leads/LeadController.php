@@ -119,6 +119,10 @@ class LeadController extends BaseApiController
      * carries no per-record ownership rule, so this is equivalent to a
      * single blanket check, but stays instance-based to match every other
      * Lead endpoint and to remain correct should the policy ever gain one).
+     *
+     * `skipped` (spec 0110, additive): the leads `mode=balanced` left without
+     * an operator for lack of a competent one at the Sede. Always 0 with
+     * `mode=single`.
      */
     public function assignOperators(AssignOperatorsRequest $request): JsonResponse
     {
@@ -129,14 +133,14 @@ class LeadController extends BaseApiController
                 $this->authorize('update', $lead);
             }
 
-            $assigned = $this->assignmentService->assignOperators(
+            $outcome = $this->assignmentService->assignOperators(
                 $leadIds,
                 $request->operationalSiteId(),
                 $request->mode(),
                 $request->operatorId(),
             );
 
-            return $this->ok(['assigned' => $assigned], 'Operators assigned');
+            return $this->ok(['assigned' => $outcome->assigned, 'skipped' => $outcome->skipped], 'Operators assigned');
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

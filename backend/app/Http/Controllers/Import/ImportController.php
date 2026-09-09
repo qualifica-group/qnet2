@@ -308,6 +308,10 @@ class ImportController extends BaseApiController
      * product sits inside the run's campaign coverage. Pure
      * operator/site/product assignment, never gated by `opportunities.create`
      * (that gate is confirm()'s own, spec 0045).
+     *
+     * `skipped` (spec 0110, additive): the targeted rows `mode=balanced`
+     * deliberately left without an operator because nobody at the Sede is
+     * competent for them. Always 0 with `mode=single`.
      */
     public function bulkAssign(BulkAssignRequest $request, string $domain, ImportRun $importRun): JsonResponse
     {
@@ -320,7 +324,7 @@ class ImportController extends BaseApiController
             $this->authorizeImport($definition, $actor);
             $this->assertReviewing($importRun);
 
-            $updated = $this->service->bulkAssign(
+            $outcome = $this->service->bulkAssign(
                 $importRun,
                 $request->selectAll(),
                 $request->rowIds(),
@@ -331,7 +335,7 @@ class ImportController extends BaseApiController
             );
             $this->service->recomputeCounts($importRun->fresh());
 
-            return $this->ok(['updated' => $updated]);
+            return $this->ok(['updated' => $outcome->assigned, 'skipped' => $outcome->skipped]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['importRun' => $importRun->id]);
         }

@@ -2,8 +2,8 @@
 
 namespace App\Imports\Leads;
 
-use App\Models\Campaign;
 use App\Models\ImportRunRow;
+use App\Services\Campaigns\CampaignProductCategories;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use Illuminate\Support\Collection;
 
@@ -15,13 +15,17 @@ use Illuminate\Support\Collection;
  * SAME coherence rule App\Services\Leads\LeadProductInterestWriter applies
  * at persist time (App\Services\Opportunities\ProductCategoryCoherence,
  * LEAD_MESSAGE), never re-implemented here: this class only resolves WHICH
- * categories a campaign classifies itself with (project-first, BR-2 —
- * mirroring CampaignForSelectResource::effectiveProductCategoryIds()) before
- * handing off to that one shared rule for the actual "is it covered" check.
+ * categories a campaign classifies itself with (delegated to
+ * CampaignProductCategories, the shared project-first resolver of BR-2)
+ * before handing off to that one shared rule for the actual "is it covered"
+ * check.
  */
 final class LeadImportProductCoherence
 {
-    public function __construct(private readonly ProductCategoryCoherence $coherence) {}
+    public function __construct(
+        private readonly ProductCategoryCoherence $coherence,
+        private readonly CampaignProductCategories $campaignCategories,
+    ) {}
 
     /**
      * The products of $productIds sitting outside $campaignId's effective
@@ -97,18 +101,6 @@ final class LeadImportProductCoherence
      */
     private function effectiveCategoryIds(?int $campaignId): array
     {
-        if ($campaignId === null) {
-            return [];
-        }
-
-        $campaign = Campaign::query()->with(['productLines', 'project.productLines'])->find($campaignId);
-
-        if ($campaign === null) {
-            return [];
-        }
-
-        $lines = $campaign->project !== null ? $campaign->project->productLines : $campaign->productLines;
-
-        return $lines->pluck('product_category_id')->map(intval(...))->all();
+        return $this->campaignCategories->forCampaign($campaignId);
     }
 }

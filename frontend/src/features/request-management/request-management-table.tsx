@@ -15,6 +15,7 @@ import {
   type AssignOperatorsDialogInput,
   type AssignOperatorsDialogSite,
 } from '@/features/leads/assign-operators-dialog'
+import { resolveAssignFeedback } from '@/features/leads/assign-feedback'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { NotesDialog } from '@/features/notes/notes-dialog'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
@@ -31,6 +32,7 @@ import { RequestDashboardPanel } from '@/features/request-management/request-das
 import { RequestDashboardToggle } from '@/features/request-management/request-dashboard-toggle'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
+import { useQuoteOperatorCompetence } from '@/features/request-management/use-quote-operator-competence'
 import { useRequestManagerGa1Assignment } from '@/features/request-management/use-request-manager-ga1-assignment'
 import type { TransferRequestsPayload } from '@/features/request-management/request-write-types'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
@@ -250,10 +252,16 @@ export function RequestManagementTable() {
   // endpoint now both gate on this ability.
   const canAssignOperators = can('request-management.update') && can('request-management.assignOperator')
 
+  // Competence filter of the Operatore picker (spec 0110 AC-041), resolved
+  // here and only while a popup is open; the shared dialog stays dumb. The
+  // transfer writes the same GA2 slot, so it is filtered the same way.
+  const assignCompetence = useQuoteOperatorCompetence(assignIds, assignOpen)
+  const transferCompetence = useQuoteOperatorCompetence(transferIds, transferOpen)
+
   const assignMutation = useMutation({
     mutationFn: assignRequestOperators,
     onSuccess: (result) => {
-      toast.success(t('requestManagement.assign.success', { count: result.assigned }))
+      toast.success(resolveAssignFeedback(t, 'requestManagement.assign', result))
       refreshGrid()
       tableRef.current?.clearSelection()
     },
@@ -444,6 +452,7 @@ export function RequestManagementTable() {
         selectionCount={assignIds.length}
         defaultSite={assignDefaultSite}
         copy={assignCopy}
+        {...assignCompetence}
         onAssign={handleAssign}
       />
 
@@ -462,6 +471,7 @@ export function RequestManagementTable() {
         defaultSite={transferDefaultSite}
         copy={transferCopy}
         lockedMode="single"
+        {...transferCompetence}
         onAssign={handleTransfer}
       />
 
