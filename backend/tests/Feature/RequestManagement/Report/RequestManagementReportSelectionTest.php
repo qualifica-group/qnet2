@@ -74,12 +74,20 @@ if (! function_exists('reportQuoteWithOpenAdvance')) {
 }
 
 if (! function_exists('reportNote')) {
-    function reportNote(Quote $quote, Carbon $createdAt): void
+    /**
+     * The author defaults to the quote's OWN GA2 operator: since spec 0106
+     * rev-3 (D-17) that is the only note "N. Telefonate Effettuate" counts.
+     * Pass $authorId explicitly for the third-party case.
+     */
+    function reportNote(Quote $quote, Carbon $createdAt, ?int $authorId = null): void
     {
+        $author = $authorId ?? $quote->operator_id;
+
         Note::factory()->create([
             'notable_type' => 'opportunity',
             'notable_id' => $quote->opportunity_id,
             'created_at' => $createdAt,
+            ...($author !== null ? ['user_id' => $author] : []),
         ])->forceFill(['quote_id' => $quote->id])->save();
     }
 }
@@ -219,7 +227,9 @@ it('operators_only emits GA2 + Non assegnato but never TOTALE, and NO row at all
     $categories = reportCategoryTree();
     $ada = User::factory()->create(['name' => 'Ada Rossi']);
     reportNote(reportQuoteWithOpenAdvance($categories['gol'], $ada->id), now());
-    reportNote(reportQuoteWithOpenAdvance($categories['gol'], null), now());
+    // No GA2: since rev-3 (D-17) a note is never a phone call without one, so
+    // the "Non assegnato" row comes from "N. Richiami non gestiti".
+    reportQuote($categories['gol'], null)->forceFill(['next_callback_at' => now()])->save();
     // 'consulenza' stays empty in the range.
 
     $actor = reportViewAllActor();

@@ -3,6 +3,61 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## REPORT GESTIONE RICHIESTE: "N. TELEFONATE EFFETTUATE" = SOLO LE NOTE DEL GA2 (direttiva utente 2026-09-09) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "nelle statistiche e report c'e' la colonna N. Telefonate Effettuate. Questa
+dovrebbe conteggiare tutte le note all'interno della gestione richieste, solo che pero' dovrebbe
+conteggiare tutte le note dell'operatore ga2 e basta". Due ambiguita' risolte con l'utente in
+sessione: (1) attribuzione = **autore della nota uguale al GA2 assegnato alla richiesta**, NON
+raggruppamento per autore; (2) **si toglie** il filtro sullo stato di lavorazione. Perimetro: un
+solo file di produzione.
+
+**Modifica.** `backend/app/Services/RequestManagement/Report/Indicators/PhoneCallsIndicator.php`:
+aggiunto `->whereColumn('notes.user_id', 'quotes.operator_id')`; rimossi il join a
+`quote_workflow_statuses as current_status` e la condizione `system_key IS NULL OR <> 'open'`.
+Invariati: join su `notes.quote_id` (le note generali con `quote_id` NULL restano fuori),
+`whereNull('notes.deleted_at')`, i due estremi del range. Nessun altro indicatore toccato:
+`richiami` e `nuovi_contatti` continuano a filtrare sul primo stato, che per loro E' la
+definizione dell'indicatore.
+
+**Conseguenza da ricordare (non e' un bug).** La riga **"Non assegnato" ha ora sempre 0** in questa
+colonna: `operator_id IS NULL` non puo' uguagliare `notes.user_id`, che e' NOT NULL. La riga
+continua a comparire, alimentata dagli altri indicatori. AC-014 (TOTALE = somma delle righe GA2)
+regge: il gruppo NULL contribuisce 0 a entrambi i lati.
+
+**Spec.** `docs/specs/0106-request-management-csv-report.xml` ha una **rev-3** (D-16 niente filtro
+di stato, D-17 vincolo di autorialita'); AC-009/AC-010 riformulati, AC-011 sostituito, nuovi
+AC-058/059/060. La vecchia trappola SQL di AC-011 (`NULL <> 'open'` che vale NULL) non esiste piu'
+perche' non esiste piu' il confronto.
+
+**Test — nomi/idiomi da rispettare.** Gli helper `reportNote(Quote, Carbon, ?int $authorId = null)`
+(5 file del report) e `dashboardNote(...)` attribuiscono la nota al **GA2 della richiesta** per
+default; si passa `authorId:` esplicito solo per il caso "nota di un terzo". Le fixture che prima
+usavano una nota su richiesta NON assegnata per far esistere la riga "Non assegnato" ora la fanno
+esistere via **"N. Richiami non gestiti"** (primo stato + `next_callback_at` nel range) — helper
+`dashboardUnassignedCallback()` nella dashboard, riga inline negli altri. `operatorFilterQuote()`
+di `RequestManagementReportOperatorFilterTest` ora crea la richiesta nel PRIMO stato con
+`next_callback_at`: il totale GOL della sua fixture e' **3**, non piu' 4.
+
+**Gate strutturale ristretto (dichiarato, non aggirato).** AC-016 di spec 0108 ("nessun indicatore
+conosce `operator_id`") escludeva per costruzione la nuova formula. Ora il test salta
+`PhoneCallsIndicator.php` per nome, con il perche' nel commento, e in cambio asserisce
+esplicitamente che quel file contenga `whereColumn('notes.user_id', 'quotes.operator_id')` e NON
+contenga `operator_keys`: l'intento dell'AC (la SELEZIONE operatore vive in un posto solo) e'
+preservato, cambia solo cio' che il requisito ha reso lecito.
+
+**Verificato (eseguito davvero).** `php artisan test --filter="RequestManagementReport|RequestManagementDashboard"`
+110/110 verdi, 505 asserzioni. Suite backend completa 6635 test, 6632 passati: i 2 rossi sono
+**pre-esistenti e non correlati** — `QuoteWorkflowMigrationTest::AC-004` fallisce identico a
+modifiche stashate, e `DemoOpportunitySeederTest` e' flaky di suo (4/10 rossi in 10 run con le
+modifiche stashate). Pint pulito; `cd frontend && npx tsc -b --force` EXIT 0 (nessun file frontend
+toccato: le etichette `telefonate` stanno in `backend/lang/{it,en}/request-management-report.php` e
+non cambiano).
+
+**Prossimi passi.** Nessun lavoro residuo previsto. Se in futuro si volesse invece attribuire la
+nota all'AUTORE (l'altra lettura, scartata dall'utente), va cambiato anche
+`ReportOperatorFilter`, che filtra su `quotes.operator_id`: e' scritto in rev-3 D-17.
+
 ## GESTIONE RICHIESTE: LE LABEL G.A. SEGUONO IL FORM, NON IL CARICAMENTO (direttiva utente 2026-09-08) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "form in gestione richieste, i gestori account, quando cambio categoria

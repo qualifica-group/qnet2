@@ -73,12 +73,20 @@ if (! function_exists('reportQuoteWithOpenAdvance')) {
 }
 
 if (! function_exists('reportNote')) {
-    function reportNote(Quote $quote, Carbon $createdAt): void
+    /**
+     * The author defaults to the quote's OWN GA2 operator: since spec 0106
+     * rev-3 (D-17) that is the only note "N. Telefonate Effettuate" counts.
+     * Pass $authorId explicitly for the third-party case.
+     */
+    function reportNote(Quote $quote, Carbon $createdAt, ?int $authorId = null): void
     {
+        $author = $authorId ?? $quote->operator_id;
+
         Note::factory()->create([
             'notable_type' => 'opportunity',
             'notable_id' => $quote->opportunity_id,
             'created_at' => $createdAt,
+            ...($author !== null ? ['user_id' => $author] : []),
         ])->forceFill(['quote_id' => $quote->id])->save();
     }
 }
@@ -153,14 +161,14 @@ beforeEach(function () {
 });
 
 // ---------------------------------------------------------------------------
-// AC-009/AC-010/AC-011 — "N. Telefonate Effettuate"
+// AC-009/AC-010/AC-011 + AC-058/AC-059/AC-060 (rev-3) — "N. Telefonate Effettuate"
 // ---------------------------------------------------------------------------
 
-it('counts NOTES not requests, excludes deleted/out-of-range/general notes and first-state requests, includes custom statuses (AC-009/010/011)', function () {
+it('counts NOTES not requests, excludes deleted/out-of-range/general notes, first state included (AC-009/010, AC-058)', function () {
     $categories = reportCategoryTree();
+    $ada = User::factory()->create(['name' => 'Ada Rossi']);
 
-    // AC-011: a request on a CUSTOM status (system_key null) still counts.
-    $onCustom = reportQuoteWithOpenAdvance($categories['gol']);
+    $onCustom = reportQuoteWithOpenAdvance($categories['gol'], $ada->id);
     reportNote($onCustom, Carbon::parse('2026-09-10'));
     reportNote($onCustom, Carbon::parse('2026-09-11')); // AC-009: 2 notes, same quote -> 2
 
@@ -168,6 +176,7 @@ it('counts NOTES not requests, excludes deleted/out-of-range/general notes and f
     $deleted = Note::factory()->create([
         'notable_type' => 'opportunity',
         'notable_id' => $onCustom->opportunity_id,
+        'user_id' => $ada->id,
         'created_at' => Carbon::parse('2026-09-12'),
         'deleted_at' => Carbon::parse('2026-09-12'),
     ]);
@@ -180,12 +189,13 @@ it('counts NOTES not requests, excludes deleted/out-of-range/general notes and f
     Note::factory()->create([
         'notable_type' => 'opportunity',
         'notable_id' => $onCustom->opportunity_id,
+        'user_id' => $ada->id,
         'created_at' => Carbon::parse('2026-09-10'),
     ]);
 
-    // Still in the FIRST state ('open'): excluded.
-    $stillOpen = reportQuote($categories['gol']);
-    reportNote($stillOpen, Carbon::parse('2026-09-10'));
+    // AC-058 (rev-3, D-16): still in the FIRST state ('open') -> COUNTED.
+    // Before rev-3 this note was dropped by the `system_key <> 'open'` filter.
+    reportNote(reportQuote($categories['gol'], $ada->id), Carbon::parse('2026-09-10'));
 
     $actor = reportViewAllActor();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
@@ -194,7 +204,55 @@ it('counts NOTES not requests, excludes deleted/out-of-range/general notes and f
 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'GOL');
 
-    expect($rows['TOTALE'][2])->toBe('2');
+    expect($rows['TOTALE'][2])->toBe('3')
+        ->and($rows['Ada Rossi'][2])->toBe('3');
+});
+
+it('counts only the notes written BY the request own GA2, in no row at all for anyone else (AC-011, AC-059 rev-3)', function () {
+    $categories = reportCategoryTree();
+    $ada = User::factory()->create(['name' => 'Ada Rossi']);
+    $zoe = User::factory()->create(['name' => 'Zoe Bianchi']);
+
+    $adaRequest = reportQuoteWithOpenAdvance($categories['gol'], $ada->id);
+    reportNote($adaRequest, Carbon::parse('2026-09-10'));                       // Ada on her own request: counted
+    reportNote($adaRequest, Carbon::parse('2026-09-11'), authorId: $zoe->id);   // Zoe on Ada's request: counted nowhere
+
+    // Zoe's own request carries only a stranger's note: 0, and no row for the author.
+    $zoeRequest = reportQuoteWithOpenAdvance($categories['gol'], $zoe->id);
+    reportNote($zoeRequest, Carbon::parse('2026-09-12'), authorId: User::factory()->create()->id);
+
+    $actor = reportViewAllActor();
+    $run = createReportRun($actor, '2026-09-01', '2026-09-30');
+
+    runReportJob($run);
+
+    $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'GOL');
+
+    expect($rows['TOTALE'][2])->toBe('1')
+        ->and($rows['Ada Rossi'][2])->toBe('1')
+        ->and($rows)->not->toHaveKey('Zoe Bianchi'); // no indicator gives Zoe a row here
+});
+
+it('gives an unassigned request 0 phone calls while its Non assegnato row still exists (AC-060 rev-3)', function () {
+    $categories = reportCategoryTree();
+
+    // First state + next_callback_at in range: the "Non assegnato" row exists
+    // through "N. Richiami non gestiti", so the 0 below is a measured 0.
+    $unassigned = reportQuote($categories['gol']);
+    $unassigned->forceFill(['next_callback_at' => Carbon::parse('2026-09-15')])->save();
+    reportNote($unassigned, Carbon::parse('2026-09-10'));
+
+    $actor = reportViewAllActor();
+    $run = createReportRun($actor, '2026-09-01', '2026-09-30');
+
+    runReportJob($run);
+
+    $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'GOL');
+
+    expect($rows)->toHaveKey('Non assegnato')
+        ->and($rows['Non assegnato'][3])->toBe('1')  // richiami: the row is really there
+        ->and($rows['Non assegnato'][2])->toBe('0')  // telefonate: never for an unassigned request
+        ->and($rows['TOTALE'][2])->toBe('0');
 });
 
 // ---------------------------------------------------------------------------

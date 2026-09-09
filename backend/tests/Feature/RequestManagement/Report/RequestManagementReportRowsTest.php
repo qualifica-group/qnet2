@@ -74,12 +74,20 @@ if (! function_exists('reportQuoteWithOpenAdvance')) {
 }
 
 if (! function_exists('reportNote')) {
-    function reportNote(Quote $quote, Carbon $createdAt): void
+    /**
+     * The author defaults to the quote's OWN GA2 operator: since spec 0106
+     * rev-3 (D-17) that is the only note "N. Telefonate Effettuate" counts.
+     * Pass $authorId explicitly for the third-party case.
+     */
+    function reportNote(Quote $quote, Carbon $createdAt, ?int $authorId = null): void
     {
+        $author = $authorId ?? $quote->operator_id;
+
         Note::factory()->create([
             'notable_type' => 'opportunity',
             'notable_id' => $quote->opportunity_id,
             'created_at' => $createdAt,
+            ...($author !== null ? ['user_id' => $author] : []),
         ])->forceFill(['quote_id' => $quote->id])->save();
     }
 }
@@ -199,7 +207,10 @@ it('breaks a category down by GA2 sorted by name, with Non assegnato last, TOTAL
 
     $q1 = reportQuoteWithOpenAdvance($categories['gol'], $ada->id);
     $q2 = reportQuoteWithOpenAdvance($categories['gol'], $zoe->id);
-    $q3 = reportQuoteWithOpenAdvance($categories['gol'], null);
+    // No GA2: since rev-3 (D-17) its notes can never be phone calls, so the
+    // "Non assegnato" row comes from "N. Richiami non gestiti" instead.
+    $q3 = reportQuote($categories['gol'], null);
+    $q3->forceFill(['next_callback_at' => now()])->save();
 
     reportNote($q1, now());
     reportNote($q2, now());
@@ -216,8 +227,8 @@ it('breaks a category down by GA2 sorted by name, with Non assegnato last, TOTAL
     expect(array_keys($rows))->toBe(['TOTALE', 'Ada Rossi', 'Zoe Bianchi', 'Non assegnato'])
         ->and($rows['Ada Rossi'][2])->toBe('1')
         ->and($rows['Zoe Bianchi'][2])->toBe('2')
-        ->and($rows['Non assegnato'][2])->toBe('1')
-        ->and($rows['TOTALE'][2])->toBe('4'); // 1 + 2 + 1, AC-014
+        ->and($rows['Non assegnato'][2])->toBe('0') // AC-060: never a phone call without a GA2
+        ->and($rows['TOTALE'][2])->toBe('3'); // 1 + 2 + 0, AC-014
 });
 
 // ---------------------------------------------------------------------------

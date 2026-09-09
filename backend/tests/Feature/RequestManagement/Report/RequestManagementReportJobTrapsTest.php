@@ -87,12 +87,20 @@ if (! function_exists('reportQuoteWithOpenAdvance')) {
 }
 
 if (! function_exists('reportNote')) {
-    function reportNote(Quote $quote, Carbon $createdAt): void
+    /**
+     * The author defaults to the quote's OWN GA2 operator: since spec 0106
+     * rev-3 (D-17) that is the only note "N. Telefonate Effettuate" counts.
+     * Pass $authorId explicitly for the third-party case.
+     */
+    function reportNote(Quote $quote, Carbon $createdAt, ?int $authorId = null): void
     {
+        $author = $authorId ?? $quote->operator_id;
+
         Note::factory()->create([
             'notable_type' => 'opportunity',
             'notable_id' => $quote->opportunity_id,
             'created_at' => $createdAt,
+            ...($author !== null ? ['user_id' => $author] : []),
         ])->forceFill(['quote_id' => $quote->id])->save();
     }
 }

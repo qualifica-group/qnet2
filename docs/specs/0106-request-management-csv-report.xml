@@ -542,9 +542,9 @@
     <criterion id="AC-006">Per una categoria con richieste di due operatori diversi nel range, il file contiene la riga TOTALE seguita da una riga per operatore, ordinate per `users.name` crescente, con l'etichetta presa da `users.name`.</criterion>
     <criterion id="AC-007">Se nel ramo esistono richieste con `operator_id` NULL, viene emessa una riga con l'etichetta tradotta "Non assegnato", dopo le righe degli operatori nominati.</criterion>
     <criterion id="AC-008">SOSTITUITO da rev-2 / D-15. Ogni cella numerica esce come `0`: colonne non applicabili alla categoria (es. "Aziende inserite" per GOL), stub (Aule in gestione/partenza, Presa Appuntamenti, Invio Presa in carico) e aggregazioni nulle. Nessuna cella numerica e' mai vuota o `null`; le sole colonne di testo sono `Categoria` e `GA2`.</criterion>
-    <criterion id="AC-009">"N. Telefonate Effettuate" conta le NOTE, non le richieste: due note create nel range sulla stessa richiesta non nel primo stato producono 2, non 1.</criterion>
-    <criterion id="AC-010">"N. Telefonate Effettuate" esclude le note su richieste ancora nel primo stato, le note con `deleted_at` valorizzato, le note con `quote_id` NULL, e le note create fuori dal range.</criterion>
-    <criterion id="AC-011">"N. Telefonate Effettuate" INCLUDE le note su richieste il cui stato corrente e' uno stato custom (`system_key IS NULL`): e' il caso che una condizione `system_key <> 'open'` scritta ingenuamente perderebbe.</criterion>
+    <criterion id="AC-009">RIFORMULATO da rev-3 / D-16. "N. Telefonate Effettuate" conta le NOTE, non le richieste: due note create nel range dallo stesso GA2 sulla stessa richiesta producono 2, non 1.</criterion>
+    <criterion id="AC-010">RIFORMULATO da rev-3 / D-16. "N. Telefonate Effettuate" esclude le note con `deleted_at` valorizzato, le note con `quote_id` NULL e le note create fuori dal range. NON esclude piu' le note su richieste ancora nel primo stato.</criterion>
+    <criterion id="AC-011">SOSTITUITO da rev-3 / D-17. "N. Telefonate Effettuate" conta solo le note scritte DAL GA2 Operatore della richiesta (`notes.user_id = quotes.operator_id`); una nota di chiunque altro non e' contata, e una richiesta senza operatore non contribuisce mai.</criterion>
     <criterion id="AC-012">"N. Richiami non gestiti" conta una richiesta con `next_callback_at` dentro il range e stato corrente `system_key='open'`, ed esclude la stessa richiesta se il suo stato e' avanzato oltre il primo, o se `next_callback_at` cade fuori dal range.</criterion>
     <criterion id="AC-013">"N. Nuovi contatti non gestiti" conta le richieste con `created_at` nel range ancora nel primo stato; una richiesta creata nel range ma gia' avanzata non e' contata.</criterion>
     <criterion id="AC-014">Per ogni categoria e ogni indicatore diverso da "Aziende inserite", il valore della riga TOTALE e' uguale alla somma dei valori delle righe GA2 della stessa categoria, compresa la riga "Non assegnato" (verifica di D-10).</criterion>
@@ -739,6 +739,56 @@
         <item>Filtri diversi da categoria e righe: nessun filtro per operatore, sede, stato o testo libero. Il perimetro resta la visibilita' dell'attore.</item>
         <item>Nessuna modifica alle formule degli indicatori: la selezione FILTRA l'output, non cambia il calcolo (AC-032 lo verifica).</item>
         <item>Nessun salvataggio delle preferenze di selezione tra una generazione e l'altra.</item>
+      </out>
+    </scope_delta>
+  </revision>
+
+  <revision id="rev-3" date="2026-09-09" reason="Direttiva utente: la colonna deve contare tutte le note della gestione richieste, ma solo quelle dell'operatore GA2.">
+    <summary>
+      Cambia la formula della sola colonna "N. Telefonate Effettuate". Due modifiche indipendenti:
+      cade il filtro sullo stato di lavorazione (contano anche le note sulle richieste ancora nel
+      primo stato) e si aggiunge il vincolo di autorialita' (contano solo le note scritte dal GA2
+      Operatore assegnato alla richiesta). Nessun'altra colonna, nessun endpoint, nessun contratto
+      di risposta e' toccato: cambia il valore della cella 3, non la forma del file.
+    </summary>
+
+    <decision id="D-16" overrides="D-9">
+      Nessun filtro sullo stato di lavorazione corrente. La condizione
+      `current_status.system_key IS NULL OR <> 'open'` — e con essa il join a
+      `quote_workflow_statuses` — sparisce da `PhoneCallsIndicator`. La colonna misura le
+      telefonate fatte dall'operatore, e una telefonata su una richiesta ancora nel primo stato
+      resta una telefonata fatta: escluderla sottostimava il lavoro dell'operatore proprio nei
+      casi in cui e' appena cominciato. Conseguenza: la trappola SQL descritta nel vecchio AC-011
+      (`NULL <> 'open'` che vale NULL, non TRUE) non esiste piu' perche' non esiste piu' il
+      confronto.
+    </decision>
+
+    <decision id="D-17">
+      `notes.user_id = quotes.operator_id` (`whereColumn`, non un parametro: e' un confronto tra
+      due colonne della stessa riga). Contano solo le note che il GA2 ha scritto sulle PROPRIE
+      richieste. Una nota di un admin, di un collega o di chiunque altro non e' una telefonata
+      fatta da quell'operatore e non viene contata da nessuna parte: non e' riattribuita all'autore
+      e non finisce in un'altra riga. La scelta e' quella dichiarata dall'utente ("Autore = GA2
+      della richiesta") tra le due lette in modo diverso dallo stesso testo.
+      Due conseguenze accettate consapevolmente:
+      1. La riga "Non assegnato" ha questa colonna a 0 per costruzione — `operator_id IS NULL` non
+         puo' mai uguagliare `notes.user_id`, che e' NOT NULL. AC-014 (TOTALE = somma delle righe
+         GA2) continua a valere: il gruppo NULL contribuisce zero a entrambi i lati.
+      2. Il filtro GA2 Operatore (`ReportOperatorFilter`) resta sull'assegnatario e non cambia:
+         con il vincolo di autorialita' le due letture coincidono su questa colonna.
+    </decision>
+
+    <acceptance_addendum>
+      <criterion id="AC-058">Una nota creata nel range su una richiesta ancora nel PRIMO stato (`system_key = 'open'`), scritta dal GA2 della richiesta, e' contata (D-16): e' il caso che la formula precedente escludeva.</criterion>
+      <criterion id="AC-059">Una nota creata nel range su una richiesta del ramo da un utente che NON e' il GA2 di quella richiesta non e' contata in nessuna riga: ne' in quella del GA2 assegnato, ne' in quella dell'autore (D-17).</criterion>
+      <criterion id="AC-060">Una richiesta con `operator_id` NULL ha "N. Telefonate Effettuate" = 0 anche con note nel range, e la sua riga "Non assegnato" continua a comparire per gli altri indicatori (D-17).</criterion>
+    </acceptance_addendum>
+
+    <scope_delta>
+      <out>
+        <item>Nessuna modifica alle altre dodici colonne: "N. Richiami non gestiti" e "N. Nuovi contatti non gestiti" continuano a filtrare sul primo stato, che per loro e' la definizione stessa dell'indicatore.</item>
+        <item>Nessuna nuova riga per autore: le righe restano partizionate da `quotes.operator_id`.</item>
+        <item>Nessuna modifica a endpoint, request, response o formato del file.</item>
       </out>
     </scope_delta>
   </revision>

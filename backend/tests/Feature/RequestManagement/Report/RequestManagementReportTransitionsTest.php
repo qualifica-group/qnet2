@@ -80,12 +80,20 @@ if (! function_exists('reportQuoteWithOpenAdvance')) {
 }
 
 if (! function_exists('reportNote')) {
-    function reportNote(Quote $quote, Carbon $createdAt): void
+    /**
+     * The author defaults to the quote's OWN GA2 operator: since spec 0106
+     * rev-3 (D-17) that is the only note "N. Telefonate Effettuate" counts.
+     * Pass $authorId explicitly for the third-party case.
+     */
+    function reportNote(Quote $quote, Carbon $createdAt, ?int $authorId = null): void
     {
+        $author = $authorId ?? $quote->operator_id;
+
         Note::factory()->create([
             'notable_type' => 'opportunity',
             'notable_id' => $quote->opportunity_id,
             'created_at' => $createdAt,
+            ...($author !== null ? ['user_id' => $author] : []),
         ])->forceFill(['quote_id' => $quote->id])->save();
     }
 }
@@ -230,7 +238,8 @@ it('dedups a company linked to two operators (total < sum) and skips a registry 
 it('counts a request once per DISTINCT category, and once even with two lines on the SAME category (AC-016)', function () {
     $categories = reportCategoryTree();
 
-    reportNote(reportQuoteWithOpenAdvance($categories['gol']), now()); // unrelated noise on GOL
+    $operator = User::factory()->create();
+    reportNote(reportQuoteWithOpenAdvance($categories['gol'], $operator->id), now()); // unrelated noise on GOL
 
     $opportunity = Opportunity::factory()->create();
     OpportunityProductLine::factory()->create([
@@ -245,6 +254,7 @@ it('counts a request once per DISTINCT category, and once even with two lines on
     ]);
     $custom = QuoteWorkflowStatus::factory()->global()->create(['system_key' => null, 'group' => WorkflowStatusGroup::Open]);
     $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $custom->id]);
+    $quote->forceFill(['operator_id' => $operator->id])->save();
     reportNote($quote, now());
 
     $actor = reportViewAllActor();
@@ -264,7 +274,7 @@ it('classifies a request on a descendant category under its branch root (AC-017)
     $categories = reportCategoryTree();
     $child = ProductCategory::factory()->childOf($categories['gol'])->create(['name' => 'GOL - Lombardia']);
 
-    reportNote(reportQuoteWithOpenAdvance($child), now());
+    reportNote(reportQuoteWithOpenAdvance($child, User::factory()->create()->id), now());
 
     $actor = reportViewAllActor();
     $run = createReportRun($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString());
@@ -426,7 +436,7 @@ it('a viewSite actor (not the operator) sees requests of their own Sede, not ano
 
 it('includes a note created at 23:30 on the date_to day (AC-022)', function () {
     $categories = reportCategoryTree();
-    reportNote(reportQuoteWithOpenAdvance($categories['gol']), Carbon::parse('2026-09-30 23:30:00'));
+    reportNote(reportQuoteWithOpenAdvance($categories['gol'], User::factory()->create()->id), Carbon::parse('2026-09-30 23:30:00'));
 
     $actor = reportViewAllActor();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');

@@ -74,13 +74,34 @@ if (! function_exists('dashboardQuoteAdvanced')) {
 }
 
 if (! function_exists('dashboardNote')) {
-    function dashboardNote(Quote $quote, Carbon $createdAt): void
+    /**
+     * The author defaults to the quote's OWN GA2 operator: since spec 0106
+     * rev-3 (D-17) that is the only note "N. Telefonate Effettuate" counts.
+     */
+    function dashboardNote(Quote $quote, Carbon $createdAt, ?int $authorId = null): void
     {
+        $author = $authorId ?? $quote->operator_id;
+
         Note::factory()->create([
             'notable_type' => 'opportunity',
             'notable_id' => $quote->opportunity_id,
             'created_at' => $createdAt,
+            ...($author !== null ? ['user_id' => $author] : []),
         ])->forceFill(['quote_id' => $quote->id])->save();
+    }
+}
+
+if (! function_exists('dashboardUnassignedCallback')) {
+    /**
+     * A request with NO GA2 that still produces a "Non assegnato" row: since
+     * rev-3 (D-17) a note can no longer do it, so the row comes from
+     * "N. Richiami non gestiti" (first state + next_callback_at in range).
+     */
+    function dashboardUnassignedCallback(ProductCategory $category): Quote
+    {
+        return tap(dashboardQuote($category), static function (Quote $quote): void {
+            $quote->forceFill(['next_callback_at' => now()])->save();
+        });
     }
 }
 
@@ -204,7 +225,7 @@ it('total_only yields ONLY scope=indicator charts (AC-004)', function () {
 
 it('operators_only yields ONLY scope=operator charts (AC-004)', function () {
     $categories = dashboardCategoryTree2();
-    dashboardNote(dashboardQuoteAdvanced($categories['gol']), now());
+    dashboardNote(dashboardQuoteAdvanced($categories['gol'], User::factory()->create()->id), now());
 
     $actor = dashboardViewAllActor();
     $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol'], RequestManagementReportRowMode::OperatorsOnly);
@@ -214,7 +235,7 @@ it('operators_only yields ONLY scope=operator charts (AC-004)', function () {
 
 it('all yields both scopes, the indicator chart first inside its section (AC-004)', function () {
     $categories = dashboardCategoryTree2();
-    dashboardNote(dashboardQuoteAdvanced($categories['gol']), now());
+    dashboardNote(dashboardQuoteAdvanced($categories['gol'], User::factory()->create()->id), now());
 
     $actor = dashboardViewAllActor();
     $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol'], RequestManagementReportRowMode::All);
@@ -252,7 +273,7 @@ it('scope=operator has one point per GA2, including Non assegnato with the CSV l
     $categories = dashboardCategoryTree2();
     $ada = User::factory()->create(['name' => 'Ada Rossi']);
     dashboardNote(dashboardQuoteAdvanced($categories['gol'], $ada->id), now());
-    dashboardNote(dashboardQuoteAdvanced($categories['gol'], null), now());
+    dashboardUnassignedCallback($categories['gol']);
 
     $actor = dashboardViewAllActor();
     $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol'], RequestManagementReportRowMode::OperatorsOnly);

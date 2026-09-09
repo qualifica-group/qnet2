@@ -2,7 +2,6 @@
 
 use App\Enums\ExportFormat;
 use App\Enums\RequestManagementReportRowMode;
-use App\Enums\WorkflowStatusGroup;
 use App\Jobs\GenerateRequestManagementReportJob;
 use App\Models\BusinessFunction;
 use App\Models\ExportRun;
@@ -11,7 +10,6 @@ use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
 use App\Models\Quote;
-use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\RequestManagement\Report\Dashboard\RequestManagementDashboardBuilder;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
@@ -28,8 +26,9 @@ uses(RefreshDatabase::class);
 if (! function_exists('operatorFilterFixture')) {
     /**
      * Two GA2 plus one unassigned request on GOL, one on Consulenza, each
-     * with one phone call in range. Returns the actors and the branch
-     * categories the assertions address.
+     * with one note in range — a phone call only where the request has a GA2
+     * to have written it (rev-3 D-17), so GOL totals 3, not 4. Returns the
+     * actors and the branch categories the assertions address.
      *
      * @return array{ada: User, zoe: User, gol: ProductCategory, consulenza: ProductCategory}
      */
@@ -57,7 +56,12 @@ if (! function_exists('operatorFilterFixture')) {
 }
 
 if (! function_exists('operatorFilterQuote')) {
-    /** A request past the first workflow state, so "N. Telefonate" can count its notes. */
+    /**
+     * A request on the FIRST workflow state with a callback due in range: its
+     * notes count as phone calls all the same since rev-3 (D-16), and
+     * "N. Richiami non gestiti" gives it a GA2 row even when it has no
+     * operator at all — which a note alone can no longer do (D-17).
+     */
     function operatorFilterQuote(ProductCategory $category, ?int $operatorId): Quote
     {
         $opportunity = Opportunity::factory()->create();
@@ -67,18 +71,14 @@ if (! function_exists('operatorFilterQuote')) {
             'product_category_id' => $category->id,
         ]);
 
-        $status = QuoteWorkflowStatus::factory()->global()->create([
-            'system_key' => null,
-            'group' => WorkflowStatusGroup::Open,
-        ]);
-
         return Quote::factory()
-            ->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $status->id])
-            ->forceFill(['operator_id' => $operatorId]);
+            ->create(['opportunity_id' => $opportunity->id])
+            ->forceFill(['operator_id' => $operatorId, 'next_callback_at' => now()]);
     }
 }
 
 if (! function_exists('operatorFilterCall')) {
+    /** The note is written BY the request's own GA2: the only phone call rev-3 counts (D-17). */
     function operatorFilterCall(Quote $quote): void
     {
         $quote->save();
@@ -87,6 +87,7 @@ if (! function_exists('operatorFilterCall')) {
             'notable_type' => 'opportunity',
             'notable_id' => $quote->opportunity_id,
             'created_at' => now(),
+            ...($quote->operator_id !== null ? ['user_id' => $quote->operator_id] : []),
         ])->forceFill(['quote_id' => $quote->id])->save();
     }
 }
@@ -211,7 +212,7 @@ it('leaves every value untouched when no filter is passed (AC-001)', function ()
 
     $rows = operatorFilterCsv(operatorFilterActor(), RequestManagementReportRowMode::All, null);
 
-    expect(operatorFilterCell($rows, 'GOL', 'TOTALE', 'telefonate'))->toBe(4)
+    expect(operatorFilterCell($rows, 'GOL', 'TOTALE', 'telefonate'))->toBe(3) // the unassigned request contributes 0 (rev-3 D-17)
         ->and(operatorFilterGa2Labels($rows, 'GOL'))->toBe(['TOTALE', 'Ada Rossi', 'Zoe Bianchi', 'Non assegnato']);
 });
 
@@ -239,7 +240,7 @@ it('narrows the dashboard summary tiles to the selected operators (AC-004)', fun
 
     $tile = static fn ($result): int => collect($result->summary)->firstWhere('key', 'telefonate')->value;
 
-    expect($tile($unfiltered))->toBe(5) // 4 GOL + 1 Consulenza
+    expect($tile($unfiltered))->toBe(4) // 3 GOL + 1 Consulenza
         ->and($tile($filtered))->toBe(1); // Zoe's single GOL call
 });
 
@@ -258,8 +259,11 @@ it('includes only unassigned requests when unassigned is the sole selection (AC-
         ReportOperatorFilter::fromKeys([ReportOperatorFilter::UNASSIGNED_KEY]),
     );
 
+    // "telefonate" is 0 for an unassigned request by construction (rev-3 D-17),
+    // so the narrowing is asserted on the indicator that DOES count it.
     expect(operatorFilterGa2Labels($rows, 'GOL'))->toBe(['TOTALE', 'Non assegnato'])
-        ->and(operatorFilterCell($rows, 'GOL', 'TOTALE', 'telefonate'))->toBe(1);
+        ->and(operatorFilterCell($rows, 'GOL', 'TOTALE', 'richiami'))->toBe(1)
+        ->and(operatorFilterCell($rows, 'GOL', 'TOTALE', 'telefonate'))->toBe(0);
 });
 
 it('excludes unassigned requests when the key is not selected (AC-005)', function () {
@@ -397,9 +401,22 @@ it('re-reads the frozen operator_keys when the job runs (AC-015)', function () {
 // ---------------------------------------------------------------------------
 
 it('keeps the operator condition out of every indicator (AC-016)', function () {
+    // Spec 0106 rev-3 (D-17) made "N. Telefonate Effettuate" DEPEND on the
+    // GA2 column: it compares two columns of the same row (`whereColumn`) to
+    // define what a phone call is. That is the indicator's own formula, not
+    // the operator SELECTION this AC guards — which is why it is excluded
+    // here by name and checked separately below.
+    $phoneCalls = app_path('Services/RequestManagement/Report/Indicators/PhoneCallsIndicator.php');
+
     foreach (glob(app_path('Services/RequestManagement/Report/Indicators/*.php')) as $file) {
-        expect(file_get_contents($file))->not->toContain('operator_id');
+        if ($file !== $phoneCalls) {
+            expect(file_get_contents($file))->not->toContain('operator_id');
+        }
     }
+
+    expect(file_get_contents($phoneCalls))
+        ->toContain("whereColumn('notes.user_id', 'quotes.operator_id')")
+        ->not->toContain('operator_keys');
 
     // The one place that knows the column, and the one place that applies it.
     expect(file_get_contents(app_path('Services/RequestManagement/Report/ReportOperatorFilter.php')))
