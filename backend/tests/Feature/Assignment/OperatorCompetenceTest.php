@@ -18,27 +18,37 @@ use App\Services\Assignment\LeadCompetence;
 use App\Services\Assignment\OperatorCompetence;
 use App\Services\Assignment\QuoteCompetence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
 /**
- * Spec 0110 — the competence rule (INV-2/3/4) and the three requirement
- * resolvers (INV-1). AC-010..AC-015.
+ * Spec 0111 D-2 — the competence rule read PER ROW (AC-011..AC-015), on top
+ * of spec 0110's deroghe (INV-4) and of its three requirement resolvers
+ * (INV-1, unchanged: AC-014/AC-015 of that spec).
  */
 if (! function_exists('competentUser')) {
     /**
-     * A user whose employment profile carries the given function and
-     * categories. A null function, or no category at all, is the wildcard
-     * state of INV-4b.
+     * A user whose employment profile carries one competence row per given
+     * category, all paired with $function.
      */
-    function competentUser(?BusinessFunction $function, ProductCategory ...$categories): User
+    function competentUser(BusinessFunction $function, ProductCategory ...$categories): User
     {
         $user = User::factory()->create();
 
-        EmploymentProfile::factory()
-            ->for($user)
-            ->competentIn(...$categories)
-            ->create(['business_function_id' => $function?->id]);
+        EmploymentProfile::factory()->for($user)->competentIn($function, ...$categories)->create();
+
+        return $user;
+    }
+}
+
+if (! function_exists('rowlessUser')) {
+    /** A user with an employment profile but no competence row: the wildcard of INV-4b. */
+    function rowlessUser(): User
+    {
+        $user = User::factory()->create();
+
+        EmploymentProfile::factory()->for($user)->create();
 
         return $user;
     }
@@ -76,30 +86,45 @@ if (! function_exists('campaignClassifiedAs')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-010 — both halves are required (INV-3).
+// AC-011 / AC-012 — the row carries BOTH halves, and both must line up.
 // ---------------------------------------------------------------------------
 
-it('0110 AC-010: competence requires the matching function AND the matching category', function () {
+it('0111 AC-011: a row pairing the required category with its effective function makes the user competent', function () {
+    $function = BusinessFunction::factory()->create();
+    $category = categoryWithFunction($function);
+
+    $user = competentUser($function, $category);
+
+    expect(app(OperatorCompetence::class)->competent([$user->id], [$category->id]))
+        ->toBe([$user->id]);
+});
+
+it('0111 AC-012: a row pairing the required category with the WRONG function excludes the user', function () {
     $function = BusinessFunction::factory()->create();
     $otherFunction = BusinessFunction::factory()->create();
     $category = categoryWithFunction($function);
+
+    $user = competentUser($otherFunction, $category);
+
+    expect(app(OperatorCompetence::class)->competent([$user->id], [$category->id]))->toBe([]);
+    expect(app(OperatorCompetence::class)->excludedUserIds([$category->id]))->toBe([$user->id]);
+});
+
+it('0111 AC-012: a row on another category of the right function does not cover the required one', function () {
+    $function = BusinessFunction::factory()->create();
+    $category = categoryWithFunction($function);
     $otherCategory = categoryWithFunction($function);
 
-    $matching = competentUser($function, $category);
-    $wrongFunction = competentUser($otherFunction, $category);
-    $wrongCategory = competentUser($function, $otherCategory);
+    $user = competentUser($function, $otherCategory);
 
-    $candidates = [$matching->id, $wrongFunction->id, $wrongCategory->id];
-
-    expect(app(OperatorCompetence::class)->competent($candidates, [$category->id]))
-        ->toBe([$matching->id]);
+    expect(app(OperatorCompetence::class)->competent([$user->id], [$category->id]))->toBe([]);
 });
 
 // ---------------------------------------------------------------------------
-// AC-011 — a configured parent covers its descendants (INV-2).
+// AC-013 — a row on the parent covers the branch below it (INV-2).
 // ---------------------------------------------------------------------------
 
-it('0110 AC-011: a user competent on the parent category covers its descendants', function () {
+it('0111 AC-013: a row on the parent category covers its descendants', function () {
     $function = BusinessFunction::factory()->create();
     $parent = categoryWithFunction($function);
     $child = ProductCategory::factory()->create(['parent_id' => $parent->id]);
@@ -114,10 +139,90 @@ it('0110 AC-011: a user competent on the parent category covers its descendants'
 });
 
 // ---------------------------------------------------------------------------
-// AC-012 / AC-013 — the two deroghe (INV-4).
+// D-2 — what the single-function profile of spec 0110 could not express.
 // ---------------------------------------------------------------------------
 
-it('0110 AC-012: a record requiring no category leaves every candidate in place', function () {
+it('0111 D-2: two rows on two different functions make the same user competent on both', function () {
+    $firstFunction = BusinessFunction::factory()->create();
+    $secondFunction = BusinessFunction::factory()->create();
+    $firstCategory = categoryWithFunction($firstFunction);
+    $secondCategory = categoryWithFunction($secondFunction);
+
+    $user = User::factory()->create();
+    EmploymentProfile::factory()
+        ->for($user)
+        ->competentIn($firstFunction, $firstCategory)
+        ->competentIn($secondFunction, $secondCategory)
+        ->create();
+
+    $competence = app(OperatorCompetence::class);
+
+    expect($competence->competent([$user->id], [$firstCategory->id]))->toBe([$user->id]);
+    expect($competence->competent([$user->id], [$secondCategory->id]))->toBe([$user->id]);
+});
+
+it('0111 D-2: a category whose chain carries no function is decided by the category coverage alone', function () {
+    $function = BusinessFunction::factory()->create();
+    $functionlessCategory = ProductCategory::factory()->create([
+        'business_function_id' => null,
+        'parent_id' => null,
+    ]);
+
+    $user = competentUser($function, $functionlessCategory);
+
+    expect(app(OperatorCompetence::class)->competent([$user->id], [$functionlessCategory->id]))
+        ->toBe([$user->id]);
+});
+
+it('0111 D-2: the batch stays constant-query, whatever the number of users and requirements', function () {
+    $function = BusinessFunction::factory()->create();
+    $otherFunction = BusinessFunction::factory()->create();
+    $parent = categoryWithFunction($function);
+    $child = ProductCategory::factory()->create(['parent_id' => $parent->id]);
+    $otherCategory = categoryWithFunction($otherFunction);
+
+    $candidateIds = collect([
+        competentUser($function, $parent),
+        competentUser($function, $child),
+        competentUser($otherFunction, $otherCategory),
+    ])->pluck('id')->all();
+
+    $competence = app(OperatorCompetence::class);
+
+    DB::enableQueryLog();
+    $competence->competentByRequirement($candidateIds, [
+        'first' => [$parent->id],
+        'second' => [$child->id],
+        'third' => [$otherCategory->id],
+    ]);
+    $queries = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    // Profiles, their rows, the two the taxonomy needs (categories +
+    // functions) and the parent map: five reads for the WHOLE batch, never
+    // one per record or per user.
+    expect($queries)->toHaveCount(5);
+});
+
+// ---------------------------------------------------------------------------
+// AC-014 / AC-015 — the two deroghe (INV-4).
+// ---------------------------------------------------------------------------
+
+it('0111 AC-014: a user with no competence row is never excluded, whatever the record requires', function () {
+    $function = BusinessFunction::factory()->create();
+    $category = categoryWithFunction($function);
+
+    $rowless = rowlessUser();
+    $noProfileAtAll = User::factory()->create();
+    $configuredElsewhere = competentUser($function, categoryWithFunction($function));
+
+    $candidates = [$rowless->id, $noProfileAtAll->id, $configuredElsewhere->id];
+
+    expect(app(OperatorCompetence::class)->competent($candidates, [$category->id]))
+        ->toBe([$rowless->id, $noProfileAtAll->id]);
+});
+
+it('0111 AC-015: a record requiring no category leaves every candidate in place', function () {
     $function = BusinessFunction::factory()->create();
     $category = categoryWithFunction($function);
     $configured = competentUser($function, $category);
@@ -125,23 +230,7 @@ it('0110 AC-012: a record requiring no category leaves every candidate in place'
 
     expect(app(OperatorCompetence::class)->competent([$configured->id, $plain->id], []))
         ->toBe([$configured->id, $plain->id]);
-});
-
-it('0110 AC-013: a user missing either half of the competence is a wildcard', function () {
-    $function = BusinessFunction::factory()->create();
-    $otherFunction = BusinessFunction::factory()->create();
-    $category = categoryWithFunction($function);
-    $otherCategory = categoryWithFunction($function);
-
-    $noCategories = competentUser($otherFunction);
-    $noFunction = competentUser(null, $otherCategory);
-    $noProfileAtAll = User::factory()->create();
-    $configuredButWrong = competentUser($otherFunction, $otherCategory);
-
-    $candidates = [$noCategories->id, $noFunction->id, $noProfileAtAll->id, $configuredButWrong->id];
-
-    expect(app(OperatorCompetence::class)->competent($candidates, [$category->id]))
-        ->toBe([$noCategories->id, $noFunction->id, $noProfileAtAll->id]);
+    expect(app(OperatorCompetence::class)->excludedUserIds([]))->toBe([]);
 });
 
 // ---------------------------------------------------------------------------

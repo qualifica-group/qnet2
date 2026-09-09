@@ -183,12 +183,10 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
   standard_daily_minutes: null,
   break_daily_minutes: null,
   reports_to_id: null,
-  business_function_id: null,
   company_id: null,
   primary_operational_site_id: 8,
   remote_operational_site_ids: [9, 10],
   reports_to: null,
-  business_function: null,
   company: null,
   primary_operational_site: { id: 8, label: 'Via Roma 1' },
   remote_operational_sites: [

@@ -41,20 +41,23 @@ if (! function_exists('competenceImportActor')) {
 
 if (! function_exists('competenceImportOperator')) {
     /**
-     * An operator employed at $site, competent in $categories under
-     * $function. No function and no category at all is the wildcard state of
-     * INV-4b — what every user looks like before anyone configures a
-     * competence (AC-025).
+     * An operator employed at $site, carrying one competence row per
+     * category, all paired with $function (spec 0111 D-2). Called without a
+     * function the profile stays rowless: the wildcard state of INV-4b —
+     * what every user looks like before anyone configures a competence
+     * (AC-025).
      */
     function competenceImportOperator(OperationalSite $site, ?BusinessFunction $function = null, ProductCategory ...$categories): User
     {
         $operator = User::factory()->create();
 
-        EmploymentProfile::factory()
-            ->for($operator)
-            ->physicalSite($site)
-            ->competentIn(...$categories)
-            ->create(['business_function_id' => $function?->id]);
+        $factory = EmploymentProfile::factory()->for($operator)->physicalSite($site);
+
+        if ($function !== null) {
+            $factory = $factory->competentIn($function, ...$categories);
+        }
+
+        $factory->create();
 
         return $operator;
     }

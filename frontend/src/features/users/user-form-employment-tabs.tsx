@@ -17,10 +17,10 @@ import { RelationMultiSelectField } from '@/components/form/relation-multi-selec
 import { toRelationFieldRef, toRelationFieldRefs } from '@/components/form/relation-field-ref'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { MetaField } from '@/features/authorization/MetaField'
-import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
-import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
+import { ProductLinesField } from '@/features/product-lines/product-lines-field'
+import type { ProductLine } from '@/features/product-lines/types'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { RELATIONSHIP_TYPES, type RelationshipType } from '@/features/users/types'
 import type { UserFormValues } from '@/features/users/use-user-form'
@@ -33,21 +33,25 @@ interface EmploymentTabProps {
 }
 
 interface ProfileTabContentProps extends EmploymentTabProps {
-  selectedBusinessFunctionItem: ForSelectItem | null
-  selectedProductCategoryItems: ForSelectItem[]
+  /** The persisted competence pairs, whose `{id, name}` projections label the rows without a fetch. */
+  knownProductLines: ProductLine[]
   selectedReportsToItem: ForSelectItem | null
 }
 
 /**
- * Profile tab: organizational role (business function, the product categories
- * the user is competent for, manager status, job description) and the
- * reporting line. `reports_to` is hidden and its value force-nulled at the
- * payload boundary whenever `is_manager` is true (AC-015).
+ * Profile tab: organizational role (the competence rows, manager status, job
+ * description) and the reporting line. The competence is edited with the SAME
+ * `ProductLinesField` the request/opportunity forms use (spec 0111): a person
+ * covers N "funzione aziendale -> categoria prodotto" pairs, which replaced
+ * the single business function and the flat category multi-select. The
+ * `single`-mode row cap is opted out here (D-5): it is an invariant of a
+ * commercial card, not of a person's competence. `reports_to` is hidden and
+ * its value force-nulled at the payload boundary whenever `is_manager` is
+ * true (AC-015).
  */
 export function ProfileTabContent({
   control,
-  selectedBusinessFunctionItem,
-  selectedProductCategoryItems,
+  knownProductLines,
   selectedReportsToItem,
 }: ProfileTabContentProps) {
   const { t } = useTranslation()
@@ -59,35 +63,23 @@ export function ProfileTabContent({
       title={t('users.form.sections.profile.title')}
       description={t('users.form.sections.profile.description')}
     >
-      <RelationSelectField
+      <MetaField
         control={control}
-        name="employment.business_function_id"
-        metaKey="employment.business_function_id"
-        label={t('users.form.employment.businessFunction')}
-        resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
-        searchPlaceholder={t('users.form.employment.businessFunctionSearch')}
-        selected={toRelationFieldRef(selectedBusinessFunctionItem)}
-        placeholder={t('users.form.employment.businessFunctionPlaceholder')}
-        emptyLabel={t('users.form.employment.businessFunctionEmpty')}
-        errorLabel={t('users.form.employment.businessFunctionError')}
-        clearLabel={t('common.clear')}
-        retryLabel={t('common.retry')}
-      />
-
-      <RelationMultiSelectField
-        control={control}
-        name="employment.product_category_ids"
-        metaKey="employment.product_category_ids"
-        label={t('users.form.employment.productCategories')}
-        resource={PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE}
-        searchPlaceholder={t('users.form.employment.productCategoriesSearch')}
-        selected={toRelationFieldRefs(selectedProductCategoryItems)}
-        placeholder={t('users.form.employment.productCategoriesPlaceholder')}
-        emptyLabel={t('users.form.employment.productCategoriesEmpty')}
-        errorLabel={t('users.form.employment.productCategoriesError')}
-        removeLabel={t('users.form.employment.productCategoriesRemove')}
-        retryLabel={t('common.retry')}
-      />
+        name="employment.product_lines"
+        metaKey="employment.product_lines"
+        label={t('users.form.employment.productLines')}
+        hint={t('users.form.employment.productLinesHint')}
+      >
+        {({ field, disabled }) => (
+          <ProductLinesField
+            value={field.value}
+            onChange={field.onChange}
+            knownLines={knownProductLines}
+            disabled={disabled}
+            enforceManagementModeCap={false}
+          />
+        )}
+      </MetaField>
 
       <MetaField
         control={control}

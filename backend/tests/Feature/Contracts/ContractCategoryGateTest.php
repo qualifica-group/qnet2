@@ -254,6 +254,16 @@ it('AC-012: the gate holds on the request-management work panel too', function (
 
     ['opportunity' => $opportunity, 'products' => $products] = contractGateOpportunityCovering([false]);
     $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
+    // Direttiva utente 2026-09-09: a positive close from THIS channel also
+    // demands the client's codice fiscale or partita IVA
+    // (RequestWorkflowStatusWriter) — another gate this test is not about, so
+    // it just satisfies it like the line one below.
+    $opportunity->registry->personalData()->create([
+        'type' => 'individual',
+        'first_name' => 'Mario',
+        'last_name' => 'Rossi',
+        'tax_code' => 'RSSMRA80A01H501U',
+    ]);
     $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $actor->id]);
     // Spec 0102: closing an offer positively requires at least one REVENUE
     // line (the D-3 gate lives in QuoteWorkflowStatusWriter::apply(), shared

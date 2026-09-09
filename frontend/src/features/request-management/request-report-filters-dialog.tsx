@@ -21,6 +21,7 @@ import {
 } from '@/features/request-management/request-report-schema'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
 import { useRequestReportOperators } from '@/features/request-management/use-request-report-operators'
+import { useRequestReportSites } from '@/features/request-management/use-request-report-sites'
 
 /** Narrow form: the sheet opens at this width until the user resizes it (mirrors `ExportDialog`). */
 const REPORT_SHEET_DEFAULT_WIDTH = 440
@@ -72,9 +73,16 @@ export function RequestReportFiltersDialog({
   const categories = categoriesQuery.data
   const operatorsQuery = useRequestReportOperators(open)
   const operators = operatorsQuery.data
-  // The picker's own list is what makes "at least one operator" a real rule
-  // (spec 0109): with nothing on offer there is nothing to require.
-  const schema = buildRequestReportSchema(t, (operators ?? []).map((operator) => operator.key))
+  const sitesQuery = useRequestReportSites(open)
+  const sites = sitesQuery.data
+  // Each picker's own list is what makes "at least one operator"/"at least one
+  // site" a real rule (spec 0109, spec 0112): with nothing on offer there is
+  // nothing to require.
+  const schema = buildRequestReportSchema(
+    t,
+    (operators ?? []).map((operator) => operator.key),
+    (sites ?? []).map((site) => site.key),
+  )
 
   const form = useForm<RequestReportFormValues>({
     resolver: zodResolver(schema),
@@ -137,6 +145,9 @@ export function RequestReportFiltersDialog({
                 operators={operators}
                 operatorsLoading={operatorsQuery.isLoading}
                 operatorsError={operatorsQuery.isError}
+                sites={sites}
+                sitesLoading={sitesQuery.isLoading}
+                sitesError={sitesQuery.isError}
                 disabled={categoriesBlocked}
               />
             </div>

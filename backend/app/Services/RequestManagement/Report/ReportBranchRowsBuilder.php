@@ -29,11 +29,13 @@ use Illuminate\Support\Collection;
  * ReportSheetBuilder (formatting) read from — this class never depends on the
  * formatting one for it (spec 0107 D-2-bis, point 3).
  *
- * $operators (spec 0108, D-1) is handed straight down to the indicators and
- * never inspected here: it restricts WHAT IS COMPUTED, upstream in
- * ReportBranchQuery, so the operator rows this class ends up emitting are
- * simply the ones the (already narrowed) breakdown still contains — no row is
- * filtered out after the fact.
+ * $operators (spec 0108, D-1) and $sites (spec 0112, D-1) are handed straight
+ * down to the indicators and never inspected here: they restrict WHAT IS
+ * COMPUTED, upstream in ReportBranchQuery, so the operator rows this class
+ * ends up emitting are simply the ones the (already narrowed) breakdown still
+ * contains — no row is filtered out after the fact. That is also why a Sede
+ * filter can make the "Non assegnato" row disappear (0112 AC-006) without a
+ * single line here knowing about it.
  */
 final class ReportBranchRowsBuilder
 {
@@ -42,10 +44,10 @@ final class ReportBranchRowsBuilder
     /**
      * @return array<int, ReportRow>
      */
-    public function build(ReportBranch $branch, ?User $actor, ReportDateRange $range, RequestManagementReportRowMode $rowMode, ReportOperatorFilter $operators): array
+    public function build(ReportBranch $branch, ?User $actor, ReportDateRange $range, RequestManagementReportRowMode $rowMode, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): array
     {
         // Step 1: compute every REAL (non-stub) applicable indicator once for the whole branch.
-        $results = $this->computeIndicators($branch, $actor, $range, $operators);
+        $results = $this->computeIndicators($branch, $actor, $range, $operators, $sites);
 
         // Step 2: the GA2 breakdown to emit — union of operator ids across every computed indicator.
         $operatorIds = $this->operatorIds($results);
@@ -75,7 +77,7 @@ final class ReportBranchRowsBuilder
     /**
      * @return array<string, IndicatorResult>
      */
-    private function computeIndicators(ReportBranch $branch, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): array
+    private function computeIndicators(ReportBranch $branch, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites): array
     {
         $results = [];
 
@@ -83,7 +85,7 @@ final class ReportBranchRowsBuilder
             $indicator = $this->indicators->resolve($column);
 
             if ($indicator !== null) {
-                $results[$column] = $indicator->compute($branch->categoryIds, $actor, $range, $operators);
+                $results[$column] = $indicator->compute($branch->categoryIds, $actor, $range, $operators, $sites);
             }
         }
 

@@ -31,31 +31,32 @@ use App\Enums\RelationshipTypeEnum;
  * separate set of pivot rows that EmploymentWriter must be told whether to
  * touch at all (see EmploymentWriter::syncSiteMemberships()).
  *
- * `productCategoryIds` (spec 0110, the assignment competence) carries the
- * SAME per-field tri-state, for the same reason: it is a third set of pivot
- * rows (`employment_profile_product_category`), independent from the site
- * membership and from the scalar columns.
+ * `productLines` (spec 0111, the assignment competence) carries the SAME
+ * per-field tri-state, for the same reason: it is a set of child rows
+ * (`employment_product_lines`) pairing a business function with a product
+ * category, independent from the site membership and from the scalar columns.
+ * Since spec 0111 D-1 it is also the ONLY source of a user's business
+ * function — the former `businessFunctionId` column is gone.
  */
 final readonly class EmploymentData
 {
     /**
      * @param  array<int, int>  $remoteOperationalSiteIds
-     * @param  array<int, int>  $productCategoryIds
+     * @param  array<int, array{business_function_id: int, product_category_id: int}>  $productLines
      */
     public function __construct(
         public bool $delete = false,
         public bool $isManager = false,
         public ?string $jobDescription = null,
         public ?int $reportsToId = null,
-        public ?int $businessFunctionId = null,
         public ?RelationshipTypeEnum $relationshipType = null,
         public ?int $companyId = null,
         public bool $primaryOperationalSiteIdProvided = false,
         public ?int $primaryOperationalSiteId = null,
         public bool $remoteOperationalSiteIdsProvided = false,
         public array $remoteOperationalSiteIds = [],
-        public bool $productCategoryIdsProvided = false,
-        public array $productCategoryIds = [],
+        public bool $productLinesProvided = false,
+        public array $productLines = [],
         public ?QualificationTypeEnum $qualificationType = null,
         public ?string $hiredAt = null,
         public ?string $terminatedAt = null,
@@ -74,9 +75,10 @@ final readonly class EmploymentData
     /**
      * The row attributes for a mass-assignment upsert (framework array
      * boundary). Never called when $delete is true. Deliberately excludes
-     * the site membership: those are pivot rows, not columns of this table
-     * (spec 0103) — EmploymentWriter::syncSiteMemberships() applies them
-     * separately, after this upsert.
+     * the site membership and the competence: those are child rows, not
+     * columns of this table (spec 0103 / 0111) — EmploymentWriter::
+     * syncSiteMemberships() and syncProductLines() apply them separately,
+     * after this upsert.
      *
      * @return array<string, mixed>
      */
@@ -86,7 +88,6 @@ final readonly class EmploymentData
             'is_manager' => $this->isManager,
             'job_description' => $this->jobDescription,
             'reports_to_id' => $this->reportsToId,
-            'business_function_id' => $this->businessFunctionId,
             'relationship_type' => $this->relationshipType,
             'company_id' => $this->companyId,
             'qualification_type' => $this->qualificationType,

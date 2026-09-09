@@ -12,9 +12,10 @@ use Spatie\Permission\Models\Permission;
 uses(RefreshDatabase::class);
 
 /**
- * Spec 0110, AC-030/AC-031: GET /api/users/for-select gains the ADDITIVE
- * `competence_category_ids[]` filter — the picker asks for the operators
- * competent for a record's required categories (INV-3), wildcards included
+ * Spec 0110 AC-030/AC-031 read through spec 0111 AC-016: GET
+ * /api/users/for-select keeps the ADDITIVE `competence_category_ids[]`
+ * filter — the picker asks for the operators competent for a record's
+ * required categories, now evaluated PER ROW (D-2), wildcards included
  * (INV-4b). Absent, the endpoint answers exactly as it did before the
  * feature; combined with `operational_site_id` the two filters AND (INV-5:
  * competence only ever narrows).
@@ -35,23 +36,24 @@ if (! function_exists('competenceForSelectActor')) {
 
 if (! function_exists('competenceForSelectUser')) {
     /**
-     * A user whose employment profile carries $function and $categories, and
-     * optionally sits at $site. No category at all (or no function) is the
-     * wildcard state of INV-4b.
+     * A user whose employment profile carries one competence row per
+     * category, all paired with $function (spec 0111 D-2), optionally
+     * sitting at $site. A user with no row at all is the wildcard of INV-4b
+     * and is built without this helper.
      *
      * @param  array<int, ProductCategory>  $categories
      */
-    function competenceForSelectUser(?BusinessFunction $function, array $categories = [], ?OperationalSite $site = null): User
+    function competenceForSelectUser(BusinessFunction $function, array $categories, ?OperationalSite $site = null): User
     {
         $user = User::factory()->create();
 
-        $factory = EmploymentProfile::factory()->for($user)->competentIn(...$categories);
+        $factory = EmploymentProfile::factory()->for($user)->competentIn($function, ...$categories);
 
         if ($site !== null) {
             $factory = $factory->physicalSite($site);
         }
 
-        $factory->create(['business_function_id' => $function?->id]);
+        $factory->create();
 
         return $user;
     }
@@ -61,7 +63,7 @@ if (! function_exists('competenceForSelectUser')) {
 // AC-030 — competence_category_ids narrows to the competent operators.
 // ---------------------------------------------------------------------------
 
-it('0110 AC-030: competence_category_ids answers only the competent operators plus the wildcards, and the total reflects the filter', function () {
+it('0111 AC-016: competence_category_ids answers only the competent operators plus the wildcards, and the total reflects the filter', function () {
     $actor = competenceForSelectActor();
     $function = BusinessFunction::factory()->create();
     $otherFunction = BusinessFunction::factory()->create();
@@ -86,6 +88,31 @@ it('0110 AC-030: competence_category_ids answers only the competent operators pl
     // 5 users exist, 3 survive the filter: the total is filtered, not the
     // full table count.
     expect($response->json('pagination.total'))->toBe(3);
+});
+
+it('0111 AC-016: an operator competent through a SECOND row on another function is answered too', function () {
+    $actor = competenceForSelectActor();
+    $firstFunction = BusinessFunction::factory()->create();
+    $secondFunction = BusinessFunction::factory()->create();
+    $firstCategory = ProductCategory::factory()->create(['business_function_id' => $firstFunction->id]);
+    $secondCategory = ProductCategory::factory()->create(['business_function_id' => $secondFunction->id]);
+
+    $user = User::factory()->create();
+    EmploymentProfile::factory()
+        ->for($user)
+        ->competentIn($firstFunction, $firstCategory)
+        ->competentIn($secondFunction, $secondCategory)
+        ->create();
+    $onlyFirst = competenceForSelectUser($firstFunction, [$firstCategory]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/users/for-select?competence_category_ids[]={$secondCategory->id}")->assertOk();
+
+    $ids = collect($response->json('items'))->pluck('id');
+
+    expect($ids)->toContain($user->id, $actor->id);
+    expect($ids)->not->toContain($onlyFirst->id);
+    expect($response->json('pagination.total'))->toBe(2);
 });
 
 it('0110 AC-030: an unknown category id is a 422, never a silently empty picker', function () {

@@ -25,6 +25,7 @@ export const requestManagement = {
     firstName: 'Nome',
     lastName: 'Cognome',
     taxCode: 'Codice fiscale',
+    vatNumber: 'Partita IVA',
     phone: 'Telefono',
     createdAt: 'Caricato il',
     nextCallbackAt: 'Prossimo richiamo',
@@ -284,6 +285,14 @@ export const requestManagement = {
       // `product_lines` è stata effettivamente modificata (grandfathering di
       // un record storico non conforme, vedi `request-work-schema.ts`).
       businessFunctionMismatch: 'Tutte le righe devono condividere la stessa funzione aziendale.',
+      // Direttiva utente 2026-09-09: mirror del gate server
+      // (`RequestWorkflowStatusWriter`), basta uno dei due identificativi.
+      fiscalIdentityRequiredForStatus:
+        'Inserisci il codice fiscale o la partita IVA del cliente per chiudere con esito positivo.',
+      // Stessa regola sul RECORD gia' chiuso positivo (decisione utente
+      // 2026-09-09): il pannello non salva finche' il dato manca.
+      fiscalIdentityRequiredOnClosedWon:
+        'La richiesta è chiusa con esito positivo: inserisci il codice fiscale o la partita IVA del cliente per poterla salvare.',
       summary: 'Impossibile salvare: controlla questi campi — {{fields}}.',
     },
   },
@@ -303,6 +312,9 @@ export const requestManagement = {
       // Spec 0109: gruppo GA2, mostrato solo nelle modalita' che emettono righe per operatore.
       operators: 'Operatori',
       selectAllOperators: 'Seleziona tutto',
+      // Spec 0112: gruppo delle Sedi operative, mostrato accanto a quello GA2.
+      sites: 'Sedi',
+      selectAllSites: 'Seleziona tutto',
       rowMode: 'Righe da includere',
     },
     // rev-2 D-13: le tre opzioni mutuamente esclusive di `row_mode`.
@@ -316,6 +328,7 @@ export const requestManagement = {
       completed: 'Report generato: il download è partito automaticamente.',
       loadingCategories: 'Caricamento categorie…',
       loadingOperators: 'Caricamento operatori…',
+      loadingSites: 'Caricamento sedi…',
     },
     buttons: {
       processing: 'Generazione…',
@@ -333,6 +346,9 @@ export const requestManagement = {
       // Spec 0109 AC-044: nessuna richiesta parte con zero operatori selezionati.
       operatorsRequired: 'Seleziona almeno un operatore.',
       operatorsLoadFailed: 'Impossibile caricare gli operatori. Riprova.',
+      // Spec 0112 AC-020: nessuna richiesta parte con zero sedi selezionate.
+      sitesRequired: 'Seleziona almeno una sede.',
+      sitesLoadFailed: 'Impossibile caricare le sedi. Riprova.',
       forbidden: 'Non hai il permesso di generare questo report.',
       validation: 'Le date inserite non sono valide.',
       generic: 'Impossibile generare il report. Riprova.',

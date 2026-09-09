@@ -4,6 +4,7 @@ use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Database\Factories\EmploymentProfileFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -52,6 +53,7 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
     $actor = employmentTestActor(['create']);
     $manager = User::factory()->create(['name' => 'Manager One']);
     $function = BusinessFunction::factory()->create(['name' => 'Engineering']);
+    $category = ProductCategory::factory()->create(['name' => 'Fibra', 'business_function_id' => $function->id]);
     $company = Company::factory()->create(['denomination' => 'Acme Srl', 'vat_number' => 'IT123']);
     $site = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
@@ -66,7 +68,11 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
             'is_manager' => false,
             'job_description' => 'Backend engineer',
             'reports_to_id' => $manager->id,
-            'business_function_id' => $function->id,
+            // Spec 0111: the business function is written as a competence row,
+            // not as a column of the profile.
+            'product_lines' => [
+                ['business_function_id' => $function->id, 'product_category_id' => $category->id],
+            ],
             'relationship_type' => 'employee',
             'company_id' => $company->id,
             'primary_operational_site_id' => $site->id,
@@ -82,8 +88,12 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
         'user_id' => $created->id,
         'is_manager' => false,
         'reports_to_id' => $manager->id,
-        'business_function_id' => $function->id,
         'company_id' => $company->id,
+    ]);
+    $this->assertDatabaseHas('employment_product_lines', [
+        'employment_profile_id' => $created->employment->id,
+        'business_function_id' => $function->id,
+        'product_category_id' => $category->id,
     ]);
     $this->assertDatabaseHas('employment_profile_operational_site', [
         'employment_profile_id' => $created->employment->id,
@@ -93,8 +103,8 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
 
     $response->assertJsonPath('data.employment.reports_to.id', $manager->id)
         ->assertJsonPath('data.employment.reports_to.label', 'Manager One')
-        ->assertJsonPath('data.employment.business_function.id', $function->id)
-        ->assertJsonPath('data.employment.business_function.label', 'Engineering')
+        ->assertJsonPath('data.employment.product_lines.0.business_function', ['id' => $function->id, 'name' => 'Engineering'])
+        ->assertJsonPath('data.employment.product_lines.0.product_category', ['id' => $category->id, 'name' => 'Fibra'])
         ->assertJsonPath('data.employment.company.id', $company->id)
         ->assertJsonPath('data.employment.company.label', 'Acme Srl')
         ->assertJsonPath('data.employment.company.subtitle', 'IT123')

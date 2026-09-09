@@ -151,12 +151,10 @@ function userWithEmployment(): UserDetailWithPermissions {
       standard_daily_minutes: 480,
       break_daily_minutes: 30,
       reports_to_id: 2,
-      business_function_id: 3,
       company_id: 5,
       primary_operational_site_id: 8,
       remote_operational_site_ids: [9, 10],
       reports_to: { id: 2, label: 'Grace Hopper' },
-      business_function: { id: 3, label: 'Engineering' },
       company: { id: 5, label: 'Acme Srl' },
       primary_operational_site: { id: 8, label: 'Via Roma 1' },
       remote_operational_sites: [
@@ -295,8 +293,6 @@ describe('UserForm — employment relation selects (spec 0015 AC-016)', () => {
       { wrapper: wrapper() },
     )
 
-    expect(screen.getByTestId('resource-Business function')).toHaveTextContent('business-functions')
-    expect(screen.getByTestId('selected-label-Business function')).toHaveTextContent('Engineering')
     expect(screen.getByTestId('resource-Reports to')).toHaveTextContent('users')
     expect(screen.getByTestId('selected-label-Reports to')).toHaveTextContent('Grace Hopper')
 
@@ -321,12 +317,11 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
       is_manager: false,
       job_description: null,
       reports_to_id: null,
-      business_function_id: null,
       relationship_type: null,
       company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
-      product_category_ids: [],
+      product_lines: [],
       qualification_type: null,
       hired_at: null,
       terminated_at: null,

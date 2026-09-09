@@ -21,11 +21,13 @@ import type { RequestReportCategory } from '@/features/request-management/report
 
 const fetchRequestManagementReportCategoriesMock = vi.fn()
 const fetchRequestManagementReportOperatorsMock = vi.fn()
+const fetchRequestManagementReportSitesMock = vi.fn()
 vi.mock('@/features/request-management/report-api', () => ({
   fetchRequestManagementReportCategories: (...args: unknown[]) =>
     fetchRequestManagementReportCategoriesMock(...args),
   fetchRequestManagementReportOperators: (...args: unknown[]) =>
     fetchRequestManagementReportOperatorsMock(...args),
+  fetchRequestManagementReportSites: (...args: unknown[]) => fetchRequestManagementReportSitesMock(...args),
 }))
 
 /** The two branches most tests load; both applied by default (AC-050 seeding lives in the panel). */
@@ -43,6 +45,8 @@ beforeEach(() => {
   // Spec 0109: no GA2 by default, so the operator group stays out of the way
   // of the branch-group assertions; the tests that need it opt in.
   fetchRequestManagementReportOperatorsMock.mockReset().mockResolvedValue([])
+  // Spec 0112: same reasoning for the operational site group.
+  fetchRequestManagementReportSitesMock.mockReset().mockResolvedValue([])
 })
 
 function wrapper() {
@@ -85,6 +89,7 @@ describe('RequestReportFiltersDialog', () => {
       category_keys: ['consulenza'],
       row_mode: 'total_only',
       operator_keys: [],
+      site_keys: [],
     })
     await waitForCategories()
 
@@ -104,14 +109,15 @@ describe('RequestReportFiltersDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
 
     await waitFor(() =>
-      // `operator_keys` joined the form values in spec 0109; empty here
-      // because this test's picker offers no GA2.
+      // `operator_keys` joined the form values in spec 0109 and `site_keys`
+      // in 0112; both empty here because this test's pickers offer neither.
       expect(onApply).toHaveBeenCalledWith({
         date_from: '2026-09-01',
         date_to: '2026-09-30',
         category_keys: ['gol', 'consulenza'],
         row_mode: 'all',
         operator_keys: [],
+        site_keys: [],
       }),
     )
     expect(onOpenChange).toHaveBeenCalledWith(false)

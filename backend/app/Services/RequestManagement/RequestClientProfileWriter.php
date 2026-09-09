@@ -58,6 +58,7 @@ final class RequestClientProfileWriter
         'client_first_name' => 'first_name',
         'client_last_name' => 'last_name',
         'client_tax_code' => 'tax_code',
+        'client_vat_number' => 'vat_number',
     ];
 
     /**
@@ -70,6 +71,7 @@ final class RequestClientProfileWriter
         'client_first_name',
         'client_last_name',
         'client_tax_code',
+        'client_vat_number',
         self::CLIENT_PHONE_KEY,
     ];
 
@@ -98,7 +100,7 @@ final class RequestClientProfileWriter
 
     /**
      * Applies every client anagraphic key of a work-panel/inline PATCH: the
-     * four SPARSE single-field keys the grid's inline editor submits (spec
+     * SPARSE single-field keys the grid's inline editor submits (spec
      * 0055, D-7) and the whole-block keys the work panel submits. Both
      * channels land here, so "which keys are client keys" is known in exactly
      * one place — this writer, which already knows where each field
@@ -206,7 +208,8 @@ final class RequestClientProfileWriter
      * panel does. Two deliberately different semantics behind one entry
      * point, keyed by the payload key the column maps to:
      *
-     *  - identity (`client_first_name`/`client_last_name`/`client_tax_code`):
+     *  - identity (`client_first_name`/`client_last_name`/`client_tax_code`/
+     *    `client_vat_number`):
      *    the DTO is rebuilt from the card's CURRENT values with the single
      *    edited field replaced, then written through the same writeIdentity()
      *    the panel uses — so `registries.name` is re-derived identically and
@@ -225,7 +228,7 @@ final class RequestClientProfileWriter
      * Returns the value held BEFORE the write, so the caller can log the
      * operational change (spec 0055, D-9) without resolving the card a second
      * time — this writer is already the only place that knows where each of
-     * the four fields physically lives.
+     * those fields physically lives.
      *
      * @throws ValidationException the key is unknown, or the client has no card to write to
      */
@@ -263,6 +266,7 @@ final class RequestClientProfileWriter
             'first_name' => $card->first_name,
             'last_name' => $card->last_name,
             'tax_code' => $card->tax_code,
+            'vat_number' => $card->vat_number,
         ];
 
         $current[$attribute] = $value;
@@ -273,7 +277,7 @@ final class RequestClientProfileWriter
             lastName: $current['last_name'],
             companyName: $card->company_name,
             taxCode: $current['tax_code'],
-            vatNumber: $card->vat_number,
+            vatNumber: $current['vat_number'],
             sdiCode: $card->sdi_code,
             birthDate: $card->birth_date?->format('Y-m-d'),
             birthCityId: $card->birth_city_id,

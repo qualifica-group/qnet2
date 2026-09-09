@@ -9,7 +9,11 @@ import {
   ROW_MODES,
   type RequestReportFormValues,
 } from '@/features/request-management/request-report-schema'
-import type { RequestReportCategory, RequestReportOperator } from '@/features/request-management/report-api'
+import type {
+  RequestReportCategory,
+  RequestReportOperator,
+  RequestReportSite,
+} from '@/features/request-management/report-api'
 import { cn } from '@/lib/utils'
 
 /** Compact control label, shared by every group (ui-design.md §2: smaller end of the scale). */
@@ -55,6 +59,10 @@ export interface RequestReportFiltersProps {
   operators: RequestReportOperator[] | undefined
   operatorsLoading: boolean
   operatorsError: boolean
+  /** The operational sites the actor may filter by (spec 0112); undefined while loading. */
+  sites: RequestReportSite[] | undefined
+  sitesLoading: boolean
+  sitesError: boolean
   /** Disables every field: report creation/processing in the dialog, or the branch list unusable. */
   disabled: boolean
 }
@@ -66,11 +74,12 @@ export interface RequestReportFiltersProps {
  * 2026-09-08) — so `RequestReportDialog` is its only host; the file stays
  * split off it purely for size.
  *
- * The operator group is mounted only for the row modes that actually emit
- * operator rows, `operators_only` and `all` (spec 0108, D-4): under
- * `total_only` there are no operator rows to narrow, so the control would
- * promise something the output cannot show. The selection itself is NOT
- * cleared when it hides — switching back restores it (AC-045).
+ * The two narrowing groups — GA2 operators (spec 0108 D-4) and operational
+ * sites (spec 0112 D-7) — are mounted only for the row modes that actually
+ * emit operator rows, `operators_only` and `all`: under `total_only` there
+ * are no operator rows to narrow, so the controls would promise something the
+ * output cannot show. Neither selection is cleared when they hide — switching
+ * back restores both (AC-045, AC-016).
  *
  * Presentational only: the caller owns the `useForm()` instance, both list
  * fetches, and must render this inside its own `<Form {...form}>` (the
@@ -87,11 +96,14 @@ export function RequestReportFilters({
   operators,
   operatorsLoading,
   operatorsError,
+  sites,
+  sitesLoading,
+  sitesError,
   disabled,
 }: RequestReportFiltersProps) {
   const { t } = useTranslation()
   const rowMode = useWatch({ control, name: 'row_mode' })
-  const showOperators = rowMode !== 'total_only'
+  const showNarrowingGroups = rowMode !== 'total_only'
 
   return (
     <>
@@ -159,15 +171,15 @@ export function RequestReportFilters({
         />
       ) : null}
 
-      {showOperators && operatorsLoading ? (
+      {showNarrowingGroups && operatorsLoading ? (
         <LoadingNotice>{t('requestManagement.report.status.loadingOperators')}</LoadingNotice>
       ) : null}
 
-      {showOperators && operatorsError ? (
+      {showNarrowingGroups && operatorsError ? (
         <ErrorNotice>{t('requestManagement.report.errors.operatorsLoadFailed')}</ErrorNotice>
       ) : null}
 
-      {showOperators && operators && operators.length > 0 ? (
+      {showNarrowingGroups && operators && operators.length > 0 ? (
         <FormField
           control={control}
           name="operator_keys"
@@ -178,6 +190,36 @@ export function RequestReportFilters({
                   label={t('requestManagement.report.fields.operators')}
                   selectAllLabel={t('requestManagement.report.fields.selectAllOperators')}
                   options={operators}
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled}
+                />
+              </FormControl>
+              <FormMessage className="text-xs" />
+            </FormItem>
+          )}
+        />
+      ) : null}
+
+      {showNarrowingGroups && sitesLoading ? (
+        <LoadingNotice>{t('requestManagement.report.status.loadingSites')}</LoadingNotice>
+      ) : null}
+
+      {showNarrowingGroups && sitesError ? (
+        <ErrorNotice>{t('requestManagement.report.errors.sitesLoadFailed')}</ErrorNotice>
+      ) : null}
+
+      {showNarrowingGroups && sites && sites.length > 0 ? (
+        <FormField
+          control={control}
+          name="site_keys"
+          render={({ field }) => (
+            <FormItem className="gap-1.5">
+              <FormControl>
+                <RequestReportKeyGroup
+                  label={t('requestManagement.report.fields.sites')}
+                  selectAllLabel={t('requestManagement.report.fields.selectAllSites')}
+                  options={sites}
                   value={field.value}
                   onChange={field.onChange}
                   disabled={disabled}

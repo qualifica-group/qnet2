@@ -14,6 +14,7 @@ use App\Models\ExportRun;
 use App\Models\User;
 use App\Services\RequestManagement\Report\ReportCategoryAvailabilityResolver;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
+use App\Services\RequestManagement\Report\ReportSiteAvailabilityResolver;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ class RequestManagementReportController extends BaseApiController
     public function __construct(
         private readonly ReportCategoryAvailabilityResolver $availability,
         private readonly ReportOperatorAvailabilityResolver $operatorAvailability,
+        private readonly ReportSiteAvailabilityResolver $siteAvailability,
     ) {}
 
     /**
@@ -81,6 +83,25 @@ class RequestManagementReportController extends BaseApiController
     }
 
     /**
+     * GET /api/request-management/report/sites — the Sedi operative the
+     * actor may filter by (spec 0112, D-10). Same literal-segment-before-
+     * wildcard rule as report/categories and report/operators above
+     * (AC-010).
+     */
+    public function sites(Request $request): JsonResponse
+    {
+        try {
+            /** @var User $actor */
+            $actor = $request->user();
+            abort_unless($actor->can(self::PERMISSION), 403);
+
+            return $this->ok(['sites' => $this->siteAvailability->available($actor)]);
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
      * POST /api/request-management/report — create the run and dispatch the
      * async job.
      */
@@ -97,6 +118,7 @@ class RequestManagementReportController extends BaseApiController
             $categoryKeys = (array) $request->validated('category_keys');
             $rowMode = (string) $request->validated('row_mode');
             $operatorKeys = $request->operatorKeys();
+            $siteKeys = $request->siteKeys();
             $format = ExportFormat::from((string) $request->validated('format'));
 
             $run = ExportRun::create([
@@ -115,6 +137,9 @@ class RequestManagementReportController extends BaseApiController
                     // absent key is what the job reads as "every operator", the
                     // very shape every run frozen before this spec already has.
                     ...($operatorKeys === null ? [] : ['operator_keys' => $operatorKeys]),
+                    // Same shape, same reason, for the Sede selection (spec
+                    // 0112 D-4/AC-014).
+                    ...($siteKeys === null ? [] : ['site_keys' => $siteKeys]),
                 ],
             ]);
 

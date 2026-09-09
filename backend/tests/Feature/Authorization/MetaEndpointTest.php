@@ -76,10 +76,10 @@ it('200: returns the field catalogue and the full permissions block (create-cont
         'personal_data.birth_city_id', 'personal_data.residence_city_id', 'personal_data.gender',
         'personal_data.contacts', 'personal_data.addresses',
         'employment.is_manager', 'employment.job_description', 'employment.reports_to_id',
-        'employment.business_function_id', 'employment.relationship_type', 'employment.company_id',
+        // spec 0111 — the assignment competence as {function, category} rows.
+        'employment.product_lines',
+        'employment.relationship_type', 'employment.company_id',
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
-        // spec 0110 — the assignment competence.
-        'employment.product_category_ids',
         'employment.qualification_type', 'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
     ]);

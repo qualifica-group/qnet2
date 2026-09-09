@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DataObjects\Users\EmploymentData;
 use App\Models\EmploymentProfile;
 use App\Models\User;
+use App\Services\ProductLines\ProductLineWriter;
 
 /**
  * Single source of truth for persisting a user's nested employment profile
@@ -20,14 +21,16 @@ use App\Models\User;
  *    `is_primary = true` (spec 0103 D-10): MySQL has no partial unique
  *    index for this, so it is enforced here, applying the two site fields'
  *    tri-state instead of trusting whatever shape the payload sends;
- *  - the assignment competence (spec 0110) is written on its own pivot,
- *    with the same tri-state discipline (see syncProductCategories()).
+ *  - the assignment competence (spec 0111) is written on its own child
+ *    table, with the same tri-state discipline (see syncProductLines()).
  *
  * The caller (UserService::create/update) is responsible for the surrounding
  * transaction, mirroring ProfileWriter.
  */
 class EmploymentWriter
 {
+    public function __construct(private readonly ProductLineWriter $productLineWriter) {}
+
     /**
      * Persist the nested employment profile for the user inside the caller's
      * transaction. No-op when `$employment` is null (the key was absent from
@@ -44,8 +47,8 @@ class EmploymentWriter
 
         if ($employment->delete) {
             // Cascades onto employment_profile_operational_site and
-            // employment_profile_product_category (FK cascadeOnDelete), so
-            // the site memberships and the competence go with the row.
+            // employment_product_lines (FK cascadeOnDelete), so the site
+            // memberships and the competence go with the row.
             $user->employment()->delete();
 
             return;
@@ -57,25 +60,27 @@ class EmploymentWriter
         // Step 2: apply the site-membership tri-state onto the pivot.
         $this->syncSiteMemberships($profile, $employment);
 
-        // Step 3: apply the competence tri-state onto its own pivot.
-        $this->syncProductCategories($profile, $employment);
+        // Step 3: apply the competence tri-state onto its own child rows.
+        $this->syncProductLines($profile, $employment);
     }
 
     /**
-     * Apply the `product_category_ids` tri-state (spec 0110) onto
-     * `employment_profile_product_category`: absent leaves the pivot alone,
-     * any submitted array replaces it wholesale (an empty one clears it).
-     * Simpler than syncSiteMemberships() above because there is no second,
-     * independently-touched side to carry over — the competence is one flat
-     * set with no pivot payload.
+     * Apply the `product_lines` tri-state (spec 0111) onto
+     * `employment_product_lines`: absent leaves the rows alone, any submitted
+     * array replaces them wholesale (an empty one clears them, D-8).
+     *
+     * The delete-all + insert itself is NOT reimplemented here: the profile
+     * exposes the same `productLines()` relation every other owner does, so
+     * the shared ProductLineWriter is the single write path for the
+     * collection (spec 0111 constraint).
      */
-    private function syncProductCategories(EmploymentProfile $profile, EmploymentData $employment): void
+    private function syncProductLines(EmploymentProfile $profile, EmploymentData $employment): void
     {
-        if (! $employment->productCategoryIdsProvided) {
+        if (! $employment->productLinesProvided) {
             return;
         }
 
-        $profile->productCategories()->sync($employment->productCategoryIds);
+        $this->productLineWriter->sync($profile, $employment->productLines);
     }
 
     /**

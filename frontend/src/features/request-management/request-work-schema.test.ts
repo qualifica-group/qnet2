@@ -4,7 +4,33 @@ import {
   buildRequestWorkSchema,
   type RequestWorkOriginalState,
 } from '@/features/request-management/request-work-schema'
+import type { PersonalDataDraft } from '@/features/personal-data/types'
 import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
+
+/**
+ * A buffered client card. Left ABSENT from `original()` on purpose, so
+ * `clientIdentityChanged` reads "no card loaded, nothing travels" and the
+ * card's own fiscal rules stay dormant: these suites are about the two
+ * transition gates, not about the anagraphic schema.
+ */
+function card(overrides: Partial<PersonalDataDraft> = {}): PersonalDataDraft {
+  return {
+    type: 'individual',
+    first_name: 'Mario',
+    last_name: 'Rossi',
+    company_name: null,
+    tax_code: null,
+    vat_number: null,
+    sdi_code: null,
+    birth_date: null,
+    birth_city_id: null,
+    residence_city_id: null,
+    gender: 'male',
+    contacts: [],
+    addresses: [],
+    ...overrides,
+  }
+}
 
 /**
  * The panel's loaded state: what the schema compares against to decide
@@ -267,10 +293,17 @@ describe('buildRequestWorkSchema — offer lines required for status', () => {
     }
   })
 
+  // The card travels along since the direttiva utente 2026-09-09: a positive
+  // close also demands a fiscal identity (see the suite below), so without one
+  // this transition would now be refused for the OTHER reason.
   it('accepts a transition to closed_won once a complete offer line is present', () => {
     const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
     const result = schema.safeParse(
-      values({ quote_workflow_status_id: CLOSED_WON.id, offer_lines: [COMPLETE_LINE] }),
+      values({
+        quote_workflow_status_id: CLOSED_WON.id,
+        offer_lines: [COMPLETE_LINE],
+        client_identity: card({ tax_code: 'RSSMRA80A01H501U' }),
+      }),
     )
 
     expect(result.success).toBe(true)
@@ -288,9 +321,133 @@ describe('buildRequestWorkSchema — offer lines required for status', () => {
     expect(schema.safeParse(values({ quote_workflow_status_id: PENDING.id })).success).toBe(true)
   })
 
+  // The card rides along for the same reason as the test above: since the
+  // direttiva utente 2026-09-09 a request SITTING in closed_won also needs a
+  // fiscal identity to be saved at all (the suite below), which is not what
+  // this case is about.
   it('does not gate a reissue of the status the request already holds', () => {
     const schema = buildRequestWorkSchema(original({ quote_workflow_status_id: CLOSED_WON.id }), [], STATUSES, i18n.t)
+    const result = schema.safeParse(
+      values({
+        quote_workflow_status_id: CLOSED_WON.id,
+        client_identity: card({ tax_code: 'RSSMRA80A01H501U' }),
+      }),
+    )
 
-    expect(schema.safeParse(values({ quote_workflow_status_id: CLOSED_WON.id })).success).toBe(true)
+    expect(result.success).toBe(true)
+  })
+})
+
+/**
+ * Direttiva utente 2026-09-09: mirror of the server gate in
+ * `RequestWorkflowStatusWriter::assertClientFiscalIdentity()` — a transition
+ * into `closed_won` demands the client's codice fiscale OR partita IVA,
+ * either one of the two. Every other destination is untouched, and reissuing
+ * the status the request already holds is not a transition.
+ */
+describe('buildRequestWorkSchema — fiscal identity required for a positive close', () => {
+  const CLOSED_WON: QuoteWorkflowStatusRef = {
+    id: 3,
+    name: 'Vinta',
+    color: 'green',
+    description: null,
+    group: 'closed_won',
+    requires_note: false,
+  }
+  const CLOSED_LOST: QuoteWorkflowStatusRef = {
+    id: 4,
+    name: 'Persa',
+    color: 'red',
+    description: null,
+    group: 'closed_lost',
+    requires_note: false,
+  }
+  const STATUSES = [CLOSED_WON, CLOSED_LOST]
+  const COMPLETE_LINE = { product_id: 10, quantity: 1, unit_price: 100, vat_rate_id: 1 }
+
+  function closing(overrides: Record<string, unknown> = {}) {
+    return values({
+      quote_workflow_status_id: CLOSED_WON.id,
+      offer_lines: [COMPLETE_LINE],
+      ...overrides,
+    })
+  }
+
+  it('rejects a positive close on a card carrying neither identifier', () => {
+    const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
+    const result = schema.safeParse(closing({ client_identity: card() }))
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'client_identity')).toBe(true)
+    }
+  })
+
+  it('rejects a positive close on a request whose client has no card at all', () => {
+    const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
+    const result = schema.safeParse(closing({ client_identity: null }))
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'client_identity')).toBe(true)
+    }
+  })
+
+  it('accepts a positive close on the tax code alone', () => {
+    const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
+
+    expect(schema.safeParse(closing({ client_identity: card({ tax_code: 'RSSMRA80A01H501U' }) })).success).toBe(true)
+  })
+
+  it('accepts a positive close on the VAT number alone', () => {
+    const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
+
+    expect(schema.safeParse(closing({ client_identity: card({ vat_number: '01234567897' }) })).success).toBe(true)
+  })
+
+  it('treats a blank identifier as missing', () => {
+    const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
+    const result = schema.safeParse(closing({ client_identity: card({ tax_code: '   ' }) }))
+
+    expect(result.success).toBe(false)
+  })
+
+  it('leaves a NEGATIVE close alone: only the positive outcome is gated', () => {
+    const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
+    const result = schema.safeParse(
+      closing({ quote_workflow_status_id: CLOSED_LOST.id, client_identity: card() }),
+    )
+
+    expect(result.success).toBe(true)
+  })
+
+  // Decisione utente 2026-09-09: INVARIANTE, non gate di transizione — una
+  // richiesta gia' chiusa positiva (chiusa prima che la regola esistesse) non
+  // si salva dal pannello finche' il dato fiscale manca, anche se questo
+  // salvataggio non tocca lo stato.
+  it('blocks a save on a request ALREADY closed positive with no fiscal identity', () => {
+    const schema = buildRequestWorkSchema(
+      original({ quote_workflow_status_id: CLOSED_WON.id }),
+      [],
+      STATUSES,
+      i18n.t,
+    )
+    const result = schema.safeParse(closing({ client_identity: card() }))
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'client_identity')).toBe(true)
+    }
+  })
+
+  it('lets an already closed positive request be saved once the identifier is there', () => {
+    const schema = buildRequestWorkSchema(
+      original({ quote_workflow_status_id: CLOSED_WON.id }),
+      [],
+      STATUSES,
+      i18n.t,
+    )
+
+    expect(schema.safeParse(closing({ client_identity: card({ vat_number: '01234567897' }) })).success).toBe(true)
   })
 })

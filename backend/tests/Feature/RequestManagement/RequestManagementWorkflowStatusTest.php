@@ -11,6 +11,7 @@ use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
+use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -58,10 +59,23 @@ if (! function_exists('requestWorkflowQuote')) {
      * A request with no offer lines and no matching active workflow: its
      * resolved set is deterministically the GLOBAL default one, so a status
      * minted with `global()` always belongs to it.
+     *
+     * The client card carries a codice fiscale since the direttiva utente
+     * 2026-09-09: a positive close now demands a fiscal identity
+     * (RequestWorkflowStatusWriter), and the closed_won cases below are about
+     * the Contratto automation, not about that gate.
      */
     function requestWorkflowQuote(User $operator): Quote
     {
-        $opportunity = Opportunity::factory()->create();
+        $registry = Registry::factory()->create();
+        $registry->personalData()->create([
+            'type' => 'individual',
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+            'tax_code' => 'RSSMRA80A01H501U',
+        ]);
+
+        $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
         $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
         return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);

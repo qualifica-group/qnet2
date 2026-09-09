@@ -3,6 +3,256 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMPETENZA UTENTE A RIGHE FUNZIONE->CATEGORIA (spec 0111) — VERDE, NON COMMITTATA
+
+**Direttiva utente 2026-09-09:** "sul form dell'utente voglio che ci sia sempre il solito
+collegamento funzione aziendale -> categoria, come in gestione richieste. Un utente puo' avere
+piu' funzioni aziendali e piu' categorie". Spec `docs/specs/0111-user-competence-product-lines.xml`,
+`status="approved"`. SOSTITUISCE parte della 0110 (anch'essa non committata).
+
+**Sei decisioni congelate con l'utente PRIMA del dispatch.** (D-1) la colonna
+`employment_profiles.business_function_id` e' RIMOSSA: unica sorgente sono le righe. (D-2) la
+competenza si valuta PER RIGA. (D-3) la migration non committata del pivot 0110 e' stata
+riscritta, non affiancata. (D-4) il picker categoria e' quello di Gestione richieste, quindi solo
+categorie `is_selectable`. (D-5) il cap "una sola riga" della spec 0077 NON vale qui. (D-6) la
+migrazione dati esterna PERDE il campo `business_function_id`.
+
+**Regola di competenza (D-2, sostituisce INV-3 della 0110).** Un utente e' competente per un
+record che richiede la categoria C se ha UNA RIGA (F, K) tale che C sta nella chiusura DISCENDENTE
+di K E F coincide con la funzione EFFETTIVA di C (spec 0023). Deroghe invariate: record senza
+categorie richieste -> nessun filtro; utente SENZA RIGHE -> jolly. Caso limite conservato: se la
+funzione effettiva di C e' `null`, decide la sola copertura di categoria.
+
+**Naming da rispettare (verificato).** Tabella `employment_product_lines` (FK/unique abbreviate
+`emp_prod_lines_*`: i nomi di default superano i 64 char MySQL). Model `EmploymentProductLine`,
+`#[Fillable(['business_function_id','product_category_id'])]` — SENZA la FK owner (D-7: altrimenti
+`EnforcesFieldPermissions::readNestedPath()` proietta le righe sui fillable e un resubmit su campo
+readonly darebbe 422 spurio). Relazione `EmploymentProfile::productLines()`: il nome e' load
+bearing, `ProductLineWriter::sync()` scrive via `$owner->productLines()`. Campo API
+`employment.product_lines`. Colonna tabella utenti servita da `UserBusinessFunctionColumn`
+(estratta da `UserEmploymentColumns`, che resta a 310 righe).
+
+**Contratto (breaking sul solo modulo utenti).**
+- Scrittura: `employment.product_lines: [{business_function_id, product_category_id}]`, tri-state
+  per campo come `remote_operational_site_ids`; l'array VUOTO svuota (D-8, niente `min:1` a
+  differenza di offerta/progetto/campagna). RIMOSSI `employment.business_function_id` e
+  `employment.product_category_ids`.
+- Lettura: `employment.product_lines: [{id, business_function:{id,name}, product_category:{id,name}}]`
+  solo con `productLines` eager-loaded. RIMOSSI `business_function`, `product_categories` e i due
+  campi id.
+- 422 indicizzati `employment.product_lines.{i}.business_function_id|product_category_id`.
+- Catalogo campi `users`: una chiave `employment.product_lines` (type `collection`); le chiavi
+  `employment.*` passano da 14 a 13.
+- `users/for-select?competence_category_ids[]` invariato nella forma: cambia solo il calcolo
+  degli esclusi.
+- Tabella utenti: `business_function` diventa AGGREGATA (nomi distinti, ordine alfabetico) ma
+  resta ordinabile via subquery correlata. Stat `by_business_function`: conta UTENTI distinti.
+
+**Da NON reinterpretare.**
+- Le regole di coppia stanno in `ProductLineSetValidator::pairErrors()` (estratto), invocate da
+  `ValidatesEmployment::validateEmploymentProductLines()` dentro il `withValidator` di
+  Store/UpdateUserRequest — NON via `after()`: un `after()` dichiarato da una request ospite lo
+  shadowerebbe in silenzio e le coppie duplicate passerebbero.
+- `ProductLineSetValidator::crossRowErrors()` (pair + cap `single`) resta invariato per offerte,
+  progetti, campagne e cell editor: la 0111 non cambia nessuna firma esistente.
+- Nel form utente `ProductLinesField` riceve `enforceManagementModeCap={false}`: unico call-site,
+  default `true` ovunque.
+
+**Test aggiornati per CAMBIO DI REQUISITO (dichiarato, non manomissione — CLAUDE.md §2).**
+14 asserzioni rimosse / 32 aggiunte lato backend, 14 / 19 lato frontend. Ogni rimozione cade su
+un costrutto che non esiste piu': tabella `employment_profile_product_category`, campo
+`product_category_ids`, colonna `business_function_id`, select "Funzione aziendale" del form. In
+`OperatorCompetenceTest` i casi 0110 AC-010/AC-013 ("servono entrambe le meta' a livello di
+profilo") sono stati SOSTITUITI dai casi per riga: quella distinzione non e' piu' esprimibile,
+una riga porta sempre entrambe le meta'. `QuoteWorkflowMigrationTest`: contatore rollback 57 -> 58.
+
+**Stato.** 26/26 AC verdi, verificati da un verifier indipendente. Backend per directory tutte
+verdi (`tests/Unit` 919/919, `Users` 179/179, `Table` 233/233, `Authorization` 98/98, `Stats`
+104/104, `Migration` 212/212, `RequestManagement` 656/656). Frontend `npx vitest run` 4605/4605,
+`tsc -b --force` EXIT=0, Pint ed ESLint puliti. Nessuna dipendenza nuova.
+
+**Debiti e rumore segnalati, NON eseguiti (fuori scope).**
+- `Model::preventLazyLoading()` NON e' registrato da nessuna parte (`app/Providers/` contiene il
+  solo `AppServiceProvider`, che non attiva strictness), benche' `rules/backend.md §3` lo dia per
+  attivo. Misurato: sul percorso reale della GET utente zero query per riga; con un eager load
+  parziale di `productLines` sono 2 query PER RIGA, silenziose, nessuna eccezione. Il debito e'
+  di REPO, non della 0111: `preventLazyLoading` compare in 19 file, sempre e solo dentro commenti
+  che la danno per attiva, e `Services/DocumentLayoutService.php:39` cita testualmente
+  `App\Providers\AppServiceProvider::preventLazyLoading()`, un metodo che non esiste. Quindi 19
+  punti del codice — e ogni agente che legge quella rule — ragionano su una rete che non c'e'.
+  Attivarla e' un intervento a se' e va misurato: potrebbe far esplodere percorsi oggi silenziosi.
+- La suite backend completa NON e' deterministica, e i rossi che produce non sono della 0111.
+  Misurato su tre run: con altre sessioni attive falliscono `ImportServiceWizardDispatchTest`
+  ("Failed to store the uploaded file", contesa su `Storage::fake('local')` fra processi) e
+  `DemoOpportunitySeederTest:147`; in run ISOLATA entrambi spariscono e compare invece
+  `CampaignCrudTest` -> "update: setting project_id on a standalone campaign..." con 422
+  "Budget insufficiente" invece di 200. Causa individuata: `ProjectFactory.php:36` e
+  `CampaignFactory.php:60` estraggono `total_budget` dal `fake()` GLOBALE non seminato, e il test
+  non fissa i due budget: a seconda di quanti test sono girati prima, il budget della campagna
+  eccede il residuo del progetto e la guardia risponde 422 correttamente. Isolato passa (file
+  17/17, directory 67/67). Fix: fissare i budget nel test. Owner naturale: chi possiede Campaigns.
+  Nessuno di questi file e' toccato dalla 0111 o dalla 0112.
+- Corollario operativo: due `php artisan test` concorrenti sullo stesso repo si pestano i piedi
+  su `Storage::fake('local')`, che non e' isolato per processo. Un rosso visto durante una run
+  concorrente non e' una prova: va riprodotto da soli prima di attribuirlo a qualcuno.
+- SEGFAULT DELLE RUN COMPLETE — CAUSA TROVATA, e' XDEBUG. Diagnosi definitiva, misurata dal lead
+  il 2026-09-09, che CORREGGE tutte le voci precedenti (non e' "i file di migrazione", non e' il
+  process runner di `artisan test`, non e' `Http::fake`):
+      vendor/bin/pest tests/Unit/Migrations/ExternalApiClientTest.php            -> EXIT=139 (SIGSEGV)
+      php -d xdebug.mode=off vendor/bin/pest tests/Unit/Migrations/ExternalApiClientTest.php
+                                                                                 -> EXIT=0, 7/7 passed
+  Il crash e' riproducibile su UN SOLO file, con ENTRAMBI i runner, e sparisce disattivando
+  Xdebug: nell'output compaiono i tentativi di step-debug verso localhost:9003. Il file prova
+  connection failure e timeout via `Http::fake()`, quindi il sospetto e' l'interazione fra
+  Xdebug (step debug attivo, nessun client in ascolto) e curl.
+  Conseguenza pratica: per le run complete usare `php -d xdebug.mode=off vendor/bin/pest`, oppure
+  spegnere lo step debug nell'ambiente. Nessuno dei due workaround tramandati prima
+  ("usa pest invece di artisan test", "escludi i file di migrazione") risolve il problema, ed
+  entrambi mandano fuori strada chi indaga la prossima volta.
+- I test backend NON sono sicuri se due sessioni li eseguono in parallelo sullo stesso repo:
+  `Storage::fake('local')` e' condiviso. Un rosso visto durante una run concorrente non e' prova.
+- `docs/HANDOFF.md` e' a 824 KB, contro il tetto di ~50 KB dichiarato in testa al file: le voci
+  vecchie andrebbero spostate in `docs/handoff-archive/`.
+
+**Commit.** Da fare SELETTIVO PER PATH: nell'albero convivono la 0112 di un'altra sessione e il
+lavoro non committato di una terza sessione ormai chiusa (lane CF/P.IVA). I path della 0111 sono
+i file `employment*`/`Employment*`, `Assignment/`, `Users/`, `product-lines/`, `features/users/`,
+`*-users-employment.ts`, piu' `UserService.php`, `ProductLineSetValidator.php`,
+`UsersStatsDefinition.php`, `UsersSource.php`, `MapsExternalUserRecord.php`,
+`FieldCatalogueEndpointTest`, `MetaEndpointTest`, `QuoteWorkflowMigrationTest` e la spec.
+
+
+## FILTRO PER SEDE SU REPORT E DASHBOARD (spec 0112) — VERDE, NON COMMITTATO
+
+**Direttiva utente 2026-09-09:** "Statistiche in gestione richieste, oltre a per operatore deve
+essere anche per sede". Spec `docs/specs/0112-request-management-report-site-filter.xml`.
+
+**Cinque decisioni congelate con l'utente PRIMA del dispatch.** La Sede e' un FILTRO, non un
+raggruppamento (righe invariate: TOTALE / per GA2 / "Non assegnato"). La Sede di una richiesta e'
+quella del suo GA2 Operatore, NON `quotes.operational_site_id`. Vale su dashboard e report
+insieme. Membership letta fisica E remota indistintamente (nessun filtro su `is_primary`).
+Nessuna chiave "senza sede": con filtro ristretto le richieste senza Sede attribuibile escono
+sempre. Il picker compare solo con `row_mode` `operators_only`/`all`, come quello operatori.
+
+**Naming da rispettare (verificato).** Catena: `quotes.operator_id` -> `employment_profiles.user_id`
+-> pivot `employment_profile_operational_site`, via `whereExists` CORRELATO (mai join dalla base
+query: `PhoneCallsIndicator` conta `notes.id` e si gonfierebbe). Classi nuove
+`App\Services\RequestManagement\Report\{ReportSiteFilter, ReportSiteAvailabilityResolver}`, gemelle
+strutturali delle omologhe per operatore. Endpoint `GET /api/request-management/report/sites` ->
+`{ sites: [{key,label}] }`, `key` = id Sede come stringa. Campo wire `site_keys`, OPZIONALE: assente
+significa ogni Sede, mai inviato vuoto.
+
+**Ordine di applicazione, e' una proprieta' di sicurezza non di stile.**
+`ReportBranchQuery::build()` fa
+`$sites->applyTo($operators->applyTo(RequestManagementScope::scopeToActor($query, $actor)))`: lo
+scope e' il piu' interno, il filtro Sede il piu' esterno, quindi puo' solo restringere. Il predicato
+sta in una closure `where()` propria — un `orWhere` sulla radice allargherebbe la visibilita'.
+
+**Confine di tipo da non collassare (frontend).** `site_keys` e' OBBLIGATORIO in
+`RequestReportFormValues` (stato applicato, sempre in memoria) e OPZIONALE in
+`RequestReportFilterPayload` (wire, dove assente = ogni Sede). Renderlo opzionale in entrambi
+farebbe verde il typecheck nascondendo un errore di modellazione.
+
+**CORREZIONE alla spec (D-8).** `App\Support\OperationalSiteLabel` NON e' stato creato: ESISTEVA
+GIA' (spec 0056, su HEAD). La spec diceva di estrarlo, per un grounding incompleto. Fatto invece:
+cancellato il `composeLabel()` privato di `OperationalSiteForSelectResource`, che ora delega al
+Support. Prima di "estrarre" una utility, cercarla: quel Support elenca nel docblock le copie non
+ancora rifattorizzate.
+
+**Stato: 21/21 AC verdi**, verificati da un verifier indipendente. Backend
+`tests/Feature/RequestManagement/Report` 132 test / 569 asserzioni; con `Unit/Support` e
+`OperationalSites` 197/197. Frontend `vitest run src/features/request-management` 376/376,
+`tsc -b --force` EXIT=0. Sette test preesistenti modificati (1 backend
+`RequestManagementDashboardRequestTest`, dove `applied` guadagna `site_keys` per contratto; 6
+frontend, adeguati alla firma a 3 argomenti di `toRequestReportFilterPayload` e al campo nuovo):
++195/-7 righe complessive, ZERO asserzioni rimosse o allentate, verificato dal verifier. I 13 file
+di test 0106/0107/0109 in `Report/` sono INTATTI — il parametro nuovo e' ultimo e opzionale apposta,
+cosi' i chiamanti posizionali non si toccano.
+
+**Da fare prima di considerare chiusa:** revisione VISIVA manuale di AC-021 a 375/768/1024 sul
+gruppo Sedi (il verifier non ha browser). Nessun commit: in attesa del via libera dell'utente.
+
+## CF/P.IVA OBBLIGATORI ALLA CHIUSURA POSITIVA (Gestione Richieste) — VERDE, NON COMMITTATO
+
+**Direttiva utente 2026-09-09.** In Gestione Richieste, CF **o** P.IVA del cliente diventano
+obbligatori quando lo stato di destinazione e' "chiuso con esito positivo"
+(`WorkflowStatusGroup::ClosedWon`), sia da tabella sia da form. **Decisione utente: basta UNO dei
+due** (un privato non ha P.IVA; per una card `company` il `tax_code` E' il codice a 11 cifre).
+Gate scoped al SOLO modulo Gestione Richieste: il writer condiviso `QuoteWorkflowStatusWriter`
+(modulo Offerte) non e' stato toccato.
+
+**Dove sta la regola.** NUOVO `App\Services\RequestManagement\RequestWorkflowStatusWriter`:
+estratti da `RequestManagementService` i due metodi privati `applyWorkflowStatus`/
+`rebaselineWorkflowStatus` (il service era a 492/500 righe, hard limit engineering.md §6; ora 414)
+piu' il nuovo `assertClientFiscalIdentity()`. Il service inietta questo writer al posto di
+`QuoteWorkflowStatusWriter` + `QuoteWorkflowStatusAssigner`. Firma: `apply(Quote, Opportunity,
+User, array $data, array &$changed, array &$old)` — l'Opportunity serve a leggere la card.
+
+**REV-2 (decisione utente 2026-09-09, dopo verifica sul campo).** La regola ha DUE meta', non una:
+- **gate di transizione** (tutti i canali, `RequestWorkflowStatusWriter::assertClientFiscalIdentity()`):
+  blocca chi PORTA la richiesta in `closed_won`;
+- **invariante sul salvataggio del FORM** (solo pannello,
+  `UpdateRequestRequest::validateClientFiscalIdentity()`): rifiuta QUALSIASI salvataggio finche' la
+  richiesta STA in `closed_won` senza CF ne' P.IVA, anche se il submit cambia altro. Serve perche'
+  sui record chiusi PRIMA della regola il gate di transizione non scatta piu' mai (lo stato non
+  cambia e il frontend non manda nemmeno la chiave: `buildRequestWorkPayload` la invia solo su un
+  avanzamento reale, spec 0083 AC-026). Le CELLE della griglia restano volutamente libere su quei
+  record: il canale inline non passa da quel FormRequest, la sua cella di stato resta coperta dal
+  gate di transizione. Predicato UNICO condiviso: `RequestWorkflowStatusWriter::hasFiscalIdentity()`
+  (public apposta). Due messaggi distinti: `fiscal_identity_required_for_status` (transizione) e
+  `fiscal_identity_required_on_closed_won` (invariante).
+
+**Caso reale che ha originato la rev-2.** `quote 20` (registry "Davis and Sons", card 146 `company`,
+`tax_code` e `vat_number` entrambi NULL) risultava salvabile: l'activity log mostra la transizione
+63 -> 68 alle 14:21, PRIMA che la regola esistesse. Il gate di transizione funzionava (verificato con
+una transizione forzata in transazione poi annullata: 422), ma su quel record non aveva piu' nulla da
+intercettare. Dopo la rev-2 il pannello lo rifiuta.
+
+**Semantica da rispettare.** Il gate legge i valori COME LI LASCERA' la richiesta, non come sono
+persistiti: `client_identity` (blocco del pannello) vince, altrimenti le celle sparse
+`client_tax_code`/`client_vat_number`, altrimenti la card persistita — perche' lo Step 5 di
+`updateWork()` scrive l'anagrafica DOPO questo gate. Un rinvio dello stesso stato non e' una
+transizione (nessun gate). Il gate precede la delega al writer condiviso, per lo stesso motivo per
+cui la 0102 mette il line gate prima della nota (un `requires_note` risponderebbe 403 invece del
+422 giusto). Errore 422 sulla chiave `client_identity`, messaggio da
+`lang/{it,en}/request-management.php` -> `fiscal_identity_required_for_status` (file NUOVI).
+
+**Nuova colonna griglia `vat_number`** (serviva a sanare la P.IVA senza uscire dalla tabella):
+`RequestColumnCatalog` (inline-editabile, `format: 'vat_number'`, regola `VatNumber`),
+`RequestClientColumns::CARD_COLUMNS`, `RequestRowMapper::clientAnagraphics()`, chiave inline
+`client_vat_number` in `RequestClientProfileWriter` (IDENTITY_ATTRIBUTES + CLIENT_FIELD_KEYS +
+`identityWith()`), `FieldDefinition('client_vat_number','text')` + ceiling in
+`RequestManagementAuthorization`, renderer in `column-renderers.tsx`, i18n
+`requestManagement.columns.vatNumber`. NB: le chiavi client sono ora CINQUE, non piu' quattro —
+i docblock che dicevano "four" sono stati aggiornati.
+
+**Frontend.** Mirror Zod in `request-work-schema.ts` (`CLOSED_WON_STATUS_GROUP`,
+`hasFiscalIdentity()`, issue su `path: ['client_identity']`, stesso guard di transizione delle
+regole 0083/0102); `client_identity` aggiunto a `errorFields` in `use-request-work-form.ts` (il
+422 del server atterra sul blocco anagrafica invece che nel banner generico); i18n
+`requestManagement.workPanel.validation.fiscalIdentityRequiredForStatus`.
+
+**Test aggiornati perche' il REQUISITO e' cambiato (dichiarato, non test tampering):** fixture con
+CF in `RequestManagementWorkflowStatusLineGateTest::lineGateRequestQuote()`,
+`RequestManagementWorkflowStatusTest::requestWorkflowQuote()`,
+`ContractCategoryGateTest` AC-012; lista `searchable` in `RequestManagementTableSearchTest`;
+dataset `vat_number` in `RequestManagementClientColumnsFilterSortTest` e assert in
+`RequestManagementInlineEditorsTest` AC-004; `request-work-schema.test.ts` (il caso closed_won ora
+porta la card con CF) + describe nuovo sul gate.
+
+**Verifica ESEGUITA (non "dovrebbe passare"), post rev-2.** `php artisan test
+tests/Feature/RequestManagement tests/Feature/Contracts tests/Feature/Quotes` -> 1079 passed.
+`npx vitest run src/features/request-management` -> 377 passed. `tests/Feature/{FieldChangeRequests,Table,Rewards,
+Notifications,Localization,Users}` -> 604 passed. Nuovo
+`RequestManagementClosingFiscalIdentityGateTest` -> 14 passed (gate + invariante + non-regressione
+della griglia). Pint pulito.
+`cd frontend && npx tsc -b --force --pretty false` -> EXIT=0.
+NOTA: `php artisan test` sull'INTERA suite e' morto con SIGSEGV (signal 11) nel runner, non su un
+test — problema d'ambiente, non della modifica; da qui la verifica per directory.
+
+**Prossimo passo.** Non committato: attesa via libera dell'utente (CLAUDE.md §3.6).
+
+
 ## COMPETENZA OPERATORE PER L'ASSEGNAZIONE (spec 0110) — COMPLETA, NON COMMITTATA
 
 **Spec.** `docs/specs/0110-operator-competence-assignment.xml`, `status="approved"`. Decisioni

@@ -158,10 +158,11 @@ const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, 
 
 interface HarnessProps {
   defaultValue?: ProductLineRow[]
+  enforceManagementModeCap?: boolean
 }
 
 /** Mirrors the real wiring (`opportunity-product-lines-section.tsx`'s `MetaField`): rows flow through RHF like any other field. */
-function Harness({ defaultValue = [] }: HarnessProps) {
+function Harness({ defaultValue = [], enforceManagementModeCap }: HarnessProps) {
   const form = useForm<{ product_lines: ProductLineRow[] }>({ defaultValues: { product_lines: defaultValue } })
   const productLines = useWatch({ control: form.control, name: 'product_lines' })
 
@@ -169,6 +170,7 @@ function Harness({ defaultValue = [] }: HarnessProps) {
     <ProductLinesField
       value={productLines}
       onChange={(next) => form.setValue('product_lines', next, { shouldDirty: true })}
+      enforceManagementModeCap={enforceManagementModeCap}
     />
   )
 }
@@ -297,5 +299,47 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7)', () =>
 
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
     expect(screen.getByTestId('disabled-Business function 2')).toHaveTextContent('false')
+  })
+})
+
+/**
+ * Spec 0111 D-5 / AC-024: the same editor, opted out of the cap. The rows of a
+ * user's competence are not a commercial card, so a `single`-mode category no
+ * longer closes the set. Everything else (mode resolution, row independence)
+ * is unchanged, and the default stays enforcing — the cases above run without
+ * the prop and still cap.
+ */
+describe('ProductLinesField with enforceManagementModeCap={false} (spec 0111 D-5)', () => {
+  it('AC-024: keeps "Add" enabled after picking a single-mode category, and appends the row', async () => {
+    renderHarness({ enforceManagementModeCap: false })
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${BUSINESS_FUNCTION_A}` }))
+    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
+    fireEvent.click(screen.getByRole('button', { name: `select Product category 1 ${SINGLE_CATEGORY_ID}` }))
+    await waitFor(() =>
+      expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(String(SINGLE_CATEGORY_ID)),
+    )
+
+    // Same state that disables "Add" under the cap (AC-041 above).
+    expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Remove product line' })).toHaveLength(2))
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(String(SINGLE_CATEGORY_ID))
+    expect(screen.getByTestId('value-Business function 2')).toHaveTextContent('')
+  })
+
+  it('AC-024 on edit: a row LOADED on a single-mode category still accepts a second one', async () => {
+    renderHarness({
+      defaultValue: [{ business_function_id: BUSINESS_FUNCTION_A, product_category_id: SINGLE_CATEGORY_ID }],
+      enforceManagementModeCap: false,
+    })
+
+    expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Remove product line' })).toHaveLength(2))
   })
 })

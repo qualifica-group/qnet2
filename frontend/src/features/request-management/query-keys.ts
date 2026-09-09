@@ -39,6 +39,8 @@ export const requestManagementKeys = {
   reportCategories: () => ['request-management', 'report-categories'] as const,
   /** Query key of the report's selectable GA2 operators (spec 0109). */
   reportOperators: () => ['request-management', 'report-operators'] as const,
+  /** Query key of the report's selectable operational sites (spec 0112). */
+  reportSites: () => ['request-management', 'report-sites'] as const,
   /**
    * Query key of the dashboard's aggregates (spec 0107), scoped by the
    * applied filter values themselves: changing a filter is a different key,
@@ -51,5 +53,6 @@ export const requestManagementKeys = {
     category_keys: string[]
     row_mode: string
     operator_keys?: string[]
+    site_keys?: string[]
   }) => ['request-management', 'dashboard', query] as const,
 }

@@ -10,24 +10,53 @@ import type {
 export const ROW_MODES: readonly RequestReportRowMode[] = ['total_only', 'operators_only', 'all']
 
 /**
- * True when the operator selection is a REQUIREMENT for these values: only
- * for the row modes that actually emit operator rows (spec 0109, D-4), and
- * only once the picker has options to offer — with an empty list there is
- * nothing to deselect, so an empty selection is "all of nothing", not an
- * error the user could ever clear.
+ * True when a key group's selection is a REQUIREMENT for these values: only
+ * for the row modes that actually emit operator rows (spec 0109 D-4, spec
+ * 0112 D-7), and only once the picker has options to offer — with an empty
+ * list there is nothing to deselect, so an empty selection is "all of
+ * nothing", not an error the user could ever clear. Governs BOTH narrowing
+ * groups, operators and sites: the two hide and become required together, so
+ * one predicate is what keeps them from drifting apart.
  */
-function operatorsAreRequired(rowMode: RequestReportRowMode, availableOperatorKeys: string[]): boolean {
-  return rowMode !== 'total_only' && availableOperatorKeys.length > 0
+function selectionIsRequired(rowMode: RequestReportRowMode, availableKeys: string[]): boolean {
+  return rowMode !== 'total_only' && availableKeys.length > 0
+}
+
+/**
+ * What one narrowing group contributes to the wire (spec 0109 D-9, spec 0112
+ * D-4): `undefined` — the field DROPPED, never sent empty — in the three
+ * cases that all mean "everything", and the raw selection otherwise.
+ * Dropping it on a full selection is deliberate: an explicit list would
+ * freeze the roster at the moment the panel loaded, and an entry added later
+ * would silently vanish from the report.
+ */
+function narrowedSelection(
+  rowMode: RequestReportRowMode,
+  selected: string[],
+  availableKeys: string[],
+): string[] | undefined {
+  const isEverything = availableKeys.length > 0 && availableKeys.every((key) => selected.includes(key))
+
+  if (!selectionIsRequired(rowMode, availableKeys) || isEverything) {
+    return undefined
+  }
+
+  return selected
 }
 
 /**
  * `YYYY-MM-DD`, the wire format `POST /request-management/report` expects
- * (spec 0106). `availableOperatorKeys` (spec 0109) is what the picker
- * currently offers: passing it is what turns "at least one operator" into a
- * real rule, and its default of `[]` keeps the schema usable (and the rule
- * inert) wherever the list is irrelevant.
+ * (spec 0106). `availableOperatorKeys` (spec 0109) and `availableSiteKeys`
+ * (spec 0112) are what the two pickers currently offer: passing them is what
+ * turns "at least one operator"/"at least one site" into real rules, and
+ * their default of `[]` keeps the schema usable (and the rules inert)
+ * wherever a list is irrelevant.
  */
-export function buildRequestReportSchema(t: TFunction, availableOperatorKeys: string[] = []) {
+export function buildRequestReportSchema(
+  t: TFunction,
+  availableOperatorKeys: string[] = [],
+  availableSiteKeys: string[] = [],
+) {
   return z
     .object({
       date_from: z.string().min(1, t('requestManagement.report.errors.dateFromRequired')),
@@ -37,18 +66,23 @@ export function buildRequestReportSchema(t: TFunction, availableOperatorKeys: st
       category_keys: z.array(z.string()).min(1, t('requestManagement.report.errors.categoriesRequired')),
       row_mode: z.enum(['total_only', 'operators_only', 'all']),
       operator_keys: z.array(z.string()),
+      site_keys: z.array(z.string()),
     })
     .refine((value) => value.date_from === '' || value.date_to === '' || value.date_to >= value.date_from, {
       message: t('requestManagement.report.errors.dateToBeforeDateFrom'),
       path: ['date_to'],
     })
     .refine(
-      (value) => !operatorsAreRequired(value.row_mode, availableOperatorKeys) || value.operator_keys.length > 0,
+      (value) => !selectionIsRequired(value.row_mode, availableOperatorKeys) || value.operator_keys.length > 0,
       {
         message: t('requestManagement.report.errors.operatorsRequired'),
         path: ['operator_keys'],
       },
     )
+    .refine((value) => !selectionIsRequired(value.row_mode, availableSiteKeys) || value.site_keys.length > 0, {
+      message: t('requestManagement.report.errors.sitesRequired'),
+      path: ['site_keys'],
+    })
 }
 
 export type RequestReportFormValues = z.infer<ReturnType<typeof buildRequestReportSchema>>
@@ -101,12 +135,14 @@ export function currentWeekReportRange(now: Date = new Date()): { date_from: str
 export function requestReportDefaultValues(
   categoryKeys: string[] = [],
   operatorKeys: string[] = [],
+  siteKeys: string[] = [],
 ): RequestReportFormValues {
   return {
     ...currentWeekReportRange(),
     category_keys: categoryKeys,
     row_mode: 'all',
     operator_keys: operatorKeys,
+    site_keys: siteKeys,
   }
 }
 
@@ -147,40 +183,41 @@ export function categoriesAreBlocked(
 export function isRequestReportQueryReady(
   values: RequestReportFormValues,
   availableOperatorKeys: string[] = [],
+  availableSiteKeys: string[] = [],
 ): boolean {
   return (
     values.date_from !== '' &&
     values.date_to !== '' &&
     values.date_to >= values.date_from &&
     values.category_keys.length > 0 &&
-    (!operatorsAreRequired(values.row_mode, availableOperatorKeys) || values.operator_keys.length > 0)
+    (!selectionIsRequired(values.row_mode, availableOperatorKeys) || values.operator_keys.length > 0) &&
+    (!selectionIsRequired(values.row_mode, availableSiteKeys) || values.site_keys.length > 0)
   )
 }
 
 /**
- * The ONE place that decides what `operator_keys` looks like on the wire
- * (spec 0109, D-9), used by BOTH consumers — the dashboard query (and its
- * cache key) and the report file — so the charts and the CSV can never
- * disagree about the very filter meant to unite them.
+ * The ONE place that decides what the two narrowing fields look like on the
+ * wire (spec 0109 D-9, spec 0112 D-4), used by BOTH consumers — the dashboard
+ * query (and its cache key) and the report file — so the charts and the CSV
+ * can never disagree about the very filters meant to unite them.
  *
- * The field is DROPPED, not sent empty, in the three cases that all mean
- * "every operator": `total_only` (no operator rows to narrow, D-4), an empty
- * picker, and a full selection. Dropping it on a full selection is deliberate
- * (D-2): an explicit list would freeze the roster at the moment the panel
- * loaded, and an operator added later would silently vanish from the report.
+ * The two axes are INDEPENDENT (spec 0112 D-10): each is dropped or sent on
+ * its own list alone, so a narrowed operator selection travels next to "every
+ * site" without either one widening the other.
  */
 export function toRequestReportFilterPayload(
   values: RequestReportFormValues,
   availableOperatorKeys: string[],
+  availableSiteKeys: string[],
 ): RequestReportFilterPayload {
-  const { operator_keys: selected, ...filters } = values
+  const { operator_keys: operators, site_keys: sites, ...filters } = values
 
-  const isEveryOperator =
-    availableOperatorKeys.length > 0 && availableOperatorKeys.every((key) => selected.includes(key))
+  const operatorKeys = narrowedSelection(values.row_mode, operators, availableOperatorKeys)
+  const siteKeys = narrowedSelection(values.row_mode, sites, availableSiteKeys)
 
-  if (values.row_mode === 'total_only' || availableOperatorKeys.length === 0 || isEveryOperator) {
-    return filters
+  return {
+    ...filters,
+    ...(operatorKeys ? { operator_keys: operatorKeys } : {}),
+    ...(siteKeys ? { site_keys: siteKeys } : {}),
   }
-
-  return { ...filters, operator_keys: selected }
 }

@@ -182,6 +182,12 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     // The client block is submitted as a whole: a per-row 422
     // (`client_contacts.0.value`) has no matching control here, so the block
     // root carries the message.
+    //
+    // `client_identity` joined them with the direttiva utente 2026-09-09: the
+    // positive-close fiscal gate answers on that key, and its editor
+    // (`PersonalDataCardForm`) reads no form error either, so without this row
+    // the server's rejection would fall back to the generic banner.
+    'client_identity' as Path<RequestWorkFormValues>,
     'client_contacts' as Path<RequestWorkFormValues>,
     'client_address' as Path<RequestWorkFormValues>,
     // The collection is submitted as a whole: a per-row 422

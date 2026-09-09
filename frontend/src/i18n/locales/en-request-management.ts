@@ -24,6 +24,7 @@ export const requestManagement = {
     firstName: 'First name',
     lastName: 'Last name',
     taxCode: 'Tax code',
+    vatNumber: 'VAT number',
     phone: 'Phone',
     createdAt: 'Created at',
     nextCallbackAt: 'Next callback',
@@ -282,6 +283,14 @@ export const requestManagement = {
       // actually edited (grandfathering a non-conformant historic record,
       // see `request-work-schema.ts`).
       businessFunctionMismatch: 'All rows must share the same business function.',
+      // Direttiva utente 2026-09-09: mirror of the server gate
+      // (`RequestWorkflowStatusWriter`), either identifier satisfies it.
+      fiscalIdentityRequiredForStatus:
+        'Enter the client tax code or VAT number to close with a positive outcome.',
+      // The same rule on a record ALREADY closed positive (decisione utente
+      // 2026-09-09): the panel refuses to save while the value is missing.
+      fiscalIdentityRequiredOnClosedWon:
+        'The request is closed with a positive outcome: enter the client tax code or VAT number to save it.',
       summary: 'Cannot save: check these fields — {{fields}}.',
     },
   },
@@ -301,6 +310,9 @@ export const requestManagement = {
       // Spec 0109: the GA2 group, shown only for the row modes that emit operator rows.
       operators: 'Operators',
       selectAllOperators: 'Select all',
+      // Spec 0112: the operational site group, shown alongside the GA2 one.
+      sites: 'Sites',
+      selectAllSites: 'Select all',
       rowMode: 'Rows to include',
     },
     // rev-2 D-13: the three mutually exclusive `row_mode` options.
@@ -314,6 +326,7 @@ export const requestManagement = {
       completed: 'Report generated: the download started automatically.',
       loadingCategories: 'Loading categories…',
       loadingOperators: 'Loading operators…',
+      loadingSites: 'Loading sites…',
     },
     buttons: {
       processing: 'Generating…',
@@ -331,6 +344,9 @@ export const requestManagement = {
       // Spec 0109 AC-044: no request fires with zero operators selected.
       operatorsRequired: 'Select at least one operator.',
       operatorsLoadFailed: 'Unable to load operators. Please try again.',
+      // Spec 0112 AC-020: no request fires with zero sites selected.
+      sitesRequired: 'Select at least one site.',
+      sitesLoadFailed: 'Unable to load sites. Please try again.',
       forbidden: "You don't have permission to generate this report.",
       validation: 'The dates entered are invalid.',
       generic: 'Unable to generate the report. Please try again.',

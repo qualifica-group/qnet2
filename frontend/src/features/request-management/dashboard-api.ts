@@ -49,10 +49,14 @@ export interface RequestDashboardCategory {
 export interface RequestDashboardData {
   /**
    * Echo of the applied filters — compare against the current query to
-   * discard an out-of-order response. `operator_keys` is `null` (not absent)
-   * when none was sent, i.e. "every operator" (spec 0109 D-2/AC-009).
+   * discard an out-of-order response. `operator_keys` and `site_keys` are
+   * `null` (not absent) when none was sent, i.e. "every operator" / "every
+   * site" (spec 0109 D-2/AC-009, spec 0112 D-4).
    */
-  applied: Omit<RequestDashboardQuery, 'operator_keys'> & { operator_keys: string[] | null }
+  applied: Omit<RequestDashboardQuery, 'operator_keys' | 'site_keys'> & {
+    operator_keys: string[] | null
+    site_keys: string[] | null
+  }
   /** Overall tiles over the union of the selected branches (D-8), every indicator column included (rev-3 D-11). */
   summary: RequestDashboardSummaryItem[]
   /** One section per selected category, in the report's own branch order (rev-3 D-10). */

@@ -39,6 +39,19 @@ export interface RequestReportOperator {
   label: string
 }
 
+/**
+ * One selectable operational site (spec 0112): `key` is a site id as a
+ * string, the same shape as `operators[].key` so both groups share
+ * `RequestReportKeyGroup` without an adapter. `label` is the site's composed
+ * address (D-8) and is rendered as-is — NEVER through i18next. Sites without
+ * an address keep an empty label and stay selectable (D-8): hiding a real
+ * site would make it unfilterable.
+ */
+export interface RequestReportSite {
+  key: string
+  label: string
+}
+
 /** Which rows a branch emits (rev-2 D-13). */
 export type RequestReportRowMode = 'total_only' | 'operators_only' | 'all'
 
@@ -61,6 +74,14 @@ export interface RequestReportFilterPayload {
    * `total_only`, where there are no operator rows to narrow (D-4).
    */
   operator_keys?: string[]
+  /**
+   * Operational site keys to narrow the CALCULATION to (spec 0112, D-1): a
+   * request belongs to the site(s) of its GA2 Operatore. OMITTED means every
+   * site — including one created after this selection was made (D-4) — so it
+   * follows `operator_keys` exactly: dropped when all are selected, when the
+   * picker has nothing to offer, and under `total_only` (D-7).
+   */
+  site_keys?: string[]
 }
 
 export interface CreateRequestReportPayload extends RequestReportFilterPayload {
@@ -103,6 +124,18 @@ export async function fetchRequestManagementReportOperators(): Promise<RequestRe
     '/request-management/report/operators',
   )
   return data.data.operators
+}
+
+/**
+ * Loads the operational sites the actor may filter by (spec 0112, D-10):
+ * all-time and independent of the dates, branches and operators picked,
+ * exactly like the two lists above. `GET /request-management/report/sites`.
+ */
+export async function fetchRequestManagementReportSites(): Promise<RequestReportSite[]> {
+  const { data } = await apiClient.get<ApiResponse<{ sites: RequestReportSite[] }>>(
+    '/request-management/report/sites',
+  )
+  return data.data.sites
 }
 
 /** Polls the current state of a report run (`GET /request-management/report/{id}`). */

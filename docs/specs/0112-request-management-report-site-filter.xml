@@ -1,0 +1,475 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0112 — Filtro per Sede su report CSV/XLSX e dashboard di Gestione Richieste.
+  Gemella della 0109 (filtro per operatore): aggiunge UN secondo asse ai filtri gia' esistenti,
+  senza toccare nessuna formula di indicatore e senza cambiare quali righe vengono emesse.
+  Prosa italiana senza accenti; identificatori inglesi (engineering.md 1.2).
+-->
+<spec id="0112-request-management-report-site-filter" status="draft" owner="utente" date="2026-09-09">
+
+  <goal>
+    Rendere report e dashboard di Gestione Richieste disponibili "per Sede": oltre a range di date,
+    categorie, scelta righe e operatori, si sceglie QUALI Sedi operative includere — una, alcune, o
+    tutte. Una richiesta appartiene alla Sede del suo GA2 Operatore. La selezione vale
+    contemporaneamente per i grafici e per il file scaricato, perche' i due gia' condividono
+    un'unica sorgente di filtri.
+  </goal>
+
+  <user_directive date="2026-09-09">
+    "Statistiche in gestione richieste, oltre a per operatore deve essere anche per sede".
+    Cinque risposte date in fase di pianificazione, tutte vincolanti:
+    - La Sede e' un FILTRO (picker come gli operatori), NON una dimensione di raggruppamento:
+      le righe emesse restano TOTALE / per GA2 / "Non assegnato" (D-1).
+    - La Sede da usare e' quella dell'OPERATORE GA2 — le membership del suo employment profile —
+      NON `quotes.operational_site_id` (D-2).
+    - Vale su ENTRAMBI i consumatori: dashboard sincrona e report asincrono (D-3).
+    - Membership letta FISICA E REMOTA indistintamente, il pivot intero (D-5).
+    - Richieste senza Sede attribuibile: SEMPRE escluse quando il filtro e' ristretto, nessuna
+      voce "Senza sede" nel picker (D-6).
+    - Il selettore compare con `row_mode` = `operators_only` E `all`, non con `total_only` —
+      stessa regola della D-4 di 0109 (D-7).
+  </user_directive>
+
+  <context>
+    <entity name="Il collo di bottiglia unico, gia' usato dalla 0109">
+      Tutti e cinque gli indicatori reali costruiscono la loro query partendo da
+      `ReportBranchQuery::build($categoryIds, $actor, $operators)`. Quel metodo applica, in
+      quest'ordine: il match di categoria (`whereExists` correlato su
+      `opportunity_product_lines`, mai una join — fanout), poi
+      `RequestManagementScope::scopeToActor()`, poi `ReportOperatorFilter::applyTo()`. Il filtro
+      Sede si innesta LI', come quarto e ultimo passo: un `where` applicato in quel punto e'
+      applicato a ogni indicatore, senza riscrivere nessuna formula.
+    </entity>
+
+    <entity name="Dove vive la Sede dell'operatore (verificato, non ipotizzato)">
+      La colonna `employment_profiles.operational_site_id` NON esiste piu': la migrazione
+      `2026_09_07_100100_move_employment_operational_site_to_pivot.php` la droppa
+      (`dropConstrainedForeignId('operational_site_id')`) dopo aver travasato i dati. La
+      membership vive SOLO sul pivot `employment_profile_operational_site`
+      (`employment_profile_id`, `operational_site_id`, `is_primary`), creato da
+      `2026_09_07_100000` con `unique('ep_op_site_unique')` e `index('operational_site_id')`.
+      `employment_profiles.user_id` e' UNIQUE (un profilo per utente). La catena da percorrere e'
+      quindi: `quotes.operator_id` -> `employment_profiles.user_id` -> pivot ->
+      `operational_sites.id`. E' la STESSA catena che `RequestManagementScope::actorSiteIds()`
+      percorre per il tier 3 della visibilita', letta li' tramite la relazione
+      `employment.operationalSites` (che e' il pivot intero, non gli accessor
+      `primary`/`remote`).
+    </entity>
+
+    <entity name="OperationalSite non ha una colonna nome">
+      Verificato: `create_operational_sites_table` ha `id`, `old_id`, `alias`, timestamps. Il
+      commento del model lo dichiara esplicitamente ("No own name/label column: the site IS its
+      address"). L'unica label utente esistente e'
+      `OperationalSiteForSelectResource::composeLabel()`: `line1`, piu' " - {citta'}" quando
+      l'indirizzo ha una citta', stringa vuota quando non c'e' indirizzo. `alias` NON entra in
+      quella label. Il picker nuovo deve usare quella stessa composizione, non inventarne una
+      seconda (D-8).
+    </entity>
+
+    <entity name="Il frontend ha gia' un'unica sorgente di filtri">
+      Esiste UNO stato applicato, `RequestReportFormValues`, posseduto da
+      `RequestDashboardPanelBody` (`request-dashboard-panel.tsx`) e persistito da
+      `useRequestReportFilters` in `localStorage` (chiave `request-management.report-filters`).
+      Da li' partono ENTRAMBI i consumatori: `useRequestDashboard(filters)` per i grafici e
+      `report.create({ ...filters, format })` in `RequestDashboardFilterBar` per il file.
+      Aggiungere un campo a quel tipo lo porta a tutti e due senza cablaggio nuovo. Il punto
+      unico che decide la shape sul wire e' `toRequestReportFilterPayload`.
+    </entity>
+
+    <entity name="Vincoli di compatibilita' gia' in essere">
+      - `ExportRun.state` congela i filtri alla creazione e
+        `GenerateRequestManagementReportJob::write()` li rilegge. Le run gia' persistite non
+        hanno il campo nuovo: il job deve tollerarne l'assenza, esattamente come tollera oggi
+        l'assenza di `operator_keys` (`$state['operator_keys'] ?? null`).
+      - `isStoredFilters` in `use-request-report-filters.ts` valida il payload di
+        `localStorage` e accetta `operator_keys` come OPTIONAL apposta (0109 D-11): un payload
+        scritto prima della spec non ha la chiave e non va buttato via. `site_keys` segue la
+        stessa regola.
+      - I test di 0106/0107/0109 invocano `RequestManagementReportGenerator::generate()`,
+        `::rows()` e `RequestManagementDashboardBuilder::build()` posizionalmente. Il parametro
+        nuovo va aggiunto ULTIMO e opzionale, con default `null` che normalizza a "tutte le
+        sedi".
+    </entity>
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo `ReportSiteFilter` (App\Services\RequestManagement\Report): traduce le
+        `site_keys` selezionate in SQL, gemello di `ReportOperatorFilter`.</item>
+      <item>Nuovo `ReportSiteAvailabilityResolver`: le Sedi che l'attore puo' selezionare,
+        gemello di `ReportOperatorAvailabilityResolver`. Serve sia il picker sia la allow-list
+        di validazione.</item>
+      <item>Nuovo endpoint `GET /api/request-management/report/sites`.</item>
+      <item>Nuovo parametro `site_keys` su `POST /api/request-management/report` e su
+        `GET /api/request-management/report/dashboard`.</item>
+      <item>Freeze di `site_keys` in `ExportRun.state` e rilettura nel job.</item>
+      <item>Passaggio del filtro lungo la catena: controller -> generator/dashboard builder ->
+        `ReportBranchRowsBuilder` -> indicatori -> `ReportBranchQuery`.</item>
+      <item>Estrazione UNA VOLTA della composizione label della Sede, riusata da
+        `OperationalSiteForSelectResource` e dal resolver nuovo (D-8).</item>
+      <item>Frontend: campo `site_keys` nello stato applicato, sua persistenza, suo
+        reconcile, sua validazione Zod, suo gruppo di checkbox nel dialog dei filtri.</item>
+      <item>Test Pest (backend) e Vitest (frontend) mappati 1:1 sugli AC.</item>
+    </in>
+    <out>
+      <item>Qualsiasi raggruppamento/breakdown per Sede: nessuna riga "per Sede" nel CSV,
+        nessun grafico per Sede nella dashboard, nessun nuovo valore di `row_mode`. Il filtro
+        e' un WHERE, mai un GROUP BY (D-1).</item>
+      <item>`quotes.operational_site_id` (la Sede dell'OFFERTA): non e' la fonte scelta e non
+        va letta da nessuna delle classi di questa spec. Resta usata da
+        `RequestManagementScope` per la visibilita', che non si tocca.</item>
+      <item>Qualsiasi modifica alle formule dei cinque indicatori
+        (`Indicators/*`), a `QuoteCountAggregator`, a `ReportSheetBuilder`, alle colonne del
+        report o alle sue etichette.</item>
+      <item>Qualsiasi modifica alla regola di visibilita' (`RequestManagementScope`) o ai
+        permessi: si riusa `request-management.report` verbatim, nessun grant nuovo.</item>
+      <item>Migrazioni, nuove tabelle, nuovi indici, nuove dipendenze.</item>
+      <item>Il framework tabellare generico (`TableDefinition`/SSRM) e il pannello statistiche
+        generico (spec 0026): questa spec tocca solo il report/dashboard di modulo.</item>
+      <item>Una voce "Senza sede" nel picker (esclusa dall'utente, D-6).</item>
+    </out>
+  </scope>
+
+  <decisions>
+    <decision id="D-1">
+      Il filtro RESTRINGE IL CALCOLO, non nasconde righe gia' calcolate. Entra in
+      `ReportBranchQuery::build()`, quindi ogni indicatore lo eredita e la riga TOTALE riflette
+      il perimetro ristretto. Le righe emesse restano quelle di 0106 (TOTALE / per GA2 /
+      "Non assegnato"): un GA2 che non ha piu' nessuna richiesta nel perimetro semplicemente non
+      compare, perche' il suo gruppo non esiste piu' nel breakdown — non perche' qualcuno lo
+      filtri a valle.
+    </decision>
+    <decision id="D-2">
+      La Sede di una richiesta e' quella del suo GA2 Operatore, via
+      `quotes.operator_id -> employment_profiles.user_id -> employment_profile_operational_site`.
+      NON `quotes.operational_site_id`. Decisione utente 2026-09-09.
+    </decision>
+    <decision id="D-3">
+      Vale su entrambi i consumatori. Non ci sono due strade: il filtro entra in
+      `ReportBranchQuery`, che e' l'unica base query di entrambi, e viaggia nella stessa
+      posizione (ultimo parametro opzionale) su `generate()`, `rows()` e `build()`.
+    </decision>
+    <decision id="D-4">
+      Semantica sul wire identica a quella di `operator_keys` (0109 D-2): `site_keys` ASSENTE
+      significa OGNI Sede — inclusa una Sede creata dopo che la selezione e' stata fatta — mai
+      "nessuna". Il campo non viaggia mai vuoto: `min:1` in validazione lo tiene fuori dal wire,
+      e `ReportSiteFilter::fromKeysOrAll(null)` e' cio' che rende una ExportRun congelata prima
+      di questa spec identica a se stessa.
+    </decision>
+    <decision id="D-5">
+      La membership si legge dal PIVOT INTERO, fisica e remota indistintamente: nessun filtro su
+      `is_primary`. Stessa regola gia' applicata da `RequestManagementScope::actorSiteIds()`.
+      Un operatore che appartiene a tre Sedi entra nel calcolo per tutte e tre. Non c'e' rischio
+      di doppio conteggio: il filtro e' un `whereExists` (esistenziale), non una join ne' un
+      `groupBy` — una richiesta e' inclusa una volta sola, qualunque sia il numero di membership
+      che la fanno passare. Decisione utente 2026-09-09.
+    </decision>
+    <decision id="D-6">
+      Nessuna chiave "senza sede". Con un filtro Sede RISTRETTO sono sempre escluse le richieste
+      senza Sede attribuibile, e i due casi si escludono per la STESSA ragione strutturale, non
+      per due controlli diversi: il `whereExists` correlato su `quotes.operator_id` non trova
+      mai una riga quando `operator_id` e' NULL ("Non assegnato"), e non ne trova quando
+      l'operatore esiste ma non ha nessuna membership (o nessun employment profile). Fail-closed
+      per costruzione, come lo e' `ReportOperatorFilter` con `whereIn(..., [])`.
+      Decisione utente 2026-09-09.
+    </decision>
+    <decision id="D-7">
+      Il selettore si monta solo per i `row_mode` che emettono righe operatore —
+      `operators_only` e `all` — e il campo viene DROPPATO dal payload sotto `total_only`,
+      esattamente come `operator_keys` (0109 D-4). La selezione NON viene cancellata quando il
+      gruppo si nasconde: tornando indietro si ritrova. Decisione utente 2026-09-09.
+    </decision>
+    <decision id="D-8" revised="2026-09-09">
+      La label della Sede ha UNA sola definizione.
+
+      CORREZIONE alla stesura originale di questa decisione: `App\Support\OperationalSiteLabel::compose(?Address $address): string`
+      NON va creato, perche' ESISTE GIA' — introdotto dalla spec 0056, tracciato su HEAD
+      (commit d3187ac5), byte-identico alla logica privata della Resource. Il suo stesso docblock
+      elencava `OperationalSiteForSelectResource` fra le copie non ancora rifattorizzate. La
+      stesura originale diceva "si estrae", frutto di un grounding incompleto del lead: cercare la
+      composizione della label aveva trovato la copia privata nella Resource e non il Support che
+      la possiede gia'. Seguire la lettera avrebbe prodotto un duplicato, cioe' l'esatto contrario
+      dello scopo della decisione.
+
+      Quello che va fatto, e che copre AC-015 identicamente: CANCELLARE il `composeLabel()`
+      privato della Resource e farla delegare al Support esistente; `ReportSiteAvailabilityResolver`
+      usa lo stesso Support. Regola invariata: `line1`, piu' " - {citta'}" quando c'e', stringa
+      vuota senza indirizzo; `alias` non entra.
+    </decision>
+    <decision id="D-9">
+      `ReportSiteFilter` e' una CLASSE NUOVA, non un parametro in piu' su `ReportOperatorFilter`.
+      Sono due assi indipendenti che si compongono in AND dentro `ReportBranchQuery::build()`;
+      fonderli renderebbe una classe responsabile di due dimensioni (SRP, engineering.md §3) e
+      non porterebbe nessun riuso — le due traduzioni in SQL non hanno una riga in comune (una e'
+      un `whereIn` su una colonna della riga, l'altra un `whereExists` correlato su due tabelle).
+    </decision>
+    <decision id="D-10">
+      Le due allow-list restano INDIPENDENTI: la lista Sedi non si restringe in base agli
+      operatori selezionati e viceversa. I picker si popolano prima che l'attore abbia scelto
+      qualcosa, e una lista che si rimescola sotto le mani e' peggio di una lista stabile con
+      qualche voce a zero — la stessa motivazione gia' scritta in
+      `ReportOperatorAvailabilityResolver` (0109 D-6) e in
+      `ReportCategoryAvailabilityResolver` (0106 rev-2 D-12). Conseguenza accettata: e'
+      possibile selezionare un operatore e una Sede che non si intersecano, e ottenere zero. E'
+      un risultato corretto, non un errore da 422.
+    </decision>
+    <decision id="D-11">
+      Nessuna migrazione. Il `whereExists` correlato e' coperto dagli indici gia' presenti:
+      `employment_profiles.user_id` e' UNIQUE (accesso puntuale dal `quotes.operator_id`) e il
+      pivot ha `ep_op_site_unique` su `(employment_profile_id, operational_site_id)`, che serve
+      il lookup dalla riga del profilo. Nessun indice nuovo va aggiunto senza una misura che lo
+      giustifichi.
+    </decision>
+  </decisions>
+
+  <data_contract>
+    <!-- Congelato PRIMA del dispatch. Backend implementa, frontend consuma, identica. -->
+
+    <endpoint method="GET" path="/api/request-management/report/sites">
+      <description>
+        Le Sedi che l'attore puo' selezionare (D-10): le Sedi dei GA2 Operatore di ogni richiesta
+        nel SUO scope di visibilita', ALL-TIME — indipendente dal range di date, dalle categorie e
+        dagli operatori scelti. Da dichiarare nel route file PRIMA di
+        `report/{exportRun}`, altrimenti il segmento letterale viene inghiottito dal wildcard
+        (stesso routing_trap di `report/categories` e `report/operators`).
+      </description>
+      <request><!-- nessun parametro --></request>
+      <response status="200">
+        {
+          "success": true,
+          "message": "...",
+          "data": {
+            "sites": [
+              { "key": "12", "label": "Via Roma 1 - Frattamaggiore" }
+            ]
+          }
+        }
+        `key` = id della Sede come STRINGA (stessa forma di `operators[].key`, cosi' i due gruppi
+        di checkbox condividono `RequestReportKeyGroup` senza adattatori).
+        `label` = composizione di D-8, resa AS-IS: e' un dato di dominio, mai passato per i18next.
+        Ordinamento: per `label` crescente. Le Sedi senza indirizzo (label vuota) restano in
+        lista — sono selezionabili e hanno richieste — e finiscono in testa: nascondere una Sede
+        reale perche' le manca l'indirizzo la renderebbe non filtrabile.
+        Lista VUOTA quando l'attore non vede nessuna richiesta con un GA2 dotato di Sede.
+      </response>
+      <errors>
+        403 senza `request-management.report`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/request-management/report">
+      <description>Invariato salvo il campo nuovo. Delta rispetto a 0109.</description>
+      <request>
+        date_from: string, required, `Y-m-d`
+        date_to: string, required, `Y-m-d`, >= date_from
+        category_keys: string[], required, min 1, ognuna in config allow-list
+        row_mode: 'total_only' | 'operators_only' | 'all', required
+        operator_keys: string[], OPTIONAL, min 1 quando presente (invariato)
+        site_keys: string[], OPTIONAL, min 1 quando presente, ogni voce nella allow-list di
+          `ReportSiteAvailabilityResolver` — ASSENTE significa ogni Sede (D-4). La allow-list
+          costa una query, quindi si risolve SOLO quando il campo e' stato davvero inviato,
+          stessa ottimizzazione gia' applicata a `operator_keys` (0109 D-5).
+        format: 'csv' | 'xlsx', required (invariato)
+      </request>
+      <response status="201">
+        { "success": true, "message": "...", "data": { "export_run": { id, status, file_name, created_at } } }
+        Shape invariata: `site_keys` non compare nella response, viaggia solo in `ExportRun.state`.
+      </response>
+      <errors>
+        403 senza `request-management.report`; 422 su `site_keys` vuoto o con una chiave fuori
+        allow-list.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/request-management/report/dashboard">
+      <description>Invariato salvo il campo nuovo, letto dalla query string.</description>
+      <request>
+        Gli stessi cinque campi di POST /report meno `format`, piu' `site_keys[]` con identiche
+        regole di validazione.
+      </request>
+      <response status="200">
+        { "success": true, "message": "...", "data": { "applied": {...}, "summary": [...], "categories": [...] } }
+        `applied` guadagna `site_keys`, con la stessa semantica di eco gia' usata per
+        `operator_keys`: NULL quando il campo non e' stato inviato ("ogni Sede"), cosi' il client
+        distingue una response filtrata da una non filtrata. `summary` e `categories` mantengono
+        shape identica: nessuna chiave nuova, nessun grafico nuovo (scope/out).
+      </response>
+      <errors>
+        403 senza `request-management.report`; 422 come sopra.
+      </errors>
+    </endpoint>
+
+    <persistence name="ExportRun.state">
+      `site_keys` scritto SOLO quando l'attore ha filtrato, accanto a `operator_keys` e con la
+      stessa forma (`...($siteKeys === null ? [] : ['site_keys' => $siteKeys])`). Una chiave
+      assente e' cio' che il job legge come "ogni Sede", ossia esattamente la forma che ogni run
+      congelata prima di questa spec gia' possiede.
+    </persistence>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend (Pest) -->
+    <criterion id="AC-001">
+      Dato un attore con `request-management.report` e due Sedi A e B, ciascuna con un GA2 e le
+      sue richieste, quando chiama `POST /report` con `site_keys=[A]`, allora la riga TOTALE del
+      file contiene i soli numeri delle richieste del GA2 di A — non la somma A+B.
+      Verifica: feature test che genera il file e ne rilegge la riga TOTALE. Priorita': required.
+    </criterion>
+    <criterion id="AC-002">
+      Stesso scenario di AC-001 sulla dashboard: `GET /report/dashboard?site_keys[]=A` restituisce
+      in `summary` gli stessi valori che la riga TOTALE del CSV di AC-001 contiene.
+      Verifica: test di parita' CSV/dashboard, gemello di `RequestManagementDashboardCsvParityTest`.
+      Priorita': required.
+    </criterion>
+    <criterion id="AC-003">
+      Dato lo scenario di AC-001, quando `site_keys` NON viene inviato, allora il risultato e'
+      byte-identico a quello prodotto prima di questa spec (ogni Sede, D-4).
+      Verifica: feature test sulla riga TOTALE non filtrata. Priorita': required.
+    </criterion>
+    <criterion id="AC-004">
+      Dato un GA2 con membership su DUE Sedi A e B e una sola richiesta, quando si filtra per
+      `site_keys=[A]`, per `site_keys=[B]` e per `site_keys=[A,B]`, allora la richiesta e'
+      contata UNA volta in tutti e tre i casi (D-5, nessun fanout).
+      Verifica: feature test con le tre asserzioni. Priorita': required.
+    </criterion>
+    <criterion id="AC-005">
+      Dato che la membership su A e' `is_primary=false` (remota), quando si filtra per
+      `site_keys=[A]`, allora la richiesta di quel GA2 e' INCLUSA (D-5: nessun filtro su
+      `is_primary`).
+      Verifica: feature test. Priorita': required.
+    </criterion>
+    <criterion id="AC-006">
+      Data una richiesta con `quotes.operator_id` NULL ("Non assegnato") e una richiesta il cui
+      GA2 non ha nessuna membership, quando si filtra per una qualsiasi `site_keys` ristretta,
+      allora NESSUNA delle due entra nel calcolo, e la riga "Non assegnato" sparisce dal file
+      (D-6).
+      Verifica: feature test sulle righe emesse. Priorita': required.
+    </criterion>
+    <criterion id="AC-007">
+      Il filtro Sede e quello operatore si compongono in AND: dati GA2 X in Sede A e GA2 Y in
+      Sede B, `operator_keys=[X] & site_keys=[B]` produce zero — non i numeri di X, non quelli di
+      B (D-10).
+      Verifica: feature test. Priorita': required.
+    </criterion>
+    <criterion id="AC-008">
+      Il filtro non puo' ALLARGARE il perimetro: dato un attore senza `request-management.viewAll`
+      che vede solo le proprie richieste, quando filtra per una Sede a cui appartengono richieste
+      che non gli sono visibili, allora quelle richieste NON compaiono. Ossia: il filtro Sede e'
+      applicato DOPO `RequestManagementScope::scopeToActor` e dentro la propria closure `where`,
+      mai con un `orWhere` sulla radice.
+      Verifica: feature test di autorizzazione. Priorita': required.
+    </criterion>
+    <criterion id="AC-009">
+      `GET /report/sites` restituisce solo le Sedi dei GA2 di richieste nello scope dell'attore,
+      ordinate per label, con `key` stringa; un attore che non vede nessuna richiesta riceve
+      `sites: []`.
+      Verifica: feature test con due attori a scope diverso. Priorita': required.
+    </criterion>
+    <criterion id="AC-010">
+      `GET /report/sites` risponde 403 a un utente senza `request-management.report`, e la rotta
+      non viene inghiottita dal wildcard `report/{exportRun}` (non risolve in `show()` con
+      exportRun="sites").
+      Verifica: due feature test (403 + routing_trap). Priorita': required.
+    </criterion>
+    <criterion id="AC-011">
+      `site_keys` con una chiave fuori dalla allow-list del resolver -> 422. `site_keys` array
+      vuoto -> 422 (`min:1`). `site_keys` assente -> 200.
+      Verifica: tre feature test di validazione su ENTRAMBI gli endpoint. Priorita': required.
+    </criterion>
+    <criterion id="AC-012">
+      La allow-list NON viene risolta quando `site_keys` non e' stato inviato (D-4, costo query):
+      una richiesta senza il campo non deve eseguire la query del resolver.
+      Verifica: test con `DB::listen`/conteggio query, gemello di quello di 0109 su
+      `operator_keys` se esiste; altrimenti asserzione sul numero di query. Priorita': important.
+    </criterion>
+    <criterion id="AC-013">
+      Una `ExportRun` il cui `state` NON contiene `site_keys` (ogni run congelata prima di questa
+      spec) genera il file esattamente come prima: il job legge `$state['site_keys'] ?? null` e
+      normalizza a "ogni Sede".
+      Verifica: feature test che costruisce a mano una ExportRun senza il campo ed esegue il job.
+      Priorita': required.
+    </criterion>
+    <criterion id="AC-014">
+      `site_keys` viene scritto in `ExportRun.state` solo quando l'attore ha filtrato, e la chiave
+      e' ASSENTE (non `null`, non `[]`) altrimenti.
+      Verifica: due feature test sul contenuto di `state`. Priorita': required.
+    </criterion>
+    <criterion id="AC-015">
+      `App\Support\OperationalSiteLabel::compose()` produce le stesse tre uscite di prima:
+      `"{line1} - {citta'}"` con citta', `"{line1}"` senza citta', `""` senza indirizzo; e
+      `GET /operational-sites/for-select` continua a restituire label identiche.
+      Verifica: unit test sul Support + il feature test esistente della for-select, rieseguito.
+      Priorita': required.
+    </criterion>
+
+    <!-- Frontend (Vitest) -->
+    <criterion id="AC-016">
+      Con `row_mode` = `operators_only` o `all` il gruppo di checkbox "Sedi" e' montato; con
+      `total_only` non e' nel DOM. Passando a `total_only` e tornando indietro, la selezione
+      precedente e' ancora quella (non azzerata) (D-7).
+      Verifica: component test su `RequestReportFilters`, query per ruolo accessibile.
+      Priorita': required.
+    </criterion>
+    <criterion id="AC-017">
+      `toRequestReportFilterPayload` OMETTE `site_keys` in tre casi — `row_mode = total_only`,
+      picker vuoto, selezione piena — e lo include altrimenti; la stessa uscita alimenta la query
+      dashboard e la creazione del file (D-4).
+      Verifica: unit test sulle quattro combinazioni. Priorita': required.
+    </criterion>
+    <criterion id="AC-018">
+      Un payload in `localStorage` scritto PRIMA di questa spec (senza `site_keys`) viene
+      accettato e idratato con `site_keys: []`, non scartato — date e categorie sopravvivono.
+      Verifica: unit test su `isStoredFilters`/`readStoredFilters`. Priorita': required.
+    </criterion>
+    <criterion id="AC-019">
+      `reconcileSiteKeys` scarta le Sedi che il server non offre piu' e, quando non ne
+      sopravvive nessuna, riseleziona l'intera lista; con lista Sedi vuota restituisce lo STESSO
+      riferimento in ingresso (nessun re-render inutile), gemello esatto di
+      `reconcileOperatorKeys`.
+      Verifica: unit test sui tre rami. Priorita': required.
+    </criterion>
+    <criterion id="AC-020">
+      Lo schema Zod richiede almeno una Sede quando il picker ha opzioni e `row_mode` non e'
+      `total_only`; con picker vuoto la regola e' inerte (non si puo' correggere un errore che
+      non ha rimedio), gemello di `operatorsAreRequired`. `isRequestReportQueryReady` applica la
+      stessa regola in modo sincrono, cosi' la query dashboard non parte con una selezione
+      invalida.
+      Verifica: unit test su `buildRequestReportSchema` e `isRequestReportQueryReady`.
+      Priorita': required.
+    </criterion>
+    <criterion id="AC-021">
+      Il gruppo Sedi ha stati di caricamento ed errore propri, montati solo quando il gruppo e'
+      visibile, con la stessa forma (`LoadingNotice`/`ErrorNotice`) e le stesse classi compatte
+      degli altri gruppi; le label vengono da i18next tranne quelle delle Sedi, rese as-is.
+      Verifica: component test + revisione UI manuale a 375/768/1024. Priorita': important.
+    </criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza, ne' in `composer.json` ne' in `package.json`.</item>
+    <item>Nessuna migrazione (D-11).</item>
+    <item>Authz server-side su ogni endpoint: `request-management.report` verbatim, riusato,
+      nessun permesso nuovo. Il filtro Sede non e' un grant di visibilita': applicato SEMPRE dopo
+      `RequestManagementScope::scopeToActor` e dentro la propria closure `where()`, cosi' puo'
+      solo restringere (AC-008).</item>
+    <item>Nessun `whereRaw`/`orderByRaw`: gli id Sede arrivano da una allow-list risolta dal
+      resolver e passano per `whereIn` parametrizzato (backend.md §8).</item>
+    <item>`site_keys` validato in FormRequest su ENTRAMBI gli endpoint contro la allow-list del
+      resolver — una chiave che passa la validazione e' per costruzione una chiave che il picker
+      poteva produrre, stessa proprieta' di 0109 D-5.</item>
+    <item>Fail-closed: un `ReportSiteFilter` ristretto senza id compila in `whereIn(..., [])`, che
+      non matcha nulla — mai in una query non filtrata.</item>
+    <item>Nessuna join su `employment_profile_operational_site` dalla base query: `whereExists`
+      correlato, per la stessa ragione per cui il match di categoria non e' una join (fanout, e
+      `PhoneCallsIndicator` conta `notes.id`).</item>
+    <item>Il parametro nuovo e' ULTIMO e opzionale su `generate()`, `rows()` e `build()`: i test
+      esistenti li chiamano posizionalmente e non vanno toccati (test tampering).</item>
+    <item>Soglie file: `ReportBranchQuery` e i FormRequest restano ben sotto le 300 righe; le due
+      classi nuove sono piccole e a singola responsabilita' (D-9).</item>
+    <item>UI compatta (ui-design.md §2), riuso di `RequestReportKeyGroup` senza duplicarne lo
+      stile; nessun `data-testid` nei test component (query per ruolo accessibile).</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint pulito, ESLint pulito,
+      `cd frontend &amp;&amp; npx tsc -b --force` pulito (mai `--noEmit`).</item>
+  </constraints>
+
+</spec>

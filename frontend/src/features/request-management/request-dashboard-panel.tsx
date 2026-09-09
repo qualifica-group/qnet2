@@ -19,9 +19,11 @@ import { useRequestDashboard } from '@/features/request-management/use-request-d
 import { useRequestDashboardCollapse } from '@/features/request-management/use-request-dashboard-collapse'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
 import { useRequestReportOperators } from '@/features/request-management/use-request-report-operators'
+import { useRequestReportSites } from '@/features/request-management/use-request-report-sites'
 import {
   reconcileCategoryKeys,
   reconcileOperatorKeys,
+  reconcileSiteKeys,
   useRequestReportFilters,
 } from '@/features/request-management/use-request-report-filters'
 import { statsPanelId } from '@/features/stats/use-stats-panel'
@@ -34,7 +36,7 @@ const COLLAPSIBLE_CONTENT_CLASS =
 const SKELETON_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
 const SKELETON_TILE_COUNT = 4
 
-/** Hoisted so an unloaded operator list keeps a STABLE identity across renders. */
+/** Hoisted so an unloaded operator/site list keeps a STABLE identity across renders. */
 const EMPTY_KEYS: string[] = []
 
 /** Placeholder rows shaped like the eventual tiles/charts, shown while the aggregates load. */
@@ -124,6 +126,9 @@ function RequestDashboardPanelBody() {
   const operatorsQuery = useRequestReportOperators(true)
   const operators = operatorsQuery.data
   const operatorKeys = operators ? operators.map((operator) => operator.key) : EMPTY_KEYS
+  const sitesQuery = useRequestReportSites(true)
+  const sites = sitesQuery.data
+  const siteKeys = sites ? sites.map((site) => site.key) : EMPTY_KEYS
 
   // One shot per list load, so a background refetch can never wipe the user's
   // own picks: a restored selection keeps only the entries that still exist,
@@ -146,12 +151,24 @@ function RequestDashboardPanelBody() {
     setFilters((current) => reconcileOperatorKeys(current, operators))
   }, [operators, setFilters])
 
-  const filtersReady = isRequestReportQueryReady(filters, operatorKeys)
+  // Its OWN effect, independent of the operator one (spec 0112): both can land
+  // in the same commit, and only the updater form of `setFilters` keeps the
+  // second write from clobbering the first with a stale copy.
+  const reconciledSites = useRef(false)
+  useEffect(() => {
+    if (!sites || reconciledSites.current) {
+      return
+    }
+    reconciledSites.current = true
+    setFilters((current) => reconcileSiteKeys(current, sites))
+  }, [sites, setFilters])
+
+  const filtersReady = isRequestReportQueryReady(filters, operatorKeys, siteKeys)
   // ONE normalization for both consumers (spec 0109 D-9): the charts fetch it
   // and the file is generated from it, so they cannot read the selection
   // differently. It is also the query key, so a changed selection is a
   // different cache entry.
-  const payload = toRequestReportFilterPayload(filters, operatorKeys)
+  const payload = toRequestReportFilterPayload(filters, operatorKeys, siteKeys)
   const dashboardQuery = useRequestDashboard(payload, filtersReady)
 
   return (

@@ -20,17 +20,18 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  * module's OWN visibility rule (RequestManagementScope::scopeToActor,
  * security.md — mandatory on every query of this report, no exceptions; the
  * disjunction it applies is already wrapped in its own closure there),
- * and finally the selected GA2 Operatore (spec 0108 D-1) — the ONE place the
- * operator filter enters the report, which is why no indicator had to learn
- * anything about it. Applied LAST, after the scope, so it can only ever
- * narrow what the actor may already see.
+ * then the selected GA2 Operatore (spec 0108 D-1), and finally the selected
+ * Sede operativa (spec 0112 D-1) — the ONE place either filter enters the
+ * report, which is why no indicator had to learn anything about them. Both
+ * are applied LAST, after the scope and each inside its own closure, so they
+ * can only ever narrow what the actor may already see (0112 AC-008).
  */
 final class ReportBranchQuery
 {
     /**
      * @param  array<int, int>  $categoryIds
      */
-    public function build(array $categoryIds, ?User $actor, ReportOperatorFilter $operators): Builder
+    public function build(array $categoryIds, ?User $actor, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): Builder
     {
         $query = Quote::query()
             ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
@@ -41,6 +42,8 @@ final class ReportBranchQuery
                     ->whereIn('opportunity_product_lines.product_category_id', $categoryIds);
             });
 
-        return $operators->applyTo(RequestManagementScope::scopeToActor($query, $actor));
+        $sites ??= ReportSiteFilter::all();
+
+        return $sites->applyTo($operators->applyTo(RequestManagementScope::scopeToActor($query, $actor)));
     }
 }

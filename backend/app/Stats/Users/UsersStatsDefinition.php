@@ -14,13 +14,18 @@ use Illuminate\Support\Facades\DB;
 /**
  * Statistics panel of the `users` module (spec 0026): headcount and its
  * active/disabled split, the RBAC breakdown (Spatie `model_has_roles`) and the
- * organizational one (the employment profile's business function). The hiring
+ * organizational one (the business functions of the profile's competence
+ * rows, `employment_product_lines` — spec 0111 D-1). The hiring
  * trend reads `employment_profiles.hired_at` — the only real hire date in the
  * schema; users with no employment profile are simply absent from it.
  */
 class UsersStatsDefinition extends AbstractStatsDefinition
 {
     private const string EMPLOYMENT_TABLE = 'employment_profiles';
+
+    private const string PRODUCT_LINES_TABLE = 'employment_product_lines';
+
+    private const string EMPLOYMENT_FUNCTIONS_ALIAS = 'employment_functions';
 
     public function domain(): string
     {
@@ -74,8 +79,8 @@ class UsersStatsDefinition extends AbstractStatsDefinition
             $this->distribution(
                 key: 'by_business_function',
                 items: Aggregates::topRelated(
-                    query: DB::table(self::EMPLOYMENT_TABLE),
-                    foreignKey: self::EMPLOYMENT_TABLE.'.business_function_id',
+                    query: $this->employmentFunctions(),
+                    foreignKey: self::EMPLOYMENT_FUNCTIONS_ALIAS.'.business_function_id',
                     relatedTable: 'business_functions',
                     labelColumn: 'name',
                     limit: self::TOP_LIMIT,
@@ -87,6 +92,24 @@ class UsersStatsDefinition extends AbstractStatsDefinition
                 points: Aggregates::monthlyTrend(self::EMPLOYMENT_TABLE, 'hired_at', self::TREND_MONTHS),
             ),
         ];
+    }
+
+    /**
+     * The (profile, business function) pairs of the competence rows, already
+     * DEDUPLICATED (spec 0111 AC-020): the distribution counts USERS per
+     * function, so a profile holding two rows on the same function must weigh
+     * exactly one — Aggregates::topRelated() does a plain COUNT(*) on the
+     * query it is given, hence the deduplication belongs here, in the source
+     * subquery, and not in the shared aggregate helper.
+     */
+    private function employmentFunctions(): Builder
+    {
+        return DB::query()->fromSub(
+            DB::table(self::PRODUCT_LINES_TABLE)
+                ->select('employment_profile_id', 'business_function_id')
+                ->distinct(),
+            self::EMPLOYMENT_FUNCTIONS_ALIAS,
+        );
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Services\RequestManagement\Report\ReportBranchQuery;
 use App\Services\RequestManagement\Report\ReportDateRange;
 use App\Services\RequestManagement\Report\ReportIndicator;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
+use App\Services\RequestManagement\Report\ReportSiteFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\JoinClause;
 
@@ -34,20 +35,20 @@ final class CompaniesAddedIndicator implements ReportIndicator
         private readonly QuoteCountAggregator $aggregator,
     ) {}
 
-    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): IndicatorResult
+    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): IndicatorResult
     {
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators), 'distinct registries.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators), 'distinct registries.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites), 'distinct registries.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites), 'distinct registries.id'),
         );
     }
 
     /**
      * @param  array<int, int>  $categoryIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): Builder
+    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor, $operators)
+        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites)
             ->join('registries', 'registries.id', '=', 'opportunities.registry_id')
             ->join('personal_data', function (JoinClause $join): void {
                 $join->on('personal_data.personable_id', '=', 'registries.id')

@@ -5,14 +5,16 @@ namespace App\Http\Resources;
 use App\Http\Resources\Abstracts\ForSelectResource;
 use App\Models\Address;
 use App\Models\OperationalSite;
+use App\Support\OperationalSiteLabel;
 use Illuminate\Http\Request;
 
 /**
  * For-select projection of an OperationalSite (GET /api/operational-sites/for-select).
  *
- * A site has no own name (identity = its address, see OperationalSite): label
- * is composed from the primary address' `line1`, plus " - {city}" when the
- * address has a city; subtitle = postal_code when present (omitted otherwise,
+ * A site has no own name (identity = its address, see OperationalSite): the
+ * label is composed by App\Support\OperationalSiteLabel, the ONE definition
+ * of it (spec 0112 D-8) — `line1`, plus " - {city}" when the address has a
+ * city; subtitle = postal_code when present (omitted otherwise,
  * ForSelectResource's null-optional rule). `meta` carries the site's Regione
  * ({state_id, state_label}, directive 2026-07-21) so the Lead form can
  * auto-fill it when a Sede is picked; omitted when the site has no region.
@@ -33,21 +35,10 @@ class OperationalSiteForSelectResource extends ForSelectResource
 
         return [
             'id' => $this->id,
-            'label' => $this->composeLabel($address),
+            'label' => OperationalSiteLabel::compose($address),
             'subtitle' => $address?->postal_code,
             'meta' => $this->composeMeta($address),
         ];
-    }
-
-    private function composeLabel(?Address $address): string
-    {
-        if ($address === null) {
-            return '';
-        }
-
-        $city = $address->city?->localizedName();
-
-        return $city === null ? (string) $address->line1 : "{$address->line1} - {$city}";
     }
 
     /**

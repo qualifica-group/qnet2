@@ -6,6 +6,7 @@ namespace App\Http\Requests\RequestManagement;
 
 use App\Enums\RequestManagementReportRowMode;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
+use App\Services\RequestManagement\Report\ReportSiteAvailabilityResolver;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -49,6 +50,13 @@ class RequestDashboardRequest extends FormRequest
             'operator_keys.*' => ['required', 'string', Rule::in(
                 $this->has('operator_keys') ? $this->allowedOperatorKeys() : [],
             )],
+            'site_keys' => ['sometimes', 'array', 'min:1'],
+            // Same query-cost rule for the Sede allow-list (spec 0112 D-4):
+            // resolved ONLY when a selection was actually sent — an
+            // unfiltered report, "every Sede", pays nothing for it.
+            'site_keys.*' => ['required', 'string', Rule::in(
+                $this->has('site_keys') ? $this->allowedSiteKeys() : [],
+            )],
         ];
     }
 
@@ -67,12 +75,36 @@ class RequestDashboardRequest extends FormRequest
     }
 
     /**
+     * The Sede selection, or NULL when the field was not sent at all — which
+     * means EVERY Sede (spec 0112, D-4), never "none".
+     *
+     * @return array<int, string>|null
+     */
+    public function siteKeys(): ?array
+    {
+        $keys = $this->validated('site_keys');
+
+        return $keys === null ? null : array_values(array_map(strval(...), (array) $keys));
+    }
+
+    /**
      * @return array<int, string>
      */
     private function allowedOperatorKeys(): array
     {
         return array_column(
             app(ReportOperatorAvailabilityResolver::class)->available($this->user()),
+            'key',
+        );
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function allowedSiteKeys(): array
+    {
+        return array_column(
+            app(ReportSiteAvailabilityResolver::class)->available($this->user()),
             'key',
         );
     }

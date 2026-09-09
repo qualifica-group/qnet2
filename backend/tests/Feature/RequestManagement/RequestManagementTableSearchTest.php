@@ -76,7 +76,7 @@ it('columns: exposes the client anagraphic columns as searchable', function () {
 
     $this->getJson('/api/tables/request-management/columns')
         ->assertOk()
-        ->assertJsonPath('data.searchable', ['first_name', 'last_name', 'tax_code', 'phone']);
+        ->assertJsonPath('data.searchable', ['first_name', 'last_name', 'tax_code', 'vat_number', 'phone']);
 });
 
 // ---------------------------------------------------------------------------

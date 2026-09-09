@@ -25,8 +25,8 @@ use Throwable;
  * contacts, its role remap, and its employment profile — all through the
  * SAME UserService::create() the Users module itself uses (single creation
  * path, ADR 0012/0013/0015). Every relational reference (roles, manager,
- * business function, company, operational site) is an EXTERNAL id remapped
- * via `old_id`; an unresolved reference is a non-fatal warning, never fatal.
+ * company, operational site) is an EXTERNAL id remapped via `old_id`; an
+ * unresolved reference is a non-fatal warning, never fatal.
  *
  * The external system already sends a bcrypt HASH (never a plaintext
  * password): `CreateUserData` gets a throwaway random password so
@@ -93,7 +93,6 @@ class UsersSource extends AbstractMigrationSource
             ['id' => 'is_manager', 'label' => 'Is manager', 'type' => 'boolean'],
             ['id' => 'job_description', 'label' => 'Job description', 'type' => 'string'],
             ['id' => 'reports_to_id', 'label' => 'Reports to (external id)', 'type' => 'number'],
-            ['id' => 'business_function_id', 'label' => 'Business function (external id)', 'type' => 'number'],
             ['id' => 'relationship_type', 'label' => 'Relationship type', 'type' => 'string'],
             ['id' => 'company_id', 'label' => 'Company (external id)', 'type' => 'number'],
             ['id' => 'operational_site_id', 'label' => 'Operational site (external id)', 'type' => 'number'],

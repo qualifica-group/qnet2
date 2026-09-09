@@ -158,7 +158,7 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
 // keys AND the 13 personal_data.* keys, with the exact type/group contract.
 // ---------------------------------------------------------------------------
 
-it('spec 0008/0015/0110: users.fields contains exactly the 4 existing + 13 personal_data.* + 14 employment.* keys, with the contracted type/group', function () {
+it('spec 0008/0015/0111: users.fields contains exactly the 4 existing + 13 personal_data.* + 13 employment.* keys, with the contracted type/group', function () {
     $actor = actorWithRoleAbilities(['create']);
     Sanctum::actingAs($actor);
 
@@ -176,13 +176,22 @@ it('spec 0008/0015/0110: users.fields contains exactly the 4 existing + 13 perso
         // spec 0015 — the employment.* keys; spec 0103 (D-9) split the single
         // employment.operational_site_id into primary/remote.
         'employment.is_manager', 'employment.job_description', 'employment.reports_to_id',
-        'employment.business_function_id', 'employment.relationship_type', 'employment.company_id',
+        // spec 0111 — the assignment competence as {function, category} rows,
+        // replacing the former business_function_id/product_category_ids pair.
+        'employment.product_lines',
+        'employment.relationship_type', 'employment.company_id',
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
-        // spec 0110 — the assignment competence.
-        'employment.product_category_ids',
         'employment.qualification_type', 'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
     ]);
+
+    // Spec 0111 AC-009: exactly 13 employment.* keys, and neither of the two
+    // keys product_lines replaced survives anywhere in the catalogue.
+    $employmentKeys = $byKey->keys()->filter(static fn (string $key): bool => str_starts_with($key, 'employment.'));
+    expect($employmentKeys)->toHaveCount(13)
+        ->and($byKey)->not->toHaveKey('employment.business_function_id')
+        ->and($byKey)->not->toHaveKey('employment.product_category_ids')
+        ->and($byKey->get('employment.product_lines'))->toMatchArray(['type' => 'collection', 'group' => 'employment']);
 
     $expectedTypes = [
         'personal_data.type' => 'select',

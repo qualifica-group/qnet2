@@ -9,6 +9,7 @@ use App\Enums\RequestManagementReportRowMode;
 use App\Models\ExportRun;
 use App\Models\User;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
+use App\Services\RequestManagement\Report\ReportSiteFilter;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -64,7 +65,7 @@ class GenerateRequestManagementReportJob implements ShouldQueue
      */
     private function freezeContext(ExportRun $run): User
     {
-        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>} $state */
+        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>} $state */
         $state = $run->state;
 
         /** @var User $actor */
@@ -82,7 +83,7 @@ class GenerateRequestManagementReportJob implements ShouldQueue
      */
     private function write(ExportRun $run, User $actor, RequestManagementReportGenerator $generator): void
     {
-        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>} $state */
+        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>} $state */
         $state = $run->state;
 
         $disk = Storage::disk((string) config('exports.disk'));
@@ -99,7 +100,8 @@ class GenerateRequestManagementReportJob implements ShouldQueue
         // a file with exactly those two, however it later gets executed.
         // operator_keys (spec 0108) is read the same way but is OPTIONAL: a run
         // frozen before that spec has no such key, and its absence is the
-        // "every operator" default, not an error (AC-014).
+        // "every operator" default, not an error (AC-014). site_keys (spec
+        // 0112) is the exact same case, one axis over (0112 AC-013).
         $rowCount = $generator->generate(
             $actor,
             $state['date_from'],
@@ -109,6 +111,7 @@ class GenerateRequestManagementReportJob implements ShouldQueue
             $run->format,
             $disk->path($path),
             ReportOperatorFilter::fromKeysOrAll($state['operator_keys'] ?? null),
+            ReportSiteFilter::fromKeysOrAll($state['site_keys'] ?? null),
         );
 
         $run->update([

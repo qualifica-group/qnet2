@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\Models\User;
 use App\Services\UserService;
 use App\Tables\Concerns\UnwrapsMultiFilter;
+use App\Tables\Users\UserBusinessFunctionColumn;
 use App\Tables\Users\UserColumnCatalog;
 use App\Tables\Users\UserEmploymentColumns;
 use App\Tables\Users\UserGeoColumns;
@@ -93,9 +94,14 @@ class UsersTableDefinition extends AbstractTableDefinition
                 'personalData.contacts' => function ($query): void {
                     $query->where('is_primary', true);
                 },
-                // Employment profile (spec 0015) + its 4 relations, so mapRow
+                // Employment profile (spec 0015) + its relations, so mapRow
                 // reads every employment-derived column entirely from memory.
-                'employment.businessFunction',
+                // The business function is no longer a single FK on the
+                // profile (spec 0111 D-1): the cell aggregates the functions
+                // of the competence ROWS, so the whole nested path is loaded.
+                // Their product category is deliberately NOT loaded: no cell
+                // reads it.
+                UserBusinessFunctionColumn::RELATION_PATH,
                 'employment.company',
                 'employment.reportsTo',
                 // Spec 0103 D-7: the CELL always shows the PHYSICAL site only

@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
+use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\ProductCategory;
@@ -29,7 +30,6 @@ class EmploymentProfileFactory extends Factory
             'is_manager' => false,
             'job_description' => fake()->optional()->jobTitle(),
             'reports_to_id' => null,
-            'business_function_id' => null,
             'relationship_type' => fake()->randomElement(RelationshipTypeEnum::values()),
             'company_id' => null,
             'qualification_type' => fake()->randomElement(QualificationTypeEnum::values()),
@@ -89,16 +89,21 @@ class EmploymentProfileFactory extends Factory
     }
 
     /**
-     * Attaches the given categories as the assignment competence (spec
-     * 0110): same `afterCreating` timing as the site states above, and
-     * freely combinable with them.
+     * Attaches one competence row per category, all paired with $function
+     * (spec 0111): same `afterCreating` timing as the site states above, and
+     * freely combinable with them. The function is explicit, not derived
+     * from the category, so a caller can build both the matching case and
+     * the mismatching one (AC-011/AC-012).
      */
-    public function competentIn(ProductCategory ...$categories): static
+    public function competentIn(BusinessFunction $function, ProductCategory ...$categories): static
     {
-        return $this->afterCreating(function (EmploymentProfile $profile) use ($categories): void {
-            $profile->productCategories()->syncWithoutDetaching(
-                collect($categories)->pluck('id')->all()
-            );
+        return $this->afterCreating(function (EmploymentProfile $profile) use ($function, $categories): void {
+            foreach ($categories as $category) {
+                $profile->productLines()->firstOrCreate([
+                    'business_function_id' => $function->id,
+                    'product_category_id' => $category->id,
+                ]);
+            }
         });
     }
 }

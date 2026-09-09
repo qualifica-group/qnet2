@@ -11,6 +11,7 @@ use App\Services\RequestManagement\Report\ReportBranchQuery;
 use App\Services\RequestManagement\Report\ReportDateRange;
 use App\Services\RequestManagement\Report\ReportIndicator;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
+use App\Services\RequestManagement\Report\ReportSiteFilter;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -39,20 +40,20 @@ final class PhoneCallsIndicator implements ReportIndicator
         private readonly QuoteCountAggregator $aggregator,
     ) {}
 
-    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): IndicatorResult
+    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): IndicatorResult
     {
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators), 'notes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators), 'notes.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites), 'notes.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites), 'notes.id'),
         );
     }
 
     /**
      * @param  array<int, int>  $categoryIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): Builder
+    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor, $operators)
+        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites)
             ->join('notes', 'notes.quote_id', '=', 'quotes.id')
             ->whereNull('notes.deleted_at')
             ->whereColumn('notes.user_id', 'quotes.operator_id')

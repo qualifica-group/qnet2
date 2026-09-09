@@ -130,6 +130,7 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   first_name: (params) => <TextCell {...params} />,
   last_name: (params) => <TextCell {...params} />,
   tax_code: (params) => <TextCell {...params} />,
+  vat_number: (params) => <TextCell {...params} />,
   phone: (params) => <TextCell {...params} />,
   next_callback_at: (params) => <DateTimeCell {...params} optionalTime />,
   quote_workflow_status: (params) => <StatusBadgeCell {...params} />,

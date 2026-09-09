@@ -38,8 +38,9 @@ use Illuminate\Validation\ValidationException;
  * `assert()`). Two copies of these rules would diverge at the first change.
  *
  * Two surfaces, because the two channels report differently:
- *  - rules()/crossRowErrors(): keyed `product_lines.<index>.<field>`, merged
- *    into the FormRequest's own validator alongside the rest of the payload;
+ *  - rules()/crossRowErrors()/pairErrors(): keyed
+ *    `product_lines.<index>.<field>`, merged into the FormRequest's own
+ *    validator alongside the rest of the payload;
  *  - assert(): everything at once, thrown as a single ValidationException on
  *    the key the caller names (an inline PATCH edits ONE cell — there is no
  *    per-row control to land a message on).
@@ -84,13 +85,33 @@ final class ProductLineSetValidator
     }
 
     /**
-     * The cross-row invariants, keyed `<attribute>.<index>.<field>`. Rows that
-     * are not well-formed are skipped: the per-row rules already report them.
+     * The cross-row invariants, keyed `<attribute>.<index>.<field>`: the pair
+     * rules PLUS the card-level one.
      *
      * @param  array<int, mixed>  $lines
      * @return array<string, string>
      */
     public function crossRowErrors(array $lines, string $attribute): array
+    {
+        return [
+            ...$this->pairErrors($lines, $attribute),
+            ...$this->collectionInvariantErrors($lines, $attribute),
+        ];
+    }
+
+    /**
+     * The PAIR rules alone — no repeated {funzione aziendale, categoria}, and
+     * each row's category belonging to exactly the paired function — without
+     * the card-level `single` cap of spec 0077. Exposed separately (spec 0111
+     * D-5) for the owners that carry the collection without that cap: a user's
+     * competence is a free set of pairs, so it reuses these rules and skips
+     * collectionInvariantErrors(). Rows that are not well-formed are skipped:
+     * the per-row rules already report them.
+     *
+     * @param  array<int, mixed>  $lines
+     * @return array<string, string>
+     */
+    public function pairErrors(array $lines, string $attribute): array
     {
         $errors = [];
         $seenPairs = [];
@@ -118,7 +139,7 @@ final class ProductLineSetValidator
             }
         }
 
-        return [...$errors, ...$this->collectionInvariantErrors($lines, $attribute)];
+        return $errors;
     }
 
     /**

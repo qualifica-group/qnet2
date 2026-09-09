@@ -32,7 +32,6 @@ class UserService
         'personalData.birthCity',
         'personalData.residenceCity',
         'employment.reportsTo',
-        'employment.businessFunction',
         'employment.company',
         // The operational-site label is "line1[- city]" (EmploymentResource),
         // so the pivot's sites, their primary address and city must all be
@@ -41,9 +40,12 @@ class UserService
         // remote site (spec 0103): EmploymentResource tells them apart via
         // the pivot's `is_primary` flag, not via separate relations.
         'employment.operationalSites.addresses.city',
-        // Spec 0110: the competence pivot, so EmploymentResource can emit
-        // `product_category_ids`/`product_categories` without lazy-loading.
-        'employment.productCategories',
+        // Spec 0111: the competence rows and both halves of each pair, so
+        // EmploymentResource can emit `product_lines` without lazy-loading.
+        // Since D-1 they are also the only source of the user's business
+        // function, which used to be a column of the profile.
+        'employment.productLines.businessFunction',
+        'employment.productLines.productCategory',
     ];
 
     public function __construct(

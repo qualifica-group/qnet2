@@ -173,6 +173,7 @@ final class RequestRowMapper
             'first_name' => $card?->first_name,
             'last_name' => $card?->last_name,
             'tax_code' => $card?->tax_code,
+            'vat_number' => $card?->vat_number,
             'phone' => $this->primaryPhone($card?->contacts),
         ];
     }

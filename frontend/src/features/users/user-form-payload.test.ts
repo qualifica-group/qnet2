@@ -55,17 +55,16 @@ function draft(overrides: Partial<PersonalDataDraft> = {}): PersonalDataDraft {
 /** Fixture password satisfying the schema's minimum length; not a real credential. */
 const TEST_PASSWORD = 'x'.repeat(12)
 
-/** Blank employment sub-form, mirroring `EMPTY_EMPLOYMENT` in `use-user-form.ts`. */
+/** Blank employment sub-form, mirroring `EMPTY_EMPLOYMENT` in `user-form-defaults.ts`. */
 const emptyEmployment: UserFormValues['employment'] = {
   is_manager: false,
   job_description: '',
   reports_to_id: null,
-  business_function_id: null,
   relationship_type: null,
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
-  product_category_ids: [],
+  product_lines: [],
   qualification_type: null,
   hired_at: '',
   terminated_at: '',
@@ -197,7 +196,6 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
         ...formValues,
         employment: {
           ...emptyEmployment,
-          business_function_id: 3,
           relationship_type: 'employee',
           company_id: 5,
           primary_operational_site_id: 8,
@@ -217,12 +215,11 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
       is_manager: false,
       job_description: 'Backend engineer',
       reports_to_id: null,
-      business_function_id: 3,
       relationship_type: 'employee',
       company_id: 5,
       primary_operational_site_id: 8,
       remote_operational_site_ids: [11, 12],
-      product_category_ids: [],
+      product_lines: [],
       qualification_type: 'coordinator',
       hired_at: '2026-01-15',
       terminated_at: null,
@@ -246,17 +243,56 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     expect(payload.employment.remote_operational_site_ids).toEqual([])
   })
 
-  /** Spec 0110 AC-040: the competence ids ride on the same employment object. */
-  it('AC-040 — carries the product-category competence ids', () => {
+  /** Spec 0111 AC-023: the competence PAIRS ride on the same employment object. */
+  it('AC-023 — carries the competence rows as function/category pairs', () => {
     const payload = buildCreatePayload(
       {
         ...formValues,
-        employment: { ...emptyEmployment, product_category_ids: [21, 22] },
+        employment: {
+          ...emptyEmployment,
+          product_lines: [
+            { business_function_id: 4, product_category_id: 21 },
+            { business_function_id: 4, product_category_id: 22 },
+          ],
+        },
       },
       draft(),
     )
 
-    expect(payload.employment.product_category_ids).toEqual([21, 22])
+    expect(payload.employment.product_lines).toEqual([
+      { business_function_id: 4, product_category_id: 21 },
+      { business_function_id: 4, product_category_id: 22 },
+    ])
+  })
+
+  /** Defense in depth behind the schema: a row missing one id is not a pair. */
+  it('drops a row still missing one of its two ids', () => {
+    const payload = buildCreatePayload(
+      {
+        ...formValues,
+        employment: {
+          ...emptyEmployment,
+          product_lines: [
+            { business_function_id: 4, product_category_id: 21 },
+            { business_function_id: 4, product_category_id: null },
+            { business_function_id: null, product_category_id: 22 },
+          ],
+        },
+      },
+      draft(),
+    )
+
+    expect(payload.employment.product_lines).toEqual([
+      { business_function_id: 4, product_category_id: 21 },
+    ])
+  })
+
+  /** Spec 0111 D-8: an empty set is a legitimate value (the user becomes a jolly). */
+  it('D-8 — serializes an empty competence set as [], never omitted', () => {
+    const payload = buildCreatePayload({ ...formValues, employment: emptyEmployment }, draft())
+
+    expect('product_lines' in payload.employment).toBe(true)
+    expect(payload.employment.product_lines).toEqual([])
   })
 
   it('AC-015 — force-nulls reports_to_id client-side when is_manager is true', () => {
@@ -297,12 +333,11 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
       is_manager: false,
       job_description: null,
       reports_to_id: null,
-      business_function_id: null,
       relationship_type: null,
       company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
-      product_category_ids: [],
+      product_lines: [],
       qualification_type: null,
       hired_at: null,
       terminated_at: null,

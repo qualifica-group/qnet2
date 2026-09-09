@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Resources\EmploymentResource;
+use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -11,8 +14,8 @@ uses(RefreshDatabase::class);
 
 /**
  * GET /api/users/{user} — the employment tree's multi-site membership (spec
- * 0103). Split out of UserCrudTest.php to keep that file under the 500-line
- * hard limit (engineering.md §6).
+ * 0103) and its competence rows (spec 0111). Split out of UserCrudTest.php to
+ * keep that file under the 500-line hard limit (engineering.md §6).
  */
 if (! function_exists('userWithUserAbilities')) {
     function userWithUserAbilities(array $abilities): User
@@ -30,6 +33,55 @@ if (! function_exists('userWithUserAbilities')) {
         return $user;
     }
 }
+
+/**
+ * Spec 0111 AC-010: the competence rows carry the shape every other owner of
+ * the collection emits, and the four keys they replaced are gone for good.
+ */
+it('view: employment carries the competence rows, not the old business-function/category keys (0111 AC-010)', function () {
+    $actor = userWithUserAbilities(['view']);
+    $function = BusinessFunction::factory()->create(['name' => 'Engineering']);
+    $category = ProductCategory::factory()->create(['name' => 'Fibra', 'business_function_id' => $function->id]);
+    $target = User::factory()->create();
+    $profile = EmploymentProfile::factory()->create(['user_id' => $target->id, 'job_description' => 'Backend engineer']);
+    $profile->productLines()->create([
+        'business_function_id' => $function->id,
+        'product_category_id' => $category->id,
+    ]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/users/{$target->id}")
+        ->assertOk()
+        ->assertJsonPath('data.employment.job_description', 'Backend engineer')
+        ->assertJsonCount(1, 'data.employment.product_lines')
+        ->assertJsonPath('data.employment.product_lines.0.business_function', ['id' => $function->id, 'name' => 'Engineering'])
+        ->assertJsonPath('data.employment.product_lines.0.product_category', ['id' => $category->id, 'name' => 'Fibra'])
+        ->assertJsonMissingPath('data.employment.business_function_id')
+        ->assertJsonMissingPath('data.employment.business_function')
+        ->assertJsonMissingPath('data.employment.product_category_ids')
+        ->assertJsonMissingPath('data.employment.product_categories');
+
+    expect($response->json('data.employment.product_lines.0.id'))->toBe($profile->productLines()->value('id'));
+});
+
+/**
+ * The other half of AC-010: without the relation loaded the key is omitted
+ * entirely (same whenLoaded discipline as the site references below), which
+ * is what keeps a resource rendered outside UserService::loadProfileTree()
+ * from lazy-loading.
+ */
+it('view: employment omits product_lines when the relation is not eager-loaded (0111 AC-010)', function () {
+    $function = BusinessFunction::factory()->create();
+    $profile = EmploymentProfile::factory()->create();
+    $profile->productLines()->create([
+        'business_function_id' => $function->id,
+        'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $function->id])->id,
+    ]);
+
+    $payload = EmploymentResource::make($profile->fresh())->resolve();
+
+    expect($payload)->not->toHaveKey('product_lines');
+});
 
 /**
  * AC-009: the response carries the two site ids plus their two reference

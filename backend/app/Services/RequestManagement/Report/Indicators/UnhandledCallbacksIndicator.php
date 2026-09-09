@@ -12,6 +12,7 @@ use App\Services\RequestManagement\Report\ReportBranchQuery;
 use App\Services\RequestManagement\Report\ReportDateRange;
 use App\Services\RequestManagement\Report\ReportIndicator;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
+use App\Services\RequestManagement\Report\ReportSiteFilter;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -27,20 +28,20 @@ final class UnhandledCallbacksIndicator implements ReportIndicator
         private readonly QuoteCountAggregator $aggregator,
     ) {}
 
-    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): IndicatorResult
+    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): IndicatorResult
     {
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators), 'quotes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators), 'quotes.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites), 'quotes.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites), 'quotes.id'),
         );
     }
 
     /**
      * @param  array<int, int>  $categoryIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): Builder
+    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor, $operators)
+        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites)
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
             ->where('current_status.system_key', WorkflowStatusSystemKey::Open->value)
             ->where('quotes.next_callback_at', '>=', $range->start)

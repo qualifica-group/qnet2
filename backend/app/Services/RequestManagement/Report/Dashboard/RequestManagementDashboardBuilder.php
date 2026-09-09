@@ -12,6 +12,7 @@ use App\Services\RequestManagement\Report\ReportBranchRowsBuilder;
 use App\Services\RequestManagement\Report\ReportDateRange;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use App\Services\RequestManagement\Report\ReportRow;
+use App\Services\RequestManagement\Report\ReportSiteFilter;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 
 /**
@@ -28,12 +29,13 @@ use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
  * the six branches by `category_keys`, reused verbatim — the CSV and this
  * dashboard can never see a different set of branches for the same filters.
  *
- * The same holds for the operator selection (spec 0108, D-1): $operators is
- * handed down UNTOUCHED to all three calls below — the two `rows()` and the
- * synthetic summary branch — so the tiles, the section tiles and the
- * per-operator charts are all computed on the same narrowed perimeter, and
- * none of them can end up describing a different set of operators than the
- * CSV generated from the very same filters.
+ * The same holds for the operator selection (spec 0108, D-1) and for the Sede
+ * selection (spec 0112, D-3): $operators and $sites are handed down UNTOUCHED
+ * to all three calls below — the two `rows()` and the synthetic summary branch
+ * — so the tiles, the section tiles and the per-operator charts are all
+ * computed on the same narrowed perimeter, and none of them can end up
+ * describing a different set of requests than the CSV generated from the very
+ * same filters.
  *
  * Rev-3 (user directive 2026-09-08) changed only the SHAPE, never a value:
  * every indicator column is emitted even when it is 0 (D-11), and the charts
@@ -59,25 +61,27 @@ final class RequestManagementDashboardBuilder
         array $categoryKeys,
         RequestManagementReportRowMode $rowMode,
         ?ReportOperatorFilter $operators = null,
+        ?ReportSiteFilter $sites = null,
     ): RequestManagementDashboardResult {
         $operators ??= ReportOperatorFilter::all();
+        $sites ??= ReportSiteFilter::all();
 
         // Step 1: every selected branch's own TOTALE row — also the source
         // of the selected-branch list itself (the overall tiles need it
         // regardless of $rowMode, D-3).
-        $totalsByBranch = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::TotalOnly, $operators);
+        $totalsByBranch = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::TotalOnly, $operators, $sites);
         $branches = array_map(static fn (array $pair): ReportBranch => $pair['branch'], $totalsByBranch);
         $range = ReportDateRange::fromRequest($dateFrom, $dateTo);
 
         // Step 2: the overall tiles — the SAME builder, on a synthetic union
         // branch (D-8), never a sum of the per-category totals.
-        $summary = $this->buildOverallSummary($branches, $actor, $range, $operators);
+        $summary = $this->buildOverallSummary($branches, $actor, $range, $operators, $sites);
 
         // Step 3: the GA2 rows of each branch, fetched only when $rowMode
         // actually asks for an operator breakdown (D-3).
         $operatorRows = $rowMode === RequestManagementReportRowMode::TotalOnly
             ? []
-            : $this->operatorRowsByBranchKey($actor, $dateFrom, $dateTo, $categoryKeys, $operators);
+            : $this->operatorRowsByBranchKey($actor, $dateFrom, $dateTo, $categoryKeys, $operators, $sites);
 
         // Step 4: one section per selected category, in the report's own
         // branch order (D-10).
@@ -99,7 +103,7 @@ final class RequestManagementDashboardBuilder
      * @param  array<int, ReportBranch>  $branches
      * @return array<int, DashboardSummaryItem>
      */
-    private function buildOverallSummary(array $branches, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators): array
+    private function buildOverallSummary(array $branches, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ReportSiteFilter $sites): array
     {
         $synthetic = new ReportBranch(
             key: '__summary__',
@@ -109,7 +113,7 @@ final class RequestManagementDashboardBuilder
         );
 
         /** @var ReportRow $total */
-        [$total] = $this->rowsBuilder->build($synthetic, $actor, $range, RequestManagementReportRowMode::TotalOnly, $operators);
+        [$total] = $this->rowsBuilder->build($synthetic, $actor, $range, RequestManagementReportRowMode::TotalOnly, $operators, $sites);
 
         return $this->summaryOf($total);
     }
@@ -196,11 +200,11 @@ final class RequestManagementDashboardBuilder
      * @param  array<int, string>  $categoryKeys
      * @return array<string, array<int, ReportRow>>
      */
-    private function operatorRowsByBranchKey(?User $actor, string $dateFrom, string $dateTo, array $categoryKeys, ReportOperatorFilter $operators): array
+    private function operatorRowsByBranchKey(?User $actor, string $dateFrom, string $dateTo, array $categoryKeys, ReportOperatorFilter $operators, ReportSiteFilter $sites): array
     {
         $rowsByKey = [];
 
-        foreach ($this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::OperatorsOnly, $operators) as $pair) {
+        foreach ($this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::OperatorsOnly, $operators, $sites) as $pair) {
             $rowsByKey[$pair['branch']->key] = $pair['rows'];
         }
 

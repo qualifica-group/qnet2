@@ -20,6 +20,13 @@ interface ProductLinesFieldProps {
   /** Rows whose labels are already known without a fetch (edit load, from-lead prefill, in-form pickers). */
   knownLines?: ProductLine[]
   disabled?: boolean
+  /**
+   * Spec 0111 D-5: `false` where the row set is a person's competence, not a
+   * commercial card — there is no "one deal, one single-mode line" invariant to
+   * enforce there. Defaults to `true`: opportunity, project, campaign and
+   * request forms keep capping the card (AC-041).
+   */
+  enforceManagementModeCap?: boolean
 }
 
 /**
@@ -33,7 +40,8 @@ interface ProductLinesFieldProps {
  * is chosen. Every row is independent: spec 0077 rev.2 (user directive
  * 2026-08-31) revoked INV-1/INV-2, so the function of a row after the first
  * is neither prefilled, nor locked, nor confined to the first row's branch —
- * only the `single`-mode row cap survives (AC-041). All non-render logic
+ * only the `single`-mode row cap survives (AC-041), and even that one is
+ * opt-out (`enforceManagementModeCap`, spec 0111 D-5). All non-render logic
  * (label resolution) lives in `useProductLinesField` — this component only
  * renders it.
  *
@@ -42,7 +50,13 @@ interface ProductLinesFieldProps {
  * (`ProductCategoryTreeSelect`, user directive 2026-08-03) so its parents are
  * listed with it — disabled where they may not be picked.
  */
-export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LINES, disabled = false }: ProductLinesFieldProps) {
+export function ProductLinesField({
+  value,
+  onChange,
+  knownLines = EMPTY_KNOWN_LINES,
+  disabled = false,
+  enforceManagementModeCap = true,
+}: ProductLinesFieldProps) {
   const { t } = useTranslation()
   const {
     addRow,
@@ -51,7 +65,7 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
     setRowProductCategory,
     businessFunctionLabel,
     canAddRow,
-  } = useProductLinesField({ value, onChange, knownLines })
+  } = useProductLinesField({ value, onChange, knownLines, enforceManagementModeCap })
   // One quick-create wiring per resource, shared by every row: the refs it
   // tracks are matched by id, so a function created from row 2 also labels
   // row 5 if picked there (spec 0028).

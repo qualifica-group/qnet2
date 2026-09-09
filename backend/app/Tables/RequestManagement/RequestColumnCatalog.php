@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\RequestManagement;
 
 use App\Rules\TaxCode;
+use App\Rules\VatNumber;
 use App\Tables\Shared\OfferLinesColumn;
 
 /**
@@ -237,6 +238,14 @@ final class RequestColumnCatalog
             // format + control character here: the anagraphic-consistency check
             // needs the whole card and lives in ValidatesRequestClientProfile.
             self::clientColumn('tax_code', 'requestManagement.columns.taxCode', 'client_tax_code', [new TaxCode], 'tax_code'),
+            // "Partita IVA" (direttiva utente 2026-09-09): declared right
+            // beside the codice fiscale because the two now answer ONE gate —
+            // a positive close demands either of them
+            // (RequestWorkflowStatusWriter), so the operator must be able to
+            // fill the missing one without leaving the grid. Same card, same
+            // sparse `client_*` write key, and the `vat_number` format so a
+            // typed `IT 007431 10157` lands canonical like the card form's own.
+            self::clientColumn('vat_number', 'requestManagement.columns.vatNumber', 'client_vat_number', [new VatNumber], 'vat_number'),
             self::clientColumn('phone', 'requestManagement.columns.phone', 'client_phone', format: 'phone'),
             [
                 // Real DB column on `quotes` itself since the user directive
@@ -328,7 +337,7 @@ final class RequestColumnCatalog
      * matrix can open the phone without opening the tax code (user decision).
      *
      * Sortable + filterable + searchable (user directive 2026-08-03): these
-     * four were the last columns of the grid an operator could not narrow from
+     * were the last columns of the grid an operator could not narrow from
      * the header. Since NONE of them is a real `opportunities` column, all
      * three hooks are DERIVED — RequestClientColumns translates them onto the
      * card relation (`whereHas`/correlated subquery), never a plain LIKE or
@@ -337,7 +346,7 @@ final class RequestColumnCatalog
      * checklist + typed conditions), backed by the same collaborator's
      * distinct values.
      *
-     * `nullable` is true for all four on purpose: whether a value is MANDATORY
+     * `nullable` is true for all of them on purpose: whether a value is MANDATORY
      * is not a property of the column but of the resolved field
      * (FieldPermission::$required, enforced by TableCellUpdateService step
      * 4.5). Declaring it here would freeze in the catalogue a rule the

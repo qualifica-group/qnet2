@@ -136,8 +136,8 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // attribution block (see OpportunitiesAuthorization's docblock for
             // the operational-sites.viewAny ceiling rule this field shares).
             new FieldDefinition('operational_site_id', 'select'),
-            // Client anagraphic block (spec 0055, D-8, user decision): FOUR
-            // separate keys rather than one `client_identity`, so the
+            // Client anagraphic block (spec 0055, D-8, user decision): one
+            // separate key per column rather than one `client_identity`, so the
             // role_field_permissions matrix can make the phone editable
             // without the tax code. None of them is a column on
             // `opportunities`: they address the client Registry's
@@ -146,6 +146,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('client_first_name', 'text'),
             new FieldDefinition('client_last_name', 'text'),
             new FieldDefinition('client_tax_code', 'text'),
+            new FieldDefinition('client_vat_number', 'text'),
             new FieldDefinition('client_phone', 'text'),
             // "Informazioni aggiuntive" (user directive 2026-08-07): ONE key
             // for the whole dynamic block, exactly as QuotesAuthorization
@@ -202,6 +203,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'client_first_name' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'client_last_name' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'client_tax_code' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'client_vat_number' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'client_phone' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'quote_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

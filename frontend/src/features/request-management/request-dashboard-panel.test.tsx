@@ -23,11 +23,13 @@ import type { RequestDashboardData } from '@/features/request-management/dashboa
 
 const fetchRequestManagementReportCategoriesMock = vi.fn()
 const fetchRequestManagementReportOperatorsMock = vi.fn()
+const fetchRequestManagementReportSitesMock = vi.fn()
 vi.mock('@/features/request-management/report-api', () => ({
   fetchRequestManagementReportCategories: (...args: unknown[]) =>
     fetchRequestManagementReportCategoriesMock(...args),
   fetchRequestManagementReportOperators: (...args: unknown[]) =>
     fetchRequestManagementReportOperatorsMock(...args),
+  fetchRequestManagementReportSites: (...args: unknown[]) => fetchRequestManagementReportSitesMock(...args),
   // Pulled in by the filter sheet's `useRequestReport`; no test here drives a run.
   createRequestManagementReport: vi.fn(),
   getRequestManagementReport: vi.fn(),
@@ -58,6 +60,7 @@ function dashboardData(overrides: Partial<RequestDashboardData> = {}): RequestDa
       category_keys: ['gol', 'consulenza'],
       row_mode: 'all',
       operator_keys: null,
+      site_keys: null,
     },
     summary: [{ key: 'phone_calls', label: 'N. Telefonate Effettuate', value: 12 }],
     categories: [
@@ -112,6 +115,8 @@ beforeEach(() => {
   // Spec 0109: the tests below assert the branch flow; the GA2 list is opted
   // into per test (see the operator-filter cases) and empty otherwise.
   fetchRequestManagementReportOperatorsMock.mockReset().mockResolvedValue([])
+  // Spec 0112: the site list is opted into by its own test file, empty here.
+  fetchRequestManagementReportSitesMock.mockReset().mockResolvedValue([])
   fetchRequestManagementDashboardMock.mockReset().mockResolvedValue(dashboardData())
 })
 

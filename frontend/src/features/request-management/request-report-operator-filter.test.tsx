@@ -17,12 +17,14 @@ import type { RequestDashboardData } from '@/features/request-management/dashboa
 
 const fetchRequestManagementReportCategoriesMock = vi.fn()
 const fetchRequestManagementReportOperatorsMock = vi.fn()
+const fetchRequestManagementReportSitesMock = vi.fn()
 const createRequestManagementReportMock = vi.fn()
 vi.mock('@/features/request-management/report-api', () => ({
   fetchRequestManagementReportCategories: (...args: unknown[]) =>
     fetchRequestManagementReportCategoriesMock(...args),
   fetchRequestManagementReportOperators: (...args: unknown[]) =>
     fetchRequestManagementReportOperatorsMock(...args),
+  fetchRequestManagementReportSites: (...args: unknown[]) => fetchRequestManagementReportSitesMock(...args),
   createRequestManagementReport: (...args: unknown[]) => createRequestManagementReportMock(...args),
   getRequestManagementReport: vi.fn(),
   downloadRequestManagementReport: vi.fn(),
@@ -53,6 +55,7 @@ const DASHBOARD_DATA: RequestDashboardData = {
     category_keys: ['gol'],
     row_mode: 'all',
     operator_keys: null,
+    site_keys: null,
   },
   summary: [],
   categories: [],
@@ -66,6 +69,9 @@ beforeEach(() => {
   window.localStorage.clear()
   fetchRequestManagementReportCategoriesMock.mockReset().mockResolvedValue(CATEGORIES)
   fetchRequestManagementReportOperatorsMock.mockReset().mockResolvedValue(OPERATORS)
+  // Spec 0112: the site group has its own test file; an empty list keeps it
+  // out of the way of the operator-group assertions here.
+  fetchRequestManagementReportSitesMock.mockReset().mockResolvedValue([])
   fetchRequestManagementDashboardMock.mockReset().mockResolvedValue(DASHBOARD_DATA)
   createRequestManagementReportMock.mockReset().mockResolvedValue({
     id: 1,

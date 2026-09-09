@@ -2,8 +2,10 @@
 
 use App\Models\BusinessFunction;
 use App\Models\Company;
+use App\Models\EmploymentProductLine;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Database\Seeders\DemoEmploymentProfileSeeder;
 use Database\Seeders\DemoRolesSeeder;
@@ -49,25 +51,18 @@ it('seeds at least 2 managers and every other seeded user reports to one of them
     }
 });
 
-it('fills the contractual FKs (function/company) and the site membership pivot from the seeded lookups', function () {
+it('fills the company FK and the site membership pivot from the seeded lookups', function () {
     $this->seed(RolePermissionSeeder::class);
     $this->seed(DemoRolesSeeder::class);
     $this->seed(DemoUsersSeeder::class);
-    BusinessFunction::factory()->count(4)->create();
     Company::factory()->count(4)->create();
     OperationalSite::factory()->count(4)->create();
 
     $this->seed(DemoEmploymentProfileSeeder::class);
 
-    // Each FK is present ~75% of the time; across every seeded profile the
-    // two columns are reliably non-empty.
-    expect(EmploymentProfile::whereNotNull('business_function_id')->count())->toBeGreaterThanOrEqual(1);
+    // The FK is present ~75% of the time; across every seeded profile the
+    // column is reliably non-empty.
     expect(EmploymentProfile::whereNotNull('company_id')->count())->toBeGreaterThanOrEqual(1);
-
-    // Every assigned FK points at a real seeded row.
-    $businessFunctionIds = BusinessFunction::pluck('id')->all();
-    EmploymentProfile::whereNotNull('business_function_id')->pluck('business_function_id')
-        ->each(fn (int $id) => expect($id)->toBeIn($businessFunctionIds));
 
     // Spec 0103: the site membership lives on the pivot, at most one
     // physical row per profile, plus some remote ones exercising D-1.
@@ -85,31 +80,82 @@ it('fills the contractual FKs (function/company) and the site membership pivot f
         });
 });
 
-it('leaves the contractual FKs and the site membership empty when no lookups are seeded', function () {
+it('leaves the company FK, the site membership and the competence rows empty when no lookups are seeded', function () {
     $this->seed(RolePermissionSeeder::class);
     $this->seed(DemoRolesSeeder::class);
     $this->seed(DemoUsersSeeder::class);
 
     $this->seed(DemoEmploymentProfileSeeder::class);
 
-    expect(EmploymentProfile::whereNotNull('business_function_id')->count())->toBe(0);
     expect(EmploymentProfile::whereNotNull('company_id')->count())->toBe(0);
     expect(EmploymentProfile::has('operationalSites')->count())->toBe(0);
+    expect(EmploymentProfile::has('productLines')->count())->toBe(0);
 });
 
-it('is idempotent — re-running does not duplicate employment rows nor site memberships', function () {
+/**
+ * Spec 0111: the competence is a collection of (function, category) rows, and
+ * the seeder must only ever pair a category with its EFFECTIVE business
+ * function — anything else is data the user form would refuse to save.
+ */
+it('seeds competence rows pairing each category with its effective business function', function () {
+    $this->seed(RolePermissionSeeder::class);
+    $this->seed(DemoRolesSeeder::class);
+    $this->seed(DemoUsersSeeder::class);
+    $functions = BusinessFunction::factory()->count(2)->create();
+    $root = ProductCategory::factory()->create(['business_function_id' => $functions->first()->id]);
+    // An inheriting child (spec 0023): its row must carry the ROOT's function.
+    ProductCategory::factory()->childOf($root)->create();
+    ProductCategory::factory()->create(['business_function_id' => $functions->last()->id]);
+
+    $this->seed(DemoEmploymentProfileSeeder::class);
+
+    expect(EmploymentProfile::has('productLines')->count())->toBeGreaterThanOrEqual(1);
+
+    $expectedFunctionByCategory = ProductCategory::all()
+        ->mapWithKeys(fn (ProductCategory $category): array => [
+            $category->id => $category->business_function_id ?? $root->business_function_id,
+        ]);
+
+    EmploymentProductLine::all()->each(function (EmploymentProductLine $line) use ($expectedFunctionByCategory): void {
+        expect($line->business_function_id)->toBe($expectedFunctionByCategory[$line->product_category_id]);
+    });
+});
+
+it('does not seed competence rows on categories that are not selectable', function () {
+    $this->seed(RolePermissionSeeder::class);
+    $this->seed(DemoRolesSeeder::class);
+    $this->seed(DemoUsersSeeder::class);
+    $function = BusinessFunction::factory()->create();
+    $hidden = ProductCategory::factory()->create([
+        'business_function_id' => $function->id,
+        'is_selectable' => false,
+    ]);
+    ProductCategory::factory()->create(['business_function_id' => $function->id]);
+
+    $this->seed(DemoEmploymentProfileSeeder::class);
+
+    expect(EmploymentProductLine::where('product_category_id', $hidden->id)->exists())->toBeFalse()
+        ->and(EmploymentProductLine::count())->toBeGreaterThanOrEqual(1);
+});
+
+it('is idempotent — re-running does not duplicate employment rows, site memberships nor competence rows', function () {
     $this->seed(RolePermissionSeeder::class);
     $this->seed(DemoRolesSeeder::class);
     $this->seed(DemoUsersSeeder::class);
     OperationalSite::factory()->count(4)->create();
+    ProductCategory::factory()->count(3)->create([
+        'business_function_id' => BusinessFunction::factory()->create()->id,
+    ]);
     $this->seed(DemoEmploymentProfileSeeder::class);
     $countBefore = EmploymentProfile::count();
     $membershipsBefore = DB::table('employment_profile_operational_site')->count();
+    $linesBefore = EmploymentProductLine::count();
 
     $this->seed(DemoEmploymentProfileSeeder::class);
 
     expect(EmploymentProfile::count())->toBe($countBefore);
     expect(DB::table('employment_profile_operational_site')->count())->toBe($membershipsBefore);
+    expect(EmploymentProductLine::count())->toBe($linesBefore);
 });
 
 // ---------------------------------------------------------------------------
@@ -142,6 +188,19 @@ it('UserFactory::withEmployment()/manager()/reportsTo() attach an employment pro
 
     $plain = User::factory()->withEmployment()->create();
     expect($plain->employment)->not->toBeNull();
+});
+
+it('EmploymentProfileFactory::competentIn() attaches one competence row per category, all on the given function', function () {
+    $function = BusinessFunction::factory()->create();
+    $first = ProductCategory::factory()->create();
+    $second = ProductCategory::factory()->create();
+
+    $employment = EmploymentProfile::factory()->competentIn($function, $first, $second)->create();
+
+    expect($employment->productLines()->pluck('product_category_id')->all())
+        ->toEqualCanonicalizing([$first->id, $second->id])
+        ->and($employment->productLines()->pluck('business_function_id')->unique()->all())
+        ->toBe([$function->id]);
 });
 
 it('EmploymentProfileFactory::physicalSite() attaches the given site as is_primary', function () {

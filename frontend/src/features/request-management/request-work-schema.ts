@@ -42,6 +42,24 @@ const MAX_OFFER_LINES = 200
 const OFFER_LINES_REQUIRED_STATUS_GROUPS = new Set(['closed_won', 'closed_lost', 'validated'])
 
 /**
+ * Direttiva utente 2026-09-09: the `WorkflowStatusGroup` a POSITIVE close
+ * lands in — the only destination that demands the client's fiscal identity
+ * (`RequestWorkflowStatusWriter::assertClientFiscalIdentity()`).
+ */
+const CLOSED_WON_STATUS_GROUP = 'closed_won'
+
+/**
+ * Whether the buffered card carries a fiscal identifier. EITHER one satisfies
+ * the gate (decisione utente 2026-09-09): a private client has no partita IVA
+ * and a company's own `tax_code` IS its eleven-digit code, so demanding both
+ * would make one of the two kinds unclosable. A client with no card at all
+ * carries neither — the server answers the same way.
+ */
+function hasFiscalIdentity(identity: PersonalDataDraft | null): boolean {
+  return (identity?.tax_code ?? '').trim() !== '' || (identity?.vat_number ?? '').trim() !== ''
+}
+
+/**
  * The three collectors below are invoked from the top-level refinement rather
  * than attached to their field: only there is it known whether the block is
  * going to travel at all (see `buildRequestWorkSchema`).
@@ -312,6 +330,30 @@ export function buildRequestWorkSchema(
           code: 'custom',
           path: ['offer_lines'],
           message: t('quotes.form.offerLinesRequiredForStatus'),
+        })
+      }
+
+      // Direttiva utente 2026-09-09 (rev-2): mirror of
+      // `UpdateRequestRequest::validateClientFiscalIdentity()`. Unlike the two
+      // rules above this one is an INVARIANT, not a transition gate: the panel
+      // refuses to save while the request SITS in (or lands on) `closed_won`
+      // and the client carries neither codice fiscale nor partita IVA — which
+      // is what surfaces the requests closed BEFORE the rule existed, on which
+      // no transition will ever fire again. Not gated on the client block
+      // travelling either: the rule is about the state the request is saved
+      // in, not about what this submit happens to edit.
+      if (
+        targetStatusId !== null &&
+        statuses.find((status) => status.id === targetStatusId)?.group === CLOSED_WON_STATUS_GROUP &&
+        !hasFiscalIdentity(values.client_identity)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['client_identity'],
+          message:
+            targetStatusId === original.quote_workflow_status_id
+              ? t('requestManagement.workPanel.validation.fiscalIdentityRequiredOnClosedWon')
+              : t('requestManagement.workPanel.validation.fiscalIdentityRequiredForStatus'),
         })
       }
 

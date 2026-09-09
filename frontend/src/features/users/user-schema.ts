@@ -32,16 +32,23 @@ function buildEmploymentSchema(t: TFunction) {
       is_manager: z.boolean(),
       job_description: z.string().max(255, t('users.form.employment.jobDescriptionMax')),
       reports_to_id: z.number().nullable(),
-      business_function_id: z.number().nullable(),
       relationship_type: z.enum(RELATIONSHIP_TYPES).nullable(),
       company_id: z.number().nullable(),
       // Site membership (spec 0103): at most one physical site, plus zero or
       // more remote sites — both operative to the same effect (D-1).
       primary_operational_site_id: z.number().nullable(),
       remote_operational_site_ids: z.array(z.number()),
-      // Assignment competence (spec 0110): the product categories the user is
-      // competent for, on the same per-field tri-state as the remote sites.
-      product_category_ids: z.array(z.number()),
+      // Assignment competence (spec 0111): business-function -> product-category
+      // rows, on the same per-field tri-state as the remote sites. Either id may
+      // still be null WHILE a row is being filled — that is how the shared
+      // `ProductLinesField` creates one — so completeness is a refinement, not
+      // a shape constraint.
+      product_lines: z.array(
+        z.object({
+          business_function_id: z.number().nullable(),
+          product_category_id: z.number().nullable(),
+        }),
+      ),
       qualification_type: z.enum(QUALIFICATION_TYPES).nullable(),
       hired_at: z.string(),
       terminated_at: z.string(),
@@ -54,6 +61,21 @@ function buildEmploymentSchema(t: TFunction) {
           code: 'custom',
           path: ['terminated_at'],
           message: t('users.form.employment.terminatedBeforeHiredAt'),
+        })
+      }
+      // A competence set may be EMPTY (spec 0111 D-8: the user is then a
+      // jolly for the assignment), but a half-filled row is not a pair and
+      // must never reach the server. The issue is raised on the COLLECTION,
+      // not on the row: the whole editor is one `MetaField`, so only an error
+      // at its own path is rendered under it.
+      const hasIncompleteRow = values.product_lines.some(
+        (row) => row.business_function_id === null || row.product_category_id === null,
+      )
+      if (hasIncompleteRow) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['product_lines'],
+          message: t('users.form.employment.productLineIncomplete'),
         })
       }
     })

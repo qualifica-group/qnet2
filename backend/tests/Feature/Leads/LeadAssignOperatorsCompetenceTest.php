@@ -39,18 +39,21 @@ if (! function_exists('leadCompetenceActor')) {
 
 if (! function_exists('leadCompetenceOperator')) {
     /**
-     * An operator employed at $site, competent in $categories under
-     * $function. No function and no category is the wildcard of INV-4b.
+     * An operator employed at $site, carrying one competence row per
+     * category, all paired with $function (spec 0111 D-2). Called without a
+     * function the profile stays rowless: the wildcard of INV-4b.
      */
     function leadCompetenceOperator(OperationalSite $site, ?BusinessFunction $function = null, ProductCategory ...$categories): User
     {
         $operator = User::factory()->create();
 
-        EmploymentProfile::factory()
-            ->for($operator)
-            ->physicalSite($site)
-            ->competentIn(...$categories)
-            ->create(['business_function_id' => $function?->id]);
+        $factory = EmploymentProfile::factory()->for($operator)->physicalSite($site);
+
+        if ($function !== null) {
+            $factory = $factory->competentIn($function, ...$categories);
+        }
+
+        $factory->create();
 
         return $operator;
     }

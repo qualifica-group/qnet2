@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\RequestManagement;
 
 use App\Authorization\AuthorizationRegistry;
+use App\Enums\WorkflowStatusGroup;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
@@ -13,7 +14,9 @@ use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Models\Quote;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\RequestManagement\RequestWorkflowStatusWriter;
 use App\Support\ManagerPositions;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -378,6 +381,55 @@ class UpdateRequestRequest extends FormRequest
         return $slots;
     }
 
+    /**
+     * Direttiva utente 2026-09-09, rev-2 (decisione utente): on THIS channel
+     * the client's fiscal identity is an INVARIANT of the record, not merely a
+     * gate on the transition — the panel refuses to save a request that SITS
+     * in `closed_won` while its client carries neither codice fiscale nor
+     * partita IVA, whatever else the submit changes. That is what surfaces the
+     * requests closed BEFORE the rule existed: on those, the transition gate
+     * in RequestWorkflowStatusWriter never fires again (spec 0083 AC-026: a
+     * status that does not change is not an advance, and the panel does not
+     * even send the key).
+     *
+     * Deliberately HERE and not in updateWork(): this FormRequest is the work
+     * panel's own channel, so the inline grid cells that bypass it stay
+     * editable on those same records — rescheduling a callback in-cell is not
+     * the moment to demand an anagraphic. The grid's status cell remains
+     * covered by the transition gate, which every channel reaches.
+     *
+     * The predicate is the writer's own (one rule, one place), fed the
+     * SUBMITTED client block: filling the codice fiscale and saving in the
+     * same request satisfies it.
+     */
+    private function validateClientFiscalIdentity(Validator $validator, Quote $quote): void
+    {
+        if ($validator->errors()->isNotEmpty()) {
+            return; // The submitted card is not well-formed enough to read yet.
+        }
+
+        $submitted = $this->input('quote_workflow_status_id');
+        $isTransition = is_numeric($submitted) && (int) $submitted !== $quote->quote_workflow_status_id;
+        $resultingStatusId = $isTransition ? (int) $submitted : $quote->quote_workflow_status_id;
+        $quote->loadMissing('opportunity');
+
+        if ($resultingStatusId === null || ! $quote->opportunity instanceof Model) {
+            return;
+        }
+
+        if (QuoteWorkflowStatus::query()->find($resultingStatusId)?->group !== WorkflowStatusGroup::ClosedWon) {
+            return;
+        }
+
+        if (app(RequestWorkflowStatusWriter::class)->hasFiscalIdentity($quote->opportunity, $this->clientProfilePayload())) {
+            return;
+        }
+
+        $validator->errors()->add('client_identity', __($isTransition
+            ? 'request-management.fiscal_identity_required_for_status'
+            : 'request-management.fiscal_identity_required_on_closed_won'));
+    }
+
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
@@ -405,6 +457,9 @@ class UpdateRequestRequest extends FormRequest
             // rejection.
             $this->validateQuoteWorkflowStatusRequiresOfferLine($validator, $quote);
             $this->validateClientProfile($validator);
+            // Decisione utente 2026-09-09: the fiscal identity is an INVARIANT
+            // on this channel, not only a transition gate — see the method.
+            $this->validateClientFiscalIdentity($validator, $quote);
             // Write-path counterpart of the `permissions` block (spec 0004/
             // 0008): a field the actor's role may not edit is rejected 422
             // when its value actually CHANGES, so the panel's per-field

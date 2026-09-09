@@ -2,13 +2,12 @@
 
 namespace App\Http\Resources;
 
-use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
-use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -27,10 +26,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * collection — so eager-loading `operationalSites.addresses.city` covers
  * every one of the four keys with a single relation.
  *
- * The assignment competence (spec 0110) follows the same discipline:
- * `product_category_ids` and `product_categories` are emitted only when
- * `productCategories` was eager-loaded, since reading the ids goes through
- * that very collection (EmploymentProfile::productCategoryIds()).
+ * The assignment competence (spec 0111) follows the same discipline:
+ * `product_lines` is emitted only when `productLines` was eager-loaded. It
+ * REPLACES the former `business_function_id`/`business_function` pair (D-1
+ * dropped the column) and the category-only keys of spec 0110, and carries
+ * the same shape every other owner of the collection emits (see
+ * OpportunityResource::summarizeProductLines()).
  */
 class EmploymentResource extends JsonResource
 {
@@ -51,22 +52,17 @@ class EmploymentResource extends JsonResource
             'break_daily_minutes' => $this->break_daily_minutes,
 
             'reports_to_id' => $this->reports_to_id,
-            'business_function_id' => $this->business_function_id,
             'company_id' => $this->company_id,
             'primary_operational_site_id' => $this->primary_operational_site_id,
             'remote_operational_site_ids' => $this->remote_operational_site_ids,
-            'product_category_ids' => $this->when(
-                $this->relationLoaded('productCategories'),
-                fn (): array => $this->product_category_ids,
+            'product_lines' => $this->when(
+                $this->relationLoaded('productLines'),
+                fn (): array => $this->summarizeProductLines($this->productLines),
             ),
 
             'reports_to' => $this->when(
                 $this->relationLoaded('reportsTo') && $this->reportsTo !== null,
                 fn (): array => $this->reference($this->reportsTo, static fn (User $user): string => $user->name),
-            ),
-            'business_function' => $this->when(
-                $this->relationLoaded('businessFunction') && $this->businessFunction !== null,
-                fn (): array => $this->reference($this->businessFunction, static fn (BusinessFunction $function): string => $function->name),
             ),
             'company' => $this->when(
                 $this->relationLoaded('company') && $this->company !== null,
@@ -76,13 +72,6 @@ class EmploymentResource extends JsonResource
                 $this->relationLoaded('operationalSites') && $this->primarySite() !== null,
                 fn (): array => $this->reference($this->primarySite(), $this->operationalSiteLabel(...), $this->operationalSiteSubtitle(...)),
             ),
-            'product_categories' => $this->when(
-                $this->relationLoaded('productCategories'),
-                fn (): array => $this->productCategories
-                    ->map(fn (ProductCategory $category): array => $this->reference($category, static fn (ProductCategory $item): string => $item->name))
-                    ->values()
-                    ->all(),
-            ),
             'remote_operational_sites' => $this->when(
                 $this->relationLoaded('operationalSites'),
                 fn (): array => $this->remoteSites()
@@ -91,6 +80,36 @@ class EmploymentResource extends JsonResource
                     ->all(),
             ),
         ];
+    }
+
+    /**
+     * The competence rows in the shape shared by every owner of the
+     * collection (spec 0111): `{id, business_function, product_category}`,
+     * each reference `{id, name}` — deliberately NOT the `{id, label}`
+     * reference() shape used by this resource's other relations, so the
+     * frontend reads a user's rows exactly as it reads an opportunity's.
+     *
+     * @param  iterable<int, Model>  $lines
+     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
+     */
+    private function summarizeProductLines(iterable $lines): array
+    {
+        return collect($lines)
+            ->map(fn (Model $line): array => [
+                'id' => $line->id,
+                'business_function' => $this->summarizeByName($line->businessFunction),
+                'product_category' => $this->summarizeByName($line->productCategory),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function summarizeByName(?Model $related): ?array
+    {
+        return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
     }
 
     /**

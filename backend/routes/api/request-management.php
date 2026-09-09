@@ -62,6 +62,9 @@ Route::get('request-management/report/dashboard', RequestManagementDashboardCont
 // Spec 0108: the GA2 Operatore the report may be filtered by. Same
 // "declared before report/{exportRun}" rule as the two literal segments above.
 Route::get('request-management/report/operators', [RequestManagementReportController::class, 'operators']);
+// Spec 0112: the Sede operativa the report may be filtered by. Same
+// "declared before report/{exportRun}" rule as the three literal segments above.
+Route::get('request-management/report/sites', [RequestManagementReportController::class, 'sites']);
 // ->whereNumber() on top of the declaration order (rev-2 routing_trap):
 // the order alone works until the file gets reorganised, the constraint
 // does not.

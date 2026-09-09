@@ -13,13 +13,17 @@ uses(RefreshDatabase::class);
 
 /**
  * Feature coverage for AC-012 (spec 0015): UsersAuthorization::fields()
- * includes the 12 `employment.*` keys; a role with a field denied in the
+ * includes the 13 `employment.*` keys; a role with a field denied in the
  * matrix cannot write it (ceiling respected), and pre-existing values are
  * preserved (CHANGE-based enforcement, spec 0008).
+ *
+ * Spec 0111 replaced `employment.business_function_id` and
+ * `employment.product_category_ids` with the single `employment.product_lines`
+ * collection.
  */
 const EMPLOYMENT_FIELD_KEYS = [
     'employment.is_manager', 'employment.job_description', 'employment.reports_to_id',
-    'employment.business_function_id', 'employment.relationship_type', 'employment.company_id',
+    'employment.product_lines', 'employment.relationship_type', 'employment.company_id',
     'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
     'employment.qualification_type', 'employment.hired_at',
     'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
@@ -42,7 +46,7 @@ if (! function_exists('employmentFieldPermActor')) {
     }
 }
 
-it('AC-012: permissions.fields includes the 12 employment.* keys, editable when the actor may update', function () {
+it('AC-012: permissions.fields includes the 13 employment.* keys, editable when the actor may update', function () {
     $actor = employmentFieldPermActor(['view', 'update']);
     $target = User::factory()->withEmployment()->create();
     Sanctum::actingAs($actor);

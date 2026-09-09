@@ -18,6 +18,8 @@ interface UseProductLinesFieldArgs {
   onChange: (next: ProductLineRow[]) => void
   /** Rows whose labels are already known without a fetch: edit load, from-lead prefill, in-form pickers. */
   knownLines: ProductLine[]
+  /** Spec 0111 D-5: `false` only where the row set is NOT a commercial card (see `canAddRow`). */
+  enforceManagementModeCap?: boolean
 }
 
 /** Builds the `{id: name}` lookup out of a set of already-labeled lines. The CATEGORY labels need no map: the row's picker reads them off the tree it already renders. */
@@ -45,7 +47,12 @@ function indexKnownLabels(lines: ProductLine[]): LabelMap {
  * picker reads the whole category tree (user directive 2026-08-03) and
  * already holds every name it can show.
  */
-export function useProductLinesField({ value, onChange, knownLines }: UseProductLinesFieldArgs) {
+export function useProductLinesField({
+  value,
+  onChange,
+  knownLines,
+  enforceManagementModeCap = true,
+}: UseProductLinesFieldArgs) {
   const queryClient = useQueryClient()
   const [fetchedBusinessFunctionLabels, setFetchedBusinessFunctionLabels] = useState<LabelMap>({})
   // Spec 0077: the card's policy is resolved against the SAME cached category
@@ -56,8 +63,12 @@ export function useProductLinesField({ value, onChange, knownLines }: UseProduct
   const knownBusinessFunctionLabels = indexKnownLabels(knownLines)
   const managementMode: CategoryManagementMode | null = resolveRowSetManagementMode(value, categoryTree)
   // AC-041: a single-mode card has exactly one row (INV-3); the "Add" action
-  // stops being available the moment that mode resolves.
-  const canAddRow = managementMode !== 'single'
+  // stops being available the moment that mode resolves. The cap is an
+  // invariant of a COMMERCIAL card (one deal, one single-mode line), not of a
+  // row set as such: a person's competence (spec 0111 D-5) legitimately covers
+  // several single-mode categories, so it opts out. Only the cap is dropped —
+  // `managementMode` is still resolved, other consumers read it.
+  const canAddRow = !enforceManagementModeCap || managementMode !== 'single'
 
   const businessFunctionLabel = (id: number | null): string | undefined =>
     id === null ? undefined : (knownBusinessFunctionLabels[id] ?? fetchedBusinessFunctionLabels[id])

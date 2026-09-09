@@ -27,6 +27,26 @@ uses(RefreshDatabase::class);
  * statsWidget / statsUserWith) are the ones already used by the other Stats
  * tests.
  */
+if (! function_exists('statsUserCompetentIn')) {
+    /**
+     * An employment profile owning one competence row per given function
+     * (spec 0111), each on its own category so two rows on the SAME function
+     * never collide with the unique (profile, function, category) constraint.
+     */
+    function statsUserCompetentIn(BusinessFunction ...$functions): EmploymentProfile
+    {
+        $profile = EmploymentProfile::factory()->create();
+
+        foreach ($functions as $function) {
+            $profile->productLines()->create([
+                'business_function_id' => $function->id,
+                'product_category_id' => ProductCategory::factory()->create()->id,
+            ]);
+        }
+
+        return $profile;
+    }
+}
 
 // ---------------------------------------------------------------------------
 // registries · referents
@@ -257,6 +277,25 @@ it('business-functions: `withManager` counts the functions with a manager (AC-00
     expect(statsWidget($widgets, 'total')['value'])->toBe(3)
         ->and(statsWidget($widgets, 'with_manager'))->toMatchArray([
             'label' => 'businessFunctions.stats.withManager', 'value' => 2,
+        ]);
+});
+
+it('users: `by_business_function` counts DISTINCT users per function, not competence rows (spec 0111 AC-020)', function () {
+    $sales = BusinessFunction::factory()->create(['name' => 'Sales']);
+    $legal = BusinessFunction::factory()->create(['name' => 'Legal']);
+
+    // Two rows on the SAME function must weigh 1, two rows on DIFFERENT
+    // functions must weigh 1 on each.
+    statsUserCompetentIn($sales, $sales);
+    statsUserCompetentIn($sales, $legal);
+
+    $widgets = statsWidgets('users');
+
+    // 2 users from the profiles + the acting user (statsUserWith).
+    expect(statsWidget($widgets, 'by_business_function')['total'])->toBe(3)
+        ->and(statsWidget($widgets, 'by_business_function')['items'])->toBe([
+            ['key' => (string) $sales->id, 'label' => 'Sales', 'value' => 2, 'color' => null],
+            ['key' => (string) $legal->id, 'label' => 'Legal', 'value' => 1, 'color' => null],
         ]);
 });
 

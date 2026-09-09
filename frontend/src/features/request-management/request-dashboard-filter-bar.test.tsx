@@ -54,7 +54,7 @@ const APPLIED_FILTERS = {
  * values — otherwise the CSV and the charts would read the selection
  * differently.
  */
-const APPLIED_PAYLOAD = toRequestReportFilterPayload(APPLIED_FILTERS, [])
+const APPLIED_PAYLOAD = toRequestReportFilterPayload(APPLIED_FILTERS, [], [])
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')

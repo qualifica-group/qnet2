@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The CLIENT anagraphic columns of the `request-management` domain — Nome,
- * Cognome, Codice fiscale, Telefono — as a single column contract:
+ * Cognome, Codice fiscale, Partita IVA, Telefono — as a single column contract:
  * quick-search (spec 0009), column filter, sort and Excel-like distinct
  * values (spec 0004/0005).
  *
@@ -51,6 +51,7 @@ final class RequestClientColumns
         'first_name' => 'first_name',
         'last_name' => 'last_name',
         'tax_code' => 'tax_code',
+        'vat_number' => 'vat_number',
     ];
 
     private const string PHONE_COLUMN = 'phone';

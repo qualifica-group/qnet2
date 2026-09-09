@@ -6,6 +6,7 @@
  */
 
 import type { PersonalDataCard } from '@/features/personal-data/types'
+import type { ProductLine } from '@/features/product-lines/types'
 import type { PersonalDataPayload } from '@/features/personal-data/drafts'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
@@ -63,26 +64,30 @@ export interface EmploymentDetail {
   standard_daily_minutes: number | null
   break_daily_minutes: number | null
   reports_to_id: number | null
-  business_function_id: number | null
   company_id: number | null
   /** The user's single physical site (spec 0103 D-3), at most one, optional. */
   primary_operational_site_id: number | null
   /** The user's remote sites (spec 0103 D-1): operative exactly like the physical one. */
   remote_operational_site_ids: number[]
   /**
-   * Assignment competence (spec 0110): the product categories this user is
-   * competent for. Optional because the backend emits it only when the
-   * `productCategories` relation was eager-loaded (`whenLoaded` discipline).
+   * Assignment competence (spec 0111): the business-function -> product-category
+   * pairs this user covers, the single source of both. Optional because the
+   * backend emits it only when the `productLines` relation was eager-loaded
+   * (`whenLoaded` discipline); the `{id, name}` projections also label the row
+   * editor without a hydration fetch.
    */
-  product_category_ids?: number[]
+  product_lines?: ProductLine[]
   reports_to: EmploymentRelationRef | null
-  business_function: EmploymentRelationRef | null
   company: EmploymentRelationRef | null
   /** Present only when the relation is eager-loaded (whenLoaded), like `company`. */
   primary_operational_site?: EmploymentRelationRef | null
   remote_operational_sites?: EmploymentRelationRef[]
-  /** Hydration labels for the competence multi-select, same `whenLoaded` discipline. */
-  product_categories?: EmploymentRelationRef[]
+}
+
+/** A competence row as sent to the server (create/update payload, spec 0111). */
+export interface EmploymentProductLineInput {
+  business_function_id: number
+  product_category_id: number
 }
 
 /**
@@ -130,15 +135,14 @@ export interface EmploymentPayload {
   is_manager: boolean
   job_description: string | null
   reports_to_id: number | null
-  business_function_id: number | null
   relationship_type: RelationshipType | null
   company_id: number | null
   /** At most one physical site (spec 0103 D-3); mirrors `EmploymentDetail`. */
   primary_operational_site_id: number | null
   /** Zero or more remote sites (spec 0103 D-1). */
   remote_operational_site_ids: number[]
-  /** Assignment competence (spec 0110): the product categories the user covers. */
-  product_category_ids: number[]
+  /** Assignment competence (spec 0111): the function/category pairs the user covers. */
+  product_lines: EmploymentProductLineInput[]
   qualification_type: QualificationType | null
   hired_at: string | null
   terminated_at: string | null

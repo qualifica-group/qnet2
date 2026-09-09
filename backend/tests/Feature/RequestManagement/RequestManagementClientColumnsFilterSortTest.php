@@ -40,9 +40,9 @@ if (! function_exists('requestManagementUserWith')) {
 /**
  * A Quote (spec 0086, D-1: the grid row) whose Opportunity's client card
  * carries the given anagraphic values plus a primary phone contact — the
- * exact relation path the four columns read (`quote.opportunity.registry`).
+ * exact relation path the client columns read (`quote.opportunity.registry`).
  */
-function clientColumnRequest(string $firstName, string $lastName, string $taxCode, ?string $phone = null): Quote
+function clientColumnRequest(string $firstName, string $lastName, string $taxCode, ?string $phone = null, ?string $vatNumber = null): Quote
 {
     $registry = Registry::factory()->create();
     $card = $registry->personalData()->create([
@@ -50,6 +50,7 @@ function clientColumnRequest(string $firstName, string $lastName, string $taxCod
         'first_name' => $firstName,
         'last_name' => $lastName,
         'tax_code' => $taxCode,
+        'vat_number' => $vatNumber,
     ]);
 
     if ($phone !== null) {
@@ -77,7 +78,7 @@ function clientColumnRowIds(array $payload): array
 }
 
 // ---------------------------------------------------------------------------
-// Contract: the four columns advertise the same sortable/filterable shape as
+// Contract: the client columns advertise the same sortable/filterable shape as
 // every other text column of the grid
 // ---------------------------------------------------------------------------
 
@@ -92,7 +93,7 @@ it('columns: the client anagraphic columns are sortable and text-filterable', fu
         ->and($column['filterType'])->toBe('text')
         // Still inline-editable and still in the quick-search allow-list.
         ->and($column['editable'])->toBeTrue();
-})->with(['first_name', 'last_name', 'tax_code', 'phone']);
+})->with(['first_name', 'last_name', 'tax_code', 'vat_number', 'phone']);
 
 // ---------------------------------------------------------------------------
 // Sorting: by the card value, and by the primary phone for `phone`
@@ -101,14 +102,14 @@ it('columns: the client anagraphic columns are sortable and text-filterable', fu
 it('rows: sorting by a client column orders by the card value', function (string $columnId) {
     Sanctum::actingAs(requestManagementUserWith(['viewAny', 'viewAll']));
 
-    $alpha = clientColumnRequest('Anna', 'Alberti', 'ALBNNA80A41H501U', '+39 02 1111111');
-    $zulu = clientColumnRequest('Zeno', 'Zurlo', 'ZRLZNE80A01H501U', '+39 02 9999999');
+    $alpha = clientColumnRequest('Anna', 'Alberti', 'ALBNNA80A41H501U', '+39 02 1111111', '01234567897');
+    $zulu = clientColumnRequest('Zeno', 'Zurlo', 'ZRLZNE80A01H501U', '+39 02 9999999', '98765432103');
 
     expect(clientColumnRowIds(['sortModel' => [['colId' => $columnId, 'sort' => 'asc']]]))
         ->toBe([$alpha->id, $zulu->id])
         ->and(clientColumnRowIds(['sortModel' => [['colId' => $columnId, 'sort' => 'desc']]]))
         ->toBe([$zulu->id, $alpha->id]);
-})->with(['first_name', 'last_name', 'tax_code', 'phone']);
+})->with(['first_name', 'last_name', 'tax_code', 'vat_number', 'phone']);
 
 // ---------------------------------------------------------------------------
 // Column filter: the generic typed conditions and the Set checklist both work
@@ -118,8 +119,8 @@ it('rows: sorting by a client column orders by the card value', function (string
 it('rows: a text filter on a client column narrows to the matching card', function (string $columnId, string $needle) {
     Sanctum::actingAs(requestManagementUserWith(['viewAny', 'viewAll']));
 
-    $match = clientColumnRequest('Mario', 'Rossi', 'RSSMRA80A01H501U', '+39 02 1234567');
-    $other = clientColumnRequest('Giulia', 'Bianchi', 'BNCGLI85B02F205X', '+39 06 7654321');
+    $match = clientColumnRequest('Mario', 'Rossi', 'RSSMRA80A01H501U', '+39 02 1234567', '01234567897');
+    $other = clientColumnRequest('Giulia', 'Bianchi', 'BNCGLI85B02F205X', '+39 06 7654321', '98765432103');
 
     $ids = clientColumnRowIds([
         'filterModel' => [$columnId => ['filterType' => 'text', 'type' => 'contains', 'filter' => $needle]],
@@ -131,6 +132,7 @@ it('rows: a text filter on a client column narrows to the matching card', functi
     'first name' => ['first_name', 'mari'],
     'last name' => ['last_name', 'ross'],
     'tax code' => ['tax_code', 'RSSMRA80'],
+    'vat number' => ['vat_number', '0123456'],
     'phone' => ['phone', '1234567'],
 ]);
 

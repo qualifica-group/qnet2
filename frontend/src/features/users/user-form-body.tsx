@@ -62,11 +62,10 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
     revalidateSignal,
     blockedSection,
     selectedRoleItems,
-    selectedBusinessFunctionItem,
     selectedCompanyItem,
     selectedPrimaryOperationalSiteItem,
     selectedRemoteOperationalSiteItems,
-    selectedProductCategoryItems,
+    knownProductLines,
     selectedReportsToItem,
     onSubmit,
     setPendingAvatar,
@@ -99,8 +98,7 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
     fieldPermission('email').visible || fieldPermission('password').visible
   const accessVisible = fieldPermission('roles').visible
   const profileVisible =
-    fieldPermission('employment.business_function_id').visible ||
-    fieldPermission('employment.product_category_ids').visible ||
+    fieldPermission('employment.product_lines').visible ||
     fieldPermission('employment.is_manager').visible ||
     fieldPermission('employment.job_description').visible ||
     fieldPermission('employment.reports_to_id').visible
@@ -160,8 +158,7 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
           {profileVisible && (
             <ProfileTabContent
               control={form.control}
-              selectedBusinessFunctionItem={selectedBusinessFunctionItem}
-              selectedProductCategoryItems={selectedProductCategoryItems}
+              knownProductLines={knownProductLines}
               selectedReportsToItem={selectedReportsToItem}
             />
           )}

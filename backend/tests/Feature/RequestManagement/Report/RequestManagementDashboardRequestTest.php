@@ -170,14 +170,16 @@ it('applied reflects exactly the filters received (AC-003)', function () {
 
     $response = $this->getJson('/api/request-management/report/dashboard?'.http_build_query($query))->assertOk();
 
-    // `operator_keys` joined the echo in spec 0108 (data_contract): a null
-    // says "every operator", the meaning an ABSENT selection carries (D-2).
+    // `operator_keys` joined the echo in spec 0108 and `site_keys` in spec
+    // 0112 (data_contract): a null says "every operator"/"every Sede", the
+    // meaning an ABSENT selection carries (0108 D-2, 0112 D-4).
     $response->assertJsonPath('data.applied', [
         'date_from' => '2026-09-01',
         'date_to' => '2026-09-30',
         'category_keys' => ['gol', 'consulenza'],
         'row_mode' => 'total_only',
         'operator_keys' => null,
+        'site_keys' => null,
     ]);
 });
 

@@ -11,6 +11,7 @@ use App\Http\Resources\RequestManagementDashboardResource;
 use App\Models\User;
 use App\Services\RequestManagement\Report\Dashboard\RequestManagementDashboardBuilder;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
+use App\Services\RequestManagement\Report\ReportSiteFilter;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -42,6 +43,7 @@ class RequestManagementDashboardController extends BaseApiController
             $categoryKeys = (array) $request->validated('category_keys');
             $rowMode = (string) $request->validated('row_mode');
             $operatorKeys = $request->operatorKeys();
+            $siteKeys = $request->siteKeys();
 
             $result = $this->builder->build(
                 $actor,
@@ -50,6 +52,7 @@ class RequestManagementDashboardController extends BaseApiController
                 $categoryKeys,
                 RequestManagementReportRowMode::from($rowMode),
                 ReportOperatorFilter::fromKeysOrAll($operatorKeys),
+                ReportSiteFilter::fromKeysOrAll($siteKeys),
             );
 
             return $this->ok([
@@ -61,6 +64,9 @@ class RequestManagementDashboardController extends BaseApiController
                     // null echoes back "every operator" (spec 0108 D-2), so the
                     // client can tell an unfiltered response from a filtered one.
                     'operator_keys' => $operatorKeys,
+                    // Same echo semantics for the Sede selection (spec 0112 D-4):
+                    // null means "every Sede", i.e. an unfiltered response.
+                    'site_keys' => $siteKeys,
                 ],
                 ...(new RequestManagementDashboardResource($result))->resolve(),
             ]);

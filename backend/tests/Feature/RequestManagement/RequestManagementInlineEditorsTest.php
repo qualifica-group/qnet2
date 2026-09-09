@@ -168,7 +168,7 @@ it('AC-003: without request-management.update every column is read-only and ever
 // AC-004 / AC-005 — the per-field matrix, one key at a time
 // ---------------------------------------------------------------------------
 
-it('AC-004: denying client_tax_code leaves the other three anagraphic columns editable', function () {
+it('AC-004: denying client_tax_code leaves the other anagraphic columns editable', function () {
     $actor = inlineEditorsActorWithMatrixRow([
         'resource' => 'request-management',
         'field' => 'client_tax_code',
@@ -185,6 +185,7 @@ it('AC-004: denying client_tax_code leaves the other three anagraphic columns ed
     expect($columns['tax_code']['editable'])->toBeFalse()
         ->and($columns['first_name']['editable'])->toBeTrue()
         ->and($columns['last_name']['editable'])->toBeTrue()
+        ->and($columns['vat_number']['editable'])->toBeTrue()
         ->and($columns['phone']['editable'])->toBeTrue();
 
     $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [

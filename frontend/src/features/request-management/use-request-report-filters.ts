@@ -3,6 +3,7 @@ import type {
   RequestReportCategory,
   RequestReportOperator,
   RequestReportRowMode,
+  RequestReportSite,
 } from '@/features/request-management/report-api'
 import {
   ROW_MODES,
@@ -12,15 +13,21 @@ import {
 
 const STORAGE_KEY = 'request-management.report-filters'
 
+/** An absent key list, or a real one: the shape both narrowing fields are stored in. */
+function isOptionalKeyList(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every((key) => typeof key === 'string'))
+}
+
 /**
  * Guards the parsed payload: anything written by an older shape, or hand-edited,
  * is discarded rather than fed to the query as-is. Only the contract fields
  * are kept — they travel straight to `/report/dashboard` as query params.
  *
- * `operator_keys` (spec 0109) is checked OPTIONALLY on purpose (D-11): a
- * payload written before that spec has no such key, and rejecting it would
- * throw away the dates and branches the operator was working on because of a
- * field that did not exist when they picked them.
+ * `operator_keys` (spec 0109) and `site_keys` (spec 0112) are checked
+ * OPTIONALLY on purpose (0109 D-11): a payload written before either spec has
+ * no such key, and rejecting it would throw away the dates and branches the
+ * operator was working on because of a field that did not exist when they
+ * picked them.
  */
 function isStoredFilters(value: unknown): value is RequestReportFormValues {
   if (typeof value !== 'object' || value === null) {
@@ -34,9 +41,8 @@ function isStoredFilters(value: unknown): value is RequestReportFormValues {
     Array.isArray(candidate.category_keys) &&
     candidate.category_keys.every((key) => typeof key === 'string') &&
     ROW_MODES.includes(candidate.row_mode as RequestReportRowMode) &&
-    (candidate.operator_keys === undefined ||
-      (Array.isArray(candidate.operator_keys) &&
-        candidate.operator_keys.every((key) => typeof key === 'string')))
+    isOptionalKeyList(candidate.operator_keys) &&
+    isOptionalKeyList(candidate.site_keys)
   )
 }
 
@@ -58,6 +64,7 @@ function readStoredFilters(): RequestReportFormValues | null {
           category_keys: parsed.category_keys,
           row_mode: parsed.row_mode,
           operator_keys: parsed.operator_keys ?? [],
+          site_keys: parsed.site_keys ?? [],
         }
       : null
   } catch {
@@ -112,6 +119,34 @@ export function reconcileOperatorKeys(
   }
 
   return { ...filters, operator_keys: kept.length > 0 ? kept : allKeys }
+}
+
+/**
+ * Twin of {@see reconcileOperatorKeys} for the operational site list (spec
+ * 0112, AC-019): drops sites the report no longer offers and, when nothing
+ * survives, seeds the whole list — which is how "everything selected" becomes
+ * the default the payload builder then omits from the wire (D-4).
+ */
+export function reconcileSiteKeys(
+  filters: RequestReportFormValues,
+  sites: RequestReportSite[],
+): RequestReportFormValues {
+  const allKeys = sites.map((site) => site.key)
+
+  // No site at all is a legitimate state (no GA2 has a membership yet): there
+  // is nothing to reconcile against, and seeding an empty list would only
+  // churn the state — same guard, and same reason, as the operator twin.
+  if (allKeys.length === 0) {
+    return filters
+  }
+
+  const kept = filters.site_keys.filter((key) => allKeys.includes(key))
+
+  if (kept.length === filters.site_keys.length && kept.length > 0) {
+    return filters
+  }
+
+  return { ...filters, site_keys: kept.length > 0 ? kept : allKeys }
 }
 
 /**

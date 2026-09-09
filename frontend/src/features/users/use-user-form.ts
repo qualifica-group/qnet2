@@ -21,7 +21,6 @@ import type {
   PersonalDataDraft,
   PersonalDataFieldPermission,
 } from '@/features/personal-data/types'
-import type { ForSelectItem } from '@/features/for-select/types'
 import {
   createUser,
   deleteUserAvatar,
@@ -30,17 +29,21 @@ import {
 } from '@/features/users/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/users/user-form-payload'
 import {
+  useUserFormDefaults,
+  useUserFormHydration,
+} from '@/features/users/user-form-defaults'
+import {
+  collectProductLinesServerError,
+  PRODUCT_LINES_FIELD,
+  SERVER_ERROR_FIELDS,
+} from '@/features/users/user-form-server-errors'
+import {
   buildCreateUserSchema,
   buildUpdateUserSchema,
   type CreateUserFormValues,
-  type EmploymentFormValues,
   type UpdateUserFormValues,
 } from '@/features/users/user-schema'
-import type {
-  EmploymentRelationRef,
-  UserDetail,
-  UserLocale,
-} from '@/features/users/types'
+import type { UserDetail } from '@/features/users/types'
 import type { UserFormMode } from '@/features/users/user-form'
 
 /**
@@ -49,86 +52,6 @@ import type { UserFormMode } from '@/features/users/user-form'
  * dedicated sentinel is needed to detect the first resolved value.
  */
 const SEED_PENDING = Symbol('seed-pending')
-
-/**
- * Server-side field names mapped onto the form for 422 handling. `avatar` only
- * applies to the create flow's deferred upload; it is mapped to a form-level
- * error since the AvatarUpload control is not an RHF field. The nested
- * `employment.*` paths (spec 0015) match Laravel's flat dot-key error shape
- * 1:1, so RHF resolves them onto the right nested field with no extra mapping.
- */
-const SERVER_ERROR_FIELDS = [
-  'email',
-  'locale',
-  'is_active',
-  'roles',
-  'password',
-  'employment.is_manager',
-  'employment.job_description',
-  'employment.reports_to_id',
-  'employment.business_function_id',
-  'employment.relationship_type',
-  'employment.company_id',
-  'employment.primary_operational_site_id',
-  'employment.remote_operational_site_ids',
-  'employment.product_category_ids',
-  'employment.qualification_type',
-  'employment.hired_at',
-  'employment.terminated_at',
-  'employment.standard_daily_minutes',
-  'employment.break_daily_minutes',
-] as const
-
-/** Locale is not user-editable on the form; new users default to Italian. */
-const DEFAULT_LOCALE: UserLocale = 'it'
-
-/**
- * Stable module-level default for the remote-sites array field: an inline
- * `[]` would create a new reference on every render and break memoized
- * dependents (rule engineering.md §1 / frontend.md §10).
- */
-const EMPTY_REMOTE_SITE_IDS: number[] = []
-
-/** Same stable-reference reasoning for the competence array field (spec 0110). */
-const EMPTY_PRODUCT_CATEGORY_IDS: number[] = []
-
-/** A blank employment sub-form, used for both create and an edit user with no profile yet. */
-const EMPTY_EMPLOYMENT: EmploymentFormValues = {
-  is_manager: false,
-  job_description: '',
-  reports_to_id: null,
-  business_function_id: null,
-  relationship_type: null,
-  company_id: null,
-  primary_operational_site_id: null,
-  remote_operational_site_ids: EMPTY_REMOTE_SITE_IDS,
-  product_category_ids: EMPTY_PRODUCT_CATEGORY_IDS,
-  qualification_type: null,
-  hired_at: '',
-  terminated_at: '',
-  standard_daily_minutes: null,
-  break_daily_minutes: null,
-}
-
-/** No sites loaded: stable module-level reference, mirrors `EMPTY_REMOTE_SITE_IDS`. */
-const EMPTY_RELATION_REFS: ForSelectItem[] = []
-
-/** Maps a loaded `{id, label}` relation ref to the AsyncPaginatedSelect hydration prop. */
-function relationToForSelectItem(
-  ref: EmploymentRelationRef | null | undefined,
-): ForSelectItem | null {
-  return ref ? { id: ref.id, label: ref.label, subtitle: ref.subtitle ?? null } : null
-}
-
-/** Array counterpart of {@link relationToForSelectItem}, for multi-select hydration. */
-function relationsToForSelectItems(
-  refs: EmploymentRelationRef[] | null | undefined,
-): ForSelectItem[] {
-  if (!refs || refs.length === 0) {
-    return EMPTY_RELATION_REFS
-  }
-  return refs.map((ref) => ({ id: ref.id, label: ref.label, subtitle: ref.subtitle ?? null }))
-}
 
 export type UserFormValues = CreateUserFormValues & UpdateUserFormValues
 
@@ -215,100 +138,11 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
     [isEdit, t, customFields.schema],
   )
 
-  const defaultValues = useMemo<UserFormValues>(() => {
-    if (mode.type === 'edit') {
-      const employment = mode.user.employment
-      return {
-        email: mode.user.email,
-        locale: mode.user.locale,
-        is_active: mode.user.is_active,
-        roles: mode.user.roles.map((role) => role.id),
-        password: '',
-        password_confirmation: '',
-        employment: employment
-          ? {
-              is_manager: employment.is_manager,
-              job_description: employment.job_description ?? '',
-              reports_to_id: employment.reports_to_id,
-              business_function_id: employment.business_function_id,
-              relationship_type: employment.relationship_type,
-              company_id: employment.company_id,
-              primary_operational_site_id: employment.primary_operational_site_id,
-              remote_operational_site_ids: employment.remote_operational_site_ids,
-              product_category_ids:
-                employment.product_category_ids ?? EMPTY_PRODUCT_CATEGORY_IDS,
-              qualification_type: employment.qualification_type,
-              hired_at: employment.hired_at ?? '',
-              terminated_at: employment.terminated_at ?? '',
-              standard_daily_minutes: employment.standard_daily_minutes,
-              break_daily_minutes: employment.break_daily_minutes,
-            }
-          : EMPTY_EMPLOYMENT,
-        custom_fields: customFields.defaultValues,
-      }
-    }
-    return {
-      email: '',
-      locale: DEFAULT_LOCALE,
-      is_active: true,
-      roles: [],
-      password: '',
-      password_confirmation: '',
-      employment: EMPTY_EMPLOYMENT,
-      custom_fields: customFields.defaultValues,
-    }
-  }, [mode, customFields.defaultValues])
+  const defaultValues = useUserFormDefaults(mode, customFields.defaultValues)
 
-  // EDIT: pre-known {id, name} for the selected roles, so the picker shows their
-  // labels immediately (no hydration round-trip) — the names come from the user
-  // resource even for roles outside the actor's assignable set.
-  const selectedRoleItems = useMemo(
-    () =>
-      mode.type === 'edit'
-        ? mode.user.roles.map((role) => ({ id: role.id, label: role.name }))
-        : [],
-    [mode],
-  )
-
-  // EDIT: pre-known {id, label} for the employment relation selects (AC-016), so
-  // each picker shows its label immediately without an extra hydration fetch.
-  const selectedBusinessFunctionItem = useMemo(
-    () =>
-      mode.type === 'edit'
-        ? relationToForSelectItem(mode.user.employment?.business_function)
-        : null,
-    [mode],
-  )
-  const selectedCompanyItem = useMemo(
-    () => (mode.type === 'edit' ? relationToForSelectItem(mode.user.employment?.company) : null),
-    [mode],
-  )
-  const selectedPrimaryOperationalSiteItem = useMemo(
-    () =>
-      mode.type === 'edit'
-        ? relationToForSelectItem(mode.user.employment?.primary_operational_site)
-        : null,
-    [mode],
-  )
-  const selectedRemoteOperationalSiteItems = useMemo(
-    () =>
-      mode.type === 'edit'
-        ? relationsToForSelectItems(mode.user.employment?.remote_operational_sites)
-        : EMPTY_RELATION_REFS,
-    [mode],
-  )
-  const selectedProductCategoryItems = useMemo(
-    () =>
-      mode.type === 'edit'
-        ? relationsToForSelectItems(mode.user.employment?.product_categories)
-        : EMPTY_RELATION_REFS,
-    [mode],
-  )
-  const selectedReportsToItem = useMemo(
-    () =>
-      mode.type === 'edit' ? relationToForSelectItem(mode.user.employment?.reports_to) : null,
-    [mode],
-  )
+  // EDIT: pre-known {id, label} for the role/relation pickers (AC-016) plus the
+  // persisted competence pairs, so every control shows its labels immediately.
+  const hydration = useUserFormHydration(mode)
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(schema),
@@ -403,6 +237,11 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
       ]
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
         setServerError(t('users.form.genericError'))
+        return
+      }
+      const productLinesMessage = collectProductLinesServerError(error)
+      if (productLinesMessage) {
+        form.setError(PRODUCT_LINES_FIELD, { message: productLinesMessage })
       }
     }
   }
@@ -439,14 +278,8 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
     profileName,
     revalidateSignal,
     blockedSection,
-    selectedRoleItems,
-    // Employment relation selects hydration (spec 0015, AC-016).
-    selectedBusinessFunctionItem,
-    selectedCompanyItem,
-    selectedPrimaryOperationalSiteItem,
-    selectedRemoteOperationalSiteItems,
-    selectedProductCategoryItems,
-    selectedReportsToItem,
+    // Role/relation picker hydration and the known competence pairs (AC-016).
+    ...hydration,
     onSubmit,
     handleAvatarUpload,
     handleAvatarRemove,

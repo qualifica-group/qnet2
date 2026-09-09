@@ -25,10 +25,11 @@ use App\Models\User;
  * the actor (Auth::setUser) and the locale (App::setLocale) before calling
  * this.
  *
- * $operators (spec 0108) is LAST and optional on both entry points, and a
- * null normalises to ReportOperatorFilter::all(): that is what makes an
- * ExportRun frozen before spec 0108 — its state has no `operator_keys` —
- * generate exactly the file it always did (D-2, AC-014).
+ * $operators (spec 0108) and $sites (spec 0112) are the LAST, optional
+ * parameters of both entry points, and a null normalises to the filter's own
+ * `all()`: that is what makes an ExportRun frozen before either spec — its
+ * state has no `operator_keys`, no `site_keys` — generate exactly the file it
+ * always did (0108 D-2/AC-014, 0112 D-4/AC-013).
  */
 final class RequestManagementReportGenerator
 {
@@ -51,9 +52,10 @@ final class RequestManagementReportGenerator
         ExportFormat $format,
         string $absolutePath,
         ?ReportOperatorFilter $operators = null,
+        ?ReportSiteFilter $sites = null,
     ): int {
         // Step 1: every selected branch's already-computed rows — the reusable core.
-        $branchRows = $this->rows($actor, $dateFrom, $dateTo, $categoryKeys, $rowMode, $operators);
+        $branchRows = $this->rows($actor, $dateFrom, $dateTo, $categoryKeys, $rowMode, $operators, $sites);
 
         // Step 2: open the format's own writer, translated header row first.
         $writer = $this->writers->make($format);
@@ -93,15 +95,17 @@ final class RequestManagementReportGenerator
         array $categoryKeys,
         RequestManagementReportRowMode $rowMode,
         ?ReportOperatorFilter $operators = null,
+        ?ReportSiteFilter $sites = null,
     ): array {
         $branches = $this->selectedBranches($categoryKeys);
         $range = ReportDateRange::fromRequest($dateFrom, $dateTo);
         $operators ??= ReportOperatorFilter::all();
+        $sites ??= ReportSiteFilter::all();
 
         return array_map(
             fn (ReportBranch $branch): array => [
                 'branch' => $branch,
-                'rows' => $this->rowsBuilder->build($branch, $actor, $range, $rowMode, $operators),
+                'rows' => $this->rowsBuilder->build($branch, $actor, $range, $rowMode, $operators, $sites),
             ],
             $branches,
         );

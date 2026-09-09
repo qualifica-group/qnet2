@@ -9,7 +9,6 @@ use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\Support\MigrationGeoResolver;
-use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
@@ -122,10 +121,10 @@ trait MapsExternalUserRecord
      * Build the user's employment profile only when at least one employment
      * field was supplied (an absent employment section means "no employment
      * row", mirroring the wire contract's tri-state semantics). Every
-     * relational reference (manager/business function/company/operational
-     * site) resolves via `old_id`; an unresolved reference is a non-fatal
-     * warning and leaves that link null. An unknown relationship/
-     * qualification type is likewise a non-fatal warning.
+     * relational reference (manager/company/operational site) resolves via
+     * `old_id`; an unresolved reference is a non-fatal warning and leaves
+     * that link null. An unknown relationship/qualification type is likewise
+     * a non-fatal warning.
      *
      * The external system carries a SINGLE site per user (spec 0103 context):
      * it becomes the PHYSICAL membership, so `primaryOperationalSiteIdProvided`
@@ -145,7 +144,6 @@ trait MapsExternalUserRecord
         $warnings = [];
 
         $reportsToId = $this->resolveEmploymentRelation(User::class, $record['reports_to_id'] ?? null, 'reports_to_id', $warnings);
-        $businessFunctionId = $this->resolveEmploymentRelation(BusinessFunction::class, $record['business_function_id'] ?? null, 'business_function_id', $warnings);
         $companyId = $this->resolveEmploymentRelation(Company::class, $record['company_id'] ?? null, 'company_id', $warnings);
         $operationalSiteId = $this->resolveEmploymentRelation(OperationalSite::class, $record['operational_site_id'] ?? null, 'operational_site_id', $warnings);
 
@@ -153,7 +151,6 @@ trait MapsExternalUserRecord
             isManager: (bool) ($record['is_manager'] ?? false),
             jobDescription: $this->blankToNull($record['job_description'] ?? null),
             reportsToId: $reportsToId,
-            businessFunctionId: $businessFunctionId,
             relationshipType: $this->resolveRelationshipType($record['relationship_type'] ?? null, $warnings),
             companyId: $companyId,
             primaryOperationalSiteIdProvided: true,
@@ -174,10 +171,10 @@ trait MapsExternalUserRecord
      * still NULL on the existing row is back-filled from the external record
      * via `old_id`, without overwriting a value already set or duplicating
      * anything. This resolves the two cases a single create-time pass cannot:
-     * a user imported BEFORE its parents (business function / site / company)
-     * were migrated, and the self-referential manager (`reports_to_id`) whose
-     * record is processed after the subordinate — both are fixed by simply
-     * running the users import again once every parent exists.
+     * a user imported BEFORE its parents (company / site) were migrated, and
+     * the self-referential manager (`reports_to_id`) whose record is processed
+     * after the subordinate — both are fixed by simply running the users
+     * import again once every parent exists.
      *
      * The site membership (spec 0103) is no longer one of these NULL columns:
      * its own "fill once, never overwrite" counterpart is
@@ -273,7 +270,6 @@ trait MapsExternalUserRecord
     private function nullRelationBackfill(EmploymentProfile $existing, EmploymentData $desired): array
     {
         $candidates = [
-            'business_function_id' => $desired->businessFunctionId,
             'company_id' => $desired->companyId,
         ];
 
@@ -327,8 +323,8 @@ trait MapsExternalUserRecord
     private function hasEmploymentPayload(array $record): bool
     {
         $employmentFields = [
-            'is_manager', 'job_description', 'reports_to_id', 'business_function_id',
-            'relationship_type', 'company_id', 'operational_site_id', 'qualification_type',
+            'is_manager', 'job_description', 'reports_to_id', 'relationship_type',
+            'company_id', 'operational_site_id', 'qualification_type',
             'hired_at', 'terminated_at', 'standard_daily_minutes', 'break_daily_minutes',
         ];
 
@@ -342,7 +338,7 @@ trait MapsExternalUserRecord
     }
 
     /**
-     * @param  class-string<User|BusinessFunction|Company|OperationalSite>  $modelClass
+     * @param  class-string<User|Company|OperationalSite>  $modelClass
      * @param  array<int, string>  $warnings
      */
     private function resolveEmploymentRelation(string $modelClass, mixed $externalRef, string $field, array &$warnings): ?int

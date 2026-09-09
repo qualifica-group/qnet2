@@ -14,8 +14,6 @@ use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Contracts\ContractLifecycleManager;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Quotes\QuoteAttributeValueWriter;
-use App\Services\Quotes\QuoteWorkflowStatusAssigner;
-use App\Services\Quotes\QuoteWorkflowStatusWriter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -39,9 +37,10 @@ use Illuminate\Validation\ValidationException;
  *
  * This class ORCHESTRATES that sequence; the rules of each block live in a
  * writer of its own (RequestAttributionWriter, RequestProductLineWriter,
- * RequestOfferLineWriter, RequestClientProfileWriter) — the file had reached
- * the size ceiling (engineering.md §6) and the split follows the blocks the
- * panel itself is made of. `loadWorkPanel()`/`updateWork()` both return the
+ * RequestOfferLineWriter, RequestClientProfileWriter,
+ * RequestWorkflowStatusWriter) — the file had reached the size ceiling
+ * (engineering.md §6) and the split follows the blocks the panel itself is
+ * made of. `loadWorkPanel()`/`updateWork()` both return the
  * SAME shape — {quote} — consumed directly by RequestManagementResource, so
  * show/update render identically (data contract: "Response identica alla
  * GET").
@@ -142,8 +141,7 @@ final class RequestManagementService
         private readonly RequestAttributionWriter $attributionWriter,
         private readonly RequestAttributeResolver $attributeResolver,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
-        private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
-        private readonly QuoteWorkflowStatusAssigner $workflowStatusAssigner,
+        private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
         private readonly ContractLifecycleManager $contractLifecycleManager,
     ) {}
 
@@ -230,7 +228,7 @@ final class RequestManagementService
             // (which reaches it through RequestOfferLineWriter). Without it
             // the row would keep a status outside its own resolved set.
             if ($classificationChanged) {
-                $this->rebaselineWorkflowStatus($quote, $actor, $changed, $old);
+                $this->workflowStatusWriter->rebaseline($quote, $actor, $changed, $old);
             }
 
             // Step 2: next planned callback (spec 0052 D-1/D-4; user
@@ -259,7 +257,7 @@ final class RequestManagementService
             }
 
             // Step 2-ter: "Stato di lavorazione" (user directive 2026-08-07).
-            $this->applyWorkflowStatus($quote, $actor, $data, $changed, $old);
+            $this->workflowStatusWriter->apply($quote, $opportunity, $actor, $data, $changed, $old);
 
             $opportunity->save();
             $quote->save();
@@ -314,81 +312,6 @@ final class RequestManagementService
 
             return $this->loadWorkPanel($quote);
         });
-    }
-
-    /**
-     * The Offerta's working-status advance from this panel (user directive
-     * 2026-08-07), through the SAME choke point the quotes module uses: it
-     * enforces the resolved set (spec 0083 AC-021) and creates the transition
-     * note a `requires_note` destination demands (AC-023/024/025), inside this
-     * service's transaction.
-     *
-     * Sparse like every other key, and `null` is NOT a clear: an Offerta
-     * always carries a working state (QuoteService bootstraps it at
-     * creation), so "no value submitted" is the only meaning null can have
-     * here. The change is mirrored into the caller's audit arrays because
-     * this module reads the OPPORTUNITY's activity thread (D-9), which the
-     * Quote's own model log never reaches.
-     *
-     * @param  array<string, mixed>  $data
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     *
-     * @throws ValidationException the target is outside the resolved workflow, or it requires a note and none was given
-     */
-    private function applyWorkflowStatus(Quote $quote, User $actor, array $data, array &$changed, array &$old): void
-    {
-        if (! array_key_exists('quote_workflow_status_id', $data) || $data['quote_workflow_status_id'] === null) {
-            return;
-        }
-
-        $previousStatusId = $quote->quote_workflow_status_id;
-
-        $this->workflowStatusWriter->apply(
-            $quote,
-            (int) $data['quote_workflow_status_id'],
-            $actor,
-            $data['note'] ?? null,
-        );
-
-        if ($quote->quote_workflow_status_id === $previousStatusId) {
-            return;
-        }
-
-        // `??=`: a rebaseline earlier in this same PATCH already recorded the
-        // status the request STARTED from — the audit entry must keep that
-        // one, not the intermediate value the rebaseline produced.
-        $old['quote_workflow_status_id'] ??= $previousStatusId;
-        $changed['quote_workflow_status_id'] = $quote->quote_workflow_status_id;
-        // The projection the panel re-renders from is the relation, not the
-        // column: a stale loaded copy would send back the PREVIOUS status.
-        $quote->unsetRelation('quoteWorkflowStatus');
-    }
-
-    /**
-     * Re-resolve the offer's workflow baseline after its classification
-     * changed, reporting the move into the caller's audit arrays (D-9).
-     * Goes through QuoteWorkflowStatusAssigner with NO submitted id — the
-     * same single write-side entry point QuoteService uses — so it stops at
-     * the baseline and an explicit client choice still advances FROM it at
-     * Step 2-ter.
-     *
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    private function rebaselineWorkflowStatus(Quote $quote, User $actor, array &$changed, array &$old): void
-    {
-        $previousStatusId = $quote->quote_workflow_status_id;
-
-        $this->workflowStatusAssigner->assign($quote, null, null, $actor);
-
-        if ($quote->quote_workflow_status_id === $previousStatusId) {
-            return;
-        }
-
-        $old['quote_workflow_status_id'] = $previousStatusId;
-        $changed['quote_workflow_status_id'] = $quote->quote_workflow_status_id;
-        $quote->unsetRelation('quoteWorkflowStatus');
     }
 
     /**

@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0111-user-competence-product-lines" status="approved" owner="utente" date="2026-09-09">
+
+  <goal>
+    Nel form utente la competenza si configura come RIGHE accoppiate "funzione aziendale ->
+    categoria prodotto", con lo stesso editor gia' usato in Gestione richieste: un utente ha N
+    coppie, quindi piu' funzioni aziendali e piu' categorie. La funzione aziendale singola del
+    profilo sparisce: le righe sono l'unica sorgente.
+  </goal>
+
+  <context>
+    Stato attuale verificato nel repo (spec 0110, NON committata):
+    - `employment_profiles.business_function_id` (colonna, migration committata
+      `2026_07_04_110000_create_employment_profiles_table.php`) + pivot
+      `employment_profile_product_category` (migration NON committata
+      `2026_09_09_100000_...`), campi API `employment.business_function_id` e
+      `employment.product_category_ids`.
+    - La competenza (`App\Services\Assignment\OperatorCompetence` + `CompetenceProfile`) legge
+      la funzione singola e la chiusura discendente delle categorie (INV-2/INV-3 della 0110).
+
+    Infrastruttura riusabile gia' esistente per le coppie (spec 0040 rev.3 / 0057 / 0075 / 0094):
+    - BE: `App\Services\ProductLines\ProductLineWriter::sync($owner, $lines)` (delete-all +
+      insert su `$owner->productLines()`), `App\Services\ProductLines\ProductLineSetValidator`
+      (regole per riga e cross-riga), shape resource `product_lines: [{id, business_function:
+      {id,name}, product_category:{id,name}}]`, model gemelli `OpportunityProductLine`,
+      `CampaignProductLine`, `ProjectProductLine`.
+    - FE: `features/product-lines/product-lines-field.tsx` (`ProductLinesField`),
+      `use-product-lines-field.ts`, `product-category-tree-select.tsx` (scoping sull'albero
+      categorie via `category-tree-scope.ts`).
+
+    Decisioni congelate con l'utente il 2026-09-09, da NON reinterpretare:
+    - D-1: la colonna `employment_profiles.business_function_id` viene RIMOSSA. Unica sorgente
+      della funzione di un utente sono le righe.
+    - D-2: la competenza si valuta PER RIGA: competente se esiste una riga (funzione, categoria)
+      tale che la categoria richiesta cade nella chiusura discendente della categoria della riga
+      E la funzione della riga coincide con la funzione EFFETTIVA (spec 0023) della categoria
+      richiesta. Restano le deroghe della 0110: record senza requisito -> nessun filtro; utente
+      senza righe -> jolly.
+    - D-3: la migration NON committata del pivot 0110 viene RISCRITTA nella nuova forma
+      (`employment_product_lines`), non affiancata da una additiva. La rimozione della colonna
+      `business_function_id` richiede invece una migration NUOVA, perche' la tabella
+      `employment_profiles` e' gia' committata.
+    - D-4: il picker categoria e' quello di Gestione richieste, quindi solo categorie
+      `is_selectable` (con la deroga D-3b della spec 0074 per quelle gia' persistite).
+    - D-5: il cap "una sola riga" della spec 0077 (categoria a `management_mode` single) NON si
+      applica al form utente: `ProductLinesField` riceve una prop per disattivarlo, il
+      comportamento di Gestione richieste/offerte resta invariato.
+    - D-6: la migrazione dati esterna perde il campo `business_function_id`
+      (`App\Migrations\Sources\UsersSource`, `MapsExternalUserRecord`): senza categoria non puo'
+      formare una riga.
+    - D-7: `EmploymentProductLine::$fillable` contiene SOLO `business_function_id` e
+      `product_category_id` (non la FK owner, che la relazione HasMany imposta da se'), come
+      `Contact`: `EnforcesFieldPermissions::readNestedPath()` proietta le righe sui `fillable`
+      e una FK owner li' dentro farebbe fallire il confronto "changed" di un campo readonly
+      (422 spurio, spec 0008 AC-013).
+    - D-8: la competenza di un utente e' facoltativa, quindi `employment.product_lines` accetta
+      l'array VUOTO (svuota il set) — a differenza dei moduli offerta/progetto/campagna, dove
+      `min:1` vieta di azzerare la collezione.
+  </context>
+
+  <scope>
+    <in>
+      <item>Schema: nuova tabella `employment_product_lines` (riscrittura della migration 0110) e drop della colonna `employment_profiles.business_function_id`.</item>
+      <item>Model `EmploymentProductLine`; `EmploymentProfile::productLines()` al posto di `businessFunction()`/`productCategories()`/`productCategoryIds()`.</item>
+      <item>Contratto di scrittura/lettura utente: `employment.product_lines` sostituisce `employment.business_function_id` e `employment.product_category_ids`.</item>
+      <item>Catalogo campi/permessi `users` (`UsersAuthorization`): una chiave `employment.product_lines` di tipo `collection` al posto delle due precedenti.</item>
+      <item>Competenza operatore: `OperatorCompetence` + `CompetenceProfile` valutati per riga.</item>
+      <item>Tabella utenti: colonna `business_function` aggregata sulle righe (celle, filtro set, distinct values, ordinamento).</item>
+      <item>Stat `users.by_business_function`: distribuzione sugli utenti distinti per funzione, letta dalle righe.</item>
+      <item>Migrazione dati esterna: rimozione del campo `business_function_id` da `UsersSource`/`MapsExternalUserRecord`.</item>
+      <item>Seeder/factory: `DemoEmploymentProfileSeeder` genera righe coerenti; `EmploymentProfileFactory` perde la colonna.</item>
+      <item>Form utente FE: `ProductLinesField` nella tab Profilo, schema/payload/tipi/i18n, dettaglio utente.</item>
+      <item>`ProductLinesField`/`useProductLinesField`: prop per disattivare il cap `single` (D-5), default invariato.</item>
+      <item>`ProductLineSetValidator`: estrazione delle sole regole di coppia riusabili senza l'invariante di card.</item>
+    </in>
+    <out>
+      <item>Il pivot `business_function_user` del modulo Funzioni aziendali (membership della funzione): NON toccato, e' un'altra relazione.</item>
+      <item>Nessuna nuova colonna "categorie prodotto" nella tabella utenti (non richiesta).</item>
+      <item>Gestione richieste, offerte, progetti, campagne: comportamento e contratto invariati.</item>
+      <item>La difesa server-side su `mode=single` dell'assegnazione (R-1 spec 0110) resta fuori: la 0111 non la introduce.</item>
+      <item>Import delle righe di competenza da sorgente esterna (D-6 le rimuove, non le sostituisce).</item>
+      <item>Attivita' di log/audit dedicate sulle righe: sono una collezione figlia, come `opportunity_product_lines` (nessun activity log proprio).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="POST|PATCH" path="/api/users | /api/users/{user}">
+      <request>
+        employment.product_lines: array|null di righe, OPZIONALE (tri-state per campo, identico
+        a `remote_operational_site_ids`):
+          - chiave ASSENTE  -> le righe restano intatte;
+          - array di righe  -> full-replace (delete-all + insert);
+          - array VUOTO []  -> svuota le righe (utente senza competenza = jolly, D-8).
+        Riga: { business_function_id: int (required, exists business_functions),
+                product_category_id: int (required, categoria SELEZIONABILE — spec 0074, con
+                esenzione per le categorie gia' persistite sul profilo) }.
+        RIMOSSI dal contratto: `employment.business_function_id`, `employment.product_category_ids`.
+      </request>
+      <response status="200">
+        { success, message, data: { ..., employment: { ...,
+            product_lines: [ { id: int,
+                               business_function: { id: int, name: string },
+                               product_category: { id: int, name: string } } ] } } }
+        `product_lines` emesso SOLO con la relazione `productLines` eager-loaded (stessa
+        disciplina `whenLoaded` degli altri campi di `EmploymentResource`).
+        RIMOSSI dalla risposta: `business_function_id`, `business_function`,
+        `product_category_ids`, `product_categories`.
+      </response>
+      <errors>
+        422 `employment.product_lines.{i}.business_function_id` — funzione inesistente, oppure la
+            categoria della riga non appartiene a quella funzione una volta risolta l'ereditarieta'
+            (messaggio `ProductLineSetValidator::BUSINESS_FUNCTION_MISMATCH_MESSAGE`).
+        422 `employment.product_lines.{i}.product_category_id` — categoria inesistente o non
+            selezionabile; coppia (funzione, categoria) ripetuta
+            (`ProductLineSetValidator::DUPLICATE_PAIR_MESSAGE`).
+        403 attore senza permesso di scrittura sull'utente (invariato).
+        NESSUN errore di card `single-row`: l'invariante spec 0077 non si applica qui (D-5).
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/users/for-select">
+      <request>
+        `competence_category_ids[]` invariato nella forma e nella semantica (esclusione dei NON
+        competenti, `whereNotIn`, applicata prima del `count`). Cambia solo come il server
+        calcola l'insieme degli esclusi (competenza per riga, D-2).
+      </request>
+      <response status="200">Invariata.</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/authorization/fields/users">
+      <request>—</request>
+      <response status="200">
+        Le chiavi `employment.*` passano da 14 a 13: `employment.business_function_id` e
+        `employment.product_category_ids` spariscono, entra `employment.product_lines`
+        (type `collection`, section `employment`).
+      </response>
+      <errors>—</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/users">
+      <request>
+        Colonna `business_function`: `filterType` `set` invariato, ordinabilita' mantenuta.
+      </request>
+      <response status="200">
+        `rows[].business_function`: stringa aggregata dei nomi DISTINTI delle funzioni delle
+        righe dell'utente (stesso trattamento di `opportunities`/`projects`), `null` senza righe.
+      </response>
+      <errors>—</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/stats/users">
+      <request>—</request>
+      <response status="200">
+        `by_business_function`: numeratore = UTENTI DISTINTI per funzione (una coppia distinta
+        profilo+funzione conta una volta, anche con piu' righe sulla stessa funzione);
+        denominatore invariato (totale utenti).
+      </response>
+      <errors>—</errors>
+    </endpoint>
+
+    <schema table="employment_product_lines">
+      id; employment_profile_id (FK -> employment_profiles, cascadeOnDelete);
+      business_function_id (FK -> business_functions, restrictOnDelete);
+      product_category_id (FK -> product_categories, restrictOnDelete); timestamps.
+      unique (employment_profile_id, business_function_id, product_category_id);
+      index su business_function_id e product_category_id.
+      Nomi di FK/unique ABBREVIATI esplicitamente (`emp_prod_lines_*`): il nome di default
+      supera i 64 caratteri di MySQL, come gia' accaduto sul pivot 0110.
+    </schema>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente, quando PATCH invia `employment.product_lines` con due coppie valide, allora le righe sono persistite su `employment_product_lines` e la GET dell'utente le restituisce nell'ordine di inserimento.</criterion>
+    <criterion id="AC-002">Dato un utente con righe, quando la PATCH NON contiene la chiave `employment.product_lines`, allora le righe restano invariate.</criterion>
+    <criterion id="AC-003">Dato un utente con righe, quando la PATCH invia `employment.product_lines: []`, allora le righe sono cancellate e l'utente torna jolly per l'assegnazione.</criterion>
+    <criterion id="AC-004">Quando il payload ripete la stessa coppia (funzione, categoria), allora 422 su `employment.product_lines.{i}.product_category_id` con il messaggio duplicato di `ProductLineSetValidator`.</criterion>
+    <criterion id="AC-005">Quando una riga abbina una categoria la cui funzione EFFETTIVA e' diversa da `business_function_id`, allora 422 su `employment.product_lines.{i}.business_function_id`.</criterion>
+    <criterion id="AC-006">Quando una riga punta a una categoria non `is_selectable` mai persistita sul profilo, allora 422; quando la stessa categoria era gia' persistita sul profilo, allora il resubmit passa (esenzione spec 0074 D-3b).</criterion>
+    <criterion id="AC-007">Date due categorie con `management_mode` `single`, quando l'utente le configura entrambe come righe di competenza, allora la richiesta passa (il cap di card della spec 0077 non si applica qui).</criterion>
+    <criterion id="AC-008">Quando la PATCH invia `employment: null`, allora il profilo e le sue righe sono cancellati (cascade della FK).</criterion>
+    <criterion id="AC-009">Il catalogo campi di `users` espone `employment.product_lines` e NON espone `employment.business_function_id` ne' `employment.product_category_ids`; le chiavi `employment.*` sono 13.</criterion>
+    <criterion id="AC-010">La GET dell'utente restituisce `employment.product_lines` con la shape `{id, business_function:{id,name}, product_category:{id,name}}` quando `productLines` e' eager-loaded, e omette la chiave quando non lo e'.</criterion>
+    <criterion id="AC-011">Dato un utente con la riga (F1, C1) e un record che richiede C1 la cui funzione effettiva e' F1, allora l'utente e' competente.</criterion>
+    <criterion id="AC-012">Dato un utente la cui UNICA riga e' (F2, C1) con funzione effettiva di C1 pari a F1, allora l'utente NON e' competente per un record che richiede C1.</criterion>
+    <criterion id="AC-013">Dato un utente con la riga (F1, C_padre), allora e' competente per un record che richiede C_figlia (chiusura discendente, INV-2).</criterion>
+    <criterion id="AC-014">Dato un utente senza alcuna riga, allora non e' mai escluso, qualunque categoria il record richieda (deroga jolly).</criterion>
+    <criterion id="AC-015">Dato un record senza categorie richieste, allora nessun candidato viene escluso (invariato rispetto alla 0110).</criterion>
+    <criterion id="AC-016">`GET /api/users/for-select?competence_category_ids[]=C1` esclude gli utenti non competenti secondo D-2 e mantiene `total` coerente con l'elenco filtrato.</criterion>
+    <criterion id="AC-017">Nella tabella utenti la cella `business_function` mostra i nomi distinti delle funzioni delle righe dell'utente (aggregati come nelle offerte), `null` per un utente senza righe.</criterion>
+    <criterion id="AC-018">Il filtro set su `business_function` restituisce gli utenti che hanno ALMENO una riga con quella funzione (nessun SQL raw da input).</criterion>
+    <criterion id="AC-019">L'ordinamento su `business_function` ordina per il primo nome funzione in ordine alfabetico dell'utente e non fa sparire gli utenti senza righe.</criterion>
+    <criterion id="AC-020">La stat `by_business_function` conta 1 per un utente che ha due righe sulla STESSA funzione, e 1 per ciascuna funzione per un utente con due righe su funzioni diverse.</criterion>
+    <criterion id="AC-021">`UsersSource` non espone piu' il campo `business_function_id`; un record esterno che lo contiene viene importato senza errore, ignorando il campo.</criterion>
+    <criterion id="AC-022">Le migration della feature sono reversibili: `migrate:rollback` ricrea lo stato precedente e il contatore di rollback del `QuoteWorkflowMigrationTest` e' aggiornato al nuovo numero reale.</criterion>
+    <criterion id="AC-023">Nel form utente (tab Profilo) l'editor a righe permette di aggiungere una riga, sceglierne la funzione, scegliere una categoria scopata su quella funzione e rimuovere la riga; salvando, il payload contiene `employment.product_lines`.</criterion>
+    <criterion id="AC-024">Nel form utente il pulsante "Aggiungi" resta attivo anche quando una riga punta a una categoria `single`; nel form offerta/richiesta lo stesso componente continua a bloccarlo (nessuna regressione).</criterion>
+    <criterion id="AC-025">Il dettaglio utente mostra le coppie funzione -> categoria al posto della singola funzione aziendale.</criterion>
+    <criterion id="AC-026">Dato un attore per cui `employment.product_lines` e' readonly, quando la PATCH rispedisce le righe identiche, allora nessun 422 (confronto "changed" simmetrico, D-7).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (composer/npm).</item>
+    <item>Riuso obbligatorio: `ProductLineWriter` per la scrittura, `ProductLineSetValidator` per le regole di riga e di coppia, `ProductLinesField`/`ProductCategoryTreeSelect` per la UI. Nessuna seconda implementazione delle stesse regole.</item>
+    <item>`ProductLineSetValidator` va esteso senza cambiare il comportamento dei chiamanti attuali: le regole di coppia (duplicati + mismatch funzione) si espongono separate dall'invariante di card `single`, che resta applicato solo dove lo e' oggi.</item>
+    <item>Authz server-side invariata: `UsersAuthorization` resta l'unico ceiling; nessun campo scrivibile senza permesso.</item>
+    <item>Nessun `whereRaw`/`orderByRaw` costruito da input: filtro via `whereHas` allow-listato, ordinamento via subquery correlata su SQL costante (backend.md §8).</item>
+    <item>Identificatori in inglese (tabelle, colonne, classi, campi API). Stringhe utente via i18next (`it-users-employment.ts` / `en-users-employment.ts`, parita' di chiavi).</item>
+    <item>File entro 300 righe soft / 500 hard: `UserEmploymentColumns` e `use-user-form.ts` vanno tenuti sotto la soglia, splittando se la modifica li supera.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint, ESLint, `cd frontend &amp;&amp; npx tsc -b --force` pulito.</item>
+  </constraints>
+
+</spec>

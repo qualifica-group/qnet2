@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import {
+  Boxes,
   Briefcase,
   Building2,
   CalendarClock,
+  ChevronRight,
   Coffee,
   Globe,
   History,
@@ -102,8 +104,22 @@ export function UserDetailView({ userId }: UserDetailProps) {
             <DetailField label={t('users.detail.employment.isManager')} icon={<UserCog />}>
               {employment.is_manager ? t('common.yes') : t('common.no')}
             </DetailField>
-            <DetailField label={t('users.detail.employment.businessFunction')} icon={<Briefcase />}>
-              {employment.business_function?.label ?? <DetailEmpty />}
+            <DetailField label={t('users.detail.employment.productLines')} icon={<Boxes />} full>
+              {employment.product_lines && employment.product_lines.length > 0 ? (
+                <ul className="flex flex-col gap-1">
+                  {employment.product_lines.map((line) => (
+                    <li key={line.id} className="flex min-w-0 items-center gap-1.5 text-xs">
+                      <Badge variant="secondary" className="max-w-full truncate">
+                        {line.business_function.name}
+                      </Badge>
+                      <ChevronRight aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{line.product_category.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <DetailEmpty />
+              )}
             </DetailField>
             <DetailField label={t('users.detail.employment.reportsTo')} icon={<UserCog />}>
               {employment.reports_to?.label ?? <DetailEmpty />}

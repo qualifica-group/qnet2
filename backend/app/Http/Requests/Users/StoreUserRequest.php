@@ -79,12 +79,15 @@ class StoreUserRequest extends FormRequest
 
     /**
      * Apply the per-type contact `value` rules for the nested profile
-     * (ADR 0012) and the field-level authorization gate (spec 0004).
+     * (ADR 0012), the cross-row pair rules of the nested
+     * `employment.product_lines` competence (spec 0111) and the field-level
+     * authorization gate (spec 0004).
      */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
+            $this->validateEmploymentProductLines($validator);
             $this->enforceFieldPermissions($validator);
         });
     }

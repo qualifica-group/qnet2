@@ -7,6 +7,7 @@ import type {
 import type {
   CreateUserPayload,
   EmploymentPayload,
+  EmploymentProductLineInput,
   UpdateUserPayload,
   UserDetailWithPermissions,
 } from '@/features/users/types'
@@ -24,18 +25,33 @@ function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload
     is_manager: values.is_manager,
     job_description: values.job_description || null,
     reports_to_id: values.is_manager ? null : values.reports_to_id,
-    business_function_id: values.business_function_id,
     relationship_type: values.relationship_type,
     company_id: values.company_id,
     primary_operational_site_id: values.primary_operational_site_id,
     remote_operational_site_ids: values.remote_operational_site_ids,
-    product_category_ids: values.product_category_ids,
+    product_lines: completeProductLines(values.product_lines),
     qualification_type: values.qualification_type,
     hired_at: values.hired_at || null,
     terminated_at: values.terminated_at || null,
     standard_daily_minutes: values.standard_daily_minutes,
     break_daily_minutes: values.break_daily_minutes,
   }
+}
+
+/**
+ * Drops any row still missing one of its two ids. The schema already refuses
+ * the submit on an incomplete row (`buildEmploymentSchema`), so this never
+ * actually drops one in practice — it exists because the form value stays
+ * nullable-per-id at the type level (each row is inline-editable), exactly as
+ * in the opportunity/project payload builders.
+ */
+function completeProductLines(
+  rows: EmploymentFormValues['product_lines'],
+): EmploymentProductLineInput[] {
+  return rows.filter(
+    (row): row is EmploymentProductLineInput =>
+      row.business_function_id !== null && row.product_category_id !== null,
+  )
 }
 
 /**

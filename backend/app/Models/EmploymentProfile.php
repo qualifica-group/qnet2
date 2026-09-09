@@ -12,24 +12,25 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A user's employment profile (spec 0015): Profile (manager flag, job
- * description, reports-to), Contractual relationship (function, type,
- * company, qualification, dates) and Contractual data (daily minutes). One
- * row per user (hasOne on User via HasEmployment).
+ * description, reports-to), Contractual relationship (type, company,
+ * qualification, dates) and Contractual data (daily minutes). One row per
+ * user (hasOne on User via HasEmployment).
  *
- * The site membership (spec 0103) is no longer a column on this table: a
- * profile holds at most one PHYSICAL site and any number of REMOTE ones, via
- * the `employment_profile_operational_site` pivot (see operationalSites()
- * below).
+ * Two of its sections are no longer columns on this table: the site
+ * membership (spec 0103) lives on the
+ * `employment_profile_operational_site` pivot (see operationalSites()), and
+ * the business function (spec 0111 D-1) on the `employment_product_lines`
+ * rows, paired with a product category (see productLines()).
  */
 #[Fillable([
     'user_id',
     'is_manager',
     'job_description',
     'reports_to_id',
-    'business_function_id',
     'relationship_type',
     'company_id',
     'qualification_type',
@@ -72,11 +73,6 @@ class EmploymentProfile extends BaseModel
         return $this->belongsTo(User::class, 'reports_to_id');
     }
 
-    public function businessFunction(): BelongsTo
-    {
-        return $this->belongsTo(BusinessFunction::class);
-    }
-
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
@@ -115,29 +111,15 @@ class EmploymentProfile extends BaseModel
     }
 
     /**
-     * The product categories this profile is operative on (spec 0110): the
-     * category half of the assignment competence, the business function
-     * above being the other half (INV-3).
+     * The competence of this profile (spec 0111): N rows pairing a business
+     * function with a product category, the single source of both halves
+     * since `business_function_id` was dropped (D-1). The name is load
+     * bearing: ProductLineWriter::sync() reaches the collection through
+     * `$owner->productLines()`, the same way every other owner exposes it.
      */
-    public function productCategories(): BelongsToMany
+    public function productLines(): HasMany
     {
-        return $this->belongsToMany(ProductCategory::class, 'employment_profile_product_category');
-    }
-
-    /**
-     * Read-only proxy onto the competence pivot (spec 0110), counterpart of
-     * remoteOperationalSiteIds() below: same PUBLIC-accessor reasoning (the
-     * field-permission catalogue resolves `employment.product_category_ids`
-     * through Model::getAttribute() and needs scalar ids back), and the same
-     * no-N+1 read off the already-loaded collection.
-     *
-     * @return array<int, int>
-     */
-    public function productCategoryIds(): Attribute
-    {
-        return Attribute::get(
-            fn (): array => $this->productCategories->pluck('id')->all()
-        );
+        return $this->hasMany(EmploymentProductLine::class);
     }
 
     /**

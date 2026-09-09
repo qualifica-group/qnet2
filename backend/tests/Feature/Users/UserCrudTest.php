@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\BusinessFunction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -45,24 +44,8 @@ it('view: 200 with users.view', function () {
         ->assertJsonMissingPath('data.password');
 });
 
-it('view: eager-loads and returns the nested employment tree', function () {
-    $actor = userWithUserAbilities(['view']);
-    $function = BusinessFunction::factory()->create(['name' => 'Engineering']);
-    $target = User::factory()->create();
-    $target->employment()->create([
-        'is_manager' => false,
-        'job_description' => 'Backend engineer',
-        'business_function_id' => $function->id,
-    ]);
-    Sanctum::actingAs($actor);
-
-    $this->getJson("/api/users/{$target->id}")
-        ->assertOk()
-        ->assertJsonPath('data.employment.business_function.id', $function->id)
-        ->assertJsonPath('data.employment.job_description', 'Backend engineer');
-});
-
-// AC-009 (multi-site Sede membership) has its own file: UserEmploymentViewTest.php.
+// The nested employment tree (competence rows, multi-site Sede membership)
+// has its own file: UserEmploymentViewTest.php.
 
 it('view: 403 without users.view', function () {
     $actor = userWithUserAbilities([]);

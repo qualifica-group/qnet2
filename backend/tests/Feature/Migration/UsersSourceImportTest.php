@@ -2,6 +2,7 @@
 
 use App\Enums\MigrationStatus;
 use App\Jobs\RunMigrationJob;
+use App\Migrations\MigrationRegistry;
 use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\Country;
@@ -78,7 +79,6 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
     $country = Country::factory()->create(['name' => 'Italy']);
     $state = State::factory()->for($country)->create(['name' => 'Lazio']);
     $manager = User::factory()->create(['old_id' => 900]);
-    $businessFunction = BusinessFunction::factory()->create(['old_id' => 910]);
     $company = Company::factory()->create(['old_id' => 920]);
     $operationalSite = OperationalSite::factory()->create(['old_id' => 930]);
     $role = Role::factory()->create(['name' => 'Admin', 'old_id' => 68]);
@@ -159,7 +159,6 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
     $employment = $ada->employment;
     expect($employment)->not->toBeNull()
         ->and($employment->reports_to_id)->toBe($manager->id)
-        ->and($employment->business_function_id)->toBe($businessFunction->id)
         ->and($employment->company_id)->toBe($company->id)
         ->and($employment->primary_operational_site_id)->toBe($operationalSite->id)
         ->and($employment->remote_operational_site_ids)->toBe([])
@@ -246,12 +245,10 @@ it('back-fills employment relations on re-import once the parents are migrated (
     $user = User::query()->where('email', 'nicola@example.test')->first();
     expect($user->employment)->not->toBeNull()
         ->and($user->employment->reports_to_id)->toBeNull()
-        ->and($user->employment->business_function_id)->toBeNull()
         ->and($user->employment->primary_operational_site_id)->toBeNull();
 
     // The parents are migrated afterwards (their own sources set old_id).
     $manager = User::factory()->create(['old_id' => 445]);
-    $businessFunction = BusinessFunction::factory()->create(['old_id' => 6]);
     $operationalSite = OperationalSite::factory()->create(['old_id' => 15]);
 
     // Round 2: re-import the SAME user -> skipped, but relations back-filled.
@@ -260,7 +257,6 @@ it('back-fills employment relations on re-import once the parents are migrated (
 
     $employment = $user->employment()->with('operationalSites')->first();
     expect($employment->reports_to_id)->toBe($manager->id)
-        ->and($employment->business_function_id)->toBe($businessFunction->id)
         ->and($employment->primary_operational_site_id)->toBe($operationalSite->id)
         ->and($employment->operationalSites()->wherePivot('is_primary', true)->count())->toBe(1);
 
@@ -455,4 +451,56 @@ it('rejects a row whose password is not a valid bcrypt hash', function () {
     expect($fresh->failed_rows)->toBe(1)
         ->and($fresh->report[0]['level'])->toBe('error')
         ->and($fresh->report[0]['message'])->toContain('bcrypt');
+});
+
+// ---------------------------------------------------------------------------
+// AC-021 (spec 0111 D-6) — `business_function_id` left the users source: a user
+// competence is a function+category pair, which a single external id cannot
+// form, so the field is no longer importable and an external record still
+// carrying it is imported ignoring it
+// ---------------------------------------------------------------------------
+
+it('no longer exposes business_function_id in the users column catalogue', function () {
+    $columns = collect(app(MigrationRegistry::class)->resolve('users')->columns())->pluck('id');
+
+    expect($columns)->not->toContain('business_function_id')
+        ->and($columns)->toContain('reports_to_id', 'company_id', 'operational_site_id');
+});
+
+it('imports a record still carrying business_function_id without error, ignoring the field', function () {
+    seedMigrationsConfig();
+    BusinessFunction::factory()->create(['old_id' => 910]);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/users*' => Http::response([
+            'items' => [[
+                'id' => 705,
+                'email' => 'rita@example.test',
+                'password' => fakeBcryptHash('rita-secret'),
+                'first_name' => 'Rita',
+                'last_name' => 'Levi',
+                'business_function_id' => 910,
+            ]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'users']);
+
+    runMigrationJobFor($run);
+
+    $rita = User::query()->where('email', 'rita@example.test')->first();
+
+    // The field is the record's ONLY employment marker: ignoring it leaves no
+    // employment payload at all, hence no profile row.
+    expect($rita)->not->toBeNull()
+        ->and($rita->old_id)->toBe(705)
+        ->and($rita->employment)->toBeNull();
+
+    $fresh = $run->fresh();
+    expect($fresh->status)->toBe(MigrationStatus::Completed)
+        ->and($fresh->created_rows)->toBe(1)
+        ->and($fresh->failed_rows)->toBe(0)
+        ->and(collect($fresh->report ?? [])->pluck('message')->implode(' | '))->not->toContain('business_function');
 });
