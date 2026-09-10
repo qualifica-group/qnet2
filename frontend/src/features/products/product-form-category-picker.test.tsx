@@ -113,6 +113,7 @@ function treeNode(
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
+    simplified_offer_line: false,
     ...overrides,
   }
 }

@@ -89,6 +89,7 @@ export const productCategories = {
     management_mode: 'Modalità di gestione',
     single_quote_per_opportunity: 'Offerta unica per opportunità',
     generates_contract: 'Prevede un contratto',
+    simplified_offer_line: 'Semplificazione riga offerta',
     created_at: 'Creato il',
     tooltipEmpty: 'Nessun elemento da mostrare.',
     productsMore: '+{{count}} altri',
@@ -102,6 +103,7 @@ export const productCategories = {
     managementModeInherited: 'Ereditata da {{category}}',
     singleQuotePerOpportunityInherited: 'Ereditata da {{category}}',
     generatesContractInherited: 'Ereditata da {{category}}',
+    simplifiedOfferLineInherited: 'Ereditata da {{category}}',
     managerLabelInherited: 'Ereditata',
     inheritedCount: '+{{count}} ereditati',
   },
@@ -205,6 +207,14 @@ export const productCategories = {
     generatesContractInfo:
       "Decide se il ramo viene venduto sotto contratto. Se spento, quando l'offerta entra in uno stato di lavorazione chiuso positivo NON viene creato alcun contratto e la scheda non compare nel modulo Contratti; la chiusura positiva resta comunque possibile. I contratti già aperti prima dello spegnimento restano dove sono e continuano a vivere normalmente. Se una scheda copre più categorie, basta che UNA non preveda il contratto perché non venga creato. La regola appartiene alla categoria RADICE e tutto il sottoalbero la segue.",
     generatesContractInfoLabel: 'Maggiori informazioni su Prevede un contratto',
+    simplifiedOfferLine: 'Semplificazione riga offerta',
+    simplifiedOfferLineHint:
+      "Se attivo, in Gestione Richieste l'operatore sceglie solo il prodotto: quantità, prezzo unitario e aliquota IVA della riga vengono compilati automaticamente dal sistema.",
+    simplifiedOfferLineInheritedHint:
+      'La semplificazione della riga offerta è ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
+    simplifiedOfferLineInfo:
+      "Elimina la compilazione manuale della riga offerta in Gestione Richieste: sulle richieste di questo ramo l'operatore sceglie SOLO il prodotto e il sistema valorizza quantità (sempre 1), prezzo unitario e aliquota IVA con quelli del prodotto. Il modulo Offerte non è toccato: chi lavora l'offerta commerciale continua a governare quantità e prezzi anche su una categoria semplificata. La regola appartiene alla categoria RADICE e tutto il sottoalbero la segue.",
+    simplifiedOfferLineInfoLabel: 'Maggiori informazioni su Semplificazione riga offerta',
     isSelectableInfo:
       "Trasforma la categoria in un puro contenitore. Resta padre delle sue sottocategorie e conserva tutte le associazioni già fatte, ma non compare più nelle liste di scelta. A differenza delle altre regole questa appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non selezionabile può avere figli selezionabili.",
     isSelectableInfoLabel: 'Maggiori informazioni su Selezionabile',

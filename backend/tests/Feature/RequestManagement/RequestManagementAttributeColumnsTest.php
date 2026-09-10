@@ -206,7 +206,7 @@ it('maps an attribute type to the frozen (type, filterType, editor) triad', func
     'enum multiselect' => ['enum', ['display' => 'multiselect'], null, 'tags', 'set', 'tags'],
     'relation cardinality one' => ['relation', [], ['entity_type' => 'referents', 'cardinality' => 'one', 'for_select_resource' => 'referents'], 'text', 'set', 'relation'],
     'relation cardinality many' => ['relation', [], ['entity_type' => 'referents', 'cardinality' => 'many', 'for_select_resource' => 'referents'], 'tags', 'set', 'multiselect'],
-    'date' => ['date', [], null, 'text', 'date', 'date'],
+    'date' => ['date', [], null, 'datetime', 'date', 'date'],
     'datetime' => ['datetime', [], null, 'datetime', 'date', 'datetime'],
 ]);
 

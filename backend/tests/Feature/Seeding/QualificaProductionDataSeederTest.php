@@ -43,7 +43,7 @@ it('composes structure, catalogue and testers in one run', function (): void {
         ->and(CustomFieldDefinition::query()->where('entity_type', 'products')->count())->toBe(2)
         ->and(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->count())->toBe(1)
-        ->and(Product::query()->count())->toBe(265)
+        ->and(Product::query()->count())->toBe(266)
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->exists())->toBeTrue();
 });
 
@@ -93,7 +93,7 @@ it('is idempotent: a second run duplicates nothing', function (): void {
     test()->seed(QualificaProductionDataSeeder::class);
 
     expect(Source::query()->count())->toBe(10)
-        ->and(Product::query()->count())->toBe(265)
+        ->and(Product::query()->count())->toBe(266)
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1);
 });

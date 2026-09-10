@@ -12,8 +12,8 @@ use Illuminate\Support\Collection;
  * (engineering.md §6). One query for the whole tree, assembled in PHP.
  *
  * Every ROOT-OWNED setting (`requires_quote`, `management_mode`,
- * `single_quote_per_opportunity`, `generates_contract`) travels on each node
- * ALREADY EFFECTIVE: the
+ * `single_quote_per_opportunity`, `generates_contract`,
+ * `simplified_offer_line`) travels on each node ALREADY EFFECTIVE: the
  * columns are denormalised onto every row (RootOwnedCategorySetting), so the
  * category form previews what a child would inherit from a candidate parent
  * by reading this cache, with no extra request and no walk here.
@@ -71,6 +71,7 @@ final class CategoryTreeBuilder
                 'management_mode' => $category->management_mode->value,
                 'single_quote_per_opportunity' => (bool) $category->single_quote_per_opportunity,
                 'generates_contract' => (bool) $category->generates_contract,
+                'simplified_offer_line' => (bool) $category->simplified_offer_line,
             ];
         }
 

@@ -137,14 +137,14 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
           'Prossimo richiamo',
           'Attribuzione',
           'Linee di prodotto',
-          'Prodotti di interesse',
           'Anagrafica cliente',
         ].includes(title ?? ''),
       )
 
+    // Requisito cambiato (direttiva utente 2026-09-10): "Prodotti di
+    // interesse" non e' piu' una sezione di questo modulo.
     expect(order).toEqual([
       'Linee di prodotto',
-      'Prodotti di interesse',
       'Prossimo richiamo',
       'Attribuzione',
       'Anagrafica cliente',

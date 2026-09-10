@@ -9,11 +9,19 @@ vi.mock('@/api/client', () => ({
 const postMock = vi.mocked(apiClient.post)
 
 /** Standard `{ success, message, data }` envelope as seen by axios. */
-function envelope(data: {
-  product_category_ids: number[]
-  operational_site_id: number | null
-  campaign_ids: number[]
+function envelope(overrides: {
+  product_category_ids?: number[]
+  operational_site_id?: number | null
+  campaign_ids?: number[]
+  single_operator_available?: boolean
 }) {
+  const data = {
+    product_category_ids: [],
+    operational_site_id: null,
+    campaign_ids: [],
+    single_operator_available: true,
+    ...overrides,
+  }
   return { data: { success: true, message: 'ok', data } }
 }
 
@@ -38,6 +46,7 @@ describe('fetchAssignmentScope', () => {
       product_category_ids: [3, 7],
       operational_site_id: 5,
       campaign_ids: [2],
+      single_operator_available: true,
     })
     expect(postMock).toHaveBeenCalledWith('/assignment/selection-scope', {
       domain: 'import_rows',
@@ -65,15 +74,16 @@ describe('fetchAssignmentScope', () => {
     })
   })
 
-  it('returns a mixed-site, requirement-free scope as-is', async () => {
+  it('returns a mixed-site scope with no common operator as-is', async () => {
     postMock.mockResolvedValue(
-      envelope({ product_category_ids: [], operational_site_id: null, campaign_ids: [4, 9] }),
+      envelope({ campaign_ids: [4, 9], single_operator_available: false }),
     )
 
     await expect(fetchAssignmentScope({ domain: 'leads', ids: [1] })).resolves.toEqual({
       product_category_ids: [],
       operational_site_id: null,
       campaign_ids: [4, 9],
+      single_operator_available: false,
     })
   })
 })

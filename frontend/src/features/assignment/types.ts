@@ -55,4 +55,12 @@ export interface AssignmentScopeResult {
    * `domain: 'quotes'` (an opportunity has no campaign).
    */
   campaign_ids: number[]
+  /**
+   * Whether at least one operator is a valid choice for EVERY record in scope
+   * of the selection. It is not implied by the fields above: competence is an
+   * OR over the required categories, so a picker filtered on their union still
+   * offers operators valid for only SOME of the records. `true` for an empty
+   * selection (nothing to cover).
+   */
+  single_operator_available: boolean
 }

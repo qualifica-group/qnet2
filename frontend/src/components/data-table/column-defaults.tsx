@@ -14,7 +14,7 @@ import appI18n from '@/i18n'
 import { resolveCellEditorSpec, type CellEditorKind } from '@/components/data-table/cell-editor-registry'
 import { formatBadgeFilterValue, formatBooleanFilterValue } from '@/components/data-table/column-filters'
 import { BadgeCell } from '@/features/table/cell-renderers'
-import { formatDate, formatDateTimeOptionalTime } from '@/lib/formatting/date-display'
+import { formatDateTimeOptionalTime } from '@/lib/formatting/date-display'
 import type { TableColumn, TableRow } from '@/features/table/types'
 
 /** A custom cell renderer keyed by column id. Receives the AG Grid cell params. */
@@ -80,10 +80,13 @@ export function defaultValueFormatter(
   // Dynamic date columns carry no per-id renderer, so without this they would
   // print the raw wire value (`2026-08-03T14:30:00`) instead of the user's
   // pattern. Native date columns keep their per-id `DateCell`/`DateTimeCell`.
-  // `filterType: 'date'` is how the backend marks a date-only field, which
-  // must never grow a time; anything else keeps its hour when it has one.
+  // The granularity comes from the VALUE, not from `filterType`: a date-only
+  // attribute stores `Y-m-d` and never grows a time, while a `datetime` one
+  // keeps its hour — both attribute kinds are declared `filterType: 'date'`
+  // (the range filter they share), so branching on that stripped the hour off
+  // every `datetime` attribute.
   if (isDynamicColumn(column) && column.type === 'datetime') {
-    return column.filterType === 'date' ? formatDate : formatDateTimeOptionalTime
+    return formatDateTimeOptionalTime
   }
   return undefined
 }

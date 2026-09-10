@@ -55,6 +55,13 @@ export const requestManagement = {
   assign: {
     tableButton: 'Assegna operatori',
     description: '{{count}} richieste selezionate.',
+    mode: {
+      // Motivo mostrato sulla card "Assegna a operatore" disabilitata da
+      // `request-management-table.tsx` quando nessun operatore singolo copre
+      // tutte le richieste selezionate (direttiva utente 2026-09-10).
+      disabledNoCommonOperator:
+        'Non disponibile: nessun operatore e\' abilitato per tutte le richieste selezionate, che differiscono per Sede o prodotti.',
+    },
     actions: {
       balancedHint: 'Distribuisce le richieste selezionate tra gli operatori della Sede, bilanciando il carico di lavoro.',
       singleHint: 'Assegna tutte le richieste selezionate allo stesso operatore.',
@@ -183,6 +190,8 @@ export const requestManagement = {
    */
   offerLines: {
     hintNoCategory: 'Scegli prima una categoria prodotto: limita i prodotti selezionabili.',
+    hintSimplified:
+      "Categoria semplificata: scegli il prodotto, quantità, prezzo unitario e aliquota IVA sono compilati automaticamente dal sistema.",
     editAction: 'Modifica le righe dell\'offerta',
     dialogTitle: 'Linee dell\'offerta',
     dialogDescription: 'Modifica prodotto, quantità, prezzo unitario e IVA delle righe di questa offerta.',

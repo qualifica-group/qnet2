@@ -36,10 +36,19 @@ use Illuminate\Validation\ValidationException;
  * operative changes onto the OPPORTUNITY's activity thread (spec 0049 D-9),
  * which the Quote's own model log never reaches, and an unchanged collection
  * must neither be rewritten nor logged.
+ *
+ * Spec 0114, D-4/D-6: before the full-replace, a `simplified_offer_line`
+ * classification has SimplifiedOfferLineNormalizer freeze quantity/unit-price/
+ * VAT-rate on the rows that are new or whose product changed — the same
+ * choke point every one of this module's write channels (panel, inline cell)
+ * already shares.
  */
 final class RequestOfferLineWriter
 {
-    public function __construct(private readonly QuoteService $quoteService) {}
+    public function __construct(
+        private readonly QuoteService $quoteService,
+        private readonly SimplifiedOfferLineNormalizer $normalizer,
+    ) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $submitted  the validated `offer_lines` rows
@@ -53,6 +62,11 @@ final class RequestOfferLineWriter
         // Step 1: compare against what is persisted, in the same comparable
         // shape — an untouched collection leaves the Offerta alone.
         $before = $this->snapshot($quote);
+
+        // Step 1-bis: freeze the rows a simplified classification owns (D-4/D-6)
+        // BEFORE the write, so QuoteService::update() never sees the client's
+        // raw quantity/unit-price/VAT-rate for them.
+        $submitted = $this->normalizer->normalizeForUpdate($quote, $submitted);
 
         // Step 2: full-replace through the Offerte service (see class doc).
         $this->quoteService->update($quote, UpdateQuoteData::fromValidated(['offer_lines' => $submitted]), $actor);

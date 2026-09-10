@@ -153,6 +153,21 @@ final class ProductCategoryColumnCatalog
                 'filterType' => 'boolean',
             ],
             [
+                // Whether an offer line of this branch in Gestione Richieste
+                // is simplified — quantity/unit-price/VAT controls dropped,
+                // the server freezing them from the picked product (spec
+                // 0114). Owned by the branch ROOT and mirrored onto every
+                // descendant by SimplifiedOfferLineInheritance, so this IS a
+                // real column here.
+                'id' => 'simplified_offer_line',
+                'label' => 'productCategories.columns.simplified_offer_line',
+                'type' => 'boolean',
+                'visible' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 // Number of attributes directly assigned to this category
                 // (own assignments only — NOT the effective/inherited count),
                 // via withCount('attributes'). AGGREGATE (no real DB column).
@@ -232,6 +247,7 @@ final class ProductCategoryColumnCatalog
             ['columnId' => 'management_mode', 'type' => 'set'],
             ['columnId' => 'single_quote_per_opportunity', 'type' => 'boolean'],
             ['columnId' => 'generates_contract', 'type' => 'boolean'],
+            ['columnId' => 'simplified_offer_line', 'type' => 'boolean'],
             ['columnId' => 'attributes_count', 'type' => 'number'],
             ['columnId' => 'products_count', 'type' => 'number'],
             ['columnId' => 'created_at', 'type' => 'date'],

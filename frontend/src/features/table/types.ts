@@ -144,10 +144,12 @@ export interface TableColumn {
    * picker, `multiselect` (user directive 2026-07-23) the to-many `/for-select`
    * picker whose value is the whole id collection, `product_lines` (spec 0075)
    * the {funzione aziendale, categoria prodotto} pair collection edited in the
-   * same flow as the form. Declared per column by the backend; a column
+   * same flow as the form, `date` (spec 0064) the same picker as `datetime`
+   * restricted to a calendar day, for a Product Category attribute with no
+   * time component. Declared per column by the backend; a column
    * without it keeps resolving its editor from `type`, unchanged.
    */
-  editor?: 'relation' | 'select' | 'datetime' | 'multiselect' | 'product_lines'
+  editor?: 'relation' | 'select' | 'datetime' | 'date' | 'multiselect' | 'product_lines'
   /**
    * The `/for-select` resource backing a `relation` editor (spec 0054 D-1),
    * plus the OPTIONAL row-scoped narrowing of its option list (user directive

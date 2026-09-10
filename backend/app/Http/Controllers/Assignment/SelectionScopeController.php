@@ -13,6 +13,7 @@ use App\Models\ImportRunRow;
 use App\Models\Lead;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\Assignment\AssignmentCandidates;
 use App\Services\Assignment\AssignmentSiteResolver;
 use App\Services\Assignment\ImportRowCompetence;
 use App\Services\Assignment\ImportRunRowSelection;
@@ -32,6 +33,15 @@ use Throwable;
  * once, then hands the answer to
  * `GET /api/users/for-select?operational_site_id=...&competence_category_ids[]=...`.
  * Empty categories mean "no requirement": the caller applies no filter.
+ *
+ * `single_operator_available` answers what the union of the categories
+ * structurally cannot: that union is an OR — an operator competent for at
+ * least ONE of the selected records' categories passes the picker's filter —
+ * while `mode=single` demands an AND, and on Gestione richieste rejects with
+ * a 422 an operator who does not cover EVERY targeted offer (rev.3). The
+ * field is the INTERSECTION of the per-record candidate pools being
+ * non-empty, so the client can tell a selection one operator can take from
+ * one it cannot before proposing the choice.
  *
  * The Sede is the SHARED one, computed over the resolved value of EVERY
  * targeted record, null included as a value: one distinct non-null value wins,
@@ -60,6 +70,7 @@ class SelectionScopeController extends BaseApiController
         private readonly LeadCompetence $leadCompetence,
         private readonly QuoteCompetence $quoteCompetence,
         private readonly AssignmentSiteResolver $siteResolver,
+        private readonly AssignmentCandidates $candidates,
     ) {}
 
     public function __invoke(SelectionScopeRequest $request): JsonResponse
@@ -108,18 +119,23 @@ class SelectionScopeController extends BaseApiController
             ['id', 'product_ids', 'mapped_values'],
         );
 
-        // Step 4: fold them onto the three answers.
+        // Step 4: fold them onto the four answers.
         $campaignIds = $rows
             ->map(static fn (ImportRunRow $row): ?int => LeadRowCampaign::resolve($row->mapped_values ?? [], $globalConfig))
             ->all();
 
+        $rowIds = $rows->pluck('id')->map(intval(...))->all();
+        $siteByRow = $this->siteResolver->forImportRows($rows, $globalConfig);
+
         return [
             'product_category_ids' => $this->importRowCompetence->requiredUnion($rows, $globalConfig),
-            'operational_site_id' => $this->sharedSite(
-                $rows->pluck('id')->map(intval(...))->all(),
-                $this->siteResolver->forImportRows($rows, $globalConfig),
-            ),
+            'operational_site_id' => $this->sharedSite($rowIds, $siteByRow),
             'campaign_ids' => $this->ascendingIds($campaignIds),
+            'single_operator_available' => $this->singleOperatorAvailable(
+                $rowIds,
+                $siteByRow,
+                $this->importRowCompetence->requiredByRow($rows, $globalConfig),
+            ),
         ];
     }
 
@@ -131,12 +147,18 @@ class SelectionScopeController extends BaseApiController
         $this->authorize('viewAny', Lead::class);
 
         $leadIds = $request->ids();
+        $siteByLead = $this->siteResolver->forLeads($leadIds);
 
         return [
             'product_category_ids' => $this->leadCompetence->requiredUnion($leadIds),
-            'operational_site_id' => $this->sharedSite($leadIds, $this->siteResolver->forLeads($leadIds)),
+            'operational_site_id' => $this->sharedSite($leadIds, $siteByLead),
             'campaign_ids' => $this->ascendingIds(
                 Lead::query()->whereIn('id', $leadIds)->pluck('campaign_id')->all(),
+            ),
+            'single_operator_available' => $this->singleOperatorAvailable(
+                $leadIds,
+                $siteByLead,
+                $this->leadCompetence->requiredByLead($leadIds),
             ),
         ];
     }
@@ -156,13 +178,69 @@ class SelectionScopeController extends BaseApiController
             $actor,
         )->pluck('quotes.id')->map(intval(...))->all();
 
+        $siteByQuote = $this->siteResolver->forQuotes($inScopeIds);
+
         return [
             'product_category_ids' => $this->quoteCompetence->requiredUnion($inScopeIds),
-            'operational_site_id' => $this->sharedSite($inScopeIds, $this->siteResolver->forQuotes($inScopeIds)),
+            'operational_site_id' => $this->sharedSite($inScopeIds, $siteByQuote),
             // An Opportunity carries no campaign (D-4): the chain does not
             // exist on this domain.
             'campaign_ids' => [],
+            'single_operator_available' => $this->singleOperatorAvailable(
+                $inScopeIds,
+                $siteByQuote,
+                $this->quoteCompetence->requiredByQuote($inScopeIds),
+            ),
         ];
+    }
+
+    /**
+     * Whether ONE operator can take the WHOLE selection: the INTERSECTION of
+     * the per-record candidate pools is not empty. The pools come from
+     * AssignmentCandidates, the same composition the three assignment
+     * surfaces apply when they actually assign, so the picker cannot answer
+     * a rule the assignment does not enforce.
+     *
+     * The edges are conventions, and each is deliberate:
+     *   - an EMPTY selection — including one whose records are all outside
+     *     the actor's D-3 scope — answers true: there is nothing to cover,
+     *     and an out-of-scope offer must not disable a UI it does not exist
+     *     in;
+     *   - a record with no resolvable Sede has an empty pool, so it alone
+     *     answers false (AC-007);
+     *   - a record demanding no category keeps its whole Sede rather than
+     *     everybody (AC-008), so it narrows the intersection without
+     *     constraining the competence.
+     *
+     * Answered for the three domains, not only for the one whose `single`
+     * mode rejects today: a field present on one domain only would make the
+     * contract unpredictable. Which surface acts on it is the client's call.
+     *
+     * @param  array<int, int>  $recordIds
+     * @param  array<int, int|null>  $siteByRecord
+     * @param  array<int, array<int, int>>  $categoriesByRecord
+     */
+    private function singleOperatorAvailable(array $recordIds, array $siteByRecord, array $categoriesByRecord): bool
+    {
+        if ($recordIds === []) {
+            return true;
+        }
+
+        $candidatesByRecord = $this->candidates->byRecord($siteByRecord, $categoriesByRecord);
+
+        $shared = null;
+
+        foreach ($recordIds as $recordId) {
+            $pool = $candidatesByRecord[$recordId] ?? [];
+
+            $shared = $shared === null ? $pool : array_intersect($shared, $pool);
+
+            if ($shared === []) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

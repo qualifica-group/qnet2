@@ -4,7 +4,7 @@ import { useWatch, type Control, type Path } from 'react-hook-form'
 import { TrendingUp } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { MetaField } from '@/features/authorization/MetaField'
-import { resolveManagementMode } from '@/features/product-lines/category-tree-scope'
+import { resolveManagementMode, resolveSimplifiedOfferLine } from '@/features/product-lines/category-tree-scope'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
@@ -61,6 +61,13 @@ const EMPTY_TREE: ProductCategoryTreeNode[] = []
  * The single-row cap of a `single`-managed category (spec 0077) is mirrored
  * on "Aggiungi riga" exactly as the Offerte tab mirrors it; the server
  * enforces it either way.
+ *
+ * A THIRD difference, exclusive to this module (spec 0114, D-3): when the
+ * classification covers a category under the simplified-offer-line rule,
+ * `simplified` drops quantity/unit price/VAT rate from the editor and
+ * congeals them from the picked product, client-side preview of what the
+ * server writes regardless. `QuoteOfferTab`/`QuoteCostTab` never pass this
+ * prop — the Offerte module keeps the full editor on every category.
  */
 export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFormShape>({
   control,
@@ -95,6 +102,12 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
   const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
   const singleCategoryMode = resolveManagementMode(categoryTree, categoryIds) === 'single'
 
+  // Spec 0114: as soon as ONE covered category carries the simplified-offer-
+  // line rule, the row editor drops quantity/unit price/VAT rate and the
+  // server congeals them from the picked product — the same tree the
+  // management mode reads, no extra request.
+  const simplified = resolveSimplifiedOfferLine(categoryTree, categoryIds)
+
   // A category exposing exactly ONE product fills its row by itself (user
   // directive 2026-09-09): picking the classification is the whole gesture,
   // there is nothing left for the operator to choose in that picker. Capped
@@ -105,6 +118,7 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
     categoryIds,
     maxRows: singleCategoryMode ? 1 : MAX_LINES_PER_TAB,
     rememberVatRatePercent,
+    simplified,
   })
 
   const knownProducts = useMemo(() => knownProductsFrom(knownLines), [knownLines])
@@ -137,14 +151,17 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
               vatRatePercentFor={vatRatePercentFor}
               rememberVatRatePercent={rememberVatRatePercent}
               withCommissions={false}
+              simplified={simplified}
             />
 
             <p className="text-xs text-muted-foreground">
               {categoryIds.length === 0
                 ? t('requestManagement.offerLines.hintNoCategory')
-                : singleCategoryMode
-                  ? t('quotes.form.offerTab.hintSingleCategory')
-                  : t('quotes.form.offerTab.hintScoped')}
+                : simplified
+                  ? t('requestManagement.offerLines.hintSimplified')
+                  : singleCategoryMode
+                    ? t('quotes.form.offerTab.hintSingleCategory')
+                    : t('quotes.form.offerTab.hintScoped')}
             </p>
           </div>
         )

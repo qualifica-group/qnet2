@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\BusinessFunction;
+use App\Models\EmploymentProfile;
+use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Quote;
@@ -170,6 +172,15 @@ it('AC-012: a request reassigned to a new operator without updateSource still 42
     $newAssignee = sourceProtectedActor();
     $quote = quoteSupervisedBy($previousOperator);
     $otherSource = Source::factory()->create();
+
+    // Direttiva utente 2026-09-10: `mode=single` now refuses an operator no
+    // targeted offer would have accepted. The reassignment this test performs
+    // to set its scene used to work on a Sede-less offer and any user; now the
+    // assignee has to belong to the offer's own Sede. Nothing about the Fonte
+    // rule under test changes.
+    $site = OperationalSite::factory()->withAddress()->create();
+    $quote->update(['operational_site_id' => $site->id]);
+    EmploymentProfile::factory()->for($newAssignee)->physicalSite($site)->create();
 
     Sanctum::actingAs($manager);
     // Spec 0113, AC-021: `operational_site_id` is prohibited on this payload.

@@ -286,19 +286,18 @@ it('0113 AC-021: a payload still carrying operational_site_id is rejected with 4
     expect($offer->fresh()->operator_id)->toBeNull();
 });
 
-it('0113 AC-021: mode=single is unchanged otherwise — no competence check, no Sede write', function () {
+it('0113 AC-021 rev. 2026-09-10: mode=single still writes no Sede, and now only takes an operator the offer would have accepted', function () {
     $actor = requestSiteScopeActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $otherSite = OperationalSite::factory()->withAddress()->create();
 
     $function = BusinessFunction::factory()->create();
     $category = ProductCategory::factory()->create(['business_function_id' => $function->id]);
 
-    // Neither competent for the offer nor employed at its Sede: `single`
-    // still assigns them (spec 0110, R-1 — the filter is UI-side only).
-    $otherFunction = BusinessFunction::factory()->create();
-    $otherCategory = ProductCategory::factory()->create(['business_function_id' => $otherFunction->id]);
-    $chosen = requestSiteScopeOperator($otherSite, $otherFunction, $otherCategory);
+    // Spec 0110's R-1 held that `single` accepted ANY operator, the filter
+    // being UI-side. The user directive 2026-09-10 reverses it on THIS module
+    // alone, so the operator this test picks has to be a real candidate; the
+    // rejection half lives in RequestManagementAssignSingleOperatorTest.
+    $chosen = requestSiteScopeOperator($site, $function, $category);
 
     $offer = requestSiteScopeOffer($site, $function, $category);
     Sanctum::actingAs($actor);

@@ -37,7 +37,7 @@ use App\CustomFields\Types\FieldTypeHandler;
  * The mapping table is this class' OWN, independent of
  * `FieldTypeHandler::columnType()/filterType()` (constraint: those ARE reused
  * for `applyFilter`/`applySort`/`distinctValues`, spec 0064 §M2) — the two
- * disagree for `date`/`datetime` (handler: text/text; contract: text|
+ * disagree for `date`/`datetime` (handler: text/text; contract:
  * datetime / date) and for `relation` cardinality (handler never
  * differentiates one/many), so the wire contract (AC-007) is the source of
  * truth for what the FRONTEND sees, while the handler stays the source of
@@ -176,8 +176,7 @@ final class AttributeColumnBuilder
             'relation' => $this->isManyRelation($attributeRow)
                 ? ['type' => 'tags', 'filterType' => 'set', 'editor' => 'multiselect']
                 : ['type' => 'text', 'filterType' => 'set', 'editor' => 'relation'],
-            'date' => ['type' => 'text', 'filterType' => 'date', 'editor' => 'date'],
-            'datetime' => ['type' => 'datetime', 'filterType' => 'date', 'editor' => 'datetime'],
+            'date', 'datetime' => ['type' => 'datetime', 'filterType' => 'date', 'editor' => (string) $attributeRow['type']],
             default => ['type' => 'text', 'filterType' => 'text', 'editor' => null],
         };
     }

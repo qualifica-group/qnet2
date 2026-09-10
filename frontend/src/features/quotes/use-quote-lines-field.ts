@@ -72,6 +72,24 @@ export function lineValuesFromProduct(
 }
 
 /**
+ * Same precompilation as `lineValuesFromProduct`, but never leaves
+ * `unit_price` null (spec 0114 D-5/D-9): a simplified row has no input to
+ * fix an absent product price with, and the shared row schema requires a
+ * number to submit at all, so the preview congeals to 0 exactly as the
+ * server does. Kept apart from `lineValuesFromProduct` — shared with the
+ * Offerte module (D-3) — rather than adding a flag to it. Exported so the
+ * mono-product autofill (`use-offer-lines-autofill.ts`) seeds a row with the
+ * exact same coercion a manual pick applies.
+ */
+export function simplifiedLineValuesFromProduct(
+  item: QuoteProductForSelectItem,
+  variant: QuoteLineVariant,
+): Pick<QuoteLineFormValues, 'product_id' | 'unit_of_measure' | 'unit_price' | 'vat_rate_id'> {
+  const base = lineValuesFromProduct(item, variant)
+  return { ...base, unit_price: base.unit_price ?? 0 }
+}
+
+/**
  * Owns one tab's (`offer_lines`/`cost_lines`) row array editing: add/remove
  * and the product-driven precompilation (AC-074) — mirrors
  * `useProductLinesField`'s "add empty row / edit in place" shape.
@@ -88,13 +106,18 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
    * Precompiles `unit_price`/`vat_rate_id`/`unit_of_measure` from the picked product's `meta`
    * (AC-074, D-6) and opens an empty quantity on `DEFAULT_LINE_QUANTITY`;
    * clearing the product only clears its own id, leaving quantity/price/rate
-   * exactly as the user left them.
+   * exactly as the user left them. `simplified` (spec 0114) forces the
+   * quantity to `DEFAULT_LINE_QUANTITY` on every pick — not just an empty one
+   * — and never leaves `unit_price` null: a simplified row carries no input
+   * to correct either with, so the preview must already match what the
+   * server congeals.
    */
   const setProduct = (
     index: number,
     productId: number | null,
     item: QuoteProductForSelectItem | null,
     commissions?: QuoteLineFormValues['commissions'],
+    simplified = false,
   ) => {
     if (productId === null || !item) {
       setField(index, { product_id: null, unit_of_measure: null })
@@ -115,10 +138,13 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
         rowIndex === index
           ? {
               ...row,
-              ...lineValuesFromProduct(item, variant),
+              ...(simplified
+                ? simplifiedLineValuesFromProduct(item, variant)
+                : lineValuesFromProduct(item, variant)),
               // A quantity the operator has already typed is never
-              // overwritten: only an empty row gets the default.
-              ...(row.quantity === null ? { quantity: DEFAULT_LINE_QUANTITY } : {}),
+              // overwritten: only an empty row gets the default. Simplified
+              // rows have no way to type one, so the default always applies.
+              ...(simplified || row.quantity === null ? { quantity: DEFAULT_LINE_QUANTITY } : {}),
               ...(commissions ? { commissions } : {}),
             }
           : row,

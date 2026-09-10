@@ -50,9 +50,21 @@ use InvalidArgumentException;
  *     dictated it off-sheet as "the same states as GOL - Calabria" (user
  *     directive 2026-09-08): it borrows GOL_BASE_STATUSES instead of a
  *     transcription of its own.
- *   - "DIL" has no column in the sheet: no workflow is seeded for it, so its
- *     opportunities fall back to the GLOBAL default status set
- *     (QuoteWorkflowResolver).
+ *   - "DIL" is block 5 of the sheet, "solo per la regione Lombardia". Its
+ *     column is a SUBSET of the GOL vocabulary in an order of its own — every
+ *     one of its 22 states is already spelled and coloured exactly as the GOL
+ *     block spells and colours it — so it borrows that section through
+ *     `statuses` the way the nine regional columns do, instead of repeating
+ *     22 name/description pairs verbatim. Unlike "APL", which had a state of
+ *     its own ("Assegnato") and therefore had to be transcribed in full: the
+ *     day DIL grows a state GOL does not have, or reclassifies one, it is
+ *     promoted to a section of its own rather than patched here.
+ *   - The DIL column lists "OK App. Fissato APL" TWICE, one row under the
+ *     other, same fill. Folded to a single occurrence (transcription, user
+ *     directive 2026-09-10): a set's (quote_workflow_id, name) unique index
+ *     rejects the repeat outright, and the sheet carries no second meaning for
+ *     it. Its "Attesa_App. APL" and "Trasferito altra sede QG" are folded onto
+ *     the canonical spellings the same way the other columns' variants are.
  *   - Descriptions come from the sheet's second page and are scoped PER
  *     SECTION: the same name ("Da Richiamare", "Irreperibile", "Doppione")
  *     carries a different description in each block.
@@ -305,6 +317,18 @@ final class WorkflowStatusCatalogue
         'GOL - Calabria' => ['section' => self::GOL, 'statuses' => self::GOL_BASE_STATUSES],
         'GOL - Basilicata' => ['section' => self::GOL, 'statuses' => self::GOL_BASE_STATUSES],
         'GOL - Abruzzo' => ['section' => self::GOL, 'statuses' => self::GOL_BASE_STATUSES],
+        // Block 5 of the sheet: the GOL vocabulary in DIL's own order, with no
+        // CPI confirmation ("OK App. Fissato CPI" is absent from the column)
+        // and no validated state. Matched on the EXACT category, like the
+        // regions: DIL hosts its own product, so an offer lands on it directly.
+        'DIL' => ['section' => self::GOL, 'statuses' => [
+            'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL',
+            'OK App. Fissato APL', 'Attesa Attivazione DOTE', 'Attesa Iscrizione SIUF',
+            'In attesa aggancio BES', 'Associato SI _ NOI', 'Non interessato/a', 'Stato Rinunciatario',
+            'Numero Inesistente/Errato', 'Associato NO _ Altro Ente', 'NO _ Non ha Requisiti',
+            'Irreperibile', 'Doppione già associato', 'Doppione', 'Frequenta già corso GOL',
+            'Non pertinente - Altra regione', 'Trasferito altra Sede QG', 'Autofinanziato', 'In Standby',
+        ]],
         'Autoimpiego' => ['section' => self::SELF_EMPLOYMENT],
         'Yisu' => ['section' => self::SELF_EMPLOYMENT],
         'Autofinanziato' => ['section' => self::SELF_FUNDED],

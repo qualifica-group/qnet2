@@ -18,6 +18,7 @@ const EMPTY_SCOPE: AssignmentScopeResult = {
   product_category_ids: [],
   operational_site_id: null,
   campaign_ids: [],
+  single_operator_available: true,
 }
 
 interface UseAssignmentScopeOptions {
@@ -52,6 +53,14 @@ interface UseAssignmentScopeResult {
    * import wizard (spec 0113 D-5).
    */
   campaignIds: number[] | undefined
+  /**
+   * True when at least one operator covers EVERY record of the selection.
+   * `undefined` while unresolved or on failure — an unknown state, never a
+   * negative one: the caller must not read it as "no operator available".
+   * Explicit `false` is what disables single-operator assignment on Gestione
+   * richieste, where a mixed Sede/product selection has no common operator.
+   */
+  singleOperatorAvailable: boolean | undefined
   /** True while the scope is being resolved: the picker must stay disabled. */
   isResolving: boolean
   /** True when the resolution failed; the caller decides how loudly to fail. */
@@ -81,6 +90,7 @@ export function useAssignmentScope({
     competenceCategoryIds: categoryIds && categoryIds.length > 0 ? categoryIds : undefined,
     operationalSiteId: data?.operational_site_id,
     campaignIds: data?.campaign_ids,
+    singleOperatorAvailable: data?.single_operator_available,
     isResolving: isLoading,
     isError,
   }

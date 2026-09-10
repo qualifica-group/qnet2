@@ -66,6 +66,9 @@ class StoreProductCategoryRequest extends FormRequest
             // Spec 0091: same root-only semantics once more — omitted =
             // server-resolved (inherited, or true at a fresh root).
             'generates_contract' => ['sometimes', 'boolean'],
+            // Spec 0114: same root-only semantics again — omitted =
+            // server-resolved (inherited, or false at a fresh root).
+            'simplified_offer_line' => ['sometimes', 'boolean'],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

@@ -7,9 +7,14 @@ namespace App\Services\RequestManagement;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\Assignment\AssignmentCandidates;
+use App\Services\Assignment\AssignmentSiteResolver;
+use App\Services\Assignment\OperatorCompetence;
+use App\Services\Assignment\QuoteCompetence;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Support\ManagerPositions;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The request's ATTRIBUTION block as the work panel writes it (user directive
@@ -35,6 +40,10 @@ final class RequestAttributionWriter
         private readonly RequestOperatorWriter $operatorWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly AssignmentNotifier $assignmentNotifier,
+        private readonly AssignmentSiteResolver $siteResolver,
+        private readonly QuoteCompetence $quoteCompetence,
+        private readonly AssignmentCandidates $candidates,
+        private readonly OperatorCompetence $competence,
     ) {}
 
     /**
@@ -120,8 +129,71 @@ final class RequestAttributionWriter
      */
     public function applyOperator(Quote $quote, mixed $value, User $actor, array &$changed, array &$old): void
     {
-        $this->operatorWriter->apply($quote, $value === null ? null : (int) $value, $changed, $old);
+        $operatorId = $value === null ? null : (int) $value;
+
+        $this->assertOperatorCovers($quote, $operatorId);
+
+        $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
         $this->notifyOperatorAssignment($quote, $actor, $changed);
+    }
+
+    /**
+     * The GA2 cell may only receive an operator the offer itself would have
+     * accepted (direttiva utente 2026-09-10): a member of its own
+     * `quotes.operational_site_id` (spec 0113, D-4) competent for its own
+     * product lines (spec 0110, INV-1). Not re-implemented here — it is the
+     * SAME composition the bulk assignment validates against and
+     * `mode=balanced` distributes over, so the two channels onto this one
+     * slot can never disagree on who is eligible.
+     *
+     * WHY THIS LIVES IN THE WRITER, not in the table engine: the inline cell
+     * reaches this slot through the generic `updateCell` path, whose write
+     * check is RelationValueScopeChecker — which resolves the submitted id
+     * through `users/for-select` WITHOUT the row's Sede or categories, and
+     * receives neither the row nor the column's `relation.scope`. And
+     * `relation.lockScope` is NOT a server gate: it is a UI flag telling the
+     * editor not to offer the "show everyone" escape (ResolvesColumnConfig),
+     * nothing more. Reading it as a gate is the exact misunderstanding that
+     * makes this guard necessary. The precedent is `products_of_interest`,
+     * which likewise enforces its own coherence in its domain writer.
+     *
+     * An offer demanding no category is unconstrained on COMPETENCE (INV-4a).
+     *
+     * An offer with NO Sede is judged on COMPETENCE ALONE here (direttiva
+     * utente 2026-09-10) and stays editable — deliberately the OPPOSITE of the
+     * bulk endpoint, where a Sede-less offer is incompatible. The two are not
+     * inconsistent: in the bulk ONE operator is chosen for EVERY targeted
+     * offer, so an offer that can express no candidate would make that single
+     * choice arbitrary; here the operator is picked for THIS offer alone.
+     * Applying the bulk rule to this path would make a Sede-less offer
+     * impossible to assign until somebody gives it a Sede — a dead end whose
+     * cause is invisible to whoever hits it. Do not "align" the two.
+     *
+     * A null CLEARS the slot and is left alone: releasing an offer is not
+     * assigning it to anybody, so there is nobody to be ineligible.
+     */
+    private function assertOperatorCovers(Quote $quote, ?int $operatorId): void
+    {
+        if ($operatorId === null) {
+            return;
+        }
+
+        $quoteId = (int) $quote->id;
+        $siteByQuote = $this->siteResolver->forQuotes([$quoteId]);
+        $requiredByQuote = $this->quoteCompetence->requiredByQuote([$quoteId]);
+
+        // No Sede: competence alone decides, and the offer stays assignable.
+        if (($siteByQuote[$quoteId] ?? null) === null) {
+            if ($this->competence->competent([$operatorId], $requiredByQuote[$quoteId] ?? []) !== []) {
+                return;
+            }
+        } elseif (in_array($operatorId, $this->candidates->byRecord($siteByQuote, $requiredByQuote)[$quoteId] ?? [], true)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'operator_id' => [__('The chosen operator is not enabled for the Sede or the product categories of this request.')],
+        ]);
     }
 
     /**

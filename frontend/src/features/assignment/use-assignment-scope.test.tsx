@@ -23,11 +23,13 @@ function scope(overrides: {
   product_category_ids?: number[]
   operational_site_id?: number | null
   campaign_ids?: number[]
+  single_operator_available?: boolean
 }) {
   return {
     product_category_ids: [],
     operational_site_id: null,
     campaign_ids: [],
+    single_operator_available: true,
     ...overrides,
   }
 }
@@ -46,6 +48,7 @@ describe('useAssignmentScope', () => {
     expect(result.current.competenceCategoryIds).toBeUndefined()
     expect(result.current.operationalSiteId).toBeUndefined()
     expect(result.current.campaignIds).toBeUndefined()
+    expect(result.current.singleOperatorAvailable).toBeUndefined()
     expect(result.current.isResolving).toBe(false)
     expect(result.current.isError).toBe(false)
   })
@@ -59,7 +62,7 @@ describe('useAssignmentScope', () => {
     expect(fetchAssignmentScopeMock).not.toHaveBeenCalled()
   })
 
-  it('maps the three fields of the resolved scope and reports the resolving state', async () => {
+  it('maps every field of the resolved scope and reports the resolving state', async () => {
     fetchAssignmentScopeMock.mockResolvedValue(
       scope({ product_category_ids: [3, 7], operational_site_id: 5, campaign_ids: [2, 8] }),
     )
@@ -80,10 +83,12 @@ describe('useAssignmentScope', () => {
     expect(result.current.isResolving).toBe(true)
     expect(result.current.operationalSiteId).toBeUndefined()
     expect(result.current.campaignIds).toBeUndefined()
+    expect(result.current.singleOperatorAvailable).toBeUndefined()
 
     await waitFor(() => expect(result.current.competenceCategoryIds).toEqual([3, 7]))
     expect(result.current.operationalSiteId).toBe(5)
     expect(result.current.campaignIds).toEqual([2, 8])
+    expect(result.current.singleOperatorAvailable).toBe(true)
     expect(result.current.isResolving).toBe(false)
     expect(fetchAssignmentScopeMock).toHaveBeenCalledWith({
       domain: 'import_rows',
@@ -123,6 +128,17 @@ describe('useAssignmentScope', () => {
     expect(result.current.campaignIds).toEqual([2, 3])
   })
 
+  it('reports the absence of a common operator as an explicit false', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(scope({ single_operator_available: false }))
+
+    const { result } = renderHook(
+      () => useAssignmentScope({ selection: { domain: 'quotes', ids: [1, 2] } }),
+      { wrapper: wrapper() },
+    )
+
+    await waitFor(() => expect(result.current.singleOperatorAvailable).toBe(false))
+  })
+
   it('surfaces a failed resolution without filtering anything (AC-034)', async () => {
     fetchAssignmentScopeMock.mockRejectedValue(new Error('boom'))
 
@@ -135,6 +151,9 @@ describe('useAssignmentScope', () => {
     expect(result.current.competenceCategoryIds).toBeUndefined()
     expect(result.current.operationalSiteId).toBeUndefined()
     expect(result.current.campaignIds).toBeUndefined()
+    // Unknown, never "no operator available": a failed resolution must not
+    // read as a negative answer.
+    expect(result.current.singleOperatorAvailable).toBeUndefined()
   })
 
   it('refetches when the selection changes', async () => {

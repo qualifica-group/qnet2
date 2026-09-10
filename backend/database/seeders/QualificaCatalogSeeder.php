@@ -10,6 +10,7 @@ use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\CatalogRootRules;
+use Database\Seeders\QualificaCatalog\CategoryInheritanceRules;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
@@ -30,7 +31,7 @@ use Illuminate\Database\Seeder;
  *     while products, opportunity lines, projects, campaigns and commission
  *     rules are classified on the third level, today the `GOL - <Regione>`
  *     rows — plus the subcategories that host their offer directly,
- *     "Autofinanziato", "Autoimpiego", "Yisu" and "Orientamento
+ *     "Autofinanziato", "Autoimpiego", "Yisu", "DIL" and "Orientamento
  *     Specialistico" (see SELECTABLE_SUBCATEGORIES). The "Formazione" branch
  *     also carries its OFFERTA-context attributes (spec 0061/0084) — the
  *     "Dati corso" pair of QualificaCatalog\CourseDataAttributeCatalogue and
@@ -46,13 +47,18 @@ use Illuminate\Database\Seeder;
  *     QualificaCatalog\CatalogProducts once the tree exists: the GOL courses
  *     under their own region, the self-funded ones under "Autofinanziato"
  *     with their price and delivery mode, and the one product each
- *     single-offer category sells ("Autoimpiego", "Yisu" and "Orientamento
- *     Specialistico"). No other product is seeded;
+ *     single-offer category sells ("Autoimpiego", "Yisu", "DIL" and
+ *     "Orientamento Specialistico"). No other product is seeded;
  *   - the ROOT-OWNED rules of the two roots that declare them (how many
  *     product lines a card carries, how many offers an opportunity may hold),
  *     delegated to QualificaCatalog\CatalogRootRules once the whole tree
  *     exists — it re-syncs each branch; the "APL" root declares none and keeps
  *     the column defaults;
+ *   - the per-node inheritance barriers, delegated to
+ *     QualificaCatalog\CategoryInheritanceRules right after them: today the
+ *     one "DIL" declares, which keeps that subcategory on its own six offer
+ *     fields instead of the whole "Formazione" set (user directive
+ *     2026-09-10);
  *   - the "stati di lavorazione" (spec 0047), delegated to
  *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
@@ -189,7 +195,10 @@ class QualificaCatalogSeeder extends Seeder
      *
      * The "Dati Aula" fields (ClassroomAttributeCatalogue) ride on the same
      * root assignment, for the same reason: they describe the classroom
-     * edition of ANY Formazione course, regional or self-funded.
+     * edition of ANY Formazione course, regional or self-funded. Its
+     * SELF_EMPLOYMENT_ATTRIBUTES are the one exception — the same section, but
+     * a flag only the "Autoimpiego" offer records (user directive 2026-09-10),
+     * so it is assigned on that subcategory alone.
      *
      * THE CONTEXT IS THE OFFERTA, NOT THE PRODUCT (user directive
      * 2026-09-08). Both sets used to be assigned in `AttributeContext::Product`
@@ -213,6 +222,7 @@ class QualificaCatalogSeeder extends Seeder
             ...ClassroomAttributeCatalogue::ATTRIBUTES,
         ],
         SelfFundedCourseCatalogue::CATEGORY => CourseDataAttributeCatalogue::SELF_FUNDED_ATTRIBUTES,
+        ClassroomAttributeCatalogue::SELF_EMPLOYMENT_CATEGORY => ClassroomAttributeCatalogue::SELF_EMPLOYMENT_ATTRIBUTES,
     ];
 
     /**
@@ -342,6 +352,11 @@ class QualificaCatalogSeeder extends Seeder
         // The root-owned rules come last: they re-sync the whole subtree, so
         // every node must already exist.
         app(CatalogRootRules::class)->apply();
+
+        // ...and the per-node barriers right after them: they cut a single
+        // node off its ancestors' fields, so they must survive the subtree
+        // re-sync above rather than precede it.
+        app(CategoryInheritanceRules::class)->apply();
     }
 
     /**

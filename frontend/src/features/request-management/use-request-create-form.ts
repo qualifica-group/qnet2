@@ -42,9 +42,6 @@ const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
   // editor binds the array as a whole — so the block root carries it.
   'manager_slots',
   'operational_site_id',
-  // The coherence 422 (user directive 2026-07-31) lands here, on the picker
-  // the actor was working in.
-  'products_of_interest',
   // The offer rows' own 422s (single-category cap, a category with no
   // business function): per-row paths land on their control, the cross-row
   // ones on the collection.
@@ -134,7 +131,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       // resolve after the form is built (`useRequestActorAttributionDefaults`).
       manager_slots: Array.from({ length: DEFAULT_MANAGER_SLOTS }, () => null),
       operational_site_id: null,
-      products_of_interest: [],
       // "Linee dell'offerta": the form opens on ONE empty row (user directive
       // 2026-09-01, superseding the 2026-08-07 "start with none"), like
       // `product_lines` above — pressing "Add" before the first row was pure
@@ -247,7 +243,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       supervisorId: values.supervisor_id,
       managerSlots: values.manager_slots,
       operationalSiteId: values.operational_site_id,
-      productsOfInterest: values.products_of_interest,
       offerLines: values.offer_lines,
       rewards: values.rewards,
       nextCallbackAt: values.next_callback_at,

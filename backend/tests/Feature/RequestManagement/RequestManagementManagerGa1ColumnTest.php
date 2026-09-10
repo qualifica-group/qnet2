@@ -90,7 +90,10 @@ it('declares manager_ga1 as an editable users relation, unscoped by the Sede unl
         // Only the Operatore slot is bound to the Sede operativa, exactly as
         // the form scopes it (operatorSlotParams).
         ->and($ga1['relation'])->not->toHaveKey('scope')
-        ->and($columns['operator_ga2']['relation']['scope'])->toBe(['operational_site_id' => 'operational_site']);
+        ->and($columns['operator_ga2']['relation']['scope'])->toBe([
+            'operational_site_id' => 'operational_site',
+            'competence_category_ids' => 'assignment_category_ids',
+        ]);
 });
 
 // ---------------------------------------------------------------------------

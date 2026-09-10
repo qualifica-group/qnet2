@@ -95,6 +95,16 @@ export function ProductCategoryDetailRules({ category }: ProductCategoryDetailRu
           />
         </RecordField>
 
+        <RecordField label={t('productCategories.form.simplifiedOfferLine')}>
+          <RuleValue
+            value={yesNo(category.simplified_offer_line)}
+            inheritedFrom={category.simplified_offer_line_source_category?.name}
+            inheritedLabel={t('productCategories.detail.simplifiedOfferLineInherited', {
+              category: category.simplified_offer_line_source_category?.name ?? '',
+            })}
+          />
+        </RecordField>
+
         <RecordField label={t('productCategories.form.isSelectable')}>
           <RuleValue value={yesNo(category.is_selectable)} />
         </RecordField>

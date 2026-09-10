@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\BusinessFunction;
+use App\Models\EmploymentProfile;
+use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Quote;
@@ -326,7 +328,15 @@ it('AC-005: the operator_ga2 cell still writes ONLY the OPERATOR slot', function
     $first = User::factory()->create();
     $operator = User::factory()->create();
     $quote = teamSlotsQuote([1 => $first->id, ManagerPositions::OPERATOR => $operator->id]);
+
+    // Direttiva utente 2026-09-10: the GA2 cell now refuses an operator the
+    // offer would not have accepted, so this Sede-less offer and unemployed
+    // user have to be paired. The slot-writing rule under test is unchanged.
+    $site = OperationalSite::factory()->withAddress()->create();
+    $quote->update(['operational_site_id' => $site->id]);
+
     $newOperator = User::factory()->create();
+    EmploymentProfile::factory()->for($newOperator)->physicalSite($site)->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
@@ -379,7 +389,17 @@ it('AC-009: the bulk assign moves the OPERATOR slot and leaves the rest of the t
     $first = User::factory()->create();
     $operator = User::factory()->create();
     $quote = teamSlotsQuote([1 => $first->id, ManagerPositions::OPERATOR => $operator->id]);
+
+    // Direttiva utente 2026-09-10: `mode=single` now refuses an operator no
+    // targeted offer would have accepted. This offer was born without a Sede
+    // and the incoming operator without an employment, which was enough
+    // before the rule and is not any more — the pair has to match. The offer
+    // demands no product category, so only the Sede half applies (INV-4a).
+    $site = OperationalSite::factory()->withAddress()->create();
+    $quote->update(['operational_site_id' => $site->id]);
+
     $newOperator = User::factory()->create();
+    EmploymentProfile::factory()->for($newOperator)->physicalSite($site)->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/assign-operators', [

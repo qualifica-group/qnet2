@@ -52,6 +52,8 @@ final readonly class UpdateProductCategoryData
         public bool $singleQuotePerOpportunitySubmitted = false,
         public ?bool $generatesContract = null,
         public bool $generatesContractSubmitted = false,
+        public ?bool $simplifiedOfferLine = null,
+        public bool $simplifiedOfferLineSubmitted = false,
         /** Spec 0080: raw sparse position->label map — normalized (trim, empty removed) by ProductCategoryService, never here. */
         public ?array $managerLabels = null,
         public bool $managerLabelsSubmitted = false,
@@ -91,6 +93,8 @@ final readonly class UpdateProductCategoryData
             singleQuotePerOpportunitySubmitted: array_key_exists('single_quote_per_opportunity', $data),
             generatesContract: array_key_exists('generates_contract', $data) ? (bool) $data['generates_contract'] : null,
             generatesContractSubmitted: array_key_exists('generates_contract', $data),
+            simplifiedOfferLine: array_key_exists('simplified_offer_line', $data) ? (bool) $data['simplified_offer_line'] : null,
+            simplifiedOfferLineSubmitted: array_key_exists('simplified_offer_line', $data),
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,
             managerLabelsSubmitted: array_key_exists('manager_labels', $data),
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : null,
@@ -183,6 +187,13 @@ final readonly class UpdateProductCategoryData
         // ContractGenerationInheritance::syncSubtree.
         if ($this->generatesContractSubmitted) {
             $attributes['generates_contract'] = $this->generatesContract;
+        }
+
+        // Spec 0114: identical root-only handling — on a child the value
+        // written here is immediately re-aligned on the root's by
+        // SimplifiedOfferLineInheritance::syncSubtree.
+        if ($this->simplifiedOfferLineSubmitted) {
+            $attributes['simplified_offer_line'] = $this->simplifiedOfferLine;
         }
 
         // Spec 0080: mirrors inherits_product_attributes/

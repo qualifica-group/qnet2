@@ -20,7 +20,6 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     // here, which the schema accepts (the server then applies its own default).
     manager_slots: [null, null, null, null],
     operational_site_id: null,
-    products_of_interest: [],
     // "Linee dell'offerta" (user directive 2026-08-07): part of the schema's
     // shape, empty here — a request often starts with no offer row at all.
     offer_lines: [],

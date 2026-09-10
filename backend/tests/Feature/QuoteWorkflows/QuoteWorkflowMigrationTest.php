@@ -86,9 +86,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_09_100000_create_employment_product_lines_table` (57th, the
     // rewritten spec 0110 pivot) and
     // `2026_09_09_110000_drop_business_function_id_from_employment_profiles`
-    // (58th).
+    // (58th), and spec 0114's
+    // `2026_09_10_140000_add_simplified_offer_line_to_product_categories_table`
+    // (59th).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 58]);
+    Artisan::call('migrate:rollback', ['--step' => 59]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

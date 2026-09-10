@@ -18,6 +18,7 @@ export type RootFlagName =
   | 'requires_quote'
   | 'single_quote_per_opportunity'
   | 'generates_contract'
+  | 'simplified_offer_line'
 
 interface ProductCategoryRootFlagFieldProps {
   control: Control<ProductCategoryFormValues>

@@ -8,6 +8,7 @@ import {
   OFFER_LINE_FIBRA,
   workPanel as panel,
 } from '@/features/request-management/request-work-panel-fixtures'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 
 /**
  * "Linee dell'offerta" nel pannello di lavorazione (direttiva utente
@@ -32,8 +33,9 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
+const categoryTreeMock = vi.fn<() => ProductCategoryTreeNode[]>()
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
-  useProductCategoryTree: () => ({ data: [], isPending: false, isError: false, refetch: vi.fn() }),
+  useProductCategoryTree: () => ({ data: categoryTreeMock(), isPending: false, isError: false, refetch: vi.fn() }),
 }))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
@@ -60,6 +62,8 @@ beforeAll(async () => {
 beforeEach(() => {
   fetchRequestWorkPanelMock.mockReset()
   updateRequestWorkMock.mockReset()
+  categoryTreeMock.mockReset()
+  categoryTreeMock.mockReturnValue([])
 })
 
 describe('work panel — Linee dell\'offerta', () => {
@@ -150,5 +154,66 @@ describe('work panel — Linee dell\'offerta', () => {
 
     expect(await screen.findByText('La quantità è obbligatoria.')).toBeInTheDocument()
     expect(updateRequestWorkMock).not.toHaveBeenCalled()
+  })
+})
+
+// Spec 0114 AC-017/AC-018: a simplified classification drops the three
+// controls from the row, keeping the product picker and the read-only amounts.
+describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
+  it('hides quantity/unit price/VAT controls but keeps the product picker and the amounts', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+    categoryTreeMock.mockReturnValue([
+      {
+        id: 500,
+        name: 'Consulting',
+        parent_id: null,
+        children: [],
+        attributes_count: 0,
+        products_count: 0,
+        business_function_id: null,
+        requires_quote: false,
+        is_selectable: true,
+        management_mode: 'multiple',
+        single_quote_per_opportunity: false,
+        generates_contract: true,
+        simplified_offer_line: true,
+      },
+    ])
+
+    renderPanel()
+
+    await screen.findByText(
+      'Categoria semplificata: scegli il prodotto, quantità, prezzo unitario e aliquota IVA sono compilati automaticamente dal sistema.',
+    )
+    expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Prezzo unitario riga 1')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Aliquota IVA riga 1')).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Prodotto riga 1' })).toBeInTheDocument()
+  })
+
+  it('a non-simplified classification keeps the three controls (no regression)', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+    categoryTreeMock.mockReturnValue([
+      {
+        id: 500,
+        name: 'Consulting',
+        parent_id: null,
+        children: [],
+        attributes_count: 0,
+        products_count: 0,
+        business_function_id: null,
+        requires_quote: false,
+        is_selectable: true,
+        management_mode: 'multiple',
+        single_quote_per_opportunity: false,
+        generates_contract: true,
+        simplified_offer_line: false,
+      },
+    ])
+
+    renderPanel()
+
+    expect(await screen.findByLabelText('Quantità riga 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Prezzo unitario riga 1')).toBeInTheDocument()
   })
 })

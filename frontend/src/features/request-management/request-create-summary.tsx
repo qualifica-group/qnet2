@@ -25,8 +25,7 @@ interface RequestCreateSummaryProps {
  * context a saved record already has (referente, commerciale, valore stimato,
  * chiusura prevista), none of which exists before the first save. This one
  * summarises what the form is ABOUT to create, live — who the client is, how
- * many product lines and products of interest were picked, when the callback
- * is planned. Same purpose (read-only orientation while filling the long
+ * many product lines were picked, when the callback is planned. Same purpose (read-only orientation while filling the long
  * column on the left), same chrome, honest content.
  */
 export function RequestCreateSummary({
@@ -36,7 +35,6 @@ export function RequestCreateSummary({
 }: RequestCreateSummaryProps) {
   const { t } = useTranslation()
   const productLines = useWatch({ control, name: 'product_lines' })
-  const productsOfInterest = useWatch({ control, name: 'products_of_interest' })
   const nextCallbackAt = useWatch({ control, name: 'next_callback_at' })
 
   const completeLines = productLines.filter(
@@ -56,9 +54,6 @@ export function RequestCreateSummary({
         </SummaryRow>
         <SummaryRow label={t('requestManagement.workPanel.productLines.title')}>
           {completeLines > 0 ? completeLines : EMPTY_VALUE}
-        </SummaryRow>
-        <SummaryRow label={t('products.ofInterest.sectionTitle')}>
-          {productsOfInterest.length > 0 ? productsOfInterest.length : EMPTY_VALUE}
         </SummaryRow>
         <SummaryRow label={t('requestManagement.workPanel.header.nextCallback', { defaultValue: 'Next callback' })}>
           {formatDateTimeOptionalTime(nextCallbackAt) || EMPTY_VALUE}

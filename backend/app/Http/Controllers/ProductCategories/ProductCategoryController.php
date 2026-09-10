@@ -243,7 +243,8 @@ class ProductCategoryController extends BaseApiController
                 // category IS the root): the form/detail render them as the
                 // read-only "inherited from X" hints. One key per setting —
                 // `requires_quote`, `management_mode`,
-                // `single_quote_per_opportunity`, `generates_contract`.
+                // `single_quote_per_opportunity`, `generates_contract`,
+                // `simplified_offer_line`.
                 ...$this->service->rootOwnedSourceCategories($productCategory),
                 // Spec 0080: the "Gestore Account" labels resolved from the
                 // ANCESTORS alone (own ones already sit in the Resource's own

@@ -19,10 +19,14 @@ use Spatie\Permission\Models\Permission;
  * write channel this file used to exercise (persist/replace/auto-add
  * category/coherence-on-write) is GONE. The grid's replacement column,
  * `offer_lines`, is read-only (AC-021), derived from the Offerta's own
- * REVENUE lines — editing "prodotti di interesse" is now exclusively an
- * Opportunities-form concern (`POST /api/request-management` still accepts
- * it at CREATION time only, data_contract; covered by
- * RequestManagementProductLinesTest's creation-channel cases).
+ * REVENUE lines.
+ *
+ * CREATION FOLLOWED (user directive 2026-09-10): the create form's
+ * "Prodotti di interesse" section is gone, and with it the POST rule that
+ * used to accept the key — so BOTH channels of this module are inert now and
+ * editing that collection is exclusively an Opportunities-form concern. The
+ * POST side is covered by RequestManagementProductLinesTest's creation-channel
+ * cases.
  *
  * Every test below that used to assert a PATCH `products_of_interest` WRITE
  * is replaced by this file's single concern now: that key is a no-op on this

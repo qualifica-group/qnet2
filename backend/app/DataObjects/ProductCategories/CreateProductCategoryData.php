@@ -37,6 +37,8 @@ final readonly class CreateProductCategoryData
         public ?bool $singleQuotePerOpportunity = null,
         /** Spec 0091: same root-only semantics, null = not submitted (root's value, or TRUE at a fresh root — the pre-existing behaviour). */
         public ?bool $generatesContract = null,
+        /** Spec 0114: same root-only semantics, null = not submitted (root's value, or FALSE at a fresh root — the pre-existing fully-manual offer line). */
+        public ?bool $simplifiedOfferLine = null,
         /** Spec 0080: raw sparse position->label map — normalized (trim, empty removed) by ProductCategoryService, never here. */
         public ?array $managerLabels = null,
         /** Spec 0080: whether this category inherits its ancestors' manager labels. Defaults to true, same as the attribute barriers. */
@@ -64,6 +66,7 @@ final readonly class CreateProductCategoryData
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
             singleQuotePerOpportunity: array_key_exists('single_quote_per_opportunity', $data) ? (bool) $data['single_quote_per_opportunity'] : null,
             generatesContract: array_key_exists('generates_contract', $data) ? (bool) $data['generates_contract'] : null,
+            simplifiedOfferLine: array_key_exists('simplified_offer_line', $data) ? (bool) $data['simplified_offer_line'] : null,
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : true,
         );

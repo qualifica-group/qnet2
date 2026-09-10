@@ -49,12 +49,15 @@ use Illuminate\Support\Collection;
  * category accepts a single offer row (spec 0077), and
  * RequestCreationService rejects the batch rather than trimming it.
  *
- * The row's product is drawn from the request's OWN classification — the
- * first `products_of_interest` PicksDemoOffers pairs with the primary product
- * line — so the Offerta's coverage is satisfied by a category the Opportunity
- * already carries, never by one QuoteService has to append. Price and VAT come
- * off the product itself (spec 0065, D-6), the same derivation the Offerte
- * form applies.
+ * The row's product is drawn from the SAME PicksDemoOffers draw that produced
+ * the request's product lines — its first `products_of_interest` entry, paired
+ * with the primary line — so the Offerta's coverage is satisfied by a category
+ * the Opportunity already carries, never by one QuoteService has to append.
+ * That draw's product list is used for nothing else here: since the user
+ * directive 2026-09-10 this module no longer writes "prodotti di interesse" at
+ * all (the create channel dropped the key), so the created Opportunity is born
+ * with an empty collection. Price and VAT come off the product itself (spec
+ * 0065, D-6), the same derivation the Offerte form applies.
  *
  * Runs LAST of the sample chain because it consumes the Anagrafiche the two
  * steps before it left free — an anagrafica carries ONE open opportunity at a
@@ -150,7 +153,6 @@ class QualificaSampleRequestSeeder extends Seeder
             clientProfile: null,
             productLines: $offer['product_lines'],
             sourceId: $this->pick($lookups['sources'], $index)?->id,
-            productsOfInterest: $offer['products_of_interest'],
             managerSlots: $this->managerSlots($lookups['managers'], $index),
             // The Sede the tier-3 `viewSite` visibility is evaluated on: a
             // request with none is out of scope for everyone but its own
@@ -165,9 +167,9 @@ class QualificaSampleRequestSeeder extends Seeder
     }
 
     /**
-     * The single REVENUE row of the created Offerta, on a product the request
-     * itself lists among its "prodotti di interesse" — hence on a category
-     * its own product lines already cover.
+     * The single REVENUE row of the created Offerta, on a product the same
+     * offer draw paired with the request's product lines — hence on a category
+     * its own classification already covers.
      *
      * `unit_price`/`vat_rate_id` come off the product (spec 0065, D-6); the
      * amounts are RAW inputs here, rounded and frozen by the service's own

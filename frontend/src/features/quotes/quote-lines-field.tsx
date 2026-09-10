@@ -60,6 +60,14 @@ interface QuoteLinesFieldProps {
    * `commissions`, so what the Offerte form set up is preserved server-side.
    */
   withCommissions?: boolean
+  /**
+   * `true` on a Gestione Richieste classification under the simplified-
+   * offer-line rule (spec 0114): drops the quantity/unit price/VAT rate
+   * columns from header and rows, and forces `setProduct` to congeal them
+   * client-side exactly as the server will. Never set by the Offerte module
+   * (D-3), so it defaults to `false` like `withCommissions` defaults `true`.
+   */
+  simplified?: boolean
 }
 
 /**
@@ -83,6 +91,7 @@ export function QuoteLinesField({
   rememberProductTypology,
   commissionContext,
   withCommissions = true,
+  simplified = false,
 }: QuoteLinesFieldProps) {
   const { t } = useTranslation()
   const confirm = useOptionalConfirm()
@@ -178,7 +187,7 @@ export function QuoteLinesField({
       if (!accepted) return false
     }
     if (productId === null || !item || variant === 'cost' || !withCommissions || !commissionContext) {
-      setProduct(index, productId, item, variant === 'revenue' && withCommissions ? [] : undefined)
+      setProduct(index, productId, item, variant === 'revenue' && withCommissions ? [] : undefined, simplified)
       return true
     }
     const unitPrice = item.meta.price === null ? 0 : Number(item.meta.price)
@@ -213,14 +222,14 @@ export function QuoteLinesField({
   return (
     <div className="flex flex-col gap-2">
       <div className="overflow-x-auto rounded-lg border bg-surface">
-        <div className={quoteLineMinWidthClass(variant, withCommissions)}>
-          <div className={`${quoteLineGridClass(variant, withCommissions)} border-b bg-muted/40 px-2 py-1.5 text-[11px] font-medium text-muted-foreground`}>
+        <div className={quoteLineMinWidthClass(variant, withCommissions, simplified)}>
+          <div className={`${quoteLineGridClass(variant, withCommissions, simplified)} border-b bg-muted/40 px-2 py-1.5 text-[11px] font-medium text-muted-foreground`}>
             <span>{t('quotes.form.lineProductHeader')}</span>
             <span>{t('quotes.form.lineCodeHeader')}</span>
-            <span>{t('quotes.form.lineQuantityHeader')}</span>
+            {simplified ? null : <span>{t('quotes.form.lineQuantityHeader')}</span>}
             <span>{t('quotes.form.lineUnitOfMeasureHeader')}</span>
-            <span>{t('quotes.form.lineUnitPriceHeader')}</span>
-            <span>{t('quotes.form.lineVatRateHeader')}</span>
+            {simplified ? null : <span>{t('quotes.form.lineUnitPriceHeader')}</span>}
+            {simplified ? null : <span>{t('quotes.form.lineVatRateHeader')}</span>}
             <span className="text-right">{t('quotes.form.lineNetHeader')}</span>
             <span className="text-right">{t('quotes.form.lineVatHeader')}</span>
             <span className="text-right">{t('quotes.form.lineTotalHeader')}</span>
@@ -247,6 +256,7 @@ export function QuoteLinesField({
                 variant={variant}
                 commissionContext={commissionContext}
                 withCommissions={withCommissions}
+                simplified={simplified}
                 onChangeProduct={(productId, item) => changeRevenueProduct(index, productId, item)}
                 onChangeField={(patch) => setField(index, patch)}
                 onRemove={() => removeRow(index)}

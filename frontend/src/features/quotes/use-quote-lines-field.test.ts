@@ -64,7 +64,11 @@ describe('useQuoteLinesField.setProduct', () => {
     commissions: [],
   }
 
-  function pickProductOn(row: QuoteLineFormValues): QuoteLineFormValues[] {
+  function pickProductOn(
+    row: QuoteLineFormValues,
+    product: QuoteProductForSelectItem = PRODUCT,
+    simplified = false,
+  ): QuoteLineFormValues[] {
     const onChange = vi.fn()
     const { result } = renderHook(() =>
       useQuoteLinesField({
@@ -75,7 +79,7 @@ describe('useQuoteLinesField.setProduct', () => {
       }),
     )
 
-    act(() => result.current.setProduct(0, PRODUCT.id, PRODUCT))
+    act(() => result.current.setProduct(0, product.id, product, undefined, simplified))
 
     return onChange.mock.calls[0][0] as QuoteLineFormValues[]
   }
@@ -86,5 +90,28 @@ describe('useQuoteLinesField.setProduct', () => {
 
   it('never overwrites a quantity the operator already typed', () => {
     expect(pickProductOn({ ...EMPTY_ROW, quantity: 5 })[0]).toMatchObject({ quantity: 5 })
+  })
+
+  // Spec 0114 AC-019: a simplified row has no quantity/unit price input, so
+  // the pick must already carry the values the server will congeal.
+  describe('simplified (spec 0114)', () => {
+    it('forces quantity to 1 even over a quantity already on the row', () => {
+      expect(pickProductOn({ ...EMPTY_ROW, quantity: 5 }, PRODUCT, true)[0]).toMatchObject({
+        quantity: DEFAULT_LINE_QUANTITY,
+      })
+    })
+
+    it('carries the product price as unit_price', () => {
+      expect(pickProductOn(EMPTY_ROW, PRODUCT, true)[0]).toMatchObject({ unit_price: 120 })
+    })
+
+    it('congeals unit_price to 0 when the product has no price, instead of leaving it null', () => {
+      const priceless = { ...PRODUCT, meta: { ...PRODUCT.meta, price: null } }
+
+      expect(pickProductOn(EMPTY_ROW, priceless, true)[0]).toMatchObject({
+        quantity: DEFAULT_LINE_QUANTITY,
+        unit_price: 0,
+      })
+    })
   })
 })

@@ -88,8 +88,6 @@ export interface BuildRequestCreatePayloadArgs {
   contacts: ContactDraft[]
   address: AddressDraft | null
   productLines: ProductLineRow[]
-  /** "Prodotti di interesse" (user directive 2026-07-31): optional at creation, sent only when at least one is picked. */
-  productsOfInterest: number[]
   /** "Linee dell'offerta" (user directive 2026-08-07): optional at creation, sent only when at least one row exists. */
   offerLines: QuoteLineFormValues[]
   sourceId: number | null
@@ -132,7 +130,6 @@ export function buildRequestCreatePayload({
   contacts,
   address,
   productLines,
-  productsOfInterest,
   offerLines,
   sourceId,
   reporterId,
@@ -171,18 +168,14 @@ export function buildRequestCreatePayload({
     ...(rewards.length > 0 ? { rewards } : {}),
   }
 
-  // "Prodotti di interesse" (user directive 2026-07-31): same "only when
-  // picked" rule as `rewards` — the collection is optional at creation, and an
-  // empty array is a no-op the server need not process.
-  // "Linee dell'offerta" (user directive 2026-08-07): same "only when filled
-  // in" rule — an empty array would ask the server to replace nothing with
-  // nothing on an Offerta that is being created empty anyway. The gate reads
-  // the WIRE rows, not the form ones: since directive 2026-09-01 the form
-  // opens on an untouched row that `toLineInputs` drops.
+  // "Linee dell'offerta" (user directive 2026-08-07): the same "only when
+  // filled in" rule `rewards` follows — an empty array would ask the server to
+  // replace nothing with nothing on an Offerta that is being created empty
+  // anyway. The gate reads the WIRE rows, not the form ones: since directive
+  // 2026-09-01 the form opens on an untouched row that `toLineInputs` drops.
   const offerLineInputs = toLineInputs(offerLines)
   const classification = {
     product_lines,
-    ...(productsOfInterest.length > 0 ? { products_of_interest: productsOfInterest } : {}),
     ...(offerLineInputs.length > 0 ? { offer_lines: offerLineInputs } : {}),
   }
 

@@ -9,7 +9,8 @@ namespace Database\Seeders\QualificaCatalog;
  * Pure data, like CourseDataAttributeCatalogue: QualificaCatalogSeeder creates
  * and assigns them (OFFERTA context, on the Formazione root, so the whole
  * branch inherits them), QualificaQuoteLayoutSeeder groups them into the form
- * section named below.
+ * section named below. SELF_EMPLOYMENT_ATTRIBUTES is the exception: it belongs
+ * to the same section but is assigned on "Autoimpiego" alone.
  *
  * OFFERTA, NOT PRODUCT (user directive 2026-09-08): a classroom edition is
  * what a single deal delivers, not a property of the catalogue entry, so these
@@ -70,10 +71,30 @@ final class ClassroomAttributeCatalogue
     ];
 
     /**
+     * The category selling the self-employment offer — a node of
+     * QualificaCatalogSeeder::CATALOG, bound by identity so a rename there
+     * breaks loudly here.
+     */
+    public const string SELF_EMPLOYMENT_CATEGORY = 'Autoimpiego';
+
+    /**
+     * The one field of this section scoped to a single subcategory instead of
+     * the whole Formazione branch (user directive 2026-09-10): the flag the
+     * operator ticks once the candidate has expressed interest. Assigned on
+     * SELF_EMPLOYMENT_CATEGORY, so nothing else in the branch resolves the code
+     * and QualificaQuoteLayoutSeeder prunes it out of every other "Dati Aula".
+     *
+     * @var list<array{code: string, name: string, type: string}>
+     */
+    public const array SELF_EMPLOYMENT_ATTRIBUTES = [
+        ['code' => 'interest_expression', 'name' => "Manifestazione d'Interesse", 'type' => 'boolean'],
+    ];
+
+    /**
      * The section's rows, paired by meaning (who/what, then the course dates,
-     * then the internship): the seeded section is two columns wide and every
-     * item is half a row, so a pair renders side by side and collapses to one
-     * column on a narrow panel.
+     * then the internship, then the self-employment flag): the seeded section
+     * is two columns wide and every item is half a row, so a pair renders side
+     * by side and collapses to one column on a narrow panel.
      *
      * @var list<list<string>>
      */
@@ -83,9 +104,13 @@ final class ClassroomAttributeCatalogue
         ['course_start_date', 'course_end_date'],
         ['exam_date', 'internship_company'],
         ['internship_start_date', 'internship_end_date'],
+        ['interest_expression'],
     ];
 
     /**
+     * The codes assigned to the Formazione ROOT — SELF_EMPLOYMENT_ATTRIBUTES
+     * excluded, which lives on one subcategory.
+     *
      * @return list<string>
      */
     public static function codes(): array

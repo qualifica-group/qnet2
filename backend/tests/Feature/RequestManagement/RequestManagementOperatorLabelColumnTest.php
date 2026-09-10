@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\BusinessFunction;
+use App\Models\EmploymentProfile;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
@@ -53,7 +55,10 @@ it('a category tab defining the level-2 label rewrites operator_ga2 to that raw 
     // structural identity that DOES survive is `relation`, unchanged.
     expect($operator['label'])->toBe('Operatore Tecnico')
         ->and($operator['relation']['resource'])->toBe('users')
-        ->and($operator['relation']['scope'])->toBe(['operational_site_id' => 'operational_site']);
+        ->and($operator['relation']['scope'])->toBe([
+            'operational_site_id' => 'operational_site',
+            'competence_category_ids' => 'assignment_category_ids',
+        ]);
 });
 
 it('a category with a level-2 label but ZERO attributes still relabels operator_ga2 (independent configs, no early-return skip)', function (): void {
@@ -115,7 +120,11 @@ it('inline PATCH on the operator column is unaffected — the structural lookup 
     $opportunity = Opportunity::factory()->create();
     OpportunityProductLine::factory()->for($opportunity)->create(['product_category_id' => $category->id]);
     $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $actor->id]);
+    // Direttiva utente 2026-09-10: la scrittura dell'Operatore GA2 e' ora validata
+    // (RequestAttributionWriter::assertOperatorCovers). L'offerta non ha Sede, quindi
+    // decide la sola competenza: prima bastava un utente qualunque, ora serve competente.
     $newOperator = User::factory()->create();
+    EmploymentProfile::factory()->for($newOperator)->competentIn(BusinessFunction::factory()->create(), $category)->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [

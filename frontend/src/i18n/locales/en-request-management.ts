@@ -54,6 +54,13 @@ export const requestManagement = {
   assign: {
     tableButton: 'Assign operators',
     description: '{{count}} request(s) selected.',
+    mode: {
+      // Reason shown on the "Assign to operator" card disabled by
+      // `request-management-table.tsx` when no single operator covers every
+      // selected request (user directive 2026-09-10).
+      disabledNoCommonOperator:
+        'Unavailable: no operator is enabled for every selected request, which differ by Site or products.',
+    },
     actions: {
       balancedHint: 'Distributes the selected requests across the Site operators, balancing their workload.',
       singleHint: 'Assigns every selected request to the same operator.',
@@ -183,6 +190,8 @@ export const requestManagement = {
    */
   offerLines: {
     hintNoCategory: 'Pick a product category first: it scopes the selectable products.',
+    hintSimplified:
+      'Simplified category: pick the product, quantity, unit price and VAT rate are filled in automatically by the system.',
     editAction: 'Edit the offer rows',
     dialogTitle: 'Offer rows',
     dialogDescription: 'Edit product, quantity, unit price and VAT of this offer\'s rows.',

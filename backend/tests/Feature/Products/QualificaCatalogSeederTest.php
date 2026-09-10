@@ -30,7 +30,7 @@ uses(RefreshDatabase::class);
  * Every product the catalogue seeds: the GOL courses, the self-funded ones and
  * one per CatalogProducts::SINGLE_OFFER_CATEGORIES.
  */
-const TOTAL_SEEDED_PRODUCTS = 265;
+const TOTAL_SEEDED_PRODUCTS = 266;
 
 it('provisions the client source catalogue, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
@@ -137,7 +137,7 @@ it('seeds the first two catalogue levels as containers, third level only selecta
     // host their own offer.
     $containers = [
         'Formazione', 'Consulenza',
-        'GOL', 'DIL', 'APL',
+        'GOL', 'APL',
         'Trattative in Corso', 'Presa Appuntamenti',
     ];
     foreach ($containers as $name) {
@@ -151,6 +151,9 @@ it('seeds the first two catalogue levels as containers, third level only selecta
     expect($selectable)->toBe([
         'Autofinanziato',
         'Autoimpiego',
+        // Hosts its own single offer since the user directive 2026-09-10, so
+        // it stopped being a container like its GOL sibling.
+        'DIL',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
@@ -247,13 +250,20 @@ it('assigns the "Ore complessive" offer attribute to the whole Formazione branch
     // Inherited all the way down: subcategory and regional grandchild resolve it.
     $service = app(ProductCategoryService::class);
 
-    foreach (['GOL', 'GOL - Molise', 'DIL'] as $name) {
+    foreach (['GOL', 'GOL - Molise'] as $name) {
         $category = ProductCategory::query()->where('name', $name)->firstOrFail();
         $effective = $service->effectiveAttributes($category, AttributeContext::Quote);
 
         expect($effective->pluck('code')->all())->toContain('total_hours')
             ->and($effective->firstWhere('code', 'total_hours')['inherited'])->toBeTrue($name);
     }
+
+    // ...except below the barrier: "DIL" opted out of the Offerta context
+    // (CategoryInheritanceRules), so the root's fields stop at it.
+    $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
+
+    expect($service->effectiveAttributes($dil, AttributeContext::Quote)->pluck('code')->all())
+        ->not->toContain('total_hours');
 
     // Not leaked onto the other root, and gone from the product context.
     $consulenza = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
@@ -311,6 +321,38 @@ it('assigns the "Dati Aula" offer attributes to the Formazione root', function (
         ->not->toContain('teacher')
         ->and($service->effectiveAttributes($molise, AttributeContext::Product)->pluck('code')->all())
         ->not->toContain('teacher');
+});
+
+it('assigns the self-employment flag to "Autoimpiego" alone', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: one attribute, one pivot row.
+
+    $flag = Attribute::query()->where('code', 'interest_expression')->get();
+    $autoimpiego = ProductCategory::query()->where('name', 'Autoimpiego')->firstOrFail();
+
+    // A tick box, not a pick list (user directive 2026-09-10).
+    expect($flag)->toHaveCount(1)
+        ->and($flag->first()->name)->toBe("Manifestazione d'Interesse")
+        ->and($flag->first()->type)->toBe('boolean');
+
+    $pivot = DB::table('attribute_category')->where('attribute_id', $flag->first()->id)->get();
+
+    expect($pivot)->toHaveCount(1)
+        ->and($pivot->first()->category_id)->toBe($autoimpiego->id)
+        ->and($pivot->first()->context)->toBe(AttributeContext::Quote->value);
+
+    // It shares the "Dati Aula" section but NOT the root assignment: no other
+    // category of the branch resolves it.
+    $service = app(ProductCategoryService::class);
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
+
+    expect($service->effectiveAttributes($autoimpiego, AttributeContext::Quote)->pluck('code')->all())
+        ->toContain('interest_expression')
+        ->and($service->effectiveAttributes($formazione, AttributeContext::Quote)->pluck('code')->all())
+        ->not->toContain('interest_expression')
+        ->and($service->effectiveAttributes($molise, AttributeContext::Quote)->pluck('code')->all())
+        ->not->toContain('interest_expression');
 });
 
 it('seeds every GOL training course under its own region, idempotently', function (): void {

@@ -93,6 +93,22 @@ export function resolveRowSetManagementMode(
   )
 }
 
+/**
+ * Whether the row set's classification is under the simplified-offer-line
+ * rule (spec 0114): a single simplified category is enough for the whole
+ * card — the LOOSEST of the covered categories wins, the opposite bias from
+ * `resolveManagementMode`'s strictest-wins, since simplification is a UI
+ * relief the operator gets as soon as ONE of the covered branches grants it.
+ * `simplified_offer_line` is already mirrored on every descendant
+ * server-side, so it is read off the node itself — no root walk needed.
+ */
+export function resolveSimplifiedOfferLine(
+  nodes: ProductCategoryTreeNode[],
+  categoryIds: number[],
+): boolean {
+  return categoryIds.some((categoryId) => findNode(nodes, categoryId)?.simplified_offer_line === true)
+}
+
 /** Depth-first lookup by id. */
 function findNode(
   nodes: ProductCategoryTreeNode[],

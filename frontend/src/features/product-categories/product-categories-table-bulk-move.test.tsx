@@ -64,6 +64,7 @@ const TREE: ProductCategoryTreeNode[] = [
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
+    simplified_offer_line: false,
     children: [
       {
         id: 2,
@@ -77,6 +78,7 @@ const TREE: ProductCategoryTreeNode[] = [
         management_mode: 'multiple',
         single_quote_per_opportunity: false,
         generates_contract: true,
+        simplified_offer_line: false,
         children: [
           {
             id: 3,
@@ -90,6 +92,7 @@ const TREE: ProductCategoryTreeNode[] = [
             management_mode: 'multiple',
             single_quote_per_opportunity: false,
             generates_contract: true,
+            simplified_offer_line: false,
             children: [],
           },
         ],
@@ -108,6 +111,7 @@ const TREE: ProductCategoryTreeNode[] = [
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
+    simplified_offer_line: false,
     children: [],
   },
 ]

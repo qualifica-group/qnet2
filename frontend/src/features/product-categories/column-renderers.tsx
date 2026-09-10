@@ -136,13 +136,14 @@ function ProductsCountCell({ value, data }: ICellRendererParams) {
  * domain-agnostic renderer (mirrors `productColumnRenderers`).
  *
  * `requires_quote`/`is_selectable`/`single_quote_per_opportunity`/
- * `generates_contract` are NATIVE boolean columns: the generic fallbacks in
- * `column-defaults` only format `source:'custom'|'attribute'` ones, so
- * without an explicit renderer AG Grid would stringify the raw boolean
- * ("true"/"false"). All four reuse the shared `BooleanBadgeCell`, like every
- * other module's `is_active`/`is_default`. `management_mode` needs no entry:
- * it is a backend `badge` column, so `column-defaults` renders it through the
- * generic `BadgeCell` from its own `badges`/`enumKey` metadata.
+ * `generates_contract`/`simplified_offer_line` are NATIVE boolean columns:
+ * the generic fallbacks in `column-defaults` only format
+ * `source:'custom'|'attribute'` ones, so without an explicit renderer AG Grid
+ * would stringify the raw boolean ("true"/"false"). All five reuse the shared
+ * `BooleanBadgeCell`, like every other module's `is_active`/`is_default`.
+ * `management_mode` needs no entry: it is a backend `badge` column, so
+ * `column-defaults` renders it through the generic `BadgeCell` from its own
+ * `badges`/`enumKey` metadata.
  */
 export const productCategoryColumnRenderers: TableRendererMap = {
   parent: (params) => <ParentCell {...params} />,
@@ -150,6 +151,7 @@ export const productCategoryColumnRenderers: TableRendererMap = {
   is_selectable: (params) => <BooleanBadgeCell {...params} />,
   single_quote_per_opportunity: (params) => <BooleanBadgeCell {...params} />,
   generates_contract: (params) => <BooleanBadgeCell {...params} />,
+  simplified_offer_line: (params) => <BooleanBadgeCell {...params} />,
   attributes_count: (params) => <AttributesCountCell {...params} />,
   products_count: (params) => <ProductsCountCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,

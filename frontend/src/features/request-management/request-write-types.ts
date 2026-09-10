@@ -168,13 +168,6 @@ export interface CreateRequestPayload {
   client_address?: RequestClientAddressPayload
   product_lines: RequestProductLinePayload[]
   /**
-   * "Prodotti di interesse" (user directive 2026-07-31): optional at creation,
-   * sent only when at least one is picked. Every product must belong to one of
-   * `product_lines`' categories — the server refuses the mismatch instead of
-   * covering it with an extra product line.
-   */
-  products_of_interest?: number[]
-  /**
    * "Linee dell'offerta" (user directive 2026-08-07): the created Offerta's
    * own REVENUE rows, sent only when at least one is filled in — a request
    * opened before the first call still has none (spec 0086 AC-028). Unlike

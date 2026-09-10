@@ -51,7 +51,7 @@ class ProductCategoryService
                 'is_selectable' => $data->isSelectable,
                 'manager_labels' => $this->normalizeManagerLabels($data->managerLabels),
                 'inherits_manager_labels' => $data->inheritsManagerLabels,
-                // The four ROOT-OWNED settings: a child never authors any of
+                // The five ROOT-OWNED settings: a child never authors any of
                 // them, it takes its branch root's value whatever was (or was
                 // not) submitted (RootOwnedSettingsWriter).
                 ...$this->rootOwnedSettings->resolvedColumnsFor($data),
@@ -108,7 +108,7 @@ class ProductCategoryService
                 $this->cascadeBusinessFunctionToDescendants($category);
             }
 
-            // The four ROOT-OWNED settings: only a reparent (the branch root
+            // The five ROOT-OWNED settings: only a reparent (the branch root
             // changed) or an edit of the setting itself can break the "whole
             // subtree mirrors its root" invariant.
             $this->rootOwnedSettings->syncSubtrees($category, $data);
@@ -182,12 +182,13 @@ class ProductCategoryService
     }
 
     /**
-     * The ROOT each of $category's four root-owned settings is inherited FROM
+     * The ROOT each of $category's five root-owned settings is inherited FROM
      * (`requires_quote`, `management_mode`, `single_quote_per_opportunity`,
-     * `generates_contract`) — null on a root, which owns its own values. The
-     * show endpoint spreads this straight into its `meta` block as the
-     * read-only "inherited from X" hints; the values themselves are real
-     * columns on $category, already carried by the Resource.
+     * `generates_contract`, `simplified_offer_line`) — null on a root, which
+     * owns its own values. The show endpoint spreads this straight into its
+     * `meta` block as the read-only "inherited from X" hints; the values
+     * themselves are real columns on $category, already carried by the
+     * Resource.
      *
      * @return array<string, array{id: int, name: string}|null>
      */

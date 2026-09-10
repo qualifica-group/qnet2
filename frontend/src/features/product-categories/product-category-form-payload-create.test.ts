@@ -23,6 +23,7 @@ describe('buildCreatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -58,6 +59,7 @@ describe('buildCreatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -82,6 +84,7 @@ describe('buildCreatePayload', () => {
       management_mode: 'single',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -106,6 +109,7 @@ describe('buildCreatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: true,
       generates_contract: true,
+      simplified_offer_line: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -115,6 +119,32 @@ describe('buildCreatePayload', () => {
     expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({
       single_quote_per_opportunity: true,
       generates_contract: true,
+      simplified_offer_line: false,
     })
+  })
+
+  it('omits simplified_offer_line under a parent (inherited) and sends it at the root (owned)', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_quote_attributes: true,
+      inherits_work_order_attributes: true,
+      description: null,
+      attributes: [],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      management_mode: 'multiple',
+      single_quote_per_opportunity: false,
+      generates_contract: true,
+      simplified_offer_line: true,
+      manager_labels: {},
+      inherits_manager_labels: true,
+      custom_fields: {},
+    }
+
+    expect(buildCreatePayload(values)).not.toHaveProperty('simplified_offer_line')
+    expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({ simplified_offer_line: true })
   })
 })

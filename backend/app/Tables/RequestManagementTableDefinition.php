@@ -13,6 +13,7 @@ use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\RequestManagement\Concerns\WritesInlineEditableCells;
 use App\Tables\RequestManagement\RequestActionCatalog;
 use App\Tables\RequestManagement\RequestAdvancedFilterCatalog;
+use App\Tables\RequestManagement\RequestAssignmentScope;
 use App\Tables\RequestManagement\RequestClientColumns;
 use App\Tables\RequestManagement\RequestColumnCatalog;
 use App\Tables\RequestManagement\RequestRelationColumns;
@@ -87,6 +88,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
         private readonly RequestClientColumns $clientColumns,
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly RequestRelationColumns $relationColumns,
+        private readonly RequestAssignmentScope $assignmentScope,
     ) {}
 
     /**
@@ -220,7 +222,11 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // Spec 0078, AC-037; spec 0086, D-10 (corrected in execution):
             // the OFFER's OWN still-open requests — two sibling offers carry
             // independent badges.
-            ->withCount('pendingFieldChangeRequests');
+            ->withCount('pendingFieldChangeRequests')
+            // Operatore (GA2) picker scope, resolved once per hydrated page
+            // (mapRow sees one row at a time; RequestAssignmentScope is
+            // batch).
+            ->afterQuery($this->assignmentScope->warm(...));
 
         // D-3 scoping: THE single implementation of "solo le mie righe"
         // (RequestManagementScope), fail-closed by construction.
@@ -296,6 +302,10 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             ...$this->rowMapper->map($row),
             'documents_count' => (int) ($row->documents_count ?? 0),
             'notes_count' => (int) ($row->notes_count ?? 0),
+            // Non-visible key read by the Operatore (GA2) cell editor's
+            // `relation.scope` (RequestManagerColumns), alongside the visible
+            // `operational_site` the same scope reads.
+            ...$this->assignmentScope->project($row),
         ];
     }
 

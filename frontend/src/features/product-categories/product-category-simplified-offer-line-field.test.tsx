@@ -1,0 +1,279 @@
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import i18n from '@/i18n'
+import { ProductCategoryForm } from '@/features/product-categories/product-category-form'
+import { indexCategoryTree } from '@/features/product-categories/business-function-inheritance'
+import { resolveInheritedSimplifiedOfferLineFlag } from '@/features/product-categories/simplified-offer-line-inheritance'
+import type {
+  ProductCategoryDetailWithPermissions,
+  ProductCategoryTreeNode,
+} from '@/features/product-categories/types'
+import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+
+/**
+ * `simplified_offer_line` (spec 0114) belongs to the branch ROOT: the switch
+ * is editable only while no parent is selected, and turns into a read-only
+ * mirror of the root's value (naming that root) as soon as one is — live, off
+ * the cached tree, not just after a save. Mirrors the
+ * `generates_contract` suite's setup: only the API layer and the tree fetch
+ * are mocked, the real form/controls render.
+ */
+
+const createProductCategoryMock = vi.fn()
+const updateProductCategoryMock = vi.fn()
+const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode[]>>()
+
+vi.mock('@/features/product-categories/api', () => ({
+  createProductCategory: (...args: unknown[]) => createProductCategoryMock(...args),
+  updateProductCategory: (...args: unknown[]) => updateProductCategoryMock(...args),
+  fetchProductCategoryTree: () => fetchProductCategoryTreeMock(),
+  fetchEffectiveAttributes: () => Promise.resolve([]),
+}))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+
+const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => fetchResourceMetaMock(),
+}))
+
+vi.mock('@/features/for-select/use-for-select', async () => {
+  const actual = await vi.importActual<typeof import('@/features/for-select/use-for-select')>(
+    '@/features/for-select/use-for-select',
+  )
+  return {
+    flattenForSelectPages: actual.flattenForSelectPages,
+    useForSelect: () => ({
+      data: { pages: [{ items: [] }] },
+      isPending: false,
+      isError: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      refetch: vi.fn(),
+    }),
+    useForSelectLabels: () => new Map(),
+  }
+})
+
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
+const FULL_ACCESS: ResourcePermissions['resource'] = {
+  view: true,
+  create: true,
+  update: true,
+  delete: true,
+  export: true,
+  import: true,
+}
+
+function permissivePermissions(): ResourcePermissions {
+  return { resource: FULL_ACCESS, fields: {}, actions: {} }
+}
+
+function wrapper() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  )
+}
+
+function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCategoryTreeNode {
+  return {
+    id: 1,
+    name: 'Node',
+    parent_id: null,
+    children: [],
+    attributes_count: 0,
+    products_count: 0,
+    business_function_id: null,
+    requires_quote: false,
+    is_selectable: true,
+    management_mode: 'multiple',
+    single_quote_per_opportunity: false,
+    generates_contract: true,
+    simplified_offer_line: false,
+    ...overrides,
+  }
+}
+
+function category(
+  overrides: Partial<ProductCategoryDetailWithPermissions> = {},
+): ProductCategoryDetailWithPermissions {
+  return {
+    id: 4,
+    name: 'Laptops',
+    parent_id: null,
+    parent: null,
+    inherits_product_attributes: true,
+    inherits_quote_attributes: true,
+    inherits_work_order_attributes: true,
+    description: null,
+    attributes: [],
+    inherited_attributes: [],
+    created_at: '2026-01-01T00:00:00Z',
+    business_function_id: null,
+    business_function: null,
+    effective_business_function: null,
+    requires_quote: false,
+    requires_quote_source_category: null,
+    is_selectable: true,
+    management_mode: 'multiple',
+    management_mode_source_category: null,
+    single_quote_per_opportunity: false,
+    single_quote_per_opportunity_source_category: null,
+    generates_contract: true,
+    generates_contract_source_category: null,
+    simplified_offer_line: false,
+    simplified_offer_line_source_category: null,
+    manager_labels: {},
+    inherits_manager_labels: true,
+    inherited_manager_labels: {},
+    permissions: permissivePermissions(),
+    ...overrides,
+  }
+}
+
+/** The simplified-offer-line switch, located by the label `MetaField` wires to it. */
+async function findSimplifiedOfferLineSwitch() {
+  return screen.findByRole('switch', { name: 'Simplified offer line' })
+}
+
+beforeAll(async () => {
+  await i18n.changeLanguage('en')
+})
+
+beforeEach(() => {
+  createProductCategoryMock.mockReset()
+  updateProductCategoryMock.mockReset()
+  fetchProductCategoryTreeMock.mockReset()
+  fetchProductCategoryTreeMock.mockResolvedValue([])
+  fetchResourceMetaMock.mockReset()
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissivePermissions() })
+})
+
+describe('resolveInheritedSimplifiedOfferLineFlag', () => {
+  const tree = [
+    treeNode({
+      id: 1,
+      name: 'Electronics',
+      simplified_offer_line: false,
+      children: [
+        treeNode({
+          id: 2,
+          name: 'Wiring',
+          parent_id: 1,
+          simplified_offer_line: false,
+          children: [treeNode({ id: 3, name: 'Sockets', parent_id: 2, simplified_offer_line: false })],
+        }),
+      ],
+    }),
+    treeNode({ id: 9, name: 'Training', simplified_offer_line: true }),
+  ]
+
+  it('resolves the ROOT flag, not the nearest ancestor', () => {
+    const nodesById = indexCategoryTree(tree)
+
+    expect(resolveInheritedSimplifiedOfferLineFlag(nodesById, 2)).toEqual({
+      simplifiedOfferLine: false,
+      sourceCategory: { id: 1, name: 'Electronics' },
+    })
+    expect(resolveInheritedSimplifiedOfferLineFlag(nodesById, 3)).toEqual({
+      simplifiedOfferLine: false,
+      sourceCategory: { id: 1, name: 'Electronics' },
+    })
+  })
+
+  it('returns null for a root pick (nothing to inherit) and for an unknown node', () => {
+    const nodesById = indexCategoryTree(tree)
+
+    expect(resolveInheritedSimplifiedOfferLineFlag(nodesById, null)).toBeNull()
+    expect(resolveInheritedSimplifiedOfferLineFlag(nodesById, 999)).toBeNull()
+  })
+})
+
+describe('ProductCategoryForm — simplified_offer_line field', () => {
+  it('root category: the switch is editable, off by default, and its own hint is shown', async () => {
+    render(
+      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    const simplifiedSwitch = await findSimplifiedOfferLineSwitch()
+    expect(simplifiedSwitch).not.toBeDisabled()
+    expect(simplifiedSwitch).not.toBeChecked()
+    expect(
+      screen.getByText(
+        'When on, in Gestione Richieste the operator picks only the product: quantity, unit price and VAT rate of the row are filled in automatically by the system.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('root category: turning the switch on sends the flag on save', async () => {
+    updateProductCategoryMock.mockResolvedValue(category({ simplified_offer_line: true }))
+
+    render(
+      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.click(await findSimplifiedOfferLineSwitch())
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
+    const [, payload] = updateProductCategoryMock.mock.calls[0]
+    expect(payload).toEqual({ simplified_offer_line: true })
+  })
+
+  it('child category: the switch is read-only, mirrors the root and names it', async () => {
+    fetchProductCategoryTreeMock.mockResolvedValue([
+      treeNode({
+        id: 1,
+        name: 'Training',
+        simplified_offer_line: true,
+        children: [treeNode({ id: 4, name: 'Laptops', parent_id: 1, simplified_offer_line: true })],
+      }),
+    ])
+
+    render(
+      <ProductCategoryForm
+        mode={{
+          type: 'edit',
+          category: category({
+            parent_id: 1,
+            parent: { id: 1, name: 'Training' },
+            simplified_offer_line: true,
+            simplified_offer_line_source_category: { id: 1, name: 'Training' },
+          }),
+        }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    const simplifiedSwitch = await findSimplifiedOfferLineSwitch()
+    await waitFor(() => expect(simplifiedSwitch).toBeDisabled())
+    expect(simplifiedSwitch).toBeChecked()
+    expect(
+      screen.getByText(
+        'The simplified offer-line rule is inherited from the root category "Training". To change it, edit that category instead.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('explains the rule behind the (i) glyph', async () => {
+    render(
+      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'More info about Simplified offer line' }),
+    ).toBeInTheDocument()
+  })
+})

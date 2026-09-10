@@ -3,6 +3,8 @@
 use App\Enums\ContactTypeEnum;
 use App\Enums\PersonalDataTypeEnum;
 use App\Models\Contact;
+use App\Models\EmploymentProfile;
+use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Registry;
@@ -80,6 +82,23 @@ if (! function_exists('inlineEditorsRequest')) {
         $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
         return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
+    }
+}
+
+if (! function_exists('inlineEditorsMakeAssignable')) {
+    /**
+     * Direttiva utente 2026-09-10: the GA2 "Operatore" cell now refuses an
+     * operator the offer itself would not have accepted — a member of its own
+     * Sede, competent for its categories. These fixtures were born with a
+     * Sede-less offer and an unemployed user, which was enough before that
+     * rule and is not any more: the pair has to match. The offer demands no
+     * product category, so only the Sede half applies (INV-4a).
+     */
+    function inlineEditorsMakeAssignable(Quote $quote, User $operator): void
+    {
+        $site = OperationalSite::factory()->withAddress()->create();
+        $quote->update(['operational_site_id' => $site->id]);
+        EmploymentProfile::factory()->for($operator)->physicalSite($site)->create();
     }
 }
 
@@ -358,6 +377,7 @@ it('AC-008: PATCH operator_ga2 reassigns the Offerta\'s GA2 Operatore and promot
     $actor = inlineEditorsActor(['viewAny', 'update', 'viewAll']);
     $quote = inlineEditorsRequest($actor);
     $newOperator = User::factory()->create();
+    inlineEditorsMakeAssignable($quote, $newOperator);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
@@ -429,6 +449,7 @@ it('operator_ga2 is editable, pickable and savable for an actor without users.vi
     $actor = inlineEditorsActor(['viewAny', 'update']);
     $quote = inlineEditorsRequest($actor);
     $newOperator = User::factory()->create();
+    inlineEditorsMakeAssignable($quote, $newOperator);
     Sanctum::actingAs($actor);
 
     // The real complaint (2026-07-31): a commercial actor holds no browse right

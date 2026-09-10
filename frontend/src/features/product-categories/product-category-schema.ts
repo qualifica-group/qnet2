@@ -81,6 +81,7 @@ function baseFields(t: TFunction) {
     management_mode: z.enum(['single', 'multiple']),
     single_quote_per_opportunity: z.boolean(),
     generates_contract: z.boolean(),
+    simplified_offer_line: z.boolean(),
     attributes: z.array(
       z.object({
         attribute_id: z.number(),

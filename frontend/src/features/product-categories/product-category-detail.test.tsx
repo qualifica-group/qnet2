@@ -63,6 +63,8 @@ function category(
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
+    simplified_offer_line: false,
+    simplified_offer_line_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
@@ -235,6 +237,30 @@ describe('ProductCategoryDetailView — management rules', () => {
     )
 
     const field = ruleValue('One offer per opportunity')
+    expect(within(field).getByText('Yes')).toBeInTheDocument()
+    expect(within(field).getByText('Inherited from Electronics')).toBeInTheDocument()
+  })
+
+  // Spec 0114 AC-022.
+  it('shows the simplified-offer-line rule with no source badge on a root category', () => {
+    render(<ProductCategoryDetailView category={category({ simplified_offer_line: true })} />)
+
+    const field = ruleValue('Simplified offer line')
+    expect(within(field).getByText('Yes')).toBeInTheDocument()
+    expect(within(field).queryByText(/Inherited from/)).not.toBeInTheDocument()
+  })
+
+  it('names the root the simplified-offer-line rule is inherited from on a child category', () => {
+    render(
+      <ProductCategoryDetailView
+        category={category({
+          simplified_offer_line: true,
+          simplified_offer_line_source_category: { id: 1, name: 'Electronics' },
+        })}
+      />,
+    )
+
+    const field = ruleValue('Simplified offer line')
     expect(within(field).getByText('Yes')).toBeInTheDocument()
     expect(within(field).getByText('Inherited from Electronics')).toBeInTheDocument()
   })

@@ -249,11 +249,12 @@ describe('useRequestCreateForm', () => {
   })
 
   /**
-   * "Prodotti di interesse" at creation (user directive 2026-07-31): optional,
-   * so the key travels ONLY when at least one is picked — an empty array is a
-   * no-op the endpoint need not process.
+   * REQUIREMENT CHANGED (user directive 2026-09-10): the "Prodotti di
+   * interesse" section is gone from this form, so the key can no longer be
+   * built into the payload at all — the former "sent only once one is picked"
+   * case is replaced by this guard against it coming back.
    */
-  it('sends the products of interest only once at least one is picked', async () => {
+  it('never sends products_of_interest: the section is gone from this module', async () => {
     createRequestMock.mockResolvedValue({ id: 45 })
     const { result } = renderCreateForm(vi.fn())
 
@@ -267,15 +268,6 @@ describe('useRequestCreateForm', () => {
     })
 
     expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('products_of_interest')
-
-    act(() => {
-      result.current.form.setValue('products_of_interest', [700, 701])
-    })
-    await act(async () => {
-      await result.current.onSubmit()
-    })
-
-    expect(createRequestMock.mock.calls[1][0]).toMatchObject({ products_of_interest: [700, 701] })
   })
 
   /**
@@ -332,37 +324,6 @@ describe('useRequestCreateForm', () => {
     })
 
     expect(createRequestMock).not.toHaveBeenCalled()
-  })
-
-  /** The coherence 422 lands on the picker itself, not on the generic banner. */
-  it('maps the product-category coherence 422 onto the products_of_interest field', async () => {
-    createRequestMock.mockRejectedValue({
-      isAxiosError: true,
-      response: {
-        status: 422,
-        data: {
-          errors: {
-            products_of_interest: ['These products of interest belong to a product category the request does not carry: "Fibra" (Connettivita).'],
-          },
-        },
-      },
-    })
-    const { result } = renderCreateForm(vi.fn())
-
-    act(() => {
-      result.current.form.setValue('registry_id', 10)
-      result.current.form.setValue('product_lines', [COMPLETE_ROW])
-      result.current.form.setValue('source_id', TEST_SOURCE_ID)
-      result.current.form.setValue('products_of_interest', [700])
-    })
-    await act(async () => {
-      await result.current.onSubmit()
-    })
-
-    expect(result.current.form.formState.errors.products_of_interest?.message).toContain(
-      'does not carry',
-    )
-    expect(result.current.serverError).toBeNull()
   })
 
   it('collects a rewards D-3 422 (reward without a reporter) into the rewards banner', async () => {

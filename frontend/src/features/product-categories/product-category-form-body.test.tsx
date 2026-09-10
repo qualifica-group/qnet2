@@ -93,6 +93,8 @@ function category(
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
+    simplified_offer_line: false,
+    simplified_offer_line_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},

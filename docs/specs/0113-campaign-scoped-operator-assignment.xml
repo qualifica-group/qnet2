@@ -106,12 +106,19 @@
       <item>Test Pest e Vitest mappati 1:1 sugli acceptance criteria, inclusi gli aggiornamenti dichiarati ai test esistenti che inviano `operational_site_id`.</item>
     </in>
     <out>
-      <item>Trasferimento contatto (spec 0079): `RequestTransferService`, `POST /request-management/transfer`, i due call-site di trasferimento della popup e il loro `defaultSite` restano INVARIATI (D-2).</item>
+      <item>Trasferimento contatto (spec 0079): `RequestTransferService`, `POST /request-management/transfer`, i due call-site di trasferimento della popup e il loro `defaultSite` restano INVARIATI (D-2) — incluso il rifiuto server-side della rev.3, che NON si applica al trasferimento.</item>
+      <item>Filtro di competenza sulle celle di editing inline diverse dall'Operatore GA2 di Gestione richieste e dall'Operatore della tabella Lead: gli altri slot manager (GA1/GA3) non hanno `relation.scope` per decisione documentata.</item>
       <item>Slot GA1/GA3 (`assign-manager-ga1`, spec 0104) e `AssignManagerGa1Dialog`.</item>
       <item>La regola di competenza (spec 0110 rev.2 / 0111): `OperatorCompetence` e i tre resolver del requisito non cambiano firma ne' semantica.</item>
       <item>La colonna Sede del review grid e il suo editor per-riga (`review-site-editor.tsx`): l'override resta scrivibile a mano, semplicemente non decide piu' i candidati.</item>
       <item>Ereditarieta' server-side della Sede campagna -> lead al commit dell'import: `LeadRowPersister` continua a leggere solo l'override di riga (che pero' ora viene valorizzato dall'assegnazione, D-6/D-7).</item>
-      <item>Rifiuto server-side per `mode=single` di un operatore non competente o fuori Sede: resta solo filtro UI (spec 0110 R-1, decisione utente invariata).</item>
+      <item>Rifiuto server-side per `mode=single` su IMPORT e TABELLA LEAD: resta solo filtro UI (spec 0110 R-1, invariata su quelle due superfici).
+        REV.3 (direttiva utente 2026-09-10): su GESTIONE RICHIESTE R-1 e' REVOCATA — `POST /request-management/assign-operators`
+        con `mode=single` valida l'operatore contro Sede e competenza di OGNI offerta targettizzata e raggiungibile dall'attore,
+        e risponde 422 senza scrivere nulla se anche una sola non passa (all-or-nothing, come `product_ids` in BulkAssignRequest).
+        Le offerte fuori dallo scope D-3 non contribuiscono alla validazione: un 422 causato da un'offerta che per quell'attore
+        non esiste sarebbe anche una fuga di informazione. `balanced` invariato: continua a saltare con `skipped`, mai 422.
+        La differenza tra moduli e' VOLUTA e va mantenuta esplicita, non "uniformata" da un intervento futuro.</item>
       <item>Assegnazione automatica in fase di staging: le righe continuano a nascere senza operatore.</item>
       <item>`Model::preventLazyLoading()` e il debito di repo segnalato nell'HANDOFF: fuori scope.</item>
       <item>Nuove dipendenze: nessuna.</item>
@@ -137,7 +144,13 @@
           data: {
             product_category_ids: int[],      // union delle categorie richieste, asc, dedup ([] = nessun requisito)
             operational_site_id: int | null,  // la Sede CONDIVISA dalla selezione; null se mista o non risolvibile
-            campaign_ids: int[]               // campagne distinte della selezione, asc ([] per domain=quotes)
+            campaign_ids: int[],              // campagne distinte della selezione, asc ([] per domain=quotes)
+            single_operator_available: bool   // REV.3: esiste ALMENO UN operatore valido per OGNI record in scope
+                                              // (intersezione NON VUOTA dei pool per-record). Serve perche' la
+                                              // competenza e' un OR: filtrare il picker sull'UNIONE offre operatori
+                                              // validi per almeno UNA richiesta, non per tutte. `true` per selezione
+                                              // vuota o interamente fuori scope D-3; record senza Sede -> pool vuoto
+                                              // -> `false`; i record fuori scope D-3 non contribuiscono.
           }
         }
       </response>
@@ -246,6 +259,13 @@
     <criterion id="AC-032">Dato il picker operatore della SINGOLA riga del review grid, quando si apre, allora filtra per `operational_site_id` della campagna di quella riga oltre che per le sue categorie, e mostra il messaggio "nessun operatore abilitato" quando il risultato e' vuoto.</criterion>
     <criterion id="AC-033">Dato il review grid dopo la modifica, quando si ispeziona il modulo, allora `resolveSharedSiteId` e lo stato `defaultSiteId` non esistono piu' (nessun codice morto) e la selezione non calcola piu' nessuna Sede condivisa.</criterion>
     <criterion id="AC-034">Dato un errore di risoluzione dello scope, quando la popup e' aperta, allora il picker operatore resta disabilitato e non viene inviata nessuna richiesta non filtrata.</criterion>
+
+    <!-- REV.3, direttiva utente 2026-09-10 (test manuale): su Gestione richieste la card non si
+         disabilitava mai, perche' il criterio "campagne diverse" non e' esprimibile sulle offerte. -->
+    <criterion id="AC-035">Dato `single_operator_available` calcolato dal server, quando l'intersezione dei pool di candidati per-record e' vuota, allora vale `false`; quando esiste anche un solo operatore valido per ogni record in scope, vale `true` — inclusa la selezione con categorie DIVERSE ma un operatore competente per entrambe, che NON va disabilitata.</criterion>
+    <criterion id="AC-036">Data una selezione di offerte per cui `single_operator_available` e' `false`, quando si apre la popup di Gestione richieste, allora la card "Assegna a operatore" e' disabilitata con un motivo leggibile e "Smistamento equo" resta attiva e confermabile; con `true` nessuna card e' disabilitata; con il valore ancora `undefined` (in risoluzione o in errore) nessuna card e' disabilitata e nessun motivo compare a schermo.</criterion>
+    <criterion id="AC-037">Dato `POST /request-management/assign-operators` con `mode=single` e un operatore non valido per anche una sola offerta in scope, allora la risposta e' 422 sulla chiave `operator_id`, nessuna offerta viene scritta, e le offerte FUORI scope D-3 non concorrono al rifiuto. Un attore privo delle abilities di assegnazione riceve il 403 del controller, MAI il 422 che nomina le offerte.</criterion>
+    <criterion id="AC-038">Data la scrittura dell'Operatore GA2 dalla cella inline o dal pannello di lavoro, quando l'operatore non e' competente per l'offerta, allora la scrittura e' rifiutata; se pero' l'offerta non ha Sede si valuta la SOLA competenza e la cella resta modificabile — a differenza del massivo, dove un'offerta senza Sede e' incompatibile perche' li' un solo operatore vale per tutte.</criterion>
 
   </acceptance_criteria>
 

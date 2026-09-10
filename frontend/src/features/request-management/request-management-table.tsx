@@ -12,6 +12,7 @@ import { Can } from '@/features/auth/can'
 import { useAbilities } from '@/features/auth/use-abilities'
 import {
   AssignOperatorsDialog,
+  type AssignmentMode,
   type AssignOperatorsDialogInput,
 } from '@/features/leads/assign-operators-dialog'
 import { resolveAssignFeedback } from '@/features/leads/assign-feedback'
@@ -49,6 +50,16 @@ const REQUEST_MANAGEMENT_ACTION_ICONS: ActionIconMap = {
   'messages-square': MessagesSquare,
   'arrow-right-left': ArrowRightLeft,
 }
+
+/**
+ * Modes ruled out when no single operator covers every selected Offerta (user
+ * directive 2026-09-10): the Offerte differ by Sede or products, so the picker
+ * — filtered on the UNION of the required categories — would only offer
+ * operators the server then rejects with a 422 (spec 0113 rev.3). "Smistamento
+ * equo" works Offerta by Offerta and stays available. Hoisted at module level:
+ * an inline array would be a new reference on every render.
+ */
+const NO_COMMON_OPERATOR_DISABLED_MODES: readonly AssignmentMode[] = ['single']
 
 /**
  * Cio' che il dialog delle note deve sapere della riga aperta (direttiva
@@ -207,6 +218,16 @@ export function RequestManagementTable() {
   // only while the popup is open; the shared dialog stays dumb. The Sede only
   // narrows the picker — the server rereads it from each offer.
   const assignScope = useQuoteAssignmentScope(assignIds, assignOpen)
+
+  // `singleOperatorAvailable === undefined` (scope unresolved or failed) is NOT
+  // "no operator covers the selection": disabling on an unknown state would
+  // state a cause that has not been established. That window is already covered
+  // by the picker, inhibited by an unresolved `operatorSiteId`.
+  const hasNoCommonOperator = assignScope.singleOperatorAvailable === false
+  const disabledModeHints = useMemo(
+    () => ({ single: t('requestManagement.assign.mode.disabledNoCommonOperator') }),
+    [t],
+  )
 
   const assignMutation = useMutation({
     mutationFn: assignRequestOperators,
@@ -387,7 +408,11 @@ export function RequestManagementTable() {
         onOpenChange={setAssignOpen}
         selectionCount={assignIds.length}
         copy={assignCopy}
-        {...assignScope}
+        operatorSiteId={assignScope.operatorSiteId}
+        competenceCategoryIds={assignScope.competenceCategoryIds}
+        isResolvingCompetence={assignScope.isResolvingCompetence}
+        disabledModes={hasNoCommonOperator ? NO_COMMON_OPERATOR_DISABLED_MODES : undefined}
+        disabledModeHints={hasNoCommonOperator ? disabledModeHints : undefined}
         onAssign={handleAssign}
       />
 

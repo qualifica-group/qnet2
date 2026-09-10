@@ -19,7 +19,7 @@ interface ProductCategoryFormSummaryProps {
  * A category is mostly RULES, and each of them is a switch buried in its own
  * tile: read one at a time they never add up to "what will this category
  * impose downstream". This panel is that answer, live from the form — so the
- * five behavioural flags can be checked together before saving, without
+ * six behavioural flags can be checked together before saving, without
  * scrolling back through the section.
  */
 export function ProductCategoryFormSummary({
@@ -32,6 +32,7 @@ export function ProductCategoryFormSummary({
   const managementMode = useWatch({ control, name: 'management_mode' })
   const singleQuote = useWatch({ control, name: 'single_quote_per_opportunity' })
   const generatesContract = useWatch({ control, name: 'generates_contract' })
+  const simplifiedOfferLine = useWatch({ control, name: 'simplified_offer_line' })
   const isSelectable = useWatch({ control, name: 'is_selectable' })
   const attributes = useWatch({ control, name: 'attributes' })
   const managerLabels = useWatch({ control, name: 'manager_labels' })
@@ -67,6 +68,9 @@ export function ProductCategoryFormSummary({
         </SummaryRow>
         <SummaryRow label={t('productCategories.form.generatesContract')}>
           {yesNo(generatesContract)}
+        </SummaryRow>
+        <SummaryRow label={t('productCategories.form.simplifiedOfferLine')}>
+          {yesNo(simplifiedOfferLine)}
         </SummaryRow>
         <SummaryRow label={t('productCategories.form.isSelectable')}>
           {yesNo(isSelectable)}

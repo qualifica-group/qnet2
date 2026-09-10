@@ -13,7 +13,6 @@ use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
-use App\Services\Opportunities\ProductCategoryCoherence;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -98,13 +97,6 @@ class StoreRequestRequest extends FormRequest
                 // value through QuoteService's snapshot defaults, this form
                 // applies no default of its own.
                 'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
-                // "Prodotti di interesse" (user directive 2026-07-31): the
-                // same picker the work panel carries, available already at
-                // creation. OPTIONAL here — the operator often records them
-                // only after the first call — but whatever is picked must be
-                // coherent with `product_lines` (withValidator below).
-                'products_of_interest' => ['sometimes', 'array'],
-                'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
                 // Sede operativa (spec 0056, user directive 2026-07-31): the
                 // field that scopes the operator list, so the create form
                 // carries it exactly like the work panel. Plain optional FK —
@@ -176,50 +168,7 @@ class StoreRequestRequest extends FormRequest
             // the D-3 guard can fire here (the "cannot clear a reporter that
             // still has rewards" half needs an existing record).
             $this->validateRewards($validator, null);
-            $this->validateProductCategoryCoherence($validator);
         });
-    }
-
-    /**
-     * The coherence rule (user directive 2026-07-31): a product of interest
-     * picked at creation must belong to one of the submitted product-line
-     * categories. Both collections travel in THIS payload — nothing is
-     * persisted yet — so the check belongs here, unlike on the PATCH, where
-     * the same rule (ProductCategoryCoherence, shared) needs the
-     * record's stored sets.
-     *
-     * Skipped when `product_lines` is malformed: its own rules already report
-     * that, and a partial category set would produce a second, misleading
-     * error on the picker.
-     */
-    private function validateProductCategoryCoherence(Validator $validator): void
-    {
-        $products = $this->input('products_of_interest');
-        $lines = $this->input('product_lines');
-
-        // A malformed `product_lines` is already reported by its own rules; a
-        // partial category set would add a second, misleading error here.
-        $linesRejected = collect($validator->errors()->keys())
-            ->contains(static fn (string $key): bool => str_starts_with($key, 'product_lines'));
-
-        if (! is_array($products) || $products === [] || $linesRejected) {
-            return;
-        }
-
-        $categoryIds = collect(is_array($lines) ? $lines : [])
-            ->filter(static fn (mixed $line): bool => is_array($line) && isset($line['product_category_id']))
-            ->map(static fn (array $line): int => (int) $line['product_category_id'])
-            ->all();
-
-        $coherence = app(ProductCategoryCoherence::class);
-        $offending = $coherence->offendingProducts(array_map(intval(...), $products), $categoryIds);
-
-        if ($offending !== []) {
-            $validator->errors()->add(
-                'products_of_interest',
-                $coherence->message($offending, ProductCategoryCoherence::REQUEST_MESSAGE),
-            );
-        }
     }
 
     /**
@@ -239,9 +188,6 @@ class StoreRequestRequest extends FormRequest
             reporterId: isset($validated['reporter_id']) ? (int) $validated['reporter_id'] : null,
             supervisorId: isset($validated['supervisor_id']) ? (int) $validated['supervisor_id'] : null,
             supervisorIdSubmitted: array_key_exists('supervisor_id', $validated),
-            productsOfInterest: array_key_exists('products_of_interest', $validated)
-                ? array_values(array_unique(array_map(intval(...), (array) $validated['products_of_interest'])))
-                : null,
             rewards: array_key_exists('rewards', $validated) ? self::normalizeRewardTypeIds((array) $validated['rewards']) : null,
             managerSlots: array_key_exists('manager_slots', $validated)
                 ? array_map(

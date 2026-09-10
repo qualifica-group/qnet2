@@ -3,6 +3,263 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATEGORIA "DIL": OFFERTA CON SET PROPRIO + STATI DI LAVORAZIONE (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
+
+**Direttiva.** "In seederProduction ho esigenza di inserire nuova categoria prodotto [DIL]: gli
+stati di lavorazione li trovi qua [foglio SharePoint] (leggi solo DIL e la leggenda in base al
+colore), e poi per offerte voglio i campi flessibili: Corso Scelto, Data APP CPI, Data APP APL,
+Data Attivazione Dote, Data Scadenza Dote, SFL/ADI/NASPI." Seguita da: "categoria prodotto DIL
+sempre sotto Formazione".
+
+**Stato di partenza.** `DIL` esisteva gia' in `QualificaCatalogSeeder::CATALOG` sotto `Formazione`,
+ma come CONTENITORE (`is_selectable = false`), senza prodotti e senza workflow — nessuna Offerta
+poteva esserci classificata sopra.
+
+**Decisioni prese con l'utente (2026-09-10).**
+1. Il form Offerta di DIL porta SOLO i sei campi elencati, non l'eredita' del ramo Formazione.
+2. "Corso Scelto" e' TESTO LIBERO, non una relazione al catalogo prodotti.
+3. DIL ospita un prodotto unico chiamato come la categoria, stesso pattern di Autoimpiego/Yisu.
+
+**Fatto (backend).**
+- `QualificaCatalog/CatalogProducts.php`: `'DIL'` in `SINGLE_OFFER_CATEGORIES` → la categoria
+  diventa `is_selectable = true` (via `SELECTABLE_SUBCATEGORIES`, con realign sulle installazioni
+  gia' seedate) e nasce un prodotto SERVICE `DIL` a prezzo 0.
+- `QualificaCatalog/CategoryInheritanceRules.php` (NUOVO): barriere di ereditarieta' PER-NODO,
+  gemello di `CatalogRootRules` (che invece possiede le regole di una ROOT e ri-sincronizza il
+  sottoalbero). Oggi dichiara solo `DIL => inherits_quote_attributes = false`, riallineata a ogni
+  run in entrambe le direzioni.
+- `QualificaCatalogSeeder::seedCatalog()`: la chiama subito DOPO `CatalogRootRules` (deve
+  sopravvivere al subtree re-sync) e prima della composizione dei layout.
+- `QualificaCatalog/ContactProcessingAttributeCatalogue.php`: nuovo `DIL_CATEGORY` +
+  `DIL_ATTRIBUTES`, e due righe nuove in `ROWS` (`['chosen_course']` in testa,
+  `['dote_activation_date', 'dote_expiry_date']` sotto la coppia degli orari). Estratti
+  `CPI_APPOINTMENT_DATE`, `APL_APPOINTMENT_DATE`, `SUBSIDY_TYPE` come const private riusate dal set
+  Formazione e da quello DIL, per non duplicare la option list del sussidio.
+
+**Contratto dei sei campi (ordine esatto nel form, garantito dal test).**
+
+| Etichetta | `code` | Tipo | Origine |
+|---|---|---|---|
+| Corso Scelto | `chosen_course` | text | nuovo |
+| Data app. CPI | `data_scelta_cpi` | date | riuso codice q-crm |
+| OK app. APL | `data_app_apl` | date | riuso codice q-crm |
+| Data Attivazione Dote | `dote_activation_date` | date | nuovo |
+| Data Scadenza Dote | `dote_expiry_date` | date | nuovo |
+| Tipologia Sussidio | `subsidy_type` | enum naspi/adi/sfl | riuso |
+
+**Scelte da NON riaprire senza direttiva.**
+- `data_app_apl` resta etichettato "OK app. APL" (nome legacy q-crm) e non "Data App APL": la riga
+  attributo e' condivisa con tutto il ramo Formazione, rinominarla la rinomina ovunque. Lo
+  scostamento era gia' documentato nel catalogo.
+- La barriera taglia SOLO l'Offerta. `inherits_work_order_attributes` resta `true`: il form Commessa
+  di DIL continua a ereditare il set Formazione, piu' i tre campi nuovi. La direttiva parlava di
+  offerte.
+- I sei campi finiscono nella sezione "Dati Lavorazione Contatto", unica sezione del form DIL: le
+  sezioni "Dati corso" e "Dati Aula" vengono potate a zero dalla barriera. Un titolo dedicato
+  richiederebbe una sezione nuova in `QualificaQuoteLayoutSeeder::SECTIONS`.
+
+**Fatto (stati di lavorazione).** Fonte: `REPORT_potenziali Prossimi Associati 1.pdf` fornito
+dall'utente il 2026-09-10 (il link SharePoint dava `403` senza login Microsoft). Il PDF e' il foglio
+"Stati di Lavorazione_Commerciale": DIL e' il blocco 5, "solo per la regione Lombardia". I colori
+NON sono nel testo estratto: renderizzato a 150 dpi e campionati i pixel di fill riga per riga
+(`#FFFFFF` open, `#C0E6F5` pending, `#B5E6A2` closed_won, `#FBE2D5` closed_lost), che combaciano
+esattamente con `WorkflowStatusCatalogue::LEGEND`.
+
+- `WorkflowStatusCatalogue::WORKFLOWS`: voce `'DIL' => ['section' => GOL, 'statuses' => [...22]]`.
+  Tutti e 22 gli stati della colonna DIL esistono gia' nel vocabolario della sezione GOL con la
+  STESSA classificazione, quindi DIL prende in prestito quella sezione come fanno le nove colonne
+  regionali, invece di duplicare 22 coppie nome/descrizione. Diverso da "APL", che aveva uno stato
+  proprio ("Assegnato") e ha richiesto la trascrizione integrale.
+- Criterio di match: `product_category_id` ESATTO (il default), non il branch: DIL ospita il proprio
+  prodotto, quindi la riga d'offerta ci atterra direttamente.
+- Note di trascrizione: la colonna elenca "OK App. Fissato APL" DUE VOLTE di fila, stesso fill →
+  ripiegata su una sola occorrenza (l'indice unico `(quote_workflow_id, name)` rifiuterebbe il
+  duplicato). "Attesa_App. APL" e "Trasferito altra sede QG" ripiegate sulle grafie canoniche, come
+  gia' si fa per le varianti delle altre colonne. La colonna NON ha "OK App. Fissato CPI" (che tutte
+  le regioni hanno) e non classifica nulla come `validated`.
+- Se un domani DIL cresce uno stato che GOL non ha, o ne riclassifica uno, va promossa a sezione
+  propria invece di essere patchata dentro GOL. Documentato nel docblock.
+
+**Test aggiornati (requisito cambiato, dichiarato).**
+- `QualificaCatalogSeederTest`: `DIL` spostata dalla lista contenitori a quella dei selezionabili;
+  `TOTAL_SEEDED_PRODUCTS` 265 → 266; `DIL` tolta dal loop di ereditarieta' di `total_hours`, con
+  l'asserzione opposta al suo posto (la barriera).
+- `QualificaContactProcessingSeederTest`: i due conteggi di pivot ora tengono conto dei tre codici
+  che DIL ri-dichiara su di se' (derivati con `trainingCodesSharedWithDil()`, mai elencati a mano).
+  NUOVO test: i sei codici esatti su DIL in Offerta, e la Commessa che invece eredita ancora.
+- `QualificaQuoteLayoutSeederTest`: NUOVO test sull'ordine esatto delle sei voci e sull'unica
+  sezione superstite.
+- `QualificaProductionDataSeederTest`: conteggio prodotti 265 → 266 (due punti).
+- `QualificaWorkflowSeederTest`: `DIL` tolta dalla lista "categorie assenti dal foglio". DUE test
+  nuovi: la trascrizione pura della colonna (22 stati, nome + gruppo, nell'ordine del foglio) e il
+  set seedato (criterio esatto sulla categoria, righe pinned in testa/coda, custom in mezzo,
+  nessuna `validated`, nessun "OK App. Fissato CPI").
+
+**Verifica eseguita.** `php artisan test --parallel`: 6916 test, 6841 passati, Pint pulito sui 10
+file toccati; `QualificaWorkflowSeederTest` 14/14 verde. Baseline PRIMA della modifica: 6884 test,
+6804 passati, 4 rossi. Dopo: 1 rosso, PREESISTENTE e non correlato (non toccato) —
+`TaskConfigPermissionsTest` dataset `task-statuses`, 422 "group field is required" prima del 403.
+`QuoteWorkflowMigrationTest::it rolls back all 7 new migrations` e' un contatore di migrazioni
+hard-coded (il commento nel test dichiara che era gia' rosso in passato) ed e' flaky sotto
+`--parallel`: rosso nella prima esecuzione, verde nella seconda, in entrambi i casi indipendente da
+questa modifica. I ~73 `Call to undefined function` sono l'artefatto noto degli helper Pest definiti
+in un file di test e usati da un altro, che `--parallel` separa: si riproducono anche in sequenziale
+eseguendo il file consumatore da solo.
+
+## GESTIONE RICHIESTE: SEZIONE "PRODOTTI DI INTERESSE" ELIMINATA (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
+
+**Direttiva.** "In gestione richieste, eliminare la sezione prodotti di interesse, sia sul form che
+tutta la parte backend; in opportunita' rimane." Leads non e' toccato.
+
+**Stato di partenza.** Il canale PATCH era gia' inerte (spec 0086, AC-022). Restava il solo canale
+di CREAZIONE: sezione nel form di creazione + regola `products_of_interest` su `POST
+/api/request-management`.
+
+**Backend (canale creazione rimosso).**
+- `StoreRequestRequest`: via le regole `products_of_interest` / `products_of_interest.*`, via la
+  chiamata `validateProductCategoryCoherence()` da `withValidator()` e via il metodo stesso, via
+  l'import `ProductCategoryCoherence` (non piu' usato in quel file) e via il mapping
+  `productsOfInterest:` in `toData()`. La chiave ora e' semplicemente ignorata (stesso contratto del
+  PATCH: "ignorata o rifiutata" soddisfatto ignorando).
+- `CreateRequestData`: proprieta' `$productsOfInterest` eliminata.
+- `RequestCreationService`: l'argomento nominato non viene piu' passato a `CreateOpportunityData`
+  (che lo default-a a `null` = "non toccato"), quindi l'Opportunita' creata da questo modulo nasce
+  con la collezione vuota.
+
+**RESTA IN PIEDI di proposito.** `RequestManagementService::assertProductCategoryCoherence()`: non
+e' la sezione, e' la guardia che scatta quando si cambiano le `product_lines` dal pannello e
+l'Opportunita' porta gia' dei prodotti di interesse (scritti dal form Opportunita', che rimane).
+Toglierla lascerebbe orfani dei record che "rimangono". Effetto collaterale noto: da Gestione
+Richieste un cambio di linee prodotto puo' ancora dare 422 `product_lines` per colpa di una
+collezione che l'operatore non vede piu'. Se da' fastidio, si toglie con una riga (e
+`ProductCategoryCoherence::REQUEST_MESSAGE` diventa morto).
+
+**Frontend.**
+- ELIMINATO `request-create-products-of-interest.tsx`.
+- `request-create-form.tsx`: via la sezione, `useProductsOfInterestCoherence`, `pruneProductsOfInterest`
+  e il wrapper su `onChange` di `ProductLinesField` (torna `field.onChange` nudo); via gli import
+  ormai orfani `useWatch` e `ProductLineRow`.
+- `request-create-schema.ts`, `use-request-create-form.ts` (default + `SCALAR_ERROR_FIELDS` +
+  mapping), `request-create-payload.ts` (arg e chiave di wire), `request-create-summary.tsx` (riga
+  del riepilogo), `request-write-types.ts` (`products_of_interest?` fuori da `CreateRequestPayload`).
+- INVARIATI e condivisi: `features/products/products-of-interest-field.tsx`,
+  `use-products-of-interest-coherence.ts`, tutto `features/opportunities` e `features/leads`.
+
+**Test (requisiti cambiati, dichiarati).**
+- `RequestManagementProductLinesTest`: i 3 casi POST (accettato / rifiutato fuori categoria /
+  assente) diventano 2 — "POST ignora silenziosamente la chiave" (anche con prodotto fuori
+  categoria: `opportunity_product` resta vuota) e "POST crea senza prodotti di interesse".
+- `use-request-create-form.test.ts`: il caso "invia solo quando ne scegli almeno uno" diventa "non
+  invia mai `products_of_interest`"; eliminato il caso di mapping del 422 di coerenza (non esiste
+  piu' quel 422 su questo canale).
+- `request-create-form.test.tsx`: l'ordine delle sezioni non contiene piu' "Prodotti di interesse".
+- `request-create-schema.test.ts`: campo tolto dai `baseValues`.
+- `RequestManagementProductsOfInterestTest`: aggiornato il docblock (ora ENTRAMBI i canali sono
+  inerti); i test PATCH restano validi.
+
+**CALLER DIMENTICATO AL PRIMO GIRO (poi corretto).** `QualificaSampleRequestSeeder` costruiva
+`CreateRequestData` con `productsOfInterest:` -> "Unknown named parameter" al seed. Argomento
+rimosso: il prodotto della riga d'offerta continua a venire dal draw di `PicksDemoOffers`
+(`$offer['products_of_interest'][0]`), che ora serve SOLO a scegliere quel prodotto — la richiesta
+creata non porta piu' alcuna collezione. Lezione: dopo una modifica a un DTO condiviso, girare la
+suite INTERA, non solo le cartelle del modulo.
+
+**Verifica ESEGUITA.** Suite backend INTERA: `pest` = **6858 test, 6857 passed, 1 skipped, 0
+failed**. Suite frontend INTERA: `vitest run` = **619 file, 4643 passed**. `tsc -b --force` pulito,
+ESLint 0 errori, Pint `--test` pulito.
+
+**Prossimi passi.** Committare (in attesa di via libera esplicito). Nessuna migrazione: la tabella
+pivot `opportunity_product` resta, e' il form Opportunita' a scriverla.
+
+## CATALOGO CAMPI FLESSIBILI: "Sede" RITIRATA, FLAG AUTOIMPIEGO AGGIUNTO (direttive utente 2026-09-10) — VERDE, NON COMMITTATO
+
+**Direttive.** (1) Eliminare il campo "Sede" dalla sezione "Dati Lavorazione Contatto" del
+seedProduction. (2) Aggiungere per la categoria "Autoimpiego", nella sezione "Dati Aula", il campo
+"Manifestazione d'Interesse" come flag (casella di spunta).
+
+**Cosa e' cambiato.**
+- `ContactProcessingAttributeCatalogue`: riga `training_site` "Sede" rimossa da `ATTRIBUTES`, la
+  coppia `['subsidy_type', 'training_site']` di `ROWS` diventa `['subsidy_type']`, e il codice entra
+  in `RETIRED_ATTRIBUTES` (ora `['corso', 'training_site']`). Il ritiro e' la parte che fa convergere
+  le installazioni gia' seedate: `RetiresAttributes` stacca le assegnazioni in OGNI contesto e
+  ripulisce i blob di layout che lo piazzavano. La riga `attributes` NON viene cancellata (puo' gia'
+  portare valori su offerte/commesse); e' l'assegnazione a sparire, ed e' quella che
+  `ApplicableAttributesResolver` legge.
+- `ClassroomAttributeCatalogue`: nuove costanti `SELF_EMPLOYMENT_CATEGORY = 'Autoimpiego'` e
+  `SELF_EMPLOYMENT_ATTRIBUTES` (`interest_expression`, "Manifestazione d'Interesse", tipo
+  `boolean`); `ROWS` guadagna la riga finale `['interest_expression']`. `codes()` resta i soli
+  codici del ROOT (e' cio' che i test asseriscono per la branch).
+- `QualificaCatalogSeeder::CATALOG_QUOTE_ATTRIBUTES`: nuova chiave
+  `ClassroomAttributeCatalogue::SELF_EMPLOYMENT_CATEGORY => ...SELF_EMPLOYMENT_ATTRIBUTES`.
+  L'assegnazione e' sulla sola sottocategoria, contesto `quote`: il resto del ramo Formazione non
+  risolve il codice, quindi `QualificaQuoteLayoutSeeder` lo pota dalla loro "Dati Aula"
+  (`keepAllowedCodes`) e lo tiene solo in quella di Autoimpiego.
+
+**Nomi da rispettare.** `training_site` (ritirato, non ricreare), `interest_expression`,
+`SELF_EMPLOYMENT_CATEGORY`, `SELF_EMPLOYMENT_ATTRIBUTES`.
+
+**LIMITE NOTO (da decidere).** Su un database GIA' seedato con la revisione corrente,
+`QualificaQuoteLayoutSeeder::seedLayout` salta ogni categoria che ha gia' un layout `quote`
+(riconosce byte-per-byte solo la composizione della revisione PRECEDENTE, `isPreviousComposition`).
+Quindi su un'installazione esistente `interest_expression` viene assegnato ad Autoimpiego ma
+finisce nella sezione sintetizzata "altre informazioni", non dentro "Dati Aula". Il ritiro di
+"Sede" invece converge da solo. Se serve la convergenza anche per il flag, la strada e' generalizzare
+il riconoscimento della composizione seedata in `QualificaQuoteLayoutSeeder` (non implementato:
+rischia di ri-aggiungere campi che un operatore ha tolto a mano dal layout).
+
+**Verifica ESEGUITA.** `pest tests/Feature/Products tests/Feature/Seeding tests/Feature/CustomFields`
+= 342 passed. Mirati sui tre test dei seeder Qualifica: 46 passed. Pint `--test` pulito sui 6 file
+toccati. Nessuna modifica frontend (i form leggono layout e set applicabile dall'API).
+
+**Test aggiunti/aggiornati.**
+- `QualificaCatalogSeederTest`: nuovo "assigns the self-employment flag to Autoimpiego alone"
+  (tipo `boolean`, un solo pivot, non risolto da Formazione ne' da GOL - Molise).
+- `QualificaContactProcessingSeederTest`: nuovo "retires Sede from the categories an earlier
+  revision assigned it to" (riga conservata, assegnazioni a zero in entrambi i contesti).
+- `QualificaQuoteLayoutSeederTest`: "pairs the classroom fields..." ora attende
+  `count(ROWS) - 1` righe su `GOL - Molise` (requisito cambiato: l'ultima riga e' del solo
+  Autoimpiego) e verifica la riga in piu' su Autoimpiego.
+
+**Prossimi passi.** Committare (in attesa di via libera esplicito). Nessuna migrazione.
+
+## FORMATTAZIONE DATE DELLE COLONNE ATTRIBUTO `attr.*` (segnalazione utente 2026-09-10) — VERDE, NON COMMITTATO
+
+**Sintomo.** In Gestione Richieste la colonna nativa "Prossimo richiamo" rispettava il formato
+data/ora dell'utente (Impostazioni -> Sistema), mentre le colonne degli attributi flessibili di
+tipo data mostravano il valore grezzo di wire (`2026-03-10`).
+
+**Causa (due difetti sommati).**
+1. `AttributeColumnBuilder::mapping()` dichiarava l'attributo `date` come `type: 'text'`: il
+   formatter generico del frontend (`defaultValueFormatter`) formatta solo le colonne dinamiche
+   con `type: 'datetime'`, quindi quella colonna cadeva sul testo grezzo.
+2. `column-defaults.tsx` sceglieva `formatDate` quando `filterType === 'date'` — ma il contratto
+   dichiara `filterType: 'date'` sia per l'attributo `date` sia per il `datetime` (e' il filtro di
+   range che condividono, vedi `AttributeDateFilterApplier`), quindi a ogni attributo `datetime`
+   veniva tagliata l'ora.
+
+**Fix.**
+- Backend `AttributeColumnBuilder::mapping()`: `date` e `datetime` condividono ora
+  `['type' => 'datetime', 'filterType' => 'date']`, con `editor` pari al tipo dell'attributo
+  (`date` -> picker solo-giorno, `datetime` -> picker data+ora). `filterType` INVARIATO: il
+  filtro server-side (`AttributeDateFilterApplier`) continua a ricevere la stessa shape.
+- Frontend `defaultValueFormatter`: le colonne dinamiche `datetime` usano sempre
+  `formatDateTimeOptionalTime` — la granularita' la porta il valore (`Y-m-d` -> sola data;
+  `Y-m-dTH:i` -> data+ora; `T00:00` -> sola data), non piu' `filterType`.
+- `TableColumn.editor` (frontend `features/table/types.ts`) ora include `'date'`, che il backend
+  emetteva gia' e il `cell-editor-registry` gia' gestiva: il tipo TS era in ritardo sul contratto.
+
+**Verificato (eseguito).** Pest `tests/Feature/RequestManagement` 689 passed; Vitest suite intera
+618 file / 4636 test passed; `npx tsc -b --force` EXIT=0; Pint e ESLint puliti sui file toccati.
+Aggiornato il dataset di `RequestManagementAttributeColumnsTest` (`date` ora attende `datetime`)
+perche' e' cambiato il contratto, non per far passare il test; aggiunti due test in
+`column-defaults.test.tsx` (attributo `date` -> `10/03/2026`; attributo `datetime` -> ora tenuta,
+mezzanotte omessa).
+
+**Non toccato / da valutare.** I custom field universali (`custom.*`) di tipo `date`/`datetime`
+restano `type: 'text'` (`HandlesScalarStringField::columnType()`) e quindi non formattati: stesso
+sintomo, sottosistema diverso (spec 0021), fuori dallo scope della segnalazione. Anche l'elenco
+valori del Set Filter di una colonna data mostra i valori grezzi.
+
 ## RIMOZIONE FILTRO "DATA CHIUSURA PREVISTA" IN GESTIONE RICHIESTE (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
 
 **Richiesta.** Il filtro avanzato "Data chiusura prevista" non deve piu' comparire ne' essere
@@ -125,6 +382,128 @@ record, `null` incluso come valore: un solo valore distinto e non nullo -> quell
 - backend `XDEBUG_MODE=off php artisan test` -> 6816 passed, 1 skipped, EXIT=0
 - frontend `npx vitest run --maxWorkers=4` -> 618 file, 4622 test, EXIT=0
 - `npx tsc -b --force --pretty false` -> EXIT=0 · `./vendor/bin/pint --test` -> passed
+
+**`lockScope` FUNZIONA SOLO SULLE CELLE MULTI-VALORE (verificato 2026-09-10, costato due giri).**
+Due teammate indipendenti hanno proposto `'lockScope' => true` sulla colonna `operator_ga2` per
+smettere di offrire l'escape "mostra tutti", stimandola "una riga". Sarebbe stata INERTE:
+- `frontend/src/components/data-table/relation-cell-editor.tsx` non contiene NESSUNA occorrenza di
+  `lockScope`;
+- in `cell-editor-registry.ts` il flag e' inoltrato solo dentro il blocco `multiselect:`;
+- l'escape stesso (`confirmingUnlock` / `table.multiSelectEditor.hintLocked`) e' implementato solo in
+  `multi-select-cell-editor.tsx`;
+- `ResolvesColumnConfig.php:154`: una colonna con `relation` e senza `editor` esplicito risolve a
+  `editor = 'relation'`, cioe' valore singolo — il caso di `operator_ga2` e di `operator` sui lead.
+Il precedente `products_of_interest` non contraddice: e' MULTI-valore. Dichiarare il flag su una
+colonna a valore singolo lascerebbe nel codice qualcosa che SEMBRA una protezione e non lo e' —
+lo stesso malinteso su `lockScope` che la rev.4 documenta. Serve un escape su una cella a valore
+singolo? E' lavoro sul FRAMEWORK (`RelationCellEditor` + registry), non una dichiarazione sulla
+colonna.
+LEZIONE DI PROCESSO: il consenso fra due teammate accurati NON e' una verifica. Entrambi avevano
+dedotto l'effetto dal lato che possedevano (il server, che il flag lo EMETTE) senza guardare chi lo
+CONSUMA.
+
+**REV.4 — GESTIONE RICHIESTE: STESSI FLUSSI (direttiva utente 2026-09-10).** Tre interventi.
+
+(a) CELLA GA2 INLINE filtrata anche per competenza (prima solo per Sede):
+`app/Tables/RequestManagement/RequestAssignmentScope.php` proietta `assignment_category_ids` per riga
+via `QuoteCompetence::requiredByQuote()`, stesso pattern `afterQuery` + guardia `instanceof
+EloquentCollection` del gemello lead. Scope della colonna:
+`['operational_site_id' => 'operational_site', 'competence_category_ids' => assignment_category_ids]`.
+Costo: 3 query costanti (19 con 1 riga, 19 con 20).
+
+(b) RIFIUTO SERVER-SIDE su `mode=single` del MASSIVO — R-1 della 0110 REVOCATA **solo su Gestione
+richieste** (import e tabella Lead restano a filtro di sola UI: la differenza e' VOLUTA, non
+uniformarla). Vive in `AssignRequestOperatorsRequest`, all-or-nothing, 422 che nomina le offerte.
+DUE dettagli load bearing: le offerte fuori dallo scope D-3 NON concorrono alla validazione (un 422
+causato da un'offerta che per l'attore non esiste sarebbe anche una fuga di informazione); e un guard
+su `ASSIGNMENT_ABILITIES` salta il check quando l'attore non ha i permessi, altrimenti la FormRequest
+(che gira PRIMA dell'`abort_unless` del controller) trasformerebbe il 403 in un 422 informativo.
+Chi "semplifica" quel guard riapre il buco: e' scritto nel docblock.
+
+(c) GUARD sulla scrittura della cella inline, in `RequestAttributionWriter::assertOperatorCovers()`
+(Strada A: writer di dominio, ZERO framework condiviso). Perche' li' e non nel framework:
+`RelationValueScopeChecker` risolve l'id senza Sede ne' categorie e non riceve ne' la riga ne'
+`relation.scope`; e **`relation.lockScope` NON e' un gate server, e' solo un flag UI**
+(`ResolvesColumnConfig`) — leggerlo come protezione e' il malinteso che rende necessario il guard.
+Precedente in casa: `products_of_interest` impone la coerenza nel proprio writer.
+
+**REGOLA DIVERGENTE DA NON "UNIFORMARE".** Offerta SENZA Sede: nel MASSIVO e' incompatibile (li' un
+operatore vale per TUTTE le offerte, quindi una che non esprime candidati rende la scelta arbitraria);
+INLINE si valuta la SOLA competenza e la cella resta modificabile (altrimenti l'offerta sarebbe non
+assegnabile finche' qualcuno non le mette una Sede, con causa invisibile). Coperta da 4 test in
+`RequestManagementInlineOperatorGuardTest.php`.
+
+**PERIMETRO REALE, verificato: il PANNELLO DI LAVORO NON E' COPERTO.** `applyOperator()` ha un solo
+chiamante e `UpdateRequestRequest:186` dichiara `'operator_id' => ['prohibited']`: il pannello scrive
+la squadra via `manager_slots` -> `applyTeam()` e resta permissivo sull'Operatore. Il lead aveva
+dichiarato all'utente il contrario: CORRETTO. Estenderlo e' una decisione aperta.
+
+(d) DISABILITAZIONE della card `single` su Gestione richieste: il criterio "campagne diverse" non e'
+esprimibile (le offerte non hanno campagna). Nuovo campo `single_operator_available: bool` su
+`POST /api/assignment/selection-scope` = intersezione NON VUOTA dei pool per-record. Serve perche'
+`CompetenceProfile::covers()` e' un **OR**: filtrare il picker sull'UNIONE offre operatori validi per
+ALMENO UNA richiesta, non per tutte — e col rifiuto server-side l'utente sceglieva e si prendeva un
+422. Regola esatta, non "sono diversi quindi no": categorie diverse con UN operatore competente per
+entrambe NON disabilita. FE: `useAssignmentScope` a sei campi, disabilita solo sul `false` esplicito.
+Costo costante: 15 query con 1 record e 15 con 20.
+
+**Verde a lavoro fermo:** backend 6858 passed / 1 skipped EXIT=0, frontend 619 file / 4644 test
+EXIT=0, `tsc -b --force` EXIT=0, Pint pulito.
+
+**FLAKY NOTO, non nostro:** `DemoOpportunitySeederTest:147` asserisce `toBeGreaterThan(0)` su dati
+faker: si ripresentera'. E due rossi intermedi in `*SeederTest` erano un teammate che editava
+`database/seeders/QualificaCatalog/*` MENTRE la suite girava.
+
+**ERRORE DI PROCESSO DEL LEAD, da non ripetere:** ho assegnato `features/assignment/**` a un secondo
+teammate senza avvisare il primo, che stava per riscrivere le stesse righe in buona fede. Ownership
+disgiunta (CLAUDE.md §6) si viola nell'ISTRUZIONE, non nell'esecuzione: quando una superficie cambia
+proprietario va detto a ENTRAMBI.
+
+**REV.3 — PICKER INLINE DELLA COLONNA OPERATORE (direttiva utente 2026-09-10).** "Sulla tabella
+lead, quando clicco su operatore mi esce la lista di TUTTI gli operatori: come nell'import devono
+uscire solo gli operatori con competenza". NON era una svista della 0113: nessun editor inline ha
+MAI avuto il filtro di competenza: le 0110/0113 coprivano la popup bulk e il picker per-riga
+dell'import, che e' una cella scritta a mano. Quella della tabella Lead e' la cella generica del
+framework, il cui meccanismo `TableColumn.relation.scope` sapeva passare solo id SINGOLI (precedente:
+`RequestManagerColumns` -> `['operational_site_id' => 'operational_site']`), mentre la competenza e'
+un ARRAY di categorie: non era proprio esprimibile.
+
+Contratto: la riga Lead porta due chiavi TECNICHE (non colonne visibili) `assignment_site_id: int|null`
+(Sede della CAMPAGNA, D-3) e `assignment_category_ids: int[]`, e la colonna `operator` dichiara
+`'scope' => ['operational_site_id' => 'assignment_site_id', 'competence_category_ids' => 'assignment_category_ids']`.
+NIENTE `lockScope` e nessun rifiuto server-side: narrowing di sola UI, coerente con R-1 della 0110.
+
+Il punto tecnico da non perdere: `mapRow()` riceve UNA riga per volta e `TableService` non ha hook di
+pagina. La soluzione NON e' una query per riga: `LeadsTableDefinition::baseQuery()` registra
+`->afterQuery(LeadAssignmentScope::warm(...))`, che riceve la Collection dell'INTERA pagina gia'
+idratata, e li' chiama una volta sola `AssignmentSiteResolver::forLeads()` e
+`LeadCompetence::requiredByLead()`. Il callback E' GUARDATO da `instanceof EloquentCollection` perche'
+`afterQuery` scatta anche sul `pluck()` di `LeadOperationalSiteColumn::distinctValues()` sullo stesso
+builder: senza guardia si rompe. Misurato: 12 query con 1 riga e 12 con 20 righe, identiche, con test
+permanente che le confronta. Lato FE `resolveScopeParams()` (`relation-cell-editor.tsx`) risolve ora
+anche set di id; array VUOTO -> parametro OMESSO (nessun requisito = nessun filtro, non "nessun
+candidato"). La serializzazione e' `param[0]=&param[1]=` (`indexes: true`), che Laravel parsa
+identica: e' gia' il percorso del `MultiSelectCellEditor`.
+
+DEBITO CHE MORDE PRESTO: `LeadsTableDefinition.php` e' a 495 righe su hard limit 500 — la prossima
+modifica viene BLOCCATA da `code-guard.js`. Rimedio pulito gia' individuato: estrarre i 4 helper di
+`lead_status` in `app/Tables/Leads/LeadStatusColumn.php`, gemello di `LeadOperationalSiteColumn`
+(~-85 righe). Non fatto: fuori scope.
+
+SEGNALATO E NON IMPLEMENTATO: la cella Operatore GA2 di Gestione richieste ha lo STESSO problema —
+filtrata per Sede, non per competenza. E' il gemello di questo intervento.
+
+Verde nel perimetro: backend 649/649 (Table+Leads+Assignment+Imports), frontend 315/315
+(data-table+leads), `tsc -b --force` EXIT=0. ATTENZIONE: la suite backend INTERA non e' certificabile
+in questo momento perche' ALTRE SESSIONI stanno scrivendo sullo stesso albero (vedi sotto).
+
+**CONTAMINAZIONE DA SESSIONI CONCORRENTI (2026-09-10).** Durante la verifica finale il working tree
+e' passato da 8 a 28 file modificati: `TableController.php`, `TableFilterStateRequest.php`,
+`TablePreferencesRequest.php`, `RequestAdvancedFilterCatalog.php`, `RequestManagementTableDefinition.php`,
+`table/api.ts`, `use-table-filters.ts`, `use-table-preferences.ts` NON sono di questo lavoro: sono
+un'altra feature in corso in due sessioni Claude parallele, sullo STESSO framework tabellare.
+Un rosso isolato in `NoteMentionValidationTest` sulla suite intera PASSA in isolamento (6/6): non e'
+nostro. Chi legge un rosso in questa finestra deve prima chiedersi di chi sia il file.
 
 **REV.2 (direttiva utente 2026-09-10).** "Anche sulla tabella lead voglio la stessa assegnazione
 operatori con gli stessi criteri dell'import lead". Tutto il resto era gia' cosi' dalla risposta

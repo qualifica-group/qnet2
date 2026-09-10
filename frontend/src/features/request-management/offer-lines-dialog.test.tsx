@@ -11,6 +11,7 @@ import {
   workPanel as panel,
 } from '@/features/request-management/request-work-panel-fixtures'
 import type { TableRow } from '@/features/table/types'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 
 /**
  * "Linee di prodotto" in griglia (direttiva utente 2026-09-07: "l'edit della
@@ -31,8 +32,9 @@ vi.mock('@/features/table/api', () => ({
   updateTableCell: (...args: unknown[]) => updateTableCellMock(...args),
 }))
 
+const categoryTreeMock = vi.fn<() => ProductCategoryTreeNode[]>()
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
-  useProductCategoryTree: () => ({ data: [], isPending: false, isError: false, refetch: vi.fn() }),
+  useProductCategoryTree: () => ({ data: categoryTreeMock(), isPending: false, isError: false, refetch: vi.fn() }),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -79,6 +81,8 @@ beforeEach(() => {
   updateTableCellMock.mockReset()
   setData.mockReset()
   stopEditing.mockReset()
+  categoryTreeMock.mockReset()
+  categoryTreeMock.mockReturnValue([])
 })
 
 describe('Gestione Richieste — linee di prodotto in griglia', () => {
@@ -159,6 +163,39 @@ describe('Gestione Richieste — linee di prodotto in griglia', () => {
 
     expect(await screen.findByText('Quantità non valida.')).toBeInTheDocument()
     expect(setData).not.toHaveBeenCalled()
+  })
+
+  // Spec 0114 AC-020: same component as the work panel (`RequestOfferLinesField`),
+  // so a simplified classification hides the same three controls here too.
+  it('hides quantity/unit price/VAT controls on a simplified classification', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+    categoryTreeMock.mockReturnValue([
+      {
+        id: 500,
+        name: 'Consulting',
+        parent_id: null,
+        children: [],
+        attributes_count: 0,
+        products_count: 0,
+        business_function_id: null,
+        requires_quote: false,
+        is_selectable: true,
+        management_mode: 'multiple',
+        single_quote_per_opportunity: false,
+        generates_contract: true,
+        simplified_offer_line: true,
+      },
+    ])
+
+    renderEditor()
+
+    await screen.findByText(
+      'Categoria semplificata: scegli il prodotto, quantità, prezzo unitario e aliquota IVA sono compilati automaticamente dal sistema.',
+    )
+    expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Prezzo unitario riga 1')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Aliquota IVA riga 1')).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Prodotto riga 1' })).toBeInTheDocument()
   })
 })
 

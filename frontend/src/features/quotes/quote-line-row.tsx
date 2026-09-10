@@ -63,6 +63,13 @@ interface QuoteLineRowProps {
    * prohibits `commissions`, keeping whatever the Offerte form set up).
    */
   withCommissions?: boolean
+  /**
+   * `true` drops the quantity/unit price/VAT rate controls (spec 0114 D-2):
+   * the classification congeals them server-side, so the operator only picks
+   * the product and reads the three amounts. Never reaches the Offerte
+   * module (D-3), so it defaults to `false` there too.
+   */
+  simplified?: boolean
   onChangeProduct: (
     productId: number | null,
     item: QuoteProductForSelectItem | null,
@@ -101,6 +108,7 @@ export function QuoteLineRow({
   error,
   commissionContext,
   withCommissions = true,
+  simplified = false,
   onChangeProduct,
   onChangeField,
   onRemove,
@@ -141,7 +149,7 @@ export function QuoteLineRow({
   const canEditCommissions = collectionPermission.editable && !collectionPermission.disabled
 
   return (
-    <div className={cn(quoteLineGridClass(variant, withCommissions), 'items-start border-b px-2 py-2 last:border-b-0')}>
+    <div className={cn(quoteLineGridClass(variant, withCommissions, simplified), 'items-start border-b px-2 py-2 last:border-b-0')}>
       <div className="flex flex-col gap-1">
         <QuoteProductSelect
           value={row.product_id}
@@ -163,74 +171,80 @@ export function QuoteLineRow({
 
       <span className="truncate pt-2 font-mono text-xs text-muted-foreground">{code ?? '—'}</span>
 
-      <div className="flex flex-col gap-1">
-        <Input
-          type="number"
-          step="0.01"
-          min={0}
-          aria-label={t('quotes.form.lineQuantity', { n: index + 1 })}
-          aria-invalid={!!error?.quantity}
-          aria-describedby={error?.quantity ? quantityErrorId : undefined}
-          disabled={disabled}
-          value={numberInputValue(row.quantity)}
-          onChange={(event) =>
-            onChangeField({ quantity: event.target.value === '' ? null : Number(event.target.value) })
-          }
-        />
-        {error?.quantity ? (
-          <span id={quantityErrorId} role="alert" className="text-[11px] text-destructive">
-            {error.quantity.message}
-          </span>
-        ) : null}
-      </div>
+      {simplified ? null : (
+        <div className="flex flex-col gap-1">
+          <Input
+            type="number"
+            step="0.01"
+            min={0}
+            aria-label={t('quotes.form.lineQuantity', { n: index + 1 })}
+            aria-invalid={!!error?.quantity}
+            aria-describedby={error?.quantity ? quantityErrorId : undefined}
+            disabled={disabled}
+            value={numberInputValue(row.quantity)}
+            onChange={(event) =>
+              onChangeField({ quantity: event.target.value === '' ? null : Number(event.target.value) })
+            }
+          />
+          {error?.quantity ? (
+            <span id={quantityErrorId} role="alert" className="text-[11px] text-destructive">
+              {error.quantity.message}
+            </span>
+          ) : null}
+        </div>
+      )}
 
       <span className="truncate pt-2 text-xs text-muted-foreground">
         {row.unit_of_measure?.symbol ?? '—'}
       </span>
 
-      <div className="flex flex-col gap-1">
-        <Input
-          type="number"
-          step="0.01"
-          min={0}
-          aria-label={t('quotes.form.lineUnitPrice', { n: index + 1 })}
-          aria-invalid={!!error?.unit_price}
-          aria-describedby={error?.unit_price ? unitPriceErrorId : undefined}
-          disabled={disabled}
-          value={numberInputValue(row.unit_price)}
-          onChange={(event) =>
-            onChangeField({ unit_price: event.target.value === '' ? null : Number(event.target.value) })
-          }
-        />
-        {error?.unit_price ? (
-          <span id={unitPriceErrorId} role="alert" className="text-[11px] text-destructive">
-            {error.unit_price.message}
-          </span>
-        ) : null}
-      </div>
+      {simplified ? null : (
+        <div className="flex flex-col gap-1">
+          <Input
+            type="number"
+            step="0.01"
+            min={0}
+            aria-label={t('quotes.form.lineUnitPrice', { n: index + 1 })}
+            aria-invalid={!!error?.unit_price}
+            aria-describedby={error?.unit_price ? unitPriceErrorId : undefined}
+            disabled={disabled}
+            value={numberInputValue(row.unit_price)}
+            onChange={(event) =>
+              onChangeField({ unit_price: event.target.value === '' ? null : Number(event.target.value) })
+            }
+          />
+          {error?.unit_price ? (
+            <span id={unitPriceErrorId} role="alert" className="text-[11px] text-destructive">
+              {error.unit_price.message}
+            </span>
+          ) : null}
+        </div>
+      )}
 
-      <AsyncPaginatedSelect
-        resource={VAT_RATES_FOR_SELECT_RESOURCE}
-        value={row.vat_rate_id}
-        onChange={(vatRateId) => onChangeField({ vat_rate_id: vatRateId })}
-        onItemChange={(item) => {
-          const vatItem = item as QuoteVatRateForSelectItem | null
-          if (vatItem?.meta.rate != null) {
-            rememberVatRatePercent?.(vatItem.id, Number(vatItem.meta.rate))
-          }
-        }}
-        selectedItem={vatRateItem}
-        disabled={disabled}
-        labels={{
-          placeholder: t('quotes.form.lineVatRatePlaceholder'),
-          searchPlaceholder: t('quotes.form.lineVatRateSearch'),
-          empty: t('quotes.form.lineVatRateEmpty'),
-          error: t('quotes.form.lineVatRateLoadError'),
-          clearLabel: t('common.clear'),
-          triggerLabel: t('quotes.form.lineVatRate', { n: index + 1 }),
-          retry: t('common.retry'),
-        }}
-      />
+      {simplified ? null : (
+        <AsyncPaginatedSelect
+          resource={VAT_RATES_FOR_SELECT_RESOURCE}
+          value={row.vat_rate_id}
+          onChange={(vatRateId) => onChangeField({ vat_rate_id: vatRateId })}
+          onItemChange={(item) => {
+            const vatItem = item as QuoteVatRateForSelectItem | null
+            if (vatItem?.meta.rate != null) {
+              rememberVatRatePercent?.(vatItem.id, Number(vatItem.meta.rate))
+            }
+          }}
+          selectedItem={vatRateItem}
+          disabled={disabled}
+          labels={{
+            placeholder: t('quotes.form.lineVatRatePlaceholder'),
+            searchPlaceholder: t('quotes.form.lineVatRateSearch'),
+            empty: t('quotes.form.lineVatRateEmpty'),
+            error: t('quotes.form.lineVatRateLoadError'),
+            clearLabel: t('common.clear'),
+            triggerLabel: t('quotes.form.lineVatRate', { n: index + 1 }),
+            retry: t('common.retry'),
+          }}
+        />
+      )}
 
       <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(amounts.net)}</span>
       <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(amounts.vat)}</span>

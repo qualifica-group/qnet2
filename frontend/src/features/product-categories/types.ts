@@ -35,6 +35,8 @@ export interface ProductCategoryTreeNode {
   single_quote_per_opportunity: boolean
   /** The EFFECTIVE contract rule: authored by the branch root, mirrored on every descendant server-side (spec 0091). */
   generates_contract: boolean
+  /** The EFFECTIVE simplified-offer-line rule: authored by the branch root, mirrored on every descendant server-side (spec 0114). */
+  simplified_offer_line: boolean
 }
 
 /**
@@ -148,6 +150,10 @@ export interface ProductCategoryDetail {
   generates_contract: boolean
   /** The root `generates_contract` is inherited from; null when this category IS the root and owns the flag. */
   generates_contract_source_category: { id: number; name: string } | null
+  /** Whether Gestione Richieste compiles this branch's offer rows automatically (spec 0114) — authored by the branch ROOT, mirrored here on every descendant. */
+  simplified_offer_line: boolean
+  /** The root `simplified_offer_line` is inherited from; null when this category IS the root and owns the flag. */
+  simplified_offer_line_source_category: { id: number; name: string } | null
   /** This category's OWN manager-label overrides (spec 0080) — never the inherited ones. */
   manager_labels: ManagerLabels
   /** When false the category ignores its ancestry for manager labels (barrier), same shape as the attribute barriers. */
@@ -240,6 +246,8 @@ export interface CreateProductCategoryPayload {
   single_quote_per_opportunity?: boolean
   /** Same root-only rule again for the contract rule (spec 0091). */
   generates_contract?: boolean
+  /** Same root-only rule again for the simplified-offer-line rule (spec 0114). */
+  simplified_offer_line?: boolean
   /** Own manager-label overrides, only valorized positions (spec 0080). */
   manager_labels?: ManagerLabels
   inherits_manager_labels?: boolean

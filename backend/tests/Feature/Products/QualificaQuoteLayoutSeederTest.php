@@ -113,6 +113,22 @@ it('orders the three catalogue sections, each pruned to what the category resolv
         ->and(array_column(quoteLayoutOf('Trattative in Corso')['sections'], 'sort_order'))->toBe([0]);
 });
 
+it('gives "DIL" an offer form of its own six fields, in the client order', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $layout = quoteLayoutOf('DIL');
+
+    // The two training sections are pruned whole: below the inheritance
+    // barrier DIL resolves neither of their codes.
+    expect(array_column($layout['sections'], 'id'))->toBe(['contact-processing'])
+        ->and(codesOfSection($layout, 'contact-processing'))->toBe([
+            'chosen_course',
+            'data_scelta_cpi', 'data_app_apl',
+            'dote_activation_date', 'dote_expiry_date',
+            'subsidy_type',
+        ]);
+});
+
 it('places every attribute the category resolves, leaving none to the synthesized section', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
@@ -143,11 +159,20 @@ it('pairs the classroom fields two per row in a two-column section', function ()
 
     $section = collect(quoteLayoutOf('GOL - Molise')['sections'])->firstWhere('id', 'classroom-data');
 
+    // Every catalogue row but the last one: the self-employment flag sits alone
+    // on it and only "Autoimpiego" resolves that code.
     expect($section['title'])->toBe('Dati Aula')
         ->and($section['columns'])->toBe(2)
-        ->and($section['rows'])->toHaveCount(count(ClassroomAttributeCatalogue::ROWS))
+        ->and($section['rows'])->toHaveCount(count(ClassroomAttributeCatalogue::ROWS) - 1)
         ->and(array_column($section['rows'][0]['items'], 'attribute_code'))->toBe(['teacher', 'classroom_status'])
         ->and(array_column($section['rows'][0]['items'], 'width'))->toBe(['half', 'half']);
+
+    // The one category carrying it keeps the same section, one row longer.
+    $selfEmployment = collect(quoteLayoutOf('Autoimpiego')['sections'])->firstWhere('id', 'classroom-data');
+    $rows = $selfEmployment['rows'];
+
+    expect($rows)->toHaveCount(count(ClassroomAttributeCatalogue::ROWS))
+        ->and(array_column($rows[count($rows) - 1]['items'], 'attribute_code'))->toBe(['interest_expression']);
 
     $courseSection = collect(quoteLayoutOf('Autofinanziato')['sections'])->firstWhere('id', 'course-data');
 

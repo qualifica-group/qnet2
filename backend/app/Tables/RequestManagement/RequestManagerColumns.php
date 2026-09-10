@@ -83,11 +83,19 @@ final class RequestManagerColumns
                 // that key now, but it expects an ordered slot LIST there and
                 // the cell carries a single user id.
                 //
-                // `relation.scope` (direttiva utente 2026-07-23): the picker is
-                // narrowed to the operators of the row's OWN operational site,
-                // the in-grid twin of the work panel's site-filtered operator
-                // slot — `users/for-select?operational_site_id=<the row's
-                // site>`. A row with no site keeps the full list.
+                // `relation.scope` (direttiva utente 2026-07-23, extended by
+                // the direttiva utente 2026-09-10): the picker is narrowed to
+                // the operators of the row's OWN operational site AND
+                // competent for the categories the offer requires — the
+                // in-grid twin of the assignment popup's filtered picker,
+                // `users/for-select?operational_site_id=<the offer's
+                // site>&competence_category_ids[]=<its required categories>`.
+                // The Sede comes from the visible `operational_site` column
+                // (`quotes.operational_site_id`, spec 0113 D-4), the
+                // categories from the non-visible key RequestAssignmentScope
+                // projects. An offer missing either one keeps the full list on
+                // that half (an empty requirement means "requires nothing",
+                // not "nobody qualifies").
                 'id' => self::OPERATOR_COLUMN_ID,
                 'label' => 'requestManagement.columns.operator',
                 'type' => 'text',
@@ -98,7 +106,10 @@ final class RequestManagerColumns
                 'editableField' => 'manager_slots',
                 'relation' => [
                     'resource' => 'users',
-                    'scope' => ['operational_site_id' => 'operational_site'],
+                    'scope' => [
+                        'operational_site_id' => 'operational_site',
+                        'competence_category_ids' => RequestAssignmentScope::CATEGORIES_KEY,
+                    ],
                 ],
                 'nullable' => true,
             ],

@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0114-simplified-offer-line" status="draft" owner="nicola" date="2026-09-10">
+
+  <goal>
+    Dare alle categorie prodotto un quinto setting root-owned, "Semplificazione riga
+    offerta" (`simplified_offer_line`), che elimina la compilazione manuale della riga
+    offerta in Gestione Richieste: sulle richieste di una classificazione semplificata
+    l'operatore sceglie SOLO il prodotto e il sistema valorizza quantita', prezzo unitario
+    e aliquota IVA. Attivo su "Formazione", spento su tutto il resto del catalogo.
+  </goal>
+
+  <context>
+    Decisioni prese dall'utente il 2026-09-10, vincolanti:
+    D-1 — il setting e' una colonna root-owned su `product_categories`, quinta della
+          famiglia esistente, non un flag globale ne' un hard-coding su "Formazione".
+    D-2 — nella riga semplificata spariscono i controlli quantita', prezzo unitario e
+          aliquota IVA; restano il picker prodotto, il codice, l'unita' di misura e i tre
+          importi calcolati in sola lettura (netto/IVA/totale), cosi' l'operatore vede
+          comunque il valore della riga.
+    D-3 — la semplificazione vale SOLO in Gestione Richieste. Il modulo Offerte resta
+          completo: chi lavora l'offerta commerciale continua a governare quantita' e
+          prezzi anche su una categoria semplificata.
+    D-4 — i valori li congela il SERVER, ignorando quanto arriva dal client, su tutti i
+          canali di scrittura del modulo (form di creazione, pannello di lavorazione,
+          cella inline della griglia). Il client resta un'anteprima.
+
+    Decisioni proposte in fase di piano, da validare con l'approvazione:
+    D-5 — i valori congelati sono: `quantity` = 1, `unit_price` = `products.price` (0
+          quando la colonna, nullable, e' vuota: e' il caso dei corsi GOL, seedati a
+          prezzo 0 ma potenzialmente ripuliti dal CRUD), `vat_rate_id` =
+          `products.vat_rate_id` (nullable: una riga senza aliquota resta legittima, le
+          regole per-riga la ammettono gia').
+    D-6 — il congelamento agisce quando la riga NASCE o quando il suo prodotto CAMBIA,
+          mai su un resubmit di una riga altrimenti intatta. E' esattamente la disciplina
+          gia' verificata per `quote_lines.unit_of_measure_id` (spec 0088 D-5,
+          `QuoteLineWriter::sync()`, `$isNew || $productChanged`): senza di essa il
+          full-replace del pannello riallineerebbe a 1 la quantita' di una riga impostata
+          dal modulo Offerte al primo salvataggio da Gestione Richieste, cancellando in
+          silenzio il lavoro di un altro canale. Con essa le righe storiche sono
+          grandfathered e ogni riga nata qui e' interamente di sistema.
+
+    Fatti verificati nel repo (grounding 2026-09-10, non ipotizzati):
+
+    - La famiglia dei setting root-owned esiste ed e' a quattro membri: `requires_quote`,
+      `management_mode`, `single_quote_per_opportunity`, `generates_contract`. La
+      meccanica sta in `App\Services\ProductCategories\RootOwnedCategorySetting` (walk
+      alla root, `syncSubtree()` idempotente sul sottoalbero) e l'orchestrazione in
+      `RootOwnedSettingsWriter` (guardia no-override 422, risoluzione al create, resync
+      dopo update/reparent, `sourceCategories()` per gli hint "ereditato da X").
+      Aggiungere il quinto membro e' aggiungere una sottoclasse e una voce ai quattro
+      metodi di quel writer.
+    - Il valore viaggia gia' fino al client su due canali: `ProductCategoryResource`
+      (piu' `{setting}_source_category` attaccato dal controller) e
+      `CategoryTreeBuilder`, che lo mette su OGNI nodo di `GET /product-categories/tree`.
+      L'albero e' cached lato client (`useProductCategoryTree`) ed e' gia' letto dal
+      componente delle righe offerta.
+    - Lato UI categorie il campo e' generico: `ProductCategoryRootFlagField`
+      (`product-category-root-flag-field.tsx`) rende qualsiasi flag booleano root-owned
+      come tile di "Regole di gestione", con lo switch che diventa read-only appena un
+      parent e' SELEZIONATO e nomina la root. `RootFlagName` e' l'union dei path RHF
+      ammessi. `product-category-generates-contract-field.tsx` +
+      `contract-generation-inheritance.ts` sono il gemello da copiare.
+    - La riga offerta di Gestione Richieste e' UN SOLO componente montato da tre
+      superfici: `request-work-panel.tsx`, `request-create-form.tsx` e
+      `offer-lines-dialog.tsx` (quick-edit della griglia) montano tutte
+      `RequestOfferLinesField`/`RequestOfferLinesSection`
+      (`request-offer-lines-section.tsx`), che rende `QuoteLinesField` con
+      `variant="revenue"` e `withCommissions={false}`.
+    - `QuoteLinesField` e' gia' parametrizzato per far sparire una colonna: il flag
+      `withCommissions` pilota insieme la grid-template (`quoteLineGridClass` /
+      `quoteLineMinWidthClass` in `quote-line-grid.ts`), la striscia di header e la cella
+      della riga (`QuoteLineRow`). E' il precedente esatto per `simplified`.
+    - `QuoteLineRow` espone oggi: picker prodotto, codice (RO), input quantita', unita' di
+      misura (RO), input prezzo unitario, picker aliquota IVA, netto/IVA/totale (RO),
+      provvigioni (assenti su questo canale), cestino. Sono i tre input centrali a dover
+      sparire.
+    - La precompilazione da prodotto esiste gia' ma e' solo un default modificabile:
+      `lineValuesFromProduct()` (unit_price dal prezzo del variant, vat_rate_id,
+      unit_of_measure) e `DEFAULT_LINE_QUANTITY = 1` in `use-quote-lines-field.ts`. La
+      stessa coppia alimenta l'autofill mono-prodotto (`use-offer-lines-autofill.ts`,
+      `seedSoleProductRows`).
+    - `resolveManagementMode(nodes, categoryIds)` in
+      `features/product-lines/category-tree-scope.ts` e' l'idioma client per risolvere un
+      setting root-owned sull'insieme delle categorie della classificazione ("il piu'
+      stretto vince"). Il suo gemello server e'
+      `OpportunityProductLineCoverage::managementModeOf($opportunity)`, che risolve dalle
+      `opportunity_product_lines`. Entrambi leggono la colonna gia' mirrorata sul nodo:
+      nessun walk alla root a runtime.
+    - I canali di scrittura di `offer_lines` in Gestione Richieste sono tre, e convergono
+      in DUE choke point:
+        * creazione — `StoreRequestRequest` -> `CreateRequestData::$offerLines`
+          (`array&lt;int, QuoteLineData&gt;|null`) -> `RequestCreationService`, che chiama
+          `assertOfferLinesFitManagementMode()` e subito dopo `QuoteService::create()`;
+        * pannello di lavorazione (`UpdateRequestRequest`) e cella inline della griglia
+          (`OfferLinesColumn` -> `CellValueValidator` -> `WritesInlineEditableCells::
+          updateCell()`) passano ENTRAMBI da `RequestManagementService::updateWork()`
+          Step 1-ter -> `RequestOfferLineWriter::apply()`, che delega a
+          `QuoteService::update()`.
+      Sono i due punti dove il congelamento va installato. `QuoteLineWriter`,
+      `QuoteService`, `QuoteLineRules` e `ValidatesQuoteLines` sono CONDIVISI col modulo
+      Offerte e restano neutri (D-3).
+    - Ordine gia' corretto per la risoluzione: in `updateWork()` la classificazione
+      (Step 1, `productLineWriter->apply()`) e' scritta PRIMA delle righe (Step 1-ter), e
+      in `RequestCreationService` l'Opportunita' con le sue product lines nasce prima
+      della `QuoteService::create()`. Chi risolve il setting dall'Opportunita' legge
+      sempre la classificazione aggiornata.
+    - `App\Quotes\QuoteLineRules::fieldRules()` vuole `quantity` (`required`, `gt:0`) e
+      `unit_price` (`required`, `min:0`) su OGNI canale, ed e' condiviso con le Offerte:
+      non va rilassato. Il client percio' continua a inviare i valori precompilati (gia'
+      calcolati oggi), che il server sovrascrive. `products.price` e' nullable: in
+      modalita' semplificata il client invia 0 quando manca, cosi' nessuna riga puo'
+      arrivare a 422 su un campo che l'operatore non vede piu'.
+    - "Formazione" e' una root e dichiara gia' le proprie regole in
+      `Database\Seeders\QualificaCatalog\CatalogRootRules::RULES`, che le riallinea a ogni
+      run e risincronizza il sottoalbero. "Consulenza" e' elencata esplicitamente proprio
+      per essere riallineata; "APL" e' deliberatamente assente e resta ai default di
+      colonna.
+  </context>
+
+  <scope>
+    <in>
+      <item>Colonna `product_categories.simplified_offer_line` (boolean, NOT NULL, default false), root-owned e mirrorata su tutto il sottoalbero come le altre quattro.</item>
+      <item>`SimplifiedOfferLineInheritance extends RootOwnedCategorySetting` e integrazione nei quattro metodi di `RootOwnedSettingsWriter` (guardia no-override, resolve al create, resync, source category).</item>
+      <item>Trasporto del valore: `ProductCategoryResource` (+ `simplified_offer_line_source_category`), `CategoryTreeBuilder`, DTO create/update, FormRequest, controller, catalogo colonne della griglia categorie.</item>
+      <item>UI categorie: tile "Semplificazione riga offerta" in "Regole di gestione" (gemello di `generates_contract`), riga corrispondente nel dettaglio, copy it/en.</item>
+      <item>Seeder: `CatalogRootRules` mette "Formazione" a true e "Consulenza" a false, riallineando le installazioni gia' seedate.</item>
+      <item>Congelamento server-side dei valori di riga (D-5/D-6) nei due choke point del modulo Gestione Richieste: `RequestCreationService` per la creazione, `RequestOfferLineWriter::apply()` per pannello e cella inline.</item>
+      <item>UI riga offerta: flag `simplified` su `QuoteLinesField`/`QuoteLineRow`/`quote-line-grid.ts` che rimuove le tre colonne quantita'/prezzo unitario/IVA da header e riga; risoluzione del flag dalla classificazione via albero categorie in `RequestOfferLinesField`; hint di sezione dedicato.</item>
+      <item>Valorizzazione client coerente col congelamento server (quantita' 1, prezzo del prodotto o 0, aliquota del prodotto) su pick manuale e su autofill mono-prodotto.</item>
+    </in>
+    <out>
+      <item>Qualsiasi modifica al comportamento del modulo Offerte: `POST/PATCH /api/quotes` restano completi e non normalizzano nulla, anche su una categoria semplificata (D-3).</item>
+      <item>Modifiche a `QuoteLineRules`, `ValidatesQuoteLines`, `QuoteService`, `QuoteLineWriter`, `QuoteLineCoverageWriter`, `UpdateQuoteData`, `CreateQuoteData`: componenti condivisi da tutti i canali, restano neutri.</item>
+      <item>Righe COSTO (`cost_lines`): mai toccate, in nessuna categoria.</item>
+      <item>Il blocco provvigioni: gia' proibito su questo canale, resta tale.</item>
+      <item>Bonifica retroattiva delle righe gia' persistite: nessuna. Una riga storica conserva i suoi valori finche' il suo prodotto non cambia (D-6).</item>
+      <item>Il cap a una riga della modalita' `single` e l'autofill mono-prodotto: comportamenti esistenti, non ridefiniti qui (devono continuare a funzionare, AC-023).</item>
+      <item>Nascondere anche gli importi calcolati o il picker prodotto: la riga semplificata li conserva (D-2).</item>
+      <item>Un permesso o una chiave di `role_field_permissions` nuovi: la collezione resta `offer_lines`, con le sue autorizzazioni attuali.</item>
+      <item>Nuove dipendenze: nessuna.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/product-categories/tree">
+      <request>Invariata.</request>
+      <response status="200">
+        Ogni nodo guadagna una chiave, accanto a `management_mode` /
+        `single_quote_per_opportunity` / `generates_contract`:
+        `simplified_offer_line: boolean` — valore EFFETTIVO, autorato dalla root e
+        mirrorato su ogni discendente server-side.
+      </response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/{category}">
+      <request>Invariata.</request>
+      <response status="200">
+        `data` guadagna:
+        `simplified_offer_line: boolean` e
+        `simplified_offer_line_source_category: { id: number, name: string } | null`
+        (null quando la categoria E' la root e possiede il valore).
+      </response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/product-categories">
+      <request>
+        `simplified_offer_line: boolean` opzionale. Su una root senza valore: false.
+        Su una figlia: la chiave ASSENTE fa adottare il valore della root; un valore
+        DIVERGENTE da quello imposto dalla root e' 422 (guardia no-override identica agli
+        altri quattro setting); un valore uguale a quello ereditato passa.
+      </request>
+      <response status="201">`ProductCategoryResource`, con le due chiavi sopra.</response>
+      <errors>
+        422 `{ success: false, message: "This category inherits the simplified offer-line
+        rule from its root category and cannot define its own." }` quando una figlia
+        submitta un valore divergente da quello imposto dalla sua root.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/product-categories/{category}">
+      <request>
+        `simplified_offer_line: boolean`, sparso (chiave assente = non toccato).
+        Scrivibile solo da una categoria ROOT; l'edit propaga sull'intero sottoalbero.
+        Un reparent risincronizza il sottoalbero sulla nuova root.
+      </request>
+      <response status="200">`ProductCategoryResource`, come sopra.</response>
+      <errors>Stesso 422 no-override del create.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/request-management">
+      <request>
+        Shape INVARIATA. Cambia solo cosa il server fa dei valori ricevuti: quando la
+        classificazione submitted (`product_lines`) copre almeno una categoria con
+        `simplified_offer_line` a true, ogni riga di `offer_lines` viene riscritta
+        server-side con `quantity: 1`, `unit_price` = `products.price` (0 se NULL),
+        `vat_rate_id` = `products.vat_rate_id`. In creazione ogni riga e' nuova, quindi la
+        normalizzazione le tocca tutte.
+      </request>
+      <response status="201">Invariata (pannello di lavorazione), con i valori congelati.</response>
+      <errors>
+        Invariati. In particolare `offer_lines.*.quantity` / `.unit_price` restano
+        `required`: il client invia i valori precompilati, che il server sovrascrive.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/request-management/{quote}">
+      <request>
+        Shape INVARIATA. Quando la classificazione dell'Opportunita' (gia' aggiornata
+        dallo Step 1 se `product_lines` viaggia nello stesso payload) copre almeno una
+        categoria semplificata, la normalizzazione colpisce le sole righe che NASCONO
+        (nessun `id`) o il cui `product_id` differisce da quello persistito (D-6). Una
+        riga resubmitta identica conserva i valori persistiti.
+      </request>
+      <response status="200">Invariata, con i valori congelati.</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/tables/request-management/rows/{row}">
+      <request>
+        Invariata (`{ field: "offer_lines", value: [...] }`). Passa dallo stesso
+        `updateWork()` -> `RequestOfferLineWriter`, quindi eredita la stessa
+        normalizzazione senza codice proprio.
+      </request>
+      <response status="200">Invariata.</response>
+      <errors>Invariati (422 keyed su `value` / `value.&lt;i&gt;.&lt;campo&gt;`).</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">Dato una categoria ROOT, quando `PATCH /api/product-categories/{root}` invia `simplified_offer_line: true`, allora la colonna e' true sulla root E su ogni suo discendente (a qualsiasi profondita').</criterion>
+    <criterion id="AC-002">Dato una categoria FIGLIA la cui root ha `simplified_offer_line: false`, quando la si aggiorna con `simplified_offer_line: true`, allora la risposta e' 422 col messaggio della famiglia e nulla e' persistito.</criterion>
+    <criterion id="AC-003">Dato una sottobranca sotto una root non semplificata, quando la si reparenta sotto una root semplificata, allora l'intera sottobranca adotta `true`.</criterion>
+    <criterion id="AC-004">Dato `POST /api/product-categories` con `parent_id` di una branca semplificata, quando il payload porta `simplified_offer_line: false`, allora la risposta e' 422 (stessa guardia no-override dei quattro setting fratelli, `RootOwnedSettingsWriter::assertCreateNotOverridden()` invariato); quando invece la chiave e' assente, la categoria nasce col valore della root; una root creata senza la chiave nasce a `false`. [rev. 2026-09-10: la prima stesura diceva che il valore divergente veniva silenziosamente adottato, contraddicendo il `data_contract` di questo stesso endpoint. Vale il `data_contract`.]</criterion>
+    <criterion id="AC-005">Dato una categoria figlia, quando si chiama `GET /api/product-categories/{child}`, allora `data.simplified_offer_line` riflette la root e `data.simplified_offer_line_source_category` la nomina; sulla root la stessa chiave e' `null`.</criterion>
+    <criterion id="AC-006">Dato l'albero, quando si chiama `GET /api/product-categories/tree`, allora ogni nodo porta `simplified_offer_line` col valore effettivo.</criterion>
+    <criterion id="AC-007">Dato un database seedato con `QualificaCatalogSeeder`, allora la root "Formazione" e tutta la sua branca hanno `simplified_offer_line: true`, "Consulenza" e la sua branca `false`, "APL" `false`; un secondo run non cambia nulla e riallinea un'installazione seedata prima del setting.</criterion>
+
+    <criterion id="AC-008">Dato una classificazione semplificata e un prodotto con prezzo 150,00 e aliquota 22%, quando `POST /api/request-management` invia una riga con `quantity: 7`, `unit_price: 999,00` e un'altra aliquota, allora la riga persistita ha `quantity: 1`, `unit_price: 150,00` e il `vat_rate_id` del PRODOTTO.</criterion>
+    <criterion id="AC-009">Dato un prodotto con `price` NULL su classificazione semplificata, quando si crea la richiesta con quella riga, allora la riga e' persistita con `unit_price: 0` e la chiamata NON produce 422.</criterion>
+    <criterion id="AC-010">Dato una richiesta esistente su classificazione semplificata, quando `PATCH /api/request-management/{quote}` aggiunge una riga NUOVA (senza `id`) con valori arbitrari, allora la riga persistita porta i valori congelati del suo prodotto.</criterion>
+    <criterion id="AC-011">Dato una riga persistita con `quantity: 3` su classificazione semplificata, quando il pannello la resubmitta con lo stesso `id` e lo stesso `product_id`, allora `quantity`/`unit_price`/`vat_rate_id` persistiti restano invariati (grandfathering, D-6).</criterion>
+    <criterion id="AC-012">Dato la stessa riga, quando il resubmit ne cambia il `product_id`, allora i tre valori sono ricongelati su quelli del nuovo prodotto.</criterion>
+    <criterion id="AC-013">Dato la griglia Gestione Richieste, quando `PATCH /api/tables/request-management/rows/{row}` scrive `offer_lines` su una riga di classificazione semplificata, allora vale la stessa normalizzazione di AC-008/AC-010/AC-011.</criterion>
+    <criterion id="AC-014">Dato una classificazione NON semplificata, quando si scrivono righe da uno qualsiasi dei tre canali, allora i valori inviati sono persistiti come oggi (nessuna regressione).</criterion>
+    <criterion id="AC-015">Dato una categoria semplificata, quando `POST /api/quotes` o `PATCH /api/quotes/{quote}` scrivono righe con `quantity: 4` e prezzo arbitrario, allora i valori inviati sono persistiti tali e quali: il modulo Offerte non normalizza (D-3).</criterion>
+    <criterion id="AC-016">Dato una riga normalizzata, allora `net_amount`/`vat_amount`/`total_amount` della riga e gli aggregati dell'Offerta sono calcolati sui valori CONGELATI, non su quelli inviati.</criterion>
+
+    <criterion id="AC-017">Dato il pannello di lavorazione su una classificazione semplificata, quando si rende la sezione "Linee dell'offerta", allora non esistono controlli accessibili per quantita', prezzo unitario e aliquota IVA della riga, mentre il picker prodotto e i tre importi restano presenti.</criterion>
+    <criterion id="AC-018">Dato lo stesso pannello su una classificazione NON semplificata, allora i tre controlli sono presenti e funzionanti come oggi.</criterion>
+    <criterion id="AC-019">Dato la modalita' semplificata, quando l'operatore sceglie un prodotto (prezzo 150,00 / aliquota 22%), allora il payload inviato porta `quantity: 1`, `unit_price: 150`, `vat_rate_id` del prodotto; con prodotto a prezzo assente porta `unit_price: 0`.</criterion>
+    <criterion id="AC-020">Dato il form di CREAZIONE richiesta e il dialog di modifica rapida della griglia, allora valgono AC-017 e AC-019 (stesso componente, stesse asserzioni).</criterion>
+    <criterion id="AC-021">Dato il form categoria prodotto, quando la categoria e' una ROOT, allora il tile "Semplificazione riga offerta" e' scrivibile; quando un parent e' selezionato, lo switch e' read-only, mostra il valore della root e la nomina.</criterion>
+    <criterion id="AC-022">Dato la pagina di dettaglio di una categoria figlia, allora la regola e' mostrata col chip "Ereditata da {{category}}".</criterion>
+    <criterion id="AC-023">Dato una classificazione semplificata gestita in modalita' `single` con una categoria a prodotto unico, allora l'autofill mono-prodotto continua a seminare la sua unica riga, gia' completa e senza controlli, e "Aggiungi riga" resta cappato a una riga.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: solo cio' che e' gia' in `composer.json` / `package.json`.</item>
+    <item>Autorizzazione server-side invariata e obbligatoria: il setting passa da `ProductCategoriesAuthorization` e dalle FormRequest esistenti; le righe restano dietro `request-management.update` e la matrice `role_field_permissions` sul campo `offer_lines`.</item>
+    <item>Il congelamento e' difesa server-side, non una comodita' client: nessun canale del modulo puo' aggirarlo, cella inline compresa.</item>
+    <item>Migrazione nuova e reversibile (`down` che droppa la colonna); nessuna migrazione gia' committata viene modificata; nessun SQL grezzo.</item>
+    <item>`QuoteLineRules` resta la definizione unica delle regole per-riga, condivisa e non rilassata.</item>
+    <item>Identificatori in inglese (`simplified_offer_line`, `SimplifiedOfferLineInheritance`, prop `simplified`); testo utente solo via i18next, it + en.</item>
+    <item>File entro 300 righe soft / 500 hard; nessun dead code, nessun valore magico inline.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint/ESLint puliti, `cd frontend &amp;&amp; npx tsc -b --force` pulito (mai `--noEmit`).</item>
+  </constraints>
+
+</spec>

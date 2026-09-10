@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { useWatch } from 'react-hook-form'
 import { Boxes } from 'lucide-react'
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { FormSection } from '@/components/form-section'
@@ -10,7 +9,6 @@ import {
 } from '@/components/record-form/layout'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
-import type { ProductLineRow } from '@/features/product-lines/types'
 import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteLine } from '@/features/quotes/types'
@@ -21,9 +19,7 @@ import { RequestCreateCallbackSection } from '@/features/request-management/requ
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
 import { RequestCreateGeneralNotes } from '@/features/request-management/request-create-general-notes'
 import { RequestCreateHeader } from '@/features/request-management/request-create-header'
-import { RequestCreateProductsOfInterest } from '@/features/request-management/request-create-products-of-interest'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
-import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 import {
@@ -117,20 +113,6 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
   // not set the Sede at all: the key would come back 403 from the endpoint.
   const siteLink = useRequestSiteOperatorLink(form, { canPickSite })
 
-  // Spec 0075, D-5: the same rule the work panel applies — a product line
-  // removed (or re-pointed) drops the products of interest it was covering,
-  // so the form can never submit a classification the server would refuse.
-  const productsOfInterest = useWatch({ control: form.control, name: 'products_of_interest' })
-  const keepCoveredProducts = useProductsOfInterestCoherence(productsOfInterest)
-
-  const pruneProductsOfInterest = (rows: ProductLineRow[]) => {
-    const kept = keepCoveredProducts(rows)
-
-    if (kept.length !== productsOfInterest.length) {
-      form.setValue('products_of_interest', kept, { shouldDirty: true })
-    }
-  }
-
   return (
     <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <RequestCreateHeader
@@ -171,13 +153,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                       <FormLabel required>
                         {t('requestManagement.workPanel.productLines.fieldLabel')}
                       </FormLabel>
-                      <ProductLinesField
-                        value={field.value}
-                        onChange={(rows) => {
-                          field.onChange(rows)
-                          pruneProductsOfInterest(rows)
-                        }}
-                      />
+                      <ProductLinesField value={field.value} onChange={field.onChange} />
                       <p className="text-xs text-muted-foreground">
                         {t('requestManagement.workPanel.productLines.hint')}
                       </p>
@@ -192,9 +168,6 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                   </div>
                 )}
               </FormSection>
-
-              {/* Right after the product lines, which scope its options. */}
-              <RequestCreateProductsOfInterest control={form.control} />
 
               {/* "Linee dell'offerta" (user directive 2026-08-07): the work
                   panel's own section — literally the Offerte form's row

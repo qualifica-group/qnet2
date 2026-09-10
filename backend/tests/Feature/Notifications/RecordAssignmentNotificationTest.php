@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\EmploymentProfile;
+use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Registry;
@@ -230,8 +232,15 @@ it('a bulk assignment of N requests produces N notifications for the operator (A
 
     Opportunity::factory()->create();
     $actor = assignmentActorWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
+    // Direttiva utente 2026-09-10: `mode=single` now refuses an operator no
+    // targeted offer would have accepted, so the three offers sit at the
+    // operator's own Sede. They demand no product category, which leaves the
+    // competence half unconstrained (INV-4a). The notification count under
+    // test is unaffected: it still takes one write per offer.
+    $site = OperationalSite::factory()->withAddress()->create();
     $operator = User::factory()->create();
-    $requests = Quote::factory()->count(3)->create();
+    EmploymentProfile::factory()->for($operator)->physicalSite($site)->create();
+    $requests = Quote::factory()->count(3)->create(['operational_site_id' => $site->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/assign-operators', [

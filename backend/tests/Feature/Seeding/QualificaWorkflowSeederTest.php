@@ -373,8 +373,84 @@ it('leaves the categories absent from the sheet on the global default set', func
     test()->seed(QualificaCatalogSeeder::class);
 
     // No column in the sheet: no workflow, so their opportunities fall back to
-    // the global default set (QuoteWorkflowResolver).
-    foreach (['DIL', 'Formazione', 'Trattative in Corso', 'Presa Appuntamenti'] as $categoryName) {
+    // the global default set (QuoteWorkflowResolver). "DIL" left this list on
+    // 2026-09-10: block 5 of the sheet gave it a column of its own.
+    foreach (['Formazione', 'Trattative in Corso', 'Presa Appuntamenti'] as $categoryName) {
         expect(QuoteWorkflow::query()->where('name', $categoryName)->exists())->toBeFalse($categoryName);
     }
+});
+
+it('transcribes the DIL column of the sheet, its duplicated row folded', function (): void {
+    // Pure transcription check, before anything is seeded: block 5 of the
+    // sheet, in the client's own order, with the colours sampled off it —
+    // azzurro pending, verde chiaro the single positive outcome, pesca the
+    // closures, no fill open. The column lists "OK App. Fissato APL" twice:
+    // folded to one (user directive 2026-09-10).
+    $transcribed = array_map(
+        static fn (array $status): array => [$status['name'], $status['group']],
+        WorkflowStatusCatalogue::statusesFor('DIL'),
+    );
+
+    expect($transcribed)->toBe([
+        ['Da Richiamare', WorkflowStatusGroup::Open->value],
+        ['Attesa esito SFL/ADI', WorkflowStatusGroup::Open->value],
+        ['Attesa _ App. CPI', WorkflowStatusGroup::Pending->value],
+        ['Attesa _ App. APL', WorkflowStatusGroup::Pending->value],
+        ['OK App. Fissato APL', WorkflowStatusGroup::Pending->value],
+        ['Attesa Attivazione DOTE', WorkflowStatusGroup::Pending->value],
+        ['Attesa Iscrizione SIUF', WorkflowStatusGroup::Pending->value],
+        ['In attesa aggancio BES', WorkflowStatusGroup::Pending->value],
+        ['Associato SI _ NOI', WorkflowStatusGroup::ClosedWon->value],
+        ['Non interessato/a', WorkflowStatusGroup::ClosedLost->value],
+        ['Stato Rinunciatario', WorkflowStatusGroup::ClosedLost->value],
+        ['Numero Inesistente/Errato', WorkflowStatusGroup::ClosedLost->value],
+        ['Associato NO _ Altro Ente', WorkflowStatusGroup::ClosedLost->value],
+        ['NO _ Non ha Requisiti', WorkflowStatusGroup::ClosedLost->value],
+        ['Irreperibile', WorkflowStatusGroup::ClosedLost->value],
+        ['Doppione già associato', WorkflowStatusGroup::ClosedLost->value],
+        ['Doppione', WorkflowStatusGroup::ClosedLost->value],
+        ['Frequenta già corso GOL', WorkflowStatusGroup::ClosedLost->value],
+        ['Non pertinente - Altra regione', WorkflowStatusGroup::ClosedLost->value],
+        ['Trasferito altra Sede QG', WorkflowStatusGroup::ClosedLost->value],
+        ['Autofinanziato', WorkflowStatusGroup::ClosedLost->value],
+        ['In Standby', WorkflowStatusGroup::Open->value],
+    ]);
+});
+
+it('seeds the DIL set matched on its own category, pinned rows around the column', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
+    $workflow = QuoteWorkflow::query()->where('name', 'DIL')->with('criteria')->firstOrFail();
+
+    // Matched on the EXACT category, like a region and unlike Consulenza/APL:
+    // DIL hosts its own product, so an offer line lands on it directly.
+    expect($workflow->criteria)->toHaveCount(1)
+        ->and($workflow->criteria->first()->field)->toBe(WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD)
+        ->and($workflow->criteria->first()->value_id)->toBe($dil->id);
+
+    $statuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $workflow->id)
+        ->orderBy('sort_order')
+        ->get();
+
+    $all = WorkflowStatusCatalogue::statusesFor('DIL');
+    $custom = WorkflowStatusCatalogue::customStatusesFor('DIL');
+
+    // Every row of the column once — three promoted onto the pinned system
+    // rows, the rest custom between them. The column classifies nothing as
+    // validated, which is a group and not a system row.
+    expect($statuses)->toHaveCount(count($all))
+        ->and(count($custom))->toBe(count($all) - 3)
+        ->and($statuses->first()->system_key)->toBe('open')
+        ->and($statuses->first()->name)->toBe('Da Richiamare')
+        ->and($statuses->slice(-2)->pluck('system_key')->all())->toBe(['closed_won', 'closed_lost'])
+        ->and($statuses->slice(-2)->pluck('name')->all())->toBe(['Associato SI _ NOI', 'Non interessato/a'])
+        ->and($statuses->pluck('system_key')->filter()->values()->all())->not->toContain('validated');
+
+    expect($statuses->slice(1, count($custom))->pluck('name')->values()->all())
+        ->toBe(array_column($custom, 'name'));
+
+    // The CPI confirmation every region carries is absent from this column.
+    expect($statuses->pluck('name')->all())->not->toContain('OK App. Fissato CPI');
 });

@@ -70,6 +70,11 @@ class ProductCategoryResource extends JsonResource
             // `generates_contract_source_category` is attached by the
             // controller alongside the other three.
             'generates_contract' => (bool) $this->generates_contract,
+            // Spec 0114: the EFFECTIVE simplified-offer-line rule — already
+            // mirrored from the root on every descendant, so no walk is
+            // needed here either. `simplified_offer_line_source_category` is
+            // attached by the controller alongside the other four.
+            'simplified_offer_line' => (bool) $this->simplified_offer_line,
             'business_function_id' => $this->business_function_id,
             'business_function' => $this->businessFunction !== null
                 ? ['id' => $this->businessFunction->id, 'name' => $this->businessFunction->name]

@@ -10,6 +10,7 @@ import { ProductCategoryGeneratesContractField } from '@/features/product-catego
 import { ProductCategoryManagementModeField } from '@/features/product-categories/product-category-management-mode-field'
 import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
 import { ProductCategoryRuleCard } from '@/features/product-categories/product-category-rule-card'
+import { ProductCategorySimplifiedOfferLineField } from '@/features/product-categories/product-category-simplified-offer-line-field'
 import { ProductCategorySingleQuoteField } from '@/features/product-categories/product-category-single-quote-field'
 import type { ProductCategoryFormMode } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
@@ -25,9 +26,11 @@ interface ProductCategoryRulesSectionProps {
  * "Regole di gestione" (user directive 2026-08-07): the behavioural rules a
  * category imposes downstream — whether it is quoted, how many product lines
  * a card carries, how many offers an opportunity may hold, whether a closed
- * deal becomes a contract (spec 0091), and whether it can be picked at all. They used to sit mixed into the identity fields, where an
- * operator could not tell an inert label from a rule that changes what the
- * system accepts.
+ * deal becomes a contract (spec 0091), whether Gestione Richieste compiles
+ * its offer row automatically (spec 0114), and whether it can be picked at
+ * all. They used to sit mixed into the identity fields, where an operator
+ * could not tell an inert label from a rule that changes what the system
+ * accepts.
  *
  * Every rule but `is_selectable` is owned by the branch ROOT and inherited by
  * the whole subtree; each carries an (i) tooltip explaining what turning it on
@@ -50,6 +53,7 @@ export function ProductCategoryRulesSection({
     fieldPermission('management_mode').visible ||
     fieldPermission('single_quote_per_opportunity').visible ||
     fieldPermission('generates_contract').visible ||
+    fieldPermission('simplified_offer_line').visible ||
     fieldPermission('is_selectable').visible
 
   if (!visible) {
@@ -67,6 +71,7 @@ export function ProductCategoryRulesSection({
         <ProductCategoryManagementModeField control={control} mode={mode} parentId={parentId} />
         <ProductCategorySingleQuoteField control={control} mode={mode} parentId={parentId} />
         <ProductCategoryGeneratesContractField control={control} mode={mode} parentId={parentId} />
+        <ProductCategorySimplifiedOfferLineField control={control} mode={mode} parentId={parentId} />
 
         <SelectableRule control={control} />
       </div>

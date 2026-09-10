@@ -19,6 +19,15 @@ export interface QuoteAssignmentScope {
    * user picks, not a filter (D-2).
    */
   operatorSiteId: number | null | undefined
+  /**
+   * Whether one operator can take ALL the selected Offerte. `false` on a
+   * selection whose Offerte differ by Sede or products: since the rev.3
+   * server-side check rejects `mode=single` unless the operator covers every
+   * targeted Offerta, offering the picker there would only earn a 422.
+   * `undefined` = not resolved yet or resolution failed, an unknown state the
+   * call site must not read as "no operator available".
+   */
+  singleOperatorAvailable: boolean | undefined
 }
 
 /**
@@ -30,14 +39,16 @@ export interface QuoteAssignmentScope {
  * popup is actually shown.
  */
 export function useQuoteAssignmentScope(ids: number[], isOpen: boolean): QuoteAssignmentScope {
-  const { competenceCategoryIds, operationalSiteId, isResolving } = useAssignmentScope({
-    selection: ids.length > 0 ? { domain: 'quotes', ids } : null,
-    enabled: isOpen,
-  })
+  const { competenceCategoryIds, operationalSiteId, singleOperatorAvailable, isResolving } =
+    useAssignmentScope({
+      selection: ids.length > 0 ? { domain: 'quotes', ids } : null,
+      enabled: isOpen,
+    })
 
   return {
     competenceCategoryIds,
     isResolvingCompetence: isResolving,
     operatorSiteId: operationalSiteId,
+    singleOperatorAvailable,
   }
 }

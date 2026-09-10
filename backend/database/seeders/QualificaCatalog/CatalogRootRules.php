@@ -6,6 +6,7 @@ use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryManagementModeInheritance;
 use App\Services\ProductCategories\ContractGenerationInheritance;
+use App\Services\ProductCategories\SimplifiedOfferLineInheritance;
 use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
 
 /**
@@ -15,7 +16,7 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * engineering.md §6) — it holds the map AND the write, since the two are
  * meaningless apart.
  *
- * All three rules are REALIGNED on every run, in both directions, and the
+ * All four rules are REALIGNED on every run, in both directions, and the
  * subtree is re-synced after each: an installation seeded before a rule
  * existed must actually see its branch adopt it, which a create-only write
  * would skip.
@@ -25,7 +26,9 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * opportunity is a single course sold once, never a basket of alternatives.
  * It is also NOT sold under a contract (spec 0091, user directive
  * 2026-09-01): a training deal closing positively must not surface in the
- * Contratti module. "Consulenza" stays unconstrained on all three — listed
+ * Contratti module. It also seeds its offer lines from the product alone
+ * (spec 0114): an operator picks the course, the server freezes quantity,
+ * price and VAT. "Consulenza" stays unconstrained on all four — listed
  * explicitly rather than left to the column defaults so a re-run realigns it
  * too.
  *
@@ -47,13 +50,14 @@ final class CatalogRootRules
     /**
      * Root name => the rules it owns, as `product_categories` columns.
      *
-     * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, manager_labels?: array<string, string>}>
+     * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line?: bool, manager_labels?: array<string, string>}>
      */
     private const array RULES = [
         'Formazione' => [
             'management_mode' => CategoryManagementMode::Single,
             'single_quote_per_opportunity' => true,
             'generates_contract' => false,
+            'simplified_offer_line' => true,
             // The four G.A. levels of a training deal (user directive
             // 2026-08-31). Position 2 stays "Operatore": it is the level
             // Gestione Richieste has hard-coded semantics for
@@ -69,6 +73,7 @@ final class CatalogRootRules
             'management_mode' => CategoryManagementMode::Multiple,
             'single_quote_per_opportunity' => false,
             'generates_contract' => true,
+            'simplified_offer_line' => false,
         ],
     ];
 
@@ -76,6 +81,7 @@ final class CatalogRootRules
         private readonly CategoryManagementModeInheritance $managementMode,
         private readonly SingleQuotePerOpportunityInheritance $singleQuote,
         private readonly ContractGenerationInheritance $contractGeneration,
+        private readonly SimplifiedOfferLineInheritance $simplifiedOfferLine,
     ) {}
 
     public function apply(): void
@@ -91,6 +97,7 @@ final class CatalogRootRules
             $this->managementMode->syncSubtree($root);
             $this->singleQuote->syncSubtree($root);
             $this->contractGeneration->syncSubtree($root);
+            $this->simplifiedOfferLine->syncSubtree($root);
         }
     }
 }

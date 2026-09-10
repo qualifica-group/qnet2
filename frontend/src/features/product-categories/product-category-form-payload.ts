@@ -72,6 +72,8 @@ export function buildCreatePayload(
       : {}),
     // And once more for the contract rule (spec 0091): root-owned, inherited.
     ...(values.parent_id === null ? { generates_contract: values.generates_contract } : {}),
+    // And once more for the simplified-offer-line rule (spec 0114): root-owned, inherited.
+    ...(values.parent_id === null ? { simplified_offer_line: values.simplified_offer_line } : {}),
     manager_labels: buildManagerLabelsValue(values.manager_labels),
     inherits_manager_labels: values.inherits_manager_labels,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
@@ -147,6 +149,14 @@ export function buildUpdatePayload(
   // Same root-only guard for the contract rule (spec 0091).
   if (values.parent_id === null && values.generates_contract !== original.generates_contract) {
     payload.generates_contract = values.generates_contract
+  }
+
+  // Same root-only guard for the simplified-offer-line rule (spec 0114).
+  if (
+    values.parent_id === null &&
+    values.simplified_offer_line !== original.simplified_offer_line
+  ) {
+    payload.simplified_offer_line = values.simplified_offer_line
   }
 
   const originalAssignments: AttributeAssignmentInput[] = original.attributes.map((a) => ({

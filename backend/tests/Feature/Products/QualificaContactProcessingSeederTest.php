@@ -43,6 +43,21 @@ function effectiveCodes(string $categoryName, AttributeContext $context): array
         ->all();
 }
 
+/**
+ * The training codes "DIL" declares AGAIN on its own row: it is cut off the
+ * root in the Offerta context, so an inherited assignment would not reach it.
+ * Derived, never listed, so the two catalogue entries cannot drift apart.
+ *
+ * @return list<string>
+ */
+function trainingCodesSharedWithDil(): array
+{
+    return array_values(array_intersect(
+        array_column(ContactProcessingAttributeCatalogue::ATTRIBUTES[ContactProcessingAttributeCatalogue::TRAINING_CATEGORY], 'code'),
+        array_column(ContactProcessingAttributeCatalogue::ATTRIBUTES[ContactProcessingAttributeCatalogue::DIL_CATEGORY], 'code'),
+    ));
+}
+
 it('assigns the training set to the Formazione root, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaContactProcessingSeeder::class); // re-run: no duplicate attribute nor pivot row.
@@ -60,12 +75,41 @@ it('assigns the training set to the Formazione root, idempotently', function ():
         ->where('context', AttributeContext::Quote->value)
         ->get();
 
-    expect($pivot)->toHaveCount(count($codes))
-        ->and($pivot->pluck('category_id')->unique()->all())->toBe([$formazione->id]);
+    // The whole set on the root, plus the three codes "DIL" re-declares on
+    // itself: below the barrier an inherited assignment would never reach it.
+    $dil = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::DIL_CATEGORY)->firstOrFail();
+
+    expect($pivot)->toHaveCount(count($codes) + count(trainingCodesSharedWithDil()))
+        ->and($pivot->where('category_id', $formazione->id))->toHaveCount(count($codes))
+        ->and($pivot->where('category_id', $dil->id))->toHaveCount(count(trainingCodesSharedWithDil()));
 
     // Inherited down the Formazione branch, and nowhere outside it.
     expect(effectiveCodes('GOL - Molise', AttributeContext::Quote))->toContain(...$codes)
         ->and(effectiveCodes('Trattative in Corso', AttributeContext::Quote))->not->toContain('cpi');
+});
+
+it('keeps "DIL" on its own six offer fields, cut off the Formazione set', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaContactProcessingSeeder::class); // re-run: no duplicate pivot row.
+
+    $expected = array_column(
+        ContactProcessingAttributeCatalogue::ATTRIBUTES[ContactProcessingAttributeCatalogue::DIL_CATEGORY],
+        'code',
+    );
+    sort($expected);
+
+    // EXACTLY the six the client dictated (user directive 2026-09-10) — the
+    // barrier keeps out "Dati corso", "Dati Aula" and the rest of the training
+    // set every sibling inherits from the root.
+    $effective = effectiveCodes(ContactProcessingAttributeCatalogue::DIL_CATEGORY, AttributeContext::Quote);
+    sort($effective);
+
+    expect($effective)->toBe($expected);
+
+    // The Commessa is NOT cut: the directive is about the offer form, and the
+    // two inheritance flags are independent columns.
+    expect(effectiveCodes(ContactProcessingAttributeCatalogue::DIL_CATEGORY, AttributeContext::WorkOrder))
+        ->toContain('cpi', 'profilo_cpi', 'chosen_course');
 });
 
 it('keeps the self-funded and consulting sets on their own categories', function (): void {
@@ -209,6 +253,36 @@ it('retires "Corso di interesse" from every category without deleting the import
         ->and(array_column($blob['sections'][0]['rows'][0]['items'], 'attribute_code'))->toBe(['cpi']);
 });
 
+it('retires "Sede" from the categories an earlier revision assigned it to', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // The catalogue stopped declaring it (user directive 2026-09-10): a clean
+    // database never creates the row at all.
+    expect(Attribute::query()->where('code', 'training_site')->exists())->toBeFalse();
+
+    // Re-created and assigned exactly as the earlier revision left it, in both
+    // contexts it was seeded in.
+    $site = Attribute::query()->create(['code' => 'training_site', 'name' => 'Sede', 'type' => 'text']);
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+
+    foreach ([AttributeContext::Quote, AttributeContext::WorkOrder] as $context) {
+        $formazione->attributes()->attach($site->id, [
+            'context' => $context->value,
+            'is_required' => false,
+            'sort_order' => 0,
+        ]);
+    }
+
+    test()->seed(QualificaContactProcessingSeeder::class);
+
+    // The row survives (an offer may already carry a value), the assignments do
+    // not, so no work panel renders the field any more.
+    expect(Attribute::query()->where('code', 'training_site')->exists())->toBeTrue()
+        ->and(DB::table('attribute_category')->where('attribute_id', $site->id)->count())->toBe(0)
+        ->and(effectiveCodes('GOL - Molise', AttributeContext::Quote))->not->toContain('training_site')
+        ->and(effectiveCodes('GOL - Molise', AttributeContext::WorkOrder))->not->toContain('training_site');
+});
+
 it('adopts the q-crm row instead of minting a parallel one', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
@@ -296,8 +370,13 @@ it('mirrors the whole set into the Commessa context, on the same categories', fu
         ->where('context', AttributeContext::WorkOrder->value)
         ->get();
 
-    expect($pivot)->toHaveCount(count($codes))
-        ->and($pivot->pluck('category_id')->unique()->all())->toBe([$formazione->id]);
+    // Same split as the Offerta side: the set on the root, "DIL"'s three on
+    // itself — the assignment is context-agnostic, the barrier is not.
+    $dil = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::DIL_CATEGORY)->firstOrFail();
+
+    expect($pivot)->toHaveCount(count($codes) + count(trainingCodesSharedWithDil()))
+        ->and($pivot->where('category_id', $formazione->id))->toHaveCount(count($codes))
+        ->and($pivot->where('category_id', $dil->id))->toHaveCount(count(trainingCodesSharedWithDil()));
 
     // Inherited down the branch through `inherits_work_order_attributes`, and
     // scoped exactly as on the Offerta side.

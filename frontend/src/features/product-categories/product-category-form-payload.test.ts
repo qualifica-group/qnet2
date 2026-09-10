@@ -29,9 +29,11 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
+    simplified_offer_line: true,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
+    simplified_offer_line_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
@@ -55,6 +57,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -78,6 +81,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -101,6 +105,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -134,6 +139,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -159,6 +165,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -184,6 +191,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -207,6 +215,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -233,6 +242,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -256,6 +266,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -280,6 +291,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -308,6 +320,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'single',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -331,6 +344,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'single',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -360,6 +374,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: true,
       generates_contract: true,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -390,6 +405,7 @@ describe('buildUpdatePayload', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: false,
+      simplified_offer_line: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -398,6 +414,37 @@ describe('buildUpdatePayload', () => {
     expect(buildUpdatePayload(values, original())).toEqual({})
     expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
       generates_contract: false,
+    })
+  })
+
+  // Spec 0114: identical root-only diffing for the simplified-offer-line rule.
+  it('never sends simplified_offer_line under a parent, sends it when a root changes it', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_quote_attributes: true,
+      inherits_work_order_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      management_mode: 'multiple',
+      single_quote_per_opportunity: false,
+      generates_contract: true,
+      simplified_offer_line: false,
+      manager_labels: {},
+      inherits_manager_labels: true,
+      custom_fields: {},
+    }
+
+    // Under a parent the flag is read-only: the root owns it, so a diff there
+    // would be an override attempt the server refuses.
+    expect(buildUpdatePayload(values, original())).toEqual({})
+    // Already a root: only the flag changed.
+    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
+      simplified_offer_line: false,
     })
   })
 

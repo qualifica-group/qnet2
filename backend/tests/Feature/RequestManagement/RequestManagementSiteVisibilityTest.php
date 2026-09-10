@@ -269,8 +269,12 @@ it('bulk assign-operators touches the requests of my Sede and silently skips the
     $mine = Quote::factory()->create(['operational_site_id' => $site->id]);
     $foreign = Quote::factory()->create(['operational_site_id' => OperationalSite::factory()->create()->id]);
 
-    $targetSite = OperationalSite::factory()->create();
-    $operator = siteVisibilityMemberOf(User::factory()->create(), $targetSite);
+    // Direttiva utente 2026-09-10: `mode=single` now refuses an operator no
+    // targeted offer would have accepted, so the assignee must belong to the
+    // Sede of `$mine`. Before that rule any Sede did, and this fixture used a
+    // third one. `$foreign` still needs nothing: being outside the actor's
+    // scope it stays invisible to the check too, which is the point here.
+    $operator = siteVisibilityMemberOf(User::factory()->create(), $site);
 
     Sanctum::actingAs($actor);
 

@@ -55,12 +55,22 @@ if (! function_exists('bulkActionsOperatorAtSite')) {
 }
 
 if (! function_exists('bulkActionsRequestManagedBy')) {
-    function bulkActionsRequestManagedBy(User $operator): Quote
+    /**
+     * $site is what makes the offer ASSIGNABLE in `mode=single` since the
+     * user directive 2026-09-10: the chosen operator must belong to the
+     * offer's own Sede, so an offer born without one can no longer receive
+     * anybody. Left null where a test needs exactly that (the out-of-scope
+     * and permission cases).
+     */
+    function bulkActionsRequestManagedBy(User $operator, ?OperationalSite $site = null): Quote
     {
         $opportunity = Opportunity::factory()->create();
         $opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
 
-        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
+        return Quote::factory()->for($opportunity)->create([
+            'operator_id' => $operator->id,
+            'operational_site_id' => $site?->id,
+        ]);
     }
 }
 
@@ -194,8 +204,12 @@ it('mode=single assigns the GA2 operator to every selected request and leaves th
     $actor = bulkActionsActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $operator = bulkActionsOperatorAtSite($site);
-    $first = Quote::factory()->create();
-    $second = Quote::factory()->create();
+    // Direttiva utente 2026-09-10: `mode=single` now refuses an operator no
+    // targeted offer would have accepted, so the offers must sit at the
+    // operator's own Sede. They demand no product category, which leaves the
+    // competence half unconstrained (INV-4a).
+    $first = Quote::factory()->create(['operational_site_id' => $site->id]);
+    $second = Quote::factory()->create(['operational_site_id' => $site->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/assign-operators', [
@@ -209,8 +223,10 @@ it('mode=single assigns the GA2 operator to every selected request and leaves th
     // FREE slot — both Opportunities here were born with zero managers, so
     // that is slot 1, not the GA2 slot `operatorManager()` reads.
     // Spec 0113, D-4: `operational_site_id` is no longer part of this write —
-    // these offers were born without one and still have none.
-    expect($first->fresh()->operational_site_id)->toBeNull()
+    // these offers keep the Sede they were born at. That the assignment never
+    // TOUCHES it is proved where it can be: RequestManagementAssignSiteScopeTest
+    // asserts the activity entry carries no `operational_site_id` at all.
+    expect($first->fresh()->operational_site_id)->toBe($site->id)
         ->and($first->fresh()->operator_id)->toBe($operator->id)
         ->and($first->fresh()->supervisor_id)->toBeNull()
         ->and($first->fresh()->opportunity->operatorManager())->toBeNull()
@@ -228,7 +244,7 @@ it('the assignment writes the Offerta\'s own operator_id and promotes onto the O
     $nextOperator = bulkActionsOperatorAtSite($site);
     $accountManager = User::factory()->create();
     $originalOperator = User::factory()->create();
-    $quote = bulkActionsRequestManagedBy($originalOperator);
+    $quote = bulkActionsRequestManagedBy($originalOperator, $site);
     $quote->opportunity->managers()->attach($accountManager->id, ['position' => 1]);
     Sanctum::actingAs($actor);
 
@@ -300,7 +316,11 @@ it('the assignment skips a request outside the actor D-3 scope', function () {
     $actor = bulkActionsActor(['viewAny', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $operator = bulkActionsOperatorAtSite($site);
-    $ownRequest = bulkActionsRequestManagedBy($actor);
+    // The reachable offer sits at the operator's Sede; the unreachable one
+    // does not, and that is deliberate — being out of the actor's D-3 scope it
+    // must stay invisible to the single-mode check too, never failing the
+    // batch (direttiva utente 2026-09-10).
+    $ownRequest = bulkActionsRequestManagedBy($actor, $site);
     $outOfScope = bulkActionsRequestManagedBy(User::factory()->create());
     Sanctum::actingAs($actor);
 
@@ -319,6 +339,10 @@ it('the assignment skips a request outside the actor D-3 scope', function () {
  * requests at once, and a bulk write resolves no field permission — without
  * its own ability it would be the way around a per-field restriction (see
  * TestUsersSeeder's Commercial matrix).
+ *
+ * Both cases below deliberately submit an offer the single-mode check would
+ * REJECT (no Sede, and an operator of another one): a missing ability must
+ * still answer 403, never a 422 naming offers the actor may not act on.
  */
 it('the assignment endpoint is 403 without request-management.assignOperator', function () {
     $actor = bulkActionsActor(['viewAny', 'viewAll', 'update']);

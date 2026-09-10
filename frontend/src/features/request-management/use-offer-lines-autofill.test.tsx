@@ -14,6 +14,7 @@ import {
   type RequestOfferLinesFormShape,
 } from '@/features/request-management/request-offer-lines-section'
 import { seedSoleProductRows } from '@/features/request-management/use-offer-lines-autofill'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 
 /**
  * Autofill della riga d'offerta (direttiva utente 2026-09-09): selezionare
@@ -49,9 +50,28 @@ vi.mock('@/features/for-select/api', () => ({
   fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args),
 }))
 
+const categoryTreeMock = vi.fn<() => ProductCategoryTreeNode[]>()
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
-  useProductCategoryTree: () => ({ data: [], isPending: false, isError: false, refetch: vi.fn() }),
+  useProductCategoryTree: () => ({ data: categoryTreeMock(), isPending: false, isError: false, refetch: vi.fn() }),
 }))
+
+/** A minimal tree node, defaulted to the non-simplified/multiple behaviour every other test in this file relies on. */
+function treeNode(overrides: Partial<ProductCategoryTreeNode> & { id: number; name: string }): ProductCategoryTreeNode {
+  return {
+    parent_id: null,
+    children: [],
+    attributes_count: 0,
+    products_count: 0,
+    business_function_id: null,
+    requires_quote: false,
+    is_selectable: true,
+    management_mode: 'multiple',
+    single_quote_per_opportunity: false,
+    generates_contract: true,
+    simplified_offer_line: false,
+    ...overrides,
+  }
+}
 
 /** One for-select page carrying `items`, with the `total` the probe reads. */
 function page(items: ForSelectItem[], total = items.length): PaginatedResponse<ForSelectItem> {
@@ -118,6 +138,8 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  categoryTreeMock.mockReset()
+  categoryTreeMock.mockReturnValue([])
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockImplementation((_resource: string, params: ForSelectParams = {}) => {
     const categoryIds = (params.params?.category_ids ?? []) as number[]
@@ -178,6 +200,43 @@ describe('offer-line autofill', () => {
   })
 })
 
+// Spec 0114 AC-023: a `single`-managed AND simplified category with a sole
+// product combines all three behaviours the autofill, the row editor and the
+// row cap each own on their own — this is the one place that holds them
+// together instead of testing each primitive in isolation.
+describe('offer-line autofill — single-managed AND simplified category (spec 0114 AC-023)', () => {
+  it('seeds the single row already congealed, hides its controls, and caps "Aggiungi riga"', async () => {
+    categoryTreeMock.mockReturnValue([
+      treeNode({
+        id: SOLE_CATEGORY_ID,
+        name: 'Training',
+        management_mode: 'single',
+        simplified_offer_line: true,
+      }),
+    ])
+
+    renderHarness()
+
+    fireEvent.click(screen.getByRole('button', { name: 'pick-sole' }))
+
+    // The row has no quantity/price input to read back (D-2), so completion
+    // is asserted off the congealed amounts: net AND total both land on the
+    // product's own price (49,90) once the seed lands, vs 0,00 on the empty
+    // row it replaces.
+    await waitFor(() => expect(screen.getAllByText('49,90')).toHaveLength(2))
+
+    expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Prezzo unitario riga 1')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Aliquota IVA riga 1')).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Prodotto riga 1' })).toBeInTheDocument()
+
+    // `single` management mode caps the card at the one row the autofill
+    // already created: "Aggiungi riga" stays disabled, exactly as it would
+    // on a non-simplified single-managed category.
+    expect(screen.getByRole('button', { name: 'Aggiungi riga' })).toBeDisabled()
+  })
+})
+
 describe('seedSoleProductRows', () => {
   const filledRow: QuoteLineFormValues = {
     ...EMPTY_LINE_ROW,
@@ -203,5 +262,24 @@ describe('seedSoleProductRows', () => {
     const rows = [{ ...filledRow, product_id: 901 }]
 
     expect(seedSoleProductRows(rows, [SOLE_PRODUCT], 1)).toBe(rows)
+  })
+
+  // Spec 0114: a simplified row carries no input to fix an absent product
+  // price with, so the seed must already congeal it the same way a manual
+  // pick does (`simplifiedLineValuesFromProduct`).
+  describe('simplified (spec 0114)', () => {
+    it('congeals unit_price to 0 for a priceless product instead of leaving it null', () => {
+      const priceless = { ...SOLE_PRODUCT, meta: { ...SOLE_PRODUCT.meta, price: null } }
+
+      const seeded = seedSoleProductRows([EMPTY_LINE_ROW], [priceless], 200, true)
+
+      expect(seeded[0]).toMatchObject({ product_id: 900, quantity: 1, unit_price: 0 })
+    })
+
+    it('otherwise seeds the same values a manual pick would leave', () => {
+      const seeded = seedSoleProductRows([EMPTY_LINE_ROW], [SOLE_PRODUCT], 200, true)
+
+      expect(seeded[0]).toMatchObject({ product_id: 900, quantity: 1, unit_price: 49.9, vat_rate_id: 7 })
+    })
   })
 })

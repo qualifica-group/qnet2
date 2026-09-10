@@ -154,6 +154,34 @@ describe('defaultValueFormatter', () => {
     expect(defaultValueFormatter(column, translate)).toBeUndefined()
   })
 
+  // `attr.<code>` date attributes reach the grid as a bare `Y-m-d` string: with
+  // no formatter they printed the raw wire value instead of the user's pattern
+  // (Settings -> System), unlike the native "Prossimo richiamo" column.
+  it('formats a date attribute column with the active date pattern, no time', () => {
+    const column = stubColumn({
+      id: 'attr.data_corso',
+      type: 'datetime',
+      source: 'attribute',
+      filterType: 'date',
+      editor: 'date',
+    })
+    expect(defaultValueFormatter(column, translate)?.('2026-03-10')).toBe('10/03/2026')
+  })
+
+  it('keeps the hour of a datetime attribute column, dropping a midnight one', () => {
+    const column = stubColumn({
+      id: 'attr.appuntamento',
+      type: 'datetime',
+      source: 'attribute',
+      filterType: 'date',
+      editor: 'datetime',
+    })
+    const format = defaultValueFormatter(column, translate)
+    expect(format?.('2026-03-10T14:30')).toBe('10/03/2026 14:30')
+    expect(format?.('2026-03-10T00:00')).toBe('10/03/2026')
+    expect(format?.(null)).toBe('')
+  })
+
   it('has no formatter for a custom text/relation or enum column', () => {
     expect(
       defaultValueFormatter(stubColumn({ id: 'custom.notes', type: 'text', source: 'custom' }), translate),

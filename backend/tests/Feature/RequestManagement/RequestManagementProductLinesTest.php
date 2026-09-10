@@ -211,16 +211,22 @@ it('logs the product-lines change explicitly (the collection is a relation, neve
 });
 
 // ---------------------------------------------------------------------------
-// Creation channel (user directive 2026-07-31): the picker is available at
-// creation too, and the SAME coherence rule applies — both collections travel
-// in the payload, so StoreRequestRequest checks them against each other.
+// Creation channel. REQUIREMENT CHANGED (user directive 2026-09-10): the
+// "Prodotti di interesse" section is gone from Gestione Richieste — form AND
+// backend — so POST /api/request-management no longer declares a rule for the
+// key. What used to be three cases (accepted / refused off-category / absent)
+// collapses into the one below: the key is inert on this endpoint, exactly as
+// it already is on the PATCH channel (AC-022). Editing that collection is an
+// Opportunities-form concern only.
 // ---------------------------------------------------------------------------
 
-it('POST accepts products of interest belonging to the submitted product categories', function () {
+it('POST silently ignores a submitted products_of_interest key, creating the request with an empty collection', function () {
     $actor = productLineActor();
     $actor->givePermissionTo('request-management.create');
     $category = productLineCategory();
     $product = Product::factory()->create(['category_id' => $category->id]);
+    // Off-category too: with no rule left there is nothing to refuse.
+    $outsideProduct = Product::factory()->create(['category_id' => productLineCategory()->id]);
     $registry = Registry::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -231,42 +237,14 @@ it('POST accepts products of interest belonging to the submitted product categor
             'business_function_id' => $category->business_function_id,
             'product_category_id' => $category->id,
         ]],
-        'products_of_interest' => [$product->id],
+        'products_of_interest' => [$product->id, $outsideProduct->id],
     ])->assertCreated();
 
-    // Spec 0086, D-7: the response's own `offer_lines` projects the OFFER's
-    // (Quote) REVENUE lines, not the Opportunity's products of interest — the
-    // freshly-created offer has none yet (AC-028), so `offer_lines` stays
-    // empty even though the product of interest below WAS written.
     $response->assertJsonPath('data.offer_lines', []);
-    $this->assertDatabaseHas('opportunity_product', [
-        'opportunity_id' => Opportunity::query()->latest('id')->value('id'),
-        'product_id' => $product->id,
-    ]);
+    $this->assertDatabaseEmpty('opportunity_product');
 });
 
-it('POST refuses a product of interest outside the submitted product categories, creating nothing', function () {
-    $actor = productLineActor();
-    $actor->givePermissionTo('request-management.create');
-    $category = productLineCategory();
-    $outsideProduct = Product::factory()->create(['category_id' => productLineCategory()->id]);
-    $registry = Registry::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'source_id' => Source::factory()->create()->id,
-        'product_lines' => [[
-            'business_function_id' => $category->business_function_id,
-            'product_category_id' => $category->id,
-        ]],
-        'products_of_interest' => [$outsideProduct->id],
-    ])->assertStatus(422)->assertJsonValidationErrors('products_of_interest');
-
-    $this->assertDatabaseCount('opportunities', 0);
-});
-
-it('POST stays valid without products of interest: the check only runs when there are any', function () {
+it('POST creates the request with no products of interest at all', function () {
     $actor = productLineActor();
     $actor->givePermissionTo('request-management.create');
     $category = productLineCategory();

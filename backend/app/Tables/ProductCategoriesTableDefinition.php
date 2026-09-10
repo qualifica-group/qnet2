@@ -181,6 +181,9 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
             // that alongside adding its own.
             'single_quote_per_opportunity' => (bool) $row->single_quote_per_opportunity,
             'generates_contract' => (bool) $row->generates_contract,
+            // Spec 0114: denormalised from the branch root like the other
+            // root-owned booleans above.
+            'simplified_offer_line' => (bool) $row->simplified_offer_line,
             'attributes_count' => (int) $row->attributes_count,
             'products_count' => (int) $row->products_count,
             // The category's OWN assigned attributes — the exact set counted

@@ -104,13 +104,6 @@ export function buildRequestCreateSchema(t: TFunction, attributes: ApplicableAtt
     // what scopes the operator list — the same reciprocal link the work panel
     // and the Lead form already carry.
     operational_site_id: z.number().nullable(),
-    // "Prodotti di interesse" (user directive 2026-07-31): available already
-    // at creation, and OPTIONAL — the operator often records them only after
-    // the first call. Their coherence with `product_lines` (every product must
-    // belong to a chosen categoria prodotto) is a server-side rule: the
-    // picker's own scope is what prevents it here, since a product's category
-    // is not part of what the for-select options carry.
-    products_of_interest: z.array(z.number()),
     // "Linee dell'offerta" (user directive 2026-08-07): the rows of the
     // Offerta this creation also opens, validated by the SAME per-row schema
     // the Offerte form and the work panel use. Optional as a COLLECTION (a

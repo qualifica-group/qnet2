@@ -7,7 +7,12 @@ import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api
 import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
-import { DEFAULT_LINE_QUANTITY, EMPTY_LINE_ROW, lineValuesFromProduct } from '@/features/quotes/use-quote-lines-field'
+import {
+  DEFAULT_LINE_QUANTITY,
+  EMPTY_LINE_ROW,
+  lineValuesFromProduct,
+  simplifiedLineValuesFromProduct,
+} from '@/features/quotes/use-quote-lines-field'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 
 /** Two rows are all it takes to tell "exactly one product" from "more than one". */
@@ -62,11 +67,15 @@ function useSoleCategoryProducts(categoryIds: number[]): Map<number, QuoteProduc
  * Fills the pristine rows first, appends what is left up to `maxRows`. A
  * product the card already carries is never seeded twice. Returns the SAME
  * array when nothing was added, so the caller can skip the write entirely.
+ * `simplified` (spec 0114) applies the same congealing a manual pick gets in
+ * that mode: `unit_price` never stays null, since the seeded row carries no
+ * input to fix an absent product price with.
  */
 export function seedSoleProductRows(
   rows: QuoteLineFormValues[],
   products: QuoteProductForSelectItem[],
   maxRows: number,
+  simplified = false,
 ): QuoteLineFormValues[] {
   const seeded = [...rows]
   let added = false
@@ -80,7 +89,9 @@ export function seedSoleProductRows(
     // same precompiled unit price, VAT rate, unit and opening quantity.
     const row: QuoteLineFormValues = {
       ...EMPTY_LINE_ROW,
-      ...lineValuesFromProduct(product, 'revenue'),
+      ...(simplified
+        ? simplifiedLineValuesFromProduct(product, 'revenue')
+        : lineValuesFromProduct(product, 'revenue')),
       quantity: DEFAULT_LINE_QUANTITY,
     }
     const pristineIndex = seeded.findIndex(isPristineLineRow)
@@ -109,6 +120,8 @@ interface UseOfferLinesAutofillArgs<TFieldValues extends FieldValues> {
   maxRows: number
   /** The same percent cache a manual pick feeds (AC-071), so a seeded row shows its IVA/totale at once. */
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
+  /** Whether the classification carries the simplified-offer-line rule (spec 0114): seeds the row already congealed. */
+  simplified?: boolean
 }
 
 /**
@@ -129,6 +142,7 @@ export function useOfferLinesAutofill<TFieldValues extends FieldValues>({
   categoryIds,
   maxRows,
   rememberVatRatePercent,
+  simplified = false,
 }: UseOfferLinesAutofillArgs<TFieldValues>): void {
   const permission = useResourcePermissions().field(OFFER_LINES_META_KEY)
   // The SAME derivation `MetaField` applies before handing the rows to the
@@ -176,7 +190,7 @@ export function useOfferLinesAutofill<TFieldValues extends FieldValues>({
 
     // Step 2: one row per sole product, on the pristine rows first.
     const rows = field.value as QuoteLineFormValues[]
-    const seededRows = seedSoleProductRows(rows, products, maxRows)
+    const seededRows = seedSoleProductRows(rows, products, maxRows, simplified)
     if (seededRows === rows) {
       return
     }
@@ -189,5 +203,5 @@ export function useOfferLinesAutofill<TFieldValues extends FieldValues>({
       }
     }
     field.onChange(seededRows)
-  }, [field, maxRows, pendingCategoryIds, rememberVatRatePercent, soleProducts])
+  }, [field, maxRows, pendingCategoryIds, rememberVatRatePercent, simplified, soleProducts])
 }

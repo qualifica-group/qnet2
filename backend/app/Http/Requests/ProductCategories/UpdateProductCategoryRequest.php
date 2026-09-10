@@ -68,6 +68,9 @@ class UpdateProductCategoryRequest extends FormRequest
             // Spec 0091: same root-only semantics — a reparent or an edit of
             // the flag itself triggers ProductCategoryService's subtree resync.
             'generates_contract' => ['sometimes', 'boolean'],
+            // Spec 0114: same root-only semantics — a reparent or an edit of
+            // the flag itself triggers ProductCategoryService's subtree resync.
+            'simplified_offer_line' => ['sometimes', 'boolean'],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

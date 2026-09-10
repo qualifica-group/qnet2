@@ -41,9 +41,12 @@ final class CatalogProducts
      * The subcategories that host ONE offer of their own instead of a course
      * list: one SERVICE product per category, named exactly like it (user
      * directive 2026-09-04). "Orientamento Specialistico" is the single offer
-     * of the "APL" root (user directive 2026-09-07). Cost and price stay 0:
-     * they are filled in later through the CRUD modules, like every other
-     * seeded product.
+     * of the "APL" root (user directive 2026-09-07); "DIL" is the one of the
+     * "Formazione" root (user directive 2026-09-10) — it stays under that root
+     * and sells a single service, so it hosts its product the same way its
+     * siblings "Autoimpiego" and "Yisu" do. Cost and price stay 0: they are
+     * filled in later through the CRUD modules, like every other seeded
+     * product.
      *
      * QualificaCatalogSeeder::SELECTABLE_SUBCATEGORIES reads this list: a node
      * hosting its own product must be a classification target, never a
@@ -54,6 +57,7 @@ final class CatalogProducts
     public const array SINGLE_OFFER_CATEGORIES = [
         'Autoimpiego',
         'Yisu',
+        'DIL',
         'Orientamento Specialistico',
     ];
 

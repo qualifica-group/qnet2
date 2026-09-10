@@ -89,6 +89,7 @@ export const productCategories = {
     management_mode: 'Management mode',
     single_quote_per_opportunity: 'One offer per opportunity',
     generates_contract: 'Includes a contract',
+    simplified_offer_line: 'Simplified offer line',
     created_at: 'Created at',
     tooltipEmpty: 'Nothing to show.',
     productsMore: '+{{count}} more',
@@ -102,6 +103,7 @@ export const productCategories = {
     managementModeInherited: 'Inherited from {{category}}',
     singleQuotePerOpportunityInherited: 'Inherited from {{category}}',
     generatesContractInherited: 'Inherited from {{category}}',
+    simplifiedOfferLineInherited: 'Inherited from {{category}}',
     managerLabelInherited: 'Inherited',
     inheritedCount: '+{{count}} inherited',
   },
@@ -203,6 +205,14 @@ export const productCategories = {
     generatesContractInfo:
       'Decides whether the branch is sold under a contract. When off, an offer reaching a positively closed working status opens NO contract and the deal never appears in the Contratti module; closing positively stays possible all the same. Contracts already opened before it was turned off stay where they are and go on living normally. When a card covers several categories, a single one without the rule is enough to withhold the contract. The rule belongs to the ROOT category and the whole subtree follows it.',
     generatesContractInfoLabel: 'More info about Includes a contract',
+    simplifiedOfferLine: 'Simplified offer line',
+    simplifiedOfferLineHint:
+      'When on, in Gestione Richieste the operator picks only the product: quantity, unit price and VAT rate of the row are filled in automatically by the system.',
+    simplifiedOfferLineInheritedHint:
+      'The simplified offer-line rule is inherited from the root category "{{category}}". To change it, edit that category instead.',
+    simplifiedOfferLineInfo:
+      "Removes the manual compilation of the offer row in Gestione Richieste: on requests of this branch the operator picks ONLY the product and the system fills in quantity (always 1), unit price and VAT rate from the product. The Offerte module is untouched: whoever works the commercial offer keeps governing quantity and prices even on a simplified category. The rule belongs to the ROOT category and the whole subtree follows it.",
+    simplifiedOfferLineInfoLabel: 'More info about Simplified offer line',
     isSelectableInfo:
       'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',
     isSelectableInfoLabel: 'More info about Selectable',

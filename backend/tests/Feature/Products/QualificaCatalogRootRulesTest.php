@@ -174,6 +174,55 @@ it('AC-014: realigns a "Formazione" branch seeded before the no-contract directi
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->value('generates_contract'))->toBeFalsy();
 });
 
+it('AC-007: seeds "Formazione" with the simplified offer line and "Consulenza" without it, idempotently', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: realigned, not duplicated.
+
+    expect(ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->value('simplified_offer_line'))
+        ->toBeTruthy()
+        ->and(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('simplified_offer_line'))
+        ->toBeFalsy()
+        ->and(ProductCategory::query()->where('name', 'APL')->whereNull('parent_id')->value('simplified_offer_line'))
+        ->toBeFalsy();
+});
+
+it('AC-007: cascades the simplified offer line from the Formazione root to every descendant, including the third-level GOL regions', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+    $descendantIds = app(CategoryHierarchy::class)->descendantIds($formazione->id);
+
+    expect($descendantIds)->not->toBeEmpty()
+        ->and(ProductCategory::query()->whereIn('id', $descendantIds)->where('simplified_offer_line', false)->count())
+        ->toBe(0);
+});
+
+it('AC-007: leaves "Consulenza" and its descendants without the simplified offer line', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->firstOrFail();
+    $descendantIds = app(CategoryHierarchy::class)->descendantIds($consulenza->id);
+
+    expect($descendantIds)->not->toBeEmpty()
+        ->and(ProductCategory::query()->whereIn('id', $descendantIds)->where('simplified_offer_line', true)->count())
+        ->toBe(0);
+});
+
+it('AC-007: realigns a "Formazione" branch seeded before the simplified-offer-line directive, cascading to its descendants', function (): void {
+    // The state of an installation seeded before the directive: the column
+    // default (false) is what every existing row carries.
+    $formazione = ProductCategory::factory()->create(['name' => 'Formazione', 'simplified_offer_line' => false]);
+    $gol = ProductCategory::factory()->create(['name' => 'GOL', 'parent_id' => $formazione->id, 'simplified_offer_line' => false]);
+    ProductCategory::factory()->create(['name' => 'GOL - Molise', 'parent_id' => $gol->id, 'simplified_offer_line' => false]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->value('simplified_offer_line'))
+        ->toBeTruthy()
+        ->and(ProductCategory::query()->where('name', 'GOL')->value('simplified_offer_line'))->toBeTruthy()
+        ->and(ProductCategory::query()->where('name', 'GOL - Molise')->value('simplified_offer_line'))->toBeTruthy();
+});
+
 it('seeds the four "Formazione" G.A. labels on the root, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class); // re-run: realigned, not duplicated.

@@ -59,6 +59,7 @@ final class RequestCreationService
         private readonly RequestAttributeResolver $attributeResolver,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly OpportunityProductLineCoverage $coverage,
+        private readonly SimplifiedOfferLineNormalizer $simplifiedOfferLineNormalizer,
     ) {}
 
     /**
@@ -115,14 +116,12 @@ final class RequestCreationService
                 managerSlots: null,
                 operationalSiteId: $operationalSiteId,
                 productLines: $data->productLines,
-                // "Prodotti di interesse" (user directive 2026-07-31): already
-                // checked against the product lines above by
-                // StoreRequestRequest, so the shared writer's cross-category
-                // branch (which would add a line) is unreachable from here.
-                // Spec 0086: this stays an Opportunity-level collection —
-                // POST is the one endpoint of this module that still accepts
-                // it (data_contract).
-                productsOfInterest: $data->productsOfInterest,
+                // "Prodotti di interesse" is NOT written from this module any
+                // more (user directive 2026-09-10): the create form's section
+                // is gone, so the Opportunity is born with an empty
+                // collection and the picker stays an Opportunities-form
+                // concern. The named argument is simply left out — the DTO
+                // defaults it to null, i.e. "untouched".
                 startDate: null,
                 estimatedValue: null,
                 expectedCloseDate: null,
@@ -152,6 +151,15 @@ final class RequestCreationService
             // slot when it is not already one of its Gestori Account (D-6).
             $this->assertOfferLinesFitManagementMode($opportunity, $data);
 
+            // Spec 0114, D-4/D-5: a `simplified_offer_line` classification
+            // freezes quantity/unit-price/VAT-rate on every submitted row —
+            // in creation every row is new, so nothing is grandfathered. The
+            // Opportunity's just-synced product lines (Step 2) are what the
+            // normalizer checks, never a walk to the root at runtime.
+            $offerLines = $data->offerLines === null
+                ? null
+                : $this->simplifiedOfferLineNormalizer->normalizeForCreation($opportunity, $data->offerLines);
+
             $quote = $this->quoteService->create(new CreateQuoteData(
                 code: null,
                 title: $opportunity->name,
@@ -167,7 +175,7 @@ final class RequestCreationService
                 internalNotes: null,
                 operationalSiteId: $operationalSiteId,
                 operationalSiteIdSubmitted: true,
-                offerLines: $data->offerLines,
+                offerLines: $offerLines,
                 managerSlots: $managerSlots,
                 promoteManagersToOpportunity: true,
             ), $actor);
