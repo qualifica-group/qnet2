@@ -22,7 +22,7 @@ ha scelto **Attribuzione PRIMA delle tre dinamiche**, e le tre dinamiche riordin
 - Colonna principale (dentro `<form>`): Linee di prodotto -> Offerta -> Anagrafica cliente ->
   Attribuzione -> Informazioni aggiuntive (Dati Lavorazione Contatto -> Dati corso -> Dati Aula).
 - Colonna laterale (`<aside>`, 24rem, prima nel DOM e a destra da `@4xl`): Note generali ->
-  Prossimo richiamo -> Team -> Riepilogo richiesta.
+  Prossimo richiamo -> Sede operativa -> Team -> Riepilogo richiesta.
 
 **Fatto (frontend).**
 - `request-create-form.tsx`: sezioni riordinate; il provider RHF `<Form>` avvolge ORA ENTRAMBE le
@@ -51,6 +51,37 @@ ha scelto **Attribuzione PRIMA delle tre dinamiche**, e le tre dinamiche riordin
   2026-09-10): il reset di Tailwind 4 lascia i `<button>` sulla freccia di default, e in questo
   repo non c'e' reset globale — vedi la voce di HANDOFF sui bottoni senza pointer.
 
+**"Sede operativa" fuori da "Attribuzione" (direttiva utente 2026-09-10).** Il campo
+`operational_site_id` non e' piu' il terzo campo di "Attribuzione": vive in una card propria
+(`request-create-site-section.tsx`, NUOVO) montata nella sidebar SUBITO SOPRA il Team — e' cio'
+che filtra gli slot operatore, quindi ora sta accanto a loro invece che a una colonna di
+distanza. Nessuna modifica di dati: stessa colonna, stesso campo RHF, stesso gate
+`operational-sites.viewAny` (deciso dal form via `canPickSite`, non dalla card), stesso link
+`useRequestSiteOperatorLink`. Le stringhe restano sotto `form.create.attribution.*`: e' lo
+stesso campo spostato, duplicare le chiavi lascerebbe due copie libere di divergere.
+`RequestCreateAttributionSection` perde tre prop (`canPickSite`/`autoFilledSite`/
+`onSiteItemChange`) e resta la coppia Fonte/Segnalatore + buoni.
+
+**ALLINEATO IL PANNELLO DI LAVORAZIONE (direttiva utente 2026-09-10, "fai la stessa cosa anche
+nel form lavorazione").** `request-work-panel.tsx` adotta lo stesso assetto della scheda di
+creazione, quindi le due schede tornano gemelle (la divergenza segnalata nella voce precedente
+e' chiusa).
+- Colonna principale: Linee di prodotto -> Offerta -> Stato di lavorazione -> Anagrafica cliente
+  -> Attribuzione -> Informazioni aggiuntive -> azioni -> blocco collaborazione. "Stato di
+  lavorazione" non esiste nella creazione e non era nominato dalla direttiva: resta dov'era,
+  subito dopo l'Offerta (e' la classificazione che ne risolve il workflow).
+- Colonna laterale (24rem, `@container`): Note generali -> Prossimo richiamo -> Sede operativa ->
+  Team -> Riepilogo -> Richieste di modifica campo. Anche lo SKELETON usa la stessa traccia, cosi'
+  il layout non salta quando arrivano i dati.
+- `request-site-section.tsx` (NUOVO): gemello meta-driven di `request-create-site-section.tsx`
+  (`RelationSelectField`/`metaKey`, non `AsyncPaginatedSelect`), stringhe sotto
+  `workPanel.attribution.*`. `RequestAttributionSection` perde `operationalSite`/`autoFilledSite`/
+  `onSiteItemChange` e resta Fonte/Segnalatore + buoni.
+- `RequestClientSection`: gruppo "Indirizzo" `collapsible defaultOpen={false}`, come in creazione.
+- Test aggiornati (requisito cambiato): `request-team-section.test.tsx` (+ caso nuovo sulla card
+  Sede sopra il Team) e `request-work-panel.test.tsx` (il gruppo indirizzo va aperto prima di
+  scriverci). `npx vitest run` 621 file / 4670 test verdi, `tsc -b --force` EXIT=0, eslint pulito.
+
 **NON fatto, richiesta ritirata dall'utente.** Era arrivata la richiesta di togliere "Sede
 operativa" da "Attribuzione" e metterla in "Offerta" accanto al Prodotto; l'utente ha poi detto
 di non prenderla in considerazione. Nessuna riga di codice scritta per quella. Se dovesse
@@ -65,7 +96,17 @@ gia' seedate e' passata da un singolo caso a una lista `PREVIOUS_SECTIONS` (la s
 origini + il vecchio ordine training-first), confrontata via il nuovo `compose()` condiviso con
 `sections()`. Senza questo un'installazione gia' seedata resterebbe congelata sull'ordine vecchio.
 
-**Verificato (eseguito davvero).** `npx vitest run` 621 file / 4668 test verdi;
+**Applicato al DB di sviluppo (2026-09-10, seconda richiesta dell'utente sullo stesso punto).**
+Il riordino vive nel seeder: finche' non lo si riesegue, l'installazione mostra l'ordine vecchio
+(era il caso di `qnet2`, tutte e 15 le categorie del ramo Formazione ancora
+`Dati corso | Dati Aula | Dati Lavorazione Contatto`). Nessuna riga di codice cambiata: bastava
+`php artisan db:seed --class=QualificaQuoteLayoutSeeder`, che ha riconosciuto tutte e 18 le righe
+`quote` come `PREVIOUS_SECTIONS` e le ha ricomposte con "Dati Lavorazione Contatto" in testa.
+Secondo run = nessun cambiamento (ora il blob combacia con `SECTIONS`, quindi la categoria viene
+semplicemente saltata). Regola generale: una modifica a `SECTIONS`/ai cataloghi non si vede in
+app finche' il seeder non gira.
+
+**Verificato (eseguito davvero).** `npx vitest run` 621 file / 4669 test verdi;
 `npx tsc -b --force --pretty false` EXIT=0; eslint pulito sui file toccati;
 `./vendor/bin/pest tests/Feature/Products` 175/175 verdi; `pint --test --dirty` pulito.
 

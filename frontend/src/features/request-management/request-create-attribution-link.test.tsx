@@ -143,15 +143,15 @@ beforeEach(() => {
 
 describe('Create form — section order', () => {
   /**
-   * Requirement changed (user directive 2026-09-10): the Team left the filling
-   * flow for the side column, which the panel grid renders FIRST in the DOM
-   * (and reorders to the right on two columns), and the client details now
-   * come before the attribution.
+   * Requirement changed (user directive 2026-09-10): the Team and the Sede
+   * left the filling flow for the side column, which the panel grid renders
+   * FIRST in the DOM (and reorders to the right on two columns), and the
+   * client details now come before the attribution.
    */
-  it('renders the team in the side column, then product lines, client details, attribution', () => {
+  it('renders sede and team in the side column, then product lines, client details, attribution', () => {
     renderForm()
 
-    const sectionTitles = ['Team', 'Product lines', 'Client details', 'Attribution']
+    const sectionTitles = ['Operational site', 'Team', 'Product lines', 'Client details', 'Attribution']
     const titles = screen
       .getAllByRole('heading')
       .map((heading) => heading.textContent)
@@ -161,15 +161,14 @@ describe('Create form — section order', () => {
   })
 
   /**
-   * AC-011: the two ends of the link sit in two different COLUMNS now, the
-   * scoped operator slot ahead of the Sede that scopes it. Reading order is no
-   * longer what carries the dependency — the form does, and the cases below
-   * pin that behaviour.
+   * AC-011: the two ends of the link are two ADJACENT cards of the side column
+   * since the user directive 2026-09-10, the Sede first — it is what scopes
+   * the slot below it.
    */
-  it('renders the Operatore slot ahead of the Sede that scopes it', () => {
+  it('renders the Sede before the Operatore it scopes', () => {
     renderForm()
 
-    expect(siteField().compareDocumentPosition(operatorField())).toBe(Node.DOCUMENT_POSITION_PRECEDING)
+    expect(siteField().compareDocumentPosition(operatorField())).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 })
 

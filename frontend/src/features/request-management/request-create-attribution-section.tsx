@@ -6,8 +6,6 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { FormSection } from '@/components/form-section'
 import { ReporterRewardsField } from '@/components/record-form/reporter-rewards-field'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
-import type { ForSelectItem } from '@/features/for-select/types'
-import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/components/record-form/layout'
@@ -24,28 +22,13 @@ interface RequestCreateAttributionSectionProps {
   form: UseFormReturn<RequestCreateFormValues>
   /** Server 422 for the reward/reporter D-3 guard, collected as one banner (see `useRequestCreateForm`). */
   rewardsError: string | null
-  /**
-   * Whether the actor may set the Sede (`operational-sites.viewAny`), resolved
-   * once by the form that owns it: attributing a request is supervisory, so
-   * the field is rendered only for an actor holding the very ability the store
-   * endpoint enforces server-side (user directive 2026-08-03).
-   */
-  canPickSite: boolean
-  /**
-   * The operator half of the Sede <-> Operatore link the FORM owns
-   * (`useRequestSiteOperatorLink`, spec 0097 rev-2 D-7): the slot the Sede
-   * scopes lives in the "Team" section since rev-2, so this one only reports
-   * the Sede it just took and shows the one hydrated from a picked operator.
-   */
-  autoFilledSite: ForSelectItem | null
-  onSiteItemChange: (item: ForSelectItem | null) => void
 }
 
 /**
  * The create form's attribution section (user directive 2026-07-24): the same
  * "Fonte"/"Segnalatore"/"buono" trio the work panel's view already carries,
- * plus the Sede operativa, available at creation so a request can be
- * attributed up front. The relation pickers are the plain
+ * available at creation so a request can be attributed up front. The relation
+ * pickers are the plain
  * `AsyncPaginatedSelect` (not the work panel's meta-driven
  * `RelationSelectField`): this create-only form has no `permissions` envelope
  * to gate fields against — creation is gated wholesale by
@@ -58,10 +41,9 @@ interface RequestCreateAttributionSectionProps {
  * `StoreRequestRequest`'s own `required` rule.
  *
  * The team left this section with spec 0097 rev-2 D-7
- * (`request-create-team-section.tsx`). The Sede stayed — it is attribution,
- * not team — but it is also what SCOPES the operator slot, now one section
- * away: the link is therefore cabled by whoever owns the form
- * (`useRequestSiteOperatorLink`), never here.
+ * (`request-create-team-section.tsx`) and the Sede followed it with the user
+ * directive 2026-09-10 (`request-create-site-section.tsx`): it is what SCOPES
+ * the operator slots, so it now sits directly above them in the side column.
  *
  * The reward control (spec 0059 D-3) sits under the Segnalatore because the
  * beneficiary is always that reporter, and is mounted only once there IS one:
@@ -70,9 +52,6 @@ interface RequestCreateAttributionSectionProps {
 export function RequestCreateAttributionSection({
   form,
   rewardsError,
-  canPickSite,
-  autoFilledSite,
-  onSiteItemChange,
 }: RequestCreateAttributionSectionProps) {
   const { t } = useTranslation()
   const control = form.control
@@ -81,7 +60,6 @@ export function RequestCreateAttributionSection({
 
   const sourceQuickCreate = useQuickCreateAction(SOURCES_FOR_SELECT_RESOURCE)
   const reporterQuickCreate = useQuickCreateAction(REFERENTS_FOR_SELECT_RESOURCE)
-  const siteQuickCreate = useQuickCreateAction(OPERATIONAL_SITES_FOR_SELECT_RESOURCE)
 
   const selectLabels = {
     placeholder: t('requestManagement.form.create.attribution.selectPlaceholder'),
@@ -156,34 +134,6 @@ export function RequestCreateAttributionSection({
             initialAssignments={EMPTY_ASSIGNMENTS}
           />
         </div>
-
-        {canPickSite && (
-          <FormField
-            control={control}
-            name="operational_site_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('requestManagement.form.create.attribution.operationalSite')}</FormLabel>
-                <FormControl>
-                  <AsyncPaginatedSelect
-                    resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
-                    value={field.value}
-                    onChange={field.onChange}
-                    onItemChange={onSiteItemChange}
-                    selectedItem={siteQuickCreate.selectedItemFor(field.value) ?? autoFilledSite}
-                    action={siteQuickCreate.renderAction((ref) => field.onChange(ref.id))}
-                    labels={{
-                      ...selectLabels,
-                      searchPlaceholder: t('requestManagement.form.create.attribution.operationalSiteSearch'),
-                      triggerLabel: t('requestManagement.form.create.attribution.operationalSite'),
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
       </div>
 
       {rewardsError && (

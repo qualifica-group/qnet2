@@ -94,16 +94,32 @@ describe('Work panel — the team is a section of its own (AC-010)', () => {
     expect(within(team).getByRole('button', { name: 'Account manager 2' })).toBeInTheDocument()
   })
 
-  it('leaves "Attribution" with the Fonte/Segnalatore/Sede trio alone', async () => {
+  /**
+   * Requirement changed (user directive 2026-09-10): the Sede left this
+   * section too, into a card of its own directly above the Team it scopes.
+   * "Attribution" is the Fonte/Segnalatore pair alone now.
+   */
+  it('leaves "Attribution" with the Fonte/Segnalatore pair alone', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(workPanel())
 
     renderPanel()
     const attribution = await sectionOf('Attribution')
 
     expect(within(attribution).getByRole('button', { name: 'Source' })).toBeInTheDocument()
-    expect(within(attribution).getByRole('button', { name: 'Operational site' })).toBeInTheDocument()
+    expect(within(attribution).getByRole('button', { name: 'Reporter' })).toBeInTheDocument()
+    expect(within(attribution).queryByRole('button', { name: 'Operational site' })).not.toBeInTheDocument()
     expect(within(attribution).queryByRole('button', { name: 'Supervisor' })).not.toBeInTheDocument()
     expect(within(attribution).queryByRole('button', { name: 'Account manager 2' })).not.toBeInTheDocument()
+  })
+
+  it('gives the Sede a card of its own, right above the Team', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(workPanel())
+
+    renderPanel()
+    const site = await sectionOf('Operational site')
+
+    expect(within(site).getByRole('button', { name: 'Operational site' })).toBeInTheDocument()
+    expect(site.compareDocumentPosition(await sectionOf('Team'))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   /**

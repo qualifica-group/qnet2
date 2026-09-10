@@ -99,6 +99,7 @@ export function RequestCreateTeamSection({
       icon={Users}
       title={t('requestManagement.form.create.team.title')}
       description={t('requestManagement.form.create.team.description')}
+      className="min-w-0"
     >
       <div className={FIELD_GRID_CLASS}>
         <FormField

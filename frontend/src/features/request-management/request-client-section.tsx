@@ -150,9 +150,14 @@ export function RequestClientSection({ control }: RequestClientSectionProps) {
 
       <div className="border-t" />
 
+      {/* Collapsible, closed on arrival (user directive 2026-09-10, extended to
+          this panel): the address block is the longest of the three groups and
+          the only optional one. */}
       <ClientGroup
         icon={MapPin}
         title={t('requestManagement.workPanel.client.addressGroup', { defaultValue: 'Address' })}
+        collapsible
+        defaultOpen={false}
       >
         <AddressCreateField
           value={address.field.value}

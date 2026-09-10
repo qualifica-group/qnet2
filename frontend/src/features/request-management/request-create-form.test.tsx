@@ -128,13 +128,13 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
   })
 
   /**
-   * Direttiva utente 2026-09-10: "Prossimo richiamo" e "Team" escono dal
-   * flusso di compilazione e stanno a destra, sotto la nota generale — che
-   * resta sempre in cima alla colonna. Restano campi dello stesso form: il
-   * provider RHF avvolge entrambe le colonne, l'elemento `<form>` solo quella
-   * principale.
+   * Direttiva utente 2026-09-10: "Prossimo richiamo", "Sede operativa" e
+   * "Team" escono dal flusso di compilazione e stanno a destra, sotto la nota
+   * generale — che resta sempre in cima alla colonna. La Sede sta subito sopra
+   * il Team che filtra. Restano campi dello stesso form: il provider RHF
+   * avvolge entrambe le colonne, l'elemento `<form>` solo quella principale.
    */
-  it('tiene prossimo richiamo e team nella colonna laterale, fuori dal form', () => {
+  it('tiene richiamo, sede e team nella colonna laterale, fuori dal form', () => {
     const { container } = renderCreateForm()
 
     const aside = container.querySelector('aside')!
@@ -144,7 +144,13 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
       .getAllByRole('heading', { level: 3 })
       .map((heading) => heading.textContent)
 
-    expect(order).toEqual(['Note generali', 'Prossimo richiamo', 'Team', 'Riepilogo richiesta'])
+    expect(order).toEqual([
+      'Note generali',
+      'Prossimo richiamo',
+      'Sede operativa',
+      'Team',
+      'Riepilogo richiesta',
+    ])
     expect(form).not.toContainElement(within(aside).getByRole('heading', { name: 'Team' }))
   })
 

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRightLeft, ListChecks } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Form } from '@/components/ui/form'
@@ -31,6 +32,7 @@ import { RequestClientSection } from '@/features/request-management/request-clie
 import { RequestGeneralNotesField } from '@/features/request-management/request-general-notes-field'
 import { RequestOfferLinesSection } from '@/features/request-management/request-offer-lines-section'
 import { RequestProductLinesSection } from '@/features/request-management/request-product-lines-section'
+import { RequestSiteSection } from '@/features/request-management/request-site-section'
 import { RequestWorkCollaboration } from '@/features/request-management/request-work-collaboration'
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
 import { RequestWorkSummary } from '@/features/request-management/request-work-summary'
@@ -41,6 +43,17 @@ import type { RequestManagerRef, RequestWorkPanelWithPermissions } from '@/featu
 
 /** Hoisted: `panel.managers ?? []` inline would hand the team editor a new array reference on every render. */
 const EMPTY_MANAGERS: RequestManagerRef[] = []
+
+/**
+ * Twins of the create form's own (user directive 2026-09-10, "fai la stessa
+ * cosa anche nel form lavorazione"). The side column carries EDITABLE sections
+ * now, so it needs `@container`: without it `FIELD_GRID_CLASS` would resolve
+ * `@2xl` against the panel and split the narrow column in two. The track is
+ * widened to 24rem here only — the main column is the grid's `1fr`, so the
+ * four rem come off it — leaving the shared primitive untouched.
+ */
+const WORK_SIDE_COLUMN_CLASS = cn(SIDE_COLUMN_CLASS, '@container')
+const WORK_PANEL_GRID_CLASS = cn(PANEL_GRID_CLASS, '@4xl:grid-cols-[minmax(0,1fr)_24rem]')
 
 /**
  * DOM id bridging the sticky submit button to the RHF `<form>` (spec 0052
@@ -77,7 +90,7 @@ export function RequestWorkPanelSkeleton() {
         <Skeleton className="h-5 w-24" />
         <Skeleton className="ml-auto h-8 w-20" />
       </div>
-      <div className={PANEL_GRID_CLASS}>
+      <div className={WORK_PANEL_GRID_CLASS}>
         <div className={MAIN_COLUMN_CLASS}>
           {[0, 1, 2].map((section) => (
             <div key={section} className="rounded-xl border bg-card p-4 shadow-sm">
@@ -86,7 +99,7 @@ export function RequestWorkPanelSkeleton() {
             </div>
           ))}
         </div>
-        <div className={SIDE_COLUMN_CLASS}>
+        <div className={WORK_SIDE_COLUMN_CLASS}>
           <div className="rounded-xl border bg-card p-4 shadow-sm">
             <Skeleton className="h-3.5 w-32" />
             <Skeleton className="mt-4 h-24 w-full" />
@@ -150,10 +163,10 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
     useRequestWorkForm(panel)
   const queryClient = useQueryClient()
   const transfer = useRequestTransfer(panel)
-  // Spec 0097 rev-2 D-7/AC-011: the Sede (Attribuzione) and the operator slot
-  // (Team) are two sections apart now, so their reciprocal link is cabled here
-  // — where the form they both write actually lives — and each section gets
-  // its own half.
+  // Spec 0097 rev-2 D-7/AC-011: the Sede and the operator slot are two
+  // sections apart — adjacent cards of the side column since the 2026-09-10
+  // directive — so their reciprocal link is cabled here, where the form they
+  // both write actually lives, and each section gets its own half.
   const siteLink = useRequestSiteOperatorLink(form)
   // Watched here so `QuoteWorkflowStatusField` stays presentational: it is
   // what decides whether the transition note is demanded.
@@ -188,21 +201,44 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
         onTransfer={transfer.open}
       />
 
-      {/* The RHF provider wraps BOTH columns: the "Note generali" field lives
-          in the side column (direttiva utente 2026-09-09) while every other
-          control sits in the native <form> below, and they are one form. */}
+      {/* The RHF provider wraps BOTH columns: the side column carries fields of
+          this same form (direttiva utente 2026-09-09 for the notes, 2026-09-10
+          for callback/sede/team) while the rest sits in the native <form>
+          below. Submission never depended on DOM nesting — the save button
+          reaches the form by id (see REQUEST_WORK_FORM_ID). */}
       <Form {...form}>
-        <div className={PANEL_GRID_CLASS}>
-          {/* Read-only commercial context: first in the DOM so a narrow container
-              reads it before the form, reordered to the right on two columns. */}
-          <aside className={SIDE_COLUMN_CLASS}>
+        <div className={WORK_PANEL_GRID_CLASS}>
+          {/* First in the DOM so a narrow container reads it before the form,
+              reordered to the right on two columns. */}
+          <aside className={WORK_SIDE_COLUMN_CLASS}>
             {/* Directive 2026-07-27: the "Note generali" lead the side column —
                 operators read them before anything else. EDITABLE since the
-                direttiva utente 2026-09-09, so the block is part of the panel's
-                form even though it sits in the read-only column: the note is
-                written from where it is read, and a request carrying none opens
-                on an empty field instead of nothing at all. */}
+                direttiva utente 2026-09-09: the note is written from where it
+                is read, and a request carrying none opens on an empty field
+                instead of nothing at all. */}
             <RequestGeneralNotesField control={form.control} name="general_notes" />
+
+            {/* Out of the filling flow (user directive 2026-09-10), the Sede
+                directly above the team slots it scopes. */}
+            <RequestCallbackSection control={form.control} />
+
+            <RequestSiteSection
+              control={form.control}
+              operationalSite={toRelationFieldRef(panel.operational_site)}
+              autoFilledSite={siteLink.autoFilledSite}
+              onSiteItemChange={siteLink.onSiteItemChange}
+            />
+
+            <RequestTeamSection
+              control={form.control}
+              managers={panel.managers ?? EMPTY_MANAGERS}
+              supervisor={panel.supervisor}
+              managerLabels={panel.manager_labels}
+              siteId={siteLink.siteId}
+              slotParamsFor={siteLink.slotParamsFor}
+              onSlotItemChange={siteLink.onSlotItemChange}
+            />
+
             <RequestWorkSummary panel={panel} />
 
             {/* Field-change-request proposals on this record (spec 0078
@@ -233,10 +269,12 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
           <div className={MAIN_COLUMN_CLASS}>
             {/* `display: contents`: this native `<form>` only scopes the HTML submit
                 boundary, it must not become an extra flex box in the stack below. */}
-            {/* Section order = the operator's working order (user directive
-                2026-08-03): what the request is about comes FIRST — the product
-                classification is the record's headline information — then the
-                working state and the next callback, then the client's data. */}
+            {/* Section order = the filling flow (user directive 2026-09-10,
+                aligning this panel with the create form): the product
+                classification FIRST — the record's headline information —
+                then the offer and the state it is worked in, then the client's
+                data, its attribution, and last the dynamic sets the chosen
+                categories resolve to. */}
             <form id={REQUEST_WORK_FORM_ID} onSubmit={onSubmit} className="contents" noValidate>
               {/* Funzione aziendale + categoria prodotto (user directive
                   2026-07-31), right before the working state it precedes. */}
@@ -261,10 +299,9 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
 
               {/* "Stato di lavorazione" (user directive 2026-08-07): the
                   Offerta's own operational status, right after the
-                  classification that resolves its workflow and before the
-                  callback. Literally the Offerte form's component — the set
-                  and the mandatory-note rule come from the server either way
-                  (spec 0083). */}
+                  classification that resolves its workflow. Literally the
+                  Offerte form's component — the set and the mandatory-note
+                  rule come from the server either way (spec 0083). */}
               <QuoteWorkflowStatusField
                 control={form.control}
                 statuses={panel.quote_workflow_statuses}
@@ -272,39 +309,19 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 selectedStatusId={selectedStatusId}
               />
 
-              <RequestCallbackSection control={form.control} />
+              <RequestClientSection control={form.control} />
 
               {/* Provenance and ownership of the request (user directive
-                  2026-07-22), right after the two levers acted on at every
-                  touch and before the request's own content. `requestId`:
-                  the Fonte picker's field-change-request interception keys
-                  on the same quote id as the section above (spec 0086
-                  D-10). */}
+                  2026-07-22). `requestId`: the Fonte picker's
+                  field-change-request interception keys on this quote id
+                  (spec 0086 D-10). */}
               <RequestAttributionSection
                 form={form}
                 requestId={panel.id}
                 source={panel.source}
                 reporter={panel.reporter}
-                operationalSite={toRelationFieldRef(panel.operational_site)}
                 rewards={panel.rewards ?? []}
-                autoFilledSite={siteLink.autoFilledSite}
-                onSiteItemChange={siteLink.onSiteItemChange}
               />
-
-              {/* Right after the Sede that scopes its operator slot (spec
-                  0097 rev-2 D-7): the Offerta's Supervisore and its whole
-                  team, in the Offerte form's own editor. */}
-              <RequestTeamSection
-                control={form.control}
-                managers={panel.managers ?? EMPTY_MANAGERS}
-                supervisor={panel.supervisor}
-                managerLabels={panel.manager_labels}
-                siteId={siteLink.siteId}
-                slotParamsFor={siteLink.slotParamsFor}
-                onSlotItemChange={siteLink.onSlotItemChange}
-              />
-
-              <RequestClientSection control={form.control} />
 
               {/* "Informazioni aggiuntive" (user directive 2026-08-07): the
                   Offerte form's own section, fed the set the server resolved

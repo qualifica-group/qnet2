@@ -18,6 +18,7 @@ import { RequestCreateAttributionSection } from '@/features/request-management/r
 import { RequestCreateTeamSection } from '@/features/request-management/request-create-team-section'
 import { RequestCreateCallbackSection } from '@/features/request-management/request-create-callback-section'
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
+import { RequestCreateSiteSection } from '@/features/request-management/request-create-site-section'
 import { RequestCreateGeneralNotes } from '@/features/request-management/request-create-general-notes'
 import { RequestCreateHeader } from '@/features/request-management/request-create-header'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
@@ -89,7 +90,8 @@ interface RequestCreateFormProps {
  * Aula" — their own order lives in the layout blob, `QualificaQuoteLayoutSeeder`).
  * The SIDE column takes what is NOT part of that flow: the general-notes
  * callout always on top (user directive 2026-09-10), then prossimo richiamo,
- * team and the summary.
+ * sede operativa, team and the summary — the Sede immediately above the slots
+ * it scopes (user directive 2026-09-10), which is why it left "Attribuzione".
  *
  * The RHF provider therefore wraps BOTH columns while the native `<form>`
  * element still scopes the main one alone: the side sections are ordinary
@@ -134,12 +136,12 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
   const canPickSite = can(OPERATIONAL_SITES_VIEW_ANY_PERMISSION)
   const canAssignOperator = can(ASSIGN_OPERATOR_PERMISSION)
 
-  // Spec 0097 rev-2 D-7/AC-011: the Sede (Attribuzione) and the operator slot
-  // (Team) are two sections apart now — a whole column apart since the
-  // 2026-09-10 directive — so their reciprocal link is cabled here, where the
-  // form they both write actually lives. `canPickSite` suppresses the
-  // auto-fill for an actor who may not set the Sede at all: the key would come
-  // back 403 from the endpoint.
+  // Spec 0097 rev-2 D-7/AC-011: the Sede and the operator slot are two
+  // sections apart — adjacent ones in the side column since the 2026-09-10
+  // directive — so their reciprocal link is cabled here, where the form they
+  // both write actually lives. `canPickSite` suppresses the auto-fill for an
+  // actor who may not set the Sede at all: the key would come back 403 from
+  // the endpoint.
   const siteLink = useRequestSiteOperatorLink(form, { canPickSite })
 
   return (
@@ -162,9 +164,16 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
 
             <RequestCreateCallbackSection control={form.control} />
 
-            {/* The Sede that scopes its operator slot lives in "Attribuzione",
-                in the other column (spec 0097 rev-2 D-7): this section only
-                consumes the scoping the form produces. */}
+            {/* Directly above the team it scopes (user directive 2026-09-10),
+                and only for the actor allowed to set it. */}
+            {canPickSite && (
+              <RequestCreateSiteSection
+                control={form.control}
+                autoFilledSite={siteLink.autoFilledSite}
+                onSiteItemChange={siteLink.onSiteItemChange}
+              />
+            )}
+
             <RequestCreateTeamSection
               control={form.control}
               canAssignOperator={canAssignOperator}
@@ -245,13 +254,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                 errorMessage={clientBlockError}
               />
 
-              <RequestCreateAttributionSection
-                form={form}
-                rewardsError={rewardsError}
-                canPickSite={canPickSite}
-                autoFilledSite={siteLink.autoFilledSite}
-                onSiteItemChange={siteLink.onSiteItemChange}
-              />
+              <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
 
               {/* "Informazioni aggiuntive" (user directive 2026-08-07): the
                   work panel's own section — literally the Offerte form's

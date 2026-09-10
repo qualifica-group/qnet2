@@ -125,6 +125,7 @@ export function RequestTeamSection({
       icon={Users}
       title={t('requestManagement.workPanel.team.title')}
       description={t('requestManagement.workPanel.team.description')}
+      className="min-w-0"
     >
       <RelationSelectField
         control={control}

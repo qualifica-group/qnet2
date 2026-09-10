@@ -30,6 +30,7 @@ export function RequestCreateCallbackSection({ control }: RequestCreateCallbackS
       description={t('requestManagement.workPanel.callback.description', {
         defaultValue: 'Plan the next follow-up call with the client.',
       })}
+      className="min-w-0"
     >
       <FormField
         control={control}

@@ -154,11 +154,14 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     expect(screen.getByLabelText('Phone')).toHaveValue('')
     expect(screen.getByLabelText('PEC')).toBeInTheDocument()
     expect(screen.getByLabelText('Fax')).toBeInTheDocument()
-    // ...and so is the address: its group is always expanded, no toggle to open.
-    expect(screen.queryByRole('button', { name: /^Address$/ })).not.toBeInTheDocument()
+    // ...while the address group folds away, closed on arrival (user directive
+    // 2026-09-10): its own toggle opens it.
+    expect(screen.queryByLabelText(/^Address\*?$/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Address$/ }))
     expect(screen.getByLabelText(/^Address\*?$/)).toHaveValue('')
 
-    // Spec 0056: the operational site is exposed and editable from the attribution section.
+    // Spec 0056: the operational site is exposed and editable — from its own
+    // card above the Team since the user directive 2026-09-10.
     expect(screen.getByRole('combobox', { name: 'Operational site' })).toBeInTheDocument()
   })
 
@@ -191,8 +194,10 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
 
     renderPanel()
 
-    // The address group is always expanded: type straight into it.
-    await waitFor(() => expect(screen.getByLabelText(/^Address\*?$/)).toBeInTheDocument())
+    // The address group arrives closed (user directive 2026-09-10): open it,
+    // then type into it.
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Address$/ })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /^Address$/ }))
 
     fireEvent.change(screen.getByLabelText(/^Address\*?$/), { target: { value: 'Via Roma 1' } })
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '20100' } })

@@ -280,13 +280,17 @@ export function AsyncPaginatedSelect({
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
         className={cn(
-          'flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-field-border bg-field px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
-          action ? 'min-w-0 flex-1' : null,
+          // `min-w-0` unconditionally: without it the trigger is a grid/flex
+          // item whose automatic minimum size is its CONTENT, so a long option
+          // label widens the control past its column instead of ellipsing
+          // inside it (user report 2026-09-10, seen on "Sede operativa").
+          'flex min-h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-field-border bg-field px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
+          action ? 'flex-1' : null,
           className,
         )}
       >
         {triggerLabel !== null ? (
-          <span className="flex flex-1 items-center gap-2 overflow-hidden">
+          <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             {showAvatar ? (
               // The avatar is tinted by the option's own label: while the
               // selection is still hydrating `triggerLabel` is the `#id`
@@ -299,10 +303,10 @@ export function AsyncPaginatedSelect({
                 className="shrink-0"
               />
             ) : null}
-            <span className="truncate">{triggerLabel}</span>
+            <span className="min-w-0 truncate">{triggerLabel}</span>
           </span>
         ) : (
-          <span className="flex-1 truncate text-left text-muted-foreground">
+          <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
             {labels.placeholder}
           </span>
         )}
@@ -340,7 +344,10 @@ export function AsyncPaginatedSelect({
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       {action ? (
-        <div className="flex items-center gap-1.5">
+        // `min-w-0` for the same reason as the trigger: this row is the grid
+        // item `FormItem` lays out, and its automatic minimum size would
+        // otherwise be the trigger's own content.
+        <div className="flex min-w-0 items-center gap-1.5">
           {trigger}
           {action}
         </div>
