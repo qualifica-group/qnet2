@@ -44,3 +44,13 @@ export interface PaginatedResponse<T> {
 
 /** Filter applied to the notifications list query. */
 export type NotificationFilter = 'all' | 'unread' | 'read'
+
+/**
+ * Payload of the polled unread endpoint: how many notifications are unread and
+ * the most recent unread one (`null` when `count` is 0), used to announce the
+ * notification in the browser tab title.
+ */
+export interface UnreadSummary {
+  count: number
+  latest: Notification | null
+}

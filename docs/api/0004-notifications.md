@@ -18,7 +18,7 @@ returns **404**.
 | Purpose | Method + Path | Body | Success |
 |---|---|---|---|
 | List | `GET /api/notifications` | — (query params) | `paginatedResponse()` |
-| Unread count | `GET /api/notifications/unread-count` | — | `ok()`, `data.count` |
+| Unread count | `GET /api/notifications/unread-count` | — | `ok()`, `data.count` + `data.latest` |
 | Mark one read | `PATCH /api/notifications/{notification}/read` | — | `ok()`, `data` = resource |
 | Mark all read | `POST /api/notifications/read-all` | — | `ok()`, `data.marked` |
 
@@ -71,10 +71,23 @@ Ordered by `created_at desc`. Response is the standard paginated envelope:
 ## 2. Unread count — `GET /api/notifications/unread-count`
 
 ```jsonc
-{ "success": true, "message": "OK", "data": { "count": 7 } }
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "count": 7,
+    "latest": { /* notification resource, the most recent UNREAD one */ }
+  }
+}
 ```
 
-Lightweight; intended for frequent polling.
+`latest` is the most recent unread notification (same resource shape as the
+list), or `null` when `count` is `0`. It rides along with the count so the
+client polls **once** for both the bell badge and the browser tab title, with a
+single source of truth for the number.
+
+Lightweight; intended for frequent polling: a count plus, only when there is
+something unread, one indexed row.
 
 ## 3. Mark one read — `PATCH /api/notifications/{notification}/read`
 

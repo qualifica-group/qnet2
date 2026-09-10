@@ -47,12 +47,18 @@ class NotificationController extends BaseApiController
     }
 
     /**
-     * GET /api/notifications/unread-count — actor's unread count (polling).
+     * GET /api/notifications/unread-count — actor's unread count plus the most
+     * recent unread notification, in one polled call (badge + tab title).
      */
     public function unreadCount(Request $request): JsonResponse
     {
         try {
-            return $this->ok(['count' => $this->service->unreadCount($request->user())]);
+            $summary = $this->service->unreadSummary($request->user());
+
+            return $this->ok([
+                'count' => $summary->count,
+                'latest' => $summary->latest ? new NotificationResource($summary->latest) : null,
+            ]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

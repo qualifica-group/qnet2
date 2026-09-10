@@ -214,6 +214,15 @@ export interface AttributeLayoutData {
   layout: LayoutBlob | null
   /** The shared `all` layout this scope falls back to while it has no override of its own (null on the shared scope itself). */
   inherited: LayoutBlob | null
+  /**
+   * The ANCESTOR's layout this whole category renders while it has no row of
+   * its own (spec 0115) — the second inheritance axis, independent of the
+   * scope one above. Null when the category answers for itself, has the
+   * context barrier down, or no ancestor has a layout.
+   */
+  inherited_from_category: LayoutBlob | null
+  /** Which ancestor `inherited_from_category` came from; non-null exactly when that blob is. */
+  inherited_from_category_source: { id: number; name: string } | null
   attributes: EffectiveAttribute[]
 }
 

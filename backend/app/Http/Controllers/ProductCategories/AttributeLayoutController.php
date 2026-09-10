@@ -55,13 +55,15 @@ class AttributeLayoutController extends BaseApiController
             // Authoring (configurator) asks for the exact scope's own row; the
             // product form omits `exact` and gets the shared-layout fallback so
             // one saved layout drives every mode (spec 0062 revised).
-            [$layout, $inherited] = $request->exact()
+            [$layout, $inherited, $fromCategory, $source] = $request->exact()
                 ? $this->authoredLayout($productCategory, $context, $request->scope())
-                : [$this->service->resolveWithFallback($productCategory, $context, $request->formMode()), null];
+                : [$this->service->resolveWithFallback($productCategory, $context, $request->formMode()), null, null, null];
 
             return $this->ok([
                 'layout' => $layout,
                 'inherited' => $inherited,
+                'inherited_from_category' => $fromCategory,
+                'inherited_from_category_source' => $source !== null ? ['id' => $source->id, 'name' => $source->name] : null,
                 'attributes' => $this->hierarchy->effectiveAttributes($productCategory, $context)->values(),
             ]);
         } catch (Throwable $exception) {
@@ -93,18 +95,30 @@ class AttributeLayoutController extends BaseApiController
     }
 
     /**
-     * The authoring pair for one scope: its own row, and — for a per-mode
-     * scope — the shared layout it falls back to while it has none.
+     * What the configurator has to show for one scope, on both fallback axes:
+     * this scope's own row; the shared layout a per-mode scope falls back to
+     * while it has none; and — spec 0115 — the ANCESTOR's layout this category
+     * would render with no row of its own, with the ancestor itself so the
+     * banner can name it.
      *
-     * @return array{0: array{sections: array<int, array<string, mixed>>}|null, 1: array{sections: array<int, array<string, mixed>>}|null}
+     * The category axis is reported even when the category HAS a row: it
+     * describes the ancestry, which the category's own row does not change,
+     * and it is what tells the configurator that "back to inherited" is an
+     * action available here at all. Which of the three the editor actually
+     * seeds its draft from is the client's decision, in that same order of
+     * specificity.
+     *
+     * @return array{0: array{sections: array<int, array<string, mixed>>}|null, 1: array{sections: array<int, array<string, mixed>>}|null, 2: array{sections: array<int, array<string, mixed>>}|null, 3: ProductCategory|null}
      */
     private function authoredLayout(ProductCategory $productCategory, AttributeContext $context, LayoutFormScope $scope): array
     {
-        return [
-            $this->service->resolveExact($productCategory, $context, $scope),
-            $scope === LayoutFormScope::All
-                ? null
-                : $this->service->resolveExact($productCategory, $context, LayoutFormScope::All),
-        ];
+        $own = $this->service->resolveExact($productCategory, $context, $scope);
+        $shared = $scope === LayoutFormScope::All
+            ? null
+            : $this->service->resolveExact($productCategory, $context, LayoutFormScope::All);
+
+        [$inheritedLayout, $source] = $this->service->resolveInheritedForScope($productCategory, $context, $scope);
+
+        return [$own, $shared, $inheritedLayout, $source];
     }
 }

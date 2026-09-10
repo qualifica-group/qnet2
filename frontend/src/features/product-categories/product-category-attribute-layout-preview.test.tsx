@@ -47,6 +47,8 @@ function response(overrides: Partial<AttributeLayoutData> = {}): AttributeLayout
   return {
     layout: null,
     inherited: null,
+    inherited_from_category: null,
+    inherited_from_category_source: null,
     attributes: [SKU_ATTRIBUTE],
     ...overrides,
   }

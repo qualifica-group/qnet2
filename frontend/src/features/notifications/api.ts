@@ -4,6 +4,7 @@ import type {
   Notification,
   NotificationFilter,
   PaginatedResponse,
+  UnreadSummary,
 } from '@/features/notifications/types'
 
 interface FetchNotificationsParams {
@@ -27,12 +28,16 @@ export async function fetchNotifications(
   return data
 }
 
-/** Fetches the count of unread notifications from the standard envelope. */
-export async function fetchUnreadCount(): Promise<number> {
-  const { data } = await apiClient.get<ApiResponse<{ count: number }>>(
+/**
+ * Fetches the unread summary (count + most recent unread notification) from the
+ * standard envelope. One polled call feeds both the bell badge and the tab
+ * title, so the number never disagrees between the two.
+ */
+export async function fetchUnreadSummary(): Promise<UnreadSummary> {
+  const { data } = await apiClient.get<ApiResponse<UnreadSummary>>(
     '/notifications/unread-count',
   )
-  return data.data.count
+  return data.data
 }
 
 /** Marks a single notification as read. Returns the updated notification. */

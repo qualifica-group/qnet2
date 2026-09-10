@@ -3,6 +3,153 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## NOTIFICHE NEL TITOLO DELLA SCHEDA DEL BROWSER (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** Quando c'e' una notifica, al posto del titolo dell'app nella scheda del
+browser deve uscire la notifica da leggere. Scelte confermate dall'utente: **alternanza
+lampeggiante** ogni 2s fra nome app e testo notifica, **contatore + titolo dell'ultima**
+(`(3) Nuova richiesta assegnata`).
+
+**Assunzione dichiarata (facile da invertire):** l'alternanza e' attiva ogni volta che ci sono non
+lette, anche a scheda in primo piano, perche' la richiesta era "quando c'e' una notifica esce al
+posto del titolo". Per limitarla alla sola scheda in background basta una condizione su
+`document.visibilityState` in `use-notification-title.ts`.
+
+**Contratto esteso (additivo), non un secondo endpoint:** `GET /api/notifications/unread-count`
+ora risponde `data: { count, latest }`, dove `latest` e' la piu' recente notifica NON letta
+(NotificationResource) o `null` quando `count` e' 0. Motivo: il titolo ha bisogno del testo, il
+badge del numero; con due poll separati (count + lista limit=1) badge e titolo avrebbero due
+sorgenti di verita' sullo stesso numero e potrebbero divergere fra un tick e l'altro.
+`docs/api/0004-notifications.md` §2 aggiornato.
+
+- BE: `DataObjects/Notifications/UnreadSummary.php` (nuovo DTO), `NotificationService::unreadCount()`
+  → **`unreadSummary()`** (il vecchio metodo non esiste piu'), `NotificationController::unreadCount()`
+  compone `{count, latest}`. Quando `count` e' 0 la riga non viene nemmeno cercata.
+- FE: `fetchUnreadCount` → **`fetchUnreadSummary`**, `useUnreadCount` → **`useUnreadSummary`**,
+  query key `['notifications','unread-summary']`. `notificationKeys.all` resta il prefisso, quindi
+  le invalidazioni dopo mark-as-read continuano a ripulire anche il titolo.
+- FE nuovo: `features/notifications/use-notification-title.ts`, invocato UNA volta da
+  `layouts/app-layout.tsx`. Scrive `document.title`; ripristina `env.appName` a zero non lette e in
+  cleanup. Il titolo statico resta quello di `index.html` (`%VITE_APP_NAME%`) finche' l'hook non
+  interviene.
+
+**`refetchIntervalInBackground: true` su `useUnreadSummary` — deliberato, non una svista.** Era
+`false` per scelta esplicita; senza il poll in background il titolo resterebbe fermo proprio
+mentre la scheda e' in secondo piano, cioe' l'unico momento in cui serve leggerlo. La lista del
+pannello NON e' stata toccata: continua a non pollare in background.
+
+**Verificato (eseguito):** Pest `tests/Feature/Notifications` + `tests/Feature/Notes` 126 passed /
+470 assertions (4 nuovi test su `latest`: piu' recente, null a zero non lette, scoping per utente).
+Vitest `src/features/notifications` 26 passed (5 nuovi su `use-notification-title`). `tsc -b
+--force` EXIT=0, ESLint EXIT=0, Pint passed.
+
+**Riferimento: `/Users/Repository/q-net`** (l'app React sorella, NON questo repo) —
+`src/components/app-shell/notifications-popover.tsx` fa la stessa cosa: titolo che alterna
+`(N) <titolo>` e `campanella + "New notification"` ogni 1s, campanella PIENA quando ci sono non
+lette, badge rosso cap 99+, conteggio da una lista `status=unread&limit=1` (`pagination.total`).
+Da li' sono arrivate due correzioni chieste dall'utente: la campanella nel titolo e l'icona piena.
+
+**Campanella nel titolo:** costante `BELL_GLYPH = '\u{1F514}'` in `use-notification-title.ts`,
+scritta come escape e NON come carattere letterale: `code-guard.js` blocca gli emoji nei file
+`.ts/.tsx` e questo e' contenuto UI, non decorazione del sorgente. Frame: `(3) Q-Net` alternato a
+`(3) [campanella] Titolo notifica`.
+
+**Icona campanella piena** (`fill-current` su `Bell` quando `unreadCount > 0`) in
+`notification-bell.tsx`, come q-net/Facebook.
+
+**Differenze residue con q-net, volute:** swap a 2s (q-net 1s) e badge cap 9+ (q-net 99+), che
+sono le scelte gia' in essere qui; nel titolo mostriamo il testo REALE dell'ultima notifica, q-net
+mostra la stringa generica "New notification".
+
+**Prossimi passi possibili:** favicon con badge o notifiche di sistema (Notification API) non sono
+state implementate — oggi nel progetto non esiste ne' service worker ne' `Notification`.
+
+## CATALOGO: NUOVO ATTRIBUTO "SEDE CORSO" (relazione a sede operativa) — VERDE, NON COMMITTATO
+
+**Direttiva utente 2026-09-10.** Un campo "Sede corso" dopo "ID Corso", con relazione alla sede
+operativa. Aggiunto in `ContactProcessingAttributeCatalogue`, quindi sul root "Formazione" e in
+ENTRAMBI i contesti (Offerta + Commessa), ereditato da tutto il ramo. Riga di layout condivisa
+con `id_corso`.
+
+**Codice NUOVO `course_site`, NON il ritirato `training_site`** — decisione da non ribaltare senza
+saperlo: `training_site` era la stessa idea come TEXT libero, ritirata sempre il 2026-09-10.
+Rianimare quel codice reinterpreterebbe ogni stringa gia' salvata su offerte e commesse ("Milano")
+come ID di sede operativa: riferimenti rotti, non dati migrati. Il codice nuovo lascia quei valori
+dove sono, non assegnati e non letti.
+
+**`relation_target` = `operational-sites`** in tutti e tre i campi ({entity_type, cardinality:
+'one', for_select_resource}). Valido perche' `operational-sites` e' registrato SIA in
+`config/tables.php` SIA in `config/authorization.php` — la condizione che
+`CustomFieldEntityRegistry` impone a ogni `entity_type`. Un target che non la soddisfa renderebbe
+un select vuoto a runtime, in silenzio: c'e' un test che presidia proprio questo.
+Zero codice frontend: `RelationFieldControl` e l'endpoint `operational-sites/for-select`
+esistevano gia'.
+
+**`ContactProcessingAttributeCatalogue::PREVIOUS_ROWS`** — storia congelata, NON allinearla mai a
+`ROWS`. E' cio' che permette ai due seeder di riconoscere il layout scritto dalla revisione
+precedente e RICOMPORLO. Senza, un'installazione gia' seeded terrebbe il vecchio blob (un layout
+configurato e' dato utente, mai sovrascritto) e il campo nuovo finirebbe nella sezione sintetica
+"Altre informazioni": presente ma nel posto sbagliato, peggio che assente. Un prossimo cambio di
+`ROWS` mette QUI il suo predecessore, come `QualificaQuoteLayoutSeeder::PREVIOUS_SECTIONS` impila
+i suoi.
+
+**Verificato.** Pest suite intera: 6906 passati, 1 skipped. `tsc -b --force` EXIT=0, Pint pulito.
+`QualificaCourseSiteAttributeTest` e' nuovo (4 test: tipo/target, dominio custom-fieldable,
+posizione in riga con `id_corso` nei due contesti, ricomposizione dell'installazione vecchia);
+splittato da `QualificaContactProcessingSeederTest`, che aveva toccato il limite di 500 righe.
+
+## SPEC 0115: IL LAYOUT ATTRIBUTI SI EREDITA DALLA CATEGORIA ANTENATA — VERDE, NON COMMITTATO
+
+**Direttiva utente 2026-09-10.** Il layout era l'unica cosa che NON si ereditava: 16 righe quasi
+identiche sul ramo Formazione, da ritoccare a mano una per una. Ora una categoria senza layout
+proprio rende quello dell'antenato piu' vicino. Spec completa in
+`docs/specs/0115-attribute-layout-category-inheritance.xml` (19 AC, tutti coperti da test).
+
+**Le regole da rispettare (non improvvisare sopra).**
+- DUE assi di fallback, la CATEGORIA e' quello ESTERNO: a ogni livello prima l'override di
+  modalita', poi il condiviso `all`; solo un livello che non ha ne' l'uno ne' l'altro sale al
+  padre. Un `all` proprio batte l'override `create` dell'antenato.
+- Stessa BARRIERA degli attributi (`inherits_*_attributes`, per-contesto):
+  `CategoryHierarchy::inheritedAncestors()` e' ora **public** ed e' l'unica implementazione —
+  non riscriverla. Conseguenza voluta: **DIL non eredita il layout Offerta** di Formazione.
+- Vale in TUTTI E TRE i contesti (`product`, `quote`, `work_order`), non solo Offerta.
+
+**Nomi congelati.**
+- `AttributeLayoutService::resolveInherited(category, context, FormMode)` — consumo, ritorna
+  `[blob|null, ProductCategory|null]`. `resolveWithFallback()` resta la proiezione sul solo blob:
+  ogni chiamante esistente non cambia.
+- `AttributeLayoutService::resolveInheritedForScope(category, context, LayoutFormScope)` —
+  authoring. Separato perche' `all` e' uno scope ma NON una FormMode
+  (`FormMode::from('all')` esplode).
+- GET `.../attribute-layouts?exact=1` ha due campi NUOVI: `inherited_from_category` e
+  `inherited_from_category_source` ({id, name}). Il campo `inherited` preesistente NON cambia
+  significato: e' il fallback di SCOPE. Sono due assi distinti, non confonderli.
+- `CategoryHierarchy::categoriesById()` memoizza le categorie in una query: la risalita costa
+  una query qualunque sia la profondita' (AC-008). NON usata da `ancestors()`, che serve la
+  guardia anti-ciclo in scrittura e deve vedere l'albero dell'istante.
+
+**Seeder ridotti.** `QualificaQuoteLayoutSeeder` e `QualificaContactProcessingSeeder` scrivono
+una riga solo dove la composizione DIFFERISCE da quella ereditata, e cancellano le righe seeded
+diventate ridondanti. Il criterio e' calcolato, non una lista di nomi. Visita ROOT-FIRST
+obbligatoria (`sortRootFirst()` nel trait `SeedsAttributeLayouts`). Righe: `quote` 18 → 10,
+`work_order` 18 → 9. Un layout ritoccato A MANO non viene mai rimosso (AC-016).
+
+**Verificato (eseguito, non "dovrebbe").** Pest: 11/11 il nuovo
+`AttributeLayoutCategoryInheritanceTest`, 14/14 `QualificaQuoteLayoutSeederTest`, 13/13
+`QualificaContactProcessingSeederTest`, 7/7 `AttributeLayoutMergerTest`. Vitest 11/11
+`product-category-attribute-layout-editor.test.tsx`. `tsc -b --force` EXIT=0, ESLint e Pint
+puliti.
+
+**Test aggiornati per REQUISITO CAMBIATO** (dichiarato, non piegato): i test dei due seeder
+asserivano "una riga per categoria contribuente". Ora asseriscono cosa ogni categoria RENDE
+(`resolveWithFallback`), piu' quali possiedono una riga. Il guard forte resta: ogni attributo
+effettivo di TUTTE e 18 le categorie e' collocato in una sezione, nessuno cade in "Altre
+informazioni".
+
+**Prossimo passo.** Nessuno in sospeso. Da valutare fuori scope: `productCategoryUserWith()` e'
+duplicato con guardia `function_exists` in 10+ file di test — andrebbe in `tests/Pest.php`, ma
+tocca file estranei a questa spec.
+
 ## "NUOVA RICHIESTA": RIORDINO SEZIONI + INDIRIZZI COLLASSABILE + TEAM IN SIDEBAR (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
 
 **Direttiva.** Ordine delle sezioni principali di "Gestione Richieste > Nuova richiesta":

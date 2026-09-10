@@ -98,7 +98,7 @@ beforeAll(async () => {
 beforeEach(() => {
   canMock.mockReset()
   fetchAttributeLayoutMock.mockReset()
-  fetchAttributeLayoutMock.mockResolvedValue({ layout: null, inherited: null, attributes: [] })
+  fetchAttributeLayoutMock.mockResolvedValue({ layout: null, inherited: null, inherited_from_category: null, inherited_from_category_source: null, attributes: [] })
   fetchProductCategoryTreeMock.mockReset()
   fetchProductCategoryTreeMock.mockResolvedValue([])
 })

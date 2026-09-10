@@ -33,8 +33,7 @@ use Illuminate\Database\Seeder;
  * category CONTRIBUTING to the record (the categories of the offer lines'
  * products), never an ancestor's. A single root row would render nowhere.
  * Each category's sections are built from its OWN effective attributes, so
- * "Autofinanziato" keeps the fields the rest of the branch does not have and a
- * Consulenza leaf gets the company-appointment section alone.
+ * "Autofinanziato" keeps the fields the rest of the branch does not have.
  *
  * Idempotent AND non-destructive: a category whose offer layout was already
  * configured — by a previous run or by hand from the configurator — is skipped
@@ -75,18 +74,28 @@ class QualificaQuoteLayoutSeeder extends Seeder
      * In release order: the lone "Dati Lavorazione Contatto" section, from when
      * QualificaContactProcessingSeeder owned this context; then the three
      * sections led by the training pair, before the 2026-09-10 directive
-     * reversed them.
+     * reversed them; then today's order but with the contact-processing rows
+     * as they stood before "Sede corso" joined them.
+     *
+     * The first two entries use PREVIOUS_ROWS as well: they predate that field
+     * too, so composing them from the CURRENT rows would look for a blob no
+     * revision ever wrote.
      *
      * @var list<list<array{0: string, 1: string, 2: list<list<string>>}>>
      */
     private const array PREVIOUS_SECTIONS = [
         [
-            ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::ROWS],
+            ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::PREVIOUS_ROWS],
         ],
         [
             ['course-data', CourseDataAttributeCatalogue::SECTION_TITLE, CourseDataAttributeCatalogue::ROWS],
             ['classroom-data', ClassroomAttributeCatalogue::SECTION_TITLE, ClassroomAttributeCatalogue::ROWS],
-            ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::ROWS],
+            ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::PREVIOUS_ROWS],
+        ],
+        [
+            ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::PREVIOUS_ROWS],
+            ['course-data', CourseDataAttributeCatalogue::SECTION_TITLE, CourseDataAttributeCatalogue::ROWS],
+            ['classroom-data', ClassroomAttributeCatalogue::SECTION_TITLE, ClassroomAttributeCatalogue::ROWS],
         ],
     ];
 
@@ -104,8 +113,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
     /**
      * Every category an offer can be filed under for these sets: the whole
-     * Formazione branch (the training fields reach it all by inheritance) plus
-     * the two Consulenza leaves, which are siblings and carry their own set.
+     * Formazione branch, the training fields reaching it all by inheritance.
      *
      * @return Collection<int, ProductCategory>
      */
@@ -118,10 +126,14 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
         $branchIds = [$root->id, ...$this->hierarchy->descendantIds($root->id)];
 
-        return ProductCategory::query()
-            ->whereIn('id', $branchIds)
-            ->orWhereIn('name', ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES)
-            ->get();
+        // The Formazione branch alone: the two Consulenza leaves carry no
+        // attribute since the 2026-09-10 directive, so composing a layout for
+        // them would prune to nothing anyway.
+        $categories = ProductCategory::query()->whereIn('id', $branchIds)->get();
+
+        // Root-first: seedLayout() asks what each category INHERITS, which is
+        // only settled once every level above it has been visited.
+        return $this->sortRootFirst($categories, $this->hierarchy->parentIdMap());
     }
 
     private function seedLayout(ProductCategory $category): void
@@ -140,6 +152,18 @@ class QualificaQuoteLayoutSeeder extends Seeder
         }
 
         $sections = $this->sections($effective);
+
+        // Spec 0115: a row saying exactly what the ancestor's already says is
+        // 15 copies of one form to maintain. Write nothing — and drop the copy
+        // an earlier revision wrote, or it would keep winning over the
+        // ancestor it duplicates.
+        if ($this->inheritedRendersSame($this->layouts, $category, AttributeContext::Quote, $sections)) {
+            if ($existing !== null) {
+                $this->layouts->upsert($category, AttributeContext::Quote, LayoutFormScope::All, null);
+            }
+
+            return;
+        }
 
         // A category resolving none of the three catalogues keeps the flat
         // rendering: an empty layout is a missing row, not a blob with zero

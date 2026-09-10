@@ -125,3 +125,48 @@ it('resolves independently per context — a layout configured for Product does 
     expect($resolver->resolve([$category->id], AttributeContext::Product, FormMode::Edit))->not->toBeNull();
     expect($resolver->resolve([$category->id], AttributeContext::Quote, FormMode::Edit))->toBeNull();
 });
+
+it('AC-009: a contributing category with no layout of its own contributes its ancestor\'s (spec 0115)', function (): void {
+    $parent = ProductCategory::factory()->create(['name' => 'Formazione']);
+    $child = ProductCategory::factory()->create(['name' => 'Yisu', 'parent_id' => $parent->id]);
+
+    $inherited = Attribute::factory()->create(['code' => 'total_hours']);
+    $ownToChild = Attribute::factory()->create(['code' => 'extra_field']);
+    $parent->attributes()->attach($inherited->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $child->attributes()->attach($ownToChild->id, ['is_required' => false, 'sort_order' => 1, 'context' => 'quote']);
+
+    // Only the ANCESTOR has a layout, and it places only its own code.
+    AttributeLayout::factory()->for($parent, 'productCategory')
+        ->withCodes(['total_hours'], title: 'Dati corso')
+        ->create(['context' => 'quote', 'form_mode' => 'all']);
+
+    $resolved = app(AttributeLayoutMerger::class)->resolve([$child->id], AttributeContext::Quote, FormMode::Edit);
+
+    // The child renders the ancestor's section instead of falling back to flat,
+    // and the code the ancestor's layout cannot know about still lands in the
+    // synthesized trailing section — the merger's own behaviour, unchanged.
+    expect(array_column($resolved['sections'], 'title'))->toBe(['Dati corso', 'Altre informazioni']);
+    expect(array_column($resolved['sections'][0]['rows'][0]['items'], 'attribute_code'))->toBe(['total_hours']);
+    expect(array_column($resolved['sections'][1]['rows'][0]['items'], 'attribute_code'))->toBe(['extra_field']);
+});
+
+it('AC-009: the barrier stops a contributing category from borrowing its ancestor\'s layout', function (): void {
+    $parent = ProductCategory::factory()->create(['name' => 'Formazione']);
+    $child = ProductCategory::factory()->create([
+        'name' => 'DIL',
+        'parent_id' => $parent->id,
+        'inherits_quote_attributes' => false,
+    ]);
+
+    $ownToChild = Attribute::factory()->create(['code' => 'chosen_course']);
+    $child->attributes()->attach($ownToChild->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+
+    AttributeLayout::factory()->for($parent, 'productCategory')
+        ->withCodes(['chosen_course'], title: 'Dati corso')
+        ->create(['context' => 'quote', 'form_mode' => 'all']);
+
+    $resolved = app(AttributeLayoutMerger::class)->resolve([$child->id], AttributeContext::Quote, FormMode::Edit);
+
+    // Flat rendering: below the barrier there is no layout to inherit.
+    expect($resolved)->toBeNull();
+});

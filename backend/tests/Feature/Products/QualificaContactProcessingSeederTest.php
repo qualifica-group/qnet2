@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AttributeContext;
+use App\Enums\FormMode;
 use App\Enums\LayoutFormScope;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
@@ -21,26 +22,32 @@ use Illuminate\Support\Facades\DB;
 // one.
 uses(RefreshDatabase::class);
 
-/**
- * This catalogue's section inside a layout blob, wherever the composition put
- * it: first on the Commessa, last on the Offerta.
- */
-function contactSectionOf(array $blob): array
-{
-    return collect($blob['sections'])->firstWhere('id', 'contact-processing');
+// Guarded: QualificaCourseSiteAttributeTest, split out of this file, declares
+// the same two helpers — whichever Pest loads first wins.
+if (! function_exists('contactSectionOf')) {
+    /**
+     * This catalogue's section inside a layout blob, wherever the composition
+     * put it: first on the Commessa, last on the Offerta.
+     */
+    function contactSectionOf(array $blob): array
+    {
+        return collect($blob['sections'])->firstWhere('id', 'contact-processing');
+    }
 }
 
-/**
- * @return list<string>
- */
-function effectiveCodes(string $categoryName, AttributeContext $context): array
-{
-    $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
+if (! function_exists('effectiveCodes')) {
+    /**
+     * @return list<string>
+     */
+    function effectiveCodes(string $categoryName, AttributeContext $context): array
+    {
+        $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
 
-    return app(CategoryHierarchy::class)
-        ->effectiveAttributes($category, $context)
-        ->pluck('code')
-        ->all();
+        return app(CategoryHierarchy::class)
+            ->effectiveAttributes($category, $context)
+            ->pluck('code')
+            ->all();
+    }
 }
 
 /**
@@ -126,15 +133,14 @@ it('keeps the self-funded and consulting sets on their own categories', function
         ->not->toContain('course_time_preference')
         ->not->toContain('price');
 
-    // The company-appointment set sits on BOTH Consulenza leaves, and nowhere else.
+    // REQUIREMENT CHANGED (user directive 2026-09-10): the two Consulenza
+    // leaves are EMPTY — the company-appointment set is retired, and they
+    // inherit nothing from their root either.
     foreach (ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES as $name) {
-        expect(effectiveCodes($name, AttributeContext::Quote))->toContain(
-            'appointment_date', 'acceptance_date', 'company_name',
-            'site_address', 'city', 'requested_service', 'company_referent',
-        );
+        expect(effectiveCodes($name, AttributeContext::Quote))->toBe([], $name);
     }
 
-    expect(effectiveCodes('Consulenza', AttributeContext::Quote))->not->toContain('appointment_date');
+    expect(effectiveCodes('Consulenza', AttributeContext::Quote))->toBe([]);
 });
 
 it('hands the CPI appointment time to every GOL region, the APL one to three', function (): void {
@@ -178,7 +184,7 @@ it('places each appointment time right under its own date', function (): void {
     $service = app(AttributeLayoutService::class);
     $rowsOf = function (string $categoryName) use ($service): array {
         $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
-        $blob = $service->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All);
+        $blob = $service->resolveWithFallback($category, AttributeContext::Quote, FormMode::Create);
 
         return array_map(
             static fn (array $row): array => array_column($row['items'], 'attribute_code'),
@@ -248,7 +254,7 @@ it('retires "Corso di interesse" from every category without deleting the import
         ->and(effectiveCodes('GOL - Molise', AttributeContext::Quote))->not->toContain('corso');
 
     // The stale layout item goes with it, or the next save would 422.
-    $blob = $service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All);
+    $blob = $service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create);
     expect($blob['sections'][0]['rows'])->toHaveCount(1)
         ->and(array_column($blob['sections'][0]['rows'][0]['items'], 'attribute_code'))->toBe(['cpi']);
 });
@@ -320,11 +326,14 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
 
     $service = app(AttributeLayoutService::class);
 
-    // The Formazione branch (16) plus the two Consulenza leaves.
-    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(18);
+    // Spec 0115: a row only where the composition DIFFERS from the ancestor's
+    // — the eight Formazione categories that add a field of their own, or sit
+    // behind a barrier. The two Consulenza leaves carry no attribute at all
+    // since the 2026-09-10 directive, so they compose to nothing.
+    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(8);
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-    $layout = $service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All);
+    $layout = $service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create);
     $section = contactSectionOf($layout);
 
     expect($section['title'])->toBe('Dati Lavorazione Contatto')
@@ -332,22 +341,20 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
         ->and(array_column($section['rows'][0]['items'], 'attribute_code'))
         ->toBe(['data_scelta_cpi', 'data_app_apl']);
 
-    // Each category places exactly what it resolves: the consulting leaf has
-    // none of the training rows, Autofinanziato adds its own pair.
-    $trattative = ProductCategory::query()->where('name', 'Trattative in Corso')->firstOrFail();
-    $consulting = $service->resolveExact($trattative, AttributeContext::Quote, LayoutFormScope::All);
-
+    // Each category places exactly what it resolves: "DIL" has none of the
+    // training rows below its barrier, Autofinanziato adds its own pair.
     $placed = fn (array $blob): array => collect(contactSectionOf($blob)['rows'])
         ->flatMap(fn (array $row): array => array_column($row['items'], 'attribute_code'))
         ->all();
 
-    expect($placed($consulting))->toBe([
-        'appointment_date', 'acceptance_date', 'company_name',
-        'company_referent', 'site_address', 'city', 'requested_service',
+    $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
+    expect($placed($service->resolveWithFallback($dil, AttributeContext::Quote, FormMode::Create)))->toBe([
+        'chosen_course', 'data_scelta_cpi', 'data_app_apl',
+        'dote_activation_date', 'dote_expiry_date', 'subsidy_type',
     ]);
 
     $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
-    expect($placed($service->resolveExact($autofinanziato, AttributeContext::Quote, LayoutFormScope::All)))
+    expect($placed($service->resolveWithFallback($autofinanziato, AttributeContext::Quote, FormMode::Create)))
         ->toContain('course_time_preference', 'price', 'cpi');
 });
 
@@ -390,10 +397,9 @@ it('mirrors the whole set into the Commessa context, on the same categories', fu
     expect(effectiveCodes('Autofinanziato', AttributeContext::WorkOrder))
         ->toContain('cpi', 'course_time_preference', 'price');
 
+    // Empty in the Commessa too: the retirement is context-wide.
     foreach (ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES as $name) {
-        expect(effectiveCodes($name, AttributeContext::WorkOrder))
-            ->toContain('appointment_date', 'company_referent')
-            ->not->toContain('cpi');
+        expect(effectiveCodes($name, AttributeContext::WorkOrder))->toBe([], $name);
     }
 });
 
@@ -403,12 +409,14 @@ it('seeds the Commessa section per contributing category, alone in its own form'
 
     $service = app(AttributeLayoutService::class);
 
-    // The same 18 categories the Offerta side gets: the Formazione branch plus
-    // the two Consulenza leaves.
-    expect(AttributeLayout::query()->where('context', AttributeContext::WorkOrder->value)->count())->toBe(18);
+    // Spec 0115: a row only where the composition differs from the ancestor's.
+    // One fewer than the Offerta's eight — "Autoimpiego" adds its
+    // self-employment flag in the `quote` context alone, so on the Commessa it
+    // has nothing its parent does not already say.
+    expect(AttributeLayout::query()->where('context', AttributeContext::WorkOrder->value)->count())->toBe(7);
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-    $blob = $service->resolveExact($molise, AttributeContext::WorkOrder, LayoutFormScope::All);
+    $blob = $service->resolveWithFallback($molise, AttributeContext::WorkOrder, FormMode::Create);
 
     // Nothing else contributes to the Commessa form: this catalogue's section
     // is the whole of it, unlike the Offerta where it comes third.
@@ -421,11 +429,11 @@ it('seeds the Commessa section per contributing category, alone in its own form'
     // out identical, so a divergence here means one context resolved something
     // the other did not. Only its position differs — the Offerta stacks it
     // after the two training sections, when the category has them.
-    foreach (['GOL - Lazio', 'Autofinanziato', 'Trattative in Corso'] as $name) {
+    foreach (['GOL - Lazio', 'Autofinanziato', 'GOL - Molise'] as $name) {
         $category = ProductCategory::query()->where('name', $name)->firstOrFail();
 
-        $commessa = contactSectionOf($service->resolveExact($category, AttributeContext::WorkOrder, LayoutFormScope::All));
-        $offerta = contactSectionOf($service->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All));
+        $commessa = contactSectionOf($service->resolveWithFallback($category, AttributeContext::WorkOrder, FormMode::Create));
+        $offerta = contactSectionOf($service->resolveWithFallback($category, AttributeContext::Quote, FormMode::Create));
 
         expect(array_diff_key($commessa, ['sort_order' => null]))
             ->toBe(array_diff_key($offerta, ['sort_order' => null]), $name);
@@ -438,7 +446,7 @@ it('never overwrites a Commessa layout configured by hand, nor the Offerta one f
     $service = app(AttributeLayoutService::class);
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
 
-    $offerta = $service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All);
+    $offerta = $service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create);
 
     $configured = $service->upsert($molise, AttributeContext::WorkOrder, LayoutFormScope::All, [
         'sections' => [[
@@ -459,5 +467,5 @@ it('never overwrites a Commessa layout configured by hand, nor the Offerta one f
     // The two contexts are independent rows: touching one leaves the other as
     // the seeder wrote it.
     expect($service->resolveExact($molise, AttributeContext::WorkOrder, LayoutFormScope::All))->toBe($configured)
-        ->and($service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All))->toBe($offerta);
+        ->and($service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create))->toBe($offerta);
 });

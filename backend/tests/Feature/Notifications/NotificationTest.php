@@ -108,6 +108,49 @@ it('unread-count: returns the actor unread count', function () {
         ->assertJsonPath('data.count', 2);
 });
 
+it('unread-count: returns the most recent unread notification as latest', function () {
+    $actor = User::factory()->create();
+    notify($actor, 'Older');
+    $this->travel(1)->minutes();
+    notify($actor, 'Newest');
+    Sanctum::actingAs($actor);
+
+    $this->getJson('/api/notifications/unread-count')
+        ->assertOk()
+        ->assertJsonPath('data.count', 2)
+        ->assertJsonPath('data.latest.data.title', 'Newest')
+        ->assertJsonPath('data.latest.read_at', null)
+        ->assertJsonStructure([
+            'data' => ['count', 'latest' => ['id', 'type', 'data', 'read_at', 'created_at']],
+        ]);
+});
+
+it('unread-count: latest is null when everything is read', function () {
+    $actor = User::factory()->create();
+    notify($actor);
+    $actor->unreadNotifications->markAsRead();
+    Sanctum::actingAs($actor);
+
+    $this->getJson('/api/notifications/unread-count')
+        ->assertOk()
+        ->assertJsonPath('data.count', 0)
+        ->assertJsonPath('data.latest', null);
+});
+
+it('unread-count: latest ignores another user notifications', function () {
+    $actor = User::factory()->create();
+    $other = User::factory()->create();
+    notify($actor, 'Mine');
+    $this->travel(1)->minutes();
+    notify($other, 'Theirs');
+    Sanctum::actingAs($actor);
+
+    $this->getJson('/api/notifications/unread-count')
+        ->assertOk()
+        ->assertJsonPath('data.count', 1)
+        ->assertJsonPath('data.latest.data.title', 'Mine');
+});
+
 it('unread-count: 401 when unauthenticated', function () {
     $this->getJson('/api/notifications/unread-count')->assertUnauthorized();
 });

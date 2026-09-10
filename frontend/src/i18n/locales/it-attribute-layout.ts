@@ -62,7 +62,13 @@ export const attributeLayout = {
       view: 'Visualizzazione',
     },
     inheritsShared: 'Questa modalità usa il layout di “Tutte le modalità”.',
+    inheritsCategory: 'Questa categoria usa il layout di “{{category}}”.',
+    categoryOverrideActive: 'Layout personalizzato, indipendente da quello di “{{category}}”.',
+    resetToInherited: 'Torna al layout ereditato',
+    resetCategoryDescription:
+      'La categoria tornerà a usare il layout di “{{category}}”. La configurazione dedicata verrà eliminata.',
     customize: 'Personalizza questa modalità',
+    customizeCategory: 'Personalizza questa categoria',
     overrideUnsaved: 'Personalizzazione non ancora salvata: salva per applicarla solo a questa modalità.',
     overrideActive: 'Layout personalizzato per “{{mode}}”.',
     resetToShared: 'Torna a tutte le modalità',

@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { env } from '@/config/env'
-import { fetchNotifications, fetchUnreadCount } from '@/features/notifications/api'
+import { fetchNotifications, fetchUnreadSummary } from '@/features/notifications/api'
 import { notificationKeys } from '@/features/notifications/query-keys'
 import type { NotificationFilter } from '@/features/notifications/types'
 import { useAuth } from '@/features/auth/use-auth'
@@ -9,18 +9,23 @@ import { useAuth } from '@/features/auth/use-auth'
 export const NOTIFICATIONS_PAGE_SIZE = 15
 
 /**
- * Lightweight, always-on poll for the unread badge count. Only runs while the
- * user is authenticated and never refetches while the tab is in the background.
+ * Lightweight, always-on poll for the unread summary: the badge count plus the
+ * most recent unread notification. Only runs while the user is authenticated.
+ *
+ * Unlike the panel list, this one KEEPS polling while the tab sits in the
+ * background: that is exactly when the browser tab title announces the
+ * notification, and a poll that stopped on blur would leave the title stale
+ * until the user came back — where the announcement is no longer needed.
  */
-export function useUnreadCount() {
+export function useUnreadSummary() {
   const { isAuthenticated } = useAuth()
 
   return useQuery({
-    queryKey: notificationKeys.unreadCount,
-    queryFn: fetchUnreadCount,
+    queryKey: notificationKeys.unreadSummary,
+    queryFn: fetchUnreadSummary,
     enabled: isAuthenticated,
     refetchInterval: isAuthenticated ? env.notificationsPollInterval : false,
-    refetchIntervalInBackground: false,
+    refetchIntervalInBackground: true,
   })
 }
 

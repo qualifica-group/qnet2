@@ -66,7 +66,13 @@ export const attributeLayout = {
       view: 'View',
     },
     inheritsShared: 'This mode uses the “All modes” layout.',
+    inheritsCategory: 'This category uses the layout of “{{category}}”.',
+    categoryOverrideActive: 'Layout customized, independent of the one of “{{category}}”.',
+    resetToInherited: 'Back to the inherited layout',
+    resetCategoryDescription:
+      'The category goes back to the layout of “{{category}}”. Its own configuration is deleted.',
     customize: 'Customize this mode',
+    customizeCategory: 'Customize this category',
     overrideUnsaved: 'Customization not saved yet: save to apply it to this mode only.',
     overrideActive: 'Layout customized for “{{mode}}”.',
     resetToShared: 'Back to all modes',

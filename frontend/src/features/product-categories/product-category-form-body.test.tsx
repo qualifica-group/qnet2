@@ -118,7 +118,7 @@ beforeEach(() => {
   fetchProductCategoryTreeMock.mockReset()
   fetchProductCategoryTreeMock.mockResolvedValue([])
   fetchAttributeLayoutMock.mockReset()
-  fetchAttributeLayoutMock.mockResolvedValue({ layout: null, inherited: null, attributes: [] })
+  fetchAttributeLayoutMock.mockResolvedValue({ layout: null, inherited: null, inherited_from_category: null, inherited_from_category_source: null, attributes: [] })
   fetchEffectiveManagerLabelsMock.mockReset()
   fetchEffectiveManagerLabelsMock.mockResolvedValue({})
   fetchResourceMetaMock.mockReset()

@@ -17,13 +17,13 @@ function renderBell() {
   )
 }
 
-const useUnreadCountMock = vi.fn()
+const useUnreadSummaryMock = vi.fn()
 const useNotificationListMock = vi.fn()
 const markAsReadMutateMock = vi.fn()
 const markAllAsReadMutateMock = vi.fn()
 
 vi.mock('@/features/notifications/use-notifications', () => ({
-  useUnreadCount: () => useUnreadCountMock(),
+  useUnreadSummary: () => useUnreadSummaryMock(),
   useNotificationList: (open: boolean, filter: NotificationFilter) =>
     useNotificationListMock(open, filter),
 }))
@@ -70,12 +70,12 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  useUnreadCountMock.mockReset()
+  useUnreadSummaryMock.mockReset()
   useNotificationListMock.mockReset()
   markAsReadMutateMock.mockReset()
   markAllAsReadMutateMock.mockReset()
 
-  useUnreadCountMock.mockReturnValue({ data: 2 })
+  useUnreadSummaryMock.mockReturnValue({ data: { count: 2, latest: null } })
   useNotificationListMock.mockReturnValue({
     data: {
       pages: [

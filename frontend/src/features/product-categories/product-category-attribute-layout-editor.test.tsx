@@ -52,6 +52,8 @@ function response(overrides: Partial<AttributeLayoutData> = {}): AttributeLayout
   return {
     layout: null,
     inherited: null,
+    inherited_from_category: null,
+    inherited_from_category_source: null,
     attributes: [
       {
         id: 1,
@@ -82,6 +84,18 @@ function wrapper() {
       <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
     </QueryClientProvider>
   )
+}
+
+/**
+ * A response where the category owns nothing and renders $source's layout
+ * (spec 0115), unless `overrides` gives it a row of its own.
+ */
+function inheritingFrom(source: string, overrides: Partial<AttributeLayoutData> = {}): AttributeLayoutData {
+  return response({
+    inherited_from_category: SKU_LAYOUT,
+    inherited_from_category_source: { id: 1, name: source },
+    ...overrides,
+  })
 }
 
 /** Picks a scope in the form-mode select and waits for its load. */
@@ -195,5 +209,45 @@ describe('ProductCategoryAttributeLayoutEditor', () => {
 
     expect(onCancelMock).toHaveBeenCalledTimes(1)
     expect(saveAttributeLayoutMock).not.toHaveBeenCalled()
+  })
+
+  // Spec 0115 — the CATEGORY inheritance axis.
+
+  it('AC-017: a category inheriting from an ancestor names it, read-only, until customized', async () => {
+    fetchAttributeLayoutMock.mockResolvedValue(inheritingFrom('Formazione'))
+    render(<ProductCategoryAttributeLayoutEditor categoryId={7} onCancel={onCancelMock} />, { wrapper: wrapper() })
+
+    expect(await screen.findByText('This category uses the layout of “Formazione”.')).toBeInTheDocument()
+    // The ancestor's sections are previewed, but Save cannot mint a copy of them.
+    expect(screen.getAllByDisplayValue('Identification').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Save layout' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Customize this category' }))
+
+    expect(screen.getByRole('button', { name: 'Save layout' })).toBeEnabled()
+  })
+
+  it('AC-018: “Back to the inherited layout” deletes the row and returns to inheriting', async () => {
+    fetchAttributeLayoutMock.mockResolvedValue(inheritingFrom('Formazione', { layout: SKU_LAYOUT }))
+    saveAttributeLayoutMock.mockResolvedValue(null)
+    render(<ProductCategoryAttributeLayoutEditor categoryId={7} onCancel={onCancelMock} />, { wrapper: wrapper() })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to the inherited layout' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+
+    await waitFor(() => expect(saveAttributeLayoutMock).toHaveBeenCalledWith(7, 'product', 'all', { sections: [] }))
+    expect(await screen.findByText('This category uses the layout of “Formazione”.')).toBeInTheDocument()
+  })
+
+  it('AC-019: on a mode with no override, the ancestor is named rather than the shared layout', async () => {
+    fetchAttributeLayoutMock.mockResolvedValue(inheritingFrom('Formazione'))
+    render(<ProductCategoryAttributeLayoutEditor categoryId={7} onCancel={onCancelMock} />, { wrapper: wrapper() })
+    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'product', 'all'))
+
+    await selectScope('Edit')
+
+    // Both axes apply here; only the category one names the real source.
+    expect(await screen.findByText('This category uses the layout of “Formazione”.')).toBeInTheDocument()
+    expect(screen.queryByText('This mode uses the “All modes” layout.')).not.toBeInTheDocument()
   })
 })

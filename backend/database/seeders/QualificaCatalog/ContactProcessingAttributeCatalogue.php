@@ -51,7 +51,10 @@ final class ContactProcessingAttributeCatalogue
     public const string GOL_CATEGORY = 'GOL';
 
     /**
-     * The two Consulenza leaves sharing the company-appointment set.
+     * The two Consulenza leaves. They carry NO attribute at all any more (user
+     * directive 2026-09-10) — kept named because the tests assert precisely
+     * that emptiness, and because RETIRED_ATTRIBUTES has to keep withdrawing
+     * from them on every re-seed.
      *
      * @var list<string>
      */
@@ -67,8 +70,10 @@ final class ContactProcessingAttributeCatalogue
 
     /**
      * Codes the client retired from the set — "Corso di interesse", i.e. the
-     * `corso` row adopted from q-crm (user directive 2026-08-03), and "Sede",
-     * i.e. `training_site` (user directive 2026-09-10). The ASSIGNMENT is
+     * `corso` row adopted from q-crm (user directive 2026-08-03); "Sede", i.e.
+     * `training_site`; and the whole company-appointment set the two Consulenza
+     * leaves used to carry, which the client wants EMPTY — no field of their
+     * own and nothing inherited (user directive 2026-09-10). The ASSIGNMENT is
      * removed from every category on re-seed, so an installation provisioned by
      * an earlier revision converges instead of keeping a field this catalogue no
      * longer declares.
@@ -83,7 +88,24 @@ final class ContactProcessingAttributeCatalogue
      *
      * @var list<string>
      */
-    public const array RETIRED_ATTRIBUTES = ['corso', 'training_site'];
+    public const array RETIRED_ATTRIBUTES = [
+        'corso', 'training_site',
+        // The company-appointment set: retired, not merely undeclared, or an
+        // installation already seeded would keep rendering all seven.
+        'appointment_date', 'acceptance_date', 'company_name',
+        'site_address', 'city', 'requested_service', 'company_referent',
+    ];
+
+    /**
+     * "Sede corso" (user directive 2026-09-10): a NEW code, deliberately NOT
+     * the retired `training_site` above, which was the same idea as free
+     * TEXT. Reviving that code would reinterpret every string already stored
+     * on an offer or a work order ("Milano") as an operational-site ID —
+     * broken references rather than migrated data. A new code leaves those
+     * values where they are, unassigned and unread, and starts the relation
+     * clean. Named here because the layout ROWS key on it.
+     */
+    public const string COURSE_SITE = 'course_site';
 
     /**
      * The three specs shared by the training set and the "DIL" one below —
@@ -105,6 +127,22 @@ final class ContactProcessingAttributeCatalogue
      *
      * @var array{code: string, name: string, type: string, options: list<array{value: string, label: string}>}
      */
+    /**
+     * "Sede corso" points at a single operational site (user directive
+     * 2026-09-10). `operational-sites` is a valid relation target because it
+     * is registered in BOTH config/tables.php and config/authorization.php —
+     * the condition App\CustomFields\CustomFieldEntityRegistry imposes on
+     * every `entity_type` — and it exposes the for-select endpoint the
+     * frontend's RelationFieldControl queries.
+     *
+     * @var array<string, mixed>
+     */
+    private const array COURSE_SITE_RELATION_TARGET = [
+        'entity_type' => 'operational-sites',
+        'cardinality' => 'one',
+        'for_select_resource' => 'operational-sites',
+    ];
+
     private const array SUBSIDY_TYPE = ['code' => 'subsidy_type', 'name' => 'Tipologia Sussidio', 'type' => 'enum', 'options' => [
         ['value' => 'naspi', 'label' => 'Naspi'],
         ['value' => 'adi', 'label' => 'Adi'],
@@ -134,6 +172,7 @@ final class ContactProcessingAttributeCatalogue
             ]],
             self::SUBSIDY_TYPE,
             ['code' => 'id_corso', 'name' => 'ID Corso', 'type' => 'text'],
+            ['code' => self::COURSE_SITE, 'name' => 'Sede corso', 'type' => 'relation', 'relation_target' => self::COURSE_SITE_RELATION_TARGET],
             ['code' => 'gol_notice', 'name' => 'Avviso GOL', 'type' => 'text'],
             ['code' => 'application_window', 'name' => 'Finestra', 'type' => 'text'],
             ['code' => 'psp', 'name' => 'PSP', 'type' => 'boolean'],
@@ -169,8 +208,6 @@ final class ContactProcessingAttributeCatalogue
         'GOL - Lombardia' => self::APL_APPOINTMENT_TIME,
         'GOL - Lazio' => self::APL_APPOINTMENT_TIME,
         'GOL - Sicilia' => self::APL_APPOINTMENT_TIME,
-        'Trattative in Corso' => self::CONSULTING_ATTRIBUTES,
-        'Presa Appuntamenti' => self::CONSULTING_ATTRIBUTES,
     ];
 
     /**
@@ -208,23 +245,6 @@ final class ContactProcessingAttributeCatalogue
     ];
 
     /**
-     * The company-appointment set, assigned to BOTH Consulenza leaves: they
-     * are siblings, so there is no common node below the root to hang it on
-     * and the root must not hand it to the rest of Consulenza.
-     *
-     * @var list<array{code: string, name: string, type: string}>
-     */
-    private const array CONSULTING_ATTRIBUTES = [
-        ['code' => 'appointment_date', 'name' => 'Data Appuntamento', 'type' => 'date'],
-        ['code' => 'acceptance_date', 'name' => 'Data Accettazione', 'type' => 'date'],
-        ['code' => 'company_name', 'name' => 'Nome Azienda', 'type' => 'text'],
-        ['code' => 'site_address', 'name' => 'Indirizzo Sede', 'type' => 'text'],
-        ['code' => 'city', 'name' => 'Città', 'type' => 'text'],
-        ['code' => 'requested_service', 'name' => 'Servizio Richiesto', 'type' => 'text'],
-        ['code' => 'company_referent', 'name' => 'Referente Azienda', 'type' => 'text'],
-    ];
-
-    /**
      * The legacy `text` row the client's list wants as a pick list — named
      * here because the seeder's promotion step keys on it.
      */
@@ -246,6 +266,39 @@ final class ContactProcessingAttributeCatalogue
      * @var list<list<string>>
      */
     public const array ROWS = [
+        ['chosen_course'],
+        ['data_scelta_cpi', 'data_app_apl'],
+        ['ora_app_cpi', 'ora_app_apl'],
+        ['dote_activation_date', 'dote_expiry_date'],
+        ['stato_assoc_cpi', 'dote_remaining_hours'],
+        ['cpi', 'profilo_cpi'],
+        ['subsidy_type'],
+        ['id_corso', self::COURSE_SITE],
+        ['gol_notice', 'application_window'],
+        ['course_time_preference', 'price'],
+        ['psp', 'did'],
+        ['identity_documents', 'digital_identity'],
+        ['foreign_user_documents', self::DEGREE_ATTRIBUTE],
+    ];
+
+    /**
+     * ROWS as it stood BEFORE "Sede corso" joined it (user directive
+     * 2026-09-10) — frozen history, never edited to follow ROWS.
+     *
+     * It is what lets the two layout seeders RECOGNISE the composition they
+     * wrote on an installation provisioned by the previous revision, and
+     * recompose it. Without it that installation would keep its old blob (a
+     * configured layout is user data, never overwritten), the new attribute
+     * would resolve but sit in no section, and the renderer would strand it in
+     * the synthesized "Altre informazioni" — the field present but in the
+     * wrong place, which is worse than absent.
+     *
+     * A future change to ROWS adds ITS predecessor here in turn, exactly as
+     * QualificaQuoteLayoutSeeder::PREVIOUS_SECTIONS stacks its own.
+     *
+     * @var list<list<string>>
+     */
+    public const array PREVIOUS_ROWS = [
         ['chosen_course'],
         ['data_scelta_cpi', 'data_app_apl'],
         ['ora_app_cpi', 'ora_app_apl'],

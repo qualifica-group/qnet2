@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0115-attribute-layout-category-inheritance" status="draft" owner="tu" date="2026-09-10">
+
+  <goal>
+    Dare al LAYOUT degli attributi la stessa ereditarieta' che hanno gia' le ASSEGNAZIONI di
+    attributo: una categoria senza layout proprio rende quello del suo antenato piu' vicino,
+    invece di ricadere sul rendering flat. Oggi il layout va scritto una volta per categoria —
+    16 righe quasi identiche sul solo ramo "Formazione" — e un ritocco dal configuratore va
+    ripetuto a mano su ognuna.
+  </goal>
+
+  <context>
+    <!-- Grounding verificato nel repo il 2026-09-10, non ipotizzato. -->
+    <today>
+      `attribute_layouts` = una riga per (product_category_id, context, form_mode), model
+      App\Models\AttributeLayout, blob `layout` cast 'array'. Nessuna colonna nuova serve.
+
+      Lettura: App\Services\ProductCategories\AttributeLayoutService.
+      - `resolveExact(category, context, scope)` — riga ESATTA, la load di authoring del
+        configuratore. NON toccata da questa spec.
+      - `resolveWithFallback(category, context, formMode)` — UNICO path di consumo: una query
+        sui due scope candidati (`$formMode` e `all`) della SOLA categoria, l'override di
+        modalita' vince, poi il condiviso `all`, poi null = rendering flat (spec 0062 AC-007).
+        E' il metodo che questa spec estende.
+
+      Consumatori di `resolveWithFallback`, tutti indirettamente coperti:
+      - App\RequestManagement\AttributeLayoutMerger (step 2, riga 79): Offerta/Gestione
+        Richieste, Commessa. Chiama il metodo UNA VOLTA PER CATEGORIA CONTRIBUENTE, in ordine,
+        e concatena le sezioni deduplicando first-wins; pota ogni item fuori da
+        `applicableCodes` (AttributeSetResolver) e ogni riga/sezione rimasta vuota; i codici
+        applicabili che nessuna categoria colloca finiscono nella sezione sintetica
+        "Altre informazioni".
+      - AttributeLayoutController::show() senza `exact` — il form Prodotto.
+
+      Ereditarieta' degli ATTRIBUTI (il modello da rispecchiare):
+      CategoryHierarchy::inheritedAncestors(category, context) (PRIVATE, riga 80) risale
+      `parent_id` fino a MAX_DEPTH=100 e si ferma al primo nodo che ha
+      `AttributeContext::inheritanceColumn()` a false; se la categoria stessa ha la barriera
+      giu', ritorna vuoto. Le tre colonne barriera (`inherits_product_attributes`,
+      `inherits_quote_attributes`, `inherits_work_order_attributes`) sono `default(true)` e
+      per-contesto indipendenti.
+
+      Seeder: Database\Seeders\QualificaQuoteLayoutSeeder scrive un layout `quote` su OGNI
+      categoria del ramo Formazione (root + 5 sottocategorie + 10 GOL regionali = 16) piu' le 2
+      foglie Consulenza. QualificaContactProcessingSeeder fa lo stesso per il contesto
+      `work_order`. Entrambi sono idempotenti e non distruttivi: saltano una categoria gia'
+      configurata a meno che il blob non sia byte-per-byte una composizione che una revisione
+      precedente del seeder ha scritto (`PREVIOUS_SECTIONS` / `isPreviousComposition`).
+
+      Assegnazioni proprie sul ramo Formazione, per capire chi ha davvero bisogno di un layout
+      suo: GOL (`ora_app_cpi`), GOL - Lombardia/Lazio/Sicilia (`ora_app_apl`), Autofinanziato
+      (`delivery_mode`, `course_time_preference`, `price`), Autoimpiego (`interest_expression`),
+      DIL (6 codici + barriera `inherits_quote_attributes = false`, direttiva utente
+      2026-09-10). Yisu e i 7 GOL regionali restanti non hanno NESSUNA riga propria.
+
+      Frontend: il configuratore vive in
+      frontend/src/features/product-categories/product-category-attribute-layout-*.tsx.
+      `product-category-attribute-layout-scope-notice.tsx` (79 righe) e' gia' esattamente il
+      banner "questa modalita' eredita il layout condiviso / Personalizza / Torna al condiviso":
+      il pattern UI di questa spec e' quello, applicato al secondo asse.
+    </today>
+
+    <decisions source="utente 2026-09-10">
+      <d id="D-1">L'ereditarieta' del layout usa la STESSA barriera per-contesto degli
+        attributi (`inheritsAttributesIn`). Conseguenza voluta: "DIL", che taglia
+        `inherits_quote_attributes`, non eredita nemmeno il layout Offerta di "Formazione" —
+        coerente, visto che risolve un set di campi tutto suo.</d>
+      <d id="D-2">I due assi di fallback si compongono con la CATEGORIA come asse ESTERNO:
+        per ogni livello della catena si prova prima l'override di modalita', poi il condiviso
+        `all`; solo se il livello non ha ne' l'uno ne' l'altro si sale. Un layout `all` proprio
+        della categoria batte quindi l'override `create` dell'antenato — la categoria piu'
+        specifica vince sempre, come per gli attributi.</d>
+      <d id="D-3">La regola vale in TUTTI E TRE i contesti (`product`, `quote`, `work_order`),
+        non solo Offerta: `resolveWithFallback` e' un metodo solo e gli attributi si ereditano
+        allo stesso modo ovunque. Una regola per contesto sarebbe un'incoerenza, non una
+        precauzione.</d>
+      <d id="D-4">Il campo `inherited` gia' presente nella response GET e' OCCUPATO dal
+        fallback di SCOPE (il layout `all` che una modalita' eredita) e non cambia significato:
+        rinominarlo romperebbe il contratto per un guadagno nullo. Il nuovo asse porta due
+        campi propri, con il suffisso `_source_category` gia' convenzionale nel progetto
+        (`requires_quote_source_category`, `management_mode_source_category`, ...).</d>
+      <d id="D-5">Le righe di layout gia' scritte dai seeder sulle categorie che ora
+        erediterebbero lo stesso identico risultato vanno RIMOSSE, altrimenti l'ereditarieta'
+        non si vede: un layout proprio vince sempre. La rimozione avviene solo per un blob
+        riconosciuto byte-per-byte come composizione del seeder (il meccanismo
+        `isPreviousComposition` che gia' esiste); un layout ritoccato a mano non si tocca mai.</d>
+      <d id="D-6" source="implementazione 2026-09-10">Il criterio "questa categoria ha bisogno di
+        una riga propria" NON e' una lista di nomi hard-coded: il seeder compone le sezioni dalla
+        effective set della categoria e scrive solo se il risultato DIFFERISCE da quello che
+        erediterebbe. Una lista si sarebbe disallineata al primo attributo aggiunto al catalogo;
+        cosi' il seeder si riallinea da solo. Richiede di visitare le categorie ROOT-FIRST —
+        cosa un antenato rende e' deciso dal passaggio che lo ha gia' visitato.</d>
+      <d id="D-7" source="implementazione 2026-09-10">L'asse categoria si risolve per
+        LayoutFormScope, non per FormMode: l'authoring edita uno scope, e lo scope di default
+        `all` non e' una FormMode (`FormMode::from('all')` sarebbe un errore). Da qui i due metodi
+        pubblici sopra un unico privato: `resolveInherited` (consumo, per FormMode) e
+        `resolveInheritedForScope` (authoring, per LayoutFormScope).</d>
+      <d id="D-8" source="implementazione 2026-09-10">La GET di authoring riporta l'asse categoria
+        ANCHE quando la categoria ha una riga propria (correzione del primo taglio, che lo
+        azzerava): descrive l'ascendenza, che la riga della categoria non cambia, ed e' cio' che
+        dice al configuratore se l'azione "Torna al layout ereditato" esiste. Chi decide da quale
+        dei tre seminare la bozza e' il client, nello stesso ordine di specificita'.</d>
+    </decisions>
+
+    <invariant>
+      Un layout ereditato e' SEMPRE valido sul discendente che lo rende: senza barriera gli
+      attributi effettivi del discendente sono un SOVRAINSIEME di quelli dell'antenato
+      (l'override most-specific-wins sostituisce una riga, non la toglie), e con la barriera
+      l'ereditarieta' del layout e' tagliata insieme a quella degli attributi (D-1). Quindi
+      AttributeLayoutValidator non va rilassato ne' ri-eseguito in lettura.
+    </invariant>
+  </context>
+
+  <scope>
+    <in>
+      <item>BE: risalita della catena in `AttributeLayoutService::resolveWithFallback()`, con
+        la barriera per-contesto (D-1, D-2).</item>
+      <item>BE: esporre la catena — `CategoryHierarchy::inheritedAncestors()` da private a
+        public, oppure un metodo pubblico dedicato che la riusa. Nessuna duplicazione della
+        logica di risalita.</item>
+      <item>BE: due campi nuovi nella response di `GET .../attribute-layouts` con `exact=true`
+        (`inherited_from_category`, `inherited_from_category_source`), perche' il configuratore
+        possa dire "questa categoria eredita il layout di X".</item>
+      <item>BE: `QualificaQuoteLayoutSeeder` e `QualificaContactProcessingSeeder` scrivono solo
+        sulle categorie che hanno bisogno di un layout PROPRIO, e ripuliscono le righe seeded
+        ora ridondanti (D-5).</item>
+      <item>FE: il configuratore mostra lo stato "eredita da X" con le azioni Personalizza /
+        Torna all'ereditato, sul modello di `AttributeLayoutScopeNotice`.</item>
+      <item>Test Pest sulla risoluzione, la barriera, la precedenza dei due assi e il seeder;
+        test Vitest sul banner del configuratore.</item>
+    </in>
+    <out>
+      <item>Qualsiasi modifica allo schema: nessuna migrazione, nessuna colonna nuova.</item>
+      <item>`resolveExact()` e la semantica del campo `inherited` esistente (D-4).</item>
+      <item>La value-pipeline: AttributeSetResolver, ApplicableAttribute, la validazione e la
+        normalizzazione dei valori restano intatte. Questa spec decide SOLO come un set gia'
+        risolto viene raggruppato a schermo.</item>
+      <item>L'ereditarieta' delle ASSEGNAZIONI di attributo, che gia' funziona e non cambia.</item>
+      <item>L'algoritmo di merge multi-categoria di AttributeLayoutMerger (concatenazione,
+        first-wins, potatura, "Altre informazioni"): riceve un layout in piu' dove prima
+        riceveva null, e nient'altro cambia per lui.</item>
+      <item>Il catalogo di attributi del cliente: nessun campo aggiunto, spostato o tolto a
+        nessuna categoria.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/product-categories/{productCategory}/attribute-layouts">
+      <request>
+        Invariata. `context` (product|quote|work_order), `form_mode`, `exact` (bool).
+      </request>
+      <response status="200">
+        {
+          success: true,
+          data: {
+            layout: LayoutBlob | null,              // INVARIATO — la riga esatta dello scope
+            inherited: LayoutBlob | null,           // INVARIATO — il layout `all` che questa MODALITA' eredita (D-4)
+            inherited_from_category: LayoutBlob | null,        // NUOVO — il layout che questa CATEGORIA eredita dall'antenato, gia' risolto sui due assi; null se non eredita nulla
+            inherited_from_category_source: { id: int, name: string } | null,  // NUOVO — da quale antenato; non-null se e solo se `inherited_from_category` non e' null
+            attributes: EffectiveAttribute[]        // INVARIATO
+          }
+        }
+        I due campi nuovi sono popolati SOLO con `exact=true` (load di authoring); nel path di
+        consumo (`exact` assente) restano assenti/null, perche' li' l'ereditarieta' e' gia'
+        dentro `layout`.
+      </response>
+      <errors>403 senza `product-categories.view`; 404 categoria inesistente; 422 context/form_mode non validi. Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/product-categories/{productCategory}/attribute-layouts">
+      <request>Invariata. Un `layout` null/senza sezioni continua a CANCELLARE la riga — che
+        ora significa "torna a ereditare dall'antenato" invece di "torna al rendering flat".
+        Nessun parametro nuovo: l'azione "Torna all'ereditato" del configuratore E' questa PUT.</request>
+      <response status="200">Invariata: { success, message: "Updated", data: { layout } }.</response>
+      <errors>403 senza `product-categories.update`; 422 codice fuori dal set effettivo. Invariati.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Data una categoria figlia SENZA riga di layout e un antenato con un
+      layout `all` nel contesto, quando si risolve il layout della figlia, allora si ottiene il
+      blob dell'antenato invece di null.</criterion>
+    <criterion id="AC-002">Data la stessa coppia ma con la figlia che ha un layout `all`
+      proprio, allora vince quello della figlia — anche se l'antenato ha un override della
+      modalita' richiesta (D-2).</criterion>
+    <criterion id="AC-003">Data una figlia senza righe proprie e un antenato che ha SIA un
+      override della modalita' richiesta SIA un `all`, allora si ottiene l'override della
+      modalita'.</criterion>
+    <criterion id="AC-004">Data una figlia con la barriera del contesto a false e un antenato
+      con layout, allora la figlia risolve null (rendering flat), non il layout dell'antenato
+      (D-1).</criterion>
+    <criterion id="AC-005">Dato un nonno con layout, un padre con la barriera a false e senza
+      layout proprio, e un figlio senza layout, allora il figlio risolve null: la catena si
+      ferma sul padre, che non ha nulla da offrire.</criterion>
+    <criterion id="AC-006">Le tre barriere sono indipendenti: una categoria con
+      `inherits_quote_attributes = false` e `inherits_product_attributes = true` NON eredita il
+      layout `quote` dell'antenato ma eredita il suo `product`.</criterion>
+    <criterion id="AC-007">Data una catena senza alcun layout a nessun livello, allora la
+      risoluzione ritorna null e il rendering resta flat (spec 0062 AC-007, invariata).</criterion>
+    <criterion id="AC-008">Risolvere il layout di una categoria a profondita' N esegue un
+      numero di query INDIPENDENTE da N (una sola query sull'intera catena), verificato con
+      `DB::listen`/`assertQueryCount` su una catena di almeno 4 livelli.</criterion>
+    <criterion id="AC-009">In Gestione Richieste, un'Offerta su una categoria senza layout
+      proprio il cui antenato ne ha uno rende le sezioni dell'antenato; i codici applicabili
+      che quel layout non colloca restano nella sezione "Altre informazioni" — il
+      comportamento di AttributeLayoutMerger non cambia.</criterion>
+    <criterion id="AC-010">`GET .../attribute-layouts?exact=true` su una categoria che eredita
+      restituisce `layout: null`, `inherited_from_category` uguale al blob dell'antenato e
+      `inherited_from_category_source` con id e nome di quell'antenato.</criterion>
+    <criterion id="AC-011">Sulla stessa chiamata per una categoria che NON eredita (radice, o
+      barriera, o nessun antenato con layout) entrambi i campi nuovi sono null.</criterion>
+    <criterion id="AC-012">`PUT` con `layout: null` su una categoria che ha una riga propria e
+      un antenato con layout cancella la riga; la GET successiva mostra la categoria tornata a
+      ereditare (`layout: null`, `inherited_from_category` valorizzato).</criterion>
+    <criterion id="AC-013">Dopo `QualificaProductionDataSeeder` su un database vuoto, il ramo
+      Formazione ha una riga `attribute_layouts` di contesto `quote` SOLO sulle categorie con
+      campi propri (Formazione, GOL, GOL - Lombardia, GOL - Lazio, GOL - Sicilia,
+      Autofinanziato, Autoimpiego, DIL) e NESSUNA su Yisu e sui 7 GOL regionali restanti.
+      Totale `quote` incluse le 2 foglie Consulenza: 10 righe, da 18. Contesto `work_order`: 9,
+      una in meno — "Autoimpiego" assegna il suo flag nel solo contesto `quote`, quindi sulla
+      Commessa non aggiunge nulla al padre.</criterion>
+    <criterion id="AC-014">Il form Offerta di Yisu e di un GOL regionale senza campi extra rende
+      esattamente le stesse sezioni, nello stesso ordine, PRIMA e DOPO la modifica — la
+      pulizia delle righe non cambia una virgola di cio' che l'operatore vede.</criterion>
+    <criterion id="AC-015">Ri-eseguire il seeder su un'installazione gia' seeded converge: le
+      righe ora ridondanti sono rimosse una volta sola e una seconda esecuzione non tocca piu'
+      nulla (nessun UPDATE, nessuna riga di activity log).</criterion>
+    <criterion id="AC-016">Un layout MODIFICATO A MANO dal configuratore su una categoria che
+      erediterebbe non viene rimosso dal seeder, neanche se il risultato ereditato sarebbe
+      equivalente (D-5).</criterion>
+    <criterion id="AC-017">Nel configuratore, aprendo una categoria che eredita, appare il
+      banner "Eredita il layout di &lt;nome antenato&gt;" con l'anteprima in sola lettura e
+      l'azione "Personalizza"; premendola, la bozza diventa modificabile a partire dal layout
+      ereditato.</criterion>
+    <criterion id="AC-018">Nel configuratore, su una categoria con layout proprio e un antenato
+      che ne ha uno, l'azione "Torna all'ereditato" chiede conferma e, confermata, esegue la
+      PUT con `layout: null`; il banner torna allo stato di AC-017.</criterion>
+    <criterion id="AC-019">L'ordine dei due assi e' visibile in UI: su una categoria che eredita
+      dall'antenato E ha una modalita' senza override, il banner nomina l'antenato (asse
+      categoria), non il layout condiviso — i due banner non si contraddicono mai.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna dipendenza nuova, ne' composer ne' npm.</item>
+    <item>Nessuna migrazione: la feature e' interamente in lettura sui dati esistenti.</item>
+    <item>UNA sola query per risolvere l'intera catena (AC-008):
+      `whereIn('product_category_id', $chainIds)` + scelta in PHP, mai una query per livello.
+      Il merger chiama il metodo una volta per categoria contribuente: una risalita ingenua
+      moltiplicherebbe le query per la profondita' dell'albero.</item>
+    <item>La logica di risalita NON si duplica: si riusa `CategoryHierarchy::inheritedAncestors`,
+      esposta. Una seconda implementazione della barriera e' esattamente il bug che si paga fra
+      sei mesi (engineering.md §3, DRY).</item>
+    <item>Authorization server-side invariata: `product-categories.view` in lettura,
+      `product-categories.update` in scrittura, via ProductCategoryPolicy.</item>
+    <item>AttributeLayoutValidator resta l'unico cancello di validazione, in SCRITTURA e sulla
+      categoria che possiede la riga. La lettura non rivalida (vedi &lt;invariant&gt;).</item>
+    <item>La pulizia delle righe del seeder e' non distruttiva per il lavoro umano: solo blob
+      riconosciuti byte-per-byte come composizione del seeder (D-5, AC-016).</item>
+    <item>File entro 300/500 righe. `AttributeLayoutService` e' oggi sotto soglia: la risalita
+      va in metodi privati a singola responsabilita', non srotolata dentro
+      `resolveWithFallback`.</item>
+    <item>Identificatori in inglese; le stringhe UI passano da i18next (namespace
+      `attributeLayout`, gia' esistente).</item>
+  </constraints>
+
+</spec>

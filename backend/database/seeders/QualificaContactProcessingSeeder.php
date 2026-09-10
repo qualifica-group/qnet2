@@ -19,8 +19,8 @@ use Illuminate\Database\Seeder;
  * The client's "Dati Lavorazione Contatto" set (spec 0061): what the operator
  * records while working a request, assigned to the categories that use it —
  * the Formazione root (inherited by its whole branch), the "GOL" container and
- * three of its regions, the "Autofinanziato" subcategory, and the two
- * Consulenza leaves. The catalogue rows live in
+ * three of its regions, and the "Autofinanziato" subcategory. The catalogue
+ * rows live in
  * QualificaCatalog\ContactProcessingAttributeCatalogue; this seeder assigns
  * them and groups them into one form section (spec 0062).
  *
@@ -45,8 +45,7 @@ use Illuminate\Database\Seeder;
  * the record (its product lines' categories), never an ancestor's. A single
  * root row would render nowhere. Each category's section is built from its OWN
  * effective attributes, so "Autofinanziato" carries the training set AND its
- * own two fields, while a Consulenza leaf carries only the
- * company-appointment ones.
+ * own two fields.
  *
  * Idempotent AND non-destructive: attributes keyed on `code` (an imported
  * q-crm row is adopted, never duplicated), assignments and options additive, a
@@ -164,8 +163,7 @@ class QualificaContactProcessingSeeder extends Seeder
 
     /**
      * Every category a request can be filed under for this set: the Formazione
-     * branch (the training fields reach it all by inheritance) plus the two
-     * Consulenza leaves, which are siblings and carry their own set.
+     * branch, the training fields reaching it all by inheritance.
      *
      * @return Collection<int, ProductCategory>
      */
@@ -178,39 +176,87 @@ class QualificaContactProcessingSeeder extends Seeder
 
         $branchIds = [$root->id, ...$this->hierarchy->descendantIds($root->id)];
 
-        return ProductCategory::query()
-            ->whereIn('id', $branchIds)
-            ->orWhereIn('name', ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES)
-            ->get();
+        // The Formazione branch alone: the two Consulenza leaves carry no
+        // attribute since the 2026-09-10 directive, so composing a layout for
+        // them would prune to nothing anyway.
+        $categories = ProductCategory::query()->whereIn('id', $branchIds)->get();
+
+        // Root-first: seedLayout() asks what each category INHERITS, which is
+        // only settled once every level above it has been visited.
+        return $this->sortRootFirst($categories, $this->hierarchy->parentIdMap());
     }
 
     private function seedLayout(ProductCategory $category): void
     {
-        // A configured layout is user data: leave it exactly as it is.
-        if ($this->layouts->resolveExact($category, self::LAYOUT_CONTEXT, LayoutFormScope::All) !== null) {
-            return;
-        }
+        $existing = $this->layouts->resolveExact($category, self::LAYOUT_CONTEXT, LayoutFormScope::All);
 
         $effective = $this->hierarchy
             ->effectiveAttributes($category, self::LAYOUT_CONTEXT)
             ->pluck('code')
             ->all();
 
-        $rows = $this->keepAllowedCodes(ContactProcessingAttributeCatalogue::ROWS, $effective);
+        $sections = $this->compose(ContactProcessingAttributeCatalogue::ROWS, $effective);
 
-        if ($rows === []) {
+        // A configured layout is user data: leave it exactly as it is, unless
+        // it is verbatim a composition THIS seeder wrote — today's, which then
+        // may be a redundant copy of the ancestor's (spec 0115), or a previous
+        // revision's, which has to be recomposed or the installation would
+        // stay frozen on rows that predate the current catalogue.
+        if ($existing !== null && ! $this->isOwnComposition($existing, $effective, $sections)) {
             return;
         }
 
-        $this->layouts->upsert($category, self::LAYOUT_CONTEXT, LayoutFormScope::All, [
-            'sections' => [
-                $this->layoutSection(
-                    self::SECTION_ID,
-                    ContactProcessingAttributeCatalogue::SECTION_TITLE,
-                    $rows,
-                    0,
-                ),
-            ],
-        ]);
+        if ($this->inheritedRendersSame($this->layouts, $category, self::LAYOUT_CONTEXT, $sections)) {
+            if ($existing !== null) {
+                $this->layouts->upsert($category, self::LAYOUT_CONTEXT, LayoutFormScope::All, null);
+            }
+
+            return;
+        }
+
+        if ($sections === []) {
+            return;
+        }
+
+        $this->layouts->upsert($category, self::LAYOUT_CONTEXT, LayoutFormScope::All, ['sections' => $sections]);
+    }
+
+    /**
+     * Whether $blob is one this seeder wrote for THIS category — today's
+     * composition or the one the previous revision of the catalogue's rows
+     * produced. Anything else is a human's work and stays untouched.
+     *
+     * @param  array<string, mixed>  $blob
+     * @param  list<string>  $effective
+     * @param  list<array<string, mixed>>  $current
+     */
+    private function isOwnComposition(array $blob, array $effective, array $current): bool
+    {
+        $candidates = [$current, $this->compose(ContactProcessingAttributeCatalogue::PREVIOUS_ROWS, $effective)];
+
+        foreach ($candidates as $sections) {
+            if ($blob == ['sections' => $sections]) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * This catalogue's single section, pruned to what $effective resolves —
+     * empty when the category resolves none of its codes.
+     *
+     * @param  list<list<string>>  $rows
+     * @param  list<string>  $effective
+     * @return list<array<string, mixed>>
+     */
+    private function compose(array $rows, array $effective): array
+    {
+        $kept = $this->keepAllowedCodes($rows, $effective);
+
+        return $kept === []
+            ? []
+            : [$this->layoutSection(self::SECTION_ID, ContactProcessingAttributeCatalogue::SECTION_TITLE, $kept, 0)];
     }
 }

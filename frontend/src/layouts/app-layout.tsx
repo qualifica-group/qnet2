@@ -5,6 +5,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { NavUserHeader } from '@/components/nav-user-header'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { NotificationBell } from '@/features/notifications/notification-bell'
+import { useNotificationTitle } from '@/features/notifications/use-notification-title'
 import { useAuth } from '@/features/auth/use-auth'
 import { ImpersonationBanner } from '@/features/auth/impersonation-banner'
 import { VersionUpdateBanner } from '@/components/version-update-banner'
@@ -19,6 +20,10 @@ import { cn } from '@/lib/utils'
 
 export function AppLayout() {
   const { user } = useAuth()
+
+  // Unread notifications take over the browser tab title while the user is
+  // signed in; the hook restores the app name once everything is read.
+  useNotificationTitle()
 
   return (
     <BreadcrumbTitleProvider>

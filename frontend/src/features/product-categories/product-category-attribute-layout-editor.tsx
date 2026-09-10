@@ -67,6 +67,7 @@ export function ProductCategoryAttributeLayoutEditor({
     setDraft,
     hasOverride,
     isCustomizing,
+    inheritedFromCategory,
     customize,
     resetToShared,
     isLoading,
@@ -98,6 +99,7 @@ export function ProductCategoryAttributeLayoutEditor({
               scope={scope}
               hasOverride={hasOverride}
               isCustomizing={isCustomizing}
+              inheritedFromCategory={inheritedFromCategory}
               disabled={isSaving}
               onCustomize={customize}
               onResetToShared={() => void resetToShared()}

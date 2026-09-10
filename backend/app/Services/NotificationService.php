@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\DataObjects\Notifications\NotificationListData;
 use App\DataObjects\Notifications\NotificationListResult;
+use App\DataObjects\Notifications\UnreadSummary;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 
@@ -43,11 +44,25 @@ class NotificationService
     }
 
     /**
-     * Number of the user's unread notifications (cheap, for frequent polling).
+     * Unread count plus the most recent unread notification (cheap enough for
+     * frequent polling: a count and, only when there is something to show, a
+     * single indexed row). The client needs both in one call — the badge reads
+     * the count, the browser tab title announces the latest one.
      */
-    public function unreadCount(User $user): int
+    public function unreadSummary(User $user): UnreadSummary
     {
-        return $user->unreadNotifications()->count();
+        $count = $user->unreadNotifications()->count();
+
+        if ($count === 0) {
+            return new UnreadSummary(count: 0);
+        }
+
+        /** @var ?DatabaseNotification $latest */
+        $latest = $user->unreadNotifications()
+            ->orderByDesc('created_at')
+            ->first();
+
+        return new UnreadSummary(count: $count, latest: $latest);
     }
 
     /**

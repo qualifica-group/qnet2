@@ -11,6 +11,31 @@ import type { AttributeContext, AttributeLayoutData } from '@/features/product-c
 
 const EMPTY_LAYOUT: LayoutBlob = { sections: [] }
 
+/**
+ * What the configurator shows when the scope has no layout of its own: the
+ * shared layout of the same category first, then — spec 0115 — the ancestor's
+ * this whole category renders. Same order of specificity the server resolves
+ * with, so the preview never shows something the form would not.
+ */
+function seedDraft(data: AttributeLayoutData, persisted: LayoutBlob | null): LayoutBlob {
+  return persisted ?? data.inherited ?? data.inherited_from_category ?? EMPTY_LAYOUT
+}
+
+/**
+ * Whether the draft is this scope's OWN layout, editable, rather than a
+ * read-only preview of something it inherits. Inheriting from an ancestor
+ * makes even the shared `all` scope read-only until the actor customizes it —
+ * otherwise Save would silently mint a copy of the ancestor's layout on a
+ * category that was happily inheriting it.
+ */
+function isEditable(
+  scope: LayoutFormScope,
+  persisted: LayoutBlob | null,
+  inheritedFromCategory: LayoutBlob | null,
+): boolean {
+  return persisted !== null || (scope === 'all' && inheritedFromCategory === null)
+}
+
 export interface UseAttributeLayoutLabels {
   saved: string
   forbidden: string
@@ -53,8 +78,8 @@ export function useAttributeLayout({ categoryId, context, scope, labels }: UseAt
   const [isCustomizing, setIsCustomizing] = useState(false)
   if (query.data && query.data !== syncedFrom) {
     setSyncedFrom(query.data)
-    setDraft(query.data.layout ?? query.data.inherited ?? EMPTY_LAYOUT)
-    setIsCustomizing(scope === 'all' || query.data.layout !== null)
+    setDraft(seedDraft(query.data, query.data.layout))
+    setIsCustomizing(isEditable(scope, query.data.layout, query.data.inherited_from_category))
   }
 
   const [isSaving, setIsSaving] = useState(false)
@@ -65,11 +90,15 @@ export function useAttributeLayout({ categoryId, context, scope, labels }: UseAt
     const nextData: AttributeLayoutData = {
       layout: persisted,
       inherited: query.data?.inherited ?? null,
+      // Both describe the ANCESTRY, which a write to THIS category never
+      // changes: carried over rather than refetched.
+      inherited_from_category: query.data?.inherited_from_category ?? null,
+      inherited_from_category_source: query.data?.inherited_from_category_source ?? null,
       attributes: query.data?.attributes ?? [],
     }
     setSyncedFrom(nextData)
-    setDraft(persisted ?? nextData.inherited ?? EMPTY_LAYOUT)
-    setIsCustomizing(scope === 'all' || persisted !== null)
+    setDraft(seedDraft(nextData, persisted))
+    setIsCustomizing(isEditable(scope, persisted, nextData.inherited_from_category))
     queryClient.setQueryData(queryKey, nextData)
   }
 
@@ -124,6 +153,8 @@ export function useAttributeLayout({ categoryId, context, scope, labels }: UseAt
     setDraft,
     /** The shared layout this scope inherits while it has no override of its own. */
     inherited: query.data?.inherited ?? null,
+    /** The ancestor this whole category inherits its layout from, null when it answers for itself (spec 0115). */
+    inheritedFromCategory: query.data?.inherited_from_category_source?.name ?? null,
     /** Whether the scope has its OWN persisted row (never true for an unsaved customization). */
     hasOverride: query.data?.layout != null,
     /** Whether the draft is this scope's own layout (editable) rather than a read-only inherited preview. */

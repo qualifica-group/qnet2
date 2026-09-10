@@ -34,6 +34,13 @@ final class CategoryHierarchy
     private ?array $parentIdMap = null;
 
     /**
+     * Memo of categoriesById()'s single query, feeding the barrier-aware walk.
+     *
+     * @var Collection<int, ProductCategory>|null
+     */
+    private ?Collection $categoriesById = null;
+
+    /**
      * $category's ancestors, ROOT-FIRST (does not include $category itself).
      * This is the STRUCTURAL walk — it ignores the inheritance barriers and is
      * used only by the anti-cycle guard, which must see the full chain
@@ -75,20 +82,27 @@ final class CategoryHierarchy
      * a chain cut for Product attributes may stay fully open for Opportunity
      * ones — the two walks never look at each other's flag.
      *
+     * PUBLIC because a second read-side resolver climbs the same chain under
+     * the same barrier: AttributeLayoutService, which inherits a category's
+     * LAYOUT exactly as this class inherits its attribute assignments (spec
+     * 0115). Reimplementing the barrier there would be two truths about one
+     * rule.
+     *
      * @return Collection<int, ProductCategory>
      */
-    private function inheritedAncestors(ProductCategory $category, AttributeContext $context): Collection
+    public function inheritedAncestors(ProductCategory $category, AttributeContext $context): Collection
     {
         if (! $category->inheritsAttributesIn($context)) {
             return collect();
         }
 
+        $categories = $this->categoriesById();
         $chain = [];
         $node = $category;
         $depth = 0;
 
         while ($node->parent_id !== null && $depth < self::MAX_DEPTH) {
-            $parent = ProductCategory::find($node->parent_id);
+            $parent = $categories->get($node->parent_id);
 
             if ($parent === null) {
                 break;
@@ -107,6 +121,23 @@ final class CategoryHierarchy
         }
 
         return collect(array_reverse($chain));
+    }
+
+    /**
+     * Every category, keyed by id, from ONE query memoized per instance — the
+     * barrier-aware walk's source of parents, so climbing a chain of depth N
+     * costs one query instead of N (spec 0115, AC-008: the layout merger
+     * repeats the climb once per contributing category).
+     *
+     * Deliberately NOT used by ancestors(): that walk serves the write-side
+     * anti-cycle guard, which must see the tree as it is at that instant, not
+     * as it was when this instance first read it.
+     *
+     * @return Collection<int, ProductCategory>
+     */
+    private function categoriesById(): Collection
+    {
+        return $this->categoriesById ??= ProductCategory::query()->get()->keyBy('id');
     }
 
     /**

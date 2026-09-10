@@ -13,7 +13,7 @@ import { NotificationList } from '@/features/notifications/notification-list'
 import { useNotificationActions } from '@/features/notifications/use-notification-actions'
 import {
   useNotificationList,
-  useUnreadCount,
+  useUnreadSummary,
 } from '@/features/notifications/use-notifications'
 import type { NotificationFilter } from '@/features/notifications/types'
 import { cn } from '@/lib/utils'
@@ -36,12 +36,12 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false)
   const [selectedFilter, setSelectedFilter] = useState<NotificationFilter>('all')
 
-  const unreadCountQuery = useUnreadCount()
+  const unreadSummaryQuery = useUnreadSummary()
   const serverFilter = selectedFilter === 'read' ? 'all' : selectedFilter
   const listQuery = useNotificationList(open, serverFilter)
   const { markAsRead, markAllAsRead } = useNotificationActions()
 
-  const unreadCount = unreadCountQuery.data ?? 0
+  const unreadCount = unreadSummaryQuery.data?.count ?? 0
   // Flatten the loaded infinite-scroll pages into a single list.
   const notifications = useMemo(
     () => listQuery.data?.pages.flatMap((page) => page.items) ?? [],
@@ -107,7 +107,9 @@ export function NotificationBell() {
           className="relative size-7 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground [&_svg]:size-3.5"
           aria-label={t('notifications.open')}
         >
-          <Bell />
+          {/* Filled while unread: the silhouette reads as "something waiting"
+              before the badge number is even legible. */}
+          <Bell className={cn(unreadCount > 0 && 'fill-current')} />
           {unreadCount > 0 ? (
             <Badge
               variant="destructive"
