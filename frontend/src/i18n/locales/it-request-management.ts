@@ -41,7 +41,6 @@ export const requestManagement = {
     referent: 'Referente',
     opportunityStatus: 'Stato commerciale',
     operationalSite: 'Sede operativa',
-    expectedCloseRange: 'Data chiusura prevista',
     nextCallbackRange: 'Prossimo richiamo',
   },
   detail: {

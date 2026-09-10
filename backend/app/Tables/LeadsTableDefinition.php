@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Tables\Leads\LeadAdvancedFilterCatalog;
+use App\Tables\Leads\LeadAssignmentScope;
 use App\Tables\Leads\LeadColumnCatalog;
 use App\Tables\Leads\LeadOperationalSiteColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -61,7 +62,10 @@ class LeadsTableDefinition extends AbstractTableDefinition
         'operator' => ['relation' => 'operator', 'table' => 'users', 'fk' => 'operator_id'],
     ];
 
-    public function __construct(private readonly LeadOperationalSiteColumn $operationalSiteColumn) {}
+    public function __construct(
+        private readonly LeadOperationalSiteColumn $operationalSiteColumn,
+        private readonly LeadAssignmentScope $assignmentScope,
+    ) {}
 
     public function domain(): string
     {
@@ -89,7 +93,10 @@ class LeadsTableDefinition extends AbstractTableDefinition
         // page (operationalSite's address+city for the composed label, BR-3).
         return Lead::query()
             ->with(['registry', 'campaign', 'operationalSite.addresses.city', 'source', 'operator'])
-            ->withExists(self::OPPORTUNITY_RELATION);
+            ->withExists(self::OPPORTUNITY_RELATION)
+            // Operatore picker scope, resolved once per hydrated page (mapRow
+            // sees one row at a time; LeadAssignmentScope is batch).
+            ->afterQuery($this->assignmentScope->warm(...));
     }
 
     /**
@@ -185,6 +192,9 @@ class LeadsTableDefinition extends AbstractTableDefinition
             'lead_status' => $row->lifecycleStatus()->value,
             'notes' => $row->notes,
             'created_at' => $row->created_at,
+            // Non-visible keys read by the Operatore cell editor's
+            // `relation.scope` (LeadColumnCatalog), like `notes` above.
+            ...$this->assignmentScope->project($row),
         ];
     }
 

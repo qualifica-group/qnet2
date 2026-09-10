@@ -21,15 +21,9 @@ use App\Enums\AdvancedFilterType;
  * 0086) — only the dot-path prefix changed, the generic id-based `whereHas`
  * default is otherwise untouched.
  *
- * `expected_close_range` (AC-013) targets a real `opportunities` column
- * (`expected_close_date`), NOT a `quotes` one:
- * RequestManagementTableDefinition::applyAdvancedFilter() overrides the
- * generic default to scope AdvancedFilterApplier inside a
- * `whereHas('opportunity', ...)` closure — the generic default's plain
- * `$query->where($target, ...)` would target a column that does not exist on
- * `quotes`. `next_callback_range` needs no such override since the user
- * directive 2026-09-04: `quotes.next_callback_at` is a real column of the
- * queried table.
+ * `next_callback_range` targets `quotes.next_callback_at`, a real column of
+ * the queried table (user directive 2026-09-04), so the generic default
+ * reaches it directly.
  *
  * `operational_site` is a PICKER, not free text (user directive 2026-07-31):
  * an id-based `relation` filter over the `operational-sites/for-select` route
@@ -83,17 +77,6 @@ final class RequestAdvancedFilterCatalog
                 'multiple' => true,
                 'source' => ['resource' => 'operational-sites'],
                 'target' => 'operationalSite',
-            ],
-            [
-                'name' => 'expected_close_range',
-                'label' => 'requestManagement.advancedFilters.expectedCloseRange',
-                'type' => AdvancedFilterType::DateRange,
-                'order' => 6,
-                'required' => false,
-                'visible' => true,
-                'width' => 'md',
-                'multiple' => false,
-                'target' => 'expected_close_date',
             ],
             [
                 'name' => 'next_callback_range',

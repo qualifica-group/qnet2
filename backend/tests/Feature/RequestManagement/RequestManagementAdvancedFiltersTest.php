@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Registry;
@@ -11,11 +12,12 @@ use Spatie\Permission\Models\Permission;
 
 /**
  * AC-013: the advanced filters retargeted onto `opportunity.*` by spec 0086
- * (D-2 — neither `registry`/`referent`/`expected_close_date` lives on
- * `quotes`). `operational_site` and `next_callback_range` are already
- * covered elsewhere (RequestManagementTableTest/RequestManagementCallbackTest);
- * this file closes the three that needed the dot-path/whereHas rewrite and
- * were left unverified: `registry`, `referent`, `expected_close_range`.
+ * (D-2 — neither `registry` nor `referent` lives on `quotes`).
+ * `operational_site` and `next_callback_range` are already covered elsewhere
+ * (RequestManagementTableTest/RequestManagementCallbackTest); this file
+ * closes the two that needed the dot-path rewrite and were left unverified:
+ * `registry`, `referent`. The former `expected_close_range` filter was
+ * removed on user directive 2026-09-10 (see the guard below).
  *
  * AC-014: the grid's default sort, `quotes.created_at desc` (a real column on
  * the row's own table now, AC-014).
@@ -72,23 +74,6 @@ it('AC-013: the referent advanced filter matches through quote.opportunity.refer
         ->and($ids)->not->toContain($excluded->id);
 });
 
-it('AC-013: the expected_close_range advanced filter narrows by quote.opportunity.expected_close_date', function () {
-    $actor = advancedFiltersActor();
-    $inRange = Quote::factory()->for(Opportunity::factory()->state(['expected_close_date' => '2026-08-03']))->create();
-    $outOfRange = Quote::factory()->for(Opportunity::factory()->state(['expected_close_date' => '2026-09-15']))->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/tables/request-management/rows', [
-        'startRow' => 0,
-        'endRow' => 25,
-        'advancedFilters' => ['expected_close_range' => ['from' => '2026-08-01', 'to' => '2026-08-05']],
-    ])->assertOk();
-
-    $ids = collect($response->json('items'))->pluck('id');
-    expect($ids->all())->toBe([$inRange->id])
-        ->and($ids)->not->toContain($outOfRange->id);
-});
-
 it('AC-014: with no sortModel, rows are ordered by quotes.created_at descending', function () {
     $actor = advancedFiltersActor();
     $older = Quote::factory()->create();
@@ -102,4 +87,16 @@ it('AC-014: with no sortModel, rows are ordered by quotes.created_at descending'
 
     $ids = collect($response->json('items'))->pluck('id');
     expect($ids->all())->toBe([$newer->id, $older->id]);
+});
+
+it('the expected_close_range advanced filter is no longer exposed, with or without a product category', function () {
+    $category = ProductCategory::factory()->create();
+    Sanctum::actingAs(advancedFiltersActor());
+
+    foreach (['', "?product_category_id={$category->id}"] as $query) {
+        $names = collect($this->getJson("/api/tables/request-management/columns{$query}")
+            ->assertOk()->json('data.advancedFilters'))->pluck('name');
+
+        expect($names)->not->toContain('expected_close_range');
+    }
 });

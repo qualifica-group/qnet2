@@ -56,8 +56,10 @@ export interface RelationCellEditorParams {
   /**
    * Row-scoped narrowing of the option list (user directive 2026-07-23):
    * `/for-select` param name -> id of the column supplying its value on the
-   * EDITED row (`TableColumn.relation.scope`). Absent, or a row whose scope
-   * column is empty, leaves the list unfiltered.
+   * EDITED row (`TableColumn.relation.scope`). The column may hold a single
+   * value or a SET of ids (user directive 2026-09-10, the lead's competence
+   * categories). Absent, or a row whose scope column is empty, leaves the list
+   * unfiltered.
    */
   scope?: Record<string, string>
 }
@@ -65,31 +67,48 @@ export interface RelationCellEditorParams {
 /** Debounce before a typed term reaches the server, matching AsyncPaginatedSelect. */
 const SEARCH_DEBOUNCE_MS = 300
 
+/** A scope cell entry is a bare id or a relation projection (`{id, name|label}`); anything else yields no id. */
+function toScopeId(entry: unknown): number | null {
+  if (typeof entry === 'number') {
+    return entry
+  }
+  const id = (entry as { id?: unknown } | null)?.id
+  return typeof id === 'number' ? id : null
+}
+
 /**
- * Resolves `scope` against the row being edited. A scope column holds either a
- * relation projection (`{id, name|label}` — how every derived relation column
- * is mapped server-side) or a bare id; anything else contributes no param, so
- * a row missing the value degrades to the unfiltered list rather than sending
- * a junk filter.
+ * Resolves `scope` against the row being edited. A scope column holds a single
+ * value (bare id or relation projection — how every derived relation column is
+ * mapped server-side) or an ARRAY of them (user directive 2026-09-10: a lead's
+ * required competence categories), resolved to a single param or a repeated
+ * one respectively. Anything else contributes no param, so a row missing the
+ * value degrades to the unfiltered list rather than sending a junk filter.
  */
 function resolveScopeParams(
   scope: Record<string, string> | undefined,
   row: TableRow | undefined,
-): Record<string, number> | undefined {
+): Record<string, number | number[]> | undefined {
   if (!scope || !row) {
     return undefined
   }
 
-  const params: Record<string, number> = {}
+  const params: Record<string, number | number[]> = {}
 
   for (const [param, columnId] of Object.entries(scope)) {
     const cell = row[columnId]
-    const id =
-      typeof cell === 'number'
-        ? cell
-        : typeof (cell as { id?: unknown } | null)?.id === 'number'
-          ? (cell as { id: number }).id
-          : null
+
+    if (Array.isArray(cell)) {
+      // An EMPTY set means "this row requires nothing", not "nothing
+      // qualifies": sending it would filter the list down to zero options, so
+      // it omits the param exactly like a missing single value does.
+      const ids = cell.map(toScopeId).filter((id): id is number => id !== null)
+      if (ids.length > 0) {
+        params[param] = ids
+      }
+      continue
+    }
+
+    const id = toScopeId(cell)
     if (id !== null) {
       params[param] = id
     }

@@ -338,8 +338,33 @@ describe('LeadsTable — no Sede field on the assignment popup (spec 0113 AC-026
     expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled()
   })
 
-  it('disables neither mode card, whatever campaigns the selection spans (AC-031)', async () => {
+  // Spec 0113 rev.2 (user directive 2026-09-10): the Lead table now follows the
+  // import wizard's rule. This block previously asserted the opposite — that no
+  // card is ever disabled here — which was decision D-5 before it was reversed.
+  it('disables "Assign to operator" with a reason when the selection spans several campaigns', async () => {
     fetchAssignmentScopeMock.mockResolvedValue(scope({ campaign_ids: [3, 8] }))
+    renderTable()
+
+    openPopup()
+
+    await waitFor(() => expect(fetchAssignmentScopeMock).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'Assign to operator' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      ),
+    )
+    expect(
+      screen.getByText('Unavailable: the selection spans records from different campaigns.'),
+    ).toBeInTheDocument()
+    // Balanced works lead by lead, so mixed campaigns never block it.
+    expect(screen.getByRole('radio', { name: 'Balanced split' })).not.toHaveAttribute(
+      'aria-disabled',
+    )
+  })
+
+  it('disables no card when the selection shares one campaign', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(scope({ campaign_ids: [3] }))
     renderTable()
 
     openPopup()
@@ -351,6 +376,20 @@ describe('LeadsTable — no Sede field on the assignment popup (spec 0113 AC-026
     expect(screen.getByRole('radio', { name: 'Balanced split' })).not.toHaveAttribute(
       'aria-disabled',
     )
+  })
+
+  it('disables no card while the scope is still resolving, claiming no mixed campaigns', async () => {
+    fetchAssignmentScopeMock.mockReturnValue(new Promise(() => {}))
+    renderTable()
+
+    openPopup()
+
+    expect(screen.getByRole('radio', { name: 'Assign to operator' })).not.toHaveAttribute(
+      'aria-disabled',
+    )
+    expect(
+      screen.queryByText('Unavailable: the selection spans records from different campaigns.'),
+    ).not.toBeInTheDocument()
   })
 })
 

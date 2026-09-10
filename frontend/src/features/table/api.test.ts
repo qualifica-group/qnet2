@@ -4,6 +4,7 @@ import {
   fetchTableColumnValues,
   resetTableFilters,
   saveTableFilters,
+  saveTablePreferences,
 } from '@/features/table/api'
 import { apiClient } from '@/api/client'
 
@@ -52,6 +53,19 @@ describe('saveTableFilters', () => {
     expect(postMock).toHaveBeenCalledWith('/tables/users/filters', { filterModel })
   })
 
+  it('carries the category tab so the response keeps its attr.* columns (spec 0064)', async () => {
+    postMock.mockResolvedValue({
+      data: { success: true, message: 'ok', data: { resource: 'request-management' } },
+    })
+
+    await saveTableFilters('request-management', { filterModel: {} }, 12)
+
+    expect(postMock).toHaveBeenCalledWith('/tables/request-management/filters', {
+      filterModel: {},
+      product_category_id: 12,
+    })
+  })
+
   it('posts advanced filters independently of the column filterModel (spec 0032)', async () => {
     const config = { resource: 'users', filtersCustomized: true }
     postMock.mockResolvedValue({
@@ -63,6 +77,31 @@ describe('saveTableFilters', () => {
 
     expect(result).toBe(config)
     expect(postMock).toHaveBeenCalledWith('/tables/users/filters', { advancedFilters })
+  })
+})
+
+describe('saveTablePreferences', () => {
+  it('posts only the column state when the table has no category scope', async () => {
+    postMock.mockResolvedValue({ data: { success: true, message: 'ok', data: { resource: 'users' } } })
+
+    await saveTablePreferences('users', [{ id: 'email', visible: true, order: 0 }])
+
+    expect(postMock).toHaveBeenCalledWith('/tables/users/preferences', {
+      columns: [{ id: 'email', visible: true, order: 0 }],
+    })
+  })
+
+  it('carries the category tab so the response keeps its attr.* columns (spec 0064)', async () => {
+    postMock.mockResolvedValue({
+      data: { success: true, message: 'ok', data: { resource: 'request-management' } },
+    })
+
+    await saveTablePreferences('request-management', [{ id: 'attr.field_a', visible: true, order: 0 }], 12)
+
+    expect(postMock).toHaveBeenCalledWith('/tables/request-management/preferences', {
+      columns: [{ id: 'attr.field_a', visible: true, order: 0 }],
+      product_category_id: 12,
+    })
   })
 })
 

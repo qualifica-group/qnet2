@@ -275,7 +275,7 @@ describe('AssignOperatorsDialog — derived Sede (spec 0113)', () => {
  * cards active (AC-031, covered by every test above).
  */
 describe('AssignOperatorsDialog — disabled modes (spec 0113)', () => {
-  const MIXED_CAMPAIGNS_REASON = 'Unavailable: the selection spans rows from different campaigns.'
+  const MIXED_CAMPAIGNS_REASON = 'Unavailable: the selection spans records from different campaigns.'
 
   function renderWithDisabledSingle() {
     render(

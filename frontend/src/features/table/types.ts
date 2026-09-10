@@ -154,8 +154,12 @@ export interface TableColumn {
    * 2026-07-23): `scope` maps a `/for-select` param name to the id of the
    * column whose value on the EDITED ROW supplies it — e.g. `{
    * operational_site_id: 'operational_site' }` makes the operator picker offer
-   * only the users of that row's own site. Absent (or a row whose scope column
-   * is empty) ⇒ the unfiltered list, unchanged.
+   * only the users of that row's own site. A scope column may hold a single
+   * value (bare id or `{id, name}` projection) or a SET of ids — e.g. `{
+   * competence_category_ids: 'assignment_category_ids' }` on the Lead operator
+   * column (user directive 2026-09-10) — sent as a single or a repeated param
+   * respectively. Absent (or a row whose scope column is empty) ⇒ the
+   * unfiltered list, unchanged.
    *
    * `lockScope` (spec 0075 D-4): the scope is not a default the operator may
    * lift — the domain REFUSES what falls outside it, so the editor must not

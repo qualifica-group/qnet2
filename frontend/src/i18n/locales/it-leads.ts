@@ -166,9 +166,10 @@ export const leads = {
     },
     mode: {
       label: 'Tipo di assegnazione',
-      // Motivo mostrato sulla card disabilitata dal wizard import
-      // (`review-bulk-assign-bar.tsx`) quando la selezione copre piu' campagne.
-      disabledMixedCampaigns: 'Non disponibile: la selezione contiene righe di campagne diverse.',
+      // Motivo mostrato sulla card disabilitata quando la selezione copre piu'
+      // campagne: wizard import (`review-bulk-assign-bar.tsx`) e tabella Lead
+      // (`leads-table.tsx`, direttiva utente 2026-09-10).
+      disabledMixedCampaigns: 'Non disponibile: la selezione contiene record di campagne diverse.',
     },
     actions: {
       balanced: 'Smistamento equo',

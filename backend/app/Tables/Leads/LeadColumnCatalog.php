@@ -35,7 +35,17 @@ final class LeadColumnCatalog
             self::derivedColumn('campaign', 'leads.columns.campaign', 'campaign_id', 'campaigns'),
             self::derivedColumn('operational_site', 'leads.columns.operationalSite', 'operational_site_id', 'operational-sites', nullable: true),
             self::derivedColumn('source', 'leads.columns.source', 'source_id', 'sources', nullable: true),
-            self::derivedColumn('operator', 'leads.columns.operator', 'operator_id', 'users', nullable: true),
+            // `relation.scope` (direttiva utente 2026-09-10): the inline
+            // picker offers the operators the ASSIGNMENT would consider for
+            // this lead — those of the Sede of its campaign (spec 0113, D-3)
+            // competent for its required categories (spec 0110) — instead of
+            // every user. No `lockScope`: spec 0110 R-1 keeps a hand-picked
+            // non-competent operator acceptable, so the narrowing must stay
+            // liftable.
+            self::derivedColumn('operator', 'leads.columns.operator', 'operator_id', 'users', nullable: true, scope: [
+                'operational_site_id' => LeadAssignmentScope::SITE_KEY,
+                'competence_category_ids' => LeadAssignmentScope::CATEGORIES_KEY,
+            ]),
             [
                 'id' => 'lead_status',
                 'label' => 'leads.columns.leadStatus',
@@ -67,9 +77,10 @@ final class LeadColumnCatalog
      * relation cell-editor, writing `$editableField` (the real FK column)
      * instead of this column's own (derived, non-writable) id.
      *
+     * @param  array<string, string>|null  $scope  row-scoped picker params, `['<for-select param>' => '<row key>']`
      * @return array<string, mixed>
      */
-    private static function derivedColumn(string $id, string $label, ?string $editableField = null, ?string $relationResource = null, bool $nullable = false): array
+    private static function derivedColumn(string $id, string $label, ?string $editableField = null, ?string $relationResource = null, bool $nullable = false, ?array $scope = null): array
     {
         $column = [
             'id' => $id,
@@ -85,6 +96,11 @@ final class LeadColumnCatalog
             $column['editable'] = true;
             $column['editableField'] = $editableField;
             $column['relation'] = ['resource' => $relationResource];
+
+            if ($scope !== null) {
+                $column['relation']['scope'] = $scope;
+            }
+
             $column['nullable'] = $nullable;
         }
 

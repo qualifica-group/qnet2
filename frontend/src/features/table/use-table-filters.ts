@@ -16,13 +16,17 @@ import type { TableConfig } from '@/features/table/types'
  *
  * `scope` must be the SAME one the config query was keyed by (spec 0064's
  * category tabs): the cache is keyed per scope, so refreshing the unscoped key
- * from a scoped table would leave the entry the grid actually reads stale.
+ * from a scoped table would leave the entry the grid actually reads stale. It
+ * is ALSO sent to the server, so the config written back into that per-tab
+ * entry is the scoped shape — otherwise the response's unscoped column set
+ * would drop the tab's `attr.*` columns out of the live grid.
  */
 export function useSaveTableFilters(domain: string, scope?: TableConfigScope) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (payload: SaveTableFiltersPayload) => saveTableFilters(domain, payload),
+    mutationFn: (payload: SaveTableFiltersPayload) =>
+      saveTableFilters(domain, payload, scope?.productCategoryId),
     onSuccess: (config: TableConfig) => {
       queryClient.setQueryData(tableKeys.config(domain, scope), config)
     },

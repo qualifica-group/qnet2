@@ -7,6 +7,7 @@ use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
@@ -20,6 +21,11 @@ use Illuminate\Validation\Validator;
  * definition — the exact same allow-list the SSRM rows endpoint enforces
  * (TableRowsRequest::withValidator). Any out-of-whitelist key yields a 422 and
  * never reaches the store. An empty model is accepted and clears the saved state.
+ *
+ * `product_category_id` is OPTIONAL and never touches what is persisted (saved
+ * filters are per-domain, not per-tab — D-4): it only tells the controller
+ * which category shape to rebuild the RESPONSE config on, so the client can
+ * refresh the cache entry it actually reads (spec 0064).
  *
  * Authorization stays in the controller via the definition's viewAny.
  */
@@ -47,7 +53,23 @@ class TableFilterStateRequest extends FormRequest
             // means "leave the persisted advanced filters untouched" (see
             // advancedFilters()); present (even `{}`) replaces them.
             'advancedFilters' => ['sometimes', 'nullable', 'array'],
+
+            'product_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
         ];
+    }
+
+    /**
+     * The category tab the client saved from, so the response config carries
+     * that tab's `attr.*` columns instead of the unscoped shape. Null = the
+     * "Tutte" tab, and every other domain, which never sends it. Independent
+     * of the allow-list widening below: WHICH ids may be persisted is the
+     * union (D-4), WHICH columns the response shows is this one tab.
+     */
+    public function productCategoryId(): ?int
+    {
+        $value = $this->validated('product_category_id');
+
+        return $value === null ? null : (int) $value;
     }
 
     /**

@@ -40,7 +40,6 @@ export const requestManagement = {
     referent: 'Contact',
     opportunityStatus: 'Sales status',
     operationalSite: 'Operational site',
-    expectedCloseRange: 'Expected close date',
     nextCallbackRange: 'Next callback',
   },
   detail: {

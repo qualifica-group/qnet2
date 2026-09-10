@@ -81,6 +81,13 @@ class TableController extends BaseApiController
      * POST /api/tables/{domain}/preferences — upsert the current user's column
      * layout for {domain}. Self-scoped (always auth user; the client never sends
      * a user_id). Returns the freshly merged config. See ADR-0004.
+     *
+     * `product_category_id` (spec 0064) does NOT change what is stored — the
+     * layout is saved per-domain, and `defaultColumnLayout()` stays the
+     * unscoped union either way — it selects the SHAPE of the RETURNED config,
+     * so the client refreshes its per-tab cache entry with a config that still
+     * carries that category's `attr.*` columns. Without it the response is the
+     * "Tutte" shape and the open tab loses them until the next reload.
      */
     public function savePreferences(TablePreferencesRequest $request, string $domain): JsonResponse
     {
@@ -92,6 +99,7 @@ class TableController extends BaseApiController
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
 
             $this->preferences->save($definition, $actor, $request->columnsState());
+            $this->scopeToProductCategory($definition, $request->productCategoryId());
 
             return $this->ok($this->resolvedConfig($definition, $actor), 'Preferences saved');
         } catch (Throwable $exception) {
@@ -125,6 +133,12 @@ class TableController extends BaseApiController
      * POST /api/tables/{domain}/filters — upsert the current user's applied
      * filterModel for {domain} so filters survive a reload. Self-scoped (always
      * auth user). An empty model clears the saved state. Returns the merged config.
+     *
+     * The two category scopes are independent and BOTH apply here (spec 0064):
+     * the union widens the persistable allow-list (D-4), while
+     * `product_category_id` selects the SHAPE of the RETURNED config, so the
+     * client's per-tab cache entry keeps that category's `attr.*` columns
+     * instead of collapsing to the "Tutte" shape on every filter change.
      */
     public function saveFilters(TableFilterStateRequest $request, string $domain): JsonResponse
     {
@@ -137,6 +151,7 @@ class TableController extends BaseApiController
             $this->scopeToAllProductCategories($definition);
 
             $this->filters->save($definition, $actor, $request->filterModel(), $request->advancedFilters());
+            $this->scopeToProductCategory($definition, $request->productCategoryId());
 
             return $this->ok($this->resolvedConfig($definition, $actor), 'Filters saved');
         } catch (Throwable $exception) {
@@ -339,6 +354,11 @@ class TableController extends BaseApiController
      * Spec 0064: narrows a `RequestManagementScopedTableDefinition` (only
      * `request-management`) to one product category — its rows, its `attr.*`
      * columns and the GA2 relabel. A no-op for every other domain.
+     *
+     * Also called by `savePreferences()`/`saveFilters()` AFTER their write, on
+     * the tab the client sent: those responses are read straight into the
+     * client's per-tab config cache, so they must carry the same `attr.*`
+     * columns the GET does. It reaches nothing already persisted.
      */
     private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId): void
     {

@@ -70,7 +70,10 @@ export function toColumnPreferences(
  *
  * `scope` must be the SAME one the config query was keyed by (spec 0064's
  * category tabs): the cache is keyed per scope, so refreshing the unscoped key
- * from a scoped table would leave the entry the grid actually reads stale.
+ * from a scoped table would leave the entry the grid actually reads stale. It
+ * is ALSO sent to the server, so the config written back into that per-tab
+ * entry is the scoped shape — otherwise the response's unscoped column set
+ * would drop the tab's `attr.*` columns out of the live grid.
  */
 export function useSaveTablePreferences(domain: string, scope?: TableConfigScope) {
   const queryClient = useQueryClient()
@@ -78,7 +81,7 @@ export function useSaveTablePreferences(domain: string, scope?: TableConfigScope
 
   return useMutation({
     mutationFn: (columns: ColumnPreferenceInput[]) =>
-      saveTablePreferences(domain, columns),
+      saveTablePreferences(domain, columns, scope?.productCategoryId),
     onSuccess: (config) => {
       queryClient.setQueryData(tableKeys.config(domain, scope), config)
     },

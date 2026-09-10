@@ -155,6 +155,21 @@ describe('RelationCellEditor', () => {
       )
     })
 
+    it('accepts the `{id, name}` projection too — a single value stays a SINGLE param, never an array', async () => {
+      fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
+      renderEditor({
+        scope: SCOPE,
+        data: { id: 7, actions: [], operational_site: { id: 42, name: 'Via Roma 1 - Milano' } },
+      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+
+      await waitFor(() =>
+        expect(fetchForSelectMock).toHaveBeenCalledWith(
+          'users',
+          expect.objectContaining({ params: { operational_site_id: 42 } }),
+        ),
+      )
+    })
+
     it('accepts a bare id in the scope column', async () => {
       fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
       renderEditor({
@@ -180,6 +195,100 @@ describe('RelationCellEditor', () => {
       await waitFor(() =>
         expect(fetchForSelectMock).toHaveBeenCalledWith('users', expect.objectContaining({ params: undefined })),
       )
+    })
+
+    // User directive 2026-09-10: the lead table's Operatore cell offered EVERY
+    // operator, because a scope column holding a SET of ids (the lead's
+    // required competence categories) could not be expressed as a param at all.
+    describe('a scope column holding a SET of ids', () => {
+      const CATEGORIES_SCOPE = { competence_category_ids: 'assignment_category_ids' }
+
+      it('sends the whole set as a repeated param', async () => {
+        fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
+        renderEditor({
+          scope: CATEGORIES_SCOPE,
+          data: { id: 7, actions: [], assignment_category_ids: [3, 9] },
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+
+        await waitFor(() =>
+          expect(fetchForSelectMock).toHaveBeenCalledWith(
+            'users',
+            expect.objectContaining({ params: { competence_category_ids: [3, 9] } }),
+          ),
+        )
+      })
+
+      it('sends NO param for an EMPTY set — no requirement means no filter, not "no candidate"', async () => {
+        fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
+        renderEditor({
+          scope: CATEGORIES_SCOPE,
+          data: { id: 7, actions: [], assignment_category_ids: [] },
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+
+        await waitFor(() =>
+          expect(fetchForSelectMock).toHaveBeenCalledWith('users', expect.objectContaining({ params: undefined })),
+        )
+      })
+
+      it('keeps the resolvable entries of a mixed set and drops the rest', async () => {
+        fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
+        renderEditor({
+          scope: CATEGORIES_SCOPE,
+          data: { id: 7, actions: [], assignment_category_ids: [3, null, 'nine', { id: 9, label: 'Fotovoltaico' }] },
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+
+        await waitFor(() =>
+          expect(fetchForSelectMock).toHaveBeenCalledWith(
+            'users',
+            expect.objectContaining({ params: { competence_category_ids: [3, 9] } }),
+          ),
+        )
+      })
+
+      it('sends no param when NOTHING in the set resolves to an id', async () => {
+        fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
+        renderEditor({
+          scope: CATEGORIES_SCOPE,
+          data: { id: 7, actions: [], assignment_category_ids: [null, 'nine'] },
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+
+        await waitFor(() =>
+          expect(fetchForSelectMock).toHaveBeenCalledWith('users', expect.objectContaining({ params: undefined })),
+        )
+      })
+
+      // The Lead column itself (spec 0113): site AND competence, together.
+      it('combines a single-value param and a set param in the same request', async () => {
+        fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
+        renderEditor({
+          scope: { operational_site_id: 'assignment_site_id', ...CATEGORIES_SCOPE },
+          data: { id: 7, actions: [], assignment_site_id: 42, assignment_category_ids: [3, 9] },
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+
+        await waitFor(() =>
+          expect(fetchForSelectMock).toHaveBeenCalledWith(
+            'users',
+            expect.objectContaining({
+              params: { operational_site_id: 42, competence_category_ids: [3, 9] },
+            }),
+          ),
+        )
+      })
+
+      it('still sends the single-value param when the row carries no categories', async () => {
+        fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
+        renderEditor({
+          scope: { operational_site_id: 'assignment_site_id', ...CATEGORIES_SCOPE },
+          data: { id: 7, actions: [], assignment_site_id: 42, assignment_category_ids: [] },
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+
+        await waitFor(() =>
+          expect(fetchForSelectMock).toHaveBeenCalledWith(
+            'users',
+            expect.objectContaining({ params: { operational_site_id: 42 } }),
+          ),
+        )
+      })
     })
 
     it('sends no param when the column declares no scope at all', async () => {

@@ -21,6 +21,11 @@ use Illuminate\Validation\Rule;
  * be persisted. Out-of-whitelist id or property → 422, never reaches the store.
  * `width` is clamped to a sane range so absurd values cannot be saved.
  *
+ * `product_category_id` is OPTIONAL and never touches what is persisted (the
+ * saved layout is per-domain, not per-tab): it only tells the controller which
+ * category shape to rebuild the RESPONSE config on, so the client can refresh
+ * the cache entry it actually reads (spec 0064).
+ *
  * Authorization stays in the controller via the definition's viewAny.
  */
 class TablePreferencesRequest extends FormRequest
@@ -46,7 +51,20 @@ class TablePreferencesRequest extends FormRequest
             'columns.*.visible' => ['sometimes', 'boolean'],
             'columns.*.width' => ['sometimes', 'integer', 'min:50', 'max:1000'],
             'columns.*.order' => ['sometimes', 'integer', 'min:0'],
+            'product_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
         ];
+    }
+
+    /**
+     * The category tab the client saved from, so the response config carries
+     * that tab's `attr.*` columns instead of the unscoped shape. Null = the
+     * "Tutte" tab, and every other domain, which never sends it.
+     */
+    public function productCategoryId(): ?int
+    {
+        $value = $this->validated('product_category_id');
+
+        return $value === null ? null : (int) $value;
     }
 
     /**

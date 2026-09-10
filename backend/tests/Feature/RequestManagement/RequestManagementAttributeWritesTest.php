@@ -233,3 +233,53 @@ it('saves filter state naming an attr.<code> of any category', function () {
         'filterModel' => ['attr.field_a' => ['filterType' => 'text', 'type' => 'contains', 'filter' => 'x']],
     ])->assertOk();
 });
+
+// ---------------------------------------------------------------------------
+// The response SHAPE follows the tab the client saved from: both persistence
+// endpoints feed the frontend's PER-TAB config cache, so an unscoped response
+// used to drop the category's attr.* columns out of the live grid.
+// ---------------------------------------------------------------------------
+
+it('returns the scoped tab attr.<code> columns when saving column preferences', function () {
+    [$category] = attributeWritesCategory('text', ['code' => 'field_a']);
+    attributeWritesCategory('integer', ['code' => 'field_b']);
+
+    Sanctum::actingAs(attributeWritesUserWith(['viewAny', 'viewAll']));
+
+    $columns = $this->postJson('/api/tables/request-management/preferences', [
+        'columns' => [['id' => 'attr.field_a', 'visible' => true, 'order' => 1]],
+        'product_category_id' => $category->id,
+    ])->assertOk()->json('data.columns');
+
+    expect(array_column($columns, 'id'))
+        ->toContain('attr.field_a')
+        ->not->toContain('attr.field_b');
+});
+
+it('returns the scoped tab attr.<code> columns when saving filter state', function () {
+    [$category] = attributeWritesCategory('text', ['code' => 'field_a']);
+    attributeWritesCategory('integer', ['code' => 'field_b']);
+
+    Sanctum::actingAs(attributeWritesUserWith(['viewAny', 'viewAll']));
+
+    $columns = $this->postJson('/api/tables/request-management/filters', [
+        'filterModel' => ['attr.field_a' => ['filterType' => 'text', 'type' => 'contains', 'filter' => 'x']],
+        'product_category_id' => $category->id,
+    ])->assertOk()->json('data.columns');
+
+    expect(array_column($columns, 'id'))
+        ->toContain('attr.field_a')
+        ->not->toContain('attr.field_b');
+});
+
+it('keeps emitting no attr.* column when a persistence write carries no category', function () {
+    attributeWritesCategory('text', ['code' => 'field_a']);
+
+    Sanctum::actingAs(attributeWritesUserWith(['viewAny', 'viewAll']));
+
+    $columns = $this->postJson('/api/tables/request-management/preferences', [
+        'columns' => [['id' => 'attr.field_a', 'visible' => true, 'order' => 1]],
+    ])->assertOk()->json('data.columns');
+
+    expect(array_filter($columns, static fn (array $column): bool => str_starts_with($column['id'], 'attr.')))->toBe([]);
+});

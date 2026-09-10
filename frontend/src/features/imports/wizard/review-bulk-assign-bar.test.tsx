@@ -373,7 +373,7 @@ describe('ReviewBulkAssignBar — mixed campaigns (spec 0113)', () => {
     const single = screen.getByRole('radio', { name: 'Assign to operator' })
     await waitFor(() => expect(single).toHaveAttribute('aria-disabled', 'true'))
     expect(
-      screen.getByText('Unavailable: the selection spans rows from different campaigns.'),
+      screen.getByText('Unavailable: the selection spans records from different campaigns.'),
     ).toBeInTheDocument()
 
     // Clicking it selects nothing: no Operatore field appears.
@@ -399,7 +399,7 @@ describe('ReviewBulkAssignBar — mixed campaigns (spec 0113)', () => {
     expect(screen.getByRole('radio', { name: 'Assign to operator' })).not.toHaveAttribute('aria-disabled')
     expect(screen.getByRole('radio', { name: 'Balanced split' })).not.toHaveAttribute('aria-disabled')
     expect(
-      screen.queryByText('Unavailable: the selection spans rows from different campaigns.'),
+      screen.queryByText('Unavailable: the selection spans records from different campaigns.'),
     ).not.toBeInTheDocument()
   })
 
@@ -412,7 +412,7 @@ describe('ReviewBulkAssignBar — mixed campaigns (spec 0113)', () => {
     const single = screen.getByRole('radio', { name: 'Assign to operator' })
     expect(single).not.toHaveAttribute('aria-disabled')
     expect(
-      screen.queryByText('Unavailable: the selection spans rows from different campaigns.'),
+      screen.queryByText('Unavailable: the selection spans records from different campaigns.'),
     ).not.toBeInTheDocument()
 
     // Still selectable, and what it reveals is a picker that cannot be used.
@@ -429,7 +429,7 @@ describe('ReviewBulkAssignBar — mixed campaigns (spec 0113)', () => {
     expect(screen.getByRole('radio', { name: 'Assign to operator' })).not.toHaveAttribute('aria-disabled')
     expect(screen.getByRole('radio', { name: 'Balanced split' })).not.toHaveAttribute('aria-disabled')
     expect(
-      screen.queryByText('Unavailable: the selection spans rows from different campaigns.'),
+      screen.queryByText('Unavailable: the selection spans records from different campaigns.'),
     ).not.toBeInTheDocument()
   })
 })

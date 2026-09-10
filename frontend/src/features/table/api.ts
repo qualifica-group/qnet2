@@ -50,17 +50,33 @@ export async function fetchTableRows(
 }
 
 /**
+ * The category scope both write endpoints carry back (spec 0064), omitted
+ * entirely when there is none so every other domain's body is unchanged. It
+ * never affects what is stored — the layout and the filters are saved
+ * per-domain — only the SHAPE of the config they return, which the caller
+ * writes straight into its per-tab cache entry.
+ */
+function productCategoryBody(productCategoryId?: number): { product_category_id?: number } {
+  return productCategoryId != null ? { product_category_id: productCategoryId } : {}
+}
+
+/**
  * Persists the current user's column layout (order/width/visibility) for a
  * domain. Self-scoped server-side (the user_id is never sent). Returns the
  * freshly merged config so the cache can stay in sync. See 0003.
+ *
+ * `productCategoryId` must be the tab the layout was edited from, so the
+ * returned config still carries that category's `attr.*` columns instead of
+ * the unscoped "Tutte" shape.
  */
 export async function saveTablePreferences(
   domain: string,
   columns: ColumnPreferenceInput[],
+  productCategoryId?: number,
 ): Promise<TableConfig> {
   const { data } = await apiClient.post<ApiResponse<TableConfig>>(
     `/tables/${domain}/preferences`,
-    { columns },
+    { columns, ...productCategoryBody(productCategoryId) },
   )
   return data.data
 }
@@ -120,14 +136,17 @@ export interface SaveTableFiltersPayload {
  * (the user_id is never sent); each key is upserted independently — omitting
  * one leaves it unchanged. Returns the freshly merged config so the cache can
  * stay in sync.
+ *
+ * `productCategoryId` carries the same meaning as in `saveTablePreferences`.
  */
 export async function saveTableFilters(
   domain: string,
   payload: SaveTableFiltersPayload,
+  productCategoryId?: number,
 ): Promise<TableConfig> {
   const { data } = await apiClient.post<ApiResponse<TableConfig>>(
     `/tables/${domain}/filters`,
-    payload,
+    { ...payload, ...productCategoryBody(productCategoryId) },
   )
   return data.data
 }

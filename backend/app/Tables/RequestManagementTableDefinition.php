@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
-use App\Enums\AdvancedFilterType;
 use App\Models\Attachment;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Services\RequestManagement\RequestManagementService;
-use App\Services\Table\AdvancedFilterApplier;
 use App\Tables\RequestManagement\Concerns\WritesInlineEditableCells;
 use App\Tables\RequestManagement\RequestActionCatalog;
 use App\Tables\RequestManagement\RequestAdvancedFilterCatalog;
@@ -82,20 +80,6 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     private const string OPERATIONAL_SITE_COLUMN = 'operational_site';
 
     private const string OPERATIONAL_SITE_RELATION = 'operationalSite';
-
-    /**
-     * AC-013: the DateRange advanced filters whose real column lives on
-     * `opportunities`, not `quotes` — applyAdvancedFilter() below scopes them
-     * inside a `whereHas('opportunity', ...)` closure instead of the generic
-     * default's plain `$query->where($target, ...)`. `next_callback_range`
-     * left this set with the user directive 2026-09-04: its column is a real
-     * `quotes` one now, so the generic default reaches it directly.
-     *
-     * @var array<string, string>
-     */
-    private const array OPPORTUNITY_RANGE_ADVANCED_FILTERS = [
-        'expected_close_range' => 'expected_close_date',
-    ];
 
     public function __construct(
         private readonly RequestRowMapper $rowMapper,
@@ -391,40 +375,6 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
         }
 
         return $this->relationColumns->applyFilter($query, $columnId, $columnConfig, $filter);
-    }
-
-    /**
-     * AC-013: `expected_close_range` targets a real `opportunities` column
-     * (RequestAdvancedFilterCatalog docblock) — the generic default's plain
-     * `$query->where($target, ...)` would target a column that does not
-     * exist on `quotes`, so it is scoped inside a
-     * `whereHas('opportunity', ...)` closure instead, reusing the SAME
-     * AdvancedFilterApplier the generic default itself calls (DRY: the exact
-     * date-range operator set, no reimplementation). Every other advanced
-     * filter (id-based `relation`/`async_search`, including `registry`/
-     * `referent`'s NEW `opportunity.` dot-path targets) needs no override:
-     * Eloquent's own `whereHas()` already supports nested relations.
-     *
-     * @param  Builder<Quote>  $query
-     * @param  array<string, mixed>  $descriptor
-     */
-    public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
-    {
-        $opportunityColumn = self::OPPORTUNITY_RANGE_ADVANCED_FILTERS[$name] ?? null;
-
-        if ($opportunityColumn === null) {
-            return parent::applyAdvancedFilter($query, $name, $descriptor, $value);
-        }
-
-        $type = $descriptor['type'] ?? null;
-
-        if ($type instanceof AdvancedFilterType) {
-            $query->whereHas('opportunity', function (Builder $opportunityQuery) use ($type, $opportunityColumn, $value, $descriptor): void {
-                app(AdvancedFilterApplier::class)->apply($opportunityQuery, $type, $opportunityColumn, $value, $descriptor);
-            });
-        }
-
-        return true;
     }
 
     /**

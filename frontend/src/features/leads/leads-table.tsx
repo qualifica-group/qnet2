@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -26,10 +26,19 @@ import { resolveAssignFeedback } from '@/features/leads/assign-feedback'
 import { useLeadConversion } from '@/features/leads/use-lead-conversion'
 import {
   AssignOperatorsDialog,
+  type AssignmentMode,
   type AssignOperatorsDialogInput,
 } from '@/features/leads/assign-operators-dialog'
 import { useAssignOperators } from '@/features/leads/use-assign-operators'
 import { ConvertLeadsDialog } from '@/features/leads/convert-leads-dialog'
+
+/**
+ * Modes disabled when the selection spans several campaigns (spec 0113 rev.2,
+ * user directive 2026-09-10: the Lead table follows the import wizard's rule).
+ * One operator cannot be the competent choice for two campaigns at once, while
+ * "Smistamento equo" works lead by lead and stays available.
+ */
+const MIXED_CAMPAIGNS_DISABLED_MODES: readonly AssignmentMode[] = ['single']
 
 /** Domain key used to mount the generic table for leads. */
 const LEADS_DOMAIN = 'leads'
@@ -144,10 +153,20 @@ export function LeadsTable() {
   // resolved here rather than in the dialog, which stays domain-agnostic. The
   // Sede only narrows the picker — the server recomputes it per lead. Gated on
   // the popup being open so a selection alone never issues the request.
-  const { competenceCategoryIds, operationalSiteId, isResolving } = useAssignmentScope({
+  const { competenceCategoryIds, operationalSiteId, campaignIds, isResolving } = useAssignmentScope({
     selection: assignIds.length > 0 ? { domain: 'leads', ids: assignIds } : null,
     enabled: assignOpen,
   })
+
+  // `campaignIds === undefined` (scope unresolved or failed) is NOT "mixed
+  // campaigns": saying so while the state is unknown would be a false message.
+  // That window is already covered by the picker, inhibited by an unresolved
+  // `operatorSiteId`.
+  const hasMixedCampaigns = campaignIds !== undefined && campaignIds.length > 1
+  const disabledModeHints = useMemo(
+    () => ({ single: t('leads.assign.mode.disabledMixedCampaigns') }),
+    [t],
+  )
 
   const assignMutation = useAssignOperators({
     onSuccess: (result) => {
@@ -276,6 +295,8 @@ export function LeadsTable() {
         operatorSiteId={operationalSiteId}
         competenceCategoryIds={competenceCategoryIds}
         isResolvingCompetence={isResolving}
+        disabledModes={hasMixedCampaigns ? MIXED_CAMPAIGNS_DISABLED_MODES : undefined}
+        disabledModeHints={hasMixedCampaigns ? disabledModeHints : undefined}
         onAssign={handleAssign}
       />
 

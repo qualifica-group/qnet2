@@ -29,9 +29,12 @@
            (`leads.campaign_id` -> `campaigns.operational_site_id`), non da `leads.operational_site_id`.
       D-4. La Sede di un'OFFERTA viene da `quotes.operational_site_id` (l'Opportunity non ha
            `campaign_id`: la catena Campagna -> Sede non esiste su quel dominio).
-      D-5. La disabilitazione di "Assegna a operatore" per campagne diverse vale SOLO nel wizard
-           import ed e' valutata sulla SELEZIONE corrente, non sull'intero run. Lo "Smistamento
-           equo" resta sempre abilitato: lavora riga per riga e le campagne miste non lo disturbano.
+      D-5. La disabilitazione di "Assegna a operatore" per campagne diverse e' valutata sulla
+           SELEZIONE corrente, non sull'intero run. Lo "Smistamento equo" resta sempre abilitato:
+           lavora record per record e le campagne miste non lo disturbano.
+           REV.2 (direttiva utente 2026-09-10): la regola valeva SOLO nel wizard import; ora vale
+           ANCHE sulla tabella Lead ("stessa assegnazione operatori con gli stessi criteri
+           dell'import lead"). Gestione richieste resta fuori: le offerte non hanno campagna.
       D-6. Lo smistamento equo SCRIVE sulla riga la Sede risolta, cosi' il Lead creato al commit
            la eredita (`LeadRowPersister` legge `siteOverride` e non ha nessun fallback su campagna).
       D-7. Coerenza di D-6 estesa a `single` (proposta di questa spec, non chiesta esplicitamente):
@@ -98,7 +101,7 @@
       <item>Rinomina `POST /api/assignment/required-categories` -> `POST /api/assignment/selection-scope` (controller `SelectionScopeController`, request `SelectionScopeRequest`), con risposta estesa a `{product_category_ids, operational_site_id, campaign_ids}`.</item>
       <item>FE `features/assignment/`: `use-assignment-scope.ts` (sostituisce `use-required-categories.ts`), tipi e api allineati.</item>
       <item>`AssignOperatorsDialog`: select Sede reso opt-in (`showSiteField`, default false), nuova prop `operatorSiteId` che scopa il picker quando il campo e' nascosto, nuova prop `disabledModes` per disabilitare la card "Assegna a operatore".</item>
-      <item>Call-site: `review-bulk-assign-bar.tsx` (+ disabilitazione single su campagne miste), `leads-table.tsx`, `request-management-table.tsx` (solo il dialog di ASSEGNAZIONE), `review-operator-editor.tsx` (filtro Sede anche per-riga), `review-grid.tsx` (rimozione di `resolveSharedSiteId`/`defaultSiteId`, ora codice morto).</item>
+      <item>Call-site: `review-bulk-assign-bar.tsx` e `leads-table.tsx` (entrambi con la disabilitazione single su campagne miste, rev.2), `request-management-table.tsx` (solo il dialog di ASSEGNAZIONE), `review-operator-editor.tsx` (filtro Sede anche per-riga), `review-grid.tsx` (rimozione di `resolveSharedSiteId`/`defaultSiteId`, ora codice morto).</item>
       <item>i18n it/en per il nuovo hint del picker (Sede derivata) e per il motivo della card disabilitata.</item>
       <item>Test Pest e Vitest mappati 1:1 sugli acceptance criteria, inclusi gli aggiornamenti dichiarati ai test esistenti che inviano `operational_site_id`.</item>
     </in>
@@ -239,7 +242,7 @@
     <criterion id="AC-028">Dato `mode=single` in una delle tre superfici modificate, quando il picker operatore si popola, allora la richiesta a `users/for-select` include sia `operational_site_id` (dalla Sede risolta) sia `competence_category_ids`, e il picker resta disabilitato finche' lo scope non e' risolto.</criterion>
     <criterion id="AC-029">Data una selezione di righe di campagne diverse nel wizard import, quando si apre la popup, allora la card "Assegna a operatore" e' disabilitata con un motivo leggibile e la card "Smistamento equo" resta attiva.</criterion>
     <criterion id="AC-030">Data una selezione di righe di una sola campagna, quando si apre la popup, allora la card "Assegna a operatore" e' abilitata.</criterion>
-    <criterion id="AC-031">Data la stessa condizione di AC-029 sulla tabella Lead o su Gestione richieste, quando si apre la popup, allora nessuna card e' disabilitata (D-5: la regola vive solo nell'import).</criterion>
+    <criterion id="AC-031">REV.2 (2026-09-10, sostituisce il criterio precedente "nessuna card e' disabilitata fuori dall'import"): data una selezione di lead di campagne diverse sulla tabella Lead, quando si apre la popup, allora la card "Assegna a operatore" e' disabilitata con un motivo leggibile e "Smistamento equo" resta attiva; con una sola campagna nessuna card e' disabilitata; con lo scope non ancora risolto nessuna card e' disabilitata e il motivo "campagne diverse" non compare. Su Gestione richieste nessuna card e' mai disabilitata: senza campagna il criterio non e' esprimibile.</criterion>
     <criterion id="AC-032">Dato il picker operatore della SINGOLA riga del review grid, quando si apre, allora filtra per `operational_site_id` della campagna di quella riga oltre che per le sue categorie, e mostra il messaggio "nessun operatore abilitato" quando il risultato e' vuoto.</criterion>
     <criterion id="AC-033">Dato il review grid dopo la modifica, quando si ispeziona il modulo, allora `resolveSharedSiteId` e lo stato `defaultSiteId` non esistono piu' (nessun codice morto) e la selezione non calcola piu' nessuna Sede condivisa.</criterion>
     <criterion id="AC-034">Dato un errore di risoluzione dello scope, quando la popup e' aperta, allora il picker operatore resta disabilitato e non viene inviata nessuna richiesta non filtrata.</criterion>

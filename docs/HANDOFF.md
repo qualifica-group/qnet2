@@ -3,6 +3,72 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## RIMOZIONE FILTRO "DATA CHIUSURA PREVISTA" IN GESTIONE RICHIESTE (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
+
+**Richiesta.** Il filtro avanzato "Data chiusura prevista" non deve piu' comparire ne' essere
+utilizzabile nella barra filtri di Gestione Richieste, per qualsiasi categoria prodotto.
+
+**Cosa e' stato fatto.** Rimosso il descrittore `expected_close_range` da
+`RequestAdvancedFilterCatalog::advancedFilters()` (unica fonte del catalogo: nessun decoratore —
+`CustomFieldAwareTableDefinition`/`RequestManagementScopedTableDefinition` — aggiunge o toglie
+filtri avanzati per categoria, quindi la rimozione vale su tutte le tab). Caduta con lui la sola
+ragione dell'override `RequestManagementTableDefinition::applyAdvancedFilter()` + la costante
+`OPPORTUNITY_RANGE_ADVANCED_FILTERS`: erano li' solo per scopare quel range dentro
+`whereHas('opportunity', ...)` (la colonna vive su `opportunities`, non su `quotes`). Rimossi
+insieme agli import ormai orfani `AdvancedFilterType` e `AdvancedFilterApplier`. Rimosse le chiavi
+i18n `requestManagement.advancedFilters.expectedCloseRange` (it/en).
+
+**Nessuna migrazione di stato necessaria.** Sia `TableFilterStateService` (stato filtri per utente)
+sia `TableFilterViewService` (viste salvate) passano `advanced_filters` dall'allow-list del catalogo
+**anche in lettura**: un `expected_close_range` gia' persistito viene semplicemente scartato, non
+produce 422 su `POST /api/tables/request-management/rows`.
+
+**Fuori scope, invariato.** La colonna/valore `expected_close_date` resta su Opportunita' (grid
+`opportunities`, form, document layouts): e' stato tolto SOLO il filtro di Gestione Richieste.
+
+**Verifica eseguita.** `RequestManagementAdvancedFiltersTest`: il test AC-013 del filtro rimosso e'
+stato eliminato e sostituito da un guard che interroga `GET /api/tables/request-management/columns`
+con e senza `product_category_id` e asserisce che `data.advancedFilters` non contenga piu'
+`expected_close_range`. Pest suite intera 6825/6828 (le 2 rosse — `ImportUploadTest`,
+`DemoOpportunitySeederTest` — sono flaky d'ordine: verdi rilanciate isolate, estranee alla
+modifica). Pint pulito, `npx tsc -b --force` pulito, Vitest `src/features/request-management`
+54 file / 382 test verdi.
+
+## FIX — COLONNE `attr.*` DI CATEGORIA CHE SPARIVANO IN GESTIONE RICHIESTE (2026-09-10) — VERDE
+
+**Sintomo (segnalazione utente).** Su una tab di categoria (es. "GOL - Lazio") le colonne
+specifiche erano corrette dopo un refresh, ma sparivano alla prima modifica di layout
+(spostamento colonna, resize, visibilita') o di filtro, lasciando solo le generali fino al reload
+successivo.
+
+**Causa radice.** `POST /tables/{domain}/preferences` e `POST /tables/{domain}/filters`
+restituiscono la config rimergiata, ma non ricevevano `product_category_id`: `TableController`
+non chiamava `scopeToProductCategory()` su quei due handler, quindi `resolveConfig()` girava con
+`categoryScope = null` e ometteva le colonne `attr.*`. Il frontend
+(`use-table-preferences.ts`, `use-table-filters.ts`) scrive quella risposta nella chiave di cache
+SCOPATA `tableKeys.config(domain, {productCategoryId})`, e `TableView` passa `config.columns`
+live alla griglia -> le colonne di categoria sparivano all'istante.
+
+**Fix.** I due endpoint accettano ora `product_category_id` (opzionale, `Rule::exists`) e lo
+applicano DOPO la scrittura, solo per la SHAPE della risposta: nulla cambia in cio' che viene
+persistito (layout e filtri restano per-dominio; `defaultColumnLayout()` resta l'unione unscoped,
+e su `filters` l'allow-list resta l'unione D-4). Il client lo invia da `scope?.productCategoryId`.
+
+**File toccati.** BE: `TableController::savePreferences/saveFilters`, `TablePreferencesRequest`,
+`TableFilterStateRequest`. FE: `features/table/api.ts` (helper `productCategoryBody`),
+`use-table-preferences.ts`, `use-table-filters.ts`.
+
+**Verificato.** Pest `tests/Feature/Table` + `tests/Feature/RequestManagement`: 906 passed.
+Vitest `src/features/table`: 190 passed. `tsc -b --force` EXIT=0, Pint e ESLint puliti. I 2 nuovi
+test backend (in `RequestManagementAttributeWritesTest.php`) falliscono con il fix rimosso:
+riproduzione confermata.
+
+**Da valutare, NON implementato (fuori scope).** Incoerenza preesistente: per le colonne `attr.*`
+`AttributeColumnBuilder::raw()` dichiara `visible => false` (ed e' cosi' che finiscono in
+`defaultColumnLayout()`), mentre `resolved()` le emette `visible => true`. Conseguenza: nascondere
+una colonna di categoria non produce delta (`false !== false`) e la colonna riappare al reload.
+Sintomo diverso da quello segnalato, va deciso quale sia il default corretto prima di toccarlo.
+
 ## ASSEGNAZIONE OPERATORI SCOPATA DALLA CAMPAGNA (spec 0113) — IN CORSO
 
 **Direttiva utente 2026-09-09:** togliere il select della Sede dall'assegnazione operatori e
@@ -59,6 +125,18 @@ record, `null` incluso come valore: un solo valore distinto e non nullo -> quell
 - backend `XDEBUG_MODE=off php artisan test` -> 6816 passed, 1 skipped, EXIT=0
 - frontend `npx vitest run --maxWorkers=4` -> 618 file, 4622 test, EXIT=0
 - `npx tsc -b --force --pretty false` -> EXIT=0 · `./vendor/bin/pint --test` -> passed
+
+**REV.2 (direttiva utente 2026-09-10).** "Anche sulla tabella lead voglio la stessa assegnazione
+operatori con gli stessi criteri dell'import lead". Tutto il resto era gia' cosi' dalla risposta
+"ovunque" sul perimetro (D-2): la tabella Lead aveva gia' Sede derivata dalla campagna del lead,
+niente select, picker filtrato per Sede + categoria, distribuzione equa nei soli abilitati. L'UNICO
+criterio che mancava era la disabilitazione di "Assegna a operatore" con lead di campagne diverse,
+che D-5 limitava al solo import: ora vale anche li'. ROVESCIA il vecchio AC-031, riscritto nella
+spec insieme a D-5. Gestione richieste resta fuori: senza campagna il criterio non e' esprimibile.
+Delta di solo FRONTEND (`leads-table.tsx` + test): il backend serviva gia' i lead per-record da MT-3.
+La copy `leads.assign.mode.disabledMixedCampaigns` e' stata resa NEUTRA ("record", non "righe")
+perche' ora serve due superfici; 5 asserzioni che citavano la vecchia stringa sono state allineate.
+Verde dopo la modifica: frontend 618 file / 4624 test EXIT=0, `tsc -b --force` EXIT=0.
 
 **Due trappole d'ambiente da conoscere prima di leggere un rosso.** (1) Con Xdebug attivo
 `tests/Unit/Migrations` va in SEGFAULT (signal 11): e' lo step-debugger che non trova il client, non

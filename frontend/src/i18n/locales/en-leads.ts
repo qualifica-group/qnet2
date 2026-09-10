@@ -166,9 +166,10 @@ export const leads = {
     },
     mode: {
       label: 'Assignment type',
-      // Reason shown on the card the import wizard disables
-      // (`review-bulk-assign-bar.tsx`) when the selection spans several campaigns.
-      disabledMixedCampaigns: 'Unavailable: the selection spans rows from different campaigns.',
+      // Reason shown on the card disabled when the selection spans several
+      // campaigns: import wizard (`review-bulk-assign-bar.tsx`) and Lead table
+      // (`leads-table.tsx`, user directive 2026-09-10).
+      disabledMixedCampaigns: 'Unavailable: the selection spans records from different campaigns.',
     },
     actions: {
       balanced: 'Balanced split',
