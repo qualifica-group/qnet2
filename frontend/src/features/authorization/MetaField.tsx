@@ -50,6 +50,12 @@ interface MetaFieldProps<
    */
   layout?: 'stacked' | 'inline'
   /**
+   * Extra classes for the field row, e.g. the column span a caller's grid
+   * needs. Set here rather than on a wrapper element so a hidden field
+   * (`!visible` renders nothing) leaves no empty cell behind in that grid.
+   */
+  className?: string
+  /**
    * Overrides the required marker when requiredness depends on live form
    * state the static field permission cannot express (e.g. a campaign's
    * classification fields, required only while standalone). Omit to follow
@@ -84,6 +90,7 @@ export function MetaField<
   hint,
   hintLabel,
   layout = 'stacked',
+  className,
   required,
   children,
 }: MetaFieldProps<TFieldValues, TName>) {
@@ -121,7 +128,7 @@ export function MetaField<
       name={name}
       render={({ field }) =>
         layout === 'inline' ? (
-          <FormItem>
+          <FormItem className={className}>
             <div className="flex items-start justify-between gap-3">
               <div className="grid min-w-0 gap-1">
                 {labelRow}
@@ -132,7 +139,7 @@ export function MetaField<
             <FormMessage />
           </FormItem>
         ) : (
-          <FormItem>
+          <FormItem className={className}>
             {labelRow}
             {children({ field, disabled, readOnly })}
             {descriptionNode}

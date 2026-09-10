@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useDefaultCountryId } from '@/features/geo/use-default-country'
+import { GeoCompactFields } from '@/features/geo/geo-compact-fields'
+import { GeoField, type GeoFieldProps } from '@/features/geo/geo-field'
 import {
   useCities,
   useCountries,
@@ -17,6 +18,13 @@ export interface GeoValue {
   province_id: number | null
   city_id: number | null
 }
+
+/**
+ * How the four levels are laid out.
+ * - `cascade` (default): the four selects stacked top-down, country first.
+ * - `compact`: comune-first, the three ancestors behind a disclosure.
+ */
+export type GeoLayout = 'cascade' | 'compact'
 
 /** Stable empty default (no level locked), hoisted so it never changes identity across renders. */
 const NO_LOCKED_LEVELS: ReadonlyArray<GeoScope> = []
@@ -37,100 +45,12 @@ interface GeoSelectProps {
    * `MetaField`, so its requiredness is surfaced here instead.
    */
   requiredLevels?: ReadonlyArray<GeoScope>
-}
-
-interface GeoOption {
-  id: number
-  name: string
-}
-
-interface GeoFieldProps {
-  label: string
-  /** Renders a required marker (asterisk) next to the label, mirroring `FormLabel required`. */
-  required?: boolean
-  placeholder: string
-  value: number | null
-  options: GeoOption[]
-  isPending: boolean
-  isError: boolean
-  disabled: boolean
-  emptyLabel: string
-  errorLabel: string
-  retryLabel: string
-  searchPlaceholder: string
-  noMatchLabel: string
-  onChange: (id: number) => void
-  onRetry: () => void
-  /** Set false when the caller narrows the list server-side (city level). */
-  filter?: boolean
-  /** Debounced search term, for the server-searched city level. */
-  onSearchChange?: (term: string) => void
-  hasNextPage?: boolean
-  isFetchingNextPage?: boolean
-  onLoadMore?: () => void
-}
-
-/**
- * A single dependent geo select: a searchable dropdown that owns its own
- * loading/error/empty states inside the popover, so a re-search never unmounts
- * it. Disabled until its parent has been chosen.
- */
-function GeoField({
-  label,
-  required = false,
-  placeholder,
-  value,
-  options,
-  isPending,
-  isError,
-  disabled,
-  emptyLabel,
-  errorLabel,
-  retryLabel,
-  searchPlaceholder,
-  noMatchLabel,
-  onChange,
-  onRetry,
-  filter,
-  onSearchChange,
-  hasNextPage,
-  isFetchingNextPage,
-  onLoadMore,
-}: GeoFieldProps) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">
-        {label}
-        {required && (
-          <span className="ml-1 text-destructive" aria-hidden="true">
-            *
-          </span>
-        )}
-      </span>
-      <SearchableSelect
-        value={value}
-        onChange={onChange}
-        options={options}
-        disabled={disabled}
-        isPending={!disabled && isPending}
-        isError={!disabled && isError}
-        onRetry={onRetry}
-        filter={filter}
-        onSearchChange={onSearchChange}
-        hasNextPage={hasNextPage}
-        isFetchingNextPage={isFetchingNextPage}
-        onLoadMore={onLoadMore}
-        labels={{
-          placeholder,
-          searchPlaceholder,
-          empty: emptyLabel,
-          noMatch: noMatchLabel,
-          error: errorLabel,
-          retry: retryLabel,
-        }}
-      />
-    </div>
-  )
+  /**
+   * Visual arrangement of the four levels. Defaults to `cascade`, the
+   * pre-existing behaviour every caller had; the address surfaces opt into
+   * `compact` (see `GeoCompactFields`).
+   */
+  layout?: GeoLayout
 }
 
 /**
@@ -150,7 +70,10 @@ function GeoField({
  * province). This keeps every country reachable.
  *
  * This component must NOT depend on any feature domain (e.g. personal-data): it
- * only speaks the generic `GeoValue`/`GeoScope` contract.
+ * only speaks the generic `GeoValue`/`GeoScope` contract. It owns the data and
+ * the cascade rules; the arrangement of the four levels belongs to a layout
+ * (`GeoCompactFields`), which is why every level is described here as props
+ * rather than rendered inline.
  */
 export function GeoSelect({
   value,
@@ -158,6 +81,7 @@ export function GeoSelect({
   disabled = false,
   lockedLevels = NO_LOCKED_LEVELS,
   requiredLevels = NO_LOCKED_LEVELS,
+  layout = 'cascade',
 }: GeoSelectProps) {
   const { t } = useTranslation()
   const countryLocked = lockedLevels.includes('country')
@@ -247,84 +171,94 @@ export function GeoSelect({
     })
   }
 
+  /** The labels every level shares, so each descriptor only states its own. */
+  const sharedLabels = {
+    emptyLabel: t('geo.empty'),
+    errorLabel: t('geo.error'),
+    retryLabel: t('geo.retry'),
+    searchPlaceholder: t('geo.search'),
+    noMatchLabel: t('geo.noMatch'),
+  }
+
+  const country: GeoFieldProps = {
+    ...sharedLabels,
+    label: t('geo.country'),
+    required: requiredLevels.includes('country'),
+    placeholder: t('geo.countryPlaceholder'),
+    value: value.country_id,
+    options: countries.data ?? [],
+    isPending: countries.isPending,
+    isError: countries.isError,
+    disabled: disabled || countryLocked,
+    onChange: handleCountry,
+    onRetry: countries.refetch,
+  }
+
+  const state: GeoFieldProps = {
+    ...sharedLabels,
+    label: t('geo.state'),
+    required: requiredLevels.includes('state'),
+    placeholder: t('geo.statePlaceholder'),
+    value: value.state_id,
+    options: states.data ?? [],
+    isPending: states.isPending,
+    isError: states.isError,
+    disabled: disabled || stateLocked || value.country_id == null,
+    onChange: handleState,
+    onRetry: states.refetch,
+  }
+
+  const province: GeoFieldProps = {
+    ...sharedLabels,
+    label: t('geo.province'),
+    required: requiredLevels.includes('province'),
+    placeholder: t('geo.provincePlaceholder'),
+    value: value.province_id,
+    options: provinces.data ?? [],
+    isPending: provinces.isPending,
+    isError: provinces.isError,
+    disabled: disabled || provinceLocked || value.state_id == null,
+    onChange: handleProvince,
+    onRetry: provinces.refetch,
+  }
+
+  const city: GeoFieldProps = {
+    ...sharedLabels,
+    label: t('geo.city'),
+    required: requiredLevels.includes('city'),
+    placeholder: t('geo.cityPlaceholder'),
+    value: value.city_id,
+    options: cityOptions,
+    isPending: cities.isPending,
+    isError: cities.isError,
+    disabled: disabled || cityLocked || (!cityFirst && value.state_id == null),
+    filter: false,
+    onSearchChange: setCitySearch,
+    hasNextPage: cities.hasNextPage,
+    isFetchingNextPage: cities.isFetchingNextPage,
+    onLoadMore: cities.fetchNextPage,
+    onChange: handleCity,
+    onRetry: cities.refetch,
+  }
+
+  if (layout === 'compact') {
+    return (
+      <GeoCompactFields
+        country={country}
+        state={state}
+        province={province}
+        city={city}
+        collapsible={cityFirst}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <GeoField
-        label={t('geo.country')}
-        required={requiredLevels.includes('country')}
-        placeholder={t('geo.countryPlaceholder')}
-        value={value.country_id}
-        options={countries.data ?? []}
-        isPending={countries.isPending}
-        isError={countries.isError}
-        disabled={disabled || countryLocked}
-        emptyLabel={t('geo.empty')}
-        errorLabel={t('geo.error')}
-        retryLabel={t('geo.retry')}
-        searchPlaceholder={t('geo.search')}
-        noMatchLabel={t('geo.noMatch')}
-        onChange={handleCountry}
-        onRetry={countries.refetch}
-      />
-
-      <GeoField
-        label={t('geo.state')}
-        required={requiredLevels.includes('state')}
-        placeholder={t('geo.statePlaceholder')}
-        value={value.state_id}
-        options={states.data ?? []}
-        isPending={states.isPending}
-        isError={states.isError}
-        disabled={disabled || stateLocked || value.country_id == null}
-        emptyLabel={t('geo.empty')}
-        errorLabel={t('geo.error')}
-        retryLabel={t('geo.retry')}
-        searchPlaceholder={t('geo.search')}
-        noMatchLabel={t('geo.noMatch')}
-        onChange={handleState}
-        onRetry={states.refetch}
-      />
-
-      <GeoField
-        label={t('geo.province')}
-        required={requiredLevels.includes('province')}
-        placeholder={t('geo.provincePlaceholder')}
-        value={value.province_id}
-        options={provinces.data ?? []}
-        isPending={provinces.isPending}
-        isError={provinces.isError}
-        disabled={disabled || provinceLocked || value.state_id == null}
-        emptyLabel={t('geo.empty')}
-        errorLabel={t('geo.error')}
-        retryLabel={t('geo.retry')}
-        searchPlaceholder={t('geo.search')}
-        noMatchLabel={t('geo.noMatch')}
-        onChange={handleProvince}
-        onRetry={provinces.refetch}
-      />
-
-      <GeoField
-        label={t('geo.city')}
-        required={requiredLevels.includes('city')}
-        placeholder={t('geo.cityPlaceholder')}
-        value={value.city_id}
-        options={cityOptions}
-        isPending={cities.isPending}
-        isError={cities.isError}
-        disabled={disabled || cityLocked || (!cityFirst && value.state_id == null)}
-        emptyLabel={t('geo.empty')}
-        errorLabel={t('geo.error')}
-        retryLabel={t('geo.retry')}
-        searchPlaceholder={t('geo.search')}
-        noMatchLabel={t('geo.noMatch')}
-        filter={false}
-        onSearchChange={setCitySearch}
-        hasNextPage={cities.hasNextPage}
-        isFetchingNextPage={cities.isFetchingNextPage}
-        onLoadMore={cities.fetchNextPage}
-        onChange={handleCity}
-        onRetry={cities.refetch}
-      />
+      <GeoField {...country} />
+      <GeoField {...state} />
+      <GeoField {...province} />
+      <GeoField {...city} />
     </div>
   )
 }

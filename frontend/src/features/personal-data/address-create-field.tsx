@@ -131,8 +131,8 @@ export function AddressCreateField({
     cityRequired && started && fields.city_id == null ? t('personalData.addresses.cityRequired') : null
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
+    <div className="grid gap-3 sm:grid-cols-3">
+      <div className="flex flex-col gap-1.5 sm:col-span-2">
         <label htmlFor="address-create-line1" className="text-sm font-medium">
           {t('personalData.addresses.line1')}
           {started && (
@@ -158,18 +158,6 @@ export function AddressCreateField({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="address-create-line2" className="text-sm font-medium">
-          {t('personalData.addresses.line2')}
-        </label>
-        <Input
-          id="address-create-line2"
-          autoComplete="address-line2"
-          value={fields.line2 ?? ''}
-          onChange={(event) => commit({ ...fields, line2: event.target.value || null })}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
         <label htmlFor="address-create-postal-code" className="text-sm font-medium">
           {t('personalData.addresses.postalCode')}
         </label>
@@ -181,11 +169,24 @@ export function AddressCreateField({
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5 sm:col-span-3">
+        <label htmlFor="address-create-line2" className="text-sm font-medium">
+          {t('personalData.addresses.line2')}
+        </label>
+        <Input
+          id="address-create-line2"
+          autoComplete="address-line2"
+          value={fields.line2 ?? ''}
+          onChange={(event) => commit({ ...fields, line2: event.target.value || null })}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5 sm:col-span-3">
         <GeoSelect
           value={geoValue}
           onChange={(next) => commit({ ...fields, ...next })}
           requiredLevels={cityRequired && started ? CITY_REQUIRED_LEVELS : undefined}
+          layout="compact"
         />
         {cityError && (
           <span role="alert" className="text-sm text-destructive">

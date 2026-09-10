@@ -493,4 +493,100 @@ describe('GeoSelect', () => {
       expect(onChange).not.toHaveBeenCalled()
     })
   })
+  describe('layout="compact" (comune-first)', () => {
+    const FILLED: GeoValue = {
+      country_id: 1,
+      state_id: 10,
+      province_id: 50,
+      city_id: 100,
+    }
+
+    it('renders the comune first and hides the three ancestors behind a disclosure', () => {
+      render(<GeoSelect value={empty} onChange={() => {}} layout="compact" />)
+
+      // Only the comune is a control until the disclosure is opened.
+      const selects = screen.getAllByRole('combobox')
+      expect(selects).toHaveLength(1)
+      expect(screen.getByText('City')).toBeInTheDocument()
+      expect(screen.queryByText('Country')).not.toBeInTheDocument()
+    })
+
+    it('summarises the picked ancestors from finest to broadest', () => {
+      render(<GeoSelect value={FILLED} onChange={() => {}} layout="compact" />)
+
+      expect(screen.getByText('Naples · Campania · Italy')).toBeInTheDocument()
+    })
+
+    it('renders no summary line while no ancestor is picked', () => {
+      render(<GeoSelect value={empty} onChange={() => {}} layout="compact" />)
+
+      expect(screen.queryByText(/·/)).not.toBeInTheDocument()
+    })
+
+    it('reveals the three ancestor selects when the disclosure is opened', () => {
+      render(<GeoSelect value={FILLED} onChange={() => {}} layout="compact" />)
+
+      fireEvent.click(screen.getByRole('button', { name: /Change geographic area/ }))
+
+      expect(screen.getAllByRole('combobox')).toHaveLength(4)
+      expect(screen.getByText('Country')).toBeInTheDocument()
+      expect(screen.getByText('Region')).toBeInTheDocument()
+      expect(screen.getByText('Province')).toBeInTheDocument()
+    })
+
+    it('keeps a foreign address reachable: the revealed country stays editable', () => {
+      const onChange = vi.fn()
+      render(<GeoSelect value={FILLED} onChange={onChange} layout="compact" />)
+
+      fireEvent.click(screen.getByRole('button', { name: /Change geographic area/ }))
+      // Compact DOM order: the comune comes first, then the revealed ancestors.
+      fireEvent.click(screen.getAllByRole('combobox')[1])
+      fireEvent.click(screen.getByRole('option', { name: 'France' }))
+
+      expect(onChange).toHaveBeenCalledWith({
+        country_id: 2,
+        state_id: null,
+        province_id: null,
+        city_id: null,
+      })
+    })
+
+    it('keeps the ancestors open with no disclosure when a level is locked', () => {
+      // Comune-first cannot drive a locked cascade (spec 0027 BR-5), so the
+      // ancestors must stay visible: nothing else would fill them in.
+      render(
+        <GeoSelect
+          value={FILLED}
+          onChange={() => {}}
+          layout="compact"
+          lockedLevels={['state']}
+        />,
+      )
+
+      expect(screen.getAllByRole('combobox')).toHaveLength(4)
+      expect(
+        screen.queryByRole('button', { name: /Change geographic area/ }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('city-first backfill still works from the compact layout', () => {
+      const onChange = vi.fn()
+      useCitiesMock.mockReturnValue(
+        cityQuery([
+          { id: 100, name: 'Grumo Nevano', country_id: 1, state_id: 10, province_id: 50 },
+        ]),
+      )
+      render(<GeoSelect value={empty} onChange={onChange} layout="compact" />)
+
+      fireEvent.click(screen.getAllByRole('combobox')[0])
+      fireEvent.click(screen.getByRole('option', { name: 'Grumo Nevano' }))
+
+      expect(onChange).toHaveBeenCalledWith({
+        country_id: 1,
+        state_id: 10,
+        province_id: 50,
+        city_id: 100,
+      })
+    })
+  })
 })

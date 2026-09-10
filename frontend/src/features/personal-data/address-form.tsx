@@ -3,6 +3,7 @@ import { useForm, useWatch, type Control } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import {
   Form,
@@ -65,6 +66,7 @@ function GeoFields({
         setValue('city_id', next.city_id)
       }}
       disabled={disabled}
+      layout="compact"
     />
   )
 }
@@ -112,7 +114,9 @@ export function AddressForm({
       state_id: address?.state_id ?? null,
       province_id: address?.province_id ?? null,
       city_id: address?.city_id ?? null,
-      is_primary: address?.is_primary ?? false,
+      // A new address is the owner's primary one by default (user directive
+      // 2026-09-10); editing keeps whatever the address already carries.
+      is_primary: address?.is_primary ?? true,
       site_type: address?.site_type ?? DEFAULT_SITE_TYPE,
     },
   })
@@ -138,53 +142,57 @@ export function AddressForm({
           but keeping a plain button (RHF's handleSubmit) avoids any nested-form
           ambiguity and works identically for the buffered and immediate paths. */}
       <div className="flex flex-col gap-3">
-        <FormField
-          control={form.control}
-          name="line1"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel required>{t('personalData.addresses.line1')}</FormLabel>
-              <FormControl>
-                <Input autoComplete="address-line1" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <FormField
+            control={form.control}
+            name="line1"
+            render={({ field }) => (
+              <FormItem className="sm:col-span-2">
+                <FormLabel required>{t('personalData.addresses.line1')}</FormLabel>
+                <FormControl>
+                  <Input autoComplete="address-line1" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="line2"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('personalData.addresses.line2')}</FormLabel>
-              <FormControl>
-                <Input autoComplete="address-line2" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="postal_code"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('personalData.addresses.postalCode')}</FormLabel>
+                <FormControl>
+                  <Input autoComplete="postal-code" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="postal_code"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('personalData.addresses.postalCode')}</FormLabel>
-              <FormControl>
-                <Input autoComplete="postal-code" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="line2"
+            render={({ field }) => (
+              <FormItem className="sm:col-span-3">
+                <FormLabel>{t('personalData.addresses.line2')}</FormLabel>
+                <FormControl>
+                  <Input autoComplete="address-line2" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <GeoFields
-          control={form.control}
-          setValue={(name, value) => form.setValue(name, value)}
-          disabled={form.formState.isSubmitting}
-        />
+          <div className="sm:col-span-3">
+            <GeoFields
+              control={form.control}
+              setValue={(name, value) => form.setValue(name, value)}
+              disabled={form.formState.isSubmitting}
+            />
+          </div>
+        </div>
 
         <FormField
           control={form.control}
@@ -192,11 +200,9 @@ export function AddressForm({
           render={({ field }) => (
             <FormItem>
               <label className="flex items-center gap-2 text-sm font-normal">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
+                <Checkbox
                   checked={field.value}
-                  onChange={(event) => field.onChange(event.target.checked)}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
                 />
                 {t('personalData.addresses.primary')}
               </label>

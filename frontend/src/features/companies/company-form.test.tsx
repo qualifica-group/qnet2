@@ -118,6 +118,12 @@ describe('CompanyForm — create/edit', () => {
     expect(screen.getByLabelText(/^Denomination/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^VAT number/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Address$/)).toBeInTheDocument()
+    // Comune-first layout: only the comune is a control until the disclosure
+    // is opened; nazione/regione/provincia are derived from it and reachable
+    // behind "Change geographic area".
+    expect(screen.getAllByRole('combobox')).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /Change geographic area/ }))
     expect(screen.getAllByRole('combobox')).toHaveLength(4)
   })
 

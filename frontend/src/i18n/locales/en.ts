@@ -244,6 +244,10 @@ export const en = {
     search: 'Search',
     noMatch: 'No matches found',
     retry: 'Retry',
+    // Comune-first layout (GeoCompactFields): the ancestors stay reachable
+    // behind this disclosure, they are never removed.
+    editArea: 'Change geographic area',
+    hideArea: 'Hide geographic area',
     // Derived geo scope (spec 0027 D-2): the finest level that is filled in.
     scope: {
       country: 'National',

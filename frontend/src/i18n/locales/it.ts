@@ -235,6 +235,10 @@ export const it: TranslationResources = {
     search: 'Cerca',
     noMatch: 'Nessun risultato',
     retry: 'Riprova',
+    // Layout comune-first (GeoCompactFields): gli antenati restano
+    // raggiungibili dietro questo disclosure, non vengono mai rimossi.
+    editArea: 'Modifica area geografica',
+    hideArea: 'Nascondi area geografica',
     // Scope geografico derivato (spec 0027 D-2): il livello più fine valorizzato.
     scope: {
       country: 'Nazionale',

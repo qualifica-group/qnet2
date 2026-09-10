@@ -109,70 +109,80 @@ export function CompanyFormBody({ mode, onSuccess, onCancel }: CompanyFormBodyPr
               title={t('companies.form.sections.address.title')}
               description={t('companies.form.sections.address.description')}
             >
-              <MetaField
-                control={form.control}
-                name="address.line1"
-                metaKey="address"
-                label={t('companies.form.line1')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input
-                      autoComplete="address-line1"
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      {...field}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
+              {/* Street + postal code share the first row; line2 and the geo
+                  cascade span it. The column span sits on each MetaField so a
+                  hidden field leaves no empty cell. */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <MetaField
+                  control={form.control}
+                  name="address.line1"
+                  metaKey="address"
+                  label={t('companies.form.line1')}
+                  className="sm:col-span-2"
+                >
+                  {({ field, disabled, readOnly }) => (
+                    <FormControl>
+                      <Input
+                        autoComplete="address-line1"
+                        disabled={disabled}
+                        readOnly={readOnly}
+                        {...field}
+                      />
+                    </FormControl>
+                  )}
+                </MetaField>
 
-              <MetaField
-                control={form.control}
-                name="address.line2"
-                metaKey="address"
-                label={t('companies.form.line2')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input
-                      autoComplete="address-line2"
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      {...field}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
+                <MetaField
+                  control={form.control}
+                  name="address.postal_code"
+                  metaKey="address"
+                  label={t('companies.form.postalCode')}
+                >
+                  {({ field, disabled, readOnly }) => (
+                    <FormControl>
+                      <Input
+                        autoComplete="postal-code"
+                        disabled={disabled}
+                        readOnly={readOnly}
+                        {...field}
+                      />
+                    </FormControl>
+                  )}
+                </MetaField>
 
-              <MetaField
-                control={form.control}
-                name="address.postal_code"
-                metaKey="address"
-                label={t('companies.form.postalCode')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input
-                      autoComplete="postal-code"
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      {...field}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
+                <MetaField
+                  control={form.control}
+                  name="address.line2"
+                  metaKey="address"
+                  label={t('companies.form.line2')}
+                  className="sm:col-span-3"
+                >
+                  {({ field, disabled, readOnly }) => (
+                    <FormControl>
+                      <Input
+                        autoComplete="address-line2"
+                        disabled={disabled}
+                        readOnly={readOnly}
+                        {...field}
+                      />
+                    </FormControl>
+                  )}
+                </MetaField>
 
-              <GeoSelect
-                value={geoValue}
-                onChange={(next) => {
-                  form.setValue('address.country_id', next.country_id)
-                  form.setValue('address.state_id', next.state_id)
-                  form.setValue('address.province_id', next.province_id)
-                  form.setValue('address.city_id', next.city_id)
-                }}
-                disabled={addressDisabled}
-              />
+                <div className="sm:col-span-3">
+                  <GeoSelect
+                    value={geoValue}
+                    onChange={(next) => {
+                      form.setValue('address.country_id', next.country_id)
+                      form.setValue('address.state_id', next.state_id)
+                      form.setValue('address.province_id', next.province_id)
+                      form.setValue('address.city_id', next.city_id)
+                    }}
+                    disabled={addressDisabled}
+                    layout="compact"
+                  />
+                </div>
+              </div>
             </FormSection>
           )}
 

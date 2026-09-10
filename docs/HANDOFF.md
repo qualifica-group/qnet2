@@ -3,6 +3,63 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FORM INDIRIZZO COMUNE-FIRST SU TUTTE E 4 LE SUPERFICI (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Migliorare il form dell'indirizzo, e' usato in molti form, come i
+migliori CRM." Ambito congelato via AskUserQuestion: **solo UX/layout, zero dipendenze**
+(niente Google Places/Mapbox, niente dataset CAP); cascata **comune-first con antenati
+derivati**; refactor su **tutte e 4** le superfici.
+
+**Il fatto di partenza.** I campi indirizzo erano scritti 4 volte (`personal-data/
+address-form.tsx` dialog, `personal-data/address-create-field.tsx` inline, `companies/
+company-form-body.tsx`, `operational-sites/operational-site-form-body.tsx`), ognuna con
+7 campi impilati in colonna singola. La ricerca **city-first con backfill degli antenati
+esisteva gia'** in `GeoSelect::handleCity` — era solo sepolta come quarto controllo dietro
+3 select disabilitate.
+
+**Cosa e' cambiato.**
+- `GeoSelect` ha una nuova prop **opt-in `layout: 'cascade' | 'compact'`, default
+  `'cascade'`**: projects, campaigns e il review-geo-editor degli import **non cambiano di
+  una riga**. Solo le 4 superfici indirizzo passano `compact`.
+- `compact` = `GeoCompactFields` (nuovo file): il **Comune** e' l'unico controllo primario,
+  nazione/regione/provincia collassano in una riga derivata (`Provincia · Regione · Nazione`)
+  piu' un disclosure "Modifica area geografica" che le riapre in `sm:grid-cols-3`.
+- **Gli antenati non sono mai stati rimossi, solo richiusi**: e' il disclosure a tenere
+  raggiungibile un indirizzo estero o un paese senza livello provincia — la decisione
+  utente del 2026-09-07 resta rispettata. Con un `lockedLevels` presente (spec 0027 BR-5)
+  comune-first non puo' guidare la cascata, quindi gli antenati **restano aperti e il
+  disclosure sparisce**: `collapsible={cityFirst}`.
+- Layout: ogni superficie ora e' `grid gap-3 sm:grid-cols-3` — via (`col-span-2`) + CAP
+  sulla prima riga, line2 e cascata a tutta larghezza. In `operational-site-form-body` la
+  cascata e' stata **spostata dopo** via/CAP (prima stava sopra).
+- `MetaField` ha una nuova prop `className` inoltrata a `FormItem`. Serve perche' lo span
+  di colonna deve stare **sul campo**, non su un wrapper: un campo non visibile
+  (`!permission.visible` -> `return null`) lascerebbe altrimenti una cella vuota nella griglia.
+
+**File split (per stare sotto le 300 righe).** `GeoField` estratto verbatim da
+`geo-select.tsx` in **`geo/geo-field.tsx`** (nessun cambio di comportamento); `geo-select.tsx`
+ora costruisce un `GeoFieldProps` per livello e delega il rendering al layout. 264/96/103 righe.
+
+**Nomi congelati.** `GeoLayout` (`'cascade' | 'compact'`), `GeoCompactFields`,
+`GeoField`/`GeoFieldProps`/`GeoOption` (esportati da `geo/geo-field.tsx`), chiavi i18n
+`geo.editArea` / `geo.hideArea` (it + en).
+
+**Da non rompere.** `layout` DEVE restare opt-in col default `'cascade'`: e' cio' che tiene
+invariati projects/campaigns/imports e i 27 test preesistenti di `geo-select.test.tsx`.
+Nel DOM compatto l'ordine dei combobox e' **comune, poi nazione/regione/provincia** — i test
+che indicizzano `getAllByRole('combobox')` devono tenerne conto.
+
+**Test.** Frontend intero **622 file, 4685 test passed**. 7 nuovi test in
+`geo-select.test.tsx` (describe `layout="compact"`). Un solo test **modificato per requisito
+cambiato, dichiarato**: `companies/company-form.test.tsx` asseriva 4 combobox nella sezione
+indirizzo (non mocka `GeoSelect`) — ora ne asserisce 1 e verifica che il disclosure riveli
+gli altri 3. Le altre superfici mockano `GeoSelect`, quindi non sono state toccate.
+`npx tsc -b --force` EXIT=0, ESLint pulito sui file toccati.
+
+**Non fatto (fuori ambito per scelta utente).** Autocompletamento indirizzo via servizio
+esterno; autofill CAP -> comune (la tabella `cities` **non ha** colonna postal_code);
+`addresses.latitude`/`longitude` restano colonne mai scritte ne' lette.
+
 ## NOTIFICHE NEL TITOLO DELLA SCHEDA DEL BROWSER (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** Quando c'e' una notifica, al posto del titolo dell'app nella scheda del

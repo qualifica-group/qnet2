@@ -96,45 +96,58 @@ export function OperationalSiteFormBody({
               )}
             </MetaField>
 
-            {geoVisible && (
-              <GeoSelect value={geoValue} onChange={handleGeoChange} disabled={geoDisabled} />
-            )}
+            {/* Street + postal code share the first row, the geo cascade
+                spans it: the comune now reads after the street, as in every
+                other address surface. */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <MetaField
+                control={form.control}
+                name="line1"
+                metaKey="line1"
+                label={t('operationalSites.form.line1')}
+                className="sm:col-span-2"
+              >
+                {({ field, disabled, readOnly }) => (
+                  <FormControl>
+                    <Input
+                      autoComplete="address-line1"
+                      disabled={disabled}
+                      readOnly={readOnly}
+                      {...field}
+                    />
+                  </FormControl>
+                )}
+              </MetaField>
 
-            <MetaField
-              control={form.control}
-              name="line1"
-              metaKey="line1"
-              label={t('operationalSites.form.line1')}
-            >
-              {({ field, disabled, readOnly }) => (
-                <FormControl>
-                  <Input
-                    autoComplete="address-line1"
-                    disabled={disabled}
-                    readOnly={readOnly}
-                    {...field}
-                  />
-                </FormControl>
-              )}
-            </MetaField>
+              <MetaField
+                control={form.control}
+                name="postal_code"
+                metaKey="postal_code"
+                label={t('operationalSites.form.postalCode')}
+              >
+                {({ field, disabled, readOnly }) => (
+                  <FormControl>
+                    <Input
+                      autoComplete="postal-code"
+                      disabled={disabled}
+                      readOnly={readOnly}
+                      {...field}
+                    />
+                  </FormControl>
+                )}
+              </MetaField>
 
-            <MetaField
-              control={form.control}
-              name="postal_code"
-              metaKey="postal_code"
-              label={t('operationalSites.form.postalCode')}
-            >
-              {({ field, disabled, readOnly }) => (
-                <FormControl>
-                  <Input
-                    autoComplete="postal-code"
-                    disabled={disabled}
-                    readOnly={readOnly}
-                    {...field}
+              {geoVisible && (
+                <div className="sm:col-span-3">
+                  <GeoSelect
+                    value={geoValue}
+                    onChange={handleGeoChange}
+                    disabled={geoDisabled}
+                    layout="compact"
                   />
-                </FormControl>
+                </div>
               )}
-            </MetaField>
+            </div>
           </FormSection>
 
           <CustomFieldsSection resource="operational-sites" control={form.control} />

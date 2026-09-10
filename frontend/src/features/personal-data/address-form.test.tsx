@@ -76,7 +76,6 @@ describe('AddressForm (controlled)', () => {
     fireEvent.change(screen.getByLabelText(/^Address\*?$/), {
       target: { value: '221B Baker Street' },
     })
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Primary address' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
@@ -192,5 +191,43 @@ describe('AddressForm (controlled)', () => {
     expect(screen.getByRole('combobox', { name: 'Site type' })).toHaveTextContent(
       'Operational site',
     )
+  })
+  describe('primary address checkbox (user directive 2026-09-10)', () => {
+    it('is checked by default on a brand new address', () => {
+      render(<AddressForm onSubmit={() => {}} onCancel={() => {}} />)
+
+      expect(screen.getByRole('checkbox', { name: 'Primary address' })).toBeChecked()
+    })
+
+    it('keeps the persisted value when editing, a stored false included', () => {
+      const { unmount } = render(
+        <AddressForm address={address()} onSubmit={() => {}} onCancel={() => {}} />,
+      )
+      expect(screen.getByRole('checkbox', { name: 'Primary address' })).not.toBeChecked()
+      unmount()
+
+      render(
+        <AddressForm
+          address={address({ is_primary: true })}
+          onSubmit={() => {}}
+          onCancel={() => {}}
+        />,
+      )
+      expect(screen.getByRole('checkbox', { name: 'Primary address' })).toBeChecked()
+    })
+
+    it('forwards is_primary false once unchecked', async () => {
+      const onSubmit = vi.fn()
+      render(<AddressForm onSubmit={onSubmit} onCancel={() => {}} />)
+
+      fireEvent.change(screen.getByLabelText(/^Address\*?$/), {
+        target: { value: '221B Baker Street' },
+      })
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Primary address' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0].is_primary).toBe(false)
+    })
   })
 })
