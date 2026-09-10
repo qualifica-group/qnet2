@@ -63,7 +63,6 @@ export const requestManagement = {
     successWithSkipped:
       'Operators assigned to {{count}} request(s). {{skipped}} left without a competent operator.',
     errors: {
-      noOperators: 'No operator found for the selected Site.',
       generic: 'Unable to assign the operators. Please try again.',
     },
   },

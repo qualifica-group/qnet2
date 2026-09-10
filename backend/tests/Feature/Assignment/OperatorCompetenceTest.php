@@ -24,8 +24,8 @@ uses(RefreshDatabase::class);
 
 /**
  * Spec 0111 D-2 — the competence rule read PER ROW (AC-011..AC-015), on top
- * of spec 0110's deroghe (INV-4) and of its three requirement resolvers
- * (INV-1, unchanged: AC-014/AC-015 of that spec).
+ * of the ONE deroga left by rev.2 (INV-4a/D-9a) and of spec 0110's three
+ * requirement resolvers (INV-1, unchanged: AC-014/AC-015 of that spec).
  */
 if (! function_exists('competentUser')) {
     /**
@@ -43,7 +43,7 @@ if (! function_exists('competentUser')) {
 }
 
 if (! function_exists('rowlessUser')) {
-    /** A user with an employment profile but no competence row: the wildcard of INV-4b. */
+    /** A user with an employment profile but no competence row: not a candidate since rev.2 (D-9). */
     function rowlessUser(): User
     {
         $user = User::factory()->create();
@@ -107,7 +107,7 @@ it('0111 AC-012: a row pairing the required category with the WRONG function exc
     $user = competentUser($otherFunction, $category);
 
     expect(app(OperatorCompetence::class)->competent([$user->id], [$category->id]))->toBe([]);
-    expect(app(OperatorCompetence::class)->excludedUserIds([$category->id]))->toBe([$user->id]);
+    expect(app(OperatorCompetence::class)->competentUserIds([$category->id]))->toBe([]);
 });
 
 it('0111 AC-012: a row on another category of the right function does not cover the required one', function () {
@@ -205,21 +205,24 @@ it('0111 D-2: the batch stays constant-query, whatever the number of users and r
 });
 
 // ---------------------------------------------------------------------------
-// AC-014 / AC-015 — the two deroghe (INV-4).
+// AC-014 rev.2 / AC-015 — the revoked deroga, and the one still standing.
 // ---------------------------------------------------------------------------
 
-it('0111 AC-014: a user with no competence row is never excluded, whatever the record requires', function () {
+it('0111 AC-014 rev.2: a user with no competence row is NOT a candidate for a record requiring a category', function () {
     $function = BusinessFunction::factory()->create();
     $category = categoryWithFunction($function);
 
     $rowless = rowlessUser();
     $noProfileAtAll = User::factory()->create();
+    $covering = competentUser($function, $category);
     $configuredElsewhere = competentUser($function, categoryWithFunction($function));
 
-    $candidates = [$rowless->id, $noProfileAtAll->id, $configuredElsewhere->id];
+    $candidates = [$rowless->id, $noProfileAtAll->id, $covering->id, $configuredElsewhere->id];
 
+    // AC-029: the profile-less user goes through the same reading as the
+    // rowless one, without erroring on the missing profile.
     expect(app(OperatorCompetence::class)->competent($candidates, [$category->id]))
-        ->toBe([$rowless->id, $noProfileAtAll->id]);
+        ->toBe([$covering->id]);
 });
 
 it('0111 AC-015: a record requiring no category leaves every candidate in place', function () {
@@ -230,7 +233,9 @@ it('0111 AC-015: a record requiring no category leaves every candidate in place'
 
     expect(app(OperatorCompetence::class)->competent([$configured->id, $plain->id], []))
         ->toBe([$configured->id, $plain->id]);
-    expect(app(OperatorCompetence::class)->excludedUserIds([]))->toBe([]);
+    // INV-4a (D-9a) is decided by competent(), not by the inclusion set:
+    // asked for nobody's category, the set is legitimately empty.
+    expect(app(OperatorCompetence::class)->competentUserIds([]))->toBe([]);
 });
 
 // ---------------------------------------------------------------------------

@@ -1,24 +1,24 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import type {
-  RequiredCategoriesPayload,
-  RequiredCategoriesResult,
+  AssignmentScopePayload,
+  AssignmentScopeResult,
 } from '@/features/assignment/types'
 
 /**
- * Resolves the product categories a selection of records requires
- * (`POST /assignment/required-categories`, spec 0110). POST — not GET —
- * because an SSRM selection can carry thousands of row ids.
+ * Resolves the assignment scope of a selection of records
+ * (`POST /assignment/selection-scope`, spec 0113). POST — not GET — because an
+ * SSRM selection can carry thousands of row ids.
  *
- * Returns the union of the requirements, ascending and deduplicated; an empty
- * array means the selection expresses no requirement at all.
+ * Returns the required categories (union, ascending, deduplicated), the shared
+ * operational site (`null` when mixed) and the campaigns the selection spans.
  */
-export async function fetchRequiredCategories(
-  payload: RequiredCategoriesPayload,
-): Promise<number[]> {
-  const { data } = await apiClient.post<ApiResponse<RequiredCategoriesResult>>(
-    '/assignment/required-categories',
+export async function fetchAssignmentScope(
+  payload: AssignmentScopePayload,
+): Promise<AssignmentScopeResult> {
+  const { data } = await apiClient.post<ApiResponse<AssignmentScopeResult>>(
+    '/assignment/selection-scope',
     payload,
   )
-  return data.data.product_category_ids
+  return data.data
 }

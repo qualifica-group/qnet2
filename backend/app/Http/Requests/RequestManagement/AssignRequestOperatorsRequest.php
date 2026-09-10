@@ -10,10 +10,16 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validates POST /api/request-management/assign-operators (user directive
- * 2026-07-23, "come nei lead"): bulk-assign a Sede operativa and the GA2
- * "Operatore" to many requests at once, either to a single chosen operator
- * (`mode=single`) or load-balanced across the Sede's operators
+ * 2026-07-23, "come nei lead"): bulk-assign the GA2 "Operatore" of many
+ * requests at once, either to a single chosen operator (`mode=single`) or
+ * load-balanced across the operators of each offer's own Sede
  * (`mode=balanced`).
+ *
+ * `operational_site_id` is `prohibited` since spec 0113 (AC-021): an offer's
+ * Sede IS `quotes.operational_site_id` (D-4), so the action reads it instead
+ * of writing it and it is no longer the caller's to choose. Rejecting the key
+ * outright — rather than ignoring it — keeps a stale client from believing it
+ * still steers the assignment.
  *
  * LeadAssignmentMode is REUSED as-is rather than duplicated: it is the very
  * same two-mode contract the shared AssignOperatorsDialog submits (renaming it
@@ -41,7 +47,7 @@ class AssignRequestOperatorsRequest extends FormRequest
         return [
             'request_ids' => ['required', 'array', 'min:1'],
             'request_ids.*' => ['integer', Rule::exists('quotes', 'id')],
-            'operational_site_id' => ['required', 'integer', Rule::exists('operational_sites', 'id')],
+            'operational_site_id' => ['prohibited'],
             'mode' => ['required', Rule::enum(LeadAssignmentMode::class)],
             'operator_id' => ['required_if:mode,single', 'integer', Rule::exists('users', 'id')],
         ];
@@ -58,11 +64,6 @@ class AssignRequestOperatorsRequest extends FormRequest
         $ids = $this->validated('request_ids', []);
 
         return array_values(array_unique(array_map(intval(...), $ids)));
-    }
-
-    public function operationalSiteId(): int
-    {
-        return (int) $this->validated('operational_site_id');
     }
 
     public function mode(): LeadAssignmentMode

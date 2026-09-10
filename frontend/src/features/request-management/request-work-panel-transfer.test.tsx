@@ -28,10 +28,12 @@ vi.mock('@/features/request-management/api', () => ({
 }))
 
 // The transfer popup narrows its Operatore picker by competence (spec 0110
-// AC-041): the lookup is driven explicitly here, never over the wire.
-const fetchRequiredCategoriesMock = vi.fn()
+// AC-041): the lookup is driven explicitly here, never over the wire. The
+// Sede the same call resolves (spec 0113) is NOT a filter here — the transfer
+// keeps its own destination Sede field (AC-027).
+const fetchAssignmentScopeMock = vi.fn()
 vi.mock('@/features/assignment/api', () => ({
-  fetchRequiredCategories: (...args: unknown[]) => fetchRequiredCategoriesMock(...args),
+  fetchAssignmentScope: (...args: unknown[]) => fetchAssignmentScopeMock(...args),
 }))
 
 vi.mock('@/features/personal-data/api', () => ({
@@ -109,8 +111,12 @@ beforeEach(() => {
   fetchRequestWorkPanelMock.mockReset()
   updateRequestWorkMock.mockReset()
   transferRequestsMock.mockReset()
-  fetchRequiredCategoriesMock.mockReset()
-  fetchRequiredCategoriesMock.mockResolvedValue([])
+  fetchAssignmentScopeMock.mockReset()
+  fetchAssignmentScopeMock.mockResolvedValue({
+    product_category_ids: [],
+    operational_site_id: 5,
+    campaign_ids: [],
+  })
   vi.mocked(toast.success).mockClear()
   vi.mocked(toast.error).mockClear()
 })
@@ -235,7 +241,7 @@ describe('RequestWorkPanelScreen — transfer competence filter (spec 0110)', ()
     await openTransferDialog(9)
 
     await waitFor(() =>
-      expect(fetchRequiredCategoriesMock).toHaveBeenCalledWith({ domain: 'quotes', ids: [9] }),
+      expect(fetchAssignmentScopeMock).toHaveBeenCalledWith({ domain: 'quotes', ids: [9] }),
     )
   })
 
@@ -246,6 +252,6 @@ describe('RequestWorkPanelScreen — transfer competence filter (spec 0110)', ()
     renderPanel()
 
     await screen.findAllByRole('button', { name: 'Transfer contact' })
-    expect(fetchRequiredCategoriesMock).not.toHaveBeenCalled()
+    expect(fetchAssignmentScopeMock).not.toHaveBeenCalled()
   })
 })

@@ -297,20 +297,22 @@ class ImportController extends BaseApiController
 
     /**
      * PATCH /api/imports/{domain}/{importRun}/rows/assign — bulk-assign an
-     * operator, an operational site and/or the "Prodotti di interesse" to
-     * many staged rows in a single mass UPDATE (spec 0045 bulk increment,
-     * extended to a COMBINED operator+site assignment, then to bulk
+     * operator and/or the "Prodotti di interesse" to many staged rows in
+     * grouped mass UPDATEs (spec 0045 bulk increment, extended to bulk
      * `product_ids`), distinct from the single-row PATCH .../rows/{row}
      * above, valid only from `reviewing`. AG Grid
      * `getServerSideSelectionState()` semantics: `row_ids` are the rows to
      * target, or to EXCLUDE when `select_all` is true — BulkAssignRequest
      * already validated every id belongs to this run (anti-IDOR) and every
      * product sits inside the run's campaign coverage. Pure
-     * operator/site/product assignment, never gated by `opportunities.create`
+     * operator/product assignment, never gated by `opportunities.create`
      * (that gate is confirm()'s own, spec 0045).
      *
+     * The Sede is NOT part of the payload (spec 0113): it is derived from
+     * each row's own campaign server-side and written back on the row.
+     *
      * `skipped` (spec 0110, additive): the targeted rows `mode=balanced`
-     * deliberately left without an operator because nobody at the Sede is
+     * deliberately left without an operator because nobody at their Sede is
      * competent for them. Always 0 with `mode=single`.
      */
     public function bulkAssign(BulkAssignRequest $request, string $domain, ImportRun $importRun): JsonResponse
@@ -330,7 +332,6 @@ class ImportController extends BaseApiController
                 $request->rowIds(),
                 $request->mode(),
                 $request->operatorId(),
-                $request->operationalSiteId(),
                 $request->productIds(),
             );
             $this->service->recomputeCounts($importRun->fresh());

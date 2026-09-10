@@ -103,7 +103,7 @@ class EmploymentProfile extends BaseModel
     /**
      * The zero-or-more REMOTE sites (D-1): operative exactly like the
      * physical one for every consumer (UserService::forSelect,
-     * LeadOperatorDistributor::operatorIdsForSite).
+     * LeadOperatorDistributor::operatorIdsBySite).
      */
     public function remoteOperationalSites(): BelongsToMany
     {

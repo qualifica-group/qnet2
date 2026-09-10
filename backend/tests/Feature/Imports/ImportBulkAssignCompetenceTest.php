@@ -21,7 +21,13 @@ uses(RefreshDatabase::class);
  * Spec 0110 — PATCH /api/imports/{domain}/{importRun}/rows/assign becomes
  * competence-aware on `mode=balanced`: the Sede stays the outer filter, the
  * competence narrows it row by row, and the rows nobody is competent for come
- * back as `skipped`. AC-020, AC-021, AC-022, AC-023, AC-025.
+ * back as `skipped`. AC-020, AC-021, AC-023, AC-025.
+ *
+ * Since spec 0113 that outer filter is DERIVED from each row's campaign
+ * instead of being chosen by the caller, so the fixtures below put their Sede
+ * on a campaign; the derivation itself is covered by
+ * ImportBulkAssignCampaignSiteTest, and 0110's AC-022 is revoked there
+ * (see the AC-013 case below).
  *
  * The `mode` contract itself (single/balanced, the 422s, the bulk
  * `product_ids`) stays covered by ImportBulkAssignBalancedTest.
@@ -43,9 +49,9 @@ if (! function_exists('competenceImportOperator')) {
     /**
      * An operator employed at $site, carrying one competence row per
      * category, all paired with $function (spec 0111 D-2). Called without a
-     * function the profile stays rowless: the wildcard state of INV-4b —
-     * what every user looks like before anyone configures a competence
-     * (AC-025).
+     * function the profile stays rowless — what every user looks like before
+     * anyone configures a competence, and since rev.2 (D-9) no longer a
+     * candidate for anything (AC-027).
      */
     function competenceImportOperator(OperationalSite $site, ?BusinessFunction $function = null, ProductCategory ...$categories): User
     {
@@ -63,13 +69,23 @@ if (! function_exists('competenceImportOperator')) {
     }
 }
 
+/**
+ * A run whose GLOBAL campaign carries $site (spec 0113 D-1): since the Sede
+ * of a row is derived from its campaign, that campaign is what puts these
+ * rows inside $site. The campaign's own classification never becomes the
+ * requirement here — every row below carries its own `product_ids`, which
+ * takes precedence (INV-1).
+ */
 if (! function_exists('competenceImportRun')) {
-    function competenceImportRun(User $actor): ImportRun
+    function competenceImportRun(User $actor, ?OperationalSite $site = null): ImportRun
     {
         return ImportRun::factory()->create([
             'user_id' => $actor->id,
             'resource' => 'leads',
             'status' => ImportStatus::Reviewing,
+            'global_config' => $site === null
+                ? []
+                : ['campaign_id' => Campaign::factory()->create(['operational_site_id' => $site->id])->id],
         ]);
     }
 }
@@ -88,9 +104,9 @@ if (! function_exists('competenceImportProduct')) {
  * check sees only this one.
  */
 if (! function_exists('competenceImportCampaign')) {
-    function competenceImportCampaign(ProductCategory $category): Campaign
+    function competenceImportCampaign(ProductCategory $category, ?OperationalSite $site = null): Campaign
     {
-        $campaign = Campaign::factory()->create();
+        $campaign = Campaign::factory()->create(['operational_site_id' => $site?->id]);
         $campaign->productLines()->delete();
 
         CampaignProductLine::factory()->create([
@@ -123,7 +139,7 @@ it('0110 AC-020: mode=balanced sends every row to an operator competent for that
     $salesProduct = competenceImportProduct($salesCategory);
     $serviceProduct = competenceImportProduct($serviceCategory);
 
-    $run = competenceImportRun($actor);
+    $run = competenceImportRun($actor, $site);
     $salesRowOne = ImportRunRow::factory()->for($run, 'importRun')->create(['row_number' => 1, 'product_ids' => [$salesProduct->id]]);
     $salesRowTwo = ImportRunRow::factory()->for($run, 'importRun')->create(['row_number' => 2, 'product_ids' => [$salesProduct->id]]);
     $serviceRow = ImportRunRow::factory()->for($run, 'importRun')->create(['row_number' => 3, 'product_ids' => [$serviceProduct->id]]);
@@ -131,7 +147,6 @@ it('0110 AC-020: mode=balanced sends every row to an operator competent for that
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
         'mode' => 'balanced',
-        'operational_site_id' => $site->id,
         'row_ids' => [$salesRowOne->id, $salesRowTwo->id, $serviceRow->id],
     ])->assertOk()
         ->assertJsonPath('data.updated', 3)
@@ -169,14 +184,13 @@ it('0110 AC-020: a bulk product_ids override drives the competence of the very c
         'user_id' => $actor->id,
         'resource' => 'leads',
         'status' => ImportStatus::Reviewing,
-        'global_config' => ['campaign_id' => competenceImportCampaign($salesCategory)->id],
+        'global_config' => ['campaign_id' => competenceImportCampaign($salesCategory, $site)->id],
     ]);
     $row = ImportRunRow::factory()->for($run, 'importRun')->create(['row_number' => 1, 'product_ids' => [$serviceProduct->id]]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
         'mode' => 'balanced',
-        'operational_site_id' => $site->id,
         'product_ids' => [$salesProduct->id],
         'row_ids' => [$row->id],
     ])->assertOk()
@@ -205,7 +219,7 @@ it('0110 AC-021: a row with no competent operator is skipped, keeps no operator,
 
     $operator = competenceImportOperator($site, $coveredFunction, $coveredCategory);
 
-    $run = competenceImportRun($actor);
+    $run = competenceImportRun($actor, $site);
     $coveredRow = ImportRunRow::factory()->for($run, 'importRun')->create([
         'row_number' => 1,
         'product_ids' => [competenceImportProduct($coveredCategory)->id],
@@ -218,7 +232,6 @@ it('0110 AC-021: a row with no competent operator is skipped, keeps no operator,
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
         'mode' => 'balanced',
-        'operational_site_id' => $site->id,
         'row_ids' => [$coveredRow->id, $orphanRow->id],
     ])->assertOk()
         ->assertJsonPath('data.updated', 1)
@@ -233,24 +246,28 @@ it('0110 AC-021: a row with no competent operator is skipped, keeps no operator,
 });
 
 // ---------------------------------------------------------------------------
-// AC-022 — a Sede with no operators AT ALL is still the pre-feature 422.
+// AC-022 is REVOKED by spec 0113 (AC-013): a Sede with no operators at all
+// was an all-or-nothing 422 back when ONE Sede was chosen for the whole call.
+// Now that each row derives its own, "nobody at that Sede" is a per-row
+// condition like any other and confluences into `skipped`.
 // ---------------------------------------------------------------------------
 
-it('0110 AC-022: mode=balanced on a Sede with zero operators stays a 422 and writes nothing', function () {
+it('0113 AC-013: mode=balanced on a Sede with zero operators is 200 with the row skipped', function () {
     $actor = competenceImportActor();
     $site = OperationalSite::factory()->withAddress()->create();
-    $run = competenceImportRun($actor);
+    $run = competenceImportRun($actor, $site);
     $row = ImportRunRow::factory()->for($run, 'importRun')->create(['row_number' => 1]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
         'mode' => 'balanced',
-        'operational_site_id' => $site->id,
         'row_ids' => [$row->id],
-    ])->assertStatus(422);
+    ])->assertOk()
+        ->assertJsonPath('data.updated', 0)
+        ->assertJsonPath('data.skipped', 1);
 
     expect($row->fresh()->operator_id)->toBeNull()
-        ->and($row->fresh()->operational_site_id)->toBeNull();
+        ->and($row->fresh()->operational_site_id)->toBe($site->id);
 });
 
 // ---------------------------------------------------------------------------
@@ -268,7 +285,7 @@ it('0110 AC-023: mode=single assigns an operator who is NOT competent and report
 
     $incompetentOperator = competenceImportOperator($site, $operatorFunction, $operatorCategory);
 
-    $run = competenceImportRun($actor);
+    $run = competenceImportRun($actor, $site);
     $row = ImportRunRow::factory()->for($run, 'importRun')->create([
         'row_number' => 1,
         'product_ids' => [competenceImportProduct($rowCategory)->id],
@@ -287,34 +304,74 @@ it('0110 AC-023: mode=single assigns an operator who is NOT competent and report
 });
 
 // ---------------------------------------------------------------------------
-// AC-025 — nobody configured a competence: the pre-feature distribution.
+// AC-027 rev.2 — nobody configured a competence: nobody is a candidate.
+// This INVERTS the old AC-025 (spec 0110 INV-4b), revoked by D-9 after the
+// field test that assigned rows to operators without the required category.
 // ---------------------------------------------------------------------------
 
-it('0110 AC-025: with no competence configured anywhere the distribution is the pre-feature one and skipped is 0', function () {
+it('0111 AC-027 rev.2: with no competence configured anywhere no row is assigned, all are skipped, Sede and products are still written', function () {
     $actor = competenceImportActor();
     $site = OperationalSite::factory()->withAddress()->create();
 
-    $firstOperator = competenceImportOperator($site);
-    $secondOperator = competenceImportOperator($site);
+    competenceImportOperator($site);
+    competenceImportOperator($site);
 
-    // The rows DO express a requirement: it is the operators being wildcards
-    // (INV-4b) that must keep every one of them a candidate.
+    // The rows DO express a requirement, and no operator covers it: the Sede
+    // stops being the only effective constraint.
     $category = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
     $product = competenceImportProduct($category);
 
-    $run = competenceImportRun($actor);
+    $run = competenceImportRun($actor, $site);
     $firstRow = ImportRunRow::factory()->for($run, 'importRun')->create(['row_number' => 1, 'product_ids' => [$product->id]]);
     $secondRow = ImportRunRow::factory()->for($run, 'importRun')->create(['row_number' => 2, 'product_ids' => [$product->id]]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
         'mode' => 'balanced',
-        'operational_site_id' => $site->id,
         'row_ids' => [$firstRow->id, $secondRow->id],
+    ])->assertOk()
+        ->assertJsonPath('data.updated', 0)
+        ->assertJsonPath('data.skipped', 2);
+
+    // A Sede WITH operators but none competent is `skipped`, never the 422
+    // reserved for an empty Sede (AC-022): the rows keep the Sede and their
+    // products.
+    expect($firstRow->fresh()->operator_id)->toBeNull()
+        ->and($secondRow->fresh()->operator_id)->toBeNull()
+        ->and($firstRow->fresh()->operational_site_id)->toBe($site->id)
+        ->and($secondRow->fresh()->operational_site_id)->toBe($site->id)
+        ->and($firstRow->fresh()->product_ids)->toBe([$product->id]);
+});
+
+it('0111 AC-030: the covering operator still takes the rows, and the rowless colleague at the same Sede takes none', function () {
+    $actor = competenceImportActor();
+    $site = OperationalSite::factory()->withAddress()->create();
+
+    $function = BusinessFunction::factory()->create();
+    $category = ProductCategory::factory()->create(['business_function_id' => $function->id]);
+    $covering = competenceImportOperator($site, $function, $category);
+    // Employed at the same Sede, but the profile carries no row at all.
+    $rowless = competenceImportOperator($site);
+
+    $run = competenceImportRun($actor, $site);
+    $rows = collect([1, 2])->map(fn (int $number) => ImportRunRow::factory()->for($run, 'importRun')->create([
+        'row_number' => $number,
+        'product_ids' => [competenceImportProduct($category)->id],
+    ]));
+    $rowIds = $rows->pluck('id')->all();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
+        'mode' => 'balanced',
+        'row_ids' => $rowIds,
     ])->assertOk()
         ->assertJsonPath('data.updated', 2)
         ->assertJsonPath('data.skipped', 0);
 
-    expect($firstRow->fresh()->operator_id)->toBe($firstOperator->id)
-        ->and($secondRow->fresh()->operator_id)->toBe($secondOperator->id);
+    // The positive path is untouched (AC-011/AC-013): the covering operator
+    // takes both rows instead of splitting them with the rowless one.
+    expect($rows->map(fn ($row) => $row->fresh()->operator_id)->all())
+        ->toBe([$covering->id, $covering->id])
+        ->and($rows->map(fn ($row) => $row->fresh()->operator_id)->all())
+        ->not->toContain($rowless->id);
 });

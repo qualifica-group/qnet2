@@ -351,11 +351,14 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
 
       {/* Same dialog the table's row/bulk "Trasferisci contatto" drives
           (spec 0079), locked to this one record: a row transfer is just a
-          one-element selection. */}
+          one-element selection. `showSiteField` opts the Sede select back in:
+          the assignment surfaces lost it with spec 0113, but here the Sede is
+          the DESTINATION of the transfer, not a filter (D-2, AC-027). */}
       <AssignOperatorsDialog
         open={transfer.isOpen}
         onOpenChange={transfer.onOpenChange}
         selectionCount={1}
+        showSiteField
         defaultSite={transfer.defaultSite}
         lockedMode="single"
         copy={transfer.copy}

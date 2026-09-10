@@ -19,7 +19,7 @@ import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actio
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import { useRequiredCategories } from '@/features/assignment/use-required-categories'
+import { useAssignmentScope } from '@/features/assignment/use-assignment-scope'
 import { leadColumnRenderers } from '@/features/leads/column-renderers'
 import { deleteLead } from '@/features/leads/api'
 import { resolveAssignFeedback } from '@/features/leads/assign-feedback'
@@ -27,11 +27,9 @@ import { useLeadConversion } from '@/features/leads/use-lead-conversion'
 import {
   AssignOperatorsDialog,
   type AssignOperatorsDialogInput,
-  type AssignOperatorsDialogSite,
 } from '@/features/leads/assign-operators-dialog'
 import { useAssignOperators } from '@/features/leads/use-assign-operators'
 import { ConvertLeadsDialog } from '@/features/leads/convert-leads-dialog'
-import type { LeadOperationalSiteRef } from '@/features/leads/types'
 
 /** Domain key used to mount the generic table for leads. */
 const LEADS_DOMAIN = 'leads'
@@ -44,21 +42,6 @@ const LEADS_DOMAIN = 'leads'
  * flows into `TableView`'s internal `useMemo` dependency list.
  */
 const LEADS_ACTION_ICONS: ActionIconMap = { 'arrow-right-left': ArrowRightLeft }
-
-/**
- * The Sede to precompile in the "Assegna operatori" popup (spec 0048 AC-031):
- * present only when every selected row's `operational_site` (the same shape
- * `LeadsTableDefinition`/`LeadOperationalSiteColumn` project onto the grid
- * row, `{id, label}` or `null`) shares one non-null id. Any null or mismatch
- * across the selection leaves the popup's Sede unset, same as today.
- */
-function resolveSharedOperationalSite(rows: TableRow[]): LeadOperationalSiteRef | null {
-  const [first, ...rest] = rows.map((row) => row.operational_site as LeadOperationalSiteRef | null)
-  if (!first) {
-    return null
-  }
-  return rest.every((site) => site?.id === first.id) ? first : null
-}
 
 /**
  * Thin Leads adapter over the generic table. It mounts `<TableView>` with the
@@ -149,18 +132,19 @@ export function LeadsTable() {
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
 
-  // Bulk operator assignment (spec 0048 AC-041): the shared popup collects
-  // Sede + mode + operator; this adapter owns the selection, the mutation and
-  // its own success/error feedback.
+  // Bulk operator assignment (spec 0048 AC-041): the shared popup collects the
+  // mode and, for `single`, the operator; this adapter owns the selection, the
+  // mutation and its own success/error feedback.
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignIds, setAssignIds] = useState<number[]>([])
-  const [assignDefaultSite, setAssignDefaultSite] = useState<AssignOperatorsDialogSite | null>(null)
   const canAssignOperators = can('leads.update')
 
-  // Competence filter of the popup's Operatore picker (spec 0110 AC-041):
-  // resolved here, not in the dialog, which stays domain-agnostic. Gated on
+  // Scope of the popup's Operatore picker (spec 0110 AC-041, spec 0113): the
+  // categories the selection requires AND the Sede its campaigns share,
+  // resolved here rather than in the dialog, which stays domain-agnostic. The
+  // Sede only narrows the picker — the server recomputes it per lead. Gated on
   // the popup being open so a selection alone never issues the request.
-  const { competenceCategoryIds, isResolving } = useRequiredCategories({
+  const { competenceCategoryIds, operationalSiteId, isResolving } = useAssignmentScope({
     selection: assignIds.length > 0 ? { domain: 'leads', ids: assignIds } : null,
     enabled: assignOpen,
   })
@@ -179,22 +163,18 @@ export function LeadsTable() {
       try {
         await assignMutation.mutateAsync({ lead_ids: assignIds, ...input })
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 422 && input.mode === 'balanced'
-            ? t('leads.assign.errors.noOperators')
-            : t('leads.assign.errors.generic'),
-        )
+        // Spec 0113 removed the "this Sede has no operators" 422: a record with no
+        // candidate is now reported as `skipped` inside a 200. Any 422 still reaching
+        // here has a different cause, so naming that one would point at the wrong thing.
+        toast.error(t('leads.assign.errors.generic'))
         throw error
       }
     },
     [assignMutation, assignIds, t],
   )
 
-  // AC-031: precompiles the popup's Sede when every selected row shares one.
   const openAssignDialog = useCallback((selection: TableSelection) => {
     setAssignIds(selection.ids)
-    setAssignDefaultSite(resolveSharedOperationalSite(selection.rows))
     setAssignOpen(true)
   }, [])
 
@@ -293,7 +273,7 @@ export function LeadsTable() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         selectionCount={assignIds.length}
-        defaultSite={assignDefaultSite}
+        operatorSiteId={operationalSiteId}
         competenceCategoryIds={competenceCategoryIds}
         isResolvingCompetence={isResolving}
         onAssign={handleAssign}

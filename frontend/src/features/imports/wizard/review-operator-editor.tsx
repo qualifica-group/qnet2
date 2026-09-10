@@ -12,10 +12,35 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { useRequiredCategories } from '@/features/assignment/use-required-categories'
+import { useAssignmentScope } from '@/features/assignment/use-assignment-scope'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { resolveImportWizardErrorMessage } from '@/features/imports/wizard/resolve-error-message'
 import type { ImportRunRowItem } from '@/features/imports/wizard/types'
+
+/**
+ * Query params of the row's operator picker: the Sede the row's campaign
+ * resolves to plus, when the row expresses one, its competence requirement
+ * (spec 0113 AC-032). `undefined` site = scope not resolved yet or the lookup
+ * failed: the picker is disabled anyway and no unfiltered list must be
+ * preloaded (AC-034). `null` site = the campaign carries no Sede, so only
+ * competence filters.
+ */
+function buildRowOperatorParams(
+  siteId: number | null | undefined,
+  competenceCategoryIds: number[] | undefined,
+): Record<string, number | number[]> | undefined {
+  if (siteId === undefined) {
+    return undefined
+  }
+  const params: Record<string, number | number[]> = {}
+  if (siteId !== null) {
+    params.operational_site_id = siteId
+  }
+  if (competenceCategoryIds !== undefined) {
+    params.competence_category_ids = competenceCategoryIds
+  }
+  return Object.keys(params).length === 0 ? undefined : params
+}
 
 /**
  * Shared, stable state/callback threaded through `gridOptions.context`
@@ -33,7 +58,7 @@ export interface ReviewOperatorGridContext {
     node: IRowNode<ImportRunRowItem>,
   ) => Promise<void>
   globalDefaultOperatorId: number | null
-  /** The run the rows belong to; scopes the per-row competence lookup (spec 0110 AC-042). */
+  /** The run the rows belong to; scopes the per-row assignment lookup (spec 0110 AC-042, 0113 AC-032). */
   importRunId: number
 }
 
@@ -116,13 +141,15 @@ function ReviewOperatorDialogBody({
   const [isApplying, setIsApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Competence filter of THIS row (spec 0110 AC-042). Radix unmounts the
-  // dialog's subtree while closed, so this body — and its lookup — only
-  // exists while the popup is open: one request per opened cell, never one
-  // per rendered row.
-  const { competenceCategoryIds, isResolving } = useRequiredCategories({
+  // Sede + competence of THIS row (spec 0110 AC-042, 0113 AC-032). Radix
+  // unmounts the dialog's subtree while closed, so this body — and its lookup
+  // — only exists while the popup is open: one request per opened cell, never
+  // one per rendered row.
+  const { competenceCategoryIds, operationalSiteId, isResolving } = useAssignmentScope({
     selection: { domain: 'import_rows', import_run_id: importRunId, select_all: false, row_ids: [row.id] },
   })
+
+  const operatorParams = buildRowOperatorParams(operationalSiteId, competenceCategoryIds)
 
   // Step 1: PATCH the popup's current operator id (or `null` to revert to
   // the run default) as `operator_id`. Step 2: on success, close the popup
@@ -150,13 +177,13 @@ function ReviewOperatorDialogBody({
         value={operatorId}
         onChange={setOperatorId}
         selectedItem={row.operator ? { id: row.operator.id, label: row.operator.name } : null}
-        disabled={isApplying || isResolving}
+        disabled={isApplying || isResolving || operationalSiteId === undefined}
         showAvatar
-        params={competenceCategoryIds ? { competence_category_ids: competenceCategoryIds } : undefined}
+        params={operatorParams}
         labels={{
           placeholder: t('review.operator.placeholder'),
           searchPlaceholder: t('review.operator.searchPlaceholder'),
-          empty: competenceCategoryIds ? t('review.operator.emptyCompetent') : t('review.operator.empty'),
+          empty: operatorParams ? t('review.operator.emptyEnabled') : t('review.operator.empty'),
           error: t('review.operator.selectError'),
           clearLabel: t('review.operator.selectClear'),
           triggerLabel: t('review.operator.title'),

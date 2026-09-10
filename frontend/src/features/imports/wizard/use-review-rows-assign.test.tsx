@@ -224,15 +224,14 @@ describe('useReviewRows — site popup apply', () => {
   })
 })
 
+// Spec 0113 AC-016: `operational_site_id` left the contract — the server
+// derives each row's Sede from its campaign and answers 422 if it is sent —
+// so the builder must never put it back in the body.
 describe('buildBulkAssignPayload', () => {
-  it('mode "single": forwards operational_site_id, mode and operator_id', () => {
+  it('mode "single": forwards mode and operator_id, never a Sede', () => {
     expect(
-      buildBulkAssignPayload(
-        { selectAll: false, toggledNodes: ['3', '7'] },
-        { operational_site_id: 84, mode: 'single', operator_id: 42 },
-      ),
+      buildBulkAssignPayload({ selectAll: false, toggledNodes: ['3', '7'] }, { mode: 'single', operator_id: 42 }),
     ).toEqual({
-      operational_site_id: 84,
       mode: 'single',
       operator_id: 42,
       select_all: false,
@@ -240,14 +239,8 @@ describe('buildBulkAssignPayload', () => {
     })
   })
 
-  it('mode "balanced": forwards operational_site_id and mode, no operator_id', () => {
-    expect(
-      buildBulkAssignPayload(
-        { selectAll: false, toggledNodes: ['3', '7'] },
-        { operational_site_id: 84, mode: 'balanced' },
-      ),
-    ).toEqual({
-      operational_site_id: 84,
+  it('mode "balanced": forwards mode alone, no operator_id and no Sede', () => {
+    expect(buildBulkAssignPayload({ selectAll: false, toggledNodes: ['3', '7'] }, { mode: 'balanced' })).toEqual({
       mode: 'balanced',
       select_all: false,
       row_ids: [3, 7],
@@ -256,12 +249,8 @@ describe('buildBulkAssignPayload', () => {
 
   it('maps a select-all selection to select_all: true with the excluded row ids', () => {
     expect(
-      buildBulkAssignPayload(
-        { selectAll: true, toggledNodes: ['9'] },
-        { operational_site_id: 84, mode: 'single', operator_id: 42 },
-      ),
+      buildBulkAssignPayload({ selectAll: true, toggledNodes: ['9'] }, { mode: 'single', operator_id: 42 }),
     ).toEqual({
-      operational_site_id: 84,
       mode: 'single',
       operator_id: 42,
       select_all: true,
@@ -299,7 +288,7 @@ describe('useReviewRows — bulk assign (operator + site)', () => {
       { wrapper: wrapper(client) },
     )
 
-    const payload = { operator_id: 42, operational_site_id: 84, select_all: false, row_ids: [1, 2] }
+    const payload = { operator_id: 42, select_all: false, row_ids: [1, 2] }
     const result = await act(async () => hookResult.current.handleBulkAssign(payload))
 
     expect(bulkAssignImportRowMock).toHaveBeenCalledWith('leads', 7, payload)
@@ -343,7 +332,6 @@ describe('useReviewRows — bulk assign (operator + site)', () => {
 
     await act(async () =>
       hookResult.current.handleBulkAssign({
-        operational_site_id: 84,
         mode: 'balanced',
         select_all: false,
         row_ids: [1, 2, 3, 4, 5, 6],

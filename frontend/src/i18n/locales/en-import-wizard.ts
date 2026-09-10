@@ -203,7 +203,7 @@ export const importWizard = {
       placeholder: 'Select…',
       searchPlaceholder: 'Search…',
       empty: 'No results.',
-      emptyCompetent: 'No operator is competent for this row.',
+      emptyEnabled: 'No operator is enabled for this row (Site and product categories).',
       selectError: 'Unable to load options.',
       selectClear: 'Clear selection',
       useDefault: 'Use default',

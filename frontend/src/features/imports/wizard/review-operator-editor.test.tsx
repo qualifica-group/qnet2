@@ -49,12 +49,23 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   ),
 }))
 
-// `useRequiredCategories` (spec 0110 AC-042) resolves the row's own
-// requirement through this endpoint; every test drives it explicitly.
-const fetchRequiredCategoriesMock = vi.fn()
+// `useAssignmentScope` (spec 0110 AC-042, 0113 AC-032) resolves the row's own
+// Sede + requirement through this endpoint; every test drives it explicitly.
+const fetchAssignmentScopeMock = vi.fn()
 vi.mock('@/features/assignment/api', () => ({
-  fetchRequiredCategories: (...args: unknown[]) => fetchRequiredCategoriesMock(...args),
+  fetchAssignmentScope: (...args: unknown[]) => fetchAssignmentScopeMock(...args),
 }))
+
+/** Envelope `data` of `POST /assignment/selection-scope`, spelled once. */
+function scope(
+  overrides: Partial<{
+    product_category_ids: number[]
+    operational_site_id: number | null
+    campaign_ids: number[]
+  }> = {},
+) {
+  return { product_category_ids: [], operational_site_id: null, campaign_ids: [], ...overrides }
+}
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -81,7 +92,7 @@ function rowItem(overrides: Partial<ImportRunRowItem> = {}): ImportRunRowItem {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  fetchRequiredCategoriesMock.mockResolvedValue([])
+  fetchAssignmentScopeMock.mockResolvedValue(scope())
 })
 
 /** Most tests aren't about the default-hint bug: default a global default id so the hint text is stable. */
@@ -232,21 +243,22 @@ describe('ReviewOperatorCell', () => {
 })
 
 /**
- * Spec 0110 AC-042/AC-043: the per-row picker only proposes the users
- * competent for THAT row, resolved from the row's own requirement — and only
- * while the popup is open, never once per rendered row.
+ * Spec 0110 AC-042/AC-043 and spec 0113 AC-032/AC-034: the per-row picker
+ * only proposes the users of the Sede that row's campaign resolves to who are
+ * competent for it, resolved from the row's own scope — and only while the
+ * popup is open, never once per rendered row.
  */
-describe('ReviewOperatorCell — competence filter (spec 0110)', () => {
-  it('resolves the requirement of that row alone, and only once the popup is open', async () => {
-    fetchRequiredCategoriesMock.mockResolvedValue([4, 9])
+describe('ReviewOperatorCell — Sede + competence filter (spec 0110, 0113)', () => {
+  it('resolves the scope of that row alone, and only once the popup is open', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(scope({ product_category_ids: [4, 9] }))
     renderCell({ data: rowItem({ id: 31 }) })
 
-    expect(fetchRequiredCategoriesMock).not.toHaveBeenCalled()
+    expect(fetchAssignmentScopeMock).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit operator' }))
 
     await waitFor(() =>
-      expect(fetchRequiredCategoriesMock).toHaveBeenCalledWith({
+      expect(fetchAssignmentScopeMock).toHaveBeenCalledWith({
         domain: 'import_rows',
         import_run_id: IMPORT_RUN_ID,
         select_all: false,
@@ -255,8 +267,11 @@ describe('ReviewOperatorCell — competence filter (spec 0110)', () => {
     )
   })
 
-  it('forwards the resolved categories to the picker', async () => {
-    fetchRequiredCategoriesMock.mockResolvedValue([4, 9])
+  // AC-032: the row's Sede narrows the picker exactly like its categories do.
+  it('forwards both the resolved Sede and the resolved categories to the picker', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(
+      scope({ product_category_ids: [4, 9], operational_site_id: 84 }),
+    )
     renderCell()
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit operator' }))
@@ -264,29 +279,43 @@ describe('ReviewOperatorCell — competence filter (spec 0110)', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
         'data-params',
-        JSON.stringify({ competence_category_ids: [4, 9] }),
+        JSON.stringify({ operational_site_id: 84, competence_category_ids: [4, 9] }),
       ),
     )
   })
 
-  it('applies no filter when the row expresses no requirement (AC-041 empty union)', async () => {
+  it('filters by Sede alone when the row expresses no competence requirement', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(scope({ operational_site_id: 84 }))
     renderCell()
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit operator' }))
 
-    await waitFor(() => expect(fetchRequiredCategoriesMock).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+        'data-params',
+        JSON.stringify({ operational_site_id: 84 }),
+      ),
+    )
+  })
+
+  it('applies no filter when the row has neither a Sede nor a requirement', async () => {
+    renderCell()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit operator' }))
+
+    await waitFor(() => expect(fetchAssignmentScopeMock).toHaveBeenCalledTimes(1))
     expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute('data-params', '')
     expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute('data-empty', 'No results.')
   })
 
   // Only the PICKER waits on the lookup: Applica also commits "use the run
-  // default" (a `null` operator), which the competence filter never governs,
-  // so gating it would take that action away for the length of a request.
-  it('keeps the picker disabled while the requirement is still resolving (AC-043)', async () => {
-    let resolveCategories: (ids: number[]) => void = () => {}
-    fetchRequiredCategoriesMock.mockReturnValue(
-      new Promise<number[]>((resolve) => {
-        resolveCategories = resolve
+  // default" (a `null` operator), which the filter never governs, so gating it
+  // would take that action away for the length of a request.
+  it('keeps the picker disabled while the scope is still resolving (AC-043)', async () => {
+    let resolveScope: (value: ReturnType<typeof scope>) => void = () => {}
+    fetchAssignmentScopeMock.mockReturnValue(
+      new Promise<ReturnType<typeof scope>>((resolve) => {
+        resolveScope = resolve
       }),
     )
     renderCell()
@@ -296,12 +325,26 @@ describe('ReviewOperatorCell — competence filter (spec 0110)', () => {
     expect(screen.getByRole('button', { name: 'Operator' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Apply' })).toBeEnabled()
 
-    resolveCategories([4])
+    resolveScope(scope({ product_category_ids: [4] }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Operator' })).toBeEnabled())
   })
 
-  it('announces an explicit competence empty state once the filter applies (AC-043)', async () => {
-    fetchRequiredCategoriesMock.mockResolvedValue([4])
+  // AC-034: a failed resolution must never degrade into an unfiltered list.
+  it('keeps the picker disabled and unfiltered when the scope lookup fails', async () => {
+    fetchAssignmentScopeMock.mockRejectedValue(new Error('boom'))
+    renderCell()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit operator' }))
+
+    await waitFor(() => expect(fetchAssignmentScopeMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Operator' })).toBeDisabled())
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute('data-params', '')
+  })
+
+  it('announces an explicit "no enabled operator" empty state once the filter applies (AC-032)', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(
+      scope({ product_category_ids: [4], operational_site_id: 84 }),
+    )
     renderCell()
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit operator' }))
@@ -309,7 +352,7 @@ describe('ReviewOperatorCell — competence filter (spec 0110)', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
         'data-empty',
-        'No operator is competent for this row.',
+        'No operator is enabled for this row (Site and product categories).',
       ),
     )
   })

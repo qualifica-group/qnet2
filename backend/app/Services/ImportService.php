@@ -17,11 +17,8 @@ use App\Jobs\ValidateImportJob;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
 use App\Models\User;
-use App\Services\Assignment\ImportRowCompetence;
-use App\Services\Assignment\ImportRunRowSelection;
-use App\Services\Assignment\OperatorCompetence;
+use App\Services\Import\ImportBulkAssigner;
 use App\Services\Import\ImportOpportunityConvertibility;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -48,10 +45,7 @@ class ImportService
 
     public function __construct(
         private readonly ImportOpportunityConvertibility $convertibility,
-        private readonly LeadOperatorDistributor $distributor,
-        private readonly ImportRunRowSelection $rowSelection,
-        private readonly ImportRowCompetence $rowCompetence,
-        private readonly OperatorCompetence $competence,
+        private readonly ImportBulkAssigner $bulkAssigner,
     ) {}
 
     /**
@@ -221,168 +215,23 @@ class ImportService
     }
 
     /**
-     * Bulk-assign an operator and/or an operational site to a batch of a
-     * run's staged rows (spec 0045 bulk increment, extended to a COMBINED
-     * operator+site assignment, then to `$mode` — spec 0048) — AG Grid
-     * `getServerSideSelectionState()` semantics: `$rowIds` are the rows to
-     * target when `$selectAll` is false, the rows to EXCLUDE (empty = every
-     * row) when true. Every id in `$rowIds` is trusted to already belong to
-     * `$run` — validated by the caller's FormRequest (BulkAssignRequest)
-     * BEFORE this runs, never re-checked here.
+     * Bulk-assign an operator and/or the "Prodotti di interesse" to a batch
+     * of a run's staged rows (spec 0045 bulk increment, extended to `$mode`
+     * by spec 0048, to the competence by 0110, to the derived Sede by 0113).
+     * The whole branch lives in ImportBulkAssigner: the Sede is no longer a
+     * value the operator picks but a per-row derivation with its own
+     * resolvers, too much machinery to keep inside this class.
      *
-     * `$mode = single` (default, AC-020 retro-compat) is the original SINGLE
-     * mass UPDATE, unchanged. `$mode = balanced` (AC-021) distributes the
-     * targeted rows across `$operationalSiteId`'s operators via
-     * LeadOperatorDistributor (load = REAL leads already assigned per
-     * operator) — same algorithm as LeadAssignmentService's real-lead
-     * bulk-assign. Marks every targeted row `is_edited` too, same as a
-     * single-row PATCH.
-     *
-     * `$productIds` (spec 0094 increment): bulk-assigns the "Prodotti di
-     * interesse" override, written on BOTH branches (`single`/`balanced`).
-     * `import_run_rows.product_ids` is a JSON column cast to `array` on the
-     * Model, but a mass UPDATE goes through the query builder, which never
-     * applies Eloquent casts — a raw PHP array bound as a query parameter
-     * would break the JSON column, so it is `json_encode()`d explicitly
-     * before being handed to `update()`.
-     *
-     * Returns an AssignmentOutcome, not a plain count (spec 0110): `balanced`
-     * can now leave a row without an operator when nobody at the Sede is
-     * competent for it, and the caller must be able to tell the two apart.
+     * Returns an AssignmentOutcome, not a plain count (spec 0110):
+     * `balanced` can leave a row without an operator when nobody at its Sede
+     * is competent for it, and the caller must tell the two apart.
      *
      * @param  array<int, int>  $rowIds
      * @param  array<int, int>|null  $productIds
      */
-    public function bulkAssign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?int $operationalSiteId, ?array $productIds = null): AssignmentOutcome
+    public function bulkAssign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $productIds = null): AssignmentOutcome
     {
-        if ($mode === LeadAssignmentMode::Balanced) {
-            // BulkAssignRequest guarantees operational_site_id is present
-            // whenever mode=balanced.
-            return $this->bulkAssignBalanced($run, $selectAll, $rowIds, (int) $operationalSiteId, $productIds);
-        }
-
-        $attributes = [
-            ...($operatorId !== null ? ['operator_id' => $operatorId] : []),
-            ...($operationalSiteId !== null ? ['operational_site_id' => $operationalSiteId] : []),
-            ...($productIds !== null ? ['product_ids' => json_encode($productIds)] : []),
-        ];
-
-        if ($attributes === []) {
-            return new AssignmentOutcome(assigned: 0);
-        }
-
-        // `single` never checks competence (spec 0110, AC-023: user decision
-        // R-1) — hence `skipped` is structurally 0 on this branch.
-        $updated = $this->rowSelection->query($run, $selectAll, $rowIds)
-            ->update([...$attributes, 'is_edited' => true]);
-
-        return new AssignmentOutcome(assigned: $updated);
-    }
-
-    /**
-     * The `mode=balanced` branch of bulkAssign() (br-balanced, spec 0048):
-     * resolve the targeted staged row ids (same select_all/row_ids
-     * semantics), distribute them across $operationalSiteId's operators, and
-     * write operator_id + operational_site_id + is_edited=true per operator
-     * group (one mass UPDATE per operator, not per row). 422 when the Sede
-     * has zero operators (AC-012's import-side counterpart). `$productIds`,
-     * when present, is written identically on every group — same
-     * `json_encode()` treatment as the `single` branch (see bulkAssign()'s
-     * docblock for the JSON-cast mass-update gotcha).
-     *
-     * Competence-aware since spec 0110 (AC-020/AC-021): the Sede is still the
-     * outer filter, but each row is distributed only among the operators
-     * competent for ITS OWN required categories. A row nobody is competent
-     * for is reported as `skipped` and keeps its current operator — the 422
-     * above stays reserved for a Sede with no operators AT ALL (AC-022), so a
-     * partially-covered selection is never all-or-nothing.
-     *
-     * @param  array<int, int>  $rowIds
-     * @param  array<int, int>|null  $productIds
-     */
-    private function bulkAssignBalanced(ImportRun $run, bool $selectAll, array $rowIds, int $operationalSiteId, ?array $productIds = null): AssignmentOutcome
-    {
-        // Step 1: the targeted rows, read once with everything the
-        // requirement resolver needs (INV-1).
-        $rows = $this->rowSelection->rows($run, $selectAll, $rowIds, ['id', 'row_number', 'product_ids', 'mapped_values']);
-
-        if ($rows->isEmpty()) {
-            return new AssignmentOutcome(assigned: 0);
-        }
-
-        $operatorIds = $this->distributor->operatorIdsForSite($operationalSiteId);
-
-        if ($operatorIds === []) {
-            abort(422, 'The selected Sede has no operators to distribute rows to.');
-        }
-
-        // Step 2: narrow the Sede's operators to the ones competent for each
-        // individual row (spec 0110, AC-020), then distribute inside those
-        // pools with the shared load map.
-        $candidatesByRow = $this->competence->competentByRequirement(
-            $operatorIds,
-            $this->rowCompetence->requiredByRow($this->withAssignedProducts($rows, $productIds), $run->global_config ?? []),
-        );
-
-        $assignments = $this->distributor->distributeAmong($candidatesByRow, $this->distributor->currentLoads($operatorIds));
-
-        // Step 3: one mass UPDATE per operator, plus one for the rows nobody
-        // is competent for — those still receive the Sede and the products
-        // (AC-021), only the operator is left untouched.
-        foreach ($this->distributor->groupByOperator($assignments) as $assignedOperatorId => $ids) {
-            ImportRunRow::query()->whereIn('id', $ids)->update([
-                'operator_id' => $assignedOperatorId,
-                ...$this->balancedRowAttributes($operationalSiteId, $productIds),
-            ]);
-        }
-
-        $skippedRowIds = array_values(array_diff($rows->modelKeys(), array_keys($assignments)));
-
-        if ($skippedRowIds !== []) {
-            ImportRunRow::query()->whereIn('id', $skippedRowIds)->update($this->balancedRowAttributes($operationalSiteId, $productIds));
-        }
-
-        return new AssignmentOutcome(assigned: count($assignments), skipped: count($skippedRowIds));
-    }
-
-    /**
-     * The bulk `product_ids` override, when submitted, IS the rows' effective
-     * "Prodotti di interesse" the moment this call lands — so the competence
-     * requirement must be read from it, not from the value it is about to
-     * replace (INV-1). Applied in memory only: these rows are never saved,
-     * the mass UPDATEs below do the writing.
-     *
-     * @param  Collection<int, ImportRunRow>  $rows
-     * @param  array<int, int>|null  $productIds
-     * @return Collection<int, ImportRunRow>
-     */
-    private function withAssignedProducts(Collection $rows, ?array $productIds): Collection
-    {
-        if ($productIds === null) {
-            return $rows;
-        }
-
-        return $rows->each(static function (ImportRunRow $row) use ($productIds): void {
-            $row->product_ids = $productIds;
-        });
-    }
-
-    /**
-     * The attributes every targeted row receives in `balanced` mode,
-     * competent or not. `product_ids` is a JSON column written through the
-     * query builder, which applies no Eloquent cast — see bulkAssign()'s
-     * docblock for the json_encode() gotcha.
-     *
-     * @param  array<int, int>|null  $productIds
-     * @return array<string, mixed>
-     */
-    private function balancedRowAttributes(int $operationalSiteId, ?array $productIds): array
-    {
-        return [
-            'operational_site_id' => $operationalSiteId,
-            ...($productIds !== null ? ['product_ids' => json_encode($productIds)] : []),
-            'is_edited' => true,
-        ];
+        return $this->bulkAssigner->assign($run, $selectAll, $rowIds, $mode, $operatorId, $productIds);
     }
 
     /**

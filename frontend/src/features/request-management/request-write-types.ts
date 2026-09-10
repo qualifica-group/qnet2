@@ -231,7 +231,6 @@ export interface CreateRequestPayload {
  */
 export interface AssignRequestOperatorsPayload {
   request_ids: number[]
-  operational_site_id: number
   mode: 'single' | 'balanced'
   operator_id?: number
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { ChevronDown, Package, UserCog } from 'lucide-react'
@@ -9,13 +9,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useRequiredCategories } from '@/features/assignment/use-required-categories'
-import type { RequiredCategoriesPayload } from '@/features/assignment/types'
+import { useAssignmentScope } from '@/features/assignment/use-assignment-scope'
+import type { AssignmentScopePayload } from '@/features/assignment/types'
 import {
   AssignOperatorsDialog,
+  type AssignmentMode,
   type AssignOperatorsDialogInput,
 } from '@/features/leads/assign-operators-dialog'
 import { ReviewBulkProductsDialog } from '@/features/imports/wizard/review-bulk-products-dialog'
+
+/**
+ * Stable reference (a new array per render would break memo-friendly props):
+ * `single` is the only mode a selection spanning several campaigns cannot
+ * express — one operator cannot be competent-and-on-site for all of them —
+ * while "Smistamento equo" works row by row and stays available (spec 0113
+ * D-5/AC-029).
+ */
+const MIXED_CAMPAIGNS_DISABLED_MODES: readonly AssignmentMode[] = ['single']
 
 /**
  * Selection shape consumed by the bar, mirroring AG Grid's own server-side
@@ -29,15 +39,15 @@ export interface ReviewBulkSelectionState {
 }
 
 /**
- * Maps the SSRM selection onto the body of `POST /assignment/required-categories`
- * (spec 0110 AC-041), with the very same `select_all`/`row_ids` semantics as
+ * Maps the SSRM selection onto the body of `POST /assignment/selection-scope`
+ * (spec 0113), with the very same `select_all`/`row_ids` semantics as
  * `buildBulkAssignPayload`: the operator picker is then filtered on exactly
  * the rows the assignment is about to target.
  */
-function buildRequiredCategoriesSelection(
+function buildAssignmentScopeSelection(
   selection: ReviewBulkSelectionState,
   importRunId: number,
-): RequiredCategoriesPayload {
+): AssignmentScopePayload {
   return {
     domain: 'import_rows',
     import_run_id: importRunId,
@@ -57,12 +67,6 @@ export interface ReviewBulkAssignBarProps {
    * grid has no cheaper source of truth than the run's own row count).
    */
   totalRows: number
-  /**
-   * The Sede to precompile in the operators popup (spec 0048 AC-031), when
-   * the caller could cheaply determine the current selection shares one —
-   * `null` otherwise (mixed sites, any unset, or a `selectAll` selection).
-   */
-  defaultSiteId?: number | null
   /** Scopes the products popup's picker exactly like `ProductsOfInterestField`/the per-row popup. */
   campaignCategoryIds: number[]
   /** PATCHes the combined bulk operator/site assignment; rejects (already toasted by the caller) on failure. */
@@ -101,23 +105,35 @@ export function ReviewBulkAssignBar({
   selection,
   importRunId,
   totalRows,
-  defaultSiteId,
   campaignCategoryIds,
   onAssign,
   onAssignProducts,
 }: ReviewBulkAssignBarProps) {
   const { t } = useTranslation('importWizard')
+  // The popup itself lives in the default namespace (`leads.assign.*`): the
+  // reason rendered on a disabled mode card is one of its strings.
+  const { t: tShared } = useTranslation()
   const [operatorsOpen, setOperatorsOpen] = useState(false)
   const [productsOpen, setProductsOpen] = useState(false)
   const selectionCount = resolveSelectionCount(selection, totalRows)
 
-  // Competence filter of the popup's Operatore picker (spec 0110 AC-041),
-  // resolved only while the popup is open: a selection on its own — which
-  // changes on every checkbox toggle — must not hit the endpoint.
-  const { competenceCategoryIds, isResolving } = useRequiredCategories({
-    selection: buildRequiredCategoriesSelection(selection, importRunId),
+  // Sede + competence + campaigns of the selection (spec 0113), resolved only
+  // while the popup is open: a selection on its own — which changes on every
+  // checkbox toggle — must not hit the endpoint.
+  const { competenceCategoryIds, operationalSiteId, campaignIds, isResolving } = useAssignmentScope({
+    selection: buildAssignmentScopeSelection(selection, importRunId),
     enabled: operatorsOpen,
   })
+
+  // `campaignIds === undefined` (scope unresolved or failed) is NOT "mixed
+  // campaigns": claiming so while the state is unknown would be a false
+  // message. That window is already covered by the picker itself, inhibited by
+  // an unresolved `operatorSiteId` (AC-034).
+  const hasMixedCampaigns = campaignIds !== undefined && campaignIds.length > 1
+  const disabledModeHints = useMemo(
+    () => ({ single: tShared('leads.assign.mode.disabledMixedCampaigns') }),
+    [tShared],
+  )
 
   return (
     <div
@@ -150,7 +166,9 @@ export function ReviewBulkAssignBar({
         open={operatorsOpen}
         onOpenChange={setOperatorsOpen}
         selectionCount={selectionCount}
-        defaultSiteId={defaultSiteId}
+        operatorSiteId={operationalSiteId}
+        disabledModes={hasMixedCampaigns ? MIXED_CAMPAIGNS_DISABLED_MODES : undefined}
+        disabledModeHints={hasMixedCampaigns ? disabledModeHints : undefined}
         competenceCategoryIds={competenceCategoryIds}
         isResolvingCompetence={isResolving}
         onAssign={onAssign}

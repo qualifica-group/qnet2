@@ -8,7 +8,8 @@ use App\DataObjects\Assignment\AssignmentOutcome;
 use App\Enums\LeadAssignmentMode;
 use App\Models\Quote;
 use App\Models\User;
-use App\Services\Assignment\OperatorCompetence;
+use App\Services\Assignment\AssignmentCandidates;
+use App\Services\Assignment\AssignmentSiteResolver;
 use App\Services\Assignment\QuoteCompetence;
 use App\Services\LeadOperatorDistributor;
 use App\Services\Notifications\AssignmentNotifier;
@@ -19,10 +20,10 @@ use Illuminate\Support\Facades\DB;
 /**
  * Business logic for the module's two BULK attribution endpoints — POST
  * /api/request-management/assign-operators (user directive 2026-07-23, "come
- * nei lead"; migrated onto the Quote by spec 0086), which assigns a Sede
- * operativa and the GA2 "Operatore" to many offers at once, and POST
+ * nei lead"; migrated onto the Quote by spec 0086), which assigns the GA2
+ * "Operatore" of many offers at once, and POST
  * /api/request-management/assign-manager-ga1 (spec 0104), which moves the GA1
- * slot alone with no Sede in play. Distinct from RequestManagementService
+ * slot alone. Distinct from RequestManagementService
  * (the per-record work panel): both are bulk, cross-record writes, kept in
  * their own Service (SRP), and both reach the pivot through the SAME
  * RequestOperatorWriter the per-row channels use.
@@ -37,6 +38,11 @@ use Illuminate\Support\Facades\DB;
  *    opportunities-via-pivot: weighting by another module's workload would
  *    distribute against the wrong signal. Only the distribution algorithm
  *    itself (br-balanced) is reused, from LeadOperatorDistributor.
+ *
+ * A third divergence since spec 0113 (D-4): this action writes NO Sede. An
+ * offer's Sede IS `quotes.operational_site_id`, so it is READ to scope each
+ * offer's candidates and never rewritten — unlike the other two surfaces,
+ * which persist the Sede they resolve from the campaign.
  */
 final class RequestAssignmentService
 {
@@ -45,20 +51,23 @@ final class RequestAssignmentService
         private readonly LeadOperatorDistributor $distributor,
         private readonly AssignmentNotifier $assignmentNotifier,
         private readonly QuoteCompetence $quoteCompetence,
-        private readonly OperatorCompetence $competence,
+        private readonly AssignmentSiteResolver $siteResolver,
+        private readonly AssignmentCandidates $candidates,
     ) {}
 
     /**
-     * Every reachable offer always receives $operationalSiteId. In `single`
-     * mode each also receives $operatorId; in `balanced` mode operators are
-     * distributed across the Sede's own operators (422 when it has none).
+     * In `single` mode every reachable offer receives $operatorId; in
+     * `balanced` mode each is distributed among the operators of its OWN
+     * Sede competent for its own product lines, and an offer with no such
+     * candidate keeps the operator it has and is counted as `skipped` (spec
+     * 0113, AC-019: a per-record condition, no longer a 422 on the batch).
      * Whole operation is one transaction.
      *
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
      */
-    public function assignOperators(array $requestIds, User $actor, int $operationalSiteId, LeadAssignmentMode $mode, ?int $operatorId): AssignmentOutcome
+    public function assignOperators(array $requestIds, User $actor, LeadAssignmentMode $mode, ?int $operatorId): AssignmentOutcome
     {
-        return DB::transaction(function () use ($requestIds, $actor, $operationalSiteId, $mode, $operatorId): AssignmentOutcome {
+        return DB::transaction(function () use ($requestIds, $actor, $mode, $operatorId): AssignmentOutcome {
             // Step 1: drop the ids the actor may not reach (D-3 scoping).
             $quotes = $this->inScopeQuotes($requestIds, $actor);
 
@@ -67,23 +76,21 @@ final class RequestAssignmentService
             }
 
             // Step 2: resolve the operator of each offer, per mode. An offer
-            // ABSENT from the map is one `balanced` found no competent
-            // operator for (spec 0110, AC-021): it keeps the operator it
-            // already had, which a null would instead have cleared.
+            // ABSENT from the map is one `balanced` found no candidate for —
+            // its Sede or its competence left the pool empty (spec 0110
+            // AC-021, spec 0113 AC-019): it keeps the operator it already
+            // had, which a null would instead have cleared.
             $operatorPerQuote = $mode === LeadAssignmentMode::Single
                 ? array_fill_keys($quotes->modelKeys(), $operatorId)
-                : $this->distributeBalanced($quotes->modelKeys(), $operationalSiteId);
+                : $this->distributeBalanced($quotes->modelKeys());
 
-            // Step 3: write the Sede (a fillable column, explicitly audited —
-            // D-9 anchors the module's history on the Opportunity, so the
-            // Quote's own automatic log is suspended) and the GA2 Operatore
-            // (Quote column + `quote_user` pivot slot sync, spec 0087 D-9)
-            // on each offer.
+            // Step 3: write the GA2 Operatore (Quote column + `quote_user`
+            // pivot slot sync, spec 0087 D-9) on each offer. Nothing else is
+            // written: the Sede was read, not chosen (spec 0113, D-4).
             foreach ($quotes as $quote) {
                 $this->assignOne(
                     $quote,
                     $actor,
-                    $operationalSiteId,
                     $operatorPerQuote[$quote->id] ?? null,
                     array_key_exists($quote->id, $operatorPerQuote),
                 );
@@ -101,12 +108,12 @@ final class RequestAssignmentService
      * the GA1 slot, or has that slot CLEARED when $userId is null (D-2).
      * Whole operation is one transaction.
      *
-     * Three things assignOperators() does that this deliberately does not,
-     * each following what the per-cell GA1 editor already does: it writes no
-     * Sede (only the Operatore slot is bound to one, D-1), it sends no
+     * Two things assignOperators() does that this deliberately does not, each
+     * following what the per-cell GA1 editor already does: it sends no
      * assignment notification (GA1 scopes no visibility and assigns nobody,
-     * D-5), and it needs no distributor (there is no site-scoped pool to
-     * balance across, so the action has a single mode).
+     * D-5), and it needs no distributor (only the Operatore slot is bound to
+     * a Sede, D-1, so there is no site-scoped pool to balance across and the
+     * action has a single mode).
      *
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
      * @return int the number of offers reached (in scope)
@@ -144,36 +151,44 @@ final class RequestAssignmentService
     }
 
     /**
-     * br-balanced over the Sede's operators, weighted by the offers each
-     * already operates and NARROWED by competence (spec 0110, AC-024): every
-     * offer is distributed only among the operators competent for the product
-     * categories of its own opportunity's lines (INV-1). An offer nobody is
-     * competent for is absent from the returned map — the caller reports it
-     * as `skipped` rather than forcing it onto an incompetent operator. The
-     * 422 stays reserved for a Sede with no operators at all (AC-022).
+     * br-balanced over each offer's OWN candidates (spec 0113, AC-019): the
+     * operators of its `quotes.operational_site_id` (D-4) narrowed by
+     * competence for its own opportunity's product lines (spec 0110, INV-1)
+     * — the one composition AssignmentCandidates owns for all three
+     * surfaces. Weighted by the offers each operator already operates.
+     *
+     * An offer nobody covers — no Sede, a Sede with no operators, or no
+     * competent operator among them — is absent from the returned map: the
+     * caller keeps its current operator and reports it as `skipped`, which
+     * since 0113 replaces the batch-wide 422 the empty Sede used to raise.
      *
      * @param  array<int, int>  $quoteIds  ordered ascending
      * @return array<int, int> quoteId => operatorId
      */
-    private function distributeBalanced(array $quoteIds, int $operationalSiteId): array
+    private function distributeBalanced(array $quoteIds): array
     {
-        $operatorIds = $this->distributor->operatorIdsForSite($operationalSiteId);
-
-        if ($operatorIds === []) {
-            abort(422, 'The selected Sede has no operators to distribute requests to.');
-        }
-
-        $requiredByQuote = $this->quoteCompetence->requiredByQuote($quoteIds);
-
-        $candidatesByQuote = $this->competence->competentByRequirement(
-            $operatorIds,
-            array_combine($quoteIds, array_map(
-                static fn (int $quoteId): array => $requiredByQuote[$quoteId] ?? [],
-                $quoteIds,
-            )),
+        $candidatesByQuote = $this->candidates->byRecord(
+            $this->siteResolver->forQuotes($quoteIds),
+            $this->quoteCompetence->requiredByQuote($quoteIds),
         );
 
-        return $this->distributor->distributeAmong($candidatesByQuote, $this->currentLoads($operatorIds));
+        return $this->distributor->distributeAmong(
+            $candidatesByQuote,
+            $this->currentLoads($this->involvedOperatorIds($candidatesByQuote)),
+        );
+    }
+
+    /**
+     * The union of every offer's candidates: the loads must be counted (and
+     * shared) across ALL the Sedi the batch touches, or two disjoint pools
+     * would each rebalance in isolation.
+     *
+     * @param  array<int, array<int, int>>  $candidatesByQuote
+     * @return array<int, int>
+     */
+    private function involvedOperatorIds(array $candidatesByQuote): array
+    {
+        return array_values(array_unique(array_merge([], ...array_values($candidatesByQuote))));
     }
 
     /**
@@ -186,6 +201,10 @@ final class RequestAssignmentService
      */
     private function currentLoads(array $operatorIds): array
     {
+        if ($operatorIds === []) {
+            return [];
+        }
+
         return DB::table('quotes')
             ->whereIn('operator_id', $operatorIds)
             ->selectRaw('operator_id, COUNT(*) as aggregate')
@@ -196,29 +215,23 @@ final class RequestAssignmentService
     }
 
     /**
-     * One offer: the Sede column then the GA2 Operatore (Quote column +
-     * `quote_user` pivot slot sync), with the same explicit activity entry the work panel
-     * writes, anchored on the Opportunity (D-9).
+     * One offer: the GA2 Operatore alone (Quote column + `quote_user` pivot
+     * slot sync), with the same explicit activity entry the work panel
+     * writes, anchored on the Opportunity (D-9). Since spec 0113 nothing
+     * else is written — the Sede is the offer's own column, read upstream to
+     * scope its candidates, so there is no Sede move to persist or to audit.
      *
      * `$writeOperator` false leaves the Operatore slot entirely alone (spec
-     * 0110): the offer was skipped for lack of a competent candidate, which
-     * must not be confused with an explicit "clear the operator" — it still
-     * receives the Sede, like every other offer in the batch.
+     * 0110): the offer was skipped for lack of a candidate, which must not be
+     * confused with an explicit "clear the operator". With the Sede gone the
+     * offer is then left completely untouched, and `$changed` empty means no
+     * notification and no log — the "nothing changed" guard now rests on the
+     * operator alone.
      */
-    private function assignOne(Quote $quote, User $actor, int $operationalSiteId, ?int $operatorId, bool $writeOperator = true): void
+    private function assignOne(Quote $quote, User $actor, ?int $operatorId, bool $writeOperator = true): void
     {
         $changed = [];
         $old = [];
-        $previousSiteId = $quote->operational_site_id;
-
-        if ($previousSiteId !== $operationalSiteId) {
-            $old['operational_site_id'] = $previousSiteId;
-            $changed['operational_site_id'] = $operationalSiteId;
-        }
-
-        $quote->disableLogging();
-        $quote->operational_site_id = $operationalSiteId;
-        $quote->save();
 
         if ($writeOperator) {
             $this->operatorWriter->apply($quote, $operatorId, $changed, $old);

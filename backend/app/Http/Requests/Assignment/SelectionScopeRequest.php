@@ -8,8 +8,9 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * Validates POST /api/assignment/required-categories (spec 0110): the
- * selection whose competence requirement the operator picker filters on.
+ * Validates POST /api/assignment/selection-scope (spec 0113, renamed from
+ * `required-categories` of spec 0110): the selection whose assignment scope —
+ * required categories, shared Sede, campaigns — the operator picker filters on.
  *
  * Authorization is deliberately NOT here: the endpoint reuses the READ gate
  * of whichever domain it was asked about — a different gate per `domain` —
@@ -27,7 +28,7 @@ use Illuminate\Validation\Validator;
  * differently. Row ownership needs no check of its own: the rows are read
  * scoped to the run (ImportRunRowSelection), so a foreign id matches nothing.
  */
-class RequiredCategoriesRequest extends FormRequest
+class SelectionScopeRequest extends FormRequest
 {
     public function authorize(): bool
     {

@@ -10,10 +10,12 @@ import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actio
 import type { TableRow } from '@/features/table/types'
 
 /**
- * Competence-aware bulk assignment on Gestione richieste (spec 0110
- * AC-041/AC-043/AC-044): the table resolves what the selected offers require
+ * Scope-aware bulk assignment on Gestione richieste (spec 0110
+ * AC-041/AC-043/AC-044, spec 0113 AC-026/AC-028/AC-031/AC-034): the table
+ * resolves what the selected offers require and which Sede they share
  * (`domain: 'quotes'`), hands it to the shared `AssignOperatorsDialog`, and
  * reports how many offers a balanced split left without a competent operator.
+ * The transfer popup, on the same table, keeps its own user-picked Sede.
  * `<TableView>` is stubbed (its own suites cover the generic slot machinery)
  * and so are the dialog's pickers, mirroring
  * `request-management-table-transfer.test.tsx`.
@@ -55,10 +57,30 @@ vi.mock('@/features/request-management/api', () => ({
   fetchRequestManagementCategories: (...args: unknown[]) => fetchRequestManagementCategoriesMock(...args),
 }))
 
-const fetchRequiredCategoriesMock = vi.fn()
+const fetchAssignmentScopeMock = vi.fn()
 vi.mock('@/features/assignment/api', () => ({
-  fetchRequiredCategories: (...args: unknown[]) => fetchRequiredCategoriesMock(...args),
+  fetchAssignmentScope: (...args: unknown[]) => fetchAssignmentScopeMock(...args),
 }))
+
+/**
+ * The `POST /assignment/selection-scope` envelope. `RESOLVED_SITE_ID` is
+ * deliberately different from `SITE_PICK_ID`: that is what tells the derived
+ * Sede of the assignment popup apart from the one the user picks in the
+ * transfer popup.
+ */
+const RESOLVED_SITE_ID = 5
+function scope(overrides: Partial<{
+  product_category_ids: number[]
+  operational_site_id: number | null
+  campaign_ids: number[]
+}> = {}) {
+  return {
+    product_category_ids: [],
+    operational_site_id: RESOLVED_SITE_ID,
+    campaign_ids: [],
+    ...overrides,
+  }
+}
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
@@ -133,12 +155,17 @@ function openAssignPopup() {
   fireEvent.click(screen.getByRole('button', { name: 'Assign operators' }))
 }
 
-/** Balanced flow: open the popup, pick the mode and the Sede, confirm. */
+/** Balanced flow: open the popup, pick the mode, confirm — no Sede step left. */
 function assignBalanced() {
   openAssignPopup()
   fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
-  fireEvent.click(screen.getByRole('button', { name: 'Site' }))
   fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
+}
+
+/** Opens the assignment popup on the single-operator mode, which shows the picker. */
+function openAssignSingle() {
+  openAssignPopup()
+  fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
 }
 
 beforeAll(async () => {
@@ -155,37 +182,64 @@ beforeEach(() => {
   assignRequestOperatorsMock.mockResolvedValue({ assigned: 2, skipped: 0 })
   fetchRequestManagementCategoriesMock.mockReset()
   fetchRequestManagementCategoriesMock.mockResolvedValue([])
-  fetchRequiredCategoriesMock.mockReset()
-  fetchRequiredCategoriesMock.mockResolvedValue([])
+  fetchAssignmentScopeMock.mockReset()
+  fetchAssignmentScopeMock.mockResolvedValue(scope())
   vi.mocked(toast.success).mockClear()
   vi.mocked(toast.error).mockClear()
 })
 
-describe('RequestManagementTable — competence-aware assignment (spec 0110)', () => {
-  it('resolves the requirement of the selected offers only once the popup is open', async () => {
+describe('RequestManagementTable — scope-aware assignment (spec 0110/0113)', () => {
+  it('resolves the scope of the selected offers only once the popup is open', async () => {
     renderTable()
 
-    expect(fetchRequiredCategoriesMock).not.toHaveBeenCalled()
+    expect(fetchAssignmentScopeMock).not.toHaveBeenCalled()
 
     openAssignPopup()
 
     await waitFor(() =>
-      expect(fetchRequiredCategoriesMock).toHaveBeenCalledWith({ domain: 'quotes', ids: [11, 22] }),
+      expect(fetchAssignmentScopeMock).toHaveBeenCalledWith({ domain: 'quotes', ids: [11, 22] }),
     )
   })
 
-  it('narrows the operator picker to the competent users (AC-041)', async () => {
-    fetchRequiredCategoriesMock.mockResolvedValue([4, 9])
+  it('never renders the Sede field on the assignment popup (AC-026)', () => {
     renderTable()
 
     openAssignPopup()
+    fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
+    expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled()
+
     fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
+    expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
+  })
+
+  it('sends no operational_site_id: the server derives it from each offer', async () => {
+    renderTable()
+
+    assignBalanced()
+
+    // TanStack v5 hands the mutation context as a second argument, so the
+    // payload itself is asserted rather than the whole call.
+    await waitFor(() => expect(assignRequestOperatorsMock).toHaveBeenCalled())
+    expect(assignRequestOperatorsMock.mock.calls[0][0]).toEqual({
+      request_ids: [11, 22],
+      mode: 'balanced',
+    })
+  })
+
+  it('narrows the operator picker to the derived Sede and the competent users (AC-028)', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(scope({ product_category_ids: [4, 9] }))
+    renderTable()
+
+    openAssignSingle()
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
         'data-params',
-        JSON.stringify({ operational_site_id: SITE_PICK_ID, competence_category_ids: [4, 9] }),
+        JSON.stringify({
+          operational_site_id: RESOLVED_SITE_ID,
+          competence_category_ids: [4, 9],
+        }),
       ),
     )
     expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
@@ -194,17 +248,55 @@ describe('RequestManagementTable — competence-aware assignment (spec 0110)', (
     )
   })
 
-  it('applies no filter when the selection expresses no requirement', async () => {
+  it('applies no competence filter when the selection expresses no requirement', async () => {
+    renderTable()
+
+    openAssignSingle()
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+        'data-params',
+        JSON.stringify({ operational_site_id: RESOLVED_SITE_ID }),
+      ),
+    )
+    expect(fetchAssignmentScopeMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the operator picker disabled and unscoped while the scope resolves (AC-028)', () => {
+    fetchAssignmentScopeMock.mockReturnValue(new Promise(() => {}))
+    renderTable()
+
+    openAssignSingle()
+
+    const picker = screen.getByRole('button', { name: 'Operator' })
+    expect(picker).toBeDisabled()
+    expect(picker).toHaveAttribute('data-params', '')
+  })
+
+  it('keeps the operator picker disabled when the scope fails to resolve (AC-034)', async () => {
+    fetchAssignmentScopeMock.mockRejectedValue(new Error('scope down'))
+    renderTable()
+
+    openAssignSingle()
+
+    await waitFor(() => expect(fetchAssignmentScopeMock).toHaveBeenCalledTimes(1))
+    const picker = screen.getByRole('button', { name: 'Operator' })
+    expect(picker).toBeDisabled()
+    expect(picker).toHaveAttribute('data-params', '')
+  })
+
+  it('disables neither mode card, whatever campaigns the selection spans (AC-031)', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(scope({ campaign_ids: [3, 8] }))
     renderTable()
 
     openAssignPopup()
-    fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
 
-    await waitFor(() => expect(fetchRequiredCategoriesMock).toHaveBeenCalledTimes(1))
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
-      'data-params',
-      JSON.stringify({ operational_site_id: SITE_PICK_ID }),
+    await waitFor(() => expect(fetchAssignmentScopeMock).toHaveBeenCalledTimes(1))
+    expect(screen.getByRole('radio', { name: 'Assign to operator' })).not.toHaveAttribute(
+      'aria-disabled',
+    )
+    expect(screen.getByRole('radio', { name: 'Balanced split' })).not.toHaveAttribute(
+      'aria-disabled',
     )
   })
 
@@ -213,16 +305,18 @@ describe('RequestManagementTable — competence-aware assignment (spec 0110)', (
   // `RequestOperatorWriter::apply`), so it is a place where operators get
   // assigned and it filters identically. `lockedMode="single"` means UI-only
   // filtering, per the spec's own decision for `single`.
-  it('filters the transfer popup on the same competence (spec 0110)', async () => {
-    fetchRequiredCategoriesMock.mockResolvedValue([4])
+  it('keeps the transfer popup on its own user-picked Sede plus the same competence (AC-027)', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(scope({ product_category_ids: [4] }))
     renderTable()
 
     fireEvent.click(screen.getByRole('button', { name: 'Transfer contact' }))
 
     await waitFor(() =>
-      expect(fetchRequiredCategoriesMock).toHaveBeenCalledWith({ domain: 'quotes', ids: [11, 22] }),
+      expect(fetchAssignmentScopeMock).toHaveBeenCalledWith({ domain: 'quotes', ids: [11, 22] }),
     )
 
+    // The Sede field is still there, and the picker follows THAT value, not
+    // the Sede the offers were resolved to (`RESOLVED_SITE_ID`).
     fireEvent.click(screen.getByRole('button', { name: 'Site' }))
 
     await waitFor(() =>
@@ -236,7 +330,7 @@ describe('RequestManagementTable — competence-aware assignment (spec 0110)', (
   it('resolves nothing for the transfer popup until it is opened', () => {
     renderTable()
 
-    expect(fetchRequiredCategoriesMock).not.toHaveBeenCalled()
+    expect(fetchAssignmentScopeMock).not.toHaveBeenCalled()
   })
 
   it('reports the offers left without a competent operator (AC-044)', async () => {

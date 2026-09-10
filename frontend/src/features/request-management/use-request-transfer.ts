@@ -6,7 +6,7 @@ import type { AssignOperatorsDialogInput } from '@/features/leads/assign-operato
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { transferRequests } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
-import { useQuoteOperatorCompetence } from '@/features/request-management/use-quote-operator-competence'
+import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 
 /**
@@ -33,12 +33,21 @@ export function useRequestTransfer(panel: RequestWorkPanel) {
   const canTransfer = canAction('transfer_contact')
 
   const transferMutation = useMutation({
-    mutationFn: (input: AssignOperatorsDialogInput) =>
-      transferRequests({
+    mutationFn: (input: AssignOperatorsDialogInput) => {
+      // The transfer dialog renders the Sede field (`showSiteField`) and locks
+      // the mode to `single`, so it refuses to confirm without both values
+      // (spec 0113 AC-027). A missing one is a wiring bug, not a user path:
+      // fail here rather than send a request the endpoint answers with a 422,
+      // or silently cast the absence away.
+      if (input.operational_site_id === undefined || input.operator_id === undefined) {
+        return Promise.reject(new Error('Transfer requires both a destination Sede and an operator.'))
+      }
+      return transferRequests({
         request_ids: [panel.id],
         operational_site_id: input.operational_site_id,
-        operator_id: input.operator_id as number,
-      }),
+        operator_id: input.operator_id,
+      })
+    },
     onSuccess: (result) => {
       toast.success(t('requestManagement.transfer.success', { count: result.transferred }))
       // Transferring the panel's OWN request can move it out of the actor's
@@ -65,8 +74,12 @@ export function useRequestTransfer(panel: RequestWorkPanel) {
 
   // Same competence filter as the table's transfer/assign popups (spec 0110
   // AC-041): this endpoint writes the very same GA2 Operatore slot, on this
-  // one offer.
-  const competence = useQuoteOperatorCompetence([panel.id], isOpen)
+  // one offer. Only the competence pair is forwarded: here the Sede is the
+  // user-picked DESTINATION of the transfer, never a filter (spec 0113 D-2).
+  const { competenceCategoryIds, isResolvingCompetence } = useQuoteAssignmentScope(
+    [panel.id],
+    isOpen,
+  )
 
   const copy = useMemo(
     () => ({
@@ -84,7 +97,7 @@ export function useRequestTransfer(panel: RequestWorkPanel) {
     onOpenChange: setIsOpen,
     defaultSite: panel.operational_site,
     copy,
-    competence,
+    competence: { competenceCategoryIds, isResolvingCompetence },
     handleTransfer,
   }
 }

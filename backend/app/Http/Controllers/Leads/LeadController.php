@@ -113,16 +113,17 @@ class LeadController extends BaseApiController
     }
 
     /**
-     * POST /api/leads/assign-operators — bulk-assign a Sede and an Operatore
-     * to many REAL leads at once (spec 0048). Every targeted lead is
+     * POST /api/leads/assign-operators — bulk-assign an Operatore to many
+     * REAL leads at once (spec 0048), each scoped by the Sede of its own
+     * campaign (spec 0113, D-3). Every targeted lead is
      * authorized individually via LeadPolicy (`leads.update` — the policy
      * carries no per-record ownership rule, so this is equivalent to a
      * single blanket check, but stays instance-based to match every other
      * Lead endpoint and to remain correct should the policy ever gain one).
      *
      * `skipped` (spec 0110, additive): the leads `mode=balanced` left without
-     * an operator for lack of a competent one at the Sede. Always 0 with
-     * `mode=single`.
+     * an operator for lack of a competent one at their own Sede. Always 0
+     * with `mode=single`.
      */
     public function assignOperators(AssignOperatorsRequest $request): JsonResponse
     {
@@ -135,7 +136,6 @@ class LeadController extends BaseApiController
 
             $outcome = $this->assignmentService->assignOperators(
                 $leadIds,
-                $request->operationalSiteId(),
                 $request->mode(),
                 $request->operatorId(),
             );

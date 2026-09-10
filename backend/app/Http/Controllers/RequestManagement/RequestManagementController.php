@@ -261,19 +261,21 @@ class RequestManagementController extends BaseApiController
     }
 
     /**
-     * POST /api/request-management/assign-operators — bulk-assign a Sede
-     * operativa and the GA2 "Operatore" to many requests at once (user
-     * directive 2026-07-23, "come nei lead"). The per-row D-3 scope is
+     * POST /api/request-management/assign-operators — bulk-assign the GA2
+     * "Operatore" of many requests at once (user directive 2026-07-23, "come
+     * nei lead"). Since spec 0113 the Sede is no longer submitted nor
+     * written: it IS `quotes.operational_site_id` (D-4), which the service
+     * reads to scope each offer's candidates. The per-row D-3 scope is
      * enforced inside the service, which SKIPS every unreachable id rather
      * than failing the batch — an out-of-scope row does not exist for this
      * actor, so `assigned` reports what was actually written. The ids are
      * Offerta ids (spec 0086).
      *
      * `assignOperator` on top of `update` (user directive 2026-08-03): this
-     * endpoint writes the Sede AND the Operatore of many requests at once, the
-     * two dimensions a role may be restricted on per-field — `update` alone
-     * would have been a way around that restriction, since a bulk write
-     * resolves no field permission.
+     * endpoint writes the Operatore of many requests at once, a dimension a
+     * role may be restricted on per-field — `update` alone would have been a
+     * way around that restriction, since a bulk write resolves no field
+     * permission.
      *
      * `skipped` (spec 0110, additive): the reachable offers `mode=balanced`
      * left without an operator for lack of a competent one. An UNREACHABLE
@@ -289,7 +291,6 @@ class RequestManagementController extends BaseApiController
             $outcome = $this->assignmentService->assignOperators(
                 $request->requestIds(),
                 $user,
-                $request->operationalSiteId(),
                 $request->mode(),
                 $request->operatorId(),
             );

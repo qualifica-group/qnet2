@@ -67,7 +67,9 @@ vi.mock('@/features/request-management/api', () => ({
 // lookup off the network. Covered by
 // `request-management-table-assign-competence.test.tsx`.
 vi.mock('@/features/assignment/api', () => ({
-  fetchRequiredCategories: vi.fn().mockResolvedValue([]),
+  fetchAssignmentScope: vi
+    .fn()
+    .mockResolvedValue({ product_category_ids: [], operational_site_id: null, campaign_ids: [] }),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))

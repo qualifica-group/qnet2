@@ -64,7 +64,6 @@ export const requestManagement = {
     successWithSkipped:
       'Operatori assegnati a {{count}} richieste. {{skipped}} senza operatore competente.',
     errors: {
-      noOperators: 'Nessun operatore trovato per la Sede selezionata.',
       generic: 'Impossibile assegnare gli operatori. Riprova.',
     },
   },

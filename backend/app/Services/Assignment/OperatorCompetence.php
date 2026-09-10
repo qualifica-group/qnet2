@@ -16,10 +16,12 @@ use App\Services\ProductCategories\CategoryHierarchy;
  * category K) has C inside K's descendant closure AND F equal to the
  * EFFECTIVE business function of C (spec 0023 inheritance). Per row, not per
  * profile: two rows on two different functions make the same user competent
- * on both sides. Two deroghe keep the rule from blocking work:
- *  - a record requiring NO category constrains nobody (INV-4a);
- *  - a user with NO row is a wildcard (INV-4b), so the feature stays
- *    invisible until competences are actually filled in.
+ * on both sides.
+ *
+ * Spec 0111 rev.2 (D-9) revoked the one deroga that used to bend this: a user
+ * with NO competence row is no longer a wildcard, they are competent for
+ * NOTHING. Only INV-4a survives (D-9a): a record requiring no category
+ * constrains nobody, since there is nothing there to filter on.
  *
  * Everything is resolved in batch: the taxonomy is read once
  * (CategoryHierarchy, memoized) and the configured profiles once, then every
@@ -66,9 +68,7 @@ class OperatorCompetence
             return array_values($candidateIds);
         }
 
-        $excluded = $this->excludedUserIds($requiredCategoryIds);
-
-        return array_values(array_diff($candidateIds, $excluded));
+        return array_values(array_intersect($candidateIds, $this->competentUserIds($requiredCategoryIds)));
     }
 
     /**
@@ -93,38 +93,40 @@ class OperatorCompetence
     }
 
     /**
-     * The users a record requiring $requiredCategoryIds must NOT reach: the
-     * ones whose competence rows do not cover it. Expressed as an EXCLUSION
-     * on purpose — it is the only shape that stays small (the wildcards of
-     * INV-4b are the majority and must never be enumerated) and that a query
-     * can consume as a plain `whereNotIn` without inverting the jolly rule
-     * (users/for-select, spec 0110 AC-030).
+     * The users a record requiring $requiredCategoryIds MAY reach: the ones
+     * whose competence rows cover it. An INCLUSION since spec 0111 rev.2
+     * revoked the jolly deroga (D-9b) — the competent set is now a subset of
+     * the CONFIGURED users, so it is small by construction and a query can
+     * consume it as a plain `whereIn` (users/for-select, AC-016 rev.2). Under
+     * the old rule the same shape would have had to enumerate every wildcard,
+     * which is why it used to be expressed the other way round.
+     *
+     * INV-4a is not decided here: with no required category nothing is
+     * covered and this answers the empty set, so a caller wanting "requiring
+     * nothing constrains nobody" (D-9a) short-circuits before asking.
      *
      * @param  array<int, int>  $requiredCategoryIds
      * @return array<int, int>
      */
-    public function excludedUserIds(array $requiredCategoryIds): array
+    public function competentUserIds(array $requiredCategoryIds): array
     {
-        if ($requiredCategoryIds === []) {
-            return [];
-        }
-
         $functionByCategory = $this->effectiveFunctionByCategory();
 
-        $excluded = [];
+        $competent = [];
         foreach ($this->configuredProfiles() as $userId => $profile) {
-            if (! $profile->covers($requiredCategoryIds, $functionByCategory)) {
-                $excluded[] = $userId;
+            if ($profile->covers($requiredCategoryIds, $functionByCategory)) {
+                $competent[] = $userId;
             }
         }
 
-        return $excluded;
+        return $competent;
     }
 
     /**
      * user id => profile, for the users carrying at least one competence row
-     * (spec 0111). Everyone else is a wildcard (INV-4b) and is deliberately
-     * absent: absence IS the wildcard state.
+     * (spec 0111). Everyone else is deliberately absent, and since rev.2
+     * absence means NOT A CANDIDATE (D-9), no longer "competent for
+     * everything": the whole population of competent users lives in here.
      *
      * @return array<int, CompetenceProfile>
      */

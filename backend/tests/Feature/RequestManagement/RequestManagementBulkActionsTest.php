@@ -15,8 +15,10 @@ uses(RefreshDatabase::class);
  * User directive 2026-07-23: the request-management grid gets the selection
  * checkbox column, which the generic table only shows when a bulk action is
  * reachable — bulk delete and bulk operator assignment, "come nei lead".
- * Spec 0086, D-1: the row is now a `quotes` record, and the assigned
- * Sede/GA2 Operatore now land on `quotes.*` (spec 0087, D-9).
+ * Spec 0086, D-1: the row is now a `quotes` record, and the assigned GA2
+ * Operatore lands on `quotes.*` (spec 0087, D-9). Since spec 0113 the Sede
+ * is no longer assigned at all: it is the offer's own column, read to scope
+ * the candidates of `mode=balanced` (D-4).
  *
  * The load-bearing rule under test is D-2: both flows are gated by this
  * module's OWN `request-management.*` permissions, never `opportunities.*`,
@@ -188,7 +190,7 @@ it('DELETE /request-management/{id} is 403 on a request the actor does not super
 // Bulk operator assignment
 // ---------------------------------------------------------------------------
 
-it('mode=single assigns the Sede and the GA2 operator to every selected request', function () {
+it('mode=single assigns the GA2 operator to every selected request and leaves their Sede alone', function () {
     $actor = bulkActionsActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $operator = bulkActionsOperatorAtSite($site);
@@ -198,7 +200,6 @@ it('mode=single assigns the Sede and the GA2 operator to every selected request'
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$first->id, $second->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => $operator->id,
     ])->assertOk()->assertJsonPath('data.assigned', 2);
@@ -207,7 +208,9 @@ it('mode=single assigns the Sede and the GA2 operator to every selected request'
     // `quotes.supervisor_id`. D-13: promoted onto the Opportunity's first
     // FREE slot — both Opportunities here were born with zero managers, so
     // that is slot 1, not the GA2 slot `operatorManager()` reads.
-    expect($first->fresh()->operational_site_id)->toBe($site->id)
+    // Spec 0113, D-4: `operational_site_id` is no longer part of this write —
+    // these offers were born without one and still have none.
+    expect($first->fresh()->operational_site_id)->toBeNull()
         ->and($first->fresh()->operator_id)->toBe($operator->id)
         ->and($first->fresh()->supervisor_id)->toBeNull()
         ->and($first->fresh()->opportunity->operatorManager())->toBeNull()
@@ -231,7 +234,6 @@ it('the assignment writes the Offerta\'s own operator_id and promotes onto the O
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$quote->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => $nextOperator->id,
     ])->assertOk()->assertJsonPath('data.assigned', 1);
@@ -250,17 +252,17 @@ it('the assignment writes the Offerta\'s own operator_id and promotes onto the O
     ]);
 });
 
-it('mode=balanced spreads the selected requests across the Sede operators', function () {
+it('mode=balanced spreads the selected requests across the operators of their own Sede', function () {
     $actor = bulkActionsActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $firstOperator = bulkActionsOperatorAtSite($site);
     $secondOperator = bulkActionsOperatorAtSite($site);
-    $quotes = Quote::factory()->count(4)->create();
+    // Spec 0113, D-4: the Sede rides on the offer, not on the payload.
+    $quotes = Quote::factory()->count(4)->create(['operational_site_id' => $site->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => $quotes->modelKeys(),
-        'operational_site_id' => $site->id,
         'mode' => 'balanced',
     ])->assertOk()->assertJsonPath('data.assigned', 4);
 
@@ -271,19 +273,27 @@ it('mode=balanced spreads the selected requests across the Sede operators', func
     expect($loads)->toBe([$firstOperator->id => 2, $secondOperator->id => 2]);
 });
 
-it('mode=balanced is 422 when the chosen Sede has no operators', function () {
+/**
+ * Spec 0113: the batch-wide 422 "the selected Sede has no operators" is GONE.
+ * With one Sede per offer instead of one per request, an empty pool is a
+ * per-record condition — it lands in `skipped` and the batch still answers
+ * 200, so the offers that DO have candidates are not held hostage.
+ */
+it('mode=balanced skips an offer whose own Sede has no operators, with no 422', function () {
     $actor = bulkActionsActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
-    $site = OperationalSite::factory()->withAddress()->create();
-    $quote = Quote::factory()->create();
+    $emptySite = OperationalSite::factory()->withAddress()->create();
+    $quote = Quote::factory()->create(['operational_site_id' => $emptySite->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$quote->id],
-        'operational_site_id' => $site->id,
         'mode' => 'balanced',
-    ])->assertStatus(422);
+    ])->assertOk()
+        ->assertJsonPath('data.assigned', 0)
+        ->assertJsonPath('data.skipped', 1);
 
-    expect($quote->fresh()->operational_site_id)->toBeNull();
+    expect($quote->fresh()->operator_id)->toBeNull()
+        ->and($quote->fresh()->operational_site_id)->toBe($emptySite->id);
 });
 
 it('the assignment skips a request outside the actor D-3 scope', function () {
@@ -296,20 +306,19 @@ it('the assignment skips a request outside the actor D-3 scope', function () {
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$ownRequest->id, $outOfScope->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => $operator->id,
     ])->assertOk()->assertJsonPath('data.assigned', 1);
 
     expect($ownRequest->fresh()->operator_id)->toBe($operator->id)
-        ->and($outOfScope->fresh()->operational_site_id)->toBeNull();
+        ->and($outOfScope->fresh()->operator_id)->not->toBe($operator->id);
 });
 
 /**
- * User directive 2026-08-03: this endpoint writes the Sede AND the Operatore
- * of many requests at once, and a bulk write resolves no field permission —
- * without its own ability it would be the way around a per-field restriction
- * (see TestUsersSeeder's Commercial matrix).
+ * User directive 2026-08-03: this endpoint writes the Operatore of many
+ * requests at once, and a bulk write resolves no field permission — without
+ * its own ability it would be the way around a per-field restriction (see
+ * TestUsersSeeder's Commercial matrix).
  */
 it('the assignment endpoint is 403 without request-management.assignOperator', function () {
     $actor = bulkActionsActor(['viewAny', 'viewAll', 'update']);
@@ -320,12 +329,11 @@ it('the assignment endpoint is 403 without request-management.assignOperator', f
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$quote->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => $operator->id,
     ])->assertForbidden();
 
-    expect($quote->fresh()->operational_site_id)->toBeNull();
+    expect($quote->fresh()->operator_id)->toBeNull();
 });
 
 it('the assignment endpoint is 403 without request-management.update', function () {
@@ -337,10 +345,9 @@ it('the assignment endpoint is 403 without request-management.update', function 
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$quote->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => $operator->id,
     ])->assertForbidden();
 
-    expect($quote->fresh()->operational_site_id)->toBeNull();
+    expect($quote->fresh()->operator_id)->toBeNull();
 });

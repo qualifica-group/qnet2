@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\BusinessFunction;
-use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Quote;
@@ -385,7 +384,6 @@ it('AC-009: the bulk assign moves the OPERATOR slot and leaves the rest of the t
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$quote->id],
-        'operational_site_id' => OperationalSite::factory()->withAddress()->create()->id,
         'mode' => 'single',
         'operator_id' => $newOperator->id,
     ])->assertOk();

@@ -15,13 +15,16 @@ use Spatie\Permission\Models\Permission;
 uses(RefreshDatabase::class);
 
 /**
- * Spec 0045 bulk increment, extended to a COMBINED operator+site assignment
- * — PATCH /api/imports/{domain}/{importRun}/rows/assign: bulk-assign an
- * operator and/or an operational site to many staged rows in a single mass
- * UPDATE, AG Grid `getServerSideSelectionState()` semantics (`row_ids` are
- * the targeted rows when `select_all` is false, the EXCLUDED rows when
- * true). Distinct from the single-row PATCH .../rows/{row} (see
- * ImportRowOverrideTest / ImportOpportunityConversionTest).
+ * Spec 0045 bulk increment — PATCH /api/imports/{domain}/{importRun}/rows/
+ * assign: bulk-assign an operator and/or the "Prodotti di interesse" to many
+ * staged rows in a single mass UPDATE, AG Grid
+ * `getServerSideSelectionState()` semantics (`row_ids` are the targeted rows
+ * when `select_all` is false, the EXCLUDED rows when true). Distinct from the
+ * single-row PATCH .../rows/{row} (see ImportRowOverrideTest /
+ * ImportOpportunityConversionTest).
+ *
+ * The Sede is no longer part of this payload (spec 0113): it is derived from
+ * each row's campaign, covered by ImportBulkAssignCampaignSiteTest.
  */
 
 /**
@@ -69,45 +72,11 @@ it('assigns the operator and is_edited to the targeted row_ids only', function (
         ->and($untouched->fresh()->is_edited)->toBeFalse();
 });
 
-it('assigns the operational site and is_edited to the targeted row_ids only', function () {
-    $actor = bulkAssignActor(['import']);
-    $site = OperationalSite::factory()->create();
-    $run = ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
-    $row1 = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 1]);
-    $untouched = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 2]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
-        'operational_site_id' => $site->id,
-        'row_ids' => [$row1->id],
-    ])->assertOk()
-        ->assertJsonPath('data.updated', 1);
-
-    expect($row1->fresh()->operational_site_id)->toBe($site->id)
-        ->and($row1->fresh()->is_edited)->toBeTrue()
-        ->and($untouched->fresh()->operational_site_id)->toBeNull()
-        ->and($untouched->fresh()->is_edited)->toBeFalse();
-});
-
-it('assigns BOTH operator and operational site in a single request', function () {
-    $actor = bulkAssignActor(['import']);
-    $operator = User::factory()->create();
-    $site = OperationalSite::factory()->create();
-    $run = ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
-    $row = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 1]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
-        'operator_id' => $operator->id,
-        'operational_site_id' => $site->id,
-        'row_ids' => [$row->id],
-    ])->assertOk()
-        ->assertJsonPath('data.updated', 1);
-
-    expect($row->fresh()->operator_id)->toBe($operator->id)
-        ->and($row->fresh()->operational_site_id)->toBe($site->id)
-        ->and($row->fresh()->is_edited)->toBeTrue();
-});
+// Spec 0113: bulk-assigning a Sede CHOSEN by the caller (alone, or combined
+// with the operator) no longer exists — the Sede is derived from each row's
+// campaign server-side. The two cases that covered that payload are replaced
+// by the rejection below and by ImportBulkAssignCampaignSiteTest, which
+// covers the derived write.
 
 it('select_all=true assigns the operator to every row in the run', function () {
     $actor = bulkAssignActor(['import']);
@@ -209,7 +178,7 @@ it('422 when select_all is false and row_ids is empty', function () {
     ])->assertStatus(422)->assertJsonValidationErrors('row_ids');
 });
 
-it('422 when neither operator_id nor operational_site_id is submitted', function () {
+it('422 when neither operator_id nor product_ids is submitted', function () {
     $actor = bulkAssignActor(['import']);
     $run = ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
     $row = ImportRunRow::factory()->create(['import_run_id' => $run->id]);
@@ -229,14 +198,24 @@ it('422 when operator_id is not an existing user', function () {
         ->assertStatus(422)->assertJsonValidationErrors('operator_id');
 });
 
-it('422 when operational_site_id is not an existing operational site', function () {
+// The old "422 when operational_site_id is not an existing site" checked an
+// `exists` rule on a field the endpoint no longer accepts at all (spec 0113):
+// the id is not validated against the table any more, it is REFUSED.
+it('spec 0113: 422 when the payload still carries operational_site_id', function () {
     $actor = bulkAssignActor(['import']);
+    $site = OperationalSite::factory()->create();
+    $operator = User::factory()->create();
     $run = ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
     $row = ImportRunRow::factory()->create(['import_run_id' => $run->id]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", ['operational_site_id' => 999999, 'row_ids' => [$row->id]])
-        ->assertStatus(422)->assertJsonValidationErrors('operational_site_id');
+    $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
+        'operator_id' => $operator->id,
+        'operational_site_id' => $site->id,
+        'row_ids' => [$row->id],
+    ])->assertStatus(422)->assertJsonValidationErrors('operational_site_id');
+
+    expect($row->fresh()->operator_id)->toBeNull();
 });
 
 // ---------------------------------------------------------------------------

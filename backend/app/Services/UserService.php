@@ -258,13 +258,13 @@ class UserService
             });
         }
 
-        // Spec 0110 (AC-030/AC-031): competence NARROWS, and only when asked
-        // for. Expressed as an exclusion because that is the shape
-        // OperatorCompetence answers in — enumerating the competent users
-        // instead would drop every wildcard operator (INV-4b), i.e. everyone
-        // who has not configured a competence yet.
+        // Spec 0110 (AC-030/AC-031) as revised by spec 0111 rev.2 (AC-016):
+        // competence NARROWS, and only when asked for. An inclusion since the
+        // jolly deroga fell (D-9b): only the operators whose rows cover the
+        // required categories are answered. It lands BEFORE the count, so
+        // `total` stays coherent with the filtered list.
         if ($query->hasCompetenceCategoryIds()) {
-            $base->whereNotIn('id', $this->competence->excludedUserIds($query->competenceCategoryIds));
+            $base->whereIn('id', $this->competence->competentUserIds($query->competenceCategoryIds));
         }
 
         if ($query->hasSearch()) {

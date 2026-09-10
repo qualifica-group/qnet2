@@ -276,7 +276,6 @@ it('bulk assign-operators touches the requests of my Sede and silently skips the
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$mine->id, $foreign->id],
-        'operational_site_id' => $targetSite->id,
         'mode' => 'single',
         'operator_id' => $operator->id,
     ])->assertOk()->assertJsonPath('data.assigned', 1);

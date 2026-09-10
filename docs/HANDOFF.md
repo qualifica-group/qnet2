@@ -3,6 +3,98 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ASSEGNAZIONE OPERATORI SCOPATA DALLA CAMPAGNA (spec 0113) — IN CORSO
+
+**Direttiva utente 2026-09-09:** togliere il select della Sede dall'assegnazione operatori e
+derivarla dal record. Per ogni riga il sistema identifica Campagna -> Categoria prodotto -> Sede e
+distribuisce solo tra gli operatori abilitati per quella combinazione. Spec
+`docs/specs/0113-campaign-scoped-operator-assignment.xml`, `status="approved"`, 34 AC.
+
+**Sette decisioni congelate PRIMA del dispatch.** (D-1) Sede di una riga import =
+`campaigns.operational_site_id` della sua campagna; l'override `import_run_rows.operational_site_id`
+non decide piu' i candidati. (D-2) perimetro = wizard import + tabella Lead + Gestione richieste; il
+TRASFERIMENTO CONTATTO (spec 0079) e' FUORI SCOPE e conserva il suo select, perche' li' la Sede e' la
+DESTINAZIONE del trasferimento. (D-3) Sede di un lead reale = campagna del lead, non
+`leads.operational_site_id`. (D-4) Sede di un'offerta = `quotes.operational_site_id` (l'Opportunity
+non ha `campaign_id`). (D-5) la disabilitazione di "Assegna a operatore" su campagne miste vale SOLO
+nell'import ed e' valutata sulla SELEZIONE. (D-6) lo smistamento equo scrive la Sede risolta sul
+record. (D-7) anche `single` la scrive, una mass UPDATE per Sede distinta.
+
+**Due conseguenze da non reinterpretare.** Il 422 "la Sede non ha operatori" SPARISCE da tutte e tre
+le superfici: con Sede per-record e' una condizione per-record e confluisce in `skipped` (200
+`{assigned: 0, skipped: N}` quando nessun record ha candidati). Gestione richieste NON scrive piu'
+la Sede sull'offerta (era il valore scelto, ora e' quello gia' presente): sparisce anche la relativa
+voce di activity log.
+
+**Naming congelato (MT-1 e MT-6 VERDI, firme consumate dagli altri microtask).**
+```
+App\Services\Campaigns\CampaignOperationalSites::forCampaigns(array): array<int, ?int> / forCampaign(?int): ?int
+App\Services\Assignment\AssignmentSiteResolver::forImportRows(Collection, array) / forLeads(array) / forQuotes(array)
+App\Services\Assignment\AssignmentCandidates::byRecord(array $siteByRecord, array $categoriesByRecord)
+App\Services\LeadOperatorDistributor::operatorIdsBySite(array): array<int, array<int,int>>
+```
+Semantica: id assente dalla mappa = `null`; `byRecord()` itera su `$siteByRecord` (e' QUELLA mappa a
+definire l'insieme dei record); Sede null -> pool VUOTO, nessun fallback "tutti"; categorie vuote ->
+tutti gli operatori della Sede (INV-4a filtra la competenza, MAI la Sede).
+`operatorIdsForSite()` resta in vita fino a MT-10, che lo rimuove quando i tre call-site sono migrati.
+
+Frontend, `frontend/src/features/assignment/`: `useAssignmentScope({selection, enabled})` ->
+`{competenceCategoryIds, operationalSiteId, campaignIds, isResolving, isError}`. `undefined` =
+non risolto/errore, `null` su `operationalSiteId` = Sede mista o assente: la distinzione E' il punto
+di AC-034. Rinomine: `RequiredCategoriesPayload` -> `AssignmentScopePayload`, `...Result` ->
+`AssignmentScopeResult` `{product_category_ids, operational_site_id, campaign_ids}`,
+`fetchRequiredCategories` -> `fetchAssignmentScope` (ritorna l'OGGETTO, non piu' `number[]`),
+`assignmentKeys.requiredCategories` -> `selectionScope`. Endpoint
+`POST /api/assignment/required-categories` -> `POST /api/assignment/selection-scope`.
+
+Props congelate di `AssignOperatorsDialog`: `showSiteField` (default false, true SOLO nei due
+call-site di trasferimento), `operatorSiteId`, `disabledModes`, `disabledModeHints`;
+`AssignOperatorsDialogInput.operational_site_id` diventa opzionale.
+
+**Regola per `operational_site_id` di `selection-scope`.** Si guardano i valori risolti di TUTTI i
+record, `null` incluso come valore: un solo valore distinto e non nullo -> quello; in ogni altro caso
+(piu' valori, oppure anche un solo record senza Sede) -> `null`.
+
+**Stato: TUTTI E 11 I MICROTASK CHIUSI, SUITE VERDE, NON COMMITTATA.**
+- backend `XDEBUG_MODE=off php artisan test` -> 6816 passed, 1 skipped, EXIT=0
+- frontend `npx vitest run --maxWorkers=4` -> 618 file, 4622 test, EXIT=0
+- `npx tsc -b --force --pretty false` -> EXIT=0 · `./vendor/bin/pint --test` -> passed
+
+**Due trappole d'ambiente da conoscere prima di leggere un rosso.** (1) Con Xdebug attivo
+`tests/Unit/Migrations` va in SEGFAULT (signal 11): e' lo step-debugger che non trova il client, non
+il codice — con `XDEBUG_MODE=off` passa 17/17. (2) Vitest con la parallelizzazione di default manda
+in timeout a 5s ~13 file di `request-management`/`leads` su questa macchina: usare `--maxWorkers=4`,
+altrimenti si leggono 16 falsi rossi.
+
+**Difetto trovato SOLO dalla suite completa (nessun teammate poteva vederlo).** I test Pest
+dichiarano funzioni GLOBALI: `LeadAssignOperatorsSiteScopeTest` e `RequestManagementAssignSiteScopeTest`
+definivano entrambi `siteScopeActor()` e `siteScopeOperator()` con firme diverse, protetti da
+`if (! function_exists(...))` — quindi il secondo file caricato ereditava in SILENZIO l'helper del
+primo. PHP non segnala argomenti in eccesso sulle funzioni userland, percio' l'effetto era un 403
+inspiegabile invece di un errore chiaro. Ogni teammate girava solo la propria directory e vedeva
+verde. Risolto prefissando gli helper per dominio (`leadSiteScope*` / `requestSiteScope*`).
+REGOLA: un helper Pest a livello di file e' spazio dei nomi GLOBALE, va prefissato per dominio.
+
+**Debito preesistente NON toccato (fuori scope):** `npx eslint src` esce 1 con 2 errori, entrambi in
+file estranei alla feature — `features/quotes/column-renderers.tsx` (`_omit` mai usato, e un export
+non-componente che rompe il fast refresh) e `features/registries/registry-form-metadata.test.tsx`.
+Inoltre 3 test di `LeadAssignOperatorsTest` erano GIA' rossi sul baseline per una regressione non
+propagata della 0111 rev.2 (le fixture creavano operatori senza righe di competenza, che dopo D-9
+non sono piu' jolly): sanati riscrivendo le fixture, non le asserzioni.
+
+**Correzioni alla spec emerse in corso d'opera (fatte).** Il data_contract diceva `{assigned, skipped}`
+anche per `PATCH .../rows/assign`, che invece risponde `{updated, skipped}` da sempre (nome esistente,
+letto dal FE). E la regola "almeno uno tra `operator_id` e `product_ids`" avrebbe reso 422 OGNI
+chiamata `balanced` una volta rimosso `operational_site_id`: ora `mode=balanced` e' di per se' una
+richiesta di assegnazione.
+
+**Ripulito un messaggio d'errore diventato bugiardo.** `leads-table.tsx` e `request-management-table.tsx`
+mappavano ogni 422 in `balanced` su "Nessun operatore trovato per la Sede selezionata": quel 422 non
+esiste piu', quindi indicava una causa sbagliata per errori di altra natura. Rimosso il ramo e le 4
+chiavi i18n `assign.errors.noOperators` rimaste orfane.
+
+**Nessun commit e nessun cambio di branch** (CLAUDE.md §3.6): allo stato verde si chiede.
+
 ## COMPETENZA UTENTE A RIGHE FUNZIONE->CATEGORIA (spec 0111) — VERDE, NON COMMITTATA
 
 **Direttiva utente 2026-09-09:** "sul form dell'utente voglio che ci sia sempre il solito
@@ -272,7 +364,8 @@ default supera i 64 char MySQL). Campo API `employment.product_category_ids` (tr
 `remote_operational_site_ids`). `App\Services\Assignment\{OperatorCompetence, CompetenceProfile,
 ImportRowCompetence, LeadCompetence, QuoteCompetence, ImportRunRowSelection}`,
 `App\DataObjects\Assignment\AssignmentOutcome`, `App\Services\Campaigns\CampaignProductCategories`,
-`App\Enums\AssignmentDomain`. FE: `features/assignment/` (`useRequiredCategories`),
+`App\Enums\AssignmentDomain`. FE: `features/assignment/` (`useRequiredCategories` — RINOMINATO
+`useAssignmentScope` dalla 0113),
 `features/request-management/use-quote-operator-competence.ts`.
 
 **Contratto (additivo, un chiamante che lo ignora vede il comportamento odierno).**
@@ -282,6 +375,8 @@ ImportRowCompetence, LeadCompetence, QuoteCompetence, ImportRunRowSelection}`,
   ESCLUSI (non come whereIn dei competenti: la regola jolly renderebbe l'elenco enorme e la
   deroga si invertirebbe). Entra PRIMA del `count`, quindi il totale e' coerente.
 - `POST /api/assignment/required-categories` (`domain` = import_rows|leads|quotes) -> unione
+  [SUPERATO dalla 0113: il path e' ora `POST /api/assignment/selection-scope` e la risposta porta
+  anche `operational_site_id` e `campaign_ids`]
   ordinata e deduplicata; `[]` = nessun requisito, il chiamante non filtra.
 - Assegnazione: `{ updated, skipped }` (import), `{ assigned, skipped }` (lead, richieste).
   `skipped` = record lasciati senza operatore per assenza di competenti (solo `balanced`).

@@ -1,21 +1,29 @@
 <?php
 
+use App\Models\BusinessFunction;
+use App\Models\Campaign;
 use App\Models\EmploymentProfile;
 use App\Models\Lead;
 use App\Models\OperationalSite;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Arr;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
 /**
- * Spec 0048 (B): POST /api/leads/assign-operators — bulk-assign a Sede and
- * an Operatore to many REAL leads at once, either to one chosen operator
- * (mode=single) or load-balanced across the Sede's operators
- * (mode=balanced, business-rule br-balanced).
+ * Spec 0048 (B): POST /api/leads/assign-operators — bulk-assign an Operatore
+ * to many REAL leads at once, either to one chosen operator (mode=single) or
+ * load-balanced across the operators of each lead's Sede (mode=balanced,
+ * business-rule br-balanced).
+ *
+ * Spec 0113 rewrote what "the Sede" means on this endpoint: the caller no
+ * longer sends one, it is derived from the campaign of each lead (D-3). Every
+ * request below therefore omits `operational_site_id` — the key is now
+ * `prohibited` (AC-021) — and the fixtures pin the Sede on the campaign
+ * instead. Cross-campaign scoping lives in LeadAssignOperatorsSiteScopeTest.
  */
 if (! function_exists('leadAssignActor')) {
     /**
@@ -37,27 +45,49 @@ if (! function_exists('leadAssignActor')) {
     }
 }
 
-if (! function_exists('leadAssignOperatorAtSite')) {
+if (! function_exists('leadAssignCampaignAt')) {
     /**
-     * An operator whose employment profile holds $site on the
-     * `employment_profile_operational_site` pivot, PHYSICAL by default or
-     * REMOTE when $isPrimary is false (spec 0103, D-1).
-     *
-     * Built off EmploymentProfileFactory::raw() with the still-present
-     * `operational_site_id` key stripped (that dead column no longer exists
-     * on the table; the factory's own cleanup is microtask M11, out of this
-     * lane's scope) instead of the usual factory()->create(), which would
-     * otherwise force-fill that key straight into the insert.
+     * A campaign whose Sede is $site: since spec 0113 this — not the request
+     * payload — is what scopes the assignment of every lead created under it.
      */
-    function leadAssignOperatorAtSite(OperationalSite $site, bool $isPrimary = true): User
+    function leadAssignCampaignAt(OperationalSite $site): Campaign
+    {
+        return Campaign::factory()->create(['operational_site_id' => $site->id]);
+    }
+}
+
+if (! function_exists('leadAssignOperatorFor')) {
+    /**
+     * An operator employed at $site — PHYSICAL by default, REMOTE when
+     * $isPrimary is false (spec 0103, D-1) — and competent for the single
+     * product line $campaign carries.
+     *
+     * The competence half is not decoration: a lead with no "Prodotti di
+     * interesse" inherits its campaign's categories as its requirement
+     * (LeadCompetence), and since spec 0111 rev.2 (D-9) a rowless profile is
+     * competent for nothing, so a Sede membership alone would never make
+     * this operator a candidate.
+     */
+    function leadAssignOperatorFor(Campaign $campaign, OperationalSite $site, bool $isPrimary = true): User
     {
         $operator = User::factory()->create();
-        $employment = EmploymentProfile::query()->create(
-            Arr::except(EmploymentProfile::factory()->raw(['user_id' => $operator->id]), ['operational_site_id'])
+        $line = $campaign->productLines()->firstOrFail();
+
+        $factory = EmploymentProfile::factory()->for($operator)->competentIn(
+            BusinessFunction::query()->findOrFail($line->business_function_id),
+            ProductCategory::query()->findOrFail($line->product_category_id),
         );
-        $employment->operationalSites()->attach($site->id, ['is_primary' => $isPrimary]);
+
+        ($isPrimary ? $factory->physicalSite($site) : $factory->remoteSites($site))->create();
 
         return $operator;
+    }
+}
+
+if (! function_exists('leadAssignLeadOf')) {
+    function leadAssignLeadOf(Campaign $campaign): Lead
+    {
+        return Lead::factory()->create(['campaign_id' => $campaign->id]);
     }
 }
 
@@ -65,17 +95,17 @@ if (! function_exists('leadAssignOperatorAtSite')) {
 // AC-010 — mode=single
 // ---------------------------------------------------------------------------
 
-it('AC-010: mode=single assigns operator_id and operational_site_id to every targeted lead', function () {
+it('AC-010: mode=single assigns operator_id and the campaign Sede to every targeted lead', function () {
     $actor = leadAssignActor(['update']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $operator = leadAssignOperatorAtSite($site);
-    $lead1 = Lead::factory()->create();
-    $lead2 = Lead::factory()->create();
+    $campaign = leadAssignCampaignAt($site);
+    $operator = leadAssignOperatorFor($campaign, $site);
+    $lead1 = leadAssignLeadOf($campaign);
+    $lead2 = leadAssignLeadOf($campaign);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$lead1->id, $lead2->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => $operator->id,
     ])->assertOk()->assertJsonPath('data.assigned', 2);
@@ -93,14 +123,14 @@ it('AC-010: mode=single assigns operator_id and operational_site_id to every tar
 it('AC-011: mode=balanced spreads leads evenly across the Sede\'s operators when loads start equal', function () {
     $actor = leadAssignActor(['update']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $operatorA = leadAssignOperatorAtSite($site);
-    $operatorB = leadAssignOperatorAtSite($site);
-    $leads = Lead::factory()->count(4)->create();
+    $campaign = leadAssignCampaignAt($site);
+    $operatorA = leadAssignOperatorFor($campaign, $site);
+    $operatorB = leadAssignOperatorFor($campaign, $site);
+    $leads = collect(range(1, 4))->map(fn (): Lead => leadAssignLeadOf($campaign));
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => $leads->pluck('id')->all(),
-        'operational_site_id' => $site->id,
         'mode' => 'balanced',
     ])->assertOk()->assertJsonPath('data.assigned', 4);
 
@@ -117,15 +147,15 @@ it('AC-011: mode=balanced spreads leads evenly across the Sede\'s operators when
 it('AC-011: mode=balanced respects pre-existing load, filling the least-loaded operator first', function () {
     $actor = leadAssignActor(['update']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $busyOperator = leadAssignOperatorAtSite($site);
-    $idleOperator = leadAssignOperatorAtSite($site);
+    $campaign = leadAssignCampaignAt($site);
+    $busyOperator = leadAssignOperatorFor($campaign, $site);
+    $idleOperator = leadAssignOperatorFor($campaign, $site);
     Lead::factory()->count(3)->create(['operator_id' => $busyOperator->id]);
-    $newLeads = Lead::factory()->count(2)->create();
+    $newLeads = collect(range(1, 2))->map(fn (): Lead => leadAssignLeadOf($campaign));
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => $newLeads->pluck('id')->all(),
-        'operational_site_id' => $site->id,
         'mode' => 'balanced',
     ])->assertOk()->assertJsonPath('data.assigned', 2);
 
@@ -136,35 +166,39 @@ it('AC-011: mode=balanced respects pre-existing load, filling the least-loaded o
 });
 
 // ---------------------------------------------------------------------------
-// AC-012 — zero-operator Sede
+// AC-012/AC-013 (spec 0113) — a Sede with zero operators is no longer a 422
 // ---------------------------------------------------------------------------
 
-it('AC-012: mode=balanced on a Sede with zero operators is 422 and modifies nothing', function () {
+it('0113 AC-013: mode=balanced on a campaign Sede with zero operators is 200 {0, N}, not 422', function () {
     $actor = leadAssignActor(['update']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $lead = Lead::factory()->create();
+    $campaign = leadAssignCampaignAt($site);
+    $lead = leadAssignLeadOf($campaign);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$lead->id],
-        'operational_site_id' => $site->id,
         'mode' => 'balanced',
-    ])->assertStatus(422);
+    ])->assertOk()
+        ->assertJsonPath('data.assigned', 0)
+        ->assertJsonPath('data.skipped', 1);
 
+    // The Sede is derived per record, so "nobody at this Sede" is a per-lead
+    // condition that lands in `skipped`. The derived Sede is still written.
     expect($lead->fresh()->operator_id)->toBeNull()
-        ->and($lead->fresh()->operational_site_id)->toBeNull();
+        ->and($lead->fresh()->operational_site_id)->toBe($site->id);
 });
 
-it('AC-012/D-1: mode=balanced on a Sede whose only operator has it as REMOTE distributes leads, not 422', function () {
+it('AC-012/D-1: mode=balanced on a Sede whose only operator has it as REMOTE distributes leads', function () {
     $actor = leadAssignActor(['update']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $remoteOperator = leadAssignOperatorAtSite($site, isPrimary: false);
-    $lead = Lead::factory()->create();
+    $campaign = leadAssignCampaignAt($site);
+    $remoteOperator = leadAssignOperatorFor($campaign, $site, isPrimary: false);
+    $lead = leadAssignLeadOf($campaign);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$lead->id],
-        'operational_site_id' => $site->id,
         'mode' => 'balanced',
     ])->assertOk()->assertJsonPath('data.assigned', 1);
 
@@ -179,55 +213,40 @@ it('AC-012/D-1: mode=balanced on a Sede whose only operator has it as REMOTE dis
 it('AC-013: 403 without leads.update, nothing modified', function () {
     $actor = leadAssignActor([]);
     $site = OperationalSite::factory()->withAddress()->create();
-    $operator = leadAssignOperatorAtSite($site);
-    $lead = Lead::factory()->create();
+    $campaign = leadAssignCampaignAt($site);
+    $operator = leadAssignOperatorFor($campaign, $site);
+    $lead = leadAssignLeadOf($campaign);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$lead->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => $operator->id,
     ])->assertForbidden();
 
-    expect($lead->fresh()->operator_id)->toBeNull();
+    expect($lead->fresh()->operator_id)->toBeNull()
+        ->and($lead->fresh()->operational_site_id)->toBeNull();
 });
 
 it('AC-013: 422 when lead_ids is empty', function () {
     $actor = leadAssignActor(['update']);
-    $site = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => User::factory()->create()->id,
     ])->assertStatus(422)->assertJsonValidationErrors('lead_ids');
 });
 
-it('AC-013: 422 when operational_site_id does not exist', function () {
-    $actor = leadAssignActor(['update']);
-    $lead = Lead::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/leads/assign-operators', [
-        'lead_ids' => [$lead->id],
-        'operational_site_id' => 999999,
-        'mode' => 'single',
-        'operator_id' => User::factory()->create()->id,
-    ])->assertStatus(422)->assertJsonValidationErrors('operational_site_id');
-});
-
 it('AC-013: 422 when mode=single and operator_id is missing', function () {
     $actor = leadAssignActor(['update']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $lead = Lead::factory()->create();
+    $lead = leadAssignLeadOf(leadAssignCampaignAt($site));
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$lead->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
     ])->assertStatus(422)->assertJsonValidationErrors('operator_id');
 });
@@ -235,12 +254,11 @@ it('AC-013: 422 when mode=single and operator_id is missing', function () {
 it('AC-013: 422 when mode is not single or balanced', function () {
     $actor = leadAssignActor(['update']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $lead = Lead::factory()->create();
+    $lead = leadAssignLeadOf(leadAssignCampaignAt($site));
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$lead->id],
-        'operational_site_id' => $site->id,
         'mode' => 'nonsense',
     ])->assertStatus(422)->assertJsonValidationErrors('mode');
 });

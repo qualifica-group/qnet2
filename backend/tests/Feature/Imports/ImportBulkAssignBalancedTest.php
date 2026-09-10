@@ -10,7 +10,6 @@ use App\Models\OperationalSite;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Arr;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -50,23 +49,50 @@ if (! function_exists('balancedAssignOperatorAtSite')) {
     /**
      * An operator whose employment profile holds $site as its PHYSICAL
      * membership on the `employment_profile_operational_site` pivot (spec
-     * 0103).
+     * 0103), competent for $campaign's own classification.
      *
-     * Built off EmploymentProfileFactory::raw() with the still-present
-     * `operational_site_id` key stripped (that dead column no longer exists
-     * on the table; the factory's own cleanup is microtask M11, out of this
-     * lane's scope) instead of the usual factory()->create(), which would
-     * otherwise force-fill that key straight into the insert.
+     * The competence is part of the fixture since spec 0113: a balanced row
+     * now demands the categories of its CAMPAIGN (the campaign is what
+     * carries the Sede), so an operator with no competence row would be a
+     * candidate for nothing (spec 0111 D-9) and every one of these tests
+     * would degenerate into `skipped`.
      */
-    function balancedAssignOperatorAtSite(OperationalSite $site): User
+    function balancedAssignOperatorAtSite(OperationalSite $site, Campaign $campaign): User
     {
         $operator = User::factory()->create();
-        $employment = EmploymentProfile::query()->create(
-            Arr::except(EmploymentProfile::factory()->raw(['user_id' => $operator->id]), ['operational_site_id'])
-        );
-        $employment->operationalSites()->attach($site->id, ['is_primary' => true]);
+        $productLine = $campaign->productLines()->first();
+
+        EmploymentProfile::factory()
+            ->for($operator)
+            ->physicalSite($site)
+            ->competentIn($productLine->businessFunction, $productLine->productCategory)
+            ->create();
 
         return $operator;
+    }
+}
+
+/**
+ * A campaign carrying $site, plus the run that takes it as its global
+ * campaign: since spec 0113 the Sede of a row comes from its campaign, so
+ * every balanced fixture needs both.
+ *
+ * @return array{campaign: Campaign, run: ImportRun}
+ */
+if (! function_exists('balancedAssignRunAtSite')) {
+    function balancedAssignRunAtSite(User $actor, OperationalSite $site): array
+    {
+        $campaign = Campaign::factory()->create(['operational_site_id' => $site->id]);
+
+        return [
+            'campaign' => $campaign,
+            'run' => ImportRun::factory()->create([
+                'user_id' => $actor->id,
+                'resource' => 'leads',
+                'status' => ImportStatus::Reviewing,
+                'global_config' => ['campaign_id' => $campaign->id],
+            ]),
+        ];
     }
 }
 
@@ -110,16 +136,17 @@ it('AC-020: explicit mode=single without operator_id is 422', function () {
 it('AC-021: mode=balanced distributes the targeted rows across the Sede\'s operators', function () {
     $actor = balancedAssignActor(['import']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $operatorA = balancedAssignOperatorAtSite($site);
-    $operatorB = balancedAssignOperatorAtSite($site);
-    $run = ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
+    ['campaign' => $campaign, 'run' => $run] = balancedAssignRunAtSite($actor, $site);
+    $operatorA = balancedAssignOperatorAtSite($site, $campaign);
+    $operatorB = balancedAssignOperatorAtSite($site, $campaign);
     $row1 = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 1]);
     $row2 = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 2]);
     Sanctum::actingAs($actor);
 
+    // No Sede in the payload since spec 0113: it comes from the run's
+    // campaign.
     $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
         'mode' => 'balanced',
-        'operational_site_id' => $site->id,
         'row_ids' => [$row1->id, $row2->id],
     ])->assertOk()->assertJsonPath('data.updated', 2);
 
@@ -135,17 +162,16 @@ it('AC-021: mode=balanced distributes the targeted rows across the Sede\'s opera
 it('AC-021: mode=balanced honors pre-existing REAL lead load, not just staged rows', function () {
     $actor = balancedAssignActor(['import']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $busyOperator = balancedAssignOperatorAtSite($site);
-    $idleOperator = balancedAssignOperatorAtSite($site);
+    ['campaign' => $campaign, 'run' => $run] = balancedAssignRunAtSite($actor, $site);
+    $busyOperator = balancedAssignOperatorAtSite($site, $campaign);
+    $idleOperator = balancedAssignOperatorAtSite($site, $campaign);
     Lead::factory()->count(3)->create(['operator_id' => $busyOperator->id]);
-    $run = ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
     $row1 = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 1]);
     $row2 = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 2]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
         'mode' => 'balanced',
-        'operational_site_id' => $site->id,
         'row_ids' => [$row1->id, $row2->id],
     ])->assertOk()->assertJsonPath('data.updated', 2);
 
@@ -154,32 +180,25 @@ it('AC-021: mode=balanced honors pre-existing REAL lead load, not just staged ro
         ->and($row2->fresh()->operator_id)->toBe($idleOperator->id);
 });
 
-it('AC-021: mode=balanced requires operational_site_id (422 without it)', function () {
-    $actor = balancedAssignActor(['import']);
-    $run = ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
-    $row = ImportRunRow::factory()->create(['import_run_id' => $run->id]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
-        'mode' => 'balanced',
-        'row_ids' => [$row->id],
-    ])->assertStatus(422)->assertJsonValidationErrors('operational_site_id');
-});
-
-it('AC-021: mode=balanced on a Sede with zero operators is 422 and modifies nothing', function () {
+// Spec 0113 INVERTS the old "mode=balanced requires operational_site_id":
+// the field is gone from the contract, so `mode` plus a selection IS the
+// whole payload. The other removed case ("a Sede with zero operators is a
+// 422") is now a per-row condition answering 200 `{0, N}` — covered by
+// ImportBulkAssignCampaignSiteTest, AC-013.
+it('spec 0113: mode=balanced needs nothing but the selection', function () {
     $actor = balancedAssignActor(['import']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $run = ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
-    $row = ImportRunRow::factory()->create(['import_run_id' => $run->id]);
+    ['campaign' => $campaign, 'run' => $run] = balancedAssignRunAtSite($actor, $site);
+    $operator = balancedAssignOperatorAtSite($site, $campaign);
+    $row = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 1]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
         'mode' => 'balanced',
-        'operational_site_id' => $site->id,
         'row_ids' => [$row->id],
-    ])->assertStatus(422);
+    ])->assertOk()->assertJsonPath('data.updated', 1);
 
-    expect($row->fresh()->operator_id)->toBeNull();
+    expect($row->fresh()->operator_id)->toBe($operator->id);
 });
 
 // ---------------------------------------------------------------------------
@@ -189,14 +208,11 @@ it('AC-021: mode=balanced on a Sede with zero operators is 422 and modifies noth
 it('mode=balanced writes product_ids on every targeted row while still distributing operators', function () {
     $actor = balancedAssignActor(['import']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $operatorA = balancedAssignOperatorAtSite($site);
-    $operatorB = balancedAssignOperatorAtSite($site);
-    $campaign = Campaign::factory()->create();
-    $category = $campaign->productLines()->first()->productCategory;
-    $product = Product::factory()->create(['category_id' => $category->id]);
-    $run = ImportRun::factory()->create([
-        'user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing,
-        'global_config' => ['campaign_id' => $campaign->id],
+    ['campaign' => $campaign, 'run' => $run] = balancedAssignRunAtSite($actor, $site);
+    $operatorA = balancedAssignOperatorAtSite($site, $campaign);
+    $operatorB = balancedAssignOperatorAtSite($site, $campaign);
+    $product = Product::factory()->create([
+        'category_id' => $campaign->productLines()->first()->product_category_id,
     ]);
     $row1 = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 1]);
     $row2 = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 2]);
@@ -204,7 +220,6 @@ it('mode=balanced writes product_ids on every targeted row while still distribut
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
         'mode' => 'balanced',
-        'operational_site_id' => $site->id,
         'product_ids' => [$product->id],
         'row_ids' => [$row1->id, $row2->id],
     ])->assertOk()->assertJsonPath('data.updated', 2);

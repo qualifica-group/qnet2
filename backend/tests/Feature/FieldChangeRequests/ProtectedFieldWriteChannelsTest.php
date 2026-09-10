@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\BusinessFunction;
-use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Quote;
@@ -170,13 +169,12 @@ it('AC-012: a request reassigned to a new operator without updateSource still 42
     $previousOperator = sourceProtectedActor();
     $newAssignee = sourceProtectedActor();
     $quote = quoteSupervisedBy($previousOperator);
-    $site = OperationalSite::factory()->withAddress()->create();
     $otherSource = Source::factory()->create();
 
     Sanctum::actingAs($manager);
+    // Spec 0113, AC-021: `operational_site_id` is prohibited on this payload.
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$quote->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => $newAssignee->id,
     ])->assertOk();

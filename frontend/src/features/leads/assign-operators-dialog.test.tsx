@@ -4,17 +4,21 @@ import i18n from '@/i18n'
 import { AssignOperatorsDialog } from '@/features/leads/assign-operators-dialog'
 
 /**
- * Shared "Assegna operatori" popup (spec 0048): a sequential flow that first
- * picks the assignment mode (two radios), then the Sede, then (for `single`)
- * the Operatore filtered by that Sede, and finally a single confirm action.
+ * Shared "Assegna operatori" popup (spec 0048, reshaped by spec 0113): the
+ * user picks the assignment mode and, for `single`, the Operatore. The Sede is
+ * no longer a user choice on the assignment surfaces — it is derived from the
+ * records and only handed down as `operatorSiteId` to scope the picker — and
+ * comes back as a real field only for the contact-transfer flow
+ * (`showSiteField`, spec 0079), where it is the transfer destination.
  * The real `AsyncPaginatedSelect` is mocked to a plain button so these tests
- * exercise only this component's own orchestration (mode/site/operator
- * state, submit gating, pending/close-on-success), not the async select
- * internals (already covered by `async-paginated-select.test.tsx`).
+ * exercise only this component's own orchestration (mode/site/operator state,
+ * submit gating, pending/close-on-success), not the async select internals
+ * (already covered by `async-paginated-select.test.tsx`).
  */
 
 const SITE_PICK_ID = 7
 const OPERATOR_PICK_ID = 42
+const DERIVED_SITE_ID = 3
 
 vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: ({
@@ -57,10 +61,6 @@ function pickMode(name: 'Balanced split' | 'Assign to operator') {
   fireEvent.click(screen.getByRole('radio', { name }))
 }
 
-function pickSite() {
-  fireEvent.click(screen.getByRole('button', { name: 'Site' }))
-}
-
 function pickOperator() {
   fireEvent.click(screen.getByRole('button', { name: 'Operator' }))
 }
@@ -69,149 +69,182 @@ function confirm() {
   fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 }
 
-describe('AssignOperatorsDialog', () => {
-  it('renders the two mode radios and the confirm action, hiding the pickers until a mode is chosen', () => {
+function operatorButton() {
+  return screen.getByRole('button', { name: 'Operator' })
+}
+
+/**
+ * Default shape (spec 0113 AC-026/AC-028/AC-034): the three assignment
+ * surfaces (import wizard, Lead table, Gestione richieste). No Sede field at
+ * all; the picker is scoped by the Sede the call site resolved.
+ */
+describe('AssignOperatorsDialog — derived Sede (spec 0113)', () => {
+  it('renders the two mode radios and never a Sede field (AC-026)', () => {
     render(
       <AssignOperatorsDialog
         open
         onOpenChange={vi.fn()}
         selectionCount={3}
+        operatorSiteId={DERIVED_SITE_ID}
         onAssign={vi.fn().mockResolvedValue(undefined)}
       />,
     )
     expect(screen.getByText('3 lead(s) selected.')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Balanced split' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Assign to operator' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Assign' })).toBeInTheDocument()
-    // Pickers only appear once a mode is selected.
     expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
 
     pickMode('Assign to operator')
-    expect(screen.getByRole('button', { name: 'Site' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Operator' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
+    expect(operatorButton()).toBeInTheDocument()
   })
 
-  it('shows only the Sede picker for balanced mode (no Operatore)', () => {
+  it('confirms balanced on the mode alone, with no Sede in the payload (AC-026)', async () => {
+    const onAssign = vi.fn().mockResolvedValue(undefined)
+    const onOpenChange = vi.fn()
     render(
       <AssignOperatorsDialog
         open
-        onOpenChange={vi.fn()}
+        onOpenChange={onOpenChange}
         selectionCount={2}
-        onAssign={vi.fn().mockResolvedValue(undefined)}
+        operatorSiteId={DERIVED_SITE_ID}
+        onAssign={onAssign}
       />,
     )
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
+
     pickMode('Balanced split')
-    expect(screen.getByRole('button', { name: 'Site' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Operator' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Assign' })).not.toBeDisabled()
+    confirm()
+
+    await waitFor(() => expect(onAssign).toHaveBeenCalledWith({ mode: 'balanced' }))
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
   })
 
-  it('precompiles the Sede from defaultSite', () => {
+  it('single needs only the operator and sends no Sede (AC-026)', async () => {
+    const onAssign = vi.fn().mockResolvedValue(undefined)
     render(
       <AssignOperatorsDialog
         open
         onOpenChange={vi.fn()}
-        selectionCount={1}
-        defaultSite={{ id: 12, label: 'Milano' }}
-        onAssign={vi.fn().mockResolvedValue(undefined)}
+        selectionCount={2}
+        operatorSiteId={DERIVED_SITE_ID}
+        onAssign={onAssign}
       />,
     )
-    pickMode('Balanced split')
-    expect(screen.getByRole('button', { name: 'Site' })).toHaveTextContent('12')
+    pickMode('Assign to operator')
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
+
+    pickOperator()
+    expect(screen.getByRole('button', { name: 'Assign' })).not.toBeDisabled()
+    confirm()
+
+    await waitFor(() =>
+      expect(onAssign).toHaveBeenCalledWith({ mode: 'single', operator_id: OPERATOR_PICK_ID }),
+    )
   })
 
-  it('disables the operator picker until a Sede is chosen, then filters it by that Sede', () => {
+  it('scopes the picker with the resolved Sede and the competence filter (AC-028)', () => {
     render(
       <AssignOperatorsDialog
         open
         onOpenChange={vi.fn()}
-        selectionCount={1}
+        selectionCount={2}
+        operatorSiteId={DERIVED_SITE_ID}
+        competenceCategoryIds={[4, 9]}
         onAssign={vi.fn().mockResolvedValue(undefined)}
       />,
     )
     pickMode('Assign to operator')
-    expect(screen.getByRole('button', { name: 'Operator' })).toBeDisabled()
 
-    pickSite()
-
-    const operatorButton = screen.getByRole('button', { name: 'Operator' })
-    expect(operatorButton).not.toBeDisabled()
-    expect(operatorButton).toHaveAttribute(
+    expect(operatorButton()).not.toBeDisabled()
+    expect(operatorButton()).toHaveAttribute(
       'data-params',
-      JSON.stringify({ operational_site_id: SITE_PICK_ID }),
+      JSON.stringify({ operational_site_id: DERIVED_SITE_ID, competence_category_ids: [4, 9] }),
     )
+    expect(
+      screen.getByText('Only operators of the selected records Site, competent for their categories.'),
+    ).toBeInTheDocument()
   })
 
-  it('clears a previously chosen operator when the Sede changes', () => {
+  it('keeps the picker disabled and unfiltered while the scope is unresolved (AC-034)', () => {
     render(
       <AssignOperatorsDialog
         open
         onOpenChange={vi.fn()}
-        selectionCount={1}
+        selectionCount={2}
         onAssign={vi.fn().mockResolvedValue(undefined)}
       />,
     )
     pickMode('Assign to operator')
-    pickSite()
-    pickOperator()
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveTextContent(String(OPERATOR_PICK_ID))
 
-    pickSite()
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveTextContent('none')
+    expect(operatorButton()).toBeDisabled()
+    expect(operatorButton()).toHaveAttribute('data-params', '')
+    expect(
+      screen.getByText('The Site of the selected records is not available yet.'),
+    ).toBeInTheDocument()
   })
 
-  it('balanced mode requires only a Sede and calls onAssign with mode=balanced, no operator', async () => {
-    const onAssign = vi.fn().mockResolvedValue(undefined)
-    const onOpenChange = vi.fn()
+  it('drops the Sede scope, keeping competence, when the selection spans several Sedi', () => {
     render(
       <AssignOperatorsDialog
         open
-        onOpenChange={onOpenChange}
+        onOpenChange={vi.fn()}
         selectionCount={2}
-        onAssign={onAssign}
-      />,
-    )
-    // Confirm stays disabled with no mode, and with a mode but no Sede.
-    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
-    pickMode('Balanced split')
-    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
-
-    pickSite()
-    expect(screen.getByRole('button', { name: 'Assign' })).not.toBeDisabled()
-    confirm()
-
-    await waitFor(() =>
-      expect(onAssign).toHaveBeenCalledWith({ operational_site_id: SITE_PICK_ID, mode: 'balanced' }),
-    )
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
-  })
-
-  it('single mode keeps confirm disabled until an operator is chosen, then calls onAssign with mode=single', async () => {
-    const onAssign = vi.fn().mockResolvedValue(undefined)
-    const onOpenChange = vi.fn()
-    render(
-      <AssignOperatorsDialog
-        open
-        onOpenChange={onOpenChange}
-        selectionCount={2}
-        onAssign={onAssign}
+        operatorSiteId={null}
+        competenceCategoryIds={[4]}
+        onAssign={vi.fn().mockResolvedValue(undefined)}
       />,
     )
     pickMode('Assign to operator')
-    pickSite()
-    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
 
-    pickOperator()
-    expect(screen.getByRole('button', { name: 'Assign' })).not.toBeDisabled()
-    confirm()
-
-    await waitFor(() =>
-      expect(onAssign).toHaveBeenCalledWith({
-        operational_site_id: SITE_PICK_ID,
-        mode: 'single',
-        operator_id: OPERATOR_PICK_ID,
-      }),
+    expect(operatorButton()).not.toBeDisabled()
+    expect(operatorButton()).toHaveAttribute(
+      'data-params',
+      JSON.stringify({ competence_category_ids: [4] }),
     )
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(
+      screen.getByText(
+        'The selection spans more than one Site: the list is filtered by competence only.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('disables the picker while the scope is being resolved (spec 0110 AC-043)', () => {
+    render(
+      <AssignOperatorsDialog
+        open
+        onOpenChange={vi.fn()}
+        selectionCount={2}
+        operatorSiteId={DERIVED_SITE_ID}
+        isResolvingCompetence
+        onAssign={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+    pickMode('Assign to operator')
+
+    expect(operatorButton()).toBeDisabled()
+    expect(screen.getByText('Looking up the competent operators…')).toBeInTheDocument()
+  })
+
+  it('names the competence empty state on the picker', () => {
+    render(
+      <AssignOperatorsDialog
+        open
+        onOpenChange={vi.fn()}
+        selectionCount={2}
+        operatorSiteId={DERIVED_SITE_ID}
+        competenceCategoryIds={[4]}
+        onAssign={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+    pickMode('Assign to operator')
+
+    expect(operatorButton()).toHaveAttribute(
+      'data-empty',
+      'No operator is competent for the selected records.',
+    )
   })
 
   it('keeps the dialog open and the picks intact when onAssign rejects', async () => {
@@ -222,11 +255,11 @@ describe('AssignOperatorsDialog', () => {
         open
         onOpenChange={onOpenChange}
         selectionCount={2}
+        operatorSiteId={DERIVED_SITE_ID}
         onAssign={onAssign}
       />,
     )
     pickMode('Balanced split')
-    pickSite()
     confirm()
 
     await waitFor(() => expect(onAssign).toHaveBeenCalledTimes(1))
@@ -236,170 +269,88 @@ describe('AssignOperatorsDialog', () => {
 })
 
 /**
- * `lockedMode` (spec 0079, additive/retro-compatible): skips the step-1 mode
- * picker entirely, fixes `mode`, and always shows the Operatore field. The
- * three pre-existing consumers never pass it (AC-029), asserted by every test
- * above still passing unmodified.
+ * Spec 0113 AC-029/AC-030/D-5: the import review bar rules out `single` when
+ * the selection spans several campaigns, and says why. `balanced` works row by
+ * row and stays available. The other two surfaces pass nothing and keep both
+ * cards active (AC-031, covered by every test above).
  */
-describe('AssignOperatorsDialog — lockedMode (spec 0079)', () => {
-  it('never renders the mode radios and shows Sede + Operatore right away (AC-027)', () => {
+describe('AssignOperatorsDialog — disabled modes (spec 0113)', () => {
+  const MIXED_CAMPAIGNS_REASON = 'Unavailable: the selection spans rows from different campaigns.'
+
+  function renderWithDisabledSingle() {
     render(
       <AssignOperatorsDialog
         open
         onOpenChange={vi.fn()}
-        selectionCount={1}
-        lockedMode="single"
+        selectionCount={5}
+        operatorSiteId={null}
+        disabledModes={['single']}
+        disabledModeHints={{ single: MIXED_CAMPAIGNS_REASON }}
         onAssign={vi.fn().mockResolvedValue(undefined)}
       />,
     )
-    expect(screen.queryByRole('radio', { name: 'Balanced split' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: 'Assign to operator' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Site' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Operator' })).toBeInTheDocument()
+  }
+
+  it('marks the single card as disabled and shows the reason (AC-029)', () => {
+    renderWithDisabledSingle()
+
+    const single = screen.getByRole('radio', { name: 'Assign to operator' })
+    expect(single).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText(MIXED_CAMPAIGNS_REASON)).toBeInTheDocument()
+    // The reason is wired to the card, not just painted next to it.
+    expect(single).toHaveAttribute('aria-describedby', screen.getByText(MIXED_CAMPAIGNS_REASON).id)
   })
 
-  it('overrides the title/description from copy', () => {
-    render(
-      <AssignOperatorsDialog
-        open
-        onOpenChange={vi.fn()}
-        selectionCount={2}
-        lockedMode="single"
-        copy={{ title: 'Transfer contact', description: '2 request(s) selected.', modeHints: { balanced: '', single: '' } }}
-        onAssign={vi.fn().mockResolvedValue(undefined)}
-      />,
+  it('ignores clicks on the disabled card: no operator step, no confirm (AC-029)', () => {
+    renderWithDisabledSingle()
+
+    pickMode('Assign to operator')
+    expect(screen.getByRole('radio', { name: 'Assign to operator' })).toHaveAttribute(
+      'aria-checked',
+      'false',
     )
-    expect(screen.getByRole('dialog')).toHaveTextContent('Transfer contact')
-    expect(screen.getByText('2 request(s) selected.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Operator' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
   })
 
-  it('requires both Sede and Operatore before submitting, then calls onAssign with the locked mode (AC-027)', async () => {
+  it('leaves the balanced card selectable and confirmable (AC-029)', async () => {
     const onAssign = vi.fn().mockResolvedValue(undefined)
-    const onOpenChange = vi.fn()
     render(
       <AssignOperatorsDialog
         open
-        onOpenChange={onOpenChange}
-        selectionCount={1}
-        lockedMode="single"
+        onOpenChange={vi.fn()}
+        selectionCount={5}
+        operatorSiteId={null}
+        disabledModes={['single']}
+        disabledModeHints={{ single: MIXED_CAMPAIGNS_REASON }}
         onAssign={onAssign}
       />,
     )
-    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
 
-    pickSite()
-    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
+    const balanced = screen.getByRole('radio', { name: 'Balanced split' })
+    expect(balanced).not.toHaveAttribute('aria-disabled')
+    pickMode('Balanced split')
+    expect(balanced).toHaveAttribute('aria-checked', 'true')
 
-    pickOperator()
-    expect(screen.getByRole('button', { name: 'Assign' })).not.toBeDisabled()
     confirm()
-
-    await waitFor(() =>
-      expect(onAssign).toHaveBeenCalledWith({
-        operational_site_id: SITE_PICK_ID,
-        mode: 'single',
-        operator_id: OPERATOR_PICK_ID,
-      }),
-    )
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    await waitFor(() => expect(onAssign).toHaveBeenCalledWith({ mode: 'balanced' }))
   })
 
-  it('clears the chosen Operatore when the Sede changes (AC-028)', () => {
+  it('keeps both cards active when the call site disables nothing (AC-030/AC-031)', () => {
     render(
       <AssignOperatorsDialog
         open
         onOpenChange={vi.fn()}
-        selectionCount={1}
-        lockedMode="single"
+        selectionCount={5}
+        operatorSiteId={DERIVED_SITE_ID}
         onAssign={vi.fn().mockResolvedValue(undefined)}
       />,
     )
-    pickSite()
-    pickOperator()
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveTextContent(String(OPERATOR_PICK_ID))
-
-    pickSite()
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveTextContent('none')
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
-      'data-params',
-      JSON.stringify({ operational_site_id: SITE_PICK_ID }),
+    expect(screen.getByRole('radio', { name: 'Assign to operator' })).not.toHaveAttribute(
+      'aria-disabled',
     )
-  })
-})
-
-/**
- * Spec 0110 AC-041/AC-043: the dialog stays dumb — the CALL SITE resolves the
- * competence of the selection and hands it down; the dialog only forwards it
- * to the picker, disables it while the resolution is in flight, and names the
- * empty state for what it is.
- */
-describe('AssignOperatorsDialog — competence filter (spec 0110)', () => {
-  function renderWithCompetence(props: {
-    competenceCategoryIds?: number[]
-    isResolvingCompetence?: boolean
-  }) {
-    render(
-      <AssignOperatorsDialog
-        open
-        onOpenChange={vi.fn()}
-        selectionCount={2}
-        onAssign={vi.fn().mockResolvedValue(undefined)}
-        {...props}
-      />,
+    expect(screen.getByRole('radio', { name: 'Balanced split' })).not.toHaveAttribute(
+      'aria-disabled',
     )
-    pickMode('Assign to operator')
-  }
-
-  it('adds the competence filter to the Sede scope of the operator picker', () => {
-    renderWithCompetence({ competenceCategoryIds: [4, 9] })
-    pickSite()
-
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
-      'data-params',
-      JSON.stringify({ operational_site_id: SITE_PICK_ID, competence_category_ids: [4, 9] }),
-    )
-  })
-
-  it('keeps the picker on the plain Sede scope when there is no requirement', () => {
-    renderWithCompetence({})
-    pickSite()
-
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
-      'data-params',
-      JSON.stringify({ operational_site_id: SITE_PICK_ID }),
-    )
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
-      'data-empty',
-      'No results found.',
-    )
-  })
-
-  it('names the competence empty state, and keeps confirm disabled with no candidate (AC-043)', () => {
-    renderWithCompetence({ competenceCategoryIds: [4] })
-    pickSite()
-
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
-      'data-empty',
-      'No operator is competent for the selected records.',
-    )
-    // Nothing can be picked from an empty list, so `single` cannot be confirmed.
-    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
-  })
-
-  it('disables the picker, and explains why, while the requirement is being resolved (AC-043)', () => {
-    renderWithCompetence({ isResolvingCompetence: true })
-    pickSite()
-
-    expect(screen.getByRole('button', { name: 'Operator' })).toBeDisabled()
-    expect(screen.getByText('Looking up the competent operators…')).toBeInTheDocument()
-  })
-
-  it('tells the user the list is competence-scoped once the filter applies', () => {
-    renderWithCompetence({ competenceCategoryIds: [4] })
-    pickSite()
-
-    expect(
-      screen.getByText('Only Site operators competent for the selected records.'),
-    ).toBeInTheDocument()
   })
 })

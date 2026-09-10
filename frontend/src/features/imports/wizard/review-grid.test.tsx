@@ -56,9 +56,8 @@ vi.mock('@/features/imports/wizard/use-review-rows', () => ({
   }),
   buildBulkAssignPayload: (
     selection: { selectAll: boolean; toggledNodes: string[] },
-    input: { operational_site_id: number; mode: 'single' | 'balanced'; operator_id?: number },
+    input: { mode: 'single' | 'balanced'; operator_id?: number },
   ) => ({
-    operational_site_id: input.operational_site_id,
     mode: input.mode,
     ...(input.mode === 'single' ? { operator_id: input.operator_id } : {}),
     select_all: selection.selectAll,
@@ -83,38 +82,33 @@ vi.mock('@/features/imports/wizard/use-review-products-scope', () => ({
   useReviewProductsScope: () => ({ globalDefaultProductIds: [], campaignCategoryIds: [] }),
 }))
 
-// Same reason for the competence lookup the bulk-assign bar now performs
-// (spec 0110 AC-041): it is a TanStack Query hook, and this file mounts
+// Same reason for the scope lookup the bulk-assign bar now performs (spec
+// 0110 AC-041, 0113): it is a TanStack Query hook, and this file mounts
 // `ReviewGrid` without a provider. Its own contract is covered by
-// `review-bulk-assign-bar.test.tsx` and `use-required-categories.test.tsx`.
-vi.mock('@/features/assignment/use-required-categories', () => ({
-  useRequiredCategories: () => ({
+// `review-bulk-assign-bar.test.tsx` and `use-assignment-scope.test.tsx`.
+vi.mock('@/features/assignment/use-assignment-scope', () => ({
+  useAssignmentScope: () => ({
     competenceCategoryIds: undefined,
+    operationalSiteId: null,
+    campaignIds: [1],
     isResolving: false,
     isError: false,
   }),
 }))
 
-const SITE_PICK_ID = 84
 const OPERATOR_PICK_ID = 42
 
 vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: ({
-    resource,
     value,
     onChange,
     labels,
   }: {
-    resource: string
     value: number | null
     onChange: (value: number | null) => void
     labels: { triggerLabel: string }
   }) => (
-    <button
-      type="button"
-      aria-label={labels.triggerLabel}
-      onClick={() => onChange(resource === 'operational-sites' ? SITE_PICK_ID : OPERATOR_PICK_ID)}
-    >
+    <button type="button" aria-label={labels.triggerLabel} onClick={() => onChange(OPERATOR_PICK_ID)}>
       {value ?? 'none'}
     </button>
   ),
@@ -160,26 +154,17 @@ beforeEach(() => {
 })
 
 /**
- * `selectedSiteIds` seeds a `forEachNode` stub with one selected node per
- * entry (AC-031's site-precompile reads `node.data.operational_site_id` off
- * exactly that); omitted by every pre-existing test, which does not care
- * about the popup's precompiled Sede.
+ * The selection handler reads AG Grid's own server-side selection state and
+ * nothing else: since spec 0113 AC-033 it derives no Sede from the selected
+ * nodes, so the event needs no `forEachNode`.
  */
-function fireSelectionChanged(
-  state: { selectAll: boolean; toggledNodes: string[] } | null,
-  selectedSiteIds: Array<number | null> = [],
-) {
+function fireSelectionChanged(state: { selectAll: boolean; toggledNodes: string[] } | null) {
   const onSelectionChanged = capturedProps.onSelectionChanged as
     | ((event: SelectionChangedEvent) => void)
     | undefined
-  const forEachNode = (
-    callback: (node: { isSelected: () => boolean; data: { operational_site_id: number | null } }) => void,
-  ) => {
-    selectedSiteIds.forEach((operational_site_id) => callback({ isSelected: () => true, data: { operational_site_id } }))
-  }
   act(() => {
     onSelectionChanged?.({
-      api: { getServerSideSelectionState: () => state, forEachNode },
+      api: { getServerSideSelectionState: () => state },
     } as unknown as SelectionChangedEvent)
   })
 }
@@ -210,12 +195,10 @@ describe('ReviewGrid — bulk assign via the shared popup', () => {
 
     openAssignPopup()
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() =>
       expect(handleBulkAssignMock).toHaveBeenCalledWith({
-        operational_site_id: SITE_PICK_ID,
         mode: 'balanced',
         select_all: false,
         row_ids: [1, 2],
@@ -230,12 +213,10 @@ describe('ReviewGrid — bulk assign via the shared popup', () => {
 
     openAssignPopup()
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() =>
       expect(handleBulkAssignMock).toHaveBeenCalledWith({
-        operational_site_id: SITE_PICK_ID,
         mode: 'balanced',
         select_all: true,
         row_ids: [5],
@@ -243,20 +224,18 @@ describe('ReviewGrid — bulk assign via the shared popup', () => {
     )
   })
 
-  it('sends operator_id alongside operational_site_id for mode "single"', async () => {
+  it('sends operator_id, and no Sede, for mode "single"', async () => {
     handleBulkAssignMock.mockResolvedValue({ updated: 2 })
     render(<ReviewGrid domain="leads" run={baseRun()} />)
     fireSelectionChanged({ selectAll: false, toggledNodes: ['1', '2'] })
 
     openAssignPopup()
     fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
     fireEvent.click(screen.getByRole('button', { name: 'Operator' }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() =>
       expect(handleBulkAssignMock).toHaveBeenCalledWith({
-        operational_site_id: SITE_PICK_ID,
         mode: 'single',
         operator_id: OPERATOR_PICK_ID,
         select_all: false,
@@ -272,7 +251,6 @@ describe('ReviewGrid — bulk assign via the shared popup', () => {
 
     openAssignPopup()
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() =>
@@ -288,31 +266,14 @@ describe('ReviewGrid — bulk assign via the shared popup', () => {
   })
 })
 
-describe('ReviewGrid — popup Sede precompile (AC-031)', () => {
-  it('precompiles the Sede when every selected row shares one', () => {
+describe('ReviewGrid — no Sede derived from the selection (spec 0113 AC-033)', () => {
+  it('opens the popup without any Sede field, whatever the selected rows carry', () => {
     render(<ReviewGrid domain="leads" run={baseRun()} />)
-    fireSelectionChanged({ selectAll: false, toggledNodes: ['1', '2'] }, [5, 5])
+    fireSelectionChanged({ selectAll: false, toggledNodes: ['1', '2'] })
 
     openAssignPopup()
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
-    expect(screen.getByRole('button', { name: 'Site' })).toHaveTextContent('5')
-  })
 
-  it('leaves the Sede unset when the selected rows have different sites', () => {
-    render(<ReviewGrid domain="leads" run={baseRun()} />)
-    fireSelectionChanged({ selectAll: false, toggledNodes: ['1', '2'] }, [5, 8])
-
-    openAssignPopup()
-    fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
-    expect(screen.getByRole('button', { name: 'Site' })).toHaveTextContent('none')
-  })
-
-  it('skips the precompile for a select-all selection (no cheap shared-site read)', () => {
-    render(<ReviewGrid domain="leads" run={baseRun()} />)
-    fireSelectionChanged({ selectAll: true, toggledNodes: ['9'] }, [5, 5])
-
-    openAssignPopup()
-    fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
-    expect(screen.getByRole('button', { name: 'Site' })).toHaveTextContent('none')
+    expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
   })
 })

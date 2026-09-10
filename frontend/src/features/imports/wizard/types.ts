@@ -298,10 +298,10 @@ export interface ImportRunRowUpdateResult {
  * bulk clear, the single-row cell already covers that.
  *
  * `mode` (spec 0048): the shared "Assegna operatori" popup always sends it —
- * `single` (requires `operator_id`) or `balanced` (requires
- * `operational_site_id`, enumerating the Sede's operators server-side).
- * Optional for backward compat with the legacy (pre-0048) caller contract,
- * where at least one of `operator_id`/`operational_site_id` alone sufficed.
+ * `single` (requires `operator_id`) or `balanced` (which needs nothing else:
+ * the server resolves each row's Sede from its campaign and enumerates that
+ * Sede's competent operators, spec 0113). Optional for backward compat with
+ * the legacy (pre-0048) caller contract, where `operator_id` alone sufficed.
  *
  * `product_ids` (spec 0094 bulk delta): sent by the review bar's "Assegna
  * prodotti" dropdown action instead of the operator/site/mode fields —
@@ -311,7 +311,6 @@ export interface ImportRunRowUpdateResult {
  */
 export interface BulkAssignImportRowPayload {
   operator_id?: number
-  operational_site_id?: number
   mode?: 'single' | 'balanced'
   product_ids?: number[]
   select_all: boolean

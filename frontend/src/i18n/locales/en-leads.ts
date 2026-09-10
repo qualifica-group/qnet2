@@ -157,9 +157,18 @@ export const leads = {
       competenceHint: 'Only Site operators competent for the selected records.',
       resolvingHint: 'Looking up the competent operators…',
       disabledHint: 'Choose a Site first to see its operators.',
+      derivedSiteHint: 'Only operators enabled for the Site of the selected records.',
+      derivedSiteCompetenceHint:
+        'Only operators of the selected records Site, competent for their categories.',
+      derivedSiteMixedHint:
+        'The selection spans more than one Site: the list is filtered by competence only.',
+      derivedSiteUnknownHint: 'The Site of the selected records is not available yet.',
     },
     mode: {
       label: 'Assignment type',
+      // Reason shown on the card the import wizard disables
+      // (`review-bulk-assign-bar.tsx`) when the selection spans several campaigns.
+      disabledMixedCampaigns: 'Unavailable: the selection spans rows from different campaigns.',
     },
     actions: {
       balanced: 'Balanced split',
@@ -173,7 +182,6 @@ export const leads = {
     successWithSkipped:
       'Operators assigned to {{count}} lead(s). {{skipped}} left without a competent operator.',
     errors: {
-      noOperators: 'No operator found for the selected Site.',
       generic: 'Unable to assign the operators. Please try again.',
     },
   },

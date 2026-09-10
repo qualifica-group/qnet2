@@ -165,22 +165,23 @@ it('rejects the commercial PATCH of either field with a 422', function () {
         ->and($quote->operator_id)->toBe($actor->id);
 });
 
-it('refuses the commercial bulk assignment of Sede and Operatore', function () {
+it('refuses the commercial bulk assignment of the Operatore', function () {
     $this->seed(TestUsersSeeder::class);
 
     $actor = restrictedCommercial();
     $quote = requestOperatedBy($actor);
-    $site = OperationalSite::factory()->withAddress()->create();
+    $newOperator = User::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => [$quote->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
-        'operator_id' => $actor->id,
+        'operator_id' => $newOperator->id,
     ])->assertForbidden();
 
-    expect($quote->fresh()->operational_site_id)->toBeNull();
+    // Spec 0113: the Sede left this payload, so the proof the restriction
+    // held is the untouched Operatore.
+    expect($quote->fresh()->operator_id)->toBe($actor->id);
 });
 
 it('refuses either field on the commercial create, the one channel the matrix cannot reach', function () {

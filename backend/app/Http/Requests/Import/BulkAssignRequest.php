@@ -14,24 +14,29 @@ use Illuminate\Validation\Validator;
 
 /**
  * Validates PATCH /api/imports/{domain}/{importRun}/rows/assign (spec 0045
- * bulk increment, extended to a COMBINED operator+site assignment, then to a
- * `mode` — spec 0048): bulk-assign an operator and/or an operational site to
- * a batch of staged rows — distinct from the single-row PATCH .../rows/{row}.
- * AG Grid `getServerSideSelectionState()` semantics: `row_ids` are the rows to
+ * bulk increment, extended to a `mode` by spec 0048): bulk-assign an
+ * operator and/or the "Prodotti di interesse" to a batch of staged rows —
+ * distinct from the single-row PATCH .../rows/{row}. AG Grid
+ * `getServerSideSelectionState()` semantics: `row_ids` are the rows to
  * TARGET when `select_all` is false (required, non-empty), the rows to
  * EXCLUDE when `select_all` is true (optional, empty = every row in the
- * run). Bulk-only ASSIGNS — `operator_id`/`operational_site_id` are never
- * nullable; clearing a single row's override stays PATCH .../rows/{row}.
+ * run). Bulk-only ASSIGNS — `operator_id` is never nullable; clearing a
+ * single row's override stays PATCH .../rows/{row}.
+ *
+ * `operational_site_id` is `prohibited` (spec 0113): the Sede is no longer
+ * the operator's choice but a derivation from each row's own campaign, so a
+ * client still submitting it is working against a contract that no longer
+ * exists and must be told (422), not silently ignored while the server
+ * assigns by a Sede it never asked for (AC-016).
  *
  * `mode` (spec 0048) is OPTIONAL and purely ADDITIVE: when absent, the
- * original rule stands unchanged — at least one of operator_id/
- * operational_site_id required (validateAtLeastOneAssignment), neither
- * individually mandatory (AC-020, full retro-compat with every pre-0048
- * caller). When the caller opts into `mode` explicitly, it tightens the
- * contract for the unified "Assegna operatori" popup: `single` requires
- * operator_id (assign every targeted row to that one operator); `balanced`
- * requires operational_site_id (needed to enumerate the Sede's operators —
- * LeadOperatorDistributor, same algorithm as POST /leads/assign-operators).
+ * original rule stands unchanged — at least one of operator_id/product_ids
+ * required (validateAtLeastOneAssignment), neither individually mandatory
+ * (AC-020, full retro-compat with every pre-0048 caller). When the caller
+ * opts into `mode` explicitly, it tightens the contract for the unified
+ * "Assegna operatori" popup: `single` requires operator_id (assign every
+ * targeted row to that one operator); `balanced` requires nothing more —
+ * every row's candidate pool is derived from the row itself.
  *
  * `row_ids` existence is checked SCOPED to the bound {importRun} (a plain
  * `exists:import_run_rows,id` would let an id from ANOTHER run through —
@@ -42,9 +47,9 @@ use Illuminate\Validation\Validator;
  *
  * `product_ids` (spec 0094 increment): OPTIONAL, purely ADDITIVE bulk
  * "Prodotti di interesse" assignment, combinable freely with
- * `operator_id`/`operational_site_id`/`mode`. Bulk-only ASSIGNS, mirroring
- * `operator_id`/`operational_site_id`: never `null`, never `[]` (`min:1`) —
- * clearing/emptying a single row's override stays PATCH .../rows/{row}.
+ * `operator_id`/`mode`. Bulk-only ASSIGNS, mirroring `operator_id`: never
+ * `null`, never `[]` (`min:1`) — clearing/emptying a single row's override
+ * stays PATCH .../rows/{row}.
  * Every submitted id must sit inside the effective product categories of the
  * campaign of EVERY targeted row (spec 0108, D-6: a run can now span several
  * campaigns), checked via the SAME `LeadImportProductCoherence` service
@@ -67,7 +72,7 @@ class BulkAssignRequest extends FormRequest
     {
         return [
             'operator_id' => ['required_if:mode,single', 'integer', 'exists:users,id'],
-            'operational_site_id' => ['required_if:mode,balanced', 'integer', 'exists:operational_sites,id'],
+            'operational_site_id' => ['prohibited'],
             'product_ids' => ['sometimes', 'array', 'min:1'],
             'product_ids.*' => ['integer', 'exists:products,id'],
             'mode' => ['sometimes', Rule::enum(LeadAssignmentMode::class)],
@@ -87,13 +92,19 @@ class BulkAssignRequest extends FormRequest
         });
     }
 
+    /**
+     * A payload must ASK for something. `mode=balanced` is itself the ask
+     * (spec 0113: it no longer carries any field of its own now that the Sede
+     * is derived per row), so only a `single`/mode-less call has to name an
+     * operator or a set of products.
+     */
     private function validateAtLeastOneAssignment(Validator $validator): void
     {
-        if ($this->has('operator_id') || $this->has('operational_site_id') || $this->has('product_ids')) {
+        if ($this->mode() === LeadAssignmentMode::Balanced || $this->has('operator_id') || $this->has('product_ids')) {
             return;
         }
 
-        $validator->errors()->add('operator_id', 'At least one of operator_id, operational_site_id or product_ids is required.');
+        $validator->errors()->add('operator_id', 'At least one of operator_id or product_ids is required.');
     }
 
     /**
@@ -128,8 +139,8 @@ class BulkAssignRequest extends FormRequest
 
     /**
      * The rows this request targets, through the SAME ImportRunRowSelection
-     * ImportService::bulkAssign() reads when writing — so the check and the
-     * write can never disagree on WHICH rows are in play.
+     * ImportBulkAssigner reads when writing — so the check and the write can
+     * never disagree on WHICH rows are in play.
      *
      * @return Collection<int, ImportRunRow>
      */
@@ -199,11 +210,6 @@ class BulkAssignRequest extends FormRequest
     public function operatorId(): ?int
     {
         return $this->has('operator_id') ? (int) $this->input('operator_id') : null;
-    }
-
-    public function operationalSiteId(): ?int
-    {
-        return $this->has('operational_site_id') ? (int) $this->input('operational_site_id') : null;
     }
 
     /**

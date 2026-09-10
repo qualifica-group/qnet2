@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, MapPin, Scale, User, UserCheck, Users } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import { Scale, UserCheck, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,18 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
-import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
-import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
+import { AssignOperatorsModePicker } from '@/features/leads/assign-operators-mode-picker'
+import type { AssignmentMode } from '@/features/leads/assign-operators-mode-picker'
+import { AssignOperatorsPickers } from '@/features/leads/assign-operators-pickers'
+import type { AssignOperatorsDialogSite } from '@/features/leads/assign-operators-pickers'
 
-/** Precompiled Sede seed (spec 0048 AC-031), when the selection shares one. */
-export interface AssignOperatorsDialogSite {
-  id: number
-  label: string
-}
-
-export type AssignmentMode = 'single' | 'balanced'
+export type { AssignmentMode, AssignOperatorsDialogSite }
 
 /**
  * Copy that names the assigned entity ("… lead selezionati", "Distribuisce i
@@ -40,81 +32,15 @@ export interface AssignOperatorsDialogCopy {
 
 /** Input handed to `onAssign`, mirroring the `POST /leads/assign-operators` request body. */
 export interface AssignOperatorsDialogInput {
-  operational_site_id: number
+  /**
+   * Only present with `showSiteField`, i.e. the contact-transfer flow (spec
+   * 0079), where the Sede is the transfer DESTINATION. The assignment
+   * surfaces derive it server-side from each record and no longer send it
+   * (spec 0113 D-2).
+   */
+  operational_site_id?: number
   mode: AssignmentMode
   operator_id?: number
-}
-
-/**
- * Presentation tokens per assignment mode. Each mode owns a distinct semantic
- * accent (emerald = workload split, sky = single operator) so the two cards
- * read as different actions at a glance. Full class strings are inlined (not
- * built dynamically) so Tailwind's JIT keeps them.
- */
-const ASSIGNMENT_MODES: ReadonlyArray<{
-  mode: AssignmentMode
-  icon: LucideIcon
-  /** Icon chip styling while selected. */
-  chip: string
-  /** Card border/tint/ring while selected. */
-  card: string
-  /** Accent color for the selected check mark. */
-  accent: string
-}> = [
-  {
-    mode: 'balanced',
-    icon: Scale,
-    chip: 'bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/25 dark:text-emerald-400',
-    card: 'border-emerald-500/60 bg-emerald-500/[0.07] ring-2 ring-emerald-500/25',
-    accent: 'text-emerald-600 dark:text-emerald-400',
-  },
-  {
-    mode: 'single',
-    icon: UserCheck,
-    chip: 'bg-sky-500/15 text-sky-600 ring-1 ring-sky-500/25 dark:text-sky-400',
-    card: 'border-sky-500/60 bg-sky-500/[0.07] ring-2 ring-sky-500/25',
-    accent: 'text-sky-600 dark:text-sky-400',
-  },
-]
-
-/** Crisp, compact styling shared by the Sede/Operatore selects. */
-const SELECT_CLASS = 'h-8 bg-card text-xs shadow-sm transition-colors hover:border-ring/50'
-
-/**
- * Query params of the Operatore picker: the Sede scope (spec 0048) plus, when
- * the call site resolved one, the competence filter (spec 0110 AC-041).
- * `undefined` while no Sede is picked — the field is disabled anyway, and an
- * unscoped list would be the wrong one to preload.
- */
-function buildOperatorParams(
-  siteId: number | null,
-  competenceCategoryIds: number[] | undefined,
-): Record<string, number | number[]> | undefined {
-  if (siteId === null) {
-    return undefined
-  }
-  return competenceCategoryIds === undefined
-    ? { operational_site_id: siteId }
-    : { operational_site_id: siteId, competence_category_ids: competenceCategoryIds }
-}
-
-/**
- * Which sentence sits under the Operatore picker: no Sede yet, competence
- * still being resolved (spec 0110 AC-043), competence filter applied, or the
- * plain Sede-only scope.
- */
-function operatorHintKey(
-  siteId: number | null,
-  isResolvingCompetence: boolean,
-  hasCompetenceFilter: boolean,
-): string {
-  if (siteId === null) {
-    return 'leads.assign.operator.disabledHint'
-  }
-  if (isResolvingCompetence) {
-    return 'leads.assign.operator.resolvingHint'
-  }
-  return hasCompetenceFilter ? 'leads.assign.operator.competenceHint' : 'leads.assign.operator.hint'
 }
 
 export interface AssignOperatorsDialogProps {
@@ -122,6 +48,22 @@ export interface AssignOperatorsDialogProps {
   onOpenChange: (open: boolean) => void
   /** How many leads/rows are selected; drives the title/description copy. */
   selectionCount: number
+  /**
+   * Opt-in Sede select (spec 0113 D-2), default false. Only the two
+   * contact-transfer call sites set it: there the Sede is the DESTINATION the
+   * user picks, not a filter. On the assignment surfaces the Sede comes from
+   * the record itself, so the field is not rendered at all (AC-026) and
+   * `operational_site_id` leaves the payload.
+   */
+  showSiteField?: boolean
+  /**
+   * Sede the Operatore picker is scoped to when `showSiteField` is false,
+   * resolved by the call site from the selected records. `undefined` = not
+   * resolved yet (or resolution failed) and the picker stays disabled;
+   * `null` = mixed/absent Sede, the picker filters by competence alone.
+   */
+  operatorSiteId?: number | null
+  /** Seeds for the Sede select; meaningful only with `showSiteField`. */
   defaultSiteId?: number | null
   defaultSite?: AssignOperatorsDialogSite | null
   /**
@@ -133,22 +75,27 @@ export interface AssignOperatorsDialogProps {
   /**
    * Additive, opt-in (spec 0079): when set, Step 1 (the mode picker) never
    * renders, `mode` is fixed to this value instead of user-picked, and the
-   * Operatore field is always shown (not only for `single`). The three
-   * pre-existing consumers (leads, this module's own assignment, the import
-   * wizard) leave it `undefined` and keep their behavior byte-for-byte
-   * (AC-029).
+   * Operatore field is always shown (not only for `single`).
    */
   lockedMode?: AssignmentMode
   /**
+   * Modes the current selection cannot express: the card stays visible but is
+   * not selectable. Used by the import review bar to rule out `single` on a
+   * selection spanning several campaigns, while `balanced` stays available
+   * (spec 0113 AC-029/D-5).
+   */
+  disabledModes?: readonly AssignmentMode[]
+  /** Human-readable reason rendered on each disabled card. */
+  disabledModeHints?: Partial<Record<AssignmentMode, string>>
+  /**
    * Product categories the current selection requires (spec 0110 AC-041),
-   * resolved by the CALL SITE via `useRequiredCategories` — the dialog stays
-   * dumb and only forwards them to the picker. `undefined` means NO
-   * competence filter (nothing selected, still resolving, or a selection that
-   * expresses no requirement), so the picker behaves exactly as before.
+   * resolved by the CALL SITE — the dialog stays dumb and only forwards them
+   * to the picker. `undefined` means NO competence filter (nothing selected,
+   * still resolving, or a selection that expresses no requirement).
    */
   competenceCategoryIds?: number[]
   /**
-   * True while the call site is still resolving the categories above: the
+   * True while the call site is still resolving the scope above: the
    * Operatore picker stays disabled rather than briefly listing operators the
    * filter is about to exclude (spec 0110 AC-043).
    */
@@ -165,23 +112,26 @@ export interface AssignOperatorsDialogProps {
 }
 
 /**
- * Shared "Assegna operatori" popup (spec 0048). The flow is sequential: the
- * user first picks the assignment mode — "Smistamento equo" (`balanced`) or
- * "Assegna a operatore" (`single`) — then the Sede, and (only for `single`)
- * the Operatore filtered by that Sede (AC-030). A single confirm action
- * commits the pick. Reused as-is by the Lead table's bulk action and the
- * import review bar. With `lockedMode` (spec 0079, additive) the mode step is
- * skipped entirely and the Operatore is always shown — the contact-transfer
- * flow's own use, which never lets the user pick a mode.
+ * Shared "Assegna operatori" popup (spec 0048, reshaped by spec 0113). The
+ * user picks the assignment mode — "Smistamento equo" (`balanced`) or "Assegna
+ * a operatore" (`single`) — and, for `single`, the Operatore. The Sede is no
+ * longer part of the flow on the assignment surfaces: it is derived from each
+ * record server-side and only scopes the picker via `operatorSiteId`. The
+ * contact-transfer flow opts the field back in with `showSiteField`, where the
+ * Sede is the destination of the transfer (spec 0079).
  */
 export function AssignOperatorsDialog({
   open,
   onOpenChange,
   selectionCount,
+  showSiteField = false,
+  operatorSiteId,
   defaultSiteId,
   defaultSite,
   copy,
   lockedMode,
+  disabledModes,
+  disabledModeHints,
   competenceCategoryIds,
   isResolvingCompetence = false,
   onAssign,
@@ -191,10 +141,14 @@ export function AssignOperatorsDialog({
       <DialogContent className="gap-0 p-0">
         <AssignOperatorsDialogBody
           selectionCount={selectionCount}
+          showSiteField={showSiteField}
+          operatorSiteId={operatorSiteId}
           defaultSiteId={defaultSiteId}
           defaultSite={defaultSite}
           copy={copy}
           lockedMode={lockedMode}
+          disabledModes={disabledModes}
+          disabledModeHints={disabledModeHints}
           competenceCategoryIds={competenceCategoryIds}
           isResolvingCompetence={isResolvingCompetence}
           onAssign={onAssign}
@@ -205,15 +159,10 @@ export function AssignOperatorsDialog({
   )
 }
 
-interface AssignOperatorsDialogBodyProps {
-  selectionCount: number
-  defaultSiteId?: number | null
-  defaultSite?: AssignOperatorsDialogSite | null
-  copy?: AssignOperatorsDialogCopy
-  lockedMode?: AssignmentMode
-  competenceCategoryIds?: number[]
+interface AssignOperatorsDialogBodyProps
+  extends Omit<AssignOperatorsDialogProps, 'open' | 'onOpenChange' | 'showSiteField' | 'isResolvingCompetence'> {
+  showSiteField: boolean
   isResolvingCompetence: boolean
-  onAssign: AssignOperatorsDialogProps['onAssign']
   onClose: () => void
 }
 
@@ -225,10 +174,14 @@ interface AssignOperatorsDialogBodyProps {
  */
 function AssignOperatorsDialogBody({
   selectionCount,
+  showSiteField,
+  operatorSiteId,
   defaultSiteId,
   defaultSite,
   copy,
   lockedMode,
+  disabledModes,
+  disabledModeHints,
   competenceCategoryIds,
   isResolvingCompetence,
   onAssign,
@@ -247,24 +200,30 @@ function AssignOperatorsDialogBody({
     setOperatorId(null)
   }
 
-  // Locked mode (spec 0079): the step-1 picker never renders and the
-  // Operatore field is always shown, so submission always needs both Sede
-  // and Operatore. Free mode keeps the original per-mode gating: single
-  // needs both, balanced needs only the Sede.
+  // The Sede only gates submission where the user picks it. Locked mode (spec
+  // 0079) always needs an Operatore; free mode keeps the per-mode gating:
+  // single needs the Operatore, balanced needs nothing else (spec 0113 AC-026).
+  const isSiteReady = !showSiteField || siteId !== null
   const canSubmit = lockedMode
-    ? siteId !== null && operatorId !== null
-    : mode !== null && siteId !== null && (mode === 'balanced' || operatorId !== null)
+    ? isSiteReady && operatorId !== null
+    : mode !== null && isSiteReady && (mode === 'balanced' || operatorId !== null)
+
+  const effectiveMode = lockedMode ?? mode
+  const ConfirmIcon = effectiveMode === 'single' ? UserCheck : Scale
+  // Locked mode always shows the Operatore field (spec 0079 AC-027); free
+  // mode keeps it gated behind the user's own `single` pick.
+  const showOperatorField = lockedMode !== undefined || mode === 'single'
 
   function handleAssign() {
-    if (!canSubmit || siteId === null) {
+    if (!canSubmit || effectiveMode === null) {
       return
     }
-    const effectiveMode = (lockedMode ?? mode) as AssignmentMode
+    const needsOperator = lockedMode !== undefined || effectiveMode === 'single'
     setIsSubmitting(true)
     onAssign({
-      operational_site_id: siteId,
+      ...(showSiteField ? { operational_site_id: siteId as number } : {}),
       mode: effectiveMode,
-      ...(lockedMode || effectiveMode === 'single' ? { operator_id: operatorId as number } : {}),
+      ...(needsOperator ? { operator_id: operatorId as number } : {}),
     })
       .then(() => onClose())
       .catch(() => {
@@ -273,12 +232,6 @@ function AssignOperatorsDialogBody({
       })
       .finally(() => setIsSubmitting(false))
   }
-
-  const effectiveMode = lockedMode ?? mode
-  const ConfirmIcon = effectiveMode === 'single' ? UserCheck : Scale
-  // Locked mode always shows the Operatore field (spec 0079 AC-027); free
-  // mode keeps it gated behind the user's own `single` pick.
-  const showOperatorField = lockedMode !== undefined || mode === 'single'
 
   return (
     <>
@@ -301,141 +254,31 @@ function AssignOperatorsDialogBody({
       <div className="space-y-4 px-4 py-4">
         {/* Step 1: pick the assignment mode — skipped entirely when locked (spec 0079 AC-027). */}
         {!lockedMode && (
-          <div className="space-y-2">
-            <Label className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              {t('leads.assign.mode.label')}
-            </Label>
-            <div role="radiogroup" aria-label={t('leads.assign.mode.label')} className="grid gap-2 sm:grid-cols-2">
-              {ASSIGNMENT_MODES.map((entry) => {
-                const { mode: value, icon: Icon } = entry
-                const selected = mode === value
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    aria-label={t(`leads.assign.actions.${value}`)}
-                    disabled={isSubmitting}
-                    onClick={() => setMode(value)}
-                    className={cn(
-                      'group relative flex items-start gap-3 rounded-xl border bg-card p-3 text-left transition-all',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background',
-                      'disabled:pointer-events-none disabled:opacity-50',
-                      selected
-                        ? cn(entry.card, 'shadow-sm')
-                        : 'border-border hover:border-foreground/20 hover:bg-muted/40 hover:shadow-sm motion-safe:hover:-translate-y-0.5',
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        'flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors',
-                        selected ? entry.chip : 'bg-muted text-muted-foreground group-hover:bg-muted/70',
-                      )}
-                    >
-                      <Icon className="size-4" />
-                    </span>
-                    <span className="min-w-0 flex-1 space-y-0.5 pr-4">
-                      <span className="block text-xs font-semibold text-foreground">
-                        {t(`leads.assign.actions.${value}`)}
-                      </span>
-                      <span className="block text-[11px] leading-snug text-muted-foreground">
-                        {copy?.modeHints[value] ?? t(`leads.assign.actions.${value}Hint`)}
-                      </span>
-                    </span>
-                    {selected && (
-                      <CheckCircle2
-                        aria-hidden="true"
-                        className={cn(
-                          'absolute top-2.5 right-2.5 size-4 shrink-0',
-                          entry.accent,
-                          'motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-75',
-                        )}
-                      />
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          <AssignOperatorsModePicker
+            value={mode}
+            onChange={setMode}
+            hints={copy?.modeHints}
+            disabledModes={disabledModes}
+            disabledModeHints={disabledModeHints}
+            isSubmitting={isSubmitting}
+          />
         )}
 
-        {/* Step 2: pick the Sede (always) and the Operatore (single, or locked — spec 0079). */}
-        {mode !== null && (
-          <div
-            className={cn(
-              'grid gap-3 rounded-xl border bg-gradient-to-b from-card to-muted/20 p-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1',
-              showOperatorField && 'sm:grid-cols-2',
-            )}
-          >
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="assign-operators-site"
-                className="flex items-center gap-1.5 text-xs font-medium"
-              >
-                <MapPin className="size-3.5 text-primary" aria-hidden="true" />
-                {t('leads.assign.site.label')}
-              </Label>
-              <AsyncPaginatedSelect
-                id="assign-operators-site"
-                resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
-                value={siteId}
-                onChange={handleSiteChange}
-                selectedItem={defaultSite ? { id: defaultSite.id, label: defaultSite.label } : null}
-                disabled={isSubmitting}
-                className={SELECT_CLASS}
-                labels={{
-                  placeholder: t('leads.assign.site.placeholder'),
-                  searchPlaceholder: t('leads.assign.site.searchPlaceholder'),
-                  empty: t('leads.assign.site.empty'),
-                  error: t('leads.assign.site.selectError'),
-                  clearLabel: t('leads.assign.site.selectClear'),
-                  triggerLabel: t('leads.assign.site.label'),
-                  retry: t('leads.assign.site.retry'),
-                }}
-              />
-            </div>
-
-            {showOperatorField && (
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="assign-operators-operator"
-                  className="flex items-center gap-1.5 text-xs font-medium"
-                >
-                  <User className="size-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                  {t('leads.assign.operator.label')}
-                </Label>
-                <AsyncPaginatedSelect
-                  id="assign-operators-operator"
-                  resource={USERS_FOR_SELECT_RESOURCE}
-                  value={operatorId}
-                  onChange={setOperatorId}
-                  showAvatar
-                  disabled={isSubmitting || siteId === null || isResolvingCompetence}
-                  params={buildOperatorParams(siteId, competenceCategoryIds)}
-                  className={SELECT_CLASS}
-                  labels={{
-                    placeholder: t('leads.assign.operator.placeholder'),
-                    searchPlaceholder: t('leads.assign.operator.searchPlaceholder'),
-                    empty:
-                      competenceCategoryIds === undefined
-                        ? t('leads.assign.operator.empty')
-                        : t('leads.assign.operator.emptyCompetent'),
-                    error: t('leads.assign.operator.selectError'),
-                    clearLabel: t('leads.assign.operator.selectClear'),
-                    triggerLabel: t('leads.assign.operator.label'),
-                    retry: t('leads.assign.operator.retry'),
-                  }}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  {t(
-                    operatorHintKey(siteId, isResolvingCompetence, competenceCategoryIds !== undefined),
-                  )}
-                </p>
-              </div>
-            )}
-          </div>
+        {/* Step 2: the Sede (transfer only) and the Operatore (single, or locked). */}
+        {mode !== null && (showSiteField || showOperatorField) && (
+          <AssignOperatorsPickers
+            showSiteField={showSiteField}
+            showOperatorField={showOperatorField}
+            siteId={siteId}
+            onSiteChange={handleSiteChange}
+            defaultSite={defaultSite}
+            operatorSiteId={operatorSiteId}
+            operatorId={operatorId}
+            onOperatorChange={setOperatorId}
+            competenceCategoryIds={competenceCategoryIds}
+            isResolvingCompetence={isResolvingCompetence}
+            isSubmitting={isSubmitting}
+          />
         )}
       </div>
 

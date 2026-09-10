@@ -51,10 +51,12 @@ export async function deleteLead(id: number): Promise<void> {
 }
 
 /**
- * Unified bulk operator assignment (spec 0048): assigns `operational_site_id`
- * to every lead in `lead_ids`, plus either a single `operator_id` (mode
- * `'single'`) or a load-balanced split across the Sede's operators (mode
- * `'balanced'`). Returns how many leads were updated.
+ * Unified bulk operator assignment (spec 0048, reshaped by 0113): assigns
+ * every lead in `lead_ids` either a single `operator_id` (mode `'single'`) or
+ * a load-balanced split (mode `'balanced'`). The Sede is no longer part of the
+ * payload: the server derives it from each lead's own campaign and only
+ * distributes among the operators of that Sede. Returns how many leads were
+ * updated and how many were skipped for lack of a candidate.
  */
 export async function assignLeadOperators(
   payload: AssignOperatorsPayload,

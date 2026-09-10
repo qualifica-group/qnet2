@@ -202,7 +202,7 @@ export const importWizard = {
       placeholder: 'Seleziona…',
       searchPlaceholder: 'Cerca…',
       empty: 'Nessun risultato.',
-      emptyCompetent: 'Nessun operatore competente per questa riga.',
+      emptyEnabled: 'Nessun operatore abilitato per questa riga (Sede e categorie prodotto).',
       selectError: 'Impossibile caricare le opzioni.',
       selectClear: 'Rimuovi selezione',
       useDefault: 'Usa predefinito',

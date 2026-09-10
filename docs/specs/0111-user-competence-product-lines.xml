@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0111-user-competence-product-lines" status="approved" owner="utente" date="2026-09-09">
+<spec id="0111-user-competence-product-lines" status="approved" rev="2" owner="utente" date="2026-09-09">
 
   <goal>
     Nel form utente la competenza si configura come RIGHE accoppiate "funzione aziendale ->
@@ -56,6 +56,24 @@
     - D-8: la competenza di un utente e' facoltativa, quindi `employment.product_lines` accetta
       l'array VUOTO (svuota il set) — a differenza dei moduli offerta/progetto/campagna, dove
       `min:1` vieta di azzerare la collezione.
+
+    REV.2 — decisione utente 2026-09-09, DOPO prova sul campo (assegnazione bilanciata su un
+    import che ha assegnato righe a operatori privi della categoria richiesta):
+    - D-9: la DEROGA JOLLY E' REVOCATA. Un operatore senza righe di competenza NON e' candidato
+      per nessun record che richieda almeno una categoria. Prima (INV-4b della 0110, mantenuta
+      dalla rev.1) l'assenza di righe valeva "competente per tutto": con 5 operatori su 6 non
+      configurati il filtro non mordeva, e la Sede restava l'unico vincolo effettivo.
+    - D-9a: resta INV-4a — un record che non richiede alcuna categoria non vincola nessuno.
+      Li' non c'e' nulla su cui filtrare, e revocarla bloccherebbe ogni assegnazione priva di
+      classificazione.
+    - D-9b: cade il motivo per cui la competenza era espressa come ESCLUSIONE. Senza jolly
+      l'insieme dei competenti e' un sottoinsieme dei configurati, quindi e' piccolo per
+      costruzione: `users/for-select` passa da `whereNotIn(esclusi)` a `whereIn(competenti)`.
+      Il contratto verso il client (`competence_category_ids[]`) NON cambia.
+    - D-9c: conseguenza operativa accettata dall'utente: finche' le competenze non sono
+      compilate, un'assegnazione bilanciata lascia le righe senza operatore e le conta come
+      `skipped` (la Sede e i prodotti vengono comunque scritti). Il frontend gia' riporta quel
+      conteggio (`features/leads/assign-feedback.ts`).
   </context>
 
   <scope>
@@ -185,9 +203,9 @@
     <criterion id="AC-011">Dato un utente con la riga (F1, C1) e un record che richiede C1 la cui funzione effettiva e' F1, allora l'utente e' competente.</criterion>
     <criterion id="AC-012">Dato un utente la cui UNICA riga e' (F2, C1) con funzione effettiva di C1 pari a F1, allora l'utente NON e' competente per un record che richiede C1.</criterion>
     <criterion id="AC-013">Dato un utente con la riga (F1, C_padre), allora e' competente per un record che richiede C_figlia (chiusura discendente, INV-2).</criterion>
-    <criterion id="AC-014">Dato un utente senza alcuna riga, allora non e' mai escluso, qualunque categoria il record richieda (deroga jolly).</criterion>
+    <criterion id="AC-014" rev="2">REVOCATO E INVERTITO dalla rev.2 (D-9). Dato un utente senza alcuna riga di competenza, quando il record richiede almeno una categoria, allora quell'utente NON e' fra i candidati.</criterion>
     <criterion id="AC-015">Dato un record senza categorie richieste, allora nessun candidato viene escluso (invariato rispetto alla 0110).</criterion>
-    <criterion id="AC-016">`GET /api/users/for-select?competence_category_ids[]=C1` esclude gli utenti non competenti secondo D-2 e mantiene `total` coerente con l'elenco filtrato.</criterion>
+    <criterion id="AC-016" rev="2">`GET /api/users/for-select?competence_category_ids[]=C1` risponde SOLO gli utenti competenti secondo D-2 — quindi non piu' i non configurati (D-9) — e mantiene `total` coerente con l'elenco filtrato.</criterion>
     <criterion id="AC-017">Nella tabella utenti la cella `business_function` mostra i nomi distinti delle funzioni delle righe dell'utente (aggregati come nelle offerte), `null` per un utente senza righe.</criterion>
     <criterion id="AC-018">Il filtro set su `business_function` restituisce gli utenti che hanno ALMENO una riga con quella funzione (nessun SQL raw da input).</criterion>
     <criterion id="AC-019">L'ordinamento su `business_function` ordina per il primo nome funzione in ordine alfabetico dell'utente e non fa sparire gli utenti senza righe.</criterion>
@@ -198,6 +216,11 @@
     <criterion id="AC-024">Nel form utente il pulsante "Aggiungi" resta attivo anche quando una riga punta a una categoria `single`; nel form offerta/richiesta lo stesso componente continua a bloccarlo (nessuna regressione).</criterion>
     <criterion id="AC-025">Il dettaglio utente mostra le coppie funzione -> categoria al posto della singola funzione aziendale.</criterion>
     <criterion id="AC-026">Dato un attore per cui `employment.product_lines` e' readonly, quando la PATCH rispedisce le righe identiche, allora nessun 422 (confronto "changed" simmetrico, D-7).</criterion>
+
+    <criterion id="AC-027" rev="2">Data una Sede i cui operatori non hanno alcuna riga di competenza, quando si assegna in modalita' bilanciata su un import le cui righe richiedono una categoria, allora nessuna riga riceve un operatore, tutte sono contate come `skipped`, e Sede e prodotti sono comunque scritti sulle righe.</criterion>
+    <criterion id="AC-028" rev="2">La stessa regola vale sulle altre superfici di assegnazione bilanciata senza duplicare la logica: lead (`LeadAssignmentService`) e richieste (`RequestAssignmentService`) escludono l'operatore non configurato esattamente come l'import.</criterion>
+    <criterion id="AC-029" rev="2">Un utente privo di profilo employment non e' candidato per un record che richiede categorie (non ha righe, quindi ricade in D-9), e non genera errori sul percorso di assegnazione.</criterion>
+    <criterion id="AC-030" rev="2">Un operatore CON righe che coprono la categoria richiesta continua a essere assegnato normalmente: la revoca della deroga non tocca il percorso positivo (non-regressione di AC-011 e AC-013).</criterion>
   </acceptance_criteria>
 
   <constraints>

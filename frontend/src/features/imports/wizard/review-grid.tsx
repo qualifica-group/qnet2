@@ -92,21 +92,6 @@ function resolveGlobalDefaultOperatorId(run: ImportRunDetail): number | null {
   return typeof raw === 'number' ? raw : null
 }
 
-/**
- * The Sede to precompile in the "Assegna operatori" popup (spec 0048 AC-031):
- * present only when every selected row's `operational_site_id` shares one
- * non-null value. Only the id (no label) is cheaply available from loaded
- * row data — `AssignOperatorsDialog`'s `defaultSiteId` hydrates the trigger's
- * label itself via its own for-select `ids` lookup, so this is enough.
- */
-function resolveSharedSiteId(siteIds: Array<number | null>): number | null {
-  const [first, ...rest] = siteIds
-  if (first == null) {
-    return null
-  }
-  return rest.every((siteId) => siteId === first) ? first : null
-}
-
 export interface ReviewGridProps {
   domain: string
   run: ImportRunDetail
@@ -134,7 +119,6 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
   const { i18n } = useTranslation()
   const gridApiRef = useRef<GridApi<ImportRunRowItem> | null>(null)
   const [selection, setSelection] = useState<ReviewBulkSelectionState>(EMPTY_SELECTION)
-  const [defaultSiteId, setDefaultSiteId] = useState<number | null>(null)
 
   const localeText = useMemo(
     () => (i18n.language.startsWith('it') ? AG_GRID_LOCALE_IT : AG_GRID_LOCALE_EN),
@@ -216,31 +200,15 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
   // (single row or header "select all") rather than tracking it by hand —
   // `{ selectAll, toggledNodes }` is exactly the shape the bulk-assign
   // payload needs (spec: mirrors `gridApi.getServerSideSelectionState()` 1:1).
-  //
-  // AC-031: also derives the popup's precompiled Sede from the SAME event —
-  // only for an explicit (non select-all) selection, whose nodes are already
-  // loaded and readable via `forEachNode`; `selectAll` has no equally cheap
-  // way to know the shared site across a possibly-unloaded whole dataset, so
-  // it is skipped (documented, mirrors the `totalRows` approximation above).
+  // The selection derives no Sede any more: the popup asks the server for the
+  // scope of exactly these rows (spec 0113 AC-033).
   const handleSelectionChanged = useCallback((event: SelectionChangedEvent<ImportRunRowItem>) => {
     const state = event.api.getServerSideSelectionState() as IServerSideSelectionState | null
     setSelection(state ? { selectAll: state.selectAll, toggledNodes: state.toggledNodes } : EMPTY_SELECTION)
-
-    if (!state || state.selectAll) {
-      setDefaultSiteId(null)
-      return
-    }
-    const selectedSiteIds: Array<number | null> = []
-    event.api.forEachNode((node) => {
-      if (node.isSelected() && node.data) {
-        selectedSiteIds.push(node.data.operational_site_id)
-      }
-    })
-    setDefaultSiteId(resolveSharedSiteId(selectedSiteIds))
   }, [])
 
-  // Step 1: PATCH the combined bulk assignment (Sede + mode + operator) from
-  // the current selection and the shared popup's input. Step 2: on success,
+  // Step 1: PATCH the combined bulk assignment (mode + operator) from the
+  // current selection and the shared popup's input. Step 2: on success,
   // refresh the SSRM cache (purge so the Operator/Sede columns re-fetch the
   // server's copy) and clear the selection; on failure, leave the selection
   // and grid untouched (the mutation already toasted the error) so the
@@ -295,7 +263,6 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
           selection={selection}
           importRunId={run.id}
           totalRows={run.total_rows}
-          defaultSiteId={defaultSiteId}
           campaignCategoryIds={campaignCategoryIds}
           onAssign={handleBulkAssign}
           onAssignProducts={handleBulkAssignProducts}

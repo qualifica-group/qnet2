@@ -13,7 +13,6 @@ import { useAbilities } from '@/features/auth/use-abilities'
 import {
   AssignOperatorsDialog,
   type AssignOperatorsDialogInput,
-  type AssignOperatorsDialogSite,
 } from '@/features/leads/assign-operators-dialog'
 import { resolveAssignFeedback } from '@/features/leads/assign-feedback'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
@@ -24,7 +23,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
-import { assignRequestOperators, deleteRequest, transferRequests } from '@/features/request-management/api'
+import { assignRequestOperators, deleteRequest } from '@/features/request-management/api'
 import { AssignManagerGa1Dialog } from '@/features/request-management/assign-manager-ga1-dialog'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
 import { OfferLinesDialogProvider } from '@/features/request-management/offer-lines-dialog'
@@ -32,9 +31,9 @@ import { RequestDashboardPanel } from '@/features/request-management/request-das
 import { RequestDashboardToggle } from '@/features/request-management/request-dashboard-toggle'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
-import { useQuoteOperatorCompetence } from '@/features/request-management/use-quote-operator-competence'
+import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import { useRequestManagerGa1Assignment } from '@/features/request-management/use-request-manager-ga1-assignment'
-import type { TransferRequestsPayload } from '@/features/request-management/request-write-types'
+import { useRequestTransferSelection } from '@/features/request-management/use-request-transfer-selection'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
 
@@ -61,22 +60,6 @@ const REQUEST_MANAGEMENT_ACTION_ICONS: ActionIconMap = {
 interface RequestNotesTarget {
   opportunityId: number
   quoteId: number
-}
-
-/**
- * The Sede to precompile in the "Assegna operatori" popup: present only when
- * every selected row's `operational_site` (the `{id, label}` shape the
- * definition projects onto the grid row, or null) shares one non-null id —
- * the same rule the Lead table applies.
- */
-function resolveSharedOperationalSite(rows: TableRow[]): AssignOperatorsDialogSite | null {
-  const [first, ...rest] = rows.map(
-    (row) => row.operational_site as AssignOperatorsDialogSite | null,
-  )
-  if (!first) {
-    return null
-  }
-  return rest.every((site) => site?.id === first.id) ? first : null
 }
 
 /**
@@ -163,45 +146,12 @@ export function RequestManagementTable() {
 
   // Transfer to another Sede + Operatore (spec 0079): row and bulk share ONE
   // dialog/mutation — a row transfer is just a one-element selection, so
-  // `handleAction` below reuses the same `openTransferDialog`.
-  const [transferOpen, setTransferOpen] = useState(false)
-  const [transferIds, setTransferIds] = useState<number[]>([])
-  const [transferDefaultSite, setTransferDefaultSite] = useState<AssignOperatorsDialogSite | null>(null)
-  // Same double gate as `assignOperators` (:166 above): the popup writes the
-  // Sede AND the Operatore.
-  const canTransferContact = can('request-management.update') && can('request-management.transferContact')
-
-  const transferMutation = useMutation({
-    mutationFn: (payload: TransferRequestsPayload) => transferRequests(payload),
-    onSuccess: (result) => {
-      toast.success(t('requestManagement.transfer.success', { count: result.transferred }))
-      refreshGrid()
-      tableRef.current?.clearSelection()
-    },
-  })
-
-  const handleTransfer = useCallback(
-    async (input: AssignOperatorsDialogInput) => {
-      try {
-        // `lockedMode="single"` guarantees `operator_id` is always picked.
-        await transferMutation.mutateAsync({
-          request_ids: transferIds,
-          operational_site_id: input.operational_site_id,
-          operator_id: input.operator_id as number,
-        })
-      } catch (error) {
-        toast.error(t('requestManagement.transfer.errors.generic'))
-        throw error
-      }
-    },
-    [transferMutation, transferIds, t],
-  )
-
-  const openTransferDialog = useCallback((selection: TableSelection) => {
-    setTransferIds(selection.ids)
-    setTransferDefaultSite(resolveSharedOperationalSite(selection.rows))
-    setTransferOpen(true)
-  }, [])
+  // `handleAction` below reuses the same `transfer.open`. The whole flow
+  // (gate, state, mutation, popup copy) lives in its own hook.
+  const transfer = useRequestTransferSelection(clearSelectionAndRefresh)
+  // Pulled out of the bag so `handleAction` keeps a stable identity: it feeds
+  // the generic table's own memo, which a fresh object every render would bust.
+  const { open: openTransferDialog } = transfer
 
   const handleAction: RowActionHandler = useCallback(
     (action: TableActionDefinition, row: TableRow) => {
@@ -241,22 +191,22 @@ export function RequestManagementTable() {
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
 
-  // Bulk operator assignment: the shared popup collects Sede + mode +
-  // operator; this adapter owns the selection, the mutation and its feedback.
+  // Bulk operator assignment: the shared popup collects the mode and, for
+  // `single`, the operator; this adapter owns the selection, the mutation and
+  // its feedback. The Sede left the popup with spec 0113 — the server reads it
+  // from each offer.
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignIds, setAssignIds] = useState<number[]>([])
-  const [assignDefaultSite, setAssignDefaultSite] = useState<AssignOperatorsDialogSite | null>(null)
   // `assignOperator` on top of `update` (user directive 2026-08-03): the popup
-  // writes the Sede AND the Operatore, the two attribution dimensions a role
-  // may be restricted on — the same pair the store endpoint and the bulk
-  // endpoint now both gate on this ability.
+  // writes the Operatore, the attribution dimension a role may be restricted
+  // on — the same ability the store endpoint and the bulk endpoint gate on.
   const canAssignOperators = can('request-management.update') && can('request-management.assignOperator')
 
-  // Competence filter of the Operatore picker (spec 0110 AC-041), resolved
-  // here and only while a popup is open; the shared dialog stays dumb. The
-  // transfer writes the same GA2 slot, so it is filtered the same way.
-  const assignCompetence = useQuoteOperatorCompetence(assignIds, assignOpen)
-  const transferCompetence = useQuoteOperatorCompetence(transferIds, transferOpen)
+  // Scope of the Operatore picker (spec 0110 AC-041, spec 0113): the categories
+  // the selection requires AND the Sede its offers share, resolved here and
+  // only while the popup is open; the shared dialog stays dumb. The Sede only
+  // narrows the picker — the server rereads it from each offer.
+  const assignScope = useQuoteAssignmentScope(assignIds, assignOpen)
 
   const assignMutation = useMutation({
     mutationFn: assignRequestOperators,
@@ -272,12 +222,10 @@ export function RequestManagementTable() {
       try {
         await assignMutation.mutateAsync({ request_ids: assignIds, ...input })
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 422 && input.mode === 'balanced'
-            ? t('requestManagement.assign.errors.noOperators')
-            : t('requestManagement.assign.errors.generic'),
-        )
+        // Spec 0113 removed the "this Sede has no operators" 422: a record with no
+        // candidate is now reported as `skipped` inside a 200. Any 422 still reaching
+        // here has a different cause, so naming that one would point at the wrong thing.
+        toast.error(t('requestManagement.assign.errors.generic'))
         throw error
       }
     },
@@ -286,7 +234,6 @@ export function RequestManagementTable() {
 
   const openAssignDialog = useCallback((selection: TableSelection) => {
     setAssignIds(selection.ids)
-    setAssignDefaultSite(resolveSharedOperationalSite(selection.rows))
     setAssignOpen(true)
   }, [])
 
@@ -303,7 +250,7 @@ export function RequestManagementTable() {
   // `undefined` (not a function returning an empty array) when neither is
   // reachable, so the checkbox column stays off entirely.
   const getBulkActions =
-    canAssignOperators || managerGa1.canAssign || canTransferContact
+    canAssignOperators || managerGa1.canAssign || transfer.canTransfer
       ? (selection: TableSelection): BulkAction[] => [
           ...(canAssignOperators
             ? [
@@ -325,7 +272,7 @@ export function RequestManagementTable() {
                 },
               ]
             : []),
-          ...(canTransferContact
+          ...(transfer.canTransfer
             ? [
                 {
                   key: 'transfer-contact',
@@ -349,17 +296,6 @@ export function RequestManagementTable() {
       },
     }),
     [t, assignIds.length],
-  )
-
-  // The locked-mode popup reads `title`/`description` (no mode hints — Step 1
-  // never renders).
-  const transferCopy = useMemo(
-    () => ({
-      title: t('requestManagement.transfer.title'),
-      description: t('requestManagement.transfer.description', { count: transferIds.length }),
-      modeHints: { balanced: '', single: '' },
-    }),
-    [t, transferIds.length],
   )
 
   // Documents are edited from inside the dialog (upload/delete); refresh the
@@ -450,9 +386,8 @@ export function RequestManagementTable() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         selectionCount={assignIds.length}
-        defaultSite={assignDefaultSite}
         copy={assignCopy}
-        {...assignCompetence}
+        {...assignScope}
         onAssign={handleAssign}
       />
 
@@ -465,14 +400,16 @@ export function RequestManagementTable() {
       />
 
       <AssignOperatorsDialog
-        open={transferOpen}
-        onOpenChange={setTransferOpen}
-        selectionCount={transferIds.length}
-        defaultSite={transferDefaultSite}
-        copy={transferCopy}
+        open={transfer.isOpen}
+        onOpenChange={transfer.onOpenChange}
+        selectionCount={transfer.selectionCount}
+        showSiteField
+        defaultSite={transfer.defaultSite}
+        copy={transfer.copy}
         lockedMode="single"
-        {...transferCompetence}
-        onAssign={handleTransfer}
+        competenceCategoryIds={transfer.competenceCategoryIds}
+        isResolvingCompetence={transfer.isResolvingCompetence}
+        onAssign={transfer.handleTransfer}
       />
 
       <DocumentsDialog

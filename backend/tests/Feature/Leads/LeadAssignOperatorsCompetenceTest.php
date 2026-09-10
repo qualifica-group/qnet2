@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BusinessFunction;
+use App\Models\Campaign;
 use App\Models\EmploymentProfile;
 use App\Models\Lead;
 use App\Models\OperationalSite;
@@ -16,12 +17,16 @@ uses(RefreshDatabase::class);
 /**
  * Spec 0110, AC-024 (leads half) — POST /api/leads/assign-operators applies
  * the SAME competence narrowing as the import wizard on `mode=balanced`, and
- * reports the leads it left behind in `skipped`. AC-025's non-regression is
- * asserted here too: with nobody configured, the distribution is the
- * pre-feature one.
+ * reports the leads it left behind in `skipped`. Spec 0111 AC-028 rev.2 is
+ * asserted here too: the revoked jolly deroga (D-9) reaches this surface
+ * through OperatorCompetence alone, without LeadAssignmentService changing.
  *
  * The `mode` contract itself (single/balanced, the 422s) stays covered by
  * LeadAssignOperatorsTest.
+ *
+ * Spec 0113: the requests below no longer send `operational_site_id` (the key
+ * is `prohibited`, AC-021) — the Sede is derived from the campaign of each
+ * lead (D-3), so the fixtures pin it there through leadInterestedIn().
  */
 if (! function_exists('leadCompetenceActor')) {
     function leadCompetenceActor(): User
@@ -41,7 +46,7 @@ if (! function_exists('leadCompetenceOperator')) {
     /**
      * An operator employed at $site, carrying one competence row per
      * category, all paired with $function (spec 0111 D-2). Called without a
-     * function the profile stays rowless: the wildcard of INV-4b.
+     * function the profile stays rowless: since rev.2 (D-9) not a candidate.
      */
     function leadCompetenceOperator(OperationalSite $site, ?BusinessFunction $function = null, ProductCategory ...$categories): User
     {
@@ -59,11 +64,15 @@ if (! function_exists('leadCompetenceOperator')) {
     }
 }
 
-/** A lead whose "Prodotti di interesse" pin its requirement to $category. */
+/**
+ * A lead whose "Prodotti di interesse" pin its requirement to $category and
+ * whose campaign pins its Sede to $site (spec 0113, D-3).
+ */
 if (! function_exists('leadInterestedIn')) {
-    function leadInterestedIn(ProductCategory $category): Lead
+    function leadInterestedIn(OperationalSite $site, ProductCategory $category): Lead
     {
-        $lead = Lead::factory()->create();
+        $campaign = Campaign::factory()->create(['operational_site_id' => $site->id]);
+        $lead = Lead::factory()->create(['campaign_id' => $campaign->id]);
         $lead->productsOfInterest()->sync([Product::factory()->create(['category_id' => $category->id])->id]);
 
         return $lead;
@@ -87,14 +96,13 @@ it('0110 AC-024: mode=balanced sends every lead to an operator competent for tha
     $secondSalesOperator = leadCompetenceOperator($site, $salesFunction, $salesCategory);
     $serviceOperator = leadCompetenceOperator($site, $serviceFunction, $serviceCategory);
 
-    $salesLeadOne = leadInterestedIn($salesCategory);
-    $salesLeadTwo = leadInterestedIn($salesCategory);
-    $serviceLead = leadInterestedIn($serviceCategory);
+    $salesLeadOne = leadInterestedIn($site, $salesCategory);
+    $salesLeadTwo = leadInterestedIn($site, $salesCategory);
+    $serviceLead = leadInterestedIn($site, $serviceCategory);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$salesLeadOne->id, $salesLeadTwo->id, $serviceLead->id],
-        'operational_site_id' => $site->id,
         'mode' => 'balanced',
     ])->assertOk()
         ->assertJsonPath('data.assigned', 3)
@@ -120,13 +128,12 @@ it('0110 AC-024: a lead with no competent operator is skipped, keeps no operator
 
     $operator = leadCompetenceOperator($site, $coveredFunction, $coveredCategory);
 
-    $coveredLead = leadInterestedIn($coveredCategory);
-    $orphanLead = leadInterestedIn($orphanCategory);
+    $coveredLead = leadInterestedIn($site, $coveredCategory);
+    $orphanLead = leadInterestedIn($site, $orphanCategory);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$coveredLead->id, $orphanLead->id],
-        'operational_site_id' => $site->id,
         'mode' => 'balanced',
     ])->assertOk()
         ->assertJsonPath('data.assigned', 1)
@@ -151,12 +158,11 @@ it('0110 AC-023: mode=single assigns a non-competent operator to every lead and 
     $leadCategory = ProductCategory::factory()->create(['business_function_id' => $leadFunction->id]);
 
     $incompetentOperator = leadCompetenceOperator($site, $operatorFunction, $operatorCategory);
-    $lead = leadInterestedIn($leadCategory);
+    $lead = leadInterestedIn($site, $leadCategory);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$lead->id],
-        'operational_site_id' => $site->id,
         'mode' => 'single',
         'operator_id' => $incompetentOperator->id,
     ])->assertOk()
@@ -167,29 +173,58 @@ it('0110 AC-023: mode=single assigns a non-competent operator to every lead and 
 });
 
 // ---------------------------------------------------------------------------
-// AC-025 — nobody configured: the pre-feature distribution, skipped 0.
+// AC-028 rev.2 — nobody configured: nobody is a candidate. Inverts the old
+// AC-025 on this surface, with LeadAssignmentService left untouched.
 // ---------------------------------------------------------------------------
 
-it('0110 AC-025: with no competence configured anywhere the leads distribution is the pre-feature one', function () {
+it('0111 AC-028 rev.2: with no competence configured anywhere no lead is assigned and all are skipped', function () {
     $actor = leadCompetenceActor();
     $site = OperationalSite::factory()->withAddress()->create();
 
-    $firstOperator = leadCompetenceOperator($site);
-    $secondOperator = leadCompetenceOperator($site);
+    leadCompetenceOperator($site);
+    leadCompetenceOperator($site);
 
     $category = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
-    $firstLead = leadInterestedIn($category);
-    $secondLead = leadInterestedIn($category);
+    $firstLead = leadInterestedIn($site, $category);
+    $secondLead = leadInterestedIn($site, $category);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/leads/assign-operators', [
         'lead_ids' => [$firstLead->id, $secondLead->id],
-        'operational_site_id' => $site->id,
+        'mode' => 'balanced',
+    ])->assertOk()
+        ->assertJsonPath('data.assigned', 0)
+        ->assertJsonPath('data.skipped', 2);
+
+    // Skipped, not a 422: the Sede HAS operators, none of them competent.
+    // The Sede is still written on the leads.
+    expect($firstLead->fresh()->operator_id)->toBeNull()
+        ->and($secondLead->fresh()->operator_id)->toBeNull()
+        ->and($firstLead->fresh()->operational_site_id)->toBe($site->id)
+        ->and($secondLead->fresh()->operational_site_id)->toBe($site->id);
+});
+
+it('0111 AC-030: a covering operator still takes the leads, the rowless colleague at the same Sede takes none', function () {
+    $actor = leadCompetenceActor();
+    $site = OperationalSite::factory()->withAddress()->create();
+
+    $function = BusinessFunction::factory()->create();
+    $category = ProductCategory::factory()->create(['business_function_id' => $function->id]);
+    $covering = leadCompetenceOperator($site, $function, $category);
+    $rowless = leadCompetenceOperator($site);
+
+    $firstLead = leadInterestedIn($site, $category);
+    $secondLead = leadInterestedIn($site, $category);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/leads/assign-operators', [
+        'lead_ids' => [$firstLead->id, $secondLead->id],
         'mode' => 'balanced',
     ])->assertOk()
         ->assertJsonPath('data.assigned', 2)
         ->assertJsonPath('data.skipped', 0);
 
-    expect($firstLead->fresh()->operator_id)->toBe($firstOperator->id)
-        ->and($secondLead->fresh()->operator_id)->toBe($secondOperator->id);
+    expect([$firstLead->fresh()->operator_id, $secondLead->fresh()->operator_id])
+        ->toBe([$covering->id, $covering->id])
+        ->not->toContain($rowless->id);
 });

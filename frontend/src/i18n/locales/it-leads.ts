@@ -157,9 +157,18 @@ export const leads = {
       competenceHint: 'Solo gli operatori della Sede competenti per i record selezionati.',
       resolvingHint: 'Individuazione degli operatori competenti…',
       disabledHint: 'Scegli prima una Sede per vedere i suoi operatori.',
+      derivedSiteHint: 'Solo gli operatori abilitati per la Sede dei record selezionati.',
+      derivedSiteCompetenceHint:
+        'Solo gli operatori della Sede dei record selezionati, competenti per le loro categorie.',
+      derivedSiteMixedHint:
+        'Sede non univoca nella selezione: elenco filtrato per sola competenza.',
+      derivedSiteUnknownHint: 'Sede dei record selezionati non ancora disponibile.',
     },
     mode: {
       label: 'Tipo di assegnazione',
+      // Motivo mostrato sulla card disabilitata dal wizard import
+      // (`review-bulk-assign-bar.tsx`) quando la selezione copre piu' campagne.
+      disabledMixedCampaigns: 'Non disponibile: la selezione contiene righe di campagne diverse.',
     },
     actions: {
       balanced: 'Smistamento equo',
@@ -173,7 +182,6 @@ export const leads = {
     successWithSkipped:
       'Operatori assegnati a {{count}} lead. {{skipped}} senza operatore competente.',
     errors: {
-      noOperators: 'Nessun operatore trovato per la Sede selezionata.',
       generic: 'Impossibile assegnare gli operatori. Riprova.',
     },
   },

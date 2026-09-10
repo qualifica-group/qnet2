@@ -91,11 +91,13 @@ export async function deleteRequest(quoteId: number): Promise<void> {
 }
 
 /**
- * Bulk operator assignment (user directive 2026-07-23, "come nei lead"):
- * assigns `operational_site_id` to every request in `request_ids`, plus
- * either a single `operator_id` (mode `'single'`) or a load-balanced split
- * across the Sede's operators (mode `'balanced'`). Returns how many requests
- * were actually written — ids outside the actor's scope are skipped.
+ * Bulk operator assignment (user directive 2026-07-23, "come nei lead";
+ * reshaped by spec 0113): assigns every request in `request_ids` either a
+ * single `operator_id` (mode `'single'`) or a load-balanced split (mode
+ * `'balanced'`). The Sede is no longer sent — the server reads each offer's
+ * own `quotes.operational_site_id` and distributes only among its operators.
+ * Returns how many requests were actually written — ids outside the actor's
+ * scope are skipped.
  */
 export async function assignRequestOperators(
   payload: AssignRequestOperatorsPayload,

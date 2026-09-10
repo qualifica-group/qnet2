@@ -14,9 +14,10 @@ namespace App\Services\Assignment;
  * 0110 is gone (D-1), so a user with two rows on two different functions is
  * competent on both sides — something the previous shape could not express.
  *
- * Only users with at least one row get a profile: a user without rows is a
- * wildcard (INV-4b) and never reaches this object, so there is no
- * "unconfigured" state to represent here.
+ * Only users with at least one row get a profile: since spec 0111 rev.2
+ * revoked the jolly deroga (D-9) a user without rows is competent for
+ * nothing, so they never reach this object and there is no "unconfigured"
+ * state to represent here.
  */
 final readonly class CompetenceProfile
 {

@@ -115,41 +115,58 @@ vi.mock('@/features/table/table-view', () => ({
 
 /**
  * Mirrors `assign-operators-dialog.test.tsx`'s stub: a plain button per
- * picker, also surfacing the `params` the competence filter drives (spec 0110).
+ * picker, surfacing both the `params` the scope drives (spec 0110/0113) and
+ * whether the picker is usable at all (AC-028/AC-034).
  */
-const SITE_PICK_ID = 7
 const OPERATOR_PICK_ID = 42
 vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: ({
-    resource,
     value,
     onChange,
     params,
+    disabled,
     labels,
   }: {
-    resource: string
     value: number | null
     onChange: (value: number | null) => void
     params?: Record<string, string | number | string[] | number[]>
+    disabled?: boolean
     labels: { triggerLabel: string }
   }) => (
     <button
       type="button"
       aria-label={labels.triggerLabel}
       data-params={params ? JSON.stringify(params) : ''}
-      onClick={() => onChange(resource === 'operational-sites' ? SITE_PICK_ID : OPERATOR_PICK_ID)}
+      disabled={disabled}
+      onClick={() => onChange(OPERATOR_PICK_ID)}
     >
       {value ?? 'none'}
     </button>
   ),
 }))
 
-// `useRequiredCategories` (spec 0110 AC-041) resolves the selection's
-// requirement through this endpoint; every test drives it explicitly.
-const fetchRequiredCategoriesMock = vi.fn()
+// `useAssignmentScope` (spec 0110 AC-041, spec 0113) resolves the selection's
+// categories, shared Sede and campaigns through this endpoint; every test
+// drives it explicitly.
+const RESOLVED_SITE_ID = 7
+const fetchAssignmentScopeMock = vi.fn()
 vi.mock('@/features/assignment/api', () => ({
-  fetchRequiredCategories: (...args: unknown[]) => fetchRequiredCategoriesMock(...args),
+  fetchAssignmentScope: (...args: unknown[]) => fetchAssignmentScopeMock(...args),
 }))
+
+/** The `POST /assignment/selection-scope` envelope, defaulted to a resolved single-campaign selection. */
+function scope(overrides: Partial<{
+  product_category_ids: number[]
+  operational_site_id: number | null
+  campaign_ids: number[]
+}> = {}) {
+  return {
+    product_category_ids: [],
+    operational_site_id: RESOLVED_SITE_ID,
+    campaign_ids: [3],
+    ...overrides,
+  }
+}
 
 function renderTable() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -168,17 +185,22 @@ function openPopup() {
   fireEvent.click(screen.getByRole('button', { name: 'Assign operators' }))
 }
 
-/** Reveals the Sede picker by choosing the balanced mode (needs no operator). */
+/** Picks the balanced mode, which since spec 0113 needs nothing else. */
 function openAndPickBalanced() {
   openPopup()
   fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
 }
 
-/** Full balanced flow: open, pick mode, pick the Sede, then confirm. */
+/** Full balanced flow: open, pick the mode, confirm — there is no Sede step. */
 function assignBalanced() {
   openAndPickBalanced()
-  fireEvent.click(screen.getByRole('button', { name: 'Site' }))
   fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
+}
+
+/** Opens the popup on the single-operator mode, where the Operatore picker shows. */
+function openAndPickSingle() {
+  openPopup()
+  fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
 }
 
 beforeAll(async () => {
@@ -194,8 +216,8 @@ beforeEach(() => {
   fetchLeadMock.mockReset()
   deleteLeadMock.mockReset()
   assignLeadOperatorsMock.mockReset()
-  fetchRequiredCategoriesMock.mockReset()
-  fetchRequiredCategoriesMock.mockResolvedValue([])
+  fetchAssignmentScopeMock.mockReset()
+  fetchAssignmentScopeMock.mockResolvedValue(scope())
   capturedIsRowSelectable = undefined
   capturedGetBulkActions = undefined
   bulkActionSelection = { ids: [11, 22], rows: [leadRow({ id: 11 }), leadRow({ id: 22 })] }
@@ -255,7 +277,6 @@ describe('LeadsTable — bulk "Assign operators" button (AC-041)', () => {
     await waitFor(() =>
       expect(assignLeadOperatorsMock).toHaveBeenCalledWith({
         lead_ids: [11, 22],
-        operational_site_id: SITE_PICK_ID,
         mode: 'balanced',
       }),
     )
@@ -264,7 +285,10 @@ describe('LeadsTable — bulk "Assign operators" button (AC-041)', () => {
     expect(toast.success).toHaveBeenCalledWith('Operators assigned to 2 lead(s).')
   })
 
-  it('toasts the noOperators message on a balanced-mode 422 and keeps the dialog open', async () => {
+  // Spec 0113 removed the "this Sede has no operators" 422, so a 422 here no
+  // longer has a known cause: the toast must stay generic rather than blame the
+  // Sede. Previously this asserted the opposite - requirement change, declared.
+  it('toasts the generic message on a balanced-mode 422 and keeps the dialog open', async () => {
     assignLeadOperatorsMock.mockRejectedValue(
       new AxiosError('failed', '422', undefined, undefined, { status: 422 } as never),
     )
@@ -274,7 +298,7 @@ describe('LeadsTable — bulk "Assign operators" button (AC-041)', () => {
 
     await waitFor(() => expect(assignLeadOperatorsMock).toHaveBeenCalledTimes(1))
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('No operator found for the selected Site.'),
+      expect(toast.error).toHaveBeenCalledWith('Unable to assign the operators. Please try again.'),
     )
     expect(screen.getByText('2 lead(s) selected.')).toBeInTheDocument()
     expect(refreshMock).not.toHaveBeenCalled()
@@ -294,99 +318,114 @@ describe('LeadsTable — bulk "Assign operators" button (AC-041)', () => {
   })
 })
 
-describe('LeadsTable — popup Sede precompile (AC-031)', () => {
-  it('precompiles the Sede when every selected row shares one', () => {
-    bulkActionSelection = {
-      ids: [11, 22],
-      rows: [
-        leadRow({ id: 11, operational_site: { id: 5, label: 'Warehouse A' } }),
-        leadRow({ id: 22, operational_site: { id: 5, label: 'Warehouse A' } }),
-      ],
-    }
+describe('LeadsTable — no Sede field on the assignment popup (spec 0113 AC-026)', () => {
+  it('never renders the Sede picker, in either mode', () => {
     renderTable()
 
     openAndPickBalanced()
+    expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: 'Site' })).toHaveTextContent('5')
+    fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
+    expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Operator' })).toBeInTheDocument()
   })
 
-  it('leaves the Sede unset when the selected rows have different sites', () => {
-    bulkActionSelection = {
-      ids: [11, 22],
-      rows: [
-        leadRow({ id: 11, operational_site: { id: 5, label: 'Warehouse A' } }),
-        leadRow({ id: 22, operational_site: { id: 8, label: 'Warehouse B' } }),
-      ],
-    }
+  it('confirms a balanced split on the mode alone', () => {
     renderTable()
 
     openAndPickBalanced()
 
-    expect(screen.getByRole('button', { name: 'Site' })).toHaveTextContent('none')
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled()
   })
 
-  it('leaves the Sede unset when any selected row has no site', () => {
-    bulkActionSelection = {
-      ids: [11, 22],
-      rows: [
-        leadRow({ id: 11, operational_site: { id: 5, label: 'Warehouse A' } }),
-        leadRow({ id: 22, operational_site: null }),
-      ],
-    }
+  it('disables neither mode card, whatever campaigns the selection spans (AC-031)', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(scope({ campaign_ids: [3, 8] }))
     renderTable()
 
-    openAndPickBalanced()
+    openPopup()
 
-    expect(screen.getByRole('button', { name: 'Site' })).toHaveTextContent('none')
+    await waitFor(() => expect(fetchAssignmentScopeMock).toHaveBeenCalledTimes(1))
+    expect(screen.getByRole('radio', { name: 'Assign to operator' })).not.toHaveAttribute(
+      'aria-disabled',
+    )
+    expect(screen.getByRole('radio', { name: 'Balanced split' })).not.toHaveAttribute(
+      'aria-disabled',
+    )
   })
 })
 
 /**
- * Spec 0110 AC-041/AC-044: the Lead table resolves the competence of its own
- * selection and hands it to the shared popup, and its feedback names the
+ * Spec 0110 AC-041/AC-044 extended by spec 0113 AC-028/AC-034: the Lead table
+ * resolves the scope of its own selection — categories AND the Sede its
+ * campaigns share — hands it to the shared popup, and its feedback names the
  * leads a balanced split left without a competent operator.
  */
-describe('LeadsTable — competence-aware assignment (spec 0110)', () => {
-  it('resolves the requirement of the selected leads only once the popup is open', async () => {
+describe('LeadsTable — scope-aware assignment (spec 0110/0113)', () => {
+  it('resolves the scope of the selected leads only once the popup is open', async () => {
     renderTable()
 
-    expect(fetchRequiredCategoriesMock).not.toHaveBeenCalled()
+    expect(fetchAssignmentScopeMock).not.toHaveBeenCalled()
 
     openPopup()
 
     await waitFor(() =>
-      expect(fetchRequiredCategoriesMock).toHaveBeenCalledWith({ domain: 'leads', ids: [11, 22] }),
+      expect(fetchAssignmentScopeMock).toHaveBeenCalledWith({ domain: 'leads', ids: [11, 22] }),
     )
   })
 
-  it('narrows the operator picker to the competent users (AC-041)', async () => {
-    fetchRequiredCategoriesMock.mockResolvedValue([4, 9])
+  it('narrows the operator picker to the derived Sede and the competent users (AC-028)', async () => {
+    fetchAssignmentScopeMock.mockResolvedValue(scope({ product_category_ids: [4, 9] }))
     renderTable()
 
-    openPopup()
-    fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
+    openAndPickSingle()
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
         'data-params',
-        JSON.stringify({ operational_site_id: SITE_PICK_ID, competence_category_ids: [4, 9] }),
+        JSON.stringify({
+          operational_site_id: RESOLVED_SITE_ID,
+          competence_category_ids: [4, 9],
+        }),
       ),
     )
+    expect(screen.getByRole('button', { name: 'Operator' })).toBeEnabled()
   })
 
-  it('applies no filter when the selection expresses no requirement', async () => {
+  it('applies no competence filter when the selection expresses no requirement', async () => {
     renderTable()
 
-    openPopup()
-    fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Site' }))
+    openAndPickSingle()
 
-    await waitFor(() => expect(fetchRequiredCategoriesMock).toHaveBeenCalledTimes(1))
-    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
-      'data-params',
-      JSON.stringify({ operational_site_id: SITE_PICK_ID }),
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+        'data-params',
+        JSON.stringify({ operational_site_id: RESOLVED_SITE_ID }),
+      ),
     )
+    expect(fetchAssignmentScopeMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the operator picker disabled and unscoped while the scope resolves (AC-028)', () => {
+    fetchAssignmentScopeMock.mockReturnValue(new Promise(() => {}))
+    renderTable()
+
+    openAndPickSingle()
+
+    const picker = screen.getByRole('button', { name: 'Operator' })
+    expect(picker).toBeDisabled()
+    expect(picker).toHaveAttribute('data-params', '')
+  })
+
+  it('keeps the operator picker disabled when the scope fails to resolve (AC-034)', async () => {
+    fetchAssignmentScopeMock.mockRejectedValue(new Error('scope down'))
+    renderTable()
+
+    openAndPickSingle()
+
+    await waitFor(() => expect(fetchAssignmentScopeMock).toHaveBeenCalledTimes(1))
+    const picker = screen.getByRole('button', { name: 'Operator' })
+    expect(picker).toBeDisabled()
+    expect(picker).toHaveAttribute('data-params', '')
   })
 
   it('reports the leads left without a competent operator (AC-044)', async () => {

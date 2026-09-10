@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Registry;
@@ -237,7 +236,6 @@ it('a bulk assignment of N requests produces N notifications for the operator (A
 
     $this->postJson('/api/request-management/assign-operators', [
         'request_ids' => $requests->modelKeys(),
-        'operational_site_id' => OperationalSite::factory()->withAddress()->create()->id,
         'mode' => 'single',
         'operator_id' => $operator->id,
     ])->assertOk();

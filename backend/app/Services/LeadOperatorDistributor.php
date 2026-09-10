@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Lead;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
 
 /**
@@ -17,30 +16,54 @@ use InvalidArgumentException;
  *
  * `distribute()` is the pure, DB-free core (operator ids + their initial
  * loads + an ordered target list in, a target-id => operator-id map out) —
- * unit-testable in isolation. `operatorIdsForSite()`/`currentLoads()` are the
+ * unit-testable in isolation. `operatorIdsBySite()`/`currentLoads()` are the
  * two small DB queries every caller otherwise duplicates.
  */
 class LeadOperatorDistributor
 {
     /**
-     * Operators of a Sede: any user whose employment profile holds that Sede
-     * on the `employment_profile_operational_site` pivot, PHYSICAL or REMOTE
-     * (spec 0103, D-1 — a remote membership is operative exactly like the
-     * physical one), ordered by id ascending (br-balanced step 1). No
-     * role/permission filter (user directive 2026-07-21): any user employed
-     * at that Sede qualifies.
+     * The operators of a whole BATCH of Sedi (spec 0113): since the
+     * Sede is derived per record, a single assignment call spans as many
+     * Sedi as the selection touches, and asking one query per Sede would
+     * reintroduce exactly the per-record query the spec forbids. Same
+     * membership semantics spec 0103 D-1 fixed — PHYSICAL or REMOTE
+     * indifferently, ascending operator id — in ONE query (AC-009).
      *
-     * @return array<int, int>
+     * Every requested Sede is present in the answer: one with no operator
+     * maps to an EMPTY array, so the caller reads "no candidates" without
+     * having to distinguish it from an unknown id.
+     *
+     * @param  array<int, int>  $siteIds
+     * @return array<int, array<int, int>> site id => operator ids
      */
-    public function operatorIdsForSite(int $operationalSiteId): array
+    public function operatorIdsBySite(array $siteIds): array
     {
-        return User::query()
-            ->whereHas('employment.operationalSites', function (Builder $sitesQuery) use ($operationalSiteId): void {
-                $sitesQuery->where('operational_sites.id', $operationalSiteId);
-            })
-            ->orderBy('id')
-            ->pluck('id')
-            ->all();
+        $siteIds = array_values(array_unique(array_filter($siteIds)));
+
+        if ($siteIds === []) {
+            return [];
+        }
+
+        $memberships = User::query()
+            ->join('employment_profiles', 'employment_profiles.user_id', '=', 'users.id')
+            ->join(
+                'employment_profile_operational_site as memberships',
+                'memberships.employment_profile_id',
+                '=',
+                'employment_profiles.id',
+            )
+            ->whereIn('memberships.operational_site_id', $siteIds)
+            ->distinct()
+            ->orderBy('users.id')
+            ->get(['memberships.operational_site_id as operational_site_id', 'users.id as user_id']);
+
+        $operatorIdsBySite = array_fill_keys($siteIds, []);
+
+        foreach ($memberships as $membership) {
+            $operatorIdsBySite[(int) $membership->operational_site_id][] = (int) $membership->user_id;
+        }
+
+        return $operatorIdsBySite;
     }
 
     /**

@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0113-campaign-scoped-operator-assignment" status="approved" owner="utente" date="2026-09-09">
+
+  <goal>
+    Togliere all'utente la scelta della Sede in fase di assegnazione operatori e derivarla dal
+    record stesso, cosi' che ogni Lead (riga di import, lead reale, offerta di Gestione richieste)
+    vada solo a un operatore abilitato per la combinazione esatta che il record esprime:
+    Campagna -> Categoria prodotto -> Sede.
+  </goal>
+
+  <context>
+    Direttiva utente 2026-09-09 (brief "Import Lead - Assegnazione Operatori"): rimuovere il select
+    della sede operativa dall'assegnazione; per ogni riga il sistema identifica Campagna ->
+    Categoria Prodotto -> Sede e distribuisce esclusivamente tra gli operatori abilitati per quella
+    combinazione; il picker "Assegna operatore" mostra solo gli utenti abilitati per la sede e la
+    categoria individuate; con righe di campagne diverse il pulsante globale "Assegna operatore" e'
+    disabilitato; la stessa logica vale sull'assegnazione della singola riga.
+
+    Sette decisioni congelate con l'utente PRIMA della stesura (AskUserQuestion, 2026-09-09):
+      D-1. La Sede di una RIGA DI IMPORT viene dalla CAMPAGNA della riga
+           (`campaigns.operational_site_id`). L'override `import_run_rows.operational_site_id` non
+           partecipa piu' alla scelta dei candidati.
+      D-2. Il cambiamento vale su TUTTE le superfici di assegnazione tranne una: wizard import,
+           tabella Lead, Gestione richieste. Il TRASFERIMENTO CONTATTO (spec 0079) resta fuori
+           scope e conserva il suo select Sede, che li' e' la DESTINAZIONE del trasferimento e non
+           un filtro (`RequestTransferService::transfer()` scrive
+           `transferred_from_operational_site_id` come Sede di ORIGINE).
+      D-3. La Sede di un LEAD REALE viene dalla campagna del lead
+           (`leads.campaign_id` -> `campaigns.operational_site_id`), non da `leads.operational_site_id`.
+      D-4. La Sede di un'OFFERTA viene da `quotes.operational_site_id` (l'Opportunity non ha
+           `campaign_id`: la catena Campagna -> Sede non esiste su quel dominio).
+      D-5. La disabilitazione di "Assegna a operatore" per campagne diverse vale SOLO nel wizard
+           import ed e' valutata sulla SELEZIONE corrente, non sull'intero run. Lo "Smistamento
+           equo" resta sempre abilitato: lavora riga per riga e le campagne miste non lo disturbano.
+      D-6. Lo smistamento equo SCRIVE sulla riga la Sede risolta, cosi' il Lead creato al commit
+           la eredita (`LeadRowPersister` legge `siteOverride` e non ha nessun fallback su campagna).
+      D-7. Coerenza di D-6 estesa a `single` (proposta di questa spec, non chiesta esplicitamente):
+           anche `mode=single` scrive la Sede risolta, con una mass UPDATE per Sede distinta. Senza,
+           una riga assegnata a mano nascerebbe come Lead senza Sede. VALIDARE IN APPROVAZIONE.
+
+    Codebase esistente da rispettare (nomi verificati sul codice reale, non ipotizzati):
+      - Competenza (spec 0110 rev.2 / 0111): `App\Services\Assignment\OperatorCompetence`
+        (`competent()`, `competentByRequirement()`, `competentUserIds()`), piu' i tre resolver del
+        requisito `ImportRowCompetence` (`requiredByRow()`, `requiredUnion()`), `LeadCompetence`
+        (`requiredByLead()`, `requiredUnion()`), `QuoteCompetence` (`requiredByQuote()`,
+        `requiredUnion()`). NESSUNA di queste firme cambia: questa spec aggiunge la Sede accanto
+        alla competenza, non tocca la regola di competenza.
+      - Distribuzione: `App\Services\LeadOperatorDistributor` — `operatorIdsForSite(int)`,
+        `currentLoads(array)`, `distribute()`, `distributeAmong(array $candidatesByTarget, array $initialLoads)`,
+        `groupByOperator()`. `distributeAmong()` gia' accetta un pool DIVERSO per record e salta i
+        record a pool vuoto: e' esattamente la primitiva che serve, non va riscritta.
+      - Sedi di un utente: pivot `employment_profile_operational_site` (spec 0103), membership
+        PHYSICAL o REMOTE indifferenti. Stessa semantica in `operatorIdsForSite()` e in
+        `UserService::forSelect()` (`operational_site_id`): le due letture NON devono divergere.
+      - Campagna di una riga: `App\Imports\Leads\LeadRowCampaign::resolve($mappedValues, $globalConfig)`
+        (spec 0108: campagna per-riga quando una colonna file e' mappata su `campaign_code`,
+        globale altrimenti). Categorie effettive di una campagna:
+        `App\Services\Campaigns\CampaignProductCategories::forCampaigns()` (project-first, BR-2).
+      - `Campaign::operationalSite()` (`campaigns.operational_site_id`, nullable) esiste ed e'
+        fillable. Non e' una read-through ereditata dal progetto: e' un campo proprio della campagna.
+      - Per l'import Lead la Sede NON e' un global field: `LeadImportFieldCatalog::GLOBAL_FIELDS`
+        contiene solo `campaign_id`, `source_id`, `product_ids`. Sede e Operatore sono override
+        Review-only per riga (spec 0045). `LeadRowPersister` legge comunque
+        `$globalConfig['operational_site_id']`: lettura morta, resta invariata (fuori scope).
+      - Superfici di assegnazione e servizi: `ImportService::bulkAssign()`/`bulkAssignBalanced()`
+        (+ `ImportRunRowSelection`, `BulkAssignRequest`), `LeadAssignmentService::assignOperators()`
+        (+ `AssignOperatorsRequest`), `RequestAssignmentService::assignOperators()`
+        (+ `AssignRequestOperatorsRequest`, scope D-3 via `RequestManagementScope::scopeToActor()`,
+        carico contato su `quotes.operator_id`, scrittura GA2 via `RequestOperatorWriter`,
+        notifica via `AssignmentNotifier`). Tutte e tre rispondono `AssignmentOutcome`
+        (`{assigned, skipped}`).
+      - Endpoint di supporto al picker: `POST /api/assignment/required-categories`
+        (`RequiredCategoriesController`, `RequiredCategoriesRequest`, enum `AssignmentDomain`
+        `import_rows|leads|quotes`), consumato da `features/assignment/` lato FE
+        (`api.ts`, `types.ts`, `query-keys.ts`, `use-required-categories.ts`).
+      - Popup condivisa `frontend/src/features/leads/assign-operators-dialog.tsx`, CINQUE call-site:
+        `leads-table.tsx` (assegna), `imports/wizard/review-bulk-assign-bar.tsx` (assegna),
+        `request-management-table.tsx` (assegna E trasferisci), `request-work-panel.tsx`
+        (trasferisci). I due call-site di TRASFERIMENTO conservano il select (D-2).
+      - Picker per-riga import: `imports/wizard/review-operator-editor.tsx` (oggi filtra per sola
+        competenza, mai per Sede). Griglia: `imports/wizard/review-grid.tsx`
+        (`resolveSharedSiteId()`, stato `defaultSiteId`, `gridContext.importRunId`).
+      - Picker utenti: `GET /api/users/for-select` accetta gia' `operational_site_id` e
+        `competence_category_ids[]`, additivi e combinabili. NESSUNA modifica backend qui.
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo `App\Services\Campaigns\CampaignOperationalSites` (`forCampaigns(array): array<int,?int>`, `forCampaign(?int): ?int`), gemello batch di `CampaignProductCategories`.</item>
+      <item>Nuovo `App\Services\Assignment\AssignmentSiteResolver`: la Sede che scopa l'assegnazione di ogni record — `forImportRows(Collection $rows, array $globalConfig)`, `forLeads(array $leadIds)`, `forQuotes(array $quoteIds)`, ciascuno `array<int, ?int>` (record id => site id o null), tutti in batch.</item>
+      <item>Nuovo `App\Services\Assignment\AssignmentCandidates::byRecord(array $siteByRecord, array $categoriesByRecord): array<int, array<int,int>>` — l'unica composizione "operatori della Sede del record INTERSECATI con i competenti per le sue categorie", condivisa dalle tre superfici.</item>
+      <item>`LeadOperatorDistributor`: `operatorIdsBySite(array $siteIds): array<int, array<int,int>>` (una query per l'intero batch) al posto di `operatorIdsForSite(int)`, che viene RIMOSSO perche' resta senza call-site.</item>
+      <item>`ImportService::bulkAssign()`/`bulkAssignBalanced()`: Sede per-riga dalla campagna, distribuzione nei pool per-riga, scrittura della Sede risolta raggruppata per Sede, in entrambi i mode. Firma senza `$operationalSiteId`.</item>
+      <item>`LeadAssignmentService::assignOperators()`: idem sui lead reali, Sede dalla campagna del lead. Firma senza `$operationalSiteId`.</item>
+      <item>`RequestAssignmentService::assignOperators()`: Sede letta da `quotes.operational_site_id`, nessuna scrittura di Sede (era il valore scelto, ora e' il valore gia' presente). Firma senza `$operationalSiteId`.</item>
+      <item>Rimozione di `operational_site_id` dal contratto dei tre endpoint di assegnazione (`BulkAssignRequest`, `AssignOperatorsRequest`, `AssignRequestOperatorsRequest`) e dai rispettivi controller.</item>
+      <item>Rimozione del 422 "la Sede non ha operatori": con Sede per-record diventa una condizione per-record e confluisce in `skipped`.</item>
+      <item>Rinomina `POST /api/assignment/required-categories` -> `POST /api/assignment/selection-scope` (controller `SelectionScopeController`, request `SelectionScopeRequest`), con risposta estesa a `{product_category_ids, operational_site_id, campaign_ids}`.</item>
+      <item>FE `features/assignment/`: `use-assignment-scope.ts` (sostituisce `use-required-categories.ts`), tipi e api allineati.</item>
+      <item>`AssignOperatorsDialog`: select Sede reso opt-in (`showSiteField`, default false), nuova prop `operatorSiteId` che scopa il picker quando il campo e' nascosto, nuova prop `disabledModes` per disabilitare la card "Assegna a operatore".</item>
+      <item>Call-site: `review-bulk-assign-bar.tsx` (+ disabilitazione single su campagne miste), `leads-table.tsx`, `request-management-table.tsx` (solo il dialog di ASSEGNAZIONE), `review-operator-editor.tsx` (filtro Sede anche per-riga), `review-grid.tsx` (rimozione di `resolveSharedSiteId`/`defaultSiteId`, ora codice morto).</item>
+      <item>i18n it/en per il nuovo hint del picker (Sede derivata) e per il motivo della card disabilitata.</item>
+      <item>Test Pest e Vitest mappati 1:1 sugli acceptance criteria, inclusi gli aggiornamenti dichiarati ai test esistenti che inviano `operational_site_id`.</item>
+    </in>
+    <out>
+      <item>Trasferimento contatto (spec 0079): `RequestTransferService`, `POST /request-management/transfer`, i due call-site di trasferimento della popup e il loro `defaultSite` restano INVARIATI (D-2).</item>
+      <item>Slot GA1/GA3 (`assign-manager-ga1`, spec 0104) e `AssignManagerGa1Dialog`.</item>
+      <item>La regola di competenza (spec 0110 rev.2 / 0111): `OperatorCompetence` e i tre resolver del requisito non cambiano firma ne' semantica.</item>
+      <item>La colonna Sede del review grid e il suo editor per-riga (`review-site-editor.tsx`): l'override resta scrivibile a mano, semplicemente non decide piu' i candidati.</item>
+      <item>Ereditarieta' server-side della Sede campagna -> lead al commit dell'import: `LeadRowPersister` continua a leggere solo l'override di riga (che pero' ora viene valorizzato dall'assegnazione, D-6/D-7).</item>
+      <item>Rifiuto server-side per `mode=single` di un operatore non competente o fuori Sede: resta solo filtro UI (spec 0110 R-1, decisione utente invariata).</item>
+      <item>Assegnazione automatica in fase di staging: le righe continuano a nascere senza operatore.</item>
+      <item>`Model::preventLazyLoading()` e il debito di repo segnalato nell'HANDOFF: fuori scope.</item>
+      <item>Nuove dipendenze: nessuna.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="POST" path="/api/assignment/selection-scope" note="RINOMINA di /api/assignment/required-categories; stessa authz per dominio">
+      <request>
+        domain: "import_rows" | "leads" | "quotes"   (required)
+        // domain = import_rows
+        import_run_id: int (required)
+        select_all: bool (required)
+        row_ids: int[] (semantica AG Grid SSRM: selezionate se select_all=false, escluse se true)
+        // domain = leads | quotes
+        ids: int[] (required, min 1)
+      </request>
+      <response status="200">
+        {
+          success: true,
+          message: "OK",
+          data: {
+            product_category_ids: int[],      // union delle categorie richieste, asc, dedup ([] = nessun requisito)
+            operational_site_id: int | null,  // la Sede CONDIVISA dalla selezione; null se mista o non risolvibile
+            campaign_ids: int[]               // campagne distinte della selezione, asc ([] per domain=quotes)
+          }
+        }
+      </response>
+      <errors>
+        403 senza il permesso di lettura del dominio (`leads.import` / `leads.viewAny` / `request-management.viewAny`)
+        404 run inesistente o di un altro attore (mai 403, come ImportController)
+        422 payload non valido per il dominio richiesto
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/imports/{domain}/{importRun}/rows/assign">
+      <request>
+        mode: "single" | "balanced" (optional, invariato)
+        operator_id: int (required_if:mode,single)
+        product_ids: int[] (optional, min 1, invariato)
+        select_all: bool, row_ids: int[] (invariati)
+        operational_site_id: RIMOSSO (422 `operational_site_id` non piu' accettato: la Sede e' derivata)
+        // `mode=balanced` E' di per se' una richiesta di assegnazione: non esige altri campi.
+        // L'obbligo "almeno uno tra operator_id e product_ids" vale per `single` e per mode assente.
+        // (Correzione 2026-09-10: la regola precedente, applicata alla lettera, avrebbe reso 422
+        // ogni chiamata balanced e contraddetto AC-026.)
+      </request>
+      <response status="200">{ success, message, data: { updated: int, skipped: int } }</response>
+      <!-- `updated`, NON `assigned`: e' il nome che questo endpoint espone da sempre e che il
+           frontend legge (`BulkAssignImportRowResult`). Correzione 2026-09-10 di un errore della
+           spec, che qui aveva scritto `assigned` per simmetria con gli altri due endpoint. -->
+      <errors>
+        422 nessuna assegnazione richiesta / row_ids fuori dal run / product_ids incoerenti con la campagna
+        NON esiste piu' il 422 "la Sede non ha operatori"
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/leads/assign-operators">
+      <request>
+        lead_ids: int[] (required, min 1)
+        mode: "single" | "balanced" (required)
+        operator_id: int (required_if:mode,single)
+        operational_site_id: RIMOSSO
+      </request>
+      <response status="200">{ success, message, data: { assigned: int, skipped: int } }</response>
+      <errors>403 senza update su un lead; 422 validazione</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/request-management/assign-operators">
+      <request>
+        request_ids: int[] (required, min 1)
+        mode: "single" | "balanced" (required)
+        operator_id: int (required_if:mode,single)
+        operational_site_id: RIMOSSO
+      </request>
+      <response status="200">{ success, message, data: { assigned: int, skipped: int } }</response>
+      <errors>403 senza `request-management.viewAny`; offerte fuori scope saltate in silenzio (D-3 invariata)</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/users/for-select" note="INVARIATO — cambia solo chi lo chiama e con quali parametri">
+      <request>operational_site_id: int (opt), competence_category_ids: int[] (opt), search, ids[], offset, limit</request>
+      <response status="200">invariata</response>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- Backend — risoluzione della Sede -->
+    <criterion id="AC-001">Dato un run con campagna globale la cui campagna ha `operational_site_id` = S, quando si chiede `AssignmentSiteResolver::forImportRows()`, allora ogni riga mappa su S anche se `import_run_rows.operational_site_id` contiene una Sede diversa.</criterion>
+    <criterion id="AC-002">Dato un run con campagna per-riga (colonna mappata su `campaign_code`) e due righe su campagne con Sedi diverse S1 e S2, quando si chiede la risoluzione, allora la prima riga mappa su S1 e la seconda su S2.</criterion>
+    <criterion id="AC-003">Data una riga la cui campagna ha `operational_site_id` null (o campagna non risolvibile), quando si chiede la risoluzione, allora la riga mappa su null.</criterion>
+    <criterion id="AC-004">Dati N lead di M campagne, quando si chiede `forLeads()`, allora ogni lead mappa sulla Sede della PROPRIA campagna, ignorando `leads.operational_site_id`, e il numero di query non cresce con N.</criterion>
+    <criterion id="AC-005">Date N offerte, quando si chiede `forQuotes()`, allora ogni offerta mappa sul proprio `quotes.operational_site_id` (null incluso).</criterion>
+
+    <!-- Backend — candidati e distribuzione -->
+    <criterion id="AC-006">Dati un record con Sede S e categorie richieste C, quando si compone `AssignmentCandidates::byRecord()`, allora i candidati sono esattamente gli utenti membri di S (pivot PHYSICAL o REMOTE) E competenti per C, in ordine di id crescente.</criterion>
+    <criterion id="AC-007">Dato un record con Sede null, quando si compongono i candidati, allora il pool e' vuoto (nessun fallback "tutti gli operatori").</criterion>
+    <criterion id="AC-008">Dato un record senza categorie richieste ma con Sede S, quando si compongono i candidati, allora il pool sono tutti e soli gli operatori di S (INV-4a: nessun requisito non filtra la competenza, ma la Sede filtra sempre).</criterion>
+    <criterion id="AC-009">Dato un batch che coinvolge K Sedi, quando si enumerano gli operatori, allora `operatorIdsBySite()` esegue UNA sola query e restituisce una mappa site id => operator ids; `operatorIdsForSite()` non esiste piu' nel codice.</criterion>
+
+    <!-- Backend — import -->
+    <criterion id="AC-010">Dato `mode=balanced` su righe di due campagne con Sedi diverse, quando si assegna, allora ogni riga riceve un operatore del pool della PROPRIA combinazione e nessuna riga riceve un operatore dell'altra Sede.</criterion>
+    <criterion id="AC-011">Dato `mode=balanced`, quando le righe vengono distribuite, allora la mappa dei carichi e' UNA sola per l'intero batch (due Sedi disgiunte non ribilanciano in isolamento) e il tie-break resta all'id operatore piu' basso.</criterion>
+    <criterion id="AC-012">Data una riga senza candidati (Sede null, oppure nessun operatore della Sede competente), quando si assegna in `balanced`, allora la riga conserva l'operatore che aveva, e' conteggiata in `skipped` e la risposta resta 200.</criterion>
+    <criterion id="AC-013">Dato `mode=balanced` con TUTTE le righe senza candidati, quando si assegna, allora la risposta e' 200 con `{assigned: 0, skipped: N}` e non 422.</criterion>
+    <criterion id="AC-014">Dato `mode=balanced` su righe la cui campagna ha Sede S, quando l'assegnazione riesce, allora ogni riga targettizzata riceve `operational_site_id = S` e `is_edited = true`, con una mass UPDATE per Sede distinta.</criterion>
+    <criterion id="AC-015">Dato `mode=single` con `operator_id` = U su righe di una sola campagna con Sede S, quando si assegna, allora tutte le righe ricevono U (nessun controllo di competenza, R-1) e `operational_site_id = S` (D-7).</criterion>
+    <criterion id="AC-016">Dato un payload che contiene ancora `operational_site_id`, quando si chiama l'endpoint di bulk assign, allora la risposta e' 422: il campo non fa piu' parte del contratto.</criterion>
+    <criterion id="AC-017">Dato un payload con solo `product_ids`, quando si chiama l'endpoint, allora l'assegnazione prodotti funziona come prima e non tocca ne' operatore ne' Sede.</criterion>
+
+    <!-- Backend — lead reali e offerte -->
+    <criterion id="AC-018">Dato `POST /leads/assign-operators` con `mode=balanced` su lead di campagne diverse, quando si assegna, allora ogni lead riceve la Sede della propria campagna e un operatore competente di quella Sede; i lead senza candidati restano com'erano e finiscono in `skipped`.</criterion>
+    <criterion id="AC-019">Dato `POST /request-management/assign-operators` con `mode=balanced`, quando si assegna, allora ogni offerta e' distribuita tra gli operatori della PROPRIA `quotes.operational_site_id` competenti per le sue `opportunity_product_lines`, il carico contato resta quello delle offerte, e `quotes.operational_site_id` NON viene riscritto (nessuna voce di activity log per la Sede).</criterion>
+    <criterion id="AC-020">Dato un attore che non raggiunge un'offerta (scope D-3), quando la include nella richiesta, allora l'offerta resta saltata in silenzio esattamente come prima.</criterion>
+    <criterion id="AC-021">Dato `operational_site_id` in uno qualsiasi dei due payload, quando si chiama l'endpoint, allora la risposta e' 422.</criterion>
+
+    <!-- Backend — endpoint di scope -->
+    <criterion id="AC-022">Data una selezione di righe di una sola campagna con Sede S, quando si chiama `POST /assignment/selection-scope`, allora la risposta contiene `operational_site_id = S` e `campaign_ids` con un solo elemento.</criterion>
+    <criterion id="AC-023">Data una selezione di righe di due campagne, quando si chiama l'endpoint, allora `campaign_ids` ha due elementi ascendenti e `operational_site_id` e' null se le Sedi differiscono, S se le due campagne condividono la stessa S.</criterion>
+    <criterion id="AC-024">Dato `domain=quotes`, quando si chiama l'endpoint, allora `campaign_ids` e' `[]` e `operational_site_id` e' la Sede condivisa dalle offerte in scope (null se mista), mentre `product_category_ids` resta quello di prima.</criterion>
+    <criterion id="AC-025">Dati gli stessi casi di autorizzazione della 0110 (403 senza permesso di dominio, 404 su run altrui, offerte fuori scope escluse dall'union), quando si chiama l'endpoint rinominato, allora il comportamento e' identico: la rinomina non allenta nessun gate.</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-026">Data la popup di assegnazione aperta dal wizard import, dalla tabella Lead o da Gestione richieste, quando si guarda il contenuto, allora NON esiste nessun campo Sede e la conferma in `balanced` richiede la sola scelta del mode.</criterion>
+    <criterion id="AC-027">Data la popup aperta dal TRASFERIMENTO contatto (tabella o work panel), quando si guarda il contenuto, allora il campo Sede e' presente e obbligatorio come prima e il payload continua a includere `operational_site_id`.</criterion>
+    <criterion id="AC-028">Dato `mode=single` in una delle tre superfici modificate, quando il picker operatore si popola, allora la richiesta a `users/for-select` include sia `operational_site_id` (dalla Sede risolta) sia `competence_category_ids`, e il picker resta disabilitato finche' lo scope non e' risolto.</criterion>
+    <criterion id="AC-029">Data una selezione di righe di campagne diverse nel wizard import, quando si apre la popup, allora la card "Assegna a operatore" e' disabilitata con un motivo leggibile e la card "Smistamento equo" resta attiva.</criterion>
+    <criterion id="AC-030">Data una selezione di righe di una sola campagna, quando si apre la popup, allora la card "Assegna a operatore" e' abilitata.</criterion>
+    <criterion id="AC-031">Data la stessa condizione di AC-029 sulla tabella Lead o su Gestione richieste, quando si apre la popup, allora nessuna card e' disabilitata (D-5: la regola vive solo nell'import).</criterion>
+    <criterion id="AC-032">Dato il picker operatore della SINGOLA riga del review grid, quando si apre, allora filtra per `operational_site_id` della campagna di quella riga oltre che per le sue categorie, e mostra il messaggio "nessun operatore abilitato" quando il risultato e' vuoto.</criterion>
+    <criterion id="AC-033">Dato il review grid dopo la modifica, quando si ispeziona il modulo, allora `resolveSharedSiteId` e lo stato `defaultSiteId` non esistono piu' (nessun codice morto) e la selezione non calcola piu' nessuna Sede condivisa.</criterion>
+    <criterion id="AC-034">Dato un errore di risoluzione dello scope, quando la popup e' aperta, allora il picker operatore resta disabilitato e non viene inviata nessuna richiesta non filtrata.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna dipendenza nuova: solo quanto gia' presente in `composer.json`/`package.json`.</item>
+    <item>Authz server-side invariata su ogni endpoint toccato: nessun gate rimosso o allentato dalla rinomina di `required-categories`.</item>
+    <item>La Sede non e' MAI letta dal client per decidere i candidati: il client la usa solo per filtrare il picker, il server la ricalcola sempre dal record.</item>
+    <item>Batch obbligatorio: nessuna query per riga/lead/offerta ne' per utente. `operatorIdsBySite()` una query, `CampaignOperationalSites` una query, competenza gia' memoizzata.</item>
+    <item>Identificatori in inglese ovunque (classi, metodi, campi API, chiavi i18n); prosa e valori UI in italiano via i18next.</item>
+    <item>Codice morto cancellato, non commentato: `operatorIdsForSite()`, `resolveSharedSiteId()`, `use-required-categories.ts` spariscono con i loro test.</item>
+    <item>File entro 300 righe soft / 500 hard; `ImportService` e `assign-operators-dialog.tsx` vanno verificati contro la soglia dopo la modifica e, se necessario, splittati.</item>
+    <item>Aggiornamenti ai test esistenti che inviano `operational_site_id`: sono CAMBIO DI REQUISITO dichiarato (CLAUDE.md §2), non manomissione — ogni rimozione va motivata sul costrutto che non esiste piu'.</item>
+    <item>Quality gate: Pest + Vitest ESEGUITI, Pint, ESLint, `cd frontend && npx tsc -b --force` (mai `tsc --noEmit`).</item>
+  </constraints>
+
+</spec>

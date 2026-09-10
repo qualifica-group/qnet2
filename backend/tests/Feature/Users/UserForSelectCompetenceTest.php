@@ -12,13 +12,14 @@ use Spatie\Permission\Models\Permission;
 uses(RefreshDatabase::class);
 
 /**
- * Spec 0110 AC-030/AC-031 read through spec 0111 AC-016: GET
+ * Spec 0110 AC-030/AC-031 read through spec 0111 AC-016 rev.2: GET
  * /api/users/for-select keeps the ADDITIVE `competence_category_ids[]`
  * filter — the picker asks for the operators competent for a record's
- * required categories, now evaluated PER ROW (D-2), wildcards included
- * (INV-4b). Absent, the endpoint answers exactly as it did before the
- * feature; combined with `operational_site_id` the two filters AND (INV-5:
- * competence only ever narrows).
+ * required categories, evaluated PER ROW (D-2). Since rev.2 revoked the
+ * jolly deroga (D-9) the filter is an INCLUSION: an operator with no
+ * competence row is no longer answered. Absent, the endpoint answers exactly
+ * as it did before the feature; combined with `operational_site_id` the two
+ * filters AND (INV-5: competence only ever narrows).
  *
  * Distinct file from UserForSelectTest / UserForSelectSiteFilterTest (their
  * coverage is untouched).
@@ -38,8 +39,8 @@ if (! function_exists('competenceForSelectUser')) {
     /**
      * A user whose employment profile carries one competence row per
      * category, all paired with $function (spec 0111 D-2), optionally
-     * sitting at $site. A user with no row at all is the wildcard of INV-4b
-     * and is built without this helper.
+     * sitting at $site. A user with no row at all is not a candidate since
+     * rev.2 (D-9) and is built without this helper.
      *
      * @param  array<int, ProductCategory>  $categories
      */
@@ -63,7 +64,7 @@ if (! function_exists('competenceForSelectUser')) {
 // AC-030 — competence_category_ids narrows to the competent operators.
 // ---------------------------------------------------------------------------
 
-it('0111 AC-016: competence_category_ids answers only the competent operators plus the wildcards, and the total reflects the filter', function () {
+it('0111 AC-016 rev.2: competence_category_ids answers ONLY the competent operators, and the total reflects the filter', function () {
     $actor = competenceForSelectActor();
     $function = BusinessFunction::factory()->create();
     $otherFunction = BusinessFunction::factory()->create();
@@ -73,21 +74,22 @@ it('0111 AC-016: competence_category_ids answers only the competent operators pl
     $competent = competenceForSelectUser($function, [$category]);
     $wrongFunction = competenceForSelectUser($otherFunction, [$category]);
     $wrongCategory = competenceForSelectUser($function, [$otherCategory]);
-    $wildcard = User::factory()->create();
+    $rowless = User::factory()->create();
     Sanctum::actingAs($actor);
 
     $response = $this->getJson("/api/users/for-select?competence_category_ids[]={$category->id}")->assertOk();
 
     $ids = collect($response->json('items'))->pluck('id');
 
-    expect($ids)->toContain($competent->id);
-    // The actor has no employment profile either: wildcards stay candidates.
-    expect($ids)->toContain($wildcard->id, $actor->id);
+    expect($ids->all())->toBe([$competent->id]);
+    // The actor has no employment profile either: neither of them is
+    // configured, so neither is answered (D-9).
+    expect($ids)->not->toContain($rowless->id, $actor->id);
     expect($ids)->not->toContain($wrongFunction->id);
     expect($ids)->not->toContain($wrongCategory->id);
-    // 5 users exist, 3 survive the filter: the total is filtered, not the
-    // full table count.
-    expect($response->json('pagination.total'))->toBe(3);
+    // 5 users exist, 1 survives the filter: the total is computed AFTER the
+    // competence narrowing, so it matches the list the picker shows.
+    expect($response->json('pagination.total'))->toBe(1);
 });
 
 it('0111 AC-016: an operator competent through a SECOND row on another function is answered too', function () {
@@ -110,9 +112,9 @@ it('0111 AC-016: an operator competent through a SECOND row on another function 
 
     $ids = collect($response->json('items'))->pluck('id');
 
-    expect($ids)->toContain($user->id, $actor->id);
-    expect($ids)->not->toContain($onlyFirst->id);
-    expect($response->json('pagination.total'))->toBe(2);
+    expect($ids->all())->toBe([$user->id]);
+    expect($ids)->not->toContain($onlyFirst->id, $actor->id);
+    expect($response->json('pagination.total'))->toBe(1);
 });
 
 it('0110 AC-030: an unknown category id is a 422, never a silently empty picker', function () {
@@ -167,8 +169,8 @@ it('0110 AC-031: combined with operational_site_id the two filters AND', functio
     expect($ids)->toContain($competentAtSiteA->id);
     expect($ids)->not->toContain($incompetentAtSiteA->id);
     expect($ids)->not->toContain($competentAtSiteB->id);
-    // The actor is a wildcard, but has no Sede: the site filter still
-    // excludes them — competence narrows, it never re-admits.
+    // The actor has neither a Sede nor a competence row: both filters
+    // exclude them — competence narrows, it never re-admits.
     expect($ids)->not->toContain($actor->id);
     expect($response->json('pagination.total'))->toBe(1);
 });
@@ -187,7 +189,8 @@ it('0110 AC-031: ids[] hydration still bypasses the competence filter', function
     )->assertOk();
 
     // An already-assigned operator stays visible in the field showing them,
-    // even once they stop matching the filter — and does not inflate the total.
-    expect(collect($response->json('items'))->pluck('id'))->toContain($incompetent->id);
-    expect($response->json('pagination.total'))->toBe(1);
+    // even once they stop matching the filter — and does not inflate the
+    // total, which counts only the (here empty) competent population.
+    expect(collect($response->json('items'))->pluck('id')->all())->toBe([$incompetent->id]);
+    expect($response->json('pagination.total'))->toBe(0);
 });
