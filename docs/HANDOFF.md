@@ -3,6 +3,78 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## "NUOVA RICHIESTA": RIORDINO SEZIONI + INDIRIZZI COLLASSABILE + TEAM IN SIDEBAR (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
+
+**Direttiva.** Ordine delle sezioni principali di "Gestione Richieste > Nuova richiesta":
+Linee di prodotto, Offerta, Anagrafica cliente, Dati Lavorazione Contatto, Attribuzione,
+Dati corso, Dati Aula. Dentro "Anagrafica cliente" una sezione indirizzi espandibile e
+richiudibile. "Prossimo richiamo" e "Team" sulla destra, fuori dal flusso di compilazione.
+Seguita da: "note generali sempre in alto sulla sidebar" e "la sezione team, rifalla in modo
+tale che rientri in uno spazio di 200px / 300px".
+
+**Decisione presa con l'utente.** "Dati Lavorazione Contatto"/"Dati corso"/"Dati Aula" NON sono
+sezioni React: sono le sezioni del layout attributi (`AttributeLayoutRenderer`), rese in UN solo
+blocco (`QuoteDynamicFieldsSection`) il cui ordine vive nel blob persistito. "Attribuzione" e'
+invece statica. Interlacciarle avrebbe richiesto id di sezione hard-coded nel frontend: l'utente
+ha scelto **Attribuzione PRIMA delle tre dinamiche**, e le tre dinamiche riordinate nel seeder.
+
+**Ordine finale.**
+- Colonna principale (dentro `<form>`): Linee di prodotto -> Offerta -> Anagrafica cliente ->
+  Attribuzione -> Informazioni aggiuntive (Dati Lavorazione Contatto -> Dati corso -> Dati Aula).
+- Colonna laterale (`<aside>`, 24rem, prima nel DOM e a destra da `@4xl`): Note generali ->
+  Prossimo richiamo -> Team -> Riepilogo richiesta.
+
+**Fatto (frontend).**
+- `request-create-form.tsx`: sezioni riordinate; il provider RHF `<Form>` avvolge ORA ENTRAMBE le
+  colonne mentre l'elemento `<form>` scopa solo la principale — i campi della sidebar sono campi
+  dello stesso form (`FormItem`/`FormMessage` leggono dal provider) e il submit non e' mai
+  dipeso dall'annidamento DOM (i due pulsanti raggiungono il form per id). L'`<aside>` prende
+  `@container` (`CREATE_SIDE_COLUMN_CLASS`), altrimenti `FIELD_GRID_CLASS` risolverebbe `@2xl`
+  sul pannello e spaccherebbe in due la colonna. La traccia laterale e' portata a 24rem con un
+  override LOCALE (`CREATE_PANEL_GRID_CLASS`, "stringi un po il form body principale e allarga
+  un po la side"): il main e' l'`1fr` della griglia, quindi i 4rem li cede lui. `PANEL_GRID_CLASS`
+  resta condiviso e invariato — il pannello di lavorazione ha chrome in sola lettura e non ne ha
+  bisogno. 24rem MENO il padding della card resta sotto la soglia a cui il Team ripiega, quindi
+  la sezione Team continua a stare nei 200/300px chiesti.
+- `manager-slots-field.tsx` (CONDIVISO — Registries/Opportunita'/Offerte/Commesse/Richieste):
+  la riga di slot ora e' `flex-wrap` dentro un `@container` sul campo stesso. Sotto `@sm` (24rem)
+  l'etichetta dello slot prende la prima riga intera e picker + tre bottoni icona scendono sotto
+  (~188px per il picker in una colonna da 288px utili). Da `@sm` in su il layout e' identico a
+  prima (`w-32`), quindi nessun call site cambia aspetto. Il `sm:` di viewport e' diventato `@sm:`.
+- `request-client-section.tsx`: `ClientGroup` accetta `collapsible`/`defaultOpen` (default
+  `false`/`true` -> pannello di lavorazione invariato). Il titolo diventa `CollapsibleTrigger`
+  con `type="button"` esplicito (sta dentro un `<form>`), chevron rotante e la stessa animazione
+  di `FormSection` (`form-section-collapsible-content`).
+- `request-create-client-section.tsx`: il gruppo "Indirizzo" e' `collapsible defaultOpen={false}`
+  — CHIUSO all'arrivo. E' l'unica scelta di default non dettata dalla direttiva: se serve aperto
+  basta togliere `defaultOpen`. Il trigger porta `cursor-pointer` esplicito (direttiva utente
+  2026-09-10): il reset di Tailwind 4 lascia i `<button>` sulla freccia di default, e in questo
+  repo non c'e' reset globale — vedi la voce di HANDOFF sui bottoni senza pointer.
+
+**NON fatto, richiesta ritirata dall'utente.** Era arrivata la richiesta di togliere "Sede
+operativa" da "Attribuzione" e metterla in "Offerta" accanto al Prodotto; l'utente ha poi detto
+di non prenderla in considerazione. Nessuna riga di codice scritta per quella. Se dovesse
+tornare: "Prodotto" e' una COLONNA DI RIGA dell'editor offerta mentre `operational_site_id` e'
+UN campo della richiesta (colonna singola su `quotes`) che filtra lo slot Operatore del Team —
+quindi "una sede per riga" sarebbe una migrazione su `quote_lines` piu' tutta la cascata, e va
+chiarito prima di toccare qualcosa.
+
+**Fatto (backend).** `QualificaQuoteLayoutSeeder`: `SECTIONS` riordinato in
+`contact-processing -> course-data -> classroom-data`. La riconoscibilita' delle composizioni
+gia' seedate e' passata da un singolo caso a una lista `PREVIOUS_SECTIONS` (la sezione sola delle
+origini + il vecchio ordine training-first), confrontata via il nuovo `compose()` condiviso con
+`sections()`. Senza questo un'installazione gia' seedata resterebbe congelata sull'ordine vecchio.
+
+**Verificato (eseguito davvero).** `npx vitest run` 621 file / 4668 test verdi;
+`npx tsc -b --force --pretty false` EXIT=0; eslint pulito sui file toccati;
+`./vendor/bin/pest tests/Feature/Products` 175/175 verdi; `pint --test --dirty` pulito.
+
+**Da sapere per il prossimo.** Il pannello di lavorazione (`request-work-panel.tsx`) NON e'
+stato toccato: la direttiva riguardava solo "Nuova richiesta", quindi le due schede ora
+divergono nell'ordine delle sezioni. `request-create-attribution-link.test.tsx` pinnava
+l'ordine vecchio (Sede prima dell'Operatore che scopa): requisito cambiato, i due test sono
+stati riscritti — il legame Sede->slot operatore resta coperto dai casi comportamentali sotto.
+
 ## CATEGORIA "DIL": OFFERTA CON SET PROPRIO + STATI DI LAVORAZIONE (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
 
 **Direttiva.** "In seederProduction ho esigenza di inserire nuova categoria prodotto [DIL]: gli

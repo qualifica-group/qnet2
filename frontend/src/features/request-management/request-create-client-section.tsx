@@ -39,6 +39,10 @@ interface RequestCreateClientSectionProps {
  * `useRegistryForm`'s `profileDraft`). Picking a registry hides the three
  * cards outright: D-2 forbids sending both branches together, so there is
  * nothing left to disable.
+ *
+ * The address group alone is collapsible (user directive 2026-09-10), through
+ * `ClientGroup`'s own prop — not a local fold, so the two anagrafica sections
+ * keep folding the same way.
  */
 export function RequestCreateClientSection({
   control,
@@ -114,7 +118,15 @@ export function RequestCreateClientSection({
 
           <div className="border-t" />
 
-          <ClientGroup icon={MapPin} title={t('requestManagement.form.create.client.addressGroup')}>
+          {/* Collapsible, closed on arrival (user directive 2026-09-10): the
+              address block is the longest of the three and the only optional
+              one, so it folds away until the operator asks for it. */}
+          <ClientGroup
+            icon={MapPin}
+            title={t('requestManagement.form.create.client.addressGroup')}
+            collapsible
+            defaultOpen={false}
+          >
             <AddressCreateField value={address} onChange={onAddressChange} cityRequired={false} />
           </ClientGroup>
         </>

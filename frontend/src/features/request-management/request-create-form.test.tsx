@@ -8,10 +8,11 @@ import { RequestCreateForm } from '@/features/request-management/request-create-
 /**
  * User directive 2026-07-31 ("la scheda di creazione il piu' simile possibile a
  * quella di gestione"): this suite pins the SKELETON the create form shares
- * with the work panel — the sticky identity bar carrying the save action,
- * the read-only side column (note generali + riepilogo) placed BEFORE the form
- * in the DOM, and the main column's section order. A later edit that quietly
- * drops one of them fails here.
+ * with the work panel — the sticky identity bar carrying the save action, the
+ * side column placed BEFORE the form in the DOM, and the two columns' section
+ * order (rearranged by the user directive 2026-09-10: the filling flow in the
+ * main column, prossimo richiamo + team out of it, on the right). A later edit
+ * that quietly drops one of them fails here.
  */
 
 vi.mock('@/features/request-management/api', () => ({
@@ -112,7 +113,7 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('rende la colonna laterale (note generali + riepilogo) PRIMA del form nel DOM', () => {
+  it('rende la colonna laterale PRIMA del form nel DOM', () => {
     const { container } = renderCreateForm()
 
     const aside = container.querySelector('aside')
@@ -126,29 +127,60 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
     expect(aside).toContainElement(screen.getByText('Riepilogo richiesta'))
   })
 
-  it('ordina le sezioni della colonna principale come il pannello', () => {
-    renderCreateForm()
+  /**
+   * Direttiva utente 2026-09-10: "Prossimo richiamo" e "Team" escono dal
+   * flusso di compilazione e stanno a destra, sotto la nota generale — che
+   * resta sempre in cima alla colonna. Restano campi dello stesso form: il
+   * provider RHF avvolge entrambe le colonne, l'elemento `<form>` solo quella
+   * principale.
+   */
+  it('tiene prossimo richiamo e team nella colonna laterale, fuori dal form', () => {
+    const { container } = renderCreateForm()
 
-    const order = screen
+    const aside = container.querySelector('aside')!
+    const form = container.querySelector('form')!
+
+    const order = within(aside)
       .getAllByRole('heading', { level: 3 })
       .map((heading) => heading.textContent)
-      .filter((title): title is string =>
-        [
-          'Prossimo richiamo',
-          'Attribuzione',
-          'Linee di prodotto',
-          'Anagrafica cliente',
-        ].includes(title ?? ''),
-      )
 
-    // Requisito cambiato (direttiva utente 2026-09-10): "Prodotti di
-    // interesse" non e' piu' una sezione di questo modulo.
+    expect(order).toEqual(['Note generali', 'Prossimo richiamo', 'Team', 'Riepilogo richiesta'])
+    expect(form).not.toContainElement(within(aside).getByRole('heading', { name: 'Team' }))
+  })
+
+  it('ordina le sezioni della colonna principale come il flusso di compilazione', () => {
+    const { container } = renderCreateForm()
+
+    const order = within(container.querySelector('form')!)
+      .getAllByRole('heading', { level: 3 })
+      .map((heading) => heading.textContent)
+
+    // Direttiva utente 2026-09-10. "Informazioni aggiuntive" chiude la colonna
+    // ma non compare qui: senza una categoria scelta non e' montata.
     expect(order).toEqual([
       'Linee di prodotto',
-      'Prossimo richiamo',
-      'Attribuzione',
+      'Offerta',
       'Anagrafica cliente',
+      'Attribuzione',
     ])
+  })
+
+  /**
+   * Direttiva utente 2026-09-10: dentro "Anagrafica cliente" il blocco
+   * indirizzi si apre e si richiude. Chiuso all'arrivo: e' il piu' lungo dei
+   * tre gruppi e l'unico facoltativo.
+   */
+  it('apre e richiude il gruppo indirizzi dell\'anagrafica', () => {
+    renderCreateForm()
+
+    const toggle = screen.getByRole('button', { name: 'Indirizzo' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('textbox', { name: 'Indirizzo' })).not.toBeInTheDocument()
+
+    fireEvent.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('textbox', { name: 'Indirizzo' })).toBeInTheDocument()
   })
 
   /**

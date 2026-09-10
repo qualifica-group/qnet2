@@ -15,7 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 // The offer form (spec 0062) the client's catalogue seeds on the Formazione
 // branch and the two Consulenza leaves: three sections from three catalogues,
 // one layout row per category, since a layout is never inherited the way an
-// attribute assignment is.
+// attribute assignment is. Section order: user directive 2026-09-10.
 uses(RefreshDatabase::class);
 
 /**
@@ -94,10 +94,11 @@ it('orders the three catalogue sections, each pruned to what the category resolv
 
     $sectionIds = fn (string $name): array => array_column(quoteLayoutOf($name)['sections'], 'id');
 
-    // A regional leaf: the course duration, the classroom edition, the contact
-    // processing set — in reading order.
-    expect($sectionIds('GOL - Molise'))->toBe(['course-data', 'classroom-data', 'contact-processing'])
-        ->and($sectionIds('Autofinanziato'))->toBe(['course-data', 'classroom-data', 'contact-processing'])
+    // A regional leaf: what the operator records working the contact, the
+    // course duration, then the classroom edition — the reading order of the
+    // request form (user directive 2026-09-10, which reversed the previous one).
+    expect($sectionIds('GOL - Molise'))->toBe(['contact-processing', 'course-data', 'classroom-data'])
+        ->and($sectionIds('Autofinanziato'))->toBe(['contact-processing', 'course-data', 'classroom-data'])
         // A Consulenza leaf carries none of the training catalogues.
         ->and($sectionIds('Trattative in Corso'))->toBe(['contact-processing']);
 
@@ -216,13 +217,13 @@ it('never overwrites a layout configured by hand', function (): void {
     expect($service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All))->toBe($configured);
 });
 
-it('recomposes the single-section layout the previous revision seeded', function (): void {
+it('recomposes the single-section layout the first revision seeded', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $service = app(AttributeLayoutService::class);
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
 
-    // The blob the previous revision wrote, when QualificaContactProcessingSeeder
+    // The blob the first revision wrote, when QualificaContactProcessingSeeder
     // still owned this context: its section alone, in first position.
     $legacy = quoteLayoutOf('GOL - Molise');
     $legacy['sections'] = [array_merge(
@@ -236,7 +237,30 @@ it('recomposes the single-section layout the previous revision seeded', function
     // Recognised and recomposed: without this an installation already seeded
     // would never show the two training sections.
     expect(array_column(quoteLayoutOf('GOL - Molise')['sections'], 'id'))
-        ->toBe(['course-data', 'classroom-data', 'contact-processing']);
+        ->toBe(['contact-processing', 'course-data', 'classroom-data']);
+});
+
+it('recomposes the training-first order the previous revision seeded', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $service = app(AttributeLayoutService::class);
+    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
+
+    // The blob the previous revision wrote: the same three sections, the
+    // training pair ahead of the contact-processing set, sort_order following
+    // that arrangement.
+    $sections = collect(quoteLayoutOf('GOL - Molise')['sections'])->keyBy('id');
+    $previous = ['sections' => collect(['course-data', 'classroom-data', 'contact-processing'])
+        ->map(fn (string $id, int $index): array => array_merge($sections[$id], ['sort_order' => $index]))
+        ->all()];
+    $service->upsert($molise, AttributeContext::Quote, LayoutFormScope::All, $previous);
+
+    test()->seed(QualificaQuoteLayoutSeeder::class);
+
+    // User directive 2026-09-10: an installation already seeded gets the new
+    // order, instead of staying frozen on the old one.
+    expect(array_column(quoteLayoutOf('GOL - Molise')['sections'], 'id'))
+        ->toBe(['contact-processing', 'course-data', 'classroom-data']);
 });
 
 it('leaves a category outside the two branches flat', function (): void {

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Boxes } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { FormSection } from '@/components/form-section'
 import {
@@ -39,6 +40,23 @@ const REQUEST_CREATE_FORM_ID = 'request-create-form'
 /** Hoisted: nothing is persisted on a create, and an inline `[]` would be a fresh reference per render. */
 const NO_PERSISTED_LINES: QuoteLine[] = []
 
+/**
+ * The side column is no longer read-only chrome: it now carries two EDITABLE
+ * sections (user directive 2026-09-10). `@container` makes their field grids
+ * measure THIS column instead of the whole panel — without it `FIELD_GRID_CLASS`
+ * would resolve `@2xl` against the panel and split it in two.
+ *
+ * The track is widened to 24rem for THIS screen only (user directive
+ * 2026-09-10, "stringi un po il form body principale e allarga un po la side"):
+ * the main column is the grid's `1fr`, so the four rem come off it. The
+ * override is local, not a change to the shared primitive, because the work
+ * panel's side column carries read-only chrome and does not need them. Still
+ * under the 24rem the team's slot rows fold at (`ManagerSlotsField`'s own
+ * `@container`): 24rem MINUS the card padding is what that field measures.
+ */
+const CREATE_SIDE_COLUMN_CLASS = cn(SIDE_COLUMN_CLASS, '@container')
+const CREATE_PANEL_GRID_CLASS = cn(PANEL_GRID_CLASS, '@4xl:grid-cols-[minmax(0,1fr)_24rem]')
+
 const ERROR_BANNER_CLASS =
   'flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm font-medium text-destructive'
 
@@ -61,18 +79,28 @@ interface RequestCreateFormProps {
  *  - `@container` + `bg-surface`, sticky identity bar with the live
  *    callback pill and the save/cancel actions, repeated at the foot of the
  *    form (user directive 2026-08-03) as the panel repeats its own;
- *  - two columns at `@4xl` — the read-only side column FIRST in the DOM
- *    (narrow containers read it before the long form), reordered to the right;
- *  - side column = "Note generali" callout on top, then the summary card;
- *  - main column = the same sections in the same order: product lines and
- *    products of interest FIRST (user directive 2026-08-03 — they are the
- *    record's headline information), then the next callback, attribution,
- *    team, anagrafica.
+ *  - two columns at `@4xl` — the side column FIRST in the DOM (narrow
+ *    containers read it before the long form), reordered to the right.
  *
- * The two differences are structural, not cosmetic: the panel's collaboration
- * block (note/documenti/storico) needs a record to hang off, and its summary
- * lists a commercial context that does not exist before the first save — this
- * one recaps what is about to be created instead.
+ * Section order (user directive 2026-09-10). The MAIN column is the filling
+ * flow, in the order the operator works it: linee di prodotto, offerta,
+ * anagrafica cliente, attribuzione, then the dynamic sets the chosen
+ * categories resolve to ("Dati Lavorazione Contatto", "Dati corso", "Dati
+ * Aula" — their own order lives in the layout blob, `QualificaQuoteLayoutSeeder`).
+ * The SIDE column takes what is NOT part of that flow: the general-notes
+ * callout always on top (user directive 2026-09-10), then prossimo richiamo,
+ * team and the summary.
+ *
+ * The RHF provider therefore wraps BOTH columns while the native `<form>`
+ * element still scopes the main one alone: the side sections are ordinary
+ * fields of the same form — `Form` is what `FormItem`/`FormMessage` read their
+ * state from — and submission has never depended on DOM nesting (the two save
+ * buttons already reach the form by id).
+ *
+ * The two differences from the panel are structural, not cosmetic: the panel's
+ * collaboration block (note/documenti/storico) needs a record to hang off, and
+ * its summary lists a commercial context that does not exist before the first
+ * save — this one recaps what is about to be created instead.
  */
 export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProps) {
   const { t } = useTranslation()
@@ -107,10 +135,11 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
   const canAssignOperator = can(ASSIGN_OPERATOR_PERMISSION)
 
   // Spec 0097 rev-2 D-7/AC-011: the Sede (Attribuzione) and the operator slot
-  // (Team) are two sections apart now, so their reciprocal link is cabled here
-  // — where the form they both write actually lives — and each section gets
-  // its own half. `canPickSite` suppresses the auto-fill for an actor who may
-  // not set the Sede at all: the key would come back 403 from the endpoint.
+  // (Team) are two sections apart now — a whole column apart since the
+  // 2026-09-10 directive — so their reciprocal link is cabled here, where the
+  // form they both write actually lives. `canPickSite` suppresses the
+  // auto-fill for an actor who may not set the Sede at all: the key would come
+  // back 403 from the endpoint.
   const siteLink = useRequestSiteOperatorLink(form, { canPickSite })
 
   return (
@@ -123,20 +152,36 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
         onCancel={onCancel}
       />
 
-      <div className={PANEL_GRID_CLASS}>
-        {/* First in the DOM so a narrow container reads it before the form,
-            reordered to the right on two columns — the panel's own rule. */}
-        <aside className={SIDE_COLUMN_CLASS}>
-          <RequestCreateGeneralNotes control={form.control} />
-          <RequestCreateSummary
-            control={form.control}
-            identity={identityDraft}
-            usingExistingRegistry={usingExistingRegistry}
-          />
-        </aside>
+      <Form {...form}>
+        <div className={CREATE_PANEL_GRID_CLASS}>
+          {/* First in the DOM so a narrow container reads it before the form,
+              reordered to the right on two columns — the panel's own rule. */}
+          <aside className={CREATE_SIDE_COLUMN_CLASS}>
+            {/* Always first (user directive 2026-09-10), as in the work panel. */}
+            <RequestCreateGeneralNotes control={form.control} />
 
-        <div className={MAIN_COLUMN_CLASS}>
-          <Form {...form}>
+            <RequestCreateCallbackSection control={form.control} />
+
+            {/* The Sede that scopes its operator slot lives in "Attribuzione",
+                in the other column (spec 0097 rev-2 D-7): this section only
+                consumes the scoping the form produces. */}
+            <RequestCreateTeamSection
+              control={form.control}
+              canAssignOperator={canAssignOperator}
+              canPickSite={canPickSite}
+              siteId={siteLink.siteId}
+              slotParamsFor={siteLink.slotParamsFor}
+              onSlotItemChange={siteLink.onSlotItemChange}
+            />
+
+            <RequestCreateSummary
+              control={form.control}
+              identity={identityDraft}
+              usingExistingRegistry={usingExistingRegistry}
+            />
+          </aside>
+
+          <div className={MAIN_COLUMN_CLASS}>
             {/* `display: contents`: this native `<form>` only scopes the HTML
                 submit boundary, it must not become an extra flex box. */}
             <form id={REQUEST_CREATE_FORM_ID} onSubmit={onSubmit} className="contents" noValidate>
@@ -187,43 +232,6 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                 rememberVatRatePercent={rememberVatRatePercent}
               />
 
-              <RequestCreateCallbackSection control={form.control} />
-
-              <RequestCreateAttributionSection
-                form={form}
-                rewardsError={rewardsError}
-                canPickSite={canPickSite}
-                autoFilledSite={siteLink.autoFilledSite}
-                onSiteItemChange={siteLink.onSiteItemChange}
-              />
-
-              {/* Right after the Sede that scopes its operator slot (spec
-                  0097 rev-2 D-7): the Offerta's Supervisore and its whole
-                  team, the work panel's own section in create clothes. */}
-              <RequestCreateTeamSection
-                control={form.control}
-                canAssignOperator={canAssignOperator}
-                canPickSite={canPickSite}
-                siteId={siteLink.siteId}
-                slotParamsFor={siteLink.slotParamsFor}
-                onSlotItemChange={siteLink.onSlotItemChange}
-              />
-
-              {/* "Informazioni aggiuntive" (user directive 2026-08-07): the
-                  work panel's own section — literally the Offerte form's
-                  component in both places — fed the set the chosen categories
-                  resolve to. Not mounted until a complete product line exists:
-                  with no category there is nothing to resolve, and an empty
-                  card would read as a defect. */}
-              {(isContextLoading || context.applicable_attributes.length > 0) && (
-                <QuoteDynamicFieldsSection
-                  control={form.control}
-                  attributes={context.applicable_attributes}
-                  layout={context.attribute_layout}
-                  isLoading={isContextLoading}
-                />
-              )}
-
               <RequestCreateClientSection
                 control={form.control}
                 identity={identityDraft}
@@ -237,6 +245,30 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                 errorMessage={clientBlockError}
               />
 
+              <RequestCreateAttributionSection
+                form={form}
+                rewardsError={rewardsError}
+                canPickSite={canPickSite}
+                autoFilledSite={siteLink.autoFilledSite}
+                onSiteItemChange={siteLink.onSiteItemChange}
+              />
+
+              {/* "Informazioni aggiuntive" (user directive 2026-08-07): the
+                  work panel's own section — literally the Offerte form's
+                  component in both places — fed the set the chosen categories
+                  resolve to. Last in the flow (user directive 2026-09-10), so
+                  its sections close the column. Not mounted until a complete
+                  product line exists: with no category there is nothing to
+                  resolve, and an empty card would read as a defect. */}
+              {(isContextLoading || context.applicable_attributes.length > 0) && (
+                <QuoteDynamicFieldsSection
+                  control={form.control}
+                  attributes={context.applicable_attributes}
+                  layout={context.attribute_layout}
+                  isLoading={isContextLoading}
+                />
+              )}
+
               <RecordFormActions
                 formId={REQUEST_CREATE_FORM_ID}
                 isSubmitting={isSubmitting}
@@ -245,9 +277,9 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                 cancel={{ label: t('requestManagement.form.create.cancel'), onCancel }}
               />
             </form>
-          </Form>
+          </div>
         </div>
-      </div>
+      </Form>
     </div>
   )
 }

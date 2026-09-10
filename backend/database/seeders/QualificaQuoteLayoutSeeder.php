@@ -38,12 +38,12 @@ use Illuminate\Database\Seeder;
  *
  * Idempotent AND non-destructive: a category whose offer layout was already
  * configured — by a previous run or by hand from the configurator — is skipped
- * entirely, never overwritten. The ONE exception is the blob the PREVIOUS
- * revision seeded (a lone "Dati Lavorazione Contatto" section, written by
- * QualificaContactProcessingSeeder back when it owned this context): it is
- * recognised byte for byte and recomposed, or an installation already seeded
- * would keep the two training sets out of their sections forever — visible
- * only in the renderer's collapsed "other information" area.
+ * entirely, never overwritten. The ONE exception is a blob a PREVIOUS revision
+ * of this seeder wrote (PREVIOUS_SECTIONS): it is recognised byte for byte and
+ * recomposed, or an installation already seeded would stay frozen on an
+ * obsolete arrangement — the two training sets outside their sections back
+ * when this seeder took the context over, and now the section order the
+ * 2026-09-10 directive reversed.
  */
 class QualificaQuoteLayoutSeeder extends Seeder
 {
@@ -54,16 +54,40 @@ class QualificaQuoteLayoutSeeder extends Seeder
      * rows are the catalogues' own pairings, filtered per category before
      * being written.
      *
-     * Order is the reading order of the offer: what is being sold, then the
-     * classroom edition delivering it, then what the operator records while
-     * working the contact.
+     * Order is the reading order of the request form (user directive
+     * 2026-09-10): what the operator records while working the contact, then
+     * what is being sold, then the classroom edition delivering it.
      *
      * @var list<array{0: string, 1: string, 2: list<list<string>>}>
      */
     private const array SECTIONS = [
+        ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::ROWS],
         ['course-data', CourseDataAttributeCatalogue::SECTION_TITLE, CourseDataAttributeCatalogue::ROWS],
         ['classroom-data', ClassroomAttributeCatalogue::SECTION_TITLE, ClassroomAttributeCatalogue::ROWS],
-        ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::ROWS],
+    ];
+
+    /**
+     * The compositions PREVIOUS revisions of this seeder wrote, recognised
+     * byte for byte so an installation already seeded is recomposed instead of
+     * being frozen on an obsolete arrangement. Anything else — one item moved,
+     * one section renamed — is a human's work and stays untouched.
+     *
+     * In release order: the lone "Dati Lavorazione Contatto" section, from when
+     * QualificaContactProcessingSeeder owned this context; then the three
+     * sections led by the training pair, before the 2026-09-10 directive
+     * reversed them.
+     *
+     * @var list<list<array{0: string, 1: string, 2: list<list<string>>}>>
+     */
+    private const array PREVIOUS_SECTIONS = [
+        [
+            ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::ROWS],
+        ],
+        [
+            ['course-data', CourseDataAttributeCatalogue::SECTION_TITLE, CourseDataAttributeCatalogue::ROWS],
+            ['classroom-data', ClassroomAttributeCatalogue::SECTION_TITLE, ClassroomAttributeCatalogue::ROWS],
+            ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::ROWS],
+        ],
     ];
 
     public function __construct(
@@ -128,31 +152,24 @@ class QualificaQuoteLayoutSeeder extends Seeder
     }
 
     /**
-     * Whether $blob is exactly the layout the previous revision wrote for this
-     * category: the "Dati Lavorazione Contatto" section alone, sole section,
-     * built from the same catalogue rows this composition still places third.
-     * Anything else — one item moved, one section renamed — is a human's work
-     * and stays untouched.
+     * Whether $blob is exactly what one of the previous revisions wrote for
+     * this category, composed from the same catalogue rows this category still
+     * resolves (see PREVIOUS_SECTIONS).
      *
      * @param  array<string, mixed>  $blob
      * @param  list<string>  $effective
      */
     private function isPreviousComposition(array $blob, array $effective): bool
     {
-        $rows = $this->keepAllowedCodes(ContactProcessingAttributeCatalogue::ROWS, $effective);
+        foreach (self::PREVIOUS_SECTIONS as $composition) {
+            $sections = $this->compose($composition, $effective);
 
-        if ($rows === []) {
-            return false;
+            if ($sections !== [] && $blob == ['sections' => $sections]) {
+                return true;
+            }
         }
 
-        $previous = ['sections' => [$this->layoutSection(
-            'contact-processing',
-            ContactProcessingAttributeCatalogue::SECTION_TITLE,
-            $rows,
-            0,
-        )]];
-
-        return $blob == $previous;
+        return false;
     }
 
     /**
@@ -161,9 +178,19 @@ class QualificaQuoteLayoutSeeder extends Seeder
      */
     private function sections(array $effective): array
     {
+        return $this->compose(self::SECTIONS, $effective);
+    }
+
+    /**
+     * @param  list<array{0: string, 1: string, 2: list<list<string>>}>  $definitions
+     * @param  list<string>  $effective
+     * @return list<array<string, mixed>>
+     */
+    private function compose(array $definitions, array $effective): array
+    {
         $sections = [];
 
-        foreach (self::SECTIONS as [$id, $title, $rows]) {
+        foreach ($definitions as [$id, $title, $rows]) {
             $kept = $this->keepAllowedCodes($rows, $effective);
 
             if ($kept === []) {

@@ -138,15 +138,22 @@ export function ManagerSlotsField({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    // `@container`: a slot row is label + picker + three icon buttons, which
+    // stops fitting on one line in a narrow column (the request create form
+    // parks this field in its 20rem side column, user directive 2026-09-10).
+    // Measured on the FIELD itself, not on an ancestor: every call site gets
+    // the right arrangement without opting in, and nothing changes above 24rem.
+    <div className="@container flex flex-col gap-2">
       <ul className="flex flex-col gap-2">
         {value.map((slot, index) => (
           // The slot's identity IS its position, so the index is the correct key.
-          <li key={index} className="flex items-center gap-2">
+          <li key={index} className="flex flex-wrap items-center gap-2">
             <span
               className={cn(
                 'flex shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground',
-                hasResolvedLabels ? 'w-24 sm:w-32' : 'w-9',
+                // A named slot takes the whole first line when narrow: truncated
+                // to a stub it would not say WHICH person the row assigns.
+                hasResolvedLabels ? 'w-full @sm:w-32' : 'w-9',
               )}
               title={slotLabel(index)}
             >

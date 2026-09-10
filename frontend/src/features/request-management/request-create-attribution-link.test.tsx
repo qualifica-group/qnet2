@@ -141,11 +141,17 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('Create form — section order matches the work panel', () => {
-  it('renders product lines, then attribution, then the team, then the client details', () => {
+describe('Create form — section order', () => {
+  /**
+   * Requirement changed (user directive 2026-09-10): the Team left the filling
+   * flow for the side column, which the panel grid renders FIRST in the DOM
+   * (and reorders to the right on two columns), and the client details now
+   * come before the attribution.
+   */
+  it('renders the team in the side column, then product lines, client details, attribution', () => {
     renderForm()
 
-    const sectionTitles = ['Product lines', 'Attribution', 'Team', 'Client details']
+    const sectionTitles = ['Team', 'Product lines', 'Client details', 'Attribution']
     const titles = screen
       .getAllByRole('heading')
       .map((heading) => heading.textContent)
@@ -154,11 +160,16 @@ describe('Create form — section order matches the work panel', () => {
     expect(titles).toEqual(sectionTitles)
   })
 
-  /** AC-011: the two ends of the link sit in two different sections now, in this order. */
-  it('renders the Sede before the Operatore it scopes', () => {
+  /**
+   * AC-011: the two ends of the link sit in two different COLUMNS now, the
+   * scoped operator slot ahead of the Sede that scopes it. Reading order is no
+   * longer what carries the dependency — the form does, and the cases below
+   * pin that behaviour.
+   */
+  it('renders the Operatore slot ahead of the Sede that scopes it', () => {
     renderForm()
 
-    expect(siteField().compareDocumentPosition(operatorField())).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(siteField().compareDocumentPosition(operatorField())).toBe(Node.DOCUMENT_POSITION_PRECEDING)
   })
 })
 
