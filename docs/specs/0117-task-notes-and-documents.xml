@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0117-task-notes-and-documents" status="draft" owner="utente" date="2026-09-11">
+
+  <goal>
+    Portare sul Task le due capacita' collaborative che il documento di prodotto gli assegna e
+    che il codebase gia' possiede per altri moduli: le note collaborative (spec 0052) e i
+    documenti allegati. Nessuna delle due viene reinventata: il Task si registra come host dei
+    due componenti agnostici esistenti.
+  </goal>
+
+  <context>
+    Quarta fase del modulo Task, dopo la 0101 (campi/CRUD) e la 0116 (ruoli sul record e azioni).
+    Nomi reali verificati nel repo, non ipotizzati:
+
+    NOTE (spec 0052). `config/notes.php` -> `notable_types` mappa uno slug pubblico a una
+    class-string che implementa `App\Notes\Contracts\NotableEntity`; oggi contiene la sola voce
+    `request-management` => `App\RequestManagement\RequestManagementNotable`.
+    `App\Notes\NoteEntityRegistry` e' l'unico punto di traduzione slug -> model e slug -> gate.
+    L'interfaccia chiede sei cose: `modelClass`, `authorizeRead`, `mentionableUsersQuery`,
+    `ownsQuote`, `quoteScopes`, `label`, `deepLinkPath`. Il trait owner-side e'
+    `App\Models\Concerns\HasNotes`. La modifica/eliminazione di una nota e' author-only in
+    `App\Policies\NotePolicy` (nessun permesso consultato); l'unico permesso del componente e'
+    `notes.create`. `tests/Feature/Notes/NoteAgnosticismTest.php` verifica che il core in
+    `app/Notes/` non nomini mai un modulo ospite.
+
+    DOCUMENTI. `config/attachments.php` -> `attachable_types` mappa un alias pubblico alla classe
+    proprietaria; oggi `user`, `company_site`, `opportunity`, `document_layout`, `contract`. Il
+    trait e' `App\Models\Concerns\HasAttachments`. `App\Http\Controllers\Attachments\
+    AttachmentController` autorizza SOLO a livello di risorsa (`attachments.viewAny/create/
+    view/delete` via `AttachmentPolicy`): non esiste alcun gate per-record, per nessun alias.
+    L'alias morph `task` => `App\Models\Task` E' GIA' registrato in
+    `AppServiceProvider::boot()` (spec 0101, per l'activity log), quindi non va aggiunto.
+
+    TASK. `App\Services\Tasks\TaskVisibilityScope` (statica) e' l'unica implementazione della
+    regola di visibilita': `tasks.viewAll` oppure essere creatore/richiedente/assegnatario/
+    osservatore; espone `scopeToActor()` e `isVisibleTo()`. `App\Services\Tasks\
+    TaskAbilityResolver` (statica) e' l'unico posto dove vive la matrice ruolo-azione.
+    `App\Services\Tasks\TaskWriteLock` congela le SOLE scritture strutturali sul Task.
+    `App\Authorization\TasksAuthorization::actions()` espone oggi
+    `delete, export, import, view_activity, complete, uncomplete, approve, reject, block, unblock`.
+    Le classi statiche restano statiche: `permissions:sync` istanzia ogni Policy con `new $class`
+    senza container.
+
+    FRONTEND. `features/notes/notes-section.tsx` (`NotesSection`, prop `entityType`/`entityId`) e
+    `features/attachments/documents-section.tsx` (`DocumentsSection`, prop `resource`/`id`/
+    `canUpload`/`canDelete`) sono gia' completamente agnostici: nessuna modifica ai due
+    componenti. Il pattern di mount e' `opportunity-detail.tsx`: una `RecordCard` finale con
+    `Tabs` Note | Documenti | Attivita', ogni tab con il proprio gate, l'intera card assente se
+    nessun tab e' autorizzato. Il dettaglio Task (`features/tasks/task-detail.tsx`) oggi non ha
+    tab: monta `ActivityLogSection` in un blocco proprio in fondo alla `RecordCard`.
+    `TASKS_DOMAIN` vale `tasks`. La rotta SPA del dettaglio Task e' `/tasks/{id}`, generata dal
+    module registry (`buildModuleRoutes`).
+  </context>
+
+  <scope>
+    <in>
+      <item>D-1. Nessun endpoint nuovo. Note e documenti del Task passano dagli endpoint generici gia' esistenti (`/api/notes*`, `/api/attachments*`): l'intera feature e' la registrazione di due alias piu' il descrittore che li accompagna.</item>
+      <item>D-2. Slug note = `tasks` in `config/notes.php` (vocabolario di AUTORIZZAZIONE, allineato a `TASKS_DOMAIN`). Alias documenti = `task` in `config/attachments.php` (vocabolario di IDENTITA', allineato alla morph map gia' presente). I due sono diversi per costruzione, come gia' `request-management` / `opportunity`.</item>
+      <item>D-3. Nuova classe `App\Services\Tasks\TaskNotable implements NotableEntity`, nel namespace del modulo OSPITE. Mai in `app/Notes/`: il modulo dichiara come vuole essere trattato, il componente note non nomina mai il modulo (AC-021 della 0052).</item>
+      <item>D-4. `TaskNotable::authorizeRead()` = `tasks.view` AND `TaskVisibilityScope::isVisibleTo()`. Nessuna regola di visibilita' nuova, nessuna copia del predicato.</item>
+      <item>D-5. `TaskNotable::mentionableUsersQuery()` = utenti attivi che hanno `tasks.view` e raggiungono QUESTO Task (membri del record oppure titolari di `tasks.viewAll`), piu' i super-admin. E' la stessa regola di `authorizeRead` letta dall'altro capo, con la stessa forma difensiva di `RequestManagementNotable`: match del ruolo per NOME via `whereHas` (mai lo scope `role()`, che lancia `RoleDoesNotExist` su ambiente non seedato) e probe di esistenza della riga permesso (nome + guard) prima di usare lo scope `permission()`.</item>
+      <item>D-6. Il Task non ha unita' di scoping: `ownsQuote()` risponde sempre false e `quoteScopes()` sempre `[]`. Lato client i selettori di scope non si montano affatto — comportamento gia' previsto da `NotesSection`.</item>
+      <item>D-7. `TaskNotable::deepLinkPath()` = `/tasks/{id}` quando il destinatario ha `tasks.view` E vede quel Task, altrimenti `null` (mai un link che atterra su un 403). Per-destinatario, come impone l'interfaccia.</item>
+      <item>D-8. Documenti: nuova ability `viewDocuments` su `TaskPolicy` (permesso `tasks.viewDocuments`) ed esposizione di `view_documents` in `TasksAuthorization::actions()` — identico a `OpportunityPolicy`/`OpportunitiesAuthorization`. DECISIONE UTENTE 2026-09-11: i documenti del Task si comportano ESATTAMENTE come quelli di Opportunita', quindi NON si introduce alcun gate per-record sugli allegati. Conseguenza accettata e messa a verbale: un attore con `attachments.viewAny` puo' elencare e scaricare i documenti di un Task che `TaskVisibilityScope` gli nasconde.</item>
+      <item>D-9. Note e documenti sono AZIONI OPERATIVE: non passano da `TaskWriteLock` e restano disponibili su Task bloccato, completato e in validazione. Non e' codice da scrivere (nessuno dei due scrive sul record `tasks`), ma un invariante da blindare con un test.</item>
+      <item>D-10. Modifica ed eliminazione di una nota restano AUTHOR-ONLY (`NotePolicy`, regola di piattaforma agnostica). Il "CRUD Note" che il documento di prodotto concede a tutti e quattro i ruoli si legge come "tutti partecipano al thread", non come "tutti riscrivono le note altrui". `NotePolicy` non si tocca.</item>
+      <item>D-11. Frontend: `Task` usa `HasNotes` e `HasAttachments`; il dettaglio Task guadagna in fondo una card collaborazione con tab Note | Documenti | Attivita'. Il log attivita' non viene rimosso: si sposta dentro la strip di tab, come su Opportunita' e Contratto.</item>
+      <item>D-12. i18n: nessuna stringa nuova per i contenuti dei due componenti (usano le proprie: `notes.*`, `attachments.*`). Solo le etichette dei tab, gia' esistenti (`notes.section.title`, `attachments.title`, `activityLog.title`).</item>
+    </in>
+    <out>
+      <item>Qualunque gate per-record sugli allegati, per il Task come per gli altri cinque alias (decisione utente D-8).</item>
+      <item>Segnatempo, in ogni forma: entita', endpoint, campo nel pop-up di chiusura, riga di matrice.</item>
+      <item>Le undici classi di notifica `Task*` del documento di prodotto e ogni mail relativa. Resta attiva la sola `NoteMentionNotification` esistente, che il componente note invia gia' per conto suo.</item>
+      <item>L'azione "Richiedi aggiornamento" e la riga di matrice corrispondente.</item>
+      <item>Ricorrenza del task, campi obbligatori alla creazione, stato iniziale automatico.</item>
+      <item>Note e documenti come azioni di riga nella tabella Task (dialog + badge di conteggio): decisione utente 2026-09-11, solo dettaglio in questa fase.</item>
+      <item>Fase 2 della spec 0101 (Task collegati dentro Opportunita'/Commessa/Anagrafica).</item>
+      <item>Allegati in fase di CREAZIONE del Task ("gli eventuali allegati vengono salvati" del documento): il Task deve esistere per possedere un allegato, e il flusso di upload in creazione e' un problema a se'.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo: si congela il VALORE che i due endpoint generici accettano. -->
+
+    <endpoint method="GET" path="/api/notes">
+      <request>entity_type: "tasks" (string, allow-list da config/notes.php) | entity_id: int (id del Task) | cursor?: string | limit?: int 1..50 | quote_scope?: assente</request>
+      <response status="200">{ success, message, data: Note[], meta: { next_cursor, has_more, quotes: [] } } — `quotes` SEMPRE vuoto sui Task (D-6); ogni nota ha `quote_id: null` e `quote: null`</response>
+      <errors>403 se `authorizeRead` nega (non ha `tasks.view`, o non vede quel Task) | 404 Task inesistente | 422 entity_type non registrato</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/notes">
+      <request>entity_type: "tasks" | entity_id: int | body: string 1..5000 | parent_id?: int | mentions?: int[] | quote_id: MAI inviato sui Task</request>
+      <response status="201">{ success, message, data: Note }</response>
+      <errors>403 senza `notes.create` o se `authorizeRead` nega | 422 body vuoto/oltre 5000, mention di un utente non menzionabile, `quote_id` valorizzato</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/notes/mentionable-users">
+      <request>entity_type: "tasks" | entity_id: int</request>
+      <response status="200">{ success, message, data: [{ id, name, avatar_url }] } — utenti attivi con `tasks.view` che vedono il Task, piu' i super-admin (D-5)</response>
+      <errors>403 se `authorizeRead` nega | 404 Task inesistente</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/attachments">
+      <request>attachable_type: "task" (string, allow-list da config/attachments.php) | attachable_id: int | collection?: "documents"</request>
+      <response status="200">{ success, message, data: Attachment[] } — shape invariata</response>
+      <errors>403 senza `attachments.viewAny` | 422 alias non in allow-list</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/attachments">
+      <request>attachable_type: "task" | attachable_id: int | file: binario | collection?: "documents"</request>
+      <response status="201">{ success, message, data: Attachment }</response>
+      <errors>403 senza `attachments.create` | 422 MIME fuori allow-list o dimensione oltre `attachments.max_size`</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tasks/{task}">
+      <request>—</request>
+      <response status="200">`permissions.actions` guadagna la chiave `view_documents: bool` accanto alle dieci esistenti. Nessun altro campo del `TaskResource` cambia.</response>
+      <errors>invariati</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato `config/notes.php`, quando si leggono i `notable_types`, allora contiene `tasks` => `App\Services\Tasks\TaskNotable` accanto a `request-management`, e `NoteEntityRegistry::registeredTypes()` restituisce entrambi.</criterion>
+    <criterion id="AC-002">Dato `config/attachments.php`, quando si leggono gli `attachable_types`, allora contiene `task` => `App\Models\Task`, e l'alias coincide con quello gia' presente nella morph map di `AppServiceProvider`.</criterion>
+    <criterion id="AC-003">Dato il model `Task`, quando si chiamano `notes()` e `attachments()`, allora restituiscono le due `MorphMany` (trait `HasNotes` e `HasAttachments` applicati), e nessun campo di `#[Fillable]` cambia.</criterion>
+    <criterion id="AC-004">Dato un attore che e' creatore del Task, quando chiama `GET /api/notes?entity_type=tasks&amp;entity_id={id}`, allora riceve 200 con il thread di quel Task.</criterion>
+    <criterion id="AC-005">Lo stesso per richiedente, assegnatario e osservatore: ciascuno riceve 200 sul Task di cui e' membro (quattro casi distinti).</criterion>
+    <criterion id="AC-006">Dato un attore con `tasks.view` e `tasks.viewAll` ma estraneo al record, quando chiama l'indice note di quel Task, allora riceve 200.</criterion>
+    <criterion id="AC-007">Dato un attore con `tasks.view` ma NE' membro NE' titolare di `tasks.viewAll`, quando chiama l'indice note di quel Task, allora riceve 403 e nessuna nota nel corpo.</criterion>
+    <criterion id="AC-008">Dato un attore senza `tasks.view` ma membro del record, quando chiama l'indice note, allora riceve 403: la membership NARROWS, non concede il permesso di risorsa.</criterion>
+    <criterion id="AC-009">Dato un membro del Task con `notes.create`, quando fa `POST /api/notes` con `entity_type=tasks`, allora riceve 201 e la nota risulta legata al Task via `notable_type='task'`.</criterion>
+    <criterion id="AC-010">Dato un membro del Task SENZA `notes.create`, quando fa `POST /api/notes`, allora riceve 403 e nessuna riga viene scritta.</criterion>
+    <criterion id="AC-011">Dato un thread su un Task, quando l'autore di una nota la modifica o la elimina, allora riesce; quando un altro membro qualsiasi (assegnatario, creatore, osservatore) tenta la stessa cosa sulla nota altrui, allora riceve 403 (D-10).</criterion>
+    <criterion id="AC-012">Dato un Task con creatore, richiedente, due assegnatari e un osservatore tutti con `tasks.view`, quando si chiama `GET /api/notes/mentionable-users?entity_type=tasks`, allora l'elenco contiene esattamente quei cinque piu' i super-admin e i titolari di `tasks.viewAll`.</criterion>
+    <criterion id="AC-013">Dato un utente disattivato (`is_active=false`) che e' assegnatario del Task, quando si chiama l'elenco dei menzionabili, allora non compare.</criterion>
+    <criterion id="AC-014">Dato un ambiente in cui la riga permesso `tasks.viewAll` non esiste ancora (permissions:sync mai eseguito), quando si chiama l'elenco dei menzionabili, allora la risposta e' 200 e non un 500: il ramo si aggiunge solo se la riga esiste, con nome E guard corrispondenti (D-5).</criterion>
+    <criterion id="AC-015">Dato un Task, quando si invocano `TaskNotable::ownsQuote()` e `quoteScopes()`, allora rispondono sempre `false` e `[]`, e `meta.quotes` dell'indice note e' un array vuoto.</criterion>
+    <criterion id="AC-016">Dato un `POST /api/notes` su un Task con `quote_id` valorizzato, allora la risposta e' 422 e nessuna nota viene creata.</criterion>
+    <criterion id="AC-017">Data una menzione su una nota di un Task, quando si risolve il deep link per un destinatario che vede quel Task, allora e' `/tasks/{id}`; per un destinatario che non lo vede o e' privo di `tasks.view`, allora e' `null` (D-7).</criterion>
+    <criterion id="AC-018">Dati i file di `app/Notes/`, quando si cercano le stringhe `Task`, `TaskNotable` e `App\Services\Tasks`, allora nessuna compare: il core resta agnostico (estensione di `NoteAgnosticismTest`, AC-021 della 0052).</criterion>
+    <criterion id="AC-019">Dato un Task in stato congelato (bloccato, completato o in validazione — tre casi), quando un membro crea una nota e carica un documento, allora entrambe riescono: `TaskWriteLock` non interviene su nessuna delle due (D-9).</criterion>
+    <criterion id="AC-020">Dato un attore con `tasks.viewDocuments`, quando legge `GET /api/tasks/{task}`, allora `permissions.actions.view_documents` e' `true`; senza quel permesso e' `false`, e le altre dieci azioni restano invariate nel numero e nel nome.</criterion>
+    <criterion id="AC-021">Dato `php artisan permissions:sync`, quando gira, allora il catalogo contiene `tasks.viewDocuments` e nessun permesso preesistente sparisce; il comando non lancia (le classi statiche restano statiche).</criterion>
+    <criterion id="AC-022">Dato un Task con documenti caricati, quando il Task viene eliminato, allora righe `attachments` e binari vengono rimossi dal `bootHasAttachments` senza orfani.</criterion>
+    <criterion id="AC-023">Dato il dettaglio Task lato client con tutti e tre i gate attivi, quando si renderizza, allora compare una card finale con i tab Note, Documenti e Attivita', e il log attivita' NON compare piu' come blocco separato.</criterion>
+    <criterion id="AC-024">Dato un attore senza nessuno dei tre gate (`tasks.view` per le note, `view_documents`, `view_activity`), quando si renderizza il dettaglio, allora l'intera card collaborazione e' assente dal DOM.</criterion>
+    <criterion id="AC-025">Dato un attore con il solo `view_documents`, quando si renderizza il dettaglio, allora il tab Documenti e' l'unico presente ed e' quello attivo di default.</criterion>
+    <criterion id="AC-026">Dato il tab Documenti, quando si monta, allora `DocumentsSection` riceve `resource="task"`, l'id del Task, e `canUpload`/`canDelete` derivati da `attachments.create`/`attachments.delete` — identico al mount di Opportunita'.</criterion>
+    <criterion id="AC-027">Dato il tab Note, quando si monta, allora `NotesSection` riceve `entityType="tasks"`, l'id del Task e `showHeader={false}`, e nessun selettore di scope compare.</criterion>
+    <criterion id="AC-028">A 375, 768 e 1024 px la card collaborazione non produce scrollbar orizzontale e la strip di tab resta leggibile (verifica manuale sull'app reale).</criterion>
+    <criterion id="AC-029">Dato l'albero intero, quando si eseguono `XDEBUG_MODE=off ./vendor/bin/pest`, `npx vitest run`, `npx tsc -b --force --pretty false` e `pint --test` sui file toccati, allora tutto e' verde e nessun test preesistente regredisce.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna dipendenza nuova, ne' composer ne' npm. Nessuna migrazione: `notes.notable` e `attachments.attachable` sono gia' colonne morph nullable.</item>
+    <item>`TaskVisibilityScope`, `TaskAbilityResolver`, `TaskRecordRoles` e `TaskWriteLock` restano STATICHE e stateless: `permissions:sync` istanzia ogni Policy con `new $class` senza container. `TaskNotable` invece e' risolta dal container (`app()`) come `RequestManagementNotable`, quindi puo' avere dipendenze — ma non ne serve nessuna.</item>
+    <item>La regola di visibilita' non si riscrive: `TaskNotable` DELEGA a `TaskVisibilityScope`. Un secondo predicato equivalente e' un difetto, non un'ottimizzazione.</item>
+    <item>Nessuna modifica a `NotesSection`, `DocumentsSection`, `NoteEntityRegistry`, `NotePolicy`, `AttachmentController`, `AttachmentPolicy`: sono componenti condivisi e questa fase non ne cambia il comportamento per gli altri moduli.</item>
+    <item>Autorizzazione sempre server-side: i gate del client nascondono soltanto. Ogni AC di autorizzazione e' verificato con un test HTTP, non con un'ispezione del componente.</item>
+    <item>Trappola nota del repo: `QuoteWorkflowMigrationTest` ha un contatore hard-coded di rollback. Questa spec NON aggiunge migrazioni, quindi quel contatore non va toccato.</item>
+    <item>Trappola nota del repo: `taskActorWith()` e' duplicato in 11 file di `tests/Feature/Tasks/` con guard `function_exists`, e PHP tiene solo la prima in ordine alfabetico. Aggiungendo `tasks.viewDocuments` all'elenco delle ability create, vanno aggiornate TUTTE E 11 le copie, non solo quella del file su cui si lavora — altrimenti il rosso appare solo a suite intera.</item>
+    <item>Identificatori in inglese; prosa e valori esposti all'utente in italiano via i18next.</item>
+  </constraints>
+
+</spec>

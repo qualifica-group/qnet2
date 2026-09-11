@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\Abstracts\BaseModel;
+use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -25,6 +27,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * time by App\Services\Tasks\TaskStatusResolver (D-6), so a Task's progress
  * can never drift from its status. Nothing here is keyed off a status
  * LABEL — only off `system_key` (AC-024).
+ *
+ * Spec 0117 adds the two collaborative concerns: `HasNotes` (the thread,
+ * gated per record by App\Services\Tasks\TaskNotable) and `HasAttachments`
+ * (the documents, whose rows and binaries the trait's own `deleting` hook
+ * cleans up when the Task is really deleted). Neither adds a column: both
+ * morph relations already live on their own tables.
  */
 #[Fillable([
     'title',
@@ -53,7 +61,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Task extends BaseModel
 {
     /** @use HasFactory<TaskFactory> */
-    use HasFactory, LogsModelActivity;
+    use HasAttachments, HasFactory, HasNotes, LogsModelActivity;
 
     /**
      * @return array<string, string>

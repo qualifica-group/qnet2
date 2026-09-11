@@ -12,6 +12,14 @@ import type {
 /** Table/module domain key of this module, shared by every adapter (mirrors `WORK_ORDERS_DOMAIN`). */
 export const TASKS_DOMAIN = 'tasks'
 
+/**
+ * Polymorphic owner alias sent as `attachable_type` (spec 0117), per
+ * `config('attachments.attachable_types')`. SINGULAR, unlike the plural
+ * domain key above: that one is the authorization vocabulary, this one the
+ * record's morph identity. Mirrors `CONTRACT_ATTACHABLE_ALIAS`.
+ */
+export const TASK_ATTACHABLE_ALIAS = 'task'
+
 /** Query key for a single task's detail (fresh-on-open pattern). */
 export function taskDetailQueryKey(id: number) {
   return ['tasks', 'detail', id] as const

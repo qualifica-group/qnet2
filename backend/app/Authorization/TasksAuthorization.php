@@ -118,7 +118,7 @@ class TasksAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock'];
     }
 
     /**
@@ -169,6 +169,14 @@ class TasksAuthorization extends AbstractResourceAuthorization
             // record-level `tasks.view` boundary is enforced separately by
             // GET /api/activity-log/tasks/{id}.
             'view_activity' => $model !== null && $actor->can('tasks.viewActivity'),
+            // Gates the documents tab in the detail (reused polymorphic
+            // Attachment subsystem, spec 0117 D-8). Unlike every flag below
+            // it, this one ANDs nothing else: the attachment endpoints carry
+            // no per-record boundary, so neither the record-role matrix nor
+            // TaskVisibilityScope narrows it -- the same exposure the
+            // Opportunita' documents section already has, accepted by the
+            // user rather than inherited by accident.
+            'view_documents' => $model !== null && $actor->can('tasks.viewDocuments'),
             'complete' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isCompletable($task)
                 && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task),
             'uncomplete' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isUncompletable($task)

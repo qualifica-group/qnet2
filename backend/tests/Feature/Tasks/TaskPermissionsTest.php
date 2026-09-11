@@ -35,7 +35,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -76,16 +76,18 @@ it('AC-037/AC-050: permissions:sync creates 8 permissions per resource, plus the
 
     // spec 0116, AC-037: exactly these four new `tasks.*` permissions exist
     // on top of the 8 standard abilities and `viewAll` — no other new
-    // `tasks.*` permission was created by the record-role matrix.
-    foreach (['viewAll', 'manageAll', 'complete', 'validate', 'block'] as $extra) {
+    // `tasks.*` permission was created by the record-role matrix. Spec 0117
+    // adds one more, `viewDocuments`, for the documents tab of the detail.
+    foreach (['viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'] as $extra) {
         expect(Permission::query()->where('name', "tasks.{$extra}")->exists())
             ->toBeTrue("missing permission tasks.{$extra}");
     }
 
-    // 13 for `tasks` (8 standard + viewAll/manageAll/complete/validate/block,
-    // spec 0116), 8 for each configurator. `like 'tasks.%'` would also match
-    // nothing else: the five configurators are `task-...` with a hyphen.
-    expect(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(13);
+    // 14 for `tasks` (8 standard + viewAll/manageAll/complete/validate/block
+    // from spec 0116 + viewDocuments from spec 0117), 8 for each
+    // configurator. `like 'tasks.%'` would also match nothing else: the five
+    // configurators are `task-...` with a hyphen.
+    expect(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(14);
 
     foreach (array_slice(TASK_MODULE_RESOURCES, 1) as $resource) {
         expect(Permission::query()->where('name', 'like', "{$resource}.%")->count())
@@ -198,7 +200,7 @@ it('AC-055: the six resources appear in the permission catalogue with their perm
             ->and($modules[$resource]['fields'])->not->toBeEmpty();
     }
 
-    expect($modules['tasks']['permissions'])->toHaveCount(13)
+    expect($modules['tasks']['permissions'])->toHaveCount(14)
         ->and($modules['task-statuses']['permissions'])->toHaveCount(8)
         ->and(collect($modules['tasks']['fields'])->pluck('key'))
         ->not->toContain('creator_id')

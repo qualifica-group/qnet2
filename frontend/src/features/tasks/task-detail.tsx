@@ -3,7 +3,6 @@ import {
   CalendarClock,
   ClipboardList,
   Contact,
-  History,
   Link2,
   ListChecks,
   MessageSquareWarning,
@@ -26,9 +25,8 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { BADGE_BASE, BADGE_COLOR_CLASSES, formatDateTime } from '@/features/table/cell-renderers'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
-import { TASKS_DOMAIN } from '@/features/tasks/api'
 import { TaskActionsBar } from '@/features/tasks/task-actions-bar'
+import { TaskCollaborationSection } from '@/features/tasks/task-collaboration-section'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { TaskPeopleList } from '@/features/tasks/task-people-list'
 import { TaskSubtasksSection } from '@/features/tasks/task-subtasks-section'
@@ -53,6 +51,9 @@ interface TaskDetailViewProps {
  * AC-084: the percentage is rendered from `completion_percentage`, which the
  * backend DERIVES from the status at response time (D-6) — `tasks` has no
  * such column, so nothing here can drift from the configured status.
+ *
+ * Spec 0117: note, documenti e log attivita' vivono nella card
+ * `TaskCollaborationSection` sotto questa, non piu' qui dentro.
  */
 export function TaskDetailView({ task, onOpenSubtask, onCreateSubtask }: TaskDetailViewProps) {
   const { t } = useTranslation()
@@ -200,14 +201,9 @@ export function TaskDetailView({ task, onOpenSubtask, onCreateSubtask }: TaskDet
           />
         </RecordSectionsGrid>
 
-        {task.permissions.actions.view_activity ? (
-          <div className="border-t p-4">
-            <RecordSection title={t('activityLog.title')} icon={<History />}>
-              <ActivityLogSection resource={TASKS_DOMAIN} id={task.id} />
-            </RecordSection>
-          </div>
-        ) : null}
       </RecordCard>
+
+      <TaskCollaborationSection task={task} />
 
       <RecordMeta>
         {createdAt ? (

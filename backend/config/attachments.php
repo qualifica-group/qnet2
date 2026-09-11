@@ -4,6 +4,7 @@ use App\Models\CompanySite;
 use App\Models\Contract;
 use App\Models\DocumentLayout;
 use App\Models\Opportunity;
+use App\Models\Task;
 use App\Models\User;
 
 return [
@@ -95,6 +96,11 @@ return [
         // "Documenti opportunita'" section is a read-only mount of the
         // existing 'opportunity' alias, not a second alias.
         'contract' => Contract::class,
+        // Task documents (spec 0117): the alias is ALREADY in the global
+        // morph map (AppServiceProvider, spec 0101, added there for the
+        // activity log), so this entry only opens the upload boundary -- it
+        // does not name a new morph identity.
+        'task' => Task::class,
     ],
 
 ];

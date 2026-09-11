@@ -1,6 +1,7 @@
 <?php
 
 use App\RequestManagement\RequestManagementNotable;
+use App\Services\Tasks\TaskNotable;
 
 return [
 
@@ -26,6 +27,13 @@ return [
 
     'notable_types' => [
         'request-management' => RequestManagementNotable::class,
+        // Spec 0117: the slug is the AUTHORIZATION vocabulary, so it is the
+        // plural module key ('tasks', matching TASKS_DOMAIN client-side) --
+        // deliberately NOT the singular 'task' morph alias that identifies
+        // the row in notable_type. The two vocabularies are different by
+        // construction, exactly as 'request-management' maps onto an
+        // Opportunity.
+        'tasks' => TaskNotable::class,
     ],
 
 ];

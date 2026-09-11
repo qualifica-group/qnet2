@@ -42,7 +42,10 @@ use Illuminate\Database\Eloquent\Model;
  *
  * `viewActivity` stays resource-level (BasePolicy): the aggregated log's
  * per-record boundary is `view`, which PolicyActivityLogAuthorizer already
- * checks on the record itself.
+ * checks on the record itself. `viewDocuments` (spec 0117) is resource-level
+ * for the same shape of reason, with one honest difference recorded here:
+ * the attachment endpoints have NO per-record boundary to fall back on, so
+ * this ability gates the section and nothing narrows it per Task.
  *
  * Zero-argument constructible on purpose — `permissions:sync` discovers
  * policies with `new $class`, which is why TaskVisibilityScope AND
@@ -119,11 +122,24 @@ class TaskPolicy extends BasePolicy
     }
 
     /**
+     * Resource-level, exactly like OpportunityPolicy::viewDocuments (spec
+     * 0117 D-8): it gates the documents tab of the detail, NOT the single
+     * attachment. Each attachment endpoint keeps being authorized on its own
+     * by AttachmentPolicy, which has no per-record boundary of any kind --
+     * the documents of a Task behave precisely like those of an
+     * Opportunita', as decided.
+     */
+    public function viewDocuments(User $user): bool
+    {
+        return $user->can($this->permission('viewDocuments'));
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'manageAll', 'complete', 'validate', 'block'];
+        return [...parent::abilities(), 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'];
     }
 
     private function isInScope(User $user, Model $model): bool

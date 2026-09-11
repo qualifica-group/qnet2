@@ -3,6 +3,74 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MODULO TASK — FASE 4: NOTE E DOCUMENTI (spec 0117) — VERDE, NON COMMITTATO (2026-09-11)
+
+**Cosa e'.** Quarta fase del modulo Task, sopra la 0116. Porta sul Task le due capacita'
+collaborative che `DOC Tasks.docx` gli assegna e che il codebase gia' aveva per altri moduli:
+note collaborative (spec 0052) e documenti allegati. NESSUN ENDPOINT NUOVO: l'intera feature e'
+la registrazione di due alias sugli endpoint generici esistenti, piu' il descrittore che li
+accompagna. 19 file toccati, 92 righe aggiunte in produzione.
+
+**Le quattro decisioni dell'utente (2026-09-11), congelate nella spec.**
+- Documenti: si comportano ESATTAMENTE come quelli di Opportunita' -> NESSUN gate per-record
+  (D-8). Conseguenza ACCETTATA e messa a verbale: chi ha `attachments.viewAny` legge e scarica
+  i documenti di un Task che `TaskVisibilityScope` gli nasconde. E' pinnata da un test
+  ("D-8: attachments carry NO per-record gate...") perche' nessuno la riscopra come difetto.
+  Chiuderla significa dare al sottosistema Attachment un gate per tutti e sei gli alias: spec a se'.
+- Note: stesso meccanismo delle note dell'Offerta -> `TaskNotable` rispecchia
+  `RequestManagementNotable`, riscrivendone il predicato su `TaskVisibilityScope`.
+- Dettaglio: card collaborazione a tab (Note | Documenti | Attivita'), il log attivita' SI SPOSTA
+  li' dentro e non e' piu' un blocco a se'.
+- Solo il dettaglio: niente dialog/badge di riga nella tabella Task in questa fase.
+
+**NAMING CONGELATO, da riusare e non reinventare.**
+- `App\Services\Tasks\TaskNotable` — il descrittore `NotableEntity` del Task. Vive nel
+  namespace del modulo OSPITE, mai in `app/Notes/` (AC-021 della 0052, verificato da
+  `NoteAgnosticismTest`, che ora cerca anche i needle `Task`/`TaskNotable`/`App\Services\Tasks`).
+  A differenza delle altre classi Tasks e' risolta dal container, quindi NON deve restare statica.
+- Slug note = **`tasks`** (plurale, vocabolario di AUTORIZZAZIONE, allineato a `TASKS_DOMAIN`).
+- Alias documenti = **`task`** (singolare, vocabolario di IDENTITA', gia' nella morph map dalla
+  0101). I due sono diversi per costruzione: non "uniformarli".
+- `tasks.viewDocuments` — nuova ability su `TaskPolicy`, esposta come `view_documents` in
+  `TasksAuthorization::actions()`. Il catalogo permessi `tasks.*` passa da 13 a **14**.
+- `TASK_ATTACHABLE_ALIAS` in `features/tasks/api.ts`; `TaskCollaborationSection` in
+  `features/tasks/task-collaboration-section.tsx`.
+
+**TRE COSE SCOPERTE QUI, che costano tempo se riscoperte.**
+1. `GET /api/notes/mentionable-users` risponde con l'envelope for-select (`items`/`pagination`):
+   **non ha affatto una chiave `data`**. Un test che legge `json('data')` ottiene `null` e passa
+   in silenzio se l'asserzione e' un `not->toContain`.
+2. `GET /api/tasks/{id}` mette `permissions` accanto a `data`, non dentro: il path e'
+   `permissions.actions.*`, non `data.permissions.actions.*`.
+3. Radix monta SOLO il pannello del tab attivo e sotto jsdom l'attivazione via pointer non e'
+   affidabile. L'idioma gia' in uso nel repo (`contract-detail.test.tsx`) e' stubbare
+   `TabsContent` perche' renderizzi sempre, lasciando reali `Tabs`/`TabsList`/`TabsTrigger`.
+   Non c'e' `@testing-library/user-event` in questo repo.
+
+**LA TRAPPOLA DELLA 0116 SI E' RIPRESENTATA, come previsto.** `taskActorWith()` e' duplicato in
+11 file di `tests/Feature/Tasks/` e PHP tiene solo la prima copia in ordine alfabetico: aggiunta
+`viewDocuments`, sono state aggiornate TUTTE E 11. Aggiungendo un'altra ability, rifarlo.
+
+**DUE TEST MODIFICATI, e perche' (non e' test tampering).** `TaskPermissionsTest` asseriva 13
+permessi `tasks.*`: il requisito e' cambiato, `tasks.viewDocuments` e' un permesso nuovo e voluto,
+quindi 13 -> 14 in due punti. `NoteAgnosticismTest` ha guadagnato i needle del secondo host.
+
+**VERIFICA ESEGUITA (su albero fermo).** `XDEBUG_MODE=off ./vendor/bin/pest` -> **7030 test,
+7029 passed, 1 skipped, 0 failed**, 29355 asserzioni (baseline 0116: 6999; +31 = 21 note + 10
+documenti). `npx vitest run` -> 629 file, **4773/4773**. `npx tsc -b --force --pretty false`
+EXIT 0. `pint --test` pulito sull'elenco esplicito dei file. **AC-028 (responsive 375/768/1024)
+NON verificato**: e' verifica manuale sull'app reale, resta da fare.
+
+**COSA RESTA FUORI (non e' incompleto: e' deciso).** Segnatempo; le 11 classi di notifica `Task*`
+e ogni mail; "Richiedi aggiornamento"; ricorrenza; campi obbligatori alla creazione e stato
+iniziale automatico; allegati in fase di CREAZIONE del Task; note/documenti come azioni di riga
+in tabella; Fase 2 della 0101 (Task collegati dentro Opportunita'/Commessa/Anagrafica); qualunque
+gate per-record sugli allegati.
+
+**DEBITO NOTO, segnalato e non risolto.** Questo file ha superato **960 KB** contro la regola di
+manutenzione di ~50 KB scritta nel suo stesso header: le voci vecchie andrebbero spostate in
+`docs/handoff-archive/`. Non fatto qui perche' fuori dallo scope della 0117.
+
 ## MODULO TASK — FASE 3: RUOLI SUL RECORD + AZIONI (spec 0116) — VERDE, NON COMMITTATO (2026-09-11)
 
 **Cosa e'.** Terza fase del modulo Task, dopo la Fase 1 (spec 0101). Nasce dal documento di
