@@ -6,11 +6,16 @@ import {
   blockTask,
   completeTask,
   rejectTask,
+  requestTaskUpdate,
   taskDetailQueryKey,
   uncompleteTask,
   unblockTask,
 } from '@/features/tasks/api'
-import type { CompleteTaskPayload, TaskDetailWithPermissions } from '@/features/tasks/types'
+import type {
+  CompleteTaskPayload,
+  RequestTaskUpdatePayload,
+  TaskDetailWithPermissions,
+} from '@/features/tasks/types'
 
 interface TaskMutationOptions {
   taskId: number
@@ -92,4 +97,18 @@ export function useBlockTask(options: TaskMutationOptions) {
 
 export function useUnblockTask(options: TaskMutationOptions) {
   return useTaskActionMutation(options, unblockTask)
+}
+
+/**
+ * "Richiedi aggiornamento" (spec 0118 D-10..D-14): unlike the other five
+ * body-less actions, it carries a payload (`recipient_ids`/`message`), so it
+ * follows `useCompleteTask`'s shape rather than `useTaskActionMutation`'s.
+ */
+export function useRequestTaskUpdate({ taskId, onSuccess }: TaskMutationOptions) {
+  const queryClient = useQueryClient()
+
+  return useMutation<TaskDetailWithPermissions, AxiosError<ApiErrorResponse>, RequestTaskUpdatePayload>({
+    mutationFn: (payload) => requestTaskUpdate(taskId, payload),
+    onSuccess: (task) => seedAndNotify(queryClient, taskId, task, onSuccess),
+  })
 }

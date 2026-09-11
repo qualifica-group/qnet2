@@ -89,9 +89,12 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // (58th), and spec 0114's
     // `2026_09_10_140000_add_simplified_offer_line_to_product_categories_table`
     // (59th), and spec 0116's
-    // `2026_09_11_100000_designate_in_progress_task_status` (60th).
+    // `2026_09_11_100000_designate_in_progress_task_status` (60th), and spec
+    // 0118 D-5's `2026_09_11_110000_designate_assigned_task_status` (61st),
+    // which promotes the ordinary "Assegnato" row to a protected one so the
+    // derived initial status (D-4) is reachable by `system_key`.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 60]);
+    Artisan::call('migrate:rollback', ['--step' => 61]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

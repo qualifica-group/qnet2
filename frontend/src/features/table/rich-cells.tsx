@@ -13,6 +13,7 @@ import {
   badgeColorClass,
 } from '@/features/table/cell-renderers'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
+import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
 import { StatusDescriptionHint } from '@/features/quote-workflows/status-description-hint'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
@@ -91,20 +92,28 @@ export function RefNamesCell({ value }: ICellRendererParams) {
   )
 }
 
-/** A status relation `{name, color}`, optionally carrying its `description` (working statuses, spec 0047). */
+/**
+ * A status relation `{name, color}`, optionally carrying its `description`
+ * (working statuses, spec 0047) and its configured `icon` (the five task
+ * lookups, spec 0101 AC-072).
+ */
 interface StatusLike {
   name?: string | null
   color?: string | null
   description?: string | null
+  icon?: string | null
 }
 
 /**
  * Renders a status relation (`pipeline_status`, `lead_status`,
- * `workflow_status`) as a colored badge with a leading solid dot in the
- * token's strong shade — the enterprise status-chip look. Colorless statuses
- * fall back to the neutral badge. When the projected row carries a
- * `description` (only the working statuses do today), an "(i)" marker sits
- * next to the badge and reveals it on hover/focus.
+ * `workflow_status`) as a colored badge whose leading mark is the row's
+ * CONFIGURED icon when it carries one, and the solid dot in the token's
+ * strong shade otherwise — same rule the detail pill already applies
+ * (`TaskLookupBadge`), so grid and detail read identically and changing the
+ * icon from the configurator needs no code change. Colorless statuses fall
+ * back to the neutral badge. When the projected row carries a `description`
+ * (only the working statuses do today), an "(i)" marker sits next to the
+ * badge and reveals it on hover/focus.
  */
 export function StatusBadgeCell({ value }: ICellRendererParams) {
   const status = value as StatusLike | null | undefined
@@ -112,11 +121,12 @@ export function StatusBadgeCell({ value }: ICellRendererParams) {
   if (typeof name !== 'string' || name === '') {
     return <EmptyCell />
   }
-  const dotClass = swatchClassFor(status?.color)
+  const dotClass = status?.icon ? null : swatchClassFor(status?.color)
 
   return (
     <div className={cn(CELL_WRAPPER, 'gap-1')}>
       <Badge variant="secondary" className={cn(BADGE_BASE, 'gap-1.5', badgeColorClass(status?.color))}>
+        <DynamicIcon name={status?.icon} className="size-3.5 shrink-0" />
         {dotClass ? (
           <span className={cn('size-1.5 shrink-0 rounded-full', dotClass)} aria-hidden="true" />
         ) : null}

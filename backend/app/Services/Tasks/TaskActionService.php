@@ -5,44 +5,53 @@ declare(strict_types=1);
 namespace App\Services\Tasks;
 
 use App\DataObjects\Tasks\CompleteTaskData;
+use App\DataObjects\Tasks\RequestTaskUpdateData;
 use App\Enums\TaskStatusSystemKey;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
+use App\Notifications\TaskUpdateRequested;
 use App\Services\TaskService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 /**
- * The six domain actions that move a Task's STATE (spec 0116, D-8):
- * complete, uncomplete, approve, reject, block, unblock. Each is a single,
- * small write inside its own transaction, followed by the SAME detail read
- * TaskController::show uses (TaskService::loadDetail()), so every action's
- * response is identical in shape to a plain GET — the same contract
- * App\Services\ContractActionService keeps for the Contracts module this
- * class is modelled on.
+ * The seven domain actions that move a Task's STATE, or ask someone about
+ * it (spec 0116, D-8; spec 0118, D-10..D-14): complete, uncomplete, approve,
+ * reject, block, unblock, requestUpdate. Six of the seven are a single,
+ * small write inside their own transaction, followed by the SAME detail
+ * read TaskController::show uses (TaskService::loadDetail()), so every
+ * action's response is identical in shape to a plain GET — the same
+ * contract App\Services\ContractActionService keeps for the Contracts
+ * module this class is modelled on. requestUpdate() is the one exception:
+ * it writes nothing to the Task at all (see its own docblock).
  *
  * Every method re-asserts, on top of what the controller's
  * `$this->authorize()` already checked, exactly what
  * App\Authorization\TasksAuthorization::actionPermissions() computes for the
  * UI flag: the flag is a suggestion, the Service is the control (class
- * docblock constraint). Three guards recur across the six:
+ * docblock constraint). Three guards recur across the seven:
  *  - assertNotBlocked() — D-8: an `is_blocked` Task admits only unblock()
  *    (409), never block() itself, whose own availability check already
  *    covers "not already blocked".
- *  - assertOwnsMandate() — D-2's admin-as-assignee deroga, re-asserted here
- *    (not only in TaskPolicy) because `Gate::before` for the privileged role
- *    bypasses the Policy entirely: without this a super-admin who is also
- *    an assignee would validate or block their own Task (AC-011). Reads
- *    `TaskAbilityResolver::canValidate()`/`canBlock()` — the SAME matrix the
- *    Policy consults, never a re-implementation of the rule.
+ *  - the record-role matrix, re-asserted here (not only in TaskPolicy)
+ *    because `Gate::before` for the privileged role bypasses the Policy
+ *    entirely: without this a super-admin who is also an assignee would
+ *    validate, block or request an update on their own Task (AC-011,
+ *    AC-042). Reads `TaskAbilityResolver::canValidate()`/`canBlock()`/
+ *    `canRequestUpdate()` — the SAME matrix the Policy consults, never a
+ *    re-implementation of the rule.
  *  - the injected TaskActionAvailability — WHEN the action makes sense for
  *    the Task's current phase (422 when it does not), never mixed with the
  *    two guards above, which are pure authorization concerns (D-1).
  *
- * D-9 (notifications) and D-10 (timesheet) are OUT OF SCOPE: each method
- * ends with its `return $this->taskService->loadDetail(...)` — the
- * DECLARED insertion point for both, added just before that line once their
- * own microtask lands.
+ * D-9 (timesheet, renumbered D-10 in spec 0118) is OUT OF SCOPE: each of the
+ * six state-changing methods ends with its
+ * `return $this->taskService->loadDetail(...)` — the DECLARED insertion
+ * point, added just before that line once its own microtask lands.
+ * Notifications are NO LONGER entirely out of scope: requestUpdate() is the
+ * first (and, per spec 0118 D-13, only) action of this class that sends
+ * one — to the caller-chosen recipients alone, never automatically.
  */
 final class TaskActionService
 {
@@ -181,6 +190,30 @@ final class TaskActionService
     }
 
     /**
+     * "Richiedi aggiornamento" (spec 0118, D-10..D-14): does NOT open a
+     * transaction, unlike its six siblings — there is nothing to write to
+     * the Task and therefore nothing to roll back. Availability re-uses
+     * `isCompletable()`, the SAME rule complete() enforces (D-10 forbids a
+     * twin method); the matrix (`canRequestUpdate()`) is re-asserted here
+     * past `Gate::before`, exactly like the other mandate checks below. The
+     * notification goes ONLY to the recipients the actor named — D-11
+     * forbids any automatic audience — and the response is the same detail
+     * read every other action returns (D-14), even though this one changed
+     * nothing.
+     */
+    public function requestUpdate(Task $task, RequestTaskUpdateData $data, User $actor): Task
+    {
+        $this->assertNotBlocked($task);
+        $this->assertMayRequestUpdate($actor, $task);
+        $this->assertRequestUpdateAvailable($task);
+
+        $recipients = User::query()->whereIn('id', $data->recipientIds)->get();
+        Notification::send($recipients, new TaskUpdateRequested($task, $actor, $data->message));
+
+        return $this->taskService->loadDetail($task->fresh());
+    }
+
+    /**
      * D-8: a frozen Task admits no state-changing action except unblock().
      */
     private function assertNotBlocked(Task $task): void
@@ -222,6 +255,22 @@ final class TaskActionService
         );
     }
 
+    /**
+     * The mirror of assertOwnsMandateForValidation()/assertOwnsMandateForBlocking()
+     * for requestUpdate() (spec 0118, D-10): the one matrix row that also
+     * admits the watcher, so it is NOT phrased as "owns the mandate" like
+     * the other two — TaskAbilityResolver::canRequestUpdate() is its own row,
+     * not a synonym for ownsTheMandate().
+     */
+    private function assertMayRequestUpdate(User $actor, Task $task): void
+    {
+        abort_unless(
+            TaskAbilityResolver::canRequestUpdate($actor, $task),
+            403,
+            'Only the creator, the requester, a watcher or a manager may request an update on this task.',
+        );
+    }
+
     private function assertCompletable(Task $task): void
     {
         if (! $this->availability->isCompletable($task)) {
@@ -254,6 +303,17 @@ final class TaskActionService
     {
         if (! $this->availability->isUnblockable($task)) {
             abort(422, 'This task is not blocked.');
+        }
+    }
+
+    /**
+     * D-10: the same availability window as complete() — `isCompletable()`,
+     * not a twin method — carrying its own message for this action.
+     */
+    private function assertRequestUpdateAvailable(Task $task): void
+    {
+        if (! $this->availability->isCompletable($task)) {
+            abort(422, 'This task is already closed or awaiting validation.');
         }
     }
 

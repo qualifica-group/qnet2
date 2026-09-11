@@ -17,14 +17,17 @@ use Illuminate\Validation\Rule;
  * (spec 0004) additionally rejects any submitted field the actor cannot edit
  * (create-context, model = null).
  *
- * `creator_id`, `completion_percentage` and `is_blocked` are `prohibited`
- * UNCONDITIONALLY, regardless of value and regardless of the actor's role
- * (AC-011/AC-035): the creator is server-side (D-10), the percentage is
- * derived from the status (D-6), and `is_blocked` is written ONLY by the
- * block/unblock domain actions, never at creation time (spec 0116 D-6) — so
- * none of the three is ever a client input. Field permissions alone cannot
- * express this — the privileged role bypasses every ceiling — so the rule
- * lives here, ahead of and independent from that mechanism.
+ * Four fields are `prohibited` UNCONDITIONALLY, regardless of value and
+ * regardless of the actor's role (AC-011/AC-035/AC-009): `creator_id`, the
+ * creator is server-side (D-10); `completion_percentage`, derived from the
+ * status (D-6); `is_blocked`, written ONLY by the block/unblock domain
+ * actions, never at creation time (spec 0116 D-6); and, since spec 0118 D-3,
+ * `task_status_id` — the initial status is now DERIVED server-side by
+ * `App\Services\Tasks\TaskInitialStatusResolver` (D-4) from the assignees/
+ * creator/requester, so it is no longer a client input either. Field
+ * permissions alone cannot express this — the privileged role bypasses
+ * every ceiling — so the rule lives here, ahead of and independent from
+ * that mechanism.
  *
  * `start_time`/`end_time` are `H:i` TEXT (D-11): `FieldDefinition` has no
  * `time` type, and adding one to the shared catalogue is out of scope.
@@ -58,8 +61,8 @@ class StoreTaskRequest extends FormRequest
             'creator_id' => ['prohibited'],
             'completion_percentage' => ['prohibited'],
             'is_blocked' => ['prohibited'],
+            'task_status_id' => ['prohibited'],
             'title' => ['required', 'string', 'max:'.self::TITLE_MAX],
-            'task_status_id' => ['required', 'integer', Rule::exists('task_statuses', 'id')],
             'description' => ['sometimes', 'nullable', 'string'],
             'registry_id' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
             'referent_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
@@ -70,16 +73,16 @@ class StoreTaskRequest extends FormRequest
             'task_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_categories', 'id')],
             'opportunity_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
             'work_order_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_orders', 'id')],
-            'requester_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
+            'requester_id' => ['required', 'integer', Rule::exists('users', 'id')],
             'start_date' => ['sometimes', 'nullable', 'date'],
-            'end_date' => ['sometimes', 'nullable', 'date'],
+            'end_date' => ['required', 'date'],
             'completion_date' => ['sometimes', 'nullable', 'date'],
             'start_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'end_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'requires_closure_feedback' => ['sometimes', 'boolean'],
             'closure_feedback' => ['sometimes', 'nullable', 'string'],
-            'assignee_ids' => ['sometimes', 'array'],
+            'assignee_ids' => ['required', 'array', 'min:1'],
             'assignee_ids.*' => ['integer', Rule::exists('users', 'id')],
             'watcher_ids' => ['sometimes', 'array'],
             'watcher_ids.*' => ['integer', Rule::exists('users', 'id')],

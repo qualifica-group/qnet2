@@ -43,7 +43,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -109,18 +109,13 @@ it('AC-031: 422 when the feedback is whitespace only: the check trims before dec
     $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $open->id]);
 })->with('closingTaskStatuses');
 
-it('AC-030: the same rule applies on CREATE, not only on update', function () {
-    $actor = taskActorWith(['create']);
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/tasks', [
-        'title' => 'Nasce gia chiusa',
-        'task_status_id' => closingTaskStatus(TaskStatusSystemKey::ClosedPositive)->id,
-        'requires_closure_feedback' => true,
-    ])->assertStatus(422)->assertJsonValidationErrors('closure_feedback');
-
-    $this->assertDatabaseMissing('tasks', ['title' => 'Nasce gia chiusa']);
-});
+// REQUIREMENT CHANGED (spec 0118 D-3): task_status_id is now `prohibited` on
+// POST — the server derives it (D-4) and the two derivable rows are both
+// `open` (D-6), so a Task can no longer be born already closed. The
+// data_contract states this scenario is deliberately "non raggiungibile in
+// creazione" now; submitting task_status_id on POST 422s for THAT reason
+// (spec 0118 AC-009), never for a missing closure_feedback, so the "same
+// rule applies on CREATE" case this test pinned no longer exists.
 
 // ---------------------------------------------------------------------------
 // AC-032 / AC-033 / AC-034 — the three ways through the guard

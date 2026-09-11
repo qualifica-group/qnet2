@@ -7,7 +7,8 @@ describe('buildCreatePayload', () => {
     const payload = buildCreatePayload(values())
 
     expect(payload.title).toBe('Richiamare il cliente')
-    expect(payload.task_status_id).toBe(3)
+    expect(payload.requester_id).toBe(21)
+    expect(payload.end_date).toBe('2026-09-05')
     expect(payload.assignee_ids).toEqual([31, 32])
     expect(payload.watcher_ids).toEqual([41])
     expect(payload.start_time).toBe('09:00')
@@ -19,6 +20,12 @@ describe('buildCreatePayload', () => {
 
     expect(payload).not.toHaveProperty('creator_id')
     expect(payload).not.toHaveProperty('completion_percentage')
+  })
+
+  it('AC-009: never carries task_status_id — the server derives it on create (D-3)', () => {
+    const payload = buildCreatePayload(values())
+
+    expect(payload).not.toHaveProperty('task_status_id')
   })
 })
 
@@ -42,7 +49,7 @@ describe('buildUpdatePayload', () => {
     expect(payload).not.toHaveProperty('watcher_ids')
   })
 
-  it('AC-083: the same user in both sets is sent to both pivots', () => {
+  it('syncs both pivots independently when both change (mechanics only — D-9 overlap is a schema-level rule, see task-schema.test.ts)', () => {
     const payload = buildUpdatePayload(values({ assignee_ids: [31, 41], watcher_ids: [41, 31] }), task())
 
     expect(payload.assignee_ids).toEqual([31, 41])

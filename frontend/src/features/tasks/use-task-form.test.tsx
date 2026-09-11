@@ -6,12 +6,38 @@ import i18n from '@/i18n'
 import { createTask } from '@/features/tasks/api'
 import { useTaskForm } from '@/features/tasks/use-task-form'
 import { taskDetailWithPermissions, taskStatus } from '@/features/tasks/task-fixtures'
+import { DEFAULT_MODULE_OPEN_PREFERENCES } from '@/features/modules/types'
 import type { TaskStatusForSelectItem } from '@/features/tasks/for-select-api'
+import type { User } from '@/features/auth/types'
 
 vi.mock('@/features/tasks/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/tasks/api')>('@/features/tasks/api')
   return { ...actual, createTask: vi.fn(), updateTask: vi.fn() }
 })
+
+/** The connected actor `useTaskForm` reads to prefill the requester (spec 0118 D-1). */
+const currentUserMock = vi.fn<() => User | null>(() => currentUser())
+vi.mock('@/features/auth/use-auth', () => ({
+  useAuth: () => ({ user: currentUserMock() }),
+}))
+
+function currentUser(overrides: Partial<User> = {}): User {
+  return {
+    id: 99,
+    name: 'Utente Corrente',
+    email: 'utente@example.com',
+    locale: 'en',
+    roles: [],
+    avatar_url: null,
+    personal_data: null,
+    created_at: null,
+    module_open_preferences: DEFAULT_MODULE_OPEN_PREFERENCES,
+    ui_scale: 40,
+    date_format: 'dmy',
+    time_format: '24h',
+    ...overrides,
+  }
+}
 
 /** A stable `QueryClient` per test, never per render: a per-render one resets the cache and flakes. */
 function wrapper() {
@@ -258,6 +284,49 @@ describe('useTaskForm — closure feedback rule follows the picked status (D-7)'
     })
 
     expect(result.current.form.getFieldState('closure_feedback').error).toBeUndefined()
+  })
+})
+
+/** Spec 0118 D-1: `requester_id` is required now, and the actor is the requester most of the time. */
+describe('useTaskForm — requester prefill on create (spec 0118 D-1)', () => {
+  it('defaults the requester to the connected actor, editable', () => {
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    expect(result.current.form.getValues('requester_id')).toBe(99)
+    expect(result.current.currentUserRef).toEqual({ id: 99, name: 'Utente Corrente' })
+
+    act(() => {
+      result.current.form.setValue('requester_id', 7)
+    })
+    expect(result.current.form.getValues('requester_id')).toBe(7)
+  })
+
+  it('leaves the requester null when no actor is resolved yet', () => {
+    // `mockReturnValue` (not `-Once`): the hook may read `useAuth()` more than
+    // once per mount, and a `-Once` override would only cover the first call.
+    currentUserMock.mockReturnValue(null)
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    expect(result.current.form.getValues('requester_id')).toBeNull()
+    expect(result.current.currentUserRef).toBeNull()
+
+    currentUserMock.mockImplementation(() => currentUser())
+  })
+
+  it('does not touch the persisted requester in edit mode', () => {
+    const task = taskDetailWithPermissions({ requester_id: 21, requester: { id: 21, name: 'Bruno Bianchi' } })
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'edit', task }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    expect(result.current.form.getValues('requester_id')).toBe(21)
   })
 })
 

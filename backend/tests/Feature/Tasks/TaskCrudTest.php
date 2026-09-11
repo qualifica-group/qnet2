@@ -14,13 +14,17 @@ uses(RefreshDatabase::class);
 
 /*
 |--------------------------------------------------------------------------
-| Task CRUD (spec 0101, AC-010..AC-017)
+| Task CRUD (spec 0101, AC-010..AC-017; spec 0118 D-1/D-2, AC-001..AC-008)
 |--------------------------------------------------------------------------
 |
 | The visibility scoping (D-9) has its own suite: every actor here is given
 | `tasks.viewAll` on top of the requested abilities so a 403 in THIS file
 | always means "missing resource permission", never "not a member" — the
 | same separation WorkOrderSecurityTest/WorkOrderVisibilityTest draw.
+|
+| The status-derivation feature tests (spec 0118 AC-009..AC-015) live in
+| TaskInitialStatusTest.php instead, next to the resolver's own unit tests
+| and the "Assegnato" promotion — the theme that file already owns.
 */
 
 if (! function_exists('taskActorWith')) {
@@ -38,7 +42,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -58,33 +62,134 @@ if (! function_exists('taskActorWith')) {
 
 if (! function_exists('taskPayload')) {
     /**
-     * The two mandatory create fields (data_contract POST /api/tasks).
+     * The four create-mandatory fields (spec 0118 D-1, data_contract POST
+     * /api/tasks): `title`, `requester_id`, `assignee_ids` (min 1) and
+     * `end_date`. `task_status_id` is DELIBERATELY absent — it is
+     * `prohibited` since D-3, the server derives it.
      *
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
      */
     function taskPayload(array $overrides = []): array
     {
-        return ['title' => 'Prima attivita', 'task_status_id' => TaskStatus::factory()->create()->id, ...$overrides];
+        return [
+            'title' => 'Prima attivita',
+            'requester_id' => User::factory()->create()->id,
+            'assignee_ids' => [User::factory()->create()->id],
+            'end_date' => '2026-12-31',
+            ...$overrides,
+        ];
     }
 }
+
+// ---------------------------------------------------------------------------
+// AC-001..AC-005 — the four create-mandatory fields (spec 0118 D-1)
+// ---------------------------------------------------------------------------
+
+it('AC-001: POST without requester_id is 422 on requester_id, no row created', function () {
+    $actor = taskActorWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $payload = taskPayload();
+    unset($payload['requester_id']);
+
+    $this->postJson('/api/tasks', $payload)
+        ->assertStatus(422)->assertJsonValidationErrors('requester_id');
+
+    $this->assertDatabaseMissing('tasks', ['title' => 'Prima attivita']);
+});
+
+it('AC-002: POST without assignee_ids is 422 on assignee_ids', function () {
+    $actor = taskActorWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $payload = taskPayload();
+    unset($payload['assignee_ids']);
+
+    $this->postJson('/api/tasks', $payload)
+        ->assertStatus(422)->assertJsonValidationErrors('assignee_ids');
+});
+
+it('AC-003: POST with assignee_ids: [] is 422 on assignee_ids (min 1)', function () {
+    $actor = taskActorWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/tasks', taskPayload(['assignee_ids' => []]))
+        ->assertStatus(422)->assertJsonValidationErrors('assignee_ids');
+});
+
+it('AC-004: POST without end_date is 422 on end_date', function () {
+    $actor = taskActorWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $payload = taskPayload();
+    unset($payload['end_date']);
+
+    $this->postJson('/api/tasks', $payload)
+        ->assertStatus(422)->assertJsonValidationErrors('end_date');
+});
+
+it('AC-005: POST without start_date is 201: start_date stays optional', function () {
+    $actor = taskActorWith(['create', 'view']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/tasks', taskPayload())->assertCreated();
+});
+
+// ---------------------------------------------------------------------------
+// AC-006..AC-008 — the same four fields on PATCH (spec 0118 D-2)
+// ---------------------------------------------------------------------------
+
+it('AC-006: PATCH with requester_id: null is 422 and the Task does not change', function () {
+    $actor = taskActorWith(['view', 'update']);
+    $requester = User::factory()->create();
+    $task = Task::factory()->forCreator($actor)->create(['requester_id' => $requester->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tasks/{$task->id}", ['requester_id' => null])
+        ->assertStatus(422)->assertJsonValidationErrors('requester_id');
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'requester_id' => $requester->id]);
+});
+
+it('AC-007: PATCH submitting only description is 200: the four mandatory fields are not required when absent', function () {
+    $actor = taskActorWith(['view', 'update']);
+    $task = Task::factory()->forCreator($actor)->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tasks/{$task->id}", ['description' => 'Aggiornamento minimo'])
+        ->assertOk()
+        ->assertJsonPath('data.description', 'Aggiornamento minimo');
+});
+
+it('AC-008: PATCH of title alone on a historical Task without requester_id is 200: no retroactive sanitisation', function () {
+    $actor = taskActorWith(['view', 'update']);
+    // A historical row, built directly rather than through the endpoint —
+    // exactly the shape D-2 says is never migrated or backfilled.
+    $task = Task::factory()->forCreator($actor)->create(['requester_id' => null]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tasks/{$task->id}", ['title' => 'Solo il titolo'])
+        ->assertOk()
+        ->assertJsonPath('data.title', 'Solo il titolo');
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'requester_id' => null, 'title' => 'Solo il titolo']);
+});
 
 // ---------------------------------------------------------------------------
 // AC-010 — create, with the creator taken from the authenticated actor
 // ---------------------------------------------------------------------------
 
-it('AC-010: POST with title + task_status_id returns 201 and persists the row', function () {
+it('AC-010: POST with the four mandatory fields returns 201 and persists the row', function () {
     $actor = taskActorWith(['create', 'view']);
-    $status = TaskStatus::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/tasks', ['title' => 'Chiamare il cliente', 'task_status_id' => $status->id])
+    $response = $this->postJson('/api/tasks', taskPayload(['title' => 'Chiamare il cliente']))
         ->assertCreated()
         ->assertJsonPath('success', true)
-        ->assertJsonPath('data.title', 'Chiamare il cliente')
-        ->assertJsonPath('data.task_status_id', $status->id);
+        ->assertJsonPath('data.title', 'Chiamare il cliente');
 
-    $this->assertDatabaseHas('tasks', ['title' => 'Chiamare il cliente', 'task_status_id' => $status->id]);
+    $this->assertDatabaseHas('tasks', ['title' => 'Chiamare il cliente', 'id' => $response->json('data.id')]);
 });
 
 it('AC-010: creator_id is the authenticated actor, never taken from the payload (D-10)', function () {
@@ -101,19 +206,22 @@ it('AC-010: 422 when title is missing', function () {
     $actor = taskActorWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/tasks', ['task_status_id' => TaskStatus::factory()->create()->id])
+    $payload = taskPayload();
+    unset($payload['title']);
+
+    $this->postJson('/api/tasks', $payload)
         ->assertStatus(422)->assertJsonValidationErrors('title');
 });
 
-it('AC-010: 422 when task_status_id is missing or does not exist', function () {
+it('AC-009: POST with task_status_id among the payload is 422 (prohibited), no row created', function () {
     $actor = taskActorWith(['create']);
+    $status = TaskStatus::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/tasks', ['title' => 'Senza stato'])
+    $this->postJson('/api/tasks', taskPayload(['task_status_id' => $status->id]))
         ->assertStatus(422)->assertJsonValidationErrors('task_status_id');
 
-    $this->postJson('/api/tasks', ['title' => 'Stato inesistente', 'task_status_id' => 999999])
-        ->assertStatus(422)->assertJsonValidationErrors('task_status_id');
+    $this->assertDatabaseMissing('tasks', ['title' => 'Prima attivita']);
 });
 
 // ---------------------------------------------------------------------------
@@ -180,7 +288,11 @@ it('AC-012: PATCH of the title alone touches neither assignees nor watchers', fu
         ->and($task->fresh()->watchers->pluck('id')->all())->toBe([$watcher->id]);
 });
 
-it('AC-012: PATCH with assignee_ids: [] empties the assignees and leaves the watchers', function () {
+// REQUIREMENT CHANGED (spec 0118 D-2): assignee_ids keeps its `min:1` floor
+// on PATCH too — a Task can no longer be emptied of every assignee, on
+// create or on update. The AC-012 scenario "assignee_ids: [] empties the
+// assignees" from spec 0101 no longer holds; this is its replacement.
+it('AC-012 (spec 0118 D-2): PATCH with assignee_ids: [] is 422, and neither pivot changes', function () {
     $actor = taskActorWith(['view', 'update']);
     $assignee = User::factory()->create();
     $watcher = User::factory()->create();
@@ -189,9 +301,10 @@ it('AC-012: PATCH with assignee_ids: [] empties the assignees and leaves the wat
     $task->watchers()->attach($watcher->id);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tasks/{$task->id}", ['assignee_ids' => []])->assertOk();
+    $this->patchJson("/api/tasks/{$task->id}", ['assignee_ids' => []])
+        ->assertStatus(422)->assertJsonValidationErrors('assignee_ids');
 
-    expect($task->fresh()->assignees)->toHaveCount(0)
+    expect($task->fresh()->assignees->pluck('id')->all())->toBe([$assignee->id])
         ->and($task->fresh()->watchers->pluck('id')->all())->toBe([$watcher->id]);
 });
 

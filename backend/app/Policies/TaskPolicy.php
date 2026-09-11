@@ -122,6 +122,18 @@ class TaskPolicy extends BasePolicy
     }
 
     /**
+     * "Richiedi aggiornamento" (spec 0118, D-10): the seventh domain action,
+     * and the only matrix row where the watcher is admitted alongside
+     * creatore/richiedente/gestore — a plain assignee is not (AC-040).
+     */
+    public function requestUpdate(User $user, Task $task): bool
+    {
+        return $user->can($this->permission('requestUpdate'))
+            && $this->isInScope($user, $task)
+            && TaskAbilityResolver::canRequestUpdate($user, $task);
+    }
+
+    /**
      * Resource-level, exactly like OpportunityPolicy::viewDocuments (spec
      * 0117 D-8): it gates the documents tab of the detail, NOT the single
      * attachment. Each attachment endpoint keeps being authorized on its own
@@ -139,7 +151,7 @@ class TaskPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'];
+        return [...parent::abilities(), 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'];
     }
 
     private function isInScope(User $user, Model $model): bool

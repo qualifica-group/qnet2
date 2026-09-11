@@ -65,26 +65,86 @@ function baseFields(t: TFunction) {
       .nullable(),
     requires_closure_feedback: z.boolean(),
     closure_feedback: z.string().nullable(),
-    // Flat id arrays (AC-083); the same user may sit in both.
+    // Flat id arrays; since D-9 `watcher_ids` may not overlap `requester_id`/
+    // `assignee_ids` (see `addWatcherOverlapIssue`).
     assignee_ids: z.array(z.number()),
     watcher_ids: z.array(z.number()),
   }
 }
 
-/** Values the two refinements below read; narrower than the whole form. */
+/** Values the refinements below read; narrower than the whole form. */
 interface RefinedValues {
   task_status_id: number | null
+  requester_id: number | null
+  end_date: string | null
+  assignee_ids: number[]
+  watcher_ids: number[]
   requires_closure_feedback: boolean
   closure_feedback: string | null
 }
 
-/** `task_status_id` is NOT NULL server-side, so an unpicked status is a client error. */
+/** `task_status_id` is NOT NULL server-side; on PATCH it is still required (D-3/D-6: create derives it). */
 function addMissingStatusIssue(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
   if (values.task_status_id === null) {
     ctx.addIssue({
       code: 'custom',
       path: ['task_status_id'],
       message: t('tasks.form.statusRequired'),
+    })
+  }
+}
+
+/** `requester_id` is required on both create and PATCH-when-submitted (spec 0118 D-1/D-2). */
+function addMissingRequesterIssue(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
+  if (values.requester_id === null) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['requester_id'],
+      message: t('tasks.form.requesterRequired'),
+    })
+  }
+}
+
+/** `assignee_ids` needs at least one element on both create and PATCH-when-submitted (D-1/D-2). */
+function addMissingAssigneesIssue(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
+  if (values.assignee_ids.length === 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['assignee_ids'],
+      message: t('tasks.form.assigneesRequired'),
+    })
+  }
+}
+
+/** `end_date` is required on both create and PATCH-when-submitted (D-1/D-2). */
+function addMissingEndDateIssue(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
+  if ((values.end_date ?? '').trim() === '') {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['end_date'],
+      message: t('tasks.form.endDateRequired'),
+    })
+  }
+}
+
+/**
+ * D-9 replicated for UX: an id in `watcher_ids` may not also be the
+ * requester or an assignee. This MIRRORS the server rule, it does not
+ * replace it — the 422 path stays wired in `useTaskForm`. The CREATOR is
+ * deliberately not checked here: it is not a form value (server-derived from
+ * the actor), so this client mirror covers requester+assignees only; the
+ * server 422 is the actual defense against a creator/watcher overlap.
+ */
+function addWatcherOverlapIssue(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
+  const reserved = new Set(values.assignee_ids)
+  if (values.requester_id !== null) {
+    reserved.add(values.requester_id)
+  }
+  if (values.watcher_ids.some((id) => reserved.has(id))) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['watcher_ids'],
+      message: t('tasks.form.watcherOverlap'),
     })
   }
 }
@@ -120,10 +180,26 @@ function addMissingClosureFeedbackIssue(
  * becomes part of the payload. One schema for create and edit — the partial
  * PATCH diff is computed by the payload builder, not by a second shape that
  * could drift.
+ *
+ * `isCreate` (spec 0118 D-1/D-3) is the only thing that branches by mode:
+ * `task_status_id` is required in edit only (the server derives it on
+ * create, D-3/D-4), while `requester_id`/`assignee_ids`/`end_date` and the
+ * watcher-overlap rule (D-9) apply in BOTH modes — a PATCH that submits them
+ * is bound by the same requiredness as a POST (D-2).
  */
-export function buildTaskSchema(t: TFunction, statusGroup: TaskStatusGroupValue | null = null) {
+export function buildTaskSchema(
+  t: TFunction,
+  statusGroup: TaskStatusGroupValue | null = null,
+  isCreate: boolean = false,
+) {
   return z.object(baseFields(t)).superRefine((values, ctx) => {
-    addMissingStatusIssue(values, ctx, t)
+    if (!isCreate) {
+      addMissingStatusIssue(values, ctx, t)
+    }
+    addMissingRequesterIssue(values, ctx, t)
+    addMissingAssigneesIssue(values, ctx, t)
+    addMissingEndDateIssue(values, ctx, t)
+    addWatcherOverlapIssue(values, ctx, t)
     addMissingClosureFeedbackIssue(values, statusGroup, ctx, t)
   })
 }

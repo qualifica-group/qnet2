@@ -3,6 +3,138 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MODULO TASK — FASE 5: REGOLE DI CREAZIONE + RICHIEDI AGGIORNAMENTO (spec 0118) — VERDE, NON COMMITTATO (2026-09-11)
+
+**Cosa e'.** Quinta fase del modulo Task, sopra 0101/0116/0117. Due blocchi del documento di
+prodotto `DOC Tasks.docx` che erano scoperti: le REGOLE DEL FLUSSO DI CREAZIONE e l'azione
+RICHIEDI AGGIORNAMENTO. 10 microtask in 5 onde, verifier indipendente VERDE su 68 criteri.
+
+**IL SEGNATEMPO NON C'E', ED E' DELIBERATO.** L'utente ha detto "segnatempo non pensarlo ora".
+Conseguenza da NON riscoprire come difetto: il pop-up di completamento NON chiede il segnatempo,
+che il documento vorrebbe obbligatorio in tutti e tre i casi. Resta scoperto fino alla sua spec.
+
+**LE DECISIONI DELL'UTENTE, congelate nella spec come D-1..D-14.**
+- Stato iniziale DERIVATO dal server: `task_status_id` e' `prohibited` su POST. La regola e' letta
+  al SINGOLARE come il documento la scrive: **esattamente un** assegnatario che sia il creatore o
+  il richiedente -> `open`; in ogni altro caso -> `assigned`. Due assegnatari danno `assigned`
+  anche se sono creatore e richiedente. Derivazione SOLO alla creazione, mai ri-derivata su PATCH.
+- Campi obbligatori alla creazione: `title`, `requester_id`, `assignee_ids` (min 1), `end_date`.
+  Su PATCH `sometimes|required`. Nessuna sanatoria sulle righe storiche che ne sono prive.
+- Divieto osservatore IMPLEMENTATO con 422: **AC-083 della 0101 E' RITIRATO**. I ruoli continuano
+  a sommarsi per tutto il resto (creatore+richiedente+assegnatario restano cumulabili).
+- Destinatari di "Richiedi aggiornamento": scelti fra assegnatari e osservatori, e ricevono SOLO
+  loro. Nessun invio automatico. Messaggio opzionale. Disponibile solo su task aperti.
+
+**NAMING CONGELATO, da riusare e non reinventare.**
+- `TaskStatusSystemKey::Assigned = 'assigned'` — QUINTA riga protetta. "Assegnato" era ordinaria,
+  promossa in-place dalla migrazione `2026_09_11_110000`. CONSEGUENZA ACCETTATA: l'admin non puo'
+  piu' cancellarla, riordinarla, disattivarla ne' cambiarne fase (`SystemStatusGuard`); resta
+  rinominabile, ricolorabile, e puo' cambiare icona e percentuale.
+- `App\Services\Tasks\TaskInitialStatusResolver::resolve(array $assigneeIds, int $creatorId, ?int $requesterId): int`
+- `App\Services\Tasks\TaskWatcherOverlapGuard::assertNoOverlap(...)` — riceve insiemi RISOLTI,
+  non la DTO: su PATCH combina submitted e persistito, ed e' quello che fa passare AC-033.
+- `tasks.requestUpdate` — catalogo `tasks.*` da 14 a **15**. `request_update` e' la dodicesima
+  chiave di `TasksAuthorization::actions()`. E' l'UNICA riga di matrice con l'osservatore
+  abilitato e l'assegnatario escluso, e il primo consumatore di `TaskRecordRoles::isWatcher()`.
+- `App\Notifications\TaskUpdateRequested(Task $task, User $requester, ?string $message)`.
+- FE: `RequestTaskUpdatePayload`, `task-request-update-dialog.tsx`, `task-action-error-message.ts`
+  (estratto da `task-actions-bar.tsx`: un `.tsx` non puo' esportare una non-componente,
+  `react-refresh/only-export-components`), `task-attachment-staging.tsx`.
+
+**COSE SCOPERTE QUI, che costano tempo se riscoperte.**
+1. Nella tupla di `TaskTaxonomyCatalogue::STATUSES` il quinto elemento e' la
+   **completion_percentage**, NON il `sort_order` (quello lo assegna `StatusOrderManager::placeNew()`).
+2. `tests/Feature/QuoteWorkflows/QuoteWorkflowMigrationTest.php` contiene uno `--step` di
+   `migrate:rollback` che va bumpato da CHIUNQUE aggiunga una migrazione, in qualsiasi dominio.
+   Il test lo dice ("Adding a migration means bumping this number") e diventa rosso lontano da
+   dove hai scritto. Ora e' 61.
+3. Le copie di `taskActorWith()` sono **13**, non 11, e crescono a ogni file di test nuovo. Non
+   contarle a memoria: `grep -rln "function taskActorWith" backend/tests/`. Esistono anche due
+   gemelli con nome diverso, `taskDocumentActor` e `taskNoteActor`, che enumerano le stesse
+   ability e vanno aggiornati insieme. Una copia rimasta indietro non rompe niente in modo
+   visibile: rende false un flag, in silenzio, secondo l'ordine di caricamento.
+4. Il typecheck e' uno **Stop hook**: qualsiasi finestra in cui l'albero non compila lo fa firare.
+   Toccare un tipo condiviso PRIMA dei suoi consumatori compra parallelismo e paga con quella
+   finestra. Il cambio al file condiviso va DENTRO il primo microtask che lo consuma.
+
+**DEVIAZIONE SU UN COMPONENTE CONDIVISO, da sapere.** `components/ui/async-paginated-multi-select.tsx`
+(12+ caller) ha una prop nuova `excludeIds` — additiva, default hoistato — ma anche UN cambio di
+comportamento: lo stato vuoto e' ora `options.length === 0 && !hasNextPage`. Senza, una pagina
+interamente filtrata direbbe "nessun risultato" mentre restano pagine da caricare. Va nella
+direzione sicura (meno falsi "nessun risultato") e le 22 suite esistenti sono verdi SENZA
+modifiche, che e' la prova che serviva.
+
+**DIMENSIONI MESSE A VERBALE.** `TaskService` 397 righe e `Tasks\TaskActionService` 329: sopra il
+soft limit di 300, sotto l'hard limit, deliberatamente non splittati — i guard devono vivere nella
+stessa transazione della scrittura che proteggono. Se si avvicinano a 500, lo split e' per WRITE
+PATH, mai estraendo i guard dalla transazione. La nota e' nel docblock di entrambe.
+
+**VERIFICA ESEGUITA dal verifier su albero fermo.** Pest **7091/7098** (i 6 errori sono
+`DemoTaskSeederTest`, filone estraneo, vedi sotto); Vitest **4827/4827** su 632 file;
+`npx tsc -b --force --pretty false` **EXIT 0**; Pint e ESLint puliti. 66 criteri su 68 PASS,
+nessun criterio scoperto. **AC-066 (responsive 375/768/1024) NON verificato**: e' verifica
+manuale sull'app reale e resta da fare, come l'AC-028 della 0117 che e' ancora aperto.
+
+**COLLISIONE APERTA CON UN ALTRO FILONE, non nostra da chiudere.** Un'altra sessione sta
+costruendo il seed demo del Task (`DemoTaskSeeder`, `DemoTaskNoteSeeder`, `DemoDataSeeder`,
+`DemoCatalog/DemoTaskCatalogue`, `Concerns/PicksTaskRecordLinks`, `rich-cells.tsx`). Il nostro D-3
+le rompe il codice: `DemoTaskSeeder.php:219` passa `taskStatusId:` a `CreateTaskData`, che non lo
+accetta piu' -> 6 errori. Va corretto da chi possiede quel file: togliere il parametro e accettare
+lo stato derivato, oppure creare e poi spostare lo stato con un update (D-6 garantisce che nessuno
+lo ri-deriva). **Quei file non fanno parte di questo lotto e non vanno committati con esso.**
+
+## SEED DEMO DEL MODULO TASK (richiesta utente 2026-09-11) — VERDE, NON COMMITTATO
+
+**Cosa e'.** Il dataset demo che al modulo Task mancava: `tasks` + le sue due tabelle di
+appoggio (`task_assignee`, `task_watcher`) + il thread di note sul Task (spec 0117). Le cinque
+lookup di classificazione NON sono state duplicate: sono reference data del cliente, gia'
+possedute da `QualificaTaskTaxonomySeeder`, che ora `DemoDataSeeder` richiama come step proprio
+(su un db demo puro quelle tabelle erano vuote, a parte i 4 stati protetti creati dalle
+migrazioni).
+
+**Decisioni dell'utente (2026-09-11).** Riusare la tassonomia Qualifica invece di inventarne una
+demo; note SI, documenti NO in questa fase; volume ~60 task con gerarchia.
+
+**File nuovi/toccati (4 + 1).**
+- `database/seeders/DemoTaskSeeder.php` — 40 task radice + 20 sottotask, ognuno creato con
+  `TaskService::create()` (write path reale: `creator_id` dall'attore, coerenza
+  referente/anagrafica AC-014, closure feedback D-7); i 6 task bloccati passano da
+  `TaskActionService::block()` con il creatore come attore. Idempotente: cancella e ricrea.
+- `database/seeders/Concerns/PicksTaskRecordLinks.php` — trait: carica una volta sola stati,
+  lookup, utenti, anagrafiche/referenti, opportunita', commesse, ed espone i pick. Estratto per
+  tenere il seeder a 300 righe.
+- `database/seeders/DemoCatalog/DemoTaskCatalogue.php` — solo frasi (titoli, note), nessuna
+  classificazione: il vocabolario resta quello del cliente.
+- `database/seeders/DemoTaskNoteSeeder.php` — thread su 1 task su 2, via `NoteService::create()`.
+  Autore SOLO un membro del task che ha anche `tasks.view` (le due condizioni di
+  `TaskNotable::authorizeRead`), verificate prima di scrivere invece che scoperte come 403.
+- `database/seeders/DemoDataSeeder.php` — aggiunti in coda a `DemoRewardSeeder`:
+  `QualificaTaskTaxonomySeeder` -> `DemoTaskSeeder` -> `DemoTaskNoteSeeder`.
+
+**Vincoli messi a verbale (non "correggerli" dopo).**
+- NESSUNA @mention seminata: `NoteMentionNotification` e' `ShouldQueue` con canale `mail` e su
+  `QUEUE_CONNECTION=sync` il seed dipenderebbe da un SMTP raggiungibile. `note_mentions` resta
+  vuota di proposito.
+- Le note del Task non hanno cleanup a FK ne' hook: `DemoTaskSeeder` le `forceDelete()` prima di
+  cancellare il task, altrimenti un re-run lascia note orfane su `notable_id` inesistenti.
+- Un task in fase closing ha `completion_date` sempre nel passato: per questo la finestra delle
+  date dei task chiusi si ferma a `-1 week` (un bug trovato e chiuso in verifica: prima la
+  completion poteva cadere nel futuro).
+- `DemoRolesSeeder` non da' permessi `tasks.*` a manager/operator/user; solo `admin` (tutti) e
+  `viewer` (`.view`/`.viewAny`). Conseguenza accettata: i thread nascono solo dove un membro e'
+  admin o viewer. Se si vuole piu' copertura, la modifica e' su `DemoRolesSeeder`, non qui.
+
+**Verifica eseguita (non "dovrebbe").**
+- `tests/Feature/Seeding/DemoTaskSeederTest.php` (nuovo, 6 test) + suite `Seeding`, `SeederFlowTest`,
+  `Tasks`, `Notes`: 346 test, 2199 asserzioni, verdi.
+- Catena reale `db:seed --class=DemoDataSeeder` su un db MySQL usa-e-getta (creato e droppato):
+  60 task / 20 sottotask / 124 assegnatari / 60 osservatori / 6 bloccati / 118 note su 28 thread,
+  zero completion incoerenti, zero referenti fuori pivot, zero note orfane dopo un secondo run.
+- Pint pulito. Nessun file di produzione toccato.
+
+**Prossimo passo.** Committare (in attesa del via libera) oppure, se si vuole il seed anche sul db
+di sviluppo `qnet2`, eseguirlo li' — cancella e ricrea TUTTI i task esistenti, quindi va chiesto.
+
 ## MODULO TASK — FASE 4: NOTE E DOCUMENTI (spec 0117) — VERDE, NON COMMITTATO (2026-09-11)
 
 **Cosa e'.** Quarta fase del modulo Task, sopra la 0116. Porta sul Task le due capacita'

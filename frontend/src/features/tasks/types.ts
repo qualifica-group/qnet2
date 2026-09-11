@@ -143,15 +143,26 @@ export interface TaskDetailWithPermissions extends TaskDetail {
 }
 
 /**
- * The six domain action keys `TasksAuthorization::actions()` adds to
- * `permissions.actions` (spec 0116 data_contract): complete/reopen a task,
- * approve/reject its validation, block/unblock it. Each flag on
- * `ResourcePermissions.actions` is already the AND of ability, record-role
- * matrix and state availability (D-1) — the frontend never recomputes it,
- * only reads it (see `task-action-availability.ts` for the UX-only mirror of
- * the state half).
+ * The seven domain action keys `TasksAuthorization::actions()` adds to
+ * `permissions.actions` (spec 0116 data_contract, spec 0118 D-10): complete/reopen
+ * a task, approve/reject its validation, block/unblock it, and ask its people for
+ * an update. Each flag on `ResourcePermissions.actions` is already the AND of
+ * ability, record-role matrix and state availability (D-1) — the frontend never
+ * recomputes it, only reads it (see `task-action-availability.ts` for the UX-only
+ * mirror of the state half).
+ *
+ * `request_update` is the only one whose matrix row enables the OSSERVATORE and
+ * disables the ASSEGNATARIO (spec 0118 D-10), which is why it can be true exactly
+ * where the other six are false.
  */
-export type TaskActionKey = 'complete' | 'uncomplete' | 'approve' | 'reject' | 'block' | 'unblock'
+export type TaskActionKey =
+  | 'complete'
+  | 'uncomplete'
+  | 'approve'
+  | 'reject'
+  | 'block'
+  | 'unblock'
+  | 'request_update'
 
 /**
  * Payload for POST /tasks/{id}/complete (spec 0116 data_contract). CASO 1
@@ -169,10 +180,20 @@ export interface CompleteTaskPayload {
  * type: a caller cannot include them even by accident. `is_blocked` left the
  * catalog entirely (spec 0116 D-6): it is written ONLY by `/block`/`/unblock`,
  * never by a PATCH, so it is not a key here either.
+ *
+ * `task_status_id` LEFT THIS TYPE in spec 0118 (D-3): the initial status is
+ * derived server-side from the assignees (D-4), so it is `prohibited` on POST and
+ * a create payload that carried it would be a 422. It is still writable by PATCH,
+ * where `UpdateTaskPayload` adds it back explicitly.
+ *
+ * `requester_id`, `assignee_ids` and `end_date` are REQUIRED here, not optional
+ * (spec 0118 D-1): the document's four mandatory creation fields, with `title`.
  */
 export interface CreateTaskPayload {
   title: string
-  task_status_id: number
+  requester_id: number
+  assignee_ids: number[]
+  end_date: string
   description?: string | null
   registry_id?: number | null
   referent_id?: number | null
@@ -183,17 +204,19 @@ export interface CreateTaskPayload {
   task_category_id?: number | null
   opportunity_id?: number | null
   work_order_id?: number | null
-  requester_id?: number | null
   start_date?: string | null
-  end_date?: string | null
   completion_date?: string | null
   start_time?: string | null
   end_time?: string | null
   estimated_minutes?: number | null
   requires_closure_feedback?: boolean
   closure_feedback?: string | null
-  /** Flat id arrays (AC-083); the same user may appear in both. */
-  assignee_ids?: number[]
+  /**
+   * Flat id arrays. Since spec 0118 D-9 the two sets are DISJOINT: an id in
+   * `watcher_ids` may be neither the creator, nor the requester, nor an assignee
+   * (422 field-scoped). This retires AC-083 of spec 0101, which allowed the
+   * overlap — the requirement changed by user decision.
+   */
   watcher_ids?: number[]
 }
 
@@ -201,8 +224,26 @@ export interface CreateTaskPayload {
  * Payload for PATCH /tasks/{id} (partial update). The two user arrays are
  * synced server-side ONLY when their key is present, so an untouched
  * selection must not be resent (AC-012).
+ *
+ * `task_status_id` is added back on purpose (spec 0118 D-3): the status is
+ * derived at creation and never re-derived afterwards (D-6), so PATCH — the
+ * detail's own picker and nothing else — is the one place a client may write it.
  */
-export type UpdateTaskPayload = Partial<CreateTaskPayload>
+export type UpdateTaskPayload = Partial<CreateTaskPayload> & {
+  task_status_id?: number
+}
+
+/**
+ * Payload for POST /tasks/{id}/request-update (spec 0118 data_contract).
+ * `recipient_ids` must be a non-empty subset of the task's own assignees and
+ * watchers — validated server-side, never trusted from here (D-11). `message`
+ * is optional (D-12): omitted, the notification still names the requester and
+ * the task.
+ */
+export interface RequestTaskUpdatePayload {
+  recipient_ids: number[]
+  message?: string | null
+}
 
 /**
  * Discriminated form mode shared by the form hook/meta-resolver and

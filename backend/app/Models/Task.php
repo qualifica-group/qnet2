@@ -206,8 +206,16 @@ class Task extends BaseModel
     }
 
     /**
-     * The users following the Task without being accountable for it. The
-     * same user may be both an assignee and a watcher (AC-083).
+     * The users following the Task without being accountable for it.
+     *
+     * The two sets are DISJOINT since spec 0118 D-9: a watcher may be neither
+     * the creator, nor the requester, nor an assignee, and
+     * App\Services\Tasks\TaskWatcherOverlapGuard refuses the overlap 422 on
+     * every write. This RETIRES AC-083 of spec 0101, which used to allow it —
+     * the requirement changed by user decision, so a reader finding the old
+     * claim here would be reading a rule that no longer holds. Nothing in the
+     * SCHEMA enforces the disjunction (two independent pivot tables): it is an
+     * application-level invariant, which is why the guard exists.
      *
      * @return BelongsToMany<User, $this>
      */

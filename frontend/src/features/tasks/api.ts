@@ -4,6 +4,7 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   CompleteTaskPayload,
   CreateTaskPayload,
+  RequestTaskUpdatePayload,
   TaskDetail,
   TaskDetailWithPermissions,
   UpdateTaskPayload,
@@ -119,6 +120,23 @@ export async function blockTask(id: number): Promise<TaskDetailWithPermissions> 
 export async function unblockTask(id: number): Promise<TaskDetailWithPermissions> {
   const { data } = await apiClient.post<ApiResponseWithPermissions<TaskDetail, ResourcePermissions>>(
     `/tasks/${id}/unblock`,
+  )
+  return withPermissions(data)
+}
+
+/**
+ * "Richiedi aggiornamento" (spec 0118 D-10..D-14): notifies the given
+ * recipients (a subset of this task's own assignees/watchers) by mail and
+ * in-app notification. Writes nothing on the task — the response is the
+ * same detail tree as every other action (D-14), never a shape of its own.
+ */
+export async function requestTaskUpdate(
+  id: number,
+  payload: RequestTaskUpdatePayload,
+): Promise<TaskDetailWithPermissions> {
+  const { data } = await apiClient.post<ApiResponseWithPermissions<TaskDetail, ResourcePermissions>>(
+    `/tasks/${id}/request-update`,
+    payload,
   )
   return withPermissions(data)
 }

@@ -322,11 +322,14 @@ it('AC-049 vs AC-047: the same "every row" payload is accepted here and rejected
         'ordered_ids' => $modelClass::query()->orderBy('id')->pluck('id')->all(),
     ])->assertOk();
 
-    // Statuses: every row includes the four pinned protected rows -> 422.
+    // Statuses: every row includes the five pinned protected rows -> 422.
+    // Five since spec 0118 D-5 promoted "Assegnato"; the assertion pins the
+    // count because the 422 depends on at least one pinned row being present,
+    // not on how many there are.
     Sanctum::actingAs($statusActor);
     TaskStatus::factory()->count(2)->create();
 
-    expect(TaskStatus::query()->whereNotNull('system_key')->count())->toBe(4);
+    expect(TaskStatus::query()->whereNotNull('system_key')->count())->toBe(5);
 
     $this->postJson('/api/task-statuses/reorder', [
         'ordered_ids' => TaskStatus::query()->orderBy('id')->pluck('id')->all(),

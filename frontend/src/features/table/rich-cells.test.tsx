@@ -77,6 +77,23 @@ describe('StatusBadgeCell', () => {
     expect(container.querySelector('.bg-blue-500')).not.toBeNull()
   })
 
+  it('renders the configured icon INSTEAD of the dot when the row carries one', () => {
+    const { getByText, container } = render(
+      <StatusBadgeCell {...params({ name: 'Won', color: 'blue', icon: 'badge-check' })} />,
+    )
+    expect(getByText('Won')).toBeInTheDocument()
+    expect(container.querySelector('svg')).not.toBeNull()
+    // The icon replaces the status dot: the two marks never show together.
+    expect(container.querySelector('.bg-blue-500')).toBeNull()
+  })
+
+  it('keeps the dot when the icon name is unknown to the catalog', () => {
+    const { container } = render(
+      <StatusBadgeCell {...params({ name: 'Won', color: 'blue', icon: null })} />,
+    )
+    expect(container.querySelector('.bg-blue-500')).not.toBeNull()
+  })
+
   it('renders a neutral badge (no dot) for a colorless status', () => {
     const { getByText, container } = render(<StatusBadgeCell {...params({ name: 'Draft', color: null })} />)
     expect(getByText('Draft')).toBeInTheDocument()

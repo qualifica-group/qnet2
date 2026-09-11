@@ -12,9 +12,19 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for PUT/PATCH /api/tasks/{task} (spec 0101). Every
- * field is `sometimes` to support partial PATCH updates; the four columns
- * that are NOT NULL in the database are `sometimes|required`, so an explicit
+ * field is `sometimes` to support partial PATCH updates; the columns that
+ * are NOT NULL in the database are `sometimes|required`, so an explicit
  * null is a 422 from validation rather than an error from the driver.
+ *
+ * `requester_id`, `assignee_ids` and `end_date` follow the same
+ * `sometimes|required` shape since spec 0118 D-2: not annullable once the
+ * key is submitted, but a PATCH that does not name them still passes.
+ * `assignee_ids` additionally keeps `min:1` when submitted — a Task can no
+ * longer be emptied of every assignee (AC-032 of spec 0101 no longer
+ * applies: D-1 retired the "zero assignees" state for good, not only at
+ * creation). `task_status_id` is DELIBERATELY untouched here: spec 0118 D-6
+ * derives it only at creation, so on PATCH the actor still picks it by hand,
+ * exactly as before.
  *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('update', $task)). EnforcesFieldPermissions (spec
@@ -70,16 +80,16 @@ class UpdateTaskRequest extends FormRequest
             'task_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_categories', 'id')],
             'opportunity_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
             'work_order_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_orders', 'id')],
-            'requester_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
+            'requester_id' => ['sometimes', 'required', 'integer', Rule::exists('users', 'id')],
             'start_date' => ['sometimes', 'nullable', 'date'],
-            'end_date' => ['sometimes', 'nullable', 'date'],
+            'end_date' => ['sometimes', 'required', 'date'],
             'completion_date' => ['sometimes', 'nullable', 'date'],
             'start_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'end_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'requires_closure_feedback' => ['sometimes', 'required', 'boolean'],
             'closure_feedback' => ['sometimes', 'nullable', 'string'],
-            'assignee_ids' => ['sometimes', 'array'],
+            'assignee_ids' => ['sometimes', 'required', 'array', 'min:1'],
             'assignee_ids.*' => ['integer', Rule::exists('users', 'id')],
             'watcher_ids' => ['sometimes', 'array'],
             'watcher_ids.*' => ['integer', Rule::exists('users', 'id')],

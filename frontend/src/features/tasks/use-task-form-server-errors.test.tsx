@@ -12,6 +12,11 @@ vi.mock('@/features/tasks/api', async () => {
   return { ...actual, createTask: vi.fn(), updateTask: vi.fn() }
 })
 
+/** These tests only exercise the 422/network mapping, not the D-1 prefill: a fixed actor is enough. */
+vi.mock('@/features/auth/use-auth', () => ({
+  useAuth: () => ({ user: { id: 99, name: 'Utente Corrente' } }),
+}))
+
 /** A stable `QueryClient` per test, never per render. */
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -56,6 +61,8 @@ describe('useTaskForm — server refusals land on their field (D-7/D-12)', () =>
     act(() => {
       result.current.form.setValue('title', 'Sotto-attivita')
       result.current.form.setValue('task_status_id', 3)
+      result.current.form.setValue('assignee_ids', [31])
+      result.current.form.setValue('end_date', '2026-09-05')
     })
     await act(async () => {
       await result.current.form.handleSubmit(result.current.onSubmit)()
@@ -79,6 +86,8 @@ describe('useTaskForm — server refusals land on their field (D-7/D-12)', () =>
     act(() => {
       result.current.form.setValue('title', 'Richiamare')
       result.current.form.setValue('task_status_id', 3)
+      result.current.form.setValue('assignee_ids', [31])
+      result.current.form.setValue('end_date', '2026-09-05')
     })
     await act(async () => {
       await result.current.form.handleSubmit(result.current.onSubmit)()
@@ -97,6 +106,8 @@ describe('useTaskForm — server refusals land on their field (D-7/D-12)', () =>
     act(() => {
       result.current.form.setValue('title', 'Richiamare')
       result.current.form.setValue('task_status_id', 3)
+      result.current.form.setValue('assignee_ids', [31])
+      result.current.form.setValue('end_date', '2026-09-05')
     })
     await act(async () => {
       await result.current.form.handleSubmit(result.current.onSubmit)()

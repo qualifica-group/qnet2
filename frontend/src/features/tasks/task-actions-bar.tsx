@@ -1,35 +1,23 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import axios from 'axios'
-import { BadgeCheck, CheckCircle2, Lock, RotateCcw, Unlock, XOctagon } from 'lucide-react'
+import { BadgeCheck, BellRing, CheckCircle2, Lock, RotateCcw, Unlock, XOctagon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
 import { taskActionAvailability } from '@/features/tasks/task-action-availability'
+import { actionErrorMessage } from '@/features/tasks/task-action-error-message'
 import { useBlockTask, useUnblockTask, useUncompleteTask } from '@/features/tasks/use-task-mutations'
 import { TaskCompleteDialog } from '@/features/tasks/task-complete-dialog'
+import { TaskRequestUpdateDialog } from '@/features/tasks/task-request-update-dialog'
 import { TaskValidationDialog } from '@/features/tasks/task-validation-dialog'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
-import type { TFunction } from 'i18next'
 
 /** Which action dialog (if any) is currently open. */
-type OpenDialog = 'none' | 'complete' | 'approve' | 'reject'
+type OpenDialog = 'none' | 'complete' | 'approve' | 'reject' | 'request_update'
 
 interface TaskActionsBarProps {
   task: TaskDetailWithPermissions
-}
-
-/** Maps the shared 409 (bloccato)/422 (fase sbagliata) split to its toast copy (AC-044). */
-function actionErrorMessage(t: TFunction, error: unknown): string {
-  const status = axios.isAxiosError(error) ? error.response?.status : undefined
-  if (status === 409) {
-    return t('tasks.actions.errors.blocked')
-  }
-  if (status === 422) {
-    return t('tasks.actions.errors.wrongPhase')
-  }
-  return t('tasks.actions.errors.generic')
 }
 
 /**
@@ -45,7 +33,9 @@ function actionErrorMessage(t: TFunction, error: unknown): string {
  * target for the former, a plain confirmation for the latter two); "Riapri",
  * "Blocca" and "Sblocca" need no input and reuse the app's imperative
  * `useConfirm`, exactly as `ContractActionsBar` does for "Riapri contratto"
- * on the suspended path.
+ * on the suspended path. "Richiedi aggiornamento" (spec 0118 D-10) opens its
+ * own recipient-picker dialog, the only action whose matrix row also enables
+ * the osservatore.
  */
 export function TaskActionsBar({ task }: TaskActionsBarProps) {
   const { t } = useTranslation()
@@ -179,6 +169,19 @@ export function TaskActionsBar({ task }: TaskActionsBarProps) {
         </Button>
       ) : null}
 
+      {availability.request_update && task.permissions.actions.request_update ? (
+        <Button
+          type="button"
+          variant={ACTION_BUTTON_VARIANT.action}
+          className="bg-card"
+          size="sm"
+          onClick={() => setOpenDialog('request_update')}
+        >
+          <BellRing aria-hidden="true" />
+          {t('tasks.actions.requestUpdate.label')}
+        </Button>
+      ) : null}
+
       <TaskCompleteDialog
         open={openDialog === 'complete'}
         onOpenChange={(open) => setOpenDialog(open ? 'complete' : 'none')}
@@ -192,6 +195,11 @@ export function TaskActionsBar({ task }: TaskActionsBarProps) {
           }
         }}
         mode={openDialog === 'reject' ? 'reject' : 'approve'}
+        task={task}
+      />
+      <TaskRequestUpdateDialog
+        open={openDialog === 'request_update'}
+        onOpenChange={(open) => setOpenDialog(open ? 'request_update' : 'none')}
         task={task}
       />
     </div>

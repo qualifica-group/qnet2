@@ -45,6 +45,12 @@ function refOf(value: { id: number; name: string } | null | undefined): Relation
  * any more — it left `TaskFormValues` entirely, writable only by the
  * `/block`/`/unblock` domain actions. This section no longer renders it; the
  * read model still shows it as a badge in `task-detail.tsx`.
+ *
+ * Spec 0118 D-3: the Stato picker does not render on create — the server
+ * derives the initial status from the assignees (D-4), and `task_status_id`
+ * is `prohibited` on POST, so offering the control would only invite a 422.
+ * `task === null` is already the create signal every other section in this
+ * form reads, so no new prop was added for it.
  */
 export function TaskClassificationSection({
   control,
@@ -54,6 +60,7 @@ export function TaskClassificationSection({
 }: TaskClassificationSectionProps) {
   const { t } = useTranslation()
   const selectLabels = useTaskSelectLabels()
+  const isEdit = task !== null
 
   return (
     <FormSection
@@ -62,18 +69,20 @@ export function TaskClassificationSection({
       description={t('tasks.form.sections.classification.description')}
     >
       <div className={FIELD_GRID_CLASS}>
-        <RelationSelectField
-          control={control}
-          name="task_status_id"
-          metaKey="task_status_id"
-          label={t('tasks.form.status')}
-          required
-          resource={TASK_STATUSES_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('tasks.form.statusSearch')}
-          selected={refOf(task?.task_status)}
-          onItemChange={onStatusItemChange}
-          {...selectLabels}
-        />
+        {isEdit ? (
+          <RelationSelectField
+            control={control}
+            name="task_status_id"
+            metaKey="task_status_id"
+            label={t('tasks.form.status')}
+            required
+            resource={TASK_STATUSES_FOR_SELECT_RESOURCE}
+            searchPlaceholder={t('tasks.form.statusSearch')}
+            selected={refOf(task?.task_status)}
+            onItemChange={onStatusItemChange}
+            {...selectLabels}
+          />
+        ) : null}
 
         <TaskCompletionReadout percentage={completionPercentage} />
 

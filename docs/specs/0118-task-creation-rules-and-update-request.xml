@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0118 — Regole del flusso di creazione + azione "Richiedi aggiornamento".
+  Quinta fase del modulo Task, sopra 0101 (campi/CRUD), 0116 (matrice ruoli +
+  6 azioni) e 0117 (note/documenti). Sorgente di prodotto: DOC Tasks.docx.
+-->
+<spec id="0118-task-creation-rules-and-update-request" status="draft" owner="utente" date="2026-09-11">
+
+  <goal>
+    Portare a terra due blocchi del documento di prodotto Tasks ancora scoperti: le REGOLE DEL
+    FLUSSO DI CREAZIONE (campi obbligatori, stato iniziale derivato dal server, allegati scelti
+    prima del salvataggio, divieto di sovrapposizione fra osservatori e gli altri ruoli) e
+    l'azione "RICHIEDI AGGIORNAMENTO", che manda a persone scelte del Task una mail e una
+    notifica interna con un messaggio libero.
+  </goal>
+
+  <context>
+    <!-- Tutti i nomi qui sotto sono stati letti nel codice reale, non ipotizzati. -->
+
+    <existing_names>
+      <item>`App\Http\Requests\Tasks\StoreTaskRequest` — oggi richiede SOLO `title` e
+        `task_status_id`; `requester_id`, `assignee_ids`, `end_date` sono `sometimes|nullable`.
+        `creator_id`, `completion_percentage`, `is_blocked` sono `prohibited` senza condizioni.</item>
+      <item>`App\Http\Requests\Tasks\UpdateTaskRequest` — ogni campo `sometimes`; le colonne NOT
+        NULL sono `sometimes|required`. Legge il record dalla rotta in `authorizationModel()`.</item>
+      <item>`App\DataObjects\Tasks\CreateTaskData` — `taskStatusId` e' un `int` NON nullable e
+        `attributes()` lo emette sempre; `assigneeIds`/`watcherIds` default `[]`.</item>
+      <item>`App\Services\TaskService::create()` — 4 Step numerati dentro una transazione:
+        coerenza referente/anagrafica, costruzione riga + `creator_id` dall'attore,
+        `TaskClosureFeedbackGuard`, sync dei due pivot.</item>
+      <item>`App\Authorization\TasksAuthorization` — `MANDATORY_FIELDS = ['title',
+        'task_status_id']`; `FIELD_TYPES` e' il catalogo congelato in ordine (AC-053 della 0101);
+        `actions()` elenca 11 chiavi; `actionPermissions()` compone ability AND matrice AND
+        disponibilita'.</item>
+      <item>`App\Services\Tasks\TaskAbilityResolver` — UNICA sede della matrice; `PROTECTED_FIELDS`
+        sono 17. `App\Services\Tasks\TaskRecordRoles::isWatcher()` ESISTE GIA' e non ha ancora
+        nessun consumatore: questa spec e' il primo.</item>
+      <item>`App\Services\Tasks\TaskActionAvailability::isCompletable()` — "non chiuso e non in
+        validazione": e' esattamente la disponibilita' che serve alla nuova azione (D-10).</item>
+      <item>`App\Services\Tasks\TaskActionService` — le 6 azioni, ognuna con `assertNotBlocked()`,
+        `assertOwnsMandate*()` e la disponibilita' iniettata; ogni metodo chiude con
+        `return $this->taskService->loadDetail($task->fresh())`.</item>
+      <item>`App\Enums\TaskStatusSystemKey` — 4 casi: `open`, `in_progress`, `closed_positive`,
+        `closed_negative`. `App\Enums\TaskStatusGroup` — 5 fasi.</item>
+      <item>`Database\Seeders\QualificaCatalog\TaskTaxonomyCatalogue` — `PROTECTED_STATUSES`
+        mappa `open` sul nome "Da assegnare"; `STATUSES` contiene "Assegnato" come riga ORDINARIA,
+        tupla `[nome, fase, colore, icona, percentuale]` (la percentuale e' 10; il `sort_order`
+        lo assegna `StatusOrderManager::placeNew()`, non la tupla).</item>
+      <item>`2026_09_11_100000_designate_in_progress_task_status.php` — il PRECEDENTE esatto di
+        promozione in-place di una riga ordinaria a riga protetta, con i due percorsi
+        (install popolata / `migrate:fresh`). La migrazione di questa spec lo rispecchia.</item>
+      <item>`App\Services\Statuses\SystemStatusGuard::MUTABLE_SYSTEM_FIELDS = ['name', 'color',
+        'icon', 'completion_percentage']` — cio' che resta modificabile su una riga protetta.</item>
+      <item>`App\Notifications\NoteMentionNotification` — il TEMPLATE per una notifica
+        `database`+`mail` con `ShouldQueue`, payload via `App\DataObjects\Notifications\NotificationData`
+        e deep-link risolto PER DESTINATARIO. `GenericNotification` e' solo `database`: non manda mail.</item>
+      <item>`App\Services\Tasks\TaskNotable::deepLinkPath()` — restituisce `/tasks/{id}` oppure
+        null quando il destinatario non puo' leggere il Task. Riusato tale e quale (D-13).</item>
+      <item>`POST /api/attachments` accetta `attachable_type` + `attachable_id` + `file`; l'alias
+        `task` e' GIA' nella allow-list di `config/attachments.php`. Nessun endpoint nuovo serve
+        per gli allegati in creazione (D-7).</item>
+      <item>Frontend: `features/tasks/task-form-body.tsx` compone
+        `task-identity-section` / `task-classification-section` (ospita `task_status_id`) /
+        `task-people-section` (`requester_id`, `assignee_ids`, `watcher_ids`) /
+        `task-planning-section` (`start_date`, `end_date`, `completion_date`, orari, stima) /
+        `task-closure-section`. `MetaField` (`features/authorization/MetaField.tsx`) legge il
+        permesso di campo. `task-actions-bar.tsx` ospita le 6 azioni; `TASK_ATTACHABLE_ALIAS` e
+        `TASKS_DOMAIN` stanno in `features/tasks/api.ts`; `useAttachments`/`uploadAttachment` in
+        `features/attachments/`.</item>
+      <item>`frontend/src/features/tasks/types.ts` — `TaskActionKey` e' l'unione delle 6 chiavi.</item>
+    </existing_names>
+
+    <decisions>
+      <!-- Congelate dall'utente l'11-09-2026. Ognuna e' pinnata da almeno un AC. -->
+      <d id="D-1">CAMPI OBBLIGATORI ALLA CREAZIONE, come il documento: `title`, `requester_id`,
+        `assignee_ids` (almeno un elemento), `end_date`. `start_date` resta opzionale: il
+        documento non lo chiede.</d>
+      <d id="D-2">SU PATCH gli stessi quattro diventano `sometimes|required`: non annullabili se
+        submittati, ma un PATCH parziale che non li nomina passa. Nessuna migrazione di dati e
+        nessuna sanatoria sulle righe gia' esistenti che ne sono prive: il documento parla del
+        flusso, non dello storico.</d>
+      <d id="D-3">STATO INIZIALE DERIVATO DAL SERVER. `task_status_id` diventa `prohibited` in
+        `StoreTaskRequest`, esce da `CreateTaskData` e dal form di creazione. Resta invariato su
+        PATCH (la colonna e' NOT NULL e il picker del dettaglio non cambia).</d>
+      <d id="D-4">LA REGOLA DI DERIVAZIONE, letta al singolare come il documento la scrive: se il
+        Task ha ESATTAMENTE UN assegnatario e quell'assegnatario e' il creatore oppure il
+        richiedente, lo stato e' la riga `system_key = open` ("Da assegnare"); in OGNI altro caso
+        (due o piu' assegnatari, oppure un unico assegnatario diverso da entrambi) e' la riga
+        `system_key = assigned` ("Assegnato"). Con `assignee_ids` obbligatorio (D-1) il caso
+        "zero assegnatari" non e' esprimibile.</d>
+      <d id="D-5">"Assegnato" DIVENTA UNA RIGA PROTETTA. Nuovo caso `TaskStatusSystemKey::Assigned
+        = 'assigned'`, assegnato alla riga esistente con una migrazione di promozione in-place a
+        due percorsi, identica in struttura a `2026_09_11_100000`. La riga esce da
+        `TaskTaxonomyCatalogue::STATUSES` ed entra in `PROTECTED_STATUSES` con
+        `bootstrap_name` = `name` = "Assegnato" (come `in_progress`), fase `Open`, colore `blue`,
+        icona `user`, percentuale 10.
+        CONSEGUENZA ACCETTATA, messa a verbale perche' nessuno la riscopra come difetto: dopo la
+        promozione l'amministratore NON puo' piu' cancellare, riordinare, disattivare ne' cambiare
+        fase a "Assegnato" (`SystemStatusGuard`); puo' ancora rinominarla, ricolorarla, cambiarne
+        icona e percentuale. Le righe protette del modulo passano da 4 a 5.</d>
+      <d id="D-6">LA DERIVAZIONE VALE SOLO ALLA CREAZIONE. Nessuna ri-derivazione su PATCH: un
+        Task aperto per se stessi e poi passato a un collega RESTA in "Da assegnare" finche'
+        qualcuno non muove lo stato a mano o con un'azione. E' quello che il documento descrive —
+        la regola sta nel flusso di creazione, il flusso di modifica elenca "aggiornamento
+        assegnatari/osservatori" senza parlare di stato.</d>
+      <d id="D-7">ALLEGATI IN FASE DI CREAZIONE: nessun endpoint nuovo, nessuna modifica backend.
+        Il form mette i file in staging (solo in memoria) e, dopo il POST che restituisce l'id,
+        li carica uno per uno su `POST /api/attachments` con `attachable_type='task'`.</d>
+      <d id="D-8">FALLIMENTO PARZIALE DI UPLOAD: il salvataggio e' comunque riuscito. Si naviga al
+        dettaglio del Task con un toast che NOMINA i file non caricati; l'utente li ritenta dal tab
+        Documenti. Il Task non viene mai cancellato per un allegato fallito, e il form non trattiene
+        l'utente.</d>
+      <d id="D-9">DIVIETO DI SOVRAPPOSIZIONE: un id in `watcher_ids` non puo' essere il creatore,
+        il richiedente ne' uno degli assegnatari del Task. Refusal 422 field-scoped su
+        `watcher_ids`, su create e su update.
+        AC-083 DELLA SPEC 0101 ("si puo' essere assegnatario e osservatore insieme") E'
+        FORMALMENTE RITIRATO qui: il requisito e' cambiato per decisione dell'utente, non e' test
+        tampering. La spec 0116 D-3 aveva sospeso il divieto proprio in nome di AC-083; questa
+        spec chiude quella sospensione. I RUOLI CONTINUANO A SOMMARSI (D-3 della 0116 resta
+        valido per tutto il resto): creatore + richiedente restano cumulabili, e cumulabile resta
+        anche creatore/richiedente + assegnatario.</d>
+      <d id="D-10">"RICHIEDI AGGIORNAMENTO" — nuovo endpoint `POST /api/tasks/{task}/request-update`,
+        settima azione di dominio. Nuova ability `tasks.requestUpdate` (catalogo `tasks.*` da 14 a
+        15). Riga di matrice presa dal documento: creatore/richiedente SI, ASSEGNATARIO NO,
+        OSSERVATORE SI, gestore SI — l'unica riga con l'osservatore abilitato, e il primo
+        consumatore di `TaskRecordRoles::isWatcher()`. Disponibilita': la stessa di `complete`
+        (`TaskActionAvailability::isCompletable()`) piu' il veto `is_blocked`, cioe' SOLO su Task
+        aperti. Nessun metodo di disponibilita' nuovo.</d>
+      <d id="D-11">DESTINATARI: scelti fra gli ASSEGNATARI e gli OSSERVATORI del Task, e ricevono
+        SOLO loro. Nessun invio automatico a nessuno: se l'attore non spunta un assegnatario,
+        quell'assegnatario non riceve niente. Il set selezionabile e' gia' nel payload del
+        dettaglio (`data.assignees`, `data.watchers`), quindi NESSUN endpoint di ricerca utenti
+        viene aggiunto. Creatore e richiedente NON sono candidati: sono i mittenti tipici
+        dell'azione.</d>
+      <d id="D-12">MESSAGGIO OPZIONALE con testo di default: a campo vuoto, mail e notifica dicono
+        comunque chi ha chiesto l'aggiornamento e su quale Task, con il link al dettaglio. Un solo
+        campo di testo: nessun "oggetto" separato.</d>
+      <d id="D-13">NOTIFICA DEDICATA `App\Notifications\TaskUpdateRequested`, canali `database` e
+        `mail`, `ShouldQueue`, modellata su `NoteMentionNotification`: payload via
+        `NotificationData`, deep-link risolto per destinatario tramite
+        `TaskNotable::deepLinkPath()` (mai un URL assoluto precalcolato dal chiamante, mai un
+        bottone che atterra su un 403). E' l'UNICA notifica di questo lotto: le altre 10 classi
+        `Task*` della "Mappa Notifiche" del documento restano fuori.</d>
+      <d id="D-14">La risposta di `request-update` e' lo STESSO albero di dettaglio che le altre 6
+        azioni restituiscono (`TaskService::loadDetail`), pur non scrivendo nulla sul Task: cosi'
+        il contratto delle azioni resta uno solo e gli hook FE esistenti non hanno bisogno di una
+        forma a parte.</d>
+    </decisions>
+  </context>
+
+  <scope>
+    <in>
+      <item>D-1/D-2: `title` + `requester_id` + `assignee_ids` (min 1) + `end_date` obbligatori su
+        POST, `sometimes|required` su PATCH. Allineamento di `TasksAuthorization::MANDATORY_FIELDS`
+        e del form (marcatori `required`, messaggi Zod, i18n it/en).</item>
+      <item>D-3/D-4/D-6: `task_status_id` `prohibited` su POST; `App\Services\Tasks\TaskStatusResolver`
+        NON viene toccato (e' la proiezione della percentuale); la derivazione vive in una classe
+        nuova, `App\Services\Tasks\TaskInitialStatusResolver`, consumata da `TaskService::create()`
+        come nuovo Step.</item>
+      <item>D-5: caso enum `Assigned`, migrazione di promozione in-place, spostamento della riga
+        da `STATUSES` a `PROTECTED_STATUSES` nel catalogo del seeder.</item>
+      <item>D-7/D-8: staging degli allegati nel form di creazione del Task, upload dopo il POST,
+        toast sui falliti. Solo frontend.</item>
+      <item>D-9: validazione della sovrapposizione osservatori su create e update; il picker
+        osservatori esclude creatore/richiedente/assegnatari gia' scelti. Ritiro esplicito di
+        AC-083 della 0101 e aggiornamento dei test che lo pinnavano.</item>
+      <item>D-10..D-14: endpoint `request-update`, ability e riga di matrice, dialog nel dettaglio
+        con picker destinatari e messaggio, notifica `TaskUpdateRequested` (mail + database),
+        flag `request_update` in `permissions.actions`.</item>
+    </in>
+    <out>
+      <item>SEGNATEMPO, in ogni sua forma. Per decisione dell'utente ("segnatempo non pensarlo
+        ora") non entra qui: niente tabella, niente endpoint, niente tab, e in particolare NIENTE
+        segnatempo obbligatorio nel pop-up di completamento — quel punto del documento resta
+        scoperto fino alla sua spec.</item>
+      <item>Le altre 10 notifiche `Task*` della "Mappa Notifiche" (`TaskAssigned`, `TaskObserver`,
+        `TaskClosed`, `TaskFeedbackInserted`, `TaskValidationRequested/Approved/Rejected/Reopened`,
+        `TaskUnCompleted`, `TaskLocked`, `TaskUnLocked`) e ogni mail dei flussi di creazione,
+        modifica e completamento.</item>
+      <item>Pianificazione RICORRENTE del Task, in ogni sua forma.</item>
+      <item>Il feedback obbligatorio nel Caso 2 (richiesta valutazione) e la derivazione del
+        percorso di validazione dal ruolo dell'attore: restano come li ha lasciati la 0116.</item>
+      <item>Gate per-record sugli allegati: resta la scelta della 0117 D-8.</item>
+      <item>Fase 2 della 0101 (Task collegati dentro Opportunita'/Commessa/Anagrafica).</item>
+      <item>"Richiedi aggiornamento" come azione di riga nella tabella Task: solo dettaglio, come
+        la 0117 ha deciso per note e documenti.</item>
+      <item>Ri-derivazione dello stato su PATCH (D-6 la esclude).</item>
+      <item>Sanatoria dei Task esistenti privi di richiedente/assegnatari/data fine.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="POST" path="/api/tasks" note="MODIFICATO — D-1, D-3, D-4, D-9">
+      <request>
+        title              string, required, max 191
+        requester_id       integer, REQUIRED, exists:users,id            <!-- era sometimes|nullable -->
+        assignee_ids       array, REQUIRED, min 1                        <!-- era sometimes -->
+        assignee_ids.*     integer, exists:users,id
+        end_date           date, REQUIRED                                <!-- era sometimes|nullable -->
+        task_status_id     PROHIBITED                                    <!-- era required -->
+        creator_id / completion_percentage / is_blocked   PROHIBITED (invariato)
+        watcher_ids        array, sometimes; ogni id NON puo' essere creatore, richiedente o assegnatario
+        watcher_ids.*      integer, exists:users,id
+        <!-- tutti gli altri campi invariati rispetto alla 0101 -->
+      </request>
+      <response status="201">
+        { success: true, message: "Created", data: &lt;albero di dettaglio Task, invariato&gt; }
+        data.task_status  e' la riga DERIVATA: `open` ("Da assegnare") quando c'e' un unico
+        assegnatario che coincide con creatore o richiedente, `assigned` ("Assegnato") altrimenti.
+      </response>
+      <errors>
+        403 senza `tasks.create`
+        422 `title`/`requester_id`/`assignee_ids`/`end_date` mancanti — un messaggio per campo
+        422 `task_status_id` submittato (prohibited)
+        422 `watcher_ids` contiene un id che e' creatore, richiedente o assegnatario
+        422 `referent_id` non appartiene a `registry_id` (invariato, AC-014 della 0101)
+        422 `closure_feedback` mancante su stato di chiusura (invariato, non raggiungibile in
+            creazione ora che lo stato e' derivato e le due righe derivabili sono entrambe `open`)
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/tasks/{task}" note="MODIFICATO — D-2, D-9">
+      <request>
+        requester_id       sometimes, REQUIRED (non annullabile), exists:users,id
+        assignee_ids       sometimes, REQUIRED, array, min 1
+        end_date           sometimes, REQUIRED, date
+        watcher_ids        sometimes, array; stessa regola di sovrapposizione di POST, valutata
+                           sulla coppia RISULTANTE (assegnatari e osservatori dopo il PATCH)
+        task_status_id     sometimes, required, integer, exists (INVARIATO: qui si sceglie ancora)
+        <!-- tutti gli altri campi invariati -->
+      </request>
+      <response status="200">{ success: true, message: "Updated", data: &lt;dettaglio&gt; }</response>
+      <errors>
+        403 senza `tasks.update`, fuori scope di visibilita', o da osservatore puro (invariato)
+        422 uno dei quattro campi submittato a null
+        422 sovrapposizione osservatori (field-scoped su `watcher_ids`)
+        422 campo strutturale su Task congelato (invariato, `TaskWriteLock`)
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks/{task}/request-update" note="NUOVO — D-10..D-14">
+      <request>
+        recipient_ids      array, required, min 1
+        recipient_ids.*    integer, exists:users,id, e DEVE essere un assegnatario o un
+                           osservatore di QUESTO Task
+        message            string, sometimes, nullable, max 2000
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: &lt;albero di dettaglio Task, identico a GET&gt; }
+        Il Task non viene modificato: la risposta e' uniforme alle altre 6 azioni (D-14).
+      </response>
+      <errors>
+        403 senza `tasks.requestUpdate`; fuori dallo scope di visibilita'; da ASSEGNATARIO puro;
+            da gestore che e' anche assegnatario di questo Task (deroga D-2 della 0116)
+        404 Task inesistente
+        409 Task bloccato (`is_blocked`)
+        422 Task chiuso o in validazione (fase non `isCompletable`)
+        422 `recipient_ids` vuoto, o contenente un id che non e' assegnatario ne' osservatore
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tasks/{task}" note="MODIFICATO — solo un flag in piu'">
+      <response status="200">
+        permissions.actions guadagna `request_update: boolean` accanto ai sei esistenti.
+        Vale AND di: `tasks.requestUpdate`, la riga di matrice (creatore/richiedente | osservatore |
+        gestore non-assegnatario), `! is_blocked` e `isCompletable`.
+        Nessun'altra chiave cambia; `data` resta identico.
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/tasks" note="MODIFICATO — solo required/editable">
+      <response status="200">
+        In contesto CREATE: `fields.task_status_id` diventa NON editabile (il campo non e' piu'
+        submittabile, D-3); `requester_id`, `assignee_ids`, `end_date` diventano `required: true`.
+        `actions` guadagna `request_update`.
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/attachments" note="INVARIATO — riusato cosi' com'e'">
+      <request>file, attachable_type='task', attachable_id=&lt;id restituito dal POST /api/tasks&gt;</request>
+      <response status="201">envelope standard degli allegati, nessuna modifica</response>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- ===== D-1 / D-2: campi obbligatori ===== -->
+    <criterion id="AC-001">Dato un utente con `tasks.create`, quando POST `/api/tasks` senza `requester_id`, allora 422 con un messaggio su `requester_id` e nessuna riga creata.</criterion>
+    <criterion id="AC-002">Stesso POST senza `assignee_ids`, allora 422 su `assignee_ids`.</criterion>
+    <criterion id="AC-003">Stesso POST con `assignee_ids: []`, allora 422 su `assignee_ids` (min 1).</criterion>
+    <criterion id="AC-004">Stesso POST senza `end_date`, allora 422 su `end_date`.</criterion>
+    <criterion id="AC-005">Stesso POST senza `start_date`, allora 201: `start_date` resta opzionale.</criterion>
+    <criterion id="AC-006">Dato un Task esistente, quando PATCH con `requester_id: null`, allora 422 e il Task non cambia.</criterion>
+    <criterion id="AC-007">Dato lo stesso Task, quando PATCH che submitta SOLO `description`, allora 200: i quattro campi obbligatori non submittati non sono richiesti.</criterion>
+    <criterion id="AC-008">Dato un Task creato in DB privo di `requester_id` (riga storica), quando PATCH che submitta solo `title`, allora 200: nessuna sanatoria retroattiva.</criterion>
+
+    <!-- ===== D-3 / D-4 / D-6: stato derivato ===== -->
+    <criterion id="AC-009">Dato un POST valido con `task_status_id` fra i campi, allora 422 (prohibited) e nessuna riga creata.</criterion>
+    <criterion id="AC-010">Dato un POST con `assignee_ids` = [il solo creatore], allora 201 e `task_status_id` e' la riga `system_key = 'open'`.</criterion>
+    <criterion id="AC-011">Dato un POST con `requester_id` = X e `assignee_ids` = [X], allora 201 e lo stato e' `system_key = 'open'`.</criterion>
+    <criterion id="AC-012">Dato un POST con `assignee_ids` = [un terzo utente], allora 201 e lo stato e' `system_key = 'assigned'`.</criterion>
+    <criterion id="AC-013">Dato un POST con `assignee_ids` = [creatore, richiedente] (due elementi, entrambi "interni"), allora 201 e lo stato e' `system_key = 'assigned'`: la regola vale solo per l'assegnatario unico (D-4).</criterion>
+    <criterion id="AC-014">Dato un Task in "Da assegnare" con il solo creatore come assegnatario, quando PATCH `assignee_ids` = [un collega], allora 200 e `task_status_id` NON cambia (D-6).</criterion>
+    <criterion id="AC-015">Dato un Task in una fase avanzata, quando PATCH `assignee_ids`, allora lo stato resta quello: nessuna ri-derivazione puo' riportare indietro un Task.</criterion>
+    <criterion id="AC-016">Dato `GET /api/meta/tasks` in contesto create, allora `fields.task_status_id.editable` e' false e `fields.requester_id.required`, `fields.assignee_ids.required`, `fields.end_date.required` sono true.</criterion>
+
+    <!-- ===== D-5: riga protetta "Assegnato" ===== -->
+    <criterion id="AC-017">Dopo `migrate` su un database che contiene la riga ordinaria "Assegnato", quella riga porta `system_key = 'assigned'` e conserva nome, colore, icona, percentuale e `sort_order` che aveva.</criterion>
+    <criterion id="AC-018">Dopo `migrate:fresh` (nessun seeder eseguito), esiste una riga `system_key = 'assigned'` con nome "Assegnato", fase `open`, colore `blue`, icona `user`, percentuale 10.</criterion>
+    <criterion id="AC-019">Dato il seeder `QualificaTaskTaxonomySeeder` eseguito due volte, allora esiste UNA sola riga "Assegnato" e il suo `system_key` e' `assigned` (idempotenza).</criterion>
+    <criterion id="AC-020">Dato un admin, quando DELETE la riga `assigned`, allora 422 (`SystemStatusGuard`): e' la conseguenza accettata di D-5.</criterion>
+    <criterion id="AC-021">Dato un admin, quando PATCH la riga `assigned` cambiandone `group`, allora 422; quando ne cambia solo `name` e `color`, allora 200.</criterion>
+    <criterion id="AC-022">Dato il rollback della migrazione, allora la riga "Assegnato" ESISTE ancora e il suo `system_key` e' null: la promozione si disfa, la riga non si cancella mai.</criterion>
+
+    <!-- ===== D-7 / D-8: allegati in creazione ===== -->
+    <criterion id="AC-023">Dato il form di creazione Task con due file in staging, quando l'utente salva, allora il POST `/api/tasks` parte UNA volta e poi partono due `POST /api/attachments` con `attachable_type='task'` e `attachable_id` uguale all'id restituito.</criterion>
+    <criterion id="AC-024">Dati due file in staging di cui uno rifiutato dal server, quando l'utente salva, allora si naviga al dettaglio del Task e un toast NOMINA il file fallito; il Task NON viene cancellato.</criterion>
+    <criterion id="AC-025">Dato il form di creazione senza alcun file in staging, quando l'utente salva, allora NESSUNA chiamata a `/api/attachments` parte.</criterion>
+    <criterion id="AC-026">Dato un file rimosso dallo staging prima del salvataggio, quando l'utente salva, allora quel file non viene caricato.</criterion>
+    <criterion id="AC-027">Dato il form di MODIFICA di un Task, allora lo staging non e' montato: in modifica i documenti si gestiscono dal tab Documenti del dettaglio.</criterion>
+
+    <!-- ===== D-9: divieto di sovrapposizione ===== -->
+    <criterion id="AC-028">Dato un POST con `watcher_ids` contenente il creatore, allora 422 field-scoped su `watcher_ids` e nessuna riga creata.</criterion>
+    <criterion id="AC-029">Dato un POST con `watcher_ids` contenente il `requester_id` submittato, allora 422 su `watcher_ids`.</criterion>
+    <criterion id="AC-030">Dato un POST con lo stesso id in `assignee_ids` e `watcher_ids`, allora 422 su `watcher_ids`.</criterion>
+    <criterion id="AC-031">Dato un POST con osservatori tutti distinti da creatore, richiedente e assegnatari, allora 201.</criterion>
+    <criterion id="AC-032">Dato un Task con assegnatario X, quando PATCH `watcher_ids: [X]`, allora 422 e nessuno dei due pivot cambia.</criterion>
+    <criterion id="AC-033">Dato un Task con osservatore Y, quando PATCH `assignee_ids: [Y]` SENZA submittare `watcher_ids`, allora 422: la regola e' valutata sulla coppia RISULTANTE, non solo sulla chiave submittata.</criterion>
+    <criterion id="AC-034">Dato un utente che e' creatore E richiedente dello stesso Task, allora la creazione riesce: i ruoli continuano a sommarsi, il divieto riguarda solo l'osservatore (D-9).</criterion>
+    <criterion id="AC-035">Nel form, dato un utente gia' scelto come assegnatario, allora non e' offerto dal picker osservatori.</criterion>
+
+    <!-- ===== D-10: autorizzazione dell'azione ===== -->
+    <criterion id="AC-036">Dato il catalogo permessi dopo `permissions:sync`, allora i permessi `tasks.*` sono 15 e fra essi c'e' `tasks.requestUpdate`.</criterion>
+    <criterion id="AC-037">Dato il CREATORE di un Task aperto con `tasks.requestUpdate`, quando POST `/request-update` con un assegnatario fra i destinatari, allora 200.</criterion>
+    <criterion id="AC-038">Dato il RICHIEDENTE, stesso POST, allora 200.</criterion>
+    <criterion id="AC-039">Dato un OSSERVATORE puro, stesso POST, allora 200: e' l'unica azione che l'osservatore puo' eseguire.</criterion>
+    <criterion id="AC-040">Dato un ASSEGNATARIO puro, stesso POST, allora 403.</criterion>
+    <criterion id="AC-041">Dato un utente con `tasks.manageAll` che NON e' assegnatario, stesso POST, allora 200.</criterion>
+    <criterion id="AC-042">Dato un utente con `tasks.manageAll` che E' ANCHE assegnatario di questo Task, stesso POST, allora 403 (deroga D-2 della 0116, valida anche per un super-admin che bypassa la Policy via `Gate::before`).</criterion>
+    <criterion id="AC-043">Dato un utente senza `tasks.requestUpdate`, stesso POST, allora 403.</criterion>
+    <criterion id="AC-044">Dato un utente fuori dallo scope di visibilita' del Task, stesso POST, allora 403.</criterion>
+
+    <!-- ===== D-10: disponibilita' ===== -->
+    <criterion id="AC-045">Dato un Task con `is_blocked = true`, quando il creatore POST `/request-update`, allora 409 e nessuna notifica inviata.</criterion>
+    <criterion id="AC-046">Dato un Task in fase `closed_positive`, stesso POST, allora 422.</criterion>
+    <criterion id="AC-047">Dato un Task in fase `in_validation`, stesso POST, allora 422.</criterion>
+    <criterion id="AC-048">Dato un Task in fase `pending` ("In attesa controparte"), stesso POST, allora 200: `isCompletable` include `pending`, e il documento non lo esclude.</criterion>
+
+    <!-- ===== D-11 / D-12: destinatari e messaggio ===== -->
+    <criterion id="AC-049">Dato un POST con `recipient_ids: []`, allora 422 su `recipient_ids`.</criterion>
+    <criterion id="AC-050">Dato un POST con un `recipient_ids` che contiene un utente esistente ma NON assegnatario ne' osservatore del Task, allora 422 su `recipient_ids` e nessuna notifica inviata.</criterion>
+    <criterion id="AC-051">Dato un POST con `recipient_ids` = [un assegnatario, un osservatore], allora 200 e esattamente DUE notifiche inviate.</criterion>
+    <criterion id="AC-052">Dato un Task con due assegnatari e un POST che ne spunta uno solo, allora l'altro assegnatario NON riceve nulla (D-11: niente invio automatico).</criterion>
+    <criterion id="AC-053">Dato un POST senza `message`, allora 200 e la notifica inviata ha un titolo e un corpo non vuoti che nominano l'attore e il Task.</criterion>
+    <criterion id="AC-054">Dato un POST con `message` oltre 2000 caratteri, allora 422 su `message`.</criterion>
+
+    <!-- ===== D-13: la notifica ===== -->
+    <criterion id="AC-055">Dato un `/request-update` riuscito, allora `TaskUpdateRequested` e' inviata ai destinatari con canali `database` e `mail`.</criterion>
+    <criterion id="AC-056">Dato un destinatario che PUO' leggere il Task, allora il payload `database` ha `action_url` = `/tasks/{id}` (percorso interno, mai assoluto) e la mail ha un bottone.</criterion>
+    <criterion id="AC-057">Dato un destinatario che NON puo' leggere il Task, allora `action_url` e' null, la mail NON ha bottone e il corpo contiene la frase che invita a chiedere l'accesso.</criterion>
+    <criterion id="AC-058">Dato un `/request-update` che fallisce con 403/409/422, allora ZERO notifiche sono inviate.</criterion>
+
+    <!-- ===== D-14 + frontend ===== -->
+    <criterion id="AC-059">Dato `GET /api/tasks/{id}`, allora `permissions.actions.request_update` esiste; per un osservatore puro su Task aperto e' true, per un assegnatario puro e' false.</criterion>
+    <criterion id="AC-060">Dato un `/request-update` riuscito, allora la risposta ha la stessa shape di `GET /api/tasks/{id}` (D-14).</criterion>
+    <criterion id="AC-061">Nel dettaglio, dato `request_update: false`, allora il bottone "Richiedi aggiornamento" e' ASSENTE dal DOM (non disabilitato).</criterion>
+    <criterion id="AC-062">Nel dettaglio, dato `request_update: true`, quando si apre il dialog, allora il picker destinatari offre SOLO gli assegnatari e gli osservatori del Task, e non offre creatore ne' richiedente se non figurano fra quelli.</criterion>
+    <criterion id="AC-063">Nel dialog, dato nessun destinatario spuntato, allora il submit e' rifiutato lato client con un messaggio sul campo destinatari.</criterion>
+    <criterion id="AC-064">Nel dialog, dato un 409 dal server, allora il toast mostra la copy "task bloccato"; dato un 422, la copy "fase sbagliata" (riuso di `actionErrorMessage`).</criterion>
+    <criterion id="AC-065">Tutte le nuove chiavi i18n esistono sia in `it-tasks.ts` sia in `en-tasks.ts` (test di parita' verde).</criterion>
+    <criterion id="AC-066">Il dialog e il nuovo blocco di staging allegati sono usabili a 375 / 768 / 1024 px senza scrollbar orizzontale ne' sovrapposizioni. VERIFICA MANUALE sull'app reale, non automatizzabile.</criterion>
+
+    <!-- ===== regressione ===== -->
+    <criterion id="AC-067">L'intera suite Pest resta verde a parte TRE gruppi di asserzioni, aggiornati perche' il REQUISITO e' cambiato e non per farli passare (non e' test tampering). Ognuno e' dichiarato qui:
+      (a) i test che pinnavano AC-083 della 0101 (sovrapposizione assegnatario/osservatore) -> D-9 lo ritira;
+      (b) il conteggio dei permessi `tasks.*`, da 14 a 15 -> D-10 aggiunge `tasks.requestUpdate`;
+      (c) `tests/Feature/Seeding/QualificaTaskTaxonomySeederTest.php`, due conteggi: le righe protette passano da 4 a 5 e le ordinarie del catalogo da 7 a 6 -> D-5 promuove "Assegnato". Il TOTALE delle righe e il loro ORDINE non cambiano, e le asserzioni sull'ordine restano verdi senza modifiche: e' la prova che la promozione non ha spostato la riga;
+      (d) `tests/Feature/TaskConfig/TaskConfigSchemaTest.php` e `TaskLookupReorderTest.php`, sette asserzioni: lo stesso conteggio 4 -> 5 di (c) letto dal lato configuratore, piu' la mappa delle percentuali attese che guadagna `'assigned' => 10`. Stessa causa unica, D-5;
+      (e) `tests/Feature/QuoteWorkflows/QuoteWorkflowMigrationTest.php`, UN numero: lo `--step` del `migrate:rollback` passa da 60 a 61, perche' D-5 aggiunge la 61esima migrazione. NON e' un test del dominio Task: e' un contatore di manutenzione che quel test documenta esplicitamente ("Adding a migration means bumping this number"), e che QUALUNQUE spec che aggiunga una migrazione deve aggiornare. Chi aggiunge una migrazione in questo repo lo aggiorni, o la suite diventa rossa lontano da dove ha scritto;
+      (f) `tests/Feature/Tasks/TaskDocumentsTest.php`, UNA lista: l'asserzione della 0117 che fissa `array_keys(permissions.actions)` guadagna `request_update` come dodicesima chiave. E' la conseguenza meccanica di D-10, non una scelta: un test che fissa un elenco esatto va aggiornato ogni volta che l'elenco cresce, ed e' il prezzo di quella forma di asserzione. Insieme a questa, le DODICI copie di `taskActorWith()` in `tests/Feature/Tasks/` e i due helper gemelli `taskDocumentActor`/`taskNoteActor` guadagnano `'requestUpdate'` nella lista di ability che creano: PHP tiene solo la prima definizione caricata in ordine alfabetico, quindi lasciarne una indietro non rompe nulla in modo visibile — rende semplicemente false un flag, in silenzio, a seconda dell'ordine di caricamento. Sono state aggiornate TUTTE.</criterion>
+    <criterion id="AC-068">`taskActorWith()` e' aggiornato in TUTTE le sue copie con la nuova ability, piu' i due helper gemelli `taskDocumentActor` e `taskNoteActor`. PHP tiene solo la prima definizione caricata in ordine alfabetico, quindi una copia rimasta indietro non rompe nulla in modo visibile: rende semplicemente false un flag, in silenzio, a seconda dell'ordine di caricamento.
+      NON FIDARSI DI UN NUMERO SCRITTO QUI: al momento della verifica le copie sono 13 (erano 11 prima di questa spec, che ne aggiunge due con `TaskWatcherOverlapTest` e `TaskRequestUpdateTest`), e ogni spec futura che aggiunga un file di test a quella cartella le fa crescere ancora. Il criterio si verifica SEMPRE eseguendo `grep -rln "function taskActorWith" backend/tests/` e controllando che ogni file trovato contenga la nuova ability — mai contando su una cifra a memoria. La cifra "11" citata nel brief di questo lotto era gia' superata dagli eventi a meta' lavoro.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>NESSUNA nuova dipendenza, ne' composer ne' npm.</item>
+    <item>La matrice ruolo -> azione vive SOLO in `TaskAbilityResolver`: `canRequestUpdate()` si
+      aggiunge la', e Policy, `TasksAuthorization` e `TaskActionService` la leggono. Nessuna
+      condizione di ruolo duplicata altrove.</item>
+    <item>La disponibilita' per fase vive SOLO in `TaskActionAvailability`: la nuova azione riusa
+      `isCompletable()`, non introduce un metodo gemello.</item>
+    <item>`TaskActionService` ri-asserta server-side cio' che il flag UI suggerisce, come per le
+      altre 6 azioni: il flag e' un suggerimento, il Service e' il controllo.</item>
+    <item>Nessun `throttle` sul nuovo endpoint (regola di progetto: rate limiting solo sugli
+      endpoint di credenziali).</item>
+    <item>Nessuna modifica a `NotificationService`, `NotificationResource`, `NotificationData`,
+      al contatore non letti o alla campanella: la notifica nuova si adegua al payload esistente.</item>
+    <item>Nessuna modifica ai sei alias del sottosistema Attachment, alla sua Policy o al suo
+      Service: gli allegati in creazione sono puro orchestramento client.</item>
+    <item>Identificatori in inglese (classi, metodi, colonne, rotte, chiavi di payload); l'italiano
+      solo nelle stringhe i18n.</item>
+    <item>Nuovo file oltre 300 righe: proporre lo split prima di superarlo; 500 e' il limite duro
+      che l'hook blocca.</item>
+    <item>La migrazione di promozione non modifica nessuna migrazione gia' committata e il suo
+      `down()` rimuove solo il `system_key`, mai la riga.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, `npx tsc -b --force --pretty false` EXIT 0,
+      Pint pulito. `tsc --noEmit` in questo repo e' un falso verde e non conta come verifica.</item>
+  </constraints>
+
+</spec>

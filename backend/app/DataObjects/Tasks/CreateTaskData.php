@@ -18,10 +18,22 @@ namespace App\DataObjects\Tasks;
  * `isBlocked` is absent too (spec 0116 D-6): `is_blocked` is `prohibited` at
  * creation, so every new Task starts unblocked — attributes() hardcodes it.
  *
- * `assigneeIds`/`watcherIds` default to `[]`, so a create with neither key
- * simply syncs two empty pivots. `startTime`/`endTime` are `H:i` strings
- * (D-11: `FieldDefinition` has no `time` type, so they travel as text
- * validated by `date_format`).
+ * `taskStatusId` is GONE too (spec 0118 D-3): the initial status is derived
+ * server-side by `App\Services\Tasks\TaskInitialStatusResolver` (D-4) from
+ * `requesterId`/`assigneeIds`/the creator, so `StoreTaskRequest` rejects the
+ * key with `prohibited` (AC-009) and this DTO carries no field for it —
+ * `TaskService::create()` sets `task_status_id` on the model directly, the
+ * same way it already sets `creator_id`.
+ *
+ * `requesterId`/`endDate` are non-nullable and `assigneeIds` keeps its
+ * `min:1` floor at the type level too (spec 0118 D-1): all three are
+ * `required` at the FormRequest layer, so a payload that reaches this DTO
+ * has already guaranteed their presence — a nullable property here would
+ * let a future caller construct an invalid state the FormRequest already
+ * forbids. `watcherIds` stays optional and defaults to `[]`, so a create
+ * with no observers simply syncs an empty pivot. `startTime`/`endTime` are
+ * `H:i` strings (D-11: `FieldDefinition` has no `time` type, so they travel
+ * as text validated by `date_format`).
  */
 final readonly class CreateTaskData
 {
@@ -31,7 +43,9 @@ final readonly class CreateTaskData
      */
     public function __construct(
         public string $title,
-        public int $taskStatusId,
+        public int $requesterId,
+        public string $endDate,
+        public array $assigneeIds,
         public ?string $description = null,
         public ?int $registryId = null,
         public ?int $referentId = null,
@@ -42,16 +56,13 @@ final readonly class CreateTaskData
         public ?int $taskCategoryId = null,
         public ?int $opportunityId = null,
         public ?int $workOrderId = null,
-        public ?int $requesterId = null,
         public ?string $startDate = null,
-        public ?string $endDate = null,
         public ?string $completionDate = null,
         public ?string $startTime = null,
         public ?string $endTime = null,
         public ?int $estimatedMinutes = null,
         public bool $requiresClosureFeedback = false,
         public ?string $closureFeedback = null,
-        public array $assigneeIds = [],
         public array $watcherIds = [],
     ) {}
 
@@ -64,7 +75,9 @@ final readonly class CreateTaskData
     {
         return new self(
             title: (string) $data['title'],
-            taskStatusId: (int) $data['task_status_id'],
+            requesterId: (int) $data['requester_id'],
+            endDate: (string) $data['end_date'],
+            assigneeIds: self::normalizeIds($data['assignee_ids']),
             description: self::nullableString($data, 'description'),
             registryId: self::nullableInt($data, 'registry_id'),
             referentId: self::nullableInt($data, 'referent_id'),
@@ -75,23 +88,21 @@ final readonly class CreateTaskData
             taskCategoryId: self::nullableInt($data, 'task_category_id'),
             opportunityId: self::nullableInt($data, 'opportunity_id'),
             workOrderId: self::nullableInt($data, 'work_order_id'),
-            requesterId: self::nullableInt($data, 'requester_id'),
             startDate: self::nullableString($data, 'start_date'),
-            endDate: self::nullableString($data, 'end_date'),
             completionDate: self::nullableString($data, 'completion_date'),
             startTime: self::nullableString($data, 'start_time'),
             endTime: self::nullableString($data, 'end_time'),
             estimatedMinutes: self::nullableInt($data, 'estimated_minutes'),
             requiresClosureFeedback: (bool) ($data['requires_closure_feedback'] ?? false),
             closureFeedback: self::nullableString($data, 'closure_feedback'),
-            assigneeIds: self::normalizeIds($data['assignee_ids'] ?? []),
             watcherIds: self::normalizeIds($data['watcher_ids'] ?? []),
         );
     }
 
     /**
-     * The mass-assignable column map. `creator_id` is NOT here (D-10) — it is
-     * set on the model directly, since it is not part of Task's #[Fillable].
+     * The mass-assignable column map. `creator_id` and `task_status_id` are
+     * NOT here (D-10/D-3 of spec 0118) — both are set on the model directly
+     * by TaskService, since neither is part of Task's #[Fillable].
      *
      * @return array<string, mixed>
      */
@@ -99,7 +110,6 @@ final readonly class CreateTaskData
     {
         return [
             'title' => $this->title,
-            'task_status_id' => $this->taskStatusId,
             'description' => $this->description,
             'registry_id' => $this->registryId,
             'referent_id' => $this->referentId,

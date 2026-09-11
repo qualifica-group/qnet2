@@ -56,7 +56,12 @@ interface FormValues {
   sector_ids: number[]
 }
 
-function Harness({ defaultValues = { sector_ids: [1] } }: { defaultValues?: FormValues }) {
+interface HarnessProps {
+  defaultValues?: FormValues
+  excludeIds?: number[]
+}
+
+function Harness({ defaultValues = { sector_ids: [1] }, excludeIds }: HarnessProps) {
   const form = useForm<FormValues>({ defaultValues })
   return (
     <Form {...form}>
@@ -73,12 +78,13 @@ function Harness({ defaultValues = { sector_ids: [1] } }: { defaultValues?: Form
         errorLabel="Unable to load sectors."
         removeLabel="Remove"
         retryLabel="Retry"
+        excludeIds={excludeIds}
       />
     </Form>
   )
 }
 
-function renderHarness(props: Parameters<typeof Harness>[0] = {}) {
+function renderHarness(props: HarnessProps = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -127,5 +133,47 @@ describe('RelationMultiSelectField quick-create wiring', () => {
       screen.queryByRole('button', { name: i18n.t('sectors.form.createTitle') }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sectors' })).toBeInTheDocument()
+  })
+})
+
+/** Spec 0118 AC-035: the wrapper forwards `excludeIds` to `AsyncPaginatedMultiSelect` unchanged. */
+describe('RelationMultiSelectField excludeIds', () => {
+  beforeEach(() => {
+    useForSelectMock.mockReturnValue({
+      data: {
+        pages: [
+          {
+            items: [
+              { id: 2, label: 'Manufacturing' },
+              { id: 3, label: 'Retail' },
+            ],
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      refetch: vi.fn(),
+    })
+  })
+
+  it('drops the excluded option from the popup', () => {
+    renderHarness({ excludeIds: [3] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sectors' }))
+
+    expect(screen.getByRole('option', { name: 'Manufacturing' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Retail' })).not.toBeInTheDocument()
+  })
+
+  it('offers every option when excludeIds is omitted', () => {
+    renderHarness()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sectors' }))
+
+    expect(screen.getByRole('option', { name: 'Manufacturing' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Retail' })).toBeInTheDocument()
   })
 })

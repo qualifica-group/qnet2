@@ -34,7 +34,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -111,7 +111,7 @@ it('AC-036/AC-053: the field catalogue is in the frozen order and omits completi
         ->and($keys)->not->toContain('is_blocked');
 });
 
-it('AC-053: only title and task_status_id are mandatory', function () {
+it('AC-053 / spec 0118 D-1: title, task_status_id, requester_id, assignee_ids and end_date are mandatory', function () {
     $actor = taskActorWith(['viewAny', 'create']);
     Sanctum::actingAs($actor);
 
@@ -119,6 +119,9 @@ it('AC-053: only title and task_status_id are mandatory', function () {
 
     expect($fields['title']['mandatory'])->toBeTrue()
         ->and($fields['task_status_id']['mandatory'])->toBeTrue()
+        ->and($fields['requester_id']['mandatory'])->toBeTrue()
+        ->and($fields['assignee_ids']['mandatory'])->toBeTrue()
+        ->and($fields['end_date']['mandatory'])->toBeTrue()
         ->and($fields['description']['mandatory'])->toBeFalse()
         ->and($fields['closure_feedback']['mandatory'])->toBeFalse()
         // D-11: FieldDefinition has no `time` type, so the two clock fields
@@ -127,6 +130,24 @@ it('AC-053: only title and task_status_id are mandatory', function () {
         ->and($fields['end_time']['type'])->toBe('text')
         ->and($fields['assignee_ids']['type'])->toBe('multiselect')
         ->and($fields['watcher_ids']['type'])->toBe('multiselect');
+});
+
+// ---------------------------------------------------------------------------
+// AC-016 (spec 0118) — the create-context ceiling: task_status_id locks,
+// the other three unlock
+// ---------------------------------------------------------------------------
+
+it('AC-016: in create context, task_status_id is not editable while requester_id/assignee_ids/end_date are required', function () {
+    $actor = taskActorWith(['viewAny', 'create']);
+    Sanctum::actingAs($actor);
+
+    $permissions = $this->getJson('/api/meta/tasks')->assertOk()->json('permissions.fields');
+
+    expect($permissions['task_status_id']['editable'])->toBeFalse()
+        ->and($permissions['task_status_id']['required'])->toBeFalse()
+        ->and($permissions['requester_id']['required'])->toBeTrue()
+        ->and($permissions['assignee_ids']['required'])->toBeTrue()
+        ->and($permissions['end_date']['required'])->toBeTrue();
 });
 
 // ---------------------------------------------------------------------------

@@ -37,6 +37,8 @@ interface RelationMultiSelectFieldProps<
   retryLabel: string
   /** Renders an avatar in every badge and option (see `AsyncPaginatedMultiSelect`). */
   showAvatar?: boolean
+  /** Ids the option list drops client-side (spec 0118 AC-035); see `AsyncPaginatedMultiSelect.excludeIds`. */
+  excludeIds?: number[]
 }
 
 /** Renders `{id, name}` relation refs as the `ForSelectItem` shape `AsyncPaginatedMultiSelect` hydrates from. */
@@ -69,6 +71,7 @@ export function RelationMultiSelectField<
   removeLabel,
   retryLabel,
   showAvatar = false,
+  excludeIds,
 }: RelationMultiSelectFieldProps<TFieldValues, TName>) {
   const { quickCreated, renderAction } = useQuickCreateAction(resource)
 
@@ -93,6 +96,7 @@ export function RelationMultiSelectField<
               selectedItems={toForSelectItems([...selected, ...extraSelected])}
               showAvatar={showAvatar}
               disabled={isDisabled}
+              excludeIds={excludeIds}
               labels={{
                 placeholder,
                 searchPlaceholder,

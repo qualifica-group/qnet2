@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { useTaskForm } from '@/features/tasks/use-task-form'
+import { TaskAttachmentStaging } from '@/features/tasks/task-attachment-staging'
 import { TaskClassificationSection } from '@/features/tasks/task-classification-section'
 import { TaskClosureSection } from '@/features/tasks/task-closure-section'
 import { TaskIdentitySection } from '@/features/tasks/task-identity-section'
@@ -60,6 +61,27 @@ function peopleOf(refs: TaskNamedRef[] | undefined): RelationFieldRef[] {
   return refs && refs.length > 0 ? refs : EMPTY_PEOPLE
 }
 
+/**
+ * The Richiedente picker's hydration: the persisted requester in edit mode
+ * (possibly `null` on a historical row, AC-008 — no retroactive sanatoria),
+ * or the connected actor's own ref on create (D-1 prefill, `useTaskForm`).
+ */
+function requesterRefOf(
+  task: TaskDetail | null,
+  currentUserRef: RelationFieldRef | null,
+): RelationFieldRef | null {
+  return task ? (task.requester ?? null) : currentUserRef
+}
+
+/**
+ * The creator id the watchers picker excludes (spec 0118 D-9/AC-035): the
+ * persisted `task.creator.id` in edit mode, the connected actor's id on
+ * create (`useTaskForm.currentUserRef`) — never a form value (D-10).
+ */
+function creatorIdOf(task: TaskDetail | null, currentUserRef: RelationFieldRef | null): number | null {
+  return task ? task.creator.id : (currentUserRef?.id ?? null)
+}
+
 interface TaskFormBodyProps {
   mode: TaskFormMode
   onSuccess: (task: TaskDetail) => void
@@ -88,6 +110,10 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
     handleStatusItemChange,
     completionPercentage,
     statusGroup,
+    currentUserRef,
+    stagedAttachments,
+    addStagedAttachments,
+    removeStagedAttachment,
   } = useTaskForm({ mode, onSuccess })
 
   const task = persistedTask(mode)
@@ -121,9 +147,10 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
 
           <TaskPeopleSection
             control={form.control}
-            requester={task?.requester ?? null}
+            requester={requesterRefOf(task, currentUserRef)}
             assignees={peopleOf(task?.assignees)}
             watchers={peopleOf(task?.watchers)}
+            creatorId={creatorIdOf(task, currentUserRef)}
           />
 
           <TaskPlanningSection control={form.control} />
@@ -135,6 +162,14 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
           />
 
           <TaskClosureSection control={form.control} statusGroup={statusGroup} />
+
+          {mode.type === 'create' ? (
+            <TaskAttachmentStaging
+              files={stagedAttachments}
+              onAdd={addStagedAttachments}
+              onRemove={removeStagedAttachment}
+            />
+          ) : null}
 
           {serverError ? (
             <p className="text-sm font-medium text-destructive" role="alert">

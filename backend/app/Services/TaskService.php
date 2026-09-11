@@ -12,7 +12,9 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
 use App\Services\Tasks\TaskHierarchyGuard;
+use App\Services\Tasks\TaskInitialStatusResolver;
 use App\Services\Tasks\TaskVisibilityScope;
+use App\Services\Tasks\TaskWatcherOverlapGuard;
 use App\Services\Tasks\TaskWriteLock;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -22,21 +24,44 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Business logic for the `tasks` resource (spec 0101). The controller stays
- * thin; this Service is the single authority over the write-time rules that
- * a FormRequest structurally cannot enforce. Three of them are evaluated on
+ * Business logic for the `tasks` resource (spec 0101).
+ *
+ * SIZE, DECIDED AND RECORDED (spec 0118, engineering.md §6): this file is over
+ * the 300-line soft limit (382 after spec 0118 added the derived initial status
+ * and the overlap guard to the two existing write paths) and is deliberately NOT
+ * split. Everything above that line is the FIVE write-time guards, and their
+ * whole point is to run inside the SAME transaction as the write they protect:
+ * splitting `create()` from `update()`, or the guards from the methods that
+ * order them, would put the transaction boundary and the rules that depend on it
+ * in different files — the one arrangement that makes "a refusal leaves the Task
+ * exactly as it was" (AC-032) hard to see and easy to break. The same decision,
+ * for the same reason, is recorded on the sibling `Tasks\TaskActionService` (329
+ * lines). The hard limit is 500: if either approaches it, the split to make is by
+ * WRITE PATH (a `TaskWriter` per operation), never by extracting the guards from
+ * their transaction.
+ *
+ * The controller stays thin; this Service is the single authority over the
+ * write-time rules that a FormRequest structurally cannot enforce. Four of them are evaluated on
  * the RESULTING record rather than on the submitted payload: the sub-task
- * hierarchy (D-12), the referent/anagrafica coherence (AC-014) and the
- * closing feedback (D-7). A fourth, the structural write lock (spec 0116
- * D-7), is the mirror case: it is evaluated on the SUBMITTED keys against
- * the Task's CURRENT persisted state, ahead of fill() — a task_status_id
- * sent in the same PATCH that would move the Task out of a frozen phase must
- * not smuggle a structural field past the lock that was in force when the
- * request arrived. All four run INSIDE the write transaction, so a refusal
- * leaves the Task exactly as it was (AC-032).
+ * hierarchy (D-12), the referent/anagrafica coherence (AC-014), the closing
+ * feedback (D-7) and the watcher/creator/requester/assignee overlap (spec
+ * 0118 D-9) — the last one needs the two user pivots resolved to their
+ * RESULTING ids (submitted, or persisted when the key was not part of this
+ * PATCH), which is why TaskService computes them and TaskWatcherOverlapGuard
+ * receives plain arrays rather than the DTO. A fifth, the structural write
+ * lock (spec 0116 D-7), is the mirror case: it is evaluated on the SUBMITTED
+ * keys against the Task's CURRENT persisted state, ahead of fill() — a
+ * task_status_id sent in the same PATCH that would move the Task out of a
+ * frozen phase must not smuggle a structural field past the lock that was in
+ * force when the request arrived. All five run INSIDE the write transaction,
+ * so a refusal leaves the Task exactly as it was (AC-032).
  *
  * `creator_id` is set here from the authenticated actor and nowhere else
  * (D-10): it is absent from Task's #[Fillable], so no payload can reach it.
+ * `task_status_id` is set here too on create ONLY (spec 0118 D-3/D-4/D-6):
+ * `TaskInitialStatusResolver` derives it from the submitted assignees against
+ * the creator/requester, inside the same transaction, before the
+ * closing-feedback guard runs — update() never re-derives it, by design.
  *
  * delete() carries the sub-task guard (D-8a) and the structural write lock's
  * assertDeletable() (spec 0116 AC-033); TasksTableDefinition overrides
@@ -74,6 +99,8 @@ class TaskService
     public function __construct(
         private readonly TaskClosureFeedbackGuard $closureFeedbackGuard,
         private readonly TaskHierarchyGuard $hierarchyGuard,
+        private readonly TaskInitialStatusResolver $initialStatusResolver,
+        private readonly TaskWatcherOverlapGuard $watcherOverlapGuard,
     ) {}
 
     public function loadDetail(Task $task): Task
@@ -97,11 +124,30 @@ class TaskService
             $task = new Task($data->attributes());
             $task->creator_id = $creator->id;
 
-            // Step 3: the closing-feedback rule, on the resulting state (D-7).
+            // Step 3: the initial status is DERIVED, never submitted (spec
+            // 0118 D-3/D-4): a single assignee who is the creator or the
+            // requester opens on `open`, every other case on `assigned`.
+            $task->task_status_id = $this->initialStatusResolver->resolve(
+                $data->assigneeIds,
+                $creator->id,
+                $data->requesterId,
+            );
+
+            // Step 4: the closing-feedback rule, on the resulting state (D-7).
             $this->closureFeedbackGuard->assertSatisfied($task);
+
+            // Step 5: watcher overlap rule (spec 0118 D-9). On create there is
+            // no persisted state to fall back to: the resulting sets ARE the
+            // submitted ones, plus the creator taken from the actor.
+            $this->watcherOverlapGuard->assertNoOverlap(
+                $creator->id,
+                $data->requesterId,
+                $data->assigneeIds,
+                $data->watcherIds,
+            );
             $task->save();
 
-            // Step 4: assegnatari/osservatori (D-1), same transaction.
+            // Step 6: assegnatari/osservatori (D-1), same transaction.
             $task->assignees()->sync($data->assigneeIds);
             $task->watchers()->sync($data->watcherIds);
 
@@ -117,9 +163,14 @@ class TaskService
      * the Task as it stood BEFORE this PATCH touches it — otherwise a
      * `task_status_id` submitted in the same request could unfreeze the
      * phase in memory and let a structural field ride along (AC-031/AC-032).
-     * The other three guards run against the model's RESULTING state, so a
-     * PATCH that submits only `task_status_id` is still judged against the
-     * persisted flag/feedback/parent (AC-035 of spec 0101).
+     * The other guards run against the model's RESULTING state, so a PATCH
+     * that submits only `task_status_id` is still judged against the
+     * persisted flag/feedback/parent (AC-035 of spec 0101). The watcher
+     * overlap rule (spec 0118 D-9) is the same idea applied to the two user
+     * pivots: `assignee_ids`/`watcher_ids` are read from the payload when
+     * submitted, from the persisted pivot otherwise (AC-033) — `requester_id`
+     * needs no such fallback because it is a plain column already merged by
+     * fill() by the time the guard runs.
      */
     public function update(Task $task, UpdateTaskData $data): Task
     {
@@ -131,6 +182,12 @@ class TaskService
             $this->hierarchyGuard->assertAcyclic($task->id, $task->parent_task_id);
             $this->assertReferentBelongsToRegistry($task->registry_id, $task->referent_id);
             $this->closureFeedbackGuard->assertSatisfied($task);
+            $this->watcherOverlapGuard->assertNoOverlap(
+                $task->creator_id,
+                $task->requester_id,
+                $data->hasAssigneeIds() ? ($data->assigneeIds ?? []) : $this->persistedPivotIds($task, 'assignees'),
+                $data->hasWatcherIds() ? ($data->watcherIds ?? []) : $this->persistedPivotIds($task, 'watchers'),
+            );
             $task->save();
 
             // Full-replace only when the key was actually submitted
@@ -286,6 +343,27 @@ class TaskService
         }
 
         return $keys;
+    }
+
+    /**
+     * The ids currently on one of the Task's two user pivots
+     * (`assignees`/`watchers`), used only as a RESULTING-value fallback for
+     * TaskWatcherOverlapGuard (spec 0118 D-9, AC-033): read when the pivot's
+     * own key was not part of this PATCH, so the guard is judged on what the
+     * Task will actually hold once saved rather than on the submitted keys
+     * alone.
+     *
+     * @param  'assignees'|'watchers'  $relation
+     * @return array<int, int>
+     */
+    private function persistedPivotIds(Task $task, string $relation): array
+    {
+        $query = match ($relation) {
+            'assignees' => $task->assignees(),
+            'watchers' => $task->watchers(),
+        };
+
+        return $query->pluck('users.id')->all();
     }
 
     /**

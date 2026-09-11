@@ -6,10 +6,14 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createTask, taskDetailQueryKey, updateTask } from '@/features/tasks/api'
+import { useAuth } from '@/features/auth/use-auth'
+import { uploadAttachment } from '@/features/attachments/api'
+import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
+import { createTask, taskDetailQueryKey, TASK_ATTACHABLE_ALIAS, updateTask } from '@/features/tasks/api'
 import { taskStatusMetaOf, type TaskStatusForSelectMeta } from '@/features/tasks/for-select-api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/tasks/task-form-payload'
 import { buildTaskSchema, type TaskFormValues } from '@/features/tasks/task-schema'
+import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { TaskDetail, TaskFormMode } from '@/features/tasks/types'
 
@@ -49,8 +53,14 @@ interface UseTaskFormArgs {
   onSuccess: (task: TaskDetail) => void
 }
 
-/** Default values of a brand-new task, with the "crea sotto-task" parent prefill (AC-085). */
-function createDefaults(parentTaskId: number | null): TaskFormValues {
+/**
+ * Default values of a brand-new task, with the "crea sotto-task" parent
+ * prefill (AC-085) and the requester defaulted to the actor creating it
+ * (spec 0118 D-1: `requester_id` is now required, and the actor is the
+ * requester in the overwhelming majority of cases) — left modifiable, never
+ * locked.
+ */
+function createDefaults(parentTaskId: number | null, requesterId: number | null): TaskFormValues {
   return {
     title: '',
     task_status_id: null,
@@ -64,7 +74,7 @@ function createDefaults(parentTaskId: number | null): TaskFormValues {
     task_category_id: null,
     opportunity_id: null,
     work_order_id: null,
-    requester_id: null,
+    requester_id: requesterId,
     start_date: null,
     end_date: null,
     completion_date: null,
@@ -108,6 +118,31 @@ function editDefaults(task: TaskDetail): TaskFormValues {
 }
 
 /**
+ * Uploads every staged file against the freshly created task, one request at
+ * a time (spec 0118 D-7/AC-023) — mirrors `useAttachments`' own sequential
+ * upload: the endpoint takes one file per request, and a burst of parallel
+ * multipart bodies is what trips server upload limits. Never throws: a
+ * rejected file is reported back by name so the caller can still navigate
+ * (D-8) instead of trapping the user on a form for an already-saved task.
+ */
+async function uploadStagedAttachments(taskId: number, files: File[]): Promise<string[]> {
+  const failed: string[] = []
+  for (const file of files) {
+    try {
+      await uploadAttachment({
+        resource: TASK_ATTACHABLE_ALIAS,
+        id: taskId,
+        collection: DOCUMENTS_COLLECTION,
+        file,
+      })
+    } catch {
+      failed.push(file.name)
+    }
+  }
+  return failed
+}
+
+/**
  * The persisted status projected into the picker's own `meta` shape, so both
  * sources read alike. `TaskResource.statusRef()` projects `group` precisely so
  * an edit form can tell it is already in a closing phase before the user
@@ -135,13 +170,19 @@ function persistedStatusMeta(mode: TaskFormMode): TaskStatusForSelectMeta | null
 export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const isEdit = mode.type === 'edit'
+  /** The connected actor projected onto the picker's hydration shape (D-1 requester prefill). */
+  const currentUserRef: RelationFieldRef | null = user ? { id: user.id, name: user.name } : null
 
   const defaultValues = useMemo<TaskFormValues>(
-    () => (mode.type === 'edit' ? editDefaults(mode.task) : createDefaults(mode.parentTaskId ?? null)),
-    [mode],
+    () =>
+      mode.type === 'edit'
+        ? editDefaults(mode.task)
+        : createDefaults(mode.parentTaskId ?? null, user?.id ?? null),
+    [mode, user?.id],
   )
 
   /**
@@ -155,11 +196,26 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     persistedStatusMeta(mode),
   )
 
+  /**
+   * Files chosen before the task exists (spec 0118 D-7): pure in-memory
+   * staging, never uploaded from here. `TaskFormBody` mounts `<TaskAttachmentStaging>`
+   * on create only (AC-027) — edit mode never touches this state.
+   */
+  const [stagedAttachments, setStagedAttachments] = useState<File[]>([])
+
+  const addStagedAttachments = (files: File[]) => {
+    setStagedAttachments((current) => [...current, ...files])
+  }
+
+  const removeStagedAttachment = (index: number) => {
+    setStagedAttachments((current) => current.filter((_file, fileIndex) => fileIndex !== index))
+  }
+
   // Stable indirection (mirrors `useWorkOrderForm`): `useForm` gets a resolver
   // whose identity never changes but which always runs the latest schema —
   // the D-7 rule depends on the picked status' `group`, which is not a form
   // value.
-  const resolverRef = useRef<Resolver<TaskFormValues>>(zodResolver(buildTaskSchema(t)))
+  const resolverRef = useRef<Resolver<TaskFormValues>>(zodResolver(buildTaskSchema(t, null, !isEdit)))
 
   const form = useForm<TaskFormValues>({
     resolver: (values, context, options) => resolverRef.current(values, context, options),
@@ -167,8 +223,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   })
 
   const schema = useMemo(
-    () => buildTaskSchema(t, statusMeta?.group ?? null),
-    [t, statusMeta?.group],
+    () => buildTaskSchema(t, statusMeta?.group ?? null, !isEdit),
+    [t, statusMeta?.group, isEdit],
   )
 
   useEffect(() => {
@@ -193,6 +249,7 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     const errorFields: Path<TaskFormValues>[] = [...SERVER_ERROR_FIELDS]
     try {
       if (mode.type === 'edit') {
+        // Step 1 (edit): PATCH and refresh the cached detail.
         const saved = await updateTask(mode.task.id, buildUpdatePayload(values, mode.task))
         queryClient.setQueryData(taskDetailQueryKey(mode.task.id), saved)
         toast.success(t('tasks.form.updated'))
@@ -200,7 +257,23 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
         return
       }
 
+      // Step 1 (create): POST the task once — `task_status_id` is derived
+      // server-side from the assignees (D-3/D-4), never sent here.
       const created = await createTask(buildCreatePayload(values))
+
+      // Step 2: upload whatever is still in staging, one request per file
+      // (D-7/AC-023). No staged file, no call at all (AC-025).
+      if (stagedAttachments.length > 0) {
+        const failed = await uploadStagedAttachments(created.id, stagedAttachments)
+        if (failed.length > 0) {
+          // D-8: the task IS saved; a failed attachment never rolls it back
+          // and never re-traps the user on the form — only names the misses.
+          toast.error(t('tasks.form.attachments.uploadFailed', { files: failed.join(', ') }))
+        }
+      }
+
+      // Step 3: report success and hand off to the caller (navigates to the
+      // detail, AC-024) — after the uploads have settled, not before.
       toast.success(t('tasks.form.created'))
       onSuccess(created)
     } catch (error) {
@@ -221,5 +294,11 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     completionPercentage: statusMeta?.completion_percentage ?? null,
     /** The picked status' PHASE: drives the D-7 client rule and the closure section. */
     statusGroup: statusMeta?.group ?? null,
+    /** The connected actor's picker hydration, for the requester prefill (D-1). */
+    currentUserRef,
+    /** In-memory files staged for upload right after a successful create (spec 0118 D-7). */
+    stagedAttachments,
+    addStagedAttachments,
+    removeStagedAttachment,
   }
 }

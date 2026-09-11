@@ -30,6 +30,11 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
+// The connected actor `useTaskForm` reads to prefill the requester on create (spec 0118 D-1).
+vi.mock('@/features/auth/use-auth', () => ({
+  useAuth: () => ({ user: { id: 99, name: 'Utente Corrente' } }),
+}))
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }
@@ -220,11 +225,122 @@ describe('TaskFormBody — commessa label survives the visibility scope', () => 
   })
 })
 
-describe('TaskFormBody — assignees and watchers (AC-083)', () => {
+describe('TaskFormBody — assignees and watchers', () => {
   it('renders both multi-select pickers, bound to the users resource', () => {
     renderForm({ type: 'edit', task: taskDetailWithPermissions() })
 
     expect(screen.getByRole('button', { name: label('tasks.form.assignees') })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: label('tasks.form.watchers') })).toBeInTheDocument()
+  })
+})
+
+/** Spec 0118 D-9/AC-035: the watchers picker never OFFERS the creator/requester/assignees. */
+describe('TaskFormBody — watchers picker excludes overlapping people (spec 0118 D-9/AC-035)', () => {
+  const USERS_PAGE = {
+    items: [
+      { id: 99, label: 'Utente Corrente' },
+      { id: 5, label: 'Carol' },
+      { id: 6, label: 'Dave' },
+    ],
+    pagination: { offset: 0, limit: 25, total: 3 },
+    export_link: null,
+  }
+
+  beforeEach(() => {
+    fetchForSelectMock.mockImplementation(async (resource: string) =>
+      resource === 'users' ? USERS_PAGE : EMPTY_PAGE,
+    )
+  })
+
+  it('never offers the prefilled requester (the connected actor) as a watcher on create', async () => {
+    renderForm({ type: 'create' })
+
+    fireEvent.click(screen.getByRole('button', { name: label('tasks.form.watchers') }))
+
+    await waitFor(() => expect(screen.getByRole('option', { name: /Carol/ })).toBeInTheDocument())
+    expect(screen.queryByRole('option', { name: /Utente Corrente/ })).not.toBeInTheDocument()
+  })
+
+  it('drops an assignee from the watchers list as soon as it is picked', async () => {
+    renderForm({ type: 'create' })
+
+    const assigneesTrigger = screen.getByRole('button', { name: label('tasks.form.assignees') })
+    fireEvent.click(assigneesTrigger)
+    fireEvent.click(await screen.findByRole('option', { name: /Carol/ }))
+    // Close this popover before opening the next one, or the still-mounted
+    // "Carol" option here would make the watchers assertion ambiguous.
+    fireEvent.click(assigneesTrigger)
+
+    fireEvent.click(screen.getByRole('button', { name: label('tasks.form.watchers') }))
+
+    await waitFor(() => expect(screen.getByRole('option', { name: /Dave/ })).toBeInTheDocument())
+    expect(screen.queryByRole('option', { name: /Carol/ })).not.toBeInTheDocument()
+  })
+
+  it('excludes the persisted creator in edit mode', async () => {
+    renderForm({
+      type: 'edit',
+      task: taskDetailWithPermissions({ creator: { id: 6, name: 'Dave' } }),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: label('tasks.form.watchers') }))
+
+    await waitFor(() => expect(screen.getByRole('option', { name: /Carol/ })).toBeInTheDocument())
+    expect(screen.queryByRole('option', { name: /Dave/ })).not.toBeInTheDocument()
+  })
+})
+
+/** Spec 0118 D-3: the server derives the initial status, so create never offers the picker. */
+describe('TaskFormBody — the status picker only exists in edit mode (spec 0118 D-3)', () => {
+  it('has no Stato control on create', () => {
+    renderForm({ type: 'create' })
+
+    expect(screen.queryByRole('combobox', { name: label('tasks.form.status') })).not.toBeInTheDocument()
+  })
+
+  it('still renders the Stato control in edit mode', () => {
+    renderForm({ type: 'edit', task: taskDetailWithPermissions() })
+
+    expect(screen.getByRole('combobox', { name: label('tasks.form.status') })).toBeInTheDocument()
+  })
+})
+
+/** Spec 0118 D-1: `requester_id` is required now, and the actor is the requester most of the time. */
+describe('TaskFormBody — requester prefill on create (spec 0118 D-1)', () => {
+  it('prefills the Richiedente picker with the connected actor, still enabled', () => {
+    renderForm({ type: 'create' })
+
+    const requester = picker('tasks.form.requester')
+    expect(requester).toHaveTextContent('Utente Corrente')
+    expect(requester).toBeEnabled()
+  })
+
+  it('does not override the persisted requester in edit mode', () => {
+    renderForm({ type: 'edit', task: taskDetailWithPermissions() })
+
+    expect(picker('tasks.form.requester')).toHaveTextContent('Bruno Bianchi')
+  })
+})
+
+/**
+ * Spec 0118 D-7/AC-027: the task does not exist yet on create, so staging is
+ * the only place to collect files before the first save; in edit mode the
+ * same job belongs to the Documenti tab of the detail (`DocumentsSection`),
+ * and mounting both would duplicate it.
+ */
+describe('TaskFormBody — attachment staging mounts on create only (spec 0118 D-7/AC-027)', () => {
+  it('renders the staging section on create', () => {
+    renderForm({ type: 'create' })
+
+    expect(screen.getByText(label('tasks.form.attachments.title'))).toBeInTheDocument()
+    expect(
+      screen.getByLabelText(label('tasks.form.attachments.add'), { exact: false }),
+    ).toBeInTheDocument()
+  })
+
+  it('never mounts it in edit mode', () => {
+    renderForm({ type: 'edit', task: taskDetailWithPermissions() })
+
+    expect(screen.queryByText(label('tasks.form.attachments.title'))).not.toBeInTheDocument()
   })
 })

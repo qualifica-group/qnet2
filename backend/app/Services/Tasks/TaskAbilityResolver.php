@@ -91,6 +91,22 @@ final class TaskAbilityResolver
         return self::ownsTheMandate($actor, $task);
     }
 
+    /**
+     * "Richiedi aggiornamento" (spec 0118, D-10): the one row of the matrix
+     * with the watcher admitted — creatore/richiedente, watcher and manager,
+     * NOT the plain assignee. Deliberately NOT expressed as
+     * `ownsTheMandate()` OR `isWatcher()`: the mandate concept (creator/
+     * requester/manager) and this row happen to share two of its three
+     * terms, but folding the watcher into `ownsTheMandate()` itself would
+     * silently grant it to every OTHER mandate-gated action too.
+     */
+    public static function canRequestUpdate(User $actor, Task $task): bool
+    {
+        return self::isCreatorOrRequester($actor, $task)
+            || TaskRecordRoles::isWatcher($actor, $task)
+            || TaskRecordRoles::isManager($actor, $task);
+    }
+
     private static function ownsTheMandate(User $actor, Task $task): bool
     {
         return self::isCreatorOrRequester($actor, $task) || TaskRecordRoles::isManager($actor, $task);

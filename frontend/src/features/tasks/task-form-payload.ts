@@ -36,16 +36,22 @@ function scalarsOf(values: TaskFormValues) {
 }
 
 /**
- * Builds the create payload. `task_status_id` is required by the contract and
- * guaranteed non-null by the schema's own refinement, so the cast states that
- * postcondition rather than assuming it.
+ * Builds the create payload. `task_status_id` is DELIBERATELY absent (spec 0118
+ * D-3): the initial status is derived server-side from the assignees (D-4) and is
+ * `prohibited` on POST, so a create payload carrying it would be a 422.
+ *
+ * `requester_id` and `end_date` are required by the contract (D-1) and guaranteed
+ * non-null by the schema's own refinements, so the casts state that postcondition
+ * rather than assuming it — the same idiom this builder already used for the
+ * status it no longer sends.
  */
 export function buildCreatePayload(values: TaskFormValues): CreateTaskPayload {
   return {
     ...scalarsOf(values),
-    task_status_id: values.task_status_id as number,
-    // Flat id arrays (AC-083); always sent on create — there is nothing
-    // persisted to preserve, so the sparse-sync rule below does not apply.
+    requester_id: values.requester_id as number,
+    end_date: values.end_date as string,
+    // Always sent on create — there is nothing persisted to preserve, so the
+    // sparse-sync rule below does not apply. Since D-9 the two sets are disjoint.
     assignee_ids: values.assignee_ids,
     watcher_ids: values.watcher_ids,
   }
@@ -74,9 +80,16 @@ export function buildUpdatePayload(values: TaskFormValues, original: TaskDetail)
   if (scalars.task_category_id !== original.task_category_id) payload.task_category_id = scalars.task_category_id
   if (scalars.opportunity_id !== original.opportunity_id) payload.opportunity_id = scalars.opportunity_id
   if (scalars.work_order_id !== original.work_order_id) payload.work_order_id = scalars.work_order_id
-  if (scalars.requester_id !== original.requester_id) payload.requester_id = scalars.requester_id
+  // D-2: `requester_id` and `end_date` are `sometimes|required` on PATCH — not
+  // annullable. A null here would be a 422, so it is simply not sent: the guard
+  // is the contract, not a convenience.
+  if (scalars.requester_id !== original.requester_id && scalars.requester_id !== null) {
+    payload.requester_id = scalars.requester_id
+  }
   if (scalars.start_date !== original.start_date) payload.start_date = scalars.start_date
-  if (scalars.end_date !== original.end_date) payload.end_date = scalars.end_date
+  if (scalars.end_date !== original.end_date && scalars.end_date !== null) {
+    payload.end_date = scalars.end_date
+  }
   if (scalars.completion_date !== original.completion_date) payload.completion_date = scalars.completion_date
   if (scalars.start_time !== original.start_time) payload.start_time = scalars.start_time
   if (scalars.end_time !== original.end_time) payload.end_time = scalars.end_time

@@ -93,6 +93,10 @@ final class TaskTaxonomyCatalogue
      * the module like any other row. The phase is what decides behaviour
      * (D-7), never the label.
      *
+     * "Assegnato" is NOT here: spec 0118 D-5 promotes it to a PROTECTED row
+     * (below), the landing status for a Task whose creation-time derivation
+     * does not qualify for `open` (spec 0118 D-4).
+     *
      * "Interrotto" sits in `Pending`, NOT in a closing phase (user directive
      * 2026-09-04): it suspends the Task rather than closing it, so it does
      * not demand a closure feedback. Its 0% says the work produced nothing,
@@ -101,7 +105,6 @@ final class TaskTaxonomyCatalogue
      * @var array<int, array{0: string, 1: TaskStatusGroup, 2: string, 3: string, 4: int}>
      */
     public const array STATUSES = [
-        ['Assegnato', TaskStatusGroup::Open, 'blue', 'user', 10],
         ['In preanalisi', TaskStatusGroup::Open, 'indigo', 'eye', 20],
         ['Preanalisi da validare', TaskStatusGroup::InValidation, 'amber', 'shield', 30],
         ['Preanalisi validata', TaskStatusGroup::Open, 'teal', 'shield-check', 40],
@@ -111,18 +114,20 @@ final class TaskTaxonomyCatalogue
     ];
 
     /**
-     * The four PROTECTED rows, keyed by `system_key`: the client's wording
+     * The five PROTECTED rows, keyed by `system_key`: the client's wording
      * for the status a Task opens in, the one it resumes on when reopened
-     * (spec 0116 D-4), and the two it closes in.
+     * (spec 0116 D-4), the one a creation-time derivation lands on when it
+     * does not qualify for `open` (spec 0118 D-4/D-5), and the two it closes
+     * in.
      *
-     * `in_progress` differs from the other three: it is not reshaped from a
-     * migration bootstrap name, because 2026_09_11_100000 creates/promotes
-     * the row ALREADY carrying the client's own wording — there is no
-     * generic placeholder to rewrite away from. `bootstrap_name` and `name`
-     * are therefore both `'In corso'` on purpose, which also makes
-     * `reshapeProtectedStatuses()` below a no-op for this key on every seed
-     * run (the row already carries `$target['name']`), not a source of
-     * duplication.
+     * `in_progress` and `assigned` differ from the other three: neither is
+     * reshaped from a migration bootstrap name, because their own migrations
+     * (2026_09_11_100000, 2026_09_11_110000) create/promote the row ALREADY
+     * carrying the client's own wording — there is no generic placeholder to
+     * rewrite away from. `bootstrap_name` and `name` are therefore identical
+     * on both, on purpose, which also makes `reshapeProtectedStatuses()`
+     * below a no-op for either key on every seed run (the row already
+     * carries `$target['name']`), not a source of duplication.
      *
      * The other three are RESHAPED here rather than created: `system_key` is
      * not mass-assignable and the rows already exist, inserted by
@@ -154,6 +159,14 @@ final class TaskTaxonomyCatalogue
             'color' => 'violet',
             'icon' => 'activity',
             'completion_percentage' => 50,
+        ],
+        TaskStatusSystemKey::Assigned->value => [
+            'bootstrap_name' => 'Assegnato',
+            'name' => 'Assegnato',
+            'group' => TaskStatusGroup::Open,
+            'color' => 'blue',
+            'icon' => 'user',
+            'completion_percentage' => 10,
         ],
         TaskStatusSystemKey::ClosedPositive->value => [
             'bootstrap_name' => 'Chiuso positivo',

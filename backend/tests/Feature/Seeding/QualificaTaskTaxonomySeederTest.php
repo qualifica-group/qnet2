@@ -88,12 +88,17 @@ it('seeds the client status pick-list between the protected opening/resume and c
 
     $rows = TaskStatus::query()->orderBy('sort_order')->get();
 
-    // 7 ordinary rows from the catalogue + the 4 protected ones. `pending`
+    // 6 ordinary rows from the catalogue + the 5 protected ones. `pending`
     // and `in_validation` were phases mislabelled as system keys and stayed
     // retired; `in_progress` is back (spec 0116 D-4) designating the single
     // "In corso" row, now PINNED AT THE HEAD right after "Da assegnare"
     // instead of sitting among the ordinary rows.
-    expect($rows)->toHaveCount(count(TaskTaxonomyCatalogue::STATUSES) + 4)
+    //
+    // 4 -> 5 and one ordinary row fewer: spec 0118 D-5 promoted "Assegnato"
+    // out of STATUSES into PROTECTED_STATUSES, because the derived initial
+    // status (D-4) must be resolvable by `system_key` and never by label.
+    // The total is unchanged and the ORDER below is unchanged with it.
+    expect($rows)->toHaveCount(count(TaskTaxonomyCatalogue::STATUSES) + 5)
         ->and($rows->pluck('name')->all())->toBe([
             'Da assegnare',
             'In corso',
@@ -132,7 +137,11 @@ it('reshapes the protected rows by system_key and leaves them protected', functi
     $byKey = TaskStatus::query()->whereNotNull('system_key')->get()
         ->keyBy(fn (TaskStatus $status): string => $status->system_key->value);
 
-    expect($byKey)->toHaveCount(4)
+    // 5 since spec 0118 D-5: "Assegnato" is protected too, so the derived
+    // initial status of a Task assigned to someone else is reachable by key.
+    expect($byKey)->toHaveCount(5)
+        ->and($byKey[TaskStatusSystemKey::Assigned->value]->name)->toBe('Assegnato')
+        ->and($byKey[TaskStatusSystemKey::Assigned->value]->completion_percentage)->toBe(10)
         ->and($byKey[TaskStatusSystemKey::Open->value]->name)->toBe('Da assegnare')
         ->and($byKey[TaskStatusSystemKey::Open->value]->completion_percentage)->toBe(0)
         ->and($byKey[TaskStatusSystemKey::InProgress->value]->name)->toBe('In corso')

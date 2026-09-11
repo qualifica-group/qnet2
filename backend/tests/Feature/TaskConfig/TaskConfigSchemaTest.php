@@ -136,6 +136,11 @@ it('AC-001: down() drops task_statuses, up() recreates it with its six bootstrap
 it('AC-002: the migrations left the four protected rows with the declared keys and percentages', function () {
     $expected = [
         'open' => 0,
+        // Spec 0118 D-5 promoted "Assegnato" to a protected row: it is the
+        // destination of the derived initial status (D-4) when the Task is
+        // assigned to someone other than its creator/requester, so it must be
+        // reachable by `system_key` and never by label.
+        'assigned' => 10,
         'in_progress' => 50,
         'closed_positive' => 100,
         'closed_negative' => 0,
@@ -158,7 +163,7 @@ it('AC-002: the persisted system keys are exactly the TaskStatusSystemKey cases,
         ->map(fn (TaskStatusSystemKey $key): string => $key->value)->all();
 
     expect($persisted)->toEqualCanonicalizing(array_column(TaskStatusSystemKey::cases(), 'value'))
-        ->and($persisted)->toHaveCount(4);
+        ->and($persisted)->toHaveCount(5);
 });
 
 it('AC-002: only closed_positive and closed_negative are closing phases', function () {
@@ -226,7 +231,7 @@ it('AC-005: re-running the clean seed neither duplicates the system rows nor und
     seedCleanReferenceData();
     seedCleanReferenceData();
 
-    expect(TaskStatus::query()->whereNotNull('system_key')->count())->toBe(4)
+    expect(TaskStatus::query()->whereNotNull('system_key')->count())->toBe(5)
         ->and(TaskStatus::query()->whereKey($renamed->id)->value('name'))->toBe('Terminato');
 });
 

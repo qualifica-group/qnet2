@@ -48,12 +48,21 @@ use Illuminate\Database\Eloquent\Model;
 class TasksAuthorization extends AbstractResourceAuthorization
 {
     /**
-     * The two fields vital to creating a Task — the only `required` ones in
-     * the data_contract, hence the only `mandatory` ones here.
+     * The fields `required` somewhere in the data_contract, hence the only
+     * `mandatory` ones here (spec 0008): `title`/`requester_id`/
+     * `assignee_ids`/`end_date` are required on BOTH POST and PATCH (spec
+     * 0118 D-1/D-2). `task_status_id` stays in this list purely to keep the
+     * EDIT-context ceiling unchanged (it is still `sometimes|required` on
+     * PATCH, D-6) — its CREATE-context behaviour diverges from what this
+     * flat, context-free list can express, so that divergence is carved out
+     * directly in `fieldPermissionCeiling()` below rather than here (spec
+     * 0118 D-3, AC-016): `mandatory` still marks it "locked against the DB
+     * matrix" for edit, even though a brand-new Task never sees it as
+     * required at all.
      *
      * @var array<int, string>
      */
-    private const array MANDATORY_FIELDS = ['title', 'task_status_id'];
+    private const array MANDATORY_FIELDS = ['title', 'task_status_id', 'requester_id', 'assignee_ids', 'end_date'];
 
     /**
      * The catalogue as `field key => form type`, in the frozen order
@@ -118,10 +127,20 @@ class TasksAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update'];
     }
 
     /**
+     * `task_status_id` is the one field whose ceiling depends on CREATE vs
+     * EDIT (spec 0118 D-3, AC-016): on create it is neither required nor
+     * editable — it is not even submittable (`StoreTaskRequest` rejects it
+     * with `prohibited`), so permissioning it would offer a control the
+     * FormRequest immediately refuses. `FieldDefinition::$mandatory` has no
+     * such context (it is the same flat catalogue for every actor and every
+     * request), so the override lives here instead of in `MANDATORY_FIELDS`
+     * — which stays as-is precisely so the EDIT ceiling (today's behaviour,
+     * D-6) does not move.
+     *
      * @return array<string, FieldPermission>
      */
     protected function fieldPermissionCeiling(User $actor, ?Model $model): array
@@ -133,6 +152,12 @@ class TasksAuthorization extends AbstractResourceAuthorization
         $ceiling = [];
 
         foreach (self::FIELD_TYPES as $key => $type) {
+            if ($key === 'task_status_id' && $model === null) {
+                $ceiling[$key] = FieldPermission::visibleReadonly(required: false);
+
+                continue;
+            }
+
             $required = in_array($key, self::MANDATORY_FIELDS, true);
             $isProtected = in_array($key, TaskAbilityResolver::PROTECTED_FIELDS, true);
             $editable = $mayWrite && (! $isProtected || $mayEditProtectedFields);
@@ -189,6 +214,11 @@ class TasksAuthorization extends AbstractResourceAuthorization
                 && $actor->can('tasks.block') && TaskAbilityResolver::canBlock($actor, $task),
             'unblock' => $task !== null && $this->actionAvailability->isUnblockable($task)
                 && $actor->can('tasks.block') && TaskAbilityResolver::canBlock($actor, $task),
+            // spec 0118, D-10: same availability window as `complete`
+            // (`isCompletable()` — no twin method), plus the matrix row that
+            // additionally admits the watcher.
+            'request_update' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isCompletable($task)
+                && $actor->can('tasks.requestUpdate') && TaskAbilityResolver::canRequestUpdate($actor, $task),
         ];
     }
 }

@@ -33,7 +33,7 @@ if (! function_exists('taskDocumentActor')) {
      */
     function taskDocumentActor(array $taskAbilities, array $attachmentAbilities = []): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -140,7 +140,7 @@ it('AC-019: a member uploads a document on a frozen task (blocked, closed, in va
 // AC-020 — the detail exposes the gate of the documents tab
 // ---------------------------------------------------------------------------
 
-it('AC-020: permissions.actions.view_documents mirrors tasks.viewDocuments, and the other ten survive', function () {
+it('AC-020: permissions.actions.view_documents mirrors tasks.viewDocuments, and the other eleven survive', function () {
     $withPermission = taskDocumentActor(['view', 'viewDocuments']);
     $withoutPermission = taskDocumentActor(['view']);
     $task = Task::factory()->forCreator($withPermission)->create();
@@ -149,10 +149,15 @@ it('AC-020: permissions.actions.view_documents mirrors tasks.viewDocuments, and 
     Sanctum::actingAs($withPermission);
     $actions = $this->getJson("/api/tasks/{$task->id}")->assertOk()->json('permissions.actions');
 
+    // spec 0118, D-10: `request_update` joined the array as the seventh
+    // domain action, after `unblock` — a mechanical consequence of
+    // TasksAuthorization::actions() growing by one key, not a change to this
+    // criterion's own subject.
     expect($actions['view_documents'])->toBeTrue()
         ->and(array_keys($actions))->toBe([
             'delete', 'export', 'import', 'view_activity', 'view_documents',
             'complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock',
+            'request_update',
         ]);
 
     Sanctum::actingAs($withoutPermission);

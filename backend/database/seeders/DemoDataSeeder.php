@@ -119,6 +119,23 @@ class DemoDataSeeder extends Seeder
         // (reporters to reward, snapshotted from the opportunity, spec 0086
         // D-4) — must run after both.
         $this->call(DemoRewardSeeder::class);
+        // The Task classification vocabulary (tipologia, categoria, priorita',
+        // importanza, stati): REFERENCE data, not fixtures — hence no `Demo`
+        // prefix and no copy of it here. Without this step the four pure
+        // lookups are empty on a demo database (only the protected statuses
+        // exist, created by the migrations) and DemoTaskSeeder below would
+        // have nothing to classify a Task on. Idempotent, so calling it from
+        // both entry points converges.
+        $this->call(QualificaTaskTaxonomySeeder::class);
+        // Attivita' (spec 0101/0116): depends on the step above for the status
+        // pick-list, on DemoUsersSeeder for creatori/assegnatari/osservatori,
+        // and on the optional record links it points at — DemoRegistrySeeder
+        // (+ its referenti), DemoOpportunitySeeder and DemoWorkOrderSeeder —
+        // so it must run after all of them.
+        $this->call(DemoTaskSeeder::class);
+        // The Task threads (spec 0117): needs the Tasks themselves plus
+        // DemoRolesSeeder's permission matrices, which decide who may write.
+        $this->call(DemoTaskNoteSeeder::class);
         // Needs users (avatars) and company sites (logos) already seeded above;
         // attaches demo files through the real HasAttachments write path.
         $this->call(DemoAttachmentSeeder::class);

@@ -69,7 +69,15 @@ it('AC-recordroles: isWatcher reads the task_watcher pivot, loaded or not', func
         ->and(TaskRecordRoles::isWatcher($stranger, $task))->toBeFalse();
 });
 
-it('AC-recordroles: an assignee/watcher may also be BOTH at once (AC-083 of spec 0101 stays intact)', function () {
+// REQUIREMENT CHANGED (spec 0118 D-9): AC-083 of spec 0101 ("an assignee and
+// a watcher may be the same person") is FORMALLY RETIRED — the write path
+// (TaskService, guarded by TaskWatcherOverlapGuard) now refuses a
+// `watcher_ids` id that is also an assignee. This is not a regression of
+// that rule: TaskRecordRoles is a pure READ-side role resolver, unaware of
+// any write-time constraint, so it still has to answer correctly for
+// whatever a row actually holds — including a pivot shape the write path
+// itself would now refuse to create (e.g. legacy data written before D-9).
+it('AC-recordroles: isAssignee/isWatcher each read their own pivot independently, even on a row the write path could no longer produce (spec 0118 D-9)', function () {
     $both = User::factory()->create();
     $task = Task::factory()->create();
     $task->assignees()->attach($both);

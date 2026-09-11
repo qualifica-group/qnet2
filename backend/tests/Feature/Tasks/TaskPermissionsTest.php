@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Task;
-use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -35,7 +34,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -64,7 +63,7 @@ const TASK_MODULE_RESOURCES = ['tasks', 'task-statuses', 'task-types', 'task-cat
 // AC-050 — permissions:sync derives the abilities from the Policies alone
 // ---------------------------------------------------------------------------
 
-it('AC-037/AC-050: permissions:sync creates 8 permissions per resource, plus the four tasks-only extras, and nothing more', function () {
+it('AC-037/AC-050/AC-036: permissions:sync creates 8 permissions per resource, plus the tasks-only extras, and nothing more', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
 
     foreach (TASK_MODULE_RESOURCES as $resource) {
@@ -77,17 +76,20 @@ it('AC-037/AC-050: permissions:sync creates 8 permissions per resource, plus the
     // spec 0116, AC-037: exactly these four new `tasks.*` permissions exist
     // on top of the 8 standard abilities and `viewAll` — no other new
     // `tasks.*` permission was created by the record-role matrix. Spec 0117
-    // adds one more, `viewDocuments`, for the documents tab of the detail.
-    foreach (['viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments'] as $extra) {
+    // adds one more, `viewDocuments`, for the documents tab of the detail;
+    // spec 0118 D-10 adds a seventh, `requestUpdate`, for "richiedi
+    // aggiornamento" (AC-036).
+    foreach (['viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $extra) {
         expect(Permission::query()->where('name', "tasks.{$extra}")->exists())
             ->toBeTrue("missing permission tasks.{$extra}");
     }
 
-    // 14 for `tasks` (8 standard + viewAll/manageAll/complete/validate/block
-    // from spec 0116 + viewDocuments from spec 0117), 8 for each
-    // configurator. `like 'tasks.%'` would also match nothing else: the five
-    // configurators are `task-...` with a hyphen.
-    expect(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(14);
+    // 15 for `tasks` (8 standard + viewAll/manageAll/complete/validate/block
+    // from spec 0116 + viewDocuments from spec 0117 + requestUpdate from
+    // spec 0118, AC-036), 8 for each configurator. `like 'tasks.%'` would
+    // also match nothing else: the five configurators are `task-...` with a
+    // hyphen.
+    expect(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(15);
 
     foreach (array_slice(TASK_MODULE_RESOURCES, 1) as $resource) {
         expect(Permission::query()->where('name', 'like', "{$resource}.%")->count())
@@ -120,10 +122,16 @@ it('AC-051: GET show is 403 without tasks.view', function () {
 
 it('AC-051: POST store is 403 without tasks.create, and no row is created', function () {
     $actor = taskActorWith([]);
-    $status = TaskStatus::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/tasks', ['title' => 'Nope', 'task_status_id' => $status->id])->assertForbidden();
+    // A payload valid against the spec 0118 D-1 contract: the 403 must come
+    // from the Policy, not incidentally from a validation 422.
+    $this->postJson('/api/tasks', [
+        'title' => 'Nope',
+        'requester_id' => User::factory()->create()->id,
+        'assignee_ids' => [User::factory()->create()->id],
+        'end_date' => '2026-12-31',
+    ])->assertForbidden();
 
     expect(Task::query()->count())->toBe(0);
 });
@@ -200,7 +208,7 @@ it('AC-055: the six resources appear in the permission catalogue with their perm
             ->and($modules[$resource]['fields'])->not->toBeEmpty();
     }
 
-    expect($modules['tasks']['permissions'])->toHaveCount(14)
+    expect($modules['tasks']['permissions'])->toHaveCount(15)
         ->and($modules['task-statuses']['permissions'])->toHaveCount(8)
         ->and(collect($modules['tasks']['fields'])->pluck('key'))
         ->not->toContain('creator_id')

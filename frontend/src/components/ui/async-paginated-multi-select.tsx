@@ -86,7 +86,18 @@ interface AsyncPaginatedMultiSelectProps {
    * as repeated `key[]=` params (Laravel convention).
    */
   params?: Record<string, string | number | string[] | number[]>
+  /**
+   * Ids the OPTION LIST drops from every loaded page, client-side (spec 0118
+   * AC-035: a watcher may not also be an assignee/requester/creator). Unlike
+   * `params`, this never reaches the server — the endpoint has no such filter
+   * — so it only narrows what THIS instance renders; the actual defense stays
+   * server-side. Omitted (or empty), the list renders exactly as before.
+   */
+  excludeIds?: number[]
 }
+
+/** Stable module-level default: a fresh `[]` per render would break dependency stability. */
+const NO_EXCLUDED_IDS: number[] = []
 
 /**
  * Reusable async, paginated, server-searched multi-select (ADR 0011). Renders the
@@ -114,6 +125,7 @@ export function AsyncPaginatedMultiSelect({
   'aria-invalid': ariaInvalid,
   action,
   params,
+  excludeIds = NO_EXCLUDED_IDS,
 }: AsyncPaginatedMultiSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -156,10 +168,17 @@ export function AsyncPaginatedMultiSelect({
     refetch,
   } = query
 
-  const options = useMemo(
-    () => flattenForSelectPages(data?.pages),
-    [data?.pages],
-  )
+  // `excludeIds` only narrows what THIS render shows (AC-035): the raw pages
+  // (and their `total`/pagination) stay whatever the server reported, so an
+  // excluded-only page still lets the sentinel below fetch the next one.
+  const options = useMemo(() => {
+    const loaded = flattenForSelectPages(data?.pages)
+    if (excludeIds.length === 0) {
+      return loaded
+    }
+    const excluded = new Set(excludeIds)
+    return loaded.filter((item) => !excluded.has(item.id))
+  }, [data?.pages, excludeIds])
 
   // Build a label lookup from the hydration prop, the ids-keyed label query, and
   // the loaded options so every selected badge resolves a label even before (or
@@ -369,7 +388,11 @@ export function AsyncPaginatedMultiSelect({
                   {labels.retry}
                 </button>
               </div>
-            ) : options.length === 0 ? (
+            ) : options.length === 0 && !hasNextPage ? (
+              // `!hasNextPage` (not just `options.length === 0`): an `excludeIds`
+              // page that filtered down to nothing must still fall through to the
+              // sentinel branch below when more pages remain, or infinite scroll
+              // would never fetch past an all-excluded page (AC-035).
               <p className="px-2 py-6 text-center text-sm text-muted-foreground">
                 {labels.empty}
               </p>

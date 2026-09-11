@@ -394,4 +394,65 @@ describe('AsyncPaginatedMultiSelect', () => {
       screen.getByRole('button', { name: 'Add member' }),
     ).toBeInTheDocument()
   })
+
+  /** Spec 0118 AC-035: an excluded id never reaches the option list, client-side only. */
+  describe('excludeIds', () => {
+    it('drops the excluded option from the list while keeping the others', () => {
+      useForSelectMock.mockReturnValue(
+        queryState({
+          data: pagesOf([
+            { id: 1, label: 'Jane Doe' },
+            { id: 2, label: 'Bob' },
+          ]),
+        }),
+      )
+      renderSelect({ excludeIds: [2] })
+      open()
+
+      expect(screen.getByRole('option', { name: /Jane Doe/ })).toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: /Bob/ })).not.toBeInTheDocument()
+    })
+
+    it('renders exactly as before when excludeIds is omitted', () => {
+      useForSelectMock.mockReturnValue(
+        queryState({ data: pagesOf([{ id: 1, label: 'Jane Doe' }, { id: 2, label: 'Bob' }]) }),
+      )
+      renderSelect()
+      open()
+
+      expect(screen.getByRole('option', { name: /Jane Doe/ })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /Bob/ })).toBeInTheDocument()
+    })
+
+    it('shows the empty state when every loaded option is excluded and no page remains', () => {
+      useForSelectMock.mockReturnValue(
+        queryState({ data: pagesOf([{ id: 2, label: 'Bob' }]), hasNextPage: false }),
+      )
+      renderSelect({ excludeIds: [2] })
+      open()
+
+      expect(screen.getByText('No users found.')).toBeInTheDocument()
+    })
+
+    it('keeps fetching past an all-excluded page instead of showing the empty state (pagination stays sensible)', async () => {
+      useForSelectMock.mockReturnValue(
+        queryState({ data: pagesOf([{ id: 2, label: 'Bob' }]), hasNextPage: true }),
+      )
+      renderSelect({ excludeIds: [2] })
+      open()
+
+      expect(screen.queryByText('No users found.')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.getByRole('listbox')).toBeInTheDocument())
+    })
+
+    it('still lets an already-selected id show its badge even if also excluded from the option list', () => {
+      renderSelect({
+        value: [2],
+        selectedItems: [{ id: 2, label: 'Bob' }],
+        excludeIds: [2],
+      })
+
+      expect(screen.getByText('Bob')).toBeInTheDocument()
+    })
+  })
 })

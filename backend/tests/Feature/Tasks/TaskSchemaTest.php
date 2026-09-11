@@ -199,7 +199,15 @@ it('AC-004: deleting the user cascades its pivot rows, the task survives', funct
     $this->assertDatabaseHas('tasks', ['id' => $task->id]);
 })->with('taskUserPivots');
 
-it('AC-004: the same user may be both an assignee and a watcher of the same task (AC-083)', function () {
+// REQUIREMENT CHANGED (spec 0118 D-9): AC-083 of spec 0101 ("an assignee and
+// a watcher may be the same person") is FORMALLY RETIRED as a business rule
+// — App\Services\Tasks\TaskWatcherOverlapGuard now refuses it on POST/PATCH.
+// What this test still proves is narrower and remains true: at the SCHEMA
+// level neither pivot table constrains the OTHER one, so nothing here
+// blocks it structurally — the exclusivity is an application-layer rule
+// (TaskWatcherOverlapGuard, exercised in TaskWatcherOverlapTest.php), not a
+// database constraint, exactly like every other guard in this module.
+it('AC-004: no schema-level constraint stops the same user from being written to BOTH pivots (spec 0118 D-9 enforces this at the application layer instead)', function () {
     $task = Task::factory()->create();
     $user = User::factory()->create();
 

@@ -223,9 +223,9 @@ describe('TaskDetailView — actions bar gating (AC-041)', () => {
   it('omits every action button for a pure observer (no flag granted)', () => {
     renderDetail(taskDetailWithPermissions())
 
-    for (const key of ['complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock']) {
+    for (const key of ['complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update']) {
       expect(
-        screen.queryByRole('button', { name: label(`tasks.actions.${key}.label`) }),
+        screen.queryByRole('button', { name: label(`tasks.actions.${key === 'request_update' ? 'requestUpdate' : key}.label`) }),
       ).not.toBeInTheDocument()
     }
   })
@@ -240,6 +240,38 @@ describe('TaskDetailView — actions bar gating (AC-041)', () => {
 
     expect(screen.queryByRole('button', { name: label('tasks.actions.approve.label') })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: label('tasks.actions.reject.label') })).not.toBeInTheDocument()
+  })
+})
+
+/** Spec 0118 D-10: the seventh action, gated exactly like the other six. */
+describe('TaskDetailView — "Richiedi aggiornamento" gating (AC-059/AC-061)', () => {
+  it('renders the button when the server flag is true on an open phase', () => {
+    renderDetail(taskDetailWithPermissions({ permissions: actionPermissions({ request_update: true }) }))
+
+    expect(
+      screen.getByRole('button', { name: label('tasks.actions.requestUpdate.label') }),
+    ).toBeInTheDocument()
+  })
+
+  it('is absent from the DOM, not merely disabled, when the flag is false', () => {
+    renderDetail(taskDetailWithPermissions({ permissions: actionPermissions({ request_update: false }) }))
+
+    expect(
+      screen.queryByRole('button', { name: label('tasks.actions.requestUpdate.label') }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('is absent outside the completable phase even when the flag is true (client availability veto)', () => {
+    renderDetail(
+      taskDetailWithPermissions({
+        task_status: taskStatus({ group: 'in_validation' }),
+        permissions: actionPermissions({ request_update: true }),
+      }),
+    )
+
+    expect(
+      screen.queryByRole('button', { name: label('tasks.actions.requestUpdate.label') }),
+    ).not.toBeInTheDocument()
   })
 })
 

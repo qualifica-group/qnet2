@@ -30,7 +30,15 @@ export const IN_VALIDATION_GROUP_PARAMS: Record<string, TaskStatusGroupValue[]> 
 
 /** A task blocked by `unblock` alone: every other action is suspended (D-8). */
 function blockedAvailability(): TaskActionAvailabilityFlags {
-  return { complete: false, uncomplete: false, approve: false, reject: false, block: false, unblock: true }
+  return {
+    complete: false,
+    uncomplete: false,
+    approve: false,
+    reject: false,
+    block: false,
+    unblock: true,
+    request_update: false,
+  }
 }
 
 export function taskActionAvailability(task: TaskDetail): TaskActionAvailabilityFlags {
@@ -49,5 +57,9 @@ export function taskActionAvailability(task: TaskDetail): TaskActionAvailability
     reject: validating,
     block: true,
     unblock: false,
+    // Spec 0118 D-10: "solo su task aperti", which is the SAME condition as
+    // complete — deliberately the same expression, not a second rule that
+    // could drift from it.
+    request_update: !terminal,
   }
 }
