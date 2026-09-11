@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -193,7 +193,7 @@ describe('CompanySiteForm — custom fields (spec 0021)', () => {
       target: { value: 'High priority' },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createCompanySiteMock).toHaveBeenCalledTimes(1))
     const payload = createCompanySiteMock.mock.calls[0][0]
@@ -222,7 +222,7 @@ describe('CompanySiteForm — custom fields (spec 0021)', () => {
     )
     const notes = await screen.findByRole('textbox', { name: 'Priority' })
     fireEvent.change(notes, { target: { value: 'Updated priority' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateCompanySiteMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateCompanySiteMock.mock.calls[0]
@@ -257,7 +257,7 @@ describe('CompanySiteForm — custom fields (spec 0021)', () => {
       { wrapper: wrapper() },
     )
     await screen.findByRole('textbox', { name: 'Priority' })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('Priority must be shorter.')).toBeInTheDocument())
     expect(updateCompanySiteMock).toHaveBeenCalledTimes(1)

@@ -31,6 +31,10 @@ export const operationalSites = {
     region: 'Regione',
     country: 'Nazione',
     created_at: 'Creato il',
+    summary: {
+      title: 'Riepilogo',
+      description: 'Si aggiorna mentre compili.',
+    },
   },
   form: {
     newOperationalSite: 'Nuova sede operativa',

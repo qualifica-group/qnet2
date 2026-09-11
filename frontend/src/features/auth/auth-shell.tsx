@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { TopLoadingBar } from '@/components/top-loading-bar'
 import { env } from '@/config/env'
 import '@/features/auth/auth-shell.css'
 
@@ -27,6 +28,7 @@ export function AuthShell({ title, description, children, footer }: AuthShellPro
   // to half the viewport each and the mobile brand band eats the screen.
   return (
     <div className="grid min-h-svh grid-rows-[auto_1fr] lg:grid-cols-[1.15fr_1fr] lg:grid-rows-1">
+      <TopLoadingBar />
       <BrandPanel />
 
       <main className="flex items-center justify-center bg-background px-6 py-12 sm:px-10">

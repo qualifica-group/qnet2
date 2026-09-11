@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { OperationalSiteForm } from '@/features/operational-sites/operational-site-form'
@@ -126,7 +126,7 @@ describe('OperationalSiteForm — create/edit', () => {
     fireEvent.change(screen.getByLabelText(/^Street/), { target: { value: 'Via Torino 3' } })
     fireEvent.change(screen.getByLabelText(/^Postal code/), { target: { value: '10100' } })
     fireEvent.click(screen.getByTestId('geo-select'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createOperationalSiteMock).toHaveBeenCalledTimes(1))
     expect(createOperationalSiteMock).toHaveBeenCalledWith({
@@ -174,7 +174,7 @@ describe('OperationalSiteForm — create/edit', () => {
     )
 
     fireEvent.change(screen.getByLabelText(/^Street/), { target: { value: 'Via Milano 9' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateOperationalSiteMock).toHaveBeenCalledTimes(1))
     const [id, payload] = updateOperationalSiteMock.mock.calls[0]
@@ -198,7 +198,7 @@ describe('OperationalSiteForm — create/edit', () => {
     expect(geo).toHaveAttribute('data-province', '8')
     expect(geo).toHaveAttribute('data-city', '7')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createOperationalSiteMock).toHaveBeenCalledTimes(1))
     expect(createOperationalSiteMock).toHaveBeenCalledWith(

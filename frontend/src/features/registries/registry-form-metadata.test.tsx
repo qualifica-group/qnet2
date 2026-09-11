@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -255,7 +255,7 @@ describe('RegistryForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('field not editable')).toBeInTheDocument())
     expect(updateRegistryMock).toHaveBeenCalledTimes(1)
@@ -293,7 +293,7 @@ describe('RegistryForm — metadata-driven authorization (spec 0004)', () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRegistryMock).toHaveBeenCalledTimes(1))
 
@@ -353,5 +353,101 @@ describe('RegistryForm — is_qualified_supplier conditional visibility (AC-021)
 
     fireEvent.click(screen.getByLabelText('Supplier'))
     expect(screen.queryByLabelText('Qualified supplier')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * User directive 2026-09-11: the Supervisore and the G.A. slots live in their
+ * OWN "Team" block, like the Opportunità and Offerta forms — not inside
+ * "Relazioni" with the fonte and i settori. Commerciale and Segnalatore stay
+ * behind: they are referenti, not users, so they are not part of that team.
+ */
+describe('RegistryForm — Team block (user directive 2026-09-11)', () => {
+  function sectionNamed(title: string): HTMLElement {
+    return screen.getByText(title).closest('section') as HTMLElement
+  }
+
+  it('gathers the supervisor and the G.A. slots in the Team block', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: {
+        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
+        fields: ALL_VISIBLE_EDITABLE,
+        actions: {},
+      },
+    })
+
+    render(<RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByText('Team')).toBeInTheDocument())
+    const team = sectionNamed('Team')
+    expect(within(team).getByText('Supervisor')).toBeInTheDocument()
+    expect(within(team).getByText('Account managers')).toBeInTheDocument()
+  })
+
+  it('groups the Relations block instead of stacking one column of pickers', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: {
+        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
+        fields: ALL_VISIBLE_EDITABLE,
+        actions: {},
+      },
+    })
+
+    render(<RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByText('Relations')).toBeInTheDocument())
+    const relations = sectionNamed('Relations')
+    expect(within(relations).getByText('Origin & classification')).toBeInTheDocument()
+    expect(within(relations).getByText('Reference people')).toBeInTheDocument()
+  })
+
+  it('shows the reserved ATECO slot as a note, with nothing focusable in it', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: {
+        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
+        fields: ALL_VISIBLE_EDITABLE,
+        actions: {},
+      },
+    })
+
+    render(<RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByText('ATECO codes')).toBeInTheDocument())
+    // It used to be a disabled `<Select>`: a trigger you could tab to and get
+    // nothing from. A planned field must not look — or tab — like a control.
+    const planned = screen.getByText('ATECO codes').closest('div') as HTMLElement
+    expect(within(planned).getByText('Coming soon')).toBeInTheDocument()
+    expect(within(planned).queryByRole('combobox')).not.toBeInTheDocument()
+    expect(within(planned).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('leaves the referent-backed roles in Relations, where they belong', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: {
+        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
+        fields: ALL_VISIBLE_EDITABLE,
+        actions: {},
+      },
+    })
+
+    render(<RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByText('Relations')).toBeInTheDocument())
+    const relations = sectionNamed('Relations')
+    expect(within(relations).getByText('Commercial')).toBeInTheDocument()
+    expect(within(relations).getByText('Reporter')).toBeInTheDocument()
+    expect(within(relations).queryByText('Supervisor')).not.toBeInTheDocument()
   })
 })

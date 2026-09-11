@@ -1,5 +1,5 @@
-import { beforeAll, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -106,3 +106,55 @@ describe('ReferentDetailView (AC-023)', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 })
+
+/**
+ * The record kit the card was rebuilt on (user directive 2026-09-11): the KPI
+ * strip, the identity pills, and the Edit action the card now owns instead of
+ * leaving it to the page chrome.
+ */
+describe('ReferentDetailView — record card (user directive 2026-09-11)', () => {
+  it('counts the contacts and addresses of the anagraphic card in the KPI strip', () => {
+    renderDetail(referent())
+
+    expect(statValue('Contact details')).toBe('1')
+    expect(statValue('Locations')).toBe('0')
+    expect(statValue('Card type')).toBe('Individual')
+  })
+
+  it('names the linked system user ONCE, on its labelled row', () => {
+    renderDetail(referent({ user_id: 4, user: { id: 4, name: 'Ada (account)' } }))
+
+    expect(screen.getByText('Linked user')).toBeInTheDocument()
+    // Once, not twice: the identity band deliberately carries no user pill.
+    expect(screen.getAllByText('Ada (account)')).toHaveLength(1)
+  })
+
+  it("omits the row entirely when the actor may not see the link (the key is absent, not null)", () => {
+    renderDetail(referent())
+
+    expect(screen.queryByText('Linked user')).not.toBeInTheDocument()
+  })
+
+  it('offers Edit only when the response grants update AND the host gives a handler', () => {
+    const onEdit = vi.fn()
+
+    renderDetail(referent())
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+
+    cleanup()
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ConfirmDialogProvider>
+          <ReferentDetailView referent={referent()} onEdit={onEdit} />
+        </ConfirmDialogProvider>
+      </QueryClientProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(onEdit).toHaveBeenCalledTimes(1)
+  })
+})
+
+/** The value `RecordStat` renders right under its label, addressed by that label's text. */
+function statValue(label: string): string | undefined {
+  return screen.getByText(label).nextElementSibling?.textContent ?? undefined
+}

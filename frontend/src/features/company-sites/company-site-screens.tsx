@@ -33,8 +33,8 @@ function detailQueryKey(id: number) {
  * only carry `id`), so they are not wired here — flagged to the module
  * registry owner, not invented.
  */
-export function CompanySiteDetailScreen({ id }: ModuleDetailScreenProps) {
-  return <CompanySiteDetailView companySiteId={id} />
+export function CompanySiteDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+  return <CompanySiteDetailView companySiteId={id} onEdit={onEdit} />
 }
 
 export function CompanySiteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -115,4 +115,9 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.companySites',
   DetailScreen: CompanySiteDetailScreen,
   FormScreen: CompanySiteFormScreen,
+  // The record card renders its own Edit action and the form its own identity
+  // bar, so the generic hosts must not stack a second heading or button — the
+  // same registration Opportunita', Utenti and Lead carry.
+  detailOwnsEditAction: true,
+  formOwnsHeader: true,
 }

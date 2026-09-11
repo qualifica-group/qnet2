@@ -31,6 +31,10 @@ export const operationalSites = {
     region: 'Region',
     country: 'Country',
     created_at: 'Created at',
+    summary: {
+      title: 'Summary',
+      description: 'Updated as you type.',
+    },
   },
   form: {
     newOperationalSite: 'New operational site',

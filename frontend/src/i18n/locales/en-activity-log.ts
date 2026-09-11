@@ -44,6 +44,7 @@ export const activityLog = {
     custom_field: 'Custom field',
     custom_field_option: 'Custom field option',
     lead: 'Lead',
+    lead_status: 'Lead status',
     operational_site: 'Operational site',
     pipeline_status: 'Status',
     product: 'Product',
@@ -120,6 +121,9 @@ export const activityLog = {
     inherits_quote_attributes: 'Inherits quote attributes',
     inherits_work_order_attributes: 'Inherits work order attributes',
     referent_type_id: 'Referent type',
+    // Logged by `Referent` (#[Fillable] `user_id`): without this label the log
+    // showed the raw DB column name.
+    user_id: 'Linked user',
     contact_scope: 'Contact scope',
     vat_group: 'VAT group',
     is_supplier: 'Supplier',

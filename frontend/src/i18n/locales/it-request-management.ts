@@ -285,6 +285,10 @@ export const requestManagement = {
       activityTab: 'Storico',
     },
     validation: {
+      // Campo Attributo obbligatorio lasciato vuoto. Il codice passa un
+      // `defaultValue` inglese: senza questa chiave un utente italiano
+      // leggeva 'This field is required.' invece di un errore tradotto.
+      required: 'Questo campo è obbligatorio.',
       sourceRequired: 'Seleziona una fonte.',
       productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
       productLineIncomplete: 'Seleziona funzione aziendale e categoria prodotto per ogni riga.',

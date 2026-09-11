@@ -21,6 +21,17 @@ export const referents = {
     subtitle: 'Visualizzazione in sola lettura del referente selezionato.',
     loadError: 'Impossibile caricare il referente. Riprova.',
     details: 'Dettagli',
+    // Etichette della striscia KPI: sono SUE, non i titoli dei blocchi laterali
+    // Contatti/Indirizzi, altrimenti la stessa parola direbbe due cose diverse.
+    stats: {
+      contacts: 'Recapiti',
+      addresses: 'Sedi',
+      cardType: 'Tipo anagrafica',
+    },
+    summary: {
+      title: 'Riepilogo',
+      description: 'Si aggiorna mentre compili.',
+    },
   },
   form: {
     newReferent: 'Nuovo referente',

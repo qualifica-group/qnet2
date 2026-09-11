@@ -32,7 +32,10 @@ describe('IdentityDuplicateWarning (AC-007, AC-009)', () => {
     ]
     render(<IdentityDuplicateWarning matches={matches} />)
 
-    expect(screen.getByText('Anagrafica Mario Rossi might be a duplicate (VAT number).')).toBeInTheDocument()
+    // 'Registry', not 'Anagrafica': the English bundle used to leak the Italian
+    // word while its siblings (User/Referent) were translated. The copy was the
+    // defect, so the expectation moves with it.
+    expect(screen.getByText('Registry Mario Rossi might be a duplicate (VAT number).')).toBeInTheDocument()
     expect(screen.getByText('User Anna Bianchi might be a duplicate (phone).')).toBeInTheDocument()
   })
 })

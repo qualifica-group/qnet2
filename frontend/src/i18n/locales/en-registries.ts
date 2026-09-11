@@ -22,7 +22,18 @@ export const registries = {
     subtitle: 'Read-only view of the selected registry.',
     loadError: 'Unable to load the registry. Please try again.',
     details: 'Details',
-    people: 'Referents & account managers',
+    // The KPI strip's own labels, not the form's: the sections below already
+    // carry "Referents"/"Sectors" on the rows that list their names.
+    stats: {
+      referents: 'Linked referents',
+      managers: 'Assigned managers',
+      sectors: 'Business sectors',
+      employees: 'Employees',
+    },
+    summary: {
+      title: 'Summary',
+      description: 'Updated as you type.',
+    },
   },
   form: {
     newRegistry: 'New registry',
@@ -67,6 +78,11 @@ export const registries = {
     commercialPlaceholder: 'Select a commercial referent…',
     reporter: 'Reporter',
     reporterPlaceholder: 'Select a reporter…',
+    // Micro-headings of the two groups inside the "Relations" section.
+    groups: {
+      origin: 'Origin & classification',
+      people: 'Reference people',
+    },
     atecoCodes: 'ATECO codes',
     atecoCodesComingSoon: 'Coming soon',
     vatGroup: 'VAT group',
@@ -97,7 +113,11 @@ export const registries = {
       },
       relations: {
         title: 'Relations',
-        description: 'Source, sectors, referents, account managers and internal roles.',
+        description: 'Source, sectors, referents, commercial and reporter.',
+      },
+      team: {
+        title: 'Team',
+        description: 'Supervisor and account managers.',
       },
       business: {
         title: 'Business details',

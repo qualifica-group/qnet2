@@ -294,7 +294,7 @@ describe('UserForm — atomic personal data', () => {
       target: { value: 'secret123' },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     expect(updateUserMock).not.toHaveBeenCalled()
@@ -330,7 +330,7 @@ describe('UserForm — atomic personal data', () => {
     fireEvent.change(screen.getByLabelText(/^Confirm password/), {
       target: { value: 'secret123' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     // The card is mandatory: the request must not fire, and the error NAMES the
     // fields left empty.
@@ -360,7 +360,7 @@ describe('UserForm — atomic personal data', () => {
     // A malformed value in the quick email field.
     fireEvent.change(quickContactEmail(), { target: { value: 'not-an-email' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(
@@ -386,7 +386,7 @@ describe('UserForm — atomic personal data', () => {
     // The inline address is started (line1 filled) but no city is chosen.
     fireEvent.change(screen.getByLabelText(/^Address\*?$/), { target: { value: 'Via Roma 1' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(
@@ -416,7 +416,7 @@ describe('UserForm — atomic personal data', () => {
     // The seeded contact is on the same screen, no tab to open.
     expect(screen.getByText('ada@work.com')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
     expect(createUserMock).not.toHaveBeenCalled()

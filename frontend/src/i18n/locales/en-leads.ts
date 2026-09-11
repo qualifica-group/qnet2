@@ -38,6 +38,10 @@ export const leads = {
     },
     createOpportunity: 'Create opportunity',
     goToOpportunity: 'Go to opportunity',
+    updatedAt: 'Updated at',
+    stats: {
+      unassignedHint: 'No operator assigned',
+    },
   },
   form: {
     newLead: 'New lead',

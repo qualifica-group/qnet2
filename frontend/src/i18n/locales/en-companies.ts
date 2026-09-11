@@ -25,6 +25,16 @@ export const companies = {
     title: 'Company details',
     subtitle: 'Read-only view of the selected company.',
     loadError: 'Unable to load the company. Please try again.',
+    summary: {
+      title: 'Summary',
+      description: 'Updated as you type.',
+    },
+    // The card's own labels, the way `operationalSites.detail` has them:
+    // the ones under `columns` are table headers, not card labels.
+    city: 'City',
+    province: 'Province',
+    region: 'Region',
+    country: 'Country',
   },
   form: {
     newCompany: 'New company',

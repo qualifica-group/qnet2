@@ -25,6 +25,16 @@ export const companies = {
     title: 'Dettagli società',
     subtitle: 'Visualizzazione in sola lettura della società selezionata.',
     loadError: 'Impossibile caricare la società. Riprova.',
+    summary: {
+      title: 'Riepilogo',
+      description: 'Si aggiorna mentre compili.',
+    },
+    // Etichette proprie del dettaglio, come le ha `operationalSites.detail`:
+    // quelle sotto `columns` sono intestazioni di tabella, non di scheda.
+    city: 'Comune',
+    province: 'Provincia',
+    region: 'Regione',
+    country: 'Nazione',
   },
   form: {
     newCompany: 'Nuova società',

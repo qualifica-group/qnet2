@@ -63,9 +63,10 @@ function buildEmploymentSchema(t: TFunction) {
           message: t('users.form.employment.terminatedBeforeHiredAt'),
         })
       }
-      // A competence set may be EMPTY (spec 0111 D-8: the user is then a
-      // jolly for the assignment), but a half-filled row is not a pair and
-      // must never reach the server. The issue is raised on the COLLECTION,
+      // A competence set may be EMPTY — the form does not force one, it warns
+      // (spec 0111 rev.2 D-9: an empty set covers NOTHING, so the person
+      // receives no assignment at all) — but a half-filled row is not a pair
+      // and must never reach the server. The issue is raised on the COLLECTION,
       // not on the row: the whole editor is one `MetaField`, so only an error
       // at its own path is rendered under it.
       const hasIncompleteRow = values.product_lines.some(

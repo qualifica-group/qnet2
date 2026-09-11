@@ -40,7 +40,10 @@ class LeadService
      * @var array<int, string>
      */
     private const array DETAIL_RELATIONS = [
-        'registry',
+        // The anagrafica's personal-data card comes along so LeadResource can
+        // project its PRIMARY contacts (call/mail straight from the record
+        // card) without a second query.
+        'registry.personalData.contacts',
         'campaign',
         'operationalSite.addresses.city',
         'source',

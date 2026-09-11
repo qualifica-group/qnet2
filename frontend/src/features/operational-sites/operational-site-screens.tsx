@@ -28,7 +28,7 @@ function detailQueryKey(id: number) {
  * did before the rewire — no new fetch/view logic, only the reusable seam
  * extracted.
  */
-export function OperationalSiteDetailScreen({ id }: ModuleDetailScreenProps) {
+export function OperationalSiteDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: operationalSite,
@@ -51,7 +51,7 @@ export function OperationalSiteDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <OperationalSiteDetailView operationalSite={operationalSite} />
+  return <OperationalSiteDetailView operationalSite={operationalSite} onEdit={onEdit} />
 }
 
 export function OperationalSiteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -139,4 +139,9 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.operationalSites',
   DetailScreen: OperationalSiteDetailScreen,
   FormScreen: OperationalSiteFormScreen,
+  // The record card renders its own Edit action and the form its own identity
+  // bar, so the generic hosts must not stack a second heading or button — the
+  // same registration Opportunita', Utenti and Lead carry.
+  detailOwnsEditAction: true,
+  formOwnsHeader: true,
 }

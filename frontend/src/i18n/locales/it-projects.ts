@@ -54,6 +54,8 @@ export const projects = {
     budget: 'Budget',
     allocatedBudget: 'Budget allocato',
     remainingBudget: 'Budget residuo',
+    campaignsLabel: 'Campagne',
+    allocatedShare: '{{share}}% del budget totale',
     campaignsCount_one: '{{count}} campagna',
     campaignsCount_other: '{{count}} campagne',
     overallocatedWarning: 'Le campagne collegate superano il budget totale di {{amount}}.',

@@ -13,14 +13,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RelationSelectField } from '@/components/form/relation-select-field'
-import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
-import { toRelationFieldRef, toRelationFieldRefs } from '@/components/form/relation-field-ref'
+import { toRelationFieldRef } from '@/components/form/relation-field-ref'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { MetaField } from '@/features/authorization/MetaField'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
-import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
-import { ProductLinesField } from '@/features/product-lines/product-lines-field'
-import type { ProductLine } from '@/features/product-lines/types'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { RELATIONSHIP_TYPES, type RelationshipType } from '@/features/users/types'
 import type { UserFormValues } from '@/features/users/use-user-form'
@@ -33,27 +29,19 @@ interface EmploymentTabProps {
 }
 
 interface ProfileTabContentProps extends EmploymentTabProps {
-  /** The persisted competence pairs, whose `{id, name}` projections label the rows without a fetch. */
-  knownProductLines: ProductLine[]
   selectedReportsToItem: ForSelectItem | null
 }
 
 /**
- * Profile tab: organizational role (the competence rows, manager status, job
- * description) and the reporting line. The competence is edited with the SAME
- * `ProductLinesField` the request/opportunity forms use (spec 0111): a person
- * covers N "funzione aziendale -> categoria prodotto" pairs, which replaced
- * the single business function and the flat category multi-select. The
- * `single`-mode row cap is opted out here (D-5): it is an invariant of a
- * commercial card, not of a person's competence. `reports_to` is hidden and
- * its value force-nulled at the payload boundary whenever `is_manager` is
- * true (AC-015).
+ * Profile section: what the person IS in the organization — manager status,
+ * job description and the reporting line.
+ *
+ * The competence rows left this section (user directive 2026-09-11): they are
+ * half of the assignment configuration, so they now live next to the Sedi in
+ * `UserAssignmentSection`. `reports_to` is hidden and its value force-nulled
+ * at the payload boundary whenever `is_manager` is true (AC-015).
  */
-export function ProfileTabContent({
-  control,
-  knownProductLines,
-  selectedReportsToItem,
-}: ProfileTabContentProps) {
+export function ProfileTabContent({ control, selectedReportsToItem }: ProfileTabContentProps) {
   const { t } = useTranslation()
   const isManager = useWatch({ control, name: 'employment.is_manager' })
 
@@ -63,24 +51,6 @@ export function ProfileTabContent({
       title={t('users.form.sections.profile.title')}
       description={t('users.form.sections.profile.description')}
     >
-      <MetaField
-        control={control}
-        name="employment.product_lines"
-        metaKey="employment.product_lines"
-        label={t('users.form.employment.productLines')}
-        hint={t('users.form.employment.productLinesHint')}
-      >
-        {({ field, disabled }) => (
-          <ProductLinesField
-            value={field.value}
-            onChange={field.onChange}
-            knownLines={knownProductLines}
-            disabled={disabled}
-            enforceManagementModeCap={false}
-          />
-        )}
-      </MetaField>
-
       <MetaField
         control={control}
         name="employment.is_manager"
@@ -131,22 +101,18 @@ export function ProfileTabContent({
 
 interface ContractTabContentProps extends EmploymentTabProps {
   selectedCompanyItem: ForSelectItem | null
-  selectedPrimaryOperationalSiteItem: ForSelectItem | null
-  selectedRemoteOperationalSiteItems: ForSelectItem[]
 }
 
 /**
- * Contract tab: relationship type, company, physical site and remote sites.
- * The physical site is at most one (spec 0103 D-3); the remote sites are a
- * multi-select fed by the same for-select resource (D-1: operative exactly
- * like the physical one).
+ * Contract section: relationship type and employing company — the terms of the
+ * contract, and nothing else.
+ *
+ * The physical and remote Sedi used to sit here as if they described the
+ * contract. They do not: they are the Sede half of the assignment pool, and
+ * they moved to `UserAssignmentSection` with the competence rows they are
+ * always read together with (user directive 2026-09-11).
  */
-export function ContractTabContent({
-  control,
-  selectedCompanyItem,
-  selectedPrimaryOperationalSiteItem,
-  selectedRemoteOperationalSiteItems,
-}: ContractTabContentProps) {
+export function ContractTabContent({ control, selectedCompanyItem }: ContractTabContentProps) {
   const { t } = useTranslation()
 
   return (
@@ -200,36 +166,6 @@ export function ContractTabContent({
         emptyLabel={t('users.form.employment.companyEmpty')}
         errorLabel={t('users.form.employment.companyError')}
         clearLabel={t('common.clear')}
-        retryLabel={t('common.retry')}
-      />
-
-      <RelationSelectField
-        control={control}
-        name="employment.primary_operational_site_id"
-        metaKey="employment.primary_operational_site_id"
-        label={t('users.form.employment.primaryOperationalSite')}
-        resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
-        searchPlaceholder={t('users.form.employment.primaryOperationalSiteSearch')}
-        selected={toRelationFieldRef(selectedPrimaryOperationalSiteItem)}
-        placeholder={t('users.form.employment.primaryOperationalSitePlaceholder')}
-        emptyLabel={t('users.form.employment.primaryOperationalSiteEmpty')}
-        errorLabel={t('users.form.employment.primaryOperationalSiteError')}
-        clearLabel={t('common.clear')}
-        retryLabel={t('common.retry')}
-      />
-
-      <RelationMultiSelectField
-        control={control}
-        name="employment.remote_operational_site_ids"
-        metaKey="employment.remote_operational_site_ids"
-        label={t('users.form.employment.remoteOperationalSites')}
-        resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
-        searchPlaceholder={t('users.form.employment.remoteOperationalSitesSearch')}
-        selected={toRelationFieldRefs(selectedRemoteOperationalSiteItems)}
-        placeholder={t('users.form.employment.remoteOperationalSitesPlaceholder')}
-        emptyLabel={t('users.form.employment.remoteOperationalSitesEmpty')}
-        errorLabel={t('users.form.employment.remoteOperationalSitesError')}
-        removeLabel={t('users.form.employment.remoteOperationalSitesRemove')}
         retryLabel={t('common.retry')}
       />
     </FormSection>

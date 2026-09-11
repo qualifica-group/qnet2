@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -210,7 +210,7 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     fireEvent.click(screen.getByText('select-users-3'))
     fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'VIP sponsor' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createReferentMock).toHaveBeenCalledTimes(1))
     const payload = createReferentMock.mock.calls[0][0]
@@ -229,7 +229,7 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(
@@ -249,7 +249,7 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(screen.getByText('Enter at least one phone number.')).toBeInTheDocument(),
@@ -302,7 +302,7 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     )
 
     fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'Updated note' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateReferentMock).toHaveBeenCalledTimes(1))
     const [id, payload] = updateReferentMock.mock.calls[0]
@@ -323,7 +323,7 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     )
 
     fireEvent.click(screen.getByText('clear-users'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateReferentMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateReferentMock.mock.calls[0]
@@ -343,7 +343,7 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
     fillRequiredPhone()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createReferentMock).toHaveBeenCalledTimes(1))
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['stats', 'referents'] })

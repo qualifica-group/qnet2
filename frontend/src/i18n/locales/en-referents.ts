@@ -21,6 +21,17 @@ export const referents = {
     subtitle: 'Read-only view of the selected referent.',
     loadError: 'Unable to load the referent. Please try again.',
     details: 'Details',
+    // The KPI strip's own labels, not the side column's Contacts/Addresses
+    // block titles, or the same word would mean two different things.
+    stats: {
+      contacts: 'Contact details',
+      addresses: 'Locations',
+      cardType: 'Card type',
+    },
+    summary: {
+      title: 'Summary',
+      description: 'Updated as you type.',
+    },
   },
   form: {
     newReferent: 'New referent',

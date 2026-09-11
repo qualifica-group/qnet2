@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -162,7 +162,11 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
 
     await waitFor(() => expect(screen.getByLabelText(/^Notes/)).toBeInTheDocument())
     expect(screen.queryByTestId('referent-types-value')).not.toBeInTheDocument()
-    expect(screen.getByText('Contact scope').closest('label')?.textContent).toContain('*')
+    // `selector: 'label'` since the side-column recap now carries the same
+    // wording on its own row: what is asserted here is the FIELD's label.
+    expect(
+      screen.getByText('Contact scope', { selector: 'label' }).textContent,
+    ).toContain('*')
   })
 
   it('hides the linked-user field independently by its own field permission (AC-005, spec 0090)', async () => {
@@ -246,7 +250,7 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('field not editable')).toBeInTheDocument())
     expect(updateReferentMock).toHaveBeenCalledTimes(1)
@@ -272,7 +276,7 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateReferentMock).toHaveBeenCalledTimes(1))
 
@@ -305,12 +309,35 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(screen.getByText('The first name field is required.')).toBeInTheDocument(),
     )
 
     vi.restoreAllMocks()
+  })
+})
+
+/**
+ * User directive 2026-09-11: the "Dettagli referente" block was one column of
+ * five controls with a dead disabled `<Select>` in the middle. It now lays the
+ * two classifications on the shared two-column grid and states the reserved
+ * slot as a note.
+ */
+describe('ReferentForm — details block layout (user directive 2026-09-11)', () => {
+  it('shows the reserved activity-sectors slot as a note, with nothing focusable in it', async () => {
+    // `beforeEach` already resolves the meta with everything visible/editable.
+    render(<ReferentForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByText('Activity sectors')).toBeInTheDocument())
+    // It used to be a disabled `<Select>`: a trigger you could tab to and get
+    // nothing from. A planned field must not look — or tab — like a control.
+    const planned = screen.getByText('Activity sectors').closest('div') as HTMLElement
+    expect(within(planned).getByText('Coming soon')).toBeInTheDocument()
+    expect(within(planned).queryByRole('combobox')).not.toBeInTheDocument()
+    expect(within(planned).queryByRole('button')).not.toBeInTheDocument()
   })
 })

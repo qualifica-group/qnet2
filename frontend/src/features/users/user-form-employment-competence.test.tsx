@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -347,7 +347,7 @@ function renderEditForm(user: UserDetailWithPermissions = userWithCompetence()) 
 }
 
 function save() {
-  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 }
 
 /** The employment object of the single PATCH the form fired. */

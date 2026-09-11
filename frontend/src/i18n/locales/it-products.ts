@@ -56,6 +56,9 @@ export const attributes = {
     optionLabelRequired: "L'etichetta è obbligatoria.",
     optionLabelMax: "L'etichetta deve avere al massimo 191 caratteri.",
     optionsRequiredForEnum: 'Aggiungi almeno una opzione per un attributo a elenco.',
+    // Stato vuoto in SOLA LETTURA del dettaglio: descrive, non chiede
+    // (a differenza di `optionsRequiredForEnum`, che e' un errore di form).
+    optionsEmpty: 'Nessuna opzione definita.',
     optionValuesDuplicate: 'I valori delle opzioni devono essere unici.',
     relationEntityTypeRequired: 'Il modulo di destinazione della relazione è obbligatorio.',
     relationForSelectResourceRequired: 'La risorsa del selettore è obbligatoria.',

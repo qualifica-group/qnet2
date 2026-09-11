@@ -23,7 +23,7 @@ import type { CampaignDetail } from '@/features/campaigns/types'
  * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
  * `CampaignsTable`'s inline loaders, which the rewire removed.
  */
-export function CampaignDetailScreen({ id }: ModuleDetailScreenProps) {
+export function CampaignDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: campaign,
@@ -46,7 +46,7 @@ export function CampaignDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <CampaignDetailView campaign={campaign} />
+  return <CampaignDetailView campaign={campaign} onEdit={onEdit} />
 }
 
 export function CampaignFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -168,4 +168,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.campaigns',
   DetailScreen: CampaignDetailScreen,
   FormScreen: CampaignFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

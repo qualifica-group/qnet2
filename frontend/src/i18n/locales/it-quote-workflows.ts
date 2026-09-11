@@ -104,7 +104,7 @@ export const quoteWorkflows = {
       group: {
         label: 'Gruppo',
         open: 'Aperto',
-        pending: 'In pending',
+        pending: 'In attesa',
         validated: 'Validato',
         closed_won: 'Chiuso con esito positivo',
         closed_lost: 'Chiuso con esito negativo',

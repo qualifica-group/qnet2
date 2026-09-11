@@ -2,9 +2,14 @@ import { useRef } from 'react'
 import { IdCard, MapPin, Phone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { FormSection } from '@/components/form-section'
+import {
+  MAIN_COLUMN_CLASS,
+  PANEL_GRID_CLASS,
+  SIDE_COLUMN_CLASS,
+} from '@/components/record-form/layout'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import { AddressesManager } from '@/features/personal-data/addresses-manager'
@@ -16,6 +21,8 @@ import {
   useRevealBlockedSection,
 } from '@/features/personal-data/use-reveal-blocked-section'
 import { DetailsTabContent } from '@/features/referents/referent-form-details-tab'
+import { ReferentFormHeader } from '@/features/referents/referent-form-header'
+import { ReferentFormSummary } from '@/features/referents/referent-form-summary'
 import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
 import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
 import { useReferentForm } from '@/features/referents/use-referent-form'
@@ -29,6 +36,14 @@ import type { ReferentDetail, ReferentFormMode } from '@/features/referents/type
  */
 const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
 
+/**
+ * DOM id bridging the sticky header's save action to the RHF `<form>` below,
+ * exactly as the Opportunità and Gestione Richieste screens do: the same id
+ * serves the footer actions, so both copies of the button submit this form
+ * without either of them nesting the other.
+ */
+const REFERENT_FORM_ID = 'referent-form'
+
 interface ReferentFormBodyProps {
   mode: ReferentFormMode
   onSuccess: (referent: ReferentDetail) => void
@@ -36,18 +51,19 @@ interface ReferentFormBodyProps {
 }
 
 /**
- * The referent create/edit form UI (spec 0016), laid out as a SINGLE screen:
- * anagraphic card, referent details, contacts, addresses and custom fields are
- * stacked one under the other in a single column, with no macro tabs (user
- * directive 2026-09-07: creating a Segnalatore must take no tab switching).
- * Each block keeps its own `FormSection` heading and its own visibility gate,
- * so an actor who cannot see contacts simply gets no contacts block. Contacts
- * and addresses open in the shared dialog and persist immediately when the card
- * already exists (`cardOwnerRef`); in create mode both offer their inline quick
- * fields instead. Every field is wrapped in `MetaField` (spec 0004); all
- * non-render logic lives in `useReferentForm`. `<CustomFieldsSection>` (spec
- * 0021) mounts the resource's admin-defined custom fields last, with zero
- * referents-specific rendering/validation logic.
+ * The referente create/edit form UI (spec 0016), rebuilt as the TWIN of the
+ * Opportunità form and of its own sibling `RegistryFormBody` (user directive
+ * 2026-09-11). Not a resemblance: the layout primitives are literally the same
+ * objects (`@/components/record-form`), so none of the record forms can drift
+ * apart with a later edit to another.
+ *
+ * The **duplicate warning moved to the side column**, for the same reason it
+ * did on the anagrafica: it used to sit under the custom fields, i.e.
+ * off-screen exactly while the operator was typing the name that triggers it.
+ * It still refuses nothing — the save goes through either way.
+ *
+ * Each block keeps its own visibility gate; every field is wrapped in
+ * `MetaField` (spec 0004); all non-render logic lives in `useReferentForm`.
  */
 export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBodyProps) {
   const { t } = useTranslation()
@@ -90,103 +106,121 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
   // Contacts/addresses persist immediately once the card exists; otherwise they
   // stay buffered until the form is saved (parity with the Users module).
   const persistence = cardOwnerRef(profileDraft)
+  const { isSubmitting } = form.formState
 
   return (
-    <div ref={containerRef} className="flex flex-1 flex-col overflow-y-auto">
+    <div ref={containerRef} className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-1 flex-col gap-4 p-4"
-          noValidate
-        >
-          <div {...anagraphicSectionProps('card')}>
-            <FormSection
-              icon={IdCard}
-              title={t('referents.form.sections.identity.title')}
-              description={t('referents.form.sections.identity.description')}
-            >
-              <PersonalDataCardForm
-                value={profileDraft}
-                onChange={setProfileDraft}
-                fieldPermission={personalDataFieldPermission}
-                revalidateSignal={revalidateSignal}
-              />
-            </FormSection>
-          </div>
+        <ReferentFormHeader
+          control={form.control}
+          isEdit={mode.type === 'edit'}
+          formId={REFERENT_FORM_ID}
+          isSubmitting={isSubmitting}
+          submitError={serverError}
+          onCancel={onCancel}
+        />
 
-          {detailsVisible && (
-            <DetailsTabContent
+        <div className={PANEL_GRID_CLASS}>
+          {/* First in the DOM so a narrow container reads the duplicate warning
+              before the form, reordered to the right on two columns. */}
+          <aside className={SIDE_COLUMN_CLASS}>
+            <IdentityDuplicateWarning matches={duplicateMatches} />
+            <ReferentFormSummary
               control={form.control}
               selectedReferentTypeItem={selectedReferentTypeItem}
               selectedUserItem={selectedUserItem}
+              profileDraft={profileDraft}
             />
-          )}
+          </aside>
 
-          {contactsVisible && (
-            <div {...anagraphicSectionProps('contacts')}>
-              <FormSection
-                icon={Phone}
-                title={t('referents.form.sections.contacts.title')}
-                description={t('referents.form.sections.contacts.description')}
-                aside={<Badge variant="secondary">{profileDraft.contacts.length}</Badge>}
-              >
-                <ContactsManager
-                  value={profileDraft.contacts}
-                  onChange={(contacts) => setProfileDraft({ ...profileDraft, contacts })}
-                  fieldPermission={personalDataFieldPermission}
-                  showHeader={false}
-                  persistence={persistence}
-                  createMode={mode.type === 'create'}
-                  requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
-                />
-              </FormSection>
-            </div>
-          )}
-
-          {addressesVisible && (
-            <div {...anagraphicSectionProps('addresses')}>
-              <FormSection
-                icon={MapPin}
-                title={t('referents.form.sections.addresses.title')}
-                description={t('referents.form.sections.addresses.description')}
-                aside={<Badge variant="secondary">{profileDraft.addresses.length}</Badge>}
-              >
-                <AddressesManager
-                  value={profileDraft.addresses}
-                  onChange={(addresses) => setProfileDraft({ ...profileDraft, addresses })}
-                  fieldPermission={personalDataFieldPermission}
-                  showHeader={false}
-                  persistence={persistence}
-                  createMode={mode.type === 'create'}
-                />
-              </FormSection>
-            </div>
-          )}
-
-          <CustomFieldsSection resource="referents" control={form.control} />
-
-          <IdentityDuplicateWarning matches={duplicateMatches} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
+          <div className={MAIN_COLUMN_CLASS}>
+            {/* `display: contents`: this native `<form>` only scopes the HTML
+                submit boundary, it must not become an extra flex box. */}
+            <form
+              id={REFERENT_FORM_ID}
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="contents"
+              noValidate
             >
-              {t('referents.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('referents.form.saving') : t('referents.form.save')}
-            </Button>
+              <div {...anagraphicSectionProps('card')}>
+                <FormSection
+                  icon={IdCard}
+                  title={t('referents.form.sections.identity.title')}
+                  description={t('referents.form.sections.identity.description')}
+                >
+                  <PersonalDataCardForm
+                    value={profileDraft}
+                    onChange={setProfileDraft}
+                    fieldPermission={personalDataFieldPermission}
+                    revalidateSignal={revalidateSignal}
+                  />
+                </FormSection>
+              </div>
+
+              {detailsVisible && (
+                <DetailsTabContent
+                  control={form.control}
+                  selectedReferentTypeItem={selectedReferentTypeItem}
+                  selectedUserItem={selectedUserItem}
+                />
+              )}
+
+              {contactsVisible && (
+                <div {...anagraphicSectionProps('contacts')}>
+                  <FormSection
+                    icon={Phone}
+                    title={t('referents.form.sections.contacts.title')}
+                    description={t('referents.form.sections.contacts.description')}
+                    aside={<Badge variant="secondary">{profileDraft.contacts.length}</Badge>}
+                  >
+                    <ContactsManager
+                      value={profileDraft.contacts}
+                      onChange={(contacts) => setProfileDraft({ ...profileDraft, contacts })}
+                      fieldPermission={personalDataFieldPermission}
+                      showHeader={false}
+                      persistence={persistence}
+                      createMode={mode.type === 'create'}
+                      requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
+                    />
+                  </FormSection>
+                </div>
+              )}
+
+              {addressesVisible && (
+                <div {...anagraphicSectionProps('addresses')}>
+                  <FormSection
+                    icon={MapPin}
+                    title={t('referents.form.sections.addresses.title')}
+                    description={t('referents.form.sections.addresses.description')}
+                    aside={<Badge variant="secondary">{profileDraft.addresses.length}</Badge>}
+                  >
+                    <AddressesManager
+                      value={profileDraft.addresses}
+                      onChange={(addresses) => setProfileDraft({ ...profileDraft, addresses })}
+                      fieldPermission={personalDataFieldPermission}
+                      showHeader={false}
+                      persistence={persistence}
+                      createMode={mode.type === 'create'}
+                    />
+                  </FormSection>
+                </div>
+              )}
+
+              <CustomFieldsSection resource="referents" control={form.control} />
+
+              {/* The same actions the identity bar carries, repeated where the
+                  form ends: it is long enough that the operator finishes typing
+                  far from the sticky bar. */}
+              <RecordFormActions
+                formId={REFERENT_FORM_ID}
+                isSubmitting={isSubmitting}
+                submitLabel={t('referents.form.save')}
+                submittingLabel={t('referents.form.saving')}
+                cancel={{ label: t('referents.form.cancel'), onCancel }}
+              />
+            </form>
           </div>
-        </form>
+        </div>
       </Form>
     </div>
   )

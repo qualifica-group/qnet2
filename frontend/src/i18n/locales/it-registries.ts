@@ -22,7 +22,19 @@ export const registries = {
     subtitle: "Visualizzazione in sola lettura dell'anagrafica selezionata.",
     loadError: "Impossibile caricare l'anagrafica. Riprova.",
     details: 'Dettagli',
-    people: 'Referenti e gestori account',
+    // Etichette della striscia KPI: sono SUE, non quelle del form, perche' le
+    // sezioni sotto portano gia' "Referenti"/"Settori" sulle righe che ne
+    // elencano i nomi.
+    stats: {
+      referents: 'Referenti collegati',
+      managers: 'Gestori assegnati',
+      sectors: 'Settori merceologici',
+      employees: 'Dipendenti',
+    },
+    summary: {
+      title: 'Riepilogo',
+      description: 'Si aggiorna mentre compili.',
+    },
   },
   form: {
     newRegistry: 'Nuova anagrafica',
@@ -67,6 +79,11 @@ export const registries = {
     commercialPlaceholder: 'Seleziona un referente commerciale…',
     reporter: 'Segnalatore',
     reporterPlaceholder: 'Seleziona un segnalatore…',
+    // Micro-intestazioni dei due gruppi dentro la sezione "Relazioni".
+    groups: {
+      origin: 'Origine e classificazione',
+      people: 'Persone di riferimento',
+    },
     atecoCodes: 'Codici ATECO',
     atecoCodesComingSoon: 'Prossimamente',
     vatGroup: 'Gruppo IVA',
@@ -97,7 +114,11 @@ export const registries = {
       },
       relations: {
         title: 'Relazioni',
-        description: 'Fonte, settori, referenti, gestori account e ruoli interni.',
+        description: 'Fonte, settori, referenti, commerciale e segnalatore.',
+      },
+      team: {
+        title: 'Team',
+        description: 'Supervisore e gestori account.',
       },
       business: {
         title: 'Dati commerciali',

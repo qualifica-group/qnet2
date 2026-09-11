@@ -283,6 +283,10 @@ export const requestManagement = {
       activityTab: 'History',
     },
     validation: {
+      // A required Attribute left empty. The call site passes an English
+      // `defaultValue`, so the key never rendered raw — it simply made
+      // every locale fall back to English.
+      required: 'This field is required.',
       sourceRequired: 'Select a source.',
       productLinesRequired: 'Add at least one product line.',
       productLineIncomplete: 'Select a business function and a product category for every row.',

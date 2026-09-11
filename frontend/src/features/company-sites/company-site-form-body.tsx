@@ -2,6 +2,14 @@ import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
+import {
+  MAIN_COLUMN_CLASS,
+  PANEL_GRID_CLASS,
+  SIDE_COLUMN_CLASS,
+} from '@/components/record-form/layout'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
+import { CompanySiteFormHeader } from '@/features/company-sites/company-site-form-header'
+import { CompanySiteFormSummary } from '@/features/company-sites/company-site-form-summary'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { ProfileTabContent } from '@/features/company-sites/company-site-profile-tab'
@@ -10,6 +18,14 @@ import { BanksTabContent } from '@/features/company-sites/company-site-banks-tab
 import { useCompanySiteForm } from '@/features/company-sites/use-company-site-form'
 import type { CompanySiteFormMode } from '@/features/company-sites/company-site-form'
 import type { CompanySiteDetail } from '@/features/company-sites/types'
+
+/**
+ * DOM id bridging the sticky header's save action to the RHF `<form>` below,
+ * exactly as every other record form does: the same id serves the footer
+ * actions, so both copies of the button submit this form without either of them
+ * nesting the other.
+ */
+const COMPANY_SITE_FORM_ID = 'company-site-form'
 
 interface CompanySiteFormBodyProps {
   mode: CompanySiteFormMode
@@ -71,77 +87,97 @@ export function CompanySiteFormBody({
   const banksVisible = banksPermission.visible
   const banksReadOnly = banksPermission.disabled || !banksPermission.editable
 
+  // Rendered twice on purpose — in the sticky bar and at the foot of the form —
+  // the same way Save is: this screen is long, and setting the default must not
+  // require scrolling back up. A function, not a shared element: two React
+  // trees cannot share one node.
+  const setDefaultButton = () =>
+    canSetDefault ? (
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => void handleSetDefault()}
+        disabled={settingDefault || form.formState.isSubmitting}
+      >
+        {settingDefault
+          ? t('companySites.form.settingDefault')
+          : t('companySites.form.setDefault')}
+      </Button>
+    ) : null
+
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
+    <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-1 flex-col gap-4 p-4"
-          noValidate
-        >
-          <ProfileTabContent
-            mode={mode}
-            control={form.control}
-            siteName={siteName}
-            profileDraft={profileDraft}
-            setProfileDraft={setProfileDraft}
-            revalidateSignal={revalidateSignal}
-            personalDataFieldPermission={personalDataFieldPermission}
-            onLogoFileSelected={setPendingLogo}
-            onLogoUpload={handleLogoUpload}
-            onLogoRemove={handleLogoRemove}
-            canUploadLogo={canUploadLogo}
-            canRemoveLogo={canRemoveLogo}
-          />
+        <CompanySiteFormHeader
+          isEdit={mode.type === 'edit'}
+          isDefault={mode.type === 'edit' && mode.companySite.is_default}
+          formId={COMPANY_SITE_FORM_ID}
+          isSubmitting={form.formState.isSubmitting}
+          submitError={serverError}
+          leadingActions={setDefaultButton()}
+          onCancel={onCancel}
+        />
 
-          {settingsVisible && (
-            <SettingsTabContent control={form.control} selectedCompanyItem={selectedCompanyItem} />
-          )}
-
-          {banksVisible && (
-            <BanksTabContent
+        <div className={PANEL_GRID_CLASS}>
+          <aside className={SIDE_COLUMN_CLASS}>
+            <CompanySiteFormSummary
+              control={form.control}
+              selectedCompanyItem={selectedCompanyItem}
               banksDraft={banksDraft}
-              setBanksDraft={setBanksDraft}
-              readOnly={banksReadOnly}
             />
-          )}
+          </aside>
 
-          <CustomFieldsSection resource="company-sites" control={form.control} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            {canSetDefault && (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => void handleSetDefault()}
-                disabled={settingDefault || form.formState.isSubmitting}
-              >
-                {settingDefault
-                  ? t('companySites.form.settingDefault')
-                  : t('companySites.form.setDefault')}
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
+          <div className={MAIN_COLUMN_CLASS}>
+            {/* `display: contents`: this native `<form>` only scopes the HTML
+                submit boundary, it must not become an extra flex box. */}
+            <form
+              id={COMPANY_SITE_FORM_ID}
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="contents"
+              noValidate
             >
-              {t('companySites.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting
-                ? t('companySites.form.saving')
-                : t('companySites.form.save')}
-            </Button>
+              <ProfileTabContent
+                mode={mode}
+                control={form.control}
+                siteName={siteName}
+                profileDraft={profileDraft}
+                setProfileDraft={setProfileDraft}
+                revalidateSignal={revalidateSignal}
+                personalDataFieldPermission={personalDataFieldPermission}
+                onLogoFileSelected={setPendingLogo}
+                onLogoUpload={handleLogoUpload}
+                onLogoRemove={handleLogoRemove}
+                canUploadLogo={canUploadLogo}
+                canRemoveLogo={canRemoveLogo}
+              />
+
+              {settingsVisible && (
+                <SettingsTabContent control={form.control} selectedCompanyItem={selectedCompanyItem} />
+              )}
+
+              {banksVisible && (
+                <BanksTabContent
+                  banksDraft={banksDraft}
+                  setBanksDraft={setBanksDraft}
+                  readOnly={banksReadOnly}
+                />
+              )}
+
+              <CustomFieldsSection resource="company-sites" control={form.control} />
+
+              {/* The same actions the identity bar carries, repeated where the
+                  form ends: the operator finishes typing far from the sticky bar. */}
+              <RecordFormActions
+                formId={COMPANY_SITE_FORM_ID}
+                isSubmitting={form.formState.isSubmitting}
+                submitLabel={t('companySites.form.save')}
+                submittingLabel={t('companySites.form.saving')}
+                cancel={{ label: t('companySites.form.cancel'), onCancel }}
+                leadingActions={setDefaultButton()}
+              />
+            </form>
           </div>
-        </form>
+        </div>
       </Form>
     </div>
   )

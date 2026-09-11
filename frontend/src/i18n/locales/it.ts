@@ -57,6 +57,7 @@ import { moduleStats, statsPanel } from './it-stats'
 import { impersonation } from './it-impersonation'
 import { permissions, permissionExplorer } from './it-permissions'
 import {
+  usersAssignment,
   usersColumnsEmployment,
   usersDetailEmployment,
   usersFormEmployment,
@@ -83,6 +84,8 @@ export const it: TranslationResources = {
     viewProfile: 'Vedi il profilo di {{name}}',
     /** Label of the select a tab strip collapses into when the tabs no longer fit. */
     tabsSelectLabel: 'Sezione',
+    /** Accessible name of the button that removes one chip from a multi-select. */
+    remove: 'Rimuovi',
     /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
     copySuffix: ' (copia)',
   },
@@ -145,6 +148,8 @@ export const it: TranslationResources = {
       primary_contact: 'Contatti principali',
       ...usersColumnsEmployment,
     },
+    // Configurazione di assegnazione (competenza + sedi), condivisa fra form e scheda.
+    assignment: usersAssignment,
     detail: {
       title: 'Dettaglio utente',
       subtitle: "Visualizzazione in sola lettura dell'utente selezionato.",
@@ -154,6 +159,8 @@ export const it: TranslationResources = {
     },
     form: {
       newUser: 'Nuovo utente',
+      // Barra di identità del form (pill di stato accanto al titolo).
+      header: { inactive: 'Non attivo' },
       avatarLabel: 'Avatar',
       createTitle: 'Crea utente',
       createSubtitle: 'Aggiungi un nuovo utente alla tua applicazione.',

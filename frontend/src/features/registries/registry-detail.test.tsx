@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { RegistryDetailView } from '@/features/registries/registry-detail'
 import type { RegistryDetailWithPermissions } from '@/features/registries/types'
@@ -101,3 +101,99 @@ describe('RegistryDetailView', () => {
     expect(screen.getByText(/mario@acme\.it/)).toBeInTheDocument()
   })
 })
+
+/**
+ * The record kit the card was rebuilt on (user directive 2026-09-11): the KPI
+ * strip that sizes the anagrafica at a glance, the people block, and the Edit
+ * action the card now owns instead of leaving it to the page chrome.
+ */
+describe('RegistryDetailView — record card (user directive 2026-09-11)', () => {
+  it('counts referents, account managers and sectors in the KPI strip', () => {
+    render(
+      <RegistryDetailView
+        registry={registry({
+          referents: [
+            { id: 1, name: 'Ada Lovelace' },
+            { id: 2, name: 'Grace Hopper' },
+          ],
+          sectors: [{ id: 5, name: 'Energy' }],
+          managers: [{ id: 3, name: 'Mario Rossi', position: 1 }],
+          manager_slots: [3],
+          employee_count: 42,
+        })}
+      />,
+    )
+
+    expect(statValue('Linked referents')).toBe('2')
+    expect(statValue('Assigned managers')).toBe('1')
+    expect(statValue('Business sectors')).toBe('1')
+    expect(statValue('Employees')).toBe('42')
+  })
+
+  it('puts the supervisor and the G.A. slots in ONE Team block, a row each', () => {
+    render(
+      <RegistryDetailView
+        registry={registry({
+          managers: [{ id: 3, name: 'Giulia Bianchi', position: 1 }],
+          manager_slots: [3],
+        })}
+      />,
+    )
+
+    // Same block Opportunità/Offerta carry (user directive 2026-09-11): the
+    // supervisor and every slot share one list, so their labels line up.
+    const team = screen.getByText('Team').closest('section') as HTMLElement
+    expect(within(team).getByText('Supervisor')).toBeInTheDocument()
+    expect(within(team).getByText('Mario Rossi')).toBeInTheDocument()
+    expect(within(team).getByText('Account manager 1')).toBeInTheDocument()
+    expect(within(team).getByText('Giulia Bianchi')).toBeInTheDocument()
+  })
+
+  it('keeps an empty G.A. slot visible as a placeholder row, never drops it', () => {
+    render(
+      <RegistryDetailView
+        registry={registry({
+          managers: [{ id: 3, name: 'Mario Rossi', position: 2 }],
+          // Slot 1 is deliberately empty: the gap is data, not a missing row —
+          // dropping it would renumber every G.A. below it.
+          manager_slots: [null, 3],
+        })}
+      />,
+    )
+
+    const team = screen.getByText('Team').closest('section') as HTMLElement
+    expect(within(team).getByText('Account manager 1')).toBeInTheDocument()
+    expect(within(team).getByText('Empty slot')).toBeInTheDocument()
+    expect(within(team).getByText('Account manager 2')).toBeInTheDocument()
+  })
+
+  it('offers Edit only when the response grants update AND the host gives a handler', () => {
+    const onEdit = vi.fn()
+
+    const { rerender } = render(<RegistryDetailView registry={registry()} />)
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+
+    rerender(<RegistryDetailView registry={registry()} onEdit={onEdit} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(onEdit).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <RegistryDetailView
+        registry={registry({
+          permissions: {
+            resource: { view: true, create: false, update: false, delete: false, export: false, import: false },
+            fields: {},
+            actions: {},
+          },
+        })}
+        onEdit={onEdit}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+})
+
+/** The value `RecordStat` renders right under its label, addressed by that label's text. */
+function statValue(label: string): string | undefined {
+  return screen.getByText(label).nextElementSibling?.textContent ?? undefined
+}

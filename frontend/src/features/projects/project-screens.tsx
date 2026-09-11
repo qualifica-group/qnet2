@@ -24,7 +24,7 @@ import type { ProjectDetail } from '@/features/projects/types'
  * chrome. Mirrors what `ProjectsTable`'s inline loaders did before the
  * rewire — no new fetch/view logic, only the reusable seam extracted.
  */
-export function ProjectDetailScreen({ id }: ModuleDetailScreenProps) {
+export function ProjectDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: project,
@@ -47,7 +47,7 @@ export function ProjectDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <ProjectDetailView project={project} />
+  return <ProjectDetailView project={project} onEdit={onEdit} />
 }
 
 export function ProjectFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -77,4 +77,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.projects',
   DetailScreen: ProjectDetailScreen,
   FormScreen: ProjectFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

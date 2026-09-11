@@ -63,7 +63,10 @@ export default function RegistryDetailPage() {
         }
       />
 
-      <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
+      {/* No `bg-card` here: the record canvas paints its own `bg-surface`
+          and the cards INSIDE it are the `bg-card` rung. A card wrapper would
+          be the very surface those cards lie on (ui-design.md §1-bis). */}
+      <div className="flex flex-1 flex-col overflow-hidden rounded-lg border">
         {isError ? (
           <DetailError
             message={t('registries.detail.loadError')}

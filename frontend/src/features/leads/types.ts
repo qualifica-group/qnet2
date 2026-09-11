@@ -6,11 +6,27 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { PrimaryContact } from '@/features/table/types'
 
 /** Hydrated `{id, name}` relation shared by registry/source/operator. */
 export interface LeadRelationRef {
   id: number
   name: string
+}
+
+/**
+ * The linked anagrafica, as exposed by `LeadResource.registry`: the plain
+ * `{id, name}` plus its PRIMARY contacts (one per type), so the record card can
+ * call/mail the contact without a second request.
+ *
+ * `primary_contacts` is optional here — not because the backend ever omits it
+ * (it always sends the key, empty for an actor without `registries.view` or an
+ * anagrafica with no card) — but so every pre-existing `LeadDetail` fixture
+ * across this feature's test suites keeps type-checking unchanged; treat a
+ * missing key the same as `[]`.
+ */
+export interface LeadRegistryRef extends LeadRelationRef {
+  primary_contacts?: PrimaryContact[]
 }
 
 /** The linked campaign's minimal identity, as exposed by `LeadResource.campaign`. */
@@ -70,7 +86,7 @@ export interface LeadProductOfInterest {
 export interface LeadDetail {
   id: number
   registry_id: number
-  registry: LeadRelationRef | null
+  registry: LeadRegistryRef | null
   campaign_id: number
   campaign: LeadCampaignRef | null
   lead_status: LeadLifecycleStatus

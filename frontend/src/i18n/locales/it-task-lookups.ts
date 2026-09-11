@@ -198,7 +198,7 @@ export const taskStatuses = {
     group: {
       label: 'Fase',
       open: 'Aperto',
-      pending: 'In pending',
+      pending: 'In attesa',
       in_validation: 'Da validare',
       closed_positive: 'Chiuso con esito positivo',
       closed_negative: 'Chiuso con esito negativo',

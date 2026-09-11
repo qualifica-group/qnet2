@@ -2,9 +2,9 @@
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchUser } from '@/features/users/api'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { UserForm } from '@/features/users/user-form'
 import { UserDetailView } from '@/features/users/user-detail'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
@@ -23,8 +23,8 @@ import type { UserDetail } from '@/features/users/types'
  * `projects`, whose presentational view takes already-loaded data), so this
  * screen only forwards the id.
  */
-export function UserDetailScreen({ id }: ModuleDetailScreenProps) {
-  return <UserDetailView userId={id} />
+export function UserDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+  return <UserDetailView userId={id} onEdit={onEdit} />
 }
 
 export function UserFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -78,13 +78,7 @@ function EditUserLoader({ userId, onSuccess, onCancel }: EditUserLoaderProps) {
   }
 
   if (isLoading || !user) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+    return <RecordFormSkeleton />
   }
 
   return <UserForm mode={{ type: 'edit', user }} onSuccess={onSuccess} onCancel={onCancel} />
@@ -98,4 +92,9 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.users',
   DetailScreen: UserDetailScreen,
   FormScreen: UserFormScreen,
+  // The record card renders its own Edit action, and the form its own identity
+  // bar (title/subtitle + actions on one row) — same registration Opportunità
+  // carries, so the generic hosts must not stack a second heading or button.
+  detailOwnsEditAction: true,
+  formOwnsHeader: true,
 }

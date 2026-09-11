@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { OperationalSiteForm } from '@/features/operational-sites/operational-site-form'
@@ -148,7 +148,7 @@ describe('OperationalSiteForm — custom fields (spec 0021)', () => {
       target: { value: 'North' },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createOperationalSiteMock).toHaveBeenCalledTimes(1))
     const payload = createOperationalSiteMock.mock.calls[0][0]
@@ -179,7 +179,7 @@ describe('OperationalSiteForm — custom fields (spec 0021)', () => {
 
     const zone = await screen.findByRole('textbox', { name: 'Zone' })
     fireEvent.change(zone, { target: { value: 'North-East' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateOperationalSiteMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateOperationalSiteMock.mock.calls[0]
@@ -215,7 +215,7 @@ describe('OperationalSiteForm — custom fields (spec 0021)', () => {
     )
 
     await screen.findByRole('textbox', { name: 'Zone' })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('Zone must be shorter.')).toBeInTheDocument())
     expect(updateOperationalSiteMock).toHaveBeenCalledTimes(1)

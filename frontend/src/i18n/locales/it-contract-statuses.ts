@@ -56,7 +56,7 @@ export const contractStatuses = {
     group: {
       label: 'Gruppo',
       open: 'Aperto',
-      pending: 'Pending',
+      pending: 'In attesa',
       closed_won: 'Chiuso positivo',
       closed_lost: 'Chiuso negativo',
     },

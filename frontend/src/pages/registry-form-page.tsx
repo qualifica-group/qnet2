@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
@@ -67,16 +67,9 @@ export default function RegistryFormPage() {
       <div className="flex flex-1 flex-col gap-4">
         <PageHeader />
 
-        <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-          <header className="flex flex-col gap-1 border-b px-4 py-3">
-            <h2 className="text-base font-semibold">
-              {t(isEdit ? 'registries.form.editTitle' : 'registries.form.createTitle')}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {t(isEdit ? 'registries.form.editSubtitle' : 'registries.form.createSubtitle')}
-            </p>
-          </header>
-
+        {/* No `bg-card`: the form paints its own `bg-surface` panel and the
+            sections inside it are the `bg-card` rung (ui-design.md §1-bis). */}
+        <div className="flex flex-1 flex-col overflow-hidden rounded-lg border">
           {isError ? (
             <div className="flex flex-col items-start gap-3 p-4">
               <p className="text-sm text-destructive" role="alert">
@@ -87,11 +80,7 @@ export default function RegistryFormPage() {
               </Button>
             </div>
           ) : isEdit && (isLoading || !registry) ? (
-            <div className="flex flex-col gap-4 p-4" aria-hidden="true">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-            </div>
+            <RecordFormSkeleton />
           ) : (
             <RegistryForm
               mode={registry ? { type: 'edit', registry } : { type: 'create' }}

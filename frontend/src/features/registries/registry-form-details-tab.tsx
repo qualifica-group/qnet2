@@ -2,6 +2,8 @@ import { Building2, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
+import { FieldGroup, PlannedField } from '@/components/record-form/field-group'
+import { FIELD_GRID_CLASS } from '@/components/record-form/layout'
 import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -22,8 +24,7 @@ import { useEnumOptions } from '@/features/config/use-config'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { SECTORS_FOR_SELECT_RESOURCE } from '@/features/sectors/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
-import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
-import { ManagerSlotsField } from '@/components/form/manager-slots-field'
+import { RegistryFormTeamSection } from '@/features/registries/registry-form-team-section'
 import type { RegistryFormValues } from '@/features/registries/use-registry-form'
 
 /** Every relation picker's edit-mode hydration, resolved once by the form hook. */
@@ -50,12 +51,21 @@ function numberInputValue(value: number | null): string {
 }
 
 /**
- * "Registry details" section: relations (source, sectors, referents,
- * managers, supervisor/commercial/reporter) plus the "ATECO codes"
- * placeholder — a disabled control reserved for a future spec, never
- * persisted and never part of the meta/schema — followed by the
- * "Business details" section (VAT group, supplier flags, convention status/
- * notes, size class, employee count). Spec 0020.
+ * Three blocks of the anagrafica form, in reading order (spec 0020):
+ *  - "Relazioni": what this anagrafica is related to. Two labelled groups
+ *    (`FieldGroup`) instead of one undifferentiated run of six full-width
+ *    pickers — where it came from and what it does, then its people — laid on
+ *    the shared two-column field grid, so the block is half as tall and each
+ *    half is recognizable at a glance (user directive 2026-09-11);
+ *  - "Team" (`RegistryFormTeamSection`): who works it on our side, Supervisore
+ *    and the G.A. slots. They used to sit in "Relazioni"; they left it so this
+ *    form carries the same team block as Opportunità and Offerta;
+ *  - "Dati commerciali": gruppo IVA, flag fornitore, convenzione, classe
+ *    dimensionale, numero dipendenti.
+ *
+ * The "Codici ATECO" slot a future spec will fill is a `PlannedField`, not a
+ * disabled `<Select>`: it is never persisted and never part of the meta/schema,
+ * so it must not look — or tab — like a control.
  */
 export function DetailsTabContent({ control, selectedItems, isSupplier }: DetailsTabContentProps) {
   const { t } = useTranslation()
@@ -69,118 +79,105 @@ export function DetailsTabContent({ control, selectedItems, isSupplier }: Detail
         title={t('registries.form.sections.relations.title')}
         description={t('registries.form.sections.relations.description')}
       >
-        <RelationSelectField
-          control={control}
-          name="source_id"
-          metaKey="source_id"
-          label={t('registries.form.source')}
-          resource={SOURCES_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('registries.form.sourceSearch')}
-          selected={toRelationFieldRef(selectedItems.source)}
-          placeholder={t('registries.form.sourcePlaceholder')}
-          emptyLabel={t('registries.form.sourceEmpty')}
-          errorLabel={t('registries.form.sourceError')}
-          clearLabel={t('common.clear')}
-          retryLabel={t('common.retry')}
-        />
-
-        <RelationMultiSelectField
-          control={control}
-          name="sector_ids"
-          metaKey="sector_ids"
-          label={t('registries.form.sectors')}
-          resource={SECTORS_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('registries.form.sectorsSearch')}
-          selected={toRelationFieldRefs(selectedItems.sectors)}
-          placeholder={t('registries.form.sectorsPlaceholder')}
-          emptyLabel={t('registries.form.sectorsEmpty')}
-          errorLabel={t('registries.form.sectorsError')}
-          removeLabel={t('registries.form.sectorsRemove')}
-          retryLabel={t('common.retry')}
-        />
-
-        <RelationMultiSelectField
-          control={control}
-          name="referent_ids"
-          metaKey="referent_ids"
-          label={t('registries.form.referents')}
-          resource={REFERENTS_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('registries.form.referentsSearch')}
-          selected={toRelationFieldRefs(selectedItems.referents)}
-          placeholder={t('registries.form.referentsPlaceholder')}
-          emptyLabel={t('registries.form.referentsEmpty')}
-          errorLabel={t('registries.form.referentsError')}
-          removeLabel={t('registries.form.referentsRemove')}
-          retryLabel={t('common.retry')}
-        />
-
-        <MetaField control={control} name="manager_slots" metaKey="manager_slots" label={t('registries.form.managers')}>
-          {({ field, disabled }) => (
-            <ManagerSlotsField
-              value={field.value}
-              onChange={field.onChange}
-              selectedItems={selectedItems.managers}
-              disabled={disabled}
+        <FieldGroup label={t('registries.form.groups.origin')}>
+          <div className={FIELD_GRID_CLASS}>
+            <RelationSelectField
+              control={control}
+              name="source_id"
+              metaKey="source_id"
+              label={t('registries.form.source')}
+              resource={SOURCES_FOR_SELECT_RESOURCE}
+              searchPlaceholder={t('registries.form.sourceSearch')}
+              selected={toRelationFieldRef(selectedItems.source)}
+              placeholder={t('registries.form.sourcePlaceholder')}
+              emptyLabel={t('registries.form.sourceEmpty')}
+              errorLabel={t('registries.form.sourceError')}
+              clearLabel={t('common.clear')}
+              retryLabel={t('common.retry')}
             />
-          )}
-        </MetaField>
 
-        <RelationSelectField
-          control={control}
-          name="supervisor_id"
-          metaKey="supervisor_id"
-          label={t('registries.form.supervisor')}
-          resource={USERS_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('registries.form.managersSearch')}
-          selected={toRelationFieldRef(selectedItems.supervisor)}
-          showAvatar
-          placeholder={t('registries.form.supervisorPlaceholder')}
-          emptyLabel={t('registries.form.managersEmpty')}
-          errorLabel={t('registries.form.managersError')}
-          clearLabel={t('common.clear')}
-          retryLabel={t('common.retry')}
-        />
+            <RelationMultiSelectField
+              control={control}
+              name="sector_ids"
+              metaKey="sector_ids"
+              label={t('registries.form.sectors')}
+              resource={SECTORS_FOR_SELECT_RESOURCE}
+              searchPlaceholder={t('registries.form.sectorsSearch')}
+              selected={toRelationFieldRefs(selectedItems.sectors)}
+              placeholder={t('registries.form.sectorsPlaceholder')}
+              emptyLabel={t('registries.form.sectorsEmpty')}
+              errorLabel={t('registries.form.sectorsError')}
+              removeLabel={t('registries.form.sectorsRemove')}
+              retryLabel={t('common.retry')}
+            />
+          </div>
 
-        <RelationSelectField
-          control={control}
-          name="commercial_id"
-          metaKey="commercial_id"
-          label={t('registries.form.commercial')}
-          resource={REFERENTS_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('registries.form.referentsSearch')}
-          selected={toRelationFieldRef(selectedItems.commercial)}
-          placeholder={t('registries.form.commercialPlaceholder')}
-          emptyLabel={t('registries.form.referentsEmpty')}
-          errorLabel={t('registries.form.referentsError')}
-          clearLabel={t('common.clear')}
-          retryLabel={t('common.retry')}
-        />
+          <PlannedField
+            label={t('registries.form.atecoCodes')}
+            note={t('registries.form.atecoCodesComingSoon')}
+          />
+        </FieldGroup>
 
-        <RelationSelectField
-          control={control}
-          name="reporter_id"
-          metaKey="reporter_id"
-          label={t('registries.form.reporter')}
-          resource={REFERENTS_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('registries.form.referentsSearch')}
-          selected={toRelationFieldRef(selectedItems.reporter)}
-          placeholder={t('registries.form.reporterPlaceholder')}
-          emptyLabel={t('registries.form.referentsEmpty')}
-          errorLabel={t('registries.form.referentsError')}
-          clearLabel={t('common.clear')}
-          retryLabel={t('common.retry')}
-        />
+        <FieldGroup label={t('registries.form.groups.people')}>
+          {/* Full width on purpose: this one fills with chips, and half a row
+              would wrap them after the second referente. */}
+          <RelationMultiSelectField
+            control={control}
+            name="referent_ids"
+            metaKey="referent_ids"
+            label={t('registries.form.referents')}
+            resource={REFERENTS_FOR_SELECT_RESOURCE}
+            searchPlaceholder={t('registries.form.referentsSearch')}
+            selected={toRelationFieldRefs(selectedItems.referents)}
+            placeholder={t('registries.form.referentsPlaceholder')}
+            emptyLabel={t('registries.form.referentsEmpty')}
+            errorLabel={t('registries.form.referentsError')}
+            removeLabel={t('registries.form.referentsRemove')}
+            retryLabel={t('common.retry')}
+          />
 
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">{t('registries.form.atecoCodes')}</span>
-          <Select disabled>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={t('registries.form.atecoCodesComingSoon')} />
-            </SelectTrigger>
-            <SelectContent />
-          </Select>
-        </div>
+          <div className={FIELD_GRID_CLASS}>
+            <RelationSelectField
+              control={control}
+              name="commercial_id"
+              metaKey="commercial_id"
+              label={t('registries.form.commercial')}
+              resource={REFERENTS_FOR_SELECT_RESOURCE}
+              searchPlaceholder={t('registries.form.referentsSearch')}
+              selected={toRelationFieldRef(selectedItems.commercial)}
+              placeholder={t('registries.form.commercialPlaceholder')}
+              emptyLabel={t('registries.form.referentsEmpty')}
+              errorLabel={t('registries.form.referentsError')}
+              clearLabel={t('common.clear')}
+              retryLabel={t('common.retry')}
+            />
+
+            <RelationSelectField
+              control={control}
+              name="reporter_id"
+              metaKey="reporter_id"
+              label={t('registries.form.reporter')}
+              resource={REFERENTS_FOR_SELECT_RESOURCE}
+              searchPlaceholder={t('registries.form.referentsSearch')}
+              selected={toRelationFieldRef(selectedItems.reporter)}
+              placeholder={t('registries.form.reporterPlaceholder')}
+              emptyLabel={t('registries.form.referentsEmpty')}
+              errorLabel={t('registries.form.referentsError')}
+              clearLabel={t('common.clear')}
+              retryLabel={t('common.retry')}
+            />
+          </div>
+        </FieldGroup>
       </FormSection>
+
+      {/* Between the two on purpose: "chi ci lavora" after "a cosa e'
+          collegata" and before i termini commerciali — lo stesso posto che il
+          form Opportunita' da' al proprio blocco team. */}
+      <RegistryFormTeamSection
+        control={control}
+        selectedSupervisorItem={selectedItems.supervisor}
+        selectedManagerItems={selectedItems.managers}
+      />
 
       <FormSection
         icon={Building2}

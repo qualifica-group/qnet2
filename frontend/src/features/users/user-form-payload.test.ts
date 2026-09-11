@@ -287,7 +287,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     ])
   })
 
-  /** Spec 0111 D-8: an empty set is a legitimate value (the user becomes a jolly). */
+  /** Spec 0111 D-8: an empty set is a legitimate VALUE — it just covers nothing (rev.2 D-9). */
   it('D-8 — serializes an empty competence set as [], never omitted', () => {
     const payload = buildCreatePayload({ ...formValues, employment: emptyEmployment }, draft())
 

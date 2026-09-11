@@ -7,9 +7,8 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
+import { RECORD_PERSON_ROW_CLASS, RecordPerson } from '@/components/detail/record-person'
 import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
-import { UserAvatar } from '@/components/user-avatar'
-import { UserProfileHoverCard, type UserProfileSummary } from '@/components/user-profile-hover-card'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import { RewardChipsSection } from '@/features/rewards/reward-chips-section'
 import type {
@@ -21,37 +20,10 @@ import { managerPositionLabel } from '@/features/shared/manager-position-label'
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
 const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
 
-/**
- * A `RecordField` row whose value is a person: the avatar makes the row taller
- * than the text-only ones, so it centers on the label instead of sitting on its
- * baseline (`RecordField`'s own default, right for plain text).
- */
-const PERSON_ROW_CLASS = '@md:items-center'
 
 /** Stable empty defaults (spec 0049 D-8): a missing key on older fixtures reads the same as `[]`/`{}`. */
 const EMPTY_PRODUCTS_OF_INTEREST: OpportunityProductOfInterest[] = []
 
-
-/**
- * A team member's row: avatar + name, wrapped in the app's shared
- * `UserProfileHoverCard` — hovering reveals the card whose action opens the
- * read-only user detail Sheet, and the row itself is the button that opens it
- * on click/Enter, so the profile is reachable by keyboard too (user directive
- * 2026-08-06). Same composition the table's person columns use (`UserCell`),
- * only with the detail panel's own avatar size.
- *
- * `supervisor` and `managers[]` both carry the USER id server-side
- * (`OpportunityResource::summarizeByName`/`summarizeManagers`), which is what
- * the Sheet opens on.
- */
-function TeamPerson({ user }: { user: UserProfileSummary }) {
-  return (
-    <UserProfileHoverCard user={user} triggerClassName="rounded-md">
-      <UserAvatar name={user.name} src={user.avatar_url ?? null} className="shrink-0" />
-      <span className="truncate text-sm text-foreground">{user.name}</span>
-    </UserProfileHoverCard>
-  )
-}
 
 /**
  * Read-only list of the opportunity's "prodotti di interesse" (user directive
@@ -163,8 +135,8 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
       */}
       <RecordSection title={t('opportunities.form.sections.team.title')} icon={<Users />}>
         <RecordFieldList>
-          <RecordField label={t('opportunities.form.supervisor')} className={PERSON_ROW_CLASS}>
-            {opportunity.supervisor ? <TeamPerson user={opportunity.supervisor} /> : <DetailEmpty />}
+          <RecordField label={t('opportunities.form.supervisor')} className={RECORD_PERSON_ROW_CLASS}>
+            {opportunity.supervisor ? <RecordPerson user={opportunity.supervisor} /> : <DetailEmpty />}
           </RecordField>
 
           {sortedManagers.length > 0 ? (
@@ -174,9 +146,9 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
               <RecordField
                 key={manager.position}
                 label={managerPositionLabel(t, manager.position, opportunity.manager_labels)}
-                className={PERSON_ROW_CLASS}
+                className={RECORD_PERSON_ROW_CLASS}
               >
-                <TeamPerson user={manager} />
+                <RecordPerson user={manager} />
               </RecordField>
             ))
           ) : (

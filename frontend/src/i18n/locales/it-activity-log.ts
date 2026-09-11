@@ -111,6 +111,9 @@ export const activityLog = {
     inherits_quote_attributes: 'Eredita attributi offerta',
     inherits_work_order_attributes: 'Eredita attributi commessa',
     referent_type_id: 'Tipo referente',
+    // Loggato da `Referent` (#[Fillable] `user_id`): senza questa etichetta lo
+    // storico mostrava il nome della colonna DB grezzo.
+    user_id: 'Utente collegato',
     contact_scope: 'Ambito contatto',
     vat_group: 'Gruppo IVA',
     is_supplier: 'Fornitore',

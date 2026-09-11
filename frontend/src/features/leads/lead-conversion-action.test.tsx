@@ -3,21 +3,25 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { LeadDetailPageActions } from '@/features/leads/lead-screens'
+import { LeadDetailScreen } from '@/features/leads/lead-screens'
 import type { ModuleFormScreenMode, OpenMode } from '@/features/modules/types'
 import type { LeadDetail } from '@/features/leads/types'
 
 /**
  * Recovers the coverage of the deleted `pages/lead-detail-page.test.tsx`
- * (AC-078): the lead detail dedicated page offers "Create opportunity"
- * (gated `opportunities.create`), or "Go to opportunity" when
- * `lead.opportunity` is set. That logic now lives in `LeadDetailPageActions`,
- * rendered by the generic `ModuleDetailPage`.
+ * (AC-078): the lead detail offers "Create opportunity" (gated
+ * `opportunities.create`), or "Go to opportunity" when `lead.opportunity` is
+ * set.
  *
- * Spec 0045 (AC-022/023/025/026): "Create opportunity" now opens the
- * Opportunity form through `useModuleOpener`, respecting the user's
- * opportunities open mode (modal Sheet vs dedicated page) instead of always
- * navigating.
+ * That CTA used to live in `LeadDetailPageActions`, mounted ONLY by the generic
+ * `ModuleDetailPage` — so the Sheet never offered the conversion at all. It now
+ * lives in the record card's identity band (`LeadConversionAction`), which is
+ * why these tests drive it through `LeadDetailScreen`: the same component both
+ * surfaces mount, so the coverage no longer depends on which one is open.
+ *
+ * Spec 0045 (AC-022/023/025/026): "Create opportunity" opens the Opportunity
+ * form through `useModuleOpener`, respecting the user's opportunities open mode
+ * (modal Sheet vs dedicated page) instead of always navigating.
  */
 
 const fetchLeadMock = vi.fn<(id: number) => Promise<LeadDetail>>()
@@ -83,19 +87,28 @@ vi.mock('@/features/opportunities/opportunity-screens', () => ({
 function lead(overrides: Partial<LeadDetail> = {}): LeadDetail {
   return {
     id: 9,
+    registry: { id: 10, name: 'Mario Rossi' },
+    campaign: { id: 20, code: 'CMP-0001', name: 'Spring push' },
+    lead_status: 'associated',
     opportunity: null,
     operator_id: 7,
     operational_site_id: 3,
+    permissions: {
+      resource: { view: true, create: true, update: false, delete: false, export: false, import: false },
+      fields: {},
+      actions: {},
+    },
     ...overrides,
   } as LeadDetail
 }
 
+/** A QueryClient per test, never per render (frontend.md §10). */
 function renderActions() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <LeadDetailPageActions id={9} />
+        <LeadDetailScreen id={9} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -113,7 +126,7 @@ beforeEach(() => {
   opportunitiesOpenMode = 'modal'
 })
 
-describe('LeadDetailPageActions', () => {
+describe('LeadConversionAction, in the lead record card', () => {
   it('AC-078: offers "Create opportunity" when the lead has none', async () => {
     fetchLeadMock.mockResolvedValue(lead({ opportunity: null }))
 
@@ -129,7 +142,7 @@ describe('LeadDetailPageActions', () => {
 
     renderActions()
 
-    const link = await screen.findByRole('link')
+    const link = await screen.findByRole('link', { name: /go to opportunity/i })
     expect(link).toHaveAttribute('href', '/opportunities/42')
   })
 

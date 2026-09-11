@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { CompanyForm } from '@/features/companies/company-form'
@@ -143,7 +143,7 @@ describe('CompanyForm — custom fields pilot (spec 0021 AC-026)', () => {
     fireEvent.change(await screen.findByRole('textbox', { name: 'Notes' }), {
       target: { value: 'Key account' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createCompanyMock).toHaveBeenCalledTimes(1))
     const payload = createCompanyMock.mock.calls[0][0]
@@ -174,7 +174,7 @@ describe('CompanyForm — custom fields pilot (spec 0021 AC-026)', () => {
 
     const notes = await screen.findByRole('textbox', { name: 'Notes' })
     fireEvent.change(notes, { target: { value: 'Updated note' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateCompanyMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateCompanyMock.mock.calls[0]
@@ -210,7 +210,7 @@ describe('CompanyForm — custom fields pilot (spec 0021 AC-026)', () => {
     )
 
     await screen.findByRole('textbox', { name: 'Notes' })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('Notes must be shorter.')).toBeInTheDocument())
     expect(updateCompanyMock).toHaveBeenCalledTimes(1)

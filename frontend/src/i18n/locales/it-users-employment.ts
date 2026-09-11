@@ -9,11 +9,11 @@
 export const usersFormEmploymentSections = {
   profile: {
     title: 'Profilo',
-    description: 'Competenza, responsabile e linea di riporto.',
+    description: 'Ruolo organizzativo, mansione e linea di riporto.',
   },
   contract: {
     title: 'Rapporto contrattuale',
-    description: 'Tipo di rapporto, società e sede operativa.',
+    description: 'Tipo di rapporto e società di riferimento.',
   },
   contractData: {
     title: 'Dati contrattuali',
@@ -32,7 +32,7 @@ export const usersFormEmployment = {
   reportsToEmpty: 'Nessun utente trovato.',
   reportsToError: 'Impossibile caricare gli utenti.',
   productLines: 'Competenza',
-  productLinesHint: 'Ogni riga abbina una funzione aziendale a una categoria prodotto: sono le competenze su cui la persona può essere assegnata. Senza righe la persona non viene mai esclusa.',
+  productLinesHint: 'Ogni riga abbina una funzione aziendale a una categoria prodotto, sottocategorie comprese: sono le competenze su cui la persona può essere assegnata. Senza almeno una riga non riceve alcuna assegnazione.',
   productLineIncomplete: 'Ogni riga richiede sia la funzione aziendale sia la categoria prodotto.',
   relationshipType: 'Tipo di rapporto',
   relationshipTypeNone: 'Nessuno',
@@ -75,9 +75,8 @@ export const usersColumnsEmployment = {
   terminated_at: 'Cessato il',
 }
 
-/** Etichette in sola lettura per la sezione Rapporto di lavoro (spec 0015). */
+/** Etichette in sola lettura per le sezioni del rapporto di lavoro (spec 0015). */
 export const usersDetailEmployment = {
-  title: 'Rapporto di lavoro',
   isManager: 'Responsabile',
   jobDescription: 'Mansione',
   reportsTo: 'Risponde a',
@@ -92,4 +91,42 @@ export const usersDetailEmployment = {
   standardDailyMinutes: 'Durata giornaliera standard',
   breakDailyMinutes: 'Durata pausa giornaliera',
   none: 'Nessuno',
+}
+
+/**
+ * Configurazione di assegnazione (direttiva utente 2026-09-11): competenza +
+ * sedi, cioè le due metà che il server interseca per decidere chi può ricevere
+ * un record. Condivise da form e scheda, così le due superfici non possono
+ * raccontare la regola in due modi diversi.
+ */
+export const usersAssignment = {
+  title: 'Configurazione assegnazione',
+  description: 'Competenze e sedi: da qui dipende quali offerte possono essere abbinate a questa persona.',
+  rule: 'Una richiesta raggiunge questa persona solo se appartiene alla sede della richiesta E una sua competenza copre la categoria prodotto richiesta.',
+  sitesHint: "Sede fisica e sedi remote valgono allo stesso modo per l'assegnazione: conta appartenere alla sede, non come ci si lavora.",
+  assignable: 'Assegnabile',
+  notAssignable: 'Non assegnabile',
+  chips: {
+    competence: 'Competenze',
+    physicalSite: 'Sede fisica',
+    remoteSites: 'Sedi remote',
+  },
+  blockers: {
+    competence: 'Nessuna competenza configurata: senza almeno una coppia funzione aziendale + categoria prodotto la persona non entra in nessun abbinamento.',
+    site: 'Nessuna sede operativa: senza sede fisica o remota la persona non entra in nessun abbinamento.',
+  },
+  stats: {
+    competence: 'Competenze',
+    sites: 'Sedi',
+    sitesBreakdown: '{{physical}} fisica · {{remote}} remote',
+    matching: 'Abbinamento',
+    blockers: {
+      competence: 'Manca la competenza',
+      site: 'Manca la sede',
+    },
+  },
+  summary: {
+    title: 'Riepilogo',
+    description: 'Si aggiorna mentre compili.',
+  },
 }

@@ -292,7 +292,7 @@ describe('UserForm — physical site + remote sites (spec 0103 AC-028)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
     const payload = updateUserMock.mock.calls[0][1]
@@ -308,7 +308,7 @@ describe('UserForm — physical site + remote sites (spec 0103 AC-028)', () => {
     )
 
     fireEvent.click(screen.getByText('pick-Remote sites'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
     const payload = updateUserMock.mock.calls[0][1]
@@ -342,16 +342,22 @@ describe('UserDetailView — physical + remote sites (spec 0103 AC-030)', () => 
     )
   }
 
+  // The two Sedi moved out of the Employment block into the "Assignment
+  // configuration" section (user directive 2026-09-11): they are the Sede half
+  // of the assignment pool, not a term of the contract. AC-030 is unchanged —
+  // both are shown and distinguishable — only the block that holds them is.
   it('shows the physical site and every remote site, distinguishably', async () => {
     renderDetail(userWithSites())
 
     await waitFor(() => expect(screen.getByText('Via Roma 1')).toBeInTheDocument())
-    const employmentSection = screen.getByText('Employment').closest('section') as HTMLElement
-    expect(within(employmentSection).getByText('Physical site')).toBeInTheDocument()
-    expect(within(employmentSection).getByText('Via Roma 1')).toBeInTheDocument()
-    expect(within(employmentSection).getByText('Remote sites')).toBeInTheDocument()
-    expect(within(employmentSection).getByText('Via Milano 2')).toBeInTheDocument()
-    expect(within(employmentSection).getByText('Via Torino 3')).toBeInTheDocument()
+    const assignmentSection = screen
+      .getByText('Assignment configuration')
+      .closest('section') as HTMLElement
+    expect(within(assignmentSection).getByText('Physical site')).toBeInTheDocument()
+    expect(within(assignmentSection).getByText('Via Roma 1')).toBeInTheDocument()
+    expect(within(assignmentSection).getByText('Remote sites')).toBeInTheDocument()
+    expect(within(assignmentSection).getByText('Via Milano 2')).toBeInTheDocument()
+    expect(within(assignmentSection).getByText('Via Torino 3')).toBeInTheDocument()
   })
 
   it('falls back to the shared empty state when there are no remote sites', async () => {

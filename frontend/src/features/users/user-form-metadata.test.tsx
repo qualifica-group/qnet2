@@ -261,7 +261,7 @@ describe('UserForm — metadata-driven authorization (spec 0004)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('field not editable')).toBeInTheDocument())
     expect(updateUserMock).toHaveBeenCalledTimes(1)

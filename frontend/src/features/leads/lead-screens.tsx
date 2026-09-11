@@ -1,17 +1,13 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Handshake } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Can } from '@/features/auth/can'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchLead, leadDetailQueryKey } from '@/features/leads/api'
 import { LeadForm } from '@/features/leads/lead-form'
 import { LeadDetailView } from '@/features/leads/lead-detail'
-import { useLeadConversion } from '@/features/leads/use-lead-conversion'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -27,7 +23,7 @@ import type { LeadDetail } from '@/features/leads/types'
  * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
  * `LeadsTable`'s inline loaders, which the rewire removed.
  */
-export function LeadDetailScreen({ id }: ModuleDetailScreenProps) {
+export function LeadDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: lead,
@@ -50,7 +46,7 @@ export function LeadDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <LeadDetailView lead={lead} />
+  return <LeadDetailView lead={lead} onEdit={onEdit} />
 }
 
 export function LeadFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -112,54 +108,6 @@ function LeadEditScreen({ leadId, onSuccess, onCancel }: LeadEditScreenProps) {
   return <LeadForm mode={{ type: 'edit', lead }} onSuccess={onSuccess} onCancel={onCancel} />
 }
 
-/**
- * Extra action for the generic dedicated detail page only (never shown in
- * the quick-view Sheet — parity with the non-goal decision of spec 0040's
- * MT-6: "row action nella tabella leads"). Reuses the SAME query key as
- * `LeadDetailScreen`, so React Query dedupes the fetch instead of firing a
- * second request.
- */
-export function LeadDetailPageActions({ id }: ModuleDetailScreenProps) {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
-  const { data: lead } = useEntityDetail(leadDetailQueryKey(id), () => fetchLead(id))
-
-  // Lead -> opportunity conversion (spec 0044, revised; directive 2026-07-21
-  // dropped the correction gate): opens the prefilled Opportunity form
-  // directly. On save, invalidates THIS lead's detail query so the button
-  // flips to "Go to opportunity" once `lead.opportunity` comes back populated.
-  const invalidateDetail = () =>
-    queryClient.invalidateQueries({ queryKey: leadDetailQueryKey(id) })
-  const { startConversion, sheets } = useLeadConversion({
-    onOpportunitySaved: invalidateDetail,
-  })
-
-  if (!lead) {
-    return null
-  }
-
-  if (lead.opportunity) {
-    return (
-      <Button variant="outline" asChild>
-        <Link to={`/opportunities/${lead.opportunity.id}`}>
-          <Handshake aria-hidden="true" />
-          {t('leads.detail.goToOpportunity')}
-        </Link>
-      </Button>
-    )
-  }
-
-  return (
-    <Can permission="opportunities.create">
-      <Button variant="outline" onClick={() => startConversion(lead.id)}>
-        <Handshake aria-hidden="true" />
-        {t('leads.detail.createOpportunity')}
-      </Button>
-      {sheets}
-    </Can>
-  )
-}
-
 /** Auto-registered in the module registry (spec 0042). */
 export const moduleScreen: ModuleRegistryEntry = {
   domain: 'leads',
@@ -168,5 +116,9 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.leads',
   DetailScreen: LeadDetailScreen,
   FormScreen: LeadFormScreen,
-  DetailPageActions: LeadDetailPageActions,
+  // The record card renders its own Edit action AND the lead -> opportunity
+  // CTA, so the generic page header must not stack a second button — the same
+  // registration Opportunita' and Utenti carry. `DetailPageActions` is gone
+  // with it: a page-only extra left the Sheet without the conversion at all.
+  detailOwnsEditAction: true,
 }

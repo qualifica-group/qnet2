@@ -85,6 +85,12 @@
      the hairline family so it stays below the body. */
   --field-border: hsl(214 20% 80%);
   --ring: hsl(214 55% 50%);
+  /* Global activity bar (TopLoadingBar): a signal colour deliberately outside
+     the brand blue family, so the top-edge progress never dissolves into the
+     chrome it overlays. Identical on both themes on purpose - it is a fixed
+     signal, not a surface, so it is not part of the surface scale. */
+  --loading-bar: hsl(38 92% 50%);
+  --loading-bar-glow: hsl(38 92% 50% / 0.65);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -142,6 +148,8 @@
   --field: hsl(224 20% 28%);
   --field-border: hsl(223 16% 43%);
   --ring: hsl(214 60% 70%);
+  --loading-bar: hsl(38 92% 50%);
+  --loading-bar-glow: hsl(38 92% 50% / 0.65);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -184,6 +192,7 @@
   --color-field: var(--field);
   --color-field-border: var(--field-border);
   --color-ring: var(--ring);
+  --color-loading-bar: var(--loading-bar);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

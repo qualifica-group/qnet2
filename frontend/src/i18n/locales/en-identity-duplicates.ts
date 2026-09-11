@@ -9,7 +9,7 @@ export const identityDuplicates = {
   entry: '{{owner}} {{name}} might be a duplicate ({{criteria}}).',
   owners: {
     user: 'User',
-    registry: 'Anagrafica',
+    registry: 'Registry',
     referent: 'Referent',
   },
   criteria: {

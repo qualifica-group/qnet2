@@ -175,7 +175,7 @@ describe('UserForm — custom fields (spec 0021)', () => {
 
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Pippo' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     const payload = createUserMock.mock.calls[0][0]

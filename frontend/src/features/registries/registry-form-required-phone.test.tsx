@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -109,7 +109,7 @@ describe('RegistryForm — phone required at creation (user directive 2026-09-07
     )
 
     fillIdentity()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(screen.getByText('Enter at least one phone number.')).toBeInTheDocument(),
@@ -127,7 +127,7 @@ describe('RegistryForm — phone required at creation (user directive 2026-09-07
 
     fillIdentity()
     fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createRegistryMock).toHaveBeenCalledTimes(1))
     const payload = createRegistryMock.mock.calls[0][0]

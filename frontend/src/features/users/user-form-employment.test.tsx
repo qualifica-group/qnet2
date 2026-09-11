@@ -260,7 +260,7 @@ describe('UserForm — is_manager / reports_to (spec 0015 AC-015)', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Manager' }))
     expect(screen.queryByText('Reports to')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     const payload = createUserMock.mock.calls[0][0]
@@ -277,7 +277,7 @@ describe('UserForm — is_manager / reports_to (spec 0015 AC-015)', () => {
     fillCredentials()
 
     fireEvent.click(screen.getByText('pick-Reports to'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     const payload = createUserMock.mock.calls[0][0]
@@ -309,7 +309,7 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
 
     fillIdentity()
     fillCredentials()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     const payload = createUserMock.mock.calls[0][0]
@@ -348,7 +348,7 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
       { wrapper: wrapper() },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(screen.getByText('The selected company is invalid.')).toBeInTheDocument(),

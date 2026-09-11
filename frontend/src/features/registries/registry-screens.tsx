@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchRegistry, registryDetailQueryKey } from '@/features/registries/api'
@@ -24,7 +24,7 @@ import type { RegistryDetail } from '@/features/registries/types'
  * generated routes (`generateRoutes: false`) — these screens only back the
  * 'modal' alternative a user can opt into (spec 0042).
  */
-export function RegistryDetailScreen({ id }: ModuleDetailScreenProps) {
+export function RegistryDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: registry,
@@ -47,7 +47,7 @@ export function RegistryDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <RegistryDetailView registry={registry} />
+  return <RegistryDetailView registry={registry} onEdit={onEdit} />
 }
 
 export function RegistryFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -97,13 +97,7 @@ function RegistryEditScreen({ registryId, onSuccess, onCancel }: RegistryEditScr
   }
 
   if (isLoading || !registry) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+    return <RecordFormSkeleton />
   }
 
   return <RegistryForm mode={{ type: 'edit', registry }} onSuccess={onSuccess} onCancel={onCancel} />
@@ -118,4 +112,9 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.registries',
   DetailScreen: RegistryDetailScreen,
   FormScreen: RegistryFormScreen,
+  // The record card renders its own Edit action, and the form its own identity
+  // bar — same registration Opportunità carries, so the hosts must not stack a
+  // second heading or button on top of them.
+  detailOwnsEditAction: true,
+  formOwnsHeader: true,
 }

@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -136,7 +136,12 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
     const status = await screen.findByRole('status')
     expect(status).toHaveTextContent('Referent Existing Referent might be a duplicate (email).')
 
-    const saveButton = screen.getByRole('button', { name: 'Save' })
+    // It lives in the sticky SIDE column (user directive 2026-09-11): at the
+    // foot of the form it was off-screen exactly while the operator was typing
+    // the field that triggers it.
+    expect(within(screen.getByRole('complementary')).getByRole('status')).toBe(status)
+
+    const saveButton = within(screen.getByRole('banner')).getByRole('button', { name: 'Save' })
     expect(saveButton).not.toBeDisabled()
 
     fireEvent.click(saveButton)

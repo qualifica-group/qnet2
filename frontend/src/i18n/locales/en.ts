@@ -64,6 +64,7 @@ import { moduleStats, statsPanel } from './en-stats'
 import { impersonation } from './en-impersonation'
 import { permissions, permissionExplorer } from './en-permissions'
 import {
+  usersAssignment,
   usersColumnsEmployment,
   usersDetailEmployment,
   usersFormEmployment,
@@ -91,6 +92,8 @@ export const en = {
     /** Label of the select a tab strip collapses into when the tabs no longer fit. */
     tabsSelectLabel: 'Section',
     /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
+    /** Accessible name of the button that removes one chip from a multi-select. */
+    remove: 'Remove',
     copySuffix: ' (copy)',
   },
   config: {
@@ -154,6 +157,8 @@ export const en = {
       primary_contact: 'Primary contacts',
       ...usersColumnsEmployment,
     },
+    // Assignment configuration (competence + sites), shared by form and scheda.
+    assignment: usersAssignment,
     detail: {
       title: 'User details',
       subtitle: 'Read-only view of the selected user.',
@@ -163,6 +168,8 @@ export const en = {
     },
     form: {
       newUser: 'New user',
+      // Form identity bar (status pills next to the title).
+      header: { inactive: 'Inactive' },
       avatarLabel: 'Avatar',
       createTitle: 'Create user',
       createSubtitle: 'Add a new user to your application.',

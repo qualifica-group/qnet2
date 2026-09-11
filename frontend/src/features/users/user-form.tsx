@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { useUserFormMeta } from '@/features/users/use-user-form-meta'
 import { UserFormBody } from '@/features/users/user-form-body'
@@ -35,13 +35,7 @@ export function UserForm(props: UserFormProps) {
   const meta = useUserFormMeta(props.mode)
 
   if (meta.status === 'loading') {
-    return (
-      <div className="flex flex-col gap-4 p-4" aria-hidden="true">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+    return <RecordFormSkeleton />
   }
 
   if (meta.status === 'error') {

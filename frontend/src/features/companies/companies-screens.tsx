@@ -27,8 +27,8 @@ function detailQueryKey(id: number) {
  * and by the generic dedicated pages (`ModuleDetailPage`/`ModuleFormPage`),
  * which own the surrounding chrome.
  */
-export function CompanyDetailScreen({ id }: ModuleDetailScreenProps) {
-  return <CompanyDetailView companyId={id} />
+export function CompanyDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+  return <CompanyDetailView companyId={id} onEdit={onEdit} />
 }
 
 export function CompanyFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -99,4 +99,9 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.companies',
   DetailScreen: CompanyDetailScreen,
   FormScreen: CompanyFormScreen,
+  // The record card renders its own Edit action and the form its own identity
+  // bar, so the generic hosts must not stack a second heading or button — the
+  // same registration Opportunita', Utenti and Lead carry.
+  detailOwnsEditAction: true,
+  formOwnsHeader: true,
 }

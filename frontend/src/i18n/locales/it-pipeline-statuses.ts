@@ -44,7 +44,7 @@ export const pipelineStatuses = {
     group: {
       label: 'Gruppo',
       open: 'Aperto',
-      pending: 'In pending',
+      pending: 'In attesa',
       closed: 'Chiuso',
     },
     save: 'Salva',

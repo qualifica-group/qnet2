@@ -162,7 +162,11 @@ describe('CompanySiteForm — metadata-driven authorization (spec 0020)', () => 
       { wrapper: wrapper() },
     )
 
-    await waitFor(() => expect(screen.getByText('Banks')).toBeInTheDocument())
+    // The section HEADING, not any text: the side-column summary now carries a
+    // "Banks" row too, so a bare text match would find both.
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Banks' })).toBeInTheDocument(),
+    )
   })
 
   it('falls back to visible+editable when a field is missing from metadata', async () => {

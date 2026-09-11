@@ -2,21 +2,25 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { History, IdCard, Landmark, MapPin, Phone, Receipt, Star } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { UserAvatar } from '@/components/user-avatar'
+import { History, Landmark, MapPin, Phone } from 'lucide-react'
+import { DetailEmpty, DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import {
-  DetailEmpty,
-  DetailError,
-  DetailField,
-  DetailGrid,
-  DetailHero,
-  DetailLoading,
-  DetailMeta,
-  DetailPanel,
-  DetailSection,
-} from '@/components/detail/detail-panel'
+  RecordCanvas,
+  RecordCard,
+  RecordMeta,
+  RecordSection,
+  RecordSectionsGrid,
+} from '@/components/detail/record-panel'
+import {
+  RECORD_BODY_GRID_CLASS,
+  RECORD_BODY_WITH_SIDE_CLASS,
+  RECORD_COLUMN_CLASS,
+} from '@/components/detail/record-layout'
+import { cn } from '@/lib/utils'
+import {
+  CompanySiteDetailHeader,
+  CompanySiteDetailStats,
+} from '@/features/company-sites/company-site-detail-header'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { AddressesManager } from '@/features/personal-data/addresses-manager'
@@ -47,15 +51,26 @@ interface CompanySiteDetailProps {
   companySiteId: number
   /** Called after a successful set-default so the caller can refresh the grid. */
   onDefaultChange?: () => void
+  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
+  onEdit?: () => void
 }
 
 /**
- * Read-only detail of a single company site, fetched fresh from the
- * (re-authorized) detail endpoint. Composed from the shared detail kit;
- * rendered inside a Sheet. Also hosts the "Società di Default" action
- * (AC-020): shown only when the site is not already the default.
+ * Read-only detail of a single company site, rendered as an enterprise-CRM
+ * record on the same kit Opportunita', Lead, Campagne, Progetti e Sedi use: the
+ * identity/KPI/sections card on the left, the activity card on the right, a
+ * metadata footer. Container-query driven (`RecordCanvas`) so the same tree
+ * renders correctly both inside a resizable Sheet and on a full-bleed page.
+ *
+ * Still hosts the "Società di Default" action (AC-020), now in the identity
+ * band beside Edit: it is shown only when the site is not already the default
+ * and the actor may perform it.
  */
-export function CompanySiteDetailView({ companySiteId, onDefaultChange }: CompanySiteDetailProps) {
+export function CompanySiteDetailView({
+  companySiteId,
+  onDefaultChange,
+  onEdit,
+}: CompanySiteDetailProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [settingDefault, setSettingDefault] = useState(false)
@@ -101,96 +116,88 @@ export function CompanySiteDetailView({ companySiteId, onDefaultChange }: Compan
 
   const createdAt = formatDateTime(site.created_at)
   const canSetDefault = !site.is_default && site.permissions.actions.set_default
+  const canViewActivity = site.permissions.actions.view_activity
   const card = site.personal_data
   const draft = card ? cardToDraft(card) : null
 
   return (
-    <DetailPanel>
-      <DetailHero
-        media={<UserAvatar name={site.name} src={site.logo_url} size="xl" />}
-        title={site.name}
-        subtitle={card?.company_name ?? undefined}
-        badges={
-          site.is_default ? (
-            <Badge variant="secondary">{t('companySites.detail.defaultBadge')}</Badge>
-          ) : null
-        }
-      />
+    <RecordCanvas>
+      <div className={cn(RECORD_BODY_GRID_CLASS, canViewActivity && RECORD_BODY_WITH_SIDE_CLASS)}>
+        <div className={RECORD_COLUMN_CLASS}>
+          <RecordCard>
+            <CompanySiteDetailHeader
+              site={site}
+              onEdit={onEdit}
+              onSetDefault={canSetDefault ? () => void handleSetDefault() : undefined}
+              isSettingDefault={settingDefault}
+            />
+            <CompanySiteDetailStats site={site} />
 
-      {canSetDefault && (
-        <div className="flex justify-end border-b px-6 py-3">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => void handleSetDefault()}
-            disabled={settingDefault}
-          >
-            <Star aria-hidden="true" />
-            {settingDefault ? t('companySites.form.settingDefault') : t('companySites.form.setDefault')}
-          </Button>
+            <RecordSectionsGrid>
+              <RecordSection
+                title={t('companySites.form.sections.contacts.title')}
+                icon={<Phone />}
+              >
+                {draft ? (
+                  <ContactsManager
+                    value={draft.contacts}
+                    onChange={noopChange}
+                    fieldPermission={READ_ONLY_FIELD_PERMISSION}
+                    showHeader={false}
+                  />
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordSection>
+
+              <RecordSection
+                title={t('companySites.form.sections.address.title')}
+                icon={<MapPin />}
+              >
+                {draft ? (
+                  <AddressesManager
+                    value={draft.addresses}
+                    onChange={noopChange}
+                    fieldPermission={READ_ONLY_FIELD_PERMISSION}
+                    showHeader={false}
+                    showSiteType
+                  />
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordSection>
+
+              <RecordSection
+                title={t('companySites.form.sections.banks.title')}
+                icon={<Landmark />}
+                full
+              >
+                <BanksBlock banks={site.banks} />
+              </RecordSection>
+            </RecordSectionsGrid>
+          </RecordCard>
         </div>
-      )}
 
-      <DetailSection title={t('companySites.form.sections.identity.title')} icon={<IdCard />}>
-        {card ? (
-          <DetailGrid>
-            <DetailField label={t('personalData.form.companyName')} full>
-              {card.company_name || <DetailEmpty />}
-            </DetailField>
-            <DetailField label={t('personalData.form.vatNumber')} icon={<Receipt />}>
-              {card.vat_number || <DetailEmpty />}
-            </DetailField>
-            <DetailField label={t('personalData.form.taxCode')} icon={<Receipt />}>
-              {card.tax_code || <DetailEmpty />}
-            </DetailField>
-          </DetailGrid>
-        ) : (
-          <DetailEmpty />
-        )}
-      </DetailSection>
-
-      <DetailSection title={t('companySites.form.sections.contacts.title')} icon={<Phone />}>
-        {draft ? (
-          <ContactsManager
-            value={draft.contacts}
-            onChange={noopChange}
-            fieldPermission={READ_ONLY_FIELD_PERMISSION}
-            showHeader={false}
-          />
-        ) : (
-          <DetailEmpty />
-        )}
-      </DetailSection>
-
-      <DetailSection title={t('companySites.form.sections.address.title')} icon={<MapPin />}>
-        {draft ? (
-          <AddressesManager
-            value={draft.addresses}
-            onChange={noopChange}
-            fieldPermission={READ_ONLY_FIELD_PERMISSION}
-            showHeader={false}
-            showSiteType
-          />
-        ) : (
-          <DetailEmpty />
-        )}
-      </DetailSection>
-
-      <DetailSection title={t('companySites.form.sections.banks.title')} icon={<Landmark />}>
-        <BanksBlock banks={site.banks} />
-      </DetailSection>
-
-      {site.permissions.actions.view_activity ? (
-        <DetailSection title={t('activityLog.title')} icon={<History />}>
-          <ActivityLogSection resource="company-sites" id={site.id} />
-        </DetailSection>
-      ) : null}
+        {canViewActivity ? (
+          <div className={RECORD_COLUMN_CLASS}>
+            <RecordCard className="p-4">
+              <RecordSection title={t('activityLog.title')} icon={<History />}>
+                <ActivityLogSection resource="company-sites" id={site.id} />
+              </RecordSection>
+            </RecordCard>
+          </div>
+        ) : null}
+      </div>
 
       {createdAt ? (
-        <DetailMeta label={t('companySites.columns.created_at')}>{createdAt}</DetailMeta>
+        <RecordMeta>
+          <span>
+            <span className="font-medium">{t('companySites.columns.created_at')}</span>{' '}
+            <span aria-hidden="true">·</span> {createdAt}
+          </span>
+        </RecordMeta>
       ) : null}
-    </DetailPanel>
+    </RecordCanvas>
   )
 }
 

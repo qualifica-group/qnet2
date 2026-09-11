@@ -3,6 +3,594 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## AUDIT "TRADUZIONI NON MAPPATE" SU DETTAGLIO+FORM DI 8 MODULI (segnalazione utente 2026-09-11) — VERDE, NON COMMITTATO
+
+**Segnalazione utente.** "Controllati tutte le traduzioni di dettaglio e form di lead, campagna,
+progetti, anagrafica, referenti, societa' aziendali, societa' sedi e sedi operative e riguarda le
+traduzioni che non sono state mappate bene." Chiarito poi: **"io sto parlando delle traduzioni non
+mappate"** — cioe' chiavi che NON risolvono, non incoerenze di vocabolario.
+
+**DUE ERRORI DI METODO MIEI, DA NON RIPETERE.**
+1. **Perimetro troppo stretto.** Avevo filtrato i file per NOME (`*-detail*`/`*-form*`), perdendo
+   file che sono a tutti gli effetti dettaglio/form: `company-site-profile-tab.tsx`,
+   `banks-manager.tsx`, `campaign-geo-section.tsx`, `project-planning-section.tsx`,
+   `extra-fields-editor.tsx`. **Il perimetro giusto e' l'INTERA cartella del modulo** piu' i
+   condivisi che quelle superfici montano (`personal-data`, `geo`, `custom-fields`,
+   `product-lines`, `activity-log`, i kit `components/detail` e `components/record-form`).
+2. **Ancoraggio i18n fragile.** Ho inserito chiavi ancorandomi a un match di RIGA senza verificare
+   in quale BLOCCO cadesse. `defaultBadge` compare due volte in `it-company-sites.ts` (una sotto
+   `columns`, una sotto `detail`) e il mio `summary` e' finito nel blocco sbagliato; e
+   `city/province/region/country` in `companies` stanno sotto `columns:`, non `detail:` come avevo
+   assunto leggendo un grep. **Regola: calcolare i confini del blocco (conteggio graffe), mai
+   fidarsi della prima riga che matcha.**
+
+**CHIAVI NON MAPPATE TROVATE E CORRETTE (8).**
+- Uscivano GREZZE a schermo (tutte introdotte da me nel giro precedente):
+  `companies.detail.city` / `.province` / `.country` / `.region`,
+  `companySites.detail.summary.title` / `.description`.
+- **Non usciva grezza ma era peggio**: `activityLog.fields.user_id` (loggato da `Referent`).
+  Ha un `defaultValue`, quindi lo storico mostrava `user_id`, il NOME DELLA COLONNA DB.
+  **Un `defaultValue` nasconde una chiave mancante a qualsiasi audit basato sul rendering.**
+
+**METODO DI VERIFICA COMPLETO (riusabile).** Le chiavi statiche non bastano: vanno controllate
+anche le **dinamiche**, dove si nascondono i buchi veri.
+1. Statiche: bootare i18next e interrogare `i18n.exists(key, {lng, ns})` (+ plurali
+   `_one`/`_other`, + moduli helper che ricevono `t` come parametro). **414 chiavi: tutte ok.**
+2. Dinamiche `t(\`enums.X.${v}\`)` / `enumLabelOf('X', v)`: enumerare i valori REALI dai
+   **case degli enum PHP** in `backend/app/Enums/` e confrontarli con `enums.*`. Verificati
+   `LeadLifecycleStatus`, `AgreementStatusEnum`, `SizeClassEnum`, `ReferentContactScopeEnum`,
+   `PersonalDataTypeEnum`, `ContactTypeEnum`, `GenderEnum` — **tutti mappati**.
+3. `activityLog.fields.${campo}` / `modules.${modulo}`: confrontare con i **`#[Fillable]` dei
+   Model** e con gli alias morph di `AppServiceProvider`. Unico buco: `user_id`.
+4. `personalData.fieldLabels.${path}`: confrontare con i campi dello schema Zod — tutti ok.
+
+**FALSO POSITIVO DA NON RI-SEGNALARE.** `enums.site_type` NON esiste, ed e' corretto cosi':
+`site_type` usa una propria mappa esplicita (`SITE_TYPE_LABEL_KEYS` ->
+`personalData.addresses.siteType*`), tutte presenti in entrambe le lingue.
+
+**NON TOCCATO — decisione utente "lascia com'e'" (2026-09-11).** Tre incoerenze di VOCABOLARIO
+(non chiavi mancanti), lasciate deliberatamente in piedi:
+- `geo.city`="Citta'" / `geo.country`="Paese" (rese da `GeoSelect` in OGNI form) vs "Comune" /
+  "Nazione" nei dettagli di sedi operative e societa'.
+- `line1` = "Via" in `operationalSites` vs "Indirizzo" in `companies` e `personalData`.
+- Sezione geo: "Geografia" (campagne) vs "Ambito geografico" (progetti).
+**Non riproporle come debito senza una nuova richiesta esplicita.**
+
+**Verifiche ESEGUITE.** Vitest suite COMPLETA **4745/4745** su 626 file; `npx tsc -b --force`
+EXIT=0; ESLint pulito. Harness temporanei (`i18n/__map.test.ts`, `i18n/__unmapped.test.ts`)
+**rimossi**.
+
+## TOP LOADING BAR: COLORE ALLINEATO A q-net (2026-09-11) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** La barra di caricamento globale di qnet-2 era "molto diversa" da quella
+di `/Users/Repository/q-net`. Confronto fatto: logica **gia' identica** (soglie `nextProgress`,
+tick 200ms, hide 240ms, `useIsFetching`/`useIsMutating`, opt-out `meta.showGlobalLoading`).
+L'unica differenza era il **colore**: q-net usa `bg-amber-500` + glow ambra, qnet-2 usava
+`bg-primary` (navy) + glow `--ring` (blu) -> sulla pagina chiara si leggeva appena.
+
+**Cosa e' cambiato (2 file).**
+- `frontend/src/index.css` — nuovi token `--loading-bar` / `--loading-bar-glow`
+  (`hsl(38 92% 50%)`, uguali in light e dark) accanto a `--ring` in `:root` e `.dark`, piu'
+  `--color-loading-bar` in `@theme inline` (genera l'utility `bg-loading-bar`).
+- `frontend/src/components/top-loading-bar.tsx` — `bg-primary` -> `bg-loading-bar`,
+  `shadow-[0_0_12px_var(--ring)]` -> `shadow-[0_0_12px_var(--loading-bar-glow)]`.
+
+**Perche' un token e non `bg-amber-500`.** `ui-design.md §1`: i colori vengono da `index.css`,
+mai da una utility di colore Tailwind diretta. Il commento nel CSS dichiara che questo token
+**non e' un rung della scala superfici**: e' un colore-segnale fisso, per questo identico sui
+due temi (come il fondo bianco dello splash).
+
+**Verificato davvero.** `vitest run src/components/top-loading-bar.test.tsx` 3/3 verde;
+`npx tsc -b --force --pretty false` EXIT=0; `vite build` e grep sul CSS emesso -> presenti
+`bg-loading-bar{background-color:var(--loading-bar)}`, `--loading-bar:#f59f0a`,
+`--loading-bar-glow:#f59f0aa6` e l'utility shadow arbitraria.
+
+**SECONDO GIRO — la barra non arrivava mai a fondo pagina (bug reale, non percezione).**
+Su un lavoro che si risolveva in pochi ms, `isActive` passava a false e nello STESSO commit il
+riempimento andava a `width:100%` **e** `opacity:0`: le due transizioni da 200ms partivano
+insieme, quindi la barra sfumava via a meta' corsa e il bordo destro non si vedeva mai.
+Riprodotto prima del fix con un test che fallisce (`reaches the full width while still opaque
+when the work resolves instantly`).
+
+**Macchina a stati ora esplicita** (`BarPhase = 'idle' | 'running' | 'completing' | 'fading'`):
+- `running` -> avanza `progress` (interval 200ms);
+- `completing` -> larghezza 100% **ancora opaca** (200ms), e' la corsa fino al bordo;
+- `fading` -> opacita' 0 sulla barra gia' piena (200ms), poi unmount.
+In piu' `IDLE_GRACE_MS = 120`: un run si considera finito solo dopo un attimo di quiete, cosi'
+i buchi brevi di `isActive` tra query dipendenti non fanno rimbalzare la barra a sinistra.
+
+**VINCOLO DA NON DIMENTICARE.** L'apertura del run (`idle -> running`) e' fatta **in render**
+col guard `isActive !== wasActive`, non in un effect: ESLint qui ha la regola
+`react-hooks/set-state-in-effect` **attiva come errore** e blocca `setState` sincrono nel body
+di un `useEffect`. Chi rimette quella transizione in un effect rompe il lint. I `setState` dei
+tail stanno dentro i callback dei timeout, che e' legale.
+
+**Verificato davvero (secondo giro).** `vitest run src/components/top-loading-bar.test.tsx` 4/4;
+`vitest run src/components src/features/auth src/layouts` -> 45 file / 377 test verdi;
+`npx eslint src/components/top-loading-bar.tsx` EXIT=0; `npx tsc -b --force --pretty false`
+EXIT=0 (misurato senza pipe: `$?` dopo un pipeline riporta l'exit di `tail`, non di tsc).
+
+**Da sapere.** `AppSplashScreen` (`components/app-splash-screen.tsx`) e' gia' un porting
+fedele di q-net: asset con MD5 identici, stesse keyframes, stessi timing (1800/650ms). Non
+toccarlo cercando questa differenza. L'unico delta comportamentale residuo verso q-net e' che
+la' lo splash copre anche il bootstrap di sessione (`isSessionBootstrapCompleted`) e gestisce
+`is_maintenance`; qui il `ConfigGate` copre solo `GET /api/config`. Non richiesto, non fatto.
+
+## SOCIETA', SOCIETA'-SEDI E SEDI OPERATIVE: DETTAGLIO **E** FORM SUL KIT RECORD (direttiva utente 2026-09-11) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "In base a queste istruzioni, rifai dettaglio e form di societa'
+aziendali, societa' sedi e sedi operative." Primo giro che tocca anche i **FORM**, non solo i
+dettagli.
+
+**I DUE KIT CONDIVISI — non copiarli, importarli.**
+- Lettura: `components/detail/record-panel.tsx` + `record-layout.ts`
+  (`RecordCanvas`/`RecordCard`/`RecordCardHeader`/`RecordStatStrip`/`RecordSectionsGrid`).
+- Scrittura: `components/record-form/` (`layout.ts` -> `RECORD_HEADER_CLASS`,
+  `PANEL_GRID_CLASS`, `MAIN_COLUMN_CLASS`, `SIDE_COLUMN_CLASS`; `record-form-actions.tsx`;
+  `record-summary.tsx` -> `SummaryRow`; `record-form-skeleton.tsx`).
+
+**PATTERN DEL FORM (replicabile, 3 file per modulo).**
+1. `<modulo>-form-header.tsx` — barra identita' STICKY: titolo/sottotitolo create-vs-edit,
+   pill live opzionali, Annulla+Salva a destra, errore di submit sotto.
+2. `<modulo>-form-summary.tsx` — colonna laterale, `FormSection` + `SummaryRow`, letta LIVE
+   da `useWatch`, ogni riga gated dalla STESSA field permission del controllo che riepiloga.
+3. body — `<form id={MODULE_FORM_ID} className="contents">`: il `<form>` nativo scopa SOLO il
+   confine di submit HTML, non deve diventare un flex box in piu'. `RecordFormActions` in
+   fondo con lo stesso `formId`.
+
+**TRAPPOLA DA CONOSCERE PRIMA DI TOCCARE UN ALTRO FORM.** Il kit rende **Save DUE volte di
+proposito** (barra sticky + piede). Ogni test che fa
+`screen.getByRole('button', { name: 'Save' })` si rompe con "Found multiple elements".
+**Idioma stabilito, gia' usato dai form referenti/anagrafiche — riusare questo, non inventarne
+un altro:**
+`within(screen.getByRole('banner')).getByRole('button', { name: 'Save' })`
+(`<header>` ha ruolo implicito `banner`). Applicato qui a **15** asserzioni; nessuna
+indebolita. Piu' una su `'Banks'` resa specifica su `getByRole('heading')`, perche' il
+riepilogo laterale ora ha una riga con la stessa parola del titolo di sezione.
+
+**SCELTA DI ONESTA' NEI RIEPILOGHI — non "migliorarla" mostrando sempre il nome.** I form
+tengono **id**, non nomi. Comune/Societa' mostrano il nome **solo finche' l'id scelto coincide
+con quello persistito**; appena cambia, la riga torna a `—` (il trigger del picker gia' nomina
+la nuova scelta). Stessa regola di `RegistryFormSummary` sulla Fonte. Inventare un'etichetta
+sarebbe un'ipotesi.
+
+**COSA E' CAMBIATO, MODULO PER MODULO.**
+- **Sedi operative**: KPI comune-first (Comune · Provincia · Regione · Nazione, direttiva
+  2026-09-10); sezione Indirizzo = via + CAP. **La via compare nella sezione SOLO se esiste un
+  alias** (altrimenti e' gia' il titolo): era gia' cosi', NON aggiungere un sottotitolo con la
+  via — l'ho fatto e produceva la stessa stringa due volte (test "renders the street").
+- **Societa' aziendali**: KPI P.IVA · Comune · Provincia · Nazione; sezione = via, riga 2, CAP,
+  regione. Comune/Provincia/Nazione NON ripetuti nella sezione: li porta gia' la striscia.
+- **Societa' sedi**: KPI P.IVA · Cod. fiscale · Banche (n) · Societa'; sezioni Contatti,
+  Indirizzi, Banche. **"Societa' di Default"** e' salita nella banda identita' del dettaglio, e
+  nel form vive nello slot **`leadingActions`** che `RecordFormActions` gia' prevedeva (barra +
+  piede, come Save).
+
+**REGISTRAZIONI module registry** (tutte e tre): `detailOwnsEditAction: true` +
+`formOwnsHeader: true`, altrimenti gli host generici impilano una seconda intestazione/bottone.
+
+**Verifiche ESEGUITE.** Sedi operative 51/51 · Societa' 29/29 · Societa'-sedi 37/37 (**117**);
+Vitest suite COMPLETA **4742/4742** su 626 file; `npx tsc -b --force` EXIT=0; ESLint pulito;
+tutti i file sotto le 300 righe.
+
+**SEGNALATO, NON IMPLEMENTATO.** Nessun dettaglio in TUTTO il progetto rende i `custom_fields`
+in sola lettura, benche' il contratto li esponga per questi tre moduli e per molti altri. E' una
+lacuna **trasversale**: introdurla solo qui creerebbe la stessa incoerenza che la direttiva
+"elimina Collegamenti" ha corretto. Va fatta su tutti i moduli o su nessuno.
+
+**NOTA DI CONTESTO.** A meta' lavoro `tsc` segnalava 2 errori in
+`registries/registry-form-metadata.test.tsx` (`permissions: undefined`), file della lane
+parallela modificato un minuto prima. Non erano di questo lavoro e si sono risolti da soli.
+
+## TOP LOADING BAR — port dal progetto `/Users/Repository/q-net` (2026-09-11) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Prendi il codice del caricamento della barra in alto dal progetto
+`/Users/Repository/q-net` e riportalo nel progetto attuale."
+
+**Origine.** `q-net/src/components/feedback/top-loading-bar.tsx`, montato la' in
+`src/app/page.tsx` (shell) e in `src/components/auth/auth-page-layout.tsx`.
+
+**Qui.** Nuovo `frontend/src/components/top-loading-bar.tsx` (il codebase tiene i componenti
+condivisi flat in `components/`, niente sottocartella `feedback/`). Montato in:
+- `frontend/src/layouts/app-layout.tsx` (dentro `BreadcrumbTitleProvider`, prima di `SidebarProvider`)
+- `frontend/src/features/auth/auth-shell.tsx` (schermate login/forgot/reset)
+
+**Due delta deliberati rispetto al sorgente, da non "ripristinare" per sbaglio:**
+1. **Colore da token, non `bg-amber-500`.** L'originale hard-codava ambra + glow
+   `rgba(245,158,11,.65)`. Qui `bg-primary` + `shadow-[0_0_12px_var(--ring)]`, per
+   `ui-design.md` (nessun colore hard-coded) e per restare coerente col navy del brand.
+2. **Nessun `setState` sincrono dentro gli effect.** L'originale faceva `setVisible(true)` /
+   `setProgress(16)` / `setProgress(100)` nel body degli effect: qui la regola ESLint
+   `react-hooks/set-state-in-effect` e' **errore** e bloccava il lint. Riscritto derivando in
+   render (`width = isActive ? max(progress, 16) : 100`, `opacity = isActive ? 1 : 0`,
+   unmount quando `!isActive && progress === 0`); gli effect ora scrivono stato solo dentro
+   callback di timer. Comportamento visivo identico.
+
+**Contratto opt-out mantenuto:** una mutation puo' escludersi dalla barra con
+`meta: { showGlobalLoading: false }`. Oggi nessun call-site lo usa.
+
+**Verifica eseguita.** `npx vitest run src/components/top-loading-bar.test.tsx` 3/3 verdi;
+`npx vitest run src/features/auth src/layouts src/routes` 8 file / 38 test verdi;
+`npx tsc -b --force --pretty false` EXIT 0; `npx eslint` pulito sui 4 file toccati.
+
+**Da verificare a mano (non coperto dai test):** resa visiva del glow in dark mode e che la
+barra non copra la `VersionUpdateBanner` (z-120 contro z-50 dei dialog: e' sopra, voluto).
+
+## AUDIT i18n: CHIAVI MANCANTI, PARITA' IT/EN E FUGHE DI LINGUA (segnalazione utente 2026-09-11) — VERDE, NON COMMITTATO
+
+**Segnalazione utente.** "Occhio alle traduzioni non fatte bene `referents.detail.summary.title`,
+fatti un giro e fixale tutte."
+
+**Nota sul contesto: l'albero si e' mosso durante la sessione.** La chiave segnalata NON esisteva
+quando l'ho cercata; alle 09:36 i file `it/en-referents.ts` sono stati modificati da una **lane
+parallela** (file non miei: `referent-detail-header.tsx`, `referent-form-summary.tsx`,
+`registry-detail-people.tsx`, `record-form-skeleton.tsx`) che l'ha aggiunta. Chi legge questa voce
+non la cerchi come "bug aperto": e' chiusa.
+
+**METODO — il primo tentativo era sbagliato, e' importante saperlo.**
+Confronto degli alberi statici it.ts/en.ts contro le chiavi grepp-ate dal codice -> **324
+risultati, quasi tutti FALSI POSITIVI**. Causa: `useTranslation('importWizard')` /
+`useTranslation('attributeLayout')` / `useTranslation('migrations')` sono **namespace separati**,
+registrati via `addResourceBundle` nei moduli feature, non nel bundle `translation`.
+Metodo corretto, da riusare: **far bootare i18next davvero** (importando `@/i18n` piu' i moduli
+`features/*/i18n.ts`) e interrogare **`i18n.exists(key, {lng, ns})`**. Piu' tre accorgimenti
+indispensabili, senza i quali i falsi positivi tornano:
+1. **Plurali**: i18next registra `x_one`/`x_other` e NON la chiave nuda `x`, quindi
+   `exists('x')` e' false per un contatore perfettamente tradotto. Accettare le tre grafie.
+2. **Moduli helper che RICEVONO `t` come parametro** (schemi Zod, `resolve-error-message.ts`)
+   non hanno un `useTranslation` da cui dedurre il namespace: vanno verificati contro TUTTI i
+   bundle registrati.
+3. Escludere `locales/` dal glob (altrimenti si autoanalizza).
+Risultato onesto dopo il raffinamento: **3** chiavi realmente mancanti, non 324.
+
+**CORREZIONI APPLICATE (9 in totale).**
+- Chiavi che renderizzavano GREZZE: `attributes.form.optionsEmpty` (it/en-products.ts),
+  `common.remove` (it/en.ts, usata da tasks/work-orders/contracts),
+  `activityLog.modules.lead_status` (esisteva SOLO in it -> l'inglese vedeva la chiave).
+- Chiave che NON renderizzava grezza ma era peggio: `requestManagement.workPanel.validation.required`.
+  Il call site passa un `defaultValue` INGLESE, quindi un utente italiano leggeva "This field is
+  required." senza che nulla segnalasse il problema. **Attenzione: un `defaultValue` nasconde una
+  chiave mancante a qualsiasi audit basato sul rendering.**
+- Fughe di lingua: en `identityDuplicates.owners.registry` diceva `'Anagrafica'` fra `'User'`/
+  `'Referent'` -> `'Registry'` (ovunque altro in EN il concetto e' "Registry"); it
+  `contractStatuses.form.group.pending` diceva `'Pending'` fra `Aperto`/`Chiuso positivo`.
+- Incoerenza: lo stesso enum `group.pending` era `In attesa` in 4 file e **`In pending`** in 3
+  (pipeline-statuses, quote-workflows, task-lookups). Uniformato a **`In attesa`**.
+
+**NON toccato di proposito.** L'audit ha elencato **92 valori IT byte-identici a EN**: letti tutti,
+sono legittimi (`Email`, `Budget`, `Team`, `ID`, `IBAN`, `CSV`, `Avatar`, `Layout`, `#`,
+`{{value}}%`...). Tradurli sarebbe un peggioramento. **Non ri-segnalarli come debito.**
+
+**UN TEST MODIFICATO, DICHIARATO.** `identity-duplicate-warning.test.tsx` asseriva
+`'Anagrafica Mario Rossi might be a duplicate'` — cioe' **asseriva il difetto**. La copy EN era
+sbagliata, quindi l'atteso si e' spostato con lei (commento sul perche' nel test). Nessuna
+asserzione indebolita.
+
+**Verifiche ESEGUITE.** Vitest suite COMPLETA **4737/4737** su 625 file; `npx tsc -b --force`
+EXIT=0; ESLint pulito. Gli harness temporanei (`i18n/__audit.test.ts`, `i18n/__parity.test.ts`)
+sono stati **rimossi**.
+
+**PROPOSTO, NON IMPLEMENTATO (in attesa di via libera).** Esiste gia'
+`i18n/locales/field-change-requests-i18n-parity.test.ts`, parita' limitata a UN modulo. Un test di
+parita' **globale** (~40 righe: flatten dei 4 bundle it/en, nessuna chiave presente in una sola
+lingua) avrebbe intercettato `activityLog.modules.lead_status` e `referents.detail.summary.*`
+prima che arrivassero all'utente. Con `lng: 'it'` + `fallbackLng: 'en'`, una chiave mancante in IT
+**non si vede**: mostra inglese. E' la classe di bug piu' costosa da trovare a occhio.
+
+## LEAD: SCHEDA RIFATTA SUL MODULO OPPORTUNITA', CON I COLLEGAMENTI COME CORPO DEL RECORD (direttiva utente 2026-09-11) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Bisogna migliorare il dettaglio del lead, prendi spunto dal dettaglio
+di opportunita', fammi una view come i migliori crm con collegamenti e altro." Ambito
+congelato via AskUserQuestion: **contatti rapidi full-stack** (si', modifica di contratto),
+**CTA di conversione dentro la card** (si'). Sulla terza domanda (come aprire i collegamenti)
+la risposta e' stata "vedi opportunita come fa" -> risolta LEGGENDO il codice, non assumendo.
+
+**Il fatto di partenza (due difetti reali, non solo estetici).**
+- `lead-detail.tsx` era ancora sul kit vecchio `detail-panel`, ma soprattutto **non mostrava
+  affatto i `products_of_interest`** che `LeadResource` espone dalla spec 0094.
+- La CTA di conversione viveva in `LeadDetailPageActions`, montata SOLO dal
+  `ModuleDetailPage` generico: **aprendo un Lead in Sheet la conversione non esisteva**.
+
+**Come fa Opportunita' (verificato, non ipotizzato): DUE idiomi, non uno.**
+- Record NON-persona -> `<Link>` reale (`existing-opportunity-alert.tsx`).
+- Persone -> `UserProfileHoverCard` + il Sheet utente condiviso app-wide
+  (`UserDetailSheetProvider`, montato in `App.tsx`).
+Entrambi applicati alla scheda Lead, ciascuno dove Opportunita' lo applica. **Chi tocca
+questa scheda non "unifichi" i due idiomi: sono due cose diverse di proposito.**
+
+**Contratto backend (congelato PRIMA di implementare, additivo).**
+`LeadResource.registry`: `{id, name}` -> `{id, name, primary_contacts[]}` dove ogni voce e'
+`{type, icon, label, value}`.
+- **Confine di sicurezza:** i contatti sono dati dell'ANAGRAFICA, non del lead. Viaggiano
+  solo se l'attore passa `Gate::allows('view', $registry)` (`registries.view`) — lo stesso
+  confine dietro cui sta gia' `ReferentForSelectResource.meta.contacts`. Un attore con il
+  solo `leads.view` riceve la chiave VUOTA, mai assente. **Non rimuovere questo gate.**
+- `LeadService::DETAIL_RELATIONS`: `'registry'` -> `'registry.personalData.contacts'`
+  (eager-load, nessun N+1 sotto `preventLazyLoading`).
+- Filtro is_primary + proiezione in **`PrimaryContactColumn::formatFor()`** (nuovo, additivo):
+  e' la casa gia' designata per "il contratto della colonna, cosi' le due non divergono".
+  `RegistryResource::primaryContactsOf()` fa la stessa cosa in privato e **potrebbe
+  adottarlo** — lasciato fuori scope di proposito (blast radius).
+
+**Frontend — file nuovi e loro ragione.**
+- `components/detail/record-link.tsx` — `RecordLink`: path risolto dal **module registry**
+  (`getModuleRegistryEntry(domain).basePath`), mai scritto a mano, cosi' un modulo che
+  sposta il suo `basePath` sposta tutti i link verso di lui. Dominio non registrato ->
+  degrada a testo semplice, mai link morto.
+- `components/detail/contact-chips.tsx` — `ContactChips`: primo rendering ATTIVO dei
+  contatti (gli altri 3 mostrano solo il valore). `tel:`/`mailto:`/`https:` con allow-list
+  di schemi via `new URL()`: un valore che porta `javascript:` non sopravvive.
+- `features/leads/lead-conversion-action.tsx` — `LeadConversionAction`, estratto dal
+  defunto `LeadDetailPageActions`: nessun fetch proprio (la card ha gia' il lead),
+  invalida `leadDetailQueryKey(leadId)` al salvataggio.
+- `features/leads/lead-detail-header.tsx` / `-sections.tsx` — stesso split che fa
+  `opportunity-detail-header.tsx`.
+
+**Perche' "Collegamenti" e' la PRIMA sezione, a tutta larghezza.** Un Lead non possiede
+quasi nulla di suo: e' una giunzione fra anagrafica, campagna, Sede e opportunita'. Quei
+record SONO il record. La riga Opportunita' resta **visibile anche quando e' vuota**
+("Non ancora convertito"): e' esattamente la domanda per cui si apre la scheda, quindi la
+risposta dev'essere visibile, non assente.
+
+**Registry entry Leads:** ora `detailOwnsEditAction: true` e **`DetailPageActions` rimosso**
+(la card possiede Edit + CTA, quindi l'header generico non impila un secondo bottone).
+
+**Due correzioni di superficie, entrambe violazioni reali delle rules.**
+- CTA `outline` (= `bg-card`) sulla banda identita' che e' gia' `bg-card` -> invisibile
+  (`frontend.md §9`). Ora `secondary`.
+- Chip contatto idem -> ora `bg-muted/40`, la TINTA che `ui-design.md §1-bis` prescrive per
+  un elemento appoggiato su una superficie (la tinta non e' un rung della scala).
+
+**UN TEST MODIFICATO, DICHIARATO.** `LeadCrudTest` "response shape matches the frozen
+contract" asseriva `data.registry === {id, name}`. Non piegato per farlo passare: il
+contratto e' cambiato per decisione utente esplicita, atteso aggiornato + commento sul perche'.
+
+**Verifiche ESEGUITE (non "dovrebbero passare").**
+- Pest `tests/Feature/Leads`: **149/149**. Nuovo `LeadRegistryContactsTest`: **4/4**.
+- Pest `Registries+Leads+Users+Referents` (chi condivide `PrimaryContactColumn`):
+  **521/521**, 3281 asserzioni.
+- Vitest suite COMPLETA: **4711/4711** su 624 file.
+- `npx tsc -b --force`: EXIT=0. ESLint + `pint --dirty --test`: puliti.
+
+**Fuori scope, solo segnalati (non toccati).**
+- `features/leads/column-renderers.tsx`: `eslint-disable` inutilizzato, pre-esistente.
+- **Questo file e' a ~920 KB contro il tetto di ~50 KB dichiarato in testa**: le voci
+  vecchie vanno archiviate in `docs/handoff-archive/`.
+
+**Prossimi passi possibili.** `RegistryResource` puo' adottare `formatFor()`; `RecordLink`/
+`ContactChips` sono pronti per la scheda Opportunita' (oggi mostra registry/referent come
+testo semplice).
+
+## ANAGRAFICHE E REFERENTI: SCHEDA E FORM SUL KIT RECORD (direttiva utente 2026-09-11) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "In base alle stesse istruzioni rifammi il dettaglio e il form di
+anagrafica e referenti" — cioe' lo stesso trattamento appena dato agli utenti: kit record delle
+opportunita' per la scheda, pannello a due colonne per il form. Seguito nello stesso giro:
+"in anagrafica voglio che supervisore e gestori account siano messi in una sezione team come
+succede per opportunita' e offerte (cosi' graficamente e' coerente)".
+
+**Cosa e' cambiato — schede.** `RegistryDetailView` e `ReferentDetailView` non usano piu'
+`DetailPanel` ma `RecordCanvas`/`RecordCard`/`RecordCardHeader`/`RecordStatStrip`/
+`RecordSectionsGrid` + `RECORD_BODY_*`: identita' + KPI + sezioni a sinistra, **contatti e
+indirizzi** (il "come li raggiungo", che e' il motivo per cui la scheda si apre) piu' l'activity
+log a destra, footer metadati. Le sezioni RISPECCHIANO i titoli del form (`*.form.sections.*`),
+non piu' un sacco "Dettagli" da una parte e tre sezioni dall'altra.
+
+**Sezione Team dell'anagrafica (seconda richiesta), SU ENTRAMBE le superfici.** Prima l'avevo
+messa solo sulla scheda: l'utente ha segnalato che nel FORM non c'era, ed era vero.
+- Scheda: `RegistryTeamSection` — Supervisore + slot "G.A. n" in UNA sola `RecordFieldList`,
+  "un ruolo, una persona, una riga", esattamente come Opportunita'/Offerta.
+- Form: **`RegistryFormTeamSection`** (nuovo file), estratto da `registry-form-details-tab.tsx`:
+  gli stessi due controlli del form Opportunita' (`RelationSelectField` supervisore +
+  `MetaField`/`ManagerSlotsField`), collocato **fra "Relazioni" e "Dati commerciali"** — "chi ci
+  lavora" dopo "a cosa e' collegata" e prima dei termini commerciali, lo stesso posto del form
+  Opportunita'. Nessuna prop `labels`: la rietichettatura per posizione (spec 0080) e' guidata
+  da una Categoria prodotto, che questo modulo non ha, quindi `ManagerSlotsField` usa il default
+  condiviso — la stessa stringa che la scheda mostra via `managerPositionLabel(t, n, undefined)`.
+  `registry-form-details-tab.tsx` scende da 290 a 276 righe.
+- Chiave i18n: **`registries.form.sections.team.{title,description}`**, usata da form E scheda
+  (la `registries.detail.team` di primo giro e' stata rimossa). La description di "Relazioni" non
+  parla piu' di gestori account.
+Il resto della simmetria: Non una somiglianza: `TeamPerson` e `PERSON_ROW_CLASS` sono stati
+**estratti** da `opportunity-detail-sections.tsx` in **`components/detail/record-person.tsx`**
+(`RecordPerson` + `RECORD_PERSON_ROW_CLASS`) e ora i tre record usano lo stesso oggetto.
+conseguenze volute: `commerciale`/`segnalatore` restano in "Relazioni" (sono REFERENTI, non
+utenti: il picker legge `REFERENTS_FOR_SELECT_RESOURCE`), mentre supervisore e G.A. sono utenti;
+il blocco a tutta larghezza si chiama ora **"Referenti"** e contiene solo quelli.
+
+**Due cose che la sezione Team dell'anagrafica ha in piu', ed e' voluto.** Lo **slot G.A. vuoto**
+resta visibile come riga muta — `manager_slots` e' gap-aware e togliere il buco rinumererebbe
+ogni G.A. sotto; i **contatti primari** di ogni persona restano sotto il nome — l'anagrafica li
+porta nel payload (`ReferenceRef.primary_contacts`) e sono il motivo per cui un commerciale apre
+quella scheda.
+
+**Terzo giro: "la sezione dove sta Relazioni rifalla in modo bellino (sia in creazione che in
+edit), anche referenti ha una cosa del genere e non mi piace".** Le due sezioni erano una colonna
+singola di select a piena larghezza, tutte uguali, con in mezzo un **finto `<Select disabled>`**
+("Codici ATECO", "Settori attivita'") che si puo' mettere a fuoco col tab e non apre niente: si
+legge come un campo rotto, non come uno pianificato.
+- **Nuovo `components/record-form/field-group.tsx`** (condiviso): `FieldGroup` (micro-intestazione,
+  la STESSA di `RecordSection`, cosi' un gruppo si riconosce su entrambe le superfici) e
+  `PlannedField` (riquadro tratteggiato + "Prossimamente", **niente di focusabile**, fuori dal
+  tab order).
+- **Anagrafica / "Relazioni"**: due gruppi etichettati — `Origine e classificazione`
+  (fonte + settori su `FIELD_GRID_CLASS`, poi la nota ATECO) e `Persone di riferimento`
+  (referenti a tutta larghezza perche' si riempie di chip, poi commerciale + segnalatore su due
+  colonne). Chiavi nuove `registries.form.groups.{origin,people}`.
+- **Referente / "Dettagli referente"**: tipo + ambito di contatto su due colonne, utente collegato
+  su riga propria (e' un'altra cosa: dichiara che il referente E' un utente, spec 0090 D-2, ed ha
+  un permesso di campo suo), note a tutta larghezza, nota "Settori attivita'" in coda. Aggiunto
+  `showAvatar` al picker utente collegato, come sul supervisore.
+- Nessun gruppo etichettato sui referenti: con quattro campi sarebbe sovrastruttura.
+
+**ERRORE MIO, corretto: `npx prettier --write`.** L'ho lanciato su
+`registry-form-details-tab.tsx` per sistemare l'indentazione. **Il progetto non ha configurazione
+prettier** (nessun `.prettierrc`, non e' in `package.json`): ha applicato i default e riformattato
+**167 righe estranee**. Ripristinato con `git checkout --` e rifatto il blocco a mano; il diff
+finale del file e' 110+/113- ed e' tutto cambiamento reale. **Non usare prettier in questo repo**
+— il formattatore e' ESLint.
+
+**Cosa e' cambiato — form.** Barra di identita' sticky con pill LIVE (fornitore / fornitore
+qualificato / stato convenzione per l'anagrafica; ambito di contatto per il referente), corpo a
+due colonne, azioni ripetute a fine form. **L'avviso duplicati e' salito nella colonna laterale**
+ed e' il punto della modifica, non un effetto collaterale: stava in fondo, sotto i campi
+personalizzati, cioe' fuori schermo proprio mentre si digitava il nome che lo fa scattare.
+Continua a non bloccare nulla.
+
+**Duplicazioni eliminate (non create).** Tre blocchi che stavano per essere scritti due volte
+sono finiti nel posto condiviso: `personal-data/personal-data-read-only-cards.tsx` (i due manager
+in sola lettura + il resolver di permessi + il no-op handler, che erano copiati in entrambe le
+schede), `personal-data/personal-data-identity-rows.tsx` (le righe fiscali, il cui split
+azienda/persona e' ora fatto una volta sola come lo fa `PersonalDataCardForm`) e
+`components/record-form/record-form-skeleton.tsx` (lo scheletro del form a due colonne, ora usato
+da utenti, anagrafiche, referenti e dalle due pagine dedicate).
+
+**Pagine dedicate (spec 0022) adeguate.** `registry|referent-detail-page.tsx` e
+`registry|referent-form-page.tsx` hanno perso il wrapper **`bg-card`**: il canvas dipinge il suo
+`bg-surface` e le card DENTRO sono il rung `bg-card` — un wrapper card sarebbe la superficie
+stessa su cui quelle card poggiano (`ui-design.md` §1-bis). Le pagine form hanno perso anche il
+loro `<header>` titolo/sottotitolo: ora lo possiede il form. Le pagine detail **tengono** il loro
+link "Modifica" nel `PageHeader` (e' un vero `<a href>`, meglio di un bottone) e NON passano
+`onEdit`: l'azione nella card serve la sola superficie Sheet, dove i `*Screen` la inoltrano.
+
+**Nomi congelati.** `RecordPerson` / `RECORD_PERSON_ROW_CLASS` (`components/detail/
+record-person.tsx`), `RecordFormSkeleton`, `PersonalDataReadOnlyCards`,
+`PersonalDataIdentityRows`, `RegistryTeamSection`, `RegistryReferents`, `PersonContactLines`,
+`PersonField`, `Registry|ReferentDetailHeader`/`DetailStats`/`DetailSections`,
+`Registry|ReferentFormHeader`/`FormSummary`. Chiavi i18n nuove: `registries.detail.stats.*`,
+`registries.detail.team`, `referents.detail.stats.*`, `*.detail.summary.*`.
+`registries.detail.people` **rimossa** (il blocco non ospita piu' i gestori).
+
+**Da non rompere.**
+- Le etichette della striscia KPI sono volutamente DIVERSE da quelle delle righe sotto
+  (`Referenti collegati` vs `Referenti`): con le stesse, la stessa parola direbbe due cose e
+  `getByText` ne troverebbe due.
+- Per la stessa ragione la scheda referente NON ripete tipo e ambito come righe (li porta la
+  banda identita') e NON mette l'utente collegato come pill (resta una riga etichettata: un nome
+  senza etichetta accanto al nome del record si legge come una seconda identita' della stessa
+  persona).
+- Nei form ci sono ora DUE bottoni "Salva" (barra sticky + piede): i test scopano su
+  `screen.getByRole('banner')`. Il riepilogo laterale ripete le etichette dei campi, quindi una
+  query su un'etichetta va qualificata (`{ selector: 'label' }`) o scopata alla sezione.
+- `RecordPerson` vive nel kit condiviso: cambiarlo tocca Opportunita', Offerta e Anagrafica
+  insieme. E' esattamente cio' che la direttiva chiedeva.
+
+**Test — eseguiti.** Moduli toccati (registries, referents, users, opportunities, personal-data,
+components, le 2 pagine): **109 file, 874 test passed**. `npx tsc -b --force` EXIT=0.
+Nuovi: 3 test sul record card dell'anagrafica (striscia KPI, blocco Team con slot vuoto,
+gating di Modifica) + 3 su quello del referente + 2 che fissano la NUOVA casa dell'avviso
+duplicati (dentro `role="complementary"`) + **2 sul blocco Team del FORM** (supervisore e G.A.
+dentro "Team"; commerciale/segnalatore lasciati in "Relazioni", supervisore assente da li') +
+**3 sul terzo giro**: i due gruppi dentro "Relazioni", e per entrambi i moduli che lo slot
+pianificato non espone nulla di focusabile (`queryByRole('combobox'|'button')` dentro il riquadro)
+— e' l'asserzione che impedisce di tornare al finto select.
+**Test modificati per requisito cambiato, dichiarati:** 19 query "Save" scopate alla barra di
+identita' su 8 file; una query su `Contact scope` qualificata a `selector: 'label'` (il riepilogo
+laterale porta ora la stessa dicitura su una riga propria).
+
+**Segnalato, NON implementato.**
+- `frontend/src/features/registries/registry-form-metadata.test.tsx:271` ha un errore ESLint
+  **preesistente** (`'_omit' is assigned a value but never used`): non e' mio, il mio diff su quel
+  file tocca solo le query "Save". Tiene rosso il gate lint sulla cartella.
+- I `ReferenceRef`/`ManagerRef` dell'anagrafica non portano `avatar_url`, quindi nel blocco Team
+  le persone mostrano le iniziali invece della foto (Opportunita' ha l'avatar). Serve estendere
+  `RegistryResource`.
+- Le chip di contatto CLICCABILI (`components/detail/contact-chips.tsx`) sono di un'altra
+  sessione e non committate: NON le ho usate per non legare questo lavoro al loro. Quando
+  atterrano, le righe `PersonContactLines` di `registry-detail-people.tsx` sono il posto giusto
+  dove sostituirle.
+- `OpportunityFormSkeleton` resta una copia propria: l'ho lasciato stare per non allargare il
+  raggio su un modulo non in ambito. Va ricondotto a `RecordFormSkeleton`.
+
+**Collisione di sessione (importante per il commit).** Mentre lavoravo, un'altra sessione stava
+rifacendo **leads, campagne, progetti** nello stesso working tree (`lead-detail-*`,
+`campaign-detail-*`, `project-detail-*`, `components/detail/contact-chips.tsx`,
+`record-link.tsx`, piu' `LeadResource.php`/`LeadService.php`/`PrimaryContactColumn.php`). Due
+esecuzioni della suite intera hanno segnato rossi transitori in quei file (e due armature
+temporanee `src/i18n/__audit.test.ts`/`__parity.test.ts` create e cancellate a meta' run): in
+isolamento passano tutti. **Non usare `git add -A`**: il mio giro e' registries/referents/users/
+opportunities/personal-data/components/pages/i18n.
+
+## UTENTI: SCHEDA E FORM RIFATTI SUL MODULO OPPORTUNITA', CON LA CONFIGURAZIONE DI ASSEGNAZIONE IN CIMA (direttiva utente 2026-09-11) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Bisogna migliorare view e form degli utenti. Per la view e form
+rifatti al modulo opportunita'. In particolare soffermati su funzione aziendale, categorie
+prodotto e sede fisica e remota perche' quelle fanno parte di una configurazione importante
+per l'utente che fa si' che venga abbinato correttamente alle offerte."
+Ambito congelato via AskUserQuestion: sezione dedicata in cima (non i campi lasciati dov'erano),
+diagnostica live NON bloccante, solo la **scheda di dettaglio** (la griglia AG Grid non si tocca).
+
+**Il fatto di partenza (letto nel backend, non ipotizzato).** `AssignmentCandidates::byRecord()`
+compone il pool cosi': operatori della **Sede del record** INTERSECATI con i **competenti** per
+le categorie che chiede. Le due meta' sono entrambe bloccanti e non sono simmetriche altrove:
+- Sede: `LeadOperatorDistributor::operatorIdsBySite()` legge il pivot
+  `employment_profile_operational_site` **senza distinguere fisica da remota** (spec 0103 D-1).
+  Nessuna sede => pool vuoto, mai "allora tutti".
+- Competenza: `OperatorCompetence` itera SOLO i profili con almeno una riga. Spec 0111 rev.2
+  (D-9) ha **revocato il jolly**: zero righe = competente per NIENTE.
+Nel form c'era scritto l'opposto (`productLinesHint`: "Senza righe la persona non viene mai
+esclusa"), in italiano e in inglese: **stringa corretta**, era il bug piu' grave del giro.
+
+**Cosa e' cambiato.**
+- **Nuova sezione `UserAssignmentSection`**, collocata **subito dopo "Ruoli e accessi"**
+  (posizione chiesta dall'utente in coda alla stessa direttiva: si legge come la seconda meta'
+  di "cosa questa persona puo' ricevere", non come un termine del contratto) e prima dei blocchi
+  del rapporto di lavoro: competenza (`ProductLinesField`, cap `single` opt-out come prima) +
+  **sede fisica** + **sedi remote**.
+  Prima la competenza stava in "Profilo" e le due sedi in "Rapporto contrattuale", come se la
+  sede fosse un fatto contrattuale: non lo e'. In quelle sezioni resta cio' che descrive
+  davvero il rapporto (responsabile/mansione/riporto; tipo rapporto/societa').
+- **Verdetto di assegnabilita'**, calcolato client-side da `summarizeAssignment()` (file
+  `user-assignment.ts`, puro): pill compatta nella barra di identita' sticky, banda con la
+  RAGIONE nella colonna laterale, stat "Abbinamento" nella striscia KPI della scheda, banda
+  nella scheda **solo quando manca qualcosa**. **Non blocca mai il salvataggio** (test esplicito).
+- **Scheda ricostruita sul kit record delle opportunita'**: `RecordCanvas`/`RecordCard`/
+  `RecordCardHeader`/`RecordStatStrip`/`RecordSectionsGrid` + `RECORD_BODY_*` — gli stessi
+  oggetti, non copie. Identita' + KPI + sezioni a sinistra, activity log a destra, footer metadati.
+- **Form ricostruito sul kit form delle opportunita'**: `RECORD_HEADER_CLASS` + `PANEL_GRID_CLASS`/
+  `SIDE_COLUMN_CLASS`/`MAIN_COLUMN_CLASS` + `SummaryRow` + `RecordFormActions`. Colonna laterale
+  DOM-first, riordinata a destra a `@4xl`; azioni ripetute a fine form.
+- `users-screens.tsx` registra ora **`detailOwnsEditAction: true` + `formOwnsHeader: true`**
+  (come opportunities), altrimenti gli host generici impilerebbero una seconda intestazione.
+
+**Nomi congelati.** `summarizeAssignment()` / `AssignmentSummary` / `AssignmentBlocker`
+(`'competence' | 'site'`) / `useAssignmentFieldsVisibility()` in `users/user-assignment.ts`;
+`UserAssignmentCallout`, `UserAssignmentSection`, `UserFormHeader`, `UserFormSummary`,
+`UserFormSkeleton`, `UserDetailHeader`/`UserDetailStats`, `UserDetailSections`.
+Chiavi i18n nuove sotto **`users.assignment.*`** (it + en) e `users.form.header.inactive`.
+
+**Da non rompere.**
+- `summarizeAssignment` deve restare la SOLA lettura della regola: se il backend cambia
+  (`AssignmentCandidates`), si cambia qui, non in tre componenti.
+- **`useAssignmentFieldsVisibility()` non e' decorazione**: senza, il riepilogo laterale
+  nominerebbe "Sede fisica"/"Sedi remote" a un ruolo che quei campi non puo' vedere — un'etichetta
+  e' gia' una fuga di informazione — e la pill giudicherebbe una configurazione illeggibile.
+  C'e' un test che presidia esattamente questo.
+- I blocker della banda sono `<p>`, **non un `<ul>`**: la scheda conta le righe di competenza
+  per ruolo `listitem` e un elenco puntato entrerebbe in quel conteggio.
+- Nel form ci sono ora **DUE bottoni "Salva"** (barra sticky + piede): i test devono scopare la
+  query su `screen.getByRole('banner')`, l'idioma gia' usato dai test di opportunities.
+- Nella colonna laterale ci sono piu' `role="status"` (la card anagrafica ne alza di suoi):
+  scopare su `getByRole('complementary')`.
+
+**Test — eseguiti.** Cartella utenti **13 file, 79 test passed** dopo lo spostamento della
+sezione; prima dello spostamento, frontend intero **624 file, 4701 test passed**; `npx tsc -b --force`
+EXIT=0; ESLint EXIT=0. Nuovi: `user-assignment.test.ts` (6, la regola) e
+`user-assignment-surfaces.test.tsx` (7, il cablaggio su form e scheda).
+**Test modificati per requisito cambiato, dichiarati:** 14 query "Save" scopate alla barra di
+identita' su 6 file; `user-form-employment-sites.test.tsx` AC-030 ora cerca sede fisica/remote
+nella sezione "Assignment configuration" invece che in "Employment" (l'asserzione e' la stessa,
+cambia il blocco che le ospita). Nessun test e' stato piegato per farlo passare.
+
+**Segnalato, NON implementato (fuori ambito).**
+- La scheda non puo' dire QUALI offerte raggiungeranno la persona (dipende dalla Sede e dalla
+  categoria di ogni record): servirebbe un endpoint dedicato.
+- Non e' mostrata la **funzione aziendale efficace** della categoria (spec 0023): il payload
+  `employment` non la porta.
+- Colonne della griglia utenti non toccate (scelta utente).
+- `docs/HANDOFF.md` ha superato i 900 KB contro il tetto di ~50 KB dichiarato in testa:
+  le voci vecchie andrebbero spostate in `docs/handoff-archive/`.
+
 ## FORM INDIRIZZO COMUNE-FIRST SU TUTTE E 4 LE SUPERFICI (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "Migliorare il form dell'indirizzo, e' usato in molti form, come i
@@ -59,6 +647,27 @@ gli altri 3. Le altre superfici mockano `GeoSelect`, quindi non sono state tocca
 **Non fatto (fuori ambito per scelta utente).** Autocompletamento indirizzo via servizio
 esterno; autofill CAP -> comune (la tabella `cities` **non ha** colonna postal_code);
 `addresses.latitude`/`longitude` restano colonne mai scritte ne' lette.
+
+**Seguito (stessa direttiva, 2026-09-10): checkbox "Indirizzo principale".** Due richieste
+utente su `personal-data/address-form.tsx` (il dialog; l'inline `AddressCreateField` gia'
+forzava `is_primary: true`, non e' stato toccato):
+- **Default `true` in creazione**: `is_primary: address?.is_primary ?? true`. In modifica il
+  valore persistito vince, **un `false` salvato incluso** — il `??` non lo sovrascrive.
+- **`<input type="checkbox">` grezzo sostituito dal `Checkbox` shadcn** (`components/ui/
+  checkbox.tsx`, Radix): idioma `<label className="flex items-center gap-2">` + `Checkbox`
+  con `onCheckedChange={(checked) => field.onChange(checked === true)}`, lo stesso gia' usato
+  da `mapping-template-controls`. Resta un `role="checkbox"` accessibile, quindi le query
+  `getByRole('checkbox', { name: 'Primary address' })` continuano a funzionare.
+- **Conseguenza voluta**: aggiungere un indirizzo a un owner che ne ha gia' uno principale ora
+  **declassa il precedente** — `normalizePrimary()` in `addresses-manager.tsx` in modalita'
+  buffered, il backend in modalita' immediate. E' l'effetto della direttiva, non un bug.
+- Test: 1 modificato per requisito cambiato (non serve piu' cliccare il checkbox per avere
+  `is_primary: true`) + 3 nuovi (`describe('primary address checkbox')`): checked di default in
+  creazione, valore persistito rispettato in modifica, `false` inoltrato quando lo si toglie.
+  Frontend intero **622 file, 4688 test passed**, `tsc -b --force` EXIT=0, ESLint pulito.
+
+**Segnalato, NON implementato (fuori scope).** Restano col checkbox grezzo
+`company-sites/bank-form.tsx:109` e `personal-data/contact-form.tsx:151`.
 
 ## NOTIFICHE NEL TITOLO DELLA SCHEDA DEL BROWSER (direttiva utente 2026-09-10) — VERDE, NON COMMITTATO
 

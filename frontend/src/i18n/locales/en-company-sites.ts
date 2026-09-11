@@ -30,6 +30,10 @@ export const companySites = {
     subtitle: 'Read-only view of the selected company site.',
     loadError: 'Unable to load the company site. Please try again.',
     defaultBadge: 'Default',
+    summary: {
+      title: 'Summary',
+      description: 'Updated as you type.',
+    },
   },
   form: {
     newCompanySite: 'New site',

@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -188,7 +188,7 @@ describe('RegistryForm — custom fields (spec 0021)', () => {
       target: { value: 'High' },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createRegistryMock).toHaveBeenCalledTimes(1))
     const payload = createRegistryMock.mock.calls[0][0]
@@ -219,7 +219,7 @@ describe('RegistryForm — custom fields (spec 0021)', () => {
 
     const priority = await screen.findByRole('textbox', { name: 'Priority level' })
     fireEvent.change(priority, { target: { value: 'High' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRegistryMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateRegistryMock.mock.calls[0]
@@ -255,7 +255,7 @@ describe('RegistryForm — custom fields (spec 0021)', () => {
     )
 
     await screen.findByRole('textbox', { name: 'Priority level' })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('Priority level must be shorter.')).toBeInTheDocument())
     expect(updateRegistryMock).toHaveBeenCalledTimes(1)

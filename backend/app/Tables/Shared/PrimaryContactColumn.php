@@ -54,6 +54,28 @@ final class PrimaryContactColumn
     }
 
     /**
+     * The PRIMARY contacts of a record owning a personal-data card
+     * (`HasPersonalData`), already projected — the same shape format()
+     * returns. Reads the eager-loaded relation only: the caller is
+     * responsible for having loaded `personalData.contacts`.
+     *
+     * @return array<int, array{type: string, icon: string|null, label: string, value: string}>
+     */
+    public function formatFor(?Model $owner): array
+    {
+        if ($owner === null) {
+            return [];
+        }
+
+        /** @var PersonalData|null $card */
+        $card = $owner->personalData;
+
+        return $card === null
+            ? []
+            : $this->format($card->contacts->where('is_primary', true)->values());
+    }
+
+    /**
      * Derived text filter: bound LIKE on the primary contact's value/label.
      * Wildcards in user input are escaped.
      *

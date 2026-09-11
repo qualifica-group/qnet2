@@ -30,6 +30,10 @@ export const companySites = {
     subtitle: 'Visualizzazione in sola lettura della sede selezionata.',
     loadError: 'Impossibile caricare la sede. Riprova.',
     defaultBadge: 'Predefinita',
+    summary: {
+      title: 'Riepilogo',
+      description: 'Si aggiorna mentre compili.',
+    },
   },
   form: {
     newCompanySite: 'Nuova sede',

@@ -1,163 +1,72 @@
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, CalendarRange, FolderKanban, Globe, History, Tags, Wallet } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+import { History } from 'lucide-react'
 import {
-  DetailEmpty,
-  DetailField,
-  DetailGrid,
-  DetailHero,
-  DetailMeta,
-  DetailMonogram,
-  DetailPanel,
-  DetailSection,
-} from '@/components/detail/detail-panel'
-import { formatDateTime } from '@/features/table/cell-renderers'
-import { formatDate } from '@/lib/formatting/date-display'
+  RecordCanvas,
+  RecordCard,
+  RecordMeta,
+  RecordSection,
+} from '@/components/detail/record-panel'
+import {
+  RECORD_BODY_GRID_CLASS,
+  RECORD_BODY_WITH_SIDE_CLASS,
+  RECORD_COLUMN_CLASS,
+} from '@/components/detail/record-layout'
+import { cn } from '@/lib/utils'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
-import { formatDecimal } from '@/features/products/column-renderers'
-import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
-import { geoScopePlaceName } from '@/features/geo/geo-scope'
-import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
+import { ProjectDetailHeader, ProjectDetailStats } from '@/features/projects/project-detail-header'
+import { ProjectDetailSections } from '@/features/projects/project-detail-sections'
+import { formatDateTime } from '@/features/table/cell-renderers'
 import type { ProjectDetailWithPermissions as ProjectDetailData } from '@/features/projects/types'
 
 interface ProjectDetailViewProps {
   project: ProjectDetailData
+  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
+  onEdit?: () => void
 }
 
 /**
- * Budget over-allocation warning (BR-7, AC-044): shown only when
- * `remaining_budget` parses to a negative number. `remaining_budget` is
- * `null` when the project has no `total_budget` set (A-1) — no warning in
- * that case, since there is no residual to check.
+ * Read-only detail of a single project, rendered as an enterprise-CRM record on
+ * the same kit Opportunita', Utenti, Lead and Campagne use: the
+ * identity/KPI/sections card on the left, the activity card on the right, a
+ * metadata footer. Container-query driven (`RecordCanvas`) so the same tree
+ * renders correctly both inside a resizable Sheet and on the full-bleed
+ * `/projects/:id` page.
  */
-function BudgetOverallocationWarning({ remainingBudget }: { remainingBudget: string | null }) {
-  const { t } = useTranslation()
-  const remaining = remainingBudget === null ? null : Number(remainingBudget)
-  const isOverallocated = remaining !== null && remaining < 0
-
-  return isOverallocated ? (
-    <div
-      role="alert"
-      className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-    >
-      <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-      <span>
-        {t('projects.detail.overallocatedWarning', { amount: formatDecimal(Math.abs(remaining)) })}
-      </span>
-    </div>
-  ) : null
-}
-
-/**
- * Read-only detail of a single project, fetched fresh from the
- * (re-authorized) detail endpoint. Composed from the shared detail kit;
- * rendered by the dedicated detail page (spec 0023, mirrors 0022).
- */
-export function ProjectDetailView({ project }: ProjectDetailViewProps) {
+export function ProjectDetailView({ project, onEdit }: ProjectDetailViewProps) {
   const { t } = useTranslation()
   const createdAt = formatDateTime(project.created_at)
-  const geoPlaceName = project.geo_scope
-    ? geoScopePlaceName(project.geo_scope, {
-        country: project.country,
-        state: project.state,
-        province: project.province,
-        city: project.city,
-      })
-    : null
+  const canViewActivity = project.permissions.actions.view_activity
 
   return (
-    <DetailPanel>
-      <DetailHero
-        media={<DetailMonogram name={project.name} icon={<FolderKanban />} />}
-        title={project.name}
-        subtitle={project.code}
-        badges={
-          <>
-            <Badge variant="secondary">
-              {t('projects.detail.campaignsCount', { count: project.campaigns_count })}
-            </Badge>
-            {project.geo_scope && geoPlaceName ? (
-              <GeoScopeBadge scope={project.geo_scope} place={geoPlaceName} />
-            ) : null}
-          </>
-        }
-      />
-
-      {project.description && (
-        <DetailSection title={t('projects.form.description')}>
-          <DetailGrid>
-            <DetailField label={t('projects.form.description')} full>
-              {project.description}
-            </DetailField>
-          </DetailGrid>
-        </DetailSection>
-      )}
-
-      <DetailSection title={t('projects.form.sections.classification.title')} icon={<Tags />}>
-        <DetailGrid>
-          <DetailField label={t('projects.form.status')}>{project.pipeline_status.name}</DetailField>
-          <DetailField label={t('projects.form.partner')}>
-            {project.partner?.name ?? <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('projects.form.operationalSite')}>
-            {project.operational_site?.label ?? <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('projects.form.productLines')} full>
-            <ProductLinesReadOnlyList lines={project.product_lines} />
-          </DetailField>
-        </DetailGrid>
-      </DetailSection>
-
-      <DetailSection title={t('projects.form.sections.geography.title')} icon={<Globe />}>
-        <DetailGrid>
-          <DetailField label={t('geo.country')}>{project.country?.name ?? <DetailEmpty />}</DetailField>
-          <DetailField label={t('geo.state')}>{project.state?.name ?? <DetailEmpty />}</DetailField>
-          <DetailField label={t('geo.province')}>{project.province?.name ?? <DetailEmpty />}</DetailField>
-          <DetailField label={t('geo.city')}>{project.city?.name ?? <DetailEmpty />}</DetailField>
-        </DetailGrid>
-      </DetailSection>
-
-      <DetailSection title={t('projects.form.sections.planning.title')} icon={<CalendarRange />}>
-        <DetailGrid>
-          <DetailField label={t('projects.form.startDate')}>
-            {formatDate(project.start_date) || <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('projects.form.endDate')}>
-            {formatDate(project.end_date) || <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('projects.form.targetLead')}>
-            {project.target_lead ?? <DetailEmpty />}
-          </DetailField>
-        </DetailGrid>
-      </DetailSection>
-
-      <DetailSection title={t('projects.detail.budget')} icon={<Wallet />}>
-        <div className={cn('flex flex-col gap-4')}>
-          <DetailGrid>
-            <DetailField label={t('projects.form.totalBudget')}>
-              {project.total_budget !== null ? formatDecimal(project.total_budget) : <DetailEmpty />}
-            </DetailField>
-            <DetailField label={t('projects.detail.allocatedBudget')}>
-              {formatDecimal(project.allocated_budget)}
-            </DetailField>
-            <DetailField label={t('projects.detail.remainingBudget')}>
-              {project.remaining_budget !== null ? formatDecimal(project.remaining_budget) : <DetailEmpty />}
-            </DetailField>
-          </DetailGrid>
-          <BudgetOverallocationWarning remainingBudget={project.remaining_budget} />
+    <RecordCanvas>
+      <div className={cn(RECORD_BODY_GRID_CLASS, canViewActivity && RECORD_BODY_WITH_SIDE_CLASS)}>
+        <div className={RECORD_COLUMN_CLASS}>
+          <RecordCard>
+            <ProjectDetailHeader project={project} onEdit={onEdit} />
+            <ProjectDetailStats project={project} />
+            <ProjectDetailSections project={project} />
+          </RecordCard>
         </div>
-      </DetailSection>
 
-      {project.permissions.actions.view_activity ? (
-        <DetailSection title={t('activityLog.title')} icon={<History />}>
-          <ActivityLogSection resource="projects" id={project.id} />
-        </DetailSection>
-      ) : null}
+        {canViewActivity ? (
+          <div className={RECORD_COLUMN_CLASS}>
+            <RecordCard className="p-4">
+              <RecordSection title={t('activityLog.title')} icon={<History />}>
+                <ActivityLogSection resource="projects" id={project.id} />
+              </RecordSection>
+            </RecordCard>
+          </div>
+        ) : null}
+      </div>
 
       {createdAt ? (
-        <DetailMeta label={t('projects.columns.created_at')}>{createdAt}</DetailMeta>
+        <RecordMeta>
+          <span>
+            <span className="font-medium">{t('projects.columns.created_at')}</span>{' '}
+            <span aria-hidden="true">·</span> {createdAt}
+          </span>
+        </RecordMeta>
       ) : null}
-    </DetailPanel>
+    </RecordCanvas>
   )
 }

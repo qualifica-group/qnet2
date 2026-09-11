@@ -56,6 +56,9 @@ export const attributes = {
     optionLabelRequired: 'Label is required.',
     optionLabelMax: 'Label must be at most 191 characters.',
     optionsRequiredForEnum: 'Add at least one option for a list attribute.',
+    // Read-only empty state of the detail: it describes, it does not ask
+    // (unlike `optionsRequiredForEnum`, which is a form error).
+    optionsEmpty: 'No options defined.',
     optionValuesDuplicate: 'Option values must be unique.',
     relationEntityTypeRequired: 'The relation target module is required.',
     relationForSelectResourceRequired: 'The picker resource is required.',

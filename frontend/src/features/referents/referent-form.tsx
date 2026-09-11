@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { useReferentFormMeta } from '@/features/referents/use-referent-form-meta'
 import { ReferentFormBody } from '@/features/referents/referent-form-body'
@@ -26,13 +26,7 @@ export function ReferentForm(props: ReferentFormProps) {
   const meta = useReferentFormMeta(props.mode)
 
   if (meta.status === 'loading') {
-    return (
-      <div className="flex flex-col gap-4 p-4" aria-hidden="true">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+    return <RecordFormSkeleton />
   }
 
   if (meta.status === 'error') {

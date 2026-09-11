@@ -1,11 +1,22 @@
+import type { ReactElement } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { projects as projectsEn } from '@/i18n/locales/en-projects'
 import { ProjectDetailView } from '@/features/projects/project-detail'
 import type { ProjectDetailWithPermissions } from '@/features/projects/types'
 
 /** AC-044: the over-allocation warning shows only when `remaining_budget` is a negative amount. */
+
+/**
+ * Every render goes through a Router: since the card moved onto the
+ * enterprise-CRM record kit it links the related records (Partner, Sede) with
+ * real `<Link>`s, which need one.
+ */
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: MemoryRouter })
+}
 
 const activityLogSectionMock = vi.fn()
 
@@ -197,5 +208,74 @@ describe('ProjectDetailView — product lines (spec 0094)', () => {
     render(<ProjectDetailView project={project({ product_lines: [] })} />)
 
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+})
+
+/** The record card links the records the project points at, rather than printing their names. */
+describe('ProjectDetailView — linked records', () => {
+  it('links the Partner to the referents module and the Sede to its own', () => {
+    render(
+      <ProjectDetailView
+        project={project({
+          partner_id: 5,
+          partner: { id: 5, name: 'Acme Partner' },
+          operational_site_id: 8,
+          operational_site: { id: 8, label: 'Warehouse A' },
+        })}
+      />,
+    )
+
+    // The Partner is a Referent, NOT a User: it must resolve to /referents.
+    expect(screen.getByRole('link', { name: /Acme Partner/ })).toHaveAttribute('href', '/referents/5')
+    expect(screen.getByRole('link', { name: /Warehouse A/ })).toHaveAttribute(
+      'href',
+      '/operational-sites/8',
+    )
+  })
+
+  it('does not link a Sede whose server-composed label is empty', () => {
+    render(<ProjectDetailView project={project({ operational_site: { id: 8, label: '' } })} />)
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+})
+
+/** BR-7 budget triplet as the KPI strip, with the share the three raw numbers made you compute. */
+describe('ProjectDetailView — budget KPI strip', () => {
+  it('states the allocated share of the total budget', () => {
+    render(
+      <ProjectDetailView
+        project={project({ total_budget: '1000.00', allocated_budget: '250.00', remaining_budget: '750.00' })}
+      />,
+    )
+
+    expect(screen.getByText('25% of the total budget')).toBeInTheDocument()
+  })
+
+  it('states no share when there is no total budget to measure against', () => {
+    render(
+      <ProjectDetailView
+        project={project({ total_budget: null, allocated_budget: '500.00', remaining_budget: null })}
+      />,
+    )
+
+    expect(screen.queryByText(/of the total budget/)).not.toBeInTheDocument()
+  })
+
+  it('states no share when the total budget is zero, rather than dividing by it', () => {
+    render(
+      <ProjectDetailView
+        project={project({ total_budget: '0.00', allocated_budget: '0.00', remaining_budget: '0.00' })}
+      />,
+    )
+
+    expect(screen.queryByText(/of the total budget/)).not.toBeInTheDocument()
+  })
+
+  it('shows the campaigns count as a plain number, with no link to an unfiltered list', () => {
+    render(<ProjectDetailView project={project({ campaigns_count: 7 })} />)
+
+    expect(screen.getByText('7')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /campaign/i })).not.toBeInTheDocument()
   })
 })

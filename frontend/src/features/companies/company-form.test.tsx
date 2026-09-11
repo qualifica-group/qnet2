@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { CompanyForm } from '@/features/companies/company-form'
@@ -145,7 +145,7 @@ describe('CompanyForm — create/edit', () => {
     fireEvent.change(screen.getByLabelText(/^Address$/), {
       target: { value: '221B Baker Street' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createCompanyMock).toHaveBeenCalledTimes(1))
     expect(updateCompanyMock).not.toHaveBeenCalled()
@@ -176,7 +176,7 @@ describe('CompanyForm — create/edit', () => {
     fireEvent.change(screen.getByLabelText(/^Denomination/), {
       target: { value: 'Acme Srl' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createCompanyMock).toHaveBeenCalledTimes(1))
     const payload = createCompanyMock.mock.calls[0][0]
@@ -195,7 +195,7 @@ describe('CompanyForm — create/edit', () => {
     fireEvent.change(screen.getByLabelText(/^Postal code/), {
       target: { value: '20100' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(
@@ -228,7 +228,7 @@ describe('CompanyForm — create/edit', () => {
     fireEvent.change(screen.getByLabelText(/^Denomination/), {
       target: { value: 'Acme Srl EU' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateCompanyMock).toHaveBeenCalledTimes(1))
     const [id, payload] = updateCompanyMock.mock.calls[0]

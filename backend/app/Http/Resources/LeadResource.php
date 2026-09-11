@@ -4,6 +4,8 @@ namespace App\Http\Resources;
 
 use App\Models\Address;
 use App\Models\Lead;
+use App\Models\Registry;
+use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,6 +22,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Spec 0047 (AC-003): `state`/`state_id` is the Regione (D1), derived
  * server-side from the sede — never user-editable directly.
  *
+ * `registry` additionally carries the anagrafica's PRIMARY contacts, so the
+ * record card can offer call/mail without a second request. Relies on
+ * LeadService::loadDetail() having eager-loaded `registry.personalData.contacts`.
+ *
  * Spec 0094 (AC-030): `products_of_interest` mirrors
  * OpportunityResource::summarizeProductsOfInterest() verbatim. Relies on
  * LeadService::loadDetail() having eager-loaded `productsOfInterest.category`,
@@ -35,7 +41,7 @@ class LeadResource extends JsonResource
         return [
             'id' => $this->id,
             'registry_id' => $this->registry_id,
-            'registry' => $this->summarizeByName($this->registry),
+            'registry' => $this->summarizeRegistry($request),
             'campaign_id' => $this->campaign_id,
             'campaign' => $this->summarizeCampaign($this->campaign),
             'operational_site_id' => $this->operational_site_id,
@@ -56,6 +62,38 @@ class LeadResource extends JsonResource
             'opportunity' => $this->summarizeOpportunity($this->opportunity),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+        ];
+    }
+
+    /**
+     * The lead's anagrafica, plus its PRIMARY contacts (one per type) so the
+     * record card can call/mail the contact without a second request.
+     *
+     * The contacts are the ANAGRAFICA's data, not the lead's: they travel only
+     * when the actor may view registries — the same boundary
+     * ReferentForSelectResource's `meta.contacts` stands behind — so
+     * `leads.view` alone never widens into contact data. An actor without it
+     * still gets the key, empty, and the card simply shows no contact row.
+     *
+     * @return array{id: int, name: string, primary_contacts: array<int, array{type: string, icon: string|null, label: string, value: string}>}|null
+     */
+    private function summarizeRegistry(Request $request): ?array
+    {
+        /** @var Registry|null $registry */
+        $registry = $this->registry;
+
+        if ($registry === null) {
+            return null;
+        }
+
+        $maySeeContacts = $request->user()?->can('view', $registry) ?? false;
+
+        return [
+            'id' => $registry->id,
+            'name' => $registry->name,
+            'primary_contacts' => $maySeeContacts
+                ? (new PrimaryContactColumn)->formatFor($registry)
+                : [],
         ];
     }
 

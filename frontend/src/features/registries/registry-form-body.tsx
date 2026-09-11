@@ -2,9 +2,14 @@ import { useRef } from 'react'
 import { IdCard, MapPin, Phone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { FormSection } from '@/components/form-section'
+import {
+  MAIN_COLUMN_CLASS,
+  PANEL_GRID_CLASS,
+  SIDE_COLUMN_CLASS,
+} from '@/components/record-form/layout'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { AddressesManager } from '@/features/personal-data/addresses-manager'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
@@ -18,6 +23,8 @@ import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSectio
 import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
 import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
 import { DetailsTabContent } from '@/features/registries/registry-form-details-tab'
+import { RegistryFormHeader } from '@/features/registries/registry-form-header'
+import { RegistryFormSummary } from '@/features/registries/registry-form-summary'
 import { useRegistryForm } from '@/features/registries/use-registry-form'
 import type { QuickContactType } from '@/features/personal-data/quick-contacts'
 import type { RegistryDetail, RegistryFormMode } from '@/features/registries/types'
@@ -30,6 +37,14 @@ import type { RegistryDetail, RegistryFormMode } from '@/features/registries/typ
  */
 const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
 
+/**
+ * DOM id bridging the sticky header's save action to the RHF `<form>` below,
+ * exactly as the Opportunità and Gestione Richieste screens do: the same id
+ * serves the footer actions, so both copies of the button submit this form
+ * without either of them nesting the other.
+ */
+const REGISTRY_FORM_ID = 'registry-form'
+
 interface RegistryFormBodyProps {
   mode: RegistryFormMode
   onSuccess: (registry: RegistryDetail) => void
@@ -37,15 +52,21 @@ interface RegistryFormBodyProps {
 }
 
 /**
- * The registry create/edit form UI (spec 0020), laid out as a SINGLE screen
- * like its twin `ReferentForm` (user directive 2026-09-07): anagraphic card,
- * registry details (relations + business fields), contacts, addresses and
- * custom fields stacked one under the other in a single column, with no macro
- * tabs. Each block keeps its own `FormSection` heading and its own visibility
- * gate. Contacts/addresses open in the shared dialog and persist immediately
- * when the card already exists (`cardOwnerRef`), with the "site type" select
- * enabled on the addresses. Every field is wrapped in `MetaField` (spec 0004);
- * all non-render logic lives in `useRegistryForm`.
+ * The anagrafica create/edit form UI (spec 0020), rebuilt as the TWIN of the
+ * Opportunità form (user directive 2026-09-11). Not a resemblance: the layout
+ * primitives are literally the same objects (`@/components/record-form` —
+ * `RECORD_HEADER_CLASS`, `PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/
+ * `MAIN_COLUMN_CLASS`, `SummaryRow`, `RecordFormActions`), so neither screen
+ * can drift apart with a later edit to the other.
+ *
+ * The **duplicate warning moved to the side column**, and that is the point of
+ * the move rather than a side effect: it used to sit at the very bottom, under
+ * the custom fields, i.e. off-screen exactly while the operator was typing the
+ * name that triggers it. In the sticky side column it is read where it is
+ * useful. It still refuses nothing — the save goes through either way.
+ *
+ * Each block keeps its own visibility gate; every field is wrapped in
+ * `MetaField` (spec 0004); all non-render logic lives in `useRegistryForm`.
  */
 export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBodyProps) {
   const { t } = useTranslation()
@@ -101,104 +122,117 @@ export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBody
   // Contacts/addresses persist immediately once the card exists; otherwise they
   // stay buffered until the form is saved (parity with the Referents module).
   const persistence = cardOwnerRef(profileDraft)
+  const { isSubmitting } = form.formState
 
   return (
-    <div ref={containerRef} className="flex flex-1 flex-col overflow-y-auto">
+    <div ref={containerRef} className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-1 flex-col gap-4 p-4"
-          noValidate
-        >
-          <div {...anagraphicSectionProps('card')}>
-            <FormSection
-              icon={IdCard}
-              title={t('registries.form.sections.identity.title')}
-              description={t('registries.form.sections.identity.description')}
+        <RegistryFormHeader
+          control={form.control}
+          isEdit={mode.type === 'edit'}
+          formId={REGISTRY_FORM_ID}
+          isSubmitting={isSubmitting}
+          submitError={serverError}
+          onCancel={onCancel}
+        />
+
+        <div className={PANEL_GRID_CLASS}>
+          {/* First in the DOM so a narrow container reads the duplicate warning
+              before the form, reordered to the right on two columns. */}
+          <aside className={SIDE_COLUMN_CLASS}>
+            <IdentityDuplicateWarning matches={duplicateMatches} />
+            <RegistryFormSummary control={form.control} selectedItems={selectedItems} />
+          </aside>
+
+          <div className={MAIN_COLUMN_CLASS}>
+            {/* `display: contents`: this native `<form>` only scopes the HTML
+                submit boundary, it must not become an extra flex box. */}
+            <form
+              id={REGISTRY_FORM_ID}
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="contents"
+              noValidate
             >
-              <PersonalDataCardForm
-                value={profileDraft}
-                onChange={setProfileDraft}
-                fieldPermission={personalDataFieldPermission}
-                revalidateSignal={revalidateSignal}
+              <div {...anagraphicSectionProps('card')}>
+                <FormSection
+                  icon={IdCard}
+                  title={t('registries.form.sections.identity.title')}
+                  description={t('registries.form.sections.identity.description')}
+                >
+                  <PersonalDataCardForm
+                    value={profileDraft}
+                    onChange={setProfileDraft}
+                    fieldPermission={personalDataFieldPermission}
+                    revalidateSignal={revalidateSignal}
+                  />
+                </FormSection>
+              </div>
+
+              {detailsVisible && (
+                <DetailsTabContent
+                  control={form.control}
+                  selectedItems={selectedItems}
+                  isSupplier={isSupplier}
+                />
+              )}
+
+              {contactsVisible && (
+                <div {...anagraphicSectionProps('contacts')}>
+                  <FormSection
+                    icon={Phone}
+                    title={t('registries.form.sections.contacts.title')}
+                    description={t('registries.form.sections.contacts.description')}
+                    aside={<Badge variant="secondary">{profileDraft.contacts.length}</Badge>}
+                  >
+                    <ContactsManager
+                      value={profileDraft.contacts}
+                      onChange={(contacts) => setProfileDraft({ ...profileDraft, contacts })}
+                      fieldPermission={personalDataFieldPermission}
+                      showHeader={false}
+                      persistence={persistence}
+                      createMode={mode.type === 'create'}
+                      requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
+                    />
+                  </FormSection>
+                </div>
+              )}
+
+              {addressesVisible && (
+                <div {...anagraphicSectionProps('addresses')}>
+                  <FormSection
+                    icon={MapPin}
+                    title={t('registries.form.sections.addresses.title')}
+                    description={t('registries.form.sections.addresses.description')}
+                    aside={<Badge variant="secondary">{profileDraft.addresses.length}</Badge>}
+                  >
+                    <AddressesManager
+                      value={profileDraft.addresses}
+                      onChange={(addresses) => setProfileDraft({ ...profileDraft, addresses })}
+                      fieldPermission={personalDataFieldPermission}
+                      showHeader={false}
+                      persistence={persistence}
+                      showSiteType
+                      createMode={mode.type === 'create'}
+                    />
+                  </FormSection>
+                </div>
+              )}
+
+              <CustomFieldsSection resource="registries" control={form.control} />
+
+              {/* The same actions the identity bar carries, repeated where the
+                  form ends: it is long enough that the operator finishes typing
+                  far from the sticky bar. */}
+              <RecordFormActions
+                formId={REGISTRY_FORM_ID}
+                isSubmitting={isSubmitting}
+                submitLabel={t('registries.form.save')}
+                submittingLabel={t('registries.form.saving')}
+                cancel={{ label: t('registries.form.cancel'), onCancel }}
               />
-            </FormSection>
+            </form>
           </div>
-
-          {detailsVisible && (
-            <DetailsTabContent
-              control={form.control}
-              selectedItems={selectedItems}
-              isSupplier={isSupplier}
-            />
-          )}
-
-          {contactsVisible && (
-            <div {...anagraphicSectionProps('contacts')}>
-              <FormSection
-                icon={Phone}
-                title={t('registries.form.sections.contacts.title')}
-                description={t('registries.form.sections.contacts.description')}
-                aside={<Badge variant="secondary">{profileDraft.contacts.length}</Badge>}
-              >
-                <ContactsManager
-                  value={profileDraft.contacts}
-                  onChange={(contacts) => setProfileDraft({ ...profileDraft, contacts })}
-                  fieldPermission={personalDataFieldPermission}
-                  showHeader={false}
-                  persistence={persistence}
-                  createMode={mode.type === 'create'}
-                  requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
-                />
-              </FormSection>
-            </div>
-          )}
-
-          {addressesVisible && (
-            <div {...anagraphicSectionProps('addresses')}>
-              <FormSection
-                icon={MapPin}
-                title={t('registries.form.sections.addresses.title')}
-                description={t('registries.form.sections.addresses.description')}
-                aside={<Badge variant="secondary">{profileDraft.addresses.length}</Badge>}
-              >
-                <AddressesManager
-                  value={profileDraft.addresses}
-                  onChange={(addresses) => setProfileDraft({ ...profileDraft, addresses })}
-                  fieldPermission={personalDataFieldPermission}
-                  showHeader={false}
-                  persistence={persistence}
-                  showSiteType
-                  createMode={mode.type === 'create'}
-                />
-              </FormSection>
-            </div>
-          )}
-
-          <CustomFieldsSection resource="registries" control={form.control} />
-
-          <IdentityDuplicateWarning matches={duplicateMatches} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('registries.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('registries.form.saving') : t('registries.form.save')}
-            </Button>
-          </div>
-        </form>
+        </div>
       </Form>
     </div>
   )

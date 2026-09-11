@@ -77,7 +77,10 @@ it('create: 201, response shape matches the frozen contract', function () {
         'operator_id' => $operator->id,
         'notes' => 'Follow up next week',
     ])->assertCreated()
-        ->assertJsonPath('data.registry', ['id' => $registry->id, 'name' => 'Ada Contact'])
+        // `primary_contacts` joined the contract when the record card gained
+        // call/mail (see LeadRegistryContactsTest): empty here, this actor
+        // holds no registries.view and the anagrafica has no card either.
+        ->assertJsonPath('data.registry', ['id' => $registry->id, 'name' => 'Ada Contact', 'primary_contacts' => []])
         ->assertJsonPath('data.campaign.id', $campaign->id)
         ->assertJsonPath('data.campaign.name', 'Spring Push')
         ->assertJsonPath('data.operational_site.label', 'Via Roma 1')
