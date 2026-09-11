@@ -105,18 +105,27 @@ final class TaskTaxonomyCatalogue
         ['In preanalisi', TaskStatusGroup::Open, 'indigo', 'eye', 20],
         ['Preanalisi da validare', TaskStatusGroup::InValidation, 'amber', 'shield', 30],
         ['Preanalisi validata', TaskStatusGroup::Open, 'teal', 'shield-check', 40],
-        ['In corso', TaskStatusGroup::Open, 'violet', 'activity', 50],
         ['In attesa controparte', TaskStatusGroup::Pending, 'orange', 'clock', 60],
         ['Interrotto', TaskStatusGroup::Pending, 'red', 'flag', 0],
         ['Esecuzione da validare', TaskStatusGroup::InValidation, 'amber', 'clipboard-list', 80],
     ];
 
     /**
-     * The three PROTECTED rows, keyed by `system_key`: the client's wording
-     * for the status a Task opens in and the two it closes in.
+     * The four PROTECTED rows, keyed by `system_key`: the client's wording
+     * for the status a Task opens in, the one it resumes on when reopened
+     * (spec 0116 D-4), and the two it closes in.
      *
-     * They are RESHAPED here rather than created: `system_key` is not
-     * mass-assignable and the rows already exist, inserted by
+     * `in_progress` differs from the other three: it is not reshaped from a
+     * migration bootstrap name, because 2026_09_11_100000 creates/promotes
+     * the row ALREADY carrying the client's own wording — there is no
+     * generic placeholder to rewrite away from. `bootstrap_name` and `name`
+     * are therefore both `'In corso'` on purpose, which also makes
+     * `reshapeProtectedStatuses()` below a no-op for this key on every seed
+     * run (the row already carries `$target['name']`), not a source of
+     * duplication.
+     *
+     * The other three are RESHAPED here rather than created: `system_key` is
+     * not mass-assignable and the rows already exist, inserted by
      * 2026_09_04_100400 with generic bootstrap names. The seeder matches
      * them by KEY, never by label (D-5), and only rewrites one while it
      * still carries the bootstrap name below — an admin rename is left
@@ -137,6 +146,14 @@ final class TaskTaxonomyCatalogue
             'color' => 'slate',
             'icon' => 'inbox',
             'completion_percentage' => 0,
+        ],
+        TaskStatusSystemKey::InProgress->value => [
+            'bootstrap_name' => 'In corso',
+            'name' => 'In corso',
+            'group' => TaskStatusGroup::Open,
+            'color' => 'violet',
+            'icon' => 'activity',
+            'completion_percentage' => 50,
         ],
         TaskStatusSystemKey::ClosedPositive->value => [
             'bootstrap_name' => 'Chiuso positivo',

@@ -35,7 +35,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -64,7 +64,7 @@ const TASK_MODULE_RESOURCES = ['tasks', 'task-statuses', 'task-types', 'task-cat
 // AC-050 — permissions:sync derives the abilities from the Policies alone
 // ---------------------------------------------------------------------------
 
-it('AC-050: permissions:sync creates 8 permissions per resource, plus tasks.viewAll, and nothing more', function () {
+it('AC-037/AC-050: permissions:sync creates 8 permissions per resource, plus the four tasks-only extras, and nothing more', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
 
     foreach (TASK_MODULE_RESOURCES as $resource) {
@@ -74,12 +74,18 @@ it('AC-050: permissions:sync creates 8 permissions per resource, plus tasks.view
         }
     }
 
-    expect(Permission::query()->where('name', 'tasks.viewAll')->exists())->toBeTrue();
+    // spec 0116, AC-037: exactly these four new `tasks.*` permissions exist
+    // on top of the 8 standard abilities and `viewAll` — no other new
+    // `tasks.*` permission was created by the record-role matrix.
+    foreach (['viewAll', 'manageAll', 'complete', 'validate', 'block'] as $extra) {
+        expect(Permission::query()->where('name', "tasks.{$extra}")->exists())
+            ->toBeTrue("missing permission tasks.{$extra}");
+    }
 
-    // 9 for `tasks` (the 8 standard abilities + viewAll, D-9), 8 for each
-    // configurator. `like 'tasks.%'` would also match nothing else: the five
-    // configurators are `task-...` with a hyphen.
-    expect(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(9);
+    // 13 for `tasks` (8 standard + viewAll/manageAll/complete/validate/block,
+    // spec 0116), 8 for each configurator. `like 'tasks.%'` would also match
+    // nothing else: the five configurators are `task-...` with a hyphen.
+    expect(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(13);
 
     foreach (array_slice(TASK_MODULE_RESOURCES, 1) as $resource) {
         expect(Permission::query()->where('name', 'like', "{$resource}.%")->count())
@@ -192,9 +198,10 @@ it('AC-055: the six resources appear in the permission catalogue with their perm
             ->and($modules[$resource]['fields'])->not->toBeEmpty();
     }
 
-    expect($modules['tasks']['permissions'])->toHaveCount(9)
+    expect($modules['tasks']['permissions'])->toHaveCount(13)
         ->and($modules['task-statuses']['permissions'])->toHaveCount(8)
         ->and(collect($modules['tasks']['fields'])->pluck('key'))
         ->not->toContain('creator_id')
-        ->not->toContain('completion_percentage');
+        ->not->toContain('completion_percentage')
+        ->not->toContain('is_blocked');
 });

@@ -28,6 +28,7 @@ import {
 import { BADGE_BASE, BADGE_COLOR_CLASSES, formatDateTime } from '@/features/table/cell-renderers'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { TASKS_DOMAIN } from '@/features/tasks/api'
+import { TaskActionsBar } from '@/features/tasks/task-actions-bar'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { TaskPeopleList } from '@/features/tasks/task-people-list'
 import { TaskSubtasksSection } from '@/features/tasks/task-subtasks-section'
@@ -84,6 +85,8 @@ export function TaskDetailView({ task, onOpenSubtask, onCreateSubtask }: TaskDet
             </>
           }
         />
+
+        <TaskActionsBar task={task} />
 
         <RecordSectionsGrid>
           <RecordSection title={t('tasks.detail.sections.identity')} icon={<ClipboardList />}>

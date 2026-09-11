@@ -15,6 +15,8 @@ namespace App\DataObjects\Tasks;
  * authenticated actor, and StoreTaskRequest rejects the key with
  * `prohibited` (AC-011). `completionPercentage` is absent for the same
  * reason in reverse (D-6): it is derived from the status, never written.
+ * `isBlocked` is absent too (spec 0116 D-6): `is_blocked` is `prohibited` at
+ * creation, so every new Task starts unblocked — attributes() hardcodes it.
  *
  * `assigneeIds`/`watcherIds` default to `[]`, so a create with neither key
  * simply syncs two empty pivots. `startTime`/`endTime` are `H:i` strings
@@ -47,7 +49,6 @@ final readonly class CreateTaskData
         public ?string $startTime = null,
         public ?string $endTime = null,
         public ?int $estimatedMinutes = null,
-        public bool $isBlocked = false,
         public bool $requiresClosureFeedback = false,
         public ?string $closureFeedback = null,
         public array $assigneeIds = [],
@@ -81,7 +82,6 @@ final readonly class CreateTaskData
             startTime: self::nullableString($data, 'start_time'),
             endTime: self::nullableString($data, 'end_time'),
             estimatedMinutes: self::nullableInt($data, 'estimated_minutes'),
-            isBlocked: (bool) ($data['is_blocked'] ?? false),
             requiresClosureFeedback: (bool) ($data['requires_closure_feedback'] ?? false),
             closureFeedback: self::nullableString($data, 'closure_feedback'),
             assigneeIds: self::normalizeIds($data['assignee_ids'] ?? []),
@@ -117,7 +117,7 @@ final readonly class CreateTaskData
             'start_time' => $this->startTime,
             'end_time' => $this->endTime,
             'estimated_minutes' => $this->estimatedMinutes,
-            'is_blocked' => $this->isBlocked,
+            'is_blocked' => false,
             'requires_closure_feedback' => $this->requiresClosureFeedback,
             'closure_feedback' => $this->closureFeedback,
         ];

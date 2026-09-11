@@ -3,10 +3,7 @@ import { Tags } from 'lucide-react'
 import type { Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { FIELD_GRID_CLASS } from '@/components/record-form/layout'
-import { FormControl } from '@/components/ui/form'
-import { Switch } from '@/components/ui/switch'
 import { RelationSelectField } from '@/components/form/relation-select-field'
-import { MetaField } from '@/features/authorization/MetaField'
 import {
   TASK_CATEGORIES_FOR_SELECT_RESOURCE,
   TASK_IMPORTANCES_FOR_SELECT_RESOURCE,
@@ -37,15 +34,17 @@ function refOf(value: { id: number; name: string } | null | undefined): Relation
 }
 
 /**
- * "Classificazione": the required Stato plus the four optional lookups, the
- * DERIVED completion percentage and the bloccato/contestato flag.
+ * "Classificazione": the required Stato plus the four optional lookups and
+ * the DERIVED completion percentage.
  *
  * AC-084: the percentage is a read-only readout, NOT a form field — it has no
  * RHF binding and no key in `TaskFormValues`, so it is structurally
  * impossible to submit (D-6: `tasks` has no such column).
  *
- * AC-086: "Bloccato/contestato" lives here as its OWN control, visibly
- * separate from Stato — it is a flag, not a phase.
+ * AC-086/AC-045 (spec 0116 D-6): "Bloccato/contestato" is NOT a form field
+ * any more — it left `TaskFormValues` entirely, writable only by the
+ * `/block`/`/unblock` domain actions. This section no longer renders it; the
+ * read model still shows it as a badge in `task-detail.tsx`.
  */
 export function TaskClassificationSection({
   control,
@@ -122,21 +121,6 @@ export function TaskClassificationSection({
           {...selectLabels}
         />
       </div>
-
-      <MetaField
-        control={control}
-        name="is_blocked"
-        metaKey="is_blocked"
-        label={t('tasks.form.isBlocked')}
-        description={t('tasks.form.isBlockedHint')}
-        layout="inline"
-      >
-        {({ field, disabled }) => (
-          <FormControl>
-            <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
-          </FormControl>
-        )}
-      </MetaField>
     </FormSection>
   )
 }

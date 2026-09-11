@@ -4,20 +4,29 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\Models\Task;
 use App\Models\User;
+use App\Services\Tasks\TaskAbilityResolver;
+use App\Services\Tasks\TaskActionAvailability;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * ResourceAuthorization for the `tasks` resource (spec 0101).
+ * ResourceAuthorization for the `tasks` resource (spec 0101, delta spec
+ * 0116).
  *
  * The field catalogue is the FROZEN order of the data_contract's own POST
- * payload (AC-053), and two keys are deliberately ABSENT from it:
+ * payload (AC-053), and three keys are deliberately ABSENT from it:
  *  - `creator_id`, server-owned and immutable (D-10);
  *  - `completion_percentage`, derived from the status and never written
- *    (D-6).
+ *    (D-6);
+ *  - `is_blocked` (spec 0116, D-6): written ONLY by the `block`/`unblock`
+ *    domain actions below, never by this PATCH — exactly like
+ *    `ContractsAuthorization` keeps `validated_at`/`terminated_at` off a
+ *    PATCH. Leaving it permissionable would let an actor without
+ *    `tasks.block` flip it through the generic update endpoint.
  * A field that is not client-writable is not permissionable either: leaving
  * them out is what makes "not submittable" and "not configurable" the same
- * statement, instead of two that could drift. Both are additionally
+ * statement, instead of two that could drift. All three are additionally
  * `prohibited` at the FormRequest layer, ahead of and independent from this
  * ceiling — the privileged role bypasses every ceiling, so immutability
  * cannot be expressed here alone.
@@ -27,7 +36,14 @@ use Illuminate\Database\Eloquent\Model;
  * scope for this spec.
  *
  * Every field's ceiling is the plain visible+editable-when-may-write /
- * visible+readonly default: unlike Commesse, no Task field is create-only.
+ * visible+readonly default, EXCEPT the 17 fields in
+ * `TaskAbilityResolver::PROTECTED_FIELDS` (spec 0116, D-5): those additionally
+ * require the actor to own the Task's MANDATE
+ * (`TaskAbilityResolver::canUpdateProtectedFields()`) once a record exists.
+ * In CREATE context (`$model === null`) that extra gate is skipped
+ * on purpose — there is no record yet to hold a role on, and whoever creates
+ * the Task becomes its creator, so every field simply follows
+ * `actorMayWrite()` as it always did.
  */
 class TasksAuthorization extends AbstractResourceAuthorization
 {
@@ -65,12 +81,18 @@ class TasksAuthorization extends AbstractResourceAuthorization
         'start_time' => 'text',
         'end_time' => 'text',
         'estimated_minutes' => 'number',
-        'is_blocked' => 'boolean',
         'requires_closure_feedback' => 'boolean',
         'closure_feedback' => 'textarea',
         'assignee_ids' => 'multiselect',
         'watcher_ids' => 'multiselect',
     ];
+
+    public function __construct(
+        FieldPermissionRepository $fieldPermissionRepository,
+        private readonly TaskActionAvailability $actionAvailability,
+    ) {
+        parent::__construct($fieldPermissionRepository);
+    }
 
     public function resource(): string
     {
@@ -96,7 +118,7 @@ class TasksAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity'];
+        return ['delete', 'export', 'import', 'view_activity', 'complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock'];
     }
 
     /**
@@ -105,12 +127,17 @@ class TasksAuthorization extends AbstractResourceAuthorization
     protected function fieldPermissionCeiling(User $actor, ?Model $model): array
     {
         $mayWrite = $this->actorMayWrite($actor, $model);
+        $mayEditProtectedFields = $model === null
+            || ($model instanceof Task && TaskAbilityResolver::canUpdateProtectedFields($actor, $model));
+
         $ceiling = [];
 
         foreach (self::FIELD_TYPES as $key => $type) {
             $required = in_array($key, self::MANDATORY_FIELDS, true);
+            $isProtected = in_array($key, TaskAbilityResolver::PROTECTED_FIELDS, true);
+            $editable = $mayWrite && (! $isProtected || $mayEditProtectedFields);
 
-            $ceiling[$key] = $mayWrite
+            $ceiling[$key] = $editable
                 ? FieldPermission::visibleEditable(required: $required)
                 : FieldPermission::visibleReadonly(required: $required);
         }
@@ -119,10 +146,21 @@ class TasksAuthorization extends AbstractResourceAuthorization
     }
 
     /**
+     * Every flag is the AND of three things (spec 0116, data_contract
+     * "permissions.actions"): the ability, the record-role matrix
+     * (`TaskAbilityResolver`) and the state's availability
+     * (`TaskActionAvailability`). D-8's freeze veto is folded in directly:
+     * a `is_blocked` Task admits none of the four status-changing actions,
+     * regardless of what the matrix or the phase would otherwise allow —
+     * `block`/`unblock` already carry that condition through
+     * `isBlockable()`/`isUnblockable()`.
+     *
      * @return array<string, bool>
      */
     public function actionPermissions(User $actor, ?Model $model): array
     {
+        $task = $model instanceof Task ? $model : null;
+
         return [
             'delete' => $model !== null && $actor->can('tasks.delete'),
             'export' => $actor->can('tasks.export'),
@@ -131,6 +169,18 @@ class TasksAuthorization extends AbstractResourceAuthorization
             // record-level `tasks.view` boundary is enforced separately by
             // GET /api/activity-log/tasks/{id}.
             'view_activity' => $model !== null && $actor->can('tasks.viewActivity'),
+            'complete' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isCompletable($task)
+                && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task),
+            'uncomplete' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isUncompletable($task)
+                && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task),
+            'approve' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isValidatable($task)
+                && $actor->can('tasks.validate') && TaskAbilityResolver::canValidate($actor, $task),
+            'reject' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isValidatable($task)
+                && $actor->can('tasks.validate') && TaskAbilityResolver::canValidate($actor, $task),
+            'block' => $task !== null && $this->actionAvailability->isBlockable($task)
+                && $actor->can('tasks.block') && TaskAbilityResolver::canBlock($actor, $task),
+            'unblock' => $task !== null && $this->actionAvailability->isUnblockable($task)
+                && $actor->can('tasks.block') && TaskAbilityResolver::canBlock($actor, $task),
         ];
     }
 }

@@ -52,6 +52,13 @@ export const permissions = {
     // Spec 0106: genera/scarica il report CSV di Gestione Richieste
     // (`request-management.report`), indipendente da `export` (righe di griglia).
     report: 'Genera report',
+    // Spec 0116: matrice per ruolo sul record del modulo Task. `manageAll` e'
+    // il permesso "gestore" (D-2, distinto da `viewAll`); `complete`/`block`
+    // governano le azioni di dominio omonime; `validate` riusa l'ability
+    // gia' dichiarata sopra per i contratti.
+    manageAll: 'Gestisci tutto',
+    complete: 'Completa',
+    block: 'Blocca',
   },
   resources: {
     users: 'Utenti',

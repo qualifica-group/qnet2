@@ -123,16 +123,20 @@ it('AC-001: down() drops task_statuses, up() recreates it with its six bootstrap
 // AC-002 — the protected rows, created by the migrations
 //
 // Six were created by 2026_09_04_100400 and three of them retired by
-// 2026_09_04_110000: `in_progress`/`pending`/`in_validation` were PHASES
-// mislabelled as system keys and now live on as App\Enums\TaskStatusGroup
-// values (user directive 2026-09-04). What survives is the minimum the
-// module needs: somewhere to open a Task, and somewhere to close it on each
-// outcome.
+// 2026_09_04_110000: `pending`/`in_validation` were PHASES mislabelled as
+// system keys and now live on as App\Enums\TaskStatusGroup values (user
+// directive 2026-09-04). `in_progress` was retired alongside them for that
+// same reason, then REINSTATED by 2026_09_11_100000 for a different one
+// (spec 0116, D-4): it now designates the single row the Task reopening
+// actions land on, not a phase — see TaskStatusSystemKey's docblock. What
+// survives is the minimum the module needs: somewhere to open a Task,
+// somewhere to resume it, and somewhere to close it on each outcome.
 // ---------------------------------------------------------------------------
 
-it('AC-002: the migrations left the three protected rows with the declared keys and percentages', function () {
+it('AC-002: the migrations left the four protected rows with the declared keys and percentages', function () {
     $expected = [
         'open' => 0,
+        'in_progress' => 50,
         'closed_positive' => 100,
         'closed_negative' => 0,
     ];
@@ -154,7 +158,7 @@ it('AC-002: the persisted system keys are exactly the TaskStatusSystemKey cases,
         ->map(fn (TaskStatusSystemKey $key): string => $key->value)->all();
 
     expect($persisted)->toEqualCanonicalizing(array_column(TaskStatusSystemKey::cases(), 'value'))
-        ->and($persisted)->toHaveCount(3);
+        ->and($persisted)->toHaveCount(4);
 });
 
 it('AC-002: only closed_positive and closed_negative are closing phases', function () {
@@ -222,7 +226,7 @@ it('AC-005: re-running the clean seed neither duplicates the system rows nor und
     seedCleanReferenceData();
     seedCleanReferenceData();
 
-    expect(TaskStatus::query()->whereNotNull('system_key')->count())->toBe(3)
+    expect(TaskStatus::query()->whereNotNull('system_key')->count())->toBe(4)
         ->and(TaskStatus::query()->whereKey($renamed->id)->value('name'))->toBe('Terminato');
 });
 

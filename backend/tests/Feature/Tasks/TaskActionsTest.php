@@ -1,0 +1,372 @@
+<?php
+
+use App\Enums\TaskStatusGroup;
+use App\Enums\TaskStatusSystemKey;
+use App\Models\Role;
+use App\Models\Task;
+use App\Models\TaskStatus;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
+
+uses(RefreshDatabase::class);
+
+// Defense against the helper-collision trap: `taskActorWith()` is declared
+// once per process (bare functions are global) and PHP keeps whichever
+// `tests/Feature/Tasks/*.php` copy loads FIRST, alphabetically. That copy
+// may predate spec 0116 and not know these four permissions yet, so a
+// `givePermissionTo('tasks.complete')` downstream would throw
+// PermissionDoesNotExist — but only when the suite runs as a whole, a
+// verdict that depends on load order. Creating them here directly is
+// idempotent and makes this file correct regardless of which copy is
+// active, the same defense TaskRecordRoleMatrixTest already adopted.
+beforeEach(function () {
+    foreach (['manageAll', 'complete', 'validate', 'block'] as $ability) {
+        Permission::findOrCreate("tasks.{$ability}");
+    }
+});
+
+/*
+|--------------------------------------------------------------------------
+| The six domain-action endpoints (spec 0116, MT-04, AC-016..AC-030, AC-011)
+|--------------------------------------------------------------------------
+|
+| complete/uncomplete/approve/reject/block/unblock, served by
+| App\Services\Tasks\TaskActionService behind TaskPolicy's
+| complete/validate/block abilities. The record-role matrix itself
+| (TaskAbilityResolver) and the ability/matrix AND-not-OR contract on
+| `permissions.actions` are TaskRecordRoleMatrixTest's territory; this suite
+| exercises the endpoints' own three re-asserted guards (D-2 manager-as-
+| assignee deroga, D-8 is_blocked veto, TaskActionAvailability) plus the
+| transitions' target statuses.
+*/
+
+if (! function_exists('taskActorWith')) {
+    /**
+     * An actor holding $abilities on `tasks`. `viewAll` is granted on top by
+     * default so a 403 here always means "matrix/deroga refusal", not
+     * "outside the visibility scope" — the separation the sibling Task
+     * suites already draw.
+     *
+     * @param  array<int, string>  $abilities
+     */
+    function taskActorWith(array $abilities, bool $withViewAll = true): User
+    {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block'] as $ability) {
+            Permission::findOrCreate("tasks.{$ability}");
+        }
+
+        $user = User::factory()->create();
+
+        foreach ($abilities as $ability) {
+            $user->givePermissionTo("tasks.{$ability}");
+        }
+
+        if ($withViewAll) {
+            $user->givePermissionTo('tasks.viewAll');
+        }
+
+        return $user;
+    }
+}
+
+if (! function_exists('protectedTaskStatus')) {
+    function protectedTaskStatus(TaskStatusSystemKey $key): TaskStatus
+    {
+        return TaskStatus::query()->where('system_key', $key->value)->firstOrFail();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AC-016/AC-017/AC-018 — complete, CASO 1 (no validation_status_id)
+// ---------------------------------------------------------------------------
+
+it('AC-016: an assignee completes a task with no closure feedback required (CASO 1.a)', function () {
+    $actor = taskActorWith(['complete']);
+    $task = Task::factory()->create();
+    $task->assignees()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/complete")
+        ->assertOk()
+        ->assertJsonPath('data.task_status_id', protectedTaskStatus(TaskStatusSystemKey::ClosedPositive)->id)
+        ->assertJsonPath('data.completion_percentage', 100)
+        ->assertJsonPath('data.completion_date', now()->toDateString());
+
+    $this->assertDatabaseHas('tasks', [
+        'id' => $task->id,
+        'task_status_id' => protectedTaskStatus(TaskStatusSystemKey::ClosedPositive)->id,
+        'completion_date' => now()->toDateString(),
+    ]);
+});
+
+it('AC-017: 422 on closure_feedback when the task requires it and none is submitted (CASO 1.b), and the status does not move', function () {
+    $actor = taskActorWith(['complete']);
+    $open = TaskStatus::factory()->completion(0)->create();
+    $task = Task::factory()->requiringClosureFeedback()->inStatus($open)->create();
+    $task->assignees()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/complete")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('closure_feedback');
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $open->id]);
+});
+
+it('AC-018: 200 and the feedback is persisted when it is submitted', function () {
+    $actor = taskActorWith(['complete']);
+    $open = TaskStatus::factory()->completion(0)->create();
+    $task = Task::factory()->requiringClosureFeedback()->inStatus($open)->create();
+    $task->assignees()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/complete", ['closure_feedback' => 'Consegnato al cliente.'])
+        ->assertOk()
+        ->assertJsonPath('data.task_status_id', protectedTaskStatus(TaskStatusSystemKey::ClosedPositive)->id);
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'closure_feedback' => 'Consegnato al cliente.']);
+});
+
+// ---------------------------------------------------------------------------
+// AC-019/AC-020/AC-021 — complete, CASO 2 (validation_status_id) and availability
+// ---------------------------------------------------------------------------
+
+it('AC-019: completing with a validation_status_id moves to that status and does NOT close the task (CASO 2)', function () {
+    $actor = taskActorWith(['complete']);
+    $task = Task::factory()->create();
+    $task->assignees()->attach($actor->id);
+    $validationStatus = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/complete", ['validation_status_id' => $validationStatus->id])
+        ->assertOk()
+        ->assertJsonPath('data.task_status_id', $validationStatus->id)
+        ->assertJsonPath('data.completion_date', now()->toDateString());
+
+    $this->assertDatabaseHas('tasks', [
+        'id' => $task->id,
+        'task_status_id' => $validationStatus->id,
+        'completion_date' => now()->toDateString(),
+    ]);
+});
+
+it('AC-020: 422 on validation_status_id when it does not belong to the in_validation group', function () {
+    $actor = taskActorWith(['complete']);
+    $task = Task::factory()->create();
+    $task->assignees()->attach($actor->id);
+    $openStatus = TaskStatus::factory()->group(TaskStatusGroup::Open)->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/complete", ['validation_status_id' => $openStatus->id])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('validation_status_id');
+});
+
+it('AC-021: 422 when the task is already closed_positive', function () {
+    $actor = taskActorWith(['complete']);
+    $task = Task::factory()->inStatus(protectedTaskStatus(TaskStatusSystemKey::ClosedPositive))->create();
+    $task->assignees()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/complete")->assertStatus(422);
+});
+
+// ---------------------------------------------------------------------------
+// AC-022/AC-023 — uncomplete
+// ---------------------------------------------------------------------------
+
+it('AC-022: an assignee reopens a closed task onto the resume status, clearing feedback and completion date', function () {
+    $actor = taskActorWith(['complete']);
+    $closed = protectedTaskStatus(TaskStatusSystemKey::ClosedPositive);
+    $task = Task::factory()->inStatus($closed)->create([
+        'closure_feedback' => 'Motivazione precedente.',
+        'completion_date' => now()->toDateString(),
+    ]);
+    $task->assignees()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/uncomplete")
+        ->assertOk()
+        ->assertJsonPath('data.task_status_id', protectedTaskStatus(TaskStatusSystemKey::InProgress)->id)
+        ->assertJsonPath('data.closure_feedback', null)
+        ->assertJsonPath('data.completion_date', null);
+
+    $this->assertDatabaseHas('tasks', [
+        'id' => $task->id,
+        'task_status_id' => protectedTaskStatus(TaskStatusSystemKey::InProgress)->id,
+        'closure_feedback' => null,
+        'completion_date' => null,
+    ]);
+});
+
+it('AC-023: an assignee reopens a task awaiting validation onto the resume status', function () {
+    $actor = taskActorWith(['complete']);
+    $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
+    $task = Task::factory()->inStatus($inValidation)->create();
+    $task->assignees()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/uncomplete")
+        ->assertOk()
+        ->assertJsonPath('data.task_status_id', protectedTaskStatus(TaskStatusSystemKey::InProgress)->id);
+});
+
+// ---------------------------------------------------------------------------
+// AC-024/AC-025/AC-026/AC-027 — approve/reject
+// ---------------------------------------------------------------------------
+
+it('AC-024: the creator approves a task awaiting validation, closing it positively', function () {
+    $actor = taskActorWith(['validate']);
+    $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
+    $task = Task::factory()->forCreator($actor)->inStatus($inValidation)->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/approve")
+        ->assertOk()
+        ->assertJsonPath('data.task_status_id', protectedTaskStatus(TaskStatusSystemKey::ClosedPositive)->id)
+        ->assertJsonPath('data.completion_percentage', 100);
+});
+
+it('AC-025: the creator rejects a task awaiting validation back to the resume status, WITHOUT clearing the feedback', function () {
+    $actor = taskActorWith(['validate']);
+    $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
+    $task = Task::factory()->forCreator($actor)->inStatus($inValidation)
+        ->create(['closure_feedback' => 'Manca il documento firmato.']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/reject")
+        ->assertOk()
+        ->assertJsonPath('data.task_status_id', protectedTaskStatus(TaskStatusSystemKey::InProgress)->id)
+        ->assertJsonPath('data.closure_feedback', 'Manca il documento firmato.')
+        ->assertJsonPath('data.completion_date', null);
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'closure_feedback' => 'Manca il documento firmato.']);
+});
+
+it('AC-026: a plain assignee (not creator, no manageAll) may not approve', function () {
+    $actor = taskActorWith(['validate']);
+    $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
+    $task = Task::factory()->inStatus($inValidation)->create();
+    $task->assignees()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/approve")->assertStatus(403);
+});
+
+it('AC-027: 422 when approving a task still in the open phase', function () {
+    $actor = taskActorWith(['validate']);
+    $task = Task::factory()->forCreator($actor)->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/approve")->assertStatus(422);
+});
+
+// ---------------------------------------------------------------------------
+// AC-028/AC-029 — block
+// ---------------------------------------------------------------------------
+
+it('AC-028: the creator blocks an unblocked task, and a second block answers 422', function () {
+    $actor = taskActorWith(['block']);
+    $task = Task::factory()->forCreator($actor)->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/block")
+        ->assertOk()
+        ->assertJsonPath('data.is_blocked', true);
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'is_blocked' => true]);
+
+    $this->postJson("/api/tasks/{$task->id}/block")->assertStatus(422);
+});
+
+it('AC-029: a plain assignee may not block (matrix: reserved to creator/requester/manager)', function () {
+    $actor = taskActorWith(['block']);
+    $task = Task::factory()->create();
+    $task->assignees()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/block")->assertStatus(403);
+});
+
+// ---------------------------------------------------------------------------
+// AC-030 — is_blocked freezes every action except unblock
+// ---------------------------------------------------------------------------
+
+it('AC-030: a blocked task answers 409 on complete/uncomplete/approve/reject, and 200 on unblock', function () {
+    $actor = taskActorWith(['complete', 'validate', 'block']);
+    $task = Task::factory()->forCreator($actor)->create(['is_blocked' => true]);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/complete")->assertStatus(409);
+    $this->postJson("/api/tasks/{$task->id}/uncomplete")->assertStatus(409);
+    $this->postJson("/api/tasks/{$task->id}/approve")->assertStatus(409);
+    $this->postJson("/api/tasks/{$task->id}/reject")->assertStatus(409);
+
+    $this->postJson("/api/tasks/{$task->id}/unblock")
+        ->assertOk()
+        ->assertJsonPath('data.is_blocked', false);
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'is_blocked' => false]);
+});
+
+// ---------------------------------------------------------------------------
+// AC-010 — an ordinary manager who is ALSO an assignee decays (D-2)
+// ---------------------------------------------------------------------------
+
+it('AC-010: an actor with tasks.manageAll who is ALSO an assignee of that task may not approve (D-2 deroga)', function () {
+    // The middle case between AC-026 (a plain assignee, no manageAll at
+    // all: the deroga is never even reached) and AC-011 (a super-admin,
+    // which takes the Gate::before path instead of TaskPolicy): an
+    // ORDINARY actor holding `tasks.manageAll` through configuration, who
+    // is also an assignee of THIS task, must decay to plain assignee.
+    $actor = taskActorWith(['manageAll', 'validate']);
+    $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
+    $task = Task::factory()->inStatus($inValidation)->create();
+    $task->assignees()->attach($actor->id);
+    $originalStatusId = $task->task_status_id;
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/approve")->assertStatus(403);
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $originalStatusId]);
+});
+
+// ---------------------------------------------------------------------------
+// AC-011 — the D-2 deroga is re-asserted in the Service, past Gate::before
+// ---------------------------------------------------------------------------
+
+it('AC-011: a super-admin who is also an assignee may not approve (the Service re-asserts D-2 past Gate::before)', function () {
+    Role::findOrCreate('super-admin');
+    $actor = User::factory()->create();
+    $actor->assignRole('super-admin');
+
+    $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
+    $task = Task::factory()->inStatus($inValidation)->create();
+    $task->assignees()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/approve")->assertStatus(403);
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $inValidation->id]);
+});
+
+// ---------------------------------------------------------------------------
+// AC-040 — ability and matrix are ANDed, not ORed, exercised over HTTP
+// ---------------------------------------------------------------------------
+
+it('AC-040: the creator of a task WITHOUT tasks.complete gets 403 from POST /complete (ability AND matrix, not OR)', function () {
+    // TaskRecordRoleMatrixTest already covers this at the Gate level, from
+    // before the endpoint existed; now that it does, the same refusal must
+    // hold over HTTP too. Deliberately NOT given `complete`: the matrix
+    // would allow it (the actor is the creator), the ability would not.
+    $actor = taskActorWith([]);
+    $task = Task::factory()->forCreator($actor)->create();
+    $originalStatusId = $task->task_status_id;
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/complete")->assertStatus(403);
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $originalStatusId]);
+});

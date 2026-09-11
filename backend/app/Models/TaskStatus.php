@@ -43,16 +43,19 @@ class TaskStatus extends BaseModel
     use HasFactory, LogsModelActivity;
 
     /**
-     * The system row pinned to the HEAD of the sort_order sequence
-     * (StatusOrderManager): the single protected opening status, at 0.
-     * Named by system_key, never by label — the label is admin-configurable
-     * and means nothing to this code (D-5). Every other row, protected or
-     * not, is placed between this head and the closing tail below.
+     * The system rows pinned to the HEAD of the sort_order sequence
+     * (StatusOrderManager), in this declared order: the protected opening
+     * status, then the protected resume status (spec 0116 D-4) a Task lands
+     * on when reopened. Named by system_key, never by label — the label is
+     * admin-configurable and means nothing to this code (D-5). Every other
+     * row, protected or not, is placed between this head and the closing
+     * tail below.
      *
      * @var array<int, TaskStatusSystemKey>
      */
     public const array SYSTEM_HEAD_KEYS = [
         TaskStatusSystemKey::Open,
+        TaskStatusSystemKey::InProgress,
     ];
 
     /**

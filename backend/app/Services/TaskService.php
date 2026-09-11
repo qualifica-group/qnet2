@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskVisibilityScope;
+use App\Services\Tasks\TaskWriteLock;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -22,19 +23,25 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Business logic for the `tasks` resource (spec 0101). The controller stays
- * thin; this Service is the single authority over the three write-time rules
- * that a FormRequest structurally cannot enforce, because each is evaluated
- * on the RESULTING record rather than on the submitted payload:
- * the sub-task hierarchy (D-12), the referent/anagrafica coherence (AC-014)
- * and the closing feedback (D-7). All three run INSIDE the write
- * transaction, so a refusal leaves the Task exactly as it was.
+ * thin; this Service is the single authority over the write-time rules that
+ * a FormRequest structurally cannot enforce. Three of them are evaluated on
+ * the RESULTING record rather than on the submitted payload: the sub-task
+ * hierarchy (D-12), the referent/anagrafica coherence (AC-014) and the
+ * closing feedback (D-7). A fourth, the structural write lock (spec 0116
+ * D-7), is the mirror case: it is evaluated on the SUBMITTED keys against
+ * the Task's CURRENT persisted state, ahead of fill() — a task_status_id
+ * sent in the same PATCH that would move the Task out of a frozen phase must
+ * not smuggle a structural field past the lock that was in force when the
+ * request arrived. All four run INSIDE the write transaction, so a refusal
+ * leaves the Task exactly as it was (AC-032).
  *
  * `creator_id` is set here from the authenticated actor and nowhere else
  * (D-10): it is absent from Task's #[Fillable], so no payload can reach it.
  *
- * delete() carries the sub-task guard (D-8a); TasksTableDefinition overrides
+ * delete() carries the sub-task guard (D-8a) and the structural write lock's
+ * assertDeletable() (spec 0116 AC-033); TasksTableDefinition overrides
  * deleteModel() to route the generic bulk-delete through this same method,
- * so the guard cannot be side-stepped (AC-016).
+ * so neither guard can be side-stepped (AC-016).
  */
 class TaskService
 {
@@ -105,14 +112,20 @@ class TaskService
     }
 
     /**
-     * Update a Task. Only the submitted keys are touched (partial PATCH);
-     * the three guards run against the model's RESULTING state, so a PATCH
-     * that submits only `task_status_id` is still judged against the
-     * persisted flag/feedback/parent (AC-035).
+     * Update a Task. Only the submitted keys are touched (partial PATCH).
+     * The structural write lock (spec 0116 D-7) is asserted FIRST, against
+     * the Task as it stood BEFORE this PATCH touches it — otherwise a
+     * `task_status_id` submitted in the same request could unfreeze the
+     * phase in memory and let a structural field ride along (AC-031/AC-032).
+     * The other three guards run against the model's RESULTING state, so a
+     * PATCH that submits only `task_status_id` is still judged against the
+     * persisted flag/feedback/parent (AC-035 of spec 0101).
      */
     public function update(Task $task, UpdateTaskData $data): Task
     {
         DB::transaction(function () use ($task, $data): void {
+            TaskWriteLock::assertStructuralWriteAllowed($task, $this->submittedKeys($data));
+
             $task->fill($data->submittedAttributes());
 
             $this->hierarchyGuard->assertAcyclic($task->id, $task->parent_task_id);
@@ -149,6 +162,8 @@ class TaskService
         if ($task->subtasks()->exists()) {
             abort(409, 'This task has sub-tasks and cannot be deleted.');
         }
+
+        TaskWriteLock::assertDeletable($task);
 
         $task->delete();
     }
@@ -248,6 +263,29 @@ class TaskService
                     ->with(['taskStatus', 'assignees']);
             },
         ];
+    }
+
+    /**
+     * The column keys the client actually submitted on this PATCH, plus
+     * `assignee_ids`/`watcher_ids` when their own key was present — the two
+     * pivots are structural (D-5) but never travel through
+     * submittedAttributes(), which only carries `tasks` columns.
+     *
+     * @return array<int, string>
+     */
+    private function submittedKeys(UpdateTaskData $data): array
+    {
+        $keys = array_keys($data->submittedAttributes());
+
+        if ($data->hasAssigneeIds()) {
+            $keys[] = 'assignee_ids';
+        }
+
+        if ($data->hasWatcherIds()) {
+            $keys[] = 'watcher_ids';
+        }
+
+        return $keys;
     }
 
     /**

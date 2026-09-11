@@ -49,6 +49,13 @@ export const permissions = {
     // Spec 0106: generate/download Request Management's CSV report
     // (`request-management.report`), independent of `export` (grid rows).
     report: 'Generate report',
+    // Spec 0116: the Task record-role matrix. `manageAll` is the "gestore"
+    // permission (D-2, distinct from `viewAll`); `complete`/`block` gate the
+    // domain actions of the same name; `validate` reuses the ability already
+    // declared above for contracts.
+    manageAll: 'Manage all',
+    complete: 'Complete',
+    block: 'Block',
   },
   resources: {
     users: 'Users',

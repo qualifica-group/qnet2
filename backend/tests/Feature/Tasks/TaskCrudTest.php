@@ -38,7 +38,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -139,6 +139,15 @@ it('AC-011: POST with completion_percentage in the payload is 422, even for a su
 
     $this->postJson('/api/tasks', taskPayload(['completion_percentage' => 90]))
         ->assertStatus(422)->assertJsonValidationErrors('completion_percentage');
+});
+
+it('AC-011: POST with is_blocked in the payload is 422, even for a super-admin (spec 0116 D-6)', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignRole(Role::findOrCreate('super-admin'));
+    Sanctum::actingAs($superAdmin);
+
+    $this->postJson('/api/tasks', taskPayload(['is_blocked' => true]))
+        ->assertStatus(422)->assertJsonValidationErrors('is_blocked');
 });
 
 it('AC-011: PATCH cannot reassign creator_id: 422 and the original creator stands', function () {

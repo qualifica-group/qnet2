@@ -67,18 +67,15 @@ describe('buildUpdatePayload', () => {
   })
 
   it('AC-011/AC-084: never carries creator_id nor completion_percentage, whatever changed', () => {
-    const payload = buildUpdatePayload(
-      values({ title: 'X', task_status_id: 99, is_blocked: true }),
-      task(),
-    )
+    const payload = buildUpdatePayload(values({ title: 'X', task_status_id: 99 }), task())
 
     expect(payload).not.toHaveProperty('creator_id')
     expect(payload).not.toHaveProperty('completion_percentage')
   })
 
-  it('AC-086: the blocked flag travels on its own, without touching the status', () => {
-    const payload = buildUpdatePayload(values({ is_blocked: true }), task())
+  it('AC-045 (spec 0116 D-6): is_blocked is no longer a key `TaskFormValues` can carry', () => {
+    const payload = buildUpdatePayload(values({ title: 'X' }), task())
 
-    expect(payload).toEqual({ is_blocked: true })
+    expect(payload).not.toHaveProperty('is_blocked')
   })
 })

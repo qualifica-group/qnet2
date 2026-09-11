@@ -3,6 +3,89 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MODULO TASK — FASE 3: RUOLI SUL RECORD + AZIONI (spec 0116) — VERDE, NON COMMITTATO (2026-09-11)
+
+**Cosa e'.** Terza fase del modulo Task, dopo la Fase 1 (spec 0101). Nasce dal documento di
+prodotto dell'utente `DOC Tasks.docx`: di quel documento erano implementati solo i CAMPI, tutto
+il comportamento mancava. L'utente ha scelto due voci — matrice di autorizzazione per RUOLO SUL
+RECORD e azioni di dominio — lasciando fuori il resto (vedi "Cosa resta fuori").
+
+**Le sei decisioni dell'utente, congelate nella spec (D-2..D-7, D-9, D-10).**
+- Il "gestore" e' un permesso NUOVO `tasks.manageAll`, non un ruolo. Separa "vedere tutto"
+  (`tasks.viewAll`, preesistente) da "comandare tutto".
+- Ruoli cumulati: VINCE IL PIU' PERMISSIVO. AC-083 della spec 0101 NON e' ritirato (si puo'
+  essere assegnatario e osservatore insieme) e il divieto del documento NON e' implementato.
+- Stato di ripresa designato per CHIAVE: `TaskStatusSystemKey::InProgress`, sulla riga "In corso".
+- PATCH su Task congelato: rifiuta le SOLE chiavi strutturali (422 per campo), non l'intero body.
+- Segnatempo e notifiche restano FUORI; l'azione "Richiedi aggiornamento" pure.
+
+**NAMING CONGELATO, da riusare e non reinventare.**
+- `App\Services\Tasks\TaskRecordRoles` (STATICA) — CHI e' l'attore sul record.
+- `App\Services\Tasks\TaskAbilityResolver` (STATICA) — LA MATRICE, unico posto dove vive.
+  Costante `PROTECTED_FIELDS` = i 17 campi del mandato.
+- `App\Services\Tasks\TaskActionAvailability` (INIETTABILE) — QUANDO un'azione ha senso.
+- `App\Services\Tasks\TaskWriteLock` (STATICA) — `OPERATIVE_KEYS`, `isLocked`,
+  `assertStructuralWriteAllowed`, `assertDeletable`.
+- `App\Services\Tasks\TaskActionService` — le sei azioni.
+Le prime due e la quarta DEVONO restare statiche: le consuma `TaskPolicy`, e `permissions:sync`
+istanzia ogni Policy con `new $class` senza container. Renderle iniettabili = fatal error al sync.
+
+**CONTRATTO API (congelato, il frontend lo consuma gia').** Sei POST su `/api/tasks/{task}/`:
+`complete` (body `{closure_feedback?, validation_status_id?}`), `uncomplete`, `approve`,
+`reject`, `block`, `unblock`. Tutte rispondono `okWithPermissions(TaskResource)`.
+Transizioni: complete senza `validation_status_id` e approve -> riga `closed_positive`;
+uncomplete e reject -> riga `in_progress`. `uncomplete` CANCELLA `closure_feedback`, `reject` NO
+(e' la motivazione del validatore). Errori: 403 authz, 409 Task bloccato, 422 fase/validazione.
+`permissions.actions` espone i sei flag = ability AND matrice AND disponibilita'.
+
+**TRE RETTIFICHE ALLA SPEC fatte durante il build — leggerle prima di toccare questa roba.**
+1. `completion_percentage` di `in_progress` e' **50, non 25**. Il 25 era il bootstrap ritirato
+   dalla `2026_09_04_120000`; il valore vivo nel catalogo e' 50. NB: il quinto elemento della
+   tupla di `TaskTaxonomyCatalogue::STATUSES` e' la PERCENTUALE, non `sort_order`.
+2. `TaskAbilityResolver` NON ha `canRequestUpdate`: sarebbe stato un metodo senza chiamanti.
+   La riga della matrice nascera' col suo endpoint.
+3. **Il write lock si valuta PRIMA di `fill()`**, sullo stato PERSISTITO — a differenza di
+   `TaskClosureFeedbackGuard`, che si valuta DOPO, sullo stato RISULTANTE. L'asimmetria e'
+   INTENZIONALE: il lock chiede "da dove parti", il feedback "dove arrivi". Valutandolo dopo,
+   un PATCH con `task_status_id` (chiave operativa) verso uno stato non congelato avrebbe
+   scongelato il Task e fatto passare i campi strutturali nello stesso body — il lucchetto si
+   apriva con la chiave che esso stesso autorizza. Chi "uniforma" i due guard riapre il buco.
+   Coperto da AC-050.
+
+**DUE TRAPPOLE TROVATE QUI, che costano ore se riscoperte.**
+- `QuoteWorkflowMigrationTest.php` ha un contatore HARD-CODED di rollback (`--step`), oggi 60,
+  con l'istruzione nel docblock "Adding a migration means bumping this number". OGNI migration
+  nuova, di QUALUNQUE modulo, rompe quel test finche' non si alza il numero. Si vede solo
+  eseguendo la suite INTERA: il modulo su cui lavori resta verde.
+- `taskActorWith()` e' duplicato in 11 file di `tests/Feature/Tasks/` con guard `function_exists`:
+  PHP tiene solo la PRIMA in ordine alfabetico (`TaskClosureFeedbackTest.php`). Creava solo le 9
+  ability vecchie e ignorava le 4 nuove -> `PermissionDoesNotExist` solo a suite intera, verde in
+  isolamento. Ora tutte e 11 le copie creano le stesse 13 ability: se ne aggiungi una, aggiornale
+  TUTTE, non solo quella del file su cui stai lavorando.
+- Xdebug 3.4.0alpha2-dev su PHP 8.4.23 SEGFAULTA (exit 139) sulla suite intera. Usare
+  `XDEBUG_MODE=off ./vendor/bin/pest`. Non e' un difetto del codice.
+
+**VERIFICA ESEGUITA (verifier indipendente, su albero fermo, dopo le correzioni).**
+`XDEBUG_MODE=off ./vendor/bin/pest` -> 6999 test, 6998 passed, 1 skipped, **0 failed**, 29254
+asserzioni. `migrate:fresh --seed` EXIT 0. `pint --dirty --test` passed.
+`npx vitest run` -> 628 file, 4766/4766. `npx tsc -b --force --pretty false` EXIT 0.
+Tutti gli AC-001..AC-050 PASS, mappati 1:1 su test nominati.
+
+**COSA RESTA FUORI (non e' incompleto: e' deciso).** Le 11 classi di notifica `Task*` e ogni
+mail; il segnatempo (il pop-up di chiusura chiede il solo feedback); l'azione "Richiedi
+aggiornamento"; note e documenti sul Task; campi obbligatori alla creazione e stato iniziale
+automatico; ricorrenza; Fase 2 della spec 0101 (Task collegati dentro Opportunita'/Commessa/
+Anagrafica). Punto d'innesto per le notifiche gia' dichiarato: la chiusura di ogni metodo
+pubblico di `TaskActionService`. NON sono stati creati eventi o listener vuoti in anticipo.
+
+**DEBITO NOTO, segnalato e non risolto.** `backend/app/Services/TaskService.php` e' a 319 righe
+(era 281): ha superato il soft limit di 300 a causa di questa spec, va valutato lo split al
+prossimo intervento. Sopra soglia anche `TaskActionsTest.php` (350, file nuovo) e
+`frontend/src/features/tasks/task-detail.test.tsx` (336). Nessuno supera l'hard limit di 500.
+
+**PROSSIMO PASSO.** Lavoro VERDE e NON COMMITTATO (§3.6: il commit lo chiede l'utente).
+Se si prosegue col modulo Task, l'ordine naturale e': segnatempo -> notifiche -> note/documenti.
+
 ## AUDIT "TRADUZIONI NON MAPPATE" SU DETTAGLIO+FORM DI 8 MODULI (segnalazione utente 2026-09-11) — VERDE, NON COMMITTATO
 
 **Segnalazione utente.** "Controllati tutte le traduzioni di dettaglio e form di lead, campagna,

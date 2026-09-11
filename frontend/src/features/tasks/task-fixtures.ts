@@ -58,7 +58,6 @@ export function taskFormValues(overrides: Partial<TaskFormValues> = {}): TaskFor
     start_time: '09:00',
     end_time: '10:30',
     estimated_minutes: 90,
-    is_blocked: false,
     requires_closure_feedback: false,
     closure_feedback: null,
     assignee_ids: [31, 32],

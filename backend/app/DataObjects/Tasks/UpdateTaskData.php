@@ -12,7 +12,7 @@ namespace App\DataObjects\Tasks;
  * property cannot distinguish "not submitted" (leave as is) from "submitted
  * as null" (clear it): the `*Submitted` flags carry that distinction, the
  * same convention as UpdateTaskTypeData/UpdateWorkOrderData. `title`,
- * `taskStatusId`, `isBlocked` and `requiresClosureFeedback` are
+ * `taskStatusId` and `requiresClosureFeedback` are
  * `sometimes|required`/`sometimes|boolean` at the FormRequest layer, so a
  * non-null value already means "submitted" and they need no flag of their
  * own.
@@ -21,8 +21,10 @@ namespace App\DataObjects\Tasks;
  * means "not submitted, leave the pivot untouched", an array — INCLUDING the
  * empty one — is an authoritative full-replace sync (AC-012).
  *
- * `creatorId` is GONE (D-10) and `completionPercentage` never existed (D-6):
- * both are `prohibited` at the FormRequest layer and never reach this DTO.
+ * `creatorId` is GONE (D-10), `completionPercentage` never existed (D-6) and
+ * `isBlocked` is GONE too (spec 0116 D-6): all three are `prohibited` at the
+ * FormRequest layer and never reach this DTO — `is_blocked` is written only
+ * by the block/unblock domain actions, never by a PATCH.
  *
  * submittedAttributes() is driven by the two static maps below rather than by
  * twenty-two near-identical `if` blocks: the sparse-PATCH contract is a
@@ -40,7 +42,6 @@ final readonly class UpdateTaskData
     private const array REQUIRED_WHEN_SUBMITTED = [
         'title' => 'title',
         'task_status_id' => 'taskStatusId',
-        'is_blocked' => 'isBlocked',
         'requires_closure_feedback' => 'requiresClosureFeedback',
     ];
 
@@ -78,7 +79,6 @@ final readonly class UpdateTaskData
     public function __construct(
         public ?string $title = null,
         public ?int $taskStatusId = null,
-        public ?bool $isBlocked = null,
         public ?bool $requiresClosureFeedback = null,
         public ?string $description = null,
         public bool $descriptionSubmitted = false,
@@ -130,7 +130,6 @@ final readonly class UpdateTaskData
         return new self(
             title: isset($data['title']) ? (string) $data['title'] : null,
             taskStatusId: isset($data['task_status_id']) ? (int) $data['task_status_id'] : null,
-            isBlocked: isset($data['is_blocked']) ? (bool) $data['is_blocked'] : null,
             requiresClosureFeedback: isset($data['requires_closure_feedback']) ? (bool) $data['requires_closure_feedback'] : null,
             description: self::nullableString($data, 'description'),
             descriptionSubmitted: array_key_exists('description', $data),

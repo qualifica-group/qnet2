@@ -43,7 +43,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -233,7 +233,15 @@ it('AC-035: a PATCH sending ONLY task_status_id passes when the feedback is alre
     $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $closing->id]);
 });
 
-it('AC-035: a PATCH raising the flag on an already-closed task with no feedback -> 422', function () {
+// REQUIREMENT CHANGED (spec 0116 D-7): a Task in a closing phase is now
+// FROZEN, and `requires_closure_feedback` is a STRUCTURAL field (D-5) — not
+// one of the two operative keys the write lock still accepts
+// (`task_status_id`, `closure_feedback`). App\Services\Tasks\TaskWriteLock
+// therefore intercepts this payload BEFORE TaskClosureFeedbackGuard ever
+// runs, so the 422 now lands on `requires_closure_feedback` rather than on
+// `closure_feedback`. The outcome this test actually cares about — nothing
+// is written — still holds, so only the validation key changed.
+it('AC-035: raising the flag on an already-closed task is 422 from the write lock (spec 0116 D-7), not the closure-feedback guard', function () {
     $actor = taskActorWith(['view', 'update']);
     $closing = closingTaskStatus(TaskStatusSystemKey::ClosedNegative);
     // The status is persisted and NOT resubmitted: the mirror image of the
@@ -242,7 +250,7 @@ it('AC-035: a PATCH raising the flag on an already-closed task with no feedback 
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/tasks/{$task->id}", ['requires_closure_feedback' => true])
-        ->assertStatus(422)->assertJsonValidationErrors('closure_feedback');
+        ->assertStatus(422)->assertJsonValidationErrors('requires_closure_feedback');
 
     $this->assertDatabaseHas('tasks', ['id' => $task->id, 'requires_closure_feedback' => false]);
 });

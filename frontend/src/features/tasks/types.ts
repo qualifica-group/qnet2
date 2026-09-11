@@ -114,7 +114,11 @@ export interface TaskDetail {
   start_time: string | null
   end_time: string | null
   estimated_minutes: number | null
-  /** "Bloccato/contestato" — a flag DISTINCT from the status (AC-086). */
+  /**
+   * "Bloccato/contestato" — a flag DISTINCT from the status (AC-086).
+   * Read-only here (spec 0116 D-6): written ONLY by `blockTask`/`unblockTask`,
+   * never part of `CreateTaskPayload`/`UpdateTaskPayload`.
+   */
   is_blocked: boolean
   requires_closure_feedback: boolean
   closure_feedback: string | null
@@ -139,9 +143,32 @@ export interface TaskDetailWithPermissions extends TaskDetail {
 }
 
 /**
+ * The six domain action keys `TasksAuthorization::actions()` adds to
+ * `permissions.actions` (spec 0116 data_contract): complete/reopen a task,
+ * approve/reject its validation, block/unblock it. Each flag on
+ * `ResourcePermissions.actions` is already the AND of ability, record-role
+ * matrix and state availability (D-1) — the frontend never recomputes it,
+ * only reads it (see `task-action-availability.ts` for the UX-only mirror of
+ * the state half).
+ */
+export type TaskActionKey = 'complete' | 'uncomplete' | 'approve' | 'reject' | 'block' | 'unblock'
+
+/**
+ * Payload for POST /tasks/{id}/complete (spec 0116 data_contract). CASO 1
+ * (chiusura) omits `validation_status_id`; CASO 2 (richiedi validazione)
+ * sends it, validated server-side as belonging to the `in_validation` group.
+ */
+export interface CompleteTaskPayload {
+  closure_feedback?: string | null
+  validation_status_id?: number | null
+}
+
+/**
  * Payload for POST /tasks (create). `creator_id` and `completion_percentage`
  * are `prohibited` server-side (D-6/D-10) and are therefore NOT keys of this
- * type: a caller cannot include them even by accident.
+ * type: a caller cannot include them even by accident. `is_blocked` left the
+ * catalog entirely (spec 0116 D-6): it is written ONLY by `/block`/`/unblock`,
+ * never by a PATCH, so it is not a key here either.
  */
 export interface CreateTaskPayload {
   title: string
@@ -163,7 +190,6 @@ export interface CreateTaskPayload {
   start_time?: string | null
   end_time?: string | null
   estimated_minutes?: number | null
-  is_blocked?: boolean
   requires_closure_feedback?: boolean
   closure_feedback?: string | null
   /** Flat id arrays (AC-083); the same user may appear in both. */

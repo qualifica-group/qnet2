@@ -6,8 +6,9 @@ import type { TaskFormValues } from '@/features/tasks/task-schema'
  * The scalars that map 1:1 from form values onto the wire, in the frozen
  * contract's own order. Extracted so create and the PATCH diff below read the
  * SAME projection and can never disagree on which fields exist.
- * `completion_percentage` and `creator_id` are absent from `TaskFormValues`
- * altogether (D-6/D-10), so no builder can leak them (AC-011/AC-084).
+ * `completion_percentage`, `creator_id` and `is_blocked` are absent from
+ * `TaskFormValues` altogether (spec 0101 D-6/D-10, spec 0116 D-6), so no
+ * builder can leak them (AC-011/AC-084/AC-045).
  */
 function scalarsOf(values: TaskFormValues) {
   return {
@@ -29,7 +30,6 @@ function scalarsOf(values: TaskFormValues) {
     start_time: values.start_time,
     end_time: values.end_time,
     estimated_minutes: values.estimated_minutes,
-    is_blocked: values.is_blocked,
     requires_closure_feedback: values.requires_closure_feedback,
     closure_feedback: values.closure_feedback,
   }
@@ -83,7 +83,6 @@ export function buildUpdatePayload(values: TaskFormValues, original: TaskDetail)
   if (scalars.estimated_minutes !== original.estimated_minutes) {
     payload.estimated_minutes = scalars.estimated_minutes
   }
-  if (scalars.is_blocked !== original.is_blocked) payload.is_blocked = scalars.is_blocked
   if (scalars.requires_closure_feedback !== original.requires_closure_feedback) {
     payload.requires_closure_feedback = scalars.requires_closure_feedback
   }

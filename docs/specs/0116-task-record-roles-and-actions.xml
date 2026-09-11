@@ -1,0 +1,495 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0116-task-record-roles-and-actions" status="draft" owner="nicola" date="2026-09-11">
+
+  <goal>
+    Dare al modulo Task il comportamento che oggi gli manca: una matrice di autorizzazione
+    per RUOLO SUL RECORD (creatore/richiedente, assegnatario, osservatore, gestore) sopra il
+    CRUD generico gia' esistente, e sei azioni di dominio (completa, riapri, approva/rifiuta
+    validazione, blocca/sblocca) con l'enforcement degli stati che congelano il Task.
+    FASE 3 del modulo (la Fase 1 e' la spec 0101, gia' verde).
+  </goal>
+
+  <context>
+    Fatti VERIFICATI nel repo il 2026-09-11 (non ipotizzati), che vincolano il disegno.
+
+      - ORIGINE. Documento di prodotto dell'utente "DOC Tasks.docx", sezioni "Stati
+        Particolari", "Azioni" e "Permessi e Azioni". Il confronto documento/repo e' stato
+        fatto in questa sessione: della roadmap del documento e' implementata la sola
+        sezione dei campi (Fase 1).
+
+      - `App\Policies\TaskPolicy` oggi fa SOLO CRUD generico (`BasePolicy` -> permessi
+        `tasks.{viewAny,view,create,update,delete,export,import,viewActivity}`) piu'
+        `viewAll`, e applica lo scope di appartenenza `App\Services\Tasks\TaskVisibilityScope`
+        su `view`/`update`/`delete`. Nessuna distinzione fra i quattro ruoli sul record.
+
+      - `App\Authorization\AbstractResourceAuthorization` espone gia' DUE hook no-op
+        documentati come "override in a future ownership-scoped resource" e "override in a
+        future resource-state-aware resource": `appliesOwnership()` e
+        `appliesResourceState()`. Sono l'innesto previsto dal motore per esattamente questa
+        feature: la matrice per ruolo sul record NON richiede un meccanismo nuovo.
+        `fieldPermissions()` e' `final` e interseca il CEILING della classe concreta con la
+        matrice DB per ruolo di sistema (spec 0006): il DB puo' solo RESTRINGERE. Quindi il
+        ruolo sul record si esprime abbassando il ceiling in `fieldPermissionCeiling()`, mai
+        aggirando `fieldPermissions()`.
+
+      - `actions()` + `actionPermissions()` sono il canale gia' esistente con cui il
+        backend dice al frontend quali azioni offrire su un record. `TasksAuthorization`
+        oggi dichiara `['delete','export','import','view_activity']`.
+
+      - IL CALCO DELLE AZIONI ESISTE ED E' COLLAUDATO: il modulo Contratti (spec 0072/0095).
+        `routes/api/contracts.php` espone `contracts/{contract}/validate|terminate|reactivate|change-status`,
+        ciascuna servita da un controller INVOKABLE che fa `authorize()` -> Service ->
+        `okWithPermissions()`. `App\Services\Contracts\ContractActionAvailability` e' la
+        regola di DISPONIBILITA' (quali azioni ammette lo stato corrente), dichiarata
+        esplicitamente "an availability rule, NOT an authorization one: each caller still
+        ANDs it with the actor's ability, and ContractActionService re-asserts the same
+        rules server-side (422)". `ContractsAuthorization::actionPermissions()` fa l'AND di
+        disponibilita' e permesso. Il frontend lo consuma in
+        `features/contracts/contract-actions-bar.tsx` (`lifecycle.X &amp;&amp; contract.permissions.actions.X`),
+        con `contract-lifecycle.ts` come specchio client e un dialog per azione.
+        Questa spec RIUSA quel calco riga per riga; non ne inventa un altro.
+
+      - `App\Enums\TaskStatusGroup`: Open, Pending, InValidation, ClosedPositive,
+        ClosedNegative, piu' `isClosing()`. `App\Enums\TaskStatusSystemKey` ha oggi TRE casi
+        (Open, ClosedPositive, ClosedNegative): la D-5 della spec 0101 ne ritiro' tre
+        (`in_progress`, `pending`, `in_validation`) perche' erano "fasi travestite da chiavi
+        di sistema". Vedi D-3 qui sotto per il perche' `in_progress` rientra.
+
+      - `database/seeders/QualificaCatalog/TaskTaxonomyCatalogue.php` porta 8 righe ordinarie
+        (`STATUSES`) e 3 protette (`PROTECTED_STATUSES`, agganciate per `system_key`, mai per
+        nome). "In corso" e' oggi una riga ORDINARIA: `['In corso', TaskStatusGroup::Open,
+        'violet', 'activity', 50]`.
+
+      - `App\Services\Tasks\TaskClosureFeedbackGuard` applica gia' la regola D-7 (feedback
+        obbligatorio verso uno stato di chiusura) sullo stato RISULTANTE, dentro la
+        transazione del Service. Le azioni di questa spec la RIUSANO, non la duplicano.
+
+      - `App\Services\TaskService` (281 righe) contiene una sola `abort()` (409 sui
+        sotto-task) e nessuna notifica. `TaskController` e' thin e gia' allega il blocco
+        `permissions` su show/store/update.
+
+      - `permissions:sync` (`app/Console/Commands/SyncPermissions.php`) fa glob su
+        `app/Policies/*.php` e deriva le ability per riflessione da `abilities()`, istanziando
+        ogni Policy con `new $class`: una Policy resta COSTRUIBILE SENZA CONTAINER, ed e' il
+        motivo per cui `TaskVisibilityScope` e' statico. Ogni classe che la Policy consuma
+        deve essere statica o istanziabile a mano.
+
+      - Il ruolo privilegiato e' `App\Services\RoleAssignmentGuard::PRIVILEGED_ROLE` =
+        `super-admin`, che bypassa i Gate. Conseguenza operativa: una regola di business che
+        deve valere ANCHE per il super-admin non puo' vivere nella Policy (che il Gate
+        scavalca) ma nel Service. E' il motivo per cui la deroga di D-2 e' ri-asserita nel
+        Service, esattamente come fanno i Contratti.
+
+      - Test esistenti da NON rompere: `tests/Feature/Tasks/` (TaskCrudTest,
+        TaskPermissionsTest, TaskVisibilityTest, TaskClosureFeedbackTest, TaskSchemaTest,
+        TaskMetaTest, TaskTableTest, TaskModuleHygieneTest, TaskDeleteGuardTest,
+        TaskCompletionPercentageTest) e `tests/Feature/TaskConfig/`. Frontend:
+        `features/tasks/*.test.ts(x)`.
+
+    Naming: identificatori in INGLESE. "Creatore", "Richiedente", "Assegnatario",
+    "Osservatore", "In corso" vivono SOLO nelle stringhe i18n.
+  </context>
+
+  <decisions>
+
+    <decision id="D-1">
+      TRE CLASSI DISTINTE, NESSUNA SOVRAPPOSIZIONE, tutte in `App\Services\Tasks\`:
+        - `TaskRecordRoles` — CHI e' l'attore su questo record. Statica e stateless
+          (la consuma la Policy): `isCreator`, `isRequester`, `isAssignee`, `isWatcher`,
+          `isManager`.
+        - `TaskAbilityResolver` — LA MATRICE ruolo -> azione. Statica e stateless:
+          `canUpdate`, `canUpdateProtectedFields`, `canDelete`, `canComplete`,
+          `canValidate`, `canBlock`. E' l'UNICO punto in cui la matrice del documento e'
+          scritta; Policy, Authorization e Service la leggono tutti da qui e non possono
+          divergere per costruzione.
+        - `TaskActionAvailability` — QUANDO un'azione ha senso, in funzione dello stato
+          corrente. Iniettabile (la consumano Authorization e Service, non la Policy):
+          `isCompletable`, `isUncompletable`, `isValidatable`, `isBlockable`,
+          `isUnblockable`.
+      La separazione CHI / QUANDO e' la stessa dei Contratti: la disponibilita' NON e'
+      autorizzazione, e ogni chiamante fa l'AND delle due.
+    </decision>
+
+    <decision id="D-2">
+      IL "GESTORE" E' UN PERMESSO NUOVO, NON UN RUOLO (risposta utente 2026-09-11).
+      Nuova ability `tasks.manageAll` (`TaskPolicy::abilities()`), configurabile su
+      qualunque ruolo. Il `super-admin` la ottiene di riflesso dal `Gate::before`.
+      Separa "vedere tutto" (`tasks.viewAll`, gia' esistente) da "comandare tutto": un
+      ruolo di sola supervisione non eredita validazione, blocco ed eliminazione.
+
+      DEROGA DEL DOCUMENTO, VINCOLANTE: "i permessi dell'admin valgono tutti tranne quando
+      e' stesso l'admin ad essere un assegnatario, in quel caso si comporta come un
+      assegnatario normale". Formalizzata cosi': `TaskRecordRoles::isManager()` risponde
+      true solo se l'attore ha `tasks.manageAll` E NON e' assegnatario di quel Task. Se e'
+      assegnatario, contano solo i suoi ruoli genuini sul record.
+      La deroga e' una regola di BUSINESS, quindi e' ri-asserita nel `TaskActionService`
+      (403) oltre che nella Policy: il `Gate::before` del super-admin scavalca la Policy, e
+      senza la ri-asserzione il pulsante sarebbe nascosto ma l'endpoint aperto.
+    </decision>
+
+    <decision id="D-3">
+      RUOLI CUMULATI: VINCE IL PIU' PERMISSIVO (risposta utente 2026-09-11). I ruoli sul
+      record si SOMMANO: chi e' creatore e anche osservatore ha i poteri del creatore.
+      La Fase 1 resta intatta — AC-083 della spec 0101 (un utente puo' essere sia
+      assegnatario sia osservatore) NON viene ritirato, e il divieto "creatore/richiedente/
+      assegnatario non puo' essere osservatore" presente nel documento NON viene
+      implementato: contraddice una decisione gia' verde, e l'utente ha scelto di non
+      toccarla. L'unica eccezione alla somma e' la deroga del gestore (D-2).
+    </decision>
+
+    <decision id="D-4">
+      STATO DI RIPRESA DESIGNATO PER CHIAVE (risposta utente 2026-09-11: riga "In corso",
+      fase `open`). Le tre azioni che riaprono un Task (riapertura, rifiuto della
+      validazione) devono atterrare su uno stato determinato; agganciarlo per LABEL e'
+      vietato (la label non entra mai in una condizione) e la riga "In corso" e' oggi
+      ordinaria, quindi rinominabile e cancellabile.
+      Si reintroduce quindi `TaskStatusSystemKey::InProgress = 'in_progress'`, la riga
+      diventa PROTETTA e passa da `TaskTaxonomyCatalogue::STATUSES` a `PROTECTED_STATUSES`.
+
+      INVERSIONE CONSAPEVOLE DI UNA DECISIONE PRECEDENTE, da non "correggere" in futuro
+      senza leggere qui: la D-5 della spec 0101 ritiro' `in_progress` il 2026-09-04 perche'
+      la usava come CLASSIFICAZIONE (una fase travestita da chiave), e `system_key` e'
+      UNIQUE quindi non puo' classificare molti-a-uno. Qui la chiave serve a tutt'altro:
+      DESIGNARE UNA RIGA SINGOLA come bersaglio della riapertura, che e' esattamente cio'
+      per cui `system_key` esiste. La fase resta su `group`. I due usi non confliggono.
+
+      NON si designa per chiave lo stato "In validazione": il vocabolario del cliente ne ha
+      DUE (preanalisi ed esecuzione) e `system_key` e' unique, quindi sceglierne una sarebbe
+      arbitrario. L'azione di completamento con richiesta di validazione riceve dal client
+      l'id dello stato bersaglio, validato server-side come appartenente alla fase
+      `in_validation` (vedi data_contract).
+    </decision>
+
+    <decision id="D-5">
+      CAMPI PROTETTI. Il documento distingue "Modifica task" da "Modifica campi protetti"
+      senza elencare quali siano. La ripartizione e' questa, e il criterio e' unico: e'
+      protetto tutto cio' che definisce il MANDATO (chi risponde, entro quando, di cosa),
+      e' libero cio' che riguarda la sua ESECUZIONE.
+        - PROTETTI (solo creatore/richiedente/gestore): `title`, `registry_id`,
+          `referent_id`, `parent_task_id`, `task_type_id`, `task_priority_id`,
+          `task_importance_id`, `task_category_id`, `opportunity_id`, `work_order_id`,
+          `requester_id`, `start_date`, `end_date`, `estimated_minutes`,
+          `requires_closure_feedback`, `assignee_ids`, `watcher_ids`.
+        - LIBERI (anche l'assegnatario): `description`, `task_status_id`,
+          `completion_date`, `start_time`, `end_time`, `closure_feedback`.
+      Implementato ABBASSANDO il ceiling in `TasksAuthorization::fieldPermissionCeiling()`
+      (`visibleReadonly` invece di `visibleEditable` sui protetti quando l'attore non e'
+      creatore/richiedente/gestore), quindi la difesa e' gia' doppia: il ceiling nega il
+      campo in `GET /meta/tasks` e in `permissions.fields`, e `EnforcesFieldPermissions`
+      (gia' usato da `StoreTaskRequest`/`UpdateTaskRequest`) respinge 422 il campo submesso.
+      Nessun meccanismo nuovo.
+    </decision>
+
+    <decision id="D-6">
+      `is_blocked` ESCE DAL CATALOGO DEI CAMPI. Diventa scrivibile SOLO dalle azioni
+      blocca/sblocca, mai da un PATCH — esattamente come i Contratti fanno con
+      `validated_at`/`terminated_at` ("written only by the domain actions, never by a
+      PATCH"). Lasciarlo scrivibile aprirebbe un buco: un attore senza `tasks.block`
+      girerebbe l'azione con un PATCH.
+      CONSEGUENZA ACCETTATA: esce da `TasksAuthorization::FIELD_TYPES` (quindi dalla matrice
+      di campo per ruolo, dove eventuali righe `tasks.is_blocked` in
+      `role_field_permissions` restano orfane e inerti), da `UpdateTaskRequest::rules()`
+      (dove diventa `prohibited`, come gia' `creator_id`), e dal form frontend. L'ordine dei
+      campi congelato da AC-053 della spec 0101 cambia di conseguenza: i test
+      `TaskSchemaTest`/`TaskMetaTest` vanno aggiornati perche' il REQUISITO e' cambiato, non
+      per farli passare.
+    </decision>
+
+    <decision id="D-7">
+      BLOCCO STRUTTURALE (risposta utente 2026-09-11: rifiuta le sole chiavi strutturali).
+      Un Task e' CONGELATO quando `is_blocked = true` oppure quando la FASE del suo stato
+      corrente e' in {`in_validation`, `closed_positive`, `closed_negative`}. Su un Task
+      congelato:
+        - il PATCH accetta le chiavi OPERATIVE `task_status_id` e `closure_feedback`;
+        - risponde 422 sulle SOLE chiavi strutturali submesse, una per una, con il messaggio
+          per campo; il resto del payload viene applicato;
+        - `DELETE` risponde 409.
+      Implementato in `App\Services\Tasks\TaskWriteLock`, invocato dal `TaskService` dentro
+      la transazione PRIMA del save, sulle chiavi effettivamente submesse (non su quelle
+      risultanti): un PATCH parziale che non tocca nulla di strutturale passa sempre.
+
+      PRECISAZIONE aggiunta in fase di build (2026-09-11), su rilievo del teammate MT-05.
+      Il lock si valuta PRIMA di `fill()`, sullo stato PERSISTITO, e questo lo distingue
+      deliberatamente da `TaskClosureFeedbackGuard`, che si valuta DOPO `fill()` sullo stato
+      RISULTANTE. La prima stesura suggeriva di specchiare quel guard ed era un errore:
+      valutando dopo il `fill()`, un PATCH che porta `task_status_id` (chiave OPERATIVA,
+      quindi sempre ammessa) verso uno stato non congelato E insieme un campo strutturale
+      avrebbe trovato il Task gia' "scongelato" e sarebbe passato — il lock si sarebbe aperto
+      da solo con la chiave che esso stesso autorizza. I due guard leggono due stati diversi
+      perche' rispondono a due domande diverse: "da dove parti" (lock) e "dove arrivi"
+      (feedback). Chi in futuro notasse l'asimmetria e volesse "uniformarli" riaprirebbe il
+      buco: e' il motivo per cui sta scritto qui.
+      "Completato" include ENTRAMBE le fasi di chiusura, non solo quella positiva: un Task
+      chiuso negativamente e' chiuso quanto uno chiuso positivamente.
+    </decision>
+
+    <decision id="D-8">
+      SEI ENDPOINT DI AZIONE, nessun cambio di stato nascosto dentro il PATCH. Ogni azione
+      e' un POST su una sotto-rotta del record, come nei Contratti. Le transizioni sono
+      TUTTE verso righe designate per `system_key` o verso una riga scelta dal client e
+      validata per `group`: nessuna label entra mai in una condizione.
+      Un Task CONGELATO da `is_blocked` non ammette alcuna azione tranne `unblock`: un Task
+      bloccato e' sospeso, si sblocca prima di operarci. Le chiavi operative del PATCH
+      restano invece aperte anche da bloccato (D-7), che e' cio' che il documento chiede
+      con "sono consentite azioni operative".
+    </decision>
+
+    <decision id="D-9">
+      NOTIFICHE FUORI SCOPE (voce 4 della roadmap, risposta utente 2026-09-11). Le azioni
+      cambiano lo stato e basta: nessuna delle 11 classi `App\Notifications\Task*` del
+      documento viene creata qui. Il punto di innesto e' DICHIARATO e unico: ogni metodo
+      pubblico di `TaskActionService` termina con il suo `return $task->fresh(...)`, e la
+      notifica andra' inserita subito prima, dentro la stessa transazione o in
+      `dispatchAfterResponse()`. NON si creano eventi o listener vuoti in anticipo: sarebbe
+      dead code speculativo.
+      Per la stessa ragione l'azione "Richiedi aggiornamento" del documento NON e'
+      implementata: non cambia alcuno stato, il suo intero effetto e' l'email, quindi
+      appartiene per intero alla voce 4.
+      RETTIFICA in fase di build (2026-09-11): la prima stesura prevedeva di lasciarne la riga
+      in `TaskAbilityResolver` come `canRequestUpdate` senza chiamanti. E' dead code
+      speculativo (engineering.md §1.3/§1.4) e il metodo NON viene scritto: la riga della
+      matrice nasce insieme al suo endpoint, nella voce 4. Il criterio da applicare allora e'
+      gia' fissato dal documento (creatore/richiedente SI, assegnatario NO, osservatore SI,
+      gestore SI) ed e' l'unica riga della matrice con l'osservatore abilitato.
+    </decision>
+
+    <decision id="D-10">
+      SEGNATEMPO FUORI SCOPE (voce 1 della roadmap, risposta utente 2026-09-11). Il
+      documento vuole il segnatempo OBBLIGATORIO nel pop-up di chiusura in tutti e tre i
+      casi; qui il dialog chiede il solo feedback. Punto di innesto dichiarato: il campo
+      entrera' in `CompleteTaskRequest` e in `task-complete-dialog.tsx`, e la sua
+      obbligatorieta' in `TaskActionService::complete()` accanto alla chiamata a
+      `TaskClosureFeedbackGuard`. Nulla in questa spec lo pregiudica.
+      CONSEGUENZA ACCETTATA: finche' la voce 1 non arriva, un Task si chiude senza aver
+      consuntivato il tempo.
+    </decision>
+
+  </decisions>
+
+  <scope>
+    <in>
+      <item>`App\Services\Tasks\TaskRecordRoles`, `TaskAbilityResolver`, `TaskActionAvailability`, `TaskWriteLock`, `TaskActionService` (5 classi nuove).</item>
+      <item>`TaskPolicy`: quattro ability nuove (`manageAll`, `complete`, `validate`, `block`) piu' l'innesto della matrice su `update` e `delete`.</item>
+      <item>`TasksAuthorization`: ceiling per ruolo sul record (D-5), rimozione di `is_blocked` dal catalogo (D-6), `actions()`/`actionPermissions()` per le sei azioni.</item>
+      <item>Sei endpoint: complete, uncomplete, approve, reject, block, unblock, con i relativi controller, FormRequest, DTO e rotte in `routes/api/tasks.php`.</item>
+      <item>Blocco strutturale in `TaskService` (update + delete) via `TaskWriteLock`; `is_blocked` `prohibited` in `UpdateTaskRequest`/`StoreTaskRequest`.</item>
+      <item>Stato di ripresa: `TaskStatusSystemKey::InProgress`, migration di designazione della riga "In corso", spostamento in `TaskTaxonomyCatalogue::PROTECTED_STATUSES`, `TaskStatus::SYSTEM_HEAD_KEYS`.</item>
+      <item>Frontend: `task-action-availability.ts` (specchio client), `use-task-mutations.ts`, `task-actions-bar.tsx`, `task-complete-dialog.tsx`, `task-validation-dialog.tsx`, integrazione nel dettaglio, rimozione di `is_blocked` dal form, i18n it/en.</item>
+      <item>Permessi: i18n dei quattro permessi nuovi e aggiornamento dei test di parita' esistenti.</item>
+    </in>
+    <out>
+      <item>Le 11 classi di notifica `App\Notifications\Task*` e ogni invio di mail (D-9).</item>
+      <item>Azione "Richiedi aggiornamento" (D-9). Segnatempo in ogni sua forma (D-10).</item>
+      <item>Note e Documenti sul Task: le tre righe corrispondenti della matrice restano non implementate finche' i due moduli non sono cablati sul Task.</item>
+      <item>Campi obbligatori alla creazione (richiedente/assegnatari/data fine) e stato iniziale automatico "Da assegnare"/"Assegnato": sono la voce 6 della roadmap.</item>
+      <item>Divieto "creatore/richiedente/assegnatario non puo' essere osservatore" (D-3). Pianificazione ricorrente. Coerenza sotto-task/padre. Fase 2 della spec 0101.</item>
+      <item>Endpoint `change-status` dedicato: il cambio stato resta una chiave operativa del PATCH (D-7).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <entity name="task_statuses (delta)">
+      Nessuna colonna nuova. UNA riga cambia natura: quella con `name = 'In corso'` (o, su
+      DB vergine, creata dalla migration) prende `system_key = 'in_progress'`, `group =
+      'open'`, `color = 'violet'`, `icon = 'activity'`, `completion_percentage = 50`.
+      RETTIFICA in fase di build (2026-09-11): la prima stesura diceva 25, preso dal bootstrap
+      ORIGINALE della 2026_09_04_100400. Quel valore e' morto quando la 2026_09_04_120000
+      ritiro' la riga-fase e il seeder ne creo' una ordinaria nuova: il valore VIVO nel
+      catalogo e' 50. Va usato 50 in ENTRAMBI i rami della migration, cosi' DB vergine e DB
+      popolato convergono sullo stesso risultato.
+      Diventa non cancellabile (`SystemStatusGuard`) e pinnata in testa
+      (`TaskStatus::SYSTEM_HEAD_KEYS`). Restano configurabili nome, colore, icona e
+      percentuale. `down()` rimuove la chiave e restituisce la riga al catalogo ordinario.
+    </entity>
+
+    <endpoint method="POST" path="/api/tasks/{task}/complete">
+      <request>
+        closure_feedback: string|null  (sometimes)
+        validation_status_id: int|null (sometimes) — se valorizzato, e' il CASO 2 del
+          documento: deve esistere in `task_statuses`, essere `is_active`, e appartenere
+          al gruppo `in_validation`. Se assente/null, e' il CASO 1: il Task va sulla riga
+          protetta `closed_positive`.
+      </request>
+      <response status="200">
+        { success: true, message: string, data: TaskDetail, permissions: {...} }
+        Caso 1: `task_status_id` = riga `closed_positive`, `completion_percentage` = 100,
+        `completion_date` = data odierna. Caso 2: `task_status_id` = `validation_status_id`,
+        `completion_date` = data odierna.
+      </response>
+      <errors>
+        403 senza `tasks.complete`, fuori dallo scope di visibilita', da osservatore puro, o
+            da gestore che e' anche assegnatario (D-2)
+        409 Task `is_blocked` (D-8)
+        422 `closure_feedback` mancante quando `requires_closure_feedback` e il bersaglio
+            chiude (riuso di TaskClosureFeedbackGuard, CASO 1.b)
+        422 `validation_status_id` non appartenente al gruppo `in_validation`
+        422 Task gia' chiuso o gia' in validazione (`TaskActionAvailability::isCompletable`)
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks/{task}/uncomplete">
+      <request>nessun body</request>
+      <response status="200">
+        Envelope come sopra. `task_status_id` = riga protetta `in_progress`,
+        `closure_feedback` = null, `completion_date` = null.
+      </response>
+      <errors>
+        403 senza `tasks.complete` / fuori scope / osservatore / gestore-assegnatario
+        409 Task `is_blocked`
+        422 Task non chiuso ne' in validazione (`isUncompletable`)
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks/{task}/approve">
+      <request>nessun body</request>
+      <response status="200">
+        Envelope come sopra. `task_status_id` = riga protetta `closed_positive`,
+        `completion_percentage` = 100, `completion_date` = data odierna.
+      </response>
+      <errors>
+        403 senza `tasks.validate`, fuori scope, o se l'attore non e' creatore/richiedente/gestore
+        409 Task `is_blocked`
+        422 Task non in fase `in_validation` (`isValidatable`)
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks/{task}/reject">
+      <request>nessun body</request>
+      <response status="200">
+        Envelope come sopra. `task_status_id` = riga protetta `in_progress`,
+        `completion_date` = null. Il `closure_feedback` NON viene cancellato: e' la
+        motivazione su cui il validatore ha deciso.
+      </response>
+      <errors>identici a /approve</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks/{task}/block">
+      <request>nessun body</request>
+      <response status="200">Envelope come sopra, `is_blocked` = true.</response>
+      <errors>
+        403 senza `tasks.block`, fuori scope, o se l'attore non e' creatore/richiedente/gestore
+        422 Task gia' bloccato (`isBlockable`)
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks/{task}/unblock">
+      <request>nessun body</request>
+      <response status="200">Envelope come sopra, `is_blocked` = false.</response>
+      <errors>403 come /block; 422 Task non bloccato (`isUnblockable`)</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/tasks/{task}">
+      <request>
+        DELTA sulla Fase 1: `is_blocked` diventa `prohibited` (D-6). Il resto del payload e'
+        invariato.
+      </request>
+      <response status="200">invariata</response>
+      <errors>
+        422 `is_blocked` submesso (`prohibited`)
+        422 per OGNI chiave strutturale submessa su un Task congelato (D-7), con il resto
+            del payload comunque applicato
+        422 per ogni campo protetto submesso da un assegnatario (D-5, via
+            EnforcesFieldPermissions)
+        403 da osservatore puro (`TaskAbilityResolver::canUpdate`)
+      </errors>
+    </endpoint>
+
+    <entity name="permissions.actions (delta sul blocco spec 0004)">
+      `TasksAuthorization::actions()` passa da `['delete','export','import','view_activity']`
+      a `['delete','export','import','view_activity','complete','uncomplete','approve',
+      'reject','block','unblock']`. Ogni flag e' l'AND di tre cose: l'ability
+      (`$actor->can('tasks.X')`), la matrice di ruolo (`TaskAbilityResolver`) e la
+      disponibilita' di stato (`TaskActionAvailability`). Il frontend non ricalcola nulla di
+      autorizzativo: legge il flag.
+    </entity>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">Dato un utente con `tasks.update` che e' SOLO osservatore di un Task, quando PATCH `/api/tasks/{task}`, allora 403 e il Task non cambia.</criterion>
+    <criterion id="AC-002">Dato un assegnatario con `tasks.update`, quando PATCH invia `description`, allora 200 e il campo e' scritto.</criterion>
+    <criterion id="AC-003">Dato lo stesso assegnatario, quando PATCH invia `end_date` (campo protetto, D-5), allora 422 sul campo e nessuna scrittura.</criterion>
+    <criterion id="AC-004">Dato il creatore, quando PATCH invia `end_date`, allora 200 e il campo e' scritto.</criterion>
+    <criterion id="AC-005">Dato il richiedente (`requester_id`) che non e' creatore, quando PATCH invia un campo protetto, allora 200: richiedente e creatore hanno la stessa colonna nella matrice.</criterion>
+    <criterion id="AC-006">Dato un assegnatario, quando `GET /api/tasks/{task}`, allora `permissions.fields` marca i 17 campi protetti `editable: false` e i 6 liberi `editable: true`.</criterion>
+    <criterion id="AC-007">Dato un utente con `tasks.delete` che e' solo assegnatario, quando DELETE, allora 403; dato il creatore, allora 200.</criterion>
+    <criterion id="AC-008">Dato un utente con `tasks.manageAll` estraneo al Task, quando PATCH un campo protetto, allora 200 (colonna Admin della matrice).</criterion>
+    <criterion id="AC-009">Dato un utente con `tasks.manageAll` che e' ANCHE assegnatario di quel Task, quando PATCH un campo protetto, allora 422: il gestore decade ad assegnatario (D-2).</criterion>
+    <criterion id="AC-010">Dato lo stesso utente di AC-009, quando POST `/approve` su quel Task, allora 403: non puo' validarsi da solo.</criterion>
+    <criterion id="AC-011">Dato un super-admin che e' anche assegnatario, quando POST `/approve`, allora 403: la deroga e' ri-asserita nel Service, che il `Gate::before` non scavalca (D-2).</criterion>
+    <criterion id="AC-012">Dato un utente che e' creatore E osservatore dello stesso Task, quando PATCH un campo protetto, allora 200: i ruoli si sommano e vince il piu' permissivo (D-3).</criterion>
+    <criterion id="AC-013">Dato `migrate:fresh --seed`, allora esiste esattamente una riga `task_statuses` con `system_key = 'in_progress'`, `group = 'open'`, e il seeder non ne crea una seconda con lo stesso nome.</criterion>
+    <criterion id="AC-014">Dato lo stato `in_progress`, quando DELETE sul suo endpoint di configurazione, allora 422 da `SystemStatusGuard`; quando PATCH ne cambia il nome, allora 200 e la chiave resta.</criterion>
+    <criterion id="AC-015">Dato un reorder degli stati Task, allora la riga `in_progress` resta pinnata in testa insieme alle altre protette e l'ordine relativo delle custom e' rispettato.</criterion>
+    <criterion id="AC-016">Dato un assegnatario e un Task con `requires_closure_feedback = false`, quando POST `/complete` senza body, allora 200, lo stato e' la riga `closed_positive`, `completion_percentage` = 100 e `completion_date` = oggi (CASO 1.a).</criterion>
+    <criterion id="AC-017">Dato un Task con `requires_closure_feedback = true`, quando POST `/complete` senza `closure_feedback`, allora 422 sul campo e il Task resta nello stato precedente (CASO 1.b).</criterion>
+    <criterion id="AC-018">Dato lo stesso Task, quando POST `/complete` con `closure_feedback` valorizzato, allora 200 e il feedback e' persistito.</criterion>
+    <criterion id="AC-019">Dato un Task e uno stato attivo in fase `in_validation`, quando POST `/complete` con quel `validation_status_id`, allora 200, il Task NON e' chiuso, il suo stato e' quello inviato e `completion_date` e' valorizzata (CASO 2).</criterion>
+    <criterion id="AC-020">Dato un `validation_status_id` che punta a uno stato in fase `open`, quando POST `/complete`, allora 422 sul campo.</criterion>
+    <criterion id="AC-021">Dato un Task gia' in fase `closed_positive`, quando POST `/complete`, allora 422 (`isCompletable`).</criterion>
+    <criterion id="AC-022">Dato un Task chiuso e un assegnatario, quando POST `/uncomplete`, allora 200, lo stato e' la riga `in_progress`, `closure_feedback` e' null e `completion_date` e' null.</criterion>
+    <criterion id="AC-023">Dato un Task in fase `in_validation`, quando un assegnatario fa POST `/uncomplete`, allora 200 verso `in_progress` (notifica 6 del documento, che questa fase non invia).</criterion>
+    <criterion id="AC-024">Dato un Task in fase `in_validation` e il creatore, quando POST `/approve`, allora 200, stato `closed_positive`, percentuale 100.</criterion>
+    <criterion id="AC-025">Dato lo stesso Task, quando POST `/reject`, allora 200, stato `in_progress`, e `closure_feedback` NON e' stato cancellato.</criterion>
+    <criterion id="AC-026">Dato un assegnatario (non creatore, senza `manageAll`), quando POST `/approve`, allora 403.</criterion>
+    <criterion id="AC-027">Dato un Task in fase `open`, quando POST `/approve`, allora 422 (`isValidatable`).</criterion>
+    <criterion id="AC-028">Dato il creatore e un Task non bloccato, quando POST `/block`, allora 200 e `is_blocked` true; una seconda POST `/block` risponde 422.</criterion>
+    <criterion id="AC-029">Dato un assegnatario, quando POST `/block`, allora 403 (matrice: blocco riservato a creatore/richiedente/gestore).</criterion>
+    <criterion id="AC-030">Dato un Task bloccato, quando POST `/complete`, `/uncomplete`, `/approve` o `/reject`, allora 409 per ciascuna; quando POST `/unblock`, allora 200 (D-8).</criterion>
+    <criterion id="AC-031">Dato un Task bloccato e il creatore, quando PATCH invia `title`, allora 422 sulla chiave strutturale; quando PATCH invia `task_status_id`, allora 200 (D-7).</criterion>
+    <criterion id="AC-032">Dato un Task in fase `closed_positive` e il creatore, quando PATCH invia `title` e `closure_feedback` insieme, allora 422 su `title` e `closure_feedback` NON viene scritto (la transazione non applica nulla in caso di violazione).</criterion>
+    <criterion id="AC-033">Dato un Task in fase `in_validation`, quando DELETE, allora 409.</criterion>
+    <criterion id="AC-034">Dato un Task in fase `open` non bloccato, quando PATCH invia `title`, allora 200: il lock non si applica fuori dagli stati congelati.</criterion>
+    <criterion id="AC-035">Dato un PATCH che invia `is_blocked`, allora 422 (`prohibited`), qualunque sia il ruolo dell'attore, super-admin incluso (D-6).</criterion>
+    <criterion id="AC-036">Dato `GET /api/meta/tasks`, allora `is_blocked` non compare fra i campi e l'ordine dei restanti 23 e' quello congelato qui.</criterion>
+    <criterion id="AC-037">Dato `php artisan permissions:sync`, allora esistono `tasks.manageAll`, `tasks.complete`, `tasks.validate`, `tasks.block` e nessun altro permesso `tasks.*` nuovo.</criterion>
+    <criterion id="AC-038">Dato `GET /api/tasks/{task}` per il creatore di un Task in fase `open` non bloccato, allora `permissions.actions` ha `complete: true`, `block: true`, `approve: false`, `unblock: false`.</criterion>
+    <criterion id="AC-039">Dato lo stesso GET per un osservatore puro, allora tutti i sei flag di azione sono false.</criterion>
+    <criterion id="AC-040">Dato un utente senza `tasks.complete` ma creatore del Task, allora `permissions.actions.complete` e' false e POST `/complete` risponde 403: ability e matrice sono in AND, non in OR.</criterion>
+    <criterion id="AC-041">(FE) Dato il dettaglio di un Task con `permissions.actions.complete = true`, allora la barra azioni mostra il pulsante "Completa"; con il flag false il pulsante non e' nel DOM.</criterion>
+    <criterion id="AC-042">(FE) Dato un Task con `requires_closure_feedback = true`, quando si apre il dialog di completamento, allora il campo feedback e' obbligatorio e il submit resta disabilitato finche' e' vuoto.</criterion>
+    <criterion id="AC-043">(FE) Dato il dialog di completamento, quando si sceglie "richiedi validazione", allora compare la select degli stati in fase `in_validation` e il submit invia `validation_status_id`.</criterion>
+    <criterion id="AC-044">(FE) Dato un 409 dall'azione su Task bloccato, allora l'utente vede il messaggio dedicato "task bloccato" e non un errore generico.</criterion>
+    <criterion id="AC-045">(FE) Dato il form Task, allora `is_blocked` non e' piu' renderizzato ne' incluso nel payload di create/update.</criterion>
+    <criterion id="AC-046">(FE) Dato un assegnatario sul form di modifica, allora i campi protetti sono renderizzati readonly/disabled coerentemente con `permissions.fields`.</criterion>
+    <criterion id="AC-047">I test i18n di parita' it/en passano, i quattro permessi nuovi hanno etichetta in entrambe le lingue, e `ASSIGNABLE_RESOURCES` resta coerente.</criterion>
+    <criterion id="AC-048">L'intera suite preesistente `tests/Feature/Tasks/` e `tests/Feature/TaskConfig/` resta verde, salvo gli aggiornamenti dichiarati a `TaskSchemaTest`/`TaskMetaTest` motivati da D-6.</criterion>
+    <criterion id="AC-050">Dato un Task CONGELATO (bloccato o in fase congelante) e un PATCH che invia INSIEME `task_status_id` verso uno stato NON congelante e un campo strutturale, allora 422 sul campo strutturale e nessuna scrittura: il lock legge lo stato di PARTENZA, quindi la chiave operativa non apre il lock per le chiavi strutturali che viaggiano con lei (D-7, precisazione 2026-09-11).</criterion>
+    <criterion id="AC-049">`./vendor/bin/pint --dirty --test` EXIT 0 e `cd frontend &amp;&amp; npx tsc -b --force --pretty false` EXIT 0.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna dipendenza nuova, backend o frontend. Solo librerie gia' in composer.json /
+    package.json.
+
+    `TaskRecordRoles` e `TaskAbilityResolver` sono STATICI e stateless: la Policy li consuma
+    e `permissions:sync` istanzia ogni Policy con `new $class`, senza container. Violare
+    questo vincolo e' un fatal error al primo sync, non un errore di stile.
+
+    La matrice del documento vive in UN SOLO posto (`TaskAbilityResolver`). Policy,
+    `TasksAuthorization` e `TaskActionService` la leggono da li'. Nessuna condizione di ruolo
+    duplicata altrove.
+
+    Disponibilita' e autorizzazione restano separate (D-1) e ogni chiamante fa l'AND. Il
+    Service ri-asserisce SEMPRE server-side cio' che `actionPermissions()` espone: il flag e'
+    un suggerimento per la UI, non il controllo.
+
+    Nessuna condizione legge una LABEL di stato: solo `system_key` e `group`.
+
+    Nessun `throttle` su nessuna delle sei rotte nuove (backend.md §2, decisione utente
+    2026-07-15).
+
+    Ogni endpoint ha FormRequest e autorizzazione server-side; nessun model Eloquent raw in
+    risposta; envelope `{ success, message, data }` piu' il blocco `permissions`.
+
+    File entro 300 righe soft / 500 hard. Nessun evento o listener creato in anticipo per le
+    notifiche (D-9): sarebbe dead code.
+
+    Nessun commit e nessun cambio di branch senza ordine esplicito dell'utente (CLAUDE.md
+    §3.6), checkpoint verdi inclusi.
+  </constraints>
+
+</spec>

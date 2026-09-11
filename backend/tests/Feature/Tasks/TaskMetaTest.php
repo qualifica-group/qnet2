@@ -34,7 +34,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -89,21 +89,26 @@ it('AC-053: GET /api/meta/tasks is 403 without tasks.viewAny', function () {
     $this->getJson('/api/meta/tasks')->assertForbidden();
 });
 
-it('AC-053: the field catalogue is in the frozen order and omits completion_percentage and creator_id', function () {
+it('AC-036/AC-053: the field catalogue is in the frozen order and omits completion_percentage, creator_id and is_blocked', function () {
     $actor = taskActorWith(['viewAny', 'create']);
     Sanctum::actingAs($actor);
 
     $keys = collect($this->getJson('/api/meta/tasks')->assertOk()->json('data.fields'))->pluck('key')->all();
 
+    // spec 0116, D-6: `is_blocked` left the 24-field catalogue — it is now
+    // written only by the `block`/`unblock` domain actions, never by this
+    // PATCH — leaving the 23 fields AC-036 freezes.
     expect($keys)->toBe([
         'title', 'task_status_id', 'description', 'registry_id', 'referent_id', 'parent_task_id',
         'task_type_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
         'opportunity_id', 'work_order_id', 'requester_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
-        'is_blocked', 'requires_closure_feedback', 'closure_feedback', 'assignee_ids', 'watcher_ids',
+        'requires_closure_feedback', 'closure_feedback', 'assignee_ids', 'watcher_ids',
     ])
+        ->and($keys)->toHaveCount(23)
         ->and($keys)->not->toContain('completion_percentage')
-        ->and($keys)->not->toContain('creator_id');
+        ->and($keys)->not->toContain('creator_id')
+        ->and($keys)->not->toContain('is_blocked');
 });
 
 it('AC-053: only title and task_status_id are mandatory', function () {

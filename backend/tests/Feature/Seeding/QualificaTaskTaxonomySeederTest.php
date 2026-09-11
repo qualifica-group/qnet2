@@ -83,21 +83,24 @@ it('orders every catalogue on the sequence the reorder endpoint produces', funct
 // The status pick-list (D-5)
 // ---------------------------------------------------------------------------
 
-it('seeds the client status pick-list between the protected opening and closing rows', function (): void {
+it('seeds the client status pick-list between the protected opening/resume and closing rows', function (): void {
     test()->seed(QualificaTaskTaxonomySeeder::class);
 
     $rows = TaskStatus::query()->orderBy('sort_order')->get();
 
-    // 8 ordinary rows from the catalogue + the 3 protected ones. The three
-    // bootstrap rows that stood for a phase were retired by the migration.
-    expect($rows)->toHaveCount(count(TaskTaxonomyCatalogue::STATUSES) + 3)
+    // 7 ordinary rows from the catalogue + the 4 protected ones. `pending`
+    // and `in_validation` were phases mislabelled as system keys and stayed
+    // retired; `in_progress` is back (spec 0116 D-4) designating the single
+    // "In corso" row, now PINNED AT THE HEAD right after "Da assegnare"
+    // instead of sitting among the ordinary rows.
+    expect($rows)->toHaveCount(count(TaskTaxonomyCatalogue::STATUSES) + 4)
         ->and($rows->pluck('name')->all())->toBe([
             'Da assegnare',
+            'In corso',
             'Assegnato',
             'In preanalisi',
             'Preanalisi da validare',
             'Preanalisi validata',
-            'In corso',
             'In attesa controparte',
             'Interrotto',
             'Esecuzione da validare',
@@ -129,9 +132,11 @@ it('reshapes the protected rows by system_key and leaves them protected', functi
     $byKey = TaskStatus::query()->whereNotNull('system_key')->get()
         ->keyBy(fn (TaskStatus $status): string => $status->system_key->value);
 
-    expect($byKey)->toHaveCount(3)
+    expect($byKey)->toHaveCount(4)
         ->and($byKey[TaskStatusSystemKey::Open->value]->name)->toBe('Da assegnare')
         ->and($byKey[TaskStatusSystemKey::Open->value]->completion_percentage)->toBe(0)
+        ->and($byKey[TaskStatusSystemKey::InProgress->value]->name)->toBe('In corso')
+        ->and($byKey[TaskStatusSystemKey::InProgress->value]->completion_percentage)->toBe(50)
         ->and($byKey[TaskStatusSystemKey::ClosedPositive->value]->name)->toBe('Esecuzione validata')
         ->and($byKey[TaskStatusSystemKey::ClosedPositive->value]->completion_percentage)->toBe(100);
 });

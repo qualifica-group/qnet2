@@ -17,13 +17,14 @@ use Illuminate\Validation\Rule;
  * (spec 0004) additionally rejects any submitted field the actor cannot edit
  * (create-context, model = null).
  *
- * `creator_id` and `completion_percentage` are `prohibited`
+ * `creator_id`, `completion_percentage` and `is_blocked` are `prohibited`
  * UNCONDITIONALLY, regardless of value and regardless of the actor's role
- * (AC-011): the creator is server-side (D-10) and the percentage is derived
- * from the status (D-6), so neither is ever a client input. Field
- * permissions alone cannot express this — the privileged role bypasses every
- * ceiling — so the rule lives here, ahead of and independent from that
- * mechanism.
+ * (AC-011/AC-035): the creator is server-side (D-10), the percentage is
+ * derived from the status (D-6), and `is_blocked` is written ONLY by the
+ * block/unblock domain actions, never at creation time (spec 0116 D-6) — so
+ * none of the three is ever a client input. Field permissions alone cannot
+ * express this — the privileged role bypasses every ceiling — so the rule
+ * lives here, ahead of and independent from that mechanism.
  *
  * `start_time`/`end_time` are `H:i` TEXT (D-11): `FieldDefinition` has no
  * `time` type, and adding one to the shared catalogue is out of scope.
@@ -56,6 +57,7 @@ class StoreTaskRequest extends FormRequest
         return [
             'creator_id' => ['prohibited'],
             'completion_percentage' => ['prohibited'],
+            'is_blocked' => ['prohibited'],
             'title' => ['required', 'string', 'max:'.self::TITLE_MAX],
             'task_status_id' => ['required', 'integer', Rule::exists('task_statuses', 'id')],
             'description' => ['sometimes', 'nullable', 'string'],
@@ -75,7 +77,6 @@ class StoreTaskRequest extends FormRequest
             'start_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'end_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0'],
-            'is_blocked' => ['sometimes', 'boolean'],
             'requires_closure_feedback' => ['sometimes', 'boolean'],
             'closure_feedback' => ['sometimes', 'nullable', 'string'],
             'assignee_ids' => ['sometimes', 'array'],

@@ -1,12 +1,18 @@
 <?php
 
+use App\Http\Controllers\Tasks\TaskApproveController;
+use App\Http\Controllers\Tasks\TaskBlockController;
+use App\Http\Controllers\Tasks\TaskCompleteController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Tasks\TaskForSelectController;
+use App\Http\Controllers\Tasks\TaskRejectController;
+use App\Http\Controllers\Tasks\TaskUnblockController;
+use App\Http\Controllers\Tasks\TaskUncompleteController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Tasks (spec 0101)
+| Tasks (spec 0101, domain actions spec 0116)
 |--------------------------------------------------------------------------
 |
 | Extracted out of routes/api.php from the start (file-size split,
@@ -34,3 +40,20 @@ Route::get('tasks/{task}', [TaskController::class, 'show']);
 Route::post('tasks', [TaskController::class, 'store']);
 Route::match(['put', 'patch'], 'tasks/{task}', [TaskController::class, 'update']);
 Route::delete('tasks/{task}', [TaskController::class, 'destroy']);
+
+// The 6 domain-action routes (spec 0116, D-8), one POST per row-action,
+// modelled on routes/api/contracts.php. Each extra `/{task}/<verb>`
+// segment can never collide with the wildcard above — same URI prefix,
+// different segment count — so declaration order relative to it is not
+// load-bearing; kept below it purely for readability (CRUD first, actions
+// after). Authorization (tasks.complete/validate/block, ANDed with the
+// record-role matrix and the state's availability) is enforced
+// server-side via TaskPolicy on every endpoint;
+// App\Services\Tasks\TaskActionService re-asserts the same rules (403 D-2
+// admin-as-assignee deroga, 409 is_blocked, 422 availability).
+Route::post('tasks/{task}/complete', TaskCompleteController::class);
+Route::post('tasks/{task}/uncomplete', TaskUncompleteController::class);
+Route::post('tasks/{task}/approve', TaskApproveController::class);
+Route::post('tasks/{task}/reject', TaskRejectController::class);
+Route::post('tasks/{task}/block', TaskBlockController::class);
+Route::post('tasks/{task}/unblock', TaskUnblockController::class);

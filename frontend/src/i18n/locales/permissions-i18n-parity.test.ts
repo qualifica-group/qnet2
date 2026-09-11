@@ -108,6 +108,11 @@ const CATALOGUE_ABILITIES = [
   'impersonate',
   // Spec 0106: `request-management.report` (generate/download the CSV report).
   'report',
+  // Spec 0116: `tasks.manageAll`/`tasks.complete`/`tasks.block` (the record-role
+  // matrix's four new abilities; `validate` is already listed above).
+  'manageAll',
+  'complete',
+  'block',
 ]
 
 describe('permissions i18n parity (spec 0076 AC-020, AC-021)', () => {

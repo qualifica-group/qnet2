@@ -29,10 +29,11 @@ export function isClosingStatus(group: TaskStatusGroupValue | null | undefined):
 }
 
 /**
- * Shared field shape. `completion_percentage` and `creator_id` are DELIBERATELY
- * absent: they are `prohibited` server-side (D-6/D-10), so keeping them out of
- * the schema makes it structurally impossible for the form to ever send them
- * (AC-084).
+ * Shared field shape. `completion_percentage`, `creator_id` and `is_blocked`
+ * are DELIBERATELY absent: they are `prohibited` server-side (spec 0116 D-6,
+ * D-10), so keeping them out of the schema makes it structurally impossible
+ * for the form to ever send them (AC-084/AC-045). `is_blocked` is writable
+ * ONLY by the `/block`/`/unblock` actions now.
  */
 function baseFields(t: TFunction) {
   return {
@@ -62,7 +63,6 @@ function baseFields(t: TFunction) {
       .int(t('tasks.form.estimatedMinutesInvalid'))
       .min(MIN_ESTIMATED_MINUTES, t('tasks.form.estimatedMinutesInvalid'))
       .nullable(),
-    is_blocked: z.boolean(),
     requires_closure_feedback: z.boolean(),
     closure_feedback: z.string().nullable(),
     // Flat id arrays (AC-083); the same user may sit in both.

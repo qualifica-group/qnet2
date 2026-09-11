@@ -21,10 +21,15 @@ use Illuminate\Validation\Rule;
  * 0004) additionally rejects any submitted field the actor cannot edit on
  * this specific model.
  *
- * `creator_id` and `completion_percentage` are `prohibited` UNCONDITIONALLY
- * — same reasoning as StoreTaskRequest: the creator is immutable and
- * server-owned (D-10) and the percentage is derived (D-6), and neither
- * statement may be weakened by a role's field-permission matrix.
+ * `creator_id`, `completion_percentage` and `is_blocked` are `prohibited`
+ * UNCONDITIONALLY — same reasoning as StoreTaskRequest: the creator is
+ * immutable and server-owned (D-10), the percentage is derived (D-6), and
+ * `is_blocked` is written ONLY by the block/unblock domain actions, never by
+ * a PATCH (spec 0116 D-6) — exactly how the Contracts module treats
+ * `validated_at`/`terminated_at`. None of the three statements may be
+ * weakened by a role's field-permission matrix: the privileged role bypasses
+ * every ceiling, so the rule lives here, ahead of and independent from that
+ * mechanism (AC-035).
  *
  * `assignee_ids`/`watcher_ids` are full-replaced by the Service ONLY when
  * their own key is present in the payload (AC-012), so a PATCH that touches
@@ -52,6 +57,7 @@ class UpdateTaskRequest extends FormRequest
         return [
             'creator_id' => ['prohibited'],
             'completion_percentage' => ['prohibited'],
+            'is_blocked' => ['prohibited'],
             'title' => ['sometimes', 'required', 'string', 'max:'.self::TITLE_MAX],
             'task_status_id' => ['sometimes', 'required', 'integer', Rule::exists('task_statuses', 'id')],
             'description' => ['sometimes', 'nullable', 'string'],
@@ -71,7 +77,6 @@ class UpdateTaskRequest extends FormRequest
             'start_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'end_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0'],
-            'is_blocked' => ['sometimes', 'required', 'boolean'],
             'requires_closure_feedback' => ['sometimes', 'required', 'boolean'],
             'closure_feedback' => ['sometimes', 'nullable', 'string'],
             'assignee_ids' => ['sometimes', 'array'],

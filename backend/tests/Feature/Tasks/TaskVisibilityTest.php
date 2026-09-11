@@ -41,7 +41,7 @@ if (! function_exists('taskActorWith')) {
      */
     function taskActorWith(array $abilities, bool $withViewAll = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block'] as $ability) {
             Permission::findOrCreate("tasks.{$ability}");
         }
 
@@ -140,12 +140,19 @@ it('AC-062: being an assignee does NOT stand in for tasks.view', function () {
 
 it('AC-063: PATCH on an out-of-scope task is 403 even with tasks.update, and nothing changes', function () {
     $actor = taskActorWith(['view', 'update'], withViewAll: false);
-    $foreign = Task::factory()->create(['title' => 'Intatta']);
+    // `description` on purpose, NOT `title`: this test's subject is the D-9
+    // SCOPE (a record outside membership is 403), not the D-5 protected-field
+    // gate. `title` is a protected field (spec 0116), so an out-of-scope
+    // actor who also lacks the record-role matrix already gets rejected by
+    // EnforcesFieldPermissions (422, "field not editable") before the
+    // controller's authorize() call is even reached — that would exercise
+    // the wrong ability of the module and never reach the 403 under test.
+    $foreign = Task::factory()->create(['description' => 'Intatta']);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tasks/{$foreign->id}", ['title' => 'Modificata'])->assertForbidden();
+    $this->patchJson("/api/tasks/{$foreign->id}", ['description' => 'Modificata'])->assertForbidden();
 
-    $this->assertDatabaseHas('tasks', ['id' => $foreign->id, 'title' => 'Intatta']);
+    $this->assertDatabaseHas('tasks', ['id' => $foreign->id, 'description' => 'Intatta']);
 });
 
 it('AC-063: DELETE on an out-of-scope task is 403 even with tasks.delete, and the row survives', function () {
@@ -160,13 +167,19 @@ it('AC-063: DELETE on an out-of-scope task is 403 even with tasks.delete, and th
 
 it('AC-063: the actor keeps writing the tasks they belong to', function () {
     $actor = taskActorWith(['view', 'update'], withViewAll: false);
-    $own = Task::factory()->create(['title' => 'Prima']);
+    // `description` on purpose, NOT `title`: this test's subject is the D-9
+    // SCOPE (membership grants the write), not the D-5 protected-field gate.
+    // The actor here is a bare assignee, and `title` is a protected field
+    // (spec 0116) an assignee may NOT write — that restriction is asserted
+    // by AC-002/AC-003 elsewhere. `description` is one of the six free
+    // fields, so it isolates the scope rule this test is actually about.
+    $own = Task::factory()->create(['description' => 'Prima']);
     $own->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tasks/{$own->id}", ['title' => 'Dopo'])->assertOk();
+    $this->patchJson("/api/tasks/{$own->id}", ['description' => 'Dopo'])->assertOk();
 
-    $this->assertDatabaseHas('tasks', ['id' => $own->id, 'title' => 'Dopo']);
+    $this->assertDatabaseHas('tasks', ['id' => $own->id, 'description' => 'Dopo']);
 });
 
 it('AC-063: the generic bulk-delete cannot reach an out-of-scope task', function () {

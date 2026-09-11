@@ -106,8 +106,6 @@ export const tasks = {
     completionPercentageHint:
       'Deriva dallo stato selezionato e non viene mai salvata sul task.',
     percentValue: '{{value}}%',
-    isBlocked: 'Bloccato / contestato',
-    isBlockedHint: 'Segnala il task come fermo. Indipendente dallo stato.',
     registry: 'Anagrafica',
     registrySearch: "Cerca un'anagrafica per nome…",
     referent: 'Referente',
@@ -184,5 +182,58 @@ export const tasks = {
     deleteError: 'Impossibile eliminare il task. Riprova.',
     deleteForbidden: 'Non hai i permessi per eliminare questo task.',
     deleteConflict: 'Questo task ha dei sotto-task e non può essere eliminato.',
+  },
+  /**
+   * Le sei azioni di dominio (spec 0116 D-1/D-8) offerte dalla barra azioni
+   * del dettaglio. `errors.*` copre lo split 409 ("bloccato")/422 ("fase
+   * sbagliata") che ogni azione ri-asserisce lato server.
+   */
+  actions: {
+    complete: { label: 'Completa' },
+    uncomplete: {
+      label: 'Riapri',
+      confirmDescription: 'Il task torna in stato "In corso".',
+      confirm: 'Riapri',
+      success: 'Task riaperto.',
+    },
+    approve: { label: 'Approva', success: 'Validazione approvata.' },
+    reject: { label: 'Rifiuta', success: 'Validazione rifiutata.' },
+    block: {
+      label: 'Blocca',
+      confirmDescription: 'Un task bloccato sospende ogni azione tranne lo sblocco.',
+      confirm: 'Blocca',
+      success: 'Task bloccato.',
+    },
+    unblock: {
+      label: 'Sblocca',
+      confirmDescription: 'Il task torna alle sue azioni abituali.',
+      confirm: 'Sblocca',
+      success: 'Task sbloccato.',
+    },
+    completeDialog: {
+      description: 'Chiude il task, oppure lo invia in validazione.',
+      feedback: 'Feedback di chiusura',
+      feedbackRequired: 'Il feedback di chiusura è obbligatorio per chiudere questo task.',
+      requestValidation: 'Richiedi validazione',
+      validationStatus: 'Stato di validazione',
+      validationStatusRequired: 'Scegli lo stato di validazione.',
+      confirm: 'Completa',
+      saving: 'Salvataggio…',
+      success: 'Task completato.',
+    },
+    approveDialog: {
+      description: 'Il task si chiude come completato con successo.',
+      confirm: 'Approva',
+    },
+    rejectDialog: {
+      description: 'Il task torna in stato "In corso". Il feedback di chiusura resta come motivazione.',
+      confirm: 'Rifiuta',
+    },
+    validationDialog: { saving: 'Salvataggio…' },
+    errors: {
+      blocked: 'Questo task è bloccato. Sbloccalo prima di agire su di esso.',
+      wrongPhase: 'Questa azione non è disponibile nella fase attuale del task.',
+      generic: 'Si è verificato un errore. Riprova.',
+    },
   },
 }

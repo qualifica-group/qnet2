@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\Task;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
+use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskVisibilityScope;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,6 +14,24 @@ use Illuminate\Database\Eloquent\Model;
  * scoping of D-9: a Task is readable and writable only by its creatore,
  * richiedente, assegnatari or osservatori, unless the actor holds
  * `tasks.viewAll` (or is super-admin).
+ *
+ * spec 0116 grafts the RECORD-ROLE matrix on top: `update`/`delete` now AND
+ * `TaskAbilityResolver` alongside the existing scope, and three new
+ * record-level abilities (`complete`/`validate`/`block`) combine the
+ * permission, the D-9 scope AND the matching matrix row in one call.
+ * `manageAll` is resource-level, mirroring `viewAll` below — D-2 makes
+ * "gestore" a PERMISSION, not a fifth membership role.
+ *
+ * DESIGN NOTE, contrasted with `App\Policies\ContractPolicy`: ContractPolicy
+ * keeps its domain-action abilities a pure permission check and leaves the
+ * record rule entirely to `ContractsAuthorization::actionPermissions()`,
+ * because Contracts have no concept of a role on the record. Tasks DO have
+ * one (creatore/richiedente, assegnatario, osservatore, gestore), and that
+ * role IS an authorization concern (spec 0116 D-1) — so here the matrix
+ * enters the Policy itself. AVAILABILITY (which phase the current status is
+ * in) does NOT enter here: that stays entirely in
+ * `App\Services\Tasks\TaskActionAvailability`, which is availability, not
+ * authorization.
  *
  * The rule NARROWS: being an assegnatario does not grant `tasks.view`, which
  * the parent call still requires (AC-062).
@@ -26,7 +45,8 @@ use Illuminate\Database\Eloquent\Model;
  * checks on the record itself.
  *
  * Zero-argument constructible on purpose — `permissions:sync` discovers
- * policies with `new $class`, which is why TaskVisibilityScope is static.
+ * policies with `new $class`, which is why TaskVisibilityScope AND
+ * TaskAbilityResolver are static.
  */
 class TaskPolicy extends BasePolicy
 {
@@ -42,12 +62,18 @@ class TaskPolicy extends BasePolicy
 
     public function update(User $user, Model $model): bool
     {
-        return parent::update($user, $model) && $this->isInScope($user, $model);
+        return parent::update($user, $model)
+            && $this->isInScope($user, $model)
+            && $model instanceof Task
+            && TaskAbilityResolver::canUpdate($user, $model);
     }
 
     public function delete(User $user, Model $model): bool
     {
-        return parent::delete($user, $model) && $this->isInScope($user, $model);
+        return parent::delete($user, $model)
+            && $this->isInScope($user, $model)
+            && $model instanceof Task
+            && TaskAbilityResolver::canDelete($user, $model);
     }
 
     /**
@@ -61,11 +87,43 @@ class TaskPolicy extends BasePolicy
     }
 
     /**
+     * "Gestore" (D-2): resource-level, mirroring `viewAll` — a pure
+     * permission check, no model in play. The admin-as-assignee deroga is a
+     * record-level nuance that only matters once `TaskRecordRoles::isManager()`
+     * is consulted against a specific Task, not here.
+     */
+    public function manageAll(User $user): bool
+    {
+        return $user->can($this->permission('manageAll'));
+    }
+
+    public function complete(User $user, Task $task): bool
+    {
+        return $user->can($this->permission('complete'))
+            && $this->isInScope($user, $task)
+            && TaskAbilityResolver::canComplete($user, $task);
+    }
+
+    public function validate(User $user, Task $task): bool
+    {
+        return $user->can($this->permission('validate'))
+            && $this->isInScope($user, $task)
+            && TaskAbilityResolver::canValidate($user, $task);
+    }
+
+    public function block(User $user, Task $task): bool
+    {
+        return $user->can($this->permission('block'))
+            && $this->isInScope($user, $task)
+            && TaskAbilityResolver::canBlock($user, $task);
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll'];
+        return [...parent::abilities(), 'viewAll', 'manageAll', 'complete', 'validate', 'block'];
     }
 
     private function isInScope(User $user, Model $model): bool

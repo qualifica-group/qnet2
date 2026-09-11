@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { TaskFormBody } from '@/features/tasks/task-form-body'
-import { FULL_ACCESS_PERMISSIONS, taskDetailWithPermissions } from '@/features/tasks/task-fixtures'
+import { EDITABLE_FIELD, FULL_ACCESS_PERMISSIONS, taskDetailWithPermissions } from '@/features/tasks/task-fixtures'
+import type { ResourcePermissions } from '@/features/authorization/types'
 import type { TaskFormMode } from '@/features/tasks/types'
 
 vi.mock('@/features/tasks/api', async () => {
@@ -41,9 +42,9 @@ function wrapper() {
   )
 }
 
-function renderForm(mode: TaskFormMode) {
+function renderForm(mode: TaskFormMode, permissions: ResourcePermissions = FULL_ACCESS_PERMISSIONS) {
   return render(
-    <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+    <ResourcePermissionsProvider permissions={permissions}>
       <TaskFormBody mode={mode} onSuccess={vi.fn()} onCancel={vi.fn()} />
     </ResourcePermissionsProvider>,
     { wrapper: wrapper() },
@@ -159,24 +160,33 @@ describe('TaskFormBody — completion percentage is derived and read-only (AC-08
   })
 })
 
-describe('TaskFormBody — the blocked flag is distinct from the status (AC-086)', () => {
-  it('renders its own switch, next to but separate from the status picker', () => {
-    renderForm({ type: 'edit', task: taskDetailWithPermissions({ is_blocked: true }) })
+/**
+ * D-5: the ceiling itself lives server-side (`TasksAuthorization::fieldPermissionCeiling()`)
+ * and is applied by the generic, already-tested `MetaField` — this does not
+ * re-derive the rule, it only proves the TASK form actually wires it up: an
+ * assignee's `permissions.fields` (mirrored here exactly as the backend shapes
+ * it) must lock a protected field while leaving a free one editable. A drift
+ * in the ceiling would silently unlock a protected field with nothing here to
+ * catch it otherwise (AC-046).
+ */
+describe('TaskFormBody — protected fields are locked for an assignee (AC-046)', () => {
+  it('disables a protected field while a free one stays editable', () => {
+    renderForm(
+      { type: 'edit', task: taskDetailWithPermissions() },
+      {
+        resource: FULL_ACCESS_PERMISSIONS.resource,
+        fields: {
+          // PROTECTED (D-5): mandato fields, readable but not writable by an assignee.
+          title: { ...EDITABLE_FIELD, editable: false, readonly: true },
+          // FREE (D-5): execution fields, an assignee may still write these.
+          description: { ...EDITABLE_FIELD },
+        },
+        actions: {},
+      },
+    )
 
-    const blocked = screen.getByRole('switch', { name: label('tasks.form.isBlocked') })
-    expect(blocked).toBeChecked()
-    expect(picker('tasks.form.status')).toBeInTheDocument()
-  })
-
-  it('toggles independently of the status', () => {
-    renderForm({ type: 'edit', task: taskDetailWithPermissions() })
-
-    const blocked = screen.getByRole('switch', { name: label('tasks.form.isBlocked') })
-    expect(blocked).not.toBeChecked()
-
-    fireEvent.click(blocked)
-
-    expect(blocked).toBeChecked()
+    expect(screen.getByRole('textbox', { name: label('tasks.form.title') })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: label('tasks.form.description') })).toBeEnabled()
   })
 })
 

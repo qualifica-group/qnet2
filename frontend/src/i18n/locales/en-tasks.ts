@@ -105,8 +105,6 @@ export const tasks = {
     completionPercentage: 'Completion',
     completionPercentageHint: 'Derived from the selected status; it is never saved on the task.',
     percentValue: '{{value}}%',
-    isBlocked: 'Blocked / disputed',
-    isBlockedHint: 'Flags the task as stuck. Independent of its status.',
     registry: 'Account',
     registrySearch: 'Search an account by name…',
     referent: 'Contact',
@@ -181,5 +179,58 @@ export const tasks = {
     deleteError: 'Could not delete the task. Please try again.',
     deleteForbidden: "You don't have permission to delete this task.",
     deleteConflict: 'This task has sub-tasks and cannot be deleted.',
+  },
+  /**
+   * The six domain actions (spec 0116 D-1/D-8) offered from the detail's
+   * actions bar. `errors.*` covers the shared 409 ("bloccato")/422 ("fase
+   * sbagliata") split every action re-asserts server-side.
+   */
+  actions: {
+    complete: { label: 'Complete' },
+    uncomplete: {
+      label: 'Reopen',
+      confirmDescription: 'The task moves back to "In progress".',
+      confirm: 'Reopen',
+      success: 'Task reopened.',
+    },
+    approve: { label: 'Approve', success: 'Validation approved.' },
+    reject: { label: 'Reject', success: 'Validation rejected.' },
+    block: {
+      label: 'Block',
+      confirmDescription: 'A blocked task suspends every action except unblocking it.',
+      confirm: 'Block',
+      success: 'Task blocked.',
+    },
+    unblock: {
+      label: 'Unblock',
+      confirmDescription: 'The task returns to its usual actions.',
+      confirm: 'Unblock',
+      success: 'Task unblocked.',
+    },
+    completeDialog: {
+      description: 'Closes the task, or sends it to validation instead.',
+      feedback: 'Closure feedback',
+      feedbackRequired: 'A closure feedback is required to close this task.',
+      requestValidation: 'Request validation',
+      validationStatus: 'Validation status',
+      validationStatusRequired: 'Choose the validation status.',
+      confirm: 'Complete',
+      saving: 'Saving…',
+      success: 'Task completed.',
+    },
+    approveDialog: {
+      description: 'The task closes as successfully completed.',
+      confirm: 'Approve',
+    },
+    rejectDialog: {
+      description: 'The task goes back to "In progress". The closure feedback is kept as the motivation.',
+      confirm: 'Reject',
+    },
+    validationDialog: { saving: 'Saving…' },
+    errors: {
+      blocked: 'This task is blocked. Unblock it before acting on it.',
+      wrongPhase: "This action is not available in the task's current phase.",
+      generic: 'Something went wrong. Please try again.',
+    },
   },
 }
