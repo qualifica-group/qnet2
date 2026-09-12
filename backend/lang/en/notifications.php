@@ -50,6 +50,12 @@ return [
         'new_operator' => 'New operator',
         'performed_by' => 'Performed by',
         'date' => 'Date',
+
+        // Task (spec 0119)
+        'priority' => 'Priority',
+        'end_date' => 'Due date',
+        'requester' => 'Requester',
+        'assignees' => 'Assignees',
     ],
 
     'values' => [

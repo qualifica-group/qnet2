@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0120 — PIANIFICAZIONE RICORRENTE DEL TASK
+  Settima fase del modulo Task. Copre il campo "Sezione per programmare una
+  pianificazione ricorrente del task" di DOC Tasks.docx e i due step di flusso che
+  lo citano (creazione: "se presente una ricorrenza, viene salvata la pianificazione
+  automatica"; modifica: "aggiornamento ricorrenza (se presente)").
+-->
+<spec id="0120-task-recurrence-planning" status="draft" owner="utente" date="2026-09-11">
+
+  <goal>
+    Un Task puo' portare una regola di ripetizione. Il sistema materializza da solo le occorrenze
+    future come Task autonomi legati alla stessa serie, senza che nessuno debba ricrearli a mano.
+  </goal>
+
+  <context>
+    <!-- Nomi REALI verificati nel repo il 2026-09-11, non ipotizzati. -->
+    <existing_names>
+      <item>`2026_09_04_100500_create_tasks_table.php` — il suo docblock dichiara oggi: "NO
+        recurrence column of any kind: out of scope in this phase (D-3)". Questa spec e' cio' che
+        ritira quella frase, e il docblock va aggiornato di conseguenza. La migrazione e' gia'
+        committata e NON si tocca: se ne crea una nuova (backend.md §3).</item>
+      <item>`App\Services\TaskService` — `create(CreateTaskData $data, User $creator): Task` con 6
+        Step in `DB::transaction`; `update(Task $task, UpdateTaskData $data): Task`;
+        `delete(Task $task): void` che RIFIUTA CON 409 un Task che ha sotto-task. 397 righe.</item>
+      <item>`App\Services\Tasks\TaskInitialStatusResolver::resolve(array $assigneeIds, int
+        $creatorId, ?int $requesterId): int` — la derivazione `open` / `assigned` della spec 0118
+        (D-3/D-4). Riusata tale e quale dalle occorrenze.</item>
+      <item>`App\Services\Tasks\TaskWriteLock` — `OPERATIVE_KEYS`, `isLocked()`,
+        `assertStructuralWriteAllowed()`, `assertDeletable()`. Valutato PRIMA di `fill()`, sullo
+        stato PERSISTITO: asimmetria intenzionale rispetto a `TaskClosureFeedbackGuard`, non
+        "uniformare" (spec 0116, rettifica 3).</item>
+      <item>`App\Services\Tasks\TaskAbilityResolver::PROTECTED_FIELDS` — i 17 campi che solo
+        creatore, richiedente e gestore possono toccare. Unica sede della matrice, STATICA per
+        necessita' (`permissions:sync` istanzia le Policy con `new $class`).</item>
+      <item>`App\Authorization\TasksAuthorization` — `FIELD_TYPES` e' il catalogo ORDINATO
+        `chiave campo => tipo form` (23 voci, ordine congelato da AC-053 della 0101);
+        `MANDATORY_FIELDS` ne elenca 5; `actions()` ritorna 12 chiavi. I tipi form ammessi in uso
+        sono `text`, `textarea`, `select`, `multiselect`, `date`, `number`, `boolean`.</item>
+      <item>`App\Enums\TaskStatusGroup` (`Open`, `Pending`, `InValidation`, `ClosedPositive`,
+        `ClosedNegative`, con `isClosing()`) e `App\Enums\TaskStatusSystemKey` (`Open`,
+        `InProgress`, `Assigned`, `ClosedPositive`, `ClosedNegative`).</item>
+      <item>`app/Tables/TasksTableDefinition.php` + `app/Tables/Tasks/TaskColumnCatalog.php` e
+        `TaskRelationColumns.php` — la tabella SSRM del Task.</item>
+      <item>`app/Console/Commands/` contiene 5 comandi (`AddLocations`, `CreateSuperAdminRole`,
+        `ResyncQuoteWorkflowStatuses`, `SeedSampleData`, `SyncPermissions`). NESSUNO e' schedulato:
+        `routes/console.php` contiene solo `inspire` e non esiste una sola `Schedule::command()`
+        in tutto il repo. Questa spec introduce la PRIMA.</item>
+      <item>Frontend: `features/tasks/task-form-body.tsx` compone in quest'ordine
+        `TaskIdentitySection`, `TaskClassificationSection`, `TaskRegistrySection`,
+        `TaskPeopleSection`, `TaskPlanningSection`, `TaskLinksSection`, `TaskClosureSection`, piu'
+        `TaskAttachmentStaging`. `TaskPlanningSection` ospita le tre date, le due ore e la stima, e
+        usa `FormSection` + `FIELD_GRID_CLASS` + `MetaField`.</item>
+      <item>`frontend/src/features/tasks/task-schema.ts`, `task-form-payload.ts`, `types.ts`,
+        `api.ts`, `use-task-form.ts` — la catena del form del Task.</item>
+      <item>`tests/Feature/QuoteWorkflows/QuoteWorkflowMigrationTest.php` contiene un contatore
+        `--step` di `migrate:rollback` HARD-CODED, oggi 61, che CHIUNQUE aggiunga una migrazione
+        deve incrementare, in qualsiasi dominio. Questa spec ne aggiunge due: il contatore va a 63.</item>
+      <item>`taskActorWith()` e' duplicato in 13 file di `tests/Feature/Tasks/` piu' i gemelli
+        `taskDocumentActor` e `taskNoteActor`: PHP tiene solo la prima copia in ordine alfabetico.
+        Aggiungendo un'ability vanno aggiornate TUTTE. Verificarne il numero con
+        `grep -rln "function taskActorWith" backend/tests/`, mai a memoria.</item>
+    </existing_names>
+
+    <decisions>
+      <d id="D-1">MODELLO DI RIPETIZIONE (decisione utente 2026-09-11): `frequency` in
+        {`daily`, `weekly`, `monthly`}, un `interval` intero >= 1 ("ogni N"), `weekdays` (solo
+        `weekly`: sottoinsieme non vuoto di 1..7, ISO-8601, lunedi' = 1), `month_day` (solo
+        `monthly`: 1..31). Fine a scelta: `ends` in {`on_date`, `after_count`, `never`}, con
+        `ends_on` (data) o `occurrence_count` (intero >= 1) secondo il caso. NESSUNA libreria di
+        ricorrenza: si calcola con Carbon, gia' in repo. RRULE e' esplicitamente scartato
+        (richiederebbe una dipendenza nuova, vietata da CLAUDE.md §0).</d>
+
+      <d id="D-2">`month_day` OLTRE LA FINE DEL MESE si appiattisce sull'ultimo giorno del mese:
+        il 31 vale 28 o 29 a febbraio, 30 ad aprile. Non si salta il mese. E' la regola meno
+        sorprendente e quella che i calendari adottano.</d>
+
+      <d id="D-3">UNA TABELLA PROPRIA (decisione utente 2026-09-11): `task_recurrences` porta la
+        regola; `tasks.task_recurrence_id` (nullable, `nullOnDelete`) lega ogni occorrenza alla sua
+        serie. Le occorrenze sono Task AUTONOMI, non sotto-task. Motivo tecnico verificato:
+        `TaskService::delete()` rifiuta con 409 un Task che ha sotto-task, quindi legarle come
+        figli renderebbe il capostipite incancellabile per sempre; inoltre i sotto-task hanno gia'
+        un significato proprio nel documento di prodotto.</d>
+
+      <d id="D-4">IL CAPOSTIPITE E' ESSO STESSO LA PRIMA OCCORRENZA. Il Task su cui si imposta la
+        ricorrenza riceve il proprio `task_recurrence_id` e conta come occorrenza numero 1 ai fini
+        di `occurrence_count`. Non si genera un duplicato della riga da cui si e' partiti.</d>
+
+      <d id="D-5">DATE DELL'OCCORRENZA (decisione utente 2026-09-11): la data calcolata dalla
+        regola diventa la `end_date` dell'occorrenza — e' la scadenza, ed e' il campo che la 0118
+        rende obbligatorio alla creazione. La `start_date` si sposta dello STESSO scarto in giorni
+        che aveva nel capostipite (`start_date - end_date`); se il capostipite non ha
+        `start_date`, l'occorrenza non ce l'ha. `start_time` e `end_time` si copiano identiche.
+        `completion_date` e' sempre null.</d>
+
+      <d id="D-6">CAMPI COPIATI NELL'OCCORRENZA: `title`, `description`, `registry_id`,
+        `referent_id`, `task_type_id`, `task_priority_id`, `task_importance_id`,
+        `task_category_id`, `opportunity_id`, `work_order_id`, `requester_id`, `creator_id`,
+        `estimated_minutes`, `requires_closure_feedback`, piu' i due pivot assegnatari e
+        osservatori. NON copiati: `closure_feedback` (vuoto), `completion_date` (null),
+        `is_blocked` (false), `parent_task_id` (null: un'occorrenza non eredita la paternita'),
+        `task_status_id` (RI-DERIVATO, vedi D-7), sotto-task, note, documenti e allegati.</d>
+
+      <d id="D-7">STATO INIZIALE RI-DERIVATO, mai copiato: ogni occorrenza passa da
+        `TaskInitialStatusResolver::resolve()` con gli assegnatari copiati, il creatore della serie
+        e il richiedente copiato. Coerente con D-3/D-6 della spec 0118 — la derivazione vale alla
+        creazione, e un'occorrenza E' una creazione.</d>
+
+      <d id="D-8">GENERAZIONE VIA SCHEDULER (decisione utente 2026-09-11). Comando nuovo
+        `tasks:generate-recurrences`, registrato in `routes/console.php` con
+        `Schedule::command(...)->dailyAt('01:00')`. Materializza le occorrenze la cui `end_date`
+        calcolata cade entro oggi. RISCHIO OPERATIVO DICHIARATO, a carico dell'utente: perche' lo
+        scheduler giri serve il cron di sistema `php artisan schedule:run` ogni minuto, che oggi
+        nel repo non e' documentato ne' verificabile; senza, la ricorrenza non genera nulla e
+        nessun test se ne accorge. L'utente ha confermato che il cron c'e' o lo attiva (AC-030).</d>
+
+      <d id="D-9">IL COMANDO E' IDEMPOTENTE, e non e' un optional: e' cio' che rende innocuo un
+        cron che gira due volte, un recupero manuale, o una giornata saltata. La chiave e'
+        (`task_recurrence_id`, `end_date`): se una riga esiste gia' per quella coppia, non se ne
+        crea una seconda. Un vincolo UNIQUE in tabella la impone, cosi' la garanzia non dipende
+        dalla correttezza del codice chiamante. Il comando recupera anche le occorrenze arretrate
+        di una serie rimasta indietro, in ordine cronologico.</d>
+
+      <d id="D-10">MODIFICA E CANCELLAZIONE DELLA SERIE (decisione utente 2026-09-11): il passato
+        non si tocca, il futuro vergine si rigenera. Cambiando la regola, le occorrenze VERGINI con
+        `end_date` futura vengono cancellate e ricalcolate; tutte le altre restano intatte.
+        Cancellando la ricorrenza, la generazione futura si ferma e tutto il gia' generato resta in
+        piedi, slegato (`task_recurrence_id` a null via `nullOnDelete`).</d>
+
+      <d id="D-11">"VERGINE" HA UNA DEFINIZIONE ESATTA, perche' da essa dipende una cancellazione:
+        un'occorrenza e' vergine se e solo se la sua `end_date` e' FUTURA, il suo stato e' in fase
+        `open` o `pending`, non e' bloccata, la sua `completion_date` e il suo `closure_feedback`
+        sono vuoti, e non ha ne' sotto-task, ne' note, ne' documenti allegati. Al primo di questi
+        segni di vita l'occorrenza e' lavorata e nessuna rigenerazione la tocca piu'.</d>
+
+      <d id="D-12">CHI PUO' TOCCARE LA RICORRENZA: `recurrence` entra in
+        `TaskAbilityResolver::PROTECTED_FIELDS` (da 17 a 18 campi). Solo creatore, richiedente e
+        gestore la impostano o la cambiano; un assegnatario che puo' modificare il Task non puo'
+        modificarne la serie. Nessun permesso `tasks.*` nuovo: il catalogo resta a 15 e
+        `actions()` a 12 chiavi.</d>
+
+      <d id="D-13">LA RICORRENZA E' UN CAMPO STRUTTURALE: `TaskWriteLock` la rifiuta su un Task
+        congelato (in validazione, completato, bloccato), esattamente come gli altri campi
+        strutturali, con 422 sul campo. Non si aggiunge a `OPERATIVE_KEYS`.</d>
+
+      <d id="D-14">LE OCCORRENZE GENERATE NOTIFICANO come qualsiasi Task nuovo — voci 7 e 8 della
+        spec 0119, `TaskAssigned` e `TaskObserver` — altrimenti nessuno saprebbe di avere
+        l'attivita'. L'attore e' il SISTEMA, non un utente: nessuno viene escluso per la regola
+        D-3 della 0119. Se la spec 0119 non e' ancora in piedi al momento del build, questo punto
+        decade senza conseguenze e la generazione resta silenziosa.</d>
+
+      <d id="D-15">FUSO ORARIO: il comando ragiona su `config('app.timezone')`, come tutto il
+        resto dell'applicazione. Le colonne restano `date` pure, senza orario: la ricorrenza
+        pianifica giornate, non istanti.</d>
+    </decisions>
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `task_recurrences` + migrazione che aggiunge `tasks.task_recurrence_id` e
+        l'indice UNIQUE di D-9.</item>
+      <item>`App\Models\TaskRecurrence` con `$fillable`, `$casts` espliciti e la relazione inversa;
+        `Task::recurrence()` e `TaskRecurrence::tasks()`.</item>
+      <item>`App\Enums\TaskRecurrenceFrequency` (`daily`/`weekly`/`monthly`) e
+        `App\Enums\TaskRecurrenceEnd` (`on_date`/`after_count`/`never`).</item>
+      <item>`App\Services\Tasks\TaskRecurrenceCalculator` — pura, senza database: data la regola e
+        una data di partenza, produce le prossime N date (D-1, D-2, D-15).</item>
+      <item>`App\Services\Tasks\TaskOccurrenceFactory` — materializza UNA occorrenza da un
+        capostipite e da una data (D-5, D-6, D-7).</item>
+      <item>`App\Services\Tasks\TaskRecurrenceService` — scrive/aggiorna/cancella la regola dai
+        write path e applica la rigenerazione di D-10/D-11.</item>
+      <item>`App\Console\Commands\GenerateTaskRecurrences` + la `Schedule::command()` in
+        `routes/console.php` (D-8, D-9).</item>
+      <item>Contratto: la chiave `recurrence` in POST e PATCH `/api/tasks` e nel `TaskResource` di
+        `GET /api/tasks/{task}`; validazione condizionale in `StoreTaskRequest` e
+        `UpdateTaskRequest`; `recurrence` in `FIELD_TYPES` e in `PROTECTED_FIELDS`.</item>
+      <item>Frontend: `TaskRecurrenceSection` nel form (dopo `TaskPlanningSection`), campi in
+        `task-schema.ts` / `task-form-payload.ts` / `types.ts`, badge "ricorrente" nel dettaglio,
+        i18n it/en.</item>
+      <item>Test Pest (calcolatore, factory, service, comando, endpoint, authz) e Vitest
+        (sezione di form, schema, payload).</item>
+    </in>
+    <out>
+      <item>RRULE / RFC 5545 e qualunque libreria di ricorrenza (D-1).</item>
+      <item>Eccezioni alla serie ("salta il 3 aprile"), spostamento della singola occorrenza,
+        modifica "solo questa / questa e le successive": la scelta e' stata D-10, non il modello a
+        tre vie dei calendari.</item>
+      <item>Ricorrenza su sotto-task, note, documenti, segnatempo.</item>
+      <item>Colonna, filtro o vista "prossima occorrenza" nella tabella SSRM: si aggiunge solo il
+        badge nel dettaglio.</item>
+      <item>Notifiche di scadenza imminente e promemoria: non sono in DOC Tasks.docx.</item>
+      <item>Configurazione del cron di sistema sul server: e' infrastruttura, non repo (D-8).</item>
+      <item>Le 11 classi di notifica: sono la spec 0119. Qui se ne consumano due (D-14), non se ne
+        scrive nessuna.</item>
+      <item>Sanatoria dei Task esistenti: nessuna riga storica acquisisce una ricorrenza.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <schema>
+      task_recurrences
+        id                BIGINT PK
+        frequency         ENUM('daily','weekly','monthly')  NOT NULL
+        interval          UNSIGNED SMALLINT  NOT NULL DEFAULT 1   -- >= 1
+        weekdays          JSON NULL          -- [1..7] ISO-8601, solo weekly, non vuoto
+        month_day         UNSIGNED TINYINT NULL  -- 1..31, solo monthly
+        ends              ENUM('on_date','after_count','never')  NOT NULL
+        ends_on           DATE NULL          -- obbligatoria sse ends = on_date
+        occurrence_count  UNSIGNED SMALLINT NULL -- obbligatoria sse ends = after_count, >= 1
+        generated_until   DATE NULL          -- ultima end_date materializzata, per il comando
+        timestamps
+
+      tasks
+        task_recurrence_id  BIGINT NULL -> task_recurrences  nullOnDelete
+        INDEX (task_recurrence_id)
+        UNIQUE (task_recurrence_id, end_date)   -- D-9: l'idempotenza e' un vincolo, non una speranza
+    </schema>
+
+    <endpoint method="POST" path="/api/tasks">
+      <request>
+        recurrence: object|null (sometimes) — assente o null = nessuna ricorrenza.
+        {
+          frequency: "daily"|"weekly"|"monthly"   required_with:recurrence
+          interval: int >= 1                       required_with:recurrence
+          weekdays: int[1..7], distinti, non vuoto required_if:recurrence.frequency,weekly
+                                                   prohibited_unless:recurrence.frequency,weekly
+          month_day: int 1..31                     required_if:recurrence.frequency,monthly
+                                                   prohibited_unless:recurrence.frequency,monthly
+          ends: "on_date"|"after_count"|"never"    required_with:recurrence
+          ends_on: date (after:end_date)           required_if:recurrence.ends,on_date
+                                                   prohibited_unless:recurrence.ends,on_date
+          occurrence_count: int >= 1               required_if:recurrence.ends,after_count
+                                                   prohibited_unless:recurrence.ends,after_count
+        }
+      </request>
+      <response status="200">
+        Invariata nella forma: `okWithPermissions(TaskResource)`. `data.recurrence` e' l'oggetto
+        qui sopra piu' `id`, oppure null. `data.task_recurrence_id` non e' esposto separatamente.
+      </response>
+      <errors>
+        422 su `recurrence.*` per ogni regola sopra (campo per campo, mai il body intero)
+        422 `recurrence` se `end_date` e' assente: una ricorrenza senza scadenza non e' calcolabile
+        403 se l'attore non ha `tasks.create`
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/tasks/{task}">
+      <request>
+        recurrence: identico a POST. Semantica delle tre forme, esplicita e non inferita:
+          chiave ASSENTE  -> la ricorrenza resta com'e'
+          chiave = null   -> la ricorrenza viene cancellata (D-10: il generato resta, slegato)
+          chiave = oggetto-> la ricorrenza viene creata o sostituita, con la rigenerazione di D-10
+      </request>
+      <response status="200">Come POST.</response>
+      <errors>
+        422 `recurrence` se il Task e' congelato (D-13, `TaskWriteLock`)
+        403 se l'attore non e' creatore, richiedente o gestore (D-12, campo protetto)
+        422 su `recurrence.*` per le regole di validazione
+      </errors>
+    </endpoint>
+
+    <command name="tasks:generate-recurrences">
+      <signature>tasks:generate-recurrences {--recurrence= : limita a una sola serie} {--dry-run}</signature>
+      <behaviour>
+        Per ogni `task_recurrences` non esaurita: calcola le `end_date` dovute fino a oggi incluso,
+        salta quelle gia' presenti (D-9), materializza le mancanti in ordine cronologico, aggiorna
+        `generated_until`. Esce 0 anche quando non c'e' nulla da fare. `--dry-run` stampa e non
+        scrive nulla.
+      </behaviour>
+      <schedule>Schedule::command('tasks:generate-recurrences')->dailyAt('01:00')->withoutOverlapping()</schedule>
+    </command>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Calcolatore (puro, nessun database) -->
+    <criterion id="AC-001">Data `daily` con `interval` 3 a partire dal 01/03, allora le prime tre date sono 04/03, 07/03, 10/03.</criterion>
+    <criterion id="AC-002">Data `weekly` con `interval` 1 e `weekdays` [1, 3, 5] a partire da lunedi' 02/03, allora le prime quattro date sono 04/03, 06/03, 09/03, 11/03.</criterion>
+    <criterion id="AC-003">Data `weekly` con `interval` 2 e `weekdays` [2], allora fra una data e la successiva passano 14 giorni e cadono tutte di martedi'.</criterion>
+    <criterion id="AC-004">Data `monthly` con `month_day` 31 a partire dal 31/01/2027, allora le date successive sono 28/02/2027, 31/03/2027, 30/04/2027 (D-2).</criterion>
+    <criterion id="AC-005">Data `monthly` con `month_day` 29 in un anno bisestile, allora febbraio produce il 29 e non il 28.</criterion>
+    <criterion id="AC-006">Dato `ends` = `on_date` con `ends_on` 31/03, allora nessuna data generata supera il 31/03 e la serie risulta esaurita.</criterion>
+    <criterion id="AC-007">Dato `ends` = `after_count` con `occurrence_count` 5, allora la serie produce 5 occorrenze in tutto, CAPOSTIPITE COMPRESO (D-4): quattro generate.</criterion>
+    <criterion id="AC-008">Dato `ends` = `never`, allora il calcolatore produce a richiesta un numero arbitrario di date senza mai dichiararsi esaurito.</criterion>
+    <criterion id="AC-009">Dato `interval` 0 o negativo, allora il calcolatore rifiuta con eccezione invece di ciclare all'infinito.</criterion>
+
+    <!-- Materializzazione -->
+    <criterion id="AC-010">Data un'occorrenza per il 22/03 e un capostipite con `start_date` 10/03 ed `end_date` 15/03, allora l'occorrenza ha `end_date` 22/03 e `start_date` 17/03 (D-5).</criterion>
+    <criterion id="AC-011">Dato un capostipite senza `start_date`, allora l'occorrenza non ha `start_date` e la generazione non fallisce.</criterion>
+    <criterion id="AC-012">L'occorrenza copia i 14 campi scalari e i due pivot elencati in D-6, e ha `closure_feedback` vuoto, `completion_date` null, `is_blocked` false e `parent_task_id` null.</criterion>
+    <criterion id="AC-013">Dato un capostipite chiuso e un suo assegnatario unico che ne e' anche il creatore, allora l'occorrenza generata nasce in stato `open`; con due assegnatari nasce in `assigned` (D-7, riuso di `TaskInitialStatusResolver`).</criterion>
+    <criterion id="AC-014">Le occorrenze NON sono sotto-task: `parent_task_id` e' null e il capostipite resta cancellabile (nessun 409 da `TaskService::delete()`) finche' non ha veri sotto-task (D-3).</criterion>
+
+    <!-- Comando e idempotenza -->
+    <criterion id="AC-015">Dato un capostipite con `end_date` 5 giorni fa e ricorrenza giornaliera, quando il comando gira, allora crea le occorrenze arretrate in ordine cronologico e nessuna con data futura.</criterion>
+    <criterion id="AC-016">Eseguendo il comando DUE volte di seguito, allora il secondo giro non crea alcuna riga e il conteggio dei Task resta identico (D-9).</criterion>
+    <criterion id="AC-017">Dato un tentativo diretto di inserire due Task con la stessa coppia (`task_recurrence_id`, `end_date`), allora il database lo rifiuta per violazione UNIQUE (D-9).</criterion>
+    <criterion id="AC-018">Dato `--dry-run`, allora il comando stampa le occorrenze che creerebbe e la tabella `tasks` resta invariata.</criterion>
+    <criterion id="AC-019">Dato `--recurrence={id}`, allora il comando tocca solo quella serie.</criterion>
+    <criterion id="AC-020">Senza alcuna ricorrenza a scadenza, il comando esce con codice 0 e non scrive nulla.</criterion>
+    <criterion id="AC-021">`routes/console.php` registra `tasks:generate-recurrences` con cadenza giornaliera e `withoutOverlapping()`, verificabile ispezionando lo `Schedule` risolto dal container.</criterion>
+
+    <!-- Modifica e cancellazione della serie -->
+    <criterion id="AC-022">Data una serie con occorrenze passate, occorrenze future vergini e una futura con una nota, quando la regola cambia, allora le sole future vergini vengono rimosse e ricalcolate; le passate e quella con la nota restano identiche (D-10, D-11).</criterion>
+    <criterion id="AC-023">Dato PATCH con `recurrence` a null, allora la serie e' cancellata, la generazione futura si ferma, e tutte le occorrenze gia' esistenti restano con `task_recurrence_id` a null (D-10).</criterion>
+    <criterion id="AC-024">Dato PATCH che NON invia la chiave `recurrence`, allora la ricorrenza resta invariata e nessuna occorrenza viene toccata.</criterion>
+    <criterion id="AC-025">Un'occorrenza futura bloccata, o in validazione, o con un documento allegato, non e' vergine e sopravvive a una rigenerazione (D-11).</criterion>
+
+    <!-- Contratto, validazione, autorizzazione -->
+    <criterion id="AC-026">Dato POST con `recurrence.frequency` = `weekly` e nessun `weekdays`, allora 422 su `recurrence.weekdays`; con `frequency` = `daily` e un `weekdays` presente, allora 422 per campo proibito.</criterion>
+    <criterion id="AC-027">Dato POST con `recurrence` valorizzata e `end_date` assente, allora 422 su `recurrence` con messaggio che nomina la scadenza mancante.</criterion>
+    <criterion id="AC-028">Dato un assegnatario che puo' modificare il Task ma non e' creatore ne' richiedente, quando PATCH invia `recurrence`, allora 403 sul campo protetto (D-12), mentre lo stesso PATCH senza `recurrence` riesce.</criterion>
+    <criterion id="AC-029">Dato un Task in validazione, completato o bloccato, quando PATCH invia `recurrence`, allora 422 sul campo (D-13), e il Task resta invariato.</criterion>
+    <criterion id="AC-030">VERIFICA OPERATIVA, non automatizzabile: sul server di produzione il cron `php artisan schedule:run` e' attivo e `php artisan schedule:list` mostra `tasks:generate-recurrences`. A carico dell'utente (D-8).</criterion>
+    <criterion id="AC-031">`GET /api/tasks/{task}` espone `data.recurrence` come oggetto completo o null, e `permissions.actions` resta a 12 chiavi con il catalogo `tasks.*` a 15 permessi (D-12).</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-032">Il form mostra una sezione "Ricorrenza" dopo "Pianificazione", chiusa per default quando non c'e' ricorrenza; attivandola compaiono i soli campi pertinenti alla frequenza scelta, e cambiando frequenza i campi non pertinenti si azzerano invece di viaggiare nel payload.</criterion>
+    <criterion id="AC-033">Lo schema Zod rispecchia le regole condizionali di D-1: submit bloccato con messaggio inline sul campo mancante, senza attendere il 422 del server.</criterion>
+    <criterion id="AC-034">Un utente che non puo' modificare il campo protetto vede la sezione in sola lettura (`MetaField`), non un campo editabile che il server poi rifiuta.</criterion>
+    <criterion id="AC-035">Il dettaglio di un Task appartenente a una serie mostra un badge "ricorrente" con la regola in forma leggibile ("Ogni 2 settimane il lunedi' e il mercoledi'"), tradotta it/en.</criterion>
+    <criterion id="AC-036">Responsive a 375 / 768 / 1024: nessuna scrollbar orizzontale, nessuna sovrapposizione nella sezione Ricorrenza. VERIFICA MANUALE sull'app reale.</criterion>
+
+    <!-- Non regressione -->
+    <criterion id="AC-037">Il contatore `--step` di `QuoteWorkflowMigrationTest` e' stato portato da 61 a 63 e la suite intera e' verde.</criterion>
+    <criterion id="AC-038">Un Task senza ricorrenza si comporta esattamente come prima: le suite Task esistenti passano senza modifiche, salvo quelle che asseriscono il numero di campi protetti (17 -> 18) o il catalogo `FIELD_TYPES`.</criterion>
+    <criterion id="AC-039">`npx tsc -b --force --pretty false` esce 0; Pint ed ESLint puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>NESSUNA DIPENDENZA NUOVA: il calcolo delle date si fa con Carbon (CLAUDE.md §0).</item>
+    <item>Migrazioni NUOVE, mai la modifica di `2026_09_04_100500_create_tasks_table.php` che e'
+      gia' committata (backend.md §3). Entrambe reversibili in `down()`.</item>
+    <item>`TaskRecurrenceCalculator` e' PURO: nessun accesso al database, nessun `now()` implicito
+      (la data di riferimento e' un parametro). E' cio' che rende i casi limite di calendario
+      testabili senza fixture.</item>
+    <item>L'idempotenza e' garantita dal vincolo UNIQUE in tabella, non dal solo codice
+      applicativo (D-9).</item>
+    <item>`$fillable` e `$casts` espliciti su `TaskRecurrence` (`weekdays` in array, le date in
+      `date`, gli enum nei loro enum).</item>
+    <item>Autorizzazione server-side: nessun endpoint nuovo, quindi nessuna ability nuova; la
+      protezione passa da `PROTECTED_FIELDS` e da `TaskWriteLock`, gia' applicati nei write path.</item>
+    <item>La generazione scrive dentro una transazione per occorrenza, non una per l'intero giro:
+      una serie malformata non deve impedire alle altre di generare.</item>
+    <item>Soglie di file: `TaskService` e' gia' a 397 righe — la logica di ricorrenza NON va li'
+      dentro, ma nei tre servizi dedicati. Ogni file nuovo sotto le 300 righe.</item>
+    <item>Test ESEGUITI, non dichiarati (CLAUDE.md §5). AC-030 e AC-036 sono le due sole verifiche
+      manuali ammesse, ed entrambe vanno dichiarate come tali nel report finale.</item>
+  </constraints>
+
+</spec>

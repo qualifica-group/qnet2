@@ -11,6 +11,7 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
 use App\Notifications\TaskUpdateRequested;
+use App\Services\Notifications\TaskNotifier;
 use App\Services\TaskService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -49,9 +50,19 @@ use Illuminate\Support\Facades\Notification;
  * six state-changing methods ends with its
  * `return $this->taskService->loadDetail(...)` — the DECLARED insertion
  * point, added just before that line once its own microtask lands.
- * Notifications are NO LONGER entirely out of scope: requestUpdate() is the
- * first (and, per spec 0118 D-13, only) action of this class that sends
- * one — to the caller-chosen recipients alone, never automatically.
+ *
+ * Notifications (spec 0119, D-12) now leave all seven methods, but never as
+ * logic: each write path says WHAT happened with a single call to the
+ * injected TaskNotifier, which alone knows WHO hears about it. Two rules
+ * govern those calls. They stay INSIDE the transaction, because
+ * TaskNotifier defers the actual send to `DB::afterCommit()` — a rollback
+ * must take the notification down with it (AC-028). And they branch only on
+ * what the write path has ALREADY decided, never on a second evaluation of
+ * the domain: complete() reads the submitted-flag it just branched the
+ * status on, and uncomplete() reads the phase it is about to overwrite
+ * BEFORE overwriting it, since afterwards every Task looks alike.
+ * requestUpdate() keeps its own spec 0118 notification, sent to the
+ * caller-chosen recipients alone and untouched by 0119.
  */
 final class TaskActionService
 {
@@ -59,6 +70,7 @@ final class TaskActionService
         private readonly TaskService $taskService,
         private readonly TaskActionAvailability $availability,
         private readonly TaskClosureFeedbackGuard $closureFeedbackGuard,
+        private readonly TaskNotifier $notifier,
     ) {}
 
     /**
@@ -71,7 +83,7 @@ final class TaskActionService
      */
     public function complete(Task $task, CompleteTaskData $data, User $actor): Task
     {
-        DB::transaction(function () use ($task, $data): void {
+        DB::transaction(function () use ($task, $data, $actor): void {
             $this->assertNotBlocked($task);
             $this->assertCompletable($task);
 
@@ -87,6 +99,12 @@ final class TaskActionService
 
             $this->closureFeedbackGuard->assertSatisfied($task);
             $task->save();
+
+            if ($data->validationStatusIdSubmitted) {
+                $this->notifier->validationRequested($task, $actor);
+            } else {
+                $this->notifyClosure($task, $actor);
+            }
         });
 
         return $this->taskService->loadDetail($task->fresh());
@@ -100,7 +118,11 @@ final class TaskActionService
      */
     public function uncomplete(Task $task, User $actor): Task
     {
-        DB::transaction(function () use ($task): void {
+        // Read BEFORE the write: afterwards every reopened Task sits on the
+        // resume status and the two branches of D-12 would collapse into one.
+        $wasInValidation = $this->availability->isValidatable($task);
+
+        DB::transaction(function () use ($task, $actor, $wasInValidation): void {
             $this->assertNotBlocked($task);
             $this->assertUncompletable($task);
 
@@ -108,6 +130,12 @@ final class TaskActionService
             $task->closure_feedback = null;
             $task->completion_date = null;
             $task->save();
+
+            if ($wasInValidation) {
+                $this->notifier->validationReopened($task, $actor);
+            } else {
+                $this->notifier->uncompleted($task, $actor);
+            }
         });
 
         return $this->taskService->loadDetail($task->fresh());
@@ -127,6 +155,12 @@ final class TaskActionService
             $task->task_status_id = $this->systemStatusId(TaskStatusSystemKey::ClosedPositive);
             $task->completion_date = now()->toDateString();
             $task->save();
+
+            // Two notifications, not one: voce 4 tells the assignees their
+            // work passed, and approve() also CLOSES the Task, which is the
+            // trigger voci 2 and 3 describe.
+            $this->notifier->validationApproved($task, $actor);
+            $this->notifyClosure($task, $actor);
         });
 
         return $this->taskService->loadDetail($task->fresh());
@@ -148,6 +182,8 @@ final class TaskActionService
             $task->task_status_id = $this->systemStatusId(TaskStatusSystemKey::InProgress);
             $task->completion_date = null;
             $task->save();
+
+            $this->notifier->validationRejected($task, $actor);
         });
 
         return $this->taskService->loadDetail($task->fresh());
@@ -167,6 +203,8 @@ final class TaskActionService
 
             $task->is_blocked = true;
             $task->save();
+
+            $this->notifier->locked($task, $actor);
         });
 
         return $this->taskService->loadDetail($task->fresh());
@@ -184,6 +222,8 @@ final class TaskActionService
 
             $task->is_blocked = false;
             $task->save();
+
+            $this->notifier->unlocked($task, $actor);
         });
 
         return $this->taskService->loadDetail($task->fresh());
@@ -211,6 +251,24 @@ final class TaskActionService
         Notification::send($recipients, new TaskUpdateRequested($task, $actor, $data->message));
 
         return $this->taskService->loadDetail($task->fresh());
+    }
+
+    /**
+     * The "Regola pratica" the document closes with (spec 0119, D-12), shared
+     * by the two paths that CLOSE a Task: complete()'s CASO 1 and approve().
+     * It reads the feedback the Task CARRIES after the write — which may come
+     * from this payload or may already have been on the record — never the
+     * submitted flag, since a closure can inherit a feedback nobody sent now.
+     */
+    private function notifyClosure(Task $task, User $actor): void
+    {
+        if (filled($task->closure_feedback)) {
+            $this->notifier->feedbackInserted($task, $actor);
+
+            return;
+        }
+
+        $this->notifier->closed($task, $actor);
     }
 
     /**

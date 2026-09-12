@@ -3,6 +3,110 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MODULO TASK — FASE 6: MAPPA NOTIFICHE (spec 0119) — VERDE, NON COMMITTATO (2026-09-11)
+
+**Cosa e'.** Sesta fase del modulo Task, sopra 0101/0116/0117/0118. Il blocco "Mappa Notifiche
+Task" di `DOC Tasks.docx`: 11 classi di notifica `database`+`mail`, un orchestratore, gli innesti
+negli 8 write path. Backend-only: il centro notifiche del frontend e' generico e consumava gia' le
+quattro chiavi di `NotificationData`. 6 microtask in 5 onde, verifier indipendente su 35 criteri.
+
+**LA CONTRADDIZIONE DEL DOCUMENTO, risolta dall'utente e da NON riaprire.** Sul completamento il
+documento dice due cose diverse: la sezione "Azioni" scrive "creatore, assegnatari e osservatori",
+la Mappa Notifiche scrive "richiedente + osservatori". **Vince l'UNIONE** (decisione utente
+2026-09-11, D-4). Conseguenza: `TaskClosed` e `TaskFeedbackInserted` condividono l'insieme completo
+con `TaskUnCompleted`/`TaskLocked`/`TaskUnLocked`, e in tutta la mappa restano quattro soli insiemi
+distinti. Chi trovasse "strano" che la voce 2 raggiunga il creatore sta rileggendo la riga sbagliata.
+
+**LE ALTRE DECISIONI, congelate come D-1..D-13 nella spec.**
+- **L'attore e' SEMPRE escluso** (D-3). Il documento non lo dice mai; `AssignmentNotifier` lo fa
+  gia' ed e' l'unico precedente in repo. Conseguenze accettate: il creatore che blocca il proprio
+  task non riceve `TaskLocked`; un task creato da chi ne e' anche unico assegnatario non produce
+  alcun `TaskAssigned` (pinnato da AC-013).
+- **Ripiego D-5**, in UN SOLO posto: `TaskValidationRequested` e' l'unica voce in cui il richiedente
+  e' il solo destinatario, quindi e' l'unica in cui un `requester_id` null fa subentrare il
+  creatore. Altrove un richiedente nullo contribuisce semplicemente nessuno.
+- **Flusso di modifica** (D-9): su PATCH si notificano SOLO gli utenti AGGIUNTI, riusando le voci 7
+  e 8. Chi c'era gia' e chi viene rimosso non riceve nulla. Nessuna dodicesima classe.
+- **`approve()` accende DUE notifiche**, ed e' l'unico evento a farlo: voce 4 agli assegnatari PIU'
+  la chiusura (voce 2 o 3) a tutti, perche' approve() chiude il Task definitivamente. La tabella
+  della spec e' stata corretta in corsa per dirlo esplicitamente: chi leggeva la sola voce 4 non se
+  lo aspettava.
+
+**NAMING CONGELATO, da riusare e non reinventare.**
+- `App\Notifications\TaskNotification` — base ASTRATTA condivisa dalle 11. Canali, payload, deep
+  link e mail stanno li'; una sottoclasse dichiara solo `title()`, `body()` e `level()`.
+  La gerarchia deve restare **profonda un solo livello**: il nome della classe finisce nella colonna
+  `type` di `notifications`, quindi e' un dato persistito.
+- `TaskUnCompleted` e `TaskUnLocked` con la maiuscola in mezzo, **come le scrive il documento**.
+  Non "uniformarle": vedi sopra, e' un dato. Attenzione, `class_exists()` NON e' un buon modo di
+  verificarlo — il filesystem di macOS e' case-insensitive e risolve anche `TaskUncompleted`. Il
+  test legge i nomi dei FILE con `glob`.
+- `App\Services\Notifications\TaskNotifier` — 11 metodi pubblici e nessun altro (AC-006, pinnato
+  per Reflection): `validationRequested`, `closed`, `feedbackInserted`, `validationApproved`,
+  `validationRejected`, `validationReopened`, `assigned`, `watching`, `uncompleted`, `locked`,
+  `unlocked`. `assigned`/`watching` prendono un terzo argomento `?array $onlyUserIds` che serve a D-9.
+- `App\Services\Notifications\TaskNotificationAudience` — PURA, costruita su 4 insiemi di id.
+  Tutte le risposte passano dall'unico `resolve()`: esclusione attore e dedup sono impossibili da
+  aggirare per costruzione, non "testate su alcuni casi".
+- `App\Support\Notifications\TaskDetails` — scheda dettagli mail. **NON chiama `__()`**:
+  restituisce le chiavi `notifications.fields.*` e le fa tradurre a valle da `DetailsTable`, nel
+  locale del destinatario. Questo dettaglio ha gia' prodotto un test vacuo una volta (vedi sotto).
+- `TaskService::update()` ora richiede l'attore: `update(Task $task, UpdateTaskData $data, User
+  $actor)`. Il controller e' l'unico chiamante nel repo (verificato).
+
+**LE TRADUZIONI STANNO IN DUE POSTI, non uno.** Titoli e corpi delle notifiche -> `lang/it.json`
+(chiave inglese). Label della scheda dettagli -> `lang/{it,en}/notifications.php` (chiavi puntate).
+La spec diceva solo `it.json`: e' il repo ad avere questa separazione, ed e' stata seguita.
+
+**TRE TEST CHE NON PROVAVANO NIENTE, trovati dal verifier e corretti. Non rifare questi errori.**
+1. `DB::listen()` **accumula** i listener, non li sostituisce. Due misure con due listener lasciano
+   il primo attivo durante la seconda: la baseline si gonfia e il confronto diventa vero per
+   costruzione. Il verifier lo ha dimostrato replicando la meccanica con 20 query deliberate: il
+   test passava. Ora: un solo contatore azzerato fra le fasi, warm-up della cache permessi, e
+   `toBe(0)` — dopo il warm-up comporre il payload costa ZERO query.
+2. `Notification::fake()` **sopprime la persistenza**, quindi non puo' provare "nessuna riga in
+   `notifications`". I due casi di AC-010 girano ora SENZA fake: in test la coda e' `sync` e il
+   mailer e' `array` (phpunit.xml), quindi la notifica fa la sua strada vera senza spedire nulla.
+3. Una scansione delle chiavi i18n basata sul solo `__()` e' **cieca su `TaskDetails`**, che non lo
+   chiama mai: quella meta' del test estraeva zero chiavi e dichiarava verde il nulla. Ora la
+   scansione riconosce anche i letterali `'notifications.*'`, verifica it **ed** en, e fallisce se
+   un file non produce chiavi — cosi' non puo' tornare vacua in silenzio.
+Ogni correzione e' stata validata con una MUTAZIONE che l'ha fatta cadere, poi ripristinata.
+
+**BUCO PREESISTENTE SEGNALATO E NON SANATO (non e' nostro).** `TaskUpdateRequested` della spec 0118
+usa `__('Update requested')` e `__(':requester asked for an update on :title')`, **prive di
+traduzione italiana**: quella notifica arriva oggi in inglese a un utente italiano. Fuori perimetro
+(§1.6: si segnala, non si implementa). `__('Open')` e' stata invece tradotta, perche' la base
+condivisa la usa. Le altre due restano aperte.
+
+**DIMENSIONI MESSE A VERBALE.** `TaskService` **444** righe (era 397) e `Tasks\TaskActionService`
+**387** (era 329): sopra il soft limit, sotto l'hard limit, deliberatamente non splittati — i guard
+devono vivere nella stessa transazione della scrittura che proteggono. Il margine si e' pero'
+assottigliato: chi affronta la 0120 splitti per WRITE PATH, mai estraendo i guard dalla transazione.
+Tutti i file nuovi sotto 300 (`TaskNotifier` 178, `TaskNotification` 158, `TaskNotificationAudience`
+149, `TaskDetails` 90). `TaskActionNotificationsTest` 379 righe: non splittato di proposito, perche'
+spezzarlo spingerebbe i suoi helper in un file condiviso, cioe' nella trappola `function_exists` che
+il modulo si porta dietro da tre fasi.
+
+**VERIFICA ESEGUITA (verifier indipendente + rirun su albero fermo dopo le correzioni).**
+`XDEBUG_MODE=off ./vendor/bin/pest` -> **7158 test, 7151 passed, 1 skipped, 6 errors**, 30022
+asserzioni (baseline 0118: 7091/7098; **+60 test, +60 verdi, errori invariati**). I 6 errori sono
+`DemoTaskSeederTest` a `DemoTaskSeeder.php:172` ("Unknown named parameter $taskStatusId"), rotto dal
+D-3 della 0118, filone di un'altra sessione: AC-034 li ammette esplicitamente. `pint --test` EXIT 0
+sull'intero backend. `npx tsc -b --force --pretty false` EXIT 0. `git status --porcelain frontend/`
+VUOTO (AC-035). **35 criteri su 35 PASS**, nessuno NON VERIFICATO.
+
+**RISCHIO DICHIARATO, da chiudere da chi possiede quel file.** `DemoTaskSeeder` chiama
+`TaskService::create()` 60 volte: dopo questa spec un `db:seed --class=DemoDataSeeder` accodera' le
+mail delle voci 7 e 8. Va anteposto un `Notification::fake()`, come `DemoTaskNoteSeeder` gia' evita
+di innescare le @mention. Non e' stato fatto qui perche' quel file e' di un altro filone ed e' gia'
+rotto.
+
+**PROSSIMO PASSO.** Lavoro VERDE e NON COMMITTATO (§3.6: il commit lo chiede l'utente). La spec
+**0120 (pianificazione ricorrente)** e' gia' scritta e approvata, con 15 decisioni e 39 criteri:
+e' il prossimo lotto. Il suo AC-030 e' una verifica OPERATIVA a carico dell'utente — senza il cron
+di sistema `php artisan schedule:run` la ricorrenza non genera nulla e nessun test lo rivela.
+
 ## MODULO TASK — FASE 5: REGOLE DI CREAZIONE + RICHIEDI AGGIORNAMENTO (spec 0118) — VERDE, NON COMMITTATO (2026-09-11)
 
 **Cosa e'.** Quinta fase del modulo Task, sopra 0101/0116/0117. Due blocchi del documento di

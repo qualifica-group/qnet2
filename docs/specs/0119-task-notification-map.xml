@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0119 — MAPPA NOTIFICHE DEL MODULO TASK
+  Sesta fase del modulo Task, sopra 0101/0116/0117/0118.
+  Copre il blocco "Mappa Notifiche Task" di DOC Tasks.docx (11 classi) piu' i due
+  punti del documento che nominano notifiche senza dichiarare una classe.
+-->
+<spec id="0119-task-notification-map" status="draft" owner="utente" date="2026-09-11">
+
+  <goal>
+    Ogni transizione del Task che il documento di prodotto dichiara notificabile produce una
+    notifica in-app (canale `database`) e una email (canale `mail`) alle persone che quel
+    documento elenca. Undici classi di notifica, un solo orchestratore, nessun endpoint nuovo.
+  </goal>
+
+  <context>
+    <!-- Nomi REALI verificati nel repo il 2026-09-11, non ipotizzati. -->
+    <existing_names>
+      <item>`App\Notifications\TaskUpdateRequested` (spec 0118) — l'UNICA notifica Task oggi
+        esistente e il TEMPLATE esatto delle undici: `extends Notification implements ShouldQueue`,
+        `use Queueable`, `via(): ['database', 'mail']`, `toArray()` che ritorna
+        `(new NotificationData(...))->toArray()`, `toMail()` che costruisce un `MailMessage`, e un
+        `pathFor()` privato che risolve il deep link PER DESTINATARIO. Non e' mappata dal documento
+        e resta com'e': questa spec non la tocca.</item>
+      <item>`App\DataObjects\Notifications\NotificationData` — il payload persistito nella colonna
+        `data`: `title`, `message`, `level` (`NotificationLevelEnum`), `actionUrl`. `toArray()`
+        emette le quattro chiavi `title|message|level|action_url`. E' l'unica shape che il
+        frontend conosce.</item>
+      <item>`App\Enums\NotificationLevelEnum` — `Info`, `Success`, `Warning`, `Error`.</item>
+      <item>`App\Services\Notifications\AssignmentNotifier` (spec 0081) — il MODELLO STRUTTURALE
+        dell'orchestratore: `notify()` con `// Step N`, esclusione dell'attore allo Step 1,
+        risoluzione dei fatti allo Step 2, invio dentro `DB::afterCommit()` allo Step 3, e un
+        `recipients()` privato che carica tutti i destinatari in UNA query con `->keyBy('id')`.
+        Il suo docblock dichiara: "Deliberately NOT an observer: this repo has no model
+        observers/events (constraint carried since spec 0077)".</item>
+      <item>`App\Support\Notifications\DetailsTable::markdown(array $details): ?HtmlString` —
+        rende la "scheda dettagli" della mail come TABELLA MARKDOWN. Agnostico (accetta
+        `label i18n => valore`), quindi riusabile dal Task senza modifiche. Ritorna `null` a
+        input vuoto, e le label sono tradotte al render dentro il locale del destinatario.</item>
+      <item>`App\Support\Notifications\RecordDetails` — NON riusabile: e' legato a
+        `AssignmentTargetEnum` (Registry/Opportunity). La scheda dettagli del Task va costruita
+        da una classe propria.</item>
+      <item>`App\Models\User implements HasLocalePreference` con `preferredLocale()` — Laravel
+        commuta il locale per destinatario da solo: i testi vanno lasciati a `__()` dentro la
+        notifica, mai pre-renderizzati dal chiamante.</item>
+      <item>`App\Services\Tasks\TaskNotable::deepLinkPath(Model $record, User $recipient, ?int
+        $quoteId): ?string` — ritorna `/tasks/{id}` se il destinatario supera `authorizeRead()`,
+        altrimenti `null`. E' risolto dal container (non statico).</item>
+      <item>`App\Services\Tasks\TaskRecordRoles` (STATICA) — `isCreator`, `isRequester`,
+        `isAssignee`, `isWatcher`, `isManager`.</item>
+      <item>`App\Services\TaskService` — `create(CreateTaskData $data, User $creator): Task` con 6
+        Step in `DB::transaction`, `update(Task $task, UpdateTaskData $data): Task`,
+        `delete(Task $task): void`, e il privato `persistedPivotIds(Task $task, string $relation):
+        array` gia' usato da `update()` per leggere i pivot persistiti. 397 righe: sopra il soft
+        limit, sotto l'hard limit (nota gia' a verbale nel suo docblock).</item>
+      <item>`App\DataObjects\Tasks\UpdateTaskData` — `hasAssigneeIds()` / `hasWatcherIds()`
+        distinguono "chiave non inviata" da "chiave inviata vuota". `update()` sincronizza i pivot
+        SOLO quando la chiave e' stata inviata.</item>
+      <item>`App\Services\Tasks\TaskActionService` — `complete`, `uncomplete`, `approve`, `reject`,
+        `block`, `unblock`, `requestUpdate`. Le prime sei aprono `DB::transaction`; `requestUpdate`
+        no (non scrive nulla) e invia gia' `Notification::send($recipients, new
+        TaskUpdateRequested(...))`. 329 righe.</item>
+      <item>`App\Enums\TaskStatusGroup` — `Open`, `Pending`, `InValidation`, `ClosedPositive`,
+        `ClosedNegative`, con `isClosing()`. `App\Enums\TaskStatusSystemKey` — `Open`,
+        `InProgress`, `Assigned`, `ClosedPositive`, `ClosedNegative`.</item>
+      <item>`Task::assignees()` e `Task::watchers()` (pivot `task_assignee` / `task_watcher`);
+        colonne scalari `creator_id` NOT NULL e `requester_id` NULLABLE.</item>
+      <item>Infrastruttura gia' pronta: `QUEUE_CONNECTION=database`, mail configurata,
+        `config('app.frontend_url')`, catalogo i18n backend in `lang/it.json` (chiave inglese =>
+        traduzione italiana). Le rotte `GET /api/notifications`, `GET
+        /api/notifications/unread-count`, `PATCH /api/notifications/{notification}/read`, `POST
+        /api/notifications/read-all` esistono e sono generiche.</item>
+    </existing_names>
+
+    <decisions>
+      <d id="D-1">UNDICI CLASSI, UNA PER EVENTO, tutte in `App\Notifications\`, tutte
+        `ShouldQueue`, tutte `via(): ['database', 'mail']`, tutte modellate su
+        `TaskUpdateRequested`. I nomi sono quelli che il documento detta e non si "migliorano":
+        `TaskValidationRequested`, `TaskClosed`, `TaskFeedbackInserted`, `TaskValidationApproved`,
+        `TaskValidationRejected`, `TaskValidationReopened`, `TaskAssigned`, `TaskObserver`,
+        `TaskUnCompleted`, `TaskLocked`, `TaskUnLocked`. Si noti che il documento scrive
+        `TaskUnCompleted` e `TaskUnLocked` con la C e la L maiuscole in mezzo: si riproduce
+        esattamente cosi', perche' il nome della classe finisce nella colonna `type` della tabella
+        `notifications` ed e' quindi un dato persistito, non un dettaglio estetico.</d>
+
+      <d id="D-2">UN SOLO ORCHESTRATORE: `App\Services\Notifications\TaskNotifier`, che rispecchia
+        `AssignmentNotifier` voce per voce — `// Step N`, esclusione attore, fatti risolti una
+        volta sola, invio dentro `DB::afterCommit()`, destinatari in una query sola. Le
+        Notification restano presentazioni di fatti gia' noti e NON interrogano il database, con la
+        sola eccezione gia' ammessa dal repo: il deep link, che dipende dai permessi del
+        destinatario. Un metodo pubblico per evento, undici in tutto.</d>
+
+      <d id="D-3">L'ATTORE E' SEMPRE ESCLUSO dai destinatari, in tutti e undici i casi. Il
+        documento non lo dice mai, ma `AssignmentNotifier` lo fa gia' ("nobody needs to be told
+        what they just did") ed e' l'unico precedente in repo. Conseguenza accettata e messa a
+        verbale: il creatore che blocca il proprio task non riceve `TaskLocked`, e un task creato
+        da chi e' anche unico assegnatario non produce alcun `TaskAssigned`.</d>
+
+      <d id="D-4">DESTINATARI PER EVENTO (decisione utente 2026-09-11). Il documento si contraddice
+        sul completamento: la sezione "Azioni" scrive "creatore, assegnatari e osservatori", la
+        "Mappa Notifiche" scrive "richiedente + osservatori". VINCE L'UNIONE dei due insiemi.
+        Conseguenza: le voci 2 e 3 usano lo stesso insieme completo delle voci 9/10/11, e restano
+        quattro soli insiemi distinti in tutta la mappa. Tabella normativa in `data_contract`.</d>
+
+      <d id="D-5">RICHIEDENTE ASSENTE. `requester_id` e' nullable e le righe storiche ne sono prive
+        (la 0118 non ha sanato il pregresso). Regola: il ruolo "richiedente" contribuisce zero
+        destinatari quando e' null, SALVO in `TaskValidationRequested`, dove il richiedente e'
+        l'unico destinatario previsto — li' si ripiega sul creatore, altrimenti una richiesta di
+        validazione non raggiungerebbe nessuno e il task resterebbe fermo per sempre. Nessun altro
+        fallback altrove.</d>
+
+      <d id="D-6">DEDUPLICA PER `user_id`. I ruoli sul record si cumulano (un utente puo' essere
+        creatore, richiedente e assegnatario insieme): ogni destinatario riceve UNA notifica per
+        evento, mai una per ruolo ricoperto.</d>
+
+      <d id="D-7">`action_url` E' UN PATH INTERNO risolto PER DESTINATARIO con
+        `TaskNotable::deepLinkPath()`. Chi non supera la visibilita' riceve comunque la notifica
+        ma con `action_url` null, nessun bottone nella mail, e una riga di corpo che glielo dice —
+        identico a quanto `TaskUpdateRequested` fa gia'. Mai un link assoluto, mai un link che
+        atterra su un 403.</d>
+
+      <d id="D-8">SCHEDA DETTAGLI IN EMAIL via `DetailsTable::markdown()`, costruita da una classe
+        nuova `App\Support\Notifications\TaskDetails` (il gemello Task di `RecordDetails`, che non
+        e' riusabile). Campi della scheda: titolo, stato, priorita', data fine, richiedente,
+        assegnatari. Le label restano chiavi `__()` tradotte al render nel locale del destinatario.
+        La notifica in-app NON porta la tabella: `NotificationData::message` resta una frase.</d>
+
+      <d id="D-9">FLUSSO DI MODIFICA (decisione utente 2026-09-11): su PATCH si notificano SOLO
+        gli utenti AGGIUNTI, riusando le classi 7 e 8 — chi entra fra gli assegnatari riceve
+        `TaskAssigned`, chi entra fra gli osservatori riceve `TaskObserver`. Chi c'era gia' e chi
+        viene rimosso non riceve nulla. Nessuna dodicesima classe: il documento non ne prevede una,
+        e "nuovi utenti coinvolti" e' letteralmente questo. Il delta si calcola confrontando i
+        pivot persistiti PRIMA del sync con gli id inviati, e solo per le chiavi effettivamente
+        inviate (`hasAssigneeIds()`/`hasWatcherIds()`).</d>
+
+      <d id="D-10">NESSUN EVENTO, NESSUN LISTENER, NESSUN OBSERVER. Le chiamate a `TaskNotifier`
+        stanno in fondo ai write path esistenti, dove la spec 0116 aveva gia' dichiarato il punto
+        d'innesto. Il vincolo e' quello che `AssignmentNotifier` porta scritto dalla 0077: questo
+        repo non ha model observers/events e non e' questa la spec che li introduce.</d>
+
+      <d id="D-11">LIVELLI. `Info` per le informative (7, 8, 1, 2, 3); `Success` per gli esiti
+        positivi (4); `Warning` per cio' che richiede attenzione o riapre lavoro (5, 6, 9, 10);
+        `Info` per lo sblocco (11). Il livello guida solo il colore in campanella
+        (`NotificationLevelEnum` porta gia' `#[Color]`), non il comportamento.</d>
+
+      <d id="D-12">IL COMPLETAMENTO SI BIFORCA su cio' che il write path ha gia' deciso, mai su
+        una seconda valutazione: `complete()` con `validation_status_id` inviato produce
+        `TaskValidationRequested`; senza, produce `TaskClosed` se `closure_feedback` e' vuoto e
+        `TaskFeedbackInserted` se e' valorizzato — esattamente la "Regola pratica" in fondo al
+        documento. `uncomplete()` si biforca sulla fase di PARTENZA, letta prima della scrittura:
+        da `in_validation` produce `TaskValidationReopened`, da una fase di chiusura produce
+        `TaskUnCompleted`.</d>
+
+      <d id="D-13">SPEC BACKEND-ONLY. Il centro notifiche del frontend e' generico e consuma gia'
+        le quattro chiavi di `NotificationData`; la campanella e il click-through esistono. Non si
+        tocca un solo file di `frontend/`.</d>
+    </decisions>
+  </context>
+
+  <scope>
+    <in>
+      <item>D-1: le 11 classi in `backend/app/Notifications/`.</item>
+      <item>D-2/D-3/D-6: `App\Services\Notifications\TaskNotifier` con un metodo pubblico per
+        evento, esclusione attore, deduplica, `DB::afterCommit`, destinatari in una query.</item>
+      <item>D-8: `App\Support\Notifications\TaskDetails` per la scheda dettagli della mail.</item>
+      <item>Innesti: `TaskService::create()` (voci 7 e 8), `TaskService::update()` (D-9),
+        `TaskActionService::complete()` (voci 1, 2, 3), `uncomplete()` (voci 6 e 9), `approve()`
+        (voce 4), `reject()` (voce 5), `block()` (voce 10), `unblock()` (voce 11).</item>
+      <item>Traduzioni italiane di ogni stringa nuova in `backend/lang/it.json`.</item>
+      <item>Test Pest: una suite per classe piu' una per l'orchestratore.</item>
+    </in>
+    <out>
+      <item>Qualunque modifica a `frontend/` (D-13).</item>
+      <item>`TaskUpdateRequested` e l'azione "Richiedi aggiornamento" (spec 0118, gia' verdi).</item>
+      <item>Preferenze di notifica per utente, opt-out per canale, digest o raggruppamento: il
+        documento non li chiede e sarebbero un sottosistema a se'.</item>
+      <item>Notifiche su creazione/modifica/cancellazione di note, documenti e sotto-task: le
+        @mention hanno gia' `NoteMentionNotification` (spec 0052) e il resto non e' mappato dal
+        documento.</item>
+      <item>Notifiche di scadenza imminente o task scaduto: non sono nella mappa del documento e
+        richiederebbero lo scheduler della spec 0120.</item>
+      <item>Notifica a chi viene RIMOSSO dagli assegnatari/osservatori (D-9).</item>
+      <item>Correzione di `database/seeders/DemoTaskSeeder.php`: e' di un altro filone ed e' gia'
+        rotto dal D-3 della 0118. RISCHIO DICHIARATO: quel seeder chiama `TaskService::create()`
+        60 volte, quindi dopo questa spec un `db:seed --class=DemoDataSeeder` accodera' le mail
+        delle voci 7 e 8. Chi possiede quel file deve anteporgli `Notification::fake()`, come
+        `DemoTaskNoteSeeder` gia' evita di innescare le @mention.</item>
+      <item>Rate limiting o throttling degli invii: resta riservato agli endpoint di credenziali
+        (backend.md §2, decisione utente 2026-07-15).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!--
+      NESSUN ENDPOINT NUOVO. Il contratto che questa spec congela e' duplice:
+      (1) la tabella evento => classe => destinatari, che e' la specifica vera;
+      (2) la shape del payload, che e' gia' quella di NotificationData e non cambia.
+    -->
+
+    <notification_map>
+      <!--
+        INSIEMI DI DESTINATARI (D-4, D-6), sempre al netto dell'attore (D-3) e sempre
+        deduplicati per user_id:
+          RICHIEDENTE = requester_id, con il fallback D-5 dove indicato
+          TUTTI       = creator_id + requester_id + assegnatari + osservatori
+          ASSEGNATARI = pivot task_assignee
+          OSSERVATORI = pivot task_watcher
+      -->
+      <event n="1" class="TaskValidationRequested" level="Info">
+        <trigger>`TaskActionService::complete()` con `validation_status_id` inviato (CASO 2).</trigger>
+        <recipients>RICHIEDENTE, con fallback sul creatore se `requester_id` e' null (D-5).</recipients>
+      </event>
+      <event n="2" class="TaskClosed" level="Info">
+        <trigger>`complete()` senza `validation_status_id` e `closure_feedback` vuoto, oppure
+          `approve()` quando il feedback e' vuoto.</trigger>
+        <recipients>TUTTI (D-4: unione delle due sezioni del documento).</recipients>
+      </event>
+      <event n="3" class="TaskFeedbackInserted" level="Info">
+        <trigger>`complete()` senza `validation_status_id` e `closure_feedback` valorizzato.</trigger>
+        <recipients>TUTTI (D-4).</recipients>
+      </event>
+      <event n="4" class="TaskValidationApproved" level="Success">
+        <trigger>`TaskActionService::approve()`.</trigger>
+        <recipients>ASSEGNATARI.</recipients>
+        <note>ATTENZIONE, approve() manda DUE notifiche, non una. Questa va agli assegnatari; INSIEME
+          a questa parte anche la chiusura (voce 2 o voce 3 secondo il feedback) verso l'insieme
+          TUTTI, perche' approve() chiude il Task definitivamente ed e' esattamente il caso che le
+          voci 2 e 3 chiamano "il task viene completato definitivamente". Chi legge questa riga da
+          sola non se lo aspetta: e' l'unico evento del documento che ne accende due.</note>
+      </event>
+      <event n="5" class="TaskValidationRejected" level="Warning">
+        <trigger>`TaskActionService::reject()`.</trigger>
+        <recipients>ASSEGNATARI.</recipients>
+      </event>
+      <event n="6" class="TaskValidationReopened" level="Warning">
+        <trigger>`uncomplete()` quando la fase DI PARTENZA e' `in_validation` (D-12).</trigger>
+        <recipients>RICHIEDENTE + creatore.</recipients>
+      </event>
+      <event n="7" class="TaskAssigned" level="Info">
+        <trigger>`TaskService::create()`, e `TaskService::update()` per i soli assegnatari
+          AGGIUNTI (D-9).</trigger>
+        <recipients>ASSEGNATARI (alla creazione) / i soli aggiunti (su PATCH).</recipients>
+      </event>
+      <event n="8" class="TaskObserver" level="Info">
+        <trigger>`TaskService::create()`, e `TaskService::update()` per i soli osservatori
+          AGGIUNTI (D-9).</trigger>
+        <recipients>OSSERVATORI (alla creazione) / i soli aggiunti (su PATCH).</recipients>
+      </event>
+      <event n="9" class="TaskUnCompleted" level="Warning">
+        <trigger>`uncomplete()` quando la fase DI PARTENZA e' di chiusura (D-12).</trigger>
+        <recipients>TUTTI.</recipients>
+      </event>
+      <event n="10" class="TaskLocked" level="Warning">
+        <trigger>`TaskActionService::block()`.</trigger>
+        <recipients>TUTTI.</recipients>
+      </event>
+      <event n="11" class="TaskUnLocked" level="Info">
+        <trigger>`TaskActionService::unblock()`.</trigger>
+        <recipients>TUTTI.</recipients>
+      </event>
+    </notification_map>
+
+    <payload>
+      <!-- Invariato: e' gia' il contratto di NotificationData, consumato dalla campanella. -->
+      <database>
+        { title: string, message: string, level: "info"|"success"|"warning"|"error",
+          action_url: string|null }
+      </database>
+      <mail>
+        subject = il medesimo `title`; greeting `Hello :name`; una riga di corpo = `message`;
+        la scheda dettagli di D-8; bottone "Open" con
+        `rtrim(config('app.frontend_url'), '/') . action_url` SOLO se `action_url` non e' null.
+      </mail>
+    </payload>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Struttura e contratto -->
+    <criterion id="AC-001">Le 11 classi esistono in `App\Notifications\` con i nomi esatti di D-1, implementano `ShouldQueue` e la loro `via()` ritorna `['database', 'mail']`.</criterion>
+    <criterion id="AC-002">Per ognuna delle 11, `toArray()` ritorna esattamente le quattro chiavi `title`, `message`, `level`, `action_url`, e `level` e' un valore valido di `NotificationLevelEnum`.</criterion>
+    <criterion id="AC-003">Dato un destinatario che NON supera `TaskNotable::authorizeRead()`, quando riceve una qualsiasi delle 11, allora `action_url` e' null e la `MailMessage` non contiene alcun bottone.</criterion>
+    <criterion id="AC-004">Dato un destinatario che supera la visibilita', allora `action_url` vale `/tasks/{id}` e il bottone della mail punta a `config('app.frontend_url')` concatenato a quel path, senza doppia barra.</criterion>
+    <criterion id="AC-005">Nessuna delle 11 classi esegue query: costruita con i soli argomenti del costruttore e con le relazioni gia' caricate, `toArray()` non incrementa il contatore di query (`DB::listen`), salvo la singola risoluzione del deep link.</criterion>
+
+    <!-- Orchestratore -->
+    <criterion id="AC-006">`App\Services\Notifications\TaskNotifier` espone un metodo pubblico per ciascuno degli 11 eventi e nessun altro metodo pubblico.</criterion>
+    <criterion id="AC-007">Dato un utente che e' insieme creatore, richiedente e assegnatario, quando scatta un evento con insieme TUTTI, allora riceve UNA sola notifica (D-6).</criterion>
+    <criterion id="AC-008">Dato un attore che appartiene anche all'insieme dei destinatari, quando compie l'azione, allora NON riceve la notifica di quell'azione (D-3).</criterion>
+    <criterion id="AC-009">Dato un evento con 8 destinatari distinti, quando viene orchestrato, allora i destinatari sono caricati con UNA sola query su `users`.</criterion>
+    <criterion id="AC-010">Data una transazione che fallisce dopo la chiamata al notifier, quando la transazione rolla indietro, allora nessuna notifica e' inviata e nessuna riga compare in `notifications` (invio dentro `DB::afterCommit`).</criterion>
+    <criterion id="AC-011">Dato un id di destinatario che non esiste piu' in `users`, quando scatta l'evento, allora l'invio prosegue per gli altri senza eccezione.</criterion>
+
+    <!-- Creazione e modifica -->
+    <criterion id="AC-012">Dato POST `/api/tasks` con 2 assegnatari e 1 osservatore, nessuno dei quali e' il creatore, allora i 2 assegnatari ricevono `TaskAssigned` e l'osservatore riceve `TaskObserver`, e nessun altro riceve nulla.</criterion>
+    <criterion id="AC-013">Dato POST `/api/tasks` in cui il creatore e' anche l'unico assegnatario, allora NESSUN `TaskAssigned` e' inviato (D-3 combinato con AC-012).</criterion>
+    <criterion id="AC-014">Dato un Task con assegnatari [A, B], quando PATCH invia `assignee_ids` [A, B, C], allora SOLO C riceve `TaskAssigned` (D-9).</criterion>
+    <criterion id="AC-015">Dato un Task con assegnatari [A, B], quando PATCH invia `assignee_ids` [A], allora NESSUNA notifica e' inviata: B e' stato rimosso e la rimozione non notifica (D-9).</criterion>
+    <criterion id="AC-016">Dato un Task con osservatori [A], quando PATCH invia `watcher_ids` [A, B], allora SOLO B riceve `TaskObserver`.</criterion>
+    <criterion id="AC-017">Dato un PATCH che NON invia ne' `assignee_ids` ne' `watcher_ids` (per esempio cambia solo il titolo), allora nessuna notifica e' inviata.</criterion>
+    <criterion id="AC-018">Dato un PATCH rifiutato da un guard (422 o 409), allora nessuna notifica e' inviata.</criterion>
+
+    <!-- Completamento e validazione -->
+    <criterion id="AC-019">Dato POST `/complete` con `validation_status_id` valorizzato, allora il solo richiedente riceve `TaskValidationRequested` e nessuna delle altre 10 classi e' inviata.</criterion>
+    <criterion id="AC-020">Dato un Task con `requester_id` null, quando POST `/complete` con `validation_status_id`, allora `TaskValidationRequested` raggiunge il CREATORE (D-5).</criterion>
+    <criterion id="AC-021">Dato POST `/complete` senza `validation_status_id` e senza `closure_feedback`, allora creatore, richiedente, assegnatari e osservatori ricevono `TaskClosed`, deduplicati e al netto dell'attore.</criterion>
+    <criterion id="AC-022">Dato POST `/complete` senza `validation_status_id` e con `closure_feedback` valorizzato, allora gli stessi destinatari di AC-021 ricevono `TaskFeedbackInserted` e NON `TaskClosed`.</criterion>
+    <criterion id="AC-023">Dato POST `/approve` su un Task in validazione, allora i soli assegnatari ricevono `TaskValidationApproved`.</criterion>
+    <criterion id="AC-024">Dato POST `/reject` su un Task in validazione, allora i soli assegnatari ricevono `TaskValidationRejected`.</criterion>
+    <criterion id="AC-025">Dato un Task in fase `in_validation`, quando POST `/uncomplete`, allora richiedente e creatore ricevono `TaskValidationReopened` e NESSUN `TaskUnCompleted` e' inviato (D-12).</criterion>
+    <criterion id="AC-026">Dato un Task in fase di chiusura, quando POST `/uncomplete`, allora l'insieme TUTTI riceve `TaskUnCompleted` e NESSUN `TaskValidationReopened` e' inviato (D-12).</criterion>
+
+    <!-- Blocco -->
+    <criterion id="AC-027">Dato POST `/block`, allora l'insieme TUTTI riceve `TaskLocked`; dato POST `/unblock`, l'insieme TUTTI riceve `TaskUnLocked`.</criterion>
+    <criterion id="AC-028">Dato un POST `/block` rifiutato con 403 o 422, allora nessuna notifica e' inviata.</criterion>
+
+    <!-- Presentazione -->
+    <criterion id="AC-029">La mail di ciascuna delle 11 contiene la scheda dettagli di D-8 resa come tabella markdown, con titolo, stato, priorita', data fine, richiedente e assegnatari; un campo nullo e' omesso dalla tabella, non reso come riga vuota.</criterion>
+    <criterion id="AC-030">Dato un destinatario con `preferredLocale()` italiano e un altro inglese, quando ricevono lo stesso evento, allora ciascuno riceve titolo, corpo e label della scheda nella propria lingua.</criterion>
+    <criterion id="AC-031">Ogni stringa introdotta da questa spec ha la sua traduzione in `backend/lang/it.json`: un test scandisce le chiavi `__()` delle 11 classi e di `TaskDetails` e fallisce su una chiave non tradotta.</criterion>
+    <criterion id="AC-032">La notifica in-app delle 11 classi nomina sempre il titolo del Task nel `message`, cosi' che la campanella sia leggibile senza aprire il record.</criterion>
+
+    <!-- Non regressione -->
+    <criterion id="AC-033">`TaskUpdateRequested` e i test della spec 0118 restano invariati e verdi.</criterion>
+    <criterion id="AC-034">La suite Pest completa resta verde, con la sola eccezione gia' nota e non nostra di `DemoTaskSeederTest` (rotto dal D-3 della spec 0118).</criterion>
+    <criterion id="AC-035">Nessun file sotto `frontend/` risulta modificato dal diff di questa spec (D-13).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>NESSUNA DIPENDENZA NUOVA. Tutto si fa con Laravel, `Illuminate\Notifications` e le classi
+      gia' in repo (CLAUDE.md §0).</item>
+    <item>NESSUN EVENTO/LISTENER/OBSERVER (D-10): il repo non ne ha e questa spec non li introduce.</item>
+    <item>Le Notification non interrogano il database (AC-005): i fatti li passa il chiamante.
+      L'unica eccezione ammessa e' il deep link per-destinatario, che per definizione non e'
+      precalcolabile.</item>
+    <item>Invio SEMPRE dentro `DB::afterCommit()` per i sei write path transazionali: una notifica
+      spedita da dentro una transazione che poi rolla indietro e' irrecuperabile.</item>
+    <item>Autorizzazione: nessun endpoint nuovo, quindi nessuna ability nuova. Il catalogo `tasks.*`
+      resta a 15 permessi e `TasksAuthorization::actions()` a 12 chiavi. Un test lo pinna.</item>
+    <item>`TaskService` e' gia' a 397 righe e `TaskActionService` a 329: gli innesti devono restare
+      chiamate di una riga a `TaskNotifier`, mai logica di destinatari in linea. Se `TaskService`
+      supera le 450 righe, lo split si fa per WRITE PATH e mai estraendo i guard dalla
+      transazione (nota gia' a verbale nel suo docblock).</item>
+    <item>`TaskNotifier` sta sotto le 300 righe: se le supera, si divide per FAMIGLIA DI EVENTO
+      (creazione/modifica, completamento/validazione, blocco), mai per canale.</item>
+    <item>Pint, ESLint e `tsc -b --force` devono restare puliti; i test vanno ESEGUITI, non
+      dichiarati (CLAUDE.md §5).</item>
+  </constraints>
+
+</spec>

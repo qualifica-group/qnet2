@@ -10,6 +10,7 @@ use App\DataObjects\Tasks\CreateTaskData;
 use App\DataObjects\Tasks\UpdateTaskData;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
@@ -100,6 +101,7 @@ class TaskService
         private readonly TaskClosureFeedbackGuard $closureFeedbackGuard,
         private readonly TaskHierarchyGuard $hierarchyGuard,
         private readonly TaskInitialStatusResolver $initialStatusResolver,
+        private readonly TaskNotifier $notifier,
         private readonly TaskWatcherOverlapGuard $watcherOverlapGuard,
     ) {}
 
@@ -151,6 +153,14 @@ class TaskService
             $task->assignees()->sync($data->assigneeIds);
             $task->watchers()->sync($data->watcherIds);
 
+            // Step 7: voci 7 and 8 of the notification map (spec 0119). The
+            // submitted ids are passed explicitly rather than re-read off the
+            // just-synced relation, and the send itself is deferred to
+            // DB::afterCommit() inside the notifier, so this rolls back with
+            // the transaction (AC-012, AC-013).
+            $this->notifier->assigned($task, $creator, $data->assigneeIds);
+            $this->notifier->watching($task, $creator, $data->watcherIds);
+
             return $task;
         });
 
@@ -171,10 +181,13 @@ class TaskService
      * submitted, from the persisted pivot otherwise (AC-033) — `requester_id`
      * needs no such fallback because it is a plain column already merged by
      * fill() by the time the guard runs.
+     *
+     * $actor is carried only for the notification map (spec 0119 D-3/D-9):
+     * the people ADDED to either pivot are told, the actor never is.
      */
-    public function update(Task $task, UpdateTaskData $data): Task
+    public function update(Task $task, UpdateTaskData $data, User $actor): Task
     {
-        DB::transaction(function () use ($task, $data): void {
+        DB::transaction(function () use ($task, $data, $actor): void {
             TaskWriteLock::assertStructuralWriteAllowed($task, $this->submittedKeys($data));
 
             $task->fill($data->submittedAttributes());
@@ -190,6 +203,12 @@ class TaskService
             );
             $task->save();
 
+            // Who this PATCH ADDS to each pivot, read BEFORE the sync: once
+            // the sync has run the persisted pivot IS the submitted one and
+            // every delta reads empty (spec 0119 D-9).
+            $addedAssigneeIds = $this->addedPivotIds($task, 'assignees', $data->assigneeIds);
+            $addedWatcherIds = $this->addedPivotIds($task, 'watchers', $data->watcherIds);
+
             // Full-replace only when the key was actually submitted
             // (AC-012): an untouched relation must not trigger a no-op sync.
             if ($data->hasAssigneeIds()) {
@@ -201,6 +220,12 @@ class TaskService
                 $task->watchers()->sync($data->watcherIds ?? []);
                 $task->unsetRelation('watchers');
             }
+
+            // Only the newcomers hear about it (D-9): an empty delta sends
+            // nothing, so a PATCH that removes members or touches neither
+            // pivot stays silent (AC-015, AC-017).
+            $this->notifier->assigned($task, $actor, $addedAssigneeIds);
+            $this->notifier->watching($task, $actor, $addedWatcherIds);
         });
 
         return $this->loadDetail($task);
@@ -364,6 +389,28 @@ class TaskService
         };
 
         return $query->pluck('users.id')->all();
+    }
+
+    /**
+     * The ids this PATCH ADDS to one of the two user pivots (spec 0119 D-9):
+     * on an update only the newcomers are notified, never those already on
+     * the pivot and never those being removed — the removal carries no
+     * notification at all (spec 0119 scope/out).
+     *
+     * MUST be called BEFORE the sync. A key that was not submitted leaves the
+     * pivot untouched and therefore adds nobody.
+     *
+     * @param  'assignees'|'watchers'  $relation
+     * @param  array<int, int>|null  $submittedIds  null = key not submitted
+     * @return array<int, int>
+     */
+    private function addedPivotIds(Task $task, string $relation, ?array $submittedIds): array
+    {
+        if ($submittedIds === null) {
+            return [];
+        }
+
+        return array_values(array_diff($submittedIds, $this->persistedPivotIds($task, $relation)));
     }
 
     /**

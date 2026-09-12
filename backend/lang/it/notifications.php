@@ -47,6 +47,12 @@ return [
         'new_operator' => 'Nuovo operatore',
         'performed_by' => 'Eseguito da',
         'date' => 'Data',
+
+        // Task (spec 0119)
+        'priority' => 'Priorità',
+        'end_date' => 'Data fine',
+        'requester' => 'Richiedente',
+        'assignees' => 'Assegnatari',
     ],
 
     'values' => [

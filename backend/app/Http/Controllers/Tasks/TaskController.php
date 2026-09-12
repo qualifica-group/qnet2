@@ -86,18 +86,22 @@ class TaskController extends BaseApiController
     }
 
     /**
-     * PUT/PATCH /api/tasks/{task} — update an existing Task.
+     * PUT/PATCH /api/tasks/{task} — update an existing Task. The actor is
+     * handed to the Service because the notification map excludes whoever
+     * performed the action from its own recipients (spec 0119 D-3).
      */
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
         try {
             $this->authorize('update', $task);
 
-            $task = $this->service->update($task, $request->toData());
+            /** @var User $actor */
+            $actor = $request->user();
+            $task = $this->service->update($task, $request->toData(), $actor);
 
             return $this->okWithPermissions(
                 new TaskResource($task),
-                $this->buildPermissions($request->user(), $task),
+                $this->buildPermissions($actor, $task),
             );
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['task' => $task->id]);
