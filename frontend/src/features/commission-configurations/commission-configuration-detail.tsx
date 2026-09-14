@@ -11,13 +11,23 @@ import {
   DetailPanel,
   DetailSection,
 } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import type { CommissionConfigurationDetailWithPermissions } from './types'
+import type { CommissionConfigurationDetailWithPermissions, CommissionRecipientType } from './types'
 import { formatDate } from '@/lib/formatting/date-display'
 
 /** Placeholder for an open-ended validity bound. */
 const EMPTY_DATE = '–'
+
+/**
+ * Record module of each recipient type. A `user` recipient has no entry: people
+ * are not linked as records (see `RecordLink`), so it stays plain text.
+ */
+const RECIPIENT_DOMAINS: Partial<Record<CommissionRecipientType, string>> = {
+  referent: 'referents',
+  registry: 'registries',
+}
 
 export function CommissionConfigurationDetailView({
   configuration,
@@ -49,6 +59,9 @@ export function CommissionConfigurationDetailView({
     visible('internal_note')
   const option = (field: string, value: string) =>
     t(`commissionConfigurations.options.${field}.${value}`)
+  const recipientDomain = configuration.recipient_type
+    ? RECIPIENT_DOMAINS[configuration.recipient_type]
+    : undefined
   const formattedValue =
     configuration.commission_type === 'PERCENTAGE'
       ? `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 4 }).format(Number(configuration.value))}%`
@@ -83,10 +96,22 @@ export function CommissionConfigurationDetailView({
                 : t('commissionConfigurations.form.product_category_id')
             }
           >
-            {configuration.product?.name ?? configuration.product_category?.name ?? '–'}
+            {configuration.product ? (
+              <RecordLink domain="products" id={configuration.product.id}>
+                {configuration.product.name}
+              </RecordLink>
+            ) : (
+              configuration.product_category?.name ?? '–'
+            )}
           </DetailField> : null}
           {visible('recipient_id') ? <DetailField label={t('commissionConfigurations.form.recipient_id')}>
-            {configuration.recipient?.name ?? '–'}
+            {configuration.recipient && recipientDomain ? (
+              <RecordLink domain={recipientDomain} id={configuration.recipient.id}>
+                {configuration.recipient.name}
+              </RecordLink>
+            ) : (
+              configuration.recipient?.name ?? '–'
+            )}
           </DetailField> : null}
         </DetailGrid>
       </DetailSection>

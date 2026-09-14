@@ -77,10 +77,63 @@ describe('TaskRequestUpdateDialog — recipient picker (AC-062)', () => {
   })
 })
 
+describe('TaskRequestUpdateDialog — dedupe and default selection (AC-014, spec 0126 D-7)', () => {
+  it('opens with every candidate selected by default', () => {
+    renderDialog()
+
+    expect(screen.getByRole('checkbox', { name: /Dario Dini/ })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /Elsa Esposito/ })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /Fabio Fini/ })).toBeChecked()
+  })
+
+  it('shows a user who is both an assignee and a watcher only once, with both role labels', () => {
+    renderDialog({ watchers: [{ id: 41, name: 'Fabio Fini' }, { id: 31, name: 'Dario Dini' }] })
+
+    expect(screen.getAllByRole('checkbox', { name: /Dario Dini/ })).toHaveLength(1)
+    const dario = screen.getByRole('checkbox', { name: /Dario Dini/ })
+    expect(dario.getAttribute('aria-label') ?? dario.closest('label')?.textContent).toMatch(/Assignee/)
+    expect(dario.getAttribute('aria-label') ?? dario.closest('label')?.textContent).toMatch(/Watcher/)
+  })
+
+  it('sends unique recipient ids even when a candidate was merged from both lists', async () => {
+    vi.mocked(requestTaskUpdate).mockResolvedValueOnce(taskDetailWithPermissions())
+    const { task } = renderDialog({ watchers: [{ id: 41, name: 'Fabio Fini' }, { id: 31, name: 'Dario Dini' }] })
+
+    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
+
+    await screen.findByRole('button', { name: label('tasks.actions.requestUpdate.submit') })
+    expect(requestTaskUpdate).toHaveBeenCalledWith(task.id, { recipient_ids: [31, 32, 41] })
+  })
+
+  it('"Select all" deselects and reselects every candidate, and is indeterminate on a partial selection', () => {
+    renderDialog()
+    const selectAll = screen.getByRole('checkbox', { name: label('tasks.actions.requestUpdate.selectAll') })
+    expect(selectAll).toBeChecked()
+
+    fireEvent.click(selectAll)
+    expect(screen.getByRole('checkbox', { name: /Dario Dini/ })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /Elsa Esposito/ })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /Fabio Fini/ })).not.toBeChecked()
+    expect(selectAll).not.toBeChecked()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Dario Dini/ }))
+    expect(selectAll).toHaveAttribute('aria-checked', 'mixed')
+
+    fireEvent.click(selectAll)
+    expect(screen.getByRole('checkbox', { name: /Dario Dini/ })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /Elsa Esposito/ })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /Fabio Fini/ })).toBeChecked()
+  })
+})
+
 describe('TaskRequestUpdateDialog — client-side validation (AC-063)', () => {
+  // REQUIREMENT CHANGED (spec 0126, D-7): candidates now start all selected, so
+  // the empty-selection case is reached by deselecting all via "Select all"
+  // rather than submitting an untouched (previously empty) form.
   it('rejects the submit with zero recipients selected, with no network call', async () => {
     renderDialog()
 
+    fireEvent.click(screen.getByRole('checkbox', { name: label('tasks.actions.requestUpdate.selectAll') }))
     fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
 
     await screen.findByText(label('tasks.actions.requestUpdate.recipientsRequired'))
@@ -89,11 +142,14 @@ describe('TaskRequestUpdateDialog — client-side validation (AC-063)', () => {
 })
 
 describe('TaskRequestUpdateDialog — submit (D-11/D-12/D-14)', () => {
+  // REQUIREMENT CHANGED (spec 0126, D-7): recipients start all selected, so
+  // sending "only" one recipient now means deselecting the others first.
   it('sends only the checked recipients, omitting the blank message', async () => {
     vi.mocked(requestTaskUpdate).mockResolvedValueOnce(taskDetailWithPermissions())
     const { task, onOpenChange } = renderDialog()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Dario Dini/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Elsa Esposito/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Fabio Fini/ }))
     fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
 
     await screen.findByRole('button', { name: label('tasks.actions.requestUpdate.submit') })
@@ -106,7 +162,8 @@ describe('TaskRequestUpdateDialog — submit (D-11/D-12/D-14)', () => {
     vi.mocked(requestTaskUpdate).mockResolvedValueOnce(taskDetailWithPermissions())
     const { task } = renderDialog()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Fabio Fini/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Dario Dini/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Elsa Esposito/ }))
     fireEvent.change(screen.getByLabelText(label('tasks.actions.requestUpdate.message')), {
       target: { value: '  Fammi sapere a che punto sei  ' },
     })
@@ -125,7 +182,6 @@ describe('TaskRequestUpdateDialog — server error mapping (AC-064)', () => {
     vi.mocked(requestTaskUpdate).mockRejectedValueOnce(actionError(409))
     renderDialog()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Dario Dini/ }))
     fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
 
     await screen.findByRole('button', { name: label('tasks.actions.requestUpdate.submit') })
@@ -136,7 +192,6 @@ describe('TaskRequestUpdateDialog — server error mapping (AC-064)', () => {
     vi.mocked(requestTaskUpdate).mockRejectedValueOnce(actionError(422))
     renderDialog()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Dario Dini/ }))
     fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
 
     await screen.findByRole('button', { name: label('tasks.actions.requestUpdate.submit') })
@@ -149,7 +204,6 @@ describe('TaskRequestUpdateDialog — server error mapping (AC-064)', () => {
     )
     renderDialog()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Dario Dini/ }))
     fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
 
     await screen.findByText('Selected user is not an assignee or a watcher.')

@@ -15,12 +15,12 @@ use Illuminate\Database\Eloquent\Model;
  * NoteEntityRegistry delegating to the host entity's own gate (D-6); it is
  * NOT modeled as a Policy ability here.
  *
- * abilities() is reduced to ['create'] (D-6): viewAny/view/update/delete/
- * export/import/viewActivity would generate permissions nobody ever checks
- * (reads are gated by the host entity, writes by ownership below) —
- * SyncPermissions derives the permission catalog from THIS override (late
- * static binding, BasePolicy::permissions()), so only `notes.create` is
- * ever created.
+ * abilities() is reduced to ['create', 'deleteAny'] (D-6, spec 0126 D-2):
+ * viewAny/view/update/delete/export/import/viewActivity would generate
+ * permissions nobody ever checks (reads are gated by the host entity,
+ * writes by ownership below) — SyncPermissions derives the permission
+ * catalog from THIS override (late static binding, BasePolicy::
+ * permissions()), so only `notes.create`/`notes.deleteAny` are ever created.
  */
 class NotePolicy extends BasePolicy
 {
@@ -34,7 +34,7 @@ class NotePolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['create'];
+        return ['create', 'deleteAny'];
     }
 
     /**
@@ -51,8 +51,16 @@ class NotePolicy extends BasePolicy
         return $model instanceof Note && $model->user_id === $user->id;
     }
 
+    /**
+     * Author-only, OR `notes.deleteAny` (spec 0126, D-2): the permission
+     * only clears the OWNERSHIP gate here — NoteService::delete still
+     * re-checks that the actor can read the note's host record before
+     * actually deleting it, exactly like update() already does for its own
+     * mutation.
+     */
     public function delete(User $user, Model $model): bool
     {
-        return $model instanceof Note && $model->user_id === $user->id;
+        return $model instanceof Note
+            && ($model->user_id === $user->id || $user->can($this->permission('deleteAny')));
     }
 }

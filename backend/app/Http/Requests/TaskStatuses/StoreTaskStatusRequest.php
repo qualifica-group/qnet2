@@ -30,6 +30,11 @@ use Illuminate\Validation\Rule;
  * `sort_order` and `system_key` carry an explicit `prohibited` rule rather than
  * simply being absent from rules(): AC-045 requires a 422, and a merely
  * absent key would be silently dropped by validated() instead.
+ *
+ * `group` = in_validation forces `completion_percentage` = 100 (spec 0126,
+ * D-5): validation is a gate, not a stage of progress, so a task waiting on
+ * it already reads as done. Checked in withValidator() rather than rules(),
+ * since it is a cross-field rule.
  */
 class StoreTaskStatusRequest extends FormRequest
 {
@@ -67,7 +72,28 @@ class StoreTaskStatusRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->assertInValidationIsFullyComplete($validator);
         });
+    }
+
+    /**
+     * A status in the `in_validation` phase must carry `completion_percentage`
+     * = 100 (spec 0126, D-5). Skipped once `group`/`completion_percentage`
+     * already failed their own rule, so this never doubles up on the base
+     * "required"/"in" errors.
+     */
+    private function assertInValidationIsFullyComplete(Validator $validator): void
+    {
+        if ($validator->errors()->hasAny(['group', 'completion_percentage'])) {
+            return;
+        }
+
+        $group = TaskStatusGroup::tryFrom((string) $this->input('group'));
+        $percentage = (int) $this->input('completion_percentage');
+
+        if ($group === TaskStatusGroup::InValidation && $percentage !== 100) {
+            $validator->errors()->add('completion_percentage', 'A status in the in_validation phase must have a completion percentage of 100.');
+        }
     }
 
     protected function authorizationResource(): string

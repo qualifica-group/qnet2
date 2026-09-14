@@ -8,9 +8,15 @@ import { Input } from '@/components/ui/input'
 import { MetaField } from '@/features/authorization/MetaField'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
 
-/** The three `date` columns and the two `time` ones, kept SEPARATE by contract (D-11). */
-const DATE_FIELDS = ['start_date', 'end_date', 'completion_date'] as const
-const TIME_FIELDS = ['start_time', 'end_time'] as const
+/** A date paired with its time, rendered side by side (D-11: still two distinct columns). */
+const DATE_TIME_PAIRS = [
+  { date: 'start_date', time: 'start_time' },
+  { date: 'end_date', time: 'end_time' },
+] as const
+
+
+/** Date input + narrow time input on one row, so "when" reads as one thing. */
+const DATE_TIME_ROW_CLASS = 'grid min-w-0 grid-cols-[minmax(0,1fr)_7.5rem] items-start gap-2'
 
 /** Camel-case i18n leaf for a snake_case field key (`start_date` -> `startDate`). */
 function labelKeyOf(field: string): string {
@@ -22,7 +28,9 @@ interface TaskPlanningSectionProps {
 }
 
 /**
- * "Pianificazione": the three dates, the two times and the estimate.
+ * "Pianificazione": start and end (each a date plus its time) and the estimate.
+ * `completion_date` has no control here: it is set when the task is completed
+ * (Completa action), so the form never offers it.
  *
  * D-11: dates and times are DISTINCT columns, never fused into a datetime — a
  * task may carry a time without a date and vice versa — and the estimate is
@@ -38,6 +46,44 @@ interface TaskPlanningSectionProps {
 export function TaskPlanningSection({ control }: TaskPlanningSectionProps) {
   const { t } = useTranslation()
 
+  const renderDateField = (name: (typeof DATE_TIME_PAIRS)[number]['date']) => (
+    <MetaField key={name} control={control} name={name} metaKey={name} label={t(`tasks.form.${labelKeyOf(name)}`)}>
+      {({ field, disabled, readOnly }) => (
+        <FormControl>
+          <Input
+            type="date"
+            disabled={disabled}
+            readOnly={readOnly}
+            value={field.value ?? ''}
+            onChange={(event) => field.onChange(event.target.value || null)}
+            onBlur={field.onBlur}
+            name={field.name}
+            ref={field.ref}
+          />
+        </FormControl>
+      )}
+    </MetaField>
+  )
+
+  const renderTimeField = (name: (typeof DATE_TIME_PAIRS)[number]['time']) => (
+    <MetaField key={name} control={control} name={name} metaKey={name} label={t(`tasks.form.${labelKeyOf(name)}`)}>
+      {({ field, disabled, readOnly }) => (
+        <FormControl>
+          <Input
+            type="time"
+            disabled={disabled}
+            readOnly={readOnly}
+            value={field.value ?? ''}
+            onChange={(event) => field.onChange(event.target.value || null)}
+            onBlur={field.onBlur}
+            name={field.name}
+            ref={field.ref}
+          />
+        </FormControl>
+      )}
+    </MetaField>
+  )
+
   return (
     <FormSection
       icon={CalendarClock}
@@ -45,54 +91,11 @@ export function TaskPlanningSection({ control }: TaskPlanningSectionProps) {
       description={t('tasks.form.sections.planning.description')}
     >
       <div className={FIELD_GRID_CLASS}>
-        {DATE_FIELDS.map((name) => (
-          <MetaField
-            key={name}
-            control={control}
-            name={name}
-            metaKey={name}
-            label={t(`tasks.form.${labelKeyOf(name)}`)}
-          >
-            {({ field, disabled, readOnly }) => (
-              <FormControl>
-                <Input
-                  type="date"
-                  disabled={disabled}
-                  readOnly={readOnly}
-                  value={field.value ?? ''}
-                  onChange={(event) => field.onChange(event.target.value || null)}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  ref={field.ref}
-                />
-              </FormControl>
-            )}
-          </MetaField>
-        ))}
-
-        {TIME_FIELDS.map((name) => (
-          <MetaField
-            key={name}
-            control={control}
-            name={name}
-            metaKey={name}
-            label={t(`tasks.form.${labelKeyOf(name)}`)}
-          >
-            {({ field, disabled, readOnly }) => (
-              <FormControl>
-                <Input
-                  type="time"
-                  disabled={disabled}
-                  readOnly={readOnly}
-                  value={field.value ?? ''}
-                  onChange={(event) => field.onChange(event.target.value || null)}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  ref={field.ref}
-                />
-              </FormControl>
-            )}
-          </MetaField>
+        {DATE_TIME_PAIRS.map((pair) => (
+          <div key={pair.date} className={DATE_TIME_ROW_CLASS}>
+            {renderDateField(pair.date)}
+            {renderTimeField(pair.time)}
+          </div>
         ))}
 
         <MetaField

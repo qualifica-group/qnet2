@@ -88,6 +88,9 @@ export const it: TranslationResources = {
     tabsSelectLabel: 'Sezione',
     /** Accessible name of the button that removes one chip from a multi-select. */
     remove: 'Rimuovi',
+    close: 'Chiudi',
+    /** Sheet toolbar action that leaves the modal for the record's dedicated detail page. */
+    openDetailPage: 'Apri pagina di dettaglio',
     /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
     copySuffix: ' (copia)',
   },

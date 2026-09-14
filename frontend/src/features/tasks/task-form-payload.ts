@@ -111,7 +111,6 @@ function scalarsOf(values: TaskFormValues) {
     requester_id: values.requester_id,
     start_date: values.start_date,
     end_date: values.end_date,
-    completion_date: values.completion_date,
     start_time: values.start_time,
     end_time: values.end_time,
     estimated_minutes: values.estimated_minutes,
@@ -199,7 +198,6 @@ export function buildUpdatePayload(
   if (scalars.end_date !== original.end_date && scalars.end_date !== null) {
     payload.end_date = scalars.end_date
   }
-  if (scalars.completion_date !== original.completion_date) payload.completion_date = scalars.completion_date
   if (scalars.start_time !== original.start_time) payload.start_time = scalars.start_time
   if (scalars.end_time !== original.end_time) payload.end_time = scalars.end_time
   if (scalars.estimated_minutes !== original.estimated_minutes) {

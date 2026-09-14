@@ -43,12 +43,15 @@ vi.mock('@/features/modules/module-registry', () => ({
           ),
           FormScreen: ({
             mode,
+            onSuccess,
           }: {
             mode: { type: string; params?: Record<string, string | number> }
+            onSuccess: (id: number) => void
           }) => (
             <div>
               <div>{`form-${mode.type}`}</div>
               {mode.type === 'create' && <div>{`params:${JSON.stringify(mode.params ?? null)}`}</div>}
+              <button onClick={() => onSuccess(99)}>save</button>
             </div>
           ),
         }
@@ -119,6 +122,30 @@ function renderForcedHarness() {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={['/projects']}>
         <ForcedHarness />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+/** spec 0126 D-8/AC-015: `viewAfterCreate` swaps the panel to the saved id's view instead of closing it. */
+function ViewAfterCreateHarness() {
+  const { openCreate, openEdit, sheet } = useModuleOpener('projects', { viewAfterCreate: true })
+  return (
+    <div>
+      <button onClick={() => openEdit({ id: 7 } as TableRow)}>edit</button>
+      <button onClick={() => openCreate()}>create</button>
+      {sheet}
+      <LocationProbe />
+    </div>
+  )
+}
+
+function renderViewAfterCreateHarness() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/projects']}>
+        <ViewAfterCreateHarness />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -201,6 +228,33 @@ describe('useModuleOpener', () => {
 
       expect(screen.getByText('form-create')).toBeInTheDocument()
       expect(screen.getByTestId('location')).toHaveTextContent('/projects')
+    })
+
+    it('the toolbar links view and edit to the record detail page', () => {
+      renderHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'view' }))
+      expect(screen.getByRole('button', { name: 'Open detail page' })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+      fireEvent.click(screen.getByRole('button', { name: 'edit' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Open detail page' }))
+
+      // The harness stays mounted across the navigation, like a detail page
+      // reused for another id: the link itself must close the Sheet.
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects/7')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('the toolbar offers no detail page link on create, and its close button closes the Sheet', () => {
+      renderHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'create' }))
+      expect(screen.queryByRole('button', { name: 'Open detail page' })).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+      expect(screen.queryByText('form-create')).not.toBeInTheDocument()
     })
 
     it('AC-001: openCreate(params) mounts the Sheet with mode.params set, no navigation', () => {
@@ -309,6 +363,55 @@ describe('useModuleOpener', () => {
 
       expect(screen.getByTestId('location')).toHaveTextContent('/projects/5')
       expect(screen.queryByText('detail-5')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('viewAfterCreate (spec 0126 D-8)', () => {
+    beforeEach(() => {
+      currentMode = 'modal'
+    })
+
+    it('AC-015: modal mode, saving a create swaps the panel to the view of the new id instead of closing it', () => {
+      renderViewAfterCreateHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'create' }))
+      expect(screen.getByText('form-create')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'save' }))
+
+      expect(screen.queryByText('form-create')).not.toBeInTheDocument()
+      expect(screen.getByText('detail-99')).toBeInTheDocument()
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    })
+
+    it('AC-015: modal mode, saving an edit still closes the panel (viewAfterCreate only applies to create)', () => {
+      renderViewAfterCreateHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'edit' }))
+      expect(screen.getByText('form-edit')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'save' }))
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('AC-015: modal mode without the option still closes the panel after a create save (unchanged)', () => {
+      renderHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'create' }))
+      fireEvent.click(screen.getByRole('button', { name: 'save' }))
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('AC-015: page mode never mounts a Sheet regardless of viewAfterCreate', () => {
+      currentMode = 'page'
+      renderViewAfterCreateHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'create' }))
+
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects/new')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 })

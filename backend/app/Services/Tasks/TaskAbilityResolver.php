@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Tasks;
 
 use App\Models\Task;
+use App\Models\TimeEntry;
 use App\Models\User;
 
 /**
@@ -135,6 +136,22 @@ final class TaskAbilityResolver
         return self::isCreatorOrRequester($actor, $task)
             || TaskRecordRoles::isWatcher($actor, $task)
             || TaskRecordRoles::isManager($actor, $task);
+    }
+
+    /**
+     * Spec 0126, D-3: a segnatempo filed under $task follows the Task's OWN
+     * role matrix instead of `time-entries.manageAll` — an actor who manages
+     * every OTHER user's segnatempo across the app still may not touch one
+     * on a Task they hold no role on. True for whoever owns the MANDATE
+     * (creator/requester/manager) on ANY segnatempo of $task, or for the
+     * segnatempo's own owner when they may `canComplete()` $task (i.e. an
+     * assignee); false for the watcher, even on their own segnatempo — the
+     * one role `canComplete()` excludes.
+     */
+    public static function canManageTimeEntry(User $actor, Task $task, TimeEntry $entry): bool
+    {
+        return self::ownsTheMandate($actor, $task)
+            || ($entry->user_id === $actor->id && self::canComplete($actor, $task));
     }
 
     private static function ownsTheMandate(User $actor, Task $task): bool

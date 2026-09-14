@@ -55,10 +55,14 @@ export function useTaskParentPrefill({
   // The query key doubles as the Task detail's own cache key: a parent
   // already open elsewhere in the session needs no second request. Disabled
   // (and thus never actually run) while there is no parent to read.
+  // `refetchOnMount: false`: the parent detail behind the "crea sotto-task"
+  // Sheet observes this same key and shows its skeleton on every fetch, so a
+  // cached parent is reused as-is; an uncached one is still fetched.
   const parentQuery = useQuery({
     queryKey: taskDetailQueryKey(parentTaskId ?? 0),
     queryFn: () => fetchTask(parentTaskId as number),
     enabled: enabled && parentTaskId !== null,
+    refetchOnMount: false,
   })
   const parent = parentQuery.data
 

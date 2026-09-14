@@ -4,6 +4,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { useTaskForm } from '@/features/tasks/use-task-form'
+import { taskDetailQueryKey } from '@/features/tasks/api'
 import { taskDetailWithPermissions, taskStatus } from '@/features/tasks/task-fixtures'
 import { DEFAULT_MODULE_OPEN_PREFERENCES } from '@/features/modules/types'
 import type { TaskStatusForSelectItem } from '@/features/tasks/for-select-api'
@@ -312,6 +313,22 @@ describe('useTaskForm — parent prefill on create (spec 0123 D-10/D-7)', () => 
     // The user's own pick survives; the fields the user left empty still fill in.
     expect(result.current.form.getValues('registry_id')).toBe(42)
     expect(result.current.form.getValues('opportunity_id')).toBe(8)
+  })
+
+  // The parent detail behind the "crea sotto-task" Sheet shares this query
+  // key: a refetch here would blank it into its skeleton while the Sheet opens.
+  it('reuses a cached parent without refetching it', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    client.setQueryData(taskDetailQueryKey(90), parentFixture())
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create', parentTaskId: 90 }, onSuccess: () => undefined }),
+      { wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ) },
+    )
+
+    await waitFor(() => expect(result.current.form.getValues('registry_id')).toBe(7))
+    expect(fetchTaskMock).not.toHaveBeenCalled()
   })
 
   it('never fetches the parent in edit mode', async () => {

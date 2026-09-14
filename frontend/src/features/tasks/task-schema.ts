@@ -42,7 +42,6 @@ function baseFields(t: TFunction) {
     requester_id: z.number().nullable(),
     start_date: z.string().nullable(),
     end_date: z.string().nullable(),
-    completion_date: z.string().nullable(),
     start_time: z.string().nullable(),
     end_time: z.string().nullable(),
     estimated_minutes: z

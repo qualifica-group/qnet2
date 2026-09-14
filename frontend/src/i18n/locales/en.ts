@@ -96,6 +96,9 @@ export const en = {
     /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
     /** Accessible name of the button that removes one chip from a multi-select. */
     remove: 'Remove',
+    close: 'Close',
+    /** Sheet toolbar action that leaves the modal for the record's dedicated detail page. */
+    openDetailPage: 'Open detail page',
     copySuffix: ' (copy)',
   },
   config: {

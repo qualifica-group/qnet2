@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
@@ -157,5 +157,37 @@ describe('TaskClassificationSection — Stato options reserved to actions (AC-01
     fireEvent.click(screen.getByRole('option', { name: /In validazione/ }))
 
     expect(statusPicker()).toHaveTextContent('In lavorazione')
+  })
+})
+
+/**
+ * Spec 0126 D-4/AC-013: `permissions.actions.change_status` gates the whole
+ * Stato select, on top of the per-option rule above.
+ */
+describe('TaskClassificationSection — Stato select gated by change_status (AC-013)', () => {
+  it('disables the whole select when change_status is false', () => {
+    renderEditForm(actionPermissions({ change_status: false, close_via_status: true }))
+
+    expect(statusPicker()).toBeDisabled()
+  })
+
+  it('leaves the select enabled when change_status is true', () => {
+    renderEditForm(actionPermissions({ change_status: true, close_via_status: true }))
+
+    expect(statusPicker()).not.toBeDisabled()
+  })
+})
+
+/** The lookup pickers render the configured colored badge, not a bare text label. */
+describe('TaskClassificationSection — lookups render as badges', () => {
+  it('shows the persisted status as a badge in the trigger and every option as a badge', async () => {
+    renderEditForm(actionPermissions({ change_status: true, close_via_status: true }))
+
+    expect(within(statusPicker()).getByText('In lavorazione').closest('[data-slot="badge"]')).not.toBeNull()
+
+    fireEvent.click(statusPicker())
+
+    const option = await screen.findByRole('option', { name: /Annullato/ })
+    expect(within(option).getByText('Annullato').closest('[data-slot="badge"]')).not.toBeNull()
   })
 })

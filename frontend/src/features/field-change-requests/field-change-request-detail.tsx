@@ -10,7 +10,9 @@ import {
   DetailPanel,
   DetailSection,
 } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import { findModuleRecordByPath } from '@/features/modules/module-registry'
 import { safeInternalPath } from '@/features/notifications/safe-internal-path'
 import { FieldChangeRequestActions } from '@/features/field-change-requests/field-change-request-actions'
 import { FieldChangeRequestStatusBadge } from '@/features/field-change-requests/field-change-request-status-badge'
@@ -35,6 +37,7 @@ interface FieldChangeRequestDetailViewProps {
 export function FieldChangeRequestDetailView({ request, onChanged }: FieldChangeRequestDetailViewProps) {
   const { t } = useTranslation()
   const subjectPath = safeInternalPath(request.subject_path)
+  const subjectRecord = subjectPath ? findModuleRecordByPath(subjectPath) : null
   const requestedAt = formatDateTime(request.requested_at)
   const handledAt = formatDateTime(request.handled_at)
 
@@ -52,7 +55,11 @@ export function FieldChangeRequestDetailView({ request, onChanged }: FieldChange
       <DetailSection>
         <DetailGrid>
           <DetailField label={t('fieldChangeRequests.detail.record')}>
-            {subjectPath ? (
+            {subjectRecord ? (
+              <RecordLink domain={subjectRecord.domain} id={subjectRecord.id} className="text-primary">
+                {request.subject_label}
+              </RecordLink>
+            ) : subjectPath ? (
               <Link to={subjectPath} className="text-primary underline-offset-2 hover:underline">
                 {request.subject_label}
               </Link>

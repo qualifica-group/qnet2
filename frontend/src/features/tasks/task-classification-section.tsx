@@ -2,8 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { Tags } from 'lucide-react'
 import type { Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
-import { FIELD_GRID_CLASS } from '@/components/record-form/layout'
-import { RelationSelectField } from '@/components/form/relation-select-field'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import {
   TASK_CATEGORIES_FOR_SELECT_RESOURCE,
@@ -14,9 +12,8 @@ import {
 } from '@/features/tasks/for-select-api'
 import { isTaskStatusOptionDisabled } from '@/features/tasks/task-status-option-availability'
 import { TaskCompletionReadout } from '@/features/tasks/task-completion-readout'
-import { useTaskSelectLabels } from '@/features/tasks/task-select-labels'
+import { TaskLookupSelectField } from '@/features/tasks/task-lookup-select-field'
 import type { ForSelectItem } from '@/features/for-select/types'
-import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
 import type { TaskDetail } from '@/features/tasks/types'
 
@@ -30,10 +27,8 @@ interface TaskClassificationSectionProps {
   completionPercentage: number | null
 }
 
-/** Projects a lookup row onto the `{id, name}` shape the pickers hydrate from. */
-function refOf(value: { id: number; name: string } | null | undefined): RelationFieldRef | null {
-  return value ? { id: value.id, name: value.name } : null
-}
+/** Lookup grid: one column on a narrow panel, two, then three as the main column widens. */
+const LOOKUP_GRID_CLASS = 'grid min-w-0 items-start gap-4 @xl:grid-cols-2 @3xl:grid-cols-3'
 
 /**
  * "Classificazione": the required Stato plus the four optional lookups and
@@ -48,6 +43,9 @@ function refOf(value: { id: number; name: string } | null | undefined): Relation
  * `/block`/`/unblock` domain actions. This section no longer renders it; the
  * read model still shows it as a badge in `task-detail.tsx`.
  *
+ * Every lookup renders as a colored badge picker (`TaskLookupSelectField`), so
+ * the form shows the same pill the grid and the detail show.
+ *
  * Spec 0118 D-3: the Stato picker does not render on create — the server
  * derives the initial status from the assignees (D-4), and `task_status_id`
  * is `prohibited` on POST, so offering the control would only invite a 422.
@@ -59,6 +57,13 @@ function refOf(value: { id: number; name: string } | null | undefined): Relation
  * `useResourcePermissions()` already scoped by `ResourcePermissionsProvider`
  * — no extra prop needed for `close_via_status`, the same context every
  * other `MetaField`/`RelationSelectField` in this form already reads from).
+ *
+ * Spec 0126 D-4/AC-013: the picker as a WHOLE is disabled when
+ * `permissions.actions.change_status` is false (blocked task, or the task is
+ * not in an `open`/`pending` phase) via `RelationSelectField.forceDisabled`
+ * — the same escape hatch every other derived/linked field in this form
+ * already uses, so it composes with the field-permission ceiling `MetaField`
+ * applies instead of bypassing it.
  */
 export function TaskClassificationSection({
   control,
@@ -67,9 +72,9 @@ export function TaskClassificationSection({
   completionPercentage,
 }: TaskClassificationSectionProps) {
   const { t } = useTranslation()
-  const selectLabels = useTaskSelectLabels()
   const { canAction } = useResourcePermissions()
   const closeViaStatus = canAction('close_via_status')
+  const changeStatus = canAction('change_status')
   const isEdit = task !== null
 
   return (
@@ -78,67 +83,59 @@ export function TaskClassificationSection({
       title={t('tasks.form.sections.classification.title')}
       description={t('tasks.form.sections.classification.description')}
     >
-      <div className={FIELD_GRID_CLASS}>
-        {isEdit ? (
-          <RelationSelectField
+      {isEdit ? (
+        <div className="grid min-w-0 items-start gap-4 rounded-lg border bg-muted/40 p-3 @xl:grid-cols-2">
+          <TaskLookupSelectField
             control={control}
             name="task_status_id"
-            metaKey="task_status_id"
             label={t('tasks.form.status')}
             required
             resource={TASK_STATUSES_FOR_SELECT_RESOURCE}
             searchPlaceholder={t('tasks.form.statusSearch')}
-            selected={refOf(task?.task_status)}
+            selected={task.task_status}
             onItemChange={onStatusItemChange}
             isItemDisabled={(item) => isTaskStatusOptionDisabled(item, closeViaStatus)}
-            {...selectLabels}
+            forceDisabled={!changeStatus}
           />
-        ) : null}
+          <TaskCompletionReadout percentage={completionPercentage} />
+        </div>
+      ) : null}
 
-        <TaskCompletionReadout percentage={completionPercentage} />
-
-        <RelationSelectField
+      <div className={LOOKUP_GRID_CLASS}>
+        <TaskLookupSelectField
           control={control}
           name="task_type_id"
-          metaKey="task_type_id"
           label={t('tasks.form.type')}
           resource={TASK_TYPES_FOR_SELECT_RESOURCE}
           searchPlaceholder={t('tasks.form.typeSearch')}
-          selected={refOf(task?.task_type)}
-          {...selectLabels}
+          selected={task?.task_type}
         />
 
-        <RelationSelectField
-          control={control}
-          name="task_category_id"
-          metaKey="task_category_id"
-          label={t('tasks.form.category')}
-          resource={TASK_CATEGORIES_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('tasks.form.categorySearch')}
-          selected={refOf(task?.task_category)}
-          {...selectLabels}
-        />
-
-        <RelationSelectField
+        <TaskLookupSelectField
           control={control}
           name="task_priority_id"
-          metaKey="task_priority_id"
           label={t('tasks.form.priority')}
           resource={TASK_PRIORITIES_FOR_SELECT_RESOURCE}
           searchPlaceholder={t('tasks.form.prioritySearch')}
-          selected={refOf(task?.task_priority)}
-          {...selectLabels}
+          selected={task?.task_priority}
         />
 
-        <RelationSelectField
+        <TaskLookupSelectField
           control={control}
           name="task_importance_id"
-          metaKey="task_importance_id"
           label={t('tasks.form.importance')}
           resource={TASK_IMPORTANCES_FOR_SELECT_RESOURCE}
           searchPlaceholder={t('tasks.form.importanceSearch')}
-          selected={refOf(task?.task_importance)}
-          {...selectLabels}
+          selected={task?.task_importance}
+        />
+
+        <TaskLookupSelectField
+          control={control}
+          name="task_category_id"
+          label={t('tasks.form.category')}
+          resource={TASK_CATEGORIES_FOR_SELECT_RESOURCE}
+          searchPlaceholder={t('tasks.form.categorySearch')}
+          selected={task?.task_category}
         />
       </div>
     </FormSection>

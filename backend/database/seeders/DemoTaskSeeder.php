@@ -194,8 +194,8 @@ class DemoTaskSeeder extends Seeder
      * drawn status in `in_validation`/`closed_positive` can no longer be
      * reached by that PATCH path (D-4), so those two phases are applied with
      * a direct write on the model instead — a demo dataset, no notification
-     * to send either way, and `completion_date` is already coherent since
-     * Step 2 derived it from the drawn (final) status, not the created one.
+     * to send either way — which also stamps the completion date the Complete
+     * action would have written (spec 0127 D-4).
      */
     private function createTask(int $index, ?Task $parent): Task
     {
@@ -239,7 +239,16 @@ class DemoTaskSeeder extends Seeder
             return $this->statuses;
         }
 
-        return $this->statuses->reject(static fn (TaskStatus $status): bool => $status->isClosing())->values();
+        return $this->statuses->reject(fn (TaskStatus $status): bool => $this->isFinished($status))->values();
+    }
+
+    /**
+     * Work already done: a closing phase, or awaiting validation. Such a Task is
+     * dated in the past (buildDates()) and never drawn under a future parent.
+     */
+    private function isFinished(TaskStatus $status): bool
+    {
+        return $status->isClosing() || $status->group === TaskStatusGroup::InValidation;
     }
 
     /**
@@ -252,6 +261,9 @@ class DemoTaskSeeder extends Seeder
     private function applyActionOnlyStatus(Task $task, TaskStatus $status): Task
     {
         $task->task_status_id = $status->id;
+        // spec 0127 D-4: the completion date is what the Complete action would
+        // have stamped; buildDates() already keeps these Tasks in the past.
+        $task->completion_date = min($task->end_date, now()->startOfDay());
         $task->save();
 
         return $this->tasks->loadDetail($task);
@@ -344,7 +356,6 @@ class DemoTaskSeeder extends Seeder
             opportunityId: $opportunityId,
             workOrderId: $workOrderId,
             startDate: $dates['start'],
-            completionDate: $dates['completion'],
             startTime: $startTime,
             endTime: $startTime === null ? null : $this->endTimeFor($startTime),
             estimatedMinutes: $this->pickOptional(self::ESTIMATED_MINUTES, 0.5),
@@ -359,10 +370,10 @@ class DemoTaskSeeder extends Seeder
     }
 
     /**
-     * A Task in a CLOSING phase carries the day it was completed; one still
-     * open never does. Finished work is dated in the PAST, window included:
-     * drawing a closed Task's completion from a start date that may be a month
-     * out would date finished work in the future. An open Task keeps the wider
+     * A Task in a closing or in-validation phase is dated in the PAST, window
+     * included: its work is already done, so a start date a month out would be
+     * incoherent (spec 0127 D-4: applyActionOnlyStatus() stamps the completion
+     * date of the in_validation/closed_positive ones from these bounds). An open Task keeps the wider
      * window — it legitimately covers planned activities.
      *
      * A sub-task additionally stays inside its parent's [start_date, end_date]
@@ -370,11 +381,11 @@ class DemoTaskSeeder extends Seeder
      * usual rolling one, since a root task's own buildDates() call always
      * leaves it with concrete (non-null) bounds.
      *
-     * @return array{start: string, end: string, completion: string|null}
+     * @return array{start: string, end: string}
      */
     private function buildDates(TaskStatus $status, ?Task $parent = null): array
     {
-        $isClosed = $status->isClosing();
+        $isClosed = $this->isFinished($status);
 
         if ($parent !== null) {
             // Finished work starts no later than today (statusesFor() already
@@ -386,7 +397,6 @@ class DemoTaskSeeder extends Seeder
             return [
                 'start' => $start->format('Y-m-d'),
                 'end' => $end->format('Y-m-d'),
-                'completion' => $isClosed ? min($end, new DateTimeImmutable('today'))->format('Y-m-d') : null,
             ];
         }
 
@@ -398,7 +408,6 @@ class DemoTaskSeeder extends Seeder
         return [
             'start' => $start->format('Y-m-d'),
             'end' => $end->format('Y-m-d'),
-            'completion' => $isClosed ? min($end, new DateTimeImmutable('today'))->format('Y-m-d') : null,
         ];
     }
 

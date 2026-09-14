@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { GitBranch, History, MapPin, Network, UserCog, Users } from 'lucide-react'
+import { RecordLink } from '@/components/detail/record-link'
 import { Badge } from '@/components/ui/badge'
 import {
   DetailEmpty,
@@ -88,8 +89,10 @@ export function BusinessFunctionDetailView({ businessFunction }: BusinessFunctio
         {businessFunction.operational_sites.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {businessFunction.operational_sites.map((site) => (
-              <Badge key={site.id} variant="outline">
-                {site.label}
+              <Badge key={site.id} variant="outline" className="max-w-full">
+                <RecordLink domain="operational-sites" id={site.id}>
+                  {site.label}
+                </RecordLink>
               </Badge>
             ))}
           </div>

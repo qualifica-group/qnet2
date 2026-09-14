@@ -14,6 +14,7 @@ use App\Services\Tasks\TaskActionOnlyStatusGuard;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
+use App\Services\Tasks\TaskManualStatusGuard;
 use App\Services\Tasks\TaskParentAccessGuard;
 use App\Services\Tasks\TaskParentDateRangeGuard;
 use App\Services\Tasks\TaskRecurrenceService;
@@ -229,6 +230,12 @@ class TaskService
     {
         DB::transaction(function () use ($task, $data, $actor): void {
             TaskWriteLock::assertStructuralWriteAllowed($task, $this->submittedKeys($data));
+
+            // Spec 0126, D-4b/D-4c: whether task_status_id may change AT ALL,
+            // read off the Task exactly as it stood pre-fill (current phase,
+            // current is_blocked) — the resulting-target check (D-4a) stays
+            // TaskActionOnlyStatusGuard's job, below, after fill().
+            TaskManualStatusGuard::assertAllowed($task, $data->taskStatusId);
 
             $task->fill($data->submittedAttributes());
 

@@ -2,7 +2,6 @@
 
 use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
-use App\Models\Role;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
@@ -145,10 +144,13 @@ it('AC-042: a manager who is ALSO an assignee of this task gets 403 (D-2 deroga 
         ->assertStatus(403);
 });
 
-it('AC-042 (super-admin): the deroga is re-asserted in the Service past Gate::before', function () {
-    Role::findOrCreate('super-admin');
-    $actor = User::factory()->create();
-    $actor->assignRole('super-admin');
+// REQUIREMENT CHANGED (spec 0126, D-1): the super-admin no longer decays as
+// an assignee (see TaskSuperAdminAssigneeTest AC-001, where the same
+// scenario now expects 200). The "re-asserted past Gate::before" proof this
+// test carried stays true for an ORDINARY `tasks.manageAll` actor, so the
+// actor here is rewritten as one instead of a super-admin.
+it('AC-042 (manager, not super-admin): the deroga is re-asserted in the Service past Gate::before', function () {
+    $actor = taskActorWith(['requestUpdate', 'manageAll']);
     $otherAssignee = User::factory()->create();
     $task = Task::factory()->create();
     $task->assignees()->attach([$actor->id, $otherAssignee->id]);
@@ -184,7 +186,11 @@ it('AC-044: an actor outside the visibility scope gets 403', function () {
 // AC-045..AC-048 — availability
 // ---------------------------------------------------------------------------
 
-it('AC-045: a blocked task answers 409 and sends zero notifications', function () {
+// REQUIREMENT CHANGED (spec 0126, D-6): "Richiedi aggiornamento" is now
+// consented on a blocked task — `TaskActionService::requestUpdate()` no
+// longer calls `TaskWriteLock::assertNotBlocked()`, so the availability
+// window alone (isCompletable()) still governs this endpoint.
+it('AC-045 (spec 0126, D-6): a blocked task answers 200 and the notification is sent', function () {
     Notification::fake();
     $actor = taskActorWith(['requestUpdate']);
     $assignee = User::factory()->create();
@@ -193,9 +199,9 @@ it('AC-045: a blocked task answers 409 and sends zero notifications', function (
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
-        ->assertStatus(409);
+        ->assertOk();
 
-    Notification::assertNothingSent();
+    Notification::assertSentTo($assignee, TaskUpdateRequested::class);
 });
 
 it('AC-046: a closed_positive task answers 422', function () {

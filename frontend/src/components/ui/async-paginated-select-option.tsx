@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { UserAvatar } from '@/components/user-avatar'
@@ -13,6 +14,8 @@ interface AsyncSelectOptionRowProps {
    */
   disabled: boolean
   showAvatar: boolean
+  /** Replaces the default avatar + label content (see `AsyncPaginatedSelect.renderItem`). */
+  renderItem?: (item: ForSelectItem) => ReactNode
   onSelect: (item: ForSelectItem) => void
 }
 
@@ -26,6 +29,7 @@ export function AsyncSelectOptionRow({
   checked,
   disabled,
   showAvatar,
+  renderItem,
   onSelect,
 }: AsyncSelectOptionRowProps) {
   return (
@@ -58,17 +62,23 @@ export function AsyncSelectOptionRow({
         className={cn('size-4 shrink-0', checked ? 'opacity-100' : 'opacity-0')}
         aria-hidden="true"
       />
-      {showAvatar ? (
-        <UserAvatar name={item.label} src={item.avatar_url} className="shrink-0" />
-      ) : null}
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate">{item.label}</span>
-        {item.subtitle ? (
-          <span className="truncate text-xs text-muted-foreground">
-            {item.subtitle}
+      {renderItem ? (
+        <span className="flex min-w-0 items-center">{renderItem(item)}</span>
+      ) : (
+        <>
+          {showAvatar ? (
+            <UserAvatar name={item.label} src={item.avatar_url} className="shrink-0" />
+          ) : null}
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate">{item.label}</span>
+            {item.subtitle ? (
+              <span className="truncate text-xs text-muted-foreground">
+                {item.subtitle}
+              </span>
+            ) : null}
           </span>
-        ) : null}
-      </span>
+        </>
+      )}
     </div>
   )
 }

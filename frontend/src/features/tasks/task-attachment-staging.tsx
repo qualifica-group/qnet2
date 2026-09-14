@@ -1,8 +1,7 @@
 import type { ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Paperclip, Upload, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/form-section'
 import { formatBytes } from '@/features/attachments/format-bytes'
 
@@ -40,11 +39,11 @@ export function TaskAttachmentStaging({ files, onAdd, onRemove }: TaskAttachment
       description={t('tasks.form.attachments.description')}
     >
       <div className="flex flex-col gap-2">
-        <label
-          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-fit cursor-pointer')}
-        >
-          <Upload aria-hidden="true" />
-          {t('tasks.form.attachments.add')}
+        <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed border-field-border bg-muted/40 px-3 py-4 text-center transition-colors hover:bg-muted focus-within:ring-[3px] focus-within:ring-ring/50">
+          <span className="flex size-8 items-center justify-center rounded-full bg-card text-primary shadow-xs">
+            <Upload className="size-4" aria-hidden="true" />
+          </span>
+          <span className="text-sm font-medium">{t('tasks.form.attachments.add')}</span>
           <input type="file" multiple className="sr-only" onChange={handleChange} />
         </label>
 

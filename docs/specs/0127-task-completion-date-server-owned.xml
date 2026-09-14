@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0127 — DATA DI COMPLETAMENTO GESTITA SOLO DAL SERVER, NESSUNA DATA SUI CHIUSI NEGATIVI
+  Dodicesima fase del modulo Task. Decisione utente 2026-09-14: "se e' negativo non voglio data
+  di completamento", con approvazione della proposta (campo non scrivibile dal client).
+  RETTIFICA: 0101 (completion_date scrivibile su POST/PATCH), 0123 D-11 / DemoTaskSeeder
+  ("a Task in a closing phase carries its completion date": ora solo le fasi che raggiunge
+  l'azione Completa).
+-->
+<spec id="0127-task-completion-date-server-owned" status="approved" owner="utente" date="2026-09-14">
+
+  <goal>
+    La data di completamento di un task la scrive solo il server: Completa e Conferma la impostano,
+    Rifiuta e Setta non completato la cancellano. Un task chiuso negativo non ha mai una data di
+    completamento.
+  </goal>
+
+  <context>
+    <existing_names>
+      <item>`TaskCompletionService`: complete() e approve() impostano `completion_date = today`;
+        uncomplete() e reject() la azzerano. Il PATCH verso closed_negative non la tocca.</item>
+      <item>`StoreTaskRequest:95` e `UpdateTaskRequest:115`: `completion_date` => sometimes|nullable|date (scrivibile).
+        `prohibited` gia' usato per creator_id, completion_percentage, is_blocked, task_recurrence_id.
+        `CreateTaskData`/`UpdateTaskData` mappano `completion_date`.</item>
+      <item>`TasksAuthorization::FIELD_TYPES` contiene `completion_date` (catalogo congelato AC-053 di 0101).</item>
+      <item>`DemoTaskSeeder::buildDates()` restituisce `completion` per ogni stato `isClosing()` (positivo E negativo)
+        e lo passa a `CreateTaskData`; `DemoTaskSeederTest` asserisce data presente sse `isClosing()`.</item>
+      <item>Frontend: `task-schema.ts`, `use-task-form.ts`, `task-form-payload.ts` (create sempre, edit se cambiata),
+        `task-form-server-error-fields.ts`; il form (restyle esterno) non mostra piu' il campo. Il dettaglio e la tabella lo leggono.</item>
+    </existing_names>
+  </context>
+
+  <decisions>
+    <decision id="D-1">`completion_date` e' `prohibited` su POST e PATCH (422 se valorizzata; null o assente sono ammessi,
+      semantica di `prohibited`). Il mapping in `CreateTaskData`/`UpdateTaskData` si rimuove (codice morto).</decision>
+    <decision id="D-2">Il campo resta nel catalogo di `TasksAuthorization` (ordine congelato, lettura nel dettaglio) ma il
+      suo ceiling e' sempre `visibleReadonly`, come `task_status_id` in create: non scrivibile non e' configurabile come editabile.</decision>
+    <decision id="D-3">Nessun cambio a `TaskCompletionService`: e' gia' l'unica fonte di scrittura. Un PATCH verso closed_negative
+      lascia la data null; con la 0126 non si arriva a closed_negative da una fase che abbia gia' una data.</decision>
+    <decision id="D-4">`DemoTaskSeeder`: la data si imposta solo sulle fasi raggiunte da Completa, cioe' in_validation e
+      closed_positive, nella scrittura diretta di `applyActionOnlyStatus()`; closed_negative e le fasi aperte restano senza data.
+      `DemoTaskSeederTest` si aggiorna come cambio di requisito.</decision>
+    <decision id="D-5">Frontend: `completion_date` esce da schema, default, payload e mappa errori del form. Tipi della risorsa,
+      dettaglio e tabella invariati (sola lettura).</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>D-1/D-2 backend: FormRequest, DTO, ceiling.</item>
+      <item>D-4 seeder e suo test.</item>
+      <item>D-5 frontend del form (schema, default, payload, server-error-fields) e relativi test.</item>
+    </in>
+    <out>
+      <item>`TaskCompletionService`, azioni, notifiche: invariati.</item>
+      <item>Righe storiche chiuse negative con una data gia' valorizzata: nessuna migrazione dati (decisione non richiesta; segnalata).</item>
+      <item>File del restyle esterno (task-planning-section, header/summary del form): toccati solo se referenziano `completion_date` nel form.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/tasks">
+      <errors>422 `errors.completion_date` se inviata valorizzata (NUOVO). Assente o null: invariato.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/tasks/{task}">
+      <errors>422 `errors.completion_date` se inviata valorizzata (NUOVO).</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/tasks/{task}">
+      <response status="200">`completion_date` invariato in lettura. `permissions.fields.completion_date` sempre non editabile.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST /api/tasks con `completion_date: "2026-09-01"` -> 422 su completion_date, nessun task creato.
+      Con `completion_date: null` o senza la chiave -> 201 e data null.</criterion>
+    <criterion id="AC-002">PATCH /api/tasks/{task} (creatore, super-admin incluso) con `completion_date: "2026-09-01"` -> 422, data invariata.</criterion>
+    <criterion id="AC-003">Dato un task open, PATCH `task_status_id` verso closed_negative -> 200 e `completion_date` null.</criterion>
+    <criterion id="AC-004">Complete (chiusura diretta) -> data = oggi; uncomplete -> null (regressione, invariato).</criterion>
+    <criterion id="AC-005">GET /api/tasks/{task}: il permesso del campo `completion_date` non e' editabile, per il creatore e per il super-admin.</criterion>
+    <criterion id="AC-006">DemoTaskSeeder: ogni task closed_negative o in fase open/pending ha data null; ogni task in_validation
+      o closed_positive ha una data non futura e non precedente a start_date.</criterion>
+    <criterion id="AC-007">(Vitest) il payload di create e di edit non contiene mai `completion_date`.</criterion>
+    <criterion id="AC-008">Pest completo seriale, Vitest completo, Pint, ESLint sui file toccati, `tsc -b --force` puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna migrazione, nessuna dipendenza. Authz e validazione server-side.</item>
+    <item>Test reproduce-first; test esistenti che inviano completion_date o asseriscono la vecchia regola del seeder si
+      aggiornano con "REQUIREMENT CHANGED (spec 0127, D-n)".</item>
+    <item>Nessun commit ne' cambio branch senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

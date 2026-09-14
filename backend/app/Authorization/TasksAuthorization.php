@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskActionAvailability;
+use App\Services\Tasks\TaskManualStatusGuard;
 use App\Services\Tasks\TaskWriteLock;
 use Illuminate\Database\Eloquent\Model;
 
@@ -139,7 +140,7 @@ class TasksAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'complete', 'complete_to_validation', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update', 'close_via_status', 'create_subtask'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'complete', 'complete_to_validation', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update', 'close_via_status', 'create_subtask', 'change_status'];
     }
 
     /**
@@ -164,7 +165,8 @@ class TasksAuthorization extends AbstractResourceAuthorization
         $ceiling = [];
 
         foreach (self::FIELD_TYPES as $key => $type) {
-            if ($key === 'task_status_id' && $model === null) {
+            // spec 0127 D-2: written only by TaskCompletionService, so never editable.
+            if (($key === 'task_status_id' && $model === null) || $key === 'completion_date') {
                 $ceiling[$key] = FieldPermission::visibleReadonly(required: false);
 
                 continue;
@@ -196,14 +198,17 @@ class TasksAuthorization extends AbstractResourceAuthorization
      * fourth independent evaluation of the guards `complete` already ran.
      * `complete`/`approve` carry a further veto (spec 0123, D-6): a Task with
      * an open DIRECT sub-task admits neither, so `complete_to_validation`
-     * inherits it too through `complete`. `close_via_status` (D-5) and
-     * `create_subtask` (D-9) are two MORE exceptions to the three-way AND:
-     * neither reads `TaskActionAvailability` at all — the first is a
-     * PATCH-reachability question (`TaskAbilityResolver` plus the closing-
-     * feedback rule), the second a write-lock-cascade one
-     * (`TaskWriteLock`) — and `close_via_status` is deliberately NOT vetoed
-     * by `is_blocked` (D-7 of spec 0116: a status change stays operative on a
-     * blocked Task).
+     * inherits it too through `complete`. `close_via_status` (D-5),
+     * `create_subtask` (D-9) and `change_status` (spec 0126, D-4) are three
+     * MORE exceptions to the three-way AND: none reads `TaskActionAvailability`
+     * at all — the first two are PATCH-reachability questions
+     * (`TaskAbilityResolver`/`TaskManualStatusGuard` plus the closing-feedback
+     * rule), the third a write-lock-cascade one (`TaskWriteLock`).
+     * `request_update` is the one domain action the `is_blocked` veto no
+     * longer reaches (spec 0126, D-6, REQUIREMENT CHANGED): `close_via_status`
+     * and `change_status`, by contrast, ARE now vetoed by `is_blocked` — the
+     * D-7 carve-out of spec 0116 that used to exempt a manual status change
+     * from the freeze is gone.
      *
      * @return array<string, bool>
      */
@@ -258,18 +263,21 @@ class TasksAuthorization extends AbstractResourceAuthorization
                 && $actor->can('tasks.block') && TaskAbilityResolver::canBlock($actor, $task),
             // spec 0118, D-10: same availability window as `complete`
             // (`isCompletable()` — no twin method), plus the matrix row that
-            // additionally admits the watcher.
-            'request_update' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isCompletable($task)
+            // additionally admits the watcher. Spec 0126, D-6 (REQUIREMENT
+            // CHANGED): no longer ANDed with `! $task->is_blocked` — a
+            // blocked Task now admits this one action.
+            'request_update' => $task !== null && $this->actionAvailability->isCompletable($task)
                 && $actor->can('tasks.requestUpdate') && TaskAbilityResolver::canRequestUpdate($actor, $task),
             // spec 0123, D-5: whether the actor may PATCH task_status_id
             // straight into a CLOSING phase (`close_negative` today, since
-            // D-4 already reserves `in_validation`/`closed_positive` to the
-            // domain actions for everyone). Deliberately NOT ANDed with
-            // `! $task->is_blocked`: a status change on a blocked Task is
-            // operative, not structural (spec 0116 D-7), so it stays
-            // available. `actorMayWrite()` folds in `tasks.update` the same
-            // way `fieldPermissionCeiling()` does.
-            'close_via_status' => $task !== null && $this->actorMayWrite($actor, $task)
+            // D-4a already reserves `in_validation`/`closed_positive` to the
+            // domain actions for everyone). Spec 0126, D-4 (REQUIREMENT
+            // CHANGED): now ANDed with `! $task->is_blocked` — a manual
+            // status change, closing or not, is refused on a blocked Task
+            // (D-4c/D-6), overturning spec 0116 D-7's "operative on a blocked
+            // Task" carve-out for this one field. `actorMayWrite()` folds in
+            // `tasks.update` the same way `fieldPermissionCeiling()` does.
+            'close_via_status' => $task !== null && ! $task->is_blocked && $this->actorMayWrite($actor, $task)
                 && ! TaskAbilityResolver::completionRequiresValidation($actor, $task)
                 && ! ($task->requires_closure_feedback && trim((string) $task->closure_feedback) === ''),
             // spec 0123, D-9: gates the "Crea sotto-task" button. Structural,
@@ -279,6 +287,14 @@ class TasksAuthorization extends AbstractResourceAuthorization
             'create_subtask' => $task !== null && $actor->can('tasks.create')
                 && TaskAbilityResolver::canCreateSubtask($actor, $task)
                 && ! TaskWriteLock::isLocked($task) && ! TaskWriteLock::isLockedByAncestor($task),
+            // spec 0126, D-4: whether the actor may PATCH task_status_id AT
+            // ALL — the CURRENT-state twin of `close_via_status`'s
+            // resulting-state question. `TaskManualStatusGuard` is the single
+            // source of the phase check (D-4b), reused here rather than
+            // re-derived, so this flag and `TaskService::update()`'s own 422
+            // never drift.
+            'change_status' => $task !== null && ! $task->is_blocked && $this->actorMayWrite($actor, $task)
+                && TaskManualStatusGuard::isCurrentPhaseOpenOrPending($task),
         ];
     }
 }

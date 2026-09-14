@@ -14,13 +14,14 @@ import type { TaskActionKey, TaskDetail } from '@/features/tasks/types'
  * button shows.
  */
 /**
- * `close_via_status`/`create_subtask` (spec 0123 D-5/D-9) are EXCLUDED here on
- * purpose, same reasoning as `complete_to_validation`'s own exclusion from
- * `TaskActionKey`'s doc comment: they are not phase-based buttons this file
- * mirrors, callers read `task.permissions.actions.X` for them directly.
+ * `close_via_status`/`create_subtask`/`change_status` (spec 0123 D-5/D-9,
+ * spec 0126 D-4) are EXCLUDED here on purpose, same reasoning as
+ * `complete_to_validation`'s own exclusion from `TaskActionKey`'s doc
+ * comment: they are not phase-based buttons this file mirrors, callers read
+ * `task.permissions.actions.X` for them directly.
  */
 export type TaskActionAvailabilityFlags = Record<
-  Exclude<TaskActionKey, 'close_via_status' | 'create_subtask'>,
+  Exclude<TaskActionKey, 'close_via_status' | 'create_subtask' | 'change_status'>,
   boolean
 >
 

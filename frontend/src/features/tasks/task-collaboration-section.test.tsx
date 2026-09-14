@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { ConfirmContext, type ConfirmFn } from '@/components/confirm-dialog-context'
 import { TaskCollaborationSection } from '@/features/tasks/task-collaboration-section'
@@ -28,6 +29,14 @@ import type { ResourcePermissions } from '@/features/authorization/types'
  */
 
 let granted: string[] = []
+
+// Related-record links open their target in a modal through `useModuleOpener`,
+// whose mode resolver reads the authenticated user's preference. The preference
+// is not what these tests are about, so the resolver is stubbed rather than
+// dragging an AuthProvider into every render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
 
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({
@@ -213,15 +222,17 @@ describe('integration with the detail', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
     render(
-      <QueryClientProvider client={queryClient}>
-        <ConfirmContext.Provider value={confirm}>
-          <TaskDetailView
-          task={taskDetailWithPermissions({ permissions: permissionsWith(ALL_TABS) })}
-            onOpenSubtask={vi.fn()}
-            onCreateSubtask={vi.fn()}
-          />
-        </ConfirmContext.Provider>
-      </QueryClientProvider>,
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <ConfirmContext.Provider value={confirm}>
+            <TaskDetailView
+            task={taskDetailWithPermissions({ permissions: permissionsWith(ALL_TABS) })}
+              onOpenSubtask={vi.fn()}
+              onCreateSubtask={vi.fn()}
+            />
+          </ConfirmContext.Provider>
+        </QueryClientProvider>
+      </MemoryRouter>,
     )
 
     // Before spec 0117 the log rendered in a block of its own at the bottom

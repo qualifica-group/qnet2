@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { FolderTree, Hash, History, Package, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import {
   RECORD_BODY_GRID_CLASS,
   RECORD_BODY_WITH_SIDE_CLASS,
@@ -172,22 +173,22 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
                     ) : null}
                     {product.supplier ? (
                       <RecordField label={t('products.form.supplier')}>
-                        {product.supplier.name}
+                        <RecordLink domain="registries" id={product.supplier.id}>
+                          {product.supplier.name}
+                        </RecordLink>
                       </RecordField>
                     ) : null}
                   </RecordFieldList>
                 </RecordSection>
               ) : null}
+
+              <ProductAttributeValuesSection
+                layout={product.attribute_layout ?? null}
+                attributes={product.applicable_attributes ?? []}
+                values={product.attribute_values ?? {}}
+              />
             </RecordSectionsGrid>
           </RecordCard>
-
-          {/* Its own card(s) on the canvas, never nested in the record card:
-              a configured layout already renders section cards of its own. */}
-          <ProductAttributeValuesSection
-            layout={product.attribute_layout ?? null}
-            attributes={product.applicable_attributes ?? []}
-            values={product.attribute_values ?? {}}
-          />
         </div>
 
         {canViewActivity ? (

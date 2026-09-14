@@ -1,8 +1,29 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { render as rtlRender, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { MemoryRouter } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
 import { BusinessFunctionDetailView } from '@/features/business-functions/business-function-detail'
 import type { BusinessFunctionDetailWithPermissions } from '@/features/business-functions/types'
+
+/** Every render goes through a Router: the card links related records with real `<Link>`s. */
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: MemoryRouter })
+}
+
+// Related-record links open their target in a modal through `useModuleOpener`,
+// whose mode resolver reads the authenticated user's preference. The preference
+// is not what these tests are about, so the resolver is stubbed rather than
+// dragging an AuthProvider into every render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
+
+// Related-record links render only for an actor who can view the target
+// module; these tests are not about abilities, so every ability is granted.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
 
 const BASE: BusinessFunctionDetailWithPermissions = {
   id: 1,

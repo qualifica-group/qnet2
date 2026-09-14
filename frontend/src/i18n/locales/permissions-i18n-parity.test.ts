@@ -113,6 +113,8 @@ const CATALOGUE_ABILITIES = [
   'manageAll',
   'complete',
   'block',
+  // Spec 0126 D-2: `notes.deleteAny` (delete other users' notes).
+  'deleteAny',
 ]
 
 describe('permissions i18n parity (spec 0076 AC-020, AC-021)', () => {

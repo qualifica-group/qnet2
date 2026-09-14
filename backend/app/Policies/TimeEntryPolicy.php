@@ -2,9 +2,11 @@
 
 namespace App\Policies;
 
+use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
+use App\Services\Tasks\TaskAbilityResolver;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -37,12 +39,12 @@ class TimeEntryPolicy extends BasePolicy
 
     public function update(User $user, Model $model): bool
     {
-        return parent::update($user, $model) && $this->isOwnedOrManaged($user, $model);
+        return parent::update($user, $model) && $this->isAuthorizedToWrite($user, $model);
     }
 
     public function delete(User $user, Model $model): bool
     {
-        return parent::delete($user, $model) && $this->isOwnedOrManaged($user, $model);
+        return parent::delete($user, $model) && $this->isAuthorizedToWrite($user, $model);
     }
 
     /**
@@ -88,5 +90,35 @@ class TimeEntryPolicy extends BasePolicy
         return ! $model instanceof TimeEntry
             || $model->user_id === $user->id
             || $user->can($this->permission('manageAll'));
+    }
+
+    /**
+     * Spec 0126, D-3: a segnatempo filed under a Task follows the Task's OWN
+     * role matrix instead of the plain ownership/`manageAll` rule above —
+     * `time-entries.manageAll` does NOT reach into a Task's segnatempo. A
+     * segnatempo with no Task keeps `isOwnedOrManaged()`, unchanged.
+     */
+    private function isAuthorizedToWrite(User $user, Model $model): bool
+    {
+        if (! $model instanceof TimeEntry || $model->task_id === null) {
+            return $this->isOwnedOrManaged($user, $model);
+        }
+
+        $task = $this->loadTask($model);
+
+        return $task !== null && TaskAbilityResolver::canManageTimeEntry($user, $task, $model);
+    }
+
+    /**
+     * Reads the `task` relation ONLY if already eager-loaded by the caller
+     * (the Task-scoped list eager-loads it); otherwise a plain query by
+     * `task_id` — never the `task` relation accessor itself, which would
+     * lazy-load under `Model::preventLazyLoading()` (backend.md §3): `update`/
+     * `destroy` authorize BEFORE `TimeEntryService::loadDetail()` ever
+     * eager-loads it.
+     */
+    private function loadTask(TimeEntry $entry): ?Task
+    {
+        return $entry->relationLoaded('task') ? $entry->getRelation('task') : Task::query()->find($entry->task_id);
     }
 }

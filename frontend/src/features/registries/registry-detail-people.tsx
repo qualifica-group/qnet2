@@ -1,4 +1,5 @@
 import { DetailEmpty } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import { enumLabelOf } from '@/features/config/enum-label'
 import type { PrimaryContact } from '@/features/table/types'
 import type { ReferenceRef } from '@/features/registries/types'
@@ -34,8 +35,9 @@ export function PersonContactLines({ contacts }: { contacts?: PrimaryContact[] }
 }
 
 /**
- * A responsible person on a spec-sheet row (supervisore/commerciale/
- * segnalatore): the name plus their primary contacts, or the empty marker.
+ * A responsible person on a spec-sheet row (commerciale/segnalatore, both
+ * Referent records): the linked name plus their primary contacts, or the empty
+ * marker.
  */
 export function PersonField({ person }: { person: ReferenceRef | null }) {
   if (!person) {
@@ -43,18 +45,22 @@ export function PersonField({ person }: { person: ReferenceRef | null }) {
   }
   return (
     <div className="flex flex-col gap-0.5">
-      <span>{person.name}</span>
+      <RecordLink domain="referents" id={person.id}>
+        {person.name}
+      </RecordLink>
       <PersonContactLines contacts={person.primary_contacts} />
     </div>
   )
 }
 
-/** Compact referente card: the name plus their primary contacts. */
-function PersonCard({ name, contacts }: { name: string; contacts?: PrimaryContact[] }) {
+/** Compact referente card: the linked name plus their primary contacts. */
+function PersonCard({ referent }: { referent: ReferenceRef }) {
   return (
     <div className="flex min-w-0 flex-col rounded-lg border p-2.5">
-      <span className="truncate text-sm font-medium">{name}</span>
-      <PersonContactLines contacts={contacts} />
+      <RecordLink domain="referents" id={referent.id} className="text-sm font-medium">
+        {referent.name}
+      </RecordLink>
+      <PersonContactLines contacts={referent.primary_contacts} />
     </div>
   )
 }
@@ -74,7 +80,7 @@ export function RegistryReferents({ referents }: RegistryReferentsProps) {
   return (
     <div className={REFERENTS_GRID_CLASS}>
       {referents.map((referent) => (
-        <PersonCard key={referent.id} name={referent.name} contacts={referent.primary_contacts} />
+        <PersonCard key={referent.id} referent={referent} />
       ))}
     </div>
   )

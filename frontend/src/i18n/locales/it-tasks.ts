@@ -108,6 +108,19 @@ export const tasks = {
     editSubtitle: 'Aggiorna il task selezionato.',
     newTask: 'Nuovo task',
     title: 'Titolo',
+    titlePlaceholder: 'Che cosa bisogna fare?',
+    descriptionPlaceholder: 'Aggiungi dettagli, contesto o istruzioni…',
+    header: {
+      status: 'Stato',
+      endDate: 'Scadenza',
+    },
+    summary: {
+      title: 'Riepilogo',
+      description: 'Anteprima di ciò che verrà salvato.',
+      assigneesCount_one: '{{count}} assegnatario',
+      assigneesCount_other: '{{count}} assegnatari',
+      recurrenceOff: 'Non ricorrente',
+    },
     titleRequired: 'Il titolo è obbligatorio.',
     titleMax: 'Il titolo non può superare 191 caratteri.',
     description: 'Descrizione',
@@ -156,10 +169,10 @@ export const tasks = {
     opportunitySearch: "Cerca un'opportunità per nome…",
     workOrder: 'Commessa',
     workOrderSearch: 'Cerca una commessa per numero o titolo…',
-    requiresClosureFeedback: 'Richiedi un feedback alla chiusura',
+    requiresClosureFeedback: 'Feedback obbligatorio',
     requiresClosureFeedbackHint:
       'Se attivo, chiudere il task richiede un feedback scritto.',
-    requiresValidation: 'Richiedi validazione',
+    requiresValidation: 'Validazione',
     requiresValidationHint:
       'Se attivo, il completamento di un assegnatario invia il task in validazione invece di chiuderlo.',
     closureFeedback: 'Feedback di chiusura',
@@ -299,6 +312,7 @@ export const tasks = {
       description:
         'I destinatari selezionati sono assegnatari e osservatori di questo task: riceveranno una mail e una notifica.',
       recipients: 'Destinatari',
+      selectAll: 'Seleziona tutti',
       recipientsRequired: 'Seleziona almeno un destinatario.',
       recipientsEmpty: 'Questo task non ha assegnatari né osservatori da contattare.',
       message: 'Messaggio',

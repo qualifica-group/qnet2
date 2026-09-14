@@ -128,7 +128,9 @@ export function LeadDetailSections({ lead }: LeadDetailSectionsProps) {
           <ul className="flex flex-col gap-1 text-sm">
             {products.map((product) => (
               <li key={product.id} className="min-w-0">
-                <span className="font-medium">{product.name}</span>
+                <RecordLink domain="products" id={product.id} className="font-medium">
+                  {product.name}
+                </RecordLink>
                 {product.product_category ? (
                   <span className="text-muted-foreground"> — {product.product_category.name}</span>
                 ) : null}

@@ -1,10 +1,31 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
+
+/** Every render goes through a Router: the card links related records with real `<Link>`s. */
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: MemoryRouter })
+}
+
+// Related-record links open their target in a modal through `useModuleOpener`,
+// whose mode resolver reads the authenticated user's preference. The preference
+// is not what these tests are about, so the resolver is stubbed rather than
+// dragging an AuthProvider into every render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
+
+// Related-record links render only for an actor who can view the target
+// module; these tests are not about abilities, so every ability is granted.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
 
 /**
  * Spec 0093 AC-075: number, title, type, calculated status, callback date,
@@ -183,5 +204,17 @@ describe('WorkOrderDetailView — activity log section', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(activityLogSectionMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('WorkOrderDetailView — related records', () => {
+  it('links the offer, the task template and every line product to their records', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } })} />)
+
+    const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
+    expect(hrefOf('Fornitura annuale')).toBe('/quotes/4')
+    expect(hrefOf('Onboarding cliente')).toBe('/task-templates/3')
+    expect(hrefOf('Consulenza')).toBe('/products/1')
+    expect(hrefOf('Installazione')).toBe('/products/2')
   })
 })

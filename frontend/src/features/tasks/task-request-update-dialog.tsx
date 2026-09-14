@@ -34,15 +34,19 @@ function buildRequestUpdateSchema(t: TFunction) {
 
 type RequestUpdateFormValues = z.infer<ReturnType<typeof buildRequestUpdateSchema>>
 
-function requestUpdateDefaultValues(): RequestUpdateFormValues {
-  return { recipient_ids: [], message: '' }
+function requestUpdateDefaultValues(ids: number[]): RequestUpdateFormValues {
+  return { recipient_ids: ids, message: '' }
 }
 
-/** Omits `message` when blank (D-12): the server's own default copy takes over. */
+/**
+ * Omits `message` when blank (D-12): the server's own default copy takes
+ * over. `recipient_ids` is deduped defensively (AC-014): the picker already
+ * builds from unique candidates, so this only guards against a future bug.
+ */
 function buildRequestUpdatePayload(values: RequestUpdateFormValues): RequestTaskUpdatePayload {
   const message = values.message.trim()
   return {
-    recipient_ids: values.recipient_ids,
+    recipient_ids: Array.from(new Set(values.recipient_ids)),
     ...(message !== '' ? { message } : {}),
   }
 }
@@ -54,8 +58,55 @@ function toggleRecipient(current: number[], id: number, checked: boolean): numbe
   return current.filter((existing) => existing !== id)
 }
 
+type RecipientRole = 'assignee' | 'watcher'
+
+interface RecipientCandidate extends TaskNamedRef {
+  roles: RecipientRole[]
+}
+
+/**
+ * Merges assignees and watchers into one candidate per user (spec 0126 D-7):
+ * a user who is both keeps a single row, carrying both role tags.
+ */
+function mergeRecipientCandidates(assignees: TaskNamedRef[], watchers: TaskNamedRef[]): RecipientCandidate[] {
+  const byId = new Map<number, RecipientCandidate>()
+  assignees.forEach((candidate) => byId.set(candidate.id, { ...candidate, roles: ['assignee'] }))
+  watchers.forEach((candidate) => {
+    const existing = byId.get(candidate.id)
+    if (existing) {
+      existing.roles.push('watcher')
+    } else {
+      byId.set(candidate.id, { ...candidate, roles: ['watcher'] })
+    }
+  })
+  return Array.from(byId.values())
+}
+
+function candidateIds(candidates: RecipientCandidate[]): number[] {
+  return candidates.map((candidate) => candidate.id)
+}
+
+/** Tri-state of the "select all" header checkbox (mirrors `permission-selection.ts`'s `triState`). */
+function recipientsSelectionState(candidates: RecipientCandidate[], selected: number[]): boolean | 'indeterminate' {
+  if (candidates.length === 0) {
+    return false
+  }
+  const set = new Set(selected)
+  const selectedCount = candidates.filter((candidate) => set.has(candidate.id)).length
+  if (selectedCount === 0) {
+    return false
+  }
+  return selectedCount === candidates.length ? true : 'indeterminate'
+}
+
+function roleLabels(roles: RecipientRole[], t: TFunction): string {
+  return roles
+    .map((role) => (role === 'assignee' ? t('tasks.form.assignees') : t('tasks.form.watchers')))
+    .join(', ')
+}
+
 interface RecipientCheckboxProps {
-  candidate: TaskNamedRef
+  candidate: RecipientCandidate
   roleLabel: string
   selected: number[]
   onToggle: (id: number, checked: boolean) => void
@@ -69,6 +120,22 @@ function RecipientCheckbox({ candidate, roleLabel, selected, onToggle }: Recipie
       <Checkbox checked={checked} onCheckedChange={(next) => onToggle(candidate.id, next === true)} />
       <span className="truncate">{candidate.name}</span>
       <span className="text-xs text-muted-foreground">{roleLabel}</span>
+    </label>
+  )
+}
+
+interface SelectAllRecipientsCheckboxProps {
+  state: boolean | 'indeterminate'
+  label: string
+  onToggleAll: (checked: boolean) => void
+}
+
+/** Header row (D-7): selects/deselects every candidate, indeterminate on a partial selection. */
+function SelectAllRecipientsCheckbox({ state, label, onToggleAll }: SelectAllRecipientsCheckboxProps) {
+  return (
+    <label className="flex items-center gap-2 border-b border-field-border py-1 text-sm font-medium">
+      <Checkbox checked={state} onCheckedChange={(next) => onToggleAll(next === true)} aria-label={label} />
+      <span>{label}</span>
     </label>
   )
 }
@@ -89,11 +156,12 @@ interface TaskRequestUpdateDialogProps {
 export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskRequestUpdateDialogProps) {
   const { t } = useTranslation()
   const schema = buildRequestUpdateSchema(t)
-  const hasCandidates = task.assignees.length > 0 || task.watchers.length > 0
+  const candidates = mergeRecipientCandidates(task.assignees, task.watchers)
+  const hasCandidates = candidates.length > 0
 
   const form = useForm<RequestUpdateFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: requestUpdateDefaultValues(),
+    defaultValues: requestUpdateDefaultValues(candidateIds(candidates)),
   })
 
   const requestUpdateMutation = useRequestTaskUpdate({
@@ -101,7 +169,7 @@ export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskReques
     onSuccess: () => {
       toast.success(t('tasks.actions.requestUpdate.success'))
       onOpenChange(false)
-      form.reset(requestUpdateDefaultValues())
+      form.reset(requestUpdateDefaultValues(candidateIds(candidates)))
     },
   })
 
@@ -128,7 +196,7 @@ export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskReques
       open={open}
       onOpenChange={(next) => {
         if (!next) {
-          form.reset(requestUpdateDefaultValues())
+          form.reset(requestUpdateDefaultValues(candidateIds(candidates)))
         }
         onOpenChange(next)
       }}
@@ -154,20 +222,16 @@ export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskReques
                   {hasCandidates ? (
                     <FormControl>
                       <div className="flex max-h-48 flex-col gap-1 overflow-auto rounded-md border border-field-border p-2">
-                        {task.assignees.map((candidate) => (
+                        <SelectAllRecipientsCheckbox
+                          state={recipientsSelectionState(candidates, field.value)}
+                          label={t('tasks.actions.requestUpdate.selectAll')}
+                          onToggleAll={(checked) => field.onChange(checked ? candidateIds(candidates) : [])}
+                        />
+                        {candidates.map((candidate) => (
                           <RecipientCheckbox
-                            key={`assignee-${candidate.id}`}
+                            key={`candidate-${candidate.id}`}
                             candidate={candidate}
-                            roleLabel={t('tasks.form.assignees')}
-                            selected={field.value}
-                            onToggle={(id, checked) => field.onChange(toggleRecipient(field.value, id, checked))}
-                          />
-                        ))}
-                        {task.watchers.map((candidate) => (
-                          <RecipientCheckbox
-                            key={`watcher-${candidate.id}`}
-                            candidate={candidate}
-                            roleLabel={t('tasks.form.watchers')}
+                            roleLabel={roleLabels(candidate.roles, t)}
                             selected={field.value}
                             onToggle={(id, checked) => field.onChange(toggleRecipient(field.value, id, checked))}
                           />

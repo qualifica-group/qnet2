@@ -6,6 +6,12 @@ import i18n from '@/i18n'
 import { FieldChangeRequestDetailView } from '@/features/field-change-requests/field-change-request-detail'
 import type { FieldChangeRequestResource } from '@/features/field-change-requests/types'
 
+// Related-record links render only for an actor who can view the target
+// module; these tests are not about abilities, so every ability is granted.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /**
  * AC-047: the Approve/Reject buttons exist in the DOM only when the
  * resource's own `can.approve`/`can.reject` are `true` (the UI hides, the
@@ -16,6 +22,14 @@ import type { FieldChangeRequestResource } from '@/features/field-change-request
 
 const approveFieldChangeRequestMock = vi.fn()
 const rejectFieldChangeRequestMock = vi.fn()
+
+// Related-record links open their target in a modal through `useModuleOpener`,
+// whose mode resolver reads the authenticated user's preference. The preference
+// is not what these tests are about, so the resolver is stubbed rather than
+// dragging an AuthProvider into every render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
 
 vi.mock('@/features/field-change-requests/api', () => ({
   approveFieldChangeRequest: (...args: unknown[]) => approveFieldChangeRequestMock(...args),

@@ -297,7 +297,9 @@ it('AC-031: GET exposes data.recurrence as a full object when set, null otherwis
         'ends' => 'never',
         'ends_on' => null,
         'occurrence_count' => null,
-    ])->and($response->json('permissions.actions'))->toHaveCount(15);
+    ])
+        // REQUIREMENT CHANGED (spec 0126, D-4): actions() grows to 16 keys.
+        ->and($response->json('permissions.actions'))->toHaveCount(16);
 
     $this->getJson("/api/tasks/{$plainTask->id}")->assertOk()->assertJsonPath('data.recurrence', null);
 });

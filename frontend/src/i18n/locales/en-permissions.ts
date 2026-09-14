@@ -56,6 +56,8 @@ export const permissions = {
     manageAll: 'Manage all',
     complete: 'Complete',
     block: 'Block',
+    // Spec 0126 D-2: lets an actor delete other users' notes (NotePolicy::abilities()).
+    deleteAny: 'Delete others\' notes',
   },
   resources: {
     users: 'Users',

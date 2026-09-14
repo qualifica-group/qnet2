@@ -139,9 +139,20 @@ final class NoteService
      * DELETE /api/notes/{note} — soft delete only (D-8): replies are left
      * untouched in the database, they simply stop being reachable once their
      * root no longer appears in listForEntity's query.
+     *
+     * Ownership is checked by the controller (Policy: author OR
+     * `notes.deleteAny`, spec 0126 D-2). When the actor is NOT the author —
+     * i.e. it is deleting via `deleteAny` — this additionally re-checks read
+     * access to the host record (`reauthorizeHost`, same guard update()
+     * applies), so the permission can never reach a note attached to a
+     * record the actor cannot see.
      */
-    public function delete(Note $note): void
+    public function delete(User $user, Note $note): void
     {
+        if ($note->user_id !== $user->id) {
+            $this->reauthorizeHost($user, $note);
+        }
+
         $note->delete();
     }
 

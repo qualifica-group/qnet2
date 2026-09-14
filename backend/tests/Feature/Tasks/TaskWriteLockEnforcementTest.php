@@ -74,16 +74,24 @@ it('AC-031: on a blocked task, PATCH sending a structural key (title) is 422 and
     $this->assertDatabaseHas('tasks', ['id' => $task->id, 'title' => 'Originale', 'is_blocked' => true]);
 });
 
-it('AC-031: on a blocked task, PATCH sending the operative task_status_id key is 200 (D-7)', function () {
+// REQUIREMENT CHANGED (spec 0126, D-4c/D-6): `task_status_id` stays an
+// OPERATIVE key for TaskWriteLock (the structural lock itself still lets it
+// ride through a frozen Task), but `TaskManualStatusGuard` now adds its OWN
+// veto on top: a manual status change is refused on a blocked Task
+// regardless of phase, so the "200 on a blocked task" outcome the old spec
+// 0116 D-7 produced no longer holds.
+it('AC-031 (spec 0126, D-4c): on a blocked task, PATCH sending task_status_id is 422 with the blocked message', function () {
     $actor = taskActorWith(['update', 'view']);
     $target = TaskStatus::factory()->create();
     $task = Task::factory()->forCreator($actor)->create(['is_blocked' => true]);
+    $originalStatusId = $task->task_status_id;
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/tasks/{$task->id}", ['task_status_id' => $target->id])
-        ->assertOk()->assertJsonPath('data.task_status_id', $target->id);
+        ->assertStatus(422)
+        ->assertJsonPath('errors.task_status_id.0', 'A blocked task cannot change status.');
 
-    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $target->id, 'is_blocked' => true]);
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $originalStatusId, 'is_blocked' => true]);
 });
 
 // ---------------------------------------------------------------------------

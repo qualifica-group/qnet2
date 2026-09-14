@@ -1,10 +1,13 @@
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
+import { MAIN_COLUMN_CLASS, PANEL_GRID_CLASS, SIDE_COLUMN_CLASS } from '@/components/record-form/layout'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useTaskForm } from '@/features/tasks/use-task-form'
 import { TaskAttachmentStaging } from '@/features/tasks/task-attachment-staging'
 import { TaskClassificationSection } from '@/features/tasks/task-classification-section'
 import { TaskClosureSection } from '@/features/tasks/task-closure-section'
+import { TaskFormHeader } from '@/features/tasks/task-form-header'
+import { TaskFormSummary } from '@/features/tasks/task-form-summary'
 import { TaskIdentitySection } from '@/features/tasks/task-identity-section'
 import { TaskLinksSection } from '@/features/tasks/task-links-section'
 import { TaskPeopleSection } from '@/features/tasks/task-people-section'
@@ -13,6 +16,9 @@ import { TaskRecurrenceSection } from '@/features/tasks/task-recurrence-section'
 import { TaskRegistrySection } from '@/features/tasks/task-registry-section'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { TaskDetail, TaskFormMode, TaskNamedRef } from '@/features/tasks/types'
+
+/** DOM id bridging the sticky header's and the footer's save actions to the RHF `<form>`. */
+const TASK_FORM_ID = 'task-form'
 
 /** Stable module-level references: a fresh `[]`/`null` per render would break memo/dep stability. */
 const EMPTY_PEOPLE: RelationFieldRef[] = []
@@ -97,6 +103,13 @@ interface TaskFormBodyProps {
  * control at all: the former is shown only in the detail, the latter is a
  * read-only readout inside the classification section.
  *
+ * Same record-form skeleton as the Opportunita' form (`@/components/record-form`):
+ * sticky identity bar with the actions, then two columns at `@4xl` — the side
+ * column (live summary + closure flags) FIRST in the DOM so a narrow container
+ * reads it before the long form, reordered to the right. The main column opens
+ * with the title card, then the badge-rendered classification, people,
+ * planning, links, recurrence and (create only) attachments.
+ *
  * Pure composition: every non-render concern lives in `useTaskForm`, and each
  * group of fields lives in its own section file so no file here approaches
  * the engineering size limits.
@@ -121,80 +134,91 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
   // AC-085: opened as "crea sotto-task", the parent arrives prefilled and locked.
   const parentLocked = mode.type === 'create' && (mode.parentTaskId ?? null) !== null
 
+  const { isSubmitting } = form.formState
+
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
+    <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
+      {/* The provider wraps BOTH columns (it renders no DOM of its own): the
+          side column's closure flags are form fields like any other. */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4" noValidate>
-          <TaskIdentitySection
-            control={form.control}
-            parentTask={parentRefOf(task)}
-            excludeTaskId={task?.id}
-            parentLocked={parentLocked}
-          />
+        <TaskFormHeader
+          control={form.control}
+          task={task}
+          formId={TASK_FORM_ID}
+          isSubmitting={isSubmitting}
+          submitError={serverError}
+          onCancel={onCancel}
+        />
 
-          <TaskClassificationSection
-            control={form.control}
-            task={task}
-            onStatusItemChange={handleStatusItemChange}
-            completionPercentage={completionPercentage}
-          />
+        <div className={PANEL_GRID_CLASS}>
+          <aside className={SIDE_COLUMN_CLASS}>
+            <TaskFormSummary control={form.control} task={task} />
+            <TaskClosureSection control={form.control} />
+          </aside>
 
-          <TaskRegistrySection
-            control={form.control}
-            registry={task?.registry ?? parentPrefillRefs.registry}
-            referent={task?.referent ?? parentPrefillRefs.referent}
-            onRegistryChange={handleRegistryChange}
-          />
+          <div className={MAIN_COLUMN_CLASS}>
+            {/* `display: contents`: this native `<form>` only scopes the HTML
+                submit boundary, it must not become an extra flex box. */}
+            <form id={TASK_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
+              <TaskIdentitySection
+                control={form.control}
+                parentTask={parentRefOf(task)}
+                excludeTaskId={task?.id}
+                parentLocked={parentLocked}
+              />
 
-          <TaskPeopleSection
-            control={form.control}
-            requester={requesterRefOf(task, currentUserRef)}
-            assignees={peopleOf(task?.assignees)}
-            watchers={peopleOf(task?.watchers)}
-            creatorId={creatorIdOf(task, currentUserRef)}
-          />
+              <TaskClassificationSection
+                control={form.control}
+                task={task}
+                onStatusItemChange={handleStatusItemChange}
+                completionPercentage={completionPercentage}
+              />
 
-          <TaskPlanningSection control={form.control} />
+              <TaskPeopleSection
+                control={form.control}
+                requester={requesterRefOf(task, currentUserRef)}
+                assignees={peopleOf(task?.assignees)}
+                watchers={peopleOf(task?.watchers)}
+                creatorId={creatorIdOf(task, currentUserRef)}
+              />
 
-          <TaskRecurrenceSection control={form.control} />
+              <TaskPlanningSection control={form.control} />
 
-          <TaskLinksSection
-            control={form.control}
-            opportunity={task?.opportunity ?? parentPrefillRefs.opportunity}
-            workOrder={workOrderRefOf(task) ?? parentPrefillRefs.workOrder}
-          />
+              <TaskRegistrySection
+                control={form.control}
+                registry={task?.registry ?? parentPrefillRefs.registry}
+                referent={task?.referent ?? parentPrefillRefs.referent}
+                onRegistryChange={handleRegistryChange}
+              />
 
-          <TaskClosureSection control={form.control} />
+              <TaskLinksSection
+                control={form.control}
+                opportunity={task?.opportunity ?? parentPrefillRefs.opportunity}
+                workOrder={workOrderRefOf(task) ?? parentPrefillRefs.workOrder}
+              />
 
-          {mode.type === 'create' ? (
-            <TaskAttachmentStaging
-              files={stagedAttachments}
-              onAdd={addStagedAttachments}
-              onRemove={removeStagedAttachment}
-            />
-          ) : null}
+              <TaskRecurrenceSection control={form.control} />
 
-          {serverError ? (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          ) : null}
+              {mode.type === 'create' ? (
+                <TaskAttachmentStaging
+                  files={stagedAttachments}
+                  onAdd={addStagedAttachments}
+                  onRemove={removeStagedAttachment}
+                />
+              ) : null}
 
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-card"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('tasks.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('tasks.form.saving') : t('tasks.form.save')}
-            </Button>
+              {/* The same actions the identity bar carries, repeated where the
+                  form ends: the operator finishes typing far from the sticky bar. */}
+              <RecordFormActions
+                formId={TASK_FORM_ID}
+                isSubmitting={isSubmitting}
+                submitLabel={t('tasks.form.save')}
+                submittingLabel={t('tasks.form.saving')}
+                cancel={{ label: t('tasks.form.cancel'), onCancel }}
+              />
+            </form>
           </div>
-        </form>
+        </div>
       </Form>
     </div>
   )

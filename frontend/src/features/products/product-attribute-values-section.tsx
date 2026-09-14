@@ -1,28 +1,24 @@
-import { useMemo } from 'react'
 import type { TFunction } from 'i18next'
-import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { SlidersHorizontal } from 'lucide-react'
-import {
-  RecordCard,
-  RecordField,
-  RecordFieldList,
-  RecordSection,
-} from '@/components/detail/record-panel'
-import { Form } from '@/components/ui/form'
-import { AttributeLayoutRenderer } from '@/features/attributes/attribute-layout-renderer'
-import type { AttributeLayoutFormShape, LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
-import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import type { ApplicableAttribute } from '@/features/request-management/types'
 
 interface ProductAttributeValuesSectionProps {
-  /** The category's configured (context=product, form_mode=view) layout, spec 0062; `null` -> flat. */
+  /** The category's configured (context=product, form_mode=view) layout, spec 0062; `null` -> one flat section. */
   layout: LayoutBlob | null
   /** Reused as-is: the same `ApplicableAttribute` DTO the Opportunity work panel reads (spec 0061). */
   attributes: ApplicableAttribute[]
   values: Record<string, CustomFieldValue>
+}
+
+interface AttributeGroup {
+  key: string
+  title: string
+  attributes: ApplicableAttribute[]
 }
 
 /** Renders an `enum`/`relation` scalar value through its option label (or the raw id, unresolved for `relation`). */
@@ -51,74 +47,62 @@ function formatAttributeValue(attribute: ApplicableAttribute, value: CustomField
 }
 
 /**
- * Read-only "Attributes" section of the product detail view (spec 0061): one
- * field row per PRODUCT-context attribute that actually has a value. Renders
- * nothing when the product carries no attribute value (additive feature,
- * zero-cost for a product predating attribute assignment). This is the FLAT
- * fallback (AC-007) — same valued-only content as before, now in the record
- * kit's own card so it sits on the detail canvas exactly like the configured
- * layout's sections do, instead of a second kit's chrome next to them.
+ * Groups the valued attributes by the configured layout: one group per layout
+ * section (in `sort_order`, items in row order), then the valued attributes no
+ * section places under "Other information". Without a layout, a single group.
+ * Groups left without a valued attribute are dropped.
  */
-function ProductAttributeValuesFlat({ attributes, values }: Omit<ProductAttributeValuesSectionProps, 'layout'>) {
-  const { t } = useTranslation()
+function groupValuedAttributes(
+  { layout, attributes, values }: ProductAttributeValuesSectionProps,
+  t: TFunction,
+): AttributeGroup[] {
   const valued = attributes.filter((attribute) => !isEmptyCustomFieldValue(values[attribute.code] ?? null))
+  const otherTitle = t('attributes.layout.otherInformation', { defaultValue: 'Altre informazioni' })
 
-  if (valued.length === 0) {
-    return null
+  if (!layout || layout.sections.length === 0) {
+    return valued.length > 0
+      ? [{ key: 'flat', title: t('products.form.dynamicFields.title'), attributes: valued }]
+      : []
   }
 
-  return (
-    <RecordCard>
-      <div className="p-4">
-        <RecordSection title={t('products.form.dynamicFields.title')} icon={<SlidersHorizontal />}>
-          <RecordFieldList>
-            {valued.map((attribute) => (
-              <RecordField key={attribute.code} label={attribute.name}>
-                {formatAttributeValue(attribute, values[attribute.code], t)}
-              </RecordField>
-            ))}
-          </RecordFieldList>
-        </RecordSection>
-      </div>
-    </RecordCard>
-  )
+  const byCode = new Map(valued.map((attribute) => [attribute.code, attribute]))
+  const placed = new Set<string>()
+  const groups = [...layout.sections]
+    .sort((left, right) => left.sort_order - right.sort_order)
+    .map((section) => {
+      const codes = section.rows.flatMap((row) => row.items.map((item) => item.attribute_code))
+      codes.forEach((code) => placed.add(code))
+      return {
+        key: section.id,
+        title: section.title,
+        attributes: codes.flatMap((code) => byCode.get(code) ?? []),
+      }
+    })
+
+  groups.push({ key: 'other', title: otherTitle, attributes: valued.filter((attribute) => !placed.has(attribute.code)) })
+
+  return groups.filter((group) => group.attributes.length > 0)
 }
 
 /**
- * Configured-layout branch (spec 0062 AC-014): mounts the SAME agnostic
- * renderer the create/edit form uses, `mode="view"`/`readOnly`, seeded from a
- * throwaway RHF instance — this is a display-only mount, nothing here ever
- * submits. Shows every effective attribute of the configured sections (not
- * only the valued ones), matching the admin-configured structure.
+ * Read-only category attributes of the product detail (spec 0061/0062), as
+ * plain label/value rows inside the product record card — never form
+ * controls: the detail is not an edit surface. Renders nothing when the
+ * product carries no attribute value.
  */
-function ProductAttributeLayoutView({
-  layout,
-  attributes,
-  values,
-}: Required<Pick<ProductAttributeValuesSectionProps, 'layout' | 'attributes' | 'values'>>) {
-  const form = useForm<AttributeLayoutFormShape>({ defaultValues: { attribute_values: values } })
-  const effectiveAttributes = useMemo(
-    () => attributes.map((attribute) => toEffectiveAttribute(attribute, 'product')),
-    [attributes],
-  )
+export function ProductAttributeValuesSection(props: ProductAttributeValuesSectionProps) {
+  const { t } = useTranslation()
+  const groups = groupValuedAttributes(props, t)
 
-  return (
-    <Form {...form}>
-      <AttributeLayoutRenderer
-        layout={layout}
-        attributes={effectiveAttributes}
-        control={form.control}
-        mode="view"
-        readOnly
-      />
-    </Form>
-  )
-}
-
-export function ProductAttributeValuesSection({ layout, attributes, values }: ProductAttributeValuesSectionProps) {
-  if (layout && layout.sections.length > 0) {
-    return <ProductAttributeLayoutView layout={layout} attributes={attributes} values={values} />
-  }
-
-  return <ProductAttributeValuesFlat attributes={attributes} values={values} />
+  return groups.map((group) => (
+    <RecordSection key={group.key} title={group.title} icon={<SlidersHorizontal />}>
+      <RecordFieldList>
+        {group.attributes.map((attribute) => (
+          <RecordField key={attribute.code} label={attribute.name}>
+            {formatAttributeValue(attribute, props.values[attribute.code], t)}
+          </RecordField>
+        ))}
+      </RecordFieldList>
+    </RecordSection>
+  ))
 }

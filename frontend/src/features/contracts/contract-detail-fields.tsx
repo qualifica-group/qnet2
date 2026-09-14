@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Building2, CalendarClock, Contact, CreditCard } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import {
   RecordField,
   RecordFieldList,
@@ -45,19 +46,38 @@ function DateField({ label, value }: { label: string; value: string | null }) {
   return <RecordField label={label}>{formatDate(value) || <DetailEmpty />}</RecordField>
 }
 
-/** A relation row that falls back to the kit's empty placeholder. */
+/**
+ * A relation row that falls back to the kit's empty placeholder; with a
+ * `domain` the value links to the related record.
+ */
 function RelationField({
   label,
   icon,
   relation,
+  domain,
 }: {
   label: string
   icon?: ReactNode
-  relation: { name: string } | null
+  relation: { id: number; name: string } | null
+  domain?: string
 }) {
+  if (!relation) {
+    return (
+      <RecordField label={label} icon={icon}>
+        <DetailEmpty />
+      </RecordField>
+    )
+  }
+
   return (
     <RecordField label={label} icon={icon}>
-      {relation ? relation.name : <DetailEmpty />}
+      {domain ? (
+        <RecordLink domain={domain} id={relation.id}>
+          {relation.name}
+        </RecordLink>
+      ) : (
+        relation.name
+      )}
     </RecordField>
   )
 }
@@ -96,7 +116,7 @@ export function ContractDetailSections({ contract }: ContractDetailSectionsProps
 
       <RecordSection title={t('contracts.detail.sections.identity')} icon={<Contact />}>
         <RecordFieldList>
-          <RelationField label={t('contracts.detail.registry')} relation={contract.registry} />
+          <RelationField label={t('contracts.detail.registry')} relation={contract.registry} domain="registries" />
           {/* I due record correlati sono raggiungibili DAL campo che li nomina
               (direttiva utente 2026-08-31), non da bottoni nella barra azioni.
               Aprono comunque una MODALE, mai un'altra pagina. */}
@@ -115,10 +135,20 @@ export function ContractDetailSections({ contract }: ContractDetailSectionsProps
 
       <RecordSection title={t('contracts.detail.sections.company')} icon={<Building2 />}>
         <RecordFieldList>
-          <RelationField label={t('contracts.detail.company')} relation={contract.company} />
-          <RelationField label={t('contracts.detail.companySite')} relation={contract.company_site} />
+          <RelationField label={t('contracts.detail.company')} relation={contract.company} domain="companies" />
+          <RelationField
+            label={t('contracts.detail.companySite')}
+            relation={contract.company_site}
+            domain="company-sites"
+          />
           <RecordField label={t('contracts.detail.operationalSite')}>
-            {contract.operational_site ? contract.operational_site.label : <DetailEmpty />}
+            {contract.operational_site ? (
+              <RecordLink domain="operational-sites" id={contract.operational_site.id}>
+                {contract.operational_site.label}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
         </RecordFieldList>
       </RecordSection>

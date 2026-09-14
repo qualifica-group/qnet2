@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Building2, Landmark, Pencil, Receipt, Star } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -103,7 +104,15 @@ export function CompanySiteDetailStats({ site }: CompanySiteDetailStatsProps) {
       <RecordStat
         label={t('companySites.form.company')}
         icon={<Building2 />}
-        value={site.company?.label || <DetailEmpty />}
+        value={
+          site.company ? (
+            <RecordLink domain="companies" id={site.company.id}>
+              {site.company.label}
+            </RecordLink>
+          ) : (
+            <DetailEmpty />
+          )
+        }
       />
     </RecordStatStrip>
   )

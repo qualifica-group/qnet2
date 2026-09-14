@@ -122,6 +122,14 @@ interface AsyncPaginatedSelectProps {
    * every option is selectable (unchanged behaviour for existing callers).
    */
   isItemDisabled?: (item: ForSelectItem) => boolean
+  /**
+   * Custom content for the selected value in the trigger and for every
+   * option row (e.g. a colored lookup badge read off the item's `meta`).
+   * Replaces the default avatar + label; the accessible name of the trigger
+   * and the option's own text stay whatever the rendered node contains.
+   * Omitted, both render exactly as before.
+   */
+  renderItem?: (item: ForSelectItem) => ReactNode
 }
 
 /** Default: no option is ever disabled. Hoisted so its identity is stable. */
@@ -160,6 +168,7 @@ export function AsyncPaginatedSelect({
   action,
   params,
   isItemDisabled = noItemDisabled,
+  renderItem,
 }: AsyncPaginatedSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -306,7 +315,11 @@ export function AsyncPaginatedSelect({
           className,
         )}
       >
-        {triggerLabel !== null ? (
+        {renderItem && selected ? (
+          <span className="flex min-w-0 flex-1 items-center overflow-hidden">
+            {renderItem(selected)}
+          </span>
+        ) : triggerLabel !== null ? (
           <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             {showAvatar ? (
               // The avatar is tinted by the option's own label: while the
@@ -425,6 +438,7 @@ export function AsyncPaginatedSelect({
                     checked={item.id === value}
                     disabled={isItemDisabled(item)}
                     showAvatar={showAvatar}
+                    renderItem={renderItem}
                     onSelect={select}
                   />
                 ))}

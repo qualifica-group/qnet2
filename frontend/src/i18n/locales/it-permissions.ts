@@ -59,6 +59,8 @@ export const permissions = {
     manageAll: 'Gestisci tutto',
     complete: 'Completa',
     block: 'Blocca',
+    // Spec 0126 D-2: consente di eliminare le note altrui (NotePolicy::abilities()).
+    deleteAny: 'Elimina note altrui',
   },
   resources: {
     users: 'Utenti',

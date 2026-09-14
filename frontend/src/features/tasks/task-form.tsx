@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { TaskFormBody } from '@/features/tasks/task-form-body'
 import { useTaskFormMeta } from '@/features/tasks/use-task-form-meta'
@@ -12,22 +12,6 @@ interface TaskFormProps {
   onSuccess: (task: TaskDetail) => void
   /** Called when the user cancels the form. */
   onCancel: () => void
-}
-
-/** Loading placeholder mirroring the form's real layout, so the swap does not shift the page. */
-export function TaskFormSkeleton() {
-  return (
-    <div className="flex flex-col gap-4 p-4" aria-hidden="true">
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-24 w-full" />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    </div>
-  )
 }
 
 /**
@@ -42,7 +26,7 @@ export function TaskForm({ mode, onSuccess, onCancel }: TaskFormProps) {
   const meta = useTaskFormMeta(mode)
 
   if (meta.status === 'loading') {
-    return <TaskFormSkeleton />
+    return <RecordFormSkeleton />
   }
 
   if (meta.status === 'error') {

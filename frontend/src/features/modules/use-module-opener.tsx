@@ -7,8 +7,10 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetToolbar,
 } from '@/components/ui/sheet'
 import { moduleI18nNamespace } from '@/features/modules/i18n-namespace'
+import { SheetDetailPageLink } from '@/features/modules/sheet-detail-page-link'
 import { getModuleRegistryEntry } from '@/features/modules/module-registry'
 import { useModuleOpenMode } from '@/features/modules/use-module-open-mode'
 import { OPEN_MODE_MODAL, type ModuleCreateParams, type OpenMode } from '@/features/modules/types'
@@ -54,6 +56,15 @@ export interface UseModuleOpenerOptions {
    * mode via `useModuleOpenMode` exactly as before (AC-064).
    */
   forceMode?: OpenMode
+  /**
+   * When `true`, saving a `create` (or `openCreateWith`) in modal mode swaps
+   * the Sheet to the `view` of the just-created id instead of closing it
+   * (spec 0126 D-8/AC-015). `onSaved` still fires either way. Ignored for
+   * `edit`/`duplicate` saves and in page mode (the page's own `onSuccess`
+   * already navigates to the detail route). Defaults to `false` so every
+   * other module keeps closing the panel, unchanged.
+   */
+  viewAfterCreate?: boolean
 }
 
 export interface UseModuleOpenerResult {
@@ -101,7 +112,7 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
   // namespace, while `domain` is the kebab-case slug (spec 0042).
   const ns = moduleI18nNamespace(domain)
 
-  const { onSaved, forceMode } = options
+  const { onSaved, forceMode, viewAfterCreate } = options
   // `forceMode` short-circuits the resolved mode for the caller (spec 0067
   // D-3). Applied here rather than inside `resolveOpenMode`/`useModuleOpenMode`
   // so those stay pure functions of the user's actual preference — the
@@ -163,10 +174,27 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
     [mode, navigate, basePath],
   )
 
-  const handleSaved = useCallback(() => {
-    closeSheet()
-    onSaved?.()
-  }, [closeSheet, onSaved])
+  // `current.kind === 'create'` covers both `openCreate`/`openCreateWith`
+  // (same Sheet kind, spec 0045); `edit`/`duplicate` always close (D-8 only
+  // mentions "un create", and `duplicate` is its own distinct kind here, not
+  // unified with `create`).
+  const handleSaved = useCallback(
+    (id: number) => {
+      setSheetState((current) =>
+        viewAfterCreate && current.kind === 'create' ? { kind: 'view', row: { id, actions: [] } } : { kind: 'none' },
+      )
+      onSaved?.()
+    },
+    [onSaved, viewAfterCreate],
+  )
+
+  const openDetailPage = useCallback(
+    (path: string) => {
+      closeSheet()
+      void navigate(path)
+    },
+    [closeSheet, navigate],
+  )
 
   const onSheetOpenChange = useCallback(
     (open: boolean) => {
@@ -186,11 +214,18 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
   // its own visible heading gets them hidden instead of shown twice — the
   // same treatment the `view` branch below gives its `DetailScreen`.
   const formHeaderClass = entry.formOwnsHeader ? 'sr-only' : undefined
+  // Only an existing record has a detail page; create/duplicate have no id yet.
+  const detailPageId = sheetState.kind === 'view' || sheetState.kind === 'edit' ? sheetState.row.id : null
 
   const sheet =
     mode === OPEN_MODE_MODAL ? (
       <Sheet open={sheetState.kind !== 'none'} onOpenChange={onSheetOpenChange}>
-        <SheetContent className="gap-0" storageKey={`sheet-width:${domain}`}>
+        <SheetContent className="gap-0" showCloseButton={false} storageKey={`sheet-width:${domain}`}>
+          <SheetToolbar closeLabel={t('common.close')}>
+            {detailPageId !== null && (
+              <SheetDetailPageLink domain={domain} id={detailPageId} onOpen={openDetailPage} />
+            )}
+          </SheetToolbar>
           {sheetState.kind === 'view' && (
             <>
               <SheetHeader className="sr-only">

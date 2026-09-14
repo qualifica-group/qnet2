@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/formatting/date-display'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import {
   RecordCanvas,
   RecordCard,
@@ -78,7 +79,9 @@ function WorkOrderLinesList({ lines }: { lines: WorkOrderQuoteLine[] }) {
           {line.product ? (
             <>
               <span className="font-mono text-xs text-muted-foreground">{line.product.code}</span>
-              <span className="truncate">{line.product.name}</span>
+              <RecordLink domain="products" id={line.product.id} className="min-w-0">
+                {line.product.name}
+              </RecordLink>
             </>
           ) : (
             <DetailEmpty />
@@ -139,7 +142,13 @@ export function WorkOrderDetailView({ workOrder }: WorkOrderDetailViewProps) {
                 {workOrder.contract_number ?? <DetailEmpty />}
               </RecordField>
               <RecordField label={t('workOrders.detail.taskTemplate')}>
-                {workOrder.task_template ? workOrder.task_template.name : <DetailEmpty />}
+                {workOrder.task_template ? (
+                  <RecordLink domain="task-templates" id={workOrder.task_template.id}>
+                    {workOrder.task_template.name}
+                  </RecordLink>
+                ) : (
+                  <DetailEmpty />
+                )}
               </RecordField>
               {workOrder.is_force_closed ? (
                 <RecordField label={t('workOrders.detail.forceCloseReason')} icon={<Lock />}>
@@ -171,7 +180,13 @@ export function WorkOrderDetailView({ workOrder }: WorkOrderDetailViewProps) {
           <RecordSection title={t('workOrders.detail.sections.offer')} icon={<Boxes />}>
             <RecordFieldList>
               <RecordField label={t('workOrders.detail.quote')}>
-                {workOrder.quote ? workOrder.quote.title : <DetailEmpty />}
+                {workOrder.quote ? (
+                  <RecordLink domain="quotes" id={workOrder.quote.id}>
+                    {workOrder.quote.title}
+                  </RecordLink>
+                ) : (
+                  <DetailEmpty />
+                )}
               </RecordField>
             </RecordFieldList>
             <div className="mt-3">

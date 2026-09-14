@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Building2, Contact, Users } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import {
   RecordField,
   RecordFieldList,
@@ -38,7 +39,9 @@ function ProductsOfInterestList({ products }: { products: OpportunityProductOfIn
     <ul className="flex flex-col gap-1">
       {products.map((product) => (
         <li key={product.id}>
-          <span className="font-medium">{product.name}</span>
+          <RecordLink domain="products" id={product.id} className="font-medium">
+            {product.name}
+          </RecordLink>
           {product.product_category ? (
             <span className="text-muted-foreground"> — {product.product_category.name}</span>
           ) : null}
@@ -84,19 +87,47 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
       <RecordSection title={t('opportunities.form.sections.identity.title')} icon={<Contact />}>
         <RecordFieldList>
           <RecordField label={t('opportunities.form.registry')}>
-            {opportunity.registry?.name ?? <DetailEmpty />}
+            {opportunity.registry ? (
+              <RecordLink domain="registries" id={opportunity.registry.id}>
+                {opportunity.registry.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           <RecordField label={t('opportunities.form.referent')}>
-            {opportunity.referent?.name ?? <DetailEmpty />}
+            {opportunity.referent ? (
+              <RecordLink domain="referents" id={opportunity.referent.id}>
+                {opportunity.referent.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           <RecordField label={t('opportunities.form.commercial')}>
-            {opportunity.commercial?.name ?? <DetailEmpty />}
+            {opportunity.commercial ? (
+              <RecordLink domain="referents" id={opportunity.commercial.id}>
+                {opportunity.commercial.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           <RecordField label={t('opportunities.form.reporter')}>
-            {opportunity.reporter?.name ?? <DetailEmpty />}
+            {opportunity.reporter ? (
+              <RecordLink domain="referents" id={opportunity.reporter.id}>
+                {opportunity.reporter.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           {opportunity.lead ? (
-            <RecordField label={t('opportunities.detail.sourceLead')}>{opportunity.lead.label}</RecordField>
+            <RecordField label={t('opportunities.detail.sourceLead')}>
+              <RecordLink domain="leads" id={opportunity.lead.id}>
+                {opportunity.lead.label}
+              </RecordLink>
+            </RecordField>
           ) : null}
         </RecordFieldList>
       </RecordSection>

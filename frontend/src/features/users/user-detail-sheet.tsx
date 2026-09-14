@@ -6,9 +6,12 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetToolbar,
 } from '@/components/ui/sheet'
+import { SheetDetailPageLink } from '@/features/modules/sheet-detail-page-link'
 import { UserDetailSheetContext } from '@/features/users/user-detail-sheet-context'
 import { UserDetailView } from '@/features/users/user-detail'
+import { router } from '@/routes/router'
 
 /** Domain key, kept in sync with the users module Sheet layout storage key. */
 const USERS_DOMAIN = 'users'
@@ -27,11 +30,26 @@ export function UserDetailSheetProvider({ children }: { children: ReactNode }) {
 
   const openUserDetail = useCallback((id: number) => setUserId(id), [])
 
-  const onOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      setUserId(null)
-    }
-  }, [])
+  const closeUserDetail = useCallback(() => setUserId(null), [])
+
+  // This provider sits above `RouterProvider` (App.tsx), so router hooks and
+  // `<Link>` have no context here: navigate through the router instance.
+  const openUserDetailPage = useCallback(
+    (path: string) => {
+      closeUserDetail()
+      void router.navigate(path)
+    },
+    [closeUserDetail],
+  )
+
+  const onOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        closeUserDetail()
+      }
+    },
+    [closeUserDetail],
+  )
 
   const value = useMemo(() => ({ openUserDetail }), [openUserDetail])
 
@@ -39,7 +57,12 @@ export function UserDetailSheetProvider({ children }: { children: ReactNode }) {
     <UserDetailSheetContext.Provider value={value}>
       {children}
       <Sheet open={userId !== null} onOpenChange={onOpenChange}>
-        <SheetContent className="gap-0" storageKey={`sheet-width:${USERS_DOMAIN}`}>
+        <SheetContent className="gap-0" showCloseButton={false} storageKey={`sheet-width:${USERS_DOMAIN}`}>
+          <SheetToolbar closeLabel={t('common.close')}>
+            {userId !== null && (
+              <SheetDetailPageLink domain={USERS_DOMAIN} id={userId} onOpen={openUserDetailPage} />
+            )}
+          </SheetToolbar>
           <SheetHeader className="sr-only">
             <SheetTitle>{t('users.detail.title')}</SheetTitle>
             <SheetDescription>{t('users.detail.subtitle')}</SheetDescription>

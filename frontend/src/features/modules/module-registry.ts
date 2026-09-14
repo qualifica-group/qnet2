@@ -25,3 +25,17 @@ export const MODULE_REGISTRY: readonly ModuleRegistryEntry[] = Object.values(ada
 export function getModuleRegistryEntry(domain: string): ModuleRegistryEntry | undefined {
   return MODULE_REGISTRY.find((entry) => entry.domain === domain)
 }
+
+/**
+ * Resolves an internal record path (`${basePath}/${id}`, e.g. a server-built
+ * `subject_path`) back to its registered module and id, or `null` when no
+ * registered module owns it — so a path-only link can still open as a modal.
+ */
+export function findModuleRecordByPath(path: string): { domain: string; id: number } | null {
+  const match = /^(.+)\/(\d+)$/.exec(path)
+  if (!match) {
+    return null
+  }
+  const entry = MODULE_REGISTRY.find((candidate) => candidate.basePath === match[1])
+  return entry ? { domain: entry.domain, id: Number(match[2]) } : null
+}

@@ -6,6 +6,12 @@ import i18n from '@/i18n'
 import { CampaignDetailView } from '@/features/campaigns/campaign-detail'
 import type { CampaignDetailWithPermissions } from '@/features/campaigns/types'
 
+// Related-record links render only for an actor who can view the target
+// module; these tests are not about abilities, so every ability is granted.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /**
  * The campaign record card (spec 0023 detail, rebuilt on the enterprise-CRM
  * record kit): identity band, KPI strip, linked records, geography. The 4 geo
@@ -19,6 +25,14 @@ function render(ui: ReactElement) {
 }
 
 const activityLogSectionMock = vi.fn()
+
+// Related-record links open their target in a modal through `useModuleOpener`,
+// whose mode resolver reads the authenticated user's preference. The preference
+// is not what these tests are about, so the resolver is stubbed rather than
+// dragging an AuthProvider into every render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: (props: { resource: string; id: number }) => {

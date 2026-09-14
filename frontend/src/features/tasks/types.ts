@@ -198,6 +198,10 @@ export interface TaskDetailWithPermissions extends TaskDetail {
  * sotto-task" button — never a phase-based mirror in
  * `task-action-availability.ts`, which is why that file EXCLUDES them from
  * `TaskActionAvailabilityFlags` rather than growing two more entries there.
+ *
+ * `change_status` (spec 0126 D-4) joins for the same reason: it gates the
+ * Stato select AS A WHOLE (disabled entirely when false), not a phase-based
+ * button, so `task-action-availability.ts` excludes it too.
  */
 export type TaskActionKey =
   | 'complete'
@@ -209,6 +213,7 @@ export type TaskActionKey =
   | 'request_update'
   | 'close_via_status'
   | 'create_subtask'
+  | 'change_status'
 
 /**
  * `time_entry` payload nested in `CompleteTaskPayload` (spec 0123 D-1/D-3):
@@ -278,7 +283,6 @@ export interface CreateTaskPayload {
   opportunity_id?: number | null
   work_order_id?: number | null
   start_date?: string | null
-  completion_date?: string | null
   start_time?: string | null
   end_time?: string | null
   estimated_minutes?: number | null

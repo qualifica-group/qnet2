@@ -108,6 +108,19 @@ export const tasks = {
     editSubtitle: 'Update the selected task.',
     newTask: 'New task',
     title: 'Title',
+    titlePlaceholder: 'What needs to be done?',
+    descriptionPlaceholder: 'Add details, context or instructions…',
+    header: {
+      status: 'Status',
+      endDate: 'Due',
+    },
+    summary: {
+      title: 'Summary',
+      description: 'A preview of what will be saved.',
+      assigneesCount_one: '{{count}} assignee',
+      assigneesCount_other: '{{count}} assignees',
+      recurrenceOff: 'Not recurring',
+    },
     titleRequired: 'The title is required.',
     titleMax: 'The title cannot exceed 191 characters.',
     description: 'Description',
@@ -153,10 +166,10 @@ export const tasks = {
     opportunitySearch: 'Search an opportunity by name…',
     workOrder: 'Work order',
     workOrderSearch: 'Search a work order by number or title…',
-    requiresClosureFeedback: 'Require a closure feedback',
+    requiresClosureFeedback: 'Feedback required',
     requiresClosureFeedbackHint:
       'When on, closing the task requires a written feedback.',
-    requiresValidation: 'Require validation',
+    requiresValidation: 'Validation',
     requiresValidationHint:
       'When on, an assignee completing the task sends it to validation instead of closing it.',
     closureFeedback: 'Closure feedback',
@@ -293,6 +306,7 @@ export const tasks = {
       description:
         "The selected recipients are this task's assignees and watchers: they will receive an email and a notification.",
       recipients: 'Recipients',
+      selectAll: 'Select all',
       recipientsRequired: 'Select at least one recipient.',
       recipientsEmpty: 'This task has no assignees or watchers to contact.',
       message: 'Message',

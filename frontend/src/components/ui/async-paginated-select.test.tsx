@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import {
   AsyncPaginatedSelect,
@@ -123,6 +123,16 @@ describe('AsyncPaginatedSelect', () => {
     renderSelect({ showAvatar: true })
     open()
     expect(screen.getByText('JD')).toBeInTheDocument()
+  })
+
+  it('renders custom content for the options and the selected value when renderItem is set', () => {
+    useForSelectMock.mockReturnValue(
+      queryState({ data: pagesOf([{ id: 5, label: 'Urgent' }]) }),
+    )
+    renderSelect({ value: 5, renderItem: (item) => <mark>{item.label}</mark> })
+    expect(within(screen.getByRole('combobox', { name: 'Manager' })).getByText('Urgent').tagName).toBe('MARK')
+    open()
+    expect(within(screen.getByRole('option', { name: 'Urgent' })).getByText('Urgent').tagName).toBe('MARK')
   })
 
   it('does not render avatars by default', () => {

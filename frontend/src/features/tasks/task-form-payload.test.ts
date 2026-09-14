@@ -27,6 +27,10 @@ describe('buildCreatePayload', () => {
     expect(payload).not.toHaveProperty('completion_percentage')
   })
 
+  it('AC-007 (spec 0127): never carries completion_date — only the completion actions write it', () => {
+    expect(buildCreatePayload(values())).not.toHaveProperty('completion_date')
+  })
+
   it('AC-009: never carries task_status_id — the server derives it on create (D-3)', () => {
     const payload = buildCreatePayload(values())
 
@@ -100,6 +104,12 @@ describe('buildCreatePayload — recurrence', () => {
 describe('buildUpdatePayload', () => {
   it('sends nothing when nothing changed', () => {
     expect(buildUpdatePayload(values(), task())).toEqual({})
+  })
+
+  it('AC-007 (spec 0127): never carries completion_date, even when the task already has one', () => {
+    const payload = buildUpdatePayload(values({ title: 'Nuovo titolo' }), task({ completion_date: '2026-09-10' }))
+
+    expect(payload).toEqual({ title: 'Nuovo titolo' })
   })
 
   it('AC-012: a title-only edit does not resend the two user arrays', () => {

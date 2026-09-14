@@ -3,7 +3,176 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SPEC 0125 CORREZIONI AUTORIZZAZIONE TASK (B1-B3) — VERDE, NON COMMITTATO (2026-09-14)
+## LINK AI RECORD COLLEGATI NELLE SCHEDE DETTAGLIO — VERDE, NON COMMITTATO (2026-09-14)
+
+Richiesta utente (senza spec): nei dettagli, le relazioni verso record operativi diventano `RecordLink`.
+Decisioni utente: SOLO record operativi (anagrafica, referente, opportunita', offerta, commessa, lead, prodotto,
+azienda, sede aziendale, sede operativa, template task); le voci di configurazione (fonte, settori, stati, IVA,
+UdM, metodo pagamento, layout, categoria/tipologia prodotto) restano testo. Le persone User restano
+`UserProfileHoverCard`/testo (anche `reports_to`, destinatario provvigione `user`).
+
+- `components/detail/record-link.tsx`: ora gated su `can('<domain>.view')` -> senza permesso testo semplice
+  (vale anche per i link gia' esistenti su task/lead/campagna/progetto/offerta/richieste modifica).
+  I test che rendono un dettaglio con link devono mockare `use-abilities` (+ `MemoryRouter` e stub
+  `use-module-open-mode`, stesso schema di `campaign-detail.test.tsx`).
+- Nuovi link: Opportunita' (anagrafica, referente, commerciale, segnalatore -> referents, lead d'origine, prodotti
+  di interesse); Offerta (anagrafica, referente, commerciale, segnalatore, azienda, sede aziendale, sede operativa);
+  Contratto (anagrafica, azienda, sede aziendale via `RelationField domain`, sede operativa); Commessa (offerta,
+  template task, prodotto delle righe); Anagrafica (commerciale/segnalatore e card referenti); Lead (prodotti di
+  interesse); Prodotto (fornitore -> registries); Sede aziendale (azienda nella KPI strip); Utente (sede primaria,
+  sedi remote, azienda); Provvigione (prodotto, destinatario referent/registry); Funzione aziendale (sedi operative).
+- Fuori scope, segnalato: `reward-card.tsx` (griglia buoni) mostra ancora l'anagrafica come testo; i link
+  Opportunita'/Offerta del contratto usano ancora `RelatedRecordLink` (bottone modale con proprio gate).
+- Verifica: vitest completo 672 file / 5141 test verdi; `tsc -b --force` pulito; ESLint pulito sui file toccati.
+
+## DETTAGLIO PRODOTTO: ATTRIBUTI IN SOLA LETTURA NELLA CARD — VERDE, NON COMMITTATO (2026-09-14)
+
+Richiesta utente: nel dettaglio prodotto la sezione attributi con layout configurato (es. "Dati incarico")
+era montata con `AttributeLayoutRenderer` (input readOnly, sembravano editabili). Decisione utente: solo
+testo in sola lettura, DENTRO la card prodotto.
+
+- `features/products/product-attribute-values-section.tsx`: niente più RHF/renderer del form. Restituisce
+  `RecordSection` (label/valore) nel `RecordSectionsGrid` della card: una per sezione del layout (per
+  `sort_order`, attributi in ordine di riga), gli attributi valorizzati non piazzati sotto
+  `attributes.layout.otherInformation`; senza layout una sola sezione `products.form.dynamicFields.title`.
+  Solo attributi valorizzati; sezioni vuote omesse. Supera spec 0062 AC-014 per il dettaglio prodotto.
+- Test `product-attribute-values-section.test.tsx` aggiornato (requisito cambiato): 4 verdi.
+- Aperto (altra sessione): `product-detail.test.tsx` "VAT rate + Supplier" fallisce con
+  "useAuth must be used within an AuthProvider" per il nuovo `RecordLink` sul fornitore, non per questa modifica.
+
+## NOTA SEGNATEMPO -> NOTE INTERNE COMMESSA — VERDE, NON COMMITTATO (2026-09-14)
+
+Richiesta utente (senza spec): se un segnatempo ha una commessa, la sua nota va anche sulla commessa.
+Decisioni utente: destinazione `work_orders.internal_notes` (non il componente note collaborative); solo il
+testo (trim), nessuna intestazione; SINCRONIZZATA (modifica testo = sostituita al suo posto, nota svuotata /
+commessa cambiata o tolta / segnatempo eliminato = rimossa, spostata sulla nuova commessa).
+
+- `Services/TimeEntries/WorkOrderNoteSynchronizer` (`sync` prima del save, `detach` prima del delete), chiamato da
+  `TimeEntryService` create/update/delete in transazione: copre anche `POST /tasks/{task}/time-entries` e il
+  segnatempo del completamento Task (commessa derivata dal Task, D-5).
+- Migrazione `2026_09_15_110000_add_work_order_note_to_time_entries_table`: `time_entries.work_order_note` = testo
+  ultimo copiato (NON fillable, NON esposto nella Resource). Il blocco si trova solo come blocco intero separato da
+  riga vuota (`\n\n`); se l'utente lo ha modificato a mano non combacia: il nuovo testo viene accodato, quello
+  manuale resta. `DemoTimeEntrySeeder` scrive diretto sul model: i dati demo non sono sincronizzati.
+- Test: `tests/Feature/TimeEntries/TimeEntryWorkOrderNoteSyncTest.php` (10). `QuoteWorkflowMigrationTest` rollback
+  portato a 71 step (il test richiede il bump a ogni migrazione).
+- Verifica: TimeEntries + Tasks 529 verdi; Pint pulito. Suite completa: fallisce
+  `TaskConfigPermissionsTest` AC-051 task-statuses (422 "group field is required"), dovuto alle modifiche non
+  committate di `StoreTaskStatusRequest` di un'altra sessione, non a questa modifica.
+
+## SOTTO-TASK IN MODALE — VERDE, NON COMMITTATO (2026-09-14)
+
+"Crea sotto-task" nel dettaglio task apre sempre il form in Sheet sopra il padre, qualunque sia la preferenza
+pagina/modale. `TaskDetailScreen` (`frontend/src/features/tasks/task-screens.tsx`) usa un secondo
+`useModuleOpener(TASKS_DOMAIN, { forceMode: OPEN_MODE_MODAL, viewAfterCreate: true, onSaved })`: `onSaved` invalida
+`taskDetailQueryKey(id)` del padre, cosi' la lista sotto-task si aggiorna. L'apertura di un sotto-task esistente segue
+ancora la preferenza. Fix loop di ricarica: il form sotto-task legge il padre con la STESSA query key
+(`useTaskParentPrefill`) e al mount la rifetcha; `useEntityDetail` metteva il dettaglio in skeleton e smontava lo Sheet
+col form, che rimontando rifetchava all'infinito. Ora gli sheet si renderizzano fuori dal ramo loading/error: non
+reintrodurre early return prima di `{sheet}{subtaskSheet}`. Inoltre `useTaskParentPrefill` ha
+`refetchOnMount: false`: riusa il padre in cache senza rifetcharlo, cosi' il dettaglio dietro lo Sheet non va in skeleton
+all'apertura (test "reuses a cached parent without refetching it" in `use-task-form.test.tsx`). Test: `task-screens.test.tsx` (3, incluso regressione loop).
+Verificati: vitest (screens/subtasks/detail/use-module-opener 63 ok), eslint, `tsc -b --force`.
+
+## SPEC 0127 DATA DI COMPLETAMENTO SOLO SERVER — VERDE, NON COMMITTATO (2026-09-14)
+
+Spec `docs/specs/0127-task-completion-date-server-owned.xml` (approvata). Decisione utente: un task chiuso negativo non ha data.
+- `completion_date` e' `prohibited` in `StoreTaskRequest`/`UpdateTaskRequest` (null o assente ammessi); mapping rimosso da
+  `CreateTaskData`/`UpdateTaskData`; ceiling in `TasksAuthorization` sempre readonly. Unica scrittura: `TaskCompletionService`
+  (complete/approve = oggi, uncomplete/reject = null). PATCH verso closed_negative lascia la data null.
+- `DemoTaskSeeder`: `isFinished()` (closing o in_validation) per le finestre di date; `applyActionOnlyStatus()` stampa
+  `completion_date = min(end_date, oggi)` solo per in_validation/closed_positive.
+- Frontend: `completion_date` fuori da `task-schema.ts`, `use-task-form.ts`, `task-form-payload.ts`, `task-form-server-error-fields.ts`,
+  `CreateTaskPayload`; resta in lettura (`TaskDetail`, dettaglio, tabella).
+- Verifica (verifier indipendente): Pest completo SERIALE 7509: 7508 passed, 1 skipped; Pint pulito; Vitest 669 file / 5123 test;
+  ESLint e `tsc -b --force` puliti. Test: `TaskCompletionDateTest` (AC-001..005), `TaskRecordRoleMatrixTest` AC-006 e
+  `DemoTaskSeederTest` aggiornati come REQUIREMENT CHANGED, `task-form-payload.test.ts` AC-007.
+- Attenzione: `QuoteWorkflowMigrationTest` "rolls back all 7 new migrations" e' fallito una volta nella suite completa e passato
+  isolato e al secondo giro completo (possibile interferenza con modifiche concorrenti di un'altra sessione): tenerlo d'occhio.
+- Non incluso: righe storiche closed_negative con data gia' valorizzata (nessuna migrazione dati).
+
+## SPEC 0126 ALLINEAMENTO TASK AL DOCUMENTO — VERDE, NON COMMITTATO (2026-09-14)
+
+Spec `docs/specs/0126-task-document-alignment.xml` (approvata). Build a subagent (M1..M8) con ownership disgiunta,
+in contemporanea con i lavori frontend "RESTYLE" e "BARRA MODALE" di un'altra sessione (file in parte condivisi:
+`task-classification-section.tsx`, `task-screens.tsx`, `use-module-opener.tsx`, it/en-tasks).
+
+**Contratto e naming da rispettare.**
+- D-1: `TaskRecordRoles::isManager` = super-admin (`RoleAssignmentGuard::PRIVILEGED_ROLE`) OR (`tasks.manageAll` AND non assegnatario).
+  Il super-admin assegnatario e' admin pieno (annulla B1 della 0125 per il super-admin); il manageAll non super-admin decade.
+- D-2: permesso globale `notes.deleteAny` (`NotePolicy::abilities` = create, deleteAny); `NoteService::delete(User, Note)`
+  ricontrolla l'host (`reauthorizeHost`) se l'attore non e' l'autore. Modifica note solo autore. DELETE nota = 200.
+- D-3: `TaskAbilityResolver::canManageTimeEntry(User, Task, TimeEntry)`, usata da `TimeEntryPolicy` update/delete per i
+  segnatempo con `task_id`: mandato su tutti, proprietario se `canComplete`, osservatore mai; `time-entries.manageAll` non basta.
+- D-4: `Tasks\TaskManualStatusGuard::assertAllowed(Task, ?int)` prima di `fill()` in `TaskService::update`: il PATCH di stato
+  richiede fase attuale open/pending (422 "The status of this task can only be changed through its actions.") e task non
+  bloccato (422 "A blocked task cannot change status."). Flag `permissions.actions.change_status` (16a chiave);
+  `close_via_status` false su bloccato. Frontend: select stato `forceDisabled={!changeStatus}`.
+- D-5: migrazione `2026_09_14_140000_set_in_validation_task_statuses_completion_percentage` (down per nome 30/80, stati custom
+  restano 100); `Store/UpdateTaskStatusRequest`: group in_validation => percentuale 100. Il test `QuoteWorkflowMigrationTest`
+  conta le migrazioni: ogni nuova migrazione va aggiunta li'.
+- D-6: `request-update` consentito su task bloccato; complete/uncomplete/approve/reject restano 409.
+- D-7: dialog Richiedi aggiornamento con dedup, tutti selezionati di default, "Seleziona tutti" tri-stato (`tasks.actions.requestUpdate.selectAll`).
+- D-8: `useModuleOpener(domain, { viewAfterCreate })`, attivo su Tasks: dopo create in pannello apre la vista del nuovo id.
+
+**Verifica (verifier indipendente).** Pest completo SERIALE 7493: 7492 passed, 1 skipped (preesistente); Pint pulito;
+Vitest 668 file / 5117 test; ESLint 0 errori; `tsc -b --force` pulito. AC-001..016 mappati su test. I test di M5
+(`TaskManualStatusChangeTest`) sono stati riprovati rossi a posteriori disattivando il fix (4 rossi attesi).
+
+**Aperti / prossimi passi.**
+- Spec 0127 (data di completamento solo server) completata e verde, voce sopra.
+- `TaskService.php` 446 righe (soft 300): split da pianificare.
+- Commit in attesa di via libera utente (§3.6). Nota: la 0125 e' gia' committata in `17b9da2b`.
+
+## LINK DEI DETTAGLI IN MODALE — VERDE, NON COMMITTATO (2026-09-14)
+
+Solo frontend. Direttiva utente: ogni link a un altro record su una pagina dettaglio apre una MODALE; dalla modale
+l'icona `SheetDetailPageLink` porta alla pagina intera.
+- Nuovo `features/modules/use-record-modal-link.ts` (`useRecordModalLink(domain, id)` → `{ onClick, sheet }`): `useModuleOpener`
+  con `forceMode: 'modal'`; click semplice = `preventDefault` + modale, click modificato (cmd/ctrl/shift/alt, tasto non primario)
+  lasciato al browser. Il link resta un `<Link>` con href reale (nuova scheda/copia).
+- `RecordLink` (`components/detail/record-link.tsx`) lo usa: coperti task, lead, progetti, campagne. Migrati anche:
+  opportunità nel dettaglio offerta (`quote-detail-sections.tsx` → `RecordLink`), "Vai all'opportunità" del lead
+  (`GoToOpportunityAction` in `lead-conversion-action.tsx`), record della richiesta modifica campo
+  (`findModuleRecordByPath` nuovo in `module-registry.ts`; path non registrato = `Link` come prima).
+- Già modali prima: contratti (`RelatedRecordLink`), persone (`UserProfileHoverCard`).
+- Test: harness con stub di `use-module-open-mode` (useModuleOpener legge `useAuth`) in task-detail, task-collaboration-section,
+  campaign-detail, project-detail, quote-detail, field-change-request-detail; nuovi `record-link.test.tsx`, `module-registry.test.ts`,
+  caso modale in `lead-conversion-action.test.tsx`. Verifica: tsc -b pulito, ESLint pulito, Vitest 672 file / 5134 test verdi.
+- Fuori scope (non dettagli, lasciati com'erano): link task nella griglia segnatempo (`time-entry-entries-columns.tsx`),
+  alert opportunità esistente nei form (`existing-opportunity-alert.tsx`, `opportunity-screens.tsx`), card progetti,
+  premi nella riga espansa dei referenti premiati (usano la modalità utente).
+
+## BARRA MODALE (apri pagina dettaglio + chiudi) — VERDE, NON COMMITTATO (2026-09-14)
+
+Solo frontend. La X di `SheetContent` (absolute top-4 right-4) si sovrapponeva agli header dei `DetailScreen`/`FormScreen`.
+- Nuovo `SheetToolbar` in `components/ui/sheet.tsx`: barra in flusso `bg-surface border-b`, azioni a destra + X (`closeLabel` obbligatorio, i18n). Si usa con `showCloseButton={false}`.
+- `features/modules/sheet-detail-page-link.tsx` (`SheetDetailPageLink`): bottone icona `SquareArrowOutUpRight`, path `${basePath}/${id}` dal registry, `onOpen(path)` fornito dall'host (chiude + naviga). NON usare `<Link>`/hook del router: `UserDetailSheetProvider` è montato in `App.tsx` SOPRA `RouterProvider` (usa `router.navigate`); inoltre la Sheet non sempre si smonta navigando (`ModuleDetailPage` riusata per un altro id).
+- `useModuleOpener` (tutte le modali dei moduli): toolbar sempre montata; link su `view`/`edit`, assente su `create`/`duplicate` (nessun id).
+- `UserDetailSheetProvider` (clic su una persona, es. da `/tasks/:id`): toolbar con link a `/users/:id` (rotta generata dal registry `users`).
+- i18n `common.close`, `common.openDetailPage` (en/it). Test in `use-module-opener.test.tsx` e `users/user-detail-sheet.test.tsx`.
+- Da valutare: le altre ~50 Sheet/Dialog ad-hoc (dialog di azione con `SheetHeader` proprio) usano ancora la X assoluta.
+
+## RESTYLE FORM + DETTAGLIO TASK (solo grafica) — VERDE, NON COMMITTATO (2026-09-14)
+
+Solo frontend, nessun cambio di contratto/payload/backend. Riferimento visivo: form task di `q-net` + form/dettaglio Opportunità.
+- **Select con badge:** prop generica opzionale `renderItem(item)` su `AsyncPaginatedSelect` (trigger + opzioni) e
+  `RelationSelectField` (+ `RelationFieldRef.meta?` passato all'opzione idratata). Nuovo `tasks/task-lookup-select-field.tsx`
+  (`TaskLookupSelectField`): Stato/Tipologia/Priorità/Importanza/Categoria rendono `TaskLookupBadge` da `meta.color/icon`.
+- **Form:** layout record-form come Opportunità: `task-form-header.tsx` (barra sticky, badge stato/scadenza, Salva/Annulla via `form=task-form`),
+  colonna laterale `task-form-summary.tsx` + `TaskClosureSection`; `RecordFormActions` in fondo; skeleton = `RecordFormSkeleton`.
+  Registry: `formOwnsHeader: true`. Titolo come card principale con input grande. Pianificazione: data+ora affiancate,
+  **`completion_date` non più nel form** (si valorizza con Completa; resta nello schema/payload invariato).
+  Flag chiusura: label brevi ("Feedback obbligatorio"/"Validazione"), spiegazione nel hint (i).
+- **Dettaglio:** `task-detail-header.tsx` (`TaskDetailHeader` con bottone Modifica sulla card, gated `onEdit && permissions.resource.update`;
+  `TaskDetailStats` completamento/date/stima). Registry `detailOwnsEditAction: true`.
+  Anagrafica, referente, opportunità, commessa = link alla pagina via `RecordLink`. Persone (creatore, richiedente,
+  assegnatari, osservatori) = `TaskPerson` in `task-people-list.tsx` con `UserProfileHoverCard` (come il dettaglio Lead). I test che montano `TaskDetailView` ora usano `MemoryRouter`.
+- Nuove chiavi i18n `tasks.form.{titlePlaceholder,descriptionPlaceholder,header.*,summary.*}` (it/en).
+- Verifica: `tsc -b --force` pulito, ESLint pulito, Vitest completo 668 file / 5115 test verdi (+ test renderItem, badge nei lookup, Modifica sulla card).
+- Da verificare a occhio: 375/768/1024 in Sheet e pagina dedicata. Prossimo passo: chiedere se committare.
+
+## SPEC 0125 CORREZIONI AUTORIZZAZIONE TASK (B1-B3) — COMMITTATO (2026-09-14)
 
 Spec `docs/specs/0125-task-authorization-hardening.xml` (approvata). Nasce dall'analisi di
 `DOC Tasks.docx` rispetto al codice. Solo backend: nessuna migrazione, nessun permesso nuovo, nessun file frontend.

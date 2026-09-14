@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import { AxiosError, AxiosHeaders } from 'axios'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
@@ -17,6 +18,14 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 
 let granted: string[] = []
+
+// Related-record links open their target in a modal through `useModuleOpener`,
+// whose mode resolver reads the authenticated user's preference. The preference
+// is not what these tests are about, so the resolver is stubbed rather than
+// dragging an AuthProvider into every render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
 
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({
@@ -102,11 +111,13 @@ function actionError(status: 409 | 422): AxiosError {
 function renderDetail(task: TaskDetailWithPermissions, confirmImpl: ConfirmFn = () => Promise.resolve(true)) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
-    <QueryClientProvider client={client}>
-      <ConfirmContext.Provider value={confirmImpl}>
-        <TaskDetailView task={task} onOpenSubtask={vi.fn()} onCreateSubtask={vi.fn()} />
-      </ConfirmContext.Provider>
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <ConfirmContext.Provider value={confirmImpl}>
+          <TaskDetailView task={task} onOpenSubtask={vi.fn()} onCreateSubtask={vi.fn()} />
+        </ConfirmContext.Provider>
+      </QueryClientProvider>
+    </MemoryRouter>,
   )
 }
 
@@ -197,6 +208,33 @@ describe('TaskDetailView — people (D-10/AC-083)', () => {
     )
 
     expect(screen.getAllByText('Dario Dini')).toHaveLength(2)
+  })
+})
+
+describe('TaskDetailView — related records and people', () => {
+  it('links the anagrafica, the referent, the opportunity and the commessa to their pages', () => {
+    granted = [...granted, 'registries.view', 'referents.view', 'opportunities.view', 'work-orders.view']
+    renderDetail(
+      taskDetailWithPermissions({
+        opportunity: { id: 8, name: 'Rinnovo Acme' },
+        work_order: { id: 9, code: 'C-009', title: 'Impianto' },
+      }),
+    )
+
+    const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
+    expect(hrefOf('Acme')).toBe('/registries/7')
+    expect(hrefOf('Ada Alberti')).toBe('/referents/11')
+    expect(hrefOf('Rinnovo Acme')).toBe('/opportunities/8')
+    expect(hrefOf('C-009 — Impianto')).toBe('/work-orders/9')
+  })
+
+  it('shows every person through the user profile hover card, not a page link', () => {
+    renderDetail(taskDetailWithPermissions())
+
+    for (const name of ['Carla Conti', 'Bruno Bianchi', 'Dario Dini', 'Fabio Fini']) {
+      expect(screen.getByRole('button', { name: label('common.viewProfile', { name }) })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name })).not.toBeInTheDocument()
+    }
   })
 })
 
@@ -403,5 +441,47 @@ describe('TaskDetailView — action errors (AC-044)', () => {
 
     await waitFor(() => expect(blockTask).toHaveBeenCalledWith(90))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(label('tasks.actions.errors.blocked')))
+  })
+})
+
+/** The "Modifica" action lives on the task card, gated by `onEdit` AND `permissions.resource.update`. */
+describe('TaskDetailView — edit action on the card', () => {
+  function renderWithEdit(task: TaskDetailWithPermissions, onEdit?: () => void) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <ConfirmContext.Provider value={() => Promise.resolve(true)}>
+            <TaskDetailView task={task} onEdit={onEdit} onOpenSubtask={vi.fn()} onCreateSubtask={vi.fn()} />
+          </ConfirmContext.Provider>
+        </QueryClientProvider>
+      </MemoryRouter>,
+    )
+  }
+
+  it('calls onEdit when the actor can update', () => {
+    const onEdit = vi.fn()
+    renderWithEdit(taskDetailWithPermissions(), onEdit)
+
+    fireEvent.click(screen.getByRole('button', { name: label('common.edit') }))
+
+    expect(onEdit).toHaveBeenCalledOnce()
+  })
+
+  it('hides the action without onEdit', () => {
+    renderWithEdit(taskDetailWithPermissions())
+
+    expect(screen.queryByRole('button', { name: label('common.edit') })).not.toBeInTheDocument()
+  })
+
+  it('hides the action when the actor cannot update', () => {
+    renderWithEdit(
+      taskDetailWithPermissions({
+        permissions: { ...FULL_ACCESS_PERMISSIONS, resource: { ...FULL_ACCESS_PERMISSIONS.resource, update: false } },
+      }),
+      vi.fn(),
+    )
+
+    expect(screen.queryByRole('button', { name: label('common.edit') })).not.toBeInTheDocument()
   })
 })

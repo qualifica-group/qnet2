@@ -35,6 +35,14 @@ use Illuminate\Validation\Rule;
  * App\Services\Statuses\SystemStatusGuard (AC-043): the guard needs the
  * PERSISTED row to know whether it is a system one, which a FormRequest rule
  * cannot express.
+ *
+ * The RESULTING `group` = in_validation forces the RESULTING
+ * `completion_percentage` = 100 (spec 0126, D-5). "Resulting" because either
+ * field can be a PATCH that omits the other: a percentage-only PATCH on an
+ * already in_validation row reads the phase off the PERSISTED model, and a
+ * group-only PATCH into in_validation reads the percentage off it the same
+ * way — the FormRequest cannot see the request in isolation from what is
+ * already on the row.
  */
 class UpdateTaskStatusRequest extends FormRequest
 {
@@ -75,7 +83,33 @@ class UpdateTaskStatusRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->assertInValidationIsFullyComplete($validator);
         });
+    }
+
+    /**
+     * See the class docblock: checks the RESULTING group/percentage, falling
+     * back to the persisted row for whichever of the two this PATCH does not
+     * resend. Skipped once `group`/`completion_percentage` already failed
+     * their own rule, so this never doubles up on the base errors.
+     */
+    private function assertInValidationIsFullyComplete(Validator $validator): void
+    {
+        if ($validator->errors()->hasAny(['group', 'completion_percentage'])) {
+            return;
+        }
+
+        $taskStatus = $this->route('taskStatus');
+        $group = $this->has('group')
+            ? TaskStatusGroup::tryFrom((string) $this->input('group'))
+            : $taskStatus?->group;
+        $percentage = $this->has('completion_percentage')
+            ? (int) $this->input('completion_percentage')
+            : $taskStatus?->completion_percentage;
+
+        if ($group === TaskStatusGroup::InValidation && $percentage !== 100) {
+            $validator->errors()->add('completion_percentage', 'A status in the in_validation phase must have a completion percentage of 100.');
+        }
     }
 
     protected function authorizationResource(): string

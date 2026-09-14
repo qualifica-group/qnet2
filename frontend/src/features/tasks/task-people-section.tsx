@@ -4,6 +4,7 @@ import { Users } from 'lucide-react'
 import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
+import { FIELD_GRID_CLASS } from '@/components/record-form/layout'
 import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
@@ -77,33 +78,35 @@ export function TaskPeopleSection({
       title={t('tasks.form.sections.people.title')}
       description={t('tasks.form.sections.people.description')}
     >
-      <RelationSelectField
-        control={control}
-        name="requester_id"
-        metaKey="requester_id"
-        label={t('tasks.form.requester')}
-        resource={USERS_FOR_SELECT_RESOURCE}
-        searchPlaceholder={t('tasks.form.requesterSearch')}
-        selected={requester}
-        showAvatar
-        {...selectLabels}
-      />
+      <div className={FIELD_GRID_CLASS}>
+        <RelationSelectField
+          control={control}
+          name="requester_id"
+          metaKey="requester_id"
+          label={t('tasks.form.requester')}
+          resource={USERS_FOR_SELECT_RESOURCE}
+          searchPlaceholder={t('tasks.form.requesterSearch')}
+          selected={requester}
+          showAvatar
+          {...selectLabels}
+        />
 
-      <RelationMultiSelectField
-        control={control}
-        name="assignee_ids"
-        metaKey="assignee_ids"
-        label={t('tasks.form.assignees')}
-        resource={USERS_FOR_SELECT_RESOURCE}
-        searchPlaceholder={t('tasks.form.assigneesSearch')}
-        selected={assignees}
-        showAvatar
-        placeholder={selectLabels.placeholder}
-        emptyLabel={selectLabels.emptyLabel}
-        errorLabel={selectLabels.errorLabel}
-        removeLabel={t('common.remove')}
-        retryLabel={selectLabels.retryLabel}
-      />
+        <RelationMultiSelectField
+          control={control}
+          name="assignee_ids"
+          metaKey="assignee_ids"
+          label={t('tasks.form.assignees')}
+          resource={USERS_FOR_SELECT_RESOURCE}
+          searchPlaceholder={t('tasks.form.assigneesSearch')}
+          selected={assignees}
+          showAvatar
+          placeholder={selectLabels.placeholder}
+          emptyLabel={selectLabels.emptyLabel}
+          errorLabel={selectLabels.errorLabel}
+          removeLabel={t('common.remove')}
+          retryLabel={selectLabels.retryLabel}
+        />
+      </div>
 
       <RelationMultiSelectField
         control={control}

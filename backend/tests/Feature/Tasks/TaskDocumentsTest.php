@@ -152,14 +152,15 @@ it('AC-020: permissions.actions.view_documents mirrors tasks.viewDocuments, and 
     // spec 0118, D-10: `request_update` joined the array as the seventh
     // domain action, after `unblock`. spec 0121, D-6: `complete_to_validation`
     // joined right after `complete`. spec 0123, D-5/D-9: `close_via_status`
-    // and `create_subtask` joined LAST. All four are mechanical consequences
+    // and `create_subtask` joined next. spec 0126, D-4: `change_status`
+    // joins LAST (REQUIREMENT CHANGED). All five are mechanical consequences
     // of TasksAuthorization::actions() growing, not a change to this
     // criterion's own subject.
     expect($actions['view_documents'])->toBeTrue()
         ->and(array_keys($actions))->toBe([
             'delete', 'export', 'import', 'view_activity', 'view_documents',
             'complete', 'complete_to_validation', 'uncomplete', 'approve', 'reject', 'block', 'unblock',
-            'request_update', 'close_via_status', 'create_subtask',
+            'request_update', 'close_via_status', 'create_subtask', 'change_status',
         ]);
 
     Sanctum::actingAs($withoutPermission);

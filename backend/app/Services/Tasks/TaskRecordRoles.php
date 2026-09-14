@@ -6,6 +6,7 @@ namespace App\Services\Tasks;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Services\RoleAssignmentGuard;
 
 /**
  * WHO the actor is on a given Task record (spec 0116, D-1): the four
@@ -58,9 +59,17 @@ final class TaskRecordRoles
      * assegnatario normale". An actor who holds the permission but is also
      * an assignee here loses the manager standing and falls back to
      * whatever genuine role(s) they hold on the record.
+     *
+     * Spec 0126, D-1 (rettifica of 0116 D-2 and 0125 D-1/D-5): the
+     * super-admin does NOT decay. Checked first and OUTSIDE the
+     * `! isAssignee` condition, so a super-admin who happens to be an
+     * assignee of $task is still the manager — the deroga above applies
+     * only to an ORDINARY `tasks.manageAll` actor, never to the privileged
+     * role.
      */
     public static function isManager(User $actor, Task $task): bool
     {
-        return $actor->can('tasks.manageAll') && ! self::isAssignee($actor, $task);
+        return $actor->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE)
+            || ($actor->can('tasks.manageAll') && ! self::isAssignee($actor, $task));
     }
 }

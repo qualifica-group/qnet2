@@ -10,6 +10,12 @@ import { QuoteDetailView } from '@/features/quotes/quote-detail'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
+// Related-record links render only for an actor who can view the target
+// module; these tests are not about abilities, so every ability is granted.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /**
  * Spec 0070 AC-304/AC-314: the "Download quote" button is gated by
  * `quote.permissions.actions.generate_document` (via `quotes.view`
@@ -20,6 +26,14 @@ import type { ResourcePermissions } from '@/features/authorization/types'
  */
 
 const generateQuoteDocumentMock = vi.fn()
+// Related-record links open their target in a modal through `useModuleOpener`,
+// whose mode resolver reads the authenticated user's preference. The preference
+// is not what these tests are about, so the resolver is stubbed rather than
+// dragging an AuthProvider into every render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
+
 vi.mock('@/features/quotes/quote-document-api', () => ({
   generateQuoteDocument: (...args: unknown[]) => generateQuoteDocumentMock(...args),
 }))
@@ -235,3 +249,32 @@ describe('QuoteDetailView — Gestori Account', () => {
   })
 })
 
+
+describe('QuoteDetailView — related records', () => {
+  it('links the anagrafica, the referents, the company and both sites to their records', () => {
+    renderDetail(
+      <QuoteDetailView
+        quote={quoteFixture({
+          registry: { id: 1, name: 'Acme S.p.A.' },
+          referent: { id: 2, name: 'Ada Alberti' },
+          commercial_id: 3,
+          commercial: { id: 3, name: 'Bruno Bianchi' },
+          company_id: 4,
+          company: { id: 4, name: 'Qualifica Group' },
+          company_site_id: 5,
+          company_site: { id: 5, name: 'Sede Roma' },
+          operational_site_id: 6,
+          operational_site: { id: 6, label: 'Via Roma 1 - Milano' },
+        })}
+      />,
+    )
+
+    const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
+    expect(hrefOf('Acme S.p.A.')).toBe('/registries/1')
+    expect(hrefOf('Ada Alberti')).toBe('/referents/2')
+    expect(hrefOf('Bruno Bianchi')).toBe('/referents/3')
+    expect(hrefOf('Qualifica Group')).toBe('/companies/4')
+    expect(hrefOf('Sede Roma')).toBe('/company-sites/5')
+    expect(hrefOf('Via Roma 1 - Milano')).toBe('/operational-sites/6')
+  })
+})

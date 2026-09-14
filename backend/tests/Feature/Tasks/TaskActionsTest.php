@@ -2,7 +2,6 @@
 
 use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
-use App\Models\Role;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\TaskType;
@@ -373,10 +372,14 @@ it('AC-010: an actor with tasks.manageAll who is ALSO an assignee of that task m
 // AC-011 — the D-2 deroga is re-asserted in the Service, past Gate::before
 // ---------------------------------------------------------------------------
 
-it('AC-011: a super-admin who is also an assignee may not approve (the Service re-asserts D-2 past Gate::before)', function () {
-    Role::findOrCreate('super-admin');
-    $actor = User::factory()->create();
-    $actor->assignRole('super-admin');
+// REQUIREMENT CHANGED (spec 0126, D-1): the super-admin no longer decays as
+// an assignee (see TaskSuperAdminAssigneeTest AC-001, where the same
+// scenario now expects 200). The deroga this test proves — a manager who is
+// ALSO an assignee may not approve, re-asserted in the Service past
+// Gate::before — stays true for an ORDINARY `tasks.manageAll` actor, so the
+// actor here is rewritten as one instead of a super-admin.
+it('AC-011: a manager (tasks.manageAll, not super-admin) who is also an assignee may not approve (the Service re-asserts D-2 past Gate::before)', function () {
+    $actor = taskActorWith(['manageAll', 'validate']);
 
     $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
     $task = Task::factory()->inStatus($inValidation)->create();

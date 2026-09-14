@@ -8,6 +8,7 @@ use App\DataObjects\TimeEntries\ResolvedTimeEntryLinks;
 use App\DataObjects\TimeEntries\TimeEntryData;
 use App\Models\TimeEntry;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Business logic for the `time-entries` resource (spec 0122, MT-B2).
@@ -16,9 +17,12 @@ use App\Models\User;
  * cannot enforce is D-5 (the link/title override), delegated whole to
  * TimeEntryLinkResolver — see its own docblock for why. Everything else
  * (ownership, permissions) is decided by the controller before either
- * method here ever runs.
+ * method here ever runs. Every write also mirrors `notes` into the linked
+ * commessa's `internal_notes` (WorkOrderNoteSynchronizer), in the same
+ * transaction as the TimeEntry row.
  *
  * @see TimeEntryLinkResolver
+ * @see WorkOrderNoteSynchronizer
  */
 final class TimeEntryService
 {
@@ -34,7 +38,10 @@ final class TimeEntryService
      */
     public const array DETAIL_RELATIONS = ['user', 'taskType', 'registry', 'opportunity', 'workOrder', 'task'];
 
-    public function __construct(private readonly TimeEntryLinkResolver $linkResolver) {}
+    public function __construct(
+        private readonly TimeEntryLinkResolver $linkResolver,
+        private readonly WorkOrderNoteSynchronizer $workOrderNoteSynchronizer,
+    ) {}
 
     /**
      * Create a TimeEntry for $owner (data_contract POST). $owner is
@@ -47,12 +54,14 @@ final class TimeEntryService
         // BEFORE the row exists, so a refusal creates nothing.
         $links = $this->linkResolver->resolve($data, $owner);
 
-        // Step 2: build and persist, with the owner taken from the caller
-        // rather than the payload.
+        // Step 2: build, with the owner taken from the caller rather than
+        // the payload.
         $entry = new TimeEntry($data->attributes());
         $entry->user_id = $owner->id;
         $this->applyLinks($entry, $links);
-        $entry->save();
+
+        // Step 3: mirror the note onto the commessa and persist.
+        $this->persist($entry);
 
         return $this->loadDetail($entry);
     }
@@ -71,22 +80,36 @@ final class TimeEntryService
         // Step 1: D-5 again, against the RESULTING payload.
         $links = $this->linkResolver->resolve($data, $owner);
 
-        // Step 2: apply and persist.
+        // Step 2: apply.
         $entry->fill($data->attributes());
         $this->applyLinks($entry, $links);
-        $entry->save();
+
+        // Step 3: re-sync the commessa note (changed text, changed or
+        // cleared commessa) and persist.
+        $this->persist($entry);
 
         return $this->loadDetail($entry);
     }
 
     public function delete(TimeEntry $entry): void
     {
-        $entry->delete();
+        DB::transaction(function () use ($entry): void {
+            $this->workOrderNoteSynchronizer->detach($entry);
+            $entry->delete();
+        });
     }
 
     public function loadDetail(TimeEntry $entry): TimeEntry
     {
         return $entry->load(self::DETAIL_RELATIONS);
+    }
+
+    private function persist(TimeEntry $entry): void
+    {
+        DB::transaction(function () use ($entry): void {
+            $this->workOrderNoteSynchronizer->sync($entry);
+            $entry->save();
+        });
     }
 
     private function applyLinks(TimeEntry $entry, ResolvedTimeEntryLinks $links): void

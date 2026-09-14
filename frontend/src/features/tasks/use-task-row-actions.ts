@@ -43,6 +43,7 @@ export function useTaskRowActions({
   const { openCreate, openView, openEdit, sheet } = useModuleOpener(TASKS_DOMAIN, {
     onSaved: onMutated,
     forceMode,
+    viewAfterCreate: true,
   })
 
   const runDelete = useCallback(

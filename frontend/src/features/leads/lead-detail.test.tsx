@@ -121,6 +121,9 @@ describe('LeadDetailView — read-only (AC-065)', () => {
 /** The point of the record card: a Lead is a junction, so every record it points at is reachable. */
 describe('LeadDetailView — linked records', () => {
   it('links the anagrafica, the campaign and the Sede to their own module routes', () => {
+    canMock.mockImplementation((permission) =>
+      ['registries.view', 'campaigns.view', 'operational-sites.view'].includes(permission),
+    )
     renderDetail()
 
     expect(screen.getByRole('link', { name: /Mario Rossi/ })).toHaveAttribute('href', '/registries/10')
@@ -199,6 +202,7 @@ describe('LeadDetailView — contacts', () => {
   })
 
   it('shows no contact chips when the anagrafica carries none', () => {
+    canMock.mockImplementation((permission) => permission === 'registries.view')
     renderDetail(lead({ registry: { id: 10, name: 'Mario Rossi', primary_contacts: [] } }))
 
     expect(screen.getByRole('link', { name: /Mario Rossi/ })).toHaveAttribute('href', '/registries/10')

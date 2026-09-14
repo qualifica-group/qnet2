@@ -16,7 +16,6 @@ export const SERVER_ERROR_FIELDS = [
   'requester_id',
   'start_date',
   'end_date',
-  'completion_date',
   'start_time',
   'end_time',
   'estimated_minutes',

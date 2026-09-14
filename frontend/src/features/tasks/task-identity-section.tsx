@@ -1,7 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ClipboardList } from 'lucide-react'
 import type { Control } from 'react-hook-form'
-import { FormSection } from '@/components/form-section'
 import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -24,7 +22,9 @@ interface TaskIdentitySectionProps {
 
 /**
  * "Identita'": what the task IS (title, description) and where it sits in the
- * hierarchy (parent task).
+ * hierarchy (parent task). Rendered as the form's lead card, without a section
+ * header: the title is the first thing to type, so it gets the prominent,
+ * document-like input CRM forms open with.
  *
  * AC-082: the parent picker never offers the task itself — `exclude_id` is
  * pushed to `GET /api/tasks/for-select`, so the option is gone from the LIST
@@ -43,15 +43,18 @@ export function TaskIdentitySection({
   const selectLabels = useTaskSelectLabels()
 
   return (
-    <FormSection
-      icon={ClipboardList}
-      title={t('tasks.form.sections.identity.title')}
-      description={t('tasks.form.sections.identity.description')}
-    >
+    <section className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm">
       <MetaField control={control} name="title" metaKey="title" label={t('tasks.form.title')}>
         {({ field, disabled, readOnly }) => (
           <FormControl>
-            <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
+            <Input
+              autoComplete="off"
+              placeholder={t('tasks.form.titlePlaceholder')}
+              className="h-10 text-base font-semibold md:text-base"
+              disabled={disabled}
+              readOnly={readOnly}
+              {...field}
+            />
           </FormControl>
         )}
       </MetaField>
@@ -65,7 +68,8 @@ export function TaskIdentitySection({
         {({ field, disabled, readOnly }) => (
           <FormControl>
             <Textarea
-              rows={3}
+              rows={4}
+              placeholder={t('tasks.form.descriptionPlaceholder')}
               disabled={disabled}
               readOnly={readOnly}
               value={field.value ?? ''}
@@ -96,6 +100,6 @@ export function TaskIdentitySection({
         forceDisabled={parentLocked}
         {...selectLabels}
       />
-    </FormSection>
+    </section>
   )
 }

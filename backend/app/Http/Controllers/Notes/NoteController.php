@@ -96,7 +96,7 @@ class NoteController extends BaseApiController
         try {
             $this->authorize('delete', $note);
 
-            $this->service->delete($note);
+            $this->service->delete($request->user(), $note);
 
             return $this->ok(null, 'Deleted');
         } catch (Throwable $exception) {

@@ -15,7 +15,8 @@ interface TaskClosureSectionProps {
 /**
  * "Chiusura" (spec 0121 D-7, RECTIFIES spec 0116's shape of this section):
  * two independent flags, `requires_closure_feedback` and `requires_validation`,
- * each a plain `MetaField` switch. The feedback TEXT is no longer collected
+ * each a plain `MetaField` switch with a short label and its explanation in
+ * the (i) hint. The feedback TEXT is no longer collected
  * here — it left the form entirely and is written only from the completion
  * pop-up (`TaskCompleteDialog`), so this section renders neither a textarea
  * nor any requiredness rule that used to depend on the picked status' phase.
@@ -43,7 +44,7 @@ export function TaskClosureSection({ control }: TaskClosureSectionProps) {
           name="requires_closure_feedback"
           metaKey="requires_closure_feedback"
           label={t('tasks.form.requiresClosureFeedback')}
-          description={t('tasks.form.requiresClosureFeedbackHint')}
+          hint={t('tasks.form.requiresClosureFeedbackHint')}
           layout="inline"
         >
           {({ field, disabled }) => (
@@ -60,7 +61,7 @@ export function TaskClosureSection({ control }: TaskClosureSectionProps) {
           name="requires_validation"
           metaKey="requires_validation"
           label={t('tasks.form.requiresValidation')}
-          description={t('tasks.form.requiresValidationHint')}
+          hint={t('tasks.form.requiresValidationHint')}
           layout="inline"
         >
           {({ field, disabled }) => (

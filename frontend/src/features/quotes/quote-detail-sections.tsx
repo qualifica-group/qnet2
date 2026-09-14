@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 import { Briefcase, Building2, Contact, CreditCard, Handshake, UserRound, Users } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import {
   RecordField,
   RecordFieldList,
@@ -76,12 +76,9 @@ export function QuoteDetailSections({ quote }: QuoteDetailSectionsProps) {
           <RecordField label={t('quotes.detail.opportunity')}>
             {/* Il record padre e' raggiungibile da qui: risalire all'Opportunita'
                 e' il movimento piu' frequente da un'Offerta. */}
-            <Link
-              to={`/opportunities/${quote.opportunity_id}`}
-              className="rounded-sm font-medium text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-            >
+            <RecordLink domain="opportunities" id={quote.opportunity_id} className="font-medium text-primary">
               {quote.opportunity.name}
-            </Link>
+            </RecordLink>
           </RecordField>
           {/* Lo stato NON si ripete qui: e' gia' la pill dell'header. Sotto,
               il contesto che l'Offerta EREDITA dall'Opportunita' e non possiede
@@ -115,16 +112,40 @@ export function QuoteDetailSections({ quote }: QuoteDetailSectionsProps) {
       <RecordSection title={t('quotes.detail.sections.identity')} icon={<Contact />}>
         <RecordFieldList>
           <RecordField label={t('quotes.detail.registry')}>
-            {quote.registry ? quote.registry.name : <DetailEmpty />}
+            {quote.registry ? (
+              <RecordLink domain="registries" id={quote.registry.id}>
+                {quote.registry.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           <RecordField label={t('quotes.detail.referent')}>
-            {quote.referent ? quote.referent.name : <DetailEmpty />}
+            {quote.referent ? (
+              <RecordLink domain="referents" id={quote.referent.id}>
+                {quote.referent.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           <RecordField label={t('quotes.detail.commercial')} icon={<Briefcase />}>
-            {quote.commercial ? quote.commercial.name : <DetailEmpty />}
+            {quote.commercial ? (
+              <RecordLink domain="referents" id={quote.commercial.id}>
+                {quote.commercial.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           <RecordField label={t('quotes.detail.reporter')} icon={<UserRound />}>
-            {quote.reporter ? quote.reporter.name : <DetailEmpty />}
+            {quote.reporter ? (
+              <RecordLink domain="referents" id={quote.reporter.id}>
+                {quote.reporter.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
         </RecordFieldList>
       </RecordSection>
@@ -168,13 +189,31 @@ export function QuoteDetailSections({ quote }: QuoteDetailSectionsProps) {
       <RecordSection title={t('quotes.form.sections.sites.title')} icon={<Building2 />}>
         <RecordFieldList>
           <RecordField label={t('quotes.detail.company')}>
-            {quote.company ? quote.company.name : <DetailEmpty />}
+            {quote.company ? (
+              <RecordLink domain="companies" id={quote.company.id}>
+                {quote.company.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           <RecordField label={t('quotes.detail.companySite')}>
-            {quote.company_site ? quote.company_site.name : <DetailEmpty />}
+            {quote.company_site ? (
+              <RecordLink domain="company-sites" id={quote.company_site.id}>
+                {quote.company_site.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           <RecordField label={t('quotes.detail.operationalSite')}>
-            {quote.operational_site ? quote.operational_site.label : <DetailEmpty />}
+            {quote.operational_site ? (
+              <RecordLink domain="operational-sites" id={quote.operational_site.id}>
+                {quote.operational_site.label}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
         </RecordFieldList>
       </RecordSection>

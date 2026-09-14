@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TaskStatusGroup;
 use App\Models\Note;
 use App\Models\Referent;
 use App\Models\Registry;
@@ -93,9 +94,12 @@ it('goes through the real write path: referente coherence and closing dates hold
                 ->exists())->toBeTrue($task->title);
         }
 
-        // D-7: a Task in a closing phase carries its completion date; an open
-        // one carries none. Finished work is never dated in the future.
-        expect($task->completion_date !== null)->toBe($task->taskStatus->isClosing(), $task->title);
+        // REQUIREMENT CHANGED (spec 0127, D-4): only the phases the Complete
+        // action reaches (in_validation, closed_positive) carry a completion
+        // date; closed_negative and the open phases carry none. Finished work
+        // is never dated in the future.
+        $hasCompletionDate = in_array($task->taskStatus->group, [TaskStatusGroup::InValidation, TaskStatusGroup::ClosedPositive], true);
+        expect($task->completion_date !== null)->toBe($hasCompletionDate, $task->title);
 
         if ($task->completion_date !== null) {
             expect($task->completion_date->startOfDay()->lessThanOrEqualTo(now()->startOfDay()))

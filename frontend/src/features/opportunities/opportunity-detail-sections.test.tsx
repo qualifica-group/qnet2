@@ -1,10 +1,31 @@
-import { beforeAll, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { GENERAL_NOTES_CALLOUT_CLASS } from '@/components/record-form/layout'
 import { UserDetailSheetContext } from '@/features/users/user-detail-sheet-context'
 import { OpportunityDetailSections } from '@/features/opportunities/opportunity-detail-sections'
 import type { OpportunityDetailWithPermissions } from '@/features/opportunities/types'
+
+/** Every render goes through a Router: the card links related records with real `<Link>`s. */
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: MemoryRouter })
+}
+
+// Related-record links open their target in a modal through `useModuleOpener`,
+// whose mode resolver reads the authenticated user's preference. The preference
+// is not what these tests are about, so the resolver is stubbed rather than
+// dragging an AuthProvider into every render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
+
+// Related-record links render only for an actor who can view the target
+// module; these tests are not about abilities, so every ability is granted.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
 
 /**
  * Spec 0080: the manager list shows the resolved role label as VISIBLE text
@@ -149,5 +170,30 @@ describe('OpportunityDetailSections — general notes', () => {
     render(<OpportunityDetailSections opportunity={opportunity({ general_notes: null })} />)
 
     expect(screen.queryByRole('region', { name: /general notes/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('OpportunityDetailSections — related records', () => {
+  it('links the anagrafica, the referents, the source lead and the products of interest to their records', () => {
+    render(
+      <OpportunityDetailSections
+        opportunity={opportunity({
+          referent: { id: 20, name: 'Ada Alberti' },
+          commercial: { id: 21, name: 'Bruno Bianchi' },
+          reporter: { id: 22, name: 'Carla Conti' },
+          lead_id: 30,
+          lead: { id: 30, label: 'Lead Rossi' },
+          products_of_interest: [{ id: 40, name: 'Fotovoltaico', product_category: null }],
+        })}
+      />,
+    )
+
+    const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
+    expect(hrefOf('Acme S.p.A.')).toBe('/registries/10')
+    expect(hrefOf('Ada Alberti')).toBe('/referents/20')
+    expect(hrefOf('Bruno Bianchi')).toBe('/referents/21')
+    expect(hrefOf('Carla Conti')).toBe('/referents/22')
+    expect(hrefOf('Lead Rossi')).toBe('/leads/30')
+    expect(hrefOf('Fotovoltaico')).toBe('/products/40')
   })
 })

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Briefcase, CalendarClock, FileSignature, Globe, MapPin, Target } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
+import { RecordLink } from '@/components/detail/record-link'
 import {
   RecordField,
   RecordFieldList,
@@ -61,7 +62,13 @@ export function UserDetailSections({ user, assignment }: UserDetailSectionsProps
             <ProductLinesReadOnlyList lines={employment?.product_lines ?? EMPTY_PRODUCT_LINES} />
           </RecordField>
           <RecordField label={t('users.detail.employment.primaryOperationalSite')} icon={<MapPin />}>
-            {employment?.primary_operational_site?.label ?? <DetailEmpty />}
+            {employment?.primary_operational_site ? (
+              <RecordLink domain="operational-sites" id={employment.primary_operational_site.id}>
+                {employment.primary_operational_site.label}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordField>
           <RecordField label={t('users.detail.employment.remoteOperationalSites')} icon={<MapPin />}>
             <SiteBadges sites={employment?.remote_operational_sites ?? EMPTY_SITES} />
@@ -91,8 +98,10 @@ function SiteBadges({ sites }: { sites: EmploymentRelationRef[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {sites.map((site) => (
-        <Badge key={site.id} variant="secondary" className="max-w-full truncate">
-          {site.label}
+        <Badge key={site.id} variant="secondary" className="max-w-full">
+          <RecordLink domain="operational-sites" id={site.id}>
+            {site.label}
+          </RecordLink>
         </Badge>
       ))}
     </div>
@@ -135,7 +144,13 @@ function UserContractSection({ employment }: { employment: EmploymentDetail }) {
           )}
         </RecordField>
         <RecordField label={t('users.detail.employment.company')}>
-          {employment.company?.label ?? <DetailEmpty />}
+          {employment.company ? (
+            <RecordLink domain="companies" id={employment.company.id}>
+              {employment.company.label}
+            </RecordLink>
+          ) : (
+            <DetailEmpty />
+          )}
         </RecordField>
       </RecordFieldList>
     </RecordSection>

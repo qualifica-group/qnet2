@@ -91,21 +91,28 @@ describe('ProductAttributeValuesSection — flat fallback (AC-007)', () => {
 })
 
 describe('ProductAttributeValuesSection — configured layout (spec 0062 AC-014)', () => {
-  it('renders the section title and the field seeded from the current value, read-only', () => {
+  it('groups valued attributes under the layout section titles as plain text, never form controls', () => {
     render(
       <ProductAttributeValuesSection
         layout={LAYOUT}
         attributes={[RAM_ATTRIBUTE, TIER_ATTRIBUTE]}
-        values={{ ram_gb: 32 }}
+        values={{ ram_gb: 32, tier: 'gold' }}
       />,
     )
 
     expect(screen.getByRole('heading', { name: 'Specifications' })).toBeInTheDocument()
-    const ramField = screen.getByRole('spinbutton', { name: 'RAM (GB)' })
-    expect(ramField).toHaveValue(32)
-    expect(ramField).toHaveAttribute('readonly')
+    expect(screen.getByText('32')).toBeInTheDocument()
+    // Valued but unplaced -> trailing "Other information" section.
+    expect(screen.getByRole('heading', { name: 'Other information' })).toBeInTheDocument()
+    expect(screen.getByText('Gold')).toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
 
-    // Unplaced attribute -> the synthetic trailing "Other information" section, collapsed.
-    expect(screen.getByRole('button', { name: 'Other information' })).toHaveAttribute('data-state', 'closed')
+  it('omits a layout section none of whose attributes carries a value', () => {
+    const { container } = render(
+      <ProductAttributeValuesSection layout={LAYOUT} attributes={[RAM_ATTRIBUTE, TIER_ATTRIBUTE]} values={{}} />,
+    )
+    expect(container).toBeEmptyDOMElement()
   })
 })

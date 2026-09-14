@@ -2,6 +2,7 @@ import * as React from "react"
 import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
+import { Button } from "@/components/ui/button"
 import { useResizableWidth } from "@/hooks/use-resizable-width"
 import { cn } from "@/lib/utils"
 
@@ -121,6 +122,37 @@ function SheetContent({
   )
 }
 
+/**
+ * In-flow top bar holding the sheet's window actions (e.g. "open as page")
+ * and the close button. Use it with `showCloseButton={false}` on
+ * `SheetContent`: the default close button is absolutely positioned and
+ * overlaps content that draws its own header right at the top edge.
+ */
+function SheetToolbar({
+  className,
+  children,
+  closeLabel,
+  ...props
+}: React.ComponentProps<"div"> & { closeLabel: string }) {
+  return (
+    <div
+      data-slot="sheet-toolbar"
+      className={cn(
+        "flex shrink-0 items-center justify-end gap-1 border-b bg-surface px-3 py-1.5",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <SheetPrimitive.Close asChild>
+        <Button variant="ghost" size="icon-xs" aria-label={closeLabel} title={closeLabel}>
+          <XIcon className="size-3.5" aria-hidden="true" />
+        </Button>
+      </SheetPrimitive.Close>
+    </div>
+  )
+}
+
 function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -172,6 +204,7 @@ export {
   SheetTrigger,
   SheetClose,
   SheetContent,
+  SheetToolbar,
   SheetHeader,
   SheetFooter,
   SheetTitle,

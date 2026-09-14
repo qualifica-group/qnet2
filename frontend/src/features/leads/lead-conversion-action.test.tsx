@@ -146,6 +146,20 @@ describe('LeadConversionAction, in the lead record card', () => {
     expect(link).toHaveAttribute('href', '/opportunities/42')
   })
 
+  it('opens the existing opportunity in a modal, even in page mode, instead of leaving the lead', async () => {
+    opportunitiesOpenMode = 'page'
+    fetchLeadMock.mockResolvedValue(
+      lead({ opportunity: { id: 42 } as LeadDetail['opportunity'] }),
+    )
+
+    renderActions()
+
+    fireEvent.click(await screen.findByRole('link', { name: /go to opportunity/i }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
   it('AC-026: hides the "Create opportunity" action without the opportunities.create permission', async () => {
     canMock.mockReturnValue(false)
     fetchLeadMock.mockResolvedValue(lead({ opportunity: null }))

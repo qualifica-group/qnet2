@@ -43,7 +43,8 @@ use Illuminate\Validation\Rule;
  * `validated_at`/`terminated_at`. None of the three statements may be
  * weakened by a role's field-permission matrix: the privileged role bypasses
  * every ceiling, so the rule lives here, ahead of and independent from that
- * mechanism (AC-035).
+ * mechanism (AC-035). Spec 0127 D-1 adds `completion_date` on the same terms: it is
+ * written only by TaskCompletionService.
  *
  * `assignee_ids`/`watcher_ids` are full-replaced by the Service ONLY when
  * their own key is present in the payload (AC-012), so a PATCH that touches
@@ -97,6 +98,7 @@ class UpdateTaskRequest extends FormRequest
             'completion_percentage' => ['prohibited'],
             'is_blocked' => ['prohibited'],
             'task_recurrence_id' => ['prohibited'],
+            'completion_date' => ['prohibited'],
             'title' => ['sometimes', 'required', 'string', 'max:'.self::TITLE_MAX],
             'task_status_id' => ['sometimes', 'required', 'integer', Rule::exists('task_statuses', 'id')],
             'description' => ['sometimes', 'nullable', 'string'],
@@ -112,7 +114,6 @@ class UpdateTaskRequest extends FormRequest
             'requester_id' => ['sometimes', 'required', 'integer', Rule::exists('users', 'id')],
             'start_date' => ['sometimes', 'nullable', 'date'],
             'end_date' => ['sometimes', 'required', 'date'],
-            'completion_date' => ['sometimes', 'nullable', 'date'],
             'start_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'end_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0'],

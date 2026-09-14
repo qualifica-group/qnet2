@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -8,8 +9,9 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { parseEntityId } from '@/routes/entity-id'
 import { fetchTask, TASKS_DOMAIN, taskDetailQueryKey } from '@/features/tasks/api'
 import { TaskDetailView } from '@/features/tasks/task-detail'
-import { TaskForm, TaskFormSkeleton } from '@/features/tasks/task-form'
-import { OPEN_MODE_PAGE } from '@/features/modules/types'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
+import { TaskForm } from '@/features/tasks/task-form'
+import { OPEN_MODE_MODAL, OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
@@ -33,41 +35,58 @@ function asRow(id: number): TableRow {
  * Sheet (`useModuleOpener`) and by the generic dedicated pages
  * (`ModuleDetailPage`/`ModuleFormPage`).
  *
- * AC-085: the two sub-task affordances are instraded through the SAME opener
- * every other surface uses, so opening a child or creating one honors the
- * actor's own modal/page preference. "Crea sotto-task" passes
+ * AC-085: opening a child goes through the SAME opener every other surface
+ * uses, so it honors the actor's own modal/page preference. "Crea sotto-task"
+ * instead always mounts the Sheet above the parent (`forceMode`, spec 0067
+ * D-3): the parent detail is never abandoned while adding a child. It passes
  * `parent_task_id` through `ModuleCreateParams` (spec 0045) — the single
- * channel a create form gets its context through, in both mount modes.
+ * channel a create form gets its context through.
  */
-export function TaskDetailScreen({ id }: ModuleDetailScreenProps) {
+export function TaskDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
-  const { openView, openCreateWith, sheet } = useModuleOpener(TASKS_DOMAIN)
+  const queryClient = useQueryClient()
+  const { openView, sheet } = useModuleOpener(TASKS_DOMAIN)
+  const { openCreateWith: openSubtaskCreate, sheet: subtaskSheet } = useModuleOpener(TASKS_DOMAIN, {
+    forceMode: OPEN_MODE_MODAL,
+    viewAfterCreate: true,
+    // The parent stays mounted underneath: refresh its `subtasks` list.
+    onSaved: () => queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(id) }),
+  })
   const { data: task, isLoading, isError, refetch } = useEntityDetail(taskDetailQueryKey(id), () =>
     fetchTask(id),
   )
 
+  // The sheets render OUTSIDE the loading branch: the subtask form reads the
+  // parent through this same query key and refetches it on mount. Swapping
+  // them for the skeleton during that refetch would remount the form, which
+  // refetches again — an endless reload loop.
+  let content: ReactNode
   if (isError) {
-    return (
+    content = (
       <DetailError
         message={t('tasks.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}
       />
     )
-  }
-
-  if (isLoading || !task) {
-    return <DetailLoading />
+  } else if (isLoading || !task) {
+    content = <DetailLoading />
+  } else {
+    content = (
+      <TaskDetailView
+        task={task}
+        onEdit={onEdit}
+        onOpenSubtask={(subtaskId) => openView(asRow(subtaskId))}
+        onCreateSubtask={() => openSubtaskCreate({ parent_task_id: task.id })}
+      />
+    )
   }
 
   return (
     <>
-      <TaskDetailView
-        task={task}
-        onOpenSubtask={(subtaskId) => openView(asRow(subtaskId))}
-        onCreateSubtask={() => openCreateWith({ parent_task_id: task.id })}
-      />
+      {content}
       {sheet}
+      {subtaskSheet}
     </>
   )
 }
@@ -127,7 +146,7 @@ function TaskEditScreen({ taskId, onSuccess, onCancel }: TaskEditScreenProps) {
   }
 
   if (isLoading || !task) {
-    return <TaskFormSkeleton />
+    return <RecordFormSkeleton />
   }
 
   return <TaskForm mode={{ type: 'edit', task }} onSuccess={onSuccess} onCancel={onCancel} />
@@ -141,4 +160,9 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.tasks',
   DetailScreen: TaskDetailScreen,
   FormScreen: TaskFormScreen,
+  // The "Modifica" action lives on the task card itself, as on Opportunita'.
+  detailOwnsEditAction: true,
+  // The form renders its own sticky identity bar (heading + actions), so the
+  // hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

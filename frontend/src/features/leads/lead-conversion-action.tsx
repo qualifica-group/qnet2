@@ -5,8 +5,11 @@ import { Handshake } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Can } from '@/features/auth/can'
 import { leadDetailQueryKey } from '@/features/leads/api'
+import { useRecordModalLink } from '@/features/modules/use-record-modal-link'
 import { useLeadConversion } from '@/features/leads/use-lead-conversion'
 import type { LeadOpportunityRef } from '@/features/leads/types'
+
+const OPPORTUNITIES_DOMAIN = 'opportunities'
 
 interface LeadConversionActionProps {
   leadId: number
@@ -42,14 +45,7 @@ export function LeadConversionAction({ leadId, opportunity }: LeadConversionActi
   })
 
   if (opportunity) {
-    return (
-      <Button variant="secondary" size="sm" asChild>
-        <Link to={`/opportunities/${opportunity.id}`}>
-          <Handshake aria-hidden="true" />
-          {t('leads.detail.goToOpportunity')}
-        </Link>
-      </Button>
-    )
+    return <GoToOpportunityAction opportunityId={opportunity.id} />
   }
 
   return (
@@ -60,5 +56,23 @@ export function LeadConversionAction({ leadId, opportunity }: LeadConversionActi
       </Button>
       {sheets}
     </Can>
+  )
+}
+
+/** "Vai all'opportunita'": opens the generated opportunity in a modal, keeping the lead on screen. */
+function GoToOpportunityAction({ opportunityId }: { opportunityId: number }) {
+  const { t } = useTranslation()
+  const { onClick, sheet } = useRecordModalLink(OPPORTUNITIES_DOMAIN, opportunityId)
+
+  return (
+    <>
+      <Button variant="secondary" size="sm" asChild>
+        <Link to={`/opportunities/${opportunityId}`} onClick={onClick}>
+          <Handshake aria-hidden="true" />
+          {t('leads.detail.goToOpportunity')}
+        </Link>
+      </Button>
+      {sheet}
+    </>
   )
 }

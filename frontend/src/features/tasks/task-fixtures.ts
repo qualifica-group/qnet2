@@ -90,7 +90,6 @@ export function taskFormValues(overrides: Partial<TaskFormValues> = {}): TaskFor
     requester_id: 21,
     start_date: '2026-09-01',
     end_date: '2026-09-05',
-    completion_date: null,
     start_time: '09:00',
     end_time: '10:30',
     estimated_minutes: 90,

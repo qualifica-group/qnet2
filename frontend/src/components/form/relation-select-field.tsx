@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Control, FieldPath, FieldPathValue, FieldValues } from 'react-hook-form'
 import { FormControl } from '@/components/ui/form'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
@@ -9,6 +10,8 @@ import type { ForSelectItem } from '@/features/for-select/types'
 export interface RelationFieldRef {
   id: number
   name: string
+  /** Optional presentation bag carried onto the hydrated option (read by `renderItem`, e.g. a badge color). */
+  meta?: Record<string, unknown>
 }
 
 /** Field paths of `TFieldValues` whose value is a nullable relation id — the only shape this field supports. */
@@ -79,11 +82,20 @@ interface RelationSelectFieldProps<
    * verbatim to `AsyncPaginatedSelect`; omitted, no option is disabled.
    */
   isItemDisabled?: (item: ForSelectItem) => boolean
+  /** Custom trigger/option content, forwarded verbatim to `AsyncPaginatedSelect.renderItem`. */
+  renderItem?: (item: ForSelectItem) => ReactNode
 }
 
 /** Renders a `{id, name}` relation ref as the `ForSelectItem` shape `AsyncPaginatedSelect` hydrates from. */
 function toForSelectItem(ref: RelationFieldRef | null): ForSelectItem | null {
-  return ref ? { id: ref.id, label: ref.name } : null
+  if (!ref) {
+    return null
+  }
+  const item: ForSelectItem & { meta?: Record<string, unknown> } = { id: ref.id, label: ref.name }
+  if (ref.meta) {
+    item.meta = ref.meta
+  }
+  return item
 }
 
 /**
@@ -120,6 +132,7 @@ export function RelationSelectField<
   retryLabel,
   showAvatar = false,
   isItemDisabled,
+  renderItem,
 }: RelationSelectFieldProps<TFieldValues, TName>) {
   const { quickCreated, renderAction } = useQuickCreateAction(resource)
 
@@ -155,6 +168,7 @@ export function RelationSelectField<
               showAvatar={showAvatar}
               disabled={isDisabled}
               isItemDisabled={isItemDisabled}
+              renderItem={renderItem}
               params={params}
               labels={{
                 placeholder,

@@ -11,7 +11,7 @@
     - 0122 (segnatempo solo proprietario/manageAll): per i segnatempo di un task vale anche la matrice ruoli.
   A1 (documenti) verificato: gia' identico a Opportunita' (0117 D-8), nessuna modifica.
 -->
-<spec id="0126-task-document-alignment" status="draft" owner="utente" date="2026-09-14">
+<spec id="0126-task-document-alignment" status="approved" owner="utente" date="2026-09-14">
 
   <goal>
     Il modulo Task si comporta come descritto in DOC Tasks.docx, con le decisioni utente del 2026-09-14.
@@ -91,8 +91,7 @@
       Nel frontend la select stato e' disabilitata se il flag e' false; le opzioni diverse da open/pending sono disabilitate,
       closed_negative resta legata a `close_via_status`. `close_via_status` diventa false anche su un task bloccato.</decision>
     <decision id="D-5">A4 (utente). Gli stati del gruppo in_validation valgono 100%. Una nuova migrazione dati porta
-      `completion_percentage` a 100 per ogni stato con `group = in_validation` (il down ripristina i valori precedenti salvati
-      nella migrazione per id). Il catalogo `TaskTaxonomyCatalogue` passa a 100. `Store/UpdateTaskStatusRequest`: con
+      `completion_percentage` a 100 per ogni stato con `group = in_validation` (il down riporta per nome i due stati del catalogo a 30/80; eventuali stati in_validation creati da un admin restano a 100, perche' i valori precedenti non sono salvati: nessuna tabella di storico, YAGNI). Il catalogo `TaskTaxonomyCatalogue` passa a 100. `Store/UpdateTaskStatusRequest`: con
       group in_validation, `completion_percentage` deve essere 100 (422 altrimenti).</decision>
     <decision id="D-6">A5 (utente). Su un task bloccato sono vietati complete, uncomplete, approve, reject (409, invariato)
       e il cambio stato manuale (D-4c). Modifica ed eliminazione restano vietate (lock strutturale invariato,
@@ -148,7 +147,7 @@
       <errors>Nessun 409 su task bloccato (D-6). Il resto e' invariato.</errors>
     </endpoint>
     <endpoint method="DELETE" path="/api/notes/{note}">
-      <errors>204 per l'autore o per chi ha `notes.deleteAny` e puo' leggere la risorsa collegata; 403 altrimenti (D-2).
+      <errors>200 (envelope, invariato) per l'autore o per chi ha `notes.deleteAny` e puo' leggere la risorsa collegata; 403 altrimenti (D-2).
         `NoteResource.can.delete` riflette la stessa regola.</errors>
     </endpoint>
     <endpoint method="PUT|DELETE" path="/api/time-entries/{timeEntry}">
@@ -173,7 +172,7 @@
     <criterion id="AC-003">Dato un utente con `tasks.manageAll` (non super-admin) assegnatario, quando chiama DELETE, approve,
       block o request-update, allora riceve 403 e nulla cambia. I suoi flag `delete/approve/block` sono false.</criterion>
     <criterion id="AC-004">Dato un utente con `notes.deleteAny` che legge il task, quando elimina la nota di un altro
-      utente, allora riceve 204, e `can.delete` della nota era true. Senza il permesso riceve 403 e `can.delete` e' false.</criterion>
+      utente, allora riceve 200, e `can.delete` della nota era true. Senza il permesso riceve 403 e `can.delete` e' false.</criterion>
     <criterion id="AC-005">Dato un utente con `notes.deleteAny` che NON puo' leggere il record collegato, quando elimina una nota
       altrui, allora riceve 403 e la nota resta. Con `notes.deleteAny` una PUT su una nota altrui resta 403.</criterion>
     <criterion id="AC-006">Dato un segnatempo di un task inserito dall'assegnatario A: A (con time-entries.update/delete)
@@ -195,7 +194,7 @@
       la notifica parte; `request_update` e' true. Complete, uncomplete, approve e reject restano 409.</criterion>
     <criterion id="AC-012">Dopo la migrazione D-5 ogni stato con group in_validation ha completion_percentage 100; un task in
       quella fase espone completion_percentage 100. POST/PUT task-statuses con group in_validation e percentuale 80 danno 422.
-      Il rollback della migrazione ripristina le percentuali precedenti.</criterion>
+      Il rollback riporta "Preanalisi da validare" a 30 ed "Esecuzione da validare" a 80; gli stati custom restano a 100.</criterion>
     <criterion id="AC-013">(Vitest) Nella select stato del form in modifica: con `change_status` false la select e' disabilitata;
       con true le opzioni in_validation/closed_positive sono disabilitate, closed_negative e' disabilitata solo se
       `close_via_status` e' false, open/pending sono abilitate.</criterion>

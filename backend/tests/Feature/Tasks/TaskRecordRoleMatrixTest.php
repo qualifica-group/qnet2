@@ -69,7 +69,7 @@ if (! function_exists('taskActorWith')) {
 // AC-006 — an assignee sees the 17 protected fields readonly, the 6 free ones editable
 // ---------------------------------------------------------------------------
 
-it('AC-006: an assignee sees the 17 protected fields readonly and the 6 free fields editable', function () {
+it('AC-006: an assignee sees the protected fields readonly, the free fields editable and completion_date readonly', function () {
     $actor = taskActorWith(['view', 'update']);
     $task = Task::factory()->create();
     $task->assignees()->attach($actor->id);
@@ -82,9 +82,13 @@ it('AC-006: an assignee sees the 17 protected fields readonly and the 6 free fie
             ->and($fields[$protected]['readonly'])->toBeTrue();
     }
 
-    foreach (['description', 'task_status_id', 'completion_date', 'start_time', 'end_time', 'closure_feedback'] as $free) {
+    foreach (['description', 'task_status_id', 'start_time', 'end_time', 'closure_feedback'] as $free) {
         expect($fields[$free]['editable'])->toBeTrue("{$free} should stay editable for an assignee");
     }
+
+    // REQUIREMENT CHANGED (spec 0127, D-2): completion_date is server-owned,
+    // written only by the completion actions, so it is readonly for everyone.
+    expect($fields['completion_date']['editable'])->toBeFalse();
 });
 
 // ---------------------------------------------------------------------------
@@ -142,17 +146,16 @@ it('AC-002 (spec 0121): an assignee sending requires_validation gets 422 and no 
     $this->assertDatabaseHas('tasks', ['id' => $task2->id, 'requires_validation' => true]);
 });
 
-// REQUIREMENT CHANGED (spec 0123, D-5/D-9): actions() grew from 13 to 15
-// keys — `close_via_status` and `create_subtask` were appended in that
-// order (AC-010..AC-035 dependency notwithstanding, the array's INSERTION
-// order, not an alphabetical one).
-it('AC-015 (spec 0121): TasksAuthorization::actions() carries complete_to_validation, 15 keys total', function () {
+// REQUIREMENT CHANGED (spec 0126, D-4): actions() grows from 15 to 16 keys
+// — `change_status` is appended LAST.
+it('AC-015 (spec 0121): TasksAuthorization::actions() carries complete_to_validation, 16 keys total', function () {
     $actions = app(TasksAuthorization::class)->actions();
 
-    expect($actions)->toHaveCount(15)
+    expect($actions)->toHaveCount(16)
         ->and($actions)->toContain('complete_to_validation')
         ->and($actions)->toContain('close_via_status')
-        ->and($actions)->toContain('create_subtask');
+        ->and($actions)->toContain('create_subtask')
+        ->and($actions)->toContain('change_status');
 });
 
 // ---------------------------------------------------------------------------

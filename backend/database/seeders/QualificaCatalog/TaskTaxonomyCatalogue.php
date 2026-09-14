@@ -102,15 +102,21 @@ final class TaskTaxonomyCatalogue
      * not demand a closure feedback. Its 0% says the work produced nothing,
      * which is independent of the phase.
      *
+     * The two `InValidation` rows carry 100, not their former 30/80 (spec
+     * 0126, D-5): validation is a gate, not a stage of progress, so a task
+     * waiting on it already reads as done. An already-seeded install is
+     * moved onto 100 by migration 2026_09_14_140000, which this bootstrap
+     * value must stay in sync with.
+     *
      * @var array<int, array{0: string, 1: TaskStatusGroup, 2: string, 3: string, 4: int}>
      */
     public const array STATUSES = [
         ['In preanalisi', TaskStatusGroup::Open, 'indigo', 'eye', 20],
-        ['Preanalisi da validare', TaskStatusGroup::InValidation, 'amber', 'shield', 30],
+        ['Preanalisi da validare', TaskStatusGroup::InValidation, 'amber', 'shield', 100],
         ['Preanalisi validata', TaskStatusGroup::Open, 'teal', 'shield-check', 40],
         ['In attesa controparte', TaskStatusGroup::Pending, 'orange', 'clock', 60],
         ['Interrotto', TaskStatusGroup::Pending, 'red', 'flag', 0],
-        ['Esecuzione da validare', TaskStatusGroup::InValidation, 'amber', 'clipboard-list', 80],
+        ['Esecuzione da validare', TaskStatusGroup::InValidation, 'amber', 'clipboard-list', 100],
     ];
 
     /**

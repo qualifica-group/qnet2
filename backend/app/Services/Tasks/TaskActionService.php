@@ -88,10 +88,13 @@ final class TaskActionService
      * rule complete() enforces (D-10 forbids a twin method). The notification
      * goes ONLY to the recipients the actor named (D-11), and the response is
      * the same detail read every other action returns (D-14).
+     *
+     * Spec 0126, D-6 (REQUIREMENT CHANGED): carries no `TaskWriteLock::
+     * assertNotBlocked()` of its own, unlike block/unblock's siblings in
+     * `TaskCompletionService` — a blocked Task now admits this one action.
      */
     public function requestUpdate(Task $task, RequestTaskUpdateData $data, User $actor): Task
     {
-        TaskWriteLock::assertNotBlocked($task);
         $this->assertMayRequestUpdate($actor, $task);
         $this->assertRequestUpdateAvailable($task);
 
