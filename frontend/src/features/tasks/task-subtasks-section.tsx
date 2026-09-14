@@ -7,9 +7,8 @@ import { Can } from '@/features/auth/can'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import type { TaskSubtask } from '@/features/tasks/types'
 
-/** Resource-level permissions gating the two affordances of this section. */
+/** Resource-level permission gating the child rows' own affordance (unrelated to `create_subtask`). */
 const VIEW_PERMISSION = 'tasks.view'
-const CREATE_PERMISSION = 'tasks.create'
 
 interface TaskSubtasksSectionProps {
   /** Already loaded off the parent's detail (`data.subtasks`, D-12) — this section fetches nothing. */
@@ -18,6 +17,13 @@ interface TaskSubtasksSectionProps {
   onOpen: (subtaskId: number) => void
   /** Opens the standard create form with `parent_task_id` prefilled and locked. */
   onCreate: () => void
+  /**
+   * `permissions.actions.create_subtask` (spec 0123 D-9): `tasks.create` AND
+   * neither this task nor an ancestor is write-locked. Gates the button
+   * directly — no `<Can>` ability check alongside it, the flag already IS
+   * that ability ANDed with the availability rule (AC-036).
+   */
+  canCreateSubtask: boolean
   className?: string
 }
 
@@ -84,6 +90,7 @@ export function TaskSubtasksSection({
   subtasks,
   onOpen,
   onCreate,
+  canCreateSubtask,
   className,
 }: TaskSubtasksSectionProps) {
   const { t } = useTranslation()
@@ -95,12 +102,12 @@ export function TaskSubtasksSection({
       full
       className={className}
       action={
-        <Can permission={CREATE_PERMISSION}>
+        canCreateSubtask ? (
           <Button type="button" variant="outline" size="sm" className="bg-card" onClick={onCreate}>
             <Plus className="size-3.5" aria-hidden="true" />
             {t('tasks.detail.createSubtask')}
           </Button>
-        </Can>
+        ) : null
       }
     >
       {subtasks.length > 0 ? (

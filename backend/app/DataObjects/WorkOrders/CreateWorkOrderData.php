@@ -24,6 +24,12 @@ use App\Enums\WorkOrderType;
  * validated/merged by WorkOrderAttributeValueWriter AFTER the quote lines
  * are synced (D-6), i.e. against the applicable set those lines' categories
  * produce (the same set the form rendered its fields from).
+ *
+ * `taskTemplateId` (spec 0124, D-5/D-7): the optional Modello di Task the
+ * generated Commessa's tasks are stamped from. IS in attributes() — like
+ * `quote_id`, genuine client input the model receives by mass assignment —
+ * unlike `code`, whose absence from the model's own #[Fillable] is what
+ * makes attributes() omit it here.
  */
 final readonly class CreateWorkOrderData
 {
@@ -48,6 +54,7 @@ final readonly class CreateWorkOrderData
         public array $supervisorIds,
         public array $participantSlots,
         public ?array $attributeValues = null,
+        public ?int $taskTemplateId = null,
     ) {}
 
     /**
@@ -76,6 +83,9 @@ final readonly class CreateWorkOrderData
             attributeValues: array_key_exists('attribute_values', $data)
                 ? (array) $data['attribute_values']
                 : null,
+            taskTemplateId: array_key_exists('task_template_id', $data) && $data['task_template_id'] !== null
+                ? (int) $data['task_template_id']
+                : null,
         );
     }
 
@@ -97,6 +107,9 @@ final readonly class CreateWorkOrderData
      * its own "Informazioni aggiuntive" section, same `null`-means-absent
      * convention as `fromValidated()`.
      *
+     * `taskTemplateId` (spec 0124, AC-018): the same optional Modello di
+     * Task field as `fromValidated()`, this dialog's own picker.
+     *
      * @param  array<int, int>  $quoteLineIds
      * @param  array<int, int>  $supervisorIds
      * @param  array<string, mixed>|null  $attributeValues
@@ -109,6 +122,7 @@ final readonly class CreateWorkOrderData
         array $supervisorIds,
         array $quoteLineIds,
         ?array $attributeValues = null,
+        ?int $taskTemplateId = null,
     ): self {
         return new self(
             code: null,
@@ -125,6 +139,7 @@ final readonly class CreateWorkOrderData
             supervisorIds: self::normalizeIds($supervisorIds),
             participantSlots: [],
             attributeValues: $attributeValues,
+            taskTemplateId: $taskTemplateId,
         );
     }
 
@@ -143,6 +158,7 @@ final readonly class CreateWorkOrderData
             'internal_notes' => $this->internalNotes,
             'is_force_closed' => $this->isForceClosed,
             'force_close_reason' => $this->forceCloseReason,
+            'task_template_id' => $this->taskTemplateId,
         ];
     }
 

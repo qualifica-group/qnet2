@@ -37,6 +37,7 @@ use App\Authorization\TaskImportancesAuthorization;
 use App\Authorization\TaskPrioritiesAuthorization;
 use App\Authorization\TasksAuthorization;
 use App\Authorization\TaskStatusesAuthorization;
+use App\Authorization\TaskTemplatesAuthorization;
 use App\Authorization\TaskTypesAuthorization;
 use App\Authorization\UnitsOfMeasureAuthorization;
 use App\Authorization\UsersAuthorization;
@@ -110,6 +111,8 @@ return [
         'task-categories' => TaskCategoriesAuthorization::class,
         'task-priorities' => TaskPrioritiesAuthorization::class,
         'task-importances' => TaskImportancesAuthorization::class,
+        // spec 0124: il modulo Modelli di Task.
+        'task-templates' => TaskTemplatesAuthorization::class,
     ],
 
     /*

@@ -11,6 +11,7 @@ use App\Models\TaskStatus;
 use App\Models\User;
 use App\Services\Notifications\TaskNotifier;
 use App\Services\TaskService;
+use App\Services\TimeEntries\TimeEntryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -43,11 +44,15 @@ use Illuminate\Validation\ValidationException;
  */
 final class TaskCompletionService
 {
+    /** D-6, message-only 422 shared by `/complete` and `/approve`. */
+    private const string OPEN_SUBTASKS_MESSAGE = 'This task has open sub-tasks: close them before completing it.';
+
     public function __construct(
         private readonly TaskService $taskService,
         private readonly TaskActionAvailability $availability,
         private readonly TaskClosureFeedbackGuard $closureFeedbackGuard,
         private readonly TaskNotifier $notifier,
+        private readonly TimeEntryService $timeEntryService,
     ) {}
 
     /**
@@ -68,6 +73,7 @@ final class TaskCompletionService
         DB::transaction(function () use ($task, $data, $actor): void {
             TaskWriteLock::assertNotBlocked($task);
             $this->assertCompletable($task);
+            $this->assertNoOpenSubtasks($task);
 
             $requiresValidation = TaskAbilityResolver::completionRequiresValidation($actor, $task);
 
@@ -87,6 +93,12 @@ final class TaskCompletionService
 
             $this->closureFeedbackGuard->assertProvided($task);
             $task->save();
+
+            // D-1/D-2: the segnatempo is part of THIS write, atomic with the
+            // status change (any guard above rolls both back together), and
+            // needs no `time-entries.create` — completing the Task grants
+            // the insert.
+            $this->timeEntryService->create($data->timeEntry, $actor);
 
             if ($requiresValidation) {
                 $this->notifier->validationRequested($task, $actor);
@@ -139,6 +151,7 @@ final class TaskCompletionService
             TaskWriteLock::assertNotBlocked($task);
             $this->assertOwnsMandateForValidation($actor, $task);
             $this->assertValidatable($task);
+            $this->assertNoOpenSubtasks($task);
 
             $task->task_status_id = $this->systemStatusId(TaskStatusSystemKey::ClosedPositive);
             $task->completion_date = now()->toDateString();
@@ -213,6 +226,18 @@ final class TaskCompletionService
     {
         if (! $this->availability->isCompletable($task)) {
             abort(422, 'This task is already closed or awaiting validation.');
+        }
+    }
+
+    /**
+     * D-6, re-asserted here for both `complete()` and `approve()`: the SAME
+     * availability query `TasksAuthorization::actionPermissions()` ANDs into
+     * the three flags, never a second implementation of the rule.
+     */
+    private function assertNoOpenSubtasks(Task $task): void
+    {
+        if ($this->availability->hasOpenSubtasks($task)) {
+            abort(422, self::OPEN_SUBTASKS_MESSAGE);
         }
     }
 

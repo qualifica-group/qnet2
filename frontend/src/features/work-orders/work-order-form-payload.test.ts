@@ -20,6 +20,7 @@ const formValues: WorkOrderFormValues = {
   is_force_closed: false,
   force_close_reason: null,
   quote_line_ids: [11, 12],
+  task_template_id: null,
   attribute_values: {},
 }
 
@@ -40,6 +41,7 @@ function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     internal_notes: null,
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
+    task_template: null,
     quote_lines: [
       { id: 11, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' } },
       { id: 12, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' } },
@@ -69,8 +71,13 @@ describe('buildCreatePayload (spec 0093, D-1)', () => {
       is_force_closed: false,
       force_close_reason: null,
       quote_line_ids: [11, 12],
+      task_template_id: null,
       attribute_values: {},
     })
+  })
+
+  it('sends the selected task_template_id (spec 0124 D-9)', () => {
+    expect(buildCreatePayload({ ...formValues, task_template_id: 3 }).task_template_id).toBe(3)
   })
 
   it('omits an empty code so the server generates the sequential one', () => {
@@ -113,6 +120,11 @@ describe('buildUpdatePayload (spec 0093, AC-077)', () => {
   it('NEVER includes quote_id, even when the form value diverges from the original (D-5/AC-074)', () => {
     const payload = buildUpdatePayload({ ...formValues, quote_id: 99 }, original())
     expect(payload).not.toHaveProperty('quote_id')
+  })
+
+  it('NEVER includes task_template_id (spec 0124 D-5: 422 on PATCH presence)', () => {
+    const payload = buildUpdatePayload({ ...formValues, task_template_id: 3 }, original())
+    expect(payload).not.toHaveProperty('task_template_id')
   })
 
   it('sends quote_line_ids only when the selected set actually differs', () => {

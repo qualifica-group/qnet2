@@ -114,6 +114,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
     stagedAttachments,
     addStagedAttachments,
     removeStagedAttachment,
+    parentPrefillRefs,
   } = useTaskForm({ mode, onSuccess })
 
   const task = persistedTask(mode)
@@ -140,8 +141,8 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
 
           <TaskRegistrySection
             control={form.control}
-            registry={task?.registry ?? null}
-            referent={task?.referent ?? null}
+            registry={task?.registry ?? parentPrefillRefs.registry}
+            referent={task?.referent ?? parentPrefillRefs.referent}
             onRegistryChange={handleRegistryChange}
           />
 
@@ -159,8 +160,8 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
 
           <TaskLinksSection
             control={form.control}
-            opportunity={task?.opportunity ?? null}
-            workOrder={workOrderRefOf(task)}
+            opportunity={task?.opportunity ?? parentPrefillRefs.opportunity}
+            workOrder={workOrderRefOf(task) ?? parentPrefillRefs.workOrder}
           />
 
           <TaskClosureSection control={form.control} />

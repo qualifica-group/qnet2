@@ -218,11 +218,17 @@ it('AC-023: renaming closed_positive leaves the percentage, the closure guard an
         $task = Task::factory()->forCreator($actor)->inStatus($closedPositive)->create();
         $this->getJson("/api/tasks/{$task->id}")->assertOk()->assertJsonPath('data.completion_percentage', 100);
 
-        // 2. the closure feedback guard still fires on this status (D-7).
+        // 2. REQUIREMENT CHANGED (spec 0123, D-4): a PATCH toward
+        //    closed_positive now 422s on task_status_id for every actor,
+        //    feedback or not — the closure feedback guard (D-7) never even
+        //    runs any more via this path (it still does via /complete). The
+        //    rule this point actually pins — a rule keyed by system_key
+        //    survives a rename of the row — still holds, just for D-4
+        //    instead of D-7.
         $needsFeedback = Task::factory()->forCreator($actor)->requiringClosureFeedback()
             ->inStatus(TaskStatus::factory()->completion(0)->create())->create();
         $this->patchJson("/api/tasks/{$needsFeedback->id}", ['task_status_id' => $closedPositive->id])
-            ->assertStatus(422)->assertJsonValidationErrors('closure_feedback');
+            ->assertStatus(422)->assertJsonValidationErrors('task_status_id');
 
         // 3. the grid set filter still selects the same rows: it reads the
         //    status' CURRENT label, it does not carry a hardcoded one.

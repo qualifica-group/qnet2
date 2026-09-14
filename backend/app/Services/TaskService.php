@@ -9,9 +9,11 @@ use App\DataObjects\Tasks\UpdateTaskData;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Notifications\TaskNotifier;
+use App\Services\Tasks\TaskActionOnlyStatusGuard;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
+use App\Services\Tasks\TaskParentDateRangeGuard;
 use App\Services\Tasks\TaskRecurrenceService;
 use App\Services\Tasks\TaskReferentRegistryGuard;
 use App\Services\Tasks\TaskValidationRequirementGuard;
@@ -50,6 +52,18 @@ use Illuminate\Support\Facades\DB;
  * smuggle a structural field past the lock that was in force when the
  * request arrived. All six run INSIDE the write transaction, so a refusal
  * leaves the Task exactly as it was (AC-032).
+ *
+ * TaskParentDateRangeGuard (spec 0123, D-7/D-8) adds two more, both on the
+ * RESULTING state and both inside the same transaction: the CHILD side
+ * (assertChildWithinParent) runs on every create with a parent, and on
+ * update only when `parent_task_id`/`start_date`/`end_date` was submitted;
+ * the PARENT side (assertChildrenWithinRange) runs on every update and is a
+ * no-op unless `start_date`/`end_date` is actually dirty.
+ *
+ * TaskActionOnlyStatusGuard (spec 0123, D-4) runs FIRST among update()'s
+ * resulting-state guards, right after fill(): a `task_status_id` dirty
+ * toward `in_validation`/`closed_positive` is refused for every actor, no
+ * exemption, so nothing downstream needs to special-case it.
  *
  * `creator_id` is set here from the authenticated actor and nowhere else
  * (D-10): it is absent from Task's #[Fillable], so no payload can reach it.
@@ -91,10 +105,12 @@ class TaskService
     ];
 
     public function __construct(
+        private readonly TaskActionOnlyStatusGuard $actionOnlyStatusGuard,
         private readonly TaskClosureFeedbackGuard $closureFeedbackGuard,
         private readonly TaskHierarchyGuard $hierarchyGuard,
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly TaskNotifier $notifier,
+        private readonly TaskParentDateRangeGuard $parentDateRangeGuard,
         private readonly TaskRecurrenceService $recurrenceService,
         private readonly TaskReferentRegistryGuard $referentRegistryGuard,
         private readonly TaskValidationRequirementGuard $validationRequirementGuard,
@@ -121,6 +137,15 @@ class TaskService
             // Step 2: build the row, with the creator taken from the actor.
             $task = new Task($data->attributes());
             $task->creator_id = $creator->id;
+
+            // Step 2a: write-lock cascade (spec 0123, D-9) — a Task cannot be
+            // born under a frozen parent or ancestor.
+            TaskWriteLock::assertParentChainUnlocked($task);
+
+            // Step 2b: date-range coherence with the parent (spec 0123, D-7).
+            // Unconditional on create — there is no "submitted keys" partial
+            // state to gate on, every attribute is already on the row.
+            $this->parentDateRangeGuard->assertChildWithinParent($task);
 
             // Step 3: the initial status is DERIVED, never submitted (spec
             // 0118 D-3/D-4): a single assignee who is the creator or the
@@ -195,7 +220,33 @@ class TaskService
 
             $task->fill($data->submittedAttributes());
 
+            // States reserved to the domain actions (spec 0123, D-4): checked
+            // first and unconditionally on the actor, ahead of every other
+            // resulting-state guard, since D-4 carries no exemption at all.
+            $this->actionOnlyStatusGuard->assertReachableByPatch($task);
+
             $this->hierarchyGuard->assertAcyclic($task->id, $task->parent_task_id);
+
+            // Write-lock cascade (spec 0123, D-9): moving a Task under a
+            // frozen parent/ancestor is refused, gated on the key actually
+            // submitted so an untouched parent_task_id is never re-judged —
+            // a Task ALREADY under a frozen chain is caught instead by
+            // assertStructuralWriteAllowed above, on every structural field.
+            if ($data->parentTaskIdSubmitted) {
+                TaskWriteLock::assertParentChainUnlocked($task);
+            }
+
+            // Date-range coherence with the parent (spec 0123, D-7/D-8), both
+            // on the RESULTING state. The child side is gated on the keys
+            // actually submitted, so a PATCH untouched on all three never
+            // re-judges a row that predates the rule (D-7); the parent side
+            // is unconditional here because it self-gates on dirty dates.
+            if ($data->parentTaskIdSubmitted || $data->startDateSubmitted || $data->endDateSubmitted) {
+                $this->parentDateRangeGuard->assertChildWithinParent($task);
+            }
+
+            $this->parentDateRangeGuard->assertChildrenWithinRange($task);
+
             $this->referentRegistryGuard->assertBelongs($task->registry_id, $task->referent_id);
             $this->closureFeedbackGuard->assertSatisfied($task);
             $this->validationRequirementGuard->assertClosableBy($task, $actor);

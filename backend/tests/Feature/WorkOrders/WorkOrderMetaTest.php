@@ -52,11 +52,11 @@ it('200: field catalogue is in the frozen data_contract order, status is absent 
         ->assertOk()
         ->assertJsonPath('success', true);
 
-    // Spec 0098 appends `attribute_values` at the end of the catalogue — the
-    // requirement changed (a new field joined the resource), so this
-    // expectation is updated to match, not tampered with.
+    // Spec 0098 appends `attribute_values`, spec 0124 appends
+    // `task_template_id` after it — both a new field joining the resource,
+    // so this expectation is updated to match, not tampered with.
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
-    expect($keys)->toBe(['code', 'quote_id', 'title', 'type', 'start_date', 'supervisor_ids', 'participant_slots', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason', 'quote_line_ids', 'attribute_values'])
+    expect($keys)->toBe(['code', 'quote_id', 'title', 'type', 'start_date', 'supervisor_ids', 'participant_slots', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason', 'quote_line_ids', 'attribute_values', 'task_template_id'])
         ->and($keys)->not->toContain('status');
 
     $fields = collect($response->json('data.fields'))->keyBy('key');

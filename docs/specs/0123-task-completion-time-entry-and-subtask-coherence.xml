@@ -8,7 +8,7 @@
   TaskActionService (TaskForSelectService, TaskReferentRegistryGuard, TaskCompletionService,
   TaskWriteLock::assertNotBlocked).
 -->
-<spec id="0123-task-completion-time-entry-and-subtask-coherence" status="draft" owner="utente" date="2026-09-14">
+<spec id="0123-task-completion-time-entry-and-subtask-coherence" status="approved" owner="utente" date="2026-09-14">
 
   <goal>
     Completare un Task registra sempre un segnatempo nello stesso invio; gli stati "In validazione"

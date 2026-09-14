@@ -140,7 +140,7 @@ it('AC-019: a member uploads a document on a frozen task (blocked, closed, in va
 // AC-020 — the detail exposes the gate of the documents tab
 // ---------------------------------------------------------------------------
 
-it('AC-020: permissions.actions.view_documents mirrors tasks.viewDocuments, and the other eleven survive', function () {
+it('AC-020: permissions.actions.view_documents mirrors tasks.viewDocuments, and the other thirteen survive', function () {
     $withPermission = taskDocumentActor(['view', 'viewDocuments']);
     $withoutPermission = taskDocumentActor(['view']);
     $task = Task::factory()->forCreator($withPermission)->create();
@@ -151,14 +151,15 @@ it('AC-020: permissions.actions.view_documents mirrors tasks.viewDocuments, and 
 
     // spec 0118, D-10: `request_update` joined the array as the seventh
     // domain action, after `unblock`. spec 0121, D-6: `complete_to_validation`
-    // joined right after `complete` — both are mechanical consequences of
-    // TasksAuthorization::actions() growing by one key, not a change to this
+    // joined right after `complete`. spec 0123, D-5/D-9: `close_via_status`
+    // and `create_subtask` joined LAST. All four are mechanical consequences
+    // of TasksAuthorization::actions() growing, not a change to this
     // criterion's own subject.
     expect($actions['view_documents'])->toBeTrue()
         ->and(array_keys($actions))->toBe([
             'delete', 'export', 'import', 'view_activity', 'view_documents',
             'complete', 'complete_to_validation', 'uncomplete', 'approve', 'reject', 'block', 'unblock',
-            'request_update',
+            'request_update', 'close_via_status', 'create_subtask',
         ]);
 
     Sanctum::actingAs($withoutPermission);

@@ -138,6 +138,9 @@ export function WorkOrderDetailView({ workOrder }: WorkOrderDetailViewProps) {
               <RecordField label={t('workOrders.detail.contractNumber')}>
                 {workOrder.contract_number ?? <DetailEmpty />}
               </RecordField>
+              <RecordField label={t('workOrders.detail.taskTemplate')}>
+                {workOrder.task_template ? workOrder.task_template.name : <DetailEmpty />}
+              </RecordField>
               {workOrder.is_force_closed ? (
                 <RecordField label={t('workOrders.detail.forceCloseReason')} icon={<Lock />}>
                   <span className="whitespace-pre-wrap">{workOrder.force_close_reason}</span>

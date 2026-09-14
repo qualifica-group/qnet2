@@ -148,6 +148,7 @@ export function taskDetail(overrides: Partial<TaskDetail> = {}): TaskDetail {
     requires_validation: false,
     closure_feedback: null,
     completion_percentage: 25,
+    open_subtasks_count: 0,
     subtasks: [],
     created_at: '2026-09-01T08:00:00Z',
     updated_at: '2026-09-01T08:00:00Z',

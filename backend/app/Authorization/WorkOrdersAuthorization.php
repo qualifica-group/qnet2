@@ -55,6 +55,10 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('force_close_reason', 'textarea'),
             new FieldDefinition('quote_line_ids', 'select'),
             new FieldDefinition('attribute_values', 'custom'),
+            // Spec 0124, D-5: same create-only ceiling as code/quote_id
+            // below — writable only when generating the Commessa, then
+            // permanently readonly.
+            new FieldDefinition('task_template_id', 'select'),
         ];
     }
 
@@ -95,6 +99,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'force_close_reason' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'quote_line_ids' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'task_template_id' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

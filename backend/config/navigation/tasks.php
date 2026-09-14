@@ -69,5 +69,16 @@ return [
             'route' => '/task-importances',
             'permission' => 'task-importances.view',
         ],
+        [
+            // "Modelli di Task" (spec 0124): the configurator behind the
+            // "Modello di Task" picker on the Commessa create form — an
+            // admin builds the row set here so WorkOrderTaskGenerator can
+            // stamp a whole set of Tasks onto a Commessa in one shot.
+            'key' => 'task-templates',
+            'label' => 'navigation.taskTemplates',
+            'icon' => 'layout-template',
+            'route' => '/task-templates',
+            'permission' => 'task-templates.view',
+        ],
     ],
 ];

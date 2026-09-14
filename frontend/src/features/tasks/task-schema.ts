@@ -6,6 +6,9 @@ import {
   type TaskRecurrenceEndMode,
   type TaskRecurrenceFrequency,
 } from '@/features/tasks/types'
+import { addParentDateRangeIssues, type ParentDateRange } from '@/features/tasks/task-parent-date-range'
+
+export type { ParentDateRange } from '@/features/tasks/task-parent-date-range'
 
 /** Backend `title` column limit (`string(191)`). */
 const TITLE_MAX_LENGTH = 191
@@ -91,6 +94,7 @@ interface RefinedRecurrenceValues {
 interface RefinedValues {
   task_status_id: number | null
   requester_id: number | null
+  start_date: string | null
   end_date: string | null
   assignee_ids: number[]
   watcher_ids: number[]
@@ -248,8 +252,15 @@ function addRecurrenceIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFu
  * `closure_feedback` field itself (D-7) — the feedback is written only from
  * the completion pop-up now, so this form no longer needs the status' phase
  * at all.
+ *
+ * `parentDateRange` (spec 0123 D-7) is `null` outside "crea sotto-task"
+ * (`use-task-parent-prefill.ts` only resolves it on create, see there).
  */
-export function buildTaskSchema(t: TFunction, isCreate: boolean = false) {
+export function buildTaskSchema(
+  t: TFunction,
+  isCreate: boolean = false,
+  parentDateRange: ParentDateRange | null = null,
+) {
   return z.object(baseFields(t)).superRefine((values, ctx) => {
     if (!isCreate) {
       addMissingStatusIssue(values, ctx, t)
@@ -259,6 +270,7 @@ export function buildTaskSchema(t: TFunction, isCreate: boolean = false) {
     addMissingEndDateIssue(values, ctx, t)
     addWatcherOverlapIssue(values, ctx, t)
     addRecurrenceIssues(values, ctx, t)
+    addParentDateRangeIssues(values, ctx, t, parentDateRange)
   })
 }
 

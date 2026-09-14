@@ -111,6 +111,7 @@ export const permissions = {
     'task-categories': 'Categorie Task',
     'task-priorities': 'Priorità Task',
     'task-importances': 'Importanza Task',
+    'task-templates': 'Modelli di Task',
     'vat-rates': 'IVA',
   },
   areas: {

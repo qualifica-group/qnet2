@@ -80,6 +80,7 @@ const EDIT_PERMISSIONS: ResourcePermissions = {
     supervisor_ids: EDITABLE,
     participant_slots: EDITABLE,
     quote_line_ids: EDITABLE,
+    task_template_id: READONLY,
     is_force_closed: EDITABLE,
     force_close_reason: EDITABLE,
     description: EDITABLE,
@@ -111,6 +112,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     internal_notes: null,
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
+    task_template: null,
     quote_lines: [],
     applicable_attributes: [],
     attribute_layout: null,
@@ -286,5 +288,32 @@ describe('WorkOrderFormBody — dynamic attribute fields (spec 0098)', () => {
     expect(await screen.findByText('Additional information')).toBeInTheDocument()
     await waitFor(() => expect(fetchWorkOrderFormContextMock).toHaveBeenCalledWith([11]))
     expect(await screen.findByLabelText('Site access')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Spec 0124 D-9/AC-027: "Modello di Task" is a plain, editable picker on a
+ * fresh create form, and renders locked with the persisted name in edit
+ * (backend field-permission ceiling, same mechanism as `code`/`quote_id`,
+ * AC-074).
+ */
+describe('WorkOrderFormBody — task template field (spec 0124)', () => {
+  it('is enabled and empty in a fresh create form', () => {
+    renderForm({ type: 'create' }, FULL_ACCESS_PERMISSIONS, 'COM-0002')
+
+    const combobox = screen.getByRole('combobox', { name: 'Task template' })
+    expect(combobox).not.toBeDisabled()
+    expect(screen.getByText('Select a task template')).toBeInTheDocument()
+  })
+
+  it('renders read-only with the template name in edit mode', () => {
+    renderForm(
+      { type: 'edit', workOrder: workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } }) },
+      EDIT_PERMISSIONS,
+    )
+
+    const combobox = screen.getByRole('combobox', { name: 'Task template' })
+    expect(combobox).toBeDisabled()
+    expect(combobox).toHaveTextContent('Onboarding cliente')
   })
 })

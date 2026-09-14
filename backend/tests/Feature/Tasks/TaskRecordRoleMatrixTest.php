@@ -1,7 +1,9 @@
 <?php
 
 use App\Authorization\TasksAuthorization;
+use App\Enums\TaskStatusGroup;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\User;
 use App\Services\Tasks\TaskAbilityResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -140,11 +142,17 @@ it('AC-002 (spec 0121): an assignee sending requires_validation gets 422 and no 
     $this->assertDatabaseHas('tasks', ['id' => $task2->id, 'requires_validation' => true]);
 });
 
-it('AC-015 (spec 0121): TasksAuthorization::actions() carries complete_to_validation, 13 keys total', function () {
+// REQUIREMENT CHANGED (spec 0123, D-5/D-9): actions() grew from 13 to 15
+// keys — `close_via_status` and `create_subtask` were appended in that
+// order (AC-010..AC-035 dependency notwithstanding, the array's INSERTION
+// order, not an alphabetical one).
+it('AC-015 (spec 0121): TasksAuthorization::actions() carries complete_to_validation, 15 keys total', function () {
     $actions = app(TasksAuthorization::class)->actions();
 
-    expect($actions)->toHaveCount(13)
-        ->and($actions)->toContain('complete_to_validation');
+    expect($actions)->toHaveCount(15)
+        ->and($actions)->toContain('complete_to_validation')
+        ->and($actions)->toContain('close_via_status')
+        ->and($actions)->toContain('create_subtask');
 });
 
 // ---------------------------------------------------------------------------
@@ -199,4 +207,78 @@ it('AC-040 (converse): a creator WITH tasks.complete is granted by the same Gate
     $task = Task::factory()->forCreator($actor)->create();
 
     expect(Gate::forUser($actor)->allows('complete', $task))->toBeTrue();
+});
+
+// ---------------------------------------------------------------------------
+// AC-014 (spec 0123, D-5) — permissions.actions.close_via_status
+// ---------------------------------------------------------------------------
+
+it('AC-014: close_via_status is false for a plain assignee on a Task requiring validation', function () {
+    $assignee = taskActorWith(['view', 'update']);
+    $task = Task::factory()->requiringValidation()->create();
+    $task->assignees()->attach($assignee->id);
+    Sanctum::actingAs($assignee);
+
+    $this->getJson("/api/tasks/{$task->id}")
+        ->assertOk()->assertJsonPath('permissions.actions.close_via_status', false);
+});
+
+it('AC-014: close_via_status is false when requires_closure_feedback is on and the feedback is empty, even for the creator', function () {
+    $creator = taskActorWith(['view', 'update']);
+    $task = Task::factory()->requiringClosureFeedback()->forCreator($creator)->create();
+    Sanctum::actingAs($creator);
+
+    $this->getJson("/api/tasks/{$task->id}")
+        ->assertOk()->assertJsonPath('permissions.actions.close_via_status', false);
+});
+
+it('AC-014: close_via_status is true for the creator on a Task with no obligations', function () {
+    $creator = taskActorWith(['view', 'update']);
+    $task = Task::factory()->forCreator($creator)->create();
+    Sanctum::actingAs($creator);
+
+    $this->getJson("/api/tasks/{$task->id}")
+        ->assertOk()->assertJsonPath('permissions.actions.close_via_status', true);
+});
+
+// ---------------------------------------------------------------------------
+// AC-035 (spec 0123, D-9) — permissions.actions.create_subtask
+// ---------------------------------------------------------------------------
+
+it('AC-035: create_subtask is false on a blocked Task', function () {
+    $actor = taskActorWith(['view', 'create']);
+    $task = Task::factory()->forCreator($actor)->create(['is_blocked' => true]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$task->id}")
+        ->assertOk()->assertJsonPath('permissions.actions.create_subtask', false);
+});
+
+it('AC-035: create_subtask is false on a Task in the in_validation phase', function () {
+    $actor = taskActorWith(['view', 'create']);
+    $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
+    $task = Task::factory()->forCreator($actor)->inStatus($inValidation)->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$task->id}")
+        ->assertOk()->assertJsonPath('permissions.actions.create_subtask', false);
+});
+
+it('AC-035: create_subtask is false on a Task whose ancestor is frozen', function () {
+    $actor = taskActorWith(['view', 'create']);
+    $grandparent = Task::factory()->forCreator($actor)->create(['is_blocked' => true]);
+    $parent = Task::factory()->forCreator($actor)->childOf($grandparent)->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$parent->id}")
+        ->assertOk()->assertJsonPath('permissions.actions.create_subtask', false);
+});
+
+it('AC-035: create_subtask is true on an open Task for an actor holding tasks.create', function () {
+    $actor = taskActorWith(['view', 'create']);
+    $task = Task::factory()->forCreator($actor)->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$task->id}")
+        ->assertOk()->assertJsonPath('permissions.actions.create_subtask', true);
 });

@@ -17,6 +17,7 @@ const VALID_BASE = {
   is_force_closed: false,
   force_close_reason: null,
   quote_line_ids: [1, 2],
+  task_template_id: null,
   attribute_values: {},
 }
 
@@ -107,6 +108,24 @@ describe('buildUpdateWorkOrderSchema — force close reason (AC-073)', () => {
     const result = schema.safeParse({ ...VALID_BASE, quote_id: null })
 
     expect(result.success).toBe(true)
+  })
+})
+
+/** Spec 0124 D-9: "Modello di Task", optional in both modes, never required. */
+describe('buildCreateWorkOrderSchema / buildUpdateWorkOrderSchema — task_template_id (spec 0124)', () => {
+  it('accepts null on create', () => {
+    const schema = buildCreateWorkOrderSchema(i18n.t.bind(i18n))
+    expect(schema.safeParse({ ...VALID_BASE, task_template_id: null }).success).toBe(true)
+  })
+
+  it('accepts a picked id on create', () => {
+    const schema = buildCreateWorkOrderSchema(i18n.t.bind(i18n))
+    expect(schema.safeParse({ ...VALID_BASE, task_template_id: 3 }).success).toBe(true)
+  })
+
+  it('accepts either shape on update too (D-5: read-only there, but structurally valid)', () => {
+    const schema = buildUpdateWorkOrderSchema(i18n.t.bind(i18n))
+    expect(schema.safeParse({ ...VALID_BASE, task_template_id: 3 }).success).toBe(true)
   })
 })
 

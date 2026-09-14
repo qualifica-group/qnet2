@@ -6,7 +6,6 @@ namespace App\Http\Requests\TimeEntries;
 
 use App\DataObjects\TimeEntries\TimeEntryData;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for POST /api/tasks/{task}/time-entries (spec 0122,
@@ -18,15 +17,13 @@ use Illuminate\Validation\Rule;
  * Authorization (`time-entries.create` AND
  * `TaskAbilityResolver::canComplete()`) is intentionally NOT handled here —
  * it stays in TaskTimeEntryController::store, which has the Task in scope.
+ *
+ * `rules()` is TimeEntryValidationRules::rules() verbatim (spec 0123, D-3):
+ * the SAME shape CompleteTaskRequest requires under `time_entry.*`, from the
+ * one shared source, so the two can never drift apart (AC-009).
  */
 class StoreTaskTimeEntryRequest extends FormRequest
 {
-    private const int NOTES_MAX = 5000;
-
-    private const string TIME_FORMAT = 'H:i';
-
-    private const string DATE_FORMAT = 'Y-m-d';
-
     public function authorize(): bool
     {
         // Authorization handled in the controller (time-entries.create +
@@ -39,18 +36,7 @@ class StoreTaskTimeEntryRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'date' => ['required', 'date_format:'.self::DATE_FORMAT],
-            'task_type_id' => [
-                'required',
-                'integer',
-                Rule::exists('task_types', 'id')->where(fn ($query) => $query->where('is_active', true)),
-            ],
-            'start_time' => ['nullable', 'string', 'date_format:'.self::TIME_FORMAT, 'required_with:end_time'],
-            'end_time' => ['nullable', 'string', 'date_format:'.self::TIME_FORMAT, 'required_with:start_time', 'after:start_time'],
-            'minutes' => ['required', 'integer', 'min:1', 'max:1440'],
-            'notes' => ['sometimes', 'nullable', 'string', 'max:'.self::NOTES_MAX],
-        ];
+        return TimeEntryValidationRules::rules();
     }
 
     /**

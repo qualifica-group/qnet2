@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0124 — MODULO MODELLI DI TASK (task templates) + generazione task alla creazione Commessa
+  Fonte requisiti: brief utente 2026-09-14 ("Modulo Modelli di Task").
+  Decisioni utente 2026-09-14 (AskUserQuestion): assegnatari = tutti i supervisori; scadenza da
+  offset giorni nel modello; stato iniziale solo gruppi open/pending; tracciamento
+  work_orders.task_template_id che blocca l'eliminazione.
+-->
+<spec id="0124-task-templates-module" status="approved" owner="utente" date="2026-09-14">
+
+  <goal>
+    Gli amministratori configurano Modelli di Task (nome, descrizione, attivo, elenco ordinato di
+    task con titolo, descrizione, tempo stimato, stato iniziale, scadenza in giorni e allegati).
+    Chi genera una Commessa puo' scegliere un modello attivo: il sistema crea i task corrispondenti
+    collegati alla Commessa, assegnati ai suoi supervisori, come copie indipendenti dal modello.
+  </goal>
+
+  <context>
+    <existing_names>
+      <item>Commessa = `work_orders` / `App\Models\WorkOrder`. "Responsabile" = pivot
+        `work_order_supervisor` (1..n, `WorkOrder::supervisors()`), non una colonna. `start_date`
+        NOT NULL. Nessuna relazione `tasks()` sul model: il legame vive in `tasks.work_order_id`
+        (FK nullable, nullOnDelete). Cliente via `quote -> opportunity (opportunity_id NOT NULL)
+        -> registry (registry_id NOT NULL)`.</item>
+      <item>Creazione Commessa, due ingressi sullo stesso servizio
+        `App\Services\WorkOrderService::create(CreateWorkOrderData): WorkOrder` (DB::transaction,
+        Step 1-3): `POST /api/work-orders` (`WorkOrderController::store`,
+        `StoreWorkOrderRequest`) e `POST /api/contracts/{contract}/work-orders`
+        (`Contracts\ContractWorkOrderController`, `GenerateContractWorkOrderRequest`,
+        `CreateWorkOrderData::forContractGeneration`). Frontend:
+        `features/work-orders/work-order-form*.tsx`, `work-order-schema.ts`,
+        `work-order-form-payload.ts`; `features/contracts/contract-program-dialog.tsx`,
+        `contract-program-schema.ts`, `contracts/api.ts::createContractWorkOrder`.</item>
+      <item>`tasks` / `App\Models\Task`: `title`(191), `description`, `task_status_id` NOT NULL,
+        `creator_id` NOT NULL (non fillable), `requester_id`, `start_date`, `end_date`,
+        `estimated_minutes` (unsigned int nullable), `work_order_id`, `registry_id`,
+        `opportunity_id`; pivot `task_assignee`/`task_watcher`; trait `HasAttachments`,
+        `HasNotes`, `LogsModelActivity`. Obbligatori in `StoreTaskRequest` (0118 D-1): title,
+        requester_id, end_date, assignee_ids (min 1).</item>
+      <item>Stati: `task_statuses` (`name`, `is_active`, `sort_order`, `system_key`, `group` enum
+        `App\Enums\TaskStatusGroup` open|pending|in_validation|closed_positive|closed_negative).
+        `Tasks\TaskInitialStatusResolver::resolve(assigneeIds, creatorId, requesterId)` -> open o
+        assigned. `GET /api/task-statuses/for-select` espone `meta.group`.
+        `TaskStatusService::delete` blocca con 409 se lo stato e' usato da un task.</item>
+      <item>Precedente di task creati dal sistema senza passare da `TaskService::create`:
+        `Tasks\TaskOccurrenceFactory::materialize()` (new Task, creator_id a mano, status
+        risolto, sync assegnatari, `TaskNotifier::assigned($task, ?User $actor, ids)`).</item>
+      <item>Allegati: `attachments` polimorfica (`attachable`, `collection`, `disk`, `path`,
+        `original_name`, `mime_type`, `extension`, `size`, `uploaded_by`),
+        `App\Services\AttachmentService` (`store`, `storeFor`, `delete`, `persist` privato con nome
+        UUID), `config/attachments.php` (`attachable_types` allow-list, `'task'`), morph map in
+        `AppServiceProvider`. Nessun metodo di copia file esiste oggi. Collection documenti del
+        task: `documents`. Staging allegati in create: `features/tasks/task-attachment-staging.tsx`
+        + upload post-save in `use-task-form.ts`.</item>
+      <item>Modulo di riferimento CRUD: ProductTypology (0099). Model `#[Fillable]` +
+        `LogsModelActivity`; DTO `Create/Update*Data`; FormRequest con `EnforcesFieldPermissions`;
+        `Policies\Abstracts\BasePolicy` (resource kebab-case); `Authorization\*Authorization`
+        registrata in `config/authorization.php`; `Tables\*TableDefinition` + ColumnCatalog in
+        `config/tables.php` (export generico `exports/{domain}`); `config/activity-log.php`;
+        navigazione `config/navigation/tasks.php`; permessi da `permissions:sync`; envelope
+        `BaseApiController::ok/okWithPermissions`; delete guard `abort(409, ...)` nel service.
+        For-select senza gate oltre `auth:sanctum` (ADR 0011).</item>
+      <item>Header + righe ordinate: `QuoteWorkflows\WorkflowStatusWriter::syncCustoms` (id =
+        update, senza id = create, mancante = delete, id estraneo = 422, ordine = ordine
+        dell'array). Frontend: `components/ui/sortable-list.tsx` (@dnd-kit gia' in package.json)
+        usato in `quote-workflows/workflow-statuses-editor.tsx` dentro un form RHF.</item>
+      <item>Frontend modulo: `features/product-typologies/*` (api, types, schema, form, form-body,
+        form-meta, detail, table con `TableView`, `*-screens.tsx` con `moduleScreen`),
+        `pages/*-page.tsx` + `routes/router.tsx` + `routes/breadcrumbs.tsx`, i18n
+        `i18n/locales/{it,en}-*.ts` + test di parita', `ResourcePermissionsProvider`/`MetaField`.</item>
+      <item>`tests/Feature/QuoteWorkflows/QuoteWorkflowMigrationTest.php`: `--step` hard-coded (66
+        al 2026-09-14) -> +3 alla build. `tests/Feature/Authorization/FieldCatalogueEndpointTest.php`
+        lista esplicita delle risorse -> aggiungere `task-templates`.</item>
+      <item>LAVORO PARALLELO NON COMMITTATO (build spec 0123) su `TaskService.php`,
+        `TaskResource.php`, `TaskCompletionService`, `TasksAuthorization`, `DemoTaskSeeder`,
+        `components/ui/async-paginated-select*.tsx`. Questa spec NON tocca quei file.</item>
+    </existing_names>
+  </context>
+
+  <decisions>
+    <decision id="D-1">Due tabelle: `task_templates` (testata) e `task_template_items` (righe).
+      Resource permessi `task-templates`; le righe non hanno endpoint propri: si scrivono solo
+      dentro create/update della testata (array `items`), sync alla QuoteWorkflow.</decision>
+    <decision id="D-2">ASSEGNATARI (utente): ogni task generato ha come assegnatari TUTTI i
+      supervisori della Commessa. Nessun osservatore.</decision>
+    <decision id="D-3">DATE (utente): ogni riga ha `due_offset_days` (intero 0..3650, default 0).
+      Task generato: `start_date` = `work_orders.start_date`; `end_date` = start_date +
+      due_offset_days. Richiedente e creatore = l'utente che genera la Commessa.</decision>
+    <decision id="D-4">STATO INIZIALE (utente): `task_template_items.task_status_id` nullable,
+      ammesso solo uno stato attivo di gruppo `open` o `pending` (422 altrimenti). In generazione:
+      se valorizzato e ancora attivo e di gruppo open/pending lo si usa; altrimenti (vuoto, poi
+      disattivato o spostato di gruppo) decide `TaskInitialStatusResolver`, senza errore.</decision>
+    <decision id="D-5">TRACCIAMENTO/ELIMINAZIONE (utente): `work_orders.task_template_id` nullable
+      FK restrictOnDelete, scritto solo in creazione (immutabile in update). Un modello
+      referenziato da almeno una Commessa non si elimina: 409 con messaggio che suggerisce la
+      disattivazione. Eliminare un modello non referenziato cancella righe e relativi allegati;
+      i task generati non hanno alcun FK verso modello o righe e non vengono mai toccati.
+      Uno stato task usato da una riga di modello non si elimina (409, stesso stile del guard
+      esistente).</decision>
+    <decision id="D-6">SNAPSHOT: i valori sono COPIATI sul task (nessun FK task -> modello/riga).
+      Gli allegati delle righe sono COPIATI fisicamente (nuovo file UUID, nuova riga
+      `attachments` su `task`, collection `documents`, `uploaded_by` = utente generatore):
+      cancellare/modificare l'allegato del modello non tocca quello del task e viceversa.
+      Nuovo metodo `AttachmentService::copyTo(Attachment $source, Model $target, ?string
+      $collection, User $uploader): Attachment`.</decision>
+    <decision id="D-7">GENERAZIONE: nuovo `App\Services\WorkOrders\WorkOrderTaskGenerator`
+      (pattern `TaskOccurrenceFactory`, NON passa da `TaskService::create`, file in build 0123),
+      chiamato come Step 4 dentro la transazione di `WorkOrderService::create` quando
+      `task_template_id` e' presente. Precompila anche `registry_id` e `opportunity_id` dalla
+      quote della Commessa; `requires_validation` false; altri campi null. Notifiche
+      `TaskNotifier::assigned` con actor = utente generatore, dopo il commit. Un errore in
+      generazione (inclusa la copia file) annulla l'intera creazione della Commessa e rimuove i
+      file gia' copiati.</decision>
+    <decision id="D-8">AUTORIZZAZIONE GENERAZIONE: basta il permesso gia' richiesto per creare la
+      Commessa (`work-orders.create` o `program` sul contratto); non serve `tasks.create`. Il
+      modello scelto deve esistere ed essere attivo (422 su `task_template_id` altrimenti).
+      Il task generato segue poi le normali regole di visibilita'/permessi dei task.</decision>
+    <decision id="D-9">UI: il campo "Modello di Task" (select singola, opzionale, solo attivi)
+      compare nel form di creazione Commessa (solo mode create) e nel dialog "Programma" del
+      contratto. In edit/view della Commessa il modello usato e' mostrato in sola lettura.
+      Form modello: righe riordinabili con `SortableList`, aggiungi/modifica/rimuovi; allegati
+      per riga: in create/nuova riga staging in memoria e upload dopo il salvataggio (id riga
+      dalla response, stesso ordine); su riga gia' salvata upload/elimina diretti.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: `task_templates`, `task_template_items`, `work_orders.task_template_id`.</item>
+      <item>Backend CRUD `task-templates`: model, DTO, FormRequest, Policy, Authorization (campi),
+        Resource, Controller, Service (+ writer righe), for-select, TableDefinition + export,
+        activity log, navigazione, morph alias + attachable_types `task_template_item`.</item>
+      <item>`AttachmentService::copyTo`, `WorkOrderTaskGenerator`, integrazione in
+        `WorkOrderService::create`, `StoreWorkOrderRequest`, `GenerateContractWorkOrderRequest`,
+        `CreateWorkOrderData`, `UpdateWorkOrderRequest` (prohibited), `WorkOrderResource`,
+        `WorkOrdersAuthorization` (campo `task_template_id`).</item>
+      <item>Guard eliminazione su `TaskStatusService::delete` per le righe modello.</item>
+      <item>`DemoTaskTemplateSeeder` in `DemoDataSeeder`.</item>
+      <item>Frontend: feature `task-templates` (tabella, form create/edit/view, editor righe
+        riordinabile, allegati per riga, i18n it/en), rotta, breadcrumb, campo nei due form
+        Commessa, sola lettura in dettaglio Commessa.</item>
+      <item>Test Pest e Vitest per ogni AC.</item>
+    </in>
+    <out>
+      <item>Applicare un modello a una Commessa GIA' esistente o rigenerare i task.</item>
+      <item>Sincronizzazione modello -> task generati (in qualsiasi direzione).</item>
+      <item>Altri campi task nel modello (tipo, categoria, priorita', importanza, osservatori,
+        requires_validation, ricorrenza, sottotask/gerarchia, referente).</item>
+      <item>Assegnatari configurabili per riga o per ruolo diverso dai supervisori.</item>
+      <item>Duplicazione/clonazione di un modello; import da file.</item>
+      <item>Relazione `WorkOrder::tasks()` o lista task nel dettaglio Commessa.</item>
+      <item>Modifiche a `TaskService`, `TaskResource`, `StoreTaskRequest` e ai file della build 0123.</item>
+      <item>Correzione della nota di `AttachmentController::index` (non verifica la visibilita'
+        del proprietario): pre-esistente, solo segnalata.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto: { success, message, data[, permissions] }. Date ISO 8601. -->
+
+    <shape name="TaskTemplateItem">
+      { id: int, title: string(<=191), description: string|null, estimated_minutes: int|null,
+        task_status_id: int|null, task_status: { id: int, name: string, color: string, group: string }|null,
+        due_offset_days: int, sort_order: int,
+        attachments: [ { id: int, original_name: string, mime_type: string, extension: string|null,
+                         size: int, created_at: string } ] }
+    </shape>
+    <shape name="TaskTemplate">
+      { id: int, name: string(<=191), description: string|null, is_active: bool, items_count: int,
+        items: TaskTemplateItem[] (ordinati per sort_order), created_at: string, updated_at: string }
+    </shape>
+
+    <endpoint method="GET" path="/api/task-templates/{taskTemplate}">
+      <response status="200">{ success, message, data: TaskTemplate, permissions }</response>
+      <errors>403 senza task-templates.view; 404 inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/task-templates">
+      <request>
+        { name: string required max:191 unique(task_templates.name),
+          description: string|null, is_active: bool (default true),
+          items: array required min:1 max:100,
+          items.*.title: string required max:191,
+          items.*.description: string|null,
+          items.*.estimated_minutes: int|null min:0 max:1000000,
+          items.*.task_status_id: int|null exists task_statuses, is_active, group in [open,pending],
+          items.*.due_offset_days: int required min:0 max:3650 }
+        L'ordine dell'array E' l'ordine (sort_order = indice). `items.*.id` vietato in create.
+      </request>
+      <response status="201">{ success, message, data: TaskTemplate, permissions }</response>
+      <errors>403 senza task-templates.create; 422 validazione (incluso campo non editabile per
+        permessi sui campi)</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/task-templates/{taskTemplate}">
+      <request>
+        Stessi campi, tutti `sometimes`. Se `items` e' inviato: full sync — elemento con `id`
+        appartenente al modello = update, senza `id` = create, riga esistente non inviata =
+        delete (con i suoi allegati); `id` di altro modello o inesistente = 422
+        (`items.N.id`). Min 1 riga.
+      </request>
+      <response status="200">{ success, message, data: TaskTemplate, permissions }</response>
+      <errors>403 senza task-templates.update; 404; 422</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/task-templates/{taskTemplate}">
+      <response status="204"/>
+      <errors>403 senza task-templates.delete; 404; 409 { success:false, message: "Questo modello
+        di task e' stato usato per generare commesse e non puo' essere eliminato. Disattivalo."
+        (tradotto via __()) } se referenziato da work_orders.task_template_id</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/task-templates/for-select">
+      <request>search?, offset?, limit?, ids[]? (ADR 0011). Solo `is_active = true`, eccetto gli
+        `ids` richiesti (idratazione del valore gia' salvato).</request>
+      <response status="200">{ items: [ { id, label: name, subtitle: description|null,
+        meta: { items_count: int } } ], pagination } — fuori envelope come gli altri for-select</response>
+      <errors>401 non autenticato</errors>
+    </endpoint>
+
+    <endpoint method="SSRM" path="/api/tables/task-templates (endpoint generici TableRegistry) + /api/exports/task-templates">
+      <response status="200">Colonne: `name` (text, sort, filter, search), `description` (text,
+        filter, search), `items_count` (number, sort, filter), `is_active` (boolean/set, sort,
+        filter), `created_at` (date, sort, filter), `updated_at` (date, sort, filter). Default
+        sort `name asc`. Azioni riga: view, edit, delete (permesso relativo), view_activity.
+        Bulk delete passa dal guard del service.</response>
+      <errors>403 senza task-templates.viewAny / .export</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/attachments (esistente)">
+      <request>`attachable_type: "task_template_item"`, `attachable_id`, `file`, `collection:
+        "documents"`. Nuovo alias nella allow-list; regole invariate.</request>
+      <errors>403 senza attachments.create; 422 tipo/dimensione</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders e /api/contracts/{contract}/work-orders (esistenti)">
+      <request>Nuovo campo opzionale `task_template_id: int|null` — exists, is_active = true.</request>
+      <response status="201">WorkOrderResource invariato + `task_template: { id: int, name: string }|null`.
+        I task sono creati come effetto collaterale (non restituiti).</response>
+      <errors>422 `task_template_id` inesistente o non attivo; rollback completo della Commessa
+        se la generazione fallisce</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/work-orders/{workOrder} (esistente)">
+      <request>`task_template_id` prohibited (422).</request>
+    </endpoint>
+
+    <generated_task>
+      title, description, estimated_minutes = copiati dalla riga; task_status_id = D-4;
+      work_order_id = Commessa; registry_id/opportunity_id = da quote; creator_id = requester_id =
+      utente generatore; assignees = tutti i supervisori; watchers = nessuno; start_date =
+      work_orders.start_date; end_date = start_date + due_offset_days; requires_validation = false;
+      allegati copiati (collection documents). Ordine di creazione = sort_order.
+    </generated_task>
+
+    <permissions>`task-templates.{view,viewAny,create,update,delete,export,import,viewActivity}`
+      via BasePolicy + permissions:sync; campi Authorization: name (mandatory), description,
+      is_active, items (custom). `work-orders` campo `task_template_id` (select).</permissions>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- CRUD modello -->
+    <criterion id="AC-001">Dato un utente con task-templates.create, quando POST con 3 righe,
+      allora 201, data.items_count = 3, items in ordine di invio con sort_order 0,1,2.</criterion>
+    <criterion id="AC-002">Dato POST senza items, con items vuoto, con nome duplicato, con riga senza
+      titolo o con due_offset_days negativo, allora 422 sulla chiave relativa e nessun record.</criterion>
+    <criterion id="AC-003">Dato una riga con task_status_id di gruppo in_validation, closed_* o
+      inattivo, allora 422 `items.N.task_status_id`; con stato open o pending, 201.</criterion>
+    <criterion id="AC-004">Dato un modello con righe A,B,C, quando PATCH items = [C(id), A(id, titolo
+      nuovo), nuova D], allora B e' eliminata (con i suoi allegati), A aggiornata, ordine C,A,D.</criterion>
+    <criterion id="AC-005">Dato PATCH con items.N.id appartenente a un altro modello, allora 422 e
+      nessuna modifica a nessuno dei due modelli.</criterion>
+    <criterion id="AC-006">Dato un utente senza il permesso relativo, allora show/store/update/
+      destroy/SSRM/export rispondono 403; for-select risponde 200 a qualunque autenticato.</criterion>
+    <criterion id="AC-007">Dato un ruolo con `description` in sola lettura, quando PATCH cambia
+      description, allora 422 campo non editabile.</criterion>
+    <criterion id="AC-008">Dato la tabella SSRM, allora espone le 6 colonne del contratto,
+      ordina e filtra per items_count e is_active, rifiuta sort su colonna non in allow-list,
+      e l'export produce le stesse colonne.</criterion>
+    <criterion id="AC-009">Dato for-select, allora restituisce solo modelli attivi; con ids=[x]
+      di un modello inattivo lo include.</criterion>
+    <criterion id="AC-010">Dato un modello mai usato, quando DELETE, allora 204, righe e allegati
+      (righe e file su disco) rimossi.</criterion>
+    <criterion id="AC-011">Dato un modello usato da una Commessa, quando DELETE (singolo o bulk da
+      tabella), allora 409 con messaggio esplicativo e il modello resta; i task della Commessa
+      restano invariati.</criterion>
+    <criterion id="AC-012">Dato uno stato task usato da una riga di modello, quando DELETE dello
+      stato, allora 409.</criterion>
+    <criterion id="AC-013">Dato un file caricato su `task_template_item`, allora compare in
+      items.*.attachments del show.</criterion>
+    <!-- Generazione -->
+    <criterion id="AC-014">Dato un modello attivo con 2 righe e una Commessa con 2 supervisori,
+      quando POST /api/work-orders con task_template_id, allora 201, work_orders.task_template_id
+      valorizzato e 2 task con work_order_id della Commessa, titolo/descrizione/estimated_minutes
+      della riga, assegnatari = i 2 supervisori, creator_id = requester_id = utente,
+      registry_id/opportunity_id dalla quote.</criterion>
+    <criterion id="AC-015">Dato start_date 2026-10-01 e due_offset_days 5, allora start_date del
+      task 2026-10-01 e end_date 2026-10-06.</criterion>
+    <criterion id="AC-016">Dato riga con stato pending attivo, allora il task ha quello stato;
+      dato riga senza stato o con stato nel frattempo disattivato, allora lo stato e' quello
+      di TaskInitialStatusResolver.</criterion>
+    <criterion id="AC-017">Dato riga con un allegato, allora il task generato ha un allegato
+      collection documents con stesso original_name/size, path diverso, file esistente su disco;
+      eliminare l'allegato del modello lascia intatto quello del task.</criterion>
+    <criterion id="AC-018">Stesso esito di AC-014 via POST /api/contracts/{contract}/work-orders.</criterion>
+    <criterion id="AC-019">Dato task_template_id inattivo o inesistente, allora 422 e nessuna
+      Commessa creata; dato un errore forzato durante la copia di un allegato, allora nessuna
+      Commessa, nessun task, nessun file copiato residuo.</criterion>
+    <criterion id="AC-020">Dato POST Commessa senza task_template_id, allora nessun task creato
+      e task_template_id null (comportamento esistente invariato).</criterion>
+    <criterion id="AC-021">Snapshot: dato una Commessa generata, quando si modificano titolo, righe
+      o si elimina una riga del modello, allora i task generati non cambiano; quando si modifica o
+      elimina un task generato, allora il modello non cambia.</criterion>
+    <criterion id="AC-022">Dato PATCH /api/work-orders con task_template_id, allora 422.</criterion>
+    <criterion id="AC-023">Dato un utente con work-orders.create ma senza tasks.create, allora la
+      generazione avviene; i supervisori ricevono la notifica di assegnazione.</criterion>
+    <!-- Frontend -->
+    <criterion id="AC-024">(Vitest) Il form modello permette di aggiungere, modificare, rimuovere e
+      riordinare righe; il payload inviato riflette l'ordine visualizzato e gli id delle righe
+      esistenti.</criterion>
+    <criterion id="AC-025">(Vitest) La select stato della riga mostra solo opzioni con meta.group
+      open/pending; errori di validazione per riga sono cablati con aria-invalid/aria-describedby.</criterion>
+    <criterion id="AC-026">(Vitest) In create gli allegati staged di ogni riga vengono caricati dopo
+      il salvataggio sull'id riga corrispondente della response.</criterion>
+    <criterion id="AC-027">(Vitest) Il form Commessa in create e il dialog Programma inviano
+      task_template_id selezionato; in edit il campo non e' editabile e mostra il nome del modello.</criterion>
+    <criterion id="AC-028">(Vitest) La tabella gestisce il 409 in eliminazione con toast del
+      messaggio; pagina protetta da `Can task-templates.viewAny`; parita' i18n it/en.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (dnd-kit, AG Grid, RHF, Zod gia' presenti).</item>
+    <item>Authz server-side su ogni endpoint (Policy + Authorization campi); UI solo nasconde.</item>
+    <item>Sort/filtri SSRM solo da allow-list della ColumnCatalog; `items_count` via withCount,
+      mai raw da input.</item>
+    <item>`$request->safe()` / DTO; FK con indici; migrazioni reversibili; file entro 300/500 righe.</item>
+    <item>Non toccare i file della build 0123 in corso; build di questa spec solo dopo il commit
+      di 0123 o su file disgiunti.</item>
+    <item>Suite Pest SERIALE (non --parallel); typecheck `npx tsc -b --force`.</item>
+    <item>UI compatta (ui-design.md §2), token di superficie, responsive 375/768/1024.</item>
+  </constraints>
+
+  <plan>
+    <!-- Ownership di file disgiunta. Nessun teammate committa (CLAUDE.md §3.6). -->
+    <microtask id="MT-B1" owner="backend" lane="sequential" depends="">
+      Migrazioni `create_task_templates_table`, `create_task_template_items_table`,
+      `add_task_template_id_to_work_orders_table`; model `App\Models\TaskTemplate`
+      (`items()` HasMany ordinata per sort_order, `workOrders()` HasMany),
+      `App\Models\TaskTemplateItem` (`template()` BelongsTo via task_template_id, `taskStatus()`
+      BelongsTo, `HasAttachments`), factory di entrambi; `WorkOrder::taskTemplate()` BelongsTo;
+      `TaskStatus::taskTemplateItems()` HasMany; morph alias `task_template`/`task_template_item`
+      in AppServiceProvider; `task_template_item` in `config/attachments.php`; `--step` +3 in
+      QuoteWorkflowMigrationTest.
+    </microtask>
+    <microtask id="MT-B2" owner="backend" lane="parallel" depends="MT-B1">
+      Modulo CRUD task-templates completo (+ TaskStatusService::delete guard). AC-001..013.
+    </microtask>
+    <microtask id="MT-B3" owner="backend" lane="parallel" depends="MT-B1">
+      AttachmentService::copyTo. Parte di AC-017/AC-019.
+    </microtask>
+    <microtask id="MT-B4" owner="backend" lane="parallel" depends="MT-B1,MT-B3">
+      WorkOrderTaskGenerator + integrazione creazione Commessa. AC-014..023.
+    </microtask>
+    <microtask id="MT-B5" owner="backend" lane="sequential" depends="MT-B2,MT-B4">
+      DemoTaskTemplateSeeder in DemoDataSeeder.
+    </microtask>
+    <microtask id="MT-F1" owner="frontend" lane="parallel" depends="">
+      features/task-templates (tabella, form, screens, pagina, router, breadcrumbs, i18n). AC-028.
+    </microtask>
+    <microtask id="MT-F2" owner="frontend" lane="sequential" depends="MT-F1">
+      Editor righe SortableList + allegati per riga + select stato filtrata. AC-024..026.
+    </microtask>
+    <microtask id="MT-F3" owner="frontend" lane="parallel" depends="">
+      Campo modello in form Commessa, dialog Programma, sola lettura dettaglio. AC-027.
+    </microtask>
+    <microtask id="MT-V" owner="verifier" lane="gated" depends="all">
+      Pest seriale, Pint, Vitest, ESLint, `tsc -b --force`, AC 1:1.
+    </microtask>
+  </plan>
+
+</spec>

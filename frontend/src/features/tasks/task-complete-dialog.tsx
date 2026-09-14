@@ -20,9 +20,11 @@ import { RelationSelectField } from '@/components/form/relation-select-field'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { TASK_STATUSES_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
 import { IN_VALIDATION_GROUP_PARAMS } from '@/features/tasks/task-action-availability'
+import { TaskCompleteTimeEntrySection } from '@/features/tasks/task-complete-time-entry-section'
 import { useTaskSelectLabels } from '@/features/tasks/task-select-labels'
 import { useCompleteTask } from '@/features/tasks/use-task-mutations'
-import type { CompleteTaskPayload, TaskDetailWithPermissions } from '@/features/tasks/types'
+import { useTaskCompleteTimeEntryForm } from '@/features/tasks/use-task-complete-time-entry-form'
+import type { CompleteTaskPayload, CompleteTaskTimeEntryPayload, TaskDetailWithPermissions } from '@/features/tasks/types'
 
 const SERVER_ERROR_FIELDS = ['closure_feedback', 'validation_status_id'] as const
 
@@ -64,9 +66,17 @@ function completeTaskDefaultValues(): CompleteTaskFormValues {
   return { closure_feedback: '', validation_status_id: null }
 }
 
-/** Omits `closure_feedback` when blank; omits `validation_status_id` entirely off the validation path (D-3). */
-function buildCompletePayload(values: CompleteTaskFormValues, toValidation: boolean): CompleteTaskPayload {
-  const payload: CompleteTaskPayload = {}
+/**
+ * Omits `closure_feedback` when blank; omits `validation_status_id` entirely
+ * off the validation path (D-3); `time_entry` is always present (spec 0123
+ * D-1), already validated by `useTaskCompleteTimeEntryForm.validate()`.
+ */
+function buildCompletePayload(
+  values: CompleteTaskFormValues,
+  toValidation: boolean,
+  timeEntry: CompleteTaskTimeEntryPayload,
+): CompleteTaskPayload {
+  const payload: CompleteTaskPayload = { time_entry: timeEntry }
   const feedback = values.closure_feedback.trim()
   if (feedback !== '') {
     payload.closure_feedback = feedback
@@ -89,8 +99,9 @@ interface TaskCompleteDialogProps {
  * it to the `in_validation` status picked here instead. There is no switch:
  * the actor never chooses the path, only (on the validation path) its
  * destination. The button stays "Completa" either way (D-7); only the title
- * changes. The segnatempo the product document also wants in this pop-up is
- * OUT OF SCOPE (0116 D-10): nothing here prepares a field for it.
+ * changes. The segnatempo is now MANDATORY on both paths (spec 0123 D-1): the
+ * "Segnatempo" section below is a SEPARATE `useForm` (`use-task-complete-time-entry-form.ts`)
+ * validated and submitted together with this one.
  */
 export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDialogProps) {
   const { t } = useTranslation()
@@ -103,6 +114,7 @@ export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDia
     defaultValues: completeTaskDefaultValues(),
   })
   const closureFeedback = useWatch({ control: form.control, name: 'closure_feedback' })
+  const timeEntryForm = useTaskCompleteTimeEntryForm({ taskTypeId: task.task_type_id })
 
   const completeMutation = useCompleteTask({
     taskId: task.id,
@@ -110,22 +122,31 @@ export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDia
       toast.success(t('tasks.actions.completeDialog.success'))
       onOpenChange(false)
       form.reset(completeTaskDefaultValues())
+      timeEntryForm.reset()
     },
   })
 
   const onSubmit = async (values: CompleteTaskFormValues) => {
+    // AC-039: an invalid segnatempo (e.g. empty minutes) blocks the submit
+    // with an inline field error and never reaches the API.
+    const timeEntryPayload = await timeEntryForm.validate()
+    if (timeEntryPayload === null) {
+      return
+    }
     try {
-      await completeMutation.mutateAsync(buildCompletePayload(values, toValidation))
+      await completeMutation.mutateAsync(buildCompletePayload(values, toValidation, timeEntryPayload))
     } catch (error) {
       // 409 (Task bloccato, AC-044) has no field to attach to: a dedicated
-      // toast. A 422 on a known field (feedback/validation status) is wired
-      // inline by `applyServerValidationErrors`; any other 422 (wrong phase,
-      // `isCompletable`) falls back to the generic phase toast.
+      // toast. A 422 on a known field (feedback/validation status/time_entry.*)
+      // is wired inline by `applyServerValidationErrors`/`timeEntryForm.applyServerErrors`;
+      // any other 422 (wrong phase, `isCompletable`) falls back to the generic phase toast.
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         toast.error(t('tasks.actions.errors.blocked'))
         return
       }
-      if (applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])) {
+      const timeEntryHandled = timeEntryForm.applyServerErrors(error)
+      const feedbackHandled = applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])
+      if (timeEntryHandled || feedbackHandled) {
         return
       }
       toast.error(t('tasks.actions.errors.generic'))
@@ -146,6 +167,7 @@ export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDia
       onOpenChange={(next) => {
         if (!next) {
           form.reset(completeTaskDefaultValues())
+          timeEntryForm.reset()
         }
         onOpenChange(next)
       }}
@@ -158,56 +180,67 @@ export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDia
           <DialogDescription>{t('tasks.actions.completeDialog.description')}</DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form
-            id="task-complete-form"
-            className="flex flex-col gap-4"
-            onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
-          >
-            <FormField
-              control={form.control}
-              name="closure_feedback"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel required={task.requires_closure_feedback}>
-                    {t('tasks.actions.completeDialog.feedback')}
-                  </FormLabel>
-                  <FormControl>
-                    <Textarea
-                      rows={3}
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div className="max-h-[70vh] overflow-y-auto">
+          <Form {...form}>
+            <form
+              id="task-complete-form"
+              className="flex flex-col gap-4"
+              onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
+            >
+              <FormField
+                control={form.control}
+                name="closure_feedback"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel required={task.requires_closure_feedback}>
+                      {t('tasks.actions.completeDialog.feedback')}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={3}
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {toValidation ? (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {t('tasks.actions.completeDialog.validationHint')}
-                </p>
-                <RelationSelectField
-                  control={form.control}
-                  name="validation_status_id"
-                  metaKey="validation_status_id"
-                  label={t('tasks.actions.completeDialog.validationStatus')}
-                  resource={TASK_STATUSES_FOR_SELECT_RESOURCE}
-                  searchPlaceholder={t('tasks.form.statusSearch')}
-                  params={IN_VALIDATION_GROUP_PARAMS}
-                  selected={null}
-                  required
-                  {...selectLabels}
+              {toValidation ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    {t('tasks.actions.completeDialog.validationHint')}
+                  </p>
+                  <RelationSelectField
+                    control={form.control}
+                    name="validation_status_id"
+                    metaKey="validation_status_id"
+                    label={t('tasks.actions.completeDialog.validationStatus')}
+                    resource={TASK_STATUSES_FOR_SELECT_RESOURCE}
+                    searchPlaceholder={t('tasks.form.statusSearch')}
+                    params={IN_VALIDATION_GROUP_PARAMS}
+                    selected={null}
+                    required
+                    {...selectLabels}
+                  />
+                </>
+              ) : null}
+
+              <Form {...timeEntryForm.form}>
+                <TaskCompleteTimeEntrySection
+                  control={timeEntryForm.form.control}
+                  disabled={completeMutation.isPending}
+                  onStartTimeChange={timeEntryForm.handleStartTimeChange}
+                  onEndTimeChange={timeEntryForm.handleEndTimeChange}
                 />
-              </>
-            ) : null}
-          </form>
-        </Form>
+              </Form>
+            </form>
+          </Form>
+        </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" className="bg-card" onClick={() => onOpenChange(false)}>

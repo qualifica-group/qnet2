@@ -16,6 +16,7 @@ import type {
   RequestTaskUpdatePayload,
   TaskDetailWithPermissions,
 } from '@/features/tasks/types'
+import { timeEntryKeys } from '@/features/time-entries/query-keys'
 
 interface TaskMutationOptions {
   taskId: number
@@ -65,8 +66,9 @@ function useTaskActionMutation(
 
 /**
  * "Completa": CASO 1 (chiusura) sends `closure_feedback`, CASO 2 (richiedi
- * validazione) sends `validation_status_id` instead. 422 on the missing
- * feedback / wrong `validation_status_id` phase is a distinct branch from the
+ * validazione) sends `validation_status_id` instead; both now carry a
+ * mandatory `time_entry` (spec 0123 D-1). 422 on the missing feedback / wrong
+ * `validation_status_id` phase / `time_entry.*` is a distinct branch from the
  * generic completable-phase 422 — the caller reads `error.response.data.errors`
  * to tell them apart (mirrors `applyServerValidationErrors`' field mapping).
  */
@@ -75,7 +77,12 @@ export function useCompleteTask({ taskId, onSuccess }: TaskMutationOptions) {
 
   return useMutation<TaskDetailWithPermissions, AxiosError<ApiErrorResponse>, CompleteTaskPayload>({
     mutationFn: (payload) => completeTask(taskId, payload),
-    onSuccess: (task) => seedAndNotify(queryClient, taskId, task, onSuccess),
+    onSuccess: async (task) => {
+      seedAndNotify(queryClient, taskId, task, onSuccess)
+      // The segnatempo `/complete` creates is NOT in the response body (D-1):
+      // the Task's own segnatempo query is invalidated explicitly (AC-040).
+      await queryClient.invalidateQueries({ queryKey: timeEntryKeys.taskEntries(taskId) })
+    },
   })
 }
 

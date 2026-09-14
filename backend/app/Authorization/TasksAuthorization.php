@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskActionAvailability;
+use App\Services\Tasks\TaskWriteLock;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -138,7 +139,7 @@ class TasksAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'complete', 'complete_to_validation', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'complete', 'complete_to_validation', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update', 'close_via_status', 'create_subtask'];
     }
 
     /**
@@ -193,6 +194,16 @@ class TasksAuthorization extends AbstractResourceAuthorization
      * D-6) is the one exception to the three-way AND: it is `complete`
      * itself ANDed with `completionRequiresValidation()` alone, never a
      * fourth independent evaluation of the guards `complete` already ran.
+     * `complete`/`approve` carry a further veto (spec 0123, D-6): a Task with
+     * an open DIRECT sub-task admits neither, so `complete_to_validation`
+     * inherits it too through `complete`. `close_via_status` (D-5) and
+     * `create_subtask` (D-9) are two MORE exceptions to the three-way AND:
+     * neither reads `TaskActionAvailability` at all — the first is a
+     * PATCH-reachability question (`TaskAbilityResolver` plus the closing-
+     * feedback rule), the second a write-lock-cascade one
+     * (`TaskWriteLock`) — and `close_via_status` is deliberately NOT vetoed
+     * by `is_blocked` (D-7 of spec 0116: a status change stays operative on a
+     * blocked Task).
      *
      * @return array<string, bool>
      */
@@ -200,7 +211,13 @@ class TasksAuthorization extends AbstractResourceAuthorization
     {
         $task = $model instanceof Task ? $model : null;
 
-        $canComplete = $task !== null && ! $task->is_blocked && $this->actionAvailability->isCompletable($task)
+        // D-6 (spec 0123): a Task with an open DIRECT sub-task admits none
+        // of the three flags below, regardless of what the ability/matrix/
+        // phase would otherwise allow.
+        $hasOpenSubtasks = $task !== null && $this->actionAvailability->hasOpenSubtasks($task);
+
+        $canComplete = $task !== null && ! $task->is_blocked && ! $hasOpenSubtasks
+            && $this->actionAvailability->isCompletable($task)
             && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task);
 
         return [
@@ -228,7 +245,8 @@ class TasksAuthorization extends AbstractResourceAuthorization
             'complete_to_validation' => $canComplete && TaskAbilityResolver::completionRequiresValidation($actor, $task),
             'uncomplete' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isUncompletable($task)
                 && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task),
-            'approve' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isValidatable($task)
+            'approve' => $task !== null && ! $task->is_blocked && ! $hasOpenSubtasks
+                && $this->actionAvailability->isValidatable($task)
                 && $actor->can('tasks.validate') && TaskAbilityResolver::canValidate($actor, $task),
             'reject' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isValidatable($task)
                 && $actor->can('tasks.validate') && TaskAbilityResolver::canValidate($actor, $task),
@@ -241,6 +259,22 @@ class TasksAuthorization extends AbstractResourceAuthorization
             // additionally admits the watcher.
             'request_update' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isCompletable($task)
                 && $actor->can('tasks.requestUpdate') && TaskAbilityResolver::canRequestUpdate($actor, $task),
+            // spec 0123, D-5: whether the actor may PATCH task_status_id
+            // straight into a CLOSING phase (`close_negative` today, since
+            // D-4 already reserves `in_validation`/`closed_positive` to the
+            // domain actions for everyone). Deliberately NOT ANDed with
+            // `! $task->is_blocked`: a status change on a blocked Task is
+            // operative, not structural (spec 0116 D-7), so it stays
+            // available. `actorMayWrite()` folds in `tasks.update` the same
+            // way `fieldPermissionCeiling()` does.
+            'close_via_status' => $task !== null && $this->actorMayWrite($actor, $task)
+                && ! TaskAbilityResolver::completionRequiresValidation($actor, $task)
+                && ! ($task->requires_closure_feedback && trim((string) $task->closure_feedback) === ''),
+            // spec 0123, D-9: gates the "Crea sotto-task" button. Structural,
+            // not operative — a Task the write lock itself, or its cascade,
+            // would refuse a `parent_task_id` insert under.
+            'create_subtask' => $task !== null && $actor->can('tasks.create')
+                && ! TaskWriteLock::isLocked($task) && ! TaskWriteLock::isLockedByAncestor($task),
         ];
     }
 }

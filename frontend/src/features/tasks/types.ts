@@ -151,6 +151,14 @@ export interface TaskDetail {
    * payload (AC-084).
    */
   completion_percentage: number
+  /**
+   * Direct children in a phase other than `closed_positive`/`closed_negative`
+   * (spec 0123 D-6), counted server-side IGNORING visibility (AC-021): the UI
+   * reads this to explain why `/complete`/`approve` are unavailable
+   * (`permissions.actions.complete`/`complete_to_validation`/`approve` are
+   * false whenever this is `> 0`), never to gate the action itself.
+   */
+  open_subtasks_count: number
   subtasks: TaskSubtask[]
   created_at: string
   updated_at: string
@@ -178,11 +186,18 @@ export interface TaskDetailWithPermissions extends TaskDetail {
  * disables the ASSEGNATARIO (spec 0118 D-10), which is why it can be true exactly
  * where the other six are false.
  *
- * `complete_to_validation` (spec 0121 D-6) is a SIBLING flag on the same
+ * `complete_to_validation` (spec 0121 D-6) stays a SIBLING flag on the same
  * `permissions.actions` object, not a member of this union: it never gates a
  * button's presence, it only tells the already-visible "Completa" dialog
  * which variant to render, so it has no matching entry in
  * `TaskActionAvailabilityFlags`.
+ *
+ * `close_via_status` and `create_subtask` (spec 0123 D-5/D-9) join the union
+ * for the SAME reason `complete_to_validation` stays out of it: they gate,
+ * respectively, individual options of the Stato select and the "Crea
+ * sotto-task" button — never a phase-based mirror in
+ * `task-action-availability.ts`, which is why that file EXCLUDES them from
+ * `TaskActionAvailabilityFlags` rather than growing two more entries there.
  */
 export type TaskActionKey =
   | 'complete'
@@ -192,6 +207,26 @@ export type TaskActionKey =
   | 'block'
   | 'unblock'
   | 'request_update'
+  | 'close_via_status'
+  | 'create_subtask'
+
+/**
+ * `time_entry` payload nested in `CompleteTaskPayload` (spec 0123 D-1/D-3):
+ * the segnatempo `/complete` creates in the SAME transaction as the status
+ * change. Structurally the same shape `POST /tasks/{task}/time-entries`
+ * accepts (`CreateTaskTimeEntryPayload`, `time-entries/types.ts`), declared
+ * again here rather than imported: it belongs to the Task endpoint's OWN
+ * contract (D-3's "one source of truth" is about the VALIDATION rules,
+ * enforced server-side from a shared rule set — not about this wire type).
+ */
+export interface CompleteTaskTimeEntryPayload {
+  date: string
+  task_type_id: number
+  minutes: number
+  start_time?: string | null
+  end_time?: string | null
+  notes?: string | null
+}
 
 /**
  * Payload for POST /tasks/{id}/complete (spec 0121 data_contract, RECTIFIES
@@ -201,10 +236,15 @@ export type TaskActionKey =
  * `permissions.actions.complete_to_validation`); `validation_status_id` is
  * mandatory on that path and forbidden on the other one (D-3) — the dialog
  * builds this payload accordingly, never from a client-side switch.
+ *
+ * `time_entry` is REQUIRED on both paths (spec 0123 D-1): completing a task
+ * without registering the time spent on it is no longer possible from this
+ * dialog.
  */
 export interface CompleteTaskPayload {
   closure_feedback?: string | null
   validation_status_id?: number | null
+  time_entry: CompleteTaskTimeEntryPayload
 }
 
 /**

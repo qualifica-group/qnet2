@@ -14,9 +14,19 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi-select'
+import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
+import { TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { createContractWorkOrder } from '@/features/contracts/api'
 import {
@@ -34,6 +44,7 @@ const SERVER_ERROR_FIELDS = [
   'start_date',
   'supervisor_ids',
   'quote_line_ids',
+  'task_template_id',
 ] as const
 const WORK_ORDER_TYPES: WorkOrderType[] = ['processing', 'project']
 
@@ -159,6 +170,34 @@ export function ContractProgramDialog({ open, onOpenChange, contractId, onCreate
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="task_template_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('contracts.actions.programDialog.taskTemplateLabel')}</FormLabel>
+                    <FormControl>
+                      <AsyncPaginatedSelect
+                        resource={TASK_TEMPLATES_FOR_SELECT_RESOURCE}
+                        value={field.value}
+                        onChange={field.onChange}
+                        labels={{
+                          placeholder: t('contracts.actions.programDialog.taskTemplatePlaceholder'),
+                          searchPlaceholder: t('contracts.actions.programDialog.taskTemplateSearchPlaceholder'),
+                          empty: t('contracts.actions.programDialog.taskTemplateEmpty'),
+                          error: t('contracts.actions.programDialog.taskTemplateError'),
+                          clearLabel: t('contracts.actions.programDialog.taskTemplateClear'),
+                          triggerLabel: t('contracts.actions.programDialog.taskTemplateLabel'),
+                          retry: t('common.retry'),
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>{t('contracts.actions.programDialog.taskTemplateHelp')}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

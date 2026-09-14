@@ -60,6 +60,7 @@ class WorkOrderResource extends JsonResource
             'description' => $this->description,
             'internal_notes' => $this->internal_notes,
             'contract_number' => $this->quote?->code,
+            'task_template' => $this->summarizeTaskTemplate(),
             'quote' => $this->summarizeQuote(),
             'quote_lines' => $this->summarizeQuoteLines(),
             // Cast to object, non array: un array PHP vuoto serializza come
@@ -121,6 +122,25 @@ class WorkOrderResource extends JsonResource
             'name' => $participant->name,
             'position' => (int) $participant->pivot->position,
         ])->all();
+    }
+
+    /**
+     * The Modello di Task this commessa was generated from (spec 0124,
+     * D-9): null for the majority of commesse, generated without one
+     * (AC-020) — the frozen `{ id, name }` shape, never the full
+     * TaskTemplate.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function summarizeTaskTemplate(): ?array
+    {
+        $template = $this->taskTemplate;
+
+        if ($template === null) {
+            return null;
+        }
+
+        return ['id' => $template->id, 'name' => $template->name];
     }
 
     /**

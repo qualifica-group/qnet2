@@ -13,7 +13,16 @@ import type { TaskActionKey, TaskDetail } from '@/features/tasks/types'
  * server re-asserts every one of these rules (409/422) regardless of what the
  * button shows.
  */
-export type TaskActionAvailabilityFlags = Record<TaskActionKey, boolean>
+/**
+ * `close_via_status`/`create_subtask` (spec 0123 D-5/D-9) are EXCLUDED here on
+ * purpose, same reasoning as `complete_to_validation`'s own exclusion from
+ * `TaskActionKey`'s doc comment: they are not phase-based buttons this file
+ * mirrors, callers read `task.permissions.actions.X` for them directly.
+ */
+export type TaskActionAvailabilityFlags = Record<
+  Exclude<TaskActionKey, 'close_via_status' | 'create_subtask'>,
+  boolean
+>
 
 /** The three phases a task is congelato in (D-7): closing or being validated. */
 const TERMINAL_GROUPS: TaskStatusGroupValue[] = ['in_validation', 'closed_positive', 'closed_negative']

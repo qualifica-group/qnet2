@@ -8,10 +8,13 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\WorkOrders\CreateWorkOrderData;
 use App\DataObjects\WorkOrders\UpdateWorkOrderData;
+use App\Models\TaskTemplate;
+use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Services\WorkOrders\WorkOrderLineWriter;
+use App\Services\WorkOrders\WorkOrderTaskGenerator;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Support\ManagerPositions;
 use App\Support\PositionalPivotSync;
@@ -59,11 +62,16 @@ class WorkOrderService
         'quoteLines.product.category',
         'supervisors',
         'participants',
+        // Spec 0124: the `task_template` summary WorkOrderResource exposes —
+        // null on the (majority) commessa generated without one, so this
+        // never N+1s the detail read either way.
+        'taskTemplate',
     ];
 
     public function __construct(
         private readonly WorkOrderLineWriter $lineWriter,
         private readonly WorkOrderAttributeValueWriter $attributeValueWriter,
+        private readonly WorkOrderTaskGenerator $taskGenerator,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
@@ -218,6 +226,21 @@ class WorkOrderService
             // same transaction: a 422 from Step 2 rolls both back (AC-027).
             $workOrder->supervisors()->sync($data->supervisorIds);
             PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots));
+
+            // Step 4 (spec 0124, D-7): generate the Modello di Task's tasks,
+            // AFTER the supervisors are synced (D-2: they are the generated
+            // tasks' assignees) — still inside this transaction, so a
+            // failure anywhere in generation (including a failed attachment
+            // copy) rolls back the whole Commessa (AC-019).
+            if ($data->taskTemplateId !== null) {
+                $template = TaskTemplate::query()->findOrFail($data->taskTemplateId);
+                // auth:sanctum guarantees a resolved actor on both routes
+                // that reach create() (POST /api/work-orders and POST
+                // /api/contracts/{contract}/work-orders).
+                /** @var User $actor */
+                $actor = Auth::user();
+                $this->taskGenerator->generate($workOrder, $template, $actor);
+            }
 
             return $workOrder;
         });

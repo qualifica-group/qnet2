@@ -29,6 +29,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * DELIBERATELY absent from #[Fillable] — written exclusively by
  * `App\Services\WorkOrders\WorkOrderAttributeValueWriter::apply()` after
  * per-`code` validation, never by mass assignment.
+ *
+ * `task_template_id` (spec 0124, D-5/D-7) IS fillable — unlike `code`, it is
+ * genuine client input (`CreateWorkOrderData`), the same category as
+ * `quote_id`: mass-assignable on the model, with its post-create
+ * immutability enforced one layer up by `UpdateWorkOrderRequest`'s own
+ * `prohibited` rule, not by omitting it here.
  */
 #[Fillable([
     'quote_id',
@@ -40,6 +46,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
     'internal_notes',
     'is_force_closed',
     'force_close_reason',
+    'task_template_id',
 ])]
 class WorkOrder extends BaseModel
 {
@@ -112,5 +119,18 @@ class WorkOrder extends BaseModel
     public function quoteLines(): BelongsToMany
     {
         return $this->belongsToMany(QuoteLine::class, 'quote_line_work_order')->orderBy('sort_order');
+    }
+
+    /**
+     * The Modello di Task this commessa was generated from, if any (spec
+     * 0124, D-5): null for a commessa created without one (AC-020).
+     * `restrictOnDelete` at the schema — a template referenced here cannot
+     * be removed, only deactivated (D-5, AC-011).
+     *
+     * @return BelongsTo<TaskTemplate, $this>
+     */
+    public function taskTemplate(): BelongsTo
+    {
+        return $this->belongsTo(TaskTemplate::class);
     }
 }

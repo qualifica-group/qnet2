@@ -62,13 +62,19 @@ if (! function_exists('taskActorWith')) {
 }
 
 /**
- * The two PROTECTED closing statuses (D-5). An ordinary row in a closing
- * PHASE closes just the same since the 2026-09-04 rectification — covered
- * separately below, because it is reached through `group` and not through a
- * `system_key`.
+ * REQUIREMENT CHANGED (spec 0123, D-4): `closed_positive` used to be one of
+ * the two PROTECTED closing statuses this dataset drove through the guard
+ * below. It is no longer reachable by ANY PATCH, feedback or not — D-4
+ * reserves it to `/complete`/`/approve` for every actor, with no exemption
+ * this guard could still be observed through. That case now lives in
+ * TaskActionOnlyStatusTest.php (AC-011); this dataset keeps only
+ * `closed_negative`, the one closing status D-4 leaves selectable, so every
+ * test below still exercises the SAME closure-feedback outcome it always
+ * did. An ordinary row in a closing PHASE closes just the same since the
+ * 2026-09-04 rectification — covered separately below, because it is
+ * reached through `group` and not through a `system_key`.
  */
 dataset('closingTaskStatuses', [
-    'closed_positive' => [TaskStatusSystemKey::ClosedPositive],
     'closed_negative' => [TaskStatusSystemKey::ClosedNegative],
 ]);
 
@@ -193,7 +199,13 @@ it('D-5 rectified: an ORDINARY status in a closing phase demands the feedback li
 
     $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $closing->id]);
 })->with([
-    'closed_positive' => [TaskStatusGroup::ClosedPositive],
+    // REQUIREMENT CHANGED (spec 0123, D-4): `closed_positive` — even an
+    // ORDINARY status whose GROUP is `closed_positive` — is no longer
+    // reachable by PATCH at all, feedback or not (TaskActionOnlyStatusTest.php,
+    // AC-010, exercises exactly this on a non-system status). The second
+    // PATCH below would now 422 on `task_status_id` regardless of the
+    // feedback it carries, which is a different rule than the one this test
+    // means to pin, so that case moved out rather than being asserted here.
     'closed_negative' => [TaskStatusGroup::ClosedNegative],
 ]);
 
@@ -201,6 +213,12 @@ it('D-5 rectified: an ORDINARY status in a closing phase demands the feedback li
 // AC-035 — the rule is evaluated on the RESULTING record, not on the payload
 // ---------------------------------------------------------------------------
 
+// REQUIREMENT CHANGED (spec 0123, D-4): both AC-035 cases below used
+// `closed_positive` as the reachable closing status; it no longer is,
+// regardless of feedback (AC-011 of the same spec). Retargeted to
+// `closed_negative`, the one closing status D-4 leaves selectable by PATCH,
+// so both assertions still exercise exactly the RESULTING-state behaviour
+// they were written to pin.
 it('AC-035: a PATCH sending ONLY task_status_id reads the flag from the persisted record -> 422', function () {
     $actor = taskActorWith(['view', 'update']);
     $open = TaskStatus::factory()->completion(0)->create();
@@ -209,7 +227,7 @@ it('AC-035: a PATCH sending ONLY task_status_id reads the flag from the persiste
     $task = Task::factory()->forCreator($actor)->requiringClosureFeedback()->inStatus($open)->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tasks/{$task->id}", ['task_status_id' => closingTaskStatus(TaskStatusSystemKey::ClosedPositive)->id])
+    $this->patchJson("/api/tasks/{$task->id}", ['task_status_id' => closingTaskStatus(TaskStatusSystemKey::ClosedNegative)->id])
         ->assertStatus(422)->assertJsonValidationErrors('closure_feedback');
 
     $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $open->id]);
@@ -217,7 +235,7 @@ it('AC-035: a PATCH sending ONLY task_status_id reads the flag from the persiste
 
 it('AC-035: a PATCH sending ONLY task_status_id passes when the feedback is already persisted', function () {
     $actor = taskActorWith(['view', 'update']);
-    $closing = closingTaskStatus(TaskStatusSystemKey::ClosedPositive);
+    $closing = closingTaskStatus(TaskStatusSystemKey::ClosedNegative);
     $task = Task::factory()->forCreator($actor)->requiringClosureFeedback()
         ->inStatus(TaskStatus::factory()->completion(0)->create())
         ->create(['closure_feedback' => 'Motivazione gia registrata.']);

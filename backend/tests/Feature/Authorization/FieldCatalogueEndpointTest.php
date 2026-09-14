@@ -137,6 +137,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // D-4 — with `task-statuses` adding completion_percentage, D-5).
         'tasks',
         'task-statuses', 'task-types', 'task-categories', 'task-priorities', 'task-importances',
+        // spec 0124 `task-templates` (TaskTemplatesAuthorization: the "Modelli
+        // di Task" resource — name mandatory, description/is_active/items
+        // optional, D-1).
+        'task-templates',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();

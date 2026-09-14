@@ -29,6 +29,20 @@ vi.mock('@/features/work-orders/api', () => ({
 
 /** The Responsabili picker's own options source (spec 0096); one user is enough. */
 const SUPERVISOR = { id: 21, label: 'Ada Alberti' }
+/** The "Modello di Task" picker's own options source (spec 0124 D-9); one template is enough. */
+const TASK_TEMPLATE = { id: 5, label: 'Onboarding cliente' }
+
+function forSelectPage(items: { id: number; label: string }[]) {
+  return {
+    data: { pages: [{ items }] },
+    isPending: false,
+    isError: false,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: vi.fn(),
+  }
+}
 
 vi.mock('@/features/for-select/use-for-select', async () => {
   const actual = await vi.importActual<typeof import('@/features/for-select/use-for-select')>(
@@ -36,15 +50,8 @@ vi.mock('@/features/for-select/use-for-select', async () => {
   )
   return {
     ...actual,
-    useForSelect: () => ({
-      data: { pages: [{ items: [{ id: 21, label: 'Ada Alberti' }] }] },
-      isPending: false,
-      isError: false,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      refetch: vi.fn(),
-    }),
+    useForSelect: ({ resource }: { resource: string }) =>
+      resource === 'task-templates' ? forSelectPage([TASK_TEMPLATE]) : forSelectPage([SUPERVISOR]),
     useForSelectLabels: () => new Map([[SUPERVISOR.id, SUPERVISOR.label]]),
   }
 })
@@ -141,9 +148,37 @@ describe('ContractProgramDialog', () => {
         start_date: '2026-03-01',
         supervisor_ids: [21],
         quote_line_ids: [10],
+        task_template_id: null,
       }),
     )
     expect(onCreated).toHaveBeenCalledWith(created)
+  })
+
+  it('sends the selected task_template_id (spec 0124 D-9, AC-027)', async () => {
+    const created = { id: 501, code: 'COM-0501' }
+    vi.mocked(createContractWorkOrder).mockResolvedValue(created as never)
+    renderDialog()
+    await screen.findByText('Consulenza')
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: 'Installazione impianto' } })
+    fireEvent.change(screen.getByLabelText(/^Start date/), { target: { value: '2026-03-01' } })
+    fireEvent.click(screen.getByRole('button', { name: /Supervisors/ }))
+    fireEvent.click(await screen.findByRole('option', { name: /Ada Alberti/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Consulenza' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Task template' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Onboarding cliente' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate work order' }))
+
+    await waitFor(() =>
+      expect(createContractWorkOrder).toHaveBeenCalledWith(7, {
+        title: 'Installazione impianto',
+        type: 'processing',
+        start_date: '2026-03-01',
+        supervisor_ids: [21],
+        quote_line_ids: [10],
+        task_template_id: 5,
+      }),
+    )
   })
 })
 

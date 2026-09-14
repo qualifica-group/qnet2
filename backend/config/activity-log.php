@@ -36,6 +36,7 @@ use App\Models\TaskCategory;
 use App\Models\TaskImportance;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
+use App\Models\TaskTemplate;
 use App\Models\TaskType;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
@@ -250,6 +251,15 @@ return [
         ],
         'task-importances' => [
             'model' => TaskImportance::class,
+        ],
+        // spec 0124: il modulo Modelli di Task. `items` aggrega le proprie
+        // voci di activity_log accanto a quelle della testata, come `quotes`
+        // fa con `lines.commissions` — non una risorsa a parte come
+        // `quote-workflow-statuses`, perche' una riga di modello non ha un
+        // endpoint/viewActivity proprio (D-1).
+        'task-templates' => [
+            'model' => TaskTemplate::class,
+            'relations' => ['items'],
         ],
     ],
 

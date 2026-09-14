@@ -9,6 +9,7 @@ import { Form, FormControl } from '@/components/ui/form'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
+import { TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
 import { useWorkOrderForm } from '@/features/work-orders/use-work-order-form'
 import { quoteLineToForSelectItem } from '@/features/work-orders/quote-line-label'
 import { WorkOrderClosureSection } from '@/features/work-orders/work-order-closure-section'
@@ -82,6 +83,8 @@ export function WorkOrderFormBody({ mode, onSuccess, onCancel, initialCode }: Wo
   const selectedQuoteLines =
     mode.type === 'edit' ? mode.workOrder.quote_lines.map(quoteLineToForSelectItem) : undefined
 
+  const selectedTaskTemplate = mode.type === 'edit' ? mode.workOrder.task_template : null
+
   const selectedSupervisors = mode.type === 'edit' ? mode.workOrder.supervisors : EMPTY_SUPERVISORS
   const selectedParticipants =
     mode.type === 'edit'
@@ -95,7 +98,8 @@ export function WorkOrderFormBody({ mode, onSuccess, onCancel, initialCode }: Wo
     fieldPermission('code').visible ||
     fieldPermission('title').visible ||
     fieldPermission('type').visible ||
-    fieldPermission('callback_date').visible
+    fieldPermission('callback_date').visible ||
+    fieldPermission('task_template_id').visible
   const offerVisible = fieldPermission('quote_id').visible || fieldPermission('quote_line_ids').visible
 
   return (
@@ -181,6 +185,26 @@ export function WorkOrderFormBody({ mode, onSuccess, onCancel, initialCode }: Wo
                     </FormControl>
                   )}
                 </MetaField>
+
+                <RelationSelectField
+                  control={form.control}
+                  name="task_template_id"
+                  metaKey="task_template_id"
+                  label={t('workOrders.form.taskTemplateId')}
+                  hint={
+                    mode.type === 'edit'
+                      ? t('workOrders.form.hints.taskTemplateLocked')
+                      : t('workOrders.form.hints.taskTemplateHelp')
+                  }
+                  resource={TASK_TEMPLATES_FOR_SELECT_RESOURCE}
+                  searchPlaceholder={t('workOrders.form.taskTemplateSearchPlaceholder')}
+                  selected={selectedTaskTemplate}
+                  placeholder={t('workOrders.form.taskTemplatePlaceholder')}
+                  emptyLabel={t('workOrders.form.taskTemplateEmpty')}
+                  errorLabel={t('workOrders.form.taskTemplateError')}
+                  clearLabel={t('workOrders.form.taskTemplateClear')}
+                  retryLabel={t('common.retry')}
+                />
               </div>
             </FormSection>
           )}

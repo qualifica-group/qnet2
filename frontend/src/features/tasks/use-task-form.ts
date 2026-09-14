@@ -7,11 +7,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useAuth } from '@/features/auth/use-auth'
-import { uploadAttachment } from '@/features/attachments/api'
-import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
 import { useResourcePermissions } from '@/features/authorization/permissions'
-import { createTask, taskDetailQueryKey, TASK_ATTACHABLE_ALIAS, updateTask } from '@/features/tasks/api'
+import { createTask, taskDetailQueryKey, updateTask } from '@/features/tasks/api'
 import { taskStatusMetaOf, type TaskStatusForSelectMeta } from '@/features/tasks/for-select-api'
+import { uploadStagedAttachments } from '@/features/tasks/task-form-attachments-upload'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/tasks/task-form-payload'
 import {
   SERVER_ERROR_FIELDS,
@@ -20,6 +19,7 @@ import {
 } from '@/features/tasks/task-form-server-error-fields'
 import { emptyRecurrenceDefaults, recurrenceDefaults } from '@/features/tasks/task-recurrence-defaults'
 import { buildTaskSchema, type TaskFormValues } from '@/features/tasks/task-schema'
+import { useTaskParentPrefill } from '@/features/tasks/use-task-parent-prefill'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { TaskDetail, TaskFormMode } from '@/features/tasks/types'
@@ -97,31 +97,6 @@ function editDefaults(task: TaskDetail): TaskFormValues {
     watcher_ids: task.watchers.map((user) => user.id),
     recurrence: recurrenceDefaults(task.recurrence),
   }
-}
-
-/**
- * Uploads every staged file against the freshly created task, one request at
- * a time (spec 0118 D-7/AC-023) — mirrors `useAttachments`' own sequential
- * upload: the endpoint takes one file per request, and a burst of parallel
- * multipart bodies is what trips server upload limits. Never throws: a
- * rejected file is reported back by name so the caller can still navigate
- * (D-8) instead of trapping the user on a form for an already-saved task.
- */
-async function uploadStagedAttachments(taskId: number, files: File[]): Promise<string[]> {
-  const failed: string[] = []
-  for (const file of files) {
-    try {
-      await uploadAttachment({
-        resource: TASK_ATTACHABLE_ALIAS,
-        id: taskId,
-        collection: DOCUMENTS_COLLECTION,
-        file,
-      })
-    } catch {
-      failed.push(file.name)
-    }
-  }
-  return failed
 }
 
 /**
@@ -208,7 +183,19 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     defaultValues,
   })
 
-  const schema = useMemo(() => buildTaskSchema(t, !isEdit), [t, isEdit])
+  // Spec 0123 D-10/D-7: the parent's link fields prefill the empty ones, and
+  // its own date range feeds the schema's mirror below — both create-only.
+  const parentPrefill = useTaskParentPrefill({
+    control: form.control,
+    setValue: form.setValue,
+    getValues: form.getValues,
+    enabled: !isEdit,
+  })
+
+  const schema = useMemo(
+    () => buildTaskSchema(t, !isEdit, parentPrefill.parentDateRange),
+    [t, isEdit, parentPrefill.parentDateRange],
+  )
 
   useEffect(() => {
     resolverRef.current = zodResolver(schema)
@@ -294,5 +281,7 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     stagedAttachments,
     addStagedAttachments,
     removeStagedAttachment,
+    /** The parent's own link refs (spec 0123 D-10), for the four pickers' `selected` hydration on create. */
+    parentPrefillRefs: parentPrefill,
   }
 }

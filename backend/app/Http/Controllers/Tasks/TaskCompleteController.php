@@ -37,7 +37,7 @@ class TaskCompleteController extends BaseApiController
 
             /** @var User $actor */
             $actor = $request->user();
-            $task = $this->service->complete($task, $request->toData(), $actor);
+            $task = $this->service->complete($task, $request->toData($task->id), $actor);
 
             return $this->okWithPermissions(
                 new TaskResource($task),

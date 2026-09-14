@@ -1,17 +1,19 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { useTaskForm } from '@/features/tasks/use-task-form'
 import { taskDetailWithPermissions, taskStatus } from '@/features/tasks/task-fixtures'
 import { DEFAULT_MODULE_OPEN_PREFERENCES } from '@/features/modules/types'
 import type { TaskStatusForSelectItem } from '@/features/tasks/for-select-api'
+import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 import type { User } from '@/features/auth/types'
 
+const fetchTaskMock = vi.fn<(id: number) => Promise<TaskDetailWithPermissions>>()
 vi.mock('@/features/tasks/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/tasks/api')>('@/features/tasks/api')
-  return { ...actual, createTask: vi.fn(), updateTask: vi.fn() }
+  return { ...actual, createTask: vi.fn(), updateTask: vi.fn(), fetchTask: (id: number) => fetchTaskMock(id) }
 })
 
 /** The connected actor `useTaskForm` reads to prefill the requester (spec 0118 D-1). */
@@ -66,6 +68,11 @@ function statusOption(
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
+})
+
+beforeEach(() => {
+  fetchTaskMock.mockReset()
+  fetchTaskMock.mockResolvedValue(taskDetailWithPermissions())
 })
 
 /**
@@ -247,6 +254,114 @@ describe('useTaskForm — sub-task prefill (AC-085)', () => {
     )
 
     expect(result.current.form.getValues('parent_task_id')).toBe(90)
+  })
+})
+
+/** The fixture used by every parent-prefill test below: every link populated, a 10-day range. */
+function parentFixture(overrides: Partial<TaskDetailWithPermissions> = {}): TaskDetailWithPermissions {
+  return taskDetailWithPermissions({
+    id: 90,
+    registry_id: 7,
+    registry: { id: 7, name: 'Acme' },
+    referent_id: 11,
+    referent: { id: 11, name: 'Ada Alberti' },
+    opportunity_id: 8,
+    opportunity: { id: 8, name: 'Opportunita X' },
+    work_order_id: 9,
+    work_order: { id: 9, code: 'WO-1', title: 'Commessa Uno' },
+    start_date: '2026-09-10',
+    end_date: '2026-09-20',
+    ...overrides,
+  })
+}
+
+/**
+ * Spec 0123 D-10 (link prefill, client-only) + D-7 (date-range mirror),
+ * create-only: AC-037/AC-038/AC-029.
+ */
+describe('useTaskForm — parent prefill on create (spec 0123 D-10/D-7)', () => {
+  it('prefills the four empty link fields from the parent (AC-037)', async () => {
+    fetchTaskMock.mockResolvedValue(parentFixture())
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create', parentTaskId: 90 }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    await waitFor(() => expect(result.current.form.getValues('registry_id')).toBe(7))
+
+    expect(result.current.form.getValues('referent_id')).toBe(11)
+    expect(result.current.form.getValues('opportunity_id')).toBe(8)
+    expect(result.current.form.getValues('work_order_id')).toBe(9)
+    expect(result.current.parentPrefillRefs.registry).toEqual({ id: 7, name: 'Acme' })
+    expect(result.current.parentPrefillRefs.workOrder).toEqual({ id: 9, name: 'WO-1 — Commessa Uno' })
+  })
+
+  it('never overwrites a link already filled by the user (AC-038)', async () => {
+    fetchTaskMock.mockResolvedValue(parentFixture())
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create', parentTaskId: 90 }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.form.setValue('registry_id', 42)
+    })
+
+    await waitFor(() => expect(result.current.form.getValues('referent_id')).toBe(11))
+
+    // The user's own pick survives; the fields the user left empty still fill in.
+    expect(result.current.form.getValues('registry_id')).toBe(42)
+    expect(result.current.form.getValues('opportunity_id')).toBe(8)
+  })
+
+  it('never fetches the parent in edit mode', async () => {
+    const task = taskDetailWithPermissions({ parent_task_id: 90 })
+    renderHook(() => useTaskForm({ mode: { type: 'edit', task }, onSuccess: () => undefined }), {
+      wrapper: wrapper(),
+    })
+
+    await Promise.resolve()
+    expect(fetchTaskMock).not.toHaveBeenCalled()
+  })
+
+  it('blocks a date outside the parent range with an inline error (AC-029)', async () => {
+    fetchTaskMock.mockResolvedValue(parentFixture())
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create', parentTaskId: 90 }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    await waitFor(() => expect(result.current.form.getValues('registry_id')).toBe(7))
+
+    act(() => {
+      result.current.form.setValue('end_date', '2026-09-25')
+    })
+    await act(async () => {
+      await result.current.form.trigger('end_date')
+    })
+
+    expect(result.current.form.getFieldState('end_date').error?.message).toBe(
+      i18n.t('tasks.form.endDateOutsideParentRange'),
+    )
+  })
+
+  it('accepts a date inside the parent range', async () => {
+    fetchTaskMock.mockResolvedValue(parentFixture())
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create', parentTaskId: 90 }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    await waitFor(() => expect(result.current.form.getValues('registry_id')).toBe(7))
+
+    act(() => {
+      result.current.form.setValue('end_date', '2026-09-15')
+    })
+    await act(async () => {
+      await result.current.form.trigger('end_date')
+    })
+
+    expect(result.current.form.getFieldState('end_date').error).toBeUndefined()
   })
 })
 

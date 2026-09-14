@@ -38,6 +38,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     internal_notes: 'Nota interna',
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
+    task_template: null,
     quote_lines: [
       { id: 11, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' } },
       { id: 12, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' } },
@@ -75,6 +76,17 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     expect(screen.getByText(formatDate('2026-09-30'))).toBeInTheDocument()
     expect(screen.getByText('QUO-0004')).toBeInTheDocument()
     expect(screen.getByText('Fornitura annuale')).toBeInTheDocument()
+  })
+
+  it('shows the task template name when the commessa was generated from one (spec 0124 D-9)', () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } })}
+      />,
+    )
+
+    expect(screen.getByText('Task template')).toBeInTheDocument()
+    expect(screen.getByText('Onboarding cliente')).toBeInTheDocument()
   })
 
   it('lists the linked product lines ordered by sort_order', () => {

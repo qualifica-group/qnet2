@@ -50,6 +50,10 @@ class UpdateWorkOrderRequest extends FormRequest
         return [
             'code' => ['prohibited'],
             'quote_id' => ['prohibited'],
+            // Spec 0124, D-5: written only at creation, immutable afterwards
+            // — the key must not even be present (AC-022), same shape as
+            // code/quote_id above.
+            'task_template_id' => ['prohibited'],
             'title' => ['sometimes', 'required', 'string', 'max:'.self::TITLE_MAX],
             'type' => ['sometimes', 'required', 'string', Rule::in(WorkOrderType::values())],
             // Spec 0096, D-6: editable after create (unlike code/quote_id).

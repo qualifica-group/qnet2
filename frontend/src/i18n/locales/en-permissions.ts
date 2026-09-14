@@ -108,6 +108,7 @@ export const permissions = {
     'task-categories': 'Task Categories',
     'task-priorities': 'Task Priorities',
     'task-importances': 'Task Importances',
+    'task-templates': 'Task Templates',
     'vat-rates': 'VAT',
   },
   areas: {

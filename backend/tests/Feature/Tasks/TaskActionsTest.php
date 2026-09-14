@@ -5,6 +5,7 @@ use App\Enums\TaskStatusSystemKey;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\TaskStatus;
+use App\Models\TaskType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -78,6 +79,24 @@ if (! function_exists('protectedTaskStatus')) {
     }
 }
 
+if (! function_exists('validTimeEntryPayload')) {
+    /**
+     * A valid `time_entry` (spec 0123, D-1: mandatory on every /complete
+     * call, regardless of what THIS suite is exercising).
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    function validTimeEntryPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'date' => '2026-09-14',
+            'task_type_id' => TaskType::factory()->create()->id,
+            'minutes' => 60,
+        ], $overrides);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // AC-016/AC-017/AC-018 — complete, CASO 1 (no validation_status_id)
 // ---------------------------------------------------------------------------
@@ -88,7 +107,7 @@ it('AC-016: an assignee completes a task with no closure feedback required (CASO
     $task->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete")
+    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])
         ->assertOk()
         ->assertJsonPath('data.task_status_id', protectedTaskStatus(TaskStatusSystemKey::ClosedPositive)->id)
         ->assertJsonPath('data.completion_percentage', 100)
@@ -108,7 +127,7 @@ it('AC-017: 422 on closure_feedback when the task requires it and none is submit
     $task->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete")
+    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])
         ->assertStatus(422)
         ->assertJsonValidationErrors('closure_feedback');
 
@@ -122,7 +141,10 @@ it('AC-018: 200 and the feedback is persisted when it is submitted', function ()
     $task->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete", ['closure_feedback' => 'Consegnato al cliente.'])
+    $this->postJson("/api/tasks/{$task->id}/complete", [
+        'closure_feedback' => 'Consegnato al cliente.',
+        'time_entry' => validTimeEntryPayload(),
+    ])
         ->assertOk()
         ->assertJsonPath('data.task_status_id', protectedTaskStatus(TaskStatusSystemKey::ClosedPositive)->id);
 
@@ -148,7 +170,10 @@ it('AC-019: a flagged Task lets an assignee complete with a validation_status_id
     $validationStatus = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete", ['validation_status_id' => $validationStatus->id])
+    $this->postJson("/api/tasks/{$task->id}/complete", [
+        'validation_status_id' => $validationStatus->id,
+        'time_entry' => validTimeEntryPayload(),
+    ])
         ->assertOk()
         ->assertJsonPath('data.task_status_id', $validationStatus->id)
         ->assertJsonPath('data.completion_date', now()->toDateString());
@@ -167,7 +192,10 @@ it('AC-020: 422 on validation_status_id when it does not belong to the in_valida
     $openStatus = TaskStatus::factory()->group(TaskStatusGroup::Open)->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete", ['validation_status_id' => $openStatus->id])
+    $this->postJson("/api/tasks/{$task->id}/complete", [
+        'validation_status_id' => $openStatus->id,
+        'time_entry' => validTimeEntryPayload(),
+    ])
         ->assertStatus(422)
         ->assertJsonValidationErrors('validation_status_id');
 });
@@ -178,7 +206,7 @@ it('AC-021: 422 when the task is already closed_positive', function () {
     $task->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete")->assertStatus(422);
+    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertStatus(422);
 });
 
 // ---------------------------------------------------------------------------
@@ -307,7 +335,7 @@ it('AC-030: a blocked task answers 409 on complete/uncomplete/approve/reject, an
     $task = Task::factory()->forCreator($actor)->create(['is_blocked' => true]);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete")->assertStatus(409);
+    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertStatus(409);
     $this->postJson("/api/tasks/{$task->id}/uncomplete")->assertStatus(409);
     $this->postJson("/api/tasks/{$task->id}/approve")->assertStatus(409);
     $this->postJson("/api/tasks/{$task->id}/reject")->assertStatus(409);
@@ -374,7 +402,7 @@ it('AC-040: the creator of a task WITHOUT tasks.complete gets 403 from POST /com
     $originalStatusId = $task->task_status_id;
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete")->assertStatus(403);
+    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertStatus(403);
 
     $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $originalStatusId]);
 });

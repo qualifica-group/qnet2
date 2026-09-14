@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Task;
 use App\Models\TaskRecurrence;
 use App\Models\User;
+use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -23,6 +24,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `subtasks` lists only the children the actor may see: the relation is
  * eager-loaded already SCOPED by TaskService (AC-066), so this resource does
  * no filtering of its own and cannot drift from the query.
+ *
+ * `open_subtasks_count` (spec 0123, D-6) is the OPPOSITE on purpose: it
+ * counts every DIRECT child outside a closing phase, ignoring visibility
+ * entirely (`TaskActionAvailability::openSubtasksCount()`), so the UI can
+ * explain why `complete`/`approve` came back false even for an actor who
+ * cannot see the child that is blocking them.
  *
  * Nothing here keys off a status LABEL (AC-024): the status ref exposes the
  * raw enum values of BOTH `system_key` (protection) and `group` (the PHASE)
@@ -91,6 +98,7 @@ class TaskResource extends JsonResource
             'closure_feedback' => $this->closure_feedback,
             'completion_percentage' => $resolver->completionPercentage($this->resource),
             'recurrence' => $this->recurrenceRef(),
+            'open_subtasks_count' => app(TaskActionAvailability::class)->openSubtasksCount($this->resource),
             'subtasks' => $this->summarizeSubtasks($resolver),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

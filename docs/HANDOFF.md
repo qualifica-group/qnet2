@@ -3,7 +3,48 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## MODULO TASK — SPLIT SERVIZI + SPEC 0123 IN BOZZA — VERDE, NON COMMITTATO (2026-09-14)
+## SPEC 0124 MODELLI DI TASK — VERDE, NON COMMITTATO (2026-09-14)
+
+Spec `docs/specs/0124-task-templates-module.xml` (approvata). Build a subagent con ownership disgiunta,
+in parallelo alla build 0123 non committata (file disgiunti: nessun file 0123 toccato).
+
+**Backend.**
+- Schema: `task_templates` (name unique, description, is_active), `task_template_items`
+  (task_template_id cascade, title, description, estimated_minutes, task_status_id restrict, due_offset_days,
+  sort_order), `work_orders.task_template_id` (nullable, restrict, solo in create). Morph alias
+  `task_template`/`task_template_item`; `task_template_item` in `config/attachments.php`.
+- CRUD `task-templates`: `TaskTemplateService` + `TaskTemplates\TaskTemplateItemWriter` (sync righe: id=update,
+  senza id=create, mancante=delete via Eloquent per ripulire gli allegati), `Rules\TaskTemplateItemStatus`
+  (attivo + gruppo open/pending), `TaskTemplatesAuthorization`, `TaskTemplatesTableDefinition`
+  (+ `TaskTemplateItemsCountColumn`), `routes/api/task-templates.php`, nav `config/navigation/tasks.php`.
+  Delete: 409 se referenziato da una Commessa; righe cancellate una a una (la cascade DB NON pulisce i file).
+  `TaskStatusService::delete` 409 se lo stato e' usato da una riga modello.
+- Generazione: `WorkOrders\WorkOrderTaskGenerator::generate(WorkOrder, TaskTemplate, User)` (pattern
+  `TaskOccurrenceFactory`, NON usa `TaskService`), Step 4 in `WorkOrderService::create`; actor via
+  `Auth::user()` (raggiungibile solo da rotte auth:sanctum). Assegnatari = tutti i supervisori; creator =
+  requester = actor; end_date = start_date + due_offset_days; allegati copiati con
+  `AttachmentService::copyTo` (collection `documents`), file copiati rimossi su errore. Notifiche differite da
+  `TaskNotifier` via `DB::afterCommit`.
+- `DemoTaskTemplateSeeder` (3 modelli) in `DemoDataSeeder`, prima di `DemoTaskSeeder`.
+
+**Frontend.** `features/task-templates/*` (tabella TableView, form con `SortableList` delle righe, select stato
+filtrata su meta.group, allegati per riga con staging e upload posizionale dopo la create), pagina, router,
+breadcrumb, i18n it/en. Campo `task_template_id` nel form Commessa (solo create; in edit readonly tramite
+tetto dei permessi sui campi) e nel dialog Programma del contratto; `TASK_TEMPLATES_FOR_SELECT_RESOURCE` si
+importa da `task-templates/for-select-api.ts`.
+
+**Verifica (verifier indipendente).** Pest completo SERIALE 7437 test: 7436 passed, 1 skipped; Pint pulito;
+Vitest 5099/5099; `tsc -b --force` pulito; ESLint pulito sui file 0124 (2 errori pre-esistenti estranei:
+`quotes/column-renderers.tsx:11`, `registries/registry-form-metadata.test.tsx:271`). AC-001..028 mappati su test.
+
+**Aperti / prossimi passi.**
+- `WorkOrderService.php` 318 righe (soft limit 300): valutare l'estrazione del read path (`forSelect`/`loadDetail`).
+- Estrazione suggerita: `task-template-item-attachment-staging.tsx` duplica `tasks/task-attachment-staging.tsx`
+  -> primitive condivisa dopo il commit della 0123.
+- `DemoWorkOrderSeeder` gira prima delle tassonomie task: per usare i modelli nel demo va riordinato.
+- Commit in attesa di via libera utente (§3.6), da separare dai file della 0123.
+
+## MODULO TASK — SPLIT SERVIZI + SPEC 0123 (SEGNATEMPO NEL COMPLETAMENTO, COERENZA SOTTO-TASK) — VERDE, NON COMMITTATO (2026-09-14)
 
 **Refactor senza cambio di comportamento** (prerequisito della 0123):
 - `TaskService` 480 -> 358: estratti `Tasks\TaskForSelectService` (read path for-select, unico
@@ -21,13 +62,36 @@
 **Archivio.** Le voci dal 2026-09-11 indietro sono in `docs/handoff-archive/2026-09.md`; intestazioni
 delle voci rimaste corrette in "COMMITTATO" (albero pulito a inizio sessione).
 
-**Spec 0123 (bozza, in attesa di approvazione)** `docs/specs/0123-task-completion-time-entry-and-subtask-coherence.xml`:
-segnatempo obbligatorio e atomico su `/complete` (completare concede l'inserimento, niente
-`time-entries.create`); PATCH verso `in_validation`/`closed_positive` rifiutato per tutti, opzioni
-disabilitate nel form; padre non completabile con figli diretti aperti; date del figlio dentro il
-padre (padre che restringe -> 422); cascata solo strutturale del write lock; collegamenti del padre
-precompilati lato client. Blocca/Sblocca invariato (vale la matrice). Prossimo passo: approvazione,
-poi `/build-feature` sul piano MT-B1..B6, MT-U1, MT-F1..F3, MT-V.
+**Spec 0123 IMPLEMENTATA E VERIFICATA** `docs/specs/0123-task-completion-time-entry-and-subtask-coherence.xml`.
+
+Contratto e naming da rispettare:
+- `POST /tasks/{task}/complete` richiede `time_entry{date,task_type_id,minutes,start_time?,end_time?,notes?}` su
+  entrambi i percorsi; creato in `TaskCompletionService::complete()` via `TimeEntryService::create()` dentro la
+  transazione, SENZA `time-entries.create` (D-2). Regole da fonte unica
+  `Http\Requests\TimeEntries\TimeEntryValidationRules::rules(prefix)` (usata anche da `StoreTaskTimeEntryRequest`).
+- `TaskActionOnlyStatusGuard::assertReachableByPatch()`: PATCH verso fasi `in_validation`/`closed_positive` = 422
+  per chiunque, super-admin incluso. Il seed demo scrive quegli stati direttamente sul model.
+- `TaskActionAvailability::hasOpenSubtasks()/openSubtasksCount()` (figli diretti, ignora visibilita'): 422 su
+  complete/approve; `TaskResource.open_subtasks_count` (una query, Resource usata solo per singolo record).
+- `TaskParentDateRangeGuard` (D-7 figlio, D-8 padre che restringe -> 422 col conteggio).
+- `TaskWriteLock::isLockedByAncestor()` / `assertParentChainUnlocked()`: cascata solo strutturale.
+- `permissions.actions` 15 chiavi: + `close_via_status`, `create_subtask` in coda.
+- UI kit: `AsyncPaginatedSelect.isItemDisabled` (riga in `async-paginated-select-option.tsx`), passthrough in
+  `RelationSelectField`. FE: `task-status-option-availability.ts`, `task-complete-time-entry-section.tsx` +
+  `use-task-complete-time-entry-form.ts` (useForm separato, errori 422 `time_entry.*` mappati a mano),
+  `use-task-parent-prefill.ts`, `task-parent-date-range.ts`, `task-form-attachments-upload.ts`.
+
+Verifica (verifier indipendente, VERDE): Pest SERIALE 7437 test, 7436 passed, 1 skipped (+1 test super-admin D-4
+aggiunto dopo, 6/6); Vitest 668 file / 5099; `tsc -b --force` EXIT 0; Pint e ESLint puliti sui file 0123 (2
+errori ESLint preesistenti in `quotes/column-renderers.tsx` e `registries/registry-form-metadata.test.tsx`).
+AC-001..040 e 042 PASS. Test preesistenti modificati per cambio di requisito: TaskActionNotificationsTest,
+TaskActionsTest, TaskClosureFeedbackTest, TaskCompletionPercentageTest, TaskValidationRequirementTest,
+TaskRecurrenceContractTest, TaskDocumentsTest, TaskRecordRoleMatrixTest; FE api.test.ts, task-detail.test.tsx,
+task-subtasks-section.test.tsx, use-task-form.test.tsx.
+
+APERTI: AC-041 responsive manuale (pop-up Completa, select Stato, form sotto-task) a carico utente. Commit: la
+0123 e la 0124 condividono l'albero; committare SEPARATAMENTE (file 0124: task-templates, work-orders,
+migrazioni 2026_09_15_*, QuoteWorkflowMigrationTest, FieldCatalogueEndpointTest, WorkOrderMetaTest, ecc.).
 
 ## MODULO TASK — FASE 7: PIANIFICAZIONE RICORRENTE (spec 0120) — VERDE, COMMITTATO (2026-09-14)
 

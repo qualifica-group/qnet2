@@ -4,6 +4,7 @@ import type { Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { FIELD_GRID_CLASS } from '@/components/record-form/layout'
 import { RelationSelectField } from '@/components/form/relation-select-field'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import {
   TASK_CATEGORIES_FOR_SELECT_RESOURCE,
   TASK_IMPORTANCES_FOR_SELECT_RESOURCE,
@@ -11,6 +12,7 @@ import {
   TASK_STATUSES_FOR_SELECT_RESOURCE,
   TASK_TYPES_FOR_SELECT_RESOURCE,
 } from '@/features/tasks/for-select-api'
+import { isTaskStatusOptionDisabled } from '@/features/tasks/task-status-option-availability'
 import { TaskCompletionReadout } from '@/features/tasks/task-completion-readout'
 import { useTaskSelectLabels } from '@/features/tasks/task-select-labels'
 import type { ForSelectItem } from '@/features/for-select/types'
@@ -51,6 +53,12 @@ function refOf(value: { id: number; name: string } | null | undefined): Relation
  * is `prohibited` on POST, so offering the control would only invite a 422.
  * `task === null` is already the create signal every other section in this
  * form reads, so no new prop was added for it.
+ *
+ * Spec 0123 D-4/D-5: the picker shows every option but disables the ones a
+ * PATCH could never reach (`isTaskStatusOptionDisabled`, read off
+ * `useResourcePermissions()` already scoped by `ResourcePermissionsProvider`
+ * — no extra prop needed for `close_via_status`, the same context every
+ * other `MetaField`/`RelationSelectField` in this form already reads from).
  */
 export function TaskClassificationSection({
   control,
@@ -60,6 +68,8 @@ export function TaskClassificationSection({
 }: TaskClassificationSectionProps) {
   const { t } = useTranslation()
   const selectLabels = useTaskSelectLabels()
+  const { canAction } = useResourcePermissions()
+  const closeViaStatus = canAction('close_via_status')
   const isEdit = task !== null
 
   return (
@@ -80,6 +90,7 @@ export function TaskClassificationSection({
             searchPlaceholder={t('tasks.form.statusSearch')}
             selected={refOf(task?.task_status)}
             onItemChange={onStatusItemChange}
+            isItemDisabled={(item) => isTaskStatusOptionDisabled(item, closeViaStatus)}
             {...selectLabels}
           />
         ) : null}

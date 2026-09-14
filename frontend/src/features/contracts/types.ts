@@ -176,6 +176,8 @@ export interface CreateContractWorkOrderPayload {
   /** "Responsabili": at least one. */
   supervisor_ids: number[]
   quote_line_ids: number[]
+  /** Spec 0124 D-9: the optional Modello di Task to generate this commessa's tasks from. */
+  task_template_id?: number | null
 }
 
 /**

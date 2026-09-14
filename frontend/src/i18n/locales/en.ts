@@ -39,6 +39,7 @@ import { quotes } from './en-quotes'
 import { contractStatuses } from './en-contract-statuses'
 import { contracts } from './en-contracts'
 import { workOrders } from './en-work-orders'
+import { taskTemplates } from './en-task-templates'
 import { tasks } from './en-tasks'
 import { timeEntries } from './en-time-entries'
 import {
@@ -428,6 +429,7 @@ export const en = {
   contractStatuses,
   contracts,
   workOrders,
+  taskTemplates,
   tasks,
   taskStatuses,
   taskTypes,

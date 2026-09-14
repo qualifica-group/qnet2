@@ -52,6 +52,36 @@ class TaskActionAvailability
         return $task->is_blocked === true;
     }
 
+    /**
+     * D-6 (spec 0123): whether $task has at least one DIRECT sub-task
+     * sitting outside a closing phase (`in_validation` counts as open).
+     * Backs the 422 on `/complete`/`/approve` and the AND on
+     * `permissions.actions.complete`/`complete_to_validation`/`approve`.
+     */
+    public function hasOpenSubtasks(Task $task): bool
+    {
+        return $this->openSubtasksCount($task) > 0;
+    }
+
+    /**
+     * The count `TaskResource` exposes as `data.open_subtasks_count`
+     * (data_contract). ONE query against `task_statuses.group`, never the
+     * loaded `subtasks` relation: counting must ignore
+     * `TaskVisibilityScope` (AC-021), the same rule
+     * `App\Services\TaskService::delete()` already applies to child
+     * counting, so a plain `whereHas` against the unscoped relation is what
+     * both call sites need.
+     */
+    public function openSubtasksCount(Task $task): int
+    {
+        return $task->subtasks()
+            ->whereHas('taskStatus', fn ($query) => $query->whereNotIn('group', [
+                TaskStatusGroup::ClosedPositive->value,
+                TaskStatusGroup::ClosedNegative->value,
+            ]))
+            ->count();
+    }
+
     private function isClosedOrInValidation(Task $task): bool
     {
         return in_array($this->group($task), [

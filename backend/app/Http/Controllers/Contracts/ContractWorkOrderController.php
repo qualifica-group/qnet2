@@ -56,6 +56,7 @@ class ContractWorkOrderController extends BaseApiController
                 supervisorIds: (array) $request->validated('supervisor_ids'),
                 quoteLineIds: (array) $request->validated('quote_line_ids'),
                 attributeValues: $request->has('attribute_values') ? (array) $request->validated('attribute_values') : null,
+                taskTemplateId: $request->validated('task_template_id') !== null ? (int) $request->validated('task_template_id') : null,
             );
 
             $workOrder = $this->service->create($data);

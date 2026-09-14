@@ -97,6 +97,19 @@ class TaskStatus extends BaseModel
     }
 
     /**
+     * The template rows currently pointing at this status — the second "in
+     * use" set `TaskStatusService::delete()` guards against, alongside
+     * `tasks()` (spec 0124, D-5/AC-012). `task_status_id` is
+     * `restrictOnDelete` on `task_template_items` too: defense in depth.
+     *
+     * @return HasMany<TaskTemplateItem, $this>
+     */
+    public function taskTemplateItems(): HasMany
+    {
+        return $this->hasMany(TaskTemplateItem::class);
+    }
+
+    /**
      * Whether this is one of the three protected system rows rather than an
      * ordinary, admin-managed status.
      */

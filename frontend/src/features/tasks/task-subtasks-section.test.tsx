@@ -29,10 +29,20 @@ function subtask(overrides: Partial<TaskSubtask> = {}): TaskSubtask {
   }
 }
 
-function renderSection(subtasks: TaskSubtask[], handlers: { onOpen?: () => void; onCreate?: () => void } = {}) {
+function renderSection(
+  subtasks: TaskSubtask[],
+  handlers: { onOpen?: () => void; onCreate?: () => void; canCreateSubtask?: boolean } = {},
+) {
   const onOpen = vi.fn(handlers.onOpen)
   const onCreate = vi.fn(handlers.onCreate)
-  render(<TaskSubtasksSection subtasks={subtasks} onOpen={onOpen} onCreate={onCreate} />)
+  render(
+    <TaskSubtasksSection
+      subtasks={subtasks}
+      onOpen={onOpen}
+      onCreate={onCreate}
+      canCreateSubtask={handlers.canCreateSubtask ?? true}
+    />,
+  )
   return { onOpen, onCreate }
 }
 
@@ -91,7 +101,12 @@ describe('TaskSubtasksSection — opening a child (AC-085)', () => {
   })
 })
 
-describe('TaskSubtasksSection — creating a child (AC-085)', () => {
+/**
+ * Spec 0123 AC-036 CHANGES the requirement: the button is gated on
+ * `permissions.actions.create_subtask` directly (already `tasks.create` AND
+ * the write-lock cascade availability, D-9), not a bare ability check.
+ */
+describe('TaskSubtasksSection — creating a child (AC-085/AC-036)', () => {
   it('offers "crea sotto-task" and delegates the prefill to the caller', () => {
     const { onCreate } = renderSection([])
 
@@ -100,9 +115,8 @@ describe('TaskSubtasksSection — creating a child (AC-085)', () => {
     expect(onCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('hides the action without tasks.create', () => {
-    granted = ['tasks.view']
-    renderSection([])
+  it('hides the action when create_subtask is false', () => {
+    renderSection([], { canCreateSubtask: false })
 
     expect(
       screen.queryByRole('button', { name: label('tasks.detail.createSubtask') }),

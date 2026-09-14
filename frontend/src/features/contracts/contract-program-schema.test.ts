@@ -5,7 +5,7 @@ import { buildContractProgramSchema, contractProgramDefaultValues } from '@/feat
 describe('buildContractProgramSchema (spec 0095 D-11, spec 0096 D-5)', () => {
   const schema = buildContractProgramSchema(i18n.t)
   /** The fields spec 0096 added to the dialog; spread into every case below. */
-  const REQUIRED = { start_date: '2026-03-01', supervisor_ids: [21] }
+  const REQUIRED = { start_date: '2026-03-01', supervisor_ids: [21], task_template_id: null }
 
   it('requires a title', () => {
     expect(schema.safeParse({ ...REQUIRED, title: '', type: 'processing', quote_line_ids: [1] }).success).toBe(false)
@@ -31,6 +31,7 @@ describe('buildContractProgramSchema (spec 0095 D-11, spec 0096 D-5)', () => {
         type: 'processing',
         quote_line_ids: [1],
         supervisor_ids: [21],
+        task_template_id: null,
       }).success,
     ).toBe(false)
     expect(
@@ -40,6 +41,7 @@ describe('buildContractProgramSchema (spec 0095 D-11, spec 0096 D-5)', () => {
         quote_line_ids: [1],
         start_date: '2026-03-01',
         supervisor_ids: [],
+        task_template_id: null,
       }).success,
     ).toBe(false)
   })
@@ -62,6 +64,25 @@ describe('contractProgramDefaultValues', () => {
       start_date: '',
       supervisor_ids: [],
       quote_line_ids: [],
+      task_template_id: null,
     })
+  })
+})
+
+/** Spec 0124 D-9: optional in the dialog too, never required. */
+describe('buildContractProgramSchema — task_template_id (spec 0124)', () => {
+  const schema = buildContractProgramSchema(i18n.t)
+  const REQUIRED = { start_date: '2026-03-01', supervisor_ids: [21] }
+
+  it('accepts a picked id', () => {
+    expect(
+      schema.safeParse({
+        ...REQUIRED,
+        title: 'Installazione',
+        type: 'processing',
+        quote_line_ids: [1],
+        task_template_id: 3,
+      }).success,
+    ).toBe(true)
   })
 })

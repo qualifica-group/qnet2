@@ -84,7 +84,9 @@ class TaskStatusService
      * through the SAME method via TaskStatusesTableDefinition::deleteModel(). The
      * system-row guard (D-8c) runs FIRST: one of the three protected rows is
      * never deletable, regardless of whether it happens to be unreferenced
-     * (AC-042).
+     * (AC-042). A SECOND "in use" set, added by spec 0124 (D-5, AC-012): a
+     * status still referenced by a `task_templates` row cannot be removed
+     * either, same style — its own FK is `restrictOnDelete` too.
      */
     public function delete(TaskStatus $taskStatus): void
     {
@@ -92,6 +94,10 @@ class TaskStatusService
 
         if ($taskStatus->tasks()->exists()) {
             abort(409, 'This task status is used by a task and cannot be deleted.');
+        }
+
+        if ($taskStatus->taskTemplateItems()->exists()) {
+            abort(409, 'This task status is used by a task template row and cannot be deleted.');
         }
 
         $taskStatus->delete();

@@ -48,10 +48,15 @@ beforeEach(() => {
  * reload.
  */
 describe('tasks api — the six domain actions return the refreshed permissions', () => {
+  /** Spec 0123 D-1: `time_entry` is now mandatory in the payload, on both completion paths. */
   it('complete posts its payload to /tasks/{id}/complete and echoes permissions', async () => {
-    const result = await completeTask(7, { closure_feedback: 'fatto' })
+    const payload = {
+      closure_feedback: 'fatto',
+      time_entry: { date: '2026-09-14', task_type_id: 2, minutes: 60 },
+    }
+    const result = await completeTask(7, payload)
 
-    expect(postMock).toHaveBeenCalledWith('/tasks/7/complete', { closure_feedback: 'fatto' })
+    expect(postMock).toHaveBeenCalledWith('/tasks/7/complete', payload)
     expect(result.permissions).toEqual(PERMISSIONS)
     expect(result.id).toBe(7)
   })

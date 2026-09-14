@@ -25,6 +25,9 @@ export function buildContractProgramSchema(t: TFunction) {
     start_date: z.string().min(1, t('workOrders.form.startDateRequired')),
     supervisor_ids: z.array(z.number()).min(1, t('workOrders.form.supervisorsRequired')),
     quote_line_ids: z.array(z.number()).min(1, t('contracts.actions.programDialog.linesRequired')),
+    // "Modello di Task" (spec 0124 D-9): optional, never required — mirrors
+    // the work order form's own `task_template_id` field.
+    task_template_id: z.number().nullable(),
   })
 }
 
@@ -37,5 +40,6 @@ export function contractProgramDefaultValues(): ContractProgramFormValues {
     start_date: '',
     supervisor_ids: [],
     quote_line_ids: [],
+    task_template_id: null,
   }
 }

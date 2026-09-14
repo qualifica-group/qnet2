@@ -182,6 +182,14 @@ export function TaskActionsBar({ task }: TaskActionsBarProps) {
         </Button>
       ) : null}
 
+      {/* Spec 0123 D-6/AC-023: `complete`/`complete_to_validation`/`approve` are already
+          false whenever this is `> 0` — the reason the buttons above are missing. */}
+      {task.open_subtasks_count > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {t('tasks.actions.openSubtasksBlocking', { count: task.open_subtasks_count })}
+        </p>
+      ) : null}
+
       <TaskCompleteDialog
         open={openDialog === 'complete'}
         onOpenChange={(open) => setOpenDialog(open ? 'complete' : 'none')}

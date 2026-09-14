@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { ConfirmContext, type ConfirmFn } from '@/components/confirm-dialog-context'
 import { TaskDetailView } from '@/features/tasks/task-detail'
-import { blockTask, completeTask, uncompleteTask } from '@/features/tasks/api'
+import { blockTask, uncompleteTask } from '@/features/tasks/api'
 import {
   FULL_ACCESS_PERMISSIONS,
   taskDetailWithPermissions,
@@ -39,7 +39,6 @@ vi.mock('@/features/tasks/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/tasks/api')>('@/features/tasks/api')
   return {
     ...actual,
-    completeTask: vi.fn(),
     uncompleteTask: vi.fn(),
     approveTask: vi.fn(),
     rejectTask: vi.fn(),
@@ -66,7 +65,21 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   ),
 }))
 
-const label = (key: string) => i18n.t(key)
+// The "Segnatempo" section's type field mounts a second async for-select
+// network path (spec 0123 D-1); stubbed with a single, already-active type
+// matching the fixture's own `task_type_id` (2) so the section's default
+// resolves without any interaction (mirrors the async-paginated-select stub above).
+vi.mock('@/features/time-entries/form/time-entry-type-picker', () => ({
+  useTimeEntryTypeOptions: () => ({
+    options: [{ id: 2, label: 'Attività', meta: { color: 'blue', icon: 'clipboard-list' } }],
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  TimeEntryTypePicker: ({ value }: { value: number | null }) => <div>{value ?? ''}</div>,
+}))
+
+const label = (key: string, options?: Record<string, unknown>) => i18n.t(key, options)
 
 /** `FULL_ACCESS_PERMISSIONS` with only the given action flags set — the rest default to false/absent. */
 function actionPermissions(actions: ResourcePermissions['actions']): ResourcePermissions {
@@ -103,7 +116,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   granted = ['tasks.view', 'tasks.create']
-  vi.mocked(completeTask).mockReset()
   vi.mocked(uncompleteTask).mockReset()
   vi.mocked(blockTask).mockReset()
   vi.mocked(toast.success).mockReset()
@@ -206,6 +218,19 @@ describe('TaskDetailView — sub-tasks (AC-085)', () => {
 
     expect(screen.getByRole('button', { name: 'Preparare il preventivo' })).toBeInTheDocument()
   })
+
+  /** Spec 0123 D-9/AC-036: wired from `permissions.actions.create_subtask`, not a bare ability. */
+  it('shows "Crea sotto-task" iff permissions.actions.create_subtask is true', () => {
+    renderDetail(taskDetailWithPermissions({ permissions: actionPermissions({ create_subtask: true }) }))
+
+    expect(screen.getByRole('button', { name: label('tasks.detail.createSubtask') })).toBeInTheDocument()
+  })
+
+  it('hides "Crea sotto-task" when create_subtask is false', () => {
+    renderDetail(taskDetailWithPermissions({ permissions: actionPermissions({ create_subtask: false }) }))
+
+    expect(screen.queryByRole('button', { name: label('tasks.detail.createSubtask') })).not.toBeInTheDocument()
+  })
 })
 
 /** Spec 0121 D-7/AC-021: the section now gates on EITHER flag, not just the feedback one. */
@@ -277,6 +302,31 @@ describe('TaskDetailView — actions bar gating (AC-041)', () => {
   })
 })
 
+/** Spec 0123 D-6/AC-023: the reason `complete`/`approve` are missing when the task has open sub-tasks. */
+describe('TaskDetailView — open sub-tasks reason (AC-023)', () => {
+  it('shows the pluralized reason next to the actions when open_subtasks_count > 0', () => {
+    renderDetail(taskDetailWithPermissions({ open_subtasks_count: 2, permissions: actionPermissions({}) }))
+
+    expect(
+      screen.getByText(label('tasks.actions.openSubtasksBlocking', { count: 2 })),
+    ).toBeInTheDocument()
+  })
+
+  it('uses the singular form for exactly one open sub-task', () => {
+    renderDetail(taskDetailWithPermissions({ open_subtasks_count: 1, permissions: actionPermissions({}) }))
+
+    expect(
+      screen.getByText(label('tasks.actions.openSubtasksBlocking', { count: 1 })),
+    ).toBeInTheDocument()
+  })
+
+  it('shows no reason when there are no open sub-tasks', () => {
+    renderDetail(taskDetailWithPermissions({ open_subtasks_count: 0, permissions: actionPermissions({}) }))
+
+    expect(screen.queryByText(label('tasks.actions.openSubtasksBlocking', { count: 1 }))).not.toBeInTheDocument()
+  })
+})
+
 /** Spec 0118 D-10: the seventh action, gated exactly like the other six. */
 describe('TaskDetailView — "Richiedi aggiornamento" gating (AC-059/AC-061)', () => {
   it('renders the button when the server flag is true on an open phase', () => {
@@ -309,86 +359,12 @@ describe('TaskDetailView — "Richiedi aggiornamento" gating (AC-059/AC-061)', (
   })
 })
 
-/**
- * Spec 0121 D-2/D-3/D-6 RECTIFIES spec 0116 D-8: the path is derived
- * server-side (`permissions.actions.complete_to_validation`), never picked by
- * a switch in this dialog.
- */
-describe('TaskDetailView — complete dialog (AC-018/AC-019/AC-020)', () => {
-  /** The dialog mounts through Radix's own portal effect, a tick after the opener click (mirrors `contract-actions-refresh.test.tsx`). */
-  async function openCompleteDialog(overrides: Partial<TaskDetailWithPermissions> = {}) {
-    renderDetail(
-      taskDetailWithPermissions({
-        permissions: actionPermissions({ complete: true, complete_to_validation: false }),
-        ...overrides,
-      }),
-    )
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.complete.label') }))
-    return screen.findByRole('button', { name: label('tasks.actions.completeDialog.confirm') })
-  }
-
-  it('keeps the submit disabled while a required feedback is empty (AC-020)', async () => {
-    const submit = await openCompleteDialog({ requires_closure_feedback: true })
-
-    expect(submit).toBeDisabled()
-
-    // A required `FormLabel` appends an `aria-hidden` "*", part of the label's
-    // plain text content: anchor the match instead of an exact string (mirrors
-    // `contract-terminate-dialog.test.tsx`'s `/^Termination date/`).
-    fireEvent.change(screen.getByLabelText(new RegExp(`^${label('tasks.actions.completeDialog.feedback')}`)), {
-      target: { value: 'Consegnato al cliente' },
-    })
-
-    expect(submit).toBeEnabled()
-  })
-
-  it('leaves the submit enabled with no feedback when none is required', async () => {
-    const submit = await openCompleteDialog({ requires_closure_feedback: false })
-
-    expect(submit).toBeEnabled()
-  })
-
-  it('with complete_to_validation false: no switch, no status picker, and an empty payload (AC-018)', async () => {
-    vi.mocked(completeTask).mockResolvedValueOnce(taskDetailWithPermissions())
-    await openCompleteDialog({ requires_closure_feedback: false })
-
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: label('tasks.actions.completeDialog.validationStatus') }),
-    ).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.confirm') }))
-
-    await waitFor(() => expect(completeTask).toHaveBeenCalledWith(90, {}))
-  })
-
-  it('with complete_to_validation true: "Invia in validazione" title, mandatory status picker, no switch (AC-019)', async () => {
-    vi.mocked(completeTask).mockResolvedValueOnce(
-      taskDetailWithPermissions({ task_status: taskStatus({ id: 50, group: 'in_validation' }) }),
-    )
-    await openCompleteDialog({
-      requires_closure_feedback: false,
-      permissions: actionPermissions({ complete: true, complete_to_validation: true }),
-    })
-
-    expect(
-      screen.getByRole('heading', { name: label('tasks.actions.completeDialog.validationTitle') }),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-
-    // Submitting without a chosen status shows the field error and never calls the API.
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.confirm') }))
-    expect(
-      await screen.findByText(label('tasks.actions.completeDialog.validationStatusRequired')),
-    ).toBeInTheDocument()
-    expect(completeTask).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.validationStatus') }))
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.confirm') }))
-
-    await waitFor(() => expect(completeTask).toHaveBeenCalledWith(90, { validation_status_id: 50 }))
-  })
-})
+// The "Completa" pop-up's own tests (AC-018/AC-019/AC-020, spec 0123
+// AC-039/AC-040) moved to the dedicated `task-complete-dialog.test.tsx`
+// (renders `TaskCompleteDialog` directly, engineering.md §6 file-size split):
+// `TaskActionsBar` mounts it unconditionally regardless of which action is
+// available, so a `TaskDetailView` render exercises it too, but the dialog's
+// OWN behaviour is tested closer to its unit there.
 
 describe('TaskDetailView — action errors (AC-044)', () => {
   it('shows the dedicated "task bloccato" message on a 409, not a generic error', async () => {

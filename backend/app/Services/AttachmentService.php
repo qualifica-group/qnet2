@@ -51,6 +51,57 @@ class AttachmentService
     }
 
     /**
+     * Physically duplicate an existing attachment's binary onto a new UUID
+     * object name (spec 0124, D-6) and link the copy to $target — a fresh,
+     * independent `attachments` row, never a second reference to the same
+     * file. Mirrors persist()'s own consistency shape: the binary is
+     * written first, the row inside a transaction, and a failed insert
+     * removes the just-written copy so no orphan binary survives.
+     *
+     * Same disk as the source (never cross-disk): the source's own `disk`
+     * column, not `config('attachments.disk')`, so a copy always lands
+     * beside the file it was copied from.
+     */
+    public function copyTo(Attachment $source, Model $target, ?string $collection, User $uploader): Attachment
+    {
+        $disk = $source->disk;
+        $directory = trim((string) config('attachments.directory'), '/');
+        $storedName = (string) Str::uuid().($source->extension !== null ? '.'.$source->extension : '');
+        $path = $directory !== '' ? $directory.'/'.$storedName : $storedName;
+
+        $copied = Storage::disk($disk)->copy($source->path, $path);
+
+        if ($copied === false) {
+            abort(500, 'Failed to copy the attachment file.');
+        }
+
+        try {
+            return DB::transaction(function () use ($source, $target, $collection, $uploader, $disk, $path): Attachment {
+                $attachment = new Attachment([
+                    'collection' => $collection ?? $source->collection,
+                    'disk' => $disk,
+                    'path' => $path,
+                    'original_name' => $source->original_name,
+                    'mime_type' => $source->mime_type,
+                    'extension' => $source->extension,
+                    'size' => $source->size,
+                    'uploaded_by' => $uploader->id,
+                ]);
+
+                $attachment->attachable()->associate($target);
+                $attachment->save();
+
+                return $attachment;
+            });
+        } catch (Throwable $exception) {
+            // The metadata row failed to persist: drop the orphan copy.
+            Storage::disk($disk)->delete($path);
+
+            throw $exception;
+        }
+    }
+
+    /**
      * Delete the attachment metadata and its stored binary.
      *
      * The row is deleted first inside a transaction; the file is removed only

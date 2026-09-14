@@ -100,9 +100,13 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // segnatempo module's two tables, and spec 0120's
     // `2026_09_14_130000_create_task_recurrences_table` (65th) and
     // `2026_09_14_130100_add_task_recurrence_id_to_tasks_table` (66th), the
-    // recurrence module's own table and its link back onto `tasks`.
+    // recurrence module's own table and its link back onto `tasks`, and spec
+    // 0124's `2026_09_15_100000_create_task_templates_table` (67th),
+    // `2026_09_15_100100_create_task_template_items_table` (68th) and
+    // `2026_09_15_100200_add_task_template_id_to_work_orders_table` (69th),
+    // the task-templates module's two tables and its link onto `work_orders`.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 66]);
+    Artisan::call('migrate:rollback', ['--step' => 69]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

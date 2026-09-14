@@ -40,6 +40,7 @@ const SERVER_ERROR_FIELDS = [
   'is_force_closed',
   'force_close_reason',
   'quote_line_ids',
+  'task_template_id',
 ] as const
 
 export type WorkOrderFormValues = CreateWorkOrderFormValues & UpdateWorkOrderFormValues
@@ -86,6 +87,10 @@ export function useWorkOrderForm({ mode, onSuccess, initialCode }: UseWorkOrderF
         is_force_closed: workOrder.is_force_closed,
         force_close_reason: workOrder.force_close_reason,
         quote_line_ids: workOrder.quote_lines.map((line) => line.id),
+        // Spec 0124 D-9: never resubmitted (`buildUpdatePayload` never reads
+        // it, D-5), kept here only so the shared shape can drive the
+        // read-only display.
+        task_template_id: workOrder.task_template?.id ?? null,
         // An empty PHP map serializes as a JSON ARRAY (`[]`, not `{}`):
         // `toAttributeValuesMap` normalizes that edge case before it reaches
         // RHF's `z.object(shape)` (mirrors `useQuoteForm`).
@@ -106,6 +111,7 @@ export function useWorkOrderForm({ mode, onSuccess, initialCode }: UseWorkOrderF
       is_force_closed: false,
       force_close_reason: null,
       quote_line_ids: [],
+      task_template_id: null,
       attribute_values: {},
     }
   }, [mode, initialCode])

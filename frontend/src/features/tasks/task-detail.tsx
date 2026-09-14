@@ -215,6 +215,7 @@ export function TaskDetailView({ task, onOpenSubtask, onCreateSubtask }: TaskDet
             subtasks={task.subtasks}
             onOpen={onOpenSubtask}
             onCreate={onCreateSubtask}
+            canCreateSubtask={task.permissions.actions.create_subtask}
           />
         </RecordSectionsGrid>
 

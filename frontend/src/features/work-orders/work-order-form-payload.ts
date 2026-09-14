@@ -35,6 +35,10 @@ export function buildCreatePayload(values: WorkOrderFormValues): CreateWorkOrder
     // persistito da conservare, quindi il merge sparso lato server non serve
     // (mirrors `quotes`' `buildCreatePayload`).
     attribute_values: values.attribute_values,
+    // Spec 0124 D-9: opzionale, sempre inviato (anche `null`) — mirrors
+    // `callback_date`'s own "optional in the type, always present in the
+    // payload" pattern.
+    task_template_id: values.task_template_id,
   }
 }
 

@@ -38,6 +38,12 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     is_force_closed: z.boolean(),
     force_close_reason: z.string().nullable(),
     quote_line_ids: z.array(z.number()),
+    // "Modello di Task" (spec 0124 D-9): opzionale, immutabile dopo la
+    // creazione (D-5) — resta nella shape CONDIVISA cosi' l'edit form puo'
+    // mostrarlo in sola lettura senza una seconda shape, esattamente come
+    // `quote_id`; nessuna superRefine la rende obbligatoria in nessuna
+    // modalita'.
+    task_template_id: z.number().nullable(),
     // "Informazioni aggiuntive" (spec 0098): una chiave per `code`
     // applicabile, forma per-tipo dal builder CONDIVISO — lo stesso che usano
     // Offerta, Prodotti e Gestione Richieste (spec 0084/0061). La

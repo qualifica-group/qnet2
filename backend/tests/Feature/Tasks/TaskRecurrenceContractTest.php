@@ -274,7 +274,7 @@ it('AC-029: PATCH sending recurrence on a blocked task is 422 on recurrence, and
 // AC-031 — GET exposes data.recurrence, permissions.actions stays at 13
 // ---------------------------------------------------------------------------
 
-it('AC-031: GET exposes data.recurrence as a full object when set, null otherwise, and permissions.actions keeps 13 keys', function () {
+it('AC-031: GET exposes data.recurrence as a full object when set, null otherwise, and permissions.actions keeps 15 keys', function () {
     $actor = taskActorWith(['create', 'update', 'view']);
     Sanctum::actingAs($actor);
     $recurrence = TaskRecurrence::factory()->create([
@@ -297,7 +297,7 @@ it('AC-031: GET exposes data.recurrence as a full object when set, null otherwis
         'ends' => 'never',
         'ends_on' => null,
         'occurrence_count' => null,
-    ])->and($response->json('permissions.actions'))->toHaveCount(13);
+    ])->and($response->json('permissions.actions'))->toHaveCount(15);
 
     $this->getJson("/api/tasks/{$plainTask->id}")->assertOk()->assertJsonPath('data.recurrence', null);
 });

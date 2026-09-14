@@ -56,6 +56,8 @@ use App\Models\TaskCategory;
 use App\Models\TaskImportance;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
+use App\Models\TaskTemplate;
+use App\Models\TaskTemplateItem;
 use App\Models\TaskType;
 use App\Models\TimeEntry;
 use App\Models\TimeEntryDayNote;
@@ -242,6 +244,13 @@ class AppServiceProvider extends ServiceProvider
             // use LogsModelActivity, same reasoning as document_layout above.
             'time_entry' => TimeEntry::class,
             'time_entry_day_note' => TimeEntryDayNote::class,
+            // Spec 0124 (task-templates module): TaskTemplate/TaskTemplateItem
+            // both use LogsModelActivity, same reasoning as document_layout
+            // above. TaskTemplateItem is also a HasAttachments owner, so this
+            // 'task_template_item' alias must match
+            // config('attachments.attachable_types').
+            'task_template' => TaskTemplate::class,
+            'task_template_item' => TaskTemplateItem::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

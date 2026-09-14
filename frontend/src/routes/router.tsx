@@ -52,6 +52,7 @@ const TaskTypesPage = lazyRoute(() => import('@/pages/task-types-page'))
 const TaskCategoriesPage = lazyRoute(() => import('@/pages/task-categories-page'))
 const TaskPrioritiesPage = lazyRoute(() => import('@/pages/task-priorities-page'))
 const TaskImportancesPage = lazyRoute(() => import('@/pages/task-importances-page'))
+const TaskTemplatesPage = lazyRoute(() => import('@/pages/task-templates-page'))
 const TimeEntriesPage = lazyRoute(() => import('@/pages/time-entries-page'))
 const TimeEntryNewPage = lazyRoute(() => import('@/pages/time-entry-new-page'))
 const TimeEntryEditPage = lazyRoute(() => import('@/pages/time-entry-edit-page'))
@@ -287,6 +288,14 @@ export const router = createBrowserRouter([
           {
             path: 'task-importances',
             element: <TaskImportancesPage />,
+          },
+          // Modelli di Task (spec 0124): generates the task set of a
+          // Commessa at creation. Only the list route is declared by hand;
+          // `new`/`:id`/`:id/edit` come from the module registry
+          // (`task-template-screens.tsx` exports `moduleScreen`, AC-012).
+          {
+            path: 'task-templates',
+            element: <TaskTemplatesPage />,
           },
           // Segnatempo (spec 0122, D-1): its own top-level item, not part of
           // the module registry — the dashboard shape (Periodo card, KPI/

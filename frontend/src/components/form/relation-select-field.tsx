@@ -73,6 +73,12 @@ interface RelationSelectFieldProps<
   retryLabel: string
   /** Renders an avatar in the trigger and every option (see `AsyncPaginatedSelect`). */
   showAvatar?: boolean
+  /**
+   * Marks individual options non-selectable while still visible (spec 0123
+   * D-5, e.g. a Stato reachable only through the Completa action). Forwarded
+   * verbatim to `AsyncPaginatedSelect`; omitted, no option is disabled.
+   */
+  isItemDisabled?: (item: ForSelectItem) => boolean
 }
 
 /** Renders a `{id, name}` relation ref as the `ForSelectItem` shape `AsyncPaginatedSelect` hydrates from. */
@@ -113,6 +119,7 @@ export function RelationSelectField<
   clearLabel,
   retryLabel,
   showAvatar = false,
+  isItemDisabled,
 }: RelationSelectFieldProps<TFieldValues, TName>) {
   const { quickCreated, renderAction } = useQuickCreateAction(resource)
 
@@ -147,6 +154,7 @@ export function RelationSelectField<
               pinnedItem={toForSelectItem(pinned)}
               showAvatar={showAvatar}
               disabled={isDisabled}
+              isItemDisabled={isItemDisabled}
               params={params}
               labels={{
                 placeholder,

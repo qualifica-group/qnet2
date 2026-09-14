@@ -50,6 +50,9 @@ class GenerateContractWorkOrderRequest extends FormRequest
             'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'quote_line_ids' => ['required', 'array', 'min:1'],
             'quote_line_ids.*' => ['integer'],
+            // Spec 0124, D-9: the same optional Modello di Task picker as
+            // StoreWorkOrderRequest's own field, on this dialog too (AC-018).
+            'task_template_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_templates', 'id')->where('is_active', true)],
             // Spec 0098, AC-019: the "Programma" dialog carries its own
             // "Informazioni aggiuntive" section — same rule as
             // Store|UpdateWorkOrderRequest, validated per-code server-side by

@@ -44,6 +44,16 @@ export interface WorkOrderQuoteRef {
   title: string
 }
 
+/**
+ * `WorkOrderResource.task_template` projection (spec 0124 D-9): the Modello
+ * di Task used to generate this work order's tasks, immutable after create
+ * (D-5) — shown read-only once set, never re-picked.
+ */
+export interface WorkOrderTaskTemplateRef {
+  id: number
+  name: string
+}
+
 /** A quote line's product live identity (D-8: a quote line has no description of its own). */
 export interface WorkOrderQuoteLineProduct {
   id: number
@@ -126,6 +136,8 @@ export interface WorkOrderDetail {
   contract_number: string | null
   quote: WorkOrderQuoteRef | null
   quote_lines: WorkOrderQuoteLine[]
+  /** Spec 0124 D-9: `null` when the commessa was not generated from a Modello di Task. */
+  task_template: WorkOrderTaskTemplateRef | null
   /** Spec 0098: i valori raccolti, uno per `code` applicabile. `{}` quando vuoto. */
   attribute_values: Record<string, CustomFieldValue>
   /** Il set risolto dalle categorie dei prodotti delle righe della commessa, contesto `work_order`. */
@@ -164,14 +176,19 @@ export interface CreateWorkOrderPayload {
   participant_slots?: (number | null)[]
   /** Spec 0098: one key per applicable Attribute `code`; server merges sparsely on update. */
   attribute_values?: Record<string, CustomFieldValue>
+  /** Spec 0124 D-9: the optional Modello di Task to generate this commessa's tasks from, create-only (D-5). */
+  task_template_id?: number | null
 }
 
 /**
  * Payload for PATCH /work-orders/{id} (partial update). `code`/`quote_id` are
  * PROHIBITED at the HTTP level (D-1/D-5): neither is ever a key of this type,
- * so a caller cannot accidentally include it.
+ * so a caller cannot accidentally include it. `task_template_id` is
+ * PROHIBITED too (spec 0124 D-5: written only at creation, 422 on PATCH).
  */
-export type UpdateWorkOrderPayload = Partial<Omit<CreateWorkOrderPayload, 'code' | 'quote_id'>>
+export type UpdateWorkOrderPayload = Partial<
+  Omit<CreateWorkOrderPayload, 'code' | 'quote_id' | 'task_template_id'>
+>
 
 /**
  * Discriminated form mode shared by the form hook/meta-resolver and the

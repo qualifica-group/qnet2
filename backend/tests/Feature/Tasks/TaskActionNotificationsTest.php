@@ -4,6 +4,7 @@ use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
 use App\Models\Task;
 use App\Models\TaskStatus;
+use App\Models\TaskType;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
 use App\Notifications\TaskClosed;
@@ -135,6 +136,24 @@ if (! function_exists('assertNoTaskNotificationsExcept')) {
     }
 }
 
+if (! function_exists('validTimeEntryPayload')) {
+    /**
+     * A valid `time_entry` (spec 0123, D-1: mandatory on every /complete
+     * call, regardless of what THIS suite is exercising).
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    function validTimeEntryPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'date' => '2026-09-14',
+            'task_type_id' => TaskType::factory()->create()->id,
+            'minutes' => 60,
+        ], $overrides);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // AC-019/AC-020 — complete, CASO 2: richiesta di validazione (voce 1)
 // ---------------------------------------------------------------------------
@@ -153,7 +172,10 @@ it('AC-019: /complete con validation_status_id notifica il solo richiedente, e n
     $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete", ['validation_status_id' => $inValidation->id])
+    $this->postJson("/api/tasks/{$task->id}/complete", [
+        'validation_status_id' => $inValidation->id,
+        'time_entry' => validTimeEntryPayload(),
+    ])
         ->assertOk();
 
     Notification::assertSentTo($people['requester'], TaskValidationRequested::class);
@@ -169,7 +191,10 @@ it('AC-020: senza requester_id la richiesta di validazione ripiega sul creatore 
     $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete", ['validation_status_id' => $inValidation->id])
+    $this->postJson("/api/tasks/{$task->id}/complete", [
+        'validation_status_id' => $inValidation->id,
+        'time_entry' => validTimeEntryPayload(),
+    ])
         ->assertOk();
 
     Notification::assertSentTo($people['creator'], TaskValidationRequested::class);
@@ -187,7 +212,7 @@ it('AC-021: /complete senza validation_status_id ne feedback notifica TaskClosed
     $task->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete")->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertOk();
 
     Notification::assertSentTo(
         [$people['creator'], $people['requester'], $people['assignee'], $people['watcher']],
@@ -205,7 +230,10 @@ it('AC-022: /complete con closure_feedback notifica TaskFeedbackInserted agli st
     $task->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete", ['closure_feedback' => 'Consegnato al cliente.'])
+    $this->postJson("/api/tasks/{$task->id}/complete", [
+        'closure_feedback' => 'Consegnato al cliente.',
+        'time_entry' => validTimeEntryPayload(),
+    ])
         ->assertOk();
 
     Notification::assertSentTo(
@@ -226,7 +254,7 @@ it('la chiusura guarda il feedback RISULTANTE, non il payload: un feedback gia s
     $task->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete")->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertOk();
 
     Notification::assertSentTimes(TaskFeedbackInserted::class, 4);
     assertNoTaskNotificationsExcept([TaskFeedbackInserted::class]);

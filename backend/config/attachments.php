@@ -5,6 +5,7 @@ use App\Models\Contract;
 use App\Models\DocumentLayout;
 use App\Models\Opportunity;
 use App\Models\Task;
+use App\Models\TaskTemplateItem;
 use App\Models\User;
 
 return [
@@ -101,6 +102,11 @@ return [
         // activity log), so this entry only opens the upload boundary -- it
         // does not name a new morph identity.
         'task' => Task::class,
+        // Task template row documents (spec 0124, D-6): the source files
+        // AttachmentService::copyTo() physically duplicates onto a generated
+        // Task's own 'documents' collection. Alias already in the global
+        // morph map (AppServiceProvider) for the same reason as 'task' above.
+        'task_template_item' => TaskTemplateItem::class,
     ],
 
 ];

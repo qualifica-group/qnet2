@@ -127,6 +127,13 @@ class DemoDataSeeder extends Seeder
         // have nothing to classify a Task on. Idempotent, so calling it from
         // both entry points converges.
         $this->call(QualificaTaskTaxonomySeeder::class);
+        // "Modelli di Task" (spec 0124): depends on the step above for the
+        // open/pending statuses some of its rows reference (D-4, resolved by
+        // GROUP, never a hard-coded id). Placed before DemoTaskSeeder for
+        // proximity to the rest of the Task module's demo data; nothing
+        // downstream (DemoWorkOrderSeeder included) reads task_template_id
+        // yet, so this ordering is not otherwise load-bearing.
+        $this->call(DemoTaskTemplateSeeder::class);
         // Attivita' (spec 0101/0116): depends on the step above for the status
         // pick-list, on DemoUsersSeeder for creatori/assegnatari/osservatori,
         // and on the optional record links it points at — DemoRegistrySeeder

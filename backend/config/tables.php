@@ -39,6 +39,7 @@ use App\Tables\TaskImportancesTableDefinition;
 use App\Tables\TaskPrioritiesTableDefinition;
 use App\Tables\TasksTableDefinition;
 use App\Tables\TaskStatusesTableDefinition;
+use App\Tables\TaskTemplatesTableDefinition;
 use App\Tables\TaskTypesTableDefinition;
 use App\Tables\UnitsOfMeasureTableDefinition;
 use App\Tables\UsersTableDefinition;
@@ -117,6 +118,8 @@ return [
         'task-categories' => TaskCategoriesTableDefinition::class,
         'task-priorities' => TaskPrioritiesTableDefinition::class,
         'task-importances' => TaskImportancesTableDefinition::class,
+        // spec 0124: il modulo Modelli di Task.
+        'task-templates' => TaskTemplatesTableDefinition::class,
     ],
 
 ];

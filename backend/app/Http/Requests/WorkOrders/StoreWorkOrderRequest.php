@@ -77,6 +77,11 @@ class StoreWorkOrderRequest extends FormRequest
             'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
             'quote_line_ids' => ['sometimes', 'array'],
             'quote_line_ids.*' => ['integer'],
+            // Spec 0124, D-5/D-8: the optional Modello di Task this
+            // Commessa's tasks are generated from — only an ACTIVE one is
+            // acceptable (422 otherwise, AC-019), same shape as an
+            // ordinary for-select-backed FK.
+            'task_template_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_templates', 'id')->where('is_active', true)],
             // Spec 0098: "Informazioni aggiuntive" — per-code applicability/
             // type/required validated separately, server-side, by
             // WorkOrderAttributeValueWriter (WorkOrderService::create()),

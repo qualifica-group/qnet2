@@ -165,6 +165,10 @@ export const tasks = {
     closureFeedback: 'Feedback di chiusura',
     closureFeedbackRequired:
       'Il feedback di chiusura è obbligatorio per chiudere questo task.',
+    startDateOutsideParentRange:
+      "La data di inizio deve rientrare nell'intervallo di date del task padre.",
+    endDateOutsideParentRange:
+      "La data di fine deve rientrare nell'intervallo di date del task padre.",
     selectPlaceholder: 'Seleziona…',
     selectEmpty: 'Nessun risultato.',
     selectError: 'Impossibile caricare le opzioni. Riprova.',
@@ -310,6 +314,8 @@ export const tasks = {
       feedbackRequired: 'Il feedback di chiusura è obbligatorio per chiudere questo task.',
       validationStatus: 'Stato di validazione',
       validationStatusRequired: 'Scegli lo stato di validazione.',
+      timeEntryTitle: 'Segnatempo',
+      timeEntryDescription: 'Registra il tempo dedicato per completare il task.',
       confirm: 'Completa',
       saving: 'Salvataggio…',
       success: 'Task completato.',
@@ -323,6 +329,8 @@ export const tasks = {
       confirm: 'Rifiuta',
     },
     validationDialog: { saving: 'Salvataggio…' },
+    openSubtasksBlocking_one: "Non puoi completare questo task: c'è {{count}} sotto-task ancora aperto.",
+    openSubtasksBlocking_other: 'Non puoi completare questo task: ci sono {{count}} sotto-task ancora aperti.',
     errors: {
       blocked: 'Questo task è bloccato. Sbloccalo prima di agire su di esso.',
       wrongPhase: 'Questa azione non è disponibile nella fase attuale del task.',
