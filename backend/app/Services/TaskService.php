@@ -9,10 +9,12 @@ use App\DataObjects\Tasks\UpdateTaskData;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Notifications\TaskNotifier;
+use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskActionOnlyStatusGuard;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
+use App\Services\Tasks\TaskParentAccessGuard;
 use App\Services\Tasks\TaskParentDateRangeGuard;
 use App\Services\Tasks\TaskRecurrenceService;
 use App\Services\Tasks\TaskReferentRegistryGuard;
@@ -72,6 +74,11 @@ use Illuminate\Support\Facades\DB;
  * the creator/requester, inside the same transaction, before the
  * closing-feedback guard runs — update() never re-derives it, by design.
  *
+ * TaskParentAccessGuard (spec 0125, D-4) runs on create with a parent and
+ * on update only when `parent_task_id` actually changes: the actor must see
+ * and be able to edit the parent. delete() re-asserts the delete matrix row
+ * past Gate::before (spec 0125, D-1) ahead of its other guards.
+ *
  * delete() carries the sub-task guard (D-8a) and the structural write lock's
  * assertDeletable() (spec 0116 AC-033); TasksTableDefinition overrides
  * deleteModel() to route the generic bulk-delete through this same method,
@@ -110,6 +117,7 @@ class TaskService
         private readonly TaskHierarchyGuard $hierarchyGuard,
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly TaskNotifier $notifier,
+        private readonly TaskParentAccessGuard $parentAccessGuard,
         private readonly TaskParentDateRangeGuard $parentDateRangeGuard,
         private readonly TaskRecurrenceService $recurrenceService,
         private readonly TaskReferentRegistryGuard $referentRegistryGuard,
@@ -138,11 +146,15 @@ class TaskService
             $task = new Task($data->attributes());
             $task->creator_id = $creator->id;
 
-            // Step 2a: write-lock cascade (spec 0123, D-9) — a Task cannot be
+            // Step 2a: the actor must see and be able to edit the parent
+            // (spec 0125, D-4), ahead of every guard that reads the parent.
+            $this->parentAccessGuard->assertMayAttach($task->parent_task_id, $creator);
+
+            // Step 2b: write-lock cascade (spec 0123, D-9) — a Task cannot be
             // born under a frozen parent or ancestor.
             TaskWriteLock::assertParentChainUnlocked($task);
 
-            // Step 2b: date-range coherence with the parent (spec 0123, D-7).
+            // Step 2c: date-range coherence with the parent (spec 0123, D-7).
             // Unconditional on create — there is no "submitted keys" partial
             // state to gate on, every attribute is already on the row.
             $this->parentDateRangeGuard->assertChildWithinParent($task);
@@ -225,6 +237,13 @@ class TaskService
             // resulting-state guard, since D-4 carries no exemption at all.
             $this->actionOnlyStatusGuard->assertReachableByPatch($task);
 
+            // Spec 0125, D-4: only a parent that actually CHANGES is judged,
+            // so an untouched one is never re-evaluated and detaching (null)
+            // is always allowed.
+            if ($task->isDirty('parent_task_id')) {
+                $this->parentAccessGuard->assertMayAttach($task->parent_task_id, $actor);
+            }
+
             $this->hierarchyGuard->assertAcyclic($task->id, $task->parent_task_id);
 
             // Write-lock cascade (spec 0123, D-9): moving a Task under a
@@ -305,9 +324,20 @@ class TaskService
      * looking. `task_assignee`/`task_watcher` rows cascade away via their own
      * FKs; `parent_task_id` is restrictOnDelete, so even a delete that
      * side-stepped this Service would fail at the database.
+     *
+     * Spec 0125 D-1: the delete row of the matrix is re-asserted here, past
+     * Gate::before, so a super-admin who is an assignee is refused like any
+     * assignee. Checked BEFORE the sub-task guard so a refused actor never
+     * learns whether the Task has children.
      */
-    public function delete(Task $task): void
+    public function delete(Task $task, User $actor): void
     {
+        abort_unless(
+            TaskAbilityResolver::canDelete($actor, $task),
+            403,
+            'Only the creator, the requester or a manager may delete this task.',
+        );
+
         if ($task->subtasks()->exists()) {
             abort(409, 'This task has sub-tasks and cannot be deleted.');
         }

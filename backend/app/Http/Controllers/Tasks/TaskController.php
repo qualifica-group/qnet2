@@ -112,12 +112,14 @@ class TaskController extends BaseApiController
      * DELETE /api/tasks/{task} — delete a Task, unless it has sub-tasks
      * (TaskService::delete(), D-8a: 409).
      */
-    public function destroy(Task $task): JsonResponse
+    public function destroy(Request $request, Task $task): JsonResponse
     {
         try {
             $this->authorize('delete', $task);
 
-            $this->service->delete($task);
+            /** @var User $actor */
+            $actor = $request->user();
+            $this->service->delete($task, $actor);
 
             return $this->noContent();
         } catch (Throwable $exception) {

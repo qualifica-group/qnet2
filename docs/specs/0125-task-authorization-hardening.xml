@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0125 — CORREZIONI DI AUTORIZZAZIONE DEL MODULO TASK (B1, B2, B3)
+  Decima fase del modulo Task. Chiude i bug di autorizzazione emersi dall'analisi di
+  DOC Tasks.docx contro il codice (2026-09-14). Nessuna nuova feature, nessuna migrazione.
+  RETTIFICA: 0123 D-9 (`create_subtask` = solo `tasks.create` + write lock), 0101 (validazione
+  di `parent_task_id` limitata a `exists`).
+  Decisioni utente 2026-09-14: D-3 (ruolo sul padre = chi puo' modificare), D-4 (stessa regola in PATCH).
+-->
+<spec id="0125-task-authorization-hardening" status="approved" owner="utente" date="2026-09-14">
+
+  <goal>
+    Tre buchi di autorizzazione del modulo Task vanno chiusi lato server. Il flag UI deve dire
+    la stessa cosa del server. (1) Un admin che e' anche assegnatario non puo' eliminare il task,
+    nemmeno se e' super-admin. (2) L'azione "Elimina" compare solo a chi il server permette
+    davvero di eliminare. (3) Un task diventa figlio di un altro, in creazione o in modifica,
+    solo se chi agisce vede il padre e puo' modificarlo.
+  </goal>
+
+  <context>
+    <!-- Nomi REALI verificati nel repo il 2026-09-14. -->
+    <existing_names>
+      <item>`Gate::before` in `Providers/AppServiceProvider.php:256` fa passare ogni ability per
+        il ruolo `super-admin`. Anche `$actor->can('tasks.manageAll')` restituisce true, quindi
+        per un super-admin `TaskRecordRoles::isManager()` vale true, salvo che sia assegnatario (D-2 di 0116).</item>
+      <item>`Services/Tasks/TaskAbilityResolver.php` e' l'unica matrice ruolo -> azione:
+        `canUpdate`, `canUpdateProtectedFields`, `canDelete` (= mandato), `canComplete`,
+        `canValidate`, `canBlock`, `canRequestUpdate`. Il mandato e' creatore/richiedente oppure gestore.</item>
+      <item>Precedente del ricontrollo oltre il Gate: `TaskCompletionService::assertOwnsMandateForValidation()`
+        e `TaskActionService::assertOwnsMandateForBlocking()` usano
+        `abort_unless(TaskAbilityResolver::canX(...), 403, 'Only the creator, the requester or a manager may ...')`.
+        Test di riferimento: `tests/Feature/Tasks/TaskActionsTest.php` AC-011 (super-admin assegnatario non approva).</item>
+      <item>Delete singolo: `DELETE /api/tasks/{task}` -> `TaskController::destroy` (`authorize('delete')`)
+        -> `TaskService::delete(Task $task)` (409 con sotto-task, `TaskWriteLock::assertDeletable`).
+        Nessun ricontrollo del ruolo.</item>
+      <item>Delete massivo: `TableBulkDeleteService` usa `TableDefinition::authorizeDelete()` (default
+        `Gate::allows('delete')`, quindi `forbidden`) e poi `deleteModel()`. Un'eccezione Http/Authorization
+        diventa `guarded`. `TasksTableDefinition::deleteModel()` delega a `TaskService::delete()`.
+        `TasksTableDefinition::actionsFor()` espone la row-action `delete` via `Gate::allows('delete')`.</item>
+      <item>Flag UI: `Authorization/TasksAuthorization::actionPermissions()`, dove
+        `'delete' => $model !== null && $actor->can('tasks.delete')` e
+        `'create_subtask' => $task !== null && $actor->can('tasks.create') && ! TaskWriteLock::isLocked($task) && ! TaskWriteLock::isLockedByAncestor($task)`.</item>
+      <item>`parent_task_id`: `StoreTaskRequest.php:85` e `UpdateTaskRequest.php:105` =
+        `['sometimes','nullable','integer', Rule::exists('tasks','id')]`. `TaskService::create(CreateTaskData, User $creator)`
+        e `TaskService::update(Task, UpdateTaskData, User $actor)`; `UpdateTaskData::$parentTaskIdSubmitted` esiste.
+        Gli errori di gerarchia sono 422 su `parent_task_id` (`TaskHierarchyGuard::refuse()`, messaggi in inglese).</item>
+      <item>`TaskVisibilityScope::isVisibleTo(User, Task)` e' la regola D-9 di 0101: visibile a
+        creatore, richiedente, assegnatari e osservatori, oppure a chi ha `tasks.viewAll`.</item>
+      <item>Frontend: legge solo `permissions.actions.delete` / `create_subtask` e le row-action dal
+        backend. La select del padre (`task-identity-section.tsx`) usa `tasks/for-select`, gia'
+        limitato dalla visibilita'. `task-form-server-error-fields.ts` mappa gia' `parent_task_id`.</item>
+    </existing_names>
+  </context>
+
+  <decisions>
+    <decision id="D-1">B1. `TaskService::delete()` ricontrolla `TaskAbilityResolver::canDelete($actor, $task)`
+      oltre il `Gate::before`, con 403 e messaggio 'Only the creator, the requester or a manager may delete this task.'.
+      Il pattern e' quello di approve e block. La firma diventa `delete(Task $task, User $actor)`.
+      Il controller passa `$request->user()`; `TasksTableDefinition::deleteModel()` passa l'utente autenticato.
+      Il ricontrollo avviene PRIMA del guard 409 sui sotto-task, cosi' chi non puo' eliminare riceve 403 e non
+      scopre se il task ha figli.</decision>
+    <decision id="D-2">B2. Stessa regola in tre punti, tutti basati su `TaskAbilityResolver::canDelete()`:
+      il flag `permissions.actions.delete` = `$task !== null && tasks.delete && canDelete`;
+      la row-action `delete` di `TasksTableDefinition::actionsFor()` e `TasksTableDefinition::authorizeDelete()`
+      aggiungono `canDelete` al Gate. Nel delete massivo la riga risulta quindi `forbidden` e non `guarded`.</decision>
+    <decision id="D-3">B3 (utente). Nuova riga della matrice `TaskAbilityResolver::canCreateSubtask(User, Task $parent)`,
+      uguale a `canUpdate` (creatore/richiedente, assegnatario, gestore; non l'osservatore). E' un metodo a se',
+      cosi' la regola ha un nome, ma riusa `canUpdate` senza duplicare condizioni. Il flag `create_subtask`
+      aggiunge `canCreateSubtask($actor, $task)` alle condizioni attuali.</decision>
+    <decision id="D-4">B3 (utente). Nuovo guard `Services/Tasks/TaskParentAccessGuard::assertMayAttach(?int $parentId, User $actor)`:
+      se `$parentId` non e' null, il padre deve essere visibile (`TaskVisibilityScope::isVisibleTo`) e ammettere
+      `canCreateSubtask`. Altrimenti risponde 422 su `parent_task_id` con lo stesso messaggio in entrambi i casi,
+      'The selected parent task is not available.', cosi' non si capisce se il padre esiste.
+      Si chiama in `TaskService::create()` sempre e in `TaskService::update()` solo se `parentTaskIdSubmitted`
+      E il valore cambia. Un padre invariato non viene rivalutato (stesso principio di 0123 D-9), e rimuovere il
+      padre (null) non richiede controlli. Il guard gira dentro la transazione, prima dei guard di coerenza col padre.</decision>
+    <decision id="D-5">Il super-admin non ha deroghe oltre la matrice. Se non e' assegnatario del padre
+      e' gestore, quindi puo' agganciare. Se e' assegnatario, puo' comunque agganciare perche' l'assegnatario
+      ammette `canUpdate`. Per il delete invece l'assegnatario non ha il mandato, quindi 403.
+      I ruoli si sommano (D-3 di 0116): un super-admin assegnatario che e' anche creatore o richiedente
+      puo' eliminare.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>D-1: ricontrollo `canDelete` in `TaskService::delete()` e firma con attore (controller + `TasksTableDefinition::deleteModel`).</item>
+      <item>D-2: flag `delete`, row-action `delete` e `authorizeDelete` di `TasksTableDefinition` coerenti con `canDelete`.</item>
+      <item>D-3: `TaskAbilityResolver::canCreateSubtask()` e flag `create_subtask`.</item>
+      <item>D-4: `TaskParentAccessGuard` chiamato in create e update.</item>
+      <item>[revised 2026-09-14, emerso in verifica] `DemoTaskSeeder` crea i sotto-task tramite `TaskService::create()`
+        con un creatore casuale, che il guard D-4 rifiuta. Il sotto-task ora e' creato dal creatore del padre. Cambiata
+        la sequenza casuale, e' emerso un difetto preesistente di `buildDates()`: un sotto-task chiuso sotto un padre
+        che inizia nel futuro aveva completion &lt; start. Ora sotto un padre futuro non si estrae uno stato di chiusura,
+        e un sotto-task chiuso inizia entro oggi. Verificato da `tests/Feature/Seeding/DemoTaskSeederTest.php`.</item>
+      <item>Test Pest reproduce-first di ogni AC. Si adeguano solo le fixture dei test esistenti che creavano
+        figli sotto padri senza ruolo: e' un cambio di requisito dichiarato qui, non test tampering.</item>
+    </in>
+    <out>
+      <item>Permessi su note, segnatempo e documenti (sezione 2 dell'analisi): serve una decisione del cliente.</item>
+      <item>Admin assegnatario sui campi protetti o sulla modifica: resta com'e' (edit come assegnatario).</item>
+      <item>Il `Gate::before` super-admin globale: non si tocca.</item>
+      <item>Frontend: nessuna modifica. Il contratto del flag non cambia shape, cambia solo il valore.</item>
+      <item>`WorkOrderTaskGenerator`, `TaskOccurrenceFactory`: non passano da questo percorso o non impostano un padre.</item>
+      <item>Autorizzazione sul VECCHIO padre quando si sposta un task: basta il ruolo sul task spostato (gia' richiesto
+        da `parent_task_id` protetto) e sul nuovo padre.</item>
+      <item>Nuove migrazioni, permessi o dipendenze.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo, nessuna shape nuova. Cambiano solo esiti ed errori. -->
+    <endpoint method="DELETE" path="/api/tasks/{task}">
+      <request>nessun body (invariato)</request>
+      <response status="204">nessun contenuto (invariato)</response>
+      <errors>
+        403 { success:false, message } se chi agisce non ha `canDelete`, anche da super-admin (NUOVO, D-1).
+        Il 403 ha precedenza sul 409 dei sotto-task. 409 sotto-task / write lock invariati.
+      </errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/tasks/bulk-delete">
+      <request>invariato</request>
+      <response status="200">invariato; una riga senza `canDelete` compare in `failed` con `reason: "forbidden"` (D-2)</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tasks">
+      <request>`parent_task_id?: int|null` (invariato)</request>
+      <errors>422 `errors.parent_task_id = ["The selected parent task is not available."]` se il padre non e'
+        visibile o non ammette `canCreateSubtask` (NUOVO, D-4). Nessun task creato.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/tasks/{task}">
+      <request>`parent_task_id?: int|null` (invariato)</request>
+      <errors>422 `errors.parent_task_id`, stesso messaggio, solo se il valore inviato e' diverso da quello
+        attuale e non nullo (NUOVO, D-4). Nessuna modifica persistita.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/tasks/{task}">
+      <response status="200">`permissions.actions.delete` = `tasks.delete` AND `canDelete`.
+        `permissions.actions.create_subtask` = condizioni attuali AND `canCreateSubtask`. Chiavi e ordine invariati (15).</response>
+    </endpoint>
+    <table resource="tasks">row-action `delete` presente solo con Gate `delete` AND `canDelete` (D-2).</table>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un super-admin assegnatario, non creatore ne' richiedente, di un task senza figli,
+      quando chiama DELETE /api/tasks/{task}, allora riceve 403 e il task esiste ancora.</criterion>
+    <criterion id="AC-002">Dato un utente con `tasks.delete` e `tasks.manageAll` assegnatario del task, quando chiama DELETE,
+      allora riceve 403 e il task esiste ancora.</criterion>
+    <criterion id="AC-003">Dato un super-admin assegnatario che e' anche creatore del task, quando chiama DELETE,
+      allora riceve 204 e il task e' eliminato (i ruoli si sommano, D-5).</criterion>
+    <criterion id="AC-004">Dato un super-admin assegnatario di un task CON sotto-task, quando chiama DELETE,
+      allora riceve 403, non 409 (D-1).</criterion>
+    <criterion id="AC-005">Dato un super-admin assegnatario, quando lancia il bulk-delete della tabella tasks su quel task,
+      allora il task compare in `failed` con `reason` "forbidden" e resta nel database.</criterion>
+    <criterion id="AC-006">Dato un assegnatario e un osservatore con `tasks.delete`, quando leggono GET /api/tasks/{task},
+      allora `permissions.actions.delete` e' false. Per il creatore con `tasks.delete` e' true.</criterion>
+    <criterion id="AC-007">Dato un super-admin assegnatario, allora sia `permissions.actions.delete` sia la row-action
+      `delete` della tabella tasks sono assenti o false. Per un super-admin non assegnatario sono presenti.</criterion>
+    <criterion id="AC-008">Dato un utente con `tasks.create` che NON vede il task X (nessun ruolo, niente `tasks.viewAll`),
+      quando chiama POST /api/tasks con `parent_task_id = X`, allora riceve 422 su `parent_task_id` con
+      "The selected parent task is not available." e nessun task viene creato.</criterion>
+    <criterion id="AC-009">Dato un utente con `tasks.viewAll` e `tasks.create` senza ruolo su X, quando chiama POST con
+      `parent_task_id = X`, allora riceve 422 con lo stesso messaggio (vede il padre ma non puo' modificarlo).</criterion>
+    <criterion id="AC-010">Dato l'osservatore di X con `tasks.create`, quando chiama POST con `parent_task_id = X`,
+      allora riceve 422. Dato l'assegnatario, il creatore o il richiedente di X con `tasks.create`, riceve 201
+      e il figlio ha `parent_task_id = X`.</criterion>
+    <criterion id="AC-011">Dato un utente con `tasks.manageAll`, `tasks.viewAll` e `tasks.create` senza ruolo su X,
+      quando chiama POST con `parent_task_id = X`, allora riceve 201 (gestore).</criterion>
+    <criterion id="AC-012">Dato il creatore del task T che non vede X, quando chiama PATCH /api/tasks/{T} con
+      `parent_task_id = X`, allora riceve 422 su `parent_task_id` e `T.parent_task_id` resta invariato.</criterion>
+    <criterion id="AC-013">Dato un task T figlio di un padre P su cui chi agisce NON ha piu' ruolo, quando chiama
+      PATCH con `parent_task_id = P` (invariato) insieme ad altri campi validi, allora la modifica passa (padre
+      invariato non rivalutato). Con `parent_task_id = null` il padre viene rimosso senza 422.</criterion>
+    <criterion id="AC-014">Dato l'osservatore di X, allora `permissions.actions.create_subtask` di X e' false.
+      Per l'assegnatario di X non bloccato e' true. Il vincolo del write lock (0123 D-9) resta: su un X bloccato
+      e' false anche per il creatore.</criterion>
+    <criterion id="AC-015">La suite Pest completa in seriale e Pint passano. Frontend: `tsc -b --force` pulito e
+      nessun file frontend modificato.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Authz solo server-side, nessuna nuova dipendenza, nessuna migrazione, nessun nuovo permesso (`permissions:sync` invariato).</item>
+    <item>La matrice ruoli resta in `TaskAbilityResolver` e non si duplicano condizioni di ruolo altrove.
+      `TaskParentAccessGuard` e i flag chiamano il resolver.</item>
+    <item>`TaskAbilityResolver` e `TaskVisibilityScope` restano statici: vincolo `permissions:sync`.</item>
+    <item>Test reproduce-first: i test degli AC-001..014 si scrivono e si eseguono prima del fix, e devono fallire
+      per il motivo atteso. Poi si applica il fix e passano.</item>
+    <item>Suite Pest SOLO seriale: `--parallel` da' falsi rossi, come annotato in HANDOFF.</item>
+    <item>File entro 300/500 righe. `TaskService.php` e' gia' vicino al limite: il guard sta in un file suo.</item>
+    <item>Nessun commit ne' cambio di branch senza ordine esplicito (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

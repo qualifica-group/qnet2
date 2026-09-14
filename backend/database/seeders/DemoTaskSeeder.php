@@ -19,6 +19,7 @@ use Database\Seeders\DemoCatalog\DemoTaskCatalogue;
 use DateTimeImmutable;
 use Faker\Factory as FakerFactory;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -198,9 +199,15 @@ class DemoTaskSeeder extends Seeder
      */
     private function createTask(int $index, ?Task $parent): Task
     {
-        // Step 1: who creates it, and which phase it is shown in.
-        $status = $this->faker->randomElement($this->statuses->all());
-        $creator = $this->faker->randomElement($this->users->all());
+        // Step 1: who creates it, and which phase it is shown in. A sub-task is
+        // created by its parent's creator: spec 0125 D-4 only lets an actor who
+        // may edit the parent hang a child under it, and a random user rarely
+        // can. A sub-task of a parent that has not started yet cannot already
+        // be finished inside the parent's range, so it is never drawn closing.
+        $status = $this->faker->randomElement($this->statusesFor($parent)->all());
+        $creator = $parent === null
+            ? $this->faker->randomElement($this->users->all())
+            : $this->users->firstWhere('id', $parent->creator_id);
         $data = $parent === null
             ? $this->buildRootData($status, $creator->id)
             : $this->buildSubtaskData($parent, $status, $creator->id);
@@ -221,6 +228,18 @@ class DemoTaskSeeder extends Seeder
         }
 
         return $task;
+    }
+
+    /**
+     * @return Collection<int, TaskStatus>
+     */
+    private function statusesFor(?Task $parent): Collection
+    {
+        if ($parent === null || ! $parent->start_date->isFuture()) {
+            return $this->statuses;
+        }
+
+        return $this->statuses->reject(static fn (TaskStatus $status): bool => $status->isClosing())->values();
     }
 
     /**
@@ -358,7 +377,10 @@ class DemoTaskSeeder extends Seeder
         $isClosed = $status->isClosing();
 
         if ($parent !== null) {
-            $start = DateTimeImmutable::createFromMutable($this->faker->dateTimeBetween($parent->start_date, $parent->end_date));
+            // Finished work starts no later than today (statusesFor() already
+            // excludes closing phases under a parent starting in the future).
+            $startWindowEnd = $isClosed ? min($parent->end_date, now()->startOfDay()) : $parent->end_date;
+            $start = DateTimeImmutable::createFromMutable($this->faker->dateTimeBetween($parent->start_date, $startWindowEnd));
             $end = DateTimeImmutable::createFromMutable($this->faker->dateTimeBetween($start->format('Y-m-d'), $parent->end_date));
 
             return [

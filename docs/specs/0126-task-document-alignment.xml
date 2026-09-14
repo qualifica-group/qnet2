@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0126 — ALLINEAMENTO DEL MODULO TASK A DOC Tasks.docx (PERMESSI, STATI, BLOCCO, UX)
+  Undicesima fase del modulo Task. Chiude le differenze A2-A7 e B2 dell'analisi del 2026-09-14,
+  con le decisioni utente di quello stesso giorno.
+  RETTIFICA:
+    - 0116 D-2 e 0125 D-1/D-5: il super-admin assegnatario NON decade piu' ad assegnatario.
+    - 0116 D-7 e 0123 D-5: su un task bloccato il cambio stato manuale non e' piu' operativo.
+    - 0116 D-8: "Richiedi aggiornamento" e' consentito su task bloccato.
+    - 0117 AC-011 (note solo dall'autore): si aggiunge `notes.deleteAny`.
+    - 0122 (segnatempo solo proprietario/manageAll): per i segnatempo di un task vale anche la matrice ruoli.
+  A1 (documenti) verificato: gia' identico a Opportunita' (0117 D-8), nessuna modifica.
+-->
+<spec id="0126-task-document-alignment" status="draft" owner="utente" date="2026-09-14">
+
+  <goal>
+    Il modulo Task si comporta come descritto in DOC Tasks.docx, con le decisioni utente del 2026-09-14.
+    Chi ha un permesso dedicato puo' eliminare le note altrui. I segnatempo di un task seguono la matrice ruoli.
+    Lo stato si muove con le azioni: il cambio manuale arriva solo ad aperto, in attesa e chiuso negativo.
+    Gli stati in validazione valgono 100%. Un task bloccato ammette tutto tranne cambio stato e completamento.
+    Il super-admin resta admin pieno anche se e' assegnatario. Richiedi aggiornamento parte con tutti i
+    destinatari selezionati. Dopo una creazione dal pannello laterale si apre il dettaglio.
+  </goal>
+
+  <context>
+    <!-- Nomi REALI verificati nel repo il 2026-09-14. -->
+    <existing_names>
+      <item>Matrice: `Services/Tasks/TaskAbilityResolver` (`canUpdate`, `canDelete`, `canComplete`, `canValidate`,
+        `canBlock`, `canRequestUpdate`, `canCreateSubtask`, `completionRequiresValidation`; `ownsTheMandate` = creatore/richiedente
+        o `TaskRecordRoles::isManager`). `TaskRecordRoles::isManager` = `can('tasks.manageAll') && ! isAssignee`.
+        Il ruolo privilegiato e' `RoleAssignmentGuard::PRIVILEGED_ROLE` (= 'super-admin'). `Gate::before` in `AppServiceProvider:256`.</item>
+      <item>Stati: `Enums/TaskStatusGroup` (open, pending, in_validation, closed_positive, closed_negative; `isClosing()`),
+        `Enums/TaskStatusSystemKey` (open, in_progress, assigned, closed_positive, closed_negative). `task_statuses.group`,
+        `completion_percentage` 0-100. `StoreTaskStatusRequest`/`UpdateTaskStatusRequest` accettano qualsiasi group e percentuale.
+        `QualificaCatalog/TaskTaxonomyCatalogue`: "Preanalisi da validare" InValidation 30, "Esecuzione da validare" InValidation 80.</item>
+      <item>Cambio stato manuale: `UpdateTaskRequest` `task_status_id`. `TaskService::update()` esegue in ordine
+        `TaskWriteLock::assertStructuralWriteAllowed` (OPERATIVE_KEYS = task_status_id, closure_feedback),
+        `TaskActionOnlyStatusGuard::assertReachableByPatch` (422 verso in_validation/closed_positive) e
+        `TaskValidationRequirementGuard::assertClosableBy`. Oggi un PATCH da in_validation o da chiuso verso open/pending passa.
+        Flag `close_via_status` in `TasksAuthorization::actionPermissions()`, non vincolato a `is_blocked`.</item>
+      <item>Blocco: `TaskWriteLock::assertNotBlocked()` (409) e' chiamato da complete, uncomplete, approve e reject
+        (`TaskCompletionService`) e da requestUpdate (`TaskActionService:94`). Block e unblock non lo chiamano.
+        Note, segnatempo e documenti non leggono `is_blocked`.</item>
+      <item>Uncomplete e reject portano allo stato con system_key `in_progress`.</item>
+      <item>Note: `config/notes.php` notable_types (`tasks`, `request-management`). `Policies/NotePolicy` ha abilities `['create']`;
+        update e delete sono riservati all'autore. `NoteResource` espone `can.update` e `can.delete`, letti da
+        `frontend/src/features/notes/note-item.tsx`. `NoteService::delete` non ricontrolla la risorsa collegata. Etichette dei permessi in
+        `frontend/src/i18n/locales/{it,en}-permissions.ts` (test di parita' `permissions-i18n-parity.test.ts`).
+        Sincronizzazione: `permissions:sync` legge `Policy::abilities()`.</item>
+      <item>Segnatempo: `Policies/TimeEntryPolicy` (update/delete = permesso `time-entries.*` AND (proprietario OR
+        `time-entries.manageAll`)), `PUT/DELETE /api/time-entries/{timeEntry}`, `TimeEntryResource.permissions.update/delete`
+        (via policy). `TaskTimeEntryController::canCreate` = `time-entries.create && TaskAbilityResolver::canComplete`.
+        Frontend: `time-entries/days/time-entry-entry-cells.tsx` (`entry.permissions.*`).</item>
+      <item>Documenti: `AttachmentPolicy` e' resource-level; `TaskPolicy::viewDocuments` e `OpportunityPolicy::viewDocuments`
+        sono identici, cosi' come i flag `view_documents`. Upload e delete sono gated con `can('attachments.create/delete')` in entrambi i dettagli.</item>
+      <item>Frontend stato: `features/tasks/task-classification-section.tsx` (select solo in edit,
+        `isItemDisabled` -> `task-status-option-availability.ts` sul `meta.group` di `TaskStatusForSelectResource`).</item>
+      <item>Frontend Richiedi aggiornamento: `features/tasks/task-request-update-dialog.tsx` (Checkbox per
+        `task.assignees` + `task.watchers`, default `[]`, nessuna deduplica), i18n `tasks.actions.requestUpdate.*` in
+        `it-tasks.ts`/`en-tasks.ts`. Il pattern "seleziona tutti" esiste solo in `features/roles/permission-explorer`.</item>
+      <item>Frontend pannello: `features/modules/use-module-opener.tsx` (`handleSaved` ignora l'id salvato; `openView(row)`
+        apre la vista nel pannello o naviga). Tasks usa `useModuleOpener(TASKS_DOMAIN)` in `use-task-row-actions.ts` e `task-screens.tsx`.</item>
+    </existing_names>
+  </context>
+
+  <decisions>
+    <decision id="D-1">B2 (utente). Il super-admin non decade: `TaskRecordRoles::isManager()` = super-admin OR
+      (`tasks.manageAll` AND NOT assegnatario). Quindi un super-admin assegnatario elimina, valida, blocca, modifica i campi
+      protetti, chiude direttamente senza validazione e richiede aggiornamenti. Chi ha `tasks.manageAll` senza essere
+      super-admin decade come prima. I test 0116 AC-011, 0118 AC-042 (super-admin) e 0125 AC-001/004/005/007 cambiano
+      requisito: si riscrivono con un attore `tasks.manageAll` non super-admin (la regola resta coperta) e si aggiunge il
+      caso super-admin consentito.</decision>
+    <decision id="D-2">A2 (utente). Nuovo permesso globale `notes.deleteAny` (`NotePolicy::abilities()` = create, deleteAny).
+      `NotePolicy::delete` = autore OR `notes.deleteAny`; la modifica resta solo all'autore. Vale per tutte le entita' con note.
+      Prima di eliminare una nota altrui, `NoteService::delete` verifica che la risorsa collegata sia leggibile (`reauthorizeHost`, come
+      update), cosi' `deleteAny` non tocca note di record invisibili. Il super-admin passa gia' da `Gate::before`.
+      Etichette it/en in `*-permissions.ts`.</decision>
+    <decision id="D-3">A3. Per un segnatempo con `task_id` non nullo, update e delete richiedono il permesso
+      `time-entries.update/delete` AND la riga della matrice sul task, `TaskAbilityResolver::canManageTimeEntry(User, Task, TimeEntry)`.
+      Questa vale true per: il gestore del mandato (creatore/richiedente/gestore) su qualsiasi segnatempo del task, oppure
+      per il proprietario del segnatempo se `canComplete` sul task (quindi assegnatario). Per l'osservatore vale sempre false.
+      `time-entries.manageAll` NON supera la matrice sui segnatempo di un task. Un segnatempo senza task resta come oggi.
+      `TimeEntryResource.permissions` segue la policy, quindi il frontend non cambia.</decision>
+    <decision id="D-4">A4 (utente). Cambio stato manuale (PATCH `task_status_id`):
+      (a) il target deve appartenere ai gruppi `open`, `pending` o `closed_negative`; per closed_negative restano
+      `TaskValidationRequirementGuard` e il feedback obbligatorio. Verso in_validation/closed_positive resta il 422 esistente.
+      (b) Il task deve trovarsi ORA in una fase `open` o `pending`: da in_validation si esce con approva/rifiuta, da chiuso con
+      "setta non completato". Altrimenti 422 su `task_status_id` 'The status of this task can only be changed through its actions.'.
+      (c) Su un task bloccato: 422 su `task_status_id` 'A blocked task cannot change status.' (vedi D-6).
+      Nuovo flag `permissions.actions.change_status` (in coda, 16 chiavi) = actorMayWrite AND non bloccato AND fase open/pending.
+      Nel frontend la select stato e' disabilitata se il flag e' false; le opzioni diverse da open/pending sono disabilitate,
+      closed_negative resta legata a `close_via_status`. `close_via_status` diventa false anche su un task bloccato.</decision>
+    <decision id="D-5">A4 (utente). Gli stati del gruppo in_validation valgono 100%. Una nuova migrazione dati porta
+      `completion_percentage` a 100 per ogni stato con `group = in_validation` (il down ripristina i valori precedenti salvati
+      nella migrazione per id). Il catalogo `TaskTaxonomyCatalogue` passa a 100. `Store/UpdateTaskStatusRequest`: con
+      group in_validation, `completion_percentage` deve essere 100 (422 altrimenti).</decision>
+    <decision id="D-6">A5 (utente). Su un task bloccato sono vietati complete, uncomplete, approve, reject (409, invariato)
+      e il cambio stato manuale (D-4c). Modifica ed eliminazione restano vietate (lock strutturale invariato,
+      `closure_feedback` resta operativo). "Richiedi aggiornamento" diventa consentito: si toglie `assertNotBlocked` da
+      `TaskActionService::requestUpdate` e il flag `request_update` non richiede piu' `! is_blocked`. Note, segnatempo e
+      documenti sono invariati (gia' consentiti).</decision>
+    <decision id="D-7">A6 (utente). Il dialog Richiedi aggiornamento deduplica i candidati per utente (un utente sia
+      assegnatario sia osservatore compare una volta, con entrambe le etichette). Tutti partono selezionati, sia all'apertura
+      sia dopo un reset. Un checkbox "Seleziona tutti" in testa alla lista seleziona o deseleziona tutto, con stato indeterminato se
+      la selezione e' parziale. Destinatari ammessi invariati (assegnatari + osservatori). Contratto API invariato.</decision>
+    <decision id="D-8">A7 (utente). `useModuleOpener` accetta l'opzione `viewAfterCreate?: boolean` (default false, gli altri
+      moduli non cambiano). Quando e' true e un create salva nel pannello, il pannello passa alla vista del record appena creato
+      invece di chiudersi. Il modulo Tasks la attiva in `use-task-row-actions.ts` e `task-screens.tsx`. In modalita' pagina il
+      comportamento e' invariato (gia' naviga al dettaglio).</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>D-1: `TaskRecordRoles::isManager` e aggiornamento dei test di requisito cambiato.</item>
+      <item>D-2: `notes.deleteAny`, `NotePolicy`, `NoteService::delete` (controllo sulla risorsa collegata), etichette permesso it/en.</item>
+      <item>D-3: `TaskAbilityResolver::canManageTimeEntry`, `TimeEntryPolicy` update/delete per segnatempo di un task.</item>
+      <item>D-4: guard sul cambio stato manuale (nuovo `Services/Tasks/TaskManualStatusGuard`), flag `change_status`,
+        `close_via_status` su bloccato, select stato del frontend.</item>
+      <item>D-5: migrazione dati, catalogo, regola nelle FormRequest degli stati.</item>
+      <item>D-6: requestUpdate su bloccato.</item>
+      <item>D-7: dialog Richiedi aggiornamento, i18n `selectAll`.</item>
+      <item>D-8: `useModuleOpener` `viewAfterCreate`, attivazione in Tasks.</item>
+    </in>
+    <out>
+      <item>A1 documenti: nessuna modifica (gia' uguale a Opportunita').</item>
+      <item>B1 "Da assegnare", B3 destinatari chiusura, B4: confermati come sono.</item>
+      <item>Nuova azione "Chiudi negativo": non serve (closed_negative resta nel cambio manuale).</item>
+      <item>Modifica di note altrui: resta all'autore (e al super-admin via Gate).</item>
+      <item>Invalidazione della lista sotto-task del padre dopo creazione dal pannello: segnalata, non inclusa.</item>
+      <item>Rifiniture della sezione C dell'analisi (form creatore-osservatore, test mancanti, docblock migrazione, split file).</item>
+      <item>Nuove dipendenze. Il checkbox "seleziona tutti" usa `components/ui/checkbox`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/tasks/{task}">
+      <response status="200">`permissions.actions` passa a 16 chiavi, con `change_status: bool` in coda (D-4). `close_via_status`
+        e' false su un task bloccato. `request_update` non dipende piu' da `is_blocked`. `delete`, `approve`, `block` sono true per un
+        super-admin assegnatario (D-1). `completion_percentage` = 100 in fase in_validation (D-5).</response>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/tasks/{task}">
+      <errors>422 `errors.task_status_id` = ["The status of this task can only be changed through its actions."] se il task e'
+        in in_validation o chiuso (D-4b). 422 `errors.task_status_id` = ["A blocked task cannot change status."] se bloccato (D-4c).
+        Il 422 esistente verso in_validation/closed_positive e' invariato.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tasks/{task}/request-update">
+      <request>invariato `{ recipient_ids: int[] (min 1), message?: string }`</request>
+      <errors>Nessun 409 su task bloccato (D-6). Il resto e' invariato.</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/notes/{note}">
+      <errors>204 per l'autore o per chi ha `notes.deleteAny` e puo' leggere la risorsa collegata; 403 altrimenti (D-2).
+        `NoteResource.can.delete` riflette la stessa regola.</errors>
+    </endpoint>
+    <endpoint method="PUT|DELETE" path="/api/time-entries/{timeEntry}">
+      <errors>Per un segnatempo con task: 403 se `TaskAbilityResolver::canManageTimeEntry` e' false (D-3).
+        `TimeEntryResource.permissions.update/delete` coerenti.</errors>
+    </endpoint>
+    <endpoint method="POST|PUT" path="/api/task-statuses">
+      <errors>422 `errors.completion_percentage` se group = in_validation e percentuale != 100 (D-5).</errors>
+    </endpoint>
+    <permission name="notes.deleteAny">nuovo, sincronizzato da `permissions:sync`; etichetta it "Elimina note altrui", en "Delete others' notes".</permission>
+    <frontend>
+      `TaskActionKey` += 'change_status'. `useModuleOpener(domain, { viewAfterCreate?: boolean })`.
+      i18n nuova chiave `tasks.actions.requestUpdate.selectAll` (it "Seleziona tutti", en "Select all").
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un super-admin assegnatario, non creatore ne' richiedente, quando chiama DELETE, approve (su un
+      task in validazione), block o request-update, allora ottiene 204/200 e l'effetto e' persistito.</criterion>
+    <criterion id="AC-002">Dato un super-admin assegnatario di un task con `requires_validation`, quando completa, allora il task
+      si chiude direttamente in closed_positive (niente in_validation).</criterion>
+    <criterion id="AC-003">Dato un utente con `tasks.manageAll` (non super-admin) assegnatario, quando chiama DELETE, approve,
+      block o request-update, allora riceve 403 e nulla cambia. I suoi flag `delete/approve/block` sono false.</criterion>
+    <criterion id="AC-004">Dato un utente con `notes.deleteAny` che legge il task, quando elimina la nota di un altro
+      utente, allora riceve 204, e `can.delete` della nota era true. Senza il permesso riceve 403 e `can.delete` e' false.</criterion>
+    <criterion id="AC-005">Dato un utente con `notes.deleteAny` che NON puo' leggere il record collegato, quando elimina una nota
+      altrui, allora riceve 403 e la nota resta. Con `notes.deleteAny` una PUT su una nota altrui resta 403.</criterion>
+    <criterion id="AC-006">Dato un segnatempo di un task inserito dall'assegnatario A: A (con time-entries.update/delete)
+      lo modifica ed elimina; il creatore del task lo modifica ed elimina; un secondo assegnatario B riceve 403; un osservatore
+      proprietario di un proprio segnatempo sul task riceve 403; un utente con `time-entries.manageAll` senza ruolo sul task
+      riceve 403. `permissions.update/delete` della risorsa coincidono in ogni caso.</criterion>
+    <criterion id="AC-007">Dato un segnatempo senza task, quando il proprietario o `time-entries.manageAll` lo modificano,
+      allora il comportamento e' invariato (200).</criterion>
+    <criterion id="AC-008">Dato un task in fase open, quando il creatore fa PATCH `task_status_id` verso uno stato pending,
+      allora 200; verso closed_negative (senza feedback richiesto) allora 200; verso in_validation o closed_positive allora
+      422 (invariato).</criterion>
+    <criterion id="AC-009">Dato un task in in_validation, e dato un task in closed_negative, quando il creatore fa PATCH
+      `task_status_id` verso uno stato open, allora 422 su `task_status_id` con "The status of this task can only be changed
+      through its actions." e lo stato non cambia. `change_status` e' false.</criterion>
+    <criterion id="AC-010">Dato un task bloccato in fase open, quando il creatore fa PATCH `task_status_id` verso pending,
+      allora 422 su `task_status_id` con "A blocked task cannot change status." Flag `change_status` e `close_via_status` false.
+      PATCH del solo `closure_feedback` resta 200.</criterion>
+    <criterion id="AC-011">Dato un task bloccato, quando il creatore chiama request-update con destinatari validi, allora 200 e
+      la notifica parte; `request_update` e' true. Complete, uncomplete, approve e reject restano 409.</criterion>
+    <criterion id="AC-012">Dopo la migrazione D-5 ogni stato con group in_validation ha completion_percentage 100; un task in
+      quella fase espone completion_percentage 100. POST/PUT task-statuses con group in_validation e percentuale 80 danno 422.
+      Il rollback della migrazione ripristina le percentuali precedenti.</criterion>
+    <criterion id="AC-013">(Vitest) Nella select stato del form in modifica: con `change_status` false la select e' disabilitata;
+      con true le opzioni in_validation/closed_positive sono disabilitate, closed_negative e' disabilitata solo se
+      `close_via_status` e' false, open/pending sono abilitate.</criterion>
+    <criterion id="AC-014">(Vitest) Il dialog Richiedi aggiornamento si apre con tutti i candidati selezionati. Un utente sia
+      assegnatario sia osservatore compare una volta. "Seleziona tutti" deseleziona e riseleziona tutto ed e' indeterminato
+      con selezione parziale. Il submit invia ids unici.</criterion>
+    <criterion id="AC-015">(Vitest) `useModuleOpener` con `viewAfterCreate: true`: dopo un create salvato in modalita' pannello
+      apre la vista del nuovo id. Senza l'opzione chiude il pannello (invariato). In modalita' pagina e' invariato.</criterion>
+    <criterion id="AC-016">Suite Pest completa seriale, Vitest completo, Pint, ESLint sui file toccati e `tsc -b --force` puliti.
+      `permissions-i18n-parity.test.ts` verde con `notes.deleteAny`.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Authz solo server-side; il frontend legge i flag. Nessuna nuova dipendenza.</item>
+    <item>La matrice ruoli resta solo in `TaskAbilityResolver`/`TaskRecordRoles`: nessuna condizione di ruolo duplicata in policy,
+      guard o frontend.</item>
+    <item>Migrazioni: nessuna modifica a quelle esistenti. La migrazione dati D-5 e' nuova e reversibile.</item>
+    <item>Test reproduce-first per ogni AC backend. I test esistenti che cambiano requisito (D-1, D-4, D-6) si aggiornano
+      dichiarandolo nel commento del test con il riferimento "REQUIREMENT CHANGED (spec 0126, D-n)".</item>
+    <item>Pest solo seriale. `tsc -b --force`, mai `--noEmit`.</item>
+    <item>File entro 500 righe. `TaskService.php` (439) non deve crescere: il nuovo guard sta in un file suo.</item>
+    <item>Nessun commit ne' cambio di branch senza ordine esplicito (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

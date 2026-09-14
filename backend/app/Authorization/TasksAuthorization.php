@@ -221,7 +221,9 @@ class TasksAuthorization extends AbstractResourceAuthorization
             && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task);
 
         return [
-            'delete' => $model !== null && $actor->can('tasks.delete'),
+            // spec 0125, D-2: the matrix row, not the ability alone, so the
+            // flag agrees with TaskService::delete()'s own re-assertion.
+            'delete' => $task !== null && $actor->can('tasks.delete') && TaskAbilityResolver::canDelete($actor, $task),
             'export' => $actor->can('tasks.export'),
             'import' => $actor->can('tasks.import'),
             // Gates the ActivityLogSection in the detail (spec 0034); the
@@ -272,8 +274,10 @@ class TasksAuthorization extends AbstractResourceAuthorization
                 && ! ($task->requires_closure_feedback && trim((string) $task->closure_feedback) === ''),
             // spec 0123, D-9: gates the "Crea sotto-task" button. Structural,
             // not operative — a Task the write lock itself, or its cascade,
-            // would refuse a `parent_task_id` insert under.
+            // would refuse a `parent_task_id` insert under. Spec 0125 D-3 adds
+            // the matrix row TaskParentAccessGuard enforces on the POST.
             'create_subtask' => $task !== null && $actor->can('tasks.create')
+                && TaskAbilityResolver::canCreateSubtask($actor, $task)
                 && ! TaskWriteLock::isLocked($task) && ! TaskWriteLock::isLockedByAncestor($task),
         ];
     }

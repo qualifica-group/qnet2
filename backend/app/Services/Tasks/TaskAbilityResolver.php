@@ -65,6 +65,16 @@ final class TaskAbilityResolver
             || TaskRecordRoles::isManager($actor, $task);
     }
 
+    /**
+     * Spec 0125, D-3: hanging a child under $parent is the same row as
+     * editing $parent (the watcher alone may not), named on its own so the
+     * guard and the `create_subtask` flag read a rule, not a coincidence.
+     */
+    public static function canCreateSubtask(User $actor, Task $parent): bool
+    {
+        return self::canUpdate($actor, $parent);
+    }
+
     /** Only the roles that own the MANDATE may touch a field in PROTECTED_FIELDS. */
     public static function canUpdateProtectedFields(User $actor, Task $task): bool
     {

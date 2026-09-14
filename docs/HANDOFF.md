@@ -3,7 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SPEC 0124 MODELLI DI TASK — VERDE, NON COMMITTATO (2026-09-14)
+## SPEC 0125 CORREZIONI AUTORIZZAZIONE TASK (B1-B3) — VERDE, NON COMMITTATO (2026-09-14)
+
+Spec `docs/specs/0125-task-authorization-hardening.xml` (approvata). Nasce dall'analisi di
+`DOC Tasks.docx` rispetto al codice. Solo backend: nessuna migrazione, nessun permesso nuovo, nessun file frontend.
+
+**Contratto e naming da rispettare.**
+- B1: `TaskService::delete(Task $task, User $actor)` (firma nuova) ricontrolla `TaskAbilityResolver::canDelete()`
+  oltre il `Gate::before` e risponde 403 PRIMA del 409 sui sotto-task. Chiamanti: `TaskController::destroy`,
+  `TasksTableDefinition::deleteModel()` (`Auth::user()`). Un super-admin assegnatario non elimina, a meno che non sia anche creatore o richiedente.
+- B2: flag `permissions.actions.delete` = `tasks.delete` AND `canDelete`. `TasksTableDefinition::authorizeDelete()`
+  (override) = Gate AND `canDelete`, usato anche dalla row-action `delete`. Nel bulk-delete la riga risulta `forbidden`.
+- B3: `TaskAbilityResolver::canCreateSubtask()` (= `canUpdate`). Nuovo `Tasks\TaskParentAccessGuard::assertMayAttach(?int, User)`:
+  padre visibile E `canCreateSubtask`, altrimenti 422 su `parent_task_id` con il messaggio unico
+  'The selected parent task is not available.'. Chiamato in `create()` (Step 2a) e in `update()` solo se
+  `isDirty('parent_task_id')`. Il flag `create_subtask` include `canCreateSubtask`.
+- `DemoTaskSeeder`: il sotto-task e' creato dal creatore del padre. `statusesFor()` esclude gli stati di chiusura sotto un
+  padre che inizia nel futuro. La finestra di start dei sotto-task chiusi arriva al massimo a oggi. Corregge un difetto preesistente
+  (completion < start) emerso quando e' cambiata la sequenza casuale.
+
+**Verifica (verifier indipendente, seconda passata).** Pest completo SERIALE 7455 test: 7454 passed, 1 skipped;
+Seeding 93/93; Pint pulito; `tsc -b --force` pulito. Test nuovi: `TaskDeleteAuthorizationTest` (AC-001..007),
+`TaskParentAccessTest` (AC-008..014). La prima passata era rossa (seeder) ed e' stata corretta.
+
+**Aperti / prossimi passi.**
+- `TaskService.php` 439 righe e `TasksTableDefinition.php` 314 (soft limit 300): valutare lo split.
+- Differenze dal documento cliente ancora da decidere (sezione 2 dell'analisi): permessi su note, segnatempo e documenti
+  (documenti senza controllo per task, 0117 D-8), avanzamento 30/80% in validazione anziche' 100%, Completa e
+  Richiedi aggiornamento vietati su task bloccato, destinatari di Richiedi aggiornamento, "Da assegnare" con piu'
+  assegnatari, admin assegnatario in modifica, redirect al dettaglio dal pannello laterale.
+- Commit in attesa di via libera utente (§3.6).
+
+## SPEC 0124 MODELLI DI TASK — COMMITTATO (2026-09-14)
 
 Spec `docs/specs/0124-task-templates-module.xml` (approvata). Build a subagent con ownership disgiunta,
 in parallelo alla build 0123 non committata (file disgiunti: nessun file 0123 toccato).
@@ -44,7 +75,7 @@ Vitest 5099/5099; `tsc -b --force` pulito; ESLint pulito sui file 0124 (2 errori
 - `DemoWorkOrderSeeder` gira prima delle tassonomie task: per usare i modelli nel demo va riordinato.
 - Commit in attesa di via libera utente (§3.6), da separare dai file della 0123.
 
-## MODULO TASK — SPLIT SERVIZI + SPEC 0123 (SEGNATEMPO NEL COMPLETAMENTO, COERENZA SOTTO-TASK) — VERDE, NON COMMITTATO (2026-09-14)
+## MODULO TASK — SPLIT SERVIZI + SPEC 0123 (SEGNATEMPO NEL COMPLETAMENTO, COERENZA SOTTO-TASK) — COMMITTATO (2026-09-14)
 
 **Refactor senza cambio di comportamento** (prerequisito della 0123):
 - `TaskService` 480 -> 358: estratti `Tasks\TaskForSelectService` (read path for-select, unico

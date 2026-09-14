@@ -6,6 +6,7 @@ namespace App\Tables;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskStatusResolver;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Services\TaskService;
@@ -236,7 +237,7 @@ class TasksTableDefinition extends AbstractTableDefinition
             $allowed[] = 'edit';
         }
 
-        if (Gate::forUser($actor)->allows('delete', $row)) {
+        if ($this->authorizeDelete($actor, $row)) {
             $allowed[] = 'delete';
         }
 
@@ -255,7 +256,20 @@ class TasksTableDefinition extends AbstractTableDefinition
     public function deleteModel(Model $model): void
     {
         /** @var Task $model */
-        $this->service->delete($model);
+        /** @var User $actor */
+        $actor = Auth::user();
+        $this->service->delete($model, $actor);
+    }
+
+    /**
+     * Spec 0125 D-2: the Gate alone lets a super-admin assignee through, so
+     * the delete row of the matrix is ANDed here too — the grid row-action
+     * and the bulk-delete `forbidden` verdict then match the Service's 403.
+     */
+    public function authorizeDelete(User $actor, Model $row): bool
+    {
+        /** @var Task $row */
+        return Gate::forUser($actor)->allows('delete', $row) && TaskAbilityResolver::canDelete($actor, $row);
     }
 
     /**
