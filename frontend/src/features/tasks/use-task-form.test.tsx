@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { createTask } from '@/features/tasks/api'
 import { useTaskForm } from '@/features/tasks/use-task-form'
 import { taskDetailWithPermissions, taskStatus } from '@/features/tasks/task-fixtures'
 import { DEFAULT_MODULE_OPEN_PREFERENCES } from '@/features/modules/types'
@@ -143,7 +142,6 @@ describe('useTaskForm — derived completion percentage (AC-084)', () => {
     )
 
     expect(result.current.completionPercentage).toBe(25)
-    expect(result.current.statusGroup).toBe('open')
   })
 
   it('re-derives on picking another status, without writing anything to the form', () => {
@@ -158,18 +156,18 @@ describe('useTaskForm — derived completion percentage (AC-084)', () => {
     })
 
     expect(result.current.completionPercentage).toBe(100)
-    expect(result.current.statusGroup).toBe('closed_positive')
     expect(result.current.form.getValues()).not.toHaveProperty('completion_percentage')
   })
 
   /**
-   * An ORDINARY status (`system_key: null`) still arrives fully projected, and
-   * since the 2026-09-04 rectification its `group` is what the rule reads. So
-   * the absent system key disarms NOTHING on its own: the phase does. Both
-   * directions are asserted here, because the old suite only ever covered the
-   * one that made the missing key look decisive.
+   * An ORDINARY status (`system_key: null`) still arrives fully projected: the
+   * absent system key does not stop the percentage from being read off it.
+   * (Spec 0121 D-7 retired the `statusGroup`/phase half of this test: the
+   * closure-feedback rule that used to branch on the picked status' phase is
+   * gone along with `closure_feedback` itself, so `useTaskForm` no longer
+   * exposes `statusGroup` — nothing consumes it any more.)
    */
-  it('reads the phase of an ORDINARY status, not its absent system key', () => {
+  it('reads the percentage of an ORDINARY status, not just a system one', () => {
     const { result } = renderHook(
       () => useTaskForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
       { wrapper: wrapper() },
@@ -182,15 +180,6 @@ describe('useTaskForm — derived completion percentage (AC-084)', () => {
     })
 
     expect(result.current.completionPercentage).toBe(40)
-    expect(result.current.statusGroup).toBe('pending')
-
-    act(() => {
-      result.current.handleStatusItemChange(
-        statusOption({ system_key: null, group: 'closed_positive', completion_percentage: 100 }),
-      )
-    })
-
-    expect(result.current.statusGroup).toBe('closed_positive')
   })
 
   it('falls back to unset when the picker projects no meta, rather than showing a wrong value', () => {
@@ -204,86 +193,6 @@ describe('useTaskForm — derived completion percentage (AC-084)', () => {
     })
 
     expect(result.current.completionPercentage).toBeNull()
-  })
-})
-
-/** D-7 replicated for UX: the rule re-arms as soon as a closing status is picked. */
-describe('useTaskForm — closure feedback rule follows the picked status (D-7)', () => {
-  it('blocks the submit when the flag is on and a closing status is picked without feedback', async () => {
-    const onSuccess = vi.fn()
-    const { result } = renderHook(
-      () => useTaskForm({ mode: { type: 'create' }, onSuccess }),
-      { wrapper: wrapper() },
-    )
-
-    act(() => {
-      result.current.form.setValue('title', 'Chiudere la pratica')
-      result.current.form.setValue('task_status_id', 6)
-      result.current.form.setValue('requires_closure_feedback', true)
-      result.current.handleStatusItemChange(statusOption())
-    })
-
-    await act(async () => {
-      await result.current.form.handleSubmit(result.current.onSubmit)()
-    })
-
-    expect(result.current.form.getFieldState('closure_feedback').error).toBeDefined()
-    expect(createTask).not.toHaveBeenCalled()
-    expect(onSuccess).not.toHaveBeenCalled()
-  })
-
-  /**
-   * The 2026-09-04 rectification, end to end. An ORDINARY status carries no
-   * `system_key`, so the old rule read `null`, armed nothing and let the submit
-   * reach the server — where the user met a bare 422. Only the PHASE can tell
-   * this status closes the task, so this case fails on any version of the rule
-   * that still branches on the key.
-   */
-  it('blocks the submit on an ORDINARY status sitting in a closing phase', async () => {
-    const onSuccess = vi.fn()
-    const { result } = renderHook(
-      () => useTaskForm({ mode: { type: 'create' }, onSuccess }),
-      { wrapper: wrapper() },
-    )
-
-    act(() => {
-      result.current.form.setValue('title', 'Chiudere la pratica')
-      result.current.form.setValue('task_status_id', 7)
-      result.current.form.setValue('requires_closure_feedback', true)
-      result.current.handleStatusItemChange(
-        statusOption({ system_key: null, group: 'closed_negative' }),
-      )
-    })
-
-    await act(async () => {
-      await result.current.form.handleSubmit(result.current.onSubmit)()
-    })
-
-    expect(result.current.form.getFieldState('closure_feedback').error).toBeDefined()
-    expect(createTask).not.toHaveBeenCalled()
-    expect(onSuccess).not.toHaveBeenCalled()
-  })
-
-  it('lets the submit through on a status that closes nothing (AC-034)', async () => {
-    const { result } = renderHook(
-      () => useTaskForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
-      { wrapper: wrapper() },
-    )
-
-    act(() => {
-      result.current.form.setValue('title', 'Attivita in corso')
-      result.current.form.setValue('task_status_id', 3)
-      result.current.form.setValue('requires_closure_feedback', true)
-      result.current.handleStatusItemChange(
-        statusOption({ system_key: 'open', group: 'open', completion_percentage: 25 }),
-      )
-    })
-
-    await act(async () => {
-      await result.current.form.trigger()
-    })
-
-    expect(result.current.form.getFieldState('closure_feedback').error).toBeUndefined()
   })
 })
 

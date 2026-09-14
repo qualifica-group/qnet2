@@ -239,7 +239,7 @@ it('AC-013: the creator may PATCH the same flagged Task to a closing status; an 
 // ---------------------------------------------------------------------------
 
 it('AC-014: complete_to_validation is true only for a non-mandate assignee on a flagged, completable Task', function () {
-    $assignee = taskValidationActorWith(['complete', 'update']);
+    $assignee = taskValidationActorWith(['view', 'complete', 'update']);
     $flagged = Task::factory()->requiringValidation()->create();
     $flagged->assignees()->attach($assignee->id);
     Sanctum::actingAs($assignee);
@@ -248,7 +248,7 @@ it('AC-014: complete_to_validation is true only for a non-mandate assignee on a 
         ->assertOk()
         ->assertJsonPath('permissions.actions.complete_to_validation', true);
 
-    $creator = taskValidationActorWith(['complete', 'update']);
+    $creator = taskValidationActorWith(['view', 'complete', 'update']);
     $creatorTask = Task::factory()->requiringValidation()->forCreator($creator)->create();
     Sanctum::actingAs($creator);
 

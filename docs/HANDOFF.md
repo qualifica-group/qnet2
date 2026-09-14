@@ -3,6 +3,53 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MODULO TASK — FASE 8: FLAG "RICHIEDE VALIDAZIONE" (spec 0121) — VERDE (2026-09-14)
+
+**Cosa e'.** Chiusura e validazione diventano due regole indipendenti sul Task:
+`requires_closure_feedback` (esistente) obbliga il feedback su `/complete`; il nuovo
+`requires_validation` manda in validazione il completamento di chi NON detiene il mandato.
+RETTIFICA la 0116 (D-4, AC-019, AC-043): il client non sceglie piu' SE andare in validazione.
+
+**Stato git.** Gran parte della feature e' nel commit `41c6ee6f` (09:13, non creato da questa
+sessione ne' dai suoi agenti); sopra restano modifiche non committate (rifiniture + test). Nessun
+commit fatto da questa sessione.
+
+**Regole congelate (D-1..D-7), da NON riaprire.**
+- Percorso derivato in UN solo metodo: `TaskAbilityResolver::completionRequiresValidation(User, Task)`
+  = `requires_validation` && !ownsTheMandate. Creatore/richiedente/gestore chiudono sempre;
+  l'admin-assegnatario (non gestore per 0116 D-2) va in validazione.
+- `/complete`: il server decide SE; il client sceglie IN QUALE stato `in_validation`.
+  `validation_status_id` obbligatorio sul percorso validazione, VIETATO (422) su quello di chiusura.
+- Feedback: `TaskClosureFeedbackGuard::assertProvided()` su entrambi i percorsi (su `/complete`);
+  `assertSatisfied()` resta per il PATCH.
+- PATCH verso stato di chiusura da chi non ha mandato su Task con flag -> 422 `task_status_id`
+  (`TaskValidationRequirementGuard::assertClosableBy`, innestato in `TaskService::update()`).
+- `permissions.actions.complete_to_validation` (13 azioni): unico segnale per il frontend.
+- UI: i due flag nel form (sezione Chiusura); `closure_feedback` FUORI dal form, solo nel pop-up;
+  pop-up senza switch, titolo "Invia in validazione" + select obbligatoria sse
+  `complete_to_validation`. 422 del PATCH su `closure_feedback`/`task_status_id` -> toast
+  (`TOAST_ONLY_SERVER_ERROR_FIELDS` in `use-task-form.ts`).
+
+**Naming.** colonna `tasks.requires_validation`; migrazione
+`2026_09_14_100000_add_requires_validation_to_tasks_table`; factory state `requiringValidation()`;
+i18n `form.requiresValidation(+Hint)`, `detail.requiresClosureFeedback`, `detail.requiresValidation`,
+`completeDialog.validationTitle`, `completeDialog.validationHint` (rimossa `completeDialog.requestValidation`).
+Contatore `QuoteWorkflowMigrationTest` = 62. `buildTaskSchema(t, isCreate)` ha perso il param
+`statusGroup`; `useTaskForm` non restituisce piu' `statusGroup`.
+
+**Verifica (eseguita).** Verifier indipendente: AC-001..AC-024 PASS. Pest Tasks+Unit Tasks+
+QuoteWorkflows+Authorization 545 passed; Pint pulito; Vitest tasks+i18n 272 passed (dopo il fix
+dead code: tasks 133 passed); ESLint pulito; `tsc -b --force` pulito. Test preesistenti modificati
+solo per cambio di requisito: 0116 AC-019 (`TaskActionsTest`), 0119 AC-019/AC-020
+(`TaskActionNotificationsTest`), conteggi catalogo/azioni, describe D-7 feedback-nel-form lato FE.
+
+**Aperti / prossimi passi.**
+- BUG PREESISTENTE (0118): `DemoTaskSeeder.php:172` passa `taskStatusId:` a `CreateTaskData`,
+  parametro rimosso -> `DemoTaskSeederTest` rosso (6). Fuori scope, da correggere a parte.
+- Fuori scope da decidere: PATCH di un assegnatario verso stato `in_validation` resta consentito
+  e non invia `TaskValidationRequested`.
+- `use-task-form.ts` a ~330 righe (sopra soft limit 300): valutare split.
+
 ## MODULO TASK — FASE 6: MAPPA NOTIFICHE (spec 0119) — VERDE, NON COMMITTATO (2026-09-11)
 
 **Cosa e'.** Sesta fase del modulo Task, sopra 0101/0116/0117/0118. Il blocco "Mappa Notifiche

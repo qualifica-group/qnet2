@@ -133,9 +133,17 @@ it('AC-018: 200 and the feedback is persisted when it is submitted', function ()
 // AC-019/AC-020/AC-021 — complete, CASO 2 (validation_status_id) and availability
 // ---------------------------------------------------------------------------
 
-it('AC-019: completing with a validation_status_id moves to that status and does NOT close the task (CASO 2)', function () {
+// REQUIREMENT CHANGED (spec 0121, rettifica di D-4 della spec 0116): il
+// client non sceglie piu' liberamente il CASO 2 inviando validation_status_id
+// — il percorso e' derivato dal server da `requires_validation` + mandato
+// dell'attore (D-2). Un Task NON flaggato (il default della factory) e un
+// assegnatario che invia validation_status_id ora e' 422 (spec 0121 AC-008,
+// vedi TaskValidationRequirementTest.php); questo test diventa il suo
+// omologo con il flag acceso, cosi' la CASO 2 resta provata sull'endpoint
+// reale con lo stesso attore/ruolo di prima.
+it('AC-019: a flagged Task lets an assignee complete with a validation_status_id, moving to that status without closing (spec 0121 percorso derivato)', function () {
     $actor = taskActorWith(['complete']);
-    $task = Task::factory()->create();
+    $task = Task::factory()->requiringValidation()->create();
     $task->assignees()->attach($actor->id);
     $validationStatus = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
     Sanctum::actingAs($actor);

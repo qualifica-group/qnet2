@@ -3,14 +3,18 @@ import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError, AxiosHeaders } from 'axios'
+import { toast } from 'sonner'
 import i18n from '@/i18n'
-import { createTask } from '@/features/tasks/api'
+import { createTask, updateTask } from '@/features/tasks/api'
 import { useTaskForm } from '@/features/tasks/use-task-form'
+import { taskDetailWithPermissions } from '@/features/tasks/task-fixtures'
 
 vi.mock('@/features/tasks/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/tasks/api')>('@/features/tasks/api')
   return { ...actual, createTask: vi.fn(), updateTask: vi.fn() }
 })
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 /** These tests only exercise the 422/network mapping, not the D-1 prefill: a fixed actor is enough. */
 vi.mock('@/features/auth/use-auth', () => ({
@@ -114,5 +118,55 @@ describe('useTaskForm — server refusals land on their field (D-7/D-12)', () =>
     })
 
     expect(result.current.serverError).not.toBeNull()
+  })
+})
+
+/**
+ * Spec 0121 AC-022: `closure_feedback` left the form entirely (D-7) and
+ * `task_status_id`'s refusal here is a workflow guard (D-5), not a
+ * picker-level validation — both have nowhere to land, so they surface as a
+ * toast with the server's own message instead of a field error.
+ */
+describe('useTaskForm — AC-022: closure_feedback/task_status_id 422 on the PATCH surface as a toast', () => {
+  it('toasts a closure_feedback refusal instead of setting a field error', async () => {
+    const task = taskDetailWithPermissions()
+    vi.mocked(updateTask).mockRejectedValueOnce(
+      validationError({ closure_feedback: ['A closure feedback is required to close this task.'] }),
+    )
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'edit', task }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.form.setValue('title', 'Chiudere la pratica')
+    })
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.onSubmit)()
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('A closure feedback is required to close this task.')
+    expect(result.current.serverError).toBeNull()
+  })
+
+  it('toasts a task_status_id refusal instead of setting a field error', async () => {
+    const task = taskDetailWithPermissions()
+    vi.mocked(updateTask).mockRejectedValueOnce(
+      validationError({ task_status_id: ['This task requires validation before it can close.'] }),
+    )
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'edit', task }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.form.setValue('title', 'Chiudere la pratica')
+    })
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.onSubmit)()
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('This task requires validation before it can close.')
+    expect(result.current.form.getFieldState('task_status_id').error).toBeUndefined()
   })
 })

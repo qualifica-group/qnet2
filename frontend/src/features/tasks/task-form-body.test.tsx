@@ -344,3 +344,26 @@ describe('TaskFormBody — attachment staging mounts on create only (spec 0118 D
     expect(screen.queryByText(label('tasks.form.attachments.title'))).not.toBeInTheDocument()
   })
 })
+
+/**
+ * Spec 0121 D-7/AC-017: the two closure flags live in the form, in both
+ * modes, and `closure_feedback` is no longer one of its fields — it moved to
+ * the completion pop-up entirely.
+ */
+describe('TaskFormBody — closure section shows both flags, no feedback field (AC-017)', () => {
+  it('renders both switches on create', () => {
+    renderForm({ type: 'create' })
+
+    expect(screen.getByRole('switch', { name: label('tasks.form.requiresClosureFeedback') })).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: label('tasks.form.requiresValidation') })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: label('tasks.form.closureFeedback') })).not.toBeInTheDocument()
+  })
+
+  it('renders both switches, seeded from the persisted task, in edit mode', () => {
+    renderForm({ type: 'edit', task: taskDetailWithPermissions({ requires_validation: true }) })
+
+    expect(screen.getByRole('switch', { name: label('tasks.form.requiresClosureFeedback') })).not.toBeChecked()
+    expect(screen.getByRole('switch', { name: label('tasks.form.requiresValidation') })).toBeChecked()
+    expect(screen.queryByRole('textbox', { name: label('tasks.form.closureFeedback') })).not.toBeInTheDocument()
+  })
+})

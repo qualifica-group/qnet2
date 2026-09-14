@@ -15,15 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { TASK_STATUSES_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
@@ -111,7 +103,6 @@ export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDia
     defaultValues: completeTaskDefaultValues(),
   })
   const closureFeedback = useWatch({ control: form.control, name: 'closure_feedback' })
-  const validationStatusId = useWatch({ control: form.control, name: 'validation_status_id' })
 
   const completeMutation = useCompleteTask({
     taskId: task.id,
@@ -141,11 +132,13 @@ export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDia
     }
   }
 
-  // AC-042: the submit stays disabled while a required feedback is empty,
-  // independent of RHF's own (debounced) validation pass.
+  // AC-020: the submit stays PRE-EMPTIVELY disabled while a required feedback
+  // is empty, independent of RHF's own (debounced) validation pass. AC-019 is
+  // deliberately NOT mirrored here: a missing validation status leaves the
+  // button clickable, so the submit attempt runs the schema and shows the
+  // field error under the picker instead of silently doing nothing.
   const feedbackMissing = task.requires_closure_feedback && closureFeedback.trim() === ''
-  const validationStatusMissing = toValidation && validationStatusId === null
-  const submitDisabled = completeMutation.isPending || feedbackMissing || validationStatusMissing
+  const submitDisabled = completeMutation.isPending || feedbackMissing
 
   return (
     <Dialog
@@ -196,7 +189,9 @@ export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDia
 
             {toValidation ? (
               <>
-                <FormDescription>{t('tasks.actions.completeDialog.validationHint')}</FormDescription>
+                <p className="text-sm text-muted-foreground">
+                  {t('tasks.actions.completeDialog.validationHint')}
+                </p>
                 <RelationSelectField
                   control={form.control}
                   name="validation_status_id"

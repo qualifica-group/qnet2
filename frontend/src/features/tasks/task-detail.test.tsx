@@ -184,13 +184,14 @@ describe('TaskDetailView — sub-tasks (AC-085)', () => {
   })
 })
 
-describe('TaskDetailView — closure feedback (D-7)', () => {
-  it('shows the closure section only when the task requires a feedback', () => {
+/** Spec 0121 D-7/AC-021: the section now gates on EITHER flag, not just the feedback one. */
+describe('TaskDetailView — closure section (AC-021)', () => {
+  it('omits the section when neither flag is active', () => {
     renderDetail(taskDetailWithPermissions())
     expect(screen.queryByText(label('tasks.detail.sections.closure'))).not.toBeInTheDocument()
   })
 
-  it('shows the recorded feedback when required', () => {
+  it('shows the section and the recorded feedback when the feedback flag alone is active', () => {
     renderDetail(
       taskDetailWithPermissions({
         requires_closure_feedback: true,
@@ -198,7 +199,16 @@ describe('TaskDetailView — closure feedback (D-7)', () => {
       }),
     )
 
+    expect(screen.getByText(label('tasks.detail.sections.closure'))).toBeInTheDocument()
     expect(screen.getByText('Consegnato al cliente')).toBeInTheDocument()
+  })
+
+  it('shows the section when the validation flag alone is active, with both flag values readable', () => {
+    renderDetail(taskDetailWithPermissions({ requires_validation: true }))
+
+    expect(screen.getByText(label('tasks.detail.sections.closure'))).toBeInTheDocument()
+    expect(screen.getByText(label('tasks.detail.requiresValidation'))).toBeInTheDocument()
+    expect(screen.getByText(label('tasks.detail.requiresClosureFeedback'))).toBeInTheDocument()
   })
 })
 
@@ -275,12 +285,17 @@ describe('TaskDetailView — "Richiedi aggiornamento" gating (AC-059/AC-061)', (
   })
 })
 
-describe('TaskDetailView — complete dialog (AC-042/AC-043)', () => {
+/**
+ * Spec 0121 D-2/D-3/D-6 RECTIFIES spec 0116 D-8: the path is derived
+ * server-side (`permissions.actions.complete_to_validation`), never picked by
+ * a switch in this dialog.
+ */
+describe('TaskDetailView — complete dialog (AC-018/AC-019/AC-020)', () => {
   /** The dialog mounts through Radix's own portal effect, a tick after the opener click (mirrors `contract-actions-refresh.test.tsx`). */
   async function openCompleteDialog(overrides: Partial<TaskDetailWithPermissions> = {}) {
     renderDetail(
       taskDetailWithPermissions({
-        permissions: actionPermissions({ complete: true }),
+        permissions: actionPermissions({ complete: true, complete_to_validation: false }),
         ...overrides,
       }),
     )
@@ -288,7 +303,7 @@ describe('TaskDetailView — complete dialog (AC-042/AC-043)', () => {
     return screen.findByRole('button', { name: label('tasks.actions.completeDialog.confirm') })
   }
 
-  it('keeps the submit disabled while a required feedback is empty (AC-042)', async () => {
+  it('keeps the submit disabled while a required feedback is empty (AC-020)', async () => {
     const submit = await openCompleteDialog({ requires_closure_feedback: true })
 
     expect(submit).toBeDisabled()
@@ -309,17 +324,41 @@ describe('TaskDetailView — complete dialog (AC-042/AC-043)', () => {
     expect(submit).toBeEnabled()
   })
 
-  it('reveals the validation-status picker and sends only validation_status_id (AC-043)', async () => {
-    vi.mocked(completeTask).mockResolvedValueOnce(
-      taskDetailWithPermissions({ task_status: taskStatus({ id: 50, group: 'in_validation' }) }),
-    )
+  it('with complete_to_validation false: no switch, no status picker, and an empty payload (AC-018)', async () => {
+    vi.mocked(completeTask).mockResolvedValueOnce(taskDetailWithPermissions())
     await openCompleteDialog({ requires_closure_feedback: false })
 
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: label('tasks.actions.completeDialog.validationStatus') }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('switch', { name: label('tasks.actions.completeDialog.requestValidation') }))
+    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.confirm') }))
+
+    await waitFor(() => expect(completeTask).toHaveBeenCalledWith(90, {}))
+  })
+
+  it('with complete_to_validation true: "Invia in validazione" title, mandatory status picker, no switch (AC-019)', async () => {
+    vi.mocked(completeTask).mockResolvedValueOnce(
+      taskDetailWithPermissions({ task_status: taskStatus({ id: 50, group: 'in_validation' }) }),
+    )
+    await openCompleteDialog({
+      requires_closure_feedback: false,
+      permissions: actionPermissions({ complete: true, complete_to_validation: true }),
+    })
+
+    expect(
+      screen.getByRole('heading', { name: label('tasks.actions.completeDialog.validationTitle') }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+
+    // Submitting without a chosen status shows the field error and never calls the API.
+    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.confirm') }))
+    expect(
+      await screen.findByText(label('tasks.actions.completeDialog.validationStatusRequired')),
+    ).toBeInTheDocument()
+    expect(completeTask).not.toHaveBeenCalled()
+
     fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.validationStatus') }))
     fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.confirm') }))
 

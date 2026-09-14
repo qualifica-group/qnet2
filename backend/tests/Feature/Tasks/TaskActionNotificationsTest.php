@@ -139,10 +139,16 @@ if (! function_exists('assertNoTaskNotificationsExcept')) {
 // AC-019/AC-020 — complete, CASO 2: richiesta di validazione (voce 1)
 // ---------------------------------------------------------------------------
 
+// REQUIREMENT CHANGED (spec 0121, D-2/D-3): il percorso di validazione non e'
+// piu' una libera scelta del client su un Task qualunque — richiede
+// `requires_validation = true` E che l'attore non detenga il mandato.
+// L'attore di questa suite e' gia' un assegnatario esterno al cast (non
+// creatore/richiedente), quindi basta accendere il flag sul Task perche' la
+// voce 1 resti raggiungibile esattamente come prima.
 it('AC-019: /complete con validation_status_id notifica il solo richiedente, e nient altro', function () {
     Notification::fake();
     $actor = taskActionNotificationActor(['complete']);
-    [$task, $people] = taskActionNotificationCast();
+    [$task, $people] = taskActionNotificationCast(attributes: ['requires_validation' => true]);
     $task->assignees()->attach($actor->id);
     $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
     Sanctum::actingAs($actor);
@@ -158,7 +164,7 @@ it('AC-019: /complete con validation_status_id notifica il solo richiedente, e n
 it('AC-020: senza requester_id la richiesta di validazione ripiega sul creatore (D-5)', function () {
     Notification::fake();
     $actor = taskActionNotificationActor(['complete']);
-    [$task, $people] = taskActionNotificationCast(attributes: ['requester_id' => null]);
+    [$task, $people] = taskActionNotificationCast(attributes: ['requester_id' => null, 'requires_validation' => true]);
     $task->assignees()->attach($actor->id);
     $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
     Sanctum::actingAs($actor);

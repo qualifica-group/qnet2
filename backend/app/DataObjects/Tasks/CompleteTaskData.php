@@ -6,14 +6,16 @@ namespace App\DataObjects\Tasks;
 
 /**
  * Validated payload for POST /api/tasks/{task}/complete (spec 0116,
- * data_contract). Both fields optional and independent:
- * `validation_status_id` decides which of the document's two cases the
- * action lands on (CASO 2 when submitted and non-null, CASO 1 otherwise —
- * App\Services\Tasks\TaskActionService::complete() branches on the
- * `*Submitted` flag alone, never on a default value that could collide with
- * a legitimate id). `closure_feedback` applies to either case and follows
- * the nullable-column convention of UpdateTaskData: the flag, not the
- * value, decides whether the column is written.
+ * data_contract; percorso di completamento riscritto da spec 0121, D-2/D-3).
+ * `validation_status_id` no longer decides WHICH percorso the action takes —
+ * `App\Services\Tasks\TaskAbilityResolver::completionRequiresValidation()`
+ * does, off `requires_validation` and the actor's mandate — it only carries
+ * WHICH `in_validation` status the caller chose, and only when that percorso
+ * applies (`TaskActionService::complete()` enforces both directions of the
+ * requirement with a 422 on this field). `closure_feedback` applies to
+ * either percorso and follows the nullable-column convention of
+ * UpdateTaskData: the flag, not the value, decides whether the column is
+ * written.
  */
 final readonly class CompleteTaskData
 {

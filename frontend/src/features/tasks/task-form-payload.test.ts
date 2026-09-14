@@ -27,6 +27,13 @@ describe('buildCreatePayload', () => {
 
     expect(payload).not.toHaveProperty('task_status_id')
   })
+
+  it('AC-017 (spec 0121): sends requires_validation alongside requires_closure_feedback', () => {
+    const payload = buildCreatePayload(values({ requires_validation: true }))
+
+    expect(payload.requires_validation).toBe(true)
+    expect(payload).not.toHaveProperty('closure_feedback')
+  })
 })
 
 describe('buildUpdatePayload', () => {
@@ -84,5 +91,14 @@ describe('buildUpdatePayload', () => {
     const payload = buildUpdatePayload(values({ title: 'X' }), task())
 
     expect(payload).not.toHaveProperty('is_blocked')
+  })
+
+  it('AC-017 (spec 0121): sends requires_validation only when it actually changed', () => {
+    expect(buildUpdatePayload(values({ requires_validation: false }), task())).not.toHaveProperty(
+      'requires_validation',
+    )
+    expect(buildUpdatePayload(values({ requires_validation: true }), task()).requires_validation).toBe(
+      true,
+    )
   })
 })

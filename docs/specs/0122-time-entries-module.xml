@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0122 — MODULO SEGNATEMPO (time entries)
+  Fonte requisiti: "Doc Segnatempo.docx" (Desktop utente, letto 2026-09-14).
+  Riferimento flusso + grafica: frontend React /Users/Repository/q-net
+  (src/app/features/workActivities + tasks/form/task-time-tracking-*) e il suo backend
+  /Users/Repository/qnet (routes/apiV2.php work-activities, WorkActivityService).
+  Primo modulo segnatempo di qnet-2: tutte le spec Task precedenti lo escludevano (0116 D-10).
+-->
+<spec id="0122-time-entries-module" status="draft" owner="utente" date="2026-09-14">
+
+  <goal>
+    Ogni utente registra il tempo dedicato alle attivita' (segnatempo) da una pagina dedicata o
+    dall'interno di un Task, e lo consulta in una dashboard a giorni con target, anomalie, polso
+    operativo e composizione del carico; admin e responsabili analizzano ed esportano i dati
+    propri, dei sottoposti o di tutti. Flusso e grafica replicano q-net.
+  </goal>
+
+  <context>
+    <existing_names>
+      <item>`task_types` / `App\Models\TaskType` (`name`, `description`, `color` token di
+        `App\Support\BadgeTokens`, `icon` nome lucide nullable, `sort_order`, `is_active`): e' la
+        tabella dei tipi di segnatempo ("stessi del task, si puo' riusare quella tabella").
+        Seed: Attivita', Riunione, Chiamata, Ticket, Email, Visita, Altro. Endpoint
+        `GET /api/task-types/for-select`.</item>
+      <item>`tasks` / `App\Models\Task`: `title`, `registry_id`, `opportunity_id`,
+        `work_order_id`, `creator_id`; `TaskPolicy` (resource `tasks`), `TaskVisibilityScope`,
+        `TaskAbilityResolver::canComplete()` (creatore/richiedente/assegnatario/gestore).
+        `estimated_minutes` esiste, nessun consuntivo.</item>
+      <item>Cliente = `registries` / `Registry` (`name`). Opportunita' = `opportunities` /
+        `Opportunity` (`name`, `registry_id`). Commessa = `work_orders` / `WorkOrder` (`code`,
+        `title`, cliente raggiungibile solo via `quote -> opportunity -> registry`). Fase: NON
+        esiste in qnet-2.</item>
+      <item>For-select esistenti (ADR 0011, `search`/`offset`/`limit`/`ids`, fuori envelope):
+        `users`, `registries`, `opportunities`, `work-orders`, `tasks`, `task-types`. Nessuno
+        filtra oggi per cliente.</item>
+      <item>Orario: `employment_profiles.standard_daily_minutes` e `break_daily_minutes`
+        (unsignedSmallInteger nullable), `reports_to_id` -> users, `is_manager`,
+        `job_description`; `User::employment()` (trait `HasEmployment`). Funzioni aziendali:
+        `business_functions` (`name`, `manager_id`) + pivot `business_function_user`. Sedi:
+        `operational_sites.alias` + pivot `employment_profile_operational_site` (`is_primary`).</item>
+      <item>Envelope `App\Http\Controllers\Abstract\BaseApiController`: `ok()` -> `{success,
+        message, data}`; `paginatedResponse(items, total, offset, limit, exportLink, meta)` ->
+        `{items, export_link, pagination:{total, offset, limit, total_pages}, meta?}`.</item>
+      <item>Permessi: `{resource}.{ability}` kebab-case raccolti da `permissions:sync` dalle
+        Policy che estendono `App\Policies\Abstracts\BasePolicy` e da `config/navigation/*.php`.
+        Frontend `features/auth/can.tsx`, `use-abilities.ts`.</item>
+      <item>Rotte per dominio in `backend/routes/api/*.php` richieste da `routes/api.php` nel
+        gruppo `auth:sanctum`. Navigazione backend-driven `config/navigation/*.php`.</item>
+      <item>Frontend: router `src/routes/router.tsx` (`lazyRoute`), `components/ui/` (card, sheet,
+        dialog, popover assente -> hover-card/dropdown-menu, slider, tabs, tooltip, badge, avatar,
+        skeleton, select, searchable-select, async-paginated-select, textarea, switch), AG Grid in
+        `components/data-table`, i18n satelliti `i18n/locales/{it,en}-*.ts` con test di parita',
+        `lucide-react`. NON presenti: `@tabler/icons-react`, Tiptap o altro rich text.</item>
+      <item>`phpoffice/phpspreadsheet ^5.9` in composer.json. Estensione PHP `calendar` presente.</item>
+      <item>`tests/Feature/QuoteWorkflows/QuoteWorkflowMigrationTest.php`: `--step` hard-coded
+        (62 al 2026-09-14): +2 sul valore trovato alla build (due migrazioni nuove).</item>
+      <item>Lavoro parallelo NON committato della spec 0121 su `features/tasks/task-detail.tsx`,
+        `task-complete-dialog.tsx`, `i18n/locales/it-tasks.ts`, `TaskResource.php`,
+        `TaskAbilityResolver.php`: questa spec non tocca quei file salvo MT-F6 (gated).</item>
+    </existing_names>
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      "NON COME QUELLO CREATO FINO AD OGGI": il segnatempo NON segue lo schema standard dei moduli
+      qnet-2 (lista AG Grid SSRM + scheda record `RecordCanvas`). E' la dashboard a giorni di q-net:
+      card Periodo, KPI, Polso operativo, lista giorni espandibili, vista team.
+    </decision>
+    <decision id="D-2">
+      FEDELTA' GRAFICA (risposta utente 2026-09-14): struttura, gerarchia visiva, densita', colori
+      semantici, testi e interazioni 1:1 con q-net, costruiti con `components/ui` e i token di
+      `index.css`. Icone lucide equivalenti a quelle Tabler di q-net. Nota del giorno in
+      `Textarea` (niente rich text). Nessuna nuova dipendenza. Le tinte delle tile KPI (sky,
+      emerald, violet, rose) e dei pill anomalie stanno in UNA mappa di costanti con variante
+      dark verificata AA; il resto usa i token superficie (`bg-card` al posto di `bg-white`).
+    </decision>
+    <decision id="D-3">
+      CONFLITTI DOCUMENTO/Q-NET (risposta utente 2026-09-14): vince il documento sul flusso, q-net
+      sulla grafica. Conseguenze esplicite: (a) il form standalone mostra la select Attivita'
+      (in q-net commentata); (b) l'export filtrato applica TUTTI i filtri (q-net ne ignora molti);
+      (c) chi ha `time-entries.manageAll` modifica ed elimina segnatempo altrui (in qnet no);
+      (d) minuti obbligatori &gt; 0; (e) i filtri multi-valore inviano array (q-net invia solo il
+      primo valore).
+    </decision>
+    <decision id="D-4">
+      MODELLO DATI PIATTO: una riga `time_entries` = un segnatempo (non il day+interval di qnet,
+      che riusa e sovrascrive il giorno condiviso). Nota del giorno in `time_entry_day_notes`
+      (una per utente per data). La risposta API resta raggruppata per giorno come in q-net.
+      Fase esclusa (entita' inesistente). `TimeEntry` usa `LogsModelActivity`.
+    </decision>
+    <decision id="D-5">
+      COLLEGAMENTI. Con `task_id` valorizzato il server IMPONE `title = task.title` e
+      `registry_id`/`opportunity_id`/`work_order_id` = quelli del Task (ignora i valori inviati).
+      Senza task: opportunita' e commessa si escludono (entrambe -> 422); se arriva opportunita' o
+      commessa senza cliente, il server valorizza il cliente dal record; se arrivano entrambi e il
+      cliente non coincide -> 422. Il Task deve essere visibile all'utente del segnatempo
+      (`TaskVisibilityScope`), altrimenti 422 su `task_id`. Per il filtro a cascata del form si
+      aggiunge il parametro opzionale `registry_id` a `opportunities/for-select` e
+      `work-orders/for-select` (additivo, retrocompatibile).
+    </decision>
+    <decision id="D-6">
+      MINUTI E ORARI. `minutes` intero 1..1440 sempre inviato. `start_time`/`end_time` "HH:MM"
+      entrambi o nessuno; `end_time` &gt; `start_time` (niente attraversamento mezzanotte). Il
+      client calcola i minuti dagli orari (fine - inizio, se fine &lt;= inizio non ricalcola) e
+      l'utente puo' sovrascriverli; il server salva i minuti inviati. Nessun controllo di
+      sovrapposizione (come qnet).
+    </decision>
+    <decision id="D-7">
+      TARGET E STATO DEL GIORNO. Target giornaliero = `max(0, standard_daily_minutes -
+      coalesce(break_daily_minutes, 0))`; profilo assente o `standard_daily_minutes` null ->
+      `config('time_entries.default_daily_minutes')` = 480. Giorno non lavorativo = sabato,
+      domenica o festivita' italiana (1/1, 6/1, 25/4, 1/5, 2/6, 15/8, 1/11, 8/12, 25/12, 26/12,
+      Pasqua, Lunedi' dell'Angelo calcolati in Europe/Rome: corregge il bug di qnet). Stato:
+      non lavorativo o target 0 -> `no_target`; totale &lt; target -> `under_target`; &gt; ->
+      `over_target`; uguale -> `on_target`. Confronto esatto al minuto, nessuna tolleranza.
+      `is_active` = almeno un segnatempo nel giorno (la sola nota non basta).
+    </decision>
+    <decision id="D-8">
+      PERMESSI (tabella del documento). Policy `TimeEntryPolicy`, resource `time-entries`:
+      standard `viewAny`, `view`, `create`, `update`, `delete`, `export` + extra `exportMonthly`,
+      `manageAll`, `viewAll`. Proprietario: vede, modifica, elimina i propri. `manageAll`
+      ("Admin" del documento): legge e scrive per qualunque utente, filtro Utente abilitato.
+      Responsabile (ha sottoposti via `reports_to_id` ricorsivo): LEGGE lista e statistiche dei
+      sottoposti, non scrive. `export` e `exportMonthly` sono i due export ("Creatore NO, Admin
+      SI'"). `viewAll`: la vista team mostra tutti gli utenti attivi ("Struttura completa").
+    </decision>
+    <decision id="D-9">
+      INTEGRAZIONE TASK. Sezione "Segnatempo" nel dettaglio Task: editor "Nuovo intervallo"
+      (senza titolo e senza collegamenti), lista voci raggruppata per giorno con totale. Registra
+      chi ha `time-entries.create` E `TaskAbilityResolver::canComplete()` sul Task. La lista mostra
+      le voci di TUTTI gli utenti sul Task (come qnet). Modifica/eliminazione via endpoint generici.
+      Il segnatempo nel pop-up di completamento e' FUORI (risposta utente 2026-09-14: fase separata
+      dopo il commit della 0121).
+    </decision>
+    <decision id="D-10">
+      VISTA TEAM (risposta utente 2026-09-14: inclusa). Sottoposti = discendenti ricorsivi via
+      `employment_profiles.reports_to_id`, utenti attivi, escluso se stessi. Con `viewAll`: tutti
+      gli utenti attivi, se stessi inclusi, `is_full_list = true`. Albero costruito dal client su
+      `manager_id`. Filtri client-side Ruolo, Funzione aziendale, Sede operativa, Attivita',
+      Copertura (Regione di q-net esclusa: nessun dato verificato in qnet-2). Riga non cliccabile
+      per se stessi. Click su un membro = dashboard in sola lettura su quell'utente.
+    </decision>
+    <decision id="D-11">
+      FORMULE STATISTICHE replicate da qnet. Overview: `tracked_minutes`/`tracked_days` sui giorni
+      filtrati INCLUSI i non lavorativi; `period_target_minutes`/`working_days` sui soli lavorativi
+      del periodo; `daily_target_minutes` = target dell'ultimo giorno lavorativo del periodo (o
+      target di oggi se nessuno); `average_daily_focus_minutes = round(tracked_minutes /
+      tracked_days)` (0 se nessuno); anomalie = conteggio `over_target`/`under_target` sui giorni
+      filtrati lavorativi. Polso: sui soli lavorativi del periodo, IGNORA `daily_statuses` e
+      `is_active`; `coverage.percentage = round(minuti tracciati / target totale * 100)`;
+      cluster = minuti per `task_type`, desc, `percentage = round(minuti / totale * 100)`.
+    </decision>
+    <decision id="D-12">
+      EXPORT sincroni in xlsx (PhpSpreadsheet, costruiti da codice, nessun template/logo q-net),
+      risposta download. Filtrato: stessi filtri della dashboard, un utente, una riga per
+      segnatempo, sezioni come il template utente qnet. Mensile: ignora i filtri, un foglio per
+      utente, layout del report mensile qnet; la UI sceglie un utente (come q-net), l'API accetta
+      `user_ids[]` opzionale (assente = tutti gli utenti con segnatempo nel mese). Mese futuro -> 422.
+    </decision>
+    <decision id="D-13">
+      CONFIGURAZIONE PAGINA statica nel frontend (niente endpoint `pages/*`): filtri Utente,
+      Periodo, Tipo, Cliente, Commessa, Opportunita', Task, Stato target, Attivita'; ordinamenti
+      Giorno/Target/Attivita'; default settimana corrente, `sort_by=date`, `asc` (config qnet).
+      Stato filtri persistito in `localStorage` chiave `time-entries-page-filters`.
+    </decision>
+    <decision id="D-14">
+      TABELLA VOCI DEL GIORNO: AG Grid client-side a colonne fisse (Azioni, Titolo con icona tipo
+      e note, Durata, Orario, Task, Commessa, Opportunita', Cliente); cambio tipo inline dal
+      pulsante icona. Nessuna personalizzazione/persistenza colonne.
+    </decision>
+    <decision id="D-15">
+      COLLISIONE 0121: il montaggio della sezione Segnatempo in `features/tasks/task-detail.tsx`
+      (MT-F6) parte solo dopo il commit della 0121. Il backend non modifica `TaskResource`: il
+      totale minuti arriva da `GET /api/tasks/{task}/time-entries`.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni `time_entries` e `time_entry_day_notes`, model, factory, `DemoTimeEntrySeeder` in `DemoDataSeeder`.</item>
+      <item>`TimeEntryPolicy` + permessi D-8, voce di navigazione "Segnatempo" (icona `clock`).</item>
+      <item>CRUD segnatempo, nota del giorno, lista per giorni, overview, polso, vista team, due export.</item>
+      <item>Endpoint Task-scoped lista/creazione e sezione Segnatempo nel dettaglio Task (MT-F6 gated).</item>
+      <item>Filtro opzionale `registry_id` su `opportunities/for-select` e `work-orders/for-select`.</item>
+      <item>Frontend: pagina `/time-entries` (dashboard), `/time-entries/new`, `/time-entries/:id` (modifica), Sheet di creazione/modifica, i18n it/en con test di parita'.</item>
+    </in>
+    <out>
+      <item>Segnatempo nel pop-up di completamento Task (spec successiva dopo 0121).</item>
+      <item>Fasi di commessa, timer running/paused, calcolo automatico da timer.</item>
+      <item>Controllo sovrapposizione orari, attraversamento mezzanotte, pausa pranzo.</item>
+      <item>Personalizzazione colonne della tabella voci, tour di onboarding, quick-create nell'header, widget in dashboard generale.</item>
+      <item>Link "Apri in Q-NET" e ogni URL legacy.</item>
+      <item>Export asincrono via `ExportRun`, template xlsx con logo.</item>
+      <item>Notifiche, rich text, filtro Regione nella vista team.</item>
+      <item>Consuntivo su `tasks` (nessuna colonna `actual_minutes`).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!--
+      TIPI CONDIVISI
+      TaskTypeRef  = { id:int, name:string, color:string, icon:string|null }
+      TimeEntry    = { id:int, user:{id:int, name:string}, date:"Y-m-d", title:string,
+                       task_type:TaskTypeRef, start_time:"HH:MM"|null, end_time:"HH:MM"|null,
+                       minutes:int, notes:string|null, registry:{id:int, name:string}|null,
+                       opportunity:{id:int, name:string}|null,
+                       work_order:{id:int, code:string, title:string}|null,
+                       task:{id:int, title:string}|null, created_at:ISO8601, updated_at:ISO8601,
+                       permissions:{ update:bool, delete:bool } }
+      DailyStatus  = "no_target"|"under_target"|"on_target"|"over_target"
+      Coverage     = { percentage:int, working_days:int, tracked_days:int }
+      Cluster      = { task_type:TaskTypeRef, minutes:int, percentage:int }
+      FILTRI (F), tutti opzionali:
+        user_id:int (exists users)            period_preset:"day"|"week"|"month"|"year"
+        date_from:"Y-m-d"  date_to:"Y-m-d" (after_or_equal date_from, intervallo max 366 giorni)
+        task_type_ids[]:int  registry_ids[]:int  opportunity_ids[]:int  work_order_ids[]:int
+        task_ids[]:int  daily_statuses[]:DailyStatus  is_active:"true"|"false"|"1"|"0"
+        Periodo: date_from/date_to se presenti, altrimenti period_preset relativo a oggi
+        (settimana ISO lun-dom), altrimenti settimana corrente. user_id assente = utente autenticato.
+      AUTORIZZAZIONE LETTURA (R): user_id = se stessi, oppure `manageAll`, oppure user_id discendente
+        via reports_to_id; altrimenti 403. Sempre richiesto `time-entries.viewAny`.
+    -->
+
+    <endpoint method="GET" path="/api/time-entries">
+      <request>F + sort_by:"date"|"target_minutes"|"is_active" (default date) + sort_direction:"asc"|"desc" (default asc) + page:int&gt;=1 + per_page:int 1..100 (default 15)</request>
+      <response status="200">
+        { items: DaySummary[], export_link: null, pagination:{total, offset, limit, total_pages},
+          meta: { selected_user:{id, name}, daily_target_minutes:int, can_write:bool,
+                  can_filter_users:bool, can_export:bool, can_export_monthly:bool,
+                  team:{ can_view:bool, is_full_list:bool, members_count:int } } }
+        DaySummary = { date:"Y-m-d", weekday:int 1..7 (ISO), is_holiday:bool, is_non_working_day:bool,
+          is_active:bool, target_minutes:int, total_minutes:int, utilization_percentage:number (2 dec),
+          status:DailyStatus, day_note:string|null, entries:TimeEntry[] (start_time asc, null in coda, id asc) }
+        Un DaySummary per OGNI data del periodo, anche senza segnatempo; poi filtri is_active e
+        daily_statuses; poi ordinamento; poi paginazione. `can_write` = selezionato e' se stessi o manageAll.
+      </response>
+      <errors>403 senza viewAny o regola R violata; 422 validazione (intervallo &gt; 366 giorni incluso).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/time-entries/stats/overview">
+      <request>F</request>
+      <response status="200">
+        data: { period:{date_from, date_to}, daily_target_minutes:int, period_target_minutes:int,
+          working_days:int, tracked_minutes:int, tracked_days:int, average_daily_focus_minutes:int,
+          anomalies:{ over_target_days:int, under_target_days:int } }  (formule D-11)
+      </response>
+      <errors>403 come lista; 422.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/time-entries/stats/pulse">
+      <request>F</request>
+      <response status="200">data: { coverage:Coverage, primary_cluster:Cluster|null, other_clusters:Cluster[] }  (D-11)</response>
+      <errors>403 come lista; 422.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/time-entries/stats/team">
+      <request>period_preset, date_from, date_to (stesse regole di F)</request>
+      <response status="200">
+        data: { is_full_list:bool, items: [ { user:{id, name, email, avatar_url:string|null},
+          manager_id:int|null, job_description:string|null, roles:string[],
+          business_functions:[{id, name, is_manager:bool}], operational_site:{id, label:string|null}|null,
+          coverage:Coverage, primary_cluster:Cluster|null } ] }  ordinati per nome
+      </response>
+      <errors>403 se nessun sottoposto e senza viewAll; 422.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/time-entries/{timeEntry}">
+      <response status="200">data: TimeEntry</response>
+      <errors>403 se non proprietario e senza manageAll; 404.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/time-entries">
+      <request>
+        { user_id?:int (diverso da se stessi solo con manageAll), date:"Y-m-d" required,
+          title:string max 191 required_without task_id, task_type_id:int required (exists, attivo),
+          start_time?:"HH:MM", end_time?:"HH:MM" (required_with start_time e viceversa, &gt; start_time),
+          minutes:int required 1..1440, notes?:string|null max 5000,
+          registry_id?:int|null, opportunity_id?:int|null, work_order_id?:int|null, task_id?:int|null }
+      </request>
+      <response status="201">data: TimeEntry (regole collegamenti D-5 gia' applicate)</response>
+      <errors>403 senza create o user_id altrui senza manageAll; 422 validazione, opportunita'+commessa insieme, cliente incoerente, task non visibile.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/time-entries/{timeEntry}">
+      <request>stesso body di POST senza user_id (prohibited)</request>
+      <response status="200">data: TimeEntry</response>
+      <errors>403 senza update o non proprietario e senza manageAll; 404; 422.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/time-entries/{timeEntry}">
+      <response status="200">{ success:true, message, data:null }</response>
+      <errors>403 senza delete o non proprietario e senza manageAll; 404.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/time-entries/day-notes">
+      <request>{ user_id?:int, date:"Y-m-d" required, note:string|null max 5000 }</request>
+      <response status="200">data: { date:"Y-m-d", note:string|null }  (note vuota dopo trim = cancella)</response>
+      <errors>403 user_id altrui senza manageAll; 422.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tasks/{task}/time-entries">
+      <response status="200">data: { total_minutes:int, can_create:bool, items:TimeEntry[] (date desc, start_time desc, id desc) }</response>
+      <errors>403 senza tasks.view sul Task o senza time-entries.viewAny; 404.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks/{task}/time-entries">
+      <request>{ date required, task_type_id required, start_time?, end_time?, minutes required 1..1440, notes? } (regole come POST generico)</request>
+      <response status="201">data: TimeEntry (user = autenticato, title e collegamenti dal Task)</response>
+      <errors>403 senza time-entries.create o senza canComplete sul Task; 404; 422.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/time-entries/exports/filtered">
+      <request>F (user_id singolo)</request>
+      <response status="200">
+        Download `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`,
+        `Content-Disposition: attachment; filename="segnatempo_{date_from}_{date_to}.xlsx"`.
+        Foglio "Segnatempo": titolo "Rapporto segnatempo", nome utente, periodo; sezione
+        "Carico di lavoro per tipo" (Tipo | Tot. hh:mm | %); sezione "Carico di lavoro per commessa"
+        (Cliente | Commessa | Tot. hh:mm | %), righe solo con commessa; sezione "Panoramica dei
+        segnatempo" una riga per segnatempo (Data | Dalle | Alle | Durata hh:mm | Tipo | Titolo |
+        Cliente | Opportunita' | Commessa | Task | Note).
+      </response>
+      <errors>403 senza time-entries.export o regola R violata; 422. Errori in envelope JSON.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/time-entries/exports/monthly">
+      <request>month:int 1..12 required, year:int 2000..2100 required, user_ids[]?:int (exists)</request>
+      <response status="200">
+        Download xlsx `report_segnatempo_{YYYY}{MM}.xlsx`. Un foglio per utente (nome max 31
+        caratteri, senza \ / : * ? [ ]); riga 1 "Report mensile segnatempo - {Mese Anno}", riga 2
+        "Collaboratore: {nome}", riga 4 intestazioni Data | Titolo attivita' | Tipo | Cliente |
+        Orario inizio | Orario fine | Durata (min) | Note; una riga per segnatempo ordinata per data
+        e orario; riga finale "TOTALE ORE {Mese Anno}" con "Xh MMmin". Nessun dato = foglio
+        "Nessun dato" con messaggio.
+      </response>
+      <errors>403 senza time-entries.exportMonthly; 422 mese futuro o validazione.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/opportunities/for-select | /api/work-orders/for-select">
+      <request>parametri esistenti + registry_id?:int (nuovo, filtra per cliente; per work-orders via quote.opportunity.registry_id)</request>
+      <response status="200">shape esistente invariata</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- BACKEND (Pest) -->
+    <criterion id="AC-001">Dato un utente con `time-entries.create`, quando POST /api/time-entries con date, title, task_type_id, minutes=90, allora 201 e la shape TimeEntry con `user.id` = autenticato e `permissions.update/delete` true.</criterion>
+    <criterion id="AC-002">Dato start_time 09:00 e end_time 08:30 (o uno solo dei due), quando POST, allora 422 e nessuna riga creata.</criterion>
+    <criterion id="AC-003">Dato minutes 0, 1441 o assente, quando POST, allora 422.</criterion>
+    <criterion id="AC-004">Dato un task visibile con cliente/opportunita' e titolo "X", quando POST con task_id e title diverso e registry_id diverso, allora il segnatempo salvato ha title "X" e i collegamenti del Task.</criterion>
+    <criterion id="AC-005">Dato un task NON visibile all'utente, quando POST con task_id, allora 422 su task_id.</criterion>
+    <criterion id="AC-006">Dato opportunity_id e work_order_id insieme, oppure un registry_id diverso dal cliente dell'opportunita', quando POST, allora 422; data solo opportunity_id, allora registry_id salvato = cliente dell'opportunita'.</criterion>
+    <criterion id="AC-007">Dato un utente senza manageAll, quando POST con user_id altrui, allora 403; con manageAll, allora 201 e il segnatempo appartiene a quell'utente.</criterion>
+    <criterion id="AC-008">Dato un segnatempo altrui, quando un utente senza manageAll fa GET/PUT/DELETE, allora 403; con manageAll, allora 200.</criterion>
+    <criterion id="AC-009">Dato il proprietario, quando PUT cambia minutes e DELETE, allora 200 e i dati riflettono la modifica; `user_id` nel body di PUT produce 422.</criterion>
+    <criterion id="AC-010">Dato un periodo lun-dom con segnatempo solo il martedi', quando GET /api/time-entries, allora 7 DaySummary (anche vuoti), il martedi' `is_active` true e gli altri false.</criterion>
+    <criterion id="AC-011">Dato profilo con standard 510 e pausa 30, quando GET lista, allora target_minutes 480 nei giorni; senza profilo, allora 480 da config; totale 479 -> under_target, 480 -> on_target, 481 -> over_target.</criterion>
+    <criterion id="AC-012">Dato sabato, domenica, 25/12 e il Lunedi' dell'Angelo 2026 (6/4), quando GET lista, allora `is_non_working_day` true e status `no_target` anche con segnatempo presenti; il 4/4/2026 non e' festivo.</criterion>
+    <criterion id="AC-013">Dati filtri daily_statuses[]=over_target e is_active=true, quando GET lista, allora solo i giorni corrispondenti e `pagination.total` coerente.</criterion>
+    <criterion id="AC-014">Dati filtri task_type_ids[], registry_ids[], work_order_ids[], opportunity_ids[], task_ids[] con due valori ciascuno, quando GET lista, allora nei giorni compaiono solo segnatempo che corrispondono a tutti i filtri (OR dentro lo stesso filtro).</criterion>
+    <criterion id="AC-015">Dato sort_by=target_minutes desc e per_page=2, quando GET pagina 2, allora ordine e offset corretti; sort_by non ammesso -> 422; intervallo di 367 giorni -> 422.</criterion>
+    <criterion id="AC-016">Dato un responsabile A con sottoposto diretto B e indiretto C, quando A chiede lista/overview/pulse con user_id=C, allora 200 e `meta.can_write` false; con user_id di un utente estraneo, allora 403.</criterion>
+    <criterion id="AC-017">Dato un set noto di segnatempo inclusa una domenica, quando GET overview, allora tracked_minutes/tracked_days includono la domenica, period_target_minutes = somma target lavorativi, average e anomalie secondo D-11.</criterion>
+    <criterion id="AC-018">Dato lo stesso set, quando GET pulse, allora coverage esclude la domenica, primary_cluster = tipo con piu' minuti con percentage arrotondata, other_clusters in ordine decrescente; senza segnatempo primary_cluster null.</criterion>
+    <criterion id="AC-019">Dato A responsabile di B (diretto) e C (indiretto), quando A GET stats/team, allora items B e C con manager_id, coverage e is_full_list false; A escluso.</criterion>
+    <criterion id="AC-020">Dato un utente con viewAll, quando GET stats/team, allora tutti gli utenti attivi incluso se stesso e is_full_list true; un utente senza sottoposti e senza viewAll riceve 403.</criterion>
+    <criterion id="AC-021">Dato PUT day-notes con nota "abc", allora 200 e `day_note` compare nel DaySummary; ripetuto con nota "  ", allora la nota e' rimossa; user_id altrui senza manageAll -> 403.</criterion>
+    <criterion id="AC-022">Dato un Task su cui l'utente e' assegnatario, quando POST /api/tasks/{task}/time-entries, allora 201 con title = titolo Task e collegamenti del Task; un osservatore riceve 403.</criterion>
+    <criterion id="AC-023">Dato un Task con segnatempo di due utenti, quando GET /api/tasks/{task}/time-entries, allora items di entrambi, total_minutes = somma, can_create coerente; senza visibilita' sul Task -> 403.</criterion>
+    <criterion id="AC-024">Dato un utente senza time-entries.export, quando GET exports/filtered, allora 403; con il permesso, allora 200, content-type xlsx, e il file contiene le tre sezioni e una riga panoramica per ogni segnatempo che passa TUTTI i filtri.</criterion>
+    <criterion id="AC-025">Dato GET exports/monthly per un mese futuro, allora 422; senza exportMonthly 403; per un mese con due utenti e senza user_ids, allora un foglio per utente con riga TOTALE ORE corretta.</criterion>
+    <criterion id="AC-026">Dato registry_id su opportunities/for-select e work-orders/for-select, allora solo i record di quel cliente; senza parametro, risultato invariato rispetto a oggi.</criterion>
+    <criterion id="AC-027">Dato `permissions:sync`, allora esistono i 9 permessi `time-entries.*` di D-8 e la voce di navigazione `time-entries` richiede `time-entries.viewAny`.</criterion>
+    <criterion id="AC-028">Dato `DemoDataSeeder`, allora crea segnatempo demo idempotenti; `DatabaseSeeder` non ne crea.</criterion>
+
+    <!-- FRONTEND (Vitest) -->
+    <criterion id="AC-029">Dati gli orari 09:00-10:30 nel form, allora il campo Tempo mostra 01:30 (90 minuti); con fine &lt;= inizio i minuti restano invariati; la modifica manuale del Tempo resta finche' non cambia un orario.</criterion>
+    <criterion id="AC-030">Dato submit del form senza titolo, data, tipo o con minuti 0, allora compaiono gli errori sui campi (triade aria) e nessuna chiamata API.</criterion>
+    <criterion id="AC-031">Dato il cambio Cliente, allora opportunita' e commessa si svuotano; scelta una commessa, allora il cliente si imposta da essa e l'opportunita' si svuota; scelto un Task, allora titolo e collegamenti diventano non modificabili con i valori del Task.</criterion>
+    <criterion id="AC-032">Dato il preset Settimanale e "Periodo successivo", allora la query invia date_from/date_to della settimana seguente e l'etichetta periodo cambia; "Oggi" torna al preset relativo.</criterion>
+    <criterion id="AC-033">Dati filtri applicati nel drawer, allora compaiono i chip, il badge conteggio sul trigger, lo stato sopravvive al ricaricamento (localStorage) e "Ripristina filtri" torna ai default.</criterion>
+    <criterion id="AC-034">Dati overview e pulse mockati, allora le 4 tile mostrano Target di periodo con "(8h 00m/giorno)", Tracciato con giorni, Focus medio, Anomalie con pill sopra/sotto target; il Polso mostra copertura e cluster principale con popover Altri cluster.</criterion>
+    <criterion id="AC-035">Dato un DaySummary di oggi e uno di ieri, allora oggi e' espanso e senza pulsante Comprimi, ieri e' compresso ed espandibile; la barra mostra la linea target e un segmento per tipo con legenda percentuale.</criterion>
+    <criterion id="AC-036">Dato `meta.can_write` false, allora spariscono Nuovo segnatempo, azioni riga, cambio tipo e modifica nota; con true la nota del giorno si salva al blur via PUT day-notes.</criterion>
+    <criterion id="AC-037">Dato `meta.team.can_view` true, allora il footer della card Periodo mostra Vista personale / Il mio team (N); scelto un membro, la dashboard carica con user_id del membro e la freccia torna alla lista.</criterion>
+    <criterion id="AC-038">Dati membri team mockati su tre livelli, allora l'albero indenta per manager_id, la ricerca mantiene antenati e discendenti, il filtro Copertura 50..100 esclude gli altri, la propria riga non e' cliccabile.</criterion>
+    <criterion id="AC-039">Dato il menu export, allora le voci rispettano can_export/can_export_monthly; il dialog mensile blocca mese futuro e utente mancante con i messaggi di q-net; il download usa il nome dal Content-Disposition.</criterion>
+    <criterion id="AC-040">Dato il dettaglio Task con can_create true, allora la sezione Segnatempo mostra editor Nuovo intervallo senza titolo e collegamenti, lista per giorno con Oggi/Ieri, collasso oltre 3 voci; il badge del tab mostra il totale.</criterion>
+    <criterion id="AC-041">Dati i file `it-time-entries.ts` e `en-time-entries.ts`, allora il test di parita' chiavi passa e nessuna stringa UI e' hard-coded.</criterion>
+    <criterion id="AC-042">Typecheck `npx tsc -b --force`, ESLint, Pint e intera suite Pest/Vitest verdi (nessuna regressione).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (D-2). Solo librerie in composer.json / package.json.</item>
+    <item>Authz server-side su ogni endpoint via `TimeEntryPolicy`; l'UI nasconde, il backend autorizza.</item>
+    <item>FormRequest su ogni input, `$request->safe()`, Resource per ogni output, `$fillable` espliciti, niente `orderByRaw`: ordinamenti da allow-list.</item>
+    <item>Indici: `time_entries(user_id, date)`, FK `task_type_id` restrict, `task_id`/`registry_id`/`opportunity_id`/`work_order_id` nullOnDelete; `time_entry_day_notes` unique(user_id, date).</item>
+    <item>Nessun throttle (decisione utente 2026-07-15). Nessun lazy loading (preventLazyLoading attivo).</item>
+    <item>Identificatori inglesi; testi UI solo via i18n; token superficie da `index.css`; responsive 375/768/1024; file sotto 300 righe (500 hard).</item>
+    <item>Nessuna modifica ai file in lavorazione della 0121 fuori da MT-F6, che parte solo dopo il commit della 0121.</item>
+    <item>Nessun commit o cambio branch senza ordine esplicito (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Authorization\TasksAuthorization;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Tasks\TaskAbilityResolver;
@@ -137,6 +138,13 @@ it('AC-002 (spec 0121): an assignee sending requires_validation gets 422 and no 
         ->assertJsonPath('data.requires_validation', true);
 
     $this->assertDatabaseHas('tasks', ['id' => $task2->id, 'requires_validation' => true]);
+});
+
+it('AC-015 (spec 0121): TasksAuthorization::actions() carries complete_to_validation, 13 keys total', function () {
+    $actions = app(TasksAuthorization::class)->actions();
+
+    expect($actions)->toHaveCount(13)
+        ->and($actions)->toContain('complete_to_validation');
 });
 
 // ---------------------------------------------------------------------------
