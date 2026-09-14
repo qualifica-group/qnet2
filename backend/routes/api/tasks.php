@@ -9,6 +9,7 @@ use App\Http\Controllers\Tasks\TaskRejectController;
 use App\Http\Controllers\Tasks\TaskRequestUpdateController;
 use App\Http\Controllers\Tasks\TaskUnblockController;
 use App\Http\Controllers\Tasks\TaskUncompleteController;
+use App\Http\Controllers\TimeEntries\TaskTimeEntryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -61,3 +62,12 @@ Route::post('tasks/{task}/reject', TaskRejectController::class);
 Route::post('tasks/{task}/block', TaskBlockController::class);
 Route::post('tasks/{task}/unblock', TaskUnblockController::class);
 Route::post('tasks/{task}/request-update', TaskRequestUpdateController::class);
+
+// Task-scoped segnatempo (spec 0122, D-9): the "Segnatempo" section of the
+// Task detail. Controller lives in App\Http\Controllers\TimeEntries next to
+// the rest of the module, not here — see routes/api/time-entries.php's own
+// header for the reasoning. Authorization combines TaskPolicy::view (the
+// D-9 visibility scope) with the `time-entries.*` permissions and
+// TaskAbilityResolver::canComplete(), enforced in the controller itself.
+Route::get('tasks/{task}/time-entries', [TaskTimeEntryController::class, 'index']);
+Route::post('tasks/{task}/time-entries', [TaskTimeEntryController::class, 'store']);

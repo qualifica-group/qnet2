@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
 import { buildTaskSchema } from '@/features/tasks/task-schema'
-import { taskFormValues as values } from '@/features/tasks/task-fixtures'
+import { taskFormValues as values, taskRecurrenceFormValues as recurrence } from '@/features/tasks/task-fixtures'
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -91,5 +91,95 @@ describe('buildTaskSchema — watcher overlap (spec 0118 D-9)', () => {
 
   it('accepts watchers disjoint from the requester and the assignees (AC-031/AC-034 mirror)', () => {
     expect(buildTaskSchema(i18n.t).safeParse(values()).success).toBe(true)
+  })
+})
+
+/** Spec 0120 D-1/AC-033: every rule below is SKIPPED while `recurrence.enabled` is false. */
+describe('buildTaskSchema — recurrence (spec 0120 D-1/AC-033)', () => {
+  it('ignores a garbage recurrence slice while disabled', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({ recurrence: recurrence({ interval: 0, ends: 'on_date' }) }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects an interval below 1 once enabled', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'never', interval: 0 }) }),
+    )
+    expect(issuePaths(result)).toContain('recurrence.interval')
+  })
+
+  it('rejects a weekly rule with no weekday picked', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'weekly', ends: 'never', weekdays: [] }) }),
+    )
+    expect(issuePaths(result)).toContain('recurrence.weekdays')
+  })
+
+  it('accepts a weekly rule once at least one weekday is picked', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'weekly', ends: 'never', weekdays: [1, 3] }) }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a monthly rule with a day outside 1..31', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'monthly', ends: 'never', month_day: 32 }) }),
+    )
+    expect(issuePaths(result)).toContain('recurrence.month_day')
+  })
+
+  it('accepts a monthly rule with a day within 1..31', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'monthly', ends: 'never', month_day: 31 }) }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects `ends: on_date` with no `ends_on`', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'on_date', ends_on: null }) }),
+    )
+    expect(issuePaths(result)).toContain('recurrence.ends_on')
+  })
+
+  it('rejects an `ends_on` not strictly after the task end_date (`after:end_date`)', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({
+        end_date: '2026-09-05',
+        recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'on_date', ends_on: '2026-09-05' }),
+      }),
+    )
+    expect(issuePaths(result)).toContain('recurrence.ends_on')
+  })
+
+  it('accepts an `ends_on` strictly after the task end_date', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({
+        end_date: '2026-09-05',
+        recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'on_date', ends_on: '2026-09-06' }),
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects `ends: after_count` with no (or a zero) `occurrence_count`', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({
+        recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'after_count', occurrence_count: 0 }),
+      }),
+    )
+    expect(issuePaths(result)).toContain('recurrence.occurrence_count')
+  })
+
+  it('accepts `ends: after_count` with a positive `occurrence_count`', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({
+        recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'after_count', occurrence_count: 5 }),
+      }),
+    )
+    expect(result.success).toBe(true)
   })
 })

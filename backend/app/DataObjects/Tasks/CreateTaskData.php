@@ -34,6 +34,12 @@ namespace App\DataObjects\Tasks;
  * with no observers simply syncs an empty pivot. `startTime`/`endTime` are
  * `H:i` strings (D-11: `FieldDefinition` has no `time` type, so they travel
  * as text validated by `date_format`).
+ *
+ * `recurrence` (spec 0120, D-3) is the one property with NO column of its
+ * own on `tasks`: a non-null value tells TaskService::create() to hand it to
+ * App\Services\Tasks\TaskRecurrenceService::set(), which creates the
+ * `task_recurrences` row and links `task_recurrence_id` — hence it is absent
+ * from attributes() below.
  */
 final readonly class CreateTaskData
 {
@@ -65,6 +71,7 @@ final readonly class CreateTaskData
         public bool $requiresValidation = false,
         public ?string $closureFeedback = null,
         public array $watcherIds = [],
+        public ?TaskRecurrenceData $recurrence = null,
     ) {}
 
     /**
@@ -98,6 +105,7 @@ final readonly class CreateTaskData
             requiresValidation: (bool) ($data['requires_validation'] ?? false),
             closureFeedback: self::nullableString($data, 'closure_feedback'),
             watcherIds: self::normalizeIds($data['watcher_ids'] ?? []),
+            recurrence: isset($data['recurrence']) ? TaskRecurrenceData::fromValidated($data['recurrence']) : null,
         );
     }
 

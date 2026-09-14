@@ -16,6 +16,7 @@ use Database\Seeders\QualificaTaskTaxonomySeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -107,6 +108,16 @@ it('goes through the real write path: referente coherence and closing dates hold
             expect(trim((string) $task->closure_feedback))->not->toBe('');
         }
     }
+});
+
+it('sends no notification: seeding is not an assignment anyone should hear about', function (): void {
+    seedTaskDependencies();
+    Notification::fake();
+
+    test()->seed(DemoTaskSeeder::class);
+
+    expect(Task::count())->toBe(60);
+    Notification::assertNothingSent();
 });
 
 it('is idempotent: a second run replaces the dataset instead of piling onto it', function (): void {

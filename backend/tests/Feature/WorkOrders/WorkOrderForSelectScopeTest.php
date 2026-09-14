@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Resources\WorkOrderForSelectResource;
+use App\Models\Opportunity;
+use App\Models\Quote;
+use App\Models\Registry;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -209,4 +213,87 @@ it('AC-056: search narrows within the scope, it never widens past it', function 
 
     expect($ids)->toBe([$own->id])
         ->and($ids)->not->toContain($foreign->id);
+});
+
+// ---------------------------------------------------------------------------
+// AC-026 (spec 0122, D-5): additive registry_id cascading filter, reachable
+// only through quote.opportunity.registry_id (a work order has no
+// registry_id of its own).
+// ---------------------------------------------------------------------------
+
+it('AC-026: registry_id keeps only the commesse of that client (via quote.opportunity)', function () {
+    $actor = workOrderPickerActor(['view', 'viewAll']);
+    $registry = Registry::factory()->create();
+    $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+    $match = WorkOrder::factory()->create(['quote_id' => $quote->id]);
+    $other = WorkOrder::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $ids = workOrderPickerIds("?registry_id={$registry->id}");
+
+    expect($ids)->toContain($match->id)->not->toContain($other->id);
+});
+
+it('AC-026: without registry_id the result is unchanged', function () {
+    $actor = workOrderPickerActor(['view', 'viewAll']);
+    $first = WorkOrder::factory()->create();
+    $second = WorkOrder::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $ids = workOrderPickerIds();
+
+    expect($ids)->toContain($first->id)->toContain($second->id);
+});
+
+// ---------------------------------------------------------------------------
+// spec 0122, D-5 (delta 2026-09-14 da MT-F2): additive `meta.registry`, the
+// client via `quote.opportunity.registry`, feeding the segnatempo form's
+// commessa-to-cliente cascade.
+// ---------------------------------------------------------------------------
+
+it('AC-026: a commessa with a full quote/opportunity/registry chain carries meta.registry', function () {
+    $actor = workOrderPickerActor(['view', 'viewAll']);
+    $registry = Registry::factory()->create(['name' => 'Cliente Alfa']);
+    $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+    $workOrder = WorkOrder::factory()->create(['quote_id' => $quote->id]);
+    Sanctum::actingAs($actor);
+
+    $item = collect(test()->getJson('/api/work-orders/for-select')->assertOk()->json('items'))
+        ->firstWhere('id', $workOrder->id);
+
+    expect($item['meta']['registry'])->toBe(['id' => $registry->id, 'name' => 'Cliente Alfa']);
+});
+
+it('AC-026: meta.registry is null when the quote/opportunity/registry chain is incomplete', function () {
+    // The schema keeps `quote_id`/`opportunity_id`/`registry_id` all NOT NULL
+    // restrictOnDelete, so no PERSISTED WorkOrder can ever have a broken
+    // chain — the null branch is exercised directly against the resource
+    // instead, proving the null-safe (`?->`) reads hold rather than assuming
+    // a database row that the schema cannot produce.
+    $workOrder = WorkOrder::factory()->make();
+    $workOrder->setRelation('quote', null);
+
+    $item = (new WorkOrderForSelectResource($workOrder))->toArray(request());
+
+    expect($item['meta']['registry'])->toBeNull();
+});
+
+it('AC-026: meta.registry never lazy-loads across a page of commesse (no N+1)', function () {
+    $actor = workOrderPickerActor(['view', 'viewAll']);
+    foreach (range(1, 3) as $i) {
+        $registry = Registry::factory()->create();
+        $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
+        $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+        WorkOrder::factory()->create(['quote_id' => $quote->id]);
+    }
+    Sanctum::actingAs($actor);
+
+    // preventLazyLoading() is active outside production (AppServiceProvider):
+    // an un-eager-loaded relation throws instead of silently N+1ing, so a
+    // 200 here is itself the proof the chain is fully eager-loaded.
+    $response = test()->getJson('/api/work-orders/for-select')->assertOk();
+
+    expect(collect($response->json('items'))->pluck('meta.registry.id'))->not->toContain(null);
 });

@@ -3,6 +3,112 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MODULO TASK — FASE 7: PIANIFICAZIONE RICORRENTE (spec 0120) — VERDE, NON COMMITTATO (2026-09-14)
+
+**Cosa e'.** Regola di ripetizione sul Task; le occorrenze sono Task AUTONOMI (non sotto-task) legati
+alla serie. Spec approvata dall'utente 2026-09-14, fatti riverificati e piano aggiunto nella spec.
+
+**Backend (nomi da rispettare).**
+- Tabella `task_recurrences` (`frequency`, `interval`, `weekdays` JSON ISO 1..7, `month_day`, `ends`,
+  `ends_on`, `occurrence_count`, `generated_until`); `tasks.task_recurrence_id` nullOnDelete, NON
+  fillable; UNIQUE(`task_recurrence_id`, `end_date`) = idempotenza. Migrazioni
+  `2026_09_14_130000_create_task_recurrences_table`, `2026_09_14_130100_add_task_recurrence_id_to_tasks_table`.
+- `TaskRecurrence` (+factory), enum `TaskRecurrenceFrequency`/`TaskRecurrenceEnd`, DTO
+  `Tasks\TaskRecurrenceData`; servizi `Tasks\TaskRecurrenceCalculator` (puro,
+  `nextDates(rule, from, limit, alreadyGenerated=1, horizon=null)`), `TaskOccurrenceFactory::materialize()`,
+  `TaskRecurrenceService::set()/replace()/cancel()` (rigenera solo le occorrenze future VERGINI, D-11).
+- Comando `tasks:generate-recurrences {--recurrence=} {--dry-run}`, PRIMO `Schedule::command` del repo
+  (`routes/console.php`, dailyAt 01:00, withoutOverlapping).
+- Contratto: `recurrence` in POST/PATCH (assente = invariata, null = cancella, oggetto = crea/sostituisce)
+  e `data.recurrence` nel `TaskResource`. `FIELD_TYPES` +`'recurrence' => 'recurrence'` in fondo (25);
+  `PROTECTED_FIELDS` 19; `actions()` 13; catalogo `tasks.*` 15.
+- DEVIAZIONE DI CONVENZIONE (voluta, AC-028): non-mandatario che invia `recurrence` -> 403 via
+  `UpdateTaskRequest::authorize()`; gli altri campi protetti restano 422. Task congelato -> 422 (D-13).
+- `EnforcesFieldPermissions::readTopLevel()` generalizzato a relazioni to-one (prima solo to-many).
+- Contatore `QuoteWorkflowMigrationTest` = 66. `TaskService.php` a **480/500**: il prossimo intervento
+  DEVE splittare per write path prima di aggiungere righe.
+
+**Frontend.** `task-recurrence-section.tsx` (dopo `TaskPlanningSection`), `task-recurrence-weekdays-field.tsx`,
+`task-recurrence-format.ts` (badge nel dettaglio), `task-recurrence-defaults.ts`, `task-recurrence-types.ts`
+(ri-esportato da `types.ts`), `task-form-server-error-fields.ts`. PATCH invia `recurrence` solo se la regola
+normalizzata differisce dalla persistita e mai se `permissions.fields.recurrence` non e' editabile. i18n
+`tasks.form.sections.recurrence.*`, `tasks.form.recurrence.*`, `tasks.detail.recurrence.*`.
+
+**Verifica (verifier indipendente).** AC-001..029, 031..035, 037..039 PASS. Pest Tasks/Unit/QuoteWorkflows/
+Authorization/Seeding 1614/1614; consumer di EnforcesFieldPermissions (Opportunities/WorkOrders/Users/
+Companies) 596/596; Vitest tasks+i18n 318/318; Pint, ESLint, `tsc -b --force` puliti; `schedule:list` ok.
+
+**Manuali, a carico utente.** AC-030: cron `php artisan schedule:run` ogni minuto sul server (senza, nessuna
+occorrenza viene generata). AC-036: responsive 375/768/1024 della sezione Ricorrenza.
+
+**Prossimi passi.** Commit su richiesta. Poi: segnatempo nel pop-up di completamento Task; decidere PATCH
+di un assegnatario verso `in_validation` (0121); split di `TaskService`.
+
+## MODULO SEGNATEMPO (spec 0122) — VERDE, NON COMMITTATO (2026-09-14)
+
+**Cosa e'.** Nuovo modulo `time-entries`: replica flusso e grafica del segnatempo di q-net
+(`/Users/Repository/q-net/src/app/features/workActivities`, backend `/Users/Repository/qnet`)
+con i requisiti di `Doc Segnatempo.docx`. Spec `docs/specs/0122-time-entries-module.xml`
+(D-1..D-15, 42 AC). Tutti i microtask MT-B1..B5, B2b, U1, U2, F1..F7 chiusi e verificati.
+
+**ATTENZIONE git.** Il commit `fc677f65` "feat(time-entries): initial implementation" contiene
+SOLO rifiniture 0121 + la bozza della spec 0122: nessun codice segnatempo. Il modulo e' tutto
+nel working tree, NON committato.
+
+**Decisioni utente 2026-09-14 (non riaprire).** Struttura grafica 1:1 con q-net ma componenti
+qnet-2, lucide, niente rich text, nessuna nuova dipendenza. Documento vince sul flusso, q-net
+sulla grafica. Vista team inclusa. Segnatempo nel pop-up di completamento Task: FUORI, prossima spec.
+
+**Backend (nomi da rispettare).**
+- Tabelle `time_entries`, `time_entry_day_notes`; model `TimeEntry`, `TimeEntryDayNote` (morph
+  `time_entry`, `time_entry_day_note`); `config/time_entries.php` (480/366/15/100).
+- `TimeEntryPolicy`, 9 permessi `time-entries.{viewAny,view,create,update,delete,export,
+  exportMonthly,manageAll,viewAll}`. Proprietario scrive i propri; `manageAll` tutti; responsabile
+  (discendenti via `employment_profiles.reports_to_id`, `TimeEntrySubordinateResolver`) legge
+  soltanto (`TimeEntryReadAuthorizer`, regola R). Day-notes gated da `update`.
+- Rotte `routes/api/time-entries.php`: GET lista (fuori envelope), stats/overview|pulse|team,
+  exports/filtered|monthly, PUT day-notes, POST/GET/PUT/DELETE `{timeEntry}`; in
+  `routes/api/tasks.php` GET|POST `tasks/{task}/time-entries`.
+- Servizi in `app/Services/TimeEntries/`: `TimeEntryLinkResolver` (D-5: con task_id titolo e
+  collegamenti imposti dal Task), `WorkCalendar` (festivita' IT, Pasqua via `easter_days`),
+  `DailyTargetResolver` (standard - break, fallback 480), `TimeEntryDaySetBuilder`/`DayBuilder`,
+  `TimeEntryStatsService` + `TimeEntryTeamPulseService` (formula condivisa
+  `TimeEntryClusterCalculator`), `TimeEntryExportService` + `app/Exports/TimeEntries/*` (xlsx
+  PhpSpreadsheet da codice). Enum `TimeEntryDailyStatus`.
+- Delta for-select: `registry_id` su opportunities/work-orders; work-orders item `meta.registry`.
+- Overview: `tracked_days` = giorni filtrati CON segnatempo (bug corretto in build).
+
+**Frontend.** `features/time-entries/{base .ts, form, dashboard, days, team, task, page}`,
+`time-entries-dashboard.tsx`, pagine `/time-entries`, `/time-entries/new`, `/time-entries/:id`
+(rotte esplicite in `router.tsx`, non module-registry), breadcrumb e icona `clock`. Tab
+"Segnatempo" con badge totale in `features/tasks/task-collaboration-section.tsx`. Nuovi
+`components/ui/popover.tsx` e `slider.tsx` multi-thumb (`thumbLabels`). i18n solo namespace
+`timeEntries` (`it/en-time-entries.ts`, testi allineati a q-net, nessuna chiave orfana).
+
+**Verifica (eseguita dai verifier + lead).** Pest `tests/Unit` 1005 verdi, `tests/Feature` 6324
+verdi / 1 skip preesistente / 0 fail (la suite intera in un solo processo va in signal 11: eseguirla
+a blocchi Unit/Feature). Filtro TimeEntr 105 verdi. Vitest intera 5019/5019, `tsc -b --force`
+pulito, ESLint pulito sul modulo (7 problemi preesistenti in altri moduli), `vite build` ok, Pint
+pulito, nessuna nuova dipendenza.
+
+**Prossimi passi.** (1) Commit su richiesta utente. (2) Spec successiva: segnatempo nel pop-up di
+completamento Task (D-9 fuori scope). Contatore `QuoteWorkflowMigrationTest`: la 0122 ha aggiunto
++2 migrazioni, la 0120 (sessione parallela) altre +2.
+
+## MODULO TASK — FIX SEED DEMO + TRADUZIONE "RICHIEDI AGGIORNAMENTO" — VERDE, NON COMMITTATO (2026-09-14)
+
+- `DemoTaskSeeder` riallineato alla 0118: niente `taskStatusId` (lo stato estratto si applica DOPO
+  la create via `TaskService::update()` agendo come creatore), `requesterId` sempre valorizzato,
+  osservatori estratti fuori da assegnatari+creatore+richiedente (`pickWatchers(array $excludedIds)`
+  in `Concerns/PicksTaskRecordLinks`). Il seed gira dentro `withoutNotifications()`
+  (`Notification::fake()` + `swap` del canale precedente nel `finally`): nessuna mail accodata.
+  File a 346 righe (soft limit superato, sotto hard).
+- `lang/it.json`: tradotte "Update requested" e ":requester asked for an update on :title"
+  (`TaskUpdateRequested`), pinnate da un test nuovo in `TaskUpdateRequestedNotificationTest`.
+- Test nuovi: seeding senza notifiche (`DemoTaskSeederTest`), traduzione it/en.
+- Verifica eseguita: Pest `tests/Feature/Tasks tests/Unit tests/Feature/Seeding` 1391/1391; Pint
+  pulito sui file toccati.
+
 ## MODULO TASK — FASE 8: FLAG "RICHIEDE VALIDAZIONE" (spec 0121) — VERDE (2026-09-14)
 
 **Cosa e'.** Chiusura e validazione diventano due regole indipendenti sul Task:

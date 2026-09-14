@@ -52,6 +52,9 @@ const TaskTypesPage = lazyRoute(() => import('@/pages/task-types-page'))
 const TaskCategoriesPage = lazyRoute(() => import('@/pages/task-categories-page'))
 const TaskPrioritiesPage = lazyRoute(() => import('@/pages/task-priorities-page'))
 const TaskImportancesPage = lazyRoute(() => import('@/pages/task-importances-page'))
+const TimeEntriesPage = lazyRoute(() => import('@/pages/time-entries-page'))
+const TimeEntryNewPage = lazyRoute(() => import('@/pages/time-entry-new-page'))
+const TimeEntryEditPage = lazyRoute(() => import('@/pages/time-entry-edit-page'))
 const CommissionConfigurationsPage = lazyRoute(() => import('@/pages/commission-configurations-page'))
 const RequestManagementPage = lazyRoute(() => import('@/pages/request-management-page'))
 const RewardTypesPage = lazyRoute(() => import('@/pages/reward-types-page'))
@@ -284,6 +287,23 @@ export const router = createBrowserRouter([
           {
             path: 'task-importances',
             element: <TaskImportancesPage />,
+          },
+          // Segnatempo (spec 0122, D-1): its own top-level item, not part of
+          // the module registry — the dashboard shape (Periodo card, KPI/
+          // Polso, day list, team view) breaks from the standard AG Grid +
+          // `RecordCanvas` every other module follows, so all three routes
+          // are declared by hand instead of via `buildModuleRoutes()`.
+          {
+            path: 'time-entries',
+            element: <TimeEntriesPage />,
+          },
+          {
+            path: 'time-entries/new',
+            element: <TimeEntryNewPage />,
+          },
+          {
+            path: 'time-entries/:id',
+            element: <TimeEntryEditPage />,
           },
           {
             path: 'commission-configurations',

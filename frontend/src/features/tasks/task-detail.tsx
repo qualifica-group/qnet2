@@ -6,6 +6,7 @@ import {
   Link2,
   ListChecks,
   MessageSquareWarning,
+  Repeat,
   ShieldAlert,
   Users,
 } from 'lucide-react'
@@ -29,6 +30,7 @@ import { TaskActionsBar } from '@/features/tasks/task-actions-bar'
 import { TaskCollaborationSection } from '@/features/tasks/task-collaboration-section'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { TaskPeopleList } from '@/features/tasks/task-people-list'
+import { formatTaskRecurrenceRule } from '@/features/tasks/task-recurrence-format'
 import { TaskSubtasksSection } from '@/features/tasks/task-subtasks-section'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 
@@ -56,7 +58,7 @@ interface TaskDetailViewProps {
  * `TaskCollaborationSection` sotto questa, non piu' qui dentro.
  */
 export function TaskDetailView({ task, onOpenSubtask, onCreateSubtask }: TaskDetailViewProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const createdAt = formatDateTime(task.created_at)
   const updatedAt = formatDateTime(task.updated_at)
 
@@ -81,6 +83,15 @@ export function TaskDetailView({ task, onOpenSubtask, onCreateSubtask }: TaskDet
                 >
                   <ShieldAlert className="size-3.5 shrink-0" aria-hidden="true" />
                   {t('tasks.detail.blocked')}
+                </Badge>
+              ) : null}
+              {task.recurrence ? (
+                <Badge
+                  variant="secondary"
+                  className={cn(BADGE_BASE, 'gap-1.5', BADGE_COLOR_CLASSES.indigo)}
+                >
+                  <Repeat className="size-3.5 shrink-0" aria-hidden="true" />
+                  {formatTaskRecurrenceRule(task.recurrence, t, i18n.language)}
                 </Badge>
               ) : null}
             </>

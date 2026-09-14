@@ -5,6 +5,7 @@ namespace App\Http\Requests\Opportunities;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\Http\Controllers\Abstract\BaseApiController;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the query for GET /api/opportunities/for-select (ADR 0011),
@@ -14,6 +15,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * controller via authorize('viewAny', Opportunity::class)). Pagination
  * bounds mirror BaseApiController::validateRequest (offset >= 0, 1 <= limit
  * <= MAX_LIMIT).
+ *
+ * `registry_id` (spec 0122, D-5): ADDITIVE, optional client filter for the
+ * segnatempo form's cascading select — retrocompatible, no behaviour change
+ * when absent (AC-026).
  */
 class OpportunityForSelectRequest extends FormRequest
 {
@@ -36,6 +41,7 @@ class OpportunityForSelectRequest extends FormRequest
             'limit' => ['sometimes', 'integer', 'min:1', "max:{$maxLimit}"],
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
+            'registry_id' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
         ];
     }
 

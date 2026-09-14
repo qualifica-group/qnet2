@@ -35,6 +35,7 @@ import { contractStatuses } from './it-contract-statuses'
 import { contracts } from './it-contracts'
 import { workOrders } from './it-work-orders'
 import { tasks } from './it-tasks'
+import { timeEntries } from './it-time-entries'
 import {
   taskCategories,
   taskImportances,
@@ -419,6 +420,7 @@ export const it: TranslationResources = {
   taskCategories,
   taskPriorities,
   taskImportances,
+  timeEntries,
   commissionConfigurations,
   requestManagement,
   // Messaggi di validazione condivisi della mappa dinamica `attribute_values`

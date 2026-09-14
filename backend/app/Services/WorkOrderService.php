@@ -104,6 +104,17 @@ class WorkOrderService
             });
         }
 
+        // Cascading client filter (spec 0122, D-5): a work order has no
+        // `registry_id` of its own — the client is only reachable via
+        // `quote.opportunity.registry_id` (context/existing_names). Additive,
+        // bypassed for the explicit ids[] hydration below exactly like
+        // `search` is.
+        if ($query->registryId !== null) {
+            $base->whereHas('quote.opportunity', function (Builder $scoped) use ($query): void {
+                $scoped->where('registry_id', $query->registryId);
+            });
+        }
+
         $total = (clone $base)->count();
 
         /** @var Collection<int, WorkOrder> $page */
@@ -123,15 +134,24 @@ class WorkOrderService
 
     /**
      * The SCOPED, minimally-projected for-select base query.
-     * WorkOrderForSelectResource composes its label from `code` + `title`,
-     * so nothing else is selected and no relation is loaded.
+     * WorkOrderForSelectResource composes its label from `code` + `title`;
+     * `quote_id` plus the `quote.opportunity.registry` chain (spec 0122, D-5)
+     * are eager-loaded with column-limited relations so `meta.registry`
+     * never lazy-loads (`Model::preventLazyLoading()` is active outside
+     * production) and never N+1s across a page of commesse.
      *
      * @return Builder<WorkOrder>
      */
     private function forSelectBaseQuery(): Builder
     {
         return WorkOrderVisibilityScope::scopeToActor(
-            WorkOrder::query()->select(['work_orders.id', 'work_orders.code', 'work_orders.title']),
+            WorkOrder::query()
+                ->select(['work_orders.id', 'work_orders.code', 'work_orders.title', 'work_orders.quote_id'])
+                ->with([
+                    'quote:id,opportunity_id',
+                    'quote.opportunity:id,registry_id',
+                    'quote.opportunity.registry:id,name',
+                ]),
             Auth::user(),
         );
     }

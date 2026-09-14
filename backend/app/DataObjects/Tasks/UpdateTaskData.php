@@ -25,6 +25,12 @@ namespace App\DataObjects\Tasks;
  * means "not submitted, leave the pivot untouched", an array — INCLUDING the
  * empty one — is an authoritative full-replace sync (AC-012).
  *
+ * `recurrence` (spec 0120, data_contract) needs a THIRD state a plain
+ * nullable property cannot express on its own: absent (leave the series as
+ * it is), null (cancel it) and an object (create or replace it) are three
+ * different instructions, not two — so it follows the `recurrenceSubmitted`
+ * flag convention instead, `hasRecurrence()` mirroring `hasAssigneeIds()`.
+ *
  * `creatorId` is GONE (D-10), `completionPercentage` never existed (D-6) and
  * `isBlocked` is GONE too (spec 0116 D-6): all three are `prohibited` at the
  * FormRequest layer and never reach this DTO — `is_blocked` is written only
@@ -124,6 +130,8 @@ final readonly class UpdateTaskData
         public bool $closureFeedbackSubmitted = false,
         public ?array $assigneeIds = null,
         public ?array $watcherIds = null,
+        public ?TaskRecurrenceData $recurrence = null,
+        public bool $recurrenceSubmitted = false,
     ) {}
 
     /**
@@ -176,6 +184,8 @@ final readonly class UpdateTaskData
             closureFeedbackSubmitted: array_key_exists('closure_feedback', $data),
             assigneeIds: array_key_exists('assignee_ids', $data) ? self::normalizeIds($data['assignee_ids']) : null,
             watcherIds: array_key_exists('watcher_ids', $data) ? self::normalizeIds($data['watcher_ids']) : null,
+            recurrence: isset($data['recurrence']) ? TaskRecurrenceData::fromValidated($data['recurrence']) : null,
+            recurrenceSubmitted: array_key_exists('recurrence', $data),
         );
     }
 
@@ -212,6 +222,11 @@ final readonly class UpdateTaskData
     public function hasWatcherIds(): bool
     {
         return $this->watcherIds !== null;
+    }
+
+    public function hasRecurrence(): bool
+    {
+        return $this->recurrenceSubmitted;
     }
 
     /**

@@ -4,63 +4,25 @@ import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useAuth } from '@/features/auth/use-auth'
 import { uploadAttachment } from '@/features/attachments/api'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import { createTask, taskDetailQueryKey, TASK_ATTACHABLE_ALIAS, updateTask } from '@/features/tasks/api'
 import { taskStatusMetaOf, type TaskStatusForSelectMeta } from '@/features/tasks/for-select-api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/tasks/task-form-payload'
+import {
+  SERVER_ERROR_FIELDS,
+  serverFieldMessage,
+  TOAST_ONLY_SERVER_ERROR_FIELDS,
+} from '@/features/tasks/task-form-server-error-fields'
+import { emptyRecurrenceDefaults, recurrenceDefaults } from '@/features/tasks/task-recurrence-defaults'
 import { buildTaskSchema, type TaskFormValues } from '@/features/tasks/task-schema'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { TaskDetail, TaskFormMode } from '@/features/tasks/types'
-
-/** Server-side field names mapped back onto the form for 422 handling. */
-const SERVER_ERROR_FIELDS = [
-  'title',
-  'description',
-  'registry_id',
-  'referent_id',
-  'parent_task_id',
-  'task_type_id',
-  'task_priority_id',
-  'task_importance_id',
-  'task_category_id',
-  'opportunity_id',
-  'work_order_id',
-  'requester_id',
-  'start_date',
-  'end_date',
-  'completion_date',
-  'start_time',
-  'end_time',
-  'estimated_minutes',
-  'requires_closure_feedback',
-  'requires_validation',
-  'assignee_ids',
-  'watcher_ids',
-] as const
-
-/**
- * AC-022: a 422 on either of these has nowhere to land on this form —
- * `closure_feedback` left it entirely (spec 0121 D-7), and `task_status_id`'s
- * refusal here is `TaskValidationRequirementGuard` (D-5), a workflow rule the
- * status picker cannot express, not a picker-level validation. Both surface
- * as a toast with the server's own message instead of a field error.
- */
-const TOAST_ONLY_SERVER_ERROR_FIELDS = ['closure_feedback', 'task_status_id'] as const
-
-/** The first message the server attached to `field` in a 422 response, or `null`. */
-function serverFieldMessage(error: unknown, field: string): string | null {
-  if (!axios.isAxiosError(error) || error.response?.status !== 422) {
-    return null
-  }
-  const errors = error.response.data?.errors as Record<string, string[]> | undefined
-  return errors?.[field]?.[0] ?? null
-}
 
 /** Stable module-level default: a fresh `[]` per render would break dependency stability. */
 const EMPTY_IDS: number[] = []
@@ -103,6 +65,7 @@ function createDefaults(parentTaskId: number | null, requesterId: number | null)
     requires_validation: false,
     assignee_ids: EMPTY_IDS,
     watcher_ids: EMPTY_IDS,
+    recurrence: emptyRecurrenceDefaults(),
   }
 }
 
@@ -132,6 +95,7 @@ function editDefaults(task: TaskDetail): TaskFormValues {
     requires_validation: task.requires_validation,
     assignee_ids: task.assignees.map((user) => user.id),
     watcher_ids: task.watchers.map((user) => user.id),
+    recurrence: recurrenceDefaults(task.recurrence),
   }
 }
 
@@ -189,9 +153,15 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const { field: fieldPermission } = useResourcePermissions()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const isEdit = mode.type === 'edit'
+  // Spec 0120 D-12: `recurrence` is ONE protected field gating the whole
+  // section (`TaskRecurrenceSection` reads the same key). Read once here so
+  // the payload builders never send a key the actor could not have touched.
+  const recurrencePermission = fieldPermission('recurrence')
+  const canEditRecurrence = recurrencePermission.editable && !recurrencePermission.disabled
   /** The connected actor projected onto the picker's hydration shape (D-1 requester prefill). */
   const currentUserRef: RelationFieldRef | null = user ? { id: user.id, name: user.name } : null
 
@@ -263,7 +233,10 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     try {
       if (mode.type === 'edit') {
         // Step 1 (edit): PATCH and refresh the cached detail.
-        const saved = await updateTask(mode.task.id, buildUpdatePayload(values, mode.task))
+        const saved = await updateTask(
+          mode.task.id,
+          buildUpdatePayload(values, mode.task, canEditRecurrence),
+        )
         queryClient.setQueryData(taskDetailQueryKey(mode.task.id), saved)
         toast.success(t('tasks.form.updated'))
         onSuccess(saved)
@@ -272,7 +245,7 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
 
       // Step 1 (create): POST the task once — `task_status_id` is derived
       // server-side from the assignees (D-3/D-4), never sent here.
-      const created = await createTask(buildCreatePayload(values))
+      const created = await createTask(buildCreatePayload(values, canEditRecurrence))
 
       // Step 2: upload whatever is still in staging, one request per file
       // (D-7/AC-023). No staged file, no call at all (AC-025).

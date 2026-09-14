@@ -68,4 +68,10 @@ describe('AppBreadcrumbs', () => {
 
     expect(screen.getByText('Referents')).toBeInTheDocument()
   })
+
+  it('labels the time-entries segment (it was missing from the segment map)', () => {
+    renderAt('/time-entries', null)
+
+    expect(screen.getByText('Time tracking')).toBeInTheDocument()
+  })
 })

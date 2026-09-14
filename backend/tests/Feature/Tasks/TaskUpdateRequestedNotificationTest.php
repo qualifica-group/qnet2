@@ -112,3 +112,21 @@ it('carries the free-text message in the body when one is submitted', function (
 
     expect($payload['message'])->toContain('Serve lo stato entro venerdi.');
 });
+
+it('speaks the recipient\'s language: title and body are translated in italian', function () {
+    $task = Task::factory()->create(['title' => 'Rinnovo contratto Acme']);
+    $requester = User::factory()->create(['name' => 'Mario Rossi']);
+    $recipient = taskUpdateReader($task);
+    $notification = new TaskUpdateRequested($task, $requester, null);
+
+    app()->setLocale('it');
+    $italian = $notification->toArray($recipient);
+
+    app()->setLocale('en');
+    $english = $notification->toArray($recipient);
+
+    expect($italian['title'])->toBe('Aggiornamento richiesto')
+        ->and($italian['message'])->toBe('Mario Rossi ha chiesto un aggiornamento sull\'attività "Rinnovo contratto Acme"')
+        ->and($english['title'])->toBe('Update requested')
+        ->and($english['message'])->toBe('Mario Rossi asked for an update on Rinnovo contratto Acme');
+});

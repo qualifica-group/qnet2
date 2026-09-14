@@ -169,4 +169,50 @@ describe('useTaskForm — AC-022: closure_feedback/task_status_id 422 on the PAT
     expect(toast.error).toHaveBeenCalledWith('This task requires validation before it can close.')
     expect(result.current.form.getFieldState('task_status_id').error).toBeUndefined()
   })
+
+  /** Spec 0120: the bare `recurrence` key (D-13 frozen task, D-1 missing end_date) has no field to land on either. */
+  it('toasts a bare recurrence refusal instead of setting a field error', async () => {
+    const task = taskDetailWithPermissions()
+    vi.mocked(updateTask).mockRejectedValueOnce(
+      validationError({ recurrence: ['This task is frozen and cannot carry a recurrence rule.'] }),
+    )
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'edit', task }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.form.setValue('title', 'Chiudere la pratica')
+    })
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.onSubmit)()
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('This task is frozen and cannot carry a recurrence rule.')
+  })
+})
+
+/** Spec 0120 AC-026: a field-scoped `recurrence.*` 422 lands on the matching picker/input. */
+describe('useTaskForm — recurrence.* 422 lands on its own field', () => {
+  it('maps recurrence.weekdays onto the weekdays field', async () => {
+    const task = taskDetailWithPermissions()
+    vi.mocked(updateTask).mockRejectedValueOnce(
+      validationError({ 'recurrence.weekdays': ['The recurrence.weekdays field is required.'] }),
+    )
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'edit', task }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.form.setValue('title', 'Chiudere la pratica')
+    })
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.onSubmit)()
+    })
+
+    expect(result.current.form.getFieldState('recurrence.weekdays').error?.message).toBe(
+      'The recurrence.weekdays field is required.',
+    )
+  })
 })

@@ -131,6 +131,14 @@ class OpportunityService
             $base->where('name', 'like', '%'.$query->search.'%');
         }
 
+        // Cascading client filter (spec 0122, D-5): additive, bypassed for
+        // the explicit ids[] hydration below exactly like `search` is — the
+        // edit-mode value must keep showing even if the client filter would
+        // otherwise exclude it.
+        if ($query->registryId !== null) {
+            $base->where('registry_id', $query->registryId);
+        }
+
         $total = (clone $base)->count();
 
         /** @var Collection<int, Opportunity> $page */

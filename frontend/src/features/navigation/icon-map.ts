@@ -5,6 +5,7 @@ import {
   Building2,
   Circle,
   ClipboardList,
+  Clock,
   ContactRound,
   CreditCard,
   DatabaseZap,
@@ -74,6 +75,7 @@ const iconMap: Record<string, LucideIcon> = {
   ruler: Ruler,
   'user-plus': UserPlus,
   'clipboard-list': ClipboardList,
+  clock: Clock,
   workflow: Workflow,
   // Spec 0101 (tasks group): without these four the Task module and three of
   // its five configurators fell through to the neutral Circle fallback — the

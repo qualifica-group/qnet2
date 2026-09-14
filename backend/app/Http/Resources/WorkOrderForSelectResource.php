@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Http\Resources\Abstracts\ForSelectResource;
+use App\Models\Registry;
 use App\Models\WorkOrder;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,12 @@ use Illuminate\Http\Request;
  * apart at a glance. `subtitle` is deliberately NOT used for the title — the
  * picker's trigger shows the label only, so a title parked in the subtitle
  * would vanish once selected.
+ *
+ * `meta.registry` (spec 0122, D-5, delta 2026-09-14 da MT-F2) is ADDITIVE: the
+ * client via `quote.opportunity.registry`, `{id, name}` or null when the
+ * chain is incomplete. The segnatempo form's cascading select reads it to
+ * set the Cliente the moment a Commessa is chosen, mirroring the `{id, name}`
+ * shape OpportunityForSelectResource already uses for its own relation refs.
  *
  * @mixin WorkOrder
  */
@@ -35,6 +42,17 @@ class WorkOrderForSelectResource extends ForSelectResource
         return [
             'id' => $this->id,
             'label' => $title === '' ? (string) $this->code : $this->code.self::LABEL_SEPARATOR.$title,
+            'meta' => [
+                'registry' => $this->registryRef($this->quote?->opportunity?->registry),
+            ],
         ];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function registryRef(?Registry $registry): ?array
+    {
+        return $registry !== null ? ['id' => $registry->id, 'name' => $registry->name] : null;
     }
 }

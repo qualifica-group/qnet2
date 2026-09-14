@@ -41,6 +41,7 @@ export const navigation = {
   taskCategories: 'Task Categories',
   taskPriorities: 'Task Priorities',
   taskImportances: 'Task Importances',
+  timeEntries: 'Time tracking',
   commissionConfigurations: 'Commission Configurator',
   requestManagement: 'Request Management',
   fieldChangeRequests: 'Change Requests',

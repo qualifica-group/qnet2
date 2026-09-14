@@ -40,6 +40,7 @@ import { contractStatuses } from './en-contract-statuses'
 import { contracts } from './en-contracts'
 import { workOrders } from './en-work-orders'
 import { tasks } from './en-tasks'
+import { timeEntries } from './en-time-entries'
 import {
   taskCategories,
   taskImportances,
@@ -433,6 +434,7 @@ export const en = {
   taskCategories,
   taskPriorities,
   taskImportances,
+  timeEntries,
   commissionConfigurations,
   requestManagement,
   // Shared validation messages of the `attribute_values` dynamic map (spec

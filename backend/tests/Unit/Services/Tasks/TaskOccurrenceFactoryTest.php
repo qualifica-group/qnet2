@@ -1,0 +1,132 @@
+<?php
+
+use App\Enums\TaskStatusGroup;
+use App\Enums\TaskStatusSystemKey;
+use App\Models\Task;
+use App\Models\TaskStatus;
+use App\Models\User;
+use App\Notifications\TaskAssigned;
+use App\Notifications\TaskObserver;
+use App\Services\Tasks\TaskOccurrenceFactory;
+use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Tests\TestCase;
+
+/*
+|--------------------------------------------------------------------------
+| TaskOccurrenceFactory — materializing ONE occurrence (spec 0120, D-5/D-6/
+| D-7/D-14, AC-010..AC-014)
+|--------------------------------------------------------------------------
+*/
+
+uses(TestCase::class, RefreshDatabase::class);
+
+if (! function_exists('systemTaskStatusId')) {
+    function systemTaskStatusId(TaskStatusSystemKey $key): int
+    {
+        return (int) TaskStatus::query()->where('system_key', $key->value)->value('id');
+    }
+}
+
+it('AC-010: the occurrence gets the given end_date and a start_date shifted by the same offset as the originator', function () {
+    $originator = Task::factory()->create(['start_date' => '2026-03-10', 'end_date' => '2026-03-15']);
+
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-03-22'));
+
+    expect($occurrence->end_date->toDateString())->toBe('2026-03-22')
+        ->and($occurrence->start_date->toDateString())->toBe('2026-03-17');
+});
+
+it('AC-011: an originator with no start_date produces an occurrence with none either, and generation does not fail', function () {
+    $originator = Task::factory()->create(['start_date' => null, 'end_date' => '2026-03-15']);
+
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-03-22'));
+
+    expect($occurrence->start_date)->toBeNull()
+        ->and($occurrence->end_date->toDateString())->toBe('2026-03-22');
+});
+
+it('AC-012: the occurrence copies the D-6 scalar fields and pivots, with closure_feedback/completion_date/is_blocked/parent_task_id reset', function () {
+    $grandparent = Task::factory()->create();
+    $requester = User::factory()->create();
+    $assignee = User::factory()->create();
+    $watcher = User::factory()->create();
+
+    $originator = Task::factory()->childOf($grandparent)->create([
+        'title' => 'Rinnovo trimestrale',
+        'description' => 'Verifica lo stato del contratto',
+        'requester_id' => $requester->id,
+        'end_date' => '2026-03-15',
+        'estimated_minutes' => 45,
+        'requires_closure_feedback' => true,
+        'closure_feedback' => 'Fatto tutto',
+        'is_blocked' => true,
+        'completion_date' => '2026-03-14',
+    ]);
+    $originator->assignees()->sync([$assignee->id]);
+    $originator->watchers()->sync([$watcher->id]);
+
+    Notification::fake();
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
+
+    expect($occurrence->title)->toBe('Rinnovo trimestrale')
+        ->and($occurrence->description)->toBe('Verifica lo stato del contratto')
+        ->and($occurrence->requester_id)->toBe($requester->id)
+        ->and($occurrence->estimated_minutes)->toBe(45)
+        ->and($occurrence->requires_closure_feedback)->toBeTrue()
+        ->and($occurrence->closure_feedback)->toBeNull()
+        ->and($occurrence->completion_date)->toBeNull()
+        ->and($occurrence->is_blocked)->toBeFalse()
+        ->and($occurrence->parent_task_id)->toBeNull()
+        ->and($occurrence->assignees->pluck('id')->all())->toBe([$assignee->id])
+        ->and($occurrence->watchers->pluck('id')->all())->toBe([$watcher->id]);
+});
+
+it('AC-013: a closed originator with a single assignee who is also its creator produces an occurrence in open', function () {
+    $closedStatus = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+    $creator = User::factory()->create();
+    $originator = Task::factory()->inStatus($closedStatus)->forCreator($creator)->create(['end_date' => '2026-03-15']);
+    $originator->assignees()->sync([$creator->id]);
+
+    Notification::fake();
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
+
+    expect($occurrence->task_status_id)->toBe(systemTaskStatusId(TaskStatusSystemKey::Open));
+});
+
+it('AC-013: the same originator with two assignees produces an occurrence in assigned', function () {
+    $closedStatus = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+    $creator = User::factory()->create();
+    $originator = Task::factory()->inStatus($closedStatus)->forCreator($creator)->create(['end_date' => '2026-03-15']);
+    $originator->assignees()->sync([$creator->id, User::factory()->create()->id]);
+
+    Notification::fake();
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
+
+    expect($occurrence->task_status_id)->toBe(systemTaskStatusId(TaskStatusSystemKey::Assigned));
+});
+
+it('AC-014: the occurrence is not a sub-task, and the originator stays deletable once it has none of its own', function () {
+    $originator = Task::factory()->create(['end_date' => '2026-03-15']);
+
+    Notification::fake();
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
+
+    expect($occurrence->parent_task_id)->toBeNull()
+        ->and($originator->subtasks()->exists())->toBeFalse();
+});
+
+it('D-14: the occurrence notifies its assignees and watchers with the system as actor', function () {
+    $originator = Task::factory()->create(['end_date' => '2026-03-15']);
+    $assignee = User::factory()->create();
+    $watcher = User::factory()->create();
+    $originator->assignees()->sync([$assignee->id]);
+    $originator->watchers()->sync([$watcher->id]);
+
+    Notification::fake();
+    app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
+
+    Notification::assertSentTo($assignee, TaskAssigned::class);
+    Notification::assertSentTo($watcher, TaskObserver::class);
+});

@@ -33,6 +33,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (the documents, whose rows and binaries the trait's own `deleting` hook
  * cleans up when the Task is really deleted). Neither adds a column: both
  * morph relations already live on their own tables.
+ *
+ * `task_recurrence_id` (spec 0120, D-3) is DELIBERATELY absent from
+ * #[Fillable], the same category as `creator_id`/`task_status_id`: it is
+ * never client input on its own, only a consequence of the `recurrence`
+ * object App\Services\Tasks\TaskRecurrenceService resolves into a row — the
+ * FormRequests reject the raw key outright, and this model simply cannot
+ * receive it by mass assignment either way.
  */
 #[Fillable([
     'title',
@@ -182,6 +189,20 @@ class Task extends BaseModel
     public function parentTask(): BelongsTo
     {
         return $this->belongsTo(Task::class, 'parent_task_id');
+    }
+
+    /**
+     * The recurrence series this Task belongs to, if any (spec 0120, D-3):
+     * null for an ordinary Task, set on the capostipite AND on every
+     * occurrence the scheduler materializes off it. `nullOnDelete` at the
+     * schema means cancelling the series (D-10) leaves this simply null,
+     * never removes the Task.
+     *
+     * @return BelongsTo<TaskRecurrence, $this>
+     */
+    public function recurrence(): BelongsTo
+    {
+        return $this->belongsTo(TaskRecurrence::class, 'task_recurrence_id');
     }
 
     /**

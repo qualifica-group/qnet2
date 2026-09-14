@@ -6,7 +6,7 @@
   lo citano (creazione: "se presente una ricorrenza, viene salvata la pianificazione
   automatica"; modifica: "aggiornamento ricorrenza (se presente)").
 -->
-<spec id="0120-task-recurrence-planning" status="draft" owner="utente" date="2026-09-11">
+<spec id="0120-task-recurrence-planning" status="approved" owner="utente" date="2026-09-11" approved="2026-09-14">
 
   <goal>
     Un Task puo' portare una regola di ripetizione. Il sistema materializza da solo le occorrenze
@@ -20,9 +20,11 @@
         recurrence column of any kind: out of scope in this phase (D-3)". Questa spec e' cio' che
         ritira quella frase, e il docblock va aggiornato di conseguenza. La migrazione e' gia'
         committata e NON si tocca: se ne crea una nuova (backend.md §3).</item>
-      <item>`App\Services\TaskService` — `create(CreateTaskData $data, User $creator): Task` con 6
-        Step in `DB::transaction`; `update(Task $task, UpdateTaskData $data): Task`;
-        `delete(Task $task): void` che RIFIUTA CON 409 un Task che ha sotto-task. 397 righe.</item>
+      <item>`App\Services\TaskService` — `create(CreateTaskData $data, User $creator): Task` con 7
+        Step in `DB::transaction`; `update(Task $task, UpdateTaskData $data, User $actor): Task`;
+        `delete(Task $task): void` che RIFIUTA CON 409 un Task che ha sotto-task. RIVERIFICATO
+        2026-09-14: **449 righe**, a 51 dall'hard limit — l'innesto della ricorrenza li' dentro
+        deve stare in poche righe (una chiamata a `TaskRecurrenceService` per write path).</item>
       <item>`App\Services\Tasks\TaskInitialStatusResolver::resolve(array $assigneeIds, int
         $creatorId, ?int $requesterId): int` — la derivazione `open` / `assigned` della spec 0118
         (D-3/D-4). Riusata tale e quale dalle occorrenze.</item>
@@ -30,12 +32,13 @@
         `assertStructuralWriteAllowed()`, `assertDeletable()`. Valutato PRIMA di `fill()`, sullo
         stato PERSISTITO: asimmetria intenzionale rispetto a `TaskClosureFeedbackGuard`, non
         "uniformare" (spec 0116, rettifica 3).</item>
-      <item>`App\Services\Tasks\TaskAbilityResolver::PROTECTED_FIELDS` — i 17 campi che solo
+      <item>`App\Services\Tasks\TaskAbilityResolver::PROTECTED_FIELDS` — i 18 campi (riverificato 2026-09-14, include `requires_validation`) che solo
         creatore, richiedente e gestore possono toccare. Unica sede della matrice, STATICA per
         necessita' (`permissions:sync` istanzia le Policy con `new $class`).</item>
       <item>`App\Authorization\TasksAuthorization` — `FIELD_TYPES` e' il catalogo ORDINATO
-        `chiave campo => tipo form` (23 voci, ordine congelato da AC-053 della 0101);
-        `MANDATORY_FIELDS` ne elenca 5; `actions()` ritorna 12 chiavi. I tipi form ammessi in uso
+        `chiave campo => tipo form` (24 voci al 2026-09-14, ordine congelato da AC-053 della 0101);
+        `MANDATORY_FIELDS` ne elenca 5; `actions()` ritorna 13 chiavi (0121 ha aggiunto
+        `complete_to_validation`). I tipi form ammessi in uso
         sono `text`, `textarea`, `select`, `multiselect`, `date`, `number`, `boolean`.</item>
       <item>`App\Enums\TaskStatusGroup` (`Open`, `Pending`, `InValidation`, `ClosedPositive`,
         `ClosedNegative`, con `isClosing()`) e `App\Enums\TaskStatusSystemKey` (`Open`,
@@ -54,8 +57,8 @@
       <item>`frontend/src/features/tasks/task-schema.ts`, `task-form-payload.ts`, `types.ts`,
         `api.ts`, `use-task-form.ts` — la catena del form del Task.</item>
       <item>`tests/Feature/QuoteWorkflows/QuoteWorkflowMigrationTest.php` contiene un contatore
-        `--step` di `migrate:rollback` HARD-CODED, oggi 61, che CHIUNQUE aggiunga una migrazione
-        deve incrementare, in qualsiasi dominio. Questa spec ne aggiunge due: il contatore va a 63.</item>
+        `--step` di `migrate:rollback` HARD-CODED, oggi 64 (riverificato 2026-09-14, dopo la 0122 MT-B1), che CHIUNQUE aggiunga una migrazione
+        deve incrementare, in qualsiasi dominio. Questa spec ne aggiunge due: il contatore va a 66 (+2 rispetto al valore trovato al momento del build: se la 0122 ne aggiunge altre in parallelo, si somma).</item>
       <item>`taskActorWith()` e' duplicato in 13 file di `tests/Feature/Tasks/` piu' i gemelli
         `taskDocumentActor` e `taskNoteActor`: PHP tiene solo la prima copia in ordine alfabetico.
         Aggiungendo un'ability vanno aggiornate TUTTE. Verificarne il numero con
@@ -134,10 +137,10 @@
         segni di vita l'occorrenza e' lavorata e nessuna rigenerazione la tocca piu'.</d>
 
       <d id="D-12">CHI PUO' TOCCARE LA RICORRENZA: `recurrence` entra in
-        `TaskAbilityResolver::PROTECTED_FIELDS` (da 17 a 18 campi). Solo creatore, richiedente e
+        `TaskAbilityResolver::PROTECTED_FIELDS` (da 18 a 19 campi). Solo creatore, richiedente e
         gestore la impostano o la cambiano; un assegnatario che puo' modificare il Task non puo'
         modificarne la serie. Nessun permesso `tasks.*` nuovo: il catalogo resta a 15 e
-        `actions()` a 12 chiavi.</d>
+        `actions()` a 13 chiavi.</d>
 
       <d id="D-13">LA RICORRENZA E' UN CAMPO STRUTTURALE: `TaskWriteLock` la rifiuta su un Task
         congelato (in validazione, completato, bloccato), esattamente come gli altri campi
@@ -173,7 +176,10 @@
         `routes/console.php` (D-8, D-9).</item>
       <item>Contratto: la chiave `recurrence` in POST e PATCH `/api/tasks` e nel `TaskResource` di
         `GET /api/tasks/{task}`; validazione condizionale in `StoreTaskRequest` e
-        `UpdateTaskRequest`; `recurrence` in `FIELD_TYPES` e in `PROTECTED_FIELDS`.</item>
+        `UpdateTaskRequest`; `recurrence` in `FIELD_TYPES` e in `PROTECTED_FIELDS`. CONGELATO 2026-09-14: in
+        `FIELD_TYPES` la voce e' `'recurrence' => 'recurrence'` ACCODATA in fondo (dopo
+        `watcher_ids`), cosi' l'ordine esistente non si sposta; non e' in `MANDATORY_FIELDS`. Il
+        frontend legge l'editabilita' da `permissions.fields.recurrence` come ogni altro campo.</item>
       <item>Frontend: `TaskRecurrenceSection` nel form (dopo `TaskPlanningSection`), campi in
         `task-schema.ts` / `task-form-payload.ts` / `types.ts`, badge "ricorrente" nel dettaglio,
         i18n it/en.</item>
@@ -311,7 +317,7 @@
     <criterion id="AC-028">Dato un assegnatario che puo' modificare il Task ma non e' creatore ne' richiedente, quando PATCH invia `recurrence`, allora 403 sul campo protetto (D-12), mentre lo stesso PATCH senza `recurrence` riesce.</criterion>
     <criterion id="AC-029">Dato un Task in validazione, completato o bloccato, quando PATCH invia `recurrence`, allora 422 sul campo (D-13), e il Task resta invariato.</criterion>
     <criterion id="AC-030">VERIFICA OPERATIVA, non automatizzabile: sul server di produzione il cron `php artisan schedule:run` e' attivo e `php artisan schedule:list` mostra `tasks:generate-recurrences`. A carico dell'utente (D-8).</criterion>
-    <criterion id="AC-031">`GET /api/tasks/{task}` espone `data.recurrence` come oggetto completo o null, e `permissions.actions` resta a 12 chiavi con il catalogo `tasks.*` a 15 permessi (D-12).</criterion>
+    <criterion id="AC-031">`GET /api/tasks/{task}` espone `data.recurrence` come oggetto completo o null, e `permissions.actions` resta a 13 chiavi con il catalogo `tasks.*` a 15 permessi (D-12).</criterion>
 
     <!-- Frontend -->
     <criterion id="AC-032">Il form mostra una sezione "Ricorrenza" dopo "Pianificazione", chiusa per default quando non c'e' ricorrenza; attivandola compaiono i soli campi pertinenti alla frequenza scelta, e cambiando frequenza i campi non pertinenti si azzerano invece di viaggiare nel payload.</criterion>
@@ -321,10 +327,29 @@
     <criterion id="AC-036">Responsive a 375 / 768 / 1024: nessuna scrollbar orizzontale, nessuna sovrapposizione nella sezione Ricorrenza. VERIFICA MANUALE sull'app reale.</criterion>
 
     <!-- Non regressione -->
-    <criterion id="AC-037">Il contatore `--step` di `QuoteWorkflowMigrationTest` e' stato portato da 61 a 63 e la suite intera e' verde.</criterion>
-    <criterion id="AC-038">Un Task senza ricorrenza si comporta esattamente come prima: le suite Task esistenti passano senza modifiche, salvo quelle che asseriscono il numero di campi protetti (17 -> 18) o il catalogo `FIELD_TYPES`.</criterion>
+    <criterion id="AC-037">Il contatore `--step` di `QuoteWorkflowMigrationTest` e' stato portato da 64 a 66 e la suite intera e' verde.</criterion>
+    <criterion id="AC-038">Un Task senza ricorrenza si comporta esattamente come prima: le suite Task esistenti passano senza modifiche, salvo quelle che asseriscono il numero di campi protetti (18 -> 19) o il catalogo `FIELD_TYPES`.</criterion>
     <criterion id="AC-039">`npx tsc -b --force --pretty false` esce 0; Pint ed ESLint puliti.</criterion>
   </acceptance_criteria>
+
+  <plan>
+    <!-- Aggiunto 2026-09-14 al momento del build. Esecuzione a subagent (stella): contratto
+         congelato, due write surface disgiunte, nessun coordinamento continuo necessario. -->
+    <microtask id="MT-B1" owner="backend" lane="parallelo" depends="-">
+      Migrazioni, `TaskRecurrence`, enum, `TaskRecurrenceCalculator`, `TaskOccurrenceFactory`,
+      `TaskRecurrenceService`, comando + schedule, contratto POST/PATCH/GET, `FIELD_TYPES`,
+      `PROTECTED_FIELDS`, `TaskWriteLock`, contatore migrazioni, test Pest AC-001..AC-029, AC-031,
+      AC-037, AC-038. Write surface: `backend/`.
+    </microtask>
+    <microtask id="MT-F1" owner="frontend" lane="parallelo" depends="contratto congelato">
+      `TaskRecurrenceSection`, schema Zod, payload, types, badge nel dettaglio, i18n it/en, test
+      Vitest AC-032..AC-035, AC-039. Write surface: `frontend/src/`.
+    </microtask>
+    <microtask id="MT-V" owner="verifier" lane="gated" depends="MT-B1, MT-F1">
+      Suite Pest completa, Pint, Vitest tasks+i18n, ESLint, `tsc -b --force`; mappa AC 1:1.
+      AC-030 e AC-036 dichiarati manuali.
+    </microtask>
+  </plan>
 
   <constraints>
     <item>NESSUNA DIPENDENZA NUOVA: il calcolo delle date si fa con Carbon (CLAUDE.md §0).</item>
@@ -341,7 +366,7 @@
       protezione passa da `PROTECTED_FIELDS` e da `TaskWriteLock`, gia' applicati nei write path.</item>
     <item>La generazione scrive dentro una transazione per occorrenza, non una per l'intero giro:
       una serie malformata non deve impedire alle altre di generare.</item>
-    <item>Soglie di file: `TaskService` e' gia' a 397 righe — la logica di ricorrenza NON va li'
+    <item>Soglie di file: `TaskService` e' gia' a 449 righe — la logica di ricorrenza NON va li'
       dentro, ma nei tre servizi dedicati. Ogni file nuovo sotto le 300 righe.</item>
     <item>Test ESEGUITI, non dichiarati (CLAUDE.md §5). AC-030 e AC-036 sono le due sole verifiche
       manuali ammesse, ed entrambe vanno dichiarate come tali nel report finale.</item>

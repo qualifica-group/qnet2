@@ -98,15 +98,19 @@ it('AC-036/AC-053: the field catalogue is in the frozen order and omits completi
     // spec 0116, D-6: `is_blocked` left the 24-field catalogue — it is now
     // written only by the `block`/`unblock` domain actions, never by this
     // PATCH. spec 0121, D-1: `requires_validation` joins immediately after
-    // `requires_closure_feedback`, bringing the frozen order to 24 fields.
+    // `requires_closure_feedback`. spec 0120: `recurrence` joins LAST, after
+    // `watcher_ids` (AC-053's own frozen order is additive at the tail for a
+    // brand-new field with no natural neighbour among the existing 24),
+    // bringing the frozen order to 25 fields.
     expect($keys)->toBe([
         'title', 'task_status_id', 'description', 'registry_id', 'referent_id', 'parent_task_id',
         'task_type_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
         'opportunity_id', 'work_order_id', 'requester_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
         'requires_closure_feedback', 'requires_validation', 'closure_feedback', 'assignee_ids', 'watcher_ids',
+        'recurrence',
     ])
-        ->and($keys)->toHaveCount(24)
+        ->and($keys)->toHaveCount(25)
         ->and($keys)->not->toContain('completion_percentage')
         ->and($keys)->not->toContain('creator_id')
         ->and($keys)->not->toContain('is_blocked');

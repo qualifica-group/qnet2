@@ -57,6 +57,8 @@ use App\Models\TaskImportance;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\TaskType;
+use App\Models\TimeEntry;
+use App\Models\TimeEntryDayNote;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserTablePreference;
@@ -236,6 +238,10 @@ class AppServiceProvider extends ServiceProvider
             'task_category' => TaskCategory::class,
             'task_priority' => TaskPriority::class,
             'task_importance' => TaskImportance::class,
+            // Spec 0122 (time-entries module): TimeEntry/TimeEntryDayNote both
+            // use LogsModelActivity, same reasoning as document_layout above.
+            'time_entry' => TimeEntry::class,
+            'time_entry_day_note' => TimeEntryDayNote::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

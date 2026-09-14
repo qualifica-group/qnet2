@@ -58,6 +58,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'task-categories': 'navigation.taskCategories',
   'task-priorities': 'navigation.taskPriorities',
   'task-importances': 'navigation.taskImportances',
+  'time-entries': 'navigation.timeEntries',
   'commission-configurations': 'navigation.commissionConfigurations',
   'request-management': 'navigation.requestManagement',
   'reward-types': 'navigation.rewardTypes',

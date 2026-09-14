@@ -136,6 +136,10 @@ class DemoDataSeeder extends Seeder
         // The Task threads (spec 0117): needs the Tasks themselves plus
         // DemoRolesSeeder's permission matrices, which decide who may write.
         $this->call(DemoTaskNoteSeeder::class);
+        // Segnatempo (spec 0122): needs task_types (QualificaTaskTaxonomySeeder,
+        // above) for classification and the demo/seeded users (DemoUserSeeder,
+        // inside DatabaseSeeder, plus DemoUsersSeeder above) it logs time for.
+        $this->call(DemoTimeEntrySeeder::class);
         // Needs users (avatars) and company sites (logos) already seeded above;
         // attaches demo files through the real HasAttachments write path.
         $this->call(DemoAttachmentSeeder::class);

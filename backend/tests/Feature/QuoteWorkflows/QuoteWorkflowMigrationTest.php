@@ -94,9 +94,15 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // which promotes the ordinary "Assegnato" row to a protected one so the
     // derived initial status (D-4) is reachable by `system_key`, and spec
     // 0121 D-1's `2026_09_14_100000_add_requires_validation_to_tasks_table`
-    // (62nd), the "richiede validazione" flag.
+    // (62nd), the "richiede validazione" flag, and spec 0122's
+    // `2026_09_14_120000_create_time_entries_table` (63rd) and
+    // `2026_09_14_120100_create_time_entry_day_notes_table` (64th), the
+    // segnatempo module's two tables, and spec 0120's
+    // `2026_09_14_130000_create_task_recurrences_table` (65th) and
+    // `2026_09_14_130100_add_task_recurrence_id_to_tasks_table` (66th), the
+    // recurrence module's own table and its link back onto `tasks`.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 62]);
+    Artisan::call('migrate:rollback', ['--step' => 66]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

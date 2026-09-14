@@ -9,6 +9,7 @@ import { TaskIdentitySection } from '@/features/tasks/task-identity-section'
 import { TaskLinksSection } from '@/features/tasks/task-links-section'
 import { TaskPeopleSection } from '@/features/tasks/task-people-section'
 import { TaskPlanningSection } from '@/features/tasks/task-planning-section'
+import { TaskRecurrenceSection } from '@/features/tasks/task-recurrence-section'
 import { TaskRegistrySection } from '@/features/tasks/task-registry-section'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { TaskDetail, TaskFormMode, TaskNamedRef } from '@/features/tasks/types'
@@ -153,6 +154,8 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
           />
 
           <TaskPlanningSection control={form.control} />
+
+          <TaskRecurrenceSection control={form.control} />
 
           <TaskLinksSection
             control={form.control}

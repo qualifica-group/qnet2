@@ -102,16 +102,16 @@ trait PicksTaskRecordLinks
     }
 
     /**
-     * A watcher may legitimately also be an assignee (AC-083), but a row where
-     * the two sets simply coincide shows nothing: the watchers are picked from
-     * the users the Task is NOT already assigned to.
+     * Creator, requester and assignees can never also be watchers (spec 0118
+     * D-9, TaskWatcherOverlapGuard): the watchers are picked from the users
+     * outside $excludedIds.
      *
-     * @param  array<int, int>  $assigneeIds
+     * @param  array<int, int>  $excludedIds
      * @return array<int, int>
      */
-    private function pickWatchers(array $assigneeIds, int $max): array
+    private function pickWatchers(array $excludedIds, int $max): array
     {
-        $candidates = array_values(array_diff($this->userIds, $assigneeIds));
+        $candidates = array_values(array_diff($this->userIds, $excludedIds));
 
         if ($candidates === []) {
             return [];

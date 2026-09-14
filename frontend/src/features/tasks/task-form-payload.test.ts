@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/tasks/task-form-payload'
-import { taskDetail as task, taskFormValues as values } from '@/features/tasks/task-fixtures'
+import {
+  taskDetail as task,
+  taskFormValues as values,
+  taskRecurrenceDetail,
+  taskRecurrenceFormValues as recurrence,
+} from '@/features/tasks/task-fixtures'
 
 describe('buildCreatePayload', () => {
   it('sends the whole frozen contract, arrays included', () => {
@@ -33,6 +38,62 @@ describe('buildCreatePayload', () => {
 
     expect(payload.requires_validation).toBe(true)
     expect(payload).not.toHaveProperty('closure_feedback')
+  })
+})
+
+/** Spec 0120 D-1/D-12/AC-032: only the pertinent fields for the picked frequency/ends travel. */
+describe('buildCreatePayload — recurrence', () => {
+  it('sends null when the section is disabled', () => {
+    expect(buildCreatePayload(values()).recurrence).toBeNull()
+  })
+
+  it('sends only frequency/interval/ends/weekdays for a weekly rule', () => {
+    const payload = buildCreatePayload(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'weekly', ends: 'never', weekdays: [1, 3] }) }),
+    )
+
+    expect(payload.recurrence).toEqual({ frequency: 'weekly', interval: 1, ends: 'never', weekdays: [1, 3] })
+  })
+
+  it('sends month_day and ends_on for a monthly rule ending on a date', () => {
+    const payload = buildCreatePayload(
+      values({
+        recurrence: recurrence({
+          enabled: true,
+          frequency: 'monthly',
+          ends: 'on_date',
+          month_day: 31,
+          ends_on: '2027-03-31',
+        }),
+      }),
+    )
+
+    expect(payload.recurrence).toEqual({
+      frequency: 'monthly',
+      interval: 1,
+      ends: 'on_date',
+      month_day: 31,
+      ends_on: '2027-03-31',
+    })
+  })
+
+  it('sends occurrence_count for a rule ending after a count', () => {
+    const payload = buildCreatePayload(
+      values({
+        recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'after_count', occurrence_count: 5 }),
+      }),
+    )
+
+    expect(payload.recurrence).toEqual({ frequency: 'daily', interval: 1, ends: 'after_count', occurrence_count: 5 })
+  })
+
+  it('drops the key entirely when the actor may not edit the field (D-12)', () => {
+    const payload = buildCreatePayload(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'never' }) }),
+      false,
+    )
+
+    expect(payload).not.toHaveProperty('recurrence')
   })
 })
 
@@ -100,5 +161,65 @@ describe('buildUpdatePayload', () => {
     expect(buildUpdatePayload(values({ requires_validation: true }), task()).requires_validation).toBe(
       true,
     )
+  })
+})
+
+/**
+ * Spec 0120 D-10/D-12: "chiave assente = invariata, null = cancella, oggetto
+ * = crea/sostituisce" — the diff must reproduce all three, and never touch
+ * the key at all when the actor lacks the mandate.
+ */
+describe('buildUpdatePayload — recurrence', () => {
+  it('sends nothing when neither side has a recurrence', () => {
+    expect(buildUpdatePayload(values(), task({ recurrence: null }))).not.toHaveProperty('recurrence')
+  })
+
+  it('sends nothing when the persisted rule is unchanged, weekday order included', () => {
+    const persisted = taskRecurrenceDetail({
+      frequency: 'weekly',
+      interval: 1,
+      weekdays: [1, 3],
+      ends: 'never',
+      ends_on: null,
+    })
+    const payload = buildUpdatePayload(
+      values({
+        recurrence: recurrence({ enabled: true, frequency: 'weekly', ends: 'never', weekdays: [3, 1] }),
+      }),
+      task({ recurrence: persisted }),
+    )
+
+    expect(payload).not.toHaveProperty('recurrence')
+  })
+
+  it('sends the object when a recurrence is newly enabled', () => {
+    const payload = buildUpdatePayload(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'never' }) }),
+      task({ recurrence: null }),
+    )
+
+    expect(payload.recurrence).toEqual({ frequency: 'daily', interval: 1, ends: 'never' })
+  })
+
+  it('sends null when a persisted recurrence is disabled (D-10: the series is cancelled)', () => {
+    const payload = buildUpdatePayload(values(), task({ recurrence: taskRecurrenceDetail() }))
+
+    expect(payload).toHaveProperty('recurrence', null)
+  })
+
+  it('sends the new object when the persisted rule actually changed', () => {
+    const persisted = taskRecurrenceDetail({ frequency: 'daily', interval: 1, ends: 'never', ends_on: null })
+    const payload = buildUpdatePayload(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'never', interval: 3 }) }),
+      task({ recurrence: persisted }),
+    )
+
+    expect(payload.recurrence).toEqual({ frequency: 'daily', interval: 3, ends: 'never' })
+  })
+
+  it('drops the key entirely when the actor may not edit the field, whatever changed (D-12)', () => {
+    const payload = buildUpdatePayload(values(), task({ recurrence: taskRecurrenceDetail() }), false)
+
+    expect(payload).not.toHaveProperty('recurrence')
   })
 })

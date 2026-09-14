@@ -5,6 +5,7 @@ namespace App\Http\Requests\WorkOrders;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\Http\Controllers\Abstract\BaseApiController;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the query for GET /api/work-orders/for-select (ADR 0011),
@@ -16,6 +17,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * module. The rows are nonetheless restricted by WorkOrderVisibilityScope
  * inside the Service (spec 0096) — that is a security boundary, not a browse
  * convenience.
+ *
+ * `registry_id` (spec 0122, D-5): ADDITIVE, optional client filter for the
+ * segnatempo form's cascading select, via `quote.opportunity.registry_id` —
+ * retrocompatible, no behaviour change when absent (AC-026).
  */
 class WorkOrderForSelectRequest extends FormRequest
 {
@@ -38,6 +43,7 @@ class WorkOrderForSelectRequest extends FormRequest
             'limit' => ['sometimes', 'integer', 'min:1', "max:{$maxLimit}"],
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
+            'registry_id' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
         ];
     }
 

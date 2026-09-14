@@ -192,11 +192,13 @@ trait EnforcesFieldPermissions
     }
 
     /**
-     * A bare (non-dotted) field: a plain attribute, or — for a to-many
-     * relation (e.g. `roles`) — the related rows' identity (primary keys), a
-     * reference field's semantic value being WHICH rows it points at. No
-     * current catalogue field is a to-one top-level relation; add that branch
-     * if/when one is introduced (YAGNI).
+     * A bare (non-dotted) field: a plain attribute, or — for a relation (e.g.
+     * `roles`, or spec 0120's `recurrence`) — the related row(s)' identity, a
+     * reference field's semantic value being WHICH row(s) it points at. A
+     * to-many relation projects to the set of primary keys; a to-one
+     * projects to a single id or null (spec 0120 `recurrence` is the first
+     * top-level catalogue field of this shape — the YAGNI branch this
+     * docblock used to defer is now needed).
      *
      * `isRelation()` rather than a bare `method_exists()`: an Attribute-style
      * accessor is a method of the SAME camelCase name as its field (e.g.
@@ -213,7 +215,13 @@ trait EnforcesFieldPermissions
             return $model->getAttribute($key);
         }
 
-        return $model->{$relationMethod}->map(static fn (Model $row): int|string => $row->getKey())->all();
+        $related = $model->{$relationMethod};
+
+        if ($related instanceof Collection) {
+            return $related->map(static fn (Model $row): int|string => $row->getKey())->all();
+        }
+
+        return $related?->getKey();
     }
 
     /**

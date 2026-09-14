@@ -9,14 +9,16 @@ uses(RefreshDatabase::class);
 /*
 |--------------------------------------------------------------------------
 | Static guarantees over the Task module's own files (AC-024, AC-073,
-| AC-091, AC-092)
+| AC-091)
 |--------------------------------------------------------------------------
 |
-| Four acceptance criteria are stated as repository greps rather than as
+| Three acceptance criteria are stated as repository greps rather than as
 | behaviour, because that is the only way to catch them: a status label
-| leaking into a condition, an `orderByRaw` built from input, a file past the
-| hard size limit or an anticipated recurrence column are all things a
-| passing feature test would happily coexist with.
+| leaking into a condition, an `orderByRaw` built from input, or a file past
+| the hard size limit are all things a passing feature test would happily
+| coexist with. A fourth, AC-092 ("no file mentions recurrence"), guarded
+| spec 0101's D-3 out-of-scope boundary and was retired the moment spec 0120
+| implemented recurrence for real — see the note where it used to be.
 |
 | The scan deliberately covers the PRODUCTION files of the module only.
 | Migrations and seeders are excluded from the label grep (they are where the
@@ -183,6 +185,8 @@ it('AC-091: no file of the module contains an emoji', function () {
     expect(taskModuleFilesContaining('/\p{Extended_Pictographic}/u'))->toBe([]);
 });
 
-it('AC-092: no production file of the module mentions recurrence (D-3)', function () {
-    expect(taskModuleFilesContaining('/recurrence|recurring|ricorrenz/i'))->toBe([]);
-});
+// AC-092 (spec 0101, D-3 "out of scope in this phase") retired by spec 0120,
+// which is explicitly what "ritira quella frase" (0120 context/existing_names):
+// recurrence is now IN scope, so a module file mentioning it is no longer a
+// violation — the opposite is now true (see TaskRecurrenceCalculatorTest and
+// friends). No replacement guard: recurrence's own tests cover it.

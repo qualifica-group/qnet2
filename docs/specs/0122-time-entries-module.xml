@@ -7,7 +7,7 @@
   /Users/Repository/qnet (routes/apiV2.php work-activities, WorkActivityService).
   Primo modulo segnatempo di qnet-2: tutte le spec Task precedenti lo escludevano (0116 D-10).
 -->
-<spec id="0122-time-entries-module" status="draft" owner="utente" date="2026-09-14">
+<spec id="0122-time-entries-module" status="approved" owner="utente" date="2026-09-14">
 
   <goal>
     Ogni utente registra il tempo dedicato alle attivita' (segnatempo) da una pagina dedicata o
@@ -339,7 +339,7 @@
 
     <endpoint method="GET" path="/api/opportunities/for-select | /api/work-orders/for-select">
       <request>parametri esistenti + registry_id?:int (nuovo, filtra per cliente; per work-orders via quote.opportunity.registry_id)</request>
-      <response status="200">shape esistente invariata</response>
+      <response status="200">shape esistente invariata; work-orders aggiunge (additivo, delta 2026-09-14 da MT-F2) `meta: { registry: {id:int, name:string}|null }` = cliente via quote.opportunity.registry, per la cascata commessa->cliente di D-5</response>
     </endpoint>
   </data_contract>
 

@@ -1,6 +1,91 @@
 import { sameIdSet } from '@/lib/utils'
-import type { CreateTaskPayload, TaskDetail, UpdateTaskPayload } from '@/features/tasks/types'
+import type {
+  CreateTaskPayload,
+  TaskDetail,
+  TaskRecurrenceDetail,
+  TaskRecurrencePayload,
+  UpdateTaskPayload,
+} from '@/features/tasks/types'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
+
+/**
+ * The form's `recurrence` slice, reduced to what the wire actually cares
+ * about: non-pertinent fields NULLED per D-1 (`weekdays` outside `weekly`,
+ * `month_day` outside `monthly`, `ends_on`/`occurrence_count` outside their
+ * own `ends` branch) so two rules that only differ on an ignored field
+ * compare equal. `null` means "no recurrence at all" — `enabled: false`, or a
+ * `frequency`/`ends` still unset (can't happen once AC-033 passed, guarded
+ * here anyway rather than assumed).
+ */
+type RecurrenceRule = Omit<TaskRecurrenceDetail, 'id'>
+
+function normalizeRecurrenceValues(recurrence: TaskFormValues['recurrence']): RecurrenceRule | null {
+  if (!recurrence.enabled || recurrence.frequency === null || recurrence.ends === null) {
+    return null
+  }
+  return {
+    frequency: recurrence.frequency,
+    interval: recurrence.interval ?? 1,
+    weekdays: recurrence.frequency === 'weekly' ? recurrence.weekdays : null,
+    month_day: recurrence.frequency === 'monthly' ? recurrence.month_day : null,
+    ends: recurrence.ends,
+    ends_on: recurrence.ends === 'on_date' ? recurrence.ends_on : null,
+    occurrence_count: recurrence.ends === 'after_count' ? recurrence.occurrence_count : null,
+  }
+}
+
+/** The persisted `TaskRecurrenceDetail` reduced to the same comparable shape, `id` dropped. */
+function normalizeRecurrenceDetail(detail: TaskRecurrenceDetail | null): RecurrenceRule | null {
+  if (!detail) {
+    return null
+  }
+  return {
+    frequency: detail.frequency,
+    interval: detail.interval,
+    weekdays: detail.weekdays,
+    month_day: detail.month_day,
+    ends: detail.ends,
+    ends_on: detail.ends_on,
+    occurrence_count: detail.occurrence_count,
+  }
+}
+
+function sameRecurrenceRule(a: RecurrenceRule | null, b: RecurrenceRule | null): boolean {
+  if (a === null || b === null) {
+    return a === b
+  }
+  return (
+    a.frequency === b.frequency &&
+    a.interval === b.interval &&
+    a.month_day === b.month_day &&
+    a.ends === b.ends &&
+    a.ends_on === b.ends_on &&
+    a.occurrence_count === b.occurrence_count &&
+    sameIdSet(a.weekdays ?? [], b.weekdays ?? [])
+  )
+}
+
+/** Projects a normalized rule onto the wire shape: pertinent fields only (D-1 `prohibited_unless`). */
+function recurrencePayloadOf(rule: RecurrenceRule): TaskRecurrencePayload {
+  const payload: TaskRecurrencePayload = {
+    frequency: rule.frequency,
+    interval: rule.interval,
+    ends: rule.ends,
+  }
+  if (rule.frequency === 'weekly') {
+    payload.weekdays = rule.weekdays ?? []
+  }
+  if (rule.frequency === 'monthly' && rule.month_day !== null) {
+    payload.month_day = rule.month_day
+  }
+  if (rule.ends === 'on_date' && rule.ends_on !== null) {
+    payload.ends_on = rule.ends_on
+  }
+  if (rule.ends === 'after_count' && rule.occurrence_count !== null) {
+    payload.occurrence_count = rule.occurrence_count
+  }
+  return payload
+}
 
 /**
  * The scalars that map 1:1 from form values onto the wire, in the frozen
@@ -44,9 +129,18 @@ function scalarsOf(values: TaskFormValues) {
  * non-null by the schema's own refinements, so the casts state that postcondition
  * rather than assuming it — the same idiom this builder already used for the
  * status it no longer sends.
+ *
+ * `canEditRecurrence` (spec 0120 D-12) defaults to `true`, the same permissive
+ * fallback `useResourcePermissions()` itself uses for a field it knows
+ * nothing about — every EXISTING caller that never heard of this field keeps
+ * sending it exactly as before. A caller that HAS the actor's permission
+ * passes it explicitly; `false` drops the key outright, never sends `null`.
  */
-export function buildCreatePayload(values: TaskFormValues): CreateTaskPayload {
-  return {
+export function buildCreatePayload(
+  values: TaskFormValues,
+  canEditRecurrence: boolean = true,
+): CreateTaskPayload {
+  const payload: CreateTaskPayload = {
     ...scalarsOf(values),
     requester_id: values.requester_id as number,
     end_date: values.end_date as string,
@@ -55,6 +149,11 @@ export function buildCreatePayload(values: TaskFormValues): CreateTaskPayload {
     assignee_ids: values.assignee_ids,
     watcher_ids: values.watcher_ids,
   }
+  if (canEditRecurrence) {
+    const rule = normalizeRecurrenceValues(values.recurrence)
+    payload.recurrence = rule ? recurrencePayloadOf(rule) : null
+  }
+  return payload
 }
 
 /**
@@ -62,8 +161,18 @@ export function buildCreatePayload(values: TaskFormValues): CreateTaskPayload {
  * persisted task. The two user arrays travel ONLY when the selected set
  * differs (AC-012: an untouched selection must not resend a no-op sync, while
  * an emptied one still sends `[]` and clears the pivot).
+ *
+ * `canEditRecurrence` (spec 0120 D-12, see `buildCreatePayload`): the key is
+ * added ONLY when both the actor may write it AND the normalized rule
+ * actually differs from the persisted one — an untouched section must stay
+ * ABSENT from the diff (D-10: "chiave assente = invariata"), the same
+ * "nothing changed, nothing sent" contract every other field already keeps.
  */
-export function buildUpdatePayload(values: TaskFormValues, original: TaskDetail): UpdateTaskPayload {
+export function buildUpdatePayload(
+  values: TaskFormValues,
+  original: TaskDetail,
+  canEditRecurrence: boolean = true,
+): UpdateTaskPayload {
   const payload: UpdateTaskPayload = {}
   const scalars = scalarsOf(values)
 
@@ -111,6 +220,13 @@ export function buildUpdatePayload(values: TaskFormValues, original: TaskDetail)
   }
   if (!sameIdSet(values.watcher_ids, original.watchers.map((user) => user.id))) {
     payload.watcher_ids = values.watcher_ids
+  }
+
+  if (canEditRecurrence) {
+    const rule = normalizeRecurrenceValues(values.recurrence)
+    if (!sameRecurrenceRule(rule, normalizeRecurrenceDetail(original.recurrence))) {
+      payload.recurrence = rule ? recurrencePayloadOf(rule) : null
+    }
   }
 
   return payload

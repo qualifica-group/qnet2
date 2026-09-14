@@ -36,11 +36,15 @@ use Illuminate\Database\Eloquent\Model;
  * scope for this spec.
  *
  * Every field's ceiling is the plain visible+editable-when-may-write /
- * visible+readonly default, EXCEPT the 18 fields in
+ * visible+readonly default, EXCEPT the 19 fields in
  * `TaskAbilityResolver::PROTECTED_FIELDS` (spec 0116, D-5; spec 0121, D-1
- * adds `requires_validation`): those additionally
- * require the actor to own the Task's MANDATE
+ * adds `requires_validation`; spec 0120, D-12 adds `recurrence`): those
+ * additionally require the actor to own the Task's MANDATE
  * (`TaskAbilityResolver::canUpdateProtectedFields()`) once a record exists.
+ * `recurrence` is additionally gated by `UpdateTaskRequest::authorize()`
+ * with a genuine 403 rather than this ceiling's usual 422 (D-12, AC-028):
+ * unlike every other protected field, submitting it without the mandate is
+ * refused outright, not merely as a no-op change the actor cannot make.
  * In CREATE context (`$model === null`) that extra gate is skipped
  * on purpose — there is no record yet to hold a role on, and whoever creates
  * the Task becomes its creator, so every field simply follows
@@ -96,6 +100,11 @@ class TasksAuthorization extends AbstractResourceAuthorization
         'closure_feedback' => 'textarea',
         'assignee_ids' => 'multiselect',
         'watcher_ids' => 'multiselect',
+        // spec 0120: no existing form type fits an object with its own
+        // internal shape (frequency/interval/weekdays/...), so the field
+        // carries a dedicated `recurrence` type the frontend renders with its
+        // own `TaskRecurrenceSection` rather than a generic control.
+        'recurrence' => 'recurrence',
     ];
 
     public function __construct(

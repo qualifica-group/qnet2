@@ -2,6 +2,7 @@
 
 use App\Models\Opportunity;
 use App\Models\Referent;
+use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -155,4 +156,32 @@ it('ids[] hydrates an opportunity present even though it does not match the sear
 
     $ids = collect($response->json('items'))->pluck('id');
     expect($ids->all())->toContain($hydrated->id);
+});
+
+// ---------------------------------------------------------------------------
+// AC-026 (spec 0122, D-5): additive registry_id cascading filter
+// ---------------------------------------------------------------------------
+
+it('AC-026: registry_id keeps only the opportunities of that client', function () {
+    $actor = opportunityForSelectUserWith(['viewAny']);
+    $registry = Registry::factory()->create();
+    $match = Opportunity::factory()->create(['registry_id' => $registry->id]);
+    $other = Opportunity::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $ids = collect($this->getJson("/api/opportunities/for-select?registry_id={$registry->id}")
+        ->assertOk()->json('items'))->pluck('id');
+
+    expect($ids->all())->toContain($match->id)->not->toContain($other->id);
+});
+
+it('AC-026: without registry_id the result is unchanged', function () {
+    $actor = opportunityForSelectUserWith(['viewAny']);
+    $first = Opportunity::factory()->create();
+    $second = Opportunity::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $ids = collect($this->getJson('/api/opportunities/for-select')->assertOk()->json('items'))->pluck('id');
+
+    expect($ids->all())->toContain($first->id)->toContain($second->id);
 });

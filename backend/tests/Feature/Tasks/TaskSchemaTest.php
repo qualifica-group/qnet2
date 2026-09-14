@@ -20,11 +20,11 @@ uses(RefreshDatabase::class);
 | Schema of `tasks` and of the two user pivots (spec 0101, D-3/D-8/D-12)
 |--------------------------------------------------------------------------
 |
-| Two absences are asserted as hard as the presences: `completion_percentage`
+| One absence is still asserted as hard as the presences: `completion_percentage`
 | (D-6 — the percentage is a projection of the status, a column here could
-| drift from it) and every recurrence column (D-3 — recurrence is out of
-| scope in BOTH phases, and anticipating it would be the exact mistake the
-| decision forbids).
+| drift from it). The sibling "no recurrence column" guard (spec 0101 D-3)
+| is retired by spec 0120, which adds `task_recurrence_id` for real — see
+| the note where that test used to be.
 */
 
 // ---------------------------------------------------------------------------
@@ -34,7 +34,7 @@ uses(RefreshDatabase::class);
 it('AC-003: tasks carries every column of the data_contract', function () {
     $expected = [
         'id', 'title', 'description',
-        'registry_id', 'referent_id', 'parent_task_id',
+        'registry_id', 'referent_id', 'parent_task_id', 'task_recurrence_id',
         'task_type_id', 'task_status_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
         'opportunity_id', 'work_order_id', 'requester_id', 'creator_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
@@ -53,13 +53,16 @@ it('AC-003: tasks has NO completion_percentage column (D-6: the percentage is de
     expect(Schema::hasColumn('tasks', 'completion_percentage'))->toBeFalse();
 });
 
-it('AC-003: tasks has NO recurrence column of any kind (D-3)', function () {
-    $suspicious = collect(Schema::getColumnListing('tasks'))
-        ->filter(fn (string $column): bool => str_contains(strtolower($column), 'recurr'))
-        ->all();
+// REQUIREMENT CHANGED (spec 0120 retires spec 0101 D-3): recurrence is now
+// IN scope. Its replacement asserts the OPPOSITE — the table and the FK
+// exist, with the shape the data_contract declares.
+it('AC-003 (spec 0120): task_recurrences exists and tasks.task_recurrence_id links to it', function () {
+    expect(Schema::hasTable('task_recurrences'))->toBeTrue()
+        ->and(Schema::hasColumn('tasks', 'task_recurrence_id'))->toBeTrue();
 
-    expect($suspicious)->toBe([])
-        ->and(Schema::hasTable('task_recurrences'))->toBeFalse();
+    foreach (['frequency', 'interval', 'weekdays', 'month_day', 'ends', 'ends_on', 'occurrence_count', 'generated_until'] as $column) {
+        expect(Schema::hasColumn('task_recurrences', $column))->toBeTrue("task_recurrences is missing column {$column}");
+    }
 });
 
 it('AC-003: title and the two NOT NULL relations are enforced by the schema', function () {

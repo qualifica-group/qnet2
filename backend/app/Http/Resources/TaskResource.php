@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Task;
+use App\Models\TaskRecurrence;
 use App\Models\User;
 use App\Services\Tasks\TaskStatusResolver;
 use Carbon\CarbonInterface;
@@ -89,9 +90,39 @@ class TaskResource extends JsonResource
             'requires_validation' => $this->requires_validation,
             'closure_feedback' => $this->closure_feedback,
             'completion_percentage' => $resolver->completionPercentage($this->resource),
+            'recurrence' => $this->recurrenceRef(),
             'subtasks' => $this->summarizeSubtasks($resolver),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+        ];
+    }
+
+    /**
+     * The recurrence series this Task belongs to (spec 0120, data_contract):
+     * the full rule object plus `id`, or null. `data.task_recurrence_id` is
+     * DELIBERATELY not exposed on its own — the object already carries `id`,
+     * and a Task's series is either fully described or not present at all.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function recurrenceRef(): ?array
+    {
+        /** @var TaskRecurrence|null $recurrence */
+        $recurrence = $this->recurrence;
+
+        if ($recurrence === null) {
+            return null;
+        }
+
+        return [
+            'id' => $recurrence->id,
+            'frequency' => $recurrence->frequency->value,
+            'interval' => $recurrence->interval,
+            'weekdays' => $recurrence->weekdays,
+            'month_day' => $recurrence->month_day,
+            'ends' => $recurrence->ends->value,
+            'ends_on' => $this->formatDate($recurrence->ends_on),
+            'occurrence_count' => $recurrence->occurrence_count,
         ];
     }
 

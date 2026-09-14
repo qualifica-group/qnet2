@@ -1,5 +1,11 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import {
+  TASK_RECURRENCE_END_MODES,
+  TASK_RECURRENCE_FREQUENCIES,
+  type TaskRecurrenceEndMode,
+  type TaskRecurrenceFrequency,
+} from '@/features/tasks/types'
 
 /** Backend `title` column limit (`string(191)`). */
 const TITLE_MAX_LENGTH = 191
@@ -51,7 +57,34 @@ function baseFields(t: TFunction) {
     // `assignee_ids` (see `addWatcherOverlapIssue`).
     assignee_ids: z.array(z.number()),
     watcher_ids: z.array(z.number()),
+    // Spec 0120 D-1/D-12: `enabled` is a pure UI toggle, not a wire field — it
+    // decides whether the payload builder sends the object below or `null`.
+    // Every other member stays loosely typed (nullable/no min) at the base
+    // level; `addRecurrenceIssues` is the ONLY place that enforces D-1's
+    // conditional shape, and only while `enabled` is true.
+    recurrence: z.object({
+      enabled: z.boolean(),
+      frequency: z.enum(TASK_RECURRENCE_FREQUENCIES).nullable(),
+      interval: z.number().int().nullable(),
+      weekdays: z.array(z.number()),
+      month_day: z.number().nullable(),
+      ends: z.enum(TASK_RECURRENCE_END_MODES).nullable(),
+      ends_on: z.string().nullable(),
+      occurrence_count: z.number().nullable(),
+    }),
   }
+}
+
+/** Narrower mirror of the `recurrence` object, just what `addRecurrenceIssues` reads. */
+interface RefinedRecurrenceValues {
+  enabled: boolean
+  frequency: TaskRecurrenceFrequency | null
+  interval: number | null
+  weekdays: number[]
+  month_day: number | null
+  ends: TaskRecurrenceEndMode | null
+  ends_on: string | null
+  occurrence_count: number | null
 }
 
 /** Values the refinements below read; narrower than the whole form. */
@@ -61,6 +94,7 @@ interface RefinedValues {
   end_date: string | null
   assignee_ids: number[]
   watcher_ids: number[]
+  recurrence: RefinedRecurrenceValues
 }
 
 /** `task_status_id` is NOT NULL server-side; on PATCH it is still required (D-3/D-6: create derives it). */
@@ -130,6 +164,75 @@ function addWatcherOverlapIssue(values: RefinedValues, ctx: z.RefinementCtx, t: 
 }
 
 /**
+ * Spec 0120 D-1/AC-033: the write path's conditional rules, replicated so the
+ * user sees the missing field inline instead of waiting for the server's
+ * 422. Every check is SKIPPED while `enabled` is false — a disabled section
+ * carries no rule to validate, and `end_date` itself is already covered
+ * unconditionally by `addMissingEndDateIssue` above (D-1: a recurrence with
+ * no scadenza is not calculable, but the form already requires one either way).
+ */
+function addRecurrenceIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
+  const { recurrence } = values
+  if (!recurrence.enabled) {
+    return
+  }
+
+  if (recurrence.interval === null || recurrence.interval < 1) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['recurrence', 'interval'],
+      message: t('tasks.form.recurrence.intervalInvalid'),
+    })
+  }
+
+  if (recurrence.frequency === 'weekly' && recurrence.weekdays.length === 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['recurrence', 'weekdays'],
+      message: t('tasks.form.recurrence.weekdaysRequired'),
+    })
+  }
+
+  if (
+    recurrence.frequency === 'monthly' &&
+    (recurrence.month_day === null || recurrence.month_day < 1 || recurrence.month_day > 31)
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['recurrence', 'month_day'],
+      message: t('tasks.form.recurrence.monthDayInvalid'),
+    })
+  }
+
+  if (recurrence.ends === 'on_date') {
+    if (!recurrence.ends_on) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['recurrence', 'ends_on'],
+        message: t('tasks.form.recurrence.endsOnRequired'),
+      })
+    } else if (values.end_date && recurrence.ends_on <= values.end_date) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['recurrence', 'ends_on'],
+        message: t('tasks.form.recurrence.endsOnAfterEndDate'),
+      })
+    }
+  }
+
+  if (
+    recurrence.ends === 'after_count' &&
+    (recurrence.occurrence_count === null || recurrence.occurrence_count < 1)
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['recurrence', 'occurrence_count'],
+      message: t('tasks.form.recurrence.occurrenceCountInvalid'),
+    })
+  }
+}
+
+/**
  * Builds the task form schema. One schema for create and edit — the partial
  * PATCH diff is computed by the payload builder, not by a second shape that
  * could drift.
@@ -155,6 +258,7 @@ export function buildTaskSchema(t: TFunction, isCreate: boolean = false) {
     addMissingAssigneesIssue(values, ctx, t)
     addMissingEndDateIssue(values, ctx, t)
     addWatcherOverlapIssue(values, ctx, t)
+    addRecurrenceIssues(values, ctx, t)
   })
 }
 

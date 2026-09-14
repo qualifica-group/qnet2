@@ -25,9 +25,11 @@ use App\Models\User;
 final class TaskAbilityResolver
 {
     /**
-     * The 18 fields that define the Task's MANDATE (who answers, by when,
-     * about what) rather than its execution (D-5; spec 0121 D-1 adds
-     * `requires_validation` as the 18th). Read by
+     * The 19 fields that define the Task's MANDATE (who answers, by when,
+     * about what) rather than its execution (D-5; spec 0121 D-1 added
+     * `requires_validation` as the 18th, spec 0120 D-12 adds `recurrence` as
+     * the 19th — an assignee who may otherwise edit the Task still may not
+     * touch its series). Read by
      * `App\Authorization\TasksAuthorization::fieldPermissionCeiling()` to
      * lower the ceiling for anyone who is not creator/requester/manager.
      *
@@ -52,6 +54,7 @@ final class TaskAbilityResolver
         'requires_validation',
         'assignee_ids',
         'watcher_ids',
+        'recurrence',
     ];
 
     /** Creator/requester, assignee and manager may update; the watcher alone may not. */

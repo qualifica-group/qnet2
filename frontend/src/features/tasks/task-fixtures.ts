@@ -5,7 +5,12 @@
  */
 
 import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
-import type { TaskDetail, TaskDetailWithPermissions, TaskStatusRef } from '@/features/tasks/types'
+import type {
+  TaskDetail,
+  TaskDetailWithPermissions,
+  TaskRecurrenceDetail,
+  TaskStatusRef,
+} from '@/features/tasks/types'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
 
 export const EDITABLE_FIELD: FieldPermission = {
@@ -37,6 +42,37 @@ export function taskStatus(overrides: Partial<TaskStatusRef> = {}): TaskStatusRe
   }
 }
 
+/** Disabled-by-default `recurrence` slice, merge in the fields a given test actually needs. */
+export function taskRecurrenceFormValues(
+  overrides: Partial<TaskFormValues['recurrence']> = {},
+): TaskFormValues['recurrence'] {
+  return {
+    enabled: false,
+    frequency: null,
+    interval: 1,
+    weekdays: [],
+    month_day: null,
+    ends: null,
+    ends_on: null,
+    occurrence_count: null,
+    ...overrides,
+  }
+}
+
+export function taskRecurrenceDetail(overrides: Partial<TaskRecurrenceDetail> = {}): TaskRecurrenceDetail {
+  return {
+    id: 501,
+    frequency: 'weekly',
+    interval: 2,
+    weekdays: [1, 3],
+    month_day: null,
+    ends: 'on_date',
+    ends_on: '2027-03-31',
+    occurrence_count: null,
+    ...overrides,
+  }
+}
+
 export function taskFormValues(overrides: Partial<TaskFormValues> = {}): TaskFormValues {
   return {
     title: 'Richiamare il cliente',
@@ -62,6 +98,7 @@ export function taskFormValues(overrides: Partial<TaskFormValues> = {}): TaskFor
     requires_validation: false,
     assignee_ids: [31, 32],
     watcher_ids: [41],
+    recurrence: taskRecurrenceFormValues(),
     ...overrides,
   }
 }
@@ -105,6 +142,7 @@ export function taskDetail(overrides: Partial<TaskDetail> = {}): TaskDetail {
     start_time: '09:00',
     end_time: '10:30',
     estimated_minutes: 90,
+    recurrence: null,
     is_blocked: false,
     requires_closure_feedback: false,
     requires_validation: false,

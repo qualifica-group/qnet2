@@ -80,6 +80,19 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
   ),
 }))
 
+vi.mock('@/features/time-entries/task/task-time-entries-section', () => ({
+  TaskTimeEntriesSection: (props: { taskId: number }) => (
+    <div data-testid="time-entries-section" data-task-id={props.taskId} />
+  ),
+}))
+
+/** Controlled per-test by reassignment, mirrors `granted` (spec 0122 MT-F6). */
+let timeEntriesQueryResult: { data: { total_minutes: number } | undefined } = { data: undefined }
+
+vi.mock('@/features/time-entries/task/use-task-time-entries', () => ({
+  useTaskTimeEntries: () => timeEntriesQueryResult,
+}))
+
 const label = (key: string) => i18n.t(key)
 
 function permissionsWith(actions: ResourcePermissions['actions']): ResourcePermissions {
@@ -90,6 +103,7 @@ const ALL_TABS = { view_documents: true, view_activity: true }
 
 beforeEach(() => {
   granted = []
+  timeEntriesQueryResult = { data: undefined }
 })
 
 describe('gating', () => {
@@ -137,6 +151,22 @@ describe('gating', () => {
     expect(screen.getByRole('tab', { name: label('notes.section.title') })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: label('attachments.title') })).not.toBeInTheDocument()
   })
+
+  it('MT-F6/AC-040: the Segnatempo tab is absent without time-entries.viewAny', () => {
+    granted = []
+    render(<TaskCollaborationSection task={taskDetailWithPermissions({ permissions: permissionsWith({}) })} />)
+
+    expect(screen.queryByRole('tab', { name: /Segnatempo/ })).not.toBeInTheDocument()
+  })
+
+  it('MT-F6/AC-040: with time-entries.viewAny the Segnatempo tab shows the total-minutes badge', () => {
+    granted = ['time-entries.viewAny']
+    timeEntriesQueryResult = { data: { total_minutes: 90 } }
+    render(<TaskCollaborationSection task={taskDetailWithPermissions({ permissions: permissionsWith({}) })} />)
+
+    const tab = screen.getByRole('tab', { name: /Segnatempo/ })
+    expect(tab).toHaveTextContent('1h 30m')
+  })
 })
 
 describe('props of the mounted sections', () => {
@@ -162,6 +192,14 @@ describe('props of the mounted sections', () => {
     expect(documents).toHaveAttribute('data-can-upload', 'true')
     // `attachments.delete` was NOT granted: the two flags are read separately.
     expect(documents).toHaveAttribute('data-can-delete', 'false')
+  })
+
+  it('MT-F6: TaskTimeEntriesSection receives the task id', () => {
+    granted = ['time-entries.viewAny']
+    const task = taskDetailWithPermissions({ permissions: permissionsWith({}) })
+    render(<TaskCollaborationSection task={task} />)
+
+    expect(screen.getByTestId('time-entries-section')).toHaveAttribute('data-task-id', String(task.id))
   })
 })
 

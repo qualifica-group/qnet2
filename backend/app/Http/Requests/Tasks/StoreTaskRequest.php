@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Tasks;
 
 use App\DataObjects\Tasks\CreateTaskData;
+use App\Enums\TaskRecurrenceEnd;
+use App\Enums\TaskRecurrenceFrequency;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +39,19 @@ use Illuminate\Validation\Rule;
  * coherence (AC-014), the sub-task hierarchy (D-12) and the closing feedback
  * (D-7). All three are enforced by App\Services\TaskService inside the write
  * transaction.
+ *
+ * `recurrence` (spec 0120, data_contract) is `sometimes|nullable|array`, with
+ * every inner field conditioned on `frequency`/`ends` via
+ * `required_if`/`prohibited_unless` pairs — the same pattern used nowhere
+ * else in this file because no other field on the catalogue has an internal
+ * shape of its own. `task_recurrence_id` is `prohibited` alongside the other
+ * server-owned columns: no payload ever names the row directly, only the
+ * `recurrence` object App\Services\Tasks\TaskRecurrenceService turns into
+ * one. AC-027's "recurrence without an end_date" is a SEPARATE check, added
+ * in withValidator() below: `end_date` is already unconditionally required
+ * on POST, so this never independently blocks a request — it exists only to
+ * put `recurrence` itself in the error bag, which is what the criterion
+ * asserts on.
  */
 class StoreTaskRequest extends FormRequest
 {
@@ -62,6 +77,7 @@ class StoreTaskRequest extends FormRequest
             'completion_percentage' => ['prohibited'],
             'is_blocked' => ['prohibited'],
             'task_status_id' => ['prohibited'],
+            'task_recurrence_id' => ['prohibited'],
             'title' => ['required', 'string', 'max:'.self::TITLE_MAX],
             'description' => ['sometimes', 'nullable', 'string'],
             'registry_id' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
@@ -87,6 +103,25 @@ class StoreTaskRequest extends FormRequest
             'assignee_ids.*' => ['integer', Rule::exists('users', 'id')],
             'watcher_ids' => ['sometimes', 'array'],
             'watcher_ids.*' => ['integer', Rule::exists('users', 'id')],
+            ...$this->recurrenceRules(),
+        ];
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function recurrenceRules(): array
+    {
+        return [
+            'recurrence' => ['sometimes', 'nullable', 'array'],
+            'recurrence.frequency' => ['required_with:recurrence', Rule::enum(TaskRecurrenceFrequency::class)],
+            'recurrence.interval' => ['required_with:recurrence', 'integer', 'min:1'],
+            'recurrence.weekdays' => ['required_if:recurrence.frequency,weekly', 'prohibited_unless:recurrence.frequency,weekly', 'array', 'min:1'],
+            'recurrence.weekdays.*' => ['integer', 'between:1,7', 'distinct'],
+            'recurrence.month_day' => ['required_if:recurrence.frequency,monthly', 'prohibited_unless:recurrence.frequency,monthly', 'integer', 'between:1,31'],
+            'recurrence.ends' => ['required_with:recurrence', Rule::enum(TaskRecurrenceEnd::class)],
+            'recurrence.ends_on' => ['required_if:recurrence.ends,on_date', 'prohibited_unless:recurrence.ends,on_date', 'date', 'after:end_date'],
+            'recurrence.occurrence_count' => ['required_if:recurrence.ends,after_count', 'prohibited_unless:recurrence.ends,after_count', 'integer', 'min:1'],
         ];
     }
 
@@ -94,6 +129,14 @@ class StoreTaskRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+
+            // AC-027: a recurrence needs an end_date to anchor its
+            // occurrences (D-5). `end_date` is already `required` above, so
+            // this fires alongside it, not instead of it — the criterion
+            // only asserts `recurrence` is in the error bag too.
+            if ($this->filled('recurrence') && ! $this->filled('end_date')) {
+                $validator->errors()->add('recurrence', 'A recurrence requires an end date.');
+            }
         });
     }
 

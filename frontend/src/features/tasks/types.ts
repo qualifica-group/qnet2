@@ -46,6 +46,17 @@ export interface TaskNamedRef {
   name: string
 }
 
+/** The `recurrence` slice of the contract (spec 0120) lives in its own file; re-exported here so existing callers keep importing from `types.ts`. */
+export {
+  TASK_RECURRENCE_END_MODES,
+  TASK_RECURRENCE_FREQUENCIES,
+  type TaskRecurrenceDetail,
+  type TaskRecurrenceEndMode,
+  type TaskRecurrenceFrequency,
+  type TaskRecurrencePayload,
+} from '@/features/tasks/task-recurrence-types'
+import type { TaskRecurrenceDetail, TaskRecurrencePayload } from '@/features/tasks/task-recurrence-types'
+
 /** The parent task projection: a task is identified by its `title`, not a `name` (D-12). */
 export interface TaskParentRef {
   id: number
@@ -114,6 +125,12 @@ export interface TaskDetail {
   start_time: string | null
   end_time: string | null
   estimated_minutes: number | null
+  /**
+   * The series this task belongs to (spec 0120 D-3/D-4), or `null` when it
+   * carries no repetition rule. The capostipite IS the first occurrence: it
+   * holds this same object, not a separate "template".
+   */
+  recurrence: TaskRecurrenceDetail | null
   /**
    * "Bloccato/contestato" — a flag DISTINCT from the status (AC-086).
    * Read-only here (spec 0116 D-6): written ONLY by `blockTask`/`unblockTask`,
@@ -231,6 +248,12 @@ export interface CreateTaskPayload {
    * an actor without the mandate 422s on this field (see `UpdateTaskPayload`).
    */
   requires_validation?: boolean
+  /**
+   * Spec 0120 D-12: PROTECTED, same mandate as the flag above. `null` clears
+   * the series (PATCH only, D-10); the key is entirely absent when the actor
+   * may not touch it (`task-form-payload.ts`), never sent as a no-op.
+   */
+  recurrence?: TaskRecurrencePayload | null
   /**
    * Flat id arrays. Since spec 0118 D-9 the two sets are DISJOINT: an id in
    * `watcher_ids` may be neither the creator, nor the requester, nor an assignee

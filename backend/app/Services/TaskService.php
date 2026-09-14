@@ -14,6 +14,7 @@ use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
+use App\Services\Tasks\TaskRecurrenceService;
 use App\Services\Tasks\TaskValidationRequirementGuard;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Services\Tasks\TaskWatcherOverlapGuard;
@@ -29,19 +30,23 @@ use Illuminate\Validation\ValidationException;
  * Business logic for the `tasks` resource (spec 0101).
  *
  * SIZE, DECIDED AND RECORDED (spec 0118, engineering.md §6): this file is over
- * the 300-line soft limit (382 after spec 0118 added the derived initial status
- * and the overlap guard to the two existing write paths) and is deliberately NOT
- * split. Everything above that line is the FIVE write-time guards, and their
- * whole point is to run inside the SAME transaction as the write they protect:
- * splitting `create()` from `update()`, or the guards from the methods that
- * order them, would put the transaction boundary and the rules that depend on it
+ * the 300-line soft limit (480 after spec 0120 innested the recurrence
+ * three-way, up from 449) and is deliberately NOT split. Everything above
+ * that line is the write-time guards plus the two-line
+ * App\Services\Tasks\TaskRecurrenceService calls, and their whole point is to
+ * run inside the SAME transaction as the write they protect: splitting
+ * `create()` from `update()`, or the guards from the methods that order
+ * them, would put the transaction boundary and the rules that depend on it
  * in different files — the one arrangement that makes "a refusal leaves the Task
  * exactly as it was" (AC-032) hard to see and easy to break. The same decision,
  * for the same reason, is recorded on the sibling `Tasks\TaskActionService` (432
  * lines after spec 0121's derived completion percorso). The hard limit is 500:
  * if either approaches it, the split to make is by
  * WRITE PATH (a `TaskWriter` per operation), never by extracting the guards from
- * their transaction.
+ * their transaction. Recurrence itself follows that same rule ahead of time:
+ * TaskRecurrenceService carries its OWN logic (D-10/D-11 regeneration,
+ * end-date guard), TaskService only decides WHICH of set()/replace()/cancel()
+ * to call and WHEN, inside this same transaction.
  *
  * The controller stays thin; this Service is the single authority over the
  * write-time rules that a FormRequest structurally cannot enforce. Five of them are evaluated on
@@ -98,6 +103,7 @@ class TaskService
         'parentTask',
         'assignees',
         'watchers',
+        'recurrence',
     ];
 
     public function __construct(
@@ -105,6 +111,7 @@ class TaskService
         private readonly TaskHierarchyGuard $hierarchyGuard,
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly TaskNotifier $notifier,
+        private readonly TaskRecurrenceService $recurrenceService,
         private readonly TaskValidationRequirementGuard $validationRequirementGuard,
         private readonly TaskWatcherOverlapGuard $watcherOverlapGuard,
     ) {}
@@ -151,6 +158,13 @@ class TaskService
                 $data->assigneeIds,
                 $data->watcherIds,
             );
+
+            // Step 5b: recurrence (spec 0120 D-3/D-4), set on the in-memory
+            // row so the FK is persisted by the INSERT below.
+            if ($data->recurrence !== null) {
+                $this->recurrenceService->set($task, $data->recurrence);
+            }
+
             $task->save();
 
             // Step 6: assegnatari/osservatori (D-1), same transaction.
@@ -206,6 +220,18 @@ class TaskService
                 $data->hasAssigneeIds() ? ($data->assigneeIds ?? []) : $this->persistedPivotIds($task, 'assignees'),
                 $data->hasWatcherIds() ? ($data->watcherIds ?? []) : $this->persistedPivotIds($task, 'watchers'),
             );
+
+            // Recurrence (spec 0120 D-10/D-12/D-13): three-way on the
+            // SUBMITTED key alone — absent leaves the series as-is, null
+            // cancels it, an object creates or replaces it with the D-10/D-11
+            // regeneration. Evaluated against $task's RESULTING end_date
+            // (fill() already ran above), before save() persists the FK.
+            if ($data->hasRecurrence()) {
+                $data->recurrence === null
+                    ? $this->recurrenceService->cancel($task)
+                    : $this->recurrenceService->replace($task, $data->recurrence);
+            }
+
             $task->save();
 
             // Who this PATCH ADDS to each pivot, read BEFORE the sync: once
@@ -354,9 +380,10 @@ class TaskService
 
     /**
      * The column keys the client actually submitted on this PATCH, plus
-     * `assignee_ids`/`watcher_ids` when their own key was present — the two
-     * pivots are structural (D-5) but never travel through
-     * submittedAttributes(), which only carries `tasks` columns.
+     * `assignee_ids`/`watcher_ids`/`recurrence` when their own key was
+     * present — none of the three travel through submittedAttributes(),
+     * which only carries `tasks` columns, yet all three are structural
+     * (D-5; spec 0120 D-13 for `recurrence`).
      *
      * @return array<int, string>
      */
@@ -370,6 +397,10 @@ class TaskService
 
         if ($data->hasWatcherIds()) {
             $keys[] = 'watcher_ids';
+        }
+
+        if ($data->hasRecurrence()) {
+            $keys[] = 'recurrence';
         }
 
         return $keys;

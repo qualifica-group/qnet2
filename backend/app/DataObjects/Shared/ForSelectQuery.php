@@ -53,6 +53,12 @@ namespace App\DataObjects\Shared;
  *   validates `ordered_ids` against the full set, so a list missing the
  *   deactivated rows is rejected as incomplete. False by default, so every
  *   other consumer keeps its current filtering.
+ * - `registryId` (spec 0122, D-5): ADDITIVE, consumed ONLY by
+ *   OpportunityService::forSelect and WorkOrderService::forSelect (the
+ *   segnatempo form's cascading client -> opportunity/commessa filter) —
+ *   narrows to the records of ONE client, the latter via
+ *   `quote.opportunity.registry_id`. Null by default (no filter), so every
+ *   other consumer is unaffected (AC-026).
  */
 final readonly class ForSelectQuery
 {
@@ -76,6 +82,7 @@ final readonly class ForSelectQuery
         public ?int $exceptWorkOrderId = null,
         public bool $includeInactive = false,
         public array $competenceCategoryIds = [],
+        public ?int $registryId = null,
     ) {}
 
     /**
@@ -125,6 +132,7 @@ final readonly class ForSelectQuery
             exceptWorkOrderId: isset($data['except_work_order_id']) ? (int) $data['except_work_order_id'] : null,
             includeInactive: (bool) ($data['include_inactive'] ?? false),
             competenceCategoryIds: $competenceCategoryIds,
+            registryId: isset($data['registry_id']) ? (int) $data['registry_id'] : null,
         );
     }
 

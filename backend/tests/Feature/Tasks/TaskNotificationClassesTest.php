@@ -234,9 +234,8 @@ it('has an italian translation for every string it introduces (AC-031)', functio
     $english = require lang_path('en/notifications.php');
 
     // Il perimetro e' quello di QUESTA spec: le 11 classi, la loro base e la
-    // scheda dettagli. `TaskUpdateRequested` e' della spec 0118 e resta
-    // invariata per AC-033 — il suo buco di traduzione e' segnalato a parte,
-    // non sanato qui (engineering.md §1.6: fuori scope si segnala).
+    // scheda dettagli. `TaskUpdateRequested` e' della spec 0118: la sua
+    // traduzione e' pinnata in TaskUpdateRequestedNotificationTest.
     $sources = array_map(
         static fn (string $class): string => app_path('Notifications/'.class_basename($class).'.php'),
         array_keys(taskNotificationCatalogue()),

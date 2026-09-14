@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\DataObjects\Tasks\CreateTaskData;
+use App\DataObjects\Tasks\UpdateTaskData;
 use App\Models\Task;
 use App\Models\TaskCategory;
 use App\Models\TaskImportance;
@@ -16,6 +17,7 @@ use Database\Seeders\DemoCatalog\DemoTaskCatalogue;
 use DateTimeImmutable;
 use Faker\Factory as FakerFactory;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Development seed for the Tasks module (spec 0101/0116): a hierarchy of
@@ -91,8 +93,27 @@ class DemoTaskSeeder extends Seeder
             return;
         }
 
-        // Step 3: the root activities, then the breakdown hanging off them.
-        $this->seedSubtasks($this->seedRoots());
+        // Step 3: the root activities, then the breakdown hanging off them —
+        // silently, since the real write path notifies every assignee/watcher.
+        $this->withoutNotifications(fn () => $this->seedSubtasks($this->seedRoots()));
+    }
+
+    /**
+     * TaskService notifies assignees and watchers by mail (spec 0119, voci 7
+     * and 8): seeding 60 Tasks must not queue those mails. The previous
+     * notification channel is restored afterwards, so a caller that faked it
+     * (or a later seeder in the same process) keeps its own.
+     */
+    private function withoutNotifications(callable $seed): void
+    {
+        $notifications = Notification::getFacadeRoot();
+        Notification::fake();
+
+        try {
+            $seed();
+        } finally {
+            Notification::swap($notifications);
+        }
     }
 
     private function clearExistingTasks(): void
@@ -123,7 +144,7 @@ class DemoTaskSeeder extends Seeder
         $roots = [];
 
         for ($index = 0; $index < self::ROOT_TASKS; $index++) {
-            $roots[] = $this->createTask($this->buildRootData(), $index);
+            $roots[] = $this->createTask($index, null);
         }
 
         return $roots;
@@ -139,26 +160,43 @@ class DemoTaskSeeder extends Seeder
     private function seedSubtasks(array $roots): void
     {
         for ($index = 0; $index < self::SUBTASKS; $index++) {
-            $this->createTask($this->buildSubtaskData($roots[$index % count($roots)]), $index);
+            $this->createTask($index, $roots[$index % count($roots)]);
         }
     }
 
     /**
-     * Every Task travels through the real write path; every Nth one is then
-     * frozen through the domain action, acting as its own creator.
+     * Every Task travels through the real write path. The initial status is
+     * derived server-side (spec 0118 D-3), so the drawn one is applied
+     * afterwards through the same PATCH path, acting as the creator — the
+     * role that owns the mandate (spec 0116 D-2, spec 0121 D-1). Every Nth
+     * Task is then frozen through the domain action.
      */
-    private function createTask(CreateTaskData $data, int $index): Task
+    private function createTask(int $index, ?Task $parent): Task
     {
-        $task = $this->tasks->create($data, $this->faker->randomElement($this->users->all()));
+        // Step 1: who creates it, and which phase it is shown in.
+        $status = $this->faker->randomElement($this->statuses->all());
+        $creator = $this->faker->randomElement($this->users->all());
+        $data = $parent === null
+            ? $this->buildRootData($status, $creator->id)
+            : $this->buildSubtaskData($parent, $status, $creator->id);
 
+        // Step 2: create through the real write path.
+        $task = $this->tasks->create($data, $creator);
+
+        // Step 3: move it to the drawn status.
+        if ($task->task_status_id !== $status->id) {
+            $task = $this->tasks->update($task, new UpdateTaskData(taskStatusId: $status->id), $creator);
+        }
+
+        // Step 4: freeze every Nth one.
         if ($index % self::BLOCKED_STRIDE === self::BLOCKED_STRIDE - 1) {
-            $this->actions->block($task, $task->creator);
+            $task = $this->actions->block($task, $creator);
         }
 
         return $task;
     }
 
-    private function buildRootData(): CreateTaskData
+    private function buildRootData(TaskStatus $status, int $creatorId): CreateTaskData
     {
         $opportunityId = $this->pickOptional(array_keys($this->registryByOpportunity), 0.3);
         // An opportunity already names its anagrafica: reuse it rather than
@@ -176,10 +214,12 @@ class DemoTaskSeeder extends Seeder
             opportunityId: $opportunityId,
             workOrderId: $this->pickOptional($this->workOrderIds, 0.2),
             parentTaskId: null,
+            status: $status,
+            creatorId: $creatorId,
         );
     }
 
-    private function buildSubtaskData(Task $parent): CreateTaskData
+    private function buildSubtaskData(Task $parent, TaskStatus $status, int $creatorId): CreateTaskData
     {
         return $this->buildData(
             title: $this->faker->randomElement(DemoTaskCatalogue::SUBTASK_TITLES),
@@ -188,14 +228,18 @@ class DemoTaskSeeder extends Seeder
             opportunityId: $parent->opportunity_id,
             workOrderId: $parent->work_order_id,
             parentTaskId: $parent->id,
+            status: $status,
+            creatorId: $creatorId,
         );
     }
 
     /**
      * The shared payload shape of both kinds of Task. `isBlocked` is absent by
      * construction (spec 0116 D-6: a Task is created unblocked and frozen
-     * afterwards through the action) and so is `creatorId` (D-10: it is the
-     * actor, never payload).
+     * afterwards through the action), and so are `creatorId` (D-10: it is the
+     * actor, never payload) and `taskStatusId` (spec 0118 D-3: derived). The
+     * drawn $status still shapes the dates and the feedback, so the row is
+     * coherent once createTask() applies it.
      */
     private function buildData(
         string $title,
@@ -204,19 +248,24 @@ class DemoTaskSeeder extends Seeder
         ?int $opportunityId,
         ?int $workOrderId,
         ?int $parentTaskId,
+        TaskStatus $status,
+        int $creatorId,
     ): CreateTaskData {
-        $status = $this->faker->randomElement($this->statuses->all());
         $dates = $this->buildDates($status);
         $requiresClosureFeedback = $this->faker->boolean(30);
         $assigneeIds = $this->faker->randomElements(
             $this->userIds,
             $this->faker->numberBetween(1, min(self::MAX_ASSIGNEES, count($this->userIds))),
         );
+        // spec 0118 D-1: the requester is mandatory.
+        $requesterId = $this->faker->randomElement($this->userIds);
         $startTime = $this->pickStartTime();
 
         return new CreateTaskData(
             title: $title,
-            taskStatusId: $status->id,
+            requesterId: $requesterId,
+            endDate: $dates['end'],
+            assigneeIds: $assigneeIds,
             description: $this->faker->optional(0.7)->sentence(12),
             registryId: $registryId,
             referentId: $referentId,
@@ -227,9 +276,7 @@ class DemoTaskSeeder extends Seeder
             taskCategoryId: $this->pickOptional($this->lookupIds[TaskCategory::class], 0.8),
             opportunityId: $opportunityId,
             workOrderId: $workOrderId,
-            requesterId: $this->pickOptional($this->userIds, 0.4),
             startDate: $dates['start'],
-            endDate: $dates['end'],
             completionDate: $dates['completion'],
             startTime: $startTime,
             endTime: $startTime === null ? null : $this->endTimeFor($startTime),
@@ -240,8 +287,7 @@ class DemoTaskSeeder extends Seeder
             closureFeedback: $requiresClosureFeedback && $status->isClosing()
                 ? $this->faker->sentence(10)
                 : $this->faker->optional(0.2)->sentence(8),
-            assigneeIds: $assigneeIds,
-            watcherIds: $this->pickWatchers($assigneeIds, self::MAX_WATCHERS),
+            watcherIds: $this->pickWatchers([...$assigneeIds, $creatorId, $requesterId], self::MAX_WATCHERS),
         );
     }
 

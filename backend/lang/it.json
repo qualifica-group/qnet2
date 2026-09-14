@@ -78,6 +78,8 @@
     ":actor blocked the task \":title\".": ":actor ha bloccato l'attività \":title\".",
     "Task unblocked": "Attività sbloccata",
     ":actor unblocked the task \":title\".": ":actor ha sbloccato l'attività \":title\".",
+    "Update requested": "Aggiornamento richiesto",
+    ":requester asked for an update on :title": ":requester ha chiesto un aggiornamento sull'attività \":title\"",
     "You were assigned as Supervisor": "Sei stato inserito come Supervisore",
     "You were assigned as Account Manager": "Sei stato inserito come Gestore Account",
     ":actor assigned you as Supervisor on :label.": ":actor ti ha inserito come Supervisore su :label.",

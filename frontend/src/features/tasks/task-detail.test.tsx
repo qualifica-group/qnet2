@@ -7,7 +7,12 @@ import i18n from '@/i18n'
 import { ConfirmContext, type ConfirmFn } from '@/components/confirm-dialog-context'
 import { TaskDetailView } from '@/features/tasks/task-detail'
 import { blockTask, completeTask, uncompleteTask } from '@/features/tasks/api'
-import { FULL_ACCESS_PERMISSIONS, taskDetailWithPermissions, taskStatus } from '@/features/tasks/task-fixtures'
+import {
+  FULL_ACCESS_PERMISSIONS,
+  taskDetailWithPermissions,
+  taskRecurrenceDetail,
+  taskStatus,
+} from '@/features/tasks/task-fixtures'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 
@@ -141,6 +146,25 @@ describe('TaskDetailView — blocked flag is distinct from the status (AC-086)',
     renderDetail(taskDetailWithPermissions())
 
     expect(screen.queryByText(label('tasks.detail.blocked'))).not.toBeInTheDocument()
+  })
+})
+
+/** Spec 0120 AC-035: the series' rule, formatted, is the badge's own content. */
+describe('TaskDetailView — recurring series badge (AC-035)', () => {
+  it('shows the formatted rule when the task belongs to a series', () => {
+    renderDetail(
+      taskDetailWithPermissions({
+        recurrence: taskRecurrenceDetail({ frequency: 'weekly', interval: 2, weekdays: [1, 3] }),
+      }),
+    )
+
+    expect(screen.getByText('Every 2 weeks on Monday and Wednesday, until 31/03/2027')).toBeInTheDocument()
+  })
+
+  it('omits the badge for a task with no recurrence', () => {
+    renderDetail(taskDetailWithPermissions({ recurrence: null }))
+
+    expect(screen.queryByText(/Every|Ogni/)).not.toBeInTheDocument()
   })
 })
 
