@@ -180,9 +180,15 @@ export function TaskDetailView({ task, onOpenSubtask, onCreateSubtask }: TaskDet
             </RecordFieldList>
           </RecordSection>
 
-          {task.requires_closure_feedback ? (
+          {task.requires_closure_feedback || task.requires_validation ? (
             <RecordSection title={t('tasks.detail.sections.closure')} icon={<MessageSquareWarning />} full>
               <RecordFieldList>
+                <RecordField label={t('tasks.detail.requiresClosureFeedback')}>
+                  {t(task.requires_closure_feedback ? 'common.yes' : 'common.no')}
+                </RecordField>
+                <RecordField label={t('tasks.detail.requiresValidation')}>
+                  {t(task.requires_validation ? 'common.yes' : 'common.no')}
+                </RecordField>
                 <RecordField label={t('tasks.detail.closureFeedback')}>
                   {task.closure_feedback ? (
                     <span className="whitespace-pre-wrap">{task.closure_feedback}</span>

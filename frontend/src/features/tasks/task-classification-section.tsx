@@ -22,7 +22,7 @@ interface TaskClassificationSectionProps {
   control: Control<TaskFormValues>
   /** The persisted task in edit mode, used to hydrate the five pickers; `null` on create. */
   task: TaskDetail | null
-  /** Re-derives the read-only percentage and re-arms the D-7 rule (AC-084). */
+  /** Re-derives the read-only percentage (AC-084). */
   onStatusItemChange: (item: ForSelectItem | null) => void
   /** Derived from the picked status, never a form value; `null` while unpicked. */
   completionPercentage: number | null

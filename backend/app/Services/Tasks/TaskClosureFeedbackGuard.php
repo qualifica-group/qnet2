@@ -52,6 +52,33 @@ final class TaskClosureFeedbackGuard
     }
 
     /**
+     * The `/complete` variant of the same rule (spec 0121, D-4): the phase
+     * condition is GONE — a Task flagged `requires_closure_feedback` demands
+     * the feedback on BOTH completion percorsi (closure and validation),
+     * never only when the resulting status happens to be closing. Called by
+     * `TaskActionService::complete()` after the resulting `task_status_id`
+     * and `closure_feedback` are set, before `save()`, so it still reads the
+     * RESULTING record — a payload that omits `closure_feedback` is judged
+     * against whatever is already persisted, exactly like assertSatisfied().
+     *
+     * @throws ValidationException 422 on `closure_feedback`
+     */
+    public function assertProvided(Task $task): void
+    {
+        if (! $task->requires_closure_feedback) {
+            return;
+        }
+
+        if (trim((string) $task->closure_feedback) !== '') {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'closure_feedback' => ['A closure feedback is required to complete this task.'],
+        ]);
+    }
+
+    /**
      * The status the Task will HAVE once saved. The loaded relation is reused
      * only while it still matches `task_status_id`: a PATCH that changes the
      * status leaves the old row loaded, and trusting it would evaluate the

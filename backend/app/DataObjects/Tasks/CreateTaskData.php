@@ -62,6 +62,7 @@ final readonly class CreateTaskData
         public ?string $endTime = null,
         public ?int $estimatedMinutes = null,
         public bool $requiresClosureFeedback = false,
+        public bool $requiresValidation = false,
         public ?string $closureFeedback = null,
         public array $watcherIds = [],
     ) {}
@@ -94,6 +95,7 @@ final readonly class CreateTaskData
             endTime: self::nullableString($data, 'end_time'),
             estimatedMinutes: self::nullableInt($data, 'estimated_minutes'),
             requiresClosureFeedback: (bool) ($data['requires_closure_feedback'] ?? false),
+            requiresValidation: (bool) ($data['requires_validation'] ?? false),
             closureFeedback: self::nullableString($data, 'closure_feedback'),
             watcherIds: self::normalizeIds($data['watcher_ids'] ?? []),
         );
@@ -129,6 +131,7 @@ final readonly class CreateTaskData
             'estimated_minutes' => $this->estimatedMinutes,
             'is_blocked' => false,
             'requires_closure_feedback' => $this->requiresClosureFeedback,
+            'requires_validation' => $this->requiresValidation,
             'closure_feedback' => $this->closureFeedback,
         ];
     }

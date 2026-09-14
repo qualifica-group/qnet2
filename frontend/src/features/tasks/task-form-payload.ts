@@ -31,7 +31,7 @@ function scalarsOf(values: TaskFormValues) {
     end_time: values.end_time,
     estimated_minutes: values.estimated_minutes,
     requires_closure_feedback: values.requires_closure_feedback,
-    closure_feedback: values.closure_feedback,
+    requires_validation: values.requires_validation,
   }
 }
 
@@ -99,7 +99,9 @@ export function buildUpdatePayload(values: TaskFormValues, original: TaskDetail)
   if (scalars.requires_closure_feedback !== original.requires_closure_feedback) {
     payload.requires_closure_feedback = scalars.requires_closure_feedback
   }
-  if (scalars.closure_feedback !== original.closure_feedback) payload.closure_feedback = scalars.closure_feedback
+  if (scalars.requires_validation !== original.requires_validation) {
+    payload.requires_validation = scalars.requires_validation
+  }
 
   if (values.task_status_id !== null && values.task_status_id !== original.task_status_id) {
     payload.task_status_id = values.task_status_id

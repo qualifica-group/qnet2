@@ -38,7 +38,7 @@ it('AC-003: tasks carries every column of the data_contract', function () {
         'task_type_id', 'task_status_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
         'opportunity_id', 'work_order_id', 'requester_id', 'creator_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
-        'is_blocked', 'requires_closure_feedback', 'closure_feedback',
+        'is_blocked', 'requires_closure_feedback', 'requires_validation', 'closure_feedback',
         'created_at', 'updated_at',
     ];
 
@@ -146,6 +146,22 @@ it('AC-003: down() drops tasks, up() recreates it empty', function () {
     $watcher->up();
     expect(Schema::hasTable('tasks'))->toBeTrue()
         ->and(DB::table('tasks')->count())->toBe(0);
+});
+
+// ---------------------------------------------------------------------------
+// AC-016 (spec 0121) — requires_validation migration is reversible
+// ---------------------------------------------------------------------------
+
+it('AC-016 (spec 0121): requires_validation migration down() drops the column, up() restores it', function () {
+    $migration = require database_path('migrations/2026_09_14_100000_add_requires_validation_to_tasks_table.php');
+
+    expect(Schema::hasColumn('tasks', 'requires_validation'))->toBeTrue();
+
+    $migration->down();
+    expect(Schema::hasColumn('tasks', 'requires_validation'))->toBeFalse();
+
+    $migration->up();
+    expect(Schema::hasColumn('tasks', 'requires_validation'))->toBeTrue();
 });
 
 // ---------------------------------------------------------------------------

@@ -86,6 +86,7 @@ class TaskResource extends JsonResource
             'estimated_minutes' => $this->estimated_minutes,
             'is_blocked' => $this->is_blocked,
             'requires_closure_feedback' => $this->requires_closure_feedback,
+            'requires_validation' => $this->requires_validation,
             'closure_feedback' => $this->closure_feedback,
             'completion_percentage' => $resolver->completionPercentage($this->resource),
             'subtasks' => $this->summarizeSubtasks($resolver),

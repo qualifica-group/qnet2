@@ -56,6 +56,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'estimated_minutes',
     'is_blocked',
     'requires_closure_feedback',
+    'requires_validation',
     'closure_feedback',
 ])]
 class Task extends BaseModel
@@ -75,6 +76,7 @@ class Task extends BaseModel
             'estimated_minutes' => 'int',
             'is_blocked' => 'boolean',
             'requires_closure_feedback' => 'boolean',
+            'requires_validation' => 'boolean',
         ];
     }
 

@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0121 — FLAG "RICHIEDE VALIDAZIONE" E PERCORSO DI COMPLETAMENTO DERIVATO DAL SERVER
+  Ottava fase del modulo Task. Punto 3 del gap analysis su DOC Tasks.docx (2026-09-14).
+  RETTIFICA la spec 0116 su D-4 (stato di validazione scelto dal client), AC-019 e AC-043
+  (switch "richiedi validazione" nel pop-up): il client non sceglie piu' SE il Task va in
+  validazione, lo decide il server da flag + ruolo dell'attore.
+-->
+<spec id="0121-task-validation-requirement-flag" status="approved" owner="utente" date="2026-09-14">
+
+  <goal>
+    Chiusura e validazione diventano due regole indipendenti, configurate sul Task da chi ne
+    detiene il mandato: `requires_closure_feedback` obbliga chi completa a scrivere un feedback;
+    il nuovo `requires_validation` fa si' che il completamento di un assegnatario porti il Task in
+    validazione invece di chiuderlo. Il pop-up di completamento non offre piu' la scelta.
+  </goal>
+
+  <context>
+    <!-- Nomi REALI verificati nel repo il 2026-09-14, non ipotizzati. -->
+    <existing_names>
+      <item>`tasks.requires_closure_feedback` boolean default false (migrazione
+        `2026_09_04_100500_create_tasks_table.php`, gia' committata: NON si tocca).</item>
+      <item>`App\Services\TaskActionService::complete(Task, CompleteTaskData, User)`: oggi ramifica su
+        `CompleteTaskData::$validationStatusIdSubmitted` (scelta del client). CASO 2 -> stato inviato +
+        `TaskNotifier::validationRequested()`; CASO 1 -> `TaskStatusSystemKey::ClosedPositive` +
+        `notifyClosure()`. `TaskClosureFeedbackGuard::assertSatisfied()` scatta solo su fase di
+        chiusura, quindi oggi il CASO 2 non impone mai il feedback.</item>
+      <item>`App\Http\Requests\Tasks\CompleteTaskRequest`: `closure_feedback` sometimes|nullable|string;
+        `validation_status_id` sometimes|nullable|integer|exists attivo in gruppo `in_validation`.</item>
+      <item>`App\Services\Tasks\TaskAbilityResolver`: `PROTECTED_FIELDS` (17 voci, contiene
+        `requires_closure_feedback`), `canComplete()` = creatore/richiedente/assegnatario/gestore,
+        `canValidate()` = `ownsTheMandate()` privato = creatore/richiedente/gestore.</item>
+      <item>`App\Services\Tasks\TaskRecordRoles::isManager()` = `tasks.manageAll` E NON assegnatario
+        (deroga admin-assegnatario della 0116 D-2).</item>
+      <item>`App\Authorization\TasksAuthorization`: `FIELD_TYPES` ordinato (23 voci, ordine pinnato da
+        `TaskSchemaTest`/`TaskMetaTest`), `actions()` 12 chiavi, `actionPermissions()`.</item>
+      <item>`App\Services\TaskService::update()` chiama `TaskClosureFeedbackGuard::assertSatisfied()`
+        dopo `fill()` e prima di `save()` (righe 139 e 197). `task_status_id` e `closure_feedback`
+        sono `TaskWriteLock::OPERATIVE_KEYS`: un assegnatario puo' oggi portare via PATCH il Task a
+        uno stato di chiusura saltando qualunque validazione.</item>
+      <item>Stati seed in fase `in_validation`: "Preanalisi da validare" e "Esecuzione da validare"
+        (`database/seeders/QualificaCatalog/TaskTaxonomyCatalogue.php`). Due, quindi nessuna chiave di
+        sistema unica li designa (0116 D-4, confermato).</item>
+      <item>Frontend: `features/tasks/task-closure-section.tsx` (switch flag + textarea
+        `closure_feedback`), `task-complete-dialog.tsx` (switch `request_validation` + select stato +
+        feedback), `task-schema.ts` (superRefine feedback su fase di chiusura), `task-form-payload.ts`,
+        `use-task-form.ts` (`FIELD_KEYS`, default, mapping dal dettaglio), `types.ts`
+        (`TaskActionKey`, `CompleteTaskPayload`), `task-detail.tsx` (sezione chiusura visibile solo se
+        `requires_closure_feedback`), `task-actions-bar.tsx`, `task-fixtures.ts`,
+        `i18n/locales/{it,en}-tasks.ts`.</item>
+      <item>`tests/Feature/QuoteWorkflows/QuoteWorkflowMigrationTest.php`: contatore `--step` di
+        `migrate:rollback` hard-coded, oggi 61. Questa spec aggiunge UNA migrazione: +1 sul valore
+        trovato al momento della build (la 0120 non e' implementata).</item>
+    </existing_names>
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      NUOVA COLONNA `tasks.requires_validation` boolean NOT NULL default false, nuova migrazione.
+      I Task esistenti restano senza validazione: nessuna sanatoria. Campo PROTETTO (entra in
+      `TaskAbilityResolver::PROTECTED_FIELDS`, 17 -> 18) e nel catalogo `FIELD_TYPES` subito dopo
+      `requires_closure_feedback`, tipo `boolean`, non obbligatorio. Il cambio d'ordine del catalogo
+      aggiorna `TaskSchemaTest`/`TaskMetaTest` perche' il REQUISITO e' cambiato.
+    </decision>
+    <decision id="D-2">
+      PERCORSO DERIVATO (risposta utente 2026-09-14: "solo assegnatari"). Il completamento va in
+      validazione se e solo se `requires_validation = true` E l'attore NON detiene il mandato
+      (`ownsTheMandate` falso: non creatore, non richiedente, non gestore). Conseguenze:
+      creatore/richiedente/gestore chiudono sempre direttamente; l'admin che e' anche assegnatario
+      NON e' gestore (0116 D-2) e quindi va in validazione; un assegnatario che e' anche creatore o
+      richiedente chiude direttamente (detiene il mandato, non puo' validarsi da solo).
+      Unica sede della regola: `TaskAbilityResolver::completionRequiresValidation(User, Task): bool`,
+      statica come le sorelle (consumata anche da `TasksAuthorization`).
+    </decision>
+    <decision id="D-3">
+      STATO DI DESTINAZIONE scelto da chi completa (risposta utente 2026-09-14). Il server decide SE;
+      il client sceglie IN QUALE stato `in_validation` attivo, e solo quando il percorso e' di
+      validazione. Contratto a due vie, verificato in `TaskActionService::complete()` (la
+      FormRequest non conosce il ruolo sul record):
+        - percorso validazione e `validation_status_id` assente/null -> 422 su `validation_status_id`;
+        - percorso chiusura e `validation_status_id` valorizzato -> 422 su `validation_status_id`.
+      La regola `exists` + gruppo `in_validation` resta nella FormRequest.
+    </decision>
+    <decision id="D-4">
+      FEEDBACK INDIPENDENTE (risposta utente 2026-09-14). Su `/complete`, con
+      `requires_closure_feedback = true` un `closure_feedback` vuoto/assente (dopo trim, anche se gia'
+      persistito vuoto) e' 422 su ENTRAMBI i percorsi. Con il flag spento il feedback resta opzionale
+      su entrambi. `TaskClosureFeedbackGuard` guadagna `assertProvided(Task): void` (stessa regola SENZA
+      la condizione di fase), chiamato da `complete()`; `assertSatisfied()` resta invariato per il PATCH.
+    </decision>
+    <decision id="D-5">
+      AGGIRAMENTO VIA PATCH CHIUSO (risposta utente 2026-09-14). In `TaskService::update()`, dopo
+      `fill()` e prima di `save()`: se lo stato RISULTANTE e' in fase di chiusura
+      (`TaskStatus::isClosing()`) e cambia rispetto al persistito, `requires_validation` e' true e
+      `completionRequiresValidation(actor, task)` e' true -> 422 su `task_status_id`, nessuna scrittura.
+      Classe nuova `App\Services\Tasks\TaskValidationRequirementGuard::assertClosableBy(Task, User)`,
+      stesso stile di `TaskClosureFeedbackGuard`. Il flag e' protetto, quindi un assegnatario non puo'
+      spegnerlo nello stesso PATCH; chi detiene il mandato e' esente per D-2.
+    </decision>
+    <decision id="D-6">
+      NUOVA CHIAVE `permissions.actions.complete_to_validation: bool` = `complete` E
+      `completionRequiresValidation(actor, task)`. E' l'unico modo per il frontend di sapere quale
+      pop-up mostrare senza ricalcolare la matrice. `actions()` passa da 12 a 13 chiavi.
+    </decision>
+    <decision id="D-7">
+      UI (direttiva utente 2026-09-14). I due flag stanno nel form del Task (creazione e modifica),
+      sezione "Chiusura". Il campo `closure_feedback` ESCE dal form: si scrive solo nel pop-up di
+      completamento. Il pop-up NON mostra alcun interruttore: mostra la textarea feedback
+      (obbligatoria sse `requires_closure_feedback`) e, SOLO quando `complete_to_validation` e' true,
+      la select obbligatoria degli stati `in_validation` con una riga informativa. Il bottone
+      d'azione resta "Completa"; il titolo del pop-up diventa "Invia in validazione" nel secondo caso.
+      Il dettaglio mostra la sezione chiusura se almeno un flag e' attivo, con i due flag e il feedback.
+      CONSEGUENZA ACCETTATA: con `requires_closure_feedback` attivo, chiudere cambiando lo stato dal
+      form produce il 422 del guard su un campo non piu' presente nel form: il frontend lo mostra come
+      toast che rimanda all'azione "Completa". La chiusura passa di fatto dal pop-up.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione `add_requires_validation_to_tasks_table` + `Task` ($fillable, $casts) +
+        `TaskFactory` (default false, state `requiringValidation()`) + contatore migrazioni.</item>
+      <item>`StoreTaskRequest` (`sometimes|boolean`), `UpdateTaskRequest` (`sometimes|required|boolean`),
+        `CreateTaskData`/`UpdateTaskData`, `TaskResource` (`requires_validation`),
+        `TasksAuthorization::FIELD_TYPES`, `TaskAbilityResolver::PROTECTED_FIELDS` +
+        `completionRequiresValidation()`, `actions()`/`actionPermissions()` (D-6).</item>
+      <item>`TaskActionService::complete()` riscritto sul percorso derivato (D-2/D-3/D-4);
+        `CompleteTaskData` invariato nella shape; notifiche invariate ma ramificate sul percorso
+        derivato (`validationRequested` vs `notifyClosure`).</item>
+      <item>`TaskClosureFeedbackGuard::assertProvided()` (D-4); `TaskValidationRequirementGuard` +
+        innesto in `TaskService::update()` (D-5).</item>
+      <item>Frontend: flag nel form e nel dettaglio, textarea feedback rimossa dal form, pop-up senza
+        switch con select condizionata (D-7), `TaskActionKey` + `CompleteTaskPayload`, i18n it/en.</item>
+      <item>Aggiornamento dei test che pinnavano il comportamento ritirato (0116 AC-019/AC-043, 0119
+        AC-019, conteggi di catalogo/azioni), dichiarato come cambio di requisito.</item>
+    </in>
+    <out>
+      <item>Segnatempo nel pop-up (resta scoperto, vedi 0116 D-10).</item>
+      <item>PATCH di un assegnatario verso uno stato `in_validation`: resta consentito come oggi
+        (non chiude il Task, ma non invia `TaskValidationRequested`). Da decidere a parte se serve.</item>
+      <item>Rimozione di `closure_feedback` dal catalogo campi o dal PATCH backend: resta accettato
+        dall'API, esce solo dal form (D-7).</item>
+      <item>Colonna tabella SSRM, filtro o export per `requires_validation`.</item>
+      <item>Sanatoria o flag preimpostati sui Task esistenti; valori demo in `DemoTaskSeeder`.</item>
+      <item>`approve()`/`reject()`/`uncomplete()`: invariati.</item>
+      <item>Coerenza sotto-task/padre, ricorrenza (0120), fase 2 della 0101.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/tasks">
+      <request>+ `requires_validation?: boolean` (default false). Resto invariato.</request>
+      <response status="201">`data.requires_validation: boolean` accanto a `requires_closure_feedback`.</response>
+      <errors>422 `requires_validation` non booleano.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/tasks/{task}">
+      <request>+ `requires_validation?: boolean` (campo protetto).</request>
+      <response status="200">`data.requires_validation: boolean`; `permissions.actions.complete_to_validation: boolean`.</response>
+      <errors>
+        422 `requires_validation` inviato da chi non detiene il mandato (ceiling di campo esistente).
+        422 `task_status_id` quando lo stato risultante e' di chiusura, il Task richiede validazione e
+        l'attore non detiene il mandato (D-5).
+      </errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/tasks/{task}">
+      <response status="200">`data.requires_validation: boolean`; `permissions.actions.complete_to_validation: boolean` (13 chiavi azione).</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/meta/tasks">
+      <response status="200">Catalogo campi con `requires_validation` (tipo `boolean`) subito dopo `requires_closure_feedback`.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tasks/{task}/complete">
+      <request>
+        closure_feedback?: string|null
+        validation_status_id?: int|null — obbligatorio sse percorso validazione, vietato altrimenti (D-3)
+      </request>
+      <response status="200">Envelope invariato. Percorso chiusura: stato `closed_positive`,
+        `completion_date` oggi. Percorso validazione: stato = `validation_status_id`, Task non chiuso,
+        `completion_date` oggi.</response>
+      <errors>
+        403 senza `tasks.complete` o fuori matrice (invariato).
+        409 Task bloccato (invariato).
+        422 `closure_feedback` vuoto con `requires_closure_feedback` (entrambi i percorsi, D-4).
+        422 `validation_status_id` mancante su percorso validazione / presente su percorso chiusura (D-3).
+        422 `validation_status_id` non attivo o fuori gruppo `in_validation` (invariato).
+        422 Task gia' chiuso o in validazione (invariato).
+      </errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un POST `/api/tasks` senza `requires_validation`, allora il Task e' creato con `requires_validation = false`; con `true`, la risposta espone `data.requires_validation = true`.</criterion>
+    <criterion id="AC-002">Dato un assegnatario (non creatore/richiedente), quando PATCH invia `requires_validation`, allora 422 sul campo e nessuna scrittura; dato il creatore, allora 200 e il valore e' persistito.</criterion>
+    <criterion id="AC-003">`GET /api/meta/tasks` elenca `requires_validation` di tipo `boolean`, non obbligatorio, immediatamente dopo `requires_closure_feedback`.</criterion>
+    <criterion id="AC-004">Dato un Task con `requires_validation = true` e `requires_closure_feedback = false`, quando un assegnatario POST `/complete` con un `validation_status_id` valido, allora 200, stato = quello inviato, Task non chiuso, `completion_date` oggi, `TaskValidationRequested` inviata e nessuna `TaskClosed`.</criterion>
+    <criterion id="AC-005">Dato lo stesso Task, quando l'assegnatario POST `/complete` senza `validation_status_id`, allora 422 su `validation_status_id` e il Task e' invariato.</criterion>
+    <criterion id="AC-006">Dato un Task con `requires_validation = true`, quando il creatore, il richiedente o un gestore non assegnatario POST `/complete` senza `validation_status_id`, allora 200 e il Task e' in `closed_positive` (tre casi).</criterion>
+    <criterion id="AC-007">Dato un Task con `requires_validation = true` di cui un utente con `tasks.manageAll` e' anche assegnatario (non creatore/richiedente), quando quell'utente POST `/complete` senza `validation_status_id`, allora 422 su `validation_status_id`; con un id valido, allora il Task va in validazione.</criterion>
+    <criterion id="AC-008">Dato un Task con `requires_validation = false`, quando un assegnatario POST `/complete` con `validation_status_id` valorizzato, allora 422 su `validation_status_id` e il Task e' invariato; senza, allora 200 e `closed_positive`.</criterion>
+    <criterion id="AC-009">Dato un Task con `requires_closure_feedback = true` e `requires_validation = true`, quando un assegnatario POST `/complete` con `validation_status_id` valido e `closure_feedback` vuoto o assente, allora 422 su `closure_feedback` e il Task e' invariato; con feedback non vuoto, allora 200 e il feedback e' persistito.</criterion>
+    <criterion id="AC-010">Dato un Task con `requires_closure_feedback = false` e `requires_validation = true`, quando un assegnatario POST `/complete` con `validation_status_id` valido e senza feedback, allora 200.</criterion>
+    <criterion id="AC-011">Dato un Task con `requires_closure_feedback = true` e `requires_validation = false`, quando il creatore POST `/complete` senza feedback, allora 422 su `closure_feedback` (comportamento di chiusura preservato).</criterion>
+    <criterion id="AC-012">Dato un Task con `requires_validation = true` in stato aperto o in validazione, quando un assegnatario PATCH `task_status_id` verso uno stato in fase di chiusura (positiva o negativa), allora 422 su `task_status_id` e nessuna scrittura.</criterion>
+    <criterion id="AC-013">Dato lo stesso Task, quando il creatore PATCH `task_status_id` verso uno stato di chiusura, allora 200; dato un Task con `requires_validation = false`, quando un assegnatario fa lo stesso PATCH, allora 200 (comportamento preservato).</criterion>
+    <criterion id="AC-014">`permissions.actions.complete_to_validation` e' true per un assegnatario su un Task completabile con `requires_validation = true`; false per il creatore sullo stesso Task; false per l'assegnatario se `requires_validation = false`; false quando `complete` e' false (Task bloccato o gia' chiuso).</criterion>
+    <criterion id="AC-015">`TaskAbilityResolver::PROTECTED_FIELDS` contiene `requires_validation` (18 voci) e `TasksAuthorization::actions()` contiene `complete_to_validation` (13 voci).</criterion>
+    <criterion id="AC-016">La migrazione e' reversibile: dopo `migrate:rollback` di un passo la colonna `tasks.requires_validation` non esiste; il contatore di `QuoteWorkflowMigrationTest` e' aggiornato e il test passa.</criterion>
+    <criterion id="AC-017">(FE) Il form del Task mostra gli switch `requires_closure_feedback` e `requires_validation` nella sezione chiusura, sia in creazione sia in modifica, e NON rende alcun campo `closure_feedback`; il payload di create invia `requires_validation`, quello di update lo invia solo se cambiato.</criterion>
+    <criterion id="AC-018">(FE) Con `complete_to_validation = false`, il pop-up di completamento non contiene alcuno switch ne' la select degli stati, e il payload non contiene `validation_status_id`.</criterion>
+    <criterion id="AC-019">(FE) Con `complete_to_validation = true`, il pop-up ha titolo "Invia in validazione", mostra la select obbligatoria degli stati `in_validation` e nessuno switch; il submit senza stato mostra l'errore di campo e non chiama l'API; con stato scelto il payload contiene `validation_status_id`.</criterion>
+    <criterion id="AC-020">(FE) Nel pop-up la textarea feedback e' marcata obbligatoria e blocca il submit se vuota sse `task.requires_closure_feedback`, in entrambe le varianti.</criterion>
+    <criterion id="AC-021">(FE) Il dettaglio mostra la sezione chiusura quando almeno uno dei due flag e' attivo, con i valori dei due flag e il feedback; nessuna sezione quando entrambi sono spenti.</criterion>
+    <criterion id="AC-022">(FE) Un 422 su `closure_feedback` o `task_status_id` restituito dal PATCH del form viene mostrato come toast con il messaggio del server (nessun campo feedback nel form a cui agganciarlo).</criterion>
+    <criterion id="AC-023">Le chiavi i18n nuove esistono in it ed en (test di parita' esistente verde).</criterion>
+    <criterion id="AC-024">Le suite `tests/Feature/Tasks`, `tests/Unit/Services/Tasks`, `tests/Feature/QuoteWorkflows` e i test Vitest di `features/tasks` sono verdi; gli unici test preesistenti modificati sono quelli che pinnavano D-4/AC-019/AC-043 della 0116, AC-019 della 0119, l'ordine/conteggio del catalogo e delle azioni, dichiarati nel report.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Authz sempre server-side: il frontend legge `complete_to_validation`, non ricalcola la matrice.</item>
+    <item>La regola del percorso vive in UN solo metodo (`TaskAbilityResolver::completionRequiresValidation`), riusato da service, guard e authorization.</item>
+    <item>Nuova migrazione reversibile; la migrazione `create_tasks_table` non si modifica.</item>
+    <item>Nessun `Notification::fake()` che mascheri AC-004: la notifica si asserisce come nei test esistenti della 0119.</item>
+    <item>File sotto 300 righe dove gia' lo sono; `TaskService.php` e' vicino al limite: il guard nuovo va in classe separata.</item>
+    <item>Pint, ESLint, `cd frontend && npx tsc -b --force` puliti.</item>
+  </constraints>
+
+</spec>

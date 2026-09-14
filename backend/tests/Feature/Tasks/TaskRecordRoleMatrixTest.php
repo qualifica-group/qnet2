@@ -114,6 +114,32 @@ it('AC-009: an actor with tasks.manageAll who is ALSO an assignee of that Task d
 });
 
 // ---------------------------------------------------------------------------
+// AC-002 (spec 0121) — requires_validation is protected: mandate-only on PATCH
+// ---------------------------------------------------------------------------
+
+it('AC-002 (spec 0121): an assignee sending requires_validation gets 422 and no write; the creator succeeds', function () {
+    $assignee = taskActorWith(['view', 'update']);
+    $task = Task::factory()->create();
+    $task->assignees()->attach($assignee->id);
+    Sanctum::actingAs($assignee);
+
+    $this->patchJson("/api/tasks/{$task->id}", ['requires_validation' => true])
+        ->assertStatus(422)->assertJsonValidationErrors('requires_validation');
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'requires_validation' => false]);
+
+    $creator = taskActorWith(['view', 'update']);
+    $task2 = Task::factory()->forCreator($creator)->create();
+    Sanctum::actingAs($creator);
+
+    $this->patchJson("/api/tasks/{$task2->id}", ['requires_validation' => true])
+        ->assertOk()
+        ->assertJsonPath('data.requires_validation', true);
+
+    $this->assertDatabaseHas('tasks', ['id' => $task2->id, 'requires_validation' => true]);
+});
+
+// ---------------------------------------------------------------------------
 // AC-038/AC-039/AC-040 — permissions.actions, and the AND (not OR) of ability and matrix
 // ---------------------------------------------------------------------------
 

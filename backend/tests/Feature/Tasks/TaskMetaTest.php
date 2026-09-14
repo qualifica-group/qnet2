@@ -97,15 +97,16 @@ it('AC-036/AC-053: the field catalogue is in the frozen order and omits completi
 
     // spec 0116, D-6: `is_blocked` left the 24-field catalogue — it is now
     // written only by the `block`/`unblock` domain actions, never by this
-    // PATCH — leaving the 23 fields AC-036 freezes.
+    // PATCH. spec 0121, D-1: `requires_validation` joins immediately after
+    // `requires_closure_feedback`, bringing the frozen order to 24 fields.
     expect($keys)->toBe([
         'title', 'task_status_id', 'description', 'registry_id', 'referent_id', 'parent_task_id',
         'task_type_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
         'opportunity_id', 'work_order_id', 'requester_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
-        'requires_closure_feedback', 'closure_feedback', 'assignee_ids', 'watcher_ids',
+        'requires_closure_feedback', 'requires_validation', 'closure_feedback', 'assignee_ids', 'watcher_ids',
     ])
-        ->and($keys)->toHaveCount(23)
+        ->and($keys)->toHaveCount(24)
         ->and($keys)->not->toContain('completion_percentage')
         ->and($keys)->not->toContain('creator_id')
         ->and($keys)->not->toContain('is_blocked');
@@ -130,6 +131,25 @@ it('AC-053 / spec 0118 D-1: title, task_status_id, requester_id, assignee_ids an
         ->and($fields['end_time']['type'])->toBe('text')
         ->and($fields['assignee_ids']['type'])->toBe('multiselect')
         ->and($fields['watcher_ids']['type'])->toBe('multiselect');
+});
+
+// ---------------------------------------------------------------------------
+// AC-003 (spec 0121) — requires_validation is boolean, optional, right after
+// requires_closure_feedback
+// ---------------------------------------------------------------------------
+
+it('AC-003 (spec 0121): requires_validation is boolean, not mandatory, immediately after requires_closure_feedback', function () {
+    $actor = taskActorWith(['viewAny', 'create']);
+    Sanctum::actingAs($actor);
+
+    $fields = collect($this->getJson('/api/meta/tasks')->assertOk()->json('data.fields'));
+    $keys = $fields->pluck('key')->all();
+    $byKey = $fields->keyBy('key');
+
+    expect(array_search('requires_validation', $keys, true))
+        ->toBe(array_search('requires_closure_feedback', $keys, true) + 1)
+        ->and($byKey['requires_validation']['type'])->toBe('boolean')
+        ->and($byKey['requires_validation']['mandatory'])->toBeFalse();
 });
 
 // ---------------------------------------------------------------------------

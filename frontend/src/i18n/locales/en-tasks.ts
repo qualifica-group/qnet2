@@ -65,6 +65,8 @@ export const tasks = {
     referent: 'Contact',
     opportunity: 'Opportunity',
     workOrder: 'Work order',
+    requiresClosureFeedback: 'Requires a closure feedback',
+    requiresValidation: 'Requires validation',
     closureFeedback: 'Closure feedback',
     createSubtask: 'New sub-task',
     subtasksEmpty: 'This task has no sub-task yet.',
@@ -134,6 +136,9 @@ export const tasks = {
     requiresClosureFeedback: 'Require a closure feedback',
     requiresClosureFeedbackHint:
       'When on, closing the task requires a written feedback.',
+    requiresValidation: 'Require validation',
+    requiresValidationHint:
+      'When on, an assignee completing the task sends it to validation instead of closing it.',
     closureFeedback: 'Closure feedback',
     closureFeedbackRequired: 'A closure feedback is required to close this task.',
     selectPlaceholder: 'Select…',
@@ -234,9 +239,10 @@ export const tasks = {
     },
     completeDialog: {
       description: 'Closes the task, or sends it to validation instead.',
+      validationTitle: 'Send to validation',
+      validationHint: 'This task requires validation: choose the status to send it to.',
       feedback: 'Closure feedback',
       feedbackRequired: 'A closure feedback is required to close this task.',
-      requestValidation: 'Request validation',
       validationStatus: 'Validation status',
       validationStatusRequired: 'Choose the validation status.',
       confirm: 'Complete',

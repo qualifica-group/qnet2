@@ -81,6 +81,7 @@ class StoreTaskRequest extends FormRequest
             'end_time' => ['sometimes', 'nullable', 'string', 'date_format:'.self::TIME_FORMAT],
             'estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'requires_closure_feedback' => ['sometimes', 'boolean'],
+            'requires_validation' => ['sometimes', 'boolean'],
             'closure_feedback' => ['sometimes', 'nullable', 'string'],
             'assignee_ids' => ['required', 'array', 'min:1'],
             'assignee_ids.*' => ['integer', Rule::exists('users', 'id')],

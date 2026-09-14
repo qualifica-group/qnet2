@@ -4,6 +4,7 @@ import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useAuth } from '@/features/auth/use-auth'
@@ -20,7 +21,6 @@ import type { TaskDetail, TaskFormMode } from '@/features/tasks/types'
 /** Server-side field names mapped back onto the form for 422 handling. */
 const SERVER_ERROR_FIELDS = [
   'title',
-  'task_status_id',
   'description',
   'registry_id',
   'referent_id',
@@ -39,10 +39,28 @@ const SERVER_ERROR_FIELDS = [
   'end_time',
   'estimated_minutes',
   'requires_closure_feedback',
-  'closure_feedback',
+  'requires_validation',
   'assignee_ids',
   'watcher_ids',
 ] as const
+
+/**
+ * AC-022: a 422 on either of these has nowhere to land on this form —
+ * `closure_feedback` left it entirely (spec 0121 D-7), and `task_status_id`'s
+ * refusal here is `TaskValidationRequirementGuard` (D-5), a workflow rule the
+ * status picker cannot express, not a picker-level validation. Both surface
+ * as a toast with the server's own message instead of a field error.
+ */
+const TOAST_ONLY_SERVER_ERROR_FIELDS = ['closure_feedback', 'task_status_id'] as const
+
+/** The first message the server attached to `field` in a 422 response, or `null`. */
+function serverFieldMessage(error: unknown, field: string): string | null {
+  if (!axios.isAxiosError(error) || error.response?.status !== 422) {
+    return null
+  }
+  const errors = error.response.data?.errors as Record<string, string[]> | undefined
+  return errors?.[field]?.[0] ?? null
+}
 
 /** Stable module-level default: a fresh `[]` per render would break dependency stability. */
 const EMPTY_IDS: number[] = []
@@ -82,7 +100,7 @@ function createDefaults(parentTaskId: number | null, requesterId: number | null)
     end_time: null,
     estimated_minutes: null,
     requires_closure_feedback: false,
-    closure_feedback: null,
+    requires_validation: false,
     assignee_ids: EMPTY_IDS,
     watcher_ids: EMPTY_IDS,
   }
@@ -111,7 +129,7 @@ function editDefaults(task: TaskDetail): TaskFormValues {
     end_time: task.end_time,
     estimated_minutes: task.estimated_minutes,
     requires_closure_feedback: task.requires_closure_feedback,
-    closure_feedback: task.closure_feedback,
+    requires_validation: task.requires_validation,
     assignee_ids: task.assignees.map((user) => user.id),
     watcher_ids: task.watchers.map((user) => user.id),
   }
@@ -212,20 +230,15 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   }
 
   // Stable indirection (mirrors `useWorkOrderForm`): `useForm` gets a resolver
-  // whose identity never changes but which always runs the latest schema —
-  // the D-7 rule depends on the picked status' `group`, which is not a form
-  // value.
-  const resolverRef = useRef<Resolver<TaskFormValues>>(zodResolver(buildTaskSchema(t, null, !isEdit)))
+  // whose identity never changes but which always runs the latest schema.
+  const resolverRef = useRef<Resolver<TaskFormValues>>(zodResolver(buildTaskSchema(t, !isEdit)))
 
   const form = useForm<TaskFormValues>({
     resolver: (values, context, options) => resolverRef.current(values, context, options),
     defaultValues,
   })
 
-  const schema = useMemo(
-    () => buildTaskSchema(t, statusMeta?.group ?? null, !isEdit),
-    [t, statusMeta?.group, isEdit],
-  )
+  const schema = useMemo(() => buildTaskSchema(t, !isEdit), [t, isEdit])
 
   useEffect(() => {
     resolverRef.current = zodResolver(schema)
@@ -238,8 +251,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     form.setValue('referent_id', null, { shouldDirty: true })
   }
 
-  // AC-084: choosing another status re-derives the read-only percentage, and
-  // (D-7) re-arms the closure-feedback rule, without any write to the form.
+  // AC-084: choosing another status re-derives the read-only percentage,
+  // without any write to the form.
   const handleStatusItemChange = (item: ForSelectItem | null) => {
     setStatusMeta(taskStatusMetaOf(item))
   }
@@ -277,6 +290,16 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
       toast.success(t('tasks.form.created'))
       onSuccess(created)
     } catch (error) {
+      // AC-022: `closure_feedback`/`task_status_id` have no field to land on
+      // any more (D-5/D-7) — surface the server's own message as a toast
+      // before falling back to the normal field mapping.
+      const toastMessage = TOAST_ONLY_SERVER_ERROR_FIELDS.map((field) =>
+        serverFieldMessage(error, field),
+      ).find((message): message is string => message !== null)
+      if (toastMessage) {
+        toast.error(toastMessage)
+        return
+      }
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
         setServerError(t('tasks.form.genericError'))
       }
@@ -292,8 +315,6 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     handleStatusItemChange,
     /** Derived, read-only, never submitted (D-6/AC-084); `null` while no status is picked. */
     completionPercentage: statusMeta?.completion_percentage ?? null,
-    /** The picked status' PHASE: drives the D-7 client rule and the closure section. */
-    statusGroup: statusMeta?.group ?? null,
     /** The connected actor's picker hydration, for the requester prefill (D-1). */
     currentUserRef,
     /** In-memory files staged for upload right after a successful create (spec 0118 D-7). */

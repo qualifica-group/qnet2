@@ -25,8 +25,9 @@ use App\Models\User;
 final class TaskAbilityResolver
 {
     /**
-     * The 17 fields that define the Task's MANDATE (who answers, by when,
-     * about what) rather than its execution (D-5). Read by
+     * The 18 fields that define the Task's MANDATE (who answers, by when,
+     * about what) rather than its execution (D-5; spec 0121 D-1 adds
+     * `requires_validation` as the 18th). Read by
      * `App\Authorization\TasksAuthorization::fieldPermissionCeiling()` to
      * lower the ceiling for anyone who is not creator/requester/manager.
      *
@@ -48,6 +49,7 @@ final class TaskAbilityResolver
         'end_date',
         'estimated_minutes',
         'requires_closure_feedback',
+        'requires_validation',
         'assignee_ids',
         'watcher_ids',
     ];
@@ -84,6 +86,21 @@ final class TaskAbilityResolver
     public static function canValidate(User $actor, Task $task): bool
     {
         return self::ownsTheMandate($actor, $task);
+    }
+
+    /**
+     * WHETHER completing $task sends it into validation instead of closing
+     * it (spec 0121, D-2, "solo assegnatari"): true only when the Task
+     * carries `requires_validation` AND the completing actor does NOT own
+     * the mandate. Creator/requester/manager always close directly, even on
+     * a flagged Task — they cannot be asked to validate their own mandate.
+     * The single source of the percorso derivato: TaskActionService,
+     * TaskValidationRequirementGuard and TasksAuthorization all call this,
+     * never re-derive it (constraints).
+     */
+    public static function completionRequiresValidation(User $actor, Task $task): bool
+    {
+        return $task->requires_validation && ! self::ownsTheMandate($actor, $task);
     }
 
     public static function canBlock(User $actor, Task $task): bool

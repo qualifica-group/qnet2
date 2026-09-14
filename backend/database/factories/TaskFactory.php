@@ -35,6 +35,7 @@ class TaskFactory extends Factory
             'creator_id' => User::factory(),
             'is_blocked' => false,
             'requires_closure_feedback' => false,
+            'requires_validation' => false,
         ];
     }
 
@@ -56,5 +57,10 @@ class TaskFactory extends Factory
     public function requiringClosureFeedback(): static
     {
         return $this->state(fn () => ['requires_closure_feedback' => true]);
+    }
+
+    public function requiringValidation(): static
+    {
+        return $this->state(fn () => ['requires_validation' => true]);
     }
 }

@@ -150,13 +150,14 @@ it('AC-020: permissions.actions.view_documents mirrors tasks.viewDocuments, and 
     $actions = $this->getJson("/api/tasks/{$task->id}")->assertOk()->json('permissions.actions');
 
     // spec 0118, D-10: `request_update` joined the array as the seventh
-    // domain action, after `unblock` — a mechanical consequence of
+    // domain action, after `unblock`. spec 0121, D-6: `complete_to_validation`
+    // joined right after `complete` — both are mechanical consequences of
     // TasksAuthorization::actions() growing by one key, not a change to this
     // criterion's own subject.
     expect($actions['view_documents'])->toBeTrue()
         ->and(array_keys($actions))->toBe([
             'delete', 'export', 'import', 'view_activity', 'view_documents',
-            'complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock',
+            'complete', 'complete_to_validation', 'uncomplete', 'approve', 'reject', 'block', 'unblock',
             'request_update',
         ]);
 

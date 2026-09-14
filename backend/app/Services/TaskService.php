@@ -14,6 +14,7 @@ use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
+use App\Services\Tasks\TaskValidationRequirementGuard;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Services\Tasks\TaskWatcherOverlapGuard;
 use App\Services\Tasks\TaskWriteLock;
@@ -36,26 +37,28 @@ use Illuminate\Validation\ValidationException;
  * order them, would put the transaction boundary and the rules that depend on it
  * in different files — the one arrangement that makes "a refusal leaves the Task
  * exactly as it was" (AC-032) hard to see and easy to break. The same decision,
- * for the same reason, is recorded on the sibling `Tasks\TaskActionService` (329
- * lines). The hard limit is 500: if either approaches it, the split to make is by
+ * for the same reason, is recorded on the sibling `Tasks\TaskActionService` (432
+ * lines after spec 0121's derived completion percorso). The hard limit is 500:
+ * if either approaches it, the split to make is by
  * WRITE PATH (a `TaskWriter` per operation), never by extracting the guards from
  * their transaction.
  *
  * The controller stays thin; this Service is the single authority over the
- * write-time rules that a FormRequest structurally cannot enforce. Four of them are evaluated on
+ * write-time rules that a FormRequest structurally cannot enforce. Five of them are evaluated on
  * the RESULTING record rather than on the submitted payload: the sub-task
  * hierarchy (D-12), the referent/anagrafica coherence (AC-014), the closing
- * feedback (D-7) and the watcher/creator/requester/assignee overlap (spec
- * 0118 D-9) — the last one needs the two user pivots resolved to their
- * RESULTING ids (submitted, or persisted when the key was not part of this
- * PATCH), which is why TaskService computes them and TaskWatcherOverlapGuard
- * receives plain arrays rather than the DTO. A fifth, the structural write
- * lock (spec 0116 D-7), is the mirror case: it is evaluated on the SUBMITTED
- * keys against the Task's CURRENT persisted state, ahead of fill() — a
- * task_status_id sent in the same PATCH that would move the Task out of a
- * frozen phase must not smuggle a structural field past the lock that was in
- * force when the request arrived. All five run INSIDE the write transaction,
- * so a refusal leaves the Task exactly as it was (AC-032).
+ * feedback (D-7), the watcher/creator/requester/assignee overlap (spec
+ * 0118 D-9) and the validation-requirement bypass (spec 0121 D-5) — the
+ * overlap one needs the two user pivots resolved to their RESULTING ids
+ * (submitted, or persisted when the key was not part of this PATCH), which is
+ * why TaskService computes them and TaskWatcherOverlapGuard receives plain
+ * arrays rather than the DTO. A sixth, the structural write lock (spec 0116
+ * D-7), is the mirror case: it is evaluated on the SUBMITTED keys against the
+ * Task's CURRENT persisted state, ahead of fill() — a task_status_id sent in
+ * the same PATCH that would move the Task out of a frozen phase must not
+ * smuggle a structural field past the lock that was in force when the
+ * request arrived. All six run INSIDE the write transaction, so a refusal
+ * leaves the Task exactly as it was (AC-032).
  *
  * `creator_id` is set here from the authenticated actor and nowhere else
  * (D-10): it is absent from Task's #[Fillable], so no payload can reach it.
@@ -102,6 +105,7 @@ class TaskService
         private readonly TaskHierarchyGuard $hierarchyGuard,
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly TaskNotifier $notifier,
+        private readonly TaskValidationRequirementGuard $validationRequirementGuard,
         private readonly TaskWatcherOverlapGuard $watcherOverlapGuard,
     ) {}
 
@@ -195,6 +199,7 @@ class TaskService
             $this->hierarchyGuard->assertAcyclic($task->id, $task->parent_task_id);
             $this->assertReferentBelongsToRegistry($task->registry_id, $task->referent_id);
             $this->closureFeedbackGuard->assertSatisfied($task);
+            $this->validationRequirementGuard->assertClosableBy($task, $actor);
             $this->watcherOverlapGuard->assertNoOverlap(
                 $task->creator_id,
                 $task->requester_id,

@@ -36,8 +36,9 @@ use Illuminate\Database\Eloquent\Model;
  * scope for this spec.
  *
  * Every field's ceiling is the plain visible+editable-when-may-write /
- * visible+readonly default, EXCEPT the 17 fields in
- * `TaskAbilityResolver::PROTECTED_FIELDS` (spec 0116, D-5): those additionally
+ * visible+readonly default, EXCEPT the 18 fields in
+ * `TaskAbilityResolver::PROTECTED_FIELDS` (spec 0116, D-5; spec 0121, D-1
+ * adds `requires_validation`): those additionally
  * require the actor to own the Task's MANDATE
  * (`TaskAbilityResolver::canUpdateProtectedFields()`) once a record exists.
  * In CREATE context (`$model === null`) that extra gate is skipped
@@ -91,6 +92,7 @@ class TasksAuthorization extends AbstractResourceAuthorization
         'end_time' => 'text',
         'estimated_minutes' => 'number',
         'requires_closure_feedback' => 'boolean',
+        'requires_validation' => 'boolean',
         'closure_feedback' => 'textarea',
         'assignee_ids' => 'multiselect',
         'watcher_ids' => 'multiselect',
@@ -127,7 +129,7 @@ class TasksAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'complete', 'complete_to_validation', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update'];
     }
 
     /**
@@ -178,13 +180,19 @@ class TasksAuthorization extends AbstractResourceAuthorization
      * a `is_blocked` Task admits none of the four status-changing actions,
      * regardless of what the matrix or the phase would otherwise allow —
      * `block`/`unblock` already carry that condition through
-     * `isBlockable()`/`isUnblockable()`.
+     * `isBlockable()`/`isUnblockable()`. `complete_to_validation` (spec 0121,
+     * D-6) is the one exception to the three-way AND: it is `complete`
+     * itself ANDed with `completionRequiresValidation()` alone, never a
+     * fourth independent evaluation of the guards `complete` already ran.
      *
      * @return array<string, bool>
      */
     public function actionPermissions(User $actor, ?Model $model): array
     {
         $task = $model instanceof Task ? $model : null;
+
+        $canComplete = $task !== null && ! $task->is_blocked && $this->actionAvailability->isCompletable($task)
+            && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task);
 
         return [
             'delete' => $model !== null && $actor->can('tasks.delete'),
@@ -202,8 +210,13 @@ class TasksAuthorization extends AbstractResourceAuthorization
             // Opportunita' documents section already has, accepted by the
             // user rather than inherited by accident.
             'view_documents' => $model !== null && $actor->can('tasks.viewDocuments'),
-            'complete' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isCompletable($task)
-                && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task),
+            'complete' => $canComplete,
+            // spec 0121, D-6: the ONLY way the frontend learns which pop-up
+            // to show without recomputing the matrix itself. Derived from
+            // the SAME `complete` flag above (never a second evaluation of
+            // its guards) ANDed with the one rule that decides the percorso
+            // (TaskAbilityResolver::completionRequiresValidation()).
+            'complete_to_validation' => $canComplete && TaskAbilityResolver::completionRequiresValidation($actor, $task),
             'uncomplete' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isUncompletable($task)
                 && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task),
             'approve' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isValidatable($task)

@@ -17,6 +17,10 @@ namespace App\DataObjects\Tasks;
  * non-null value already means "submitted" and they need no flag of their
  * own.
  *
+ * `requiresValidation` (spec 0121, D-1) follows the same
+ * `sometimes|required|boolean` shape as `requiresClosureFeedback`: a
+ * non-null value already means "submitted".
+ *
  * `assigneeIds`/`watcherIds` follow the collection convention instead: null
  * means "not submitted, leave the pivot untouched", an array — INCLUDING the
  * empty one — is an authoritative full-replace sync (AC-012).
@@ -43,6 +47,7 @@ final readonly class UpdateTaskData
         'title' => 'title',
         'task_status_id' => 'taskStatusId',
         'requires_closure_feedback' => 'requiresClosureFeedback',
+        'requires_validation' => 'requiresValidation',
     ];
 
     /**
@@ -80,6 +85,7 @@ final readonly class UpdateTaskData
         public ?string $title = null,
         public ?int $taskStatusId = null,
         public ?bool $requiresClosureFeedback = null,
+        public ?bool $requiresValidation = null,
         public ?string $description = null,
         public bool $descriptionSubmitted = false,
         public ?int $registryId = null,
@@ -131,6 +137,7 @@ final readonly class UpdateTaskData
             title: isset($data['title']) ? (string) $data['title'] : null,
             taskStatusId: isset($data['task_status_id']) ? (int) $data['task_status_id'] : null,
             requiresClosureFeedback: isset($data['requires_closure_feedback']) ? (bool) $data['requires_closure_feedback'] : null,
+            requiresValidation: isset($data['requires_validation']) ? (bool) $data['requires_validation'] : null,
             description: self::nullableString($data, 'description'),
             descriptionSubmitted: array_key_exists('description', $data),
             registryId: self::nullableInt($data, 'registry_id'),

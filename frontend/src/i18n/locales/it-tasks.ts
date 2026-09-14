@@ -65,6 +65,8 @@ export const tasks = {
     referent: 'Referente',
     opportunity: 'Opportunità',
     workOrder: 'Commessa',
+    requiresClosureFeedback: 'Richiede un feedback alla chiusura',
+    requiresValidation: 'Richiede validazione',
     closureFeedback: 'Feedback di chiusura',
     createSubtask: 'Nuovo sotto-task',
     subtasksEmpty: 'Questo task non ha ancora sotto-task.',
@@ -137,6 +139,9 @@ export const tasks = {
     requiresClosureFeedback: 'Richiedi un feedback alla chiusura',
     requiresClosureFeedbackHint:
       'Se attivo, chiudere il task richiede un feedback scritto.',
+    requiresValidation: 'Richiedi validazione',
+    requiresValidationHint:
+      'Se attivo, il completamento di un assegnatario invia il task in validazione invece di chiuderlo.',
     closureFeedback: 'Feedback di chiusura',
     closureFeedbackRequired:
       'Il feedback di chiusura è obbligatorio per chiudere questo task.',
@@ -238,9 +243,10 @@ export const tasks = {
     },
     completeDialog: {
       description: 'Chiude il task, oppure lo invia in validazione.',
+      validationTitle: 'Invia in validazione',
+      validationHint: 'Questo task richiede validazione: scegli lo stato in cui inviarlo.',
       feedback: 'Feedback di chiusura',
       feedbackRequired: 'Il feedback di chiusura è obbligatorio per chiudere questo task.',
-      requestValidation: 'Richiedi validazione',
       validationStatus: 'Stato di validazione',
       validationStatusRequired: 'Scegli lo stato di validazione.',
       confirm: 'Completa',

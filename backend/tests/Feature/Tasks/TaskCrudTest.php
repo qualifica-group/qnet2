@@ -270,6 +270,32 @@ it('AC-011: PATCH cannot reassign creator_id: 422 and the original creator stand
 });
 
 // ---------------------------------------------------------------------------
+// AC-001 (spec 0121) — requires_validation defaults false, honours true
+// ---------------------------------------------------------------------------
+
+it('AC-001 (spec 0121): POST without requires_validation creates the Task with it false', function () {
+    $actor = taskActorWith(['create', 'view']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tasks', taskPayload())
+        ->assertCreated()
+        ->assertJsonPath('data.requires_validation', false);
+
+    $this->assertDatabaseHas('tasks', ['id' => $response->json('data.id'), 'requires_validation' => false]);
+});
+
+it('AC-001 (spec 0121): POST with requires_validation: true persists and exposes it', function () {
+    $actor = taskActorWith(['create', 'view']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tasks', taskPayload(['requires_validation' => true]))
+        ->assertCreated()
+        ->assertJsonPath('data.requires_validation', true);
+
+    $this->assertDatabaseHas('tasks', ['id' => $response->json('data.id'), 'requires_validation' => true]);
+});
+
+// ---------------------------------------------------------------------------
 // AC-012 — partial PATCH leaves the two user pivots alone
 // ---------------------------------------------------------------------------
 

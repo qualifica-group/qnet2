@@ -36,16 +36,16 @@ if (! function_exists('grantManageAll')) {
 }
 
 // ---------------------------------------------------------------------------
-// PROTECTED_FIELDS — the 17 fields of D-5, exhaustively
+// PROTECTED_FIELDS — the 18 fields of D-5 (spec 0121 adds requires_validation)
 // ---------------------------------------------------------------------------
 
-it('D-5: PROTECTED_FIELDS is exactly the 17 mandate fields the document names', function () {
+it('AC-015 (spec 0121): PROTECTED_FIELDS is exactly the 18 mandate fields, including requires_validation', function () {
     expect(TaskAbilityResolver::PROTECTED_FIELDS)->toEqualCanonicalizing([
         'title', 'registry_id', 'referent_id', 'parent_task_id', 'task_type_id',
         'task_priority_id', 'task_importance_id', 'task_category_id', 'opportunity_id',
         'work_order_id', 'requester_id', 'start_date', 'end_date', 'estimated_minutes',
-        'requires_closure_feedback', 'assignee_ids', 'watcher_ids',
-    ])->and(TaskAbilityResolver::PROTECTED_FIELDS)->toHaveCount(17)
+        'requires_closure_feedback', 'requires_validation', 'assignee_ids', 'watcher_ids',
+    ])->and(TaskAbilityResolver::PROTECTED_FIELDS)->toHaveCount(18)
         ->and(TaskAbilityResolver::PROTECTED_FIELDS)
         ->not->toContain('description', 'task_status_id', 'completion_date', 'start_time', 'end_time', 'closure_feedback');
 });
@@ -160,4 +160,56 @@ it('D-3: an actor who is requester AND watcher (not creator) still keeps the req
 
     expect(TaskAbilityResolver::canUpdateProtectedFields($requesterWatcher, $task))->toBeTrue()
         ->and(TaskAbilityResolver::canValidate($requesterWatcher, $task))->toBeTrue();
+});
+
+// ---------------------------------------------------------------------------
+// completionRequiresValidation() — the percorso derivato (spec 0121, D-2)
+// ---------------------------------------------------------------------------
+
+it('AC-004/AC-008: a plain assignee on a flagged Task requires validation, but not on an unflagged one', function () {
+    $assignee = User::factory()->create();
+    $flagged = Task::factory()->requiringValidation()->create();
+    $flagged->assignees()->attach($assignee);
+    $unflagged = Task::factory()->create();
+    $unflagged->assignees()->attach($assignee);
+
+    expect(TaskAbilityResolver::completionRequiresValidation($assignee, $flagged))->toBeTrue()
+        ->and(TaskAbilityResolver::completionRequiresValidation($assignee, $unflagged))->toBeFalse();
+});
+
+it('AC-006: the creator, the requester and a manager (not assignee) never require validation, flagged or not', function () {
+    $creator = User::factory()->create();
+    $requester = User::factory()->create();
+    $manager = User::factory()->create();
+    grantManageAll($manager);
+
+    $creatorTask = Task::factory()->requiringValidation()->forCreator($creator)->create();
+    $requesterTask = Task::factory()->requiringValidation()->create(['requester_id' => $requester->id]);
+    $managerTask = Task::factory()->requiringValidation()->create();
+
+    expect(TaskAbilityResolver::completionRequiresValidation($creator, $creatorTask))->toBeFalse()
+        ->and(TaskAbilityResolver::completionRequiresValidation($requester, $requesterTask))->toBeFalse()
+        ->and(TaskAbilityResolver::completionRequiresValidation($manager, $managerTask))->toBeFalse();
+});
+
+it('AC-007: a manageAll holder who is ALSO an assignee of the flagged Task requires validation (D-2 deroga)', function () {
+    $managerAssignee = User::factory()->create();
+    grantManageAll($managerAssignee);
+    $task = Task::factory()->requiringValidation()->create();
+    $task->assignees()->attach($managerAssignee);
+
+    expect(TaskAbilityResolver::completionRequiresValidation($managerAssignee, $task))->toBeTrue();
+});
+
+it('an assignee who is also creator or requester of the flagged Task does not require validation', function () {
+    $creatorAssignee = User::factory()->create();
+    $creatorAssigneeTask = Task::factory()->requiringValidation()->forCreator($creatorAssignee)->create();
+    $creatorAssigneeTask->assignees()->attach($creatorAssignee);
+
+    $requesterAssignee = User::factory()->create();
+    $requesterAssigneeTask = Task::factory()->requiringValidation()->create(['requester_id' => $requesterAssignee->id]);
+    $requesterAssigneeTask->assignees()->attach($requesterAssignee);
+
+    expect(TaskAbilityResolver::completionRequiresValidation($creatorAssignee, $creatorAssigneeTask))->toBeFalse()
+        ->and(TaskAbilityResolver::completionRequiresValidation($requesterAssignee, $requesterAssigneeTask))->toBeFalse();
 });

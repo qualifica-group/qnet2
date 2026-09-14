@@ -121,6 +121,12 @@ export interface TaskDetail {
    */
   is_blocked: boolean
   requires_closure_feedback: boolean
+  /**
+   * Whether an assignee's completion goes to validation instead of closing
+   * the task outright (spec 0121 D-1/D-2): the server alone decides SO from
+   * this flag and the actor's mandate — see `permissions.actions.complete_to_validation`.
+   */
+  requires_validation: boolean
   closure_feedback: string | null
   /**
    * DERIVED from `task_status.completion_percentage` at response time (D-6):
@@ -154,6 +160,12 @@ export interface TaskDetailWithPermissions extends TaskDetail {
  * `request_update` is the only one whose matrix row enables the OSSERVATORE and
  * disables the ASSEGNATARIO (spec 0118 D-10), which is why it can be true exactly
  * where the other six are false.
+ *
+ * `complete_to_validation` (spec 0121 D-6) is a SIBLING flag on the same
+ * `permissions.actions` object, not a member of this union: it never gates a
+ * button's presence, it only tells the already-visible "Completa" dialog
+ * which variant to render, so it has no matching entry in
+ * `TaskActionAvailabilityFlags`.
  */
 export type TaskActionKey =
   | 'complete'
@@ -165,9 +177,13 @@ export type TaskActionKey =
   | 'request_update'
 
 /**
- * Payload for POST /tasks/{id}/complete (spec 0116 data_contract). CASO 1
- * (chiusura) omits `validation_status_id`; CASO 2 (richiedi validazione)
- * sends it, validated server-side as belonging to the `in_validation` group.
+ * Payload for POST /tasks/{id}/complete (spec 0121 data_contract, RECTIFIES
+ * spec 0116 D-4: the client no longer chooses the path). The server alone
+ * decides whether the completion closes the task or sends it to validation
+ * (`TaskAbilityResolver::completionRequiresValidation`, mirrored by
+ * `permissions.actions.complete_to_validation`); `validation_status_id` is
+ * mandatory on that path and forbidden on the other one (D-3) — the dialog
+ * builds this payload accordingly, never from a client-side switch.
  */
 export interface CompleteTaskPayload {
   closure_feedback?: string | null
@@ -210,7 +226,11 @@ export interface CreateTaskPayload {
   end_time?: string | null
   estimated_minutes?: number | null
   requires_closure_feedback?: boolean
-  closure_feedback?: string | null
+  /**
+   * Spec 0121 D-1: PROTECTED like `requires_closure_feedback` — a PATCH from
+   * an actor without the mandate 422s on this field (see `UpdateTaskPayload`).
+   */
+  requires_validation?: boolean
   /**
    * Flat id arrays. Since spec 0118 D-9 the two sets are DISJOINT: an id in
    * `watcher_ids` may be neither the creator, nor the requester, nor an assignee

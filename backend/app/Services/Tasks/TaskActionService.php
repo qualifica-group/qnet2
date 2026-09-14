@@ -15,6 +15,7 @@ use App\Services\Notifications\TaskNotifier;
 use App\Services\TaskService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The seven domain actions that move a Task's STATE, or ask someone about
@@ -58,8 +59,9 @@ use Illuminate\Support\Facades\Notification;
  * TaskNotifier defers the actual send to `DB::afterCommit()` — a rollback
  * must take the notification down with it (AC-028). And they branch only on
  * what the write path has ALREADY decided, never on a second evaluation of
- * the domain: complete() reads the submitted-flag it just branched the
- * status on, and uncomplete() reads the phase it is about to overwrite
+ * the domain: complete() reads the SAME `$requiresValidation` flag it just
+ * branched the status on (spec 0121, D-2 — no longer the client's own
+ * submitted flag), and uncomplete() reads the phase it is about to overwrite
  * BEFORE overwriting it, since afterwards every Task looks alike.
  * requestUpdate() keeps its own spec 0118 notification, sent to the
  * caller-chosen recipients alone and untouched by 0119.
@@ -74,12 +76,20 @@ final class TaskActionService
     ) {}
 
     /**
-     * CASO 1 (no `validation_status_id`): the Task closes positively.
-     * CASO 2 (submitted): the Task moves to the caller-chosen
-     * `in_validation` status instead, and stays open. Both cases stamp
-     * `completion_date` with today; only CASO 1 can trip
-     * TaskClosureFeedbackGuard, since `in_validation` is never a CLOSING
-     * phase (App\Enums\TaskStatusGroup::isClosing()).
+     * The percorso is DERIVED server-side (spec 0121, D-2/D-3), never chosen
+     * by the client: `TaskAbilityResolver::completionRequiresValidation()`
+     * decides SE, off `requires_validation` and the actor's mandate over
+     * $task. The client only ever chooses WHICH `in_validation` status, and
+     * only on the validation percorso — `CompleteTaskData` carries no flag
+     * of its own to branch on any more, unlike before this spec.
+     *
+     * PERCORSO VALIDAZIONE: `validation_status_id` is REQUIRED (422 when
+     * absent), the Task moves to that status and stays open. PERCORSO
+     * CHIUSURA: `validation_status_id` is FORBIDDEN (422 when present), the
+     * Task closes positively. Both stamp `completion_date` with today and
+     * both are subject to `TaskClosureFeedbackGuard::assertProvided()` (D-4):
+     * unlike the retired CASO 1/CASO 2 split, the feedback requirement no
+     * longer depends on which percorso was taken.
      */
     public function complete(Task $task, CompleteTaskData $data, User $actor): Task
     {
@@ -87,9 +97,15 @@ final class TaskActionService
             $this->assertNotBlocked($task);
             $this->assertCompletable($task);
 
-            $task->task_status_id = $data->validationStatusIdSubmitted
-                ? $data->validationStatusId
-                : $this->systemStatusId(TaskStatusSystemKey::ClosedPositive);
+            $requiresValidation = TaskAbilityResolver::completionRequiresValidation($actor, $task);
+
+            if ($requiresValidation) {
+                $this->assertValidationStatusSubmitted($data);
+                $task->task_status_id = $data->validationStatusId;
+            } else {
+                $this->assertValidationStatusNotSubmitted($data);
+                $task->task_status_id = $this->systemStatusId(TaskStatusSystemKey::ClosedPositive);
+            }
 
             if ($data->closureFeedbackSubmitted) {
                 $task->closure_feedback = $data->closureFeedback;
@@ -97,10 +113,10 @@ final class TaskActionService
 
             $task->completion_date = now()->toDateString();
 
-            $this->closureFeedbackGuard->assertSatisfied($task);
+            $this->closureFeedbackGuard->assertProvided($task);
             $task->save();
 
-            if ($data->validationStatusIdSubmitted) {
+            if ($requiresValidation) {
                 $this->notifier->validationRequested($task, $actor);
             } else {
                 $this->notifyClosure($task, $actor);
@@ -333,6 +349,35 @@ final class TaskActionService
     {
         if (! $this->availability->isCompletable($task)) {
             abort(422, 'This task is already closed or awaiting validation.');
+        }
+    }
+
+    /**
+     * D-3: on the validation percorso, `validation_status_id` is the one
+     * thing the FormRequest cannot make required by itself — it does not
+     * know which percorso the actor is on.
+     */
+    private function assertValidationStatusSubmitted(CompleteTaskData $data): void
+    {
+        if (! $data->validationStatusIdSubmitted) {
+            throw ValidationException::withMessages([
+                'validation_status_id' => ['A validation status is required to send this task into validation.'],
+            ]);
+        }
+    }
+
+    /**
+     * D-3, the mirror case: on the closure percorso a submitted
+     * `validation_status_id` is refused rather than silently ignored, so an
+     * actor never believes their choice of status was honoured when it was
+     * not.
+     */
+    private function assertValidationStatusNotSubmitted(CompleteTaskData $data): void
+    {
+        if ($data->validationStatusIdSubmitted) {
+            throw ValidationException::withMessages([
+                'validation_status_id' => ['A validation status is only accepted when this task requires validation.'],
+            ]);
         }
     }
 

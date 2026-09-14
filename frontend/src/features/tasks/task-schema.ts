@@ -1,32 +1,10 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 
 /** Backend `title` column limit (`string(191)`). */
 const TITLE_MAX_LENGTH = 191
 /** `estimated_minutes` is `unsignedInteger`: minutes, never a "2h30" string (D-11). */
 const MIN_ESTIMATED_MINUTES = 0
-
-/**
- * The two PHASES that mark a closure (D-7). The ONLY thing the
- * closure-feedback rule may branch on: a status label never enters a condition
- * (AC-024), and neither does `system_key` any more.
- *
- * Rectification of 2026-09-04: closing used to be decided by the system key,
- * so an ordinary row "was never a closing one" — that consequence of D-5 no
- * longer holds. Every row carries a phase, system or custom alike, so a status
- * an admin created and put in a closing phase closes the task exactly like a
- * seeded one, and the server 422s on the missing feedback either way.
- */
-export const CLOSING_STATUS_GROUPS: readonly TaskStatusGroupValue[] = [
-  'closed_positive',
-  'closed_negative',
-]
-
-/** Whether the given phase closes the task (D-7). */
-export function isClosingStatus(group: TaskStatusGroupValue | null | undefined): boolean {
-  return group !== null && group !== undefined && CLOSING_STATUS_GROUPS.includes(group)
-}
 
 /**
  * Shared field shape. `completion_percentage`, `creator_id` and `is_blocked`
@@ -64,7 +42,11 @@ function baseFields(t: TFunction) {
       .min(MIN_ESTIMATED_MINUTES, t('tasks.form.estimatedMinutesInvalid'))
       .nullable(),
     requires_closure_feedback: z.boolean(),
-    closure_feedback: z.string().nullable(),
+    // Spec 0121 D-1: sibling flag, independent of the one above (D-2 decides
+    // the completion path from it, never a client choice). `closure_feedback`
+    // itself is NOT a field here any more (spec 0121 D-7): it is written only
+    // from the completion pop-up now, never from this form.
+    requires_validation: z.boolean(),
     // Flat id arrays; since D-9 `watcher_ids` may not overlap `requester_id`/
     // `assignee_ids` (see `addWatcherOverlapIssue`).
     assignee_ids: z.array(z.number()),
@@ -79,8 +61,6 @@ interface RefinedValues {
   end_date: string | null
   assignee_ids: number[]
   watcher_ids: number[]
-  requires_closure_feedback: boolean
-  closure_feedback: string | null
 }
 
 /** `task_status_id` is NOT NULL server-side; on PATCH it is still required (D-3/D-6: create derives it). */
@@ -150,34 +130,7 @@ function addWatcherOverlapIssue(values: RefinedValues, ctx: z.RefinementCtx, t: 
 }
 
 /**
- * D-7 replicated for UX: with the flag on AND a closing status picked, the
- * feedback must be a non-empty string after trim. This MIRRORS the server
- * rule (`TaskClosureFeedbackGuard`), it does not replace it — the 422 path
- * stays wired in `useTaskForm`.
- */
-function addMissingClosureFeedbackIssue(
-  values: RefinedValues,
-  statusGroup: TaskStatusGroupValue | null,
-  ctx: z.RefinementCtx,
-  t: TFunction,
-): void {
-  if (!values.requires_closure_feedback || !isClosingStatus(statusGroup)) {
-    return
-  }
-  if ((values.closure_feedback ?? '').trim() === '') {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['closure_feedback'],
-      message: t('tasks.form.closureFeedbackRequired'),
-    })
-  }
-}
-
-/**
- * Builds the task form schema. `statusGroup` is the `group` of the status
- * currently picked, read off the picker's own `meta` (see `taskStatusMetaOf`)
- * rather than off the form values: it is not a writable field, so it never
- * becomes part of the payload. One schema for create and edit — the partial
+ * Builds the task form schema. One schema for create and edit — the partial
  * PATCH diff is computed by the payload builder, not by a second shape that
  * could drift.
  *
@@ -186,12 +139,14 @@ function addMissingClosureFeedbackIssue(
  * create, D-3/D-4), while `requester_id`/`assignee_ids`/`end_date` and the
  * watcher-overlap rule (D-9) apply in BOTH modes — a PATCH that submits them
  * is bound by the same requiredness as a POST (D-2).
+ *
+ * Spec 0121 RECTIFIES this schema: the closure-feedback requiredness rule
+ * that used to branch on the picked status' phase is GONE along with the
+ * `closure_feedback` field itself (D-7) — the feedback is written only from
+ * the completion pop-up now, so this form no longer needs the status' phase
+ * at all.
  */
-export function buildTaskSchema(
-  t: TFunction,
-  statusGroup: TaskStatusGroupValue | null = null,
-  isCreate: boolean = false,
-) {
+export function buildTaskSchema(t: TFunction, isCreate: boolean = false) {
   return z.object(baseFields(t)).superRefine((values, ctx) => {
     if (!isCreate) {
       addMissingStatusIssue(values, ctx, t)
@@ -200,7 +155,6 @@ export function buildTaskSchema(
     addMissingAssigneesIssue(values, ctx, t)
     addMissingEndDateIssue(values, ctx, t)
     addWatcherOverlapIssue(values, ctx, t)
-    addMissingClosureFeedbackIssue(values, statusGroup, ctx, t)
   })
 }
 

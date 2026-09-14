@@ -109,7 +109,6 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
     handleRegistryChange,
     handleStatusItemChange,
     completionPercentage,
-    statusGroup,
     currentUserRef,
     stagedAttachments,
     addStagedAttachments,
@@ -161,7 +160,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
             workOrder={workOrderRefOf(task)}
           />
 
-          <TaskClosureSection control={form.control} statusGroup={statusGroup} />
+          <TaskClosureSection control={form.control} />
 
           {mode.type === 'create' ? (
             <TaskAttachmentStaging

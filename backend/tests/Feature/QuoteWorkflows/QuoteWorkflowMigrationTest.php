@@ -92,9 +92,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_11_100000_designate_in_progress_task_status` (60th), and spec
     // 0118 D-5's `2026_09_11_110000_designate_assigned_task_status` (61st),
     // which promotes the ordinary "Assegnato" row to a protected one so the
-    // derived initial status (D-4) is reachable by `system_key`.
+    // derived initial status (D-4) is reachable by `system_key`, and spec
+    // 0121 D-1's `2026_09_14_100000_add_requires_validation_to_tasks_table`
+    // (62nd), the "richiede validazione" flag.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 61]);
+    Artisan::call('migrate:rollback', ['--step' => 62]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()
