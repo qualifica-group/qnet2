@@ -7,7 +7,7 @@
 
 import { createElement } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -46,7 +46,7 @@ export function EntryTitleCell({ entry, canWrite, taskTypeOptions, onChangeType,
   const canOpenEntry = canWrite && entry.permissions.update
 
   return (
-    <div className="flex h-full min-w-0 items-center gap-3 py-1">
+    <div className="flex h-full min-w-0 items-center gap-2">
       <DropdownMenu>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -54,14 +54,14 @@ export function EntryTitleCell({ entry, canWrite, taskTypeOptions, onChangeType,
               <Button
                 aria-label={t('timeEntries.table.changeType')}
                 className={cn(
-                  'inline-flex size-9 shrink-0 items-center justify-center rounded-lg border p-0',
+                  'inline-flex size-5 shrink-0 items-center justify-center rounded-md border p-0',
                   badgeColorClass(entry.task_type.color),
                 )}
                 disabled={!canChangeType}
                 type="button"
                 variant="ghost"
               >
-                {renderTaskTypeIcon(entry.task_type.icon, 'size-4')}
+                {renderTaskTypeIcon(entry.task_type.icon, 'size-3')}
               </Button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
@@ -80,18 +80,17 @@ export function EntryTitleCell({ entry, canWrite, taskTypeOptions, onChangeType,
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <div className="min-w-0 leading-tight">
+      {/* Single line to fit the shared compact row height: the notes trail the title, muted. */}
+      <div className="flex min-w-0 items-baseline gap-1.5">
         <button
-          className="block w-full min-w-0 truncate text-left text-sm font-semibold enabled:hover:underline disabled:cursor-not-allowed"
+          className="min-w-0 shrink truncate text-left font-medium enabled:hover:underline disabled:cursor-not-allowed"
           disabled={!canOpenEntry}
           onClick={() => onEditEntry(entry.id)}
           type="button"
         >
           {entry.title}
         </button>
-        {entry.notes ? (
-          <div className="mt-1 truncate text-xs text-muted-foreground">{entry.notes}</div>
-        ) : null}
+        {entry.notes ? <span className="min-w-0 flex-1 truncate text-muted-foreground">{entry.notes}</span> : null}
       </div>
     </div>
   )
@@ -127,8 +126,8 @@ export function EntryActionsCell({
     <div className="flex h-full items-center justify-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button aria-label={actionsLabel} size="icon-sm" type="button" variant="ghost">
-            <MoreVertical aria-hidden="true" className="size-4" />
+          <Button aria-label={actionsLabel} size="icon-xs" type="button" variant="ghost">
+            <MoreHorizontal aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

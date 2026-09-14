@@ -25,7 +25,7 @@ function TruncatedText({ text }: { text: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="block min-w-0 truncate text-sm">{text}</span>
+        <span className="block min-w-0 truncate">{text}</span>
       </TooltipTrigger>
       <TooltipContent className="max-w-sm" side="top">
         {text}
@@ -71,7 +71,9 @@ export function buildTimeEntryColumns({
       ...FROZEN_COLUMN_DEFAULTS,
       colId: 'actions',
       headerName: t('timeEntries.table.actions'),
-      width: 64,
+      // Leading column pinned left, like the shared `DataTable` actions column.
+      pinned: 'left',
+      width: 72,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) =>
         params.data ? (
           <EntryActionsCell
@@ -109,7 +111,7 @@ export function buildTimeEntryColumns({
       width: 100,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) =>
         params.data ? (
-          <div className="flex h-full items-center text-sm tabular-nums">
+          <div className="flex h-full items-center tabular-nums">
             {formatMinutesLabel(params.data.minutes)}
           </div>
         ) : null,
@@ -121,7 +123,7 @@ export function buildTimeEntryColumns({
       width: 130,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) =>
         params.data ? (
-          <div className="flex h-full items-center text-sm tabular-nums text-muted-foreground">
+          <div className="flex h-full items-center tabular-nums text-muted-foreground">
             {formatScheduleLabel(params.data)}
           </div>
         ) : null,
@@ -145,7 +147,7 @@ export function buildTimeEntryColumns({
           <div className="flex h-full min-w-0 items-center">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link className="block min-w-0 truncate text-sm text-primary hover:underline" to={`/tasks/${task.id}`}>
+                <Link className="block min-w-0 truncate text-primary hover:underline" to={`/tasks/${task.id}`}>
                   {task.title}
                 </Link>
               </TooltipTrigger>

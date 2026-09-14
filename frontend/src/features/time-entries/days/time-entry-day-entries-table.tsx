@@ -22,6 +22,7 @@ import {
 import { setupAgGrid } from '@/components/data-table/ag-grid-setup'
 import { buildDataTableTheme, estimateGridHeight } from '@/components/data-table/data-table-theme'
 import { useUiScale } from '@/features/appearance/ui-scale-context'
+import { cn } from '@/lib/utils'
 import { buildTimeEntryColumns } from '@/features/time-entries/days/time-entry-entries-columns'
 import { useTimeEntryRowMutations } from '@/features/time-entries/days/use-time-entry-row-mutations'
 import { useTimeEntryTaskTypeOptions } from '@/features/time-entries/days/use-time-entry-task-type-options'
@@ -31,6 +32,9 @@ setupAgGrid()
 
 /** Minimum visible rows (D-14: "altezza minima 10 righe come q-net"). */
 const MIN_VISIBLE_ROWS = 10
+
+/** Same framed surface as the shared `TableView` block, so this grid reads like every other module's table. */
+const GRID_FRAME_CLASS = 'overflow-hidden rounded-xl border border-border bg-card shadow-sm'
 
 interface TimeEntryDayEntriesTableProps {
   entries: TimeEntry[]
@@ -76,7 +80,7 @@ export function TimeEntryDayEntriesTable({ entries, canWrite, onEditEntry }: Tim
   if (entries.length === 0) {
     return (
       <div
-        className="flex items-center justify-center rounded-2xl border border-border px-4 py-8 text-center text-sm text-muted-foreground"
+        className={cn(GRID_FRAME_CLASS, 'flex items-center justify-center px-4 py-8 text-center text-sm text-muted-foreground')}
         style={{ minHeight: gridHeight }}
       >
         {t('timeEntries.dayCard.noEntries')}
@@ -86,14 +90,12 @@ export function TimeEntryDayEntriesTable({ entries, canWrite, onEditEntry }: Tim
 
   return (
     <>
-      <div className="overflow-hidden rounded-2xl border border-border" style={{ height: gridHeight }}>
+      <div className={GRID_FRAME_CLASS} style={{ height: gridHeight }}>
         <AgGridReact<TimeEntry>
           columnDefs={columnDefs}
           getRowId={(params) => String(params.data.id)}
-          headerHeight={40}
           localeText={localeText}
           rowData={entries}
-          rowHeight={64}
           suppressCellFocus
           suppressContextMenu
           theme={theme}
