@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0123 — SEGNATEMPO NEL COMPLETAMENTO, STATI RISERVATI ALLE AZIONI, COERENZA SOTTO-TASK
+  Nona fase del modulo Task. Chiude i gap A/B/C dell'analisi di DOC Tasks.docx (2026-09-14).
+  RETTIFICA: 0116 D-10 e 0118 (segnatempo fuori dal pop-up), 0121 "fuori scope: PATCH di un
+  assegnatario verso in_validation", 0101 D-12 (unica regola di gerarchia = aciclicita').
+  Precondizione gia' eseguita (2026-09-14, test Tasks 418/418): split di TaskService e
+  TaskActionService (TaskForSelectService, TaskReferentRegistryGuard, TaskCompletionService,
+  TaskWriteLock::assertNotBlocked).
+-->
+<spec id="0123-task-completion-time-entry-and-subtask-coherence" status="draft" owner="utente" date="2026-09-14">
+
+  <goal>
+    Completare un Task registra sempre un segnatempo nello stesso invio; gli stati "In validazione"
+    e "Chiuso positivo" si raggiungono solo con l'azione Completa, mai dal form; i sotto-task
+    restano coerenti col padre (il padre non si completa con figli aperti, le date stanno dentro
+    quelle del padre, un padre congelato congela strutturalmente i figli, i collegamenti del padre
+    precompilano il sotto-task).
+  </goal>
+
+  <context>
+    <!-- Nomi REALI verificati nel repo il 2026-09-14. -->
+    <existing_names>
+      <item>`POST /api/tasks/{task}/complete` -> `Tasks\TaskCompleteController` ->
+        `Tasks\TaskCompletionService::complete(Task, CompleteTaskData, User)`; body validato da
+        `Http\Requests\Tasks\CompleteTaskRequest` (`closure_feedback`, `validation_status_id`),
+        DTO `DataObjects\Tasks\CompleteTaskData::fromValidated()`. Risposta
+        `okWithPermissions(TaskResource)`.</item>
+      <item>Segnatempo (spec 0122): tabella `time_entries` (`user_id`, `date`, `title`,
+        `task_type_id` restrict, `start_time`, `end_time`, `minutes` smallint, `notes`, `registry_id`,
+        `opportunity_id`, `work_order_id`, `task_id`). `TimeEntries\TimeEntryService::create(TimeEntryData, User $owner)`
+        (nessuna transazione propria; `TimeEntryLinkResolver` impone titolo e collegamenti dal Task,
+        D-5). `TimeEntryData::forTask(array, int $taskId)`. Regole del POST task-scoped in
+        `Http\Requests\TimeEntries\StoreTaskTimeEntryRequest` (date Y-m-d, task_type_id attivo,
+        start/end H:i required_with + after, minutes 1..1440, notes max 5000).
+        `TaskTimeEntryController::store` richiede `time-entries.create` AND `canComplete()`.</item>
+      <item>`App\Enums\TaskStatusGroup`: `open`, `pending`, `in_validation`, `closed_positive`,
+        `closed_negative`. `TaskStatusForSelectResource` espone gia' `meta.group`.</item>
+      <item>`TaskService::update()` innesta in transazione: `TaskWriteLock::assertStructuralWriteAllowed`
+        (prima di fill), `TaskHierarchyGuard::assertAcyclic`, `TaskReferentRegistryGuard::assertBelongs`,
+        `TaskClosureFeedbackGuard::assertSatisfied`, `TaskValidationRequirementGuard::assertClosableBy`,
+        `TaskWatcherOverlapGuard::assertNoOverlap`. `create()` gli stessi tranne write lock/aciclicita'.</item>
+      <item>`TaskWriteLock`: `isLocked()` = `is_blocked` OR fase in validazione/chiusa;
+        `OPERATIVE_KEYS` = `task_status_id`, `closure_feedback`; `assertDeletable()`, `assertNotBlocked()`.</item>
+      <item>`TaskActionAvailability`: `isCompletable/isUncompletable/isValidatable/isBlockable/isUnblockable`.
+        `TasksAuthorization::actions()` 13 chiavi; `actionPermissions()` = ability AND matrice AND disponibilita'.</item>
+      <item>`tasks.parent_task_id` restrictOnDelete; `tasks.start_date` nullable, `tasks.end_date`
+        obbligatoria su POST dalla 0118 (righe storiche possono essere null).
+        `TaskOccurrenceFactory` crea occorrenze con `parent_task_id` null.</item>
+      <item>`DemoTaskSeeder::createTask()` applica lo stato estratto con `TaskService::update()` agendo
+        come creatore (anche verso stati in validazione/chiusi).</item>
+      <item>Frontend: `features/tasks/task-complete-dialog.tsx`, `types.ts` (`CompleteTaskPayload`,
+        `TaskActionKey`), `task-classification-section.tsx` (select Stato solo in edit, via
+        `components/form/relation-select-field.tsx` -> `components/ui/async-paginated-select.tsx`, che
+        NON supporta opzioni disabilitate), `use-task-form.ts` (`createDefaults(parentTaskId, ...)`),
+        `task-screens.tsx` (`openCreateWith({ parent_task_id })`), `task-subtasks-section.tsx`
+        (bottone gated dal componente `Can` con permesso `tasks.create`), `task-actions-bar.tsx`.
+        Editor segnatempo riusabile: `features/time-entries/form/time-entry-editor.tsx`
+        (`TimeEntryEditor`, `showTitle`/`showContext`), schema `features/time-entries/task/task-time-entry-schema.ts`,
+        tipi `useTimeEntryTypeOptions`.</item>
+    </existing_names>
+  </context>
+
+  <decisions>
+    <decision id="D-1">SEGNATEMPO OBBLIGATORIO su `/complete`, su ENTRAMBI i percorsi (chiusura e
+      validazione, casi 1.a/1.b/2 del documento). Nuovo oggetto `time_entry` nel body, creato con
+      `TimeEntryService::create()` DENTRO la transazione di `TaskCompletionService::complete()`:
+      qualunque rifiuto (422/409/403) non lascia ne' segnatempo ne' cambio di stato.
+      Proprietario = attore. Titolo e collegamenti derivati dal Task (0122 D-5, invariato).</decision>
+    <decision id="D-2">COMPLETARE CONCEDE L'INSERIMENTO (decisione utente): il segnatempo creato da
+      `/complete` NON richiede `time-entries.create`. Il permesso resta richiesto su tutti gli altri
+      endpoint segnatempo (invariati). `approve`/`reject`/`uncomplete` non creano ne' toccano segnatempo.</decision>
+    <decision id="D-3">Le regole di `time_entry.*` sono le STESSE di `StoreTaskTimeEntryRequest`, da
+      UNA sola fonte (nessuna copia divergente): chi implementa estrae le regole condivise e le usa in
+      entrambe le FormRequest.</decision>
+    <decision id="D-4">STATI RISERVATI ALLE AZIONI: un PATCH che porta `task_status_id` a uno stato di
+      fase `in_validation` o `closed_positive` e' rifiutato 422 su `task_status_id`, per QUALUNQUE attore
+      (anche gestore/super-admin). Ci si arriva solo con `/complete` e `/approve`. Nuovo guard
+      `App\Services\Tasks\TaskActionOnlyStatusGuard::assertReachableByPatch(Task)`, in transazione,
+      sullo stato RISULTANTE, solo se `task_status_id` e' dirty. Uscire da quelle fasi via PATCH resta
+      com'e' oggi (fuori scope). `closed_negative` resta selezionabile, soggetto ai guard esistenti.</decision>
+    <decision id="D-5">OPZIONI NON CLICCABILI: nella select Stato del form sono visibili ma disabilitate
+      le opzioni con `meta.group` in `in_validation`/`closed_positive`, e quelle `closed_negative`
+      quando `permissions.actions.close_via_status` e' false. Nuovo flag server
+      `close_via_status` = attore puo' portare via PATCH a una fase di chiusura =
+      `!completionRequiresValidation(actor, task)` AND NOT (`requires_closure_feedback` AND feedback
+      vuoto). Nessuna condizione su `is_blocked`: il cambio stato su un Task bloccato e' operativo e
+      resta consentito (0116 D-7). Il server resta il controllo (422 invariati).</decision>
+    <decision id="D-6">PADRE NON COMPLETABILE CON SOTTO-TASK APERTI: `/complete` (entrambi i percorsi)
+      e `/approve` rispondono 422 se il Task ha almeno un sotto-task DIRETTO in fase diversa da
+      `closed_positive`/`closed_negative` (`in_validation` conta come aperto), contato IGNORANDO la
+      visibilita' (come `TaskService::delete()`). `permissions.actions.complete`,
+      `complete_to_validation` e `approve` diventano false. `TaskResource` espone
+      `data.open_subtasks_count` (int) perche' la UI spieghi il motivo.</decision>
+    <decision id="D-7">DATE DENTRO IL PADRE: per un Task con padre, ogni data non nulla fra
+      `start_date`/`end_date` deve stare in [padre.start_date, padre.end_date] (un estremo nullo del
+      padre non vincola). Verificato su create e su update del figlio sullo stato risultante quando
+      `parent_task_id`, `start_date` o `end_date` sono stati inviati (create: sempre se ha padre).
+      Errore 422 sul campo del figlio fuori range. Nuovo guard `TaskParentDateRangeGuard`.</decision>
+    <decision id="D-8">PADRE CHE RESTRINGE LE DATE (decisione utente): PATCH del padre con
+      `start_date`/`end_date` dirty che lascerebbe fuori range almeno un figlio diretto (ignorando la
+      visibilita') -> 422 sul campo cambiato, messaggio col numero di sotto-task fuori intervallo.
+      Nessuna modifica ai figli. Nessuna sanatoria sulle righe storiche gia' incoerenti.</decision>
+    <decision id="D-9">BLOCCO A CASCATA, SOLO STRUTTURALE (decisione utente): un Task il cui padre o un
+      qualunque antenato e' `TaskWriteLock::isLocked()` e' strutturalmente congelato: stesse regole di
+      un Task congelato (422 per chiave strutturale su PATCH, 409 su DELETE), azioni operative
+      INVARIATE (note, segnatempo, cambio stato, complete/uncomplete, richiedi aggiornamento).
+      Creare un Task con `parent_task_id` di una catena congelata, o spostarvelo via PATCH -> 422 su
+      `parent_task_id`. Nuovo `TaskWriteLock::isLockedByAncestor(Task)`; nuovo flag
+      `permissions.actions.create_subtask` = `tasks.create` AND NOT isLocked AND NOT isLockedByAncestor.</decision>
+    <decision id="D-10">EREDITA' DEI COLLEGAMENTI, SOLO CLIENT (precompilati e modificabili): in
+      creazione, quando `parent_task_id` e' valorizzato (da "Crea sotto-task" o scelto nel picker) il
+      form legge il dettaglio del padre (`fetchTask`) e precompila `registry_id`, `referent_id`,
+      `opportunity_id`, `work_order_id` SOLO se ancora vuoti. Nessuna regola server nuova. Il dettaglio
+      del padre alimenta anche il mirror client di D-7 (min/max sulle date).</decision>
+    <decision id="D-11">SEED DEMO: `DemoTaskSeeder` non puo' piu' raggiungere via PATCH gli stati di
+      D-4. Per quelle due fasi applica lo stato con una scrittura diretta sul model (dato demo, niente
+      notifiche, `completion_date` coerente come oggi). `DemoTaskSeederTest` resta verde senza modifiche
+      alle sue asserzioni.</decision>
+    <decision id="D-12">Blocca/Sblocca: vale la matrice (solo creatore/richiedente/gestore). Nessuna
+      modifica (conferma utente della contraddizione con le notifiche 10-11).</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: `time_entry` su `/complete` (D-1..D-3), `TaskActionOnlyStatusGuard` (D-4), flag
+        `close_via_status` e `create_subtask` (D-5, D-9), guard sotto-task aperti (D-6) e
+        `open_subtasks_count`, `TaskParentDateRangeGuard` (D-7, D-8), cascata del write lock (D-9),
+        seed demo (D-11), test Pest.</item>
+      <item>UI kit: opzioni disabilitabili in `AsyncPaginatedSelect` (+ passthrough in `RelationSelectField`).</item>
+      <item>Frontend: sezione segnatempo obbligatoria nel pop-up Completa; opzioni Stato disabilitate;
+        bottone "Crea sotto-task" gated da `create_subtask`; motivo del Completa assente con sotto-task
+        aperti; precompilazione collegamenti + min/max date nel form di un sotto-task; i18n it/en; test Vitest.</item>
+    </in>
+    <out>
+      <item>Uscita via PATCH da `in_validation`/`closed_*` (riapertura senza `/uncomplete`): invariata.</item>
+      <item>Azione dedicata di chiusura negativa/annullamento.</item>
+      <item>Form in sola lettura quando il Task (o un antenato) e' congelato: resta il 422 per chiave come oggi.</item>
+      <item>Sotto-task aperti di livello >1 (nipoti) nel conteggio di D-6: solo figli diretti.</item>
+      <item>Ereditarieta' dei collegamenti imposta lato server o propagata sui figli esistenti al cambio del padre.</item>
+      <item>Modifica/eliminazione del segnatempo creato col completamento (si fa dal modulo segnatempo).</item>
+      <item>Blocca/Sblocca, notifiche, ricorrenza: invariati.</item>
+      <item>Verifica responsive manuale delle fasi precedenti (AC-028 0117, AC-066 0118, AC-036 0120).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/tasks/{task}/complete">
+      <request>
+        {
+          closure_feedback?: string | null,
+          validation_status_id?: int | null,          // invariato (0121 D-3)
+          time_entry: {                                // NUOVO, obbligatorio su entrambi i percorsi
+            date: "YYYY-MM-DD",                        // required
+            task_type_id: int,                         // required, task_types attivo
+            minutes: int,                              // required, 1..1440
+            start_time?: "HH:MM" | null,               // required_with end_time
+            end_time?: "HH:MM" | null,                 // required_with start_time, after start_time
+            notes?: string | null                      // max 5000
+          }
+        }
+      </request>
+      <response status="200">
+        okWithPermissions(TaskResource) invariato + `data.open_subtasks_count`. Il segnatempo creato
+        NON e' nella risposta: il frontend invalida la query `GET /api/tasks/{task}/time-entries`.
+      </response>
+      <errors>
+        403 authz (TaskPolicy::complete + matrice, invariato; NESSUN controllo `time-entries.create`, D-2).
+        409 Task bloccato (invariato).
+        422 `time_entry` / `time_entry.*` (validazione, D-1/D-3).
+        422 message-only "This task has open sub-tasks: close them before completing it." (D-6).
+        422 fase non completabile / `validation_status_id` / `closure_feedback` (invariati).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks/{task}/approve">
+      <errors>422 message-only sotto-task aperti (D-6), in aggiunta agli errori esistenti.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/tasks/{task}">
+      <errors>
+        422 `task_status_id`: "This status can only be reached through the Complete action." (D-4).
+        422 `start_date` / `end_date` del figlio: "The date must fall within the parent task's dates." (D-7).
+        422 `start_date` / `end_date` del padre: ":count sub-task(s) would fall outside these dates." (D-8).
+        422 `parent_task_id`: "The parent task is frozen: sub-tasks cannot be added to it." (D-9).
+        422 per chiave strutturale / 409 DELETE su Task con antenato congelato (D-9, messaggi esistenti).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks">
+      <errors>422 `start_date`/`end_date` fuori dal padre (D-7); 422 `parent_task_id` catena congelata (D-9).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tasks/{task}">
+      <response status="200">
+        `data.open_subtasks_count: int` (figli diretti aperti, ignorando la visibilita').
+        `permissions.actions` passa da 13 a 15 chiavi, in coda: `close_via_status: bool` (D-5),
+        `create_subtask: bool` (D-9). `complete`/`complete_to_validation`/`approve` false con
+        `open_subtasks_count > 0` (D-6). Stesse chiavi su ogni risposta `okWithPermissions` delle azioni.
+      </response>
+    </endpoint>
+
+    <ui_kit component="components/ui/async-paginated-select.tsx">
+      Nuova prop opzionale `isItemDisabled?: (item: ForSelectItem) => boolean` (default: nessuna
+      disabilitata, comportamento invariato per tutti i caller). Opzione disabilitata: visibile,
+      `aria-disabled="true"`, non selezionabile ne' da click ne' da tastiera, stile attenuato da token.
+      `components/form/relation-select-field.tsx` la inoltra invariata.
+    </ui_kit>
+
+    <frontend_types>
+      `CompleteTaskPayload.time_entry: CompleteTaskTimeEntryPayload` (required);
+      `TaskActionKey` += `close_via_status`, `create_subtask`; `TaskDetail.open_subtasks_count: number`.
+    </frontend_types>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Segnatempo nel completamento -->
+    <criterion id="AC-001">Dato un Task completabile senza validazione, quando l'assegnatario POSTa `/complete` con `time_entry` valido, allora il Task e' `closed_positive` ed esiste UNA riga `time_entries` con `task_id` del Task, `user_id` dell'attore, `minutes`/`date`/`task_type_id` inviati e titolo/collegamenti del Task.</criterion>
+    <criterion id="AC-002">Dato un Task con `requires_validation` e un assegnatario, quando POSTa `/complete` con `validation_status_id` e `time_entry`, allora il Task va nello stato scelto ed esiste la riga `time_entries`.</criterion>
+    <criterion id="AC-003">Quando `/complete` e' inviato senza `time_entry`, allora 422 con errore su `time_entry`, stato invariato, zero righe `time_entries` create.</criterion>
+    <criterion id="AC-004">Quando `time_entry.minutes` e' 0 o 1441, o `end_time` non e' dopo `start_time`, o `task_type_id` e' inattivo, allora 422 sulla chiave `time_entry.*` corrispondente e nessuna scrittura.</criterion>
+    <criterion id="AC-005">Dato un Task con `requires_closure_feedback`, quando `/complete` ha `time_entry` valido ma feedback vuoto, allora 422 `closure_feedback` e ZERO righe `time_entries` (rollback atomico).</criterion>
+    <criterion id="AC-006">Dato un Task bloccato, quando `/complete` e' inviato con `time_entry` valido, allora 409 e zero righe `time_entries`.</criterion>
+    <criterion id="AC-007">Dato un assegnatario con `tasks.complete` ma SENZA `time-entries.create`, quando POSTa `/complete` valido, allora 200 e la riga `time_entries` esiste (D-2); lo stesso utente riceve ancora 403 su `POST /api/tasks/{task}/time-entries`.</criterion>
+    <criterion id="AC-008">Quando `/approve`, `/reject` o `/uncomplete` vanno a buon fine, allora il numero di righe `time_entries` del Task non cambia.</criterion>
+    <criterion id="AC-009">Le regole di `time_entry.*` e di `StoreTaskTimeEntryRequest` provengono dalla stessa fonte: un test confronta le due mappe di regole (senza prefisso) e le trova identiche.</criterion>
+
+    <!-- Stati riservati alle azioni -->
+    <criterion id="AC-010">Dato un gestore (mandato pieno), quando PATCHa `task_status_id` verso uno stato `in_validation`, allora 422 `task_status_id` e stato invariato.</criterion>
+    <criterion id="AC-011">Dato il creatore, quando PATCHa `task_status_id` verso uno stato `closed_positive`, allora 422 `task_status_id` e stato invariato.</criterion>
+    <criterion id="AC-012">Dato il creatore su Task senza obblighi, quando PATCHa verso uno stato `closed_negative` o `pending`, allora 200 (guard non applicato fuori da D-4).</criterion>
+    <criterion id="AC-013">Un PATCH che non invia `task_status_id` su un Task gia' in `closed_positive` (es. solo `closure_feedback`) non e' rifiutato da D-4.</criterion>
+    <criterion id="AC-014">`permissions.actions.close_via_status` e' false per l'assegnatario su Task con `requires_validation`, false con `requires_closure_feedback` e feedback vuoto, true per il creatore su Task senza obblighi.</criterion>
+    <criterion id="AC-015">(FE) Nel form di modifica la select Stato mostra le opzioni `in_validation` e `closed_positive` con `aria-disabled="true"` e cliccarle non cambia il valore; le `closed_negative` sono disabilitate sse `close_via_status` e' false; le altre sono selezionabili.</criterion>
+    <criterion id="AC-016">(UI kit) `AsyncPaginatedSelect` con `isItemDisabled` non emette `onChange` per un'opzione disabilitata (click e Invio); senza la prop il comportamento e i test esistenti restano invariati.</criterion>
+    <criterion id="AC-017">`DemoTaskSeeder` gira verde: `DemoTaskSeederTest` passa senza modifiche alle asserzioni e il db demo contiene Task in fasi `in_validation` e `closed_positive`.</criterion>
+
+    <!-- Sotto-task aperti -->
+    <criterion id="AC-018">Dato un padre con un figlio diretto in fase `open`, quando l'assegnatario POSTa `/complete` valido, allora 422, stato invariato, zero `time_entries`.</criterion>
+    <criterion id="AC-019">Dato un padre con un figlio diretto in `in_validation`, `/complete` e' rifiutato 422; con tutti i figli `closed_positive`/`closed_negative` e' 200.</criterion>
+    <criterion id="AC-020">Dato un padre in `in_validation` con un figlio riaperto, quando il validatore POSTa `/approve`, allora 422 e stato invariato.</criterion>
+    <criterion id="AC-021">Il conteggio ignora la visibilita': un figlio aperto invisibile all'attore blocca comunque `/complete`.</criterion>
+    <criterion id="AC-022">`GET /api/tasks/{task}` espone `data.open_subtasks_count` corretto e, con valore > 0, `permissions.actions.complete`, `complete_to_validation`, `approve` false.</criterion>
+    <criterion id="AC-023">(FE) Con `open_subtasks_count > 0` e l'azione non disponibile, il dettaglio mostra il motivo (testo i18n col numero di sotto-task aperti) accanto alle azioni.</criterion>
+
+    <!-- Date dentro il padre -->
+    <criterion id="AC-024">Dato un padre con 10..20 del mese, quando si crea un figlio con `end_date` 25, allora 422 `end_date` e nessun Task creato; con `start_date` 5 -> 422 `start_date`.</criterion>
+    <criterion id="AC-025">Dato un padre con `start_date` null e `end_date` 20, un figlio con `start_date` 1 ed `end_date` 20 e' accettato.</criterion>
+    <criterion id="AC-026">Dato un figlio esistente, quando un PATCH ne sposta `end_date` fuori dal padre, allora 422 `end_date`; quando un PATCH ne cambia `parent_task_id` verso un padre il cui intervallo non lo contiene, allora 422 sul campo data fuori range.</criterion>
+    <criterion id="AC-027">Dato un padre con due figli con `end_date` 18 e 19, quando PATCHa `end_date` a 17, allora 422 `end_date` con messaggio contenente "2", padre e figli invariati.</criterion>
+    <criterion id="AC-028">Un PATCH del padre che non tocca le date non valuta D-8, anche con figli storicamente fuori range.</criterion>
+    <criterion id="AC-029">(FE) Nel form di un sotto-task i campi data non accettano valori fuori dall'intervallo del padre: submit bloccato con messaggio i18n sul campo; un 422 server sulle date e' mostrato inline sul campo.</criterion>
+
+    <!-- Cascata -->
+    <criterion id="AC-030">Dato un padre bloccato, quando si PATCHa `title` di un figlio, allora 422 `title` e figlio invariato; PATCH di solo `task_status_id` sul figlio verso uno stato `pending` e' 200.</criterion>
+    <criterion id="AC-031">Dato un nonno in `closed_positive`, quando si PATCHa `description` di un nipote, allora 422 `description` (catena intera).</criterion>
+    <criterion id="AC-032">Dato un padre in `in_validation`, DELETE di un figlio -> 409 e figlio presente.</criterion>
+    <criterion id="AC-033">Dato un padre bloccato, POST `/api/tasks` con quel `parent_task_id` -> 422 `parent_task_id`; PATCH di un Task libero che imposta quel `parent_task_id` -> 422 `parent_task_id`.</criterion>
+    <criterion id="AC-034">Dato un padre bloccato, `/complete` (con `time_entry`), note e segnatempo sul figlio restano consentiti (200/201).</criterion>
+    <criterion id="AC-035">`permissions.actions.create_subtask` e' false su Task bloccato, in validazione o con antenato congelato; true su Task aperto con `tasks.create`.</criterion>
+    <criterion id="AC-036">(FE) Il bottone "Crea sotto-task" e' visibile sse `permissions.actions.create_subtask` e' true.</criterion>
+
+    <!-- Eredita' collegamenti -->
+    <criterion id="AC-037">(FE) Aprendo la creazione con `parent_task_id` di un padre con anagrafica, referente, opportunita' e commessa, i quattro campi risultano precompilati coi valori del padre e modificabili.</criterion>
+    <criterion id="AC-038">(FE) Scegliendo un padre nel picker a creazione in corso, i collegamenti gia' compilati dall'utente NON vengono sovrascritti; quelli vuoti si precompilano.</criterion>
+
+    <!-- Pop-up -->
+    <criterion id="AC-039">(FE) Il pop-up Completa mostra la sezione segnatempo (data default oggi, tipologia default quella del Task o la prima attiva, minuti, orari opzionali, note) su entrambi i percorsi; il submit con minuti vuoti non chiama l'API e mostra l'errore sul campo.</criterion>
+    <criterion id="AC-040">(FE) Il payload inviato contiene `time_entry` con le chiavi del contratto; un 422 su `time_entry.minutes` e' mostrato inline sul campo; dopo il successo la query dei segnatempo del Task viene invalidata.</criterion>
+    <criterion id="AC-041">(Manuale) Pop-up Completa, select Stato e form sotto-task a 375/768/1024: niente scroll orizzontale, pop-up scrollabile, target raggiungibili.</criterion>
+    <criterion id="AC-042">Suite completa Pest seriale (`XDEBUG_MODE=off ./vendor/bin/pest`), Vitest, Pint, ESLint e `tsc -b --force` verdi. I test preesistenti modificati sono SOLO quelli che PATCHano verso `in_validation`/`closed_positive` o completano senza `time_entry`, elencati nel report come cambio di requisito.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessuna migrazione (nessuna colonna nuova): il contatore di `QuoteWorkflowMigrationTest` non cambia.</item>
+    <item>Tutti i guard nuovi girano DENTRO la transazione della scrittura che proteggono (AC-032 della 0101): un rifiuto non lascia scritture parziali.</item>
+    <item>Authz server-side invariata sui percorsi esistenti; D-2 e' l'unica deroga ed e' confinata a `/complete`.</item>
+    <item>`TaskAbilityResolver`/`TaskRecordRoles`/`TaskWriteLock` restano STATICI (li istanzia `permissions:sync` senza container).</item>
+    <item>File: `TaskService.php` (358) e `TaskCompletionService.php` (271) non superano 500; i guard nuovi vivono in classi proprie, a `TaskService` si aggiungono solo le chiamate.</item>
+    <item>Nuova ability in `TasksAuthorization::actions()` -> aggiornare TUTTE le copie di `taskActorWith()`/`taskDocumentActor`/`taskNoteActor` se servisse una nuova permission (non prevista: `create_subtask` usa `tasks.create`).</item>
+    <item>i18n it/en per ogni stringa nuova; UI compatta (`ui-design.md` §2), token di superficie, opzione disabilitata non comunicata col solo colore (`aria-disabled` + cursore).</item>
+    <item>Verifica test backend SERIALE: `--parallel` produce falsi "undefined function" per gli helper duplicati fra file.</item>
+  </constraints>
+
+  <plan>
+    <!-- Lane: backend-A e backend-B e ui-kit e frontend partono insieme sul contratto congelato.
+         Nessuna coppia parallela condivide write surface. Tutti i test backend fuori da
+         tests/Feature/Tasks restano intatti salvo DemoTaskSeeder (B3). -->
+    <microtask id="MT-B1" owner="backend" lane="backend-A" depends="-">
+      `time_entry` su `/complete` (D-1..D-3). Surface: `Http/Requests/Tasks/CompleteTaskRequest.php`,
+      `Http/Requests/TimeEntries/StoreTaskTimeEntryRequest.php`, nuova sorgente regole condivise in
+      `Http/Requests/TimeEntries/`, `DataObjects/Tasks/CompleteTaskData.php`,
+      `Controllers/Tasks/TaskCompleteController.php`, `Services/Tasks/TaskCompletionService.php` (solo complete),
+      test `tests/Feature/Tasks/TaskCompletionTimeEntryTest.php` + test esistenti che chiamano `/complete`.
+      Verifica: AC-001..AC-009.</microtask>
+    <microtask id="MT-B2" owner="backend" lane="backend-A" depends="MT-B1">
+      Sotto-task aperti (D-6). Surface: `Services/Tasks/TaskActionAvailability.php`,
+      `Services/Tasks/TaskCompletionService.php` (complete+approve), `Authorization/TasksAuthorization.php`
+      (AND su complete/complete_to_validation/approve), `Http/Resources/TaskResource.php`
+      (`open_subtasks_count`), test `TaskOpenSubtasksTest.php`. Verifica: AC-018..AC-022.</microtask>
+    <microtask id="MT-B4" owner="backend" lane="backend-B" depends="-">
+      Date dentro il padre (D-7, D-8). Surface: nuovo `Services/Tasks/TaskParentDateRangeGuard.php`,
+      `Services/TaskService.php` (sole chiamate), test `TaskParentDateRangeTest.php`. Verifica: AC-024..AC-028.</microtask>
+    <microtask id="MT-B3" owner="backend" lane="backend-B" depends="MT-B4">
+      Stati riservati alle azioni (D-4) + seed (D-11). Surface: nuovo
+      `Services/Tasks/TaskActionOnlyStatusGuard.php`, `Services/TaskService.php`,
+      `database/seeders/DemoTaskSeeder.php`, test `TaskActionOnlyStatusTest.php` + test esistenti che
+      PATCHano verso `in_validation`/`closed_positive` (cambio di requisito dichiarato).
+      Verifica: AC-010..AC-013, AC-017.</microtask>
+    <microtask id="MT-B5" owner="backend" lane="backend-B" depends="MT-B3">
+      Cascata (D-9). Surface: `Services/Tasks/TaskWriteLock.php`, `Services/TaskService.php`
+      (create/update parent chain), test `TaskWriteLockCascadeTest.php`. Verifica: AC-030..AC-034.</microtask>
+    <microtask id="MT-B6" owner="backend" lane="gated" depends="MT-B2, MT-B5">
+      Flag `close_via_status` e `create_subtask` (D-5, D-9). Surface: `Authorization/TasksAuthorization.php`,
+      test su azioni/permessi (`TaskActionsTest.php` conteggio chiavi 13 -> 15). Verifica: AC-014, AC-035.</microtask>
+
+    <microtask id="MT-U1" owner="ui-design" lane="ui-kit" depends="-">
+      `isItemDisabled` in `components/ui/async-paginated-select.tsx` + test del componente.
+      Verifica: AC-016.</microtask>
+
+    <microtask id="MT-F1" owner="frontend" lane="frontend" depends="-">
+      Tipi del contratto + TUTTE le chiavi i18n della spec + pop-up Completa. Surface:
+      `features/tasks/types.ts`, `task-fixtures.ts`, `task-complete-dialog.tsx` (+ eventuale
+      `task-complete-time-entry-section.tsx`), `use-task-mutations.ts` (invalidazione segnatempo),
+      `i18n/locales/{it,en}-tasks.ts`, test del dialog. Verifica: AC-039, AC-040.</microtask>
+    <microtask id="MT-F2" owner="frontend" lane="frontend" depends="MT-F1, MT-U1">
+      Opzioni Stato disabilitate. Surface: `components/form/relation-select-field.tsx` (passthrough),
+      `features/tasks/task-classification-section.tsx` (+ helper puro dei gruppi disabilitati), test.
+      Verifica: AC-015.</microtask>
+    <microtask id="MT-F3" owner="frontend" lane="frontend" depends="MT-F1">
+      Sotto-task lato UI (parallelo a MT-F2, surface disgiunta). Surface: `task-subtasks-section.tsx`,
+      `task-detail.tsx`, `task-actions-bar.tsx`, `use-task-form.ts`, `task-schema.ts`,
+      `task-planning-section.tsx`, eventuale `use-task-parent-prefill.ts`, test. Verifica: AC-023,
+      AC-029, AC-036..AC-038.</microtask>
+
+    <microtask id="MT-V" owner="verifier" lane="gated" depends="tutti">
+      Suite completa Pest seriale, Vitest, Pint, ESLint, `tsc -b --force`; AC-001..AC-042 uno per uno;
+      AC-041 segnalato come manuale all'utente. Poi HANDOFF e stop per il commit.</microtask>
+  </plan>
+
+</spec>

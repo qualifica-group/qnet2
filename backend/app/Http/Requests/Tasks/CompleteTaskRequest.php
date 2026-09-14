@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
  * data_contract). Both fields stay `sometimes|nullable` here: this
  * FormRequest cannot know the actor's mandate over the record, so it never
  * decides whether `validation_status_id` is required or forbidden — that
- * percorso-dependent rule lives in `TaskActionService::complete()` (spec
+ * percorso-dependent rule lives in `TaskCompletionService::complete()` (spec
  * 0121, D-3). What DOES belong here is the shape any submitted value must
  * have regardless of percorso: an ACTIVE status belonging to the
  * `in_validation` group, in ONE combined rule — the same shape as

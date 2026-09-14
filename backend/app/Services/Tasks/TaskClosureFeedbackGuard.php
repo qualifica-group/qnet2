@@ -56,7 +56,7 @@ final class TaskClosureFeedbackGuard
      * condition is GONE — a Task flagged `requires_closure_feedback` demands
      * the feedback on BOTH completion percorsi (closure and validation),
      * never only when the resulting status happens to be closing. Called by
-     * `TaskActionService::complete()` after the resulting `task_status_id`
+     * `TaskCompletionService::complete()` after the resulting `task_status_id`
      * and `closure_feedback` are set, before `save()`, so it still reads the
      * RESULTING record — a payload that omits `closure_feedback` is judged
      * against whatever is already persisted, exactly like assertSatisfied().

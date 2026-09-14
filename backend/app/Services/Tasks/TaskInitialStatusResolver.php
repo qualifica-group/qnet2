@@ -20,7 +20,7 @@ use App\Models\TaskStatus;
  *
  * Resolves the destination row by `system_key`, never by label — the
  * convention every class in this namespace that reaches for a protected
- * status row follows (see App\Services\Tasks\TaskActionService::systemStatusId()).
+ * status row follows (see App\Services\Tasks\TaskCompletionService::systemStatusId()).
  *
  * Injectable rather than static, unlike TaskRecordRoles/TaskAbilityResolver:
  * those two are constrained to zero-argument construction by

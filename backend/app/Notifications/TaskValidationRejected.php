@@ -9,7 +9,7 @@ use App\Enums\NotificationLevelEnum;
 /**
  * Voce 5 della Mappa Notifiche di DOC Tasks.docx (spec 0119).
  *
- * Evento: TaskActionService::reject() su un Task in validazione.
+ * Evento: TaskCompletionService::reject() su un Task in validazione.
  * Destinatari: gli assegnatari del Task.
  * Canali: mail, database.
  */

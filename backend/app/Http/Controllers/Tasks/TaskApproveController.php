@@ -11,7 +11,7 @@ use App\Http\Requests\Tasks\ApproveTaskRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\Tasks\TaskActionService;
+use App\Services\Tasks\TaskCompletionService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -25,7 +25,7 @@ class TaskApproveController extends BaseApiController
     use AuthorizesRequests;
 
     public function __construct(
-        private readonly TaskActionService $service,
+        private readonly TaskCompletionService $service,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}

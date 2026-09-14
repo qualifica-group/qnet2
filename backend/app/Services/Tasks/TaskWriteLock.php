@@ -42,6 +42,8 @@ final class TaskWriteLock
 
     private const string DELETE_MESSAGE = 'This task is frozen and cannot be deleted.';
 
+    private const string BLOCKED_ACTION_MESSAGE = 'This task is blocked: unblock it before performing this action.';
+
     /**
      * @var array<int, TaskStatusGroup>
      */
@@ -76,6 +78,17 @@ final class TaskWriteLock
         throw ValidationException::withMessages(
             array_fill_keys($structuralKeys, [self::STRUCTURAL_WRITE_MESSAGE]),
         );
+    }
+
+    /**
+     * Spec 0116 D-8: a blocked Task admits no domain action except unblock().
+     * Shared by TaskCompletionService and TaskActionService.
+     */
+    public static function assertNotBlocked(Task $task): void
+    {
+        if ($task->is_blocked) {
+            abort(409, self::BLOCKED_ACTION_MESSAGE);
+        }
     }
 
     public static function assertDeletable(Task $task): void

@@ -12,16 +12,16 @@ use App\Models\Task;
  * CURRENT status (spec 0116, D-1) — never a label. `is_blocked` is read
  * only by the two methods that name it directly: the veto it casts over
  * every OTHER action is a D-8 business rule, not availability, and lives in
- * App\Services\TaskActionService, which answers 409 for it.
+ * App\Services\Tasks\TaskWriteLock::assertNotBlocked(), which answers 409 for it.
  *
  * Modelled on App\Services\Contracts\ContractActionAvailability: an
  * availability rule, NOT an authorization one. Each caller
- * (App\Authorization\TasksAuthorization, App\Services\TaskActionService)
+ * (App\Authorization\TasksAuthorization, App\Services\Tasks\TaskCompletionService, App\Services\Tasks\TaskActionService)
  * still ANDs it with the actor's ability (TaskAbilityResolver), and
- * TaskActionService re-asserts the same rules server-side (422).
+ * TaskCompletionService/TaskActionService re-assert the same rules server-side (422).
  *
  * Injectable, unlike TaskRecordRoles/TaskAbilityResolver: only
- * TasksAuthorization and TaskActionService consume it, never the Policy.
+ * TasksAuthorization, TaskCompletionService and TaskActionService consume it, never the Policy.
  */
 class TaskActionAvailability
 {

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Tasks;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Tasks\TaskForSelectRequest;
 use App\Http\Resources\TaskForSelectResource;
-use App\Services\TaskService;
+use App\Services\Tasks\TaskForSelectService;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -22,11 +22,11 @@ use Throwable;
  * TaskVisibilityScope inside the Service (D-9), because that is a security
  * boundary and not a browse convenience.
  *
- * @see TaskService::forSelect
+ * @see TaskForSelectService::forSelect
  */
 class TaskForSelectController extends BaseApiController
 {
-    public function __construct(private readonly TaskService $service) {}
+    public function __construct(private readonly TaskForSelectService $service) {}
 
     public function __invoke(TaskForSelectRequest $request): JsonResponse
     {

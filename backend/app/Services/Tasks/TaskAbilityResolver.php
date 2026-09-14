@@ -10,7 +10,7 @@ use App\Models\User;
 /**
  * THE role -> action matrix (spec 0116, D-1/D-5) from the product document,
  * written in exactly ONE place. App\Policies\TaskPolicy,
- * App\Authorization\TasksAuthorization and App\Services\TaskActionService
+ * App\Authorization\TasksAuthorization, App\Services\Tasks\TaskCompletionService and App\Services\Tasks\TaskActionService
  * all read from here; none may duplicate a role condition, so they cannot
  * diverge by construction.
  *
@@ -97,7 +97,7 @@ final class TaskAbilityResolver
      * carries `requires_validation` AND the completing actor does NOT own
      * the mandate. Creator/requester/manager always close directly, even on
      * a flagged Task — they cannot be asked to validate their own mandate.
-     * The single source of the percorso derivato: TaskActionService,
+     * The single source of the percorso derivato: TaskCompletionService,
      * TaskValidationRequirementGuard and TasksAuthorization all call this,
      * never re-derive it (constraints).
      */

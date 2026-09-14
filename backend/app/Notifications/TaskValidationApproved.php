@@ -9,7 +9,7 @@ use App\Enums\NotificationLevelEnum;
 /**
  * Voce 4 della Mappa Notifiche di DOC Tasks.docx (spec 0119).
  *
- * Evento: TaskActionService::approve() su un Task in validazione.
+ * Evento: TaskCompletionService::approve() su un Task in validazione.
  * Destinatari: gli assegnatari del Task.
  * Canali: mail, database.
  *

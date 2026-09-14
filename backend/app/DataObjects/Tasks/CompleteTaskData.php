@@ -11,7 +11,7 @@ namespace App\DataObjects\Tasks;
  * `App\Services\Tasks\TaskAbilityResolver::completionRequiresValidation()`
  * does, off `requires_validation` and the actor's mandate — it only carries
  * WHICH `in_validation` status the caller chose, and only when that percorso
- * applies (`TaskActionService::complete()` enforces both directions of the
+ * applies (`TaskCompletionService::complete()` enforces both directions of the
  * requirement with a 422 on this field). `closure_feedback` applies to
  * either percorso and follows the nullable-column convention of
  * UpdateTaskData: the flag, not the value, decides whether the column is
