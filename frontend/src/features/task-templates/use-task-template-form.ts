@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import axios from 'axios'
+import { isPayloadTooLargeError } from '@/components/rich-text/rich-text-errors'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { uploadAttachment } from '@/features/attachments/api'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
@@ -232,6 +233,15 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
       toast.success(t('taskTemplates.form.created'))
       onSuccess(created)
     } catch (error) {
+      // Spec 0128 follow-up: the header AND every row description can carry
+      // inline `data:` images, so a 413 cannot be attributed to a single
+      // field — shown as the form's own generic error, same surface every
+      // other non-field failure already uses below. Values are untouched.
+      if (isPayloadTooLargeError(error)) {
+        setServerError(t('richText.errors.payloadTooLarge'))
+        return
+      }
+
       const appliedField = applyServerValidationErrors(error, form.setError, errorFields)
 
       let appliedItems = false

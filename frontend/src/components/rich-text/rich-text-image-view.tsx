@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +8,46 @@ import type { NodeViewProps } from '@tiptap/react'
 import { attachmentBinaryQueryKey, fetchAttachmentBinary } from '@/features/attachments/api'
 
 const THUMBNAIL_CLASS = 'my-1 inline-block max-w-full rounded-md align-middle'
+
+interface ObjectUrlStore {
+  subscribe: (onStoreChange: () => void) => () => void
+  getSnapshot: () => string | null
+}
+
+const EMPTY_OBJECT_URL_STORE: ObjectUrlStore = {
+  subscribe: () => () => {},
+  getSnapshot: () => null,
+}
+
+/**
+ * A `useSyncExternalStore`-compatible store around one blob's object URL.
+ * `subscribe` is what creates the URL (and revokes it on unsubscribe) —
+ * `getSnapshot` only ever reads the cached result. This is the
+ * `react-hooks/set-state-in-effect`-endorsed shape for "forcing a re-render
+ * to sync with an external data source" (its own message recommends exactly
+ * this over a raw `useState` + effect). It is also what makes it StrictMode-
+ * safe: a `useMemo`'d URL plus a separate cleanup effect left an
+ * already-revoked `blob:` URL behind after React's dev-mode mount→cleanup→
+ * remount effect replay (the memo never re-ran to create a fresh one) — here
+ * the replay re-invokes `subscribe` itself, which creates a fresh URL every
+ * time (see the regression test in rich-text-content.test.tsx).
+ */
+function createObjectUrlStore(blob: Blob): ObjectUrlStore {
+  let url: string | null = null
+  return {
+    subscribe(onStoreChange) {
+      url = URL.createObjectURL(blob)
+      onStoreChange()
+      return () => {
+        if (url) {
+          URL.revokeObjectURL(url)
+        }
+        url = null
+      }
+    },
+    getSnapshot: () => url,
+  }
+}
 
 /**
  * A saved image's bytes come from the authenticated blob endpoint, never a
@@ -25,14 +65,9 @@ function useSavedImageObjectUrl(attachmentId: number | null) {
     enabled: attachmentId !== null,
     staleTime: Infinity,
   })
-  const objectUrl = useMemo(() => (data ? URL.createObjectURL(data) : null), [data])
 
-  useEffect(() => {
-    if (!objectUrl) {
-      return
-    }
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [objectUrl])
+  const store = useMemo(() => (data ? createObjectUrlStore(data) : EMPTY_OBJECT_URL_STORE), [data])
+  const objectUrl = useSyncExternalStore(store.subscribe, store.getSnapshot, () => null)
 
   return { objectUrl, isError }
 }

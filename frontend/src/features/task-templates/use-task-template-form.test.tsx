@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError, AxiosHeaders } from 'axios'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { createTaskTemplate, updateTaskTemplate } from '@/features/task-templates/api'
@@ -246,5 +247,87 @@ describe('useTaskTemplateForm — staged attachments uploaded positionally after
     })
 
     expect(uploadAttachment).not.toHaveBeenCalled()
+  })
+})
+
+/** A 413: the header or a row's inline `data:` images exceeded the server's body limit. */
+function payloadTooLargeError(): AxiosError {
+  const error = new AxiosError('Payload Too Large')
+  error.response = {
+    status: 413,
+    statusText: 'Payload Too Large',
+    data: { success: false, message: 'Payload too large.' },
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  }
+  return error
+}
+
+/**
+ * Spec 0128 follow-up: a 413 cannot be attributed to a single field — the
+ * header AND every row description can carry images — so it surfaces as the
+ * form's own generic error, same surface every other non-field failure uses.
+ */
+describe('useTaskTemplateForm — a 413 surfaces as the form error (spec 0128)', () => {
+  it('sets serverError on create, form values untouched', async () => {
+    vi.mocked(createTaskTemplate).mockRejectedValueOnce(payloadTooLargeError())
+
+    const { result } = renderHook(
+      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.form.setValue('name', 'Standard onboarding')
+      result.current.form.setValue('description', '<p><img data-attachment-id="1"></p>')
+      result.current.addItemRow()
+    })
+    act(() => result.current.updateItemRow(result.current.itemRows[0].id, { title: 'Kickoff' }))
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.onSubmit)()
+    })
+
+    expect(result.current.serverError).toBe(i18n.t('richText.errors.payloadTooLarge'))
+    expect(result.current.form.getValues('name')).toBe('Standard onboarding')
+    expect(result.current.form.getFieldState('description').error).toBeUndefined()
+  })
+
+  it('sets serverError on edit too, not an item error', async () => {
+    vi.mocked(updateTaskTemplate).mockRejectedValueOnce(payloadTooLargeError())
+
+    const existing = taskTemplate({
+      items_count: 1,
+      items: [
+        {
+          id: 5,
+          title: 'Kickoff',
+          description: null,
+          estimated_minutes: null,
+          task_status_id: null,
+          task_status: null,
+          due_offset_days: 0,
+          sort_order: 0,
+          attachments: [],
+        },
+      ],
+    })
+    const { result } = renderHook(
+      () =>
+        useTaskTemplateForm({
+          mode: {
+            type: 'edit',
+            taskTemplate: { ...existing, permissions: { resource: {} as never, fields: {}, actions: {} } },
+          },
+          onSuccess: () => undefined,
+        }),
+      { wrapper: wrapper() },
+    )
+
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.onSubmit)()
+    })
+
+    expect(result.current.serverError).toBe(i18n.t('richText.errors.payloadTooLarge'))
+    expect(result.current.itemsError).toBeNull()
   })
 })

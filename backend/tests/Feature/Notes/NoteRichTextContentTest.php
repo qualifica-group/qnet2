@@ -1,10 +1,12 @@
 <?php
 
+use App\Models\Attachment;
 use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -15,10 +17,27 @@ use Spatie\Permission\Models\Permission;
 |
 | AC-002: a mention node survives sanitizing (notes-only), a script does not.
 | AC-007: the note_text_max cap applies to the VISIBLE text, not the raw HTML.
-| AC-008: an HTML fragment with no visible text and no image is "empty" (422).
+| AC-008: an HTML fragment with no visible text and no image is "empty" (422),
+| INCLUDING one whose only apparent content is an `img` the sanitizer/image
+| processor later strips (e.g. a remote `src`) — RichTextPlainText::isEmpty()
+| on the raw request body cannot tell that apart from a real image, so
+| NoteService re-checks on the FINAL processed body (D-2).
 */
 
 uses(RefreshDatabase::class);
+
+// Shared verbatim with NoteRichTextImagesTest.php (guarded: both load into the
+// same process when the Notes suite runs together).
+if (! defined('VALID_PNG_BASE64')) {
+    define('VALID_PNG_BASE64', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+}
+
+if (! function_exists('pngDataUri')) {
+    function pngDataUri(): string
+    {
+        return 'data:image/png;base64,'.VALID_PNG_BASE64;
+    }
+}
 
 if (! function_exists('noteActor')) {
     /**
@@ -131,4 +150,63 @@ it('AC-008: an empty paragraph -> 422 body', function () {
     ])->assertStatus(422)->assertJsonValidationErrors('body');
 
     expect(Note::count())->toBe($countBefore);
+});
+
+// ---------------------------------------------------------------------------
+// AC-008 (D-2 re-check) — a body whose only apparent content is an `img` the
+// sanitizer/image processor strips (remote `src`, not a `data:` URI and no
+// owned `data-attachment-id`) is empty too, not a real image
+// ---------------------------------------------------------------------------
+
+it('AC-008: a body containing only a remote-src img -> 422 body, no note created', function () {
+    $actor = noteActor(['request-management.view', 'notes.create']);
+    $opportunity = noteManagedOpportunity($actor);
+    Sanctum::actingAs($actor);
+
+    $countBefore = Note::count();
+
+    $this->postJson('/api/notes', [
+        'entity_type' => 'request-management',
+        'entity_id' => $opportunity->id,
+        'body' => '<img src="https://evil.example/x.png">',
+    ])->assertStatus(422)->assertJsonValidationErrors('body');
+
+    expect(Note::count())->toBe($countBefore)
+        ->and(Attachment::count())->toBe(0);
+});
+
+it('AC-008: replacing a note\'s body with only a remote-src img on update -> 422 body, note unchanged', function () {
+    $actor = noteActor(['request-management.view', 'notes.create']);
+    $opportunity = noteManagedOpportunity($actor);
+    Sanctum::actingAs($actor);
+
+    $noteId = $this->postJson('/api/notes', [
+        'entity_type' => 'request-management',
+        'entity_id' => $opportunity->id,
+        'body' => '<p>Original</p>',
+    ])->assertCreated()->json('data.id');
+
+    $this->patchJson("/api/notes/{$noteId}", [
+        'body' => '<img src="https://evil.example/x.png">',
+    ])->assertStatus(422)->assertJsonValidationErrors('body');
+
+    $this->assertDatabaseHas('notes', ['id' => $noteId, 'body' => '<p>Original</p>', 'edited_at' => null]);
+});
+
+it('AC-008: a remote-src img alongside a valid data: image is NOT empty -> 201', function () {
+    Storage::fake('local');
+
+    $actor = noteActor(['request-management.view', 'notes.create']);
+    $opportunity = noteManagedOpportunity($actor);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/notes', [
+        'entity_type' => 'request-management',
+        'entity_id' => $opportunity->id,
+        'body' => '<p><img src="https://evil.example/x.png"></p><img src="'.pngDataUri().'" alt="">',
+    ])->assertCreated();
+
+    expect($response->json('data.body'))
+        ->not->toContain('evil.example')
+        ->toContain('data-attachment-id');
 });

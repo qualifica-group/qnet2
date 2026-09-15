@@ -46,6 +46,19 @@ function validationError(errors: Record<string, string[]>): AxiosError {
   return error
 }
 
+/** A 413: the payload (description's inline `data:` images) exceeded the server's body limit. */
+function payloadTooLargeError(): AxiosError {
+  const error = new AxiosError('Payload Too Large')
+  error.response = {
+    status: 413,
+    statusText: 'Payload Too Large',
+    data: { success: false, message: 'Payload too large.' },
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  }
+  return error
+}
+
 /**
  * The server stays the authority on every rule the client mirrors: the 422
  * path is never removed. `TaskHierarchyGuard` (D-12) and
@@ -118,6 +131,61 @@ describe('useTaskForm — server refusals land on their field (D-7/D-12)', () =>
     })
 
     expect(result.current.serverError).not.toBeNull()
+  })
+})
+
+/**
+ * Spec 0128 follow-up: a 413 means the description's inline images (D-3) blew
+ * past the server's body limit — surfaced on the only field that could have
+ * carried them, form values kept exactly as typed.
+ */
+describe('useTaskForm — a 413 lands on the description field (spec 0128)', () => {
+  it('sets the payload-too-large message on description, on create', async () => {
+    vi.mocked(createTask).mockRejectedValueOnce(payloadTooLargeError())
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.form.setValue('title', 'Richiamare')
+      result.current.form.setValue('description', '<p><img data-attachment-id="1"></p>')
+      result.current.form.setValue('task_status_id', 3)
+      result.current.form.setValue('assignee_ids', [31])
+      result.current.form.setValue('end_date', '2026-09-05')
+    })
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.onSubmit)()
+    })
+
+    expect(result.current.form.getFieldState('description').error?.message).toBe(
+      i18n.t('richText.errors.payloadTooLarge'),
+    )
+    // The form is not reset: what the user typed survives the failed submit.
+    expect(result.current.form.getValues('title')).toBe('Richiamare')
+    expect(result.current.form.getValues('description')).toBe('<p><img data-attachment-id="1"></p>')
+    expect(result.current.serverError).toBeNull()
+  })
+
+  it('sets it on edit too, instead of the generic banner', async () => {
+    const task = taskDetailWithPermissions()
+    vi.mocked(updateTask).mockRejectedValueOnce(payloadTooLargeError())
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'edit', task }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.form.setValue('description', '<p><img data-attachment-id="2"></p>')
+    })
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.onSubmit)()
+    })
+
+    expect(result.current.form.getFieldState('description').error?.message).toBe(
+      i18n.t('richText.errors.payloadTooLarge'),
+    )
+    expect(result.current.serverError).toBeNull()
   })
 })
 

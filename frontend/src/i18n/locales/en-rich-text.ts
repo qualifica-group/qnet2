@@ -31,6 +31,7 @@ export const richText = {
     imageTooLarge: 'The image exceeds the maximum size of {{size}} MB.',
     tooManyImages: "You've reached the maximum number of images for this field ({{max}}).",
     imageReadFailed: 'Could not read the image. Please try again.',
+    payloadTooLarge: 'The images are too large to save: reduce or remove some of them.',
   },
   content: {
     imageLoading: 'Loading image…',

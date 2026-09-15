@@ -7,6 +7,7 @@ import {
   RICH_TEXT_IMAGE_MAX_BYTES,
   RICH_TEXT_MAX_NEW_IMAGES,
 } from '@/components/rich-text/rich-text-constants'
+import { compressRichTextImage } from '@/components/rich-text/rich-text-image-compress'
 
 const RICH_TEXT_IMAGE_MAX_MB = RICH_TEXT_IMAGE_MAX_BYTES / (1024 * 1024)
 
@@ -60,17 +61,8 @@ export function useRichTextImageInsert(editor: Editor | null) {
           )
           continue
         }
-        // Step 2: reject an oversized file
-        if (file.size > RICH_TEXT_IMAGE_MAX_BYTES) {
-          toast.error(
-            t('richText.errors.imageTooLarge', {
-              defaultValue: "L'immagine supera la dimensione massima di {{size}} MB.",
-              size: RICH_TEXT_IMAGE_MAX_MB,
-            }),
-          )
-          continue
-        }
-        // Step 3: reject once the field already holds the max unsaved images
+        // Step 2: reject once the field already holds the max unsaved images
+        // (before spending any work downscaling/recompressing the file)
         if (countNewImages(editor) >= RICH_TEXT_MAX_NEW_IMAGES) {
           toast.error(
             t('richText.errors.tooManyImages', {
@@ -80,9 +72,22 @@ export function useRichTextImageInsert(editor: Editor | null) {
           )
           continue
         }
-        // Step 4: read as a data URI and insert the image node
+        // Step 3: downscale/recompress (413 mitigation) — the size check
+        // below runs on this result, never on the original file
+        const processedFile = await compressRichTextImage(file)
+        // Step 4: reject an oversized file
+        if (processedFile.size > RICH_TEXT_IMAGE_MAX_BYTES) {
+          toast.error(
+            t('richText.errors.imageTooLarge', {
+              defaultValue: "L'immagine supera la dimensione massima di {{size}} MB.",
+              size: RICH_TEXT_IMAGE_MAX_MB,
+            }),
+          )
+          continue
+        }
+        // Step 5: read as a data URI and insert the image node
         try {
-          const dataUri = await readFileAsDataUri(file)
+          const dataUri = await readFileAsDataUri(processedFile)
           editor.chain().focus().insertContent({ type: 'image', attrs: { src: dataUri } }).run()
         } catch {
           toast.error(

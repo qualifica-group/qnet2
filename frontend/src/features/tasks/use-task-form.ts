@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { isPayloadTooLargeError } from '@/components/rich-text/rich-text-errors'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useAuth } from '@/features/auth/use-auth'
 import { useResourcePermissions } from '@/features/authorization/permissions'
@@ -248,6 +249,14 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
       toast.success(t('tasks.form.created'))
       onSuccess(created)
     } catch (error) {
+      // Spec 0128 follow-up: the description's inline `data:` images can push
+      // the request past the server's body limit — surfaced on `description`,
+      // the only field that could have carried them. Form values (the typed
+      // HTML included) are untouched: `setError` never resets the form.
+      if (isPayloadTooLargeError(error)) {
+        form.setError('description', { message: t('richText.errors.payloadTooLarge') })
+        return
+      }
       // AC-022: `closure_feedback`/`task_status_id` have no field to land on
       // any more (D-5/D-7) — surface the server's own message as a toast
       // before falling back to the normal field mapping.

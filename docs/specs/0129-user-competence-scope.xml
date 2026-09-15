@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0129-user-competence-scope" status="approved" owner="utente" date="2026-09-15">
+
+  <goal>
+    Estendere la competenza utente (spec 0111) con tre modi di coprire piu' categorie senza
+    elencarle una per una: (1) un flag sul profilo "Competente per tutte le categorie", jolly
+    esplicito su qualunque record; (2) una riga "funzione aziendale -> tutte le categorie" di
+    quella funzione; (3) una riga su una categoria MADRE contenitore (es. "Formazione", oggi non
+    selezionabile) che copre tutte le sue figlie. Tutti gli usi attuali della competenza
+    (assegnazione bilanciata import/lead/richieste, verifica per-operatore di Gestione richieste,
+    picker `users/for-select`) rispettano la nuova semantica.
+  </goal>
+
+  <context>
+    Stato verificato nel repo (spec 0111 rev.2 committata):
+    - Tabella `employment_product_lines` (migration `2026_09_09_100000_...`, committata):
+      `employment_profile_id` cascade, `business_function_id` e `product_category_id` NOT NULL
+      restrictOnDelete, unique `emp_prod_lines_unique` sulla tripla, indici `emp_prod_lines_*_idx`.
+      Model `App\Models\EmploymentProductLine` (`#[Fillable(['business_function_id',
+      'product_category_id'])]`, D-7 0111), relazione `EmploymentProfile::productLines()`.
+    - `App\Models\EmploymentProfile`: `#[Fillable]` esplicito, casts (`is_manager` boolean),
+      `LogsModelActivity`.
+    - Competenza: `App\Services\Assignment\OperatorCompetence` (`competent()`,
+      `competentByRequirement()`, `competentUserIds()`, `configuredProfiles()` =
+      `EmploymentProfile::whereHas('productLines')`, chiusura discendente `closureOf()` via
+      `childIdMap()` su `CategoryHierarchy::parentIdMap()`, funzione effettiva via
+      `CategoryHierarchy::effectiveBusinessFunctionSummaries()`) + `CompetenceProfile::covers()`
+      (mappa funzione -> categorie coperte; categoria senza funzione effettiva -> basta la
+      copertura sotto qualunque funzione).
+      La riga sulla madre copre GIA' le figlie lato competenza: cio' che manca e' poterla SCEGLIERE.
+    - Consumatori di `OperatorCompetence` (tutti e soli): `App\Services\UserService::forSelect()`
+      (`whereIn('id', competentUserIds(...))` su `competence_category_ids`),
+      `App\Services\Assignment\AssignmentCandidates` (Sede AND competenza, usata da import
+      bulk-assign, `LeadAssignmentService`, `RequestAssignmentService`),
+      `App\Services\RequestManagement\RequestAttributionWriter` (`competent([$operatorId], ...)`).
+    - Validazione: `App\Http\Requests\Concerns\ValidatesEmployment` (`employmentRules()`,
+      `validateEmploymentProductLines()`, `persistedCompetenceCategoryIds()`,
+      `submittedProductLines()`, `toEmployment()`), che delega a
+      `App\Services\ProductLines\ProductLineSetValidator::rules()` (category `required` +
+      `App\Rules\SelectableProductCategory`) e `::pairErrors()` (duplicati + mismatch funzione).
+      Oggi una categoria `is_selectable=false` (contenitore) e' rifiutata (0111 D-4).
+    - Scrittura: `App\DataObjects\Users\EmploymentData` (`productLinesProvided`/`productLines`,
+      `attributes()`), `App\Services\EmploymentWriter` (`syncProductLines()` ->
+      `App\Services\ProductLines\ProductLineWriter::sync()`).
+    - Lettura: `App\Http\Resources\EmploymentResource::summarizeProductLines()`
+      (`summarizeByName()` gia' null-safe). Eager load in `UserService` (`employment.productLines.
+      businessFunction`, `employment.productLines.productCategory`).
+    - Permessi di campo: `App\Authorization\UsersAuthorization::fields()` (13 chiavi `employment.*`)
+      + `employmentFieldPermissions()`.
+    - Letture solo-funzione (NON dipendono dalla categoria): `App\Tables\Users\UserBusinessFunctionColumn`,
+      `App\Stats\Users\UsersStatsDefinition`.
+    - Seed/factory: `DemoEmploymentProfileSeeder`, `EmploymentProfileFactory`,
+      `EmploymentProductLineFactory`. Test rollback: `QuoteWorkflowMigrationTest` (`--step` 72 oggi).
+    - FE: `features/product-lines/product-lines-field.tsx` (`ProductLinesField`, prop
+      `enforceManagementModeCap`), `use-product-lines-field.ts`, `product-category-tree-select.tsx`
+      (`ProductCategoryTreeSelect`), `category-tree-scope.ts` (`pickableCategoryIdsFor()` =
+      `is_selectable` AND funzione effettiva), `product-lines-read-only-list.tsx`
+      (`ProductLinesReadOnlyList`, condiviso con offerte/opportunita'), `types.ts`
+      (`ProductLine`, `ProductLineRow`, `emptyProductLineRow()`).
+      Utenti: `user-form-assignment-section.tsx`, `user-schema.ts` (refinement riga incompleta),
+      `user-form-payload.ts` (`completeProductLines()`), `user-form-defaults.ts`
+      (`productLinesToRows()`), `user-assignment.ts` (`summarizeAssignment()`, blocker
+      `competence`), `user-form-summary.tsx`, `user-form-header.tsx`, `user-detail-sections.tsx`,
+      `types.ts` (`EmploymentProductLineInput`, `product_lines?: ProductLine[]`),
+      i18n `it-users-employment.ts`/`en-users-employment.ts`, `it-product-lines.ts`/`en-product-lines.ts`.
+
+    Decisioni congelate con l'utente il 2026-09-15:
+    - D-1: nuovo booleano `employment_profiles.covers_all_product_categories` (default false).
+      Se true l'utente e' competente per QUALSIASI record che richieda categorie, a prescindere
+      dalla funzione aziendale.
+    - D-2: flag true => le righe di competenza vengono CANCELLATE al salvataggio (uno stato solo,
+      niente righe dormienti). Inviare insieme flag true e righe non vuote e' un 422.
+    - D-3: una riga puo' avere `product_category_id: null` = "tutte le categorie della funzione":
+      copre ogni categoria richiesta la cui funzione EFFETTIVA (spec 0023) e' quella della riga.
+      Non copre categorie prive di funzione effettiva.
+    - D-4: ridondanza = 422 sulla riga: (F, null) insieme a (F, C) e' rifiutato sulla riga (F, C).
+    - D-5: nel form utente "tutte le categorie" si sceglie con una CHECKBOX per riga ("Tutte"),
+      che disabilita e svuota il select categoria.
+    - D-6 (richiesta utente in corso di pianificazione): se il flag non e' attivo, nella riga si
+      puo' scegliere anche una categoria MADRE contenitore (`is_selectable=false`, es.
+      "Formazione"): copre la categoria e tutti i suoi discendenti (chiusura INV-2 0110, gia'
+      in essere). Revoca D-4 della 0111 SOLO per il form utente: offerte/progetti/campagne/
+      richieste restano vincolati a `is_selectable`.
+
+    Decisioni derivate proposte (da validare in approvazione):
+    - D-7: una categoria e' ammessa su una riga (F, K) se la funzione effettiva di K e' F, OPPURE
+      se K non ha funzione effettiva ma almeno un suo discendente ha funzione effettiva F (madre
+      "neutra" che raccoglie figlie di piu' funzioni). La copertura resta per funzione: (F, K)
+      copre solo i discendenti di K con funzione effettiva F (comportamento gia' di
+      `CompetenceProfile::covers()`).
+    - D-8: la ridondanza D-4 si estende per coerenza alla chiusura: (F, K_madre) insieme a
+      (F, K_discendente) e' 422 sulla riga discendente. Stesso messaggio.
+    - D-9: il contratto delle righe di offerte/progetti/campagne/richieste NON cambia:
+      `ProductLineSetValidator` resta invariato; le regole della competenza vivono in un
+      validatore dedicato (nuovo) che riusa `CategoryHierarchy`. `ProductLineWriter` resta
+      l'unica scrittura (accetta `product_category_id` null senza modifiche di logica).
+    - D-10: il flag e' una colonna scalare di `employment_profiles`, quindi segue la semantica
+      degli altri scalari (`is_manager`): assente nel payload `employment` = false.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migration NUOVA: colonna `employment_profiles.covers_all_product_categories` boolean default false (dopo `is_manager`) + `employment_product_lines.product_category_id` nullable. `down()` cancella le righe con categoria null, ripristina NOT NULL, droppa la colonna.</item>
+      <item>`EmploymentProfile`: fillable + cast boolean del flag. `EmploymentProductLine` invariato.</item>
+      <item>`EmploymentData` + `ValidatesEmployment`: flag scalare; righe con categoria nullable; regole competenza (D-2, D-3, D-4, D-6, D-7, D-8) in un validatore dedicato `App\Services\Assignment\CompetenceLineSetValidator`.</item>
+      <item>`EmploymentWriter`: flag true => sync delle righe a vuoto (D-2), anche se `product_lines` e' assente dal payload.</item>
+      <item>`EmploymentResource`: `covers_all_product_categories`; `product_lines[].product_category` nullable.</item>
+      <item>`UsersAuthorization`: `FieldDefinition('employment.covers_all_product_categories', 'boolean', 'employment')` + ceiling; chiavi `employment.*` da 13 a 14.</item>
+      <item>`OperatorCompetence`/`CompetenceProfile`: flag = competente per tutto; riga categoria null = tutte le categorie con quella funzione effettiva. Nessuna modifica ai consumatori (ereditano la regola).</item>
+      <item>`EmploymentProfileFactory`: state `coversAllProductCategories()`; `DemoEmploymentProfileSeeder`: un utente demo con flag e una riga "tutte le categorie" (idempotente).</item>
+      <item>`QuoteWorkflowMigrationTest`: contatore `--step` 72 -> 73 (requisito cambiato: nuova migration, dichiarato).</item>
+      <item>FE `ProductLinesField`/`useProductLinesField`/`ProductCategoryTreeSelect`/`category-tree-scope`: variante competenza (checkbox "Tutte" per riga, categorie madre selezionabili secondo D-7), default card invariato.</item>
+      <item>FE `ProductLinesReadOnlyList`: categoria null resa come "Tutte le categorie".</item>
+      <item>FE utenti: switch flag nella sezione assegnazione (editor righe nascosto con flag attivo, righe svuotate), schema/payload/defaults/types, riepilogo e pill (`summarizeAssignment`: flag o riga completa = competenza presente), dettaglio utente, i18n it/en.</item>
+      <item>Test Pest + Vitest mappati sugli AC.</item>
+    </in>
+    <out>
+      <item>Offerte, opportunita', progetti, campagne, Gestione richieste: righe `product_lines` invariate (categoria obbligatoria e `is_selectable`).</item>
+      <item>Requisito dei record (`ImportRowCompetence`, `LeadCompetence`, `QuoteCompetence`) invariato.</item>
+      <item>`mode=single` server-side (R-1 spec 0110) resta fuori.</item>
+      <item>Colonna/filtro "tutte le categorie" nella tabella Utenti e nella stat `by_business_function`: non richiesti (le letture per funzione restano invariate e le righe con categoria null contano normalmente).</item>
+      <item>Migrazione dati esterna (`UsersSource`/`MapsExternalUserRecord`): il flag non viene importato.</item>
+      <item>Nessuna modifica a `lead`/`import` UI e al picker `users/for-select` lato FE: cambia solo quali utenti il server restituisce.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="POST|PATCH" path="/api/users | /api/users/{user}">
+      <request>
+        employment: {
+          ...campi esistenti invariati...,
+          covers_all_product_categories?: boolean,   // scalare (D-10): assente = false
+          product_lines?: array|null                 // tri-state invariato (0111)
+            [{ business_function_id: int (required, exists),
+               product_category_id: int|null }]      // null = tutte le categorie della funzione (D-3)
+        }
+        Regole:
+        - `product_category_id` non null: categoria esistente; ammessa anche se `is_selectable=false`
+          (D-6); la sua funzione effettiva e' la riga, oppure (senza funzione effettiva) almeno un
+          discendente ha quella funzione (D-7).
+        - `covers_all_product_categories: true` con `product_lines` non vuoto -> 422 (D-2).
+        - `covers_all_product_categories: true` e `product_lines` assente o [] -> righe cancellate.
+      </request>
+      <response status="200">
+        { success, message, data: { ...user..., employment: {
+            ...campi esistenti invariati...,
+            covers_all_product_categories: boolean,
+            product_lines?: [ { id: int,
+                                business_function: { id: int, name: string },
+                                product_category: { id: int, name: string } | null } ]
+        } } }
+      </response>
+      <errors>
+        422 `employment.product_lines` — flag true e righe non vuote (messaggio
+            `CompetenceLineSetValidator::ALL_CATEGORIES_WITH_LINES_MESSAGE`).
+        422 `employment.product_lines.{i}.business_function_id` — funzione inesistente o categoria
+            non riconducibile alla funzione (riusa `ProductLineSetValidator::BUSINESS_FUNCTION_MISMATCH_MESSAGE`).
+        422 `employment.product_lines.{i}.product_category_id` — categoria inesistente; coppia
+            ripetuta, incluse due righe (F, null) (riusa `ProductLineSetValidator::DUPLICATE_PAIR_MESSAGE`);
+            riga gia' coperta da (F, null) o da (F, antenata) (nuovo `CompetenceLineSetValidator::REDUNDANT_LINE_MESSAGE`).
+        422 `employment.covers_all_product_categories` — non booleano.
+        403 invariati (permessi di campo).
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/users/{user}">
+      <request>—</request>
+      <response status="200">Stessa shape `employment` della risposta sopra.</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/authorization/fields/users">
+      <request>—</request>
+      <response status="200">Chiavi `employment.*` da 13 a 14: entra `employment.covers_all_product_categories` (type `boolean`, section `employment`).</response>
+      <errors>—</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/users/for-select">
+      <request>`competence_category_ids[]` invariato.</request>
+      <response status="200">Shape invariata; l'insieme competente include gli utenti con flag (D-1) e quelli coperti da righe "tutte" (D-3) o su madri (D-6).</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH|POST" path="/api/imports/{domain}/{importRun}/rows/assign | /api/leads/assign-operators | /api/request-management/assign-operators">
+      <request>Invariata.</request>
+      <response status="200">Invariata (`updated`/`assigned`, `skipped`); cambia solo il pool di candidati competenti.</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <schema table="employment_profiles">
+      + covers_all_product_categories boolean NOT NULL default false (after `is_manager`).
+    </schema>
+    <schema table="employment_product_lines">
+      product_category_id: NOT NULL -> NULLABLE (FK `emp_prod_lines_category_fk` e unique invariati;
+      le righe (F, null) duplicate sono impedite dal validatore, non dall'unique, perche' MySQL
+      ammette NULL multipli).
+    </schema>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Competenza (unit/feature su OperatorCompetence) -->
+    <criterion id="AC-001">Dato un utente con `covers_all_product_categories=true` e nessuna riga, allora `competentUserIds([C])` lo include per qualunque categoria C, anche se C ha funzione effettiva diversa o nessuna.</criterion>
+    <criterion id="AC-002">Dato un utente con la riga (F1, null), allora e' competente per C1 con funzione effettiva F1 (anche se C1 e' figlia di una radice con F1 ereditata) e NON per C2 con funzione effettiva F2 ne' per una categoria senza funzione effettiva.</criterion>
+    <criterion id="AC-003">Dato un utente con la riga (F1, Madre) dove Madre e' `is_selectable=false`, allora e' competente per ogni discendente di Madre con funzione effettiva F1 e non per categorie fuori dal ramo.</criterion>
+    <criterion id="AC-004">Dato un utente senza righe e senza flag, allora non e' candidato per un record che richiede categorie (D-9 0111 invariata); un record senza categorie non esclude nessuno.</criterion>
+    <!-- Superfici di assegnazione (riusano la regola, un test per superficie) -->
+    <criterion id="AC-005">Assegnazione bilanciata su import: in una Sede con un operatore con flag e uno non configurato, le righe che richiedono una categoria vanno tutte all'operatore con flag, `skipped` = 0.</criterion>
+    <criterion id="AC-006">Assegnazione bilanciata su lead e su Gestione richieste: un operatore con la sola riga (F, null) riceve i record la cui categoria ha funzione effettiva F; quelli con funzione diversa risultano `skipped`.</criterion>
+    <criterion id="AC-007">`GET /api/users/for-select?competence_category_ids[]=C1` include l'utente con flag e l'utente con (F1, null) quando C1 ha funzione F1, e `total` e' coerente.</criterion>
+    <!-- Scrittura/lettura utente -->
+    <criterion id="AC-008">PATCH con `covers_all_product_categories: true` e `product_lines: []` su un utente con 2 righe: il flag e' persistito, le righe sono cancellate, la GET restituisce `covers_all_product_categories: true` e `product_lines: []`.</criterion>
+    <criterion id="AC-009">PATCH con `covers_all_product_categories: true` SENZA la chiave `product_lines` su un utente con righe: le righe sono cancellate (D-2).</criterion>
+    <criterion id="AC-010">PATCH con `covers_all_product_categories: true` e `product_lines` non vuoto: 422 su `employment.product_lines`, nulla e' persistito.</criterion>
+    <criterion id="AC-011">PATCH con la riga (F1, null): persistita con `product_category_id` null; la GET la restituisce con `product_category: null`.</criterion>
+    <criterion id="AC-012">PATCH con due righe (F1, null): 422 duplicato su `employment.product_lines.1.product_category_id`.</criterion>
+    <criterion id="AC-013">PATCH con (F1, null) e (F1, C1): 422 ridondanza su `employment.product_lines.1.product_category_id` (qualunque ordine: l'errore cade sulla riga specifica). Con (F1, null) e (F2, C2) passa.</criterion>
+    <criterion id="AC-014">PATCH con (F1, Madre) e (F1, Figlia di Madre): 422 ridondanza sulla riga Figlia (D-8).</criterion>
+    <criterion id="AC-015">PATCH con (F1, Madre `is_selectable=false` con funzione effettiva F1): passa. La stessa categoria nel `product_lines` di un'offerta/opportunita' resta 422 non selezionabile (nessuna regressione).</criterion>
+    <criterion id="AC-016">PATCH con (F1, Madre senza funzione effettiva e con almeno una figlia a F1): passa; con (F3, stessa Madre) senza discendenti a F3: 422 mismatch su `business_function_id` (D-7).</criterion>
+    <criterion id="AC-017">Il catalogo campi `users` espone `employment.covers_all_product_categories` (boolean, section employment); le chiavi `employment.*` sono 14. Un attore con quel campo readonly che rispedisce il valore identico non riceve 422.</criterion>
+    <criterion id="AC-018">`migrate:rollback` della nuova migration elimina le righe con categoria null, ripristina NOT NULL e droppa la colonna; `QuoteWorkflowMigrationTest` passa con `--step` 73.</criterion>
+    <criterion id="AC-019">`DemoEmploymentProfileSeeder` rieseguito due volte produce lo stesso numero di righe e almeno un profilo con flag true.</criterion>
+    <!-- Frontend -->
+    <criterion id="AC-020">Form utente: attivando lo switch "Competente per tutte le categorie" l'editor righe sparisce e il payload contiene `covers_all_product_categories: true` e `product_lines: []`; disattivandolo l'editor ricompare vuoto.</criterion>
+    <criterion id="AC-021">Form utente: spuntando "Tutte" su una riga con funzione scelta, il select categoria si disabilita e si svuota; il payload contiene `{business_function_id, product_category_id: null}`; la riga NON e' considerata incompleta dallo schema. Una riga con funzione, senza categoria e senza "Tutte" resta incompleta (errore di schema).</criterion>
+    <criterion id="AC-022">Form utente: nel select categoria di una riga una categoria madre `is_selectable=false` coerente con la funzione (D-7) e' selezionabile; nel form offerta/richiesta la stessa resta disabilitata e la checkbox "Tutte" non viene renderizzata.</criterion>
+    <criterion id="AC-023">Edit di un utente con riga persistita (F, null): la riga si apre con "Tutte" spuntata. Edit di un utente con flag: lo switch si apre attivo e l'editor e' nascosto.</criterion>
+    <criterion id="AC-024">`summarizeAssignment`: con flag attivo e zero righe non c'e' il blocker `competence`; una riga (F, null con "Tutte") conta come competenza.</criterion>
+    <criterion id="AC-025">Dettaglio utente: con flag mostra "Tutte le categorie" al posto della lista; una riga con categoria null e' resa "Funzione — Tutte le categorie". `ProductLinesReadOnlyList` nelle offerte resta invariata.</criterion>
+    <criterion id="AC-026">Chiavi i18n nuove presenti in it ed en con parita' di chiavi.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (composer/npm).</item>
+    <item>La regola di competenza vive SOLO in `OperatorCompetence`/`CompetenceProfile`: nessun consumatore la reimplementa.</item>
+    <item>`ProductLineSetValidator` e `SelectableProductCategory` non cambiano comportamento per i chiamanti attuali; il nuovo validatore riusa le costanti messaggio esistenti e `CategoryHierarchy` (batch, niente query per riga).</item>
+    <item>Migration nuova, reversibile; nessuna migration committata modificata. Nomi indice/FK esistenti invariati.</item>
+    <item>Authz server-side invariata: `UsersAuthorization` unico ceiling; il flag e' un campo con permesso proprio.</item>
+    <item>Identificatori in inglese; stringhe UI via i18next (`it-users-employment.ts`/`en-users-employment.ts`, `it-product-lines.ts`/`en-product-lines.ts`).</item>
+    <item>File entro 300 soft / 500 hard; `ProductLinesField` resta componente UI puro, logica in `useProductLinesField`. Default del componente (variante card) invariato per offerte/progetti/campagne/richieste.</item>
+    <item>UI compatta (ui-design.md §2): switch e checkbox shadcn esistenti in `components/ui/`, `text-xs`, nessun nuovo componente atomico se esiste.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint, ESLint, `cd frontend &amp;&amp; npx tsc -b --force` pulito.</item>
+  </constraints>
+
+</spec>

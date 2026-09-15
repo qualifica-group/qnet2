@@ -154,6 +154,35 @@ it('create/update: an empty <p></p> header description saves as null', function 
         ->assertJsonPath('data.description', null);
 });
 
+it('D-2: a header description that only LOOKS non-empty (a lone remote img, stripped by the sanitizer) saves as null', function () {
+    $actor = taskTemplateUserWith(['create', 'update', 'view']);
+    Sanctum::actingAs($actor);
+
+    $created = $this->postJson('/api/task-templates', [
+        'name' => 'Solo immagine remota',
+        'description' => '<img src="https://example.com/pic.png" alt="remote">',
+        'items' => [['title' => 'Riga', 'due_offset_days' => 0]],
+    ])->assertCreated();
+    expect($created->json('data.description'))->toBeNull()
+        ->and(Attachment::query()->count())->toBe(0);
+
+    // Same on PATCH, clearing a previously saved image (D-4 cleanup).
+    $create = $this->postJson('/api/task-templates', [
+        'name' => 'Con immagine da svuotare',
+        'description' => '<img src="'.richTextTinyPng().'" alt="pic">',
+        'items' => [['title' => 'Riga', 'due_offset_days' => 0]],
+    ])->assertCreated();
+    $template = TaskTemplate::query()->findOrFail($create->json('data.id'));
+    $attachment = Attachment::query()->where('attachable_type', $template->getMorphClass())->where('attachable_id', $template->id)->sole();
+
+    $this->patchJson("/api/task-templates/{$template->id}", [
+        'description' => '<img src="https://example.com/pic.png" alt="remote">',
+    ])->assertOk()->assertJsonPath('data.description', null);
+
+    expect(Attachment::query()->find($attachment->id))->toBeNull();
+    Storage::disk(config('attachments.disk'))->assertMissing($attachment->path);
+});
+
 // ---------------------------------------------------------------------------
 // Item description (owner: the row itself, D-3)
 // ---------------------------------------------------------------------------
@@ -175,6 +204,18 @@ it('create: an inline image in an item description becomes a rich_text attachmen
 
     expect($response->json('data.items.0.description'))
         ->toBe('<img alt="pic" data-attachment-id="'.$attachment->id.'">');
+});
+
+it('D-2: an item description that only LOOKS non-empty (a lone remote img, stripped by the sanitizer) saves as null', function () {
+    Sanctum::actingAs(taskTemplateUserWith(['create', 'view']));
+
+    $response = $this->postJson('/api/task-templates', [
+        'name' => 'Voce con immagine remota',
+        'items' => [['title' => 'Riga', 'due_offset_days' => 0, 'description' => '<img src="https://example.com/pic.png" alt="remote">']],
+    ])->assertCreated();
+
+    expect($response->json('data.items.0.description'))->toBeNull()
+        ->and(Attachment::query()->count())->toBe(0);
 });
 
 it('update (full sync): a corrupt inline image on an item description is 422 on items.N.description, template untouched', function () {

@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -29,12 +30,24 @@ if (!document.elementFromPoint) {
 const toastErrorMock = vi.fn()
 vi.mock('sonner', () => ({ toast: { error: (...args: unknown[]) => toastErrorMock(...args) } }))
 
+// Real compression needs `createImageBitmap`/canvas encoding jsdom doesn't
+// implement (covered in isolation by `rich-text-image-compress.test.ts`);
+// defaults to a pass-through here so the paste/drop tests below exercise the
+// insert hook's own logic, with one test overriding it to prove the hook
+// actually calls it and inserts whatever it returns.
+const compressRichTextImageMock = vi.fn(async (file: File) => file)
+vi.mock('@/components/rich-text/rich-text-image-compress', () => ({
+  compressRichTextImage: (file: File) => compressRichTextImageMock(file),
+}))
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
   toastErrorMock.mockReset()
+  compressRichTextImageMock.mockReset()
+  compressRichTextImageMock.mockImplementation(async (file: File) => file)
 })
 
 /** A saved image's node view queries via TanStack Query even when disabled (AC-020's `enabled` gate still needs a provider). */
@@ -159,6 +172,33 @@ describe('RichTextEditor (spec 0128 AC-017/AC-018/AC-019)', () => {
     expect(editorDom.textContent).toBe('hello')
   })
 
+  it('never calls onChange on mount for an untouched saved value (regression: falsely dirtied AC-023 unsaved-changes check)', async () => {
+    // Root cause: `Editor.setEditable`'s default `emitUpdate: true` fires
+    // `onChange` directly — bypassing the transaction pipeline's `docChanged`
+    // gate entirely — so the editable-state sync effect that runs on every
+    // mount was reporting a "change" the user never made, with the editor's
+    // own re-serialized (attribute-reordered) HTML.
+    const onChange = vi.fn()
+    render(
+      <RichTextEditor value='<p>txt <img data-attachment-id="42" alt=""></p>' onChange={onChange} />,
+      { wrapper: wrapper() },
+    )
+    await waitFor(() => expect(screen.getByText('txt', { exact: false })).toBeInTheDocument())
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('never calls onChange on mount under StrictMode either', async () => {
+    const onChange = vi.fn()
+    render(
+      <StrictMode>
+        <RichTextEditor value='<p>txt <img data-attachment-id="42" alt=""></p>' onChange={onChange} />
+      </StrictMode>,
+      { wrapper: wrapper() },
+    )
+    await waitFor(() => expect(screen.getByText('txt', { exact: false })).toBeInTheDocument())
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('inserts a pasted PNG as a data: image (AC-018)', async () => {
     const onChange = vi.fn()
     const { container } = render(<RichTextEditor value={null} onChange={onChange} />, { wrapper: wrapper() })
@@ -172,14 +212,36 @@ describe('RichTextEditor (spec 0128 AC-017/AC-018/AC-019)', () => {
     expect(toastErrorMock).not.toHaveBeenCalled()
   })
 
-  it('rejects a pasted file over the size limit with a toast and no insert (AC-018)', () => {
+  it('runs a large paste through compressRichTextImage and inserts its (webp) result (413 mitigation)', async () => {
+    const onChange = vi.fn()
+    const compressedWebp = new File([new Uint8Array([9, 9])], 'photo.webp', { type: 'image/webp' })
+    compressRichTextImageMock.mockImplementation(async () => compressedWebp)
+
+    const { container } = render(<RichTextEditor value={null} onChange={onChange} />, { wrapper: wrapper() })
+    const editorDom = container.querySelector('.ProseMirror') as HTMLElement
+    const originalPng = pngFile('big-photo.png', 4 * 1024 * 1024)
+
+    pasteFiles(editorDom, [originalPng])
+
+    await waitFor(() => expect(compressRichTextImageMock).toHaveBeenCalledWith(originalPng))
+    await waitFor(() =>
+      expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining('data:image/webp')),
+    )
+    expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a pasted file over the size limit with a toast and no insert (AC-018)', async () => {
     const onChange = vi.fn()
     const { container } = render(<RichTextEditor value={null} onChange={onChange} />, { wrapper: wrapper() })
     const editorDom = container.querySelector('.ProseMirror') as HTMLElement
 
     pasteFiles(editorDom, [pngFile('huge.png', 6 * 1024 * 1024)])
 
-    expect(toastErrorMock).toHaveBeenCalledTimes(1)
+    // The size check now runs on the compressed result (413 mitigation
+    // follow-up), one microtask tick after `compressRichTextImage` resolves
+    // (mocked as a pass-through here — real compression is covered in
+    // isolation by `rich-text-image-compress.test.ts`).
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1))
     expect(onChange).not.toHaveBeenCalledWith(expect.stringContaining('data:image/png'))
   })
 

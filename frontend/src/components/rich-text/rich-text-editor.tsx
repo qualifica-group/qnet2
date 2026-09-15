@@ -100,7 +100,13 @@ export function RichTextEditor({
   }, [editor, value])
 
   useEffect(() => {
-    editor?.setEditable(!disabled)
+    // `emitUpdate: false` is load-bearing (root cause of a real bug, spec
+    // 0128 follow-up): `Editor.setEditable`'s default emits `update` directly
+    // — bypassing the transaction pipeline entirely (no `docChanged` gate) —
+    // so on EVERY mount (`disabled` unchanged) this fired `onChange` with the
+    // editor's own re-serialized HTML, dirtying a freshly-opened, untouched
+    // form (AC-023: the edit-mode "did the user actually change it?" check).
+    editor?.setEditable(!disabled, false)
   }, [editor, disabled])
 
   useEffect(() => {

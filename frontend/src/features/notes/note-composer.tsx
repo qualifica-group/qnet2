@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
 import { RICH_TEXT_NOTE_TEXT_MAX } from '@/components/rich-text/rich-text-constants'
+import { isPayloadTooLargeError } from '@/components/rich-text/rich-text-errors'
 import { extractMentionIds, getVisibleTextLength } from '@/features/notes/note-rich-text'
 import { useNoteMentionExtension } from '@/features/notes/use-note-mention-extension'
 import { useCreateNote, useUpdateNote } from '@/features/notes/use-note-mutations'
@@ -144,12 +145,23 @@ export function NoteComposer({
       }
       onDone?.()
     } catch (error) {
-      const handled = applyServerValidationErrors(error, form.setError, ['body'])
-      if (!handled) {
-        form.setError('body', {
-          message: t('notes.composer.genericError', { defaultValue: "Invio non riuscito. Riprova." }),
-        })
+      // The editor content is never reset here (only on success, above): a
+      // rejected save — 422, 413 or anything else — leaves the draft (and any
+      // pasted image) in place so the user can trim it and retry.
+      if (applyServerValidationErrors(error, form.setError, ['body'])) {
+        return
       }
+      if (isPayloadTooLargeError(error)) {
+        form.setError('body', {
+          message: t('richText.errors.payloadTooLarge', {
+            defaultValue: 'Le immagini sono troppo pesanti per il salvataggio: riduci o rimuovi qualche immagine.',
+          }),
+        })
+        return
+      }
+      form.setError('body', {
+        message: t('notes.composer.genericError', { defaultValue: "Invio non riuscito. Riprova." }),
+      })
     }
   })
 

@@ -28,8 +28,12 @@ uses(RefreshDatabase::class);
 // A minimal, valid 1x1 transparent PNG (67 bytes decoded) — small enough to
 // stay well under image_max_kb by default, real enough for finfo to detect
 // image/png from the actual bytes (D-3: MIME is verified server-side, never
-// trusted from the data: URI's declared type).
-const VALID_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+// trusted from the data: URI's declared type). Guarded (not a plain `const`):
+// this constant is shared verbatim with NoteRichTextContentTest.php, and both
+// files load into the SAME process when the Notes suite runs together.
+if (! defined('VALID_PNG_BASE64')) {
+    define('VALID_PNG_BASE64', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+}
 
 if (! function_exists('noteActor')) {
     /**

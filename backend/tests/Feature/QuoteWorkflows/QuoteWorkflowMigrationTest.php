@@ -109,9 +109,12 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_15_100200_add_task_template_id_to_work_orders_table` (70th),
     // the task-templates module's two tables and its link onto `work_orders`,
     // and `2026_09_15_110000_add_work_order_note_to_time_entries_table`
-    // (71st), the snapshot of the segnatempo note mirrored onto its commessa.
-    // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 71]);
+    // (71st), the snapshot of the segnatempo note mirrored onto its commessa,
+    // and spec 0128 D-10's
+    // `2026_09_15_120000_convert_rich_text_columns_to_html` (72nd), the
+    // legacy notes/tasks/task-templates plain-text -> rich-text-HTML
+    // backfill. Adding a migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 72]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

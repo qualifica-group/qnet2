@@ -137,13 +137,27 @@ it('converts task_templates.description and task_template_items.description (AC-
         ->toBe('<p>Step one<br>Step two</p>');
 });
 
-it('is idempotent: a value that already looks like converted HTML is left untouched on re-run', function () {
+it('is idempotent: an already-clean HTML value is left byte-identical on re-run', function () {
     $template = TaskTemplate::factory()->create(['description' => '<p>Already converted</p>']);
 
     richTextColumnsMigration()->up();
 
     expect(DB::table('task_templates')->where('id', $template->id)->value('description'))
         ->toBe('<p>Already converted</p>');
+});
+
+it('sanitizes a legacy already-HTML row instead of skipping it, and stays stable on re-run', function () {
+    $template = TaskTemplate::factory()->create(['description' => '<p><script>x</script>ciao</p>']);
+
+    $migration = richTextColumnsMigration();
+    $migration->up();
+
+    $sanitized = DB::table('task_templates')->where('id', $template->id)->value('description');
+    expect($sanitized)->toBe('<p>ciao</p>');
+
+    $migration->up();
+
+    expect(DB::table('task_templates')->where('id', $template->id)->value('description'))->toBe($sanitized);
 });
 
 it('down() restores the original plain text for realistic content (round trip, AC-014)', function () {

@@ -246,4 +246,25 @@ describe('NoteComposer — 422 mapping', () => {
 
     await waitFor(() => expect(screen.getByText("Couldn't send. Try again.")).toBeInTheDocument())
   })
+
+  it('maps a 413 onto the body field and keeps the draft so the user can trim an image and retry', async () => {
+    createMutateAsync.mockRejectedValue(
+      new AxiosError('Payload Too Large', '413', undefined, undefined, {
+        status: 413,
+        data: { success: false, message: 'Payload Too Large' },
+      } as never),
+    )
+
+    renderComposer()
+    pasteText(bodyEditor(), 'Hello')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).not.toBeDisabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    const message = await screen.findByText(/too large to save/i)
+    expect(message).toHaveAttribute('role', 'alert')
+    expect(bodyEditor()).toHaveAttribute('aria-invalid', 'true')
+    // The draft is never reset on a failed save (only on success): the user can
+    // still remove the offending image and resubmit without retyping the note.
+    expect(bodyEditor().textContent).toContain('Hello')
+  })
 })

@@ -33,7 +33,8 @@ final class TaskTemplateDescriptionWriter
      */
     public function applyOnCreate(Model $owner, ?string $rawHtml, User $actor, string $field): void
     {
-        $owner->setAttribute('description', $this->sanitizedOrNull($owner, $rawHtml, $actor, $field));
+        [$html] = $this->process($owner, $rawHtml, $actor, $field);
+        $owner->setAttribute('description', $html);
     }
 
     /**
@@ -45,25 +46,37 @@ final class TaskTemplateDescriptionWriter
      */
     public function applyOnUpdate(Model $owner, ?string $rawHtml, User $actor, string $field): void
     {
-        $keepIds = [];
-
-        if ($rawHtml !== null && ! RichTextPlainText::isEmpty($rawHtml)) {
-            $result = $this->images->process($rawHtml, $owner, $actor, false, $field);
-            $owner->setAttribute('description', $result->html);
-            $keepIds = $result->referencedAttachmentIds;
-        } else {
-            $owner->setAttribute('description', null);
-        }
+        [$html, $keepIds] = $this->process($owner, $rawHtml, $actor, $field);
+        $owner->setAttribute('description', $html);
 
         DB::afterCommit(fn () => $this->images->deleteUnreferenced($owner, $keepIds));
     }
 
-    private function sanitizedOrNull(Model $owner, ?string $rawHtml, User $actor, string $field): ?string
+    /**
+     * Sanitizes/processes $rawHtml for $owner (D-1..D-4). Two distinct
+     * inputs both collapse to "empty" (D-2, null persisted): a $rawHtml that
+     * is ALREADY blank/imageless, and one that only LOOKS non-blank — e.g. a
+     * lone `<img src="https://remote">`, which carries no
+     * `data-attachment-id` the sanitizer can trust and is stripped entirely —
+     * so the result must be re-checked AFTER process(), not assumed from the
+     * raw input alone.
+     *
+     * @return array{0: ?string, 1: array<int, int>} the html (or null) and
+     *                                               the attachment ids still
+     *                                               referenced by it
+     */
+    private function process(Model $owner, ?string $rawHtml, User $actor, string $field): array
     {
         if ($rawHtml === null || RichTextPlainText::isEmpty($rawHtml)) {
-            return null;
+            return [null, []];
         }
 
-        return $this->images->process($rawHtml, $owner, $actor, false, $field)->html;
+        $result = $this->images->process($rawHtml, $owner, $actor, false, $field);
+
+        if (RichTextPlainText::isEmpty($result->html)) {
+            return [null, []];
+        }
+
+        return [$result->html, $result->referencedAttachmentIds];
     }
 }

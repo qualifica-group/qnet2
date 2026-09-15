@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -56,6 +57,38 @@ describe('RichTextContent (spec 0128 AC-020)', () => {
       expect(img).toHaveAttribute('src', 'blob:mock-url')
     })
     expect(fetchAttachmentBinaryMock).toHaveBeenCalledWith(5, 'view')
+  })
+
+  it('keeps a live (non-revoked) blob URL under StrictMode double-invoke (regression: saved image never showed after reload)', async () => {
+    let nextId = 0
+    const revoked = new Set<string>()
+    URL.createObjectURL = vi.fn(() => `blob:mock-${nextId++}`)
+    URL.revokeObjectURL = vi.fn((url: string) => revoked.add(url))
+
+    // Reproduces the real-world trigger: the blob is already in the query
+    // cache (`staleTime: Infinity`, e.g. a second mount of the same field in
+    // the same session) so `data` is truthy on the very FIRST render —
+    // exactly the condition StrictMode's dev-mode mount→cleanup→remount
+    // needs to revoke a URL a `useMemo` never gets the chance to recompute.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    client.setQueryData(['attachment-binary', 5], new Blob(['x'], { type: 'image/png' }))
+
+    const { container } = render(
+      <StrictMode>
+        <QueryClientProvider client={client}>
+          <RichTextContent html='<img data-attachment-id="5" alt="">' />
+        </QueryClientProvider>
+      </StrictMode>,
+    )
+
+    // `.ProseMirror-separator` is ProseMirror's own cursor-placement `<img>`
+    // (no `src`) rendered next to every atom node — excluded so the query
+    // waits for the actual content image, not this always-present decoy.
+    const contentImageSelector = 'img:not(.ProseMirror-separator)'
+    await waitFor(() => expect(container.querySelector(contentImageSelector)).not.toBeNull())
+    const img = container.querySelector(contentImageSelector) as HTMLImageElement
+    expect(img.src.startsWith('blob:mock-')).toBe(true)
+    expect(revoked.has(img.src)).toBe(false)
   })
 
   it('shows an accessible placeholder when the attachment fetch fails (AC-020)', async () => {

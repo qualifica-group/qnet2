@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\RichText\RichTextConverter;
+use App\RichText\RichTextSanitizer;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -21,9 +22,12 @@ use Illuminate\Support\Facades\DB;
  * builder never applies `SoftDeletingScope` in the first place.
  *
  * Idempotent by construction: a value whose trimmed form already starts
- * with `<p>` is assumed already converted and left untouched by `up()`, so
- * re-running it (e.g. after a later deploy inserts more legacy rows) never
- * double-escapes existing HTML.
+ * with `<p>` is assumed already converted, so `up()` never re-runs the
+ * plain-text conversion on it (never double-escapes existing HTML) — but it
+ * is still passed through `RichTextSanitizer` so an already-HTML legacy row
+ * ends up D-1-conformant too (a value stored before the sanitizer existed
+ * could carry e.g. a `<script>`). Sanitizing already-sanitized HTML is
+ * itself stable, so re-running `up()` a second time is a true no-op.
  */
 return new class extends Migration
 {
@@ -31,10 +35,12 @@ return new class extends Migration
 
     public function up(): void
     {
-        $this->convertColumn('notes', 'body', convertMentionTokens: true, nullable: false);
-        $this->convertColumn('tasks', 'description', convertMentionTokens: false, nullable: true);
-        $this->convertColumn('task_templates', 'description', convertMentionTokens: false, nullable: true);
-        $this->convertColumn('task_template_items', 'description', convertMentionTokens: false, nullable: true);
+        $sanitizer = new RichTextSanitizer;
+
+        $this->convertColumn('notes', 'body', convertMentionTokens: true, nullable: false, sanitizer: $sanitizer);
+        $this->convertColumn('tasks', 'description', convertMentionTokens: false, nullable: true, sanitizer: $sanitizer);
+        $this->convertColumn('task_templates', 'description', convertMentionTokens: false, nullable: true, sanitizer: $sanitizer);
+        $this->convertColumn('task_template_items', 'description', convertMentionTokens: false, nullable: true, sanitizer: $sanitizer);
     }
 
     public function down(): void
@@ -56,17 +62,28 @@ return new class extends Migration
      * — for that one case the original text is preserved verbatim, escaped,
      * inside a `<p>` rather than losing the row's data.
      */
-    private function convertColumn(string $table, string $column, bool $convertMentionTokens, bool $nullable): void
-    {
+    private function convertColumn(
+        string $table,
+        string $column,
+        bool $convertMentionTokens,
+        bool $nullable,
+        RichTextSanitizer $sanitizer,
+    ): void {
         DB::table($table)
             ->whereNotNull($column)
             ->orderBy('id')
-            ->chunkById(self::CHUNK_SIZE, function ($rows) use ($table, $column, $convertMentionTokens, $nullable) {
-                DB::transaction(function () use ($rows, $table, $column, $convertMentionTokens, $nullable) {
+            ->chunkById(self::CHUNK_SIZE, function ($rows) use ($table, $column, $convertMentionTokens, $nullable, $sanitizer) {
+                DB::transaction(function () use ($rows, $table, $column, $convertMentionTokens, $nullable, $sanitizer) {
                     foreach ($rows as $row) {
                         $original = (string) $row->$column;
 
                         if (self::looksLikeHtml($original)) {
+                            $sanitized = $sanitizer->sanitize($original, $convertMentionTokens);
+
+                            if ($sanitized !== $original) {
+                                DB::table($table)->where('id', $row->id)->update([$column => $sanitized]);
+                            }
+
                             continue;
                         }
 

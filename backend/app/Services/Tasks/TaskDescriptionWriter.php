@@ -32,7 +32,8 @@ final class TaskDescriptionWriter
      */
     public function applyOnCreate(Task $task, ?string $rawHtml, User $creator): void
     {
-        $task->description = $this->sanitizedOrNull($task, $rawHtml, $creator);
+        [$html] = $this->process($task, $rawHtml, $creator);
+        $task->description = $html;
     }
 
     /**
@@ -43,25 +44,37 @@ final class TaskDescriptionWriter
      */
     public function applyOnUpdate(Task $task, ?string $rawHtml, User $actor): void
     {
-        $keepIds = [];
-
-        if ($rawHtml !== null && ! RichTextPlainText::isEmpty($rawHtml)) {
-            $result = $this->images->process($rawHtml, $task, $actor, false, 'description');
-            $task->description = $result->html;
-            $keepIds = $result->referencedAttachmentIds;
-        } else {
-            $task->description = null;
-        }
+        [$html, $keepIds] = $this->process($task, $rawHtml, $actor);
+        $task->description = $html;
 
         DB::afterCommit(fn () => $this->images->deleteUnreferenced($task, $keepIds));
     }
 
-    private function sanitizedOrNull(Task $task, ?string $rawHtml, User $actor): ?string
+    /**
+     * Sanitizes/processes $rawHtml for $task (D-1..D-4). Two distinct inputs
+     * both collapse to "empty" (D-2, null persisted): a $rawHtml that is
+     * ALREADY blank/imageless, and one that only LOOKS non-blank — e.g. a
+     * lone `<img src="https://remote">`, which carries no
+     * `data-attachment-id` the sanitizer can trust and is stripped entirely —
+     * so the result must be re-checked AFTER process(), not assumed from the
+     * raw input alone.
+     *
+     * @return array{0: ?string, 1: array<int, int>} the html (or null) and
+     *                                               the attachment ids still
+     *                                               referenced by it
+     */
+    private function process(Task $task, ?string $rawHtml, User $actor): array
     {
         if ($rawHtml === null || RichTextPlainText::isEmpty($rawHtml)) {
-            return null;
+            return [null, []];
         }
 
-        return $this->images->process($rawHtml, $task, $actor, false, 'description')->html;
+        $result = $this->images->process($rawHtml, $task, $actor, false, 'description');
+
+        if (RichTextPlainText::isEmpty($result->html)) {
+            return [null, []];
+        }
+
+        return [$result->html, $result->referencedAttachmentIds];
     }
 }

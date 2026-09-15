@@ -166,6 +166,35 @@ it('AC-008: an empty <p></p> description saves as null on both POST and PATCH', 
         ->assertJsonPath('data.description', null);
 });
 
+it('D-2: a description that only LOOKS non-empty (a lone remote img, stripped by the sanitizer) saves as null on POST', function () {
+    Sanctum::actingAs(taskActorWith(['create', 'view']));
+
+    $response = $this->postJson('/api/tasks', taskPayload([
+        'description' => '<img src="https://example.com/pic.png" alt="remote">',
+    ]))->assertCreated();
+
+    expect($response->json('data.description'))->toBeNull()
+        ->and(Attachment::query()->count())->toBe(0);
+});
+
+it('D-2: the same PATCH clears an existing description to null and deletes its now-unreferenced images', function () {
+    $actor = taskActorWith(['create', 'update', 'view']);
+    Sanctum::actingAs($actor);
+
+    $create = $this->postJson('/api/tasks', taskPayload([
+        'description' => '<img src="'.richTextTinyPng().'" alt="pic">',
+    ]))->assertCreated();
+    $task = Task::query()->findOrFail($create->json('data.id'));
+    $attachment = Attachment::query()->where('attachable_type', $task->getMorphClass())->where('attachable_id', $task->id)->sole();
+
+    $this->patchJson("/api/tasks/{$task->id}", [
+        'description' => '<img src="https://example.com/pic.png" alt="remote">',
+    ])->assertOk()->assertJsonPath('data.description', null);
+
+    expect(Attachment::query()->find($attachment->id))->toBeNull();
+    Storage::disk(config('attachments.disk'))->assertMissing($attachment->path);
+});
+
 it('AC-016: the meta field catalogue declares description as richtext', function () {
     Sanctum::actingAs(taskActorWith(['viewAny', 'create']));
 
