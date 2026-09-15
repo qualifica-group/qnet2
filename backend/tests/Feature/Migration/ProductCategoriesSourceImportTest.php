@@ -2,6 +2,7 @@
 
 use App\Enums\MigrationStatus;
 use App\Jobs\RunMigrationJob;
+use App\Models\BusinessFunction;
 use App\Models\MigrationRun;
 use App\Models\ProductCategory;
 use App\Models\Role;
@@ -300,4 +301,136 @@ it('never relinks an ADOPTED root into the legacy tree, however many times the i
         // Adopted, so its position is qnet's: the external `parent_id: 60` has
         // no say over it.
         ->and($seeded->fresh()->parent_id)->toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// business_function_id — remapped via old_id, one function per branch (spec 0023)
+// ---------------------------------------------------------------------------
+
+it('links the root to its business function and lets a same-function child inherit it', function () {
+    seedMigrationsConfig();
+    $function = BusinessFunction::factory()->create(['old_id' => 2]);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 1, 'name' => 'ISO', 'parent_id' => null, 'business_function_id' => 2],
+                ['id' => 2, 'name' => '9001', 'parent_id' => 1, 'business_function_id' => 2],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']);
+
+    runMigrationJobFor($run);
+
+    expect(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBe($function->id)
+        // Inherited from the root: authoring it again would break the
+        // one-function-per-branch invariant.
+        ->and(ProductCategory::query()->where('old_id', 2)->value('business_function_id'))->toBeNull()
+        ->and($run->fresh()->report)->toBeNull();
+});
+
+it('keeps the inherited function and warns when a child names a different one', function () {
+    seedMigrationsConfig();
+    BusinessFunction::factory()->create(['old_id' => 2]);
+    BusinessFunction::factory()->create(['old_id' => 13]);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 1, 'name' => 'ISO', 'parent_id' => null, 'business_function_id' => 2],
+                ['id' => 2, 'name' => 'FOR_Classi', 'parent_id' => 1, 'business_function_id' => 13],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']);
+
+    runMigrationJobFor($run);
+
+    $fresh = $run->fresh();
+
+    expect(ProductCategory::query()->where('old_id', 2)->value('business_function_id'))->toBeNull()
+        ->and($fresh->created_rows)->toBe(2)
+        ->and($fresh->failed_rows)->toBe(0)
+        ->and(collect($fresh->report)->firstWhere('level', 'warning'))->not->toBeNull();
+});
+
+it('creates the category without a function and warns when the function is not migrated', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [['id' => 1, 'name' => 'HACCP', 'parent_id' => null, 'business_function_id' => 23]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']);
+
+    runMigrationJobFor($run);
+
+    $fresh = $run->fresh();
+
+    expect(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBeNull()
+        ->and($fresh->created_rows)->toBe(1)
+        ->and(collect($fresh->report)->firstWhere('level', 'warning'))->not->toBeNull();
+});
+
+it('clears the own function of a detached child once relinked under a branch that provides one', function () {
+    seedMigrationsConfig();
+    $function = BusinessFunction::factory()->create(['old_id' => 2]);
+    BusinessFunction::factory()->create(['old_id' => 13]);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                // Child first: created detached, so it authors its own function.
+                ['id' => 2, 'name' => 'FOR_Classi', 'parent_id' => 1, 'business_function_id' => 13],
+                ['id' => 1, 'name' => 'ISO', 'parent_id' => null, 'business_function_id' => 2],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
+
+    $root = ProductCategory::query()->where('old_id', 1)->first();
+    $child = ProductCategory::query()->where('old_id', 2)->first();
+
+    expect($child->parent_id)->toBe($root->id)
+        ->and($root->business_function_id)->toBe($function->id)
+        ->and($child->business_function_id)->toBeNull();
+});
+
+it('fills the function of an adopted category only when its slot is free', function () {
+    seedMigrationsConfig();
+    $legacyFunction = BusinessFunction::factory()->create(['old_id' => 8]);
+    $manualFunction = BusinessFunction::factory()->create();
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 20, 'name' => 'APL', 'parent_id' => null, 'business_function_id' => 8],
+                ['id' => 21, 'name' => 'Formazione', 'parent_id' => null, 'business_function_id' => 8],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $free = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null, 'business_function_id' => null]);
+    $occupied = ProductCategory::factory()->create(['name' => 'Formazione', 'parent_id' => null, 'business_function_id' => $manualFunction->id]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
+
+    expect($free->fresh()->business_function_id)->toBe($legacyFunction->id)
+        // An assignment made in qnet is never overwritten by the import.
+        ->and($occupied->fresh()->business_function_id)->toBe($manualFunction->id);
 });

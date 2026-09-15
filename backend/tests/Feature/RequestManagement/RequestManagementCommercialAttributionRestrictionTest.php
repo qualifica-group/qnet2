@@ -8,7 +8,7 @@ use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
-use Database\Seeders\TestUsersSeeder;
+use Database\Seeders\QualificaOperatorSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
@@ -34,7 +34,7 @@ use Laravel\Sanctum\Sanctum;
  * unchanged and still asserted below: no reassignment, no reorder, no removal,
  * on any channel. The Sede operativa stays hidden outright.
  *
- * The restriction is seeded by TestUsersSeeder (the role matrix is the source
+ * The restriction is seeded by QualificaRoleSeeder (the role matrix is the source
  * of truth, not a hard-coded rule), so it is exercised against the real seeded
  * roles. Three layers close it, one per channel:
  *   - the `role_field_permissions` matrix — the work panel's read envelope,
@@ -48,7 +48,7 @@ uses(RefreshDatabase::class);
 if (! function_exists('restrictedCommercial')) {
     function restrictedCommercial(): User
     {
-        return User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
+        return User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
     }
 }
 
@@ -63,7 +63,7 @@ if (! function_exists('requestOperatedBy')) {
 }
 
 it('hides the Sede from the commercial work panel envelope', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
     $actor = restrictedCommercial();
     $quote = requestOperatedBy($actor);
@@ -86,7 +86,7 @@ it('shows the commercial a locked team it may only append to', function () {
     // Direttiva utente 2026-09-08: the two halves of the append-only state,
     // asserted together — a locked-but-visible `manager_slots` is what makes
     // the grant meaningful, and the grant is what makes the lock partial.
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
     $actor = restrictedCommercial();
     $quote = requestOperatedBy($actor);
@@ -102,7 +102,7 @@ it('shows the commercial a locked team it may only append to', function () {
 });
 
 it('lets the commercial append a manager past the persisted team', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
     $actor = restrictedCommercial();
     // The actor operates the request (slot 2), so the frozen prefix is the
@@ -122,9 +122,9 @@ it('lets the commercial append a manager past the persisted team', function () {
 });
 
 it('leaves both fields visible and editable for the supervisor', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
-    $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
+    $supervisor = User::query()->where('email', 'commercialegol@qualificagroup.it')->firstOrFail();
     Sanctum::actingAs($supervisor);
     $quote = Quote::factory()->create();
 
@@ -139,7 +139,7 @@ it('leaves both fields visible and editable for the supervisor', function () {
 });
 
 it('rejects the commercial PATCH of either field with a 422', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
     $actor = restrictedCommercial();
     $quote = requestOperatedBy($actor);
@@ -166,7 +166,7 @@ it('rejects the commercial PATCH of either field with a 422', function () {
 });
 
 it('refuses the commercial bulk assignment of the Operatore', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
     $actor = restrictedCommercial();
     $quote = requestOperatedBy($actor);
@@ -185,7 +185,7 @@ it('refuses the commercial bulk assignment of the Operatore', function () {
 });
 
 it('refuses either field on the commercial create, the one channel the matrix cannot reach', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
     $actor = restrictedCommercial();
     $site = OperationalSite::factory()->withAddress()->create();
@@ -214,7 +214,7 @@ it('refuses either field on the commercial create, the one channel the matrix ca
 });
 
 it('keeps the grid cells of both fields non-editable for the commercial', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
     $actor = restrictedCommercial();
     $quote = requestOperatedBy($actor);

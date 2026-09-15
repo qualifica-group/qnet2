@@ -5,7 +5,7 @@ use App\Models\Quote;
 use App\Models\Role;
 use App\Models\Source;
 use App\Models\User;
-use Database\Seeders\TestUsersSeeder;
+use Database\Seeders\QualificaOperatorSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
@@ -31,9 +31,9 @@ if (! function_exists('rolePermissionNames')) {
 // ---------------------------------------------------------------------------
 
 it('AC-051: the supervisor holds updateSource plus the field-change-requests permissions', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
-    $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
+    $supervisor = User::query()->where('email', 'commercialegol@qualificagroup.it')->firstOrFail();
 
     expect($supervisor->can('request-management.updateSource'))->toBeTrue()
         ->and($supervisor->can('field-change-requests.view'))->toBeTrue()
@@ -48,9 +48,9 @@ it('AC-051: the supervisor holds updateSource plus the field-change-requests per
 // ---------------------------------------------------------------------------
 
 it('grants the field-change-requests page permissions to the supervisor only', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
-    foreach (['campania@commerciale.com', 'umberto.santamaria@qualificagroup.com'] as $email) {
+    foreach (['customer@qualificagroup.it', 'social2@qualificagroup.it'] as $email) {
         $user = User::query()->where('email', $email)->firstOrFail();
 
         expect($user->can('field-change-requests.view'))->toBeFalse()
@@ -60,9 +60,9 @@ it('grants the field-change-requests page permissions to the supervisor only', f
 });
 
 it('still lets a commercial read the request they proposed, page permissions aside', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
-    $commercial = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
+    $commercial = User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
     $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
     $opportunity->managers()->sync([$commercial->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
     $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $commercial->id]);
@@ -88,18 +88,18 @@ it('still lets a commercial read the request they proposed, page permissions asi
 // ---------------------------------------------------------------------------
 
 it('AC-052: the commercial lacks updateSource but holds field-change-requests.create', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
-    $commercial = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
+    $commercial = User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
 
     expect($commercial->can('request-management.updateSource'))->toBeFalse()
         ->and($commercial->can('field-change-requests.create'))->toBeTrue();
 });
 
 it('AC-052: a commercial gets 422 writing the Fonte directly and 201 proposing a change request', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
-    $commercial = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
+    $commercial = User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
     $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
     $opportunity->managers()->sync([$commercial->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
     $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $commercial->id]);
@@ -123,17 +123,17 @@ it('AC-052: a commercial gets 422 writing the Fonte directly and 201 proposing a
 // ---------------------------------------------------------------------------
 
 it('AC-053: running the seeder twice produces the same permission set for every role', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
     $before = [
-        'supervisor' => rolePermissionNames('supervisor'),
-        'commercial' => rolePermissionNames('commercial'),
+        'supervisor' => rolePermissionNames('supervisore-commerciale'),
+        'commercial' => rolePermissionNames('commerciale'),
         'marketing' => rolePermissionNames('marketing'),
     ];
 
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
     $after = [
-        'supervisor' => rolePermissionNames('supervisor'),
-        'commercial' => rolePermissionNames('commercial'),
+        'supervisor' => rolePermissionNames('supervisore-commerciale'),
+        'commercial' => rolePermissionNames('commerciale'),
         'marketing' => rolePermissionNames('marketing'),
     ];
 

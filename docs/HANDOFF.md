@@ -3,6 +3,39 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE `product-categories` → FUNZIONE AZIENDALE (2026-09-15) — VERDE, NON COMMITTATO
+
+- Legacy (`/Users/Repository/qnet`, repo separato): `Api/V2/ProductCategoryMigrationController` espone
+  `business_function_id` = `service_categories.gruppo_lavoro_id` (0 → null), id di `/migration/business-functions`.
+- qnet-2: `Migrations/Support/CategoryBusinessFunctionLinker` rimappa via `BusinessFunction.old_id` rispettando
+  l'invariante spec 0023 (una sola funzione propria per ramo): figlio sotto un ramo che la fornisce eredita (own null,
+  warning se diversa); riferimento non migrato → warning; adozione → solo slot libero (no own/ereditata/discendenti);
+  figlio detached ricollegato → own + discendenti azzerati se il ramo la fornisce. Nuova colonna nativa preview.
+- Ordine: `business-functions` (fase 1) prima di `product-categories` (fase 4) — gia' garantito da `MigrationOrder`.
+- Test: `Migration/ProductCategoriesSourceImportTest` (+5). Legacy: 2 figli con funzione diversa dal padre
+  (`Ente_Iso`, `FOR_Classi`) → warning, non applicata.
+
+## SEED PRODUCTION — OPERATORI REALI DAL MANSIONARIO (2026-09-15) — NON COMMITTATO
+
+Fonte: `Mansionario Operatori_Abilitazioni.csv` (utente). Catena `QualificaProductionDataSeeder`: Template → Catalog →
+TaskTaxonomy → `TestUsersSeeder` (ora SOLO Ciro Cacciapuoti super-admin, attore dell'import) → LegacyImport →
+BusinessFunctionLink → **`QualificaOperatorSeeder`** (sostituisce `QualificaOperatorSiteLinkSeeder`, rimosso).
+- `QualificaCatalog/OperatorRoster.php`: 71 righe (3 senza email saltate). Sedi = CITTA', espanse a runtime su TUTTI i
+  siti con alias `== citta'` o `citta' + ' ...'` (primo per alias = fisico, resto = remoti). "Tutte" = solo fisico +
+  `covers_all_product_categories`. Categorie per nome catalogo; "APL <regione>" = ramo `APL`; **Consulenza mai assegnata
+  e NON collegata a COMMERCIALE** (decisione utente). Pomezia/Gaeta: nessuna sede legacy → warning.
+- `QualificaRoleSeeder` + `QualificaCatalog/OperatorRoleCatalogue.php`: ruoli a blocchi, NOMI RUOLO IN ITALIANO (richiesta
+  utente; costanti PHP in inglese). `supervisore-commerciale` ALLINEATO AL CSV (CSV aggiornato 15:34: prodotti + categorie
+  prodotti + anagrafiche + referenti completi, Marketing e Lead, Richieste complete + report, `quote-workflows`
+  "configuratore di stati", gruppo Premi e Incentivi, Richieste di modifica, Gestione Iscritti completa (CSV 15:46); niente Opportunita'/Task),
+  `coordinatore-commerciale` (prodotti/categorie/anagrafiche/referenti + Marketing e Lead + Richieste + report; niente
+  configuratore, premi, richieste modifica; + Gestione Iscritti completa), `marketing`, `commerciale` (anche senza `report`), `commerciale-iscritti` (+ iscritti
+  viewAny/view/viewSite), `supervisore-didattica` (+ viewSite richieste e iscritti). I vecchi ruoli inglesi
+  `supervisor`/`commercial` (`RETIRED_ROLES`) vengono CANCELLATI a ogni run (chi li aveva resta senza quel ruolo).
+- Password: `seeding.test_users_password` SOLO alla creazione; ruolo/sedi/competenza riconvergono a ogni run.
+- Test: `Seeding/QualificaOperatorSeederTest`, `Users/QualificaRoleMatrixTest` (ex TestUsersSeederTest),
+  `FieldChangeRequests/QualificaRolePermissionsTest`; gli altri test ruolo usano gli account reali .it.
+
 ## SPEC 0130 GESTIONE ISCRITTI (`enrollee-management`) — VERDE, COMMITTATO c86b49e5 (2026-09-15)
 
 Spec `docs/specs/0130-enrollee-management.xml` (approved). Clone operativo di Gestione Richieste senza file copiati:

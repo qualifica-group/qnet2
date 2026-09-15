@@ -11,7 +11,7 @@ use App\Models\Quote;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\RequestManagement\RequestManagementScope;
-use Database\Seeders\TestUsersSeeder;
+use Database\Seeders\QualificaOperatorSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Laravel\Sanctum\Sanctum;
@@ -392,9 +392,9 @@ it('permissions:sync creates request-management.viewSite and it is assignable fr
 });
 
 it('the seeded Commercial role does not hold viewSite (AC-015)', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
-    $commercial = Role::query()->where('name', 'commercial')->firstOrFail();
+    $commercial = Role::query()->where('name', 'commerciale')->firstOrFail();
 
     expect($commercial->hasPermissionTo('request-management.viewSite'))->toBeFalse()
         ->and($commercial->hasPermissionTo('request-management.viewAll'))->toBeFalse();

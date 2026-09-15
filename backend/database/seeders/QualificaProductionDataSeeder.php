@@ -34,16 +34,16 @@ use Illuminate\Database\Seeder;
  *                                    on it; it sits next to step 2 because it
  *                                    is the same kind of row, not because the
  *                                    order matters.
- *   4. TestUsersSeeder             — the named tester accounts and the
- *                                    supervisor/commercial/marketing roles.
+ *   4. TestUsersSeeder             — the named super-admin account.
  *   5. QualificaLegacyImportSeeder — the support tables pulled from the legacy
  *                                    system through the Migrazioni engine.
  *   6. QualificaBusinessFunctionLinkSeeder — assigns step 2's "Formazione"
  *                                    root and its "APL" subcategory to the
  *                                    business functions step 5 imports.
- *   7. QualificaOperatorSiteLinkSeeder — gives step 4's accounts the
- *                                    operational site step 5 imports, so they
- *                                    are selectable as operators.
+ *   7. QualificaOperatorSeeder     — the client's real operators (the
+ *                                    "Mansionario Operatori"), with their
+ *                                    roles, Sedi and product-category
+ *                                    competence.
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's source catalogue by name instead of duplicating
@@ -53,9 +53,8 @@ use Illuminate\Database\Seeder;
  *   - step 6 needs BOTH sides: step 2's category and step 5's function. Step 2
  *     already ran it once at its own end (a no-op here, the import had not run
  *     yet), which is why it is repeated — not moved — after step 5;
- *   - step 7 needs both sides too: step 4's accounts and step 5's sites. It is
- *     a separate step rather than part of step 4 for exactly that reason —
- *     step 4 has to precede the import, the sites only exist after it.
+ *   - step 7 needs the sites step 5 imports and the category functions step 6
+ *     links: a competence row carries the category's EFFECTIVE function.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Step 5 is a no-op with
@@ -76,6 +75,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(TestUsersSeeder::class);
         $this->call(QualificaLegacyImportSeeder::class);
         $this->call(QualificaBusinessFunctionLinkSeeder::class);
-        $this->call(QualificaOperatorSiteLinkSeeder::class);
+        $this->call(QualificaOperatorSeeder::class);
     }
 }

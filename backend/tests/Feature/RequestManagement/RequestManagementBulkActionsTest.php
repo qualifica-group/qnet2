@@ -338,7 +338,7 @@ it('the assignment skips a request outside the actor D-3 scope', function () {
  * User directive 2026-08-03: this endpoint writes the Operatore of many
  * requests at once, and a bulk write resolves no field permission — without
  * its own ability it would be the way around a per-field restriction (see
- * TestUsersSeeder's Commercial matrix).
+ * QualificaRoleSeeder's Commercial matrix).
  *
  * Both cases below deliberately submit an offer the single-mode check would
  * REJECT (no Sede, and an operator of another one): a missing ability must

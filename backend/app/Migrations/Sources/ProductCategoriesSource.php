@@ -6,6 +6,7 @@ use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
+use App\Migrations\Support\CategoryBusinessFunctionLinker;
 use App\Migrations\Support\ExternalApiClient;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\RequiresQuoteInheritance;
@@ -15,7 +16,9 @@ use RuntimeException;
 /**
  * `product-categories` migration source (spec 0013 / 0017): a SELF-referential
  * tree (id, name, parent_id, inherits_attributes, requires_quote,
- * is_selectable, description) created through ProductCategoryService.
+ * is_selectable, description, business_function_id) created through
+ * ProductCategoryService. `business_function_id` is an EXTERNAL business
+ * function id remapped via `old_id` (CategoryBusinessFunctionLinker).
  * `is_selectable` (spec 0074) is a plain per-node flag; `requires_quote` is
  * owned by the branch root and only authored on a rootless row (see
  * mapRequiresQuote()). `parent_id` is an EXTERNAL id remapped to the qnet
@@ -54,6 +57,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
         ExternalApiClient $client,
         private readonly ProductCategoryService $service,
         private readonly RequiresQuoteInheritance $requiresQuote,
+        private readonly CategoryBusinessFunctionLinker $businessFunctions,
     ) {
         parent::__construct($client);
     }
@@ -81,6 +85,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
             ['id' => 'requires_quote', 'label' => 'Requires quote (root only)', 'type' => 'boolean'],
             ['id' => 'is_selectable', 'label' => 'Selectable', 'type' => 'boolean'],
             ['id' => 'description', 'label' => 'Description', 'type' => 'string'],
+            ['id' => 'business_function_id', 'label' => 'Business function (external id)', 'type' => 'number'],
         ];
     }
 
@@ -108,6 +113,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
             'requires_quote' => $record['requires_quote'] ?? null,
             'is_selectable' => $record['is_selectable'] ?? null,
             'description' => $record['description'] ?? null,
+            'business_function_id' => $record['business_function_id'] ?? null,
         ];
     }
 
@@ -159,6 +165,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
             inheritsQuoteAttributes: $inheritsAttributes,
             inheritsWorkOrderAttributes: $inheritsAttributes,
             description: $this->mapDescription($record['description'] ?? null),
+            businessFunctionId: $this->businessFunctions->ownFunctionFor($record['business_function_id'] ?? null, $parentId, $warnings),
             requiresQuote: $this->mapRequiresQuote($record, $parentId),
             isSelectable: array_key_exists('is_selectable', $record)
                 ? (bool) $record['is_selectable']
@@ -193,6 +200,9 @@ class ProductCategoriesSource extends AbstractMigrationSource
      *     (spec 0074), so writing the external value here would only survive
      *     until the next seed, and would reopen a container in the meantime.
      *
+     * `business_function_id` is only filled into a FREE slot, so an assignment
+     * made in qnet (QualificaBusinessFunctionLinkSeeder, or by hand) survives.
+     *
      * `old_id` is set directly: it is not fillable, being the migration
      * engine's own bookkeeping rather than a domain field.
      *
@@ -200,14 +210,14 @@ class ProductCategoriesSource extends AbstractMigrationSource
      */
     private function adopt(ProductCategory $category, int|string $externalId, array $record): MigrationRowOutcome
     {
+        $warnings = [sprintf('Existing category "%s" adopted and refreshed instead of duplicated.', $category->name)];
+
         $category->old_id = $externalId;
         $category->fill($this->adoptableAttributes($record));
+        $this->businessFunctions->fillFreeSlot($category, $record['business_function_id'] ?? null, $warnings);
         $category->save();
 
-        return MigrationRowOutcome::created(
-            [sprintf('Existing category "%s" adopted and refreshed instead of duplicated.', $category->name)],
-            $category,
-        );
+        return MigrationRowOutcome::created($warnings, $category);
     }
 
     /**
@@ -273,9 +283,11 @@ class ProductCategoriesSource extends AbstractMigrationSource
 
                 // The relink changed the branch root: a category authored its
                 // own `requires_quote` while detached, so realign it and its
-                // subtree on the root's value (the invariant this bypassed by
-                // writing parent_id outside ProductCategoryService::update).
+                // subtree on the root's value, and let its business function give
+                // way to the branch's (the invariants this bypassed by writing
+                // parent_id outside ProductCategoryService::update).
                 $this->requiresQuote->syncSubtree($category);
+                $this->businessFunctions->realignAfterRelink($category);
             }
         });
     }

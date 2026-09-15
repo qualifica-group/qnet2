@@ -3,7 +3,7 @@
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
-use Database\Seeders\TestUsersSeeder;
+use Database\Seeders\QualificaOperatorSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
@@ -13,9 +13,9 @@ uses(RefreshDatabase::class);
  * The three read channels the "linea di prodotto" + "prodotti di interesse"
  * block of the request-management create form feeds on, exercised as the
  * Commercial role — the one role whose grants stop at its own module. Split
- * out of TestUsersSeederTest (file-size hard limit, engineering.md §6).
+ * out of QualificaRoleMatrixTest (file-size hard limit, engineering.md §6).
  */
-const COMMERCIAL_EMAIL = 'campania@commerciale.com';
+const COMMERCIAL_EMAIL = 'customer@qualificagroup.it';
 
 function commercialActor(): User
 {
@@ -29,7 +29,7 @@ function commercialActor(): User
 // `product-categories.viewAny` the first select answered and the second stayed
 // empty.
 it('lets the commercial role read both channels the product-lines row selects feed on', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
     Sanctum::actingAs(commercialActor());
 
@@ -38,7 +38,7 @@ it('lets the commercial role read both channels the product-lines row selects fe
 
     // Read-only: the grant is `viewAny` alone, so writing a category stays 403.
     // The menu entry, gated on `product-categories.view`, is covered by the
-    // exact-routes assertion in TestUsersSeederTest.
+    // exact-routes assertion in QualificaRoleMatrixTest.
     $this->postJson('/api/product-categories', ['name' => 'Nuova categoria'])->assertForbidden();
 });
 
@@ -48,7 +48,7 @@ it('lets the commercial role read both channels the product-lines row selects fe
 // `ProductsOfInterestField` disables itself while no category is chosen, and
 // the endpoint filters on the EXACT `category_id` of the picked categories.
 it('lets the commercial role read the products picker scoped to the categories of its rows', function () {
-    $this->seed(TestUsersSeeder::class);
+    $this->seed(QualificaOperatorSeeder::class);
 
     $category = ProductCategory::factory()->create();
     $inScope = Product::factory()->create(['category_id' => $category->id]);

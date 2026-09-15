@@ -21,10 +21,11 @@ return [
     | Tester account credentials
     |--------------------------------------------------------------------------
     |
-    | Shared plain-text password of the named tester accounts (TestUsersSeeder).
-    | Kept separate from the value above so the client-facing testers can be
-    | handed one credential without moving the demo/fixture accounts onto it.
-    | Same nature: a convenience credential for non-production environments.
+    | Shared plain-text password of the named super-admin (TestUsersSeeder) and
+    | the INITIAL password of the client's operators (QualificaOperatorSeeder,
+    | set on account creation only). Kept separate from the value above so the
+    | client-facing accounts can be handed one credential without moving the
+    | demo/fixture accounts onto it. Override it via TEST_USERS_SEED_PASSWORD.
     |
     */
 

@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Storage;
 
 // The single entry point for the client's production-like dataset. Each step
 // is covered by its own suite (QualificaTemplateSeederTest,
-// QualificaCatalogSeederTest, TestUsersSeederTest,
+// QualificaCatalogSeederTest, TestUsersSeederTest, QualificaOperatorSeederTest,
 // QualificaLegacyImportSeederTest); what is pinned HERE is that they run
 // together, in the order their dependencies require — and, since the user
 // directive 2026-09-08, that the chain produces NO fabricated row: the sample
@@ -36,7 +36,7 @@ beforeEach(function (): void {
     Storage::fake(config('attachments.disk'));
 });
 
-it('composes structure, catalogue and testers in one run', function (): void {
+it('composes structure, catalogue and operators in one run', function (): void {
     test()->seed(QualificaProductionDataSeeder::class);
 
     expect(CustomFieldDefinition::query()->where('entity_type', 'company-sites')->count())->toBe(36)
@@ -44,10 +44,11 @@ it('composes structure, catalogue and testers in one run', function (): void {
         ->and(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->count())->toBe(1)
         ->and(Product::query()->count())->toBe(266)
-        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->exists())->toBeTrue();
+        ->and(User::query()->where('email', 'ciro.cacciapuoti@qualificagroup.com')->exists())->toBeTrue()
+        ->and(User::query()->where('email', 'commercialegol@qualificagroup.it')->exists())->toBeTrue();
 });
 
-it('seeds the testers before the legacy import, so an actor always exists', function (): void {
+it('seeds the super-admin before the legacy import, so an actor always exists', function (): void {
     test()->seed(QualificaProductionDataSeeder::class);
 
     // The import runs on behalf of a super-admin; TestUsersSeeder is the step
@@ -56,17 +57,17 @@ it('seeds the testers before the legacy import, so an actor always exists', func
         ->toBeTrue();
 });
 
-it('gives the testers an operational site, so they are selectable as operators', function (): void {
+it('gives the operators their operational sites, so they are selectable as operators', function (): void {
     // The sites are imported by the legacy step, which is a no-op here: stand
     // one in first, exactly as the import would have left it.
-    $site = OperationalSite::factory()->create();
+    $site = OperationalSite::factory()->create(['alias' => 'FRATTAMAGGIORE 1 (HQ)']);
 
     test()->seed(QualificaProductionDataSeeder::class);
 
     // Spec 0103: the Operatore select filters users on this very pivot
     // membership, so an account without an employment profile never appears
     // in the list.
-    $employment = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')
+    $employment = User::query()->where('email', 'commercialegol@qualificagroup.it')
         ->with('employment.operationalSites')->firstOrFail()->employment;
 
     expect($employment->primaryOperationalSiteId)->toBe($site->getKey());
@@ -95,7 +96,7 @@ it('is idempotent: a second run duplicates nothing', function (): void {
     expect(Source::query()->count())->toBe(10)
         ->and(Product::query()->count())->toBe(266)
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)
-        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1);
+        ->and(User::query()->where('email', 'commercialegol@qualificagroup.it')->count())->toBe(1);
 });
 
 it('runs the q-crm import once, without the catalogue step asking again', function (): void {
