@@ -6,6 +6,7 @@ namespace App\Services\RequestManagement;
 
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use Illuminate\Support\Collection;
 
 /**
@@ -28,9 +29,13 @@ use Illuminate\Support\Collection;
 final class RequestCategoryTabsResolver
 {
     /**
+     * @param  RequestModule  $module  spec 0130: governs the D-2/D-3 scope
+     *                                 (row-state filter + visibility tiers).
+     *                                 Defaults to `Requests`, at parity for
+     *                                 every pre-0130 caller.
      * @return Collection<int, ProductCategory>
      */
-    public function resolve(User $user): Collection
+    public function resolve(User $user, RequestModule $module = RequestModule::Requests): Collection
     {
         // Step 1: one aggregated query — categories with >=1 offer in scope,
         // counting DISTINCT offers (a multi-category offer must not inflate
@@ -43,7 +48,7 @@ final class RequestCategoryTabsResolver
             ->join('quotes', 'quotes.opportunity_id', '=', 'opportunities.id');
 
         // Step 2: apply the module's visibility scope, whatever its tiers are.
-        RequestManagementScope::scopeToActor($query, $user);
+        RequestManagementScope::scopeToActor($query, $user, $module);
 
         // Step 3: only categories with a non-zero count in scope, ordered by name.
         return $query->groupBy('product_categories.id', 'product_categories.name')

@@ -230,17 +230,20 @@ final class AttributeGridColumns
     }
 
     /**
-     * `request-management.update` AND `attribute_values` editable in the
+     * `{$domain}.update` AND `attribute_values` editable in the
      * `role_field_permissions` matrix (spec 0064 contract) — the SAME combined
      * ceiling+DB-config check `ResolvesEditableColumns`/
      * `TableCellUpdateService::assertFieldEditable()` apply to every other
      * native column, resolved directly here since `attr.*` columns are not
-     * part of `columnsWithDefaultId()`.
+     * part of `columnsWithDefaultId()`. `$domain` (spec 0130) is the CALLER's
+     * own `TableDefinition::domain()` — `request-management` or
+     * `enrollee-management` — never hardcoded, so this ceiling check is
+     * evaluated against the RIGHT module's permissions.
      */
-    public function valuesEditable(User $actor): bool
+    public function valuesEditable(User $actor, string $domain): bool
     {
         try {
-            $authorization = $this->authorizationRegistry->resolve('request-management');
+            $authorization = $this->authorizationRegistry->resolve($domain);
         } catch (ModelNotFoundException) {
             return false;
         }

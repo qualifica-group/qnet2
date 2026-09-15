@@ -45,6 +45,7 @@ export const navigation = {
   timeEntries: 'Time tracking',
   commissionConfigurations: 'Commission Configurator',
   requestManagement: 'Request Management',
+  enrolleeManagement: 'Enrollee Management',
   fieldChangeRequests: 'Change Requests',
   rewards: 'Rewards & Incentives',
   rewardTypes: 'Vouchers, Rewards and Incentives',

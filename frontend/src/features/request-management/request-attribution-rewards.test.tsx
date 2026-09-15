@@ -199,6 +199,6 @@ describe('RequestAttributionSection — reward assignment (AC-031)', () => {
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({ rewards: [{ reward_type_id: 5 }] })
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({ rewards: [{ reward_type_id: 5 }] })
   })
 })

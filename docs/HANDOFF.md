@@ -3,6 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0130 GESTIONE ISCRITTI (`enrollee-management`) — VERDE, NON COMMITTATO (2026-09-15)
+
+Spec `docs/specs/0130-enrollee-management.xml` (approved). Clone operativo di Gestione Richieste senza file copiati:
+un solo codice, due moduli. Filtro = gruppo stato `validated`/`closed_won`; permessi `enrollee-management.*` separati.
+- Decisioni: D-7 export dei due domini su `{domain}.export` (non piu' `quotes.export`, cambia anche Richieste);
+  D-8 niente creazione in Iscritti (niente rotte store/form-context, niente permesso `create`: 16 abilita' + `updateSource`);
+  D-9 `POST /assignment/selection-scope` accetta `domain: 'enrollees'` (`AssignmentDomain::requestModule()`).
+- BE: `App\RequestManagement\RequestModule` (enum, UNICA fonte: `permission()`, `abilities()`, `allowsCreate()`,
+  `statusGroups()`, `recordPath()`, `fromRequest()` via route default `requestModule`). `RequestManagementScope` prende il
+  modulo come ultimo parametro (default Requests). Rotte in loop su `RequestModule::cases()`. Sottoclassi minime che
+  cambiano solo `module()`/`resource()`: `EnrolleeManagementPolicy`, `EnrolleeManagementTableDefinition`,
+  `EnrolleeManagementAuthorization`, `EnrolleeManagementNotable`, `EnrolleeManagementActivityAuthorizer`.
+  Report asincrono: modulo in `ExportRun.state['module']` (assente = Requests). Nessuna migrazione.
+- FE: `features/request-management/request-module.tsx` (`RequestModuleConfig` con `assignmentDomain`, `REQUEST_MODULE`,
+  `ENROLLEE_MODULE`, `RequestModuleProvider`, `useRequestModule()`); API con `basePath` come primo parametro, query key
+  e storage key con radice `module.key`; `enrollee-management-screens.tsx` (`generateRoutes: false`); pagine
+  `pages/enrollee-management-{page,detail-page}.tsx`; namespace i18n `enrolleeManagement`.
+- Regola: nuove differenze tra moduli SOLO come proprieta' di `RequestModule`/`RequestModuleConfig`, mai `if` sul modulo.
+- Test esistenti cambiati per requisito (dichiarati): `ProtectedFieldRegistryTest:54`, `RequestContactTransferGridTest` (D-7),
+  `RequestContactTransferPerspectiveTest` (AC-028), `FieldCatalogueEndpointTest:91`, `permissions-i18n-parity`, ~23 test FE
+  (indice posizionale `basePath`).
+- Verifica (verifier indipendente): Pest completo 7712/7717, unici rossi esterni `QualificaLegacyImportSeederTest`
+  (lavoro categorie prodotto spec 0131) + `FieldCatalogueEndpointTest` poi corretto (Authorization+EnrolleeManagement+
+  RequestManagement 885/885); Pint ok; Vitest 5232/5232; `tsc -b --force` ed ESLint puliti. AC-001..AC-018 verdi.
+- L'avviso nella voce "telefono obbligatorio" qui sotto su tsc/test rotti dalla 0130 era uno stato intermedio: risolto.
+- Aperti: grant dei permessi `enrollee-management.*` ai ruoli a cura dell'amministratore; deep link notifiche di
+  assegnazione restano su `/request-management/:id` (scope/out).
+
 ## SPEC 0129 COMPETENZA UTENTE: TUTTE LE CATEGORIE / RIGA "TUTTE" / CATEGORIA MADRE — VERDE, NON COMMITTATO (2026-09-15)
 
 Spec `docs/specs/0129-user-competence-scope.xml` (approved). Estende la 0111.

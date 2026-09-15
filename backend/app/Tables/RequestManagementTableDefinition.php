@@ -8,6 +8,7 @@ use App\Models\Attachment;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\RequestManagement\Concerns\WritesInlineEditableCells;
@@ -73,6 +74,13 @@ use Illuminate\Support\Facades\Auth;
  * App\Tables\Shared\OfferLinesColumn, replacing `products_of_interest` on
  * this domain only (AC-009: `opportunities` keeps its own untouched
  * ProductsOfInterestColumn).
+ *
+ * Spec 0130: every permission check and the D-3 scope both read their prefix
+ * off `module()` (defaulting to `RequestModule::Requests`, so this class is
+ * unchanged in behaviour) rather than the literal `request-management.`
+ * string — `App\Tables\EnrolleeManagementTableDefinition` overrides ONLY
+ * that one method to reuse every other line UNCHANGED for the
+ * `enrollee-management` domain (goal: "nessuna logica duplicata").
  */
 class RequestManagementTableDefinition extends AbstractTableDefinition
 {
@@ -104,9 +112,19 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
         return $this->clientColumns->applySearch($query, $columnId, $pattern);
     }
 
+    /**
+     * THE single override point spec 0130's EnrolleeManagementTableDefinition
+     * touches: every permission string and the D-3 scope below read their
+     * module off this ONE method (class docblock).
+     */
+    protected function module(): RequestModule
+    {
+        return RequestModule::Requests;
+    }
+
     public function domain(): string
     {
-        return 'request-management';
+        return $this->module()->value;
     }
 
     /**
@@ -119,12 +137,12 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
 
     /**
      * Dedicated permission check (see class docblock): NEVER delegates to
-     * QuotePolicy — `request-management` is a separate permission set (D-2),
+     * QuotePolicy — this module's own set (D-2) is a separate permission set,
      * independent of `quotes.viewAny`.
      */
     public function authorizeViewAny(User $actor): bool
     {
-        return $actor->can('request-management.viewAny');
+        return $actor->can($this->module()->permission('viewAny'));
     }
 
     /**
@@ -143,7 +161,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      */
     public function authorizeUpdate(User $actor, Model $row): bool
     {
-        return $actor->can('request-management.update');
+        return $actor->can($this->module()->permission('update'));
     }
 
     /**
@@ -156,7 +174,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      */
     public function authorizeDelete(User $actor, Model $row): bool
     {
-        return $actor->can('request-management.delete');
+        return $actor->can($this->module()->permission('delete'));
     }
 
     // updateCell()/optionsFor() (spec 0054, D-4/D-5) live in
@@ -229,8 +247,11 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             ->afterQuery($this->assignmentScope->warm(...));
 
         // D-3 scoping: THE single implementation of "solo le mie righe"
-        // (RequestManagementScope), fail-closed by construction.
-        return RequestManagementScope::scopeToActor($query, Auth::user());
+        // (RequestManagementScope), fail-closed by construction. The module
+        // carries BOTH the permission prefix and, for Enrollees, the D-2
+        // row-state filter (spec 0130) — evaluated unconditionally, ahead of
+        // and independent from the viewAll/operator/site tiers.
+        return RequestManagementScope::scopeToActor($query, Auth::user(), $this->module());
     }
 
     /**
@@ -254,7 +275,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      */
     public function actions(): array
     {
-        return RequestActionCatalog::actions();
+        return RequestActionCatalog::actions($this->module());
     }
 
     /**
@@ -329,24 +350,24 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     {
         $allowed = [];
 
-        if ($actor->can('request-management.view')) {
+        if ($actor->can($this->module()->permission('view'))) {
             $allowed[] = 'view';
             $allowed[] = 'notes';
         }
 
-        if ($actor->can('request-management.viewDocuments')) {
+        if ($actor->can($this->module()->permission('viewDocuments'))) {
             $allowed[] = 'documents';
         }
 
-        if ($actor->can('request-management.transferContact')) {
+        if ($actor->can($this->module()->permission('transferContact'))) {
             $allowed[] = 'transfer-contact';
         }
 
-        if ($actor->can('request-management.delete')) {
+        if ($actor->can($this->module()->permission('delete'))) {
             $allowed[] = 'delete';
         }
 
-        if ($actor->can('request-management.viewActivity')) {
+        if ($actor->can($this->module()->permission('viewActivity'))) {
             $allowed[] = 'activity';
         }
 

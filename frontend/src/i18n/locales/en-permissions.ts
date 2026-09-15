@@ -80,6 +80,8 @@ export const permissions = {
     contracts: 'Contracts',
     'custom-fields': 'Custom Fields',
     'document-layouts': 'Layouts',
+    // Spec 0130: validated/closed-won subset of Request Management, own permissions.
+    'enrollee-management': 'Enrollee Management',
     'field-change-requests': 'Change Requests',
     leads: 'Leads',
     'operational-sites': 'Operational Sites',

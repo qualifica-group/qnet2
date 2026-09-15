@@ -83,6 +83,8 @@ export const permissions = {
     contracts: 'Contratti',
     'custom-fields': 'Campi personalizzati',
     'document-layouts': 'Layout',
+    // Spec 0130: sottoinsieme validato/chiuso-vinto di Gestione Richieste, permessi propri.
+    'enrollee-management': 'Gestione Iscritti',
     'field-change-requests': 'Richieste di modifica',
     leads: 'Lead',
     'operational-sites': 'Sedi operative',

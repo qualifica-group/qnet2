@@ -21,6 +21,7 @@ use App\Http\Resources\RequestManagementResource;
 use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestAttributeResolver;
+use App\RequestManagement\RequestModule;
 use App\Services\QuoteService;
 use App\Services\RequestManagement\RequestAssignmentService;
 use App\Services\RequestManagement\RequestCreationService;
@@ -42,6 +43,17 @@ use Throwable;
  * Thin controller: permission gate + scope guard, FormRequest validation,
  * Service call, Resource output. Every action attaches the same
  * `permissions` metadata block (spec 0004) as OpportunityController.
+ *
+ * Spec 0130: every action resolves its `RequestModule` from the MATCHED
+ * route (`RequestModule::fromRequest($request)`, never from client input)
+ * and threads it through every permission check, scope call and service
+ * call — this controller serves BOTH `request-management` and
+ * `enrollee-management` (D-1/D-3), and no `if ($module === ...)` may live
+ * here (constraints): every difference reads off the enum. `store()`/
+ * `formContext()` still resolve and thread the module for consistency, even
+ * though their routes exist ONLY for a module whose `allowsCreate()` is true
+ * (D-8) — resolving `RequestModule::Requests`'s own `create` permission by
+ * hardcoding it would silently stop tracking the route file's own contract.
  *
  * @see RequestManagementService
  * @see RequestCreationService
@@ -72,7 +84,8 @@ class RequestManagementController extends BaseApiController
     public function formContext(RequestFormContextRequest $request): JsonResponse
     {
         try {
-            abort_unless($request->user()->can('request-management.create'), 403);
+            $module = RequestModule::fromRequest($request);
+            abort_unless($request->user()->can($module->permission('create')), 403);
 
             return $this->ok(new RequestFormContextResource(
                 $this->attributeResolver->forCategories($request->productCategoryIds(), FormMode::Create),
@@ -90,7 +103,8 @@ class RequestManagementController extends BaseApiController
     {
         try {
             $user = $request->user();
-            abort_unless($user->can('request-management.create'), 403);
+            $module = RequestModule::fromRequest($request);
+            abort_unless($user->can($module->permission('create')), 403);
 
             $data = $request->toData();
             // Assigning the team up front is a supervisory act (user
@@ -101,7 +115,7 @@ class RequestManagementController extends BaseApiController
             // OPERATOR slot (RequestCreationService), the same default an
             // absent key gets, so it stays open to every creator.
             abort_unless(
-                $this->submittedManagerSlots($data) === [] || $user->can('request-management.assignOperator'),
+                $this->submittedManagerSlots($data) === [] || $user->can($module->permission('assignOperator')),
                 403,
             );
             // Same rule for the Sede operativa (user directive 2026-08-03),
@@ -120,7 +134,7 @@ class RequestManagementController extends BaseApiController
 
             return $this->okWithPermissions(
                 new RequestManagementResource($panel),
-                $this->buildPermissions($user, $quote),
+                $this->buildPermissions($user, $quote, $module),
                 'Created',
                 HttpStatusEnum::CREATED,
             );
@@ -150,12 +164,13 @@ class RequestManagementController extends BaseApiController
     {
         try {
             $user = $request->user();
-            abort_unless($user->can('request-management.view'), 403);
-            $this->scope->assertInScope($user, $quote);
+            $module = RequestModule::fromRequest($request);
+            abort_unless($user->can($module->permission('view')), 403);
+            $this->scope->assertInScope($user, $quote, $module);
 
             return $this->okWithPermissions(
                 new RequestManagementResource($this->service->loadWorkPanel($quote)),
-                $this->buildPermissions($user, $quote),
+                $this->buildPermissions($user, $quote, $module),
             );
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['quote' => $quote->id]);
@@ -171,8 +186,9 @@ class RequestManagementController extends BaseApiController
     {
         try {
             $user = $request->user();
-            abort_unless($user->can('request-management.update'), 403);
-            $this->scope->assertInScope($user, $quote);
+            $module = RequestModule::fromRequest($request);
+            abort_unless($user->can($module->permission('update')), 403);
+            $this->scope->assertInScope($user, $quote, $module);
 
             $panel = $this->service->updateWork(
                 $quote,
@@ -230,7 +246,7 @@ class RequestManagementController extends BaseApiController
 
             return $this->okWithPermissions(
                 new RequestManagementResource($panel),
-                $this->buildPermissions($user, $quote),
+                $this->buildPermissions($user, $quote, $module),
                 'Updated',
             );
         } catch (Throwable $exception) {
@@ -249,8 +265,9 @@ class RequestManagementController extends BaseApiController
     {
         try {
             $user = $request->user();
-            abort_unless($user->can('request-management.delete'), 403);
-            $this->scope->assertInScope($user, $quote);
+            $module = RequestModule::fromRequest($request);
+            abort_unless($user->can($module->permission('delete')), 403);
+            $this->scope->assertInScope($user, $quote, $module);
 
             $this->quoteService->delete($quote);
 
@@ -285,14 +302,16 @@ class RequestManagementController extends BaseApiController
     {
         try {
             $user = $request->user();
-            abort_unless($user->can('request-management.update'), 403);
-            abort_unless($user->can('request-management.assignOperator'), 403);
+            $module = RequestModule::fromRequest($request);
+            abort_unless($user->can($module->permission('update')), 403);
+            abort_unless($user->can($module->permission('assignOperator')), 403);
 
             $outcome = $this->assignmentService->assignOperators(
                 $request->requestIds(),
                 $user,
                 $request->mode(),
                 $request->operatorId(),
+                $module,
             );
 
             return $this->ok(['assigned' => $outcome->assigned, 'skipped' => $outcome->skipped], 'Operators assigned');
@@ -322,13 +341,15 @@ class RequestManagementController extends BaseApiController
     {
         try {
             $user = $request->user();
-            abort_unless($user->can('request-management.update'), 403);
-            abort_unless($user->can('request-management.assignManagerGa1'), 403);
+            $module = RequestModule::fromRequest($request);
+            abort_unless($user->can($module->permission('update')), 403);
+            abort_unless($user->can($module->permission('assignManagerGa1')), 403);
 
             $assigned = $this->assignmentService->assignManagerGa1(
                 $request->requestIds(),
                 $user,
                 $request->managerGa1Id(),
+                $module,
             );
 
             return $this->ok(['assigned' => $assigned], 'Manager GA1 assigned');
@@ -354,14 +375,16 @@ class RequestManagementController extends BaseApiController
     {
         try {
             $user = $request->user();
-            abort_unless($user->can('request-management.update'), 403);
-            abort_unless($user->can('request-management.transferContact'), 403);
+            $module = RequestModule::fromRequest($request);
+            abort_unless($user->can($module->permission('update')), 403);
+            abort_unless($user->can($module->permission('transferContact')), 403);
 
             $transferred = $this->transferService->transfer(
                 $request->requestIds(),
                 $user,
                 $request->operationalSiteId(),
                 $request->operatorId(),
+                $module,
             );
 
             return $this->ok(['transferred' => $transferred], 'Contacts transferred');
@@ -372,11 +395,14 @@ class RequestManagementController extends BaseApiController
 
     /**
      * The `permissions` block for $quote, contextual to $actor (spec 0004).
+     * `resource` is $module's own value (spec 0130): `enrollee-management`
+     * resolves `EnrolleeManagementAuthorization` through
+     * `config('authorization.definitions')`, never `request-management`'s.
      *
      * @return array<string, mixed>
      */
-    private function buildPermissions(User $actor, ?Quote $quote): array
+    private function buildPermissions(User $actor, ?Quote $quote, RequestModule $module): array
     {
-        return $this->permissionsBuilder->build($this->authorization->resolve('request-management'), $actor, $quote);
+        return $this->permissionsBuilder->build($this->authorization->resolve($module->value), $actor, $quote);
     }
 }

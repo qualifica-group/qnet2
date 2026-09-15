@@ -47,6 +47,29 @@ return [
             ],
         ],
 
+        // Spec 0130: "Gestione Iscritti" is the SAME `source_id` field on the
+        // SAME underlying record, protected by its OWN ability
+        // (`enrollee-management.updateSource`, D-4/D-6) so the two modules'
+        // permission sets stay independent. `column`/`label` reuse the
+        // shared `requestManagement.*` vocabulary on purpose (constraints:
+        // "stringhe condivise restano in requestManagement.*") — only the
+        // resource label and record_path are Iscritti's own.
+        'enrollee-management' => [
+            'record_path' => '/enrollee-management',
+
+            'label' => 'navigation.enrolleeManagement',
+
+            'fields' => [
+
+                'source_id' => [
+                    'ability' => 'updateSource',
+                    'column' => 'source',
+                    'label' => 'requestManagement.columns.source',
+                ],
+
+            ],
+        ],
+
     ],
 
 ];

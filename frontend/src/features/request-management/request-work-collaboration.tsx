@@ -6,7 +6,7 @@ import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { useRequestModule } from '@/features/request-management/request-module'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 
 const NOTES_TAB = 'notes'
@@ -38,9 +38,10 @@ interface RequestWorkCollaborationProps {
  */
 export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWorkCollaborationProps) {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const { can } = useAbilities()
 
-  const canViewDocuments = can('request-management.viewDocuments')
+  const canViewDocuments = can(module.permission('viewDocuments'))
 
   return (
     <section className="min-w-0 rounded-xl border bg-card shadow-sm">
@@ -70,7 +71,7 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
         <div className="min-w-0 p-4">
           <TabsContent value={NOTES_TAB}>
             <NotesSection
-              entityType={REQUEST_MANAGEMENT_DOMAIN}
+              entityType={module.key}
               entityId={panel.opportunity_id}
               showHeader={false}
               lockedQuoteId={panel.id}
@@ -88,7 +89,7 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
           )}
           {canViewActivity && (
             <TabsContent value={ACTIVITY_TAB}>
-              <ActivityLogSection resource={REQUEST_MANAGEMENT_DOMAIN} id={panel.opportunity_id} />
+              <ActivityLogSection resource={module.key} id={panel.opportunity_id} />
             </TabsContent>
           )}
         </div>

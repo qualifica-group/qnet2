@@ -67,6 +67,8 @@ function ReportStatusNote({ tone, children }: { tone: ReportStatusTone; children
 }
 
 export interface RequestDashboardFilterBarProps {
+  /** The caller's `module.permission('report')` (spec 0130), same gate `RequestDashboardToggle` renders on. */
+  reportPermission: string
   /** Filters currently applied to the charts, for the human-readable summary. */
   filters: RequestReportFormValues
   /**
@@ -96,6 +98,7 @@ export interface RequestDashboardFilterBarProps {
  * not stored with the filters: it changes the file, never the charts.
  */
 export function RequestDashboardFilterBar({
+  reportPermission,
   filters,
   payload,
   categoryCount,
@@ -129,7 +132,7 @@ export function RequestDashboardFilterBar({
         <div className="flex items-center gap-2">
           {/* The permission ships unassigned by default, and the backend
               re-authorizes the three report routes regardless (spec 0106). */}
-          <Can permission="request-management.report">
+          <Can permission={reportPermission}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button type="button" size="sm" variant="outline" disabled={isBusy}>

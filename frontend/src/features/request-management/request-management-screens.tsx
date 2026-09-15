@@ -5,7 +5,7 @@ import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type { ModuleFormScreenProps, ModuleRegistryEntry } from '@/features/modules/types'
 import { RequestCreateForm } from '@/features/request-management/request-create-form'
 import { RequestWorkPanelScreen } from '@/features/request-management/request-work-panel'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { REQUEST_MODULE } from '@/features/request-management/request-module'
 
 /**
  * Create-only (spec 0057 D-7): `mode.type === 'create'` mounts the real
@@ -46,10 +46,10 @@ function RequestManagementFormScreen({ mode, onSuccess, onCancel }: ModuleFormSc
  * takes precedence) — see the comment there for why.
  */
 export const moduleScreen: ModuleRegistryEntry = {
-  domain: REQUEST_MANAGEMENT_DOMAIN,
-  basePath: '/request-management',
+  domain: REQUEST_MODULE.key,
+  basePath: REQUEST_MODULE.routeBasePath,
   defaultMode: OPEN_MODE_PAGE,
-  labelKey: 'navigation.requestManagement',
+  labelKey: REQUEST_MODULE.labelKey,
   DetailScreen: RequestWorkPanelScreen,
   FormScreen: RequestManagementFormScreen,
   // The create form's sticky bar IS the heading, with the save/cancel actions

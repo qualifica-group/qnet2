@@ -10,6 +10,7 @@ use App\Models\OperationalSite;
 use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
+use App\RequestManagement\RequestModule;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -38,27 +39,29 @@ use Spatie\Permission\Models\Permission;
  * Same dependency shape as RequestAssignmentService, minus the distributor:
  * this endpoint has no `balanced` mode (decision utente 2026-08-04, the
  * dialog only offers Sede + Operatore).
+ *
+ * Spec 0130: every call is parameterized by `RequestModule` — the D-3 row
+ * scope, the `receiveTransferNotifications` permission and the notification's
+ * deep link (RequestTransferredNotification) all come off it. Defaults to
+ * `Requests`, so the refactor is at parity for Gestione Richieste.
  */
 final class RequestTransferService
 {
-    /**
-     * The permission whose holders are copied on every transfer (spec 0081,
-     * decisione utente 2026-08-04). It replaces the `supervisor` ROLE this
-     * service used to look up, and it is never the Offerta's own
-     * `supervisor_id`/`operator_id`, which are different concepts entirely
-     * (see spec 0079 context; spec 0087, D-13/D-14 for the two-column split).
-     */
-    private const string TRANSFER_NOTIFICATION_PERMISSION = 'request-management.receiveTransferNotifications';
-
     public function __construct(
         private readonly RequestOperatorWriter $operatorWriter,
     ) {}
 
     /**
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
+     * @param  RequestModule  $module  spec 0130: governs the D-3 row scope,
+     *                                 the recipients of the supervisory copy
+     *                                 (`{module}.receiveTransferNotifications`)
+     *                                 and the notification's deep link.
+     *                                 Defaults to `Requests`, at parity for
+     *                                 every pre-0130 caller.
      * @return int the number of offers transferred
      */
-    public function transfer(array $requestIds, User $actor, int $operationalSiteId, int $operatorId): int
+    public function transfer(array $requestIds, User $actor, int $operationalSiteId, int $operatorId, RequestModule $module = RequestModule::Requests): int
     {
         // Resolved once for the whole batch: the destination Sede and the new
         // operator are the SAME for every offer this call touches.
@@ -68,9 +71,9 @@ final class RequestTransferService
         /** @var array<int, RequestTransferNotice> $notices */
         $notices = [];
 
-        $transferred = DB::transaction(function () use ($requestIds, $actor, $operationalSiteId, $operatorId, &$notices): int {
+        $transferred = DB::transaction(function () use ($requestIds, $actor, $operationalSiteId, $operatorId, $module, &$notices): int {
             // Step 1: drop the ids the actor may not reach (D-3 scoping).
-            $quotes = $this->inScopeQuotes($requestIds, $actor);
+            $quotes = $this->inScopeQuotes($requestIds, $actor, $module);
 
             if ($quotes->isEmpty()) {
                 return 0;
@@ -88,7 +91,7 @@ final class RequestTransferService
 
         // Step 3: dispatch AFTER the commit — a notification sent from inside
         // a transaction that later rolls back would be irrecoverable.
-        $this->dispatchNotifications($notices, $actor, $destinationSite, $newOperator);
+        $this->dispatchNotifications($notices, $actor, $destinationSite, $newOperator, $module);
 
         return $transferred;
     }
@@ -102,11 +105,11 @@ final class RequestTransferService
      * @param  array<int, int>  $requestIds
      * @return Collection<int, Quote>
      */
-    private function inScopeQuotes(array $requestIds, User $actor): Collection
+    private function inScopeQuotes(array $requestIds, User $actor, RequestModule $module): Collection
     {
         $query = Quote::query()->with('opportunity')->whereIn('id', $requestIds)->orderBy('id');
 
-        return RequestManagementScope::scopeToActor($query, $actor)->get();
+        return RequestManagementScope::scopeToActor($query, $actor, $module)->get();
     }
 
     /**
@@ -208,7 +211,7 @@ final class RequestTransferService
      *
      * @param  array<int, RequestTransferNotice>  $notices
      */
-    private function dispatchNotifications(array $notices, User $actor, OperationalSite $destinationSite, User $newOperator): void
+    private function dispatchNotifications(array $notices, User $actor, OperationalSite $destinationSite, User $newOperator, RequestModule $module): void
     {
         if ($notices === []) {
             return;
@@ -217,7 +220,7 @@ final class RequestTransferService
         $destinationLabel = OperationalSiteLabel::compose($destinationSite->primaryAddress);
         $transferredAt = Carbon::now();
         $previousOperators = $this->previousOperators($notices);
-        $supervisors = $this->supervisors($actor, $newOperator, $previousOperators);
+        $supervisors = $this->supervisors($actor, $newOperator, $previousOperators, $module);
 
         foreach ($notices as $notice) {
             $build = fn (TransferRecipientRoleEnum $role): RequestTransferredNotification => new RequestTransferredNotification(
@@ -233,6 +236,7 @@ final class RequestTransferService
                 // Spec 0086, MT-04b: the deep link's `/opportunities/:id`
                 // branch needs this DISTINCT id — `requestId` names the Quote.
                 opportunityId: $notice->opportunityId,
+                module: $module,
             );
 
             // Step 1: the outgoing operator — never the actor, and never the
@@ -277,11 +281,11 @@ final class RequestTransferService
     }
 
     /**
-     * Everyone holding `request-management.receiveTransferNotifications`
-     * (spec 0081, decisione utente 2026-08-04) — a PERMISSION, not the
-     * `supervisor` role this service used to hardcode: the grant survives
-     * roles being renamed or split, and it can be revoked per role from the
-     * roles screen.
+     * Everyone holding `{module}.receiveTransferNotifications` (spec 0081,
+     * decisione utente 2026-08-04; parameterized by module since spec 0130)
+     * — a PERMISSION, not the `supervisor` role this service used to
+     * hardcode: the grant survives roles being renamed or split, and it can
+     * be revoked per role from the roles screen.
      *
      * The actor, the incoming operator and every outgoing operator are
      * removed: they each already receive their own, more specific text, and
@@ -295,15 +299,17 @@ final class RequestTransferService
      * @param  Collection<int, User>  $previousOperators
      * @return Collection<int, User>
      */
-    private function supervisors(User $actor, User $newOperator, Collection $previousOperators): Collection
+    private function supervisors(User $actor, User $newOperator, Collection $previousOperators, RequestModule $module): Collection
     {
-        if (! Permission::query()->where('name', self::TRANSFER_NOTIFICATION_PERMISSION)->exists()) {
+        $permission = $module->permission('receiveTransferNotifications');
+
+        if (! Permission::query()->where('name', $permission)->exists()) {
             return new Collection;
         }
 
         $excludedIds = [$actor->id, $newOperator->id, ...$previousOperators->modelKeys()];
 
-        return User::permission(self::TRANSFER_NOTIFICATION_PERMISSION)
+        return User::permission($permission)
             ->get()
             ->reject(fn (User $user): bool => in_array($user->id, $excludedIds, true))
             ->values();

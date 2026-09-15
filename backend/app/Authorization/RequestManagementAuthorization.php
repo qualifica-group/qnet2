@@ -218,24 +218,24 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
     public function actionPermissions(User $actor, ?Model $model): array
     {
         return [
-            'export' => $actor->can('request-management.export'),
+            'export' => $actor->can($this->permission('export')),
             // Gates the ActivityLogSection in the panel (spec 0034/0049 D-7);
-            // the record-level `request-management.view` boundary is
-            // enforced separately by GET /api/activity-log/request-management/{id}.
-            'view_activity' => $model !== null && $actor->can('request-management.viewActivity'),
+            // the record-level `{resource}.view` boundary is enforced
+            // separately by GET /api/activity-log/{resource}/{id}.
+            'view_activity' => $model !== null && $actor->can($this->permission('viewActivity')),
             // Spec 0079: gates the "Trasferisci contatto" button in the work
             // panel (Lavora). Per-record like `view_activity` above: the
             // action operates on an existing request, so it must stay false
             // on the create form (`$model === null`). Requires BOTH abilities
             // because it's a write: it must mirror the double gate enforced
             // server-side by RequestManagementController::transfer()
-            // (`request-management.update` AND `.transferContact`), or this
-            // flag would tell the UI an action is allowed that the endpoint
-            // then rejects with 403. `export`/`view_activity` above are
-            // read-only and don't need `update`.
+            // (`{resource}.update` AND `.transferContact`), or this flag
+            // would tell the UI an action is allowed that the endpoint then
+            // rejects with 403. `export`/`view_activity` above are read-only
+            // and don't need `update`.
             'transfer_contact' => $model !== null
-                && $actor->can('request-management.update')
-                && $actor->can('request-management.transferContact'),
+                && $actor->can($this->permission('update'))
+                && $actor->can($this->permission('transferContact')),
             // Direttiva utente 2026-09-08: the RAW grant behind the team
             // block's third state — squadra visible, members already there
             // frozen, only additions allowed. Per-record like the two above:
@@ -249,8 +249,20 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // read — RequestTeamSection on the read side,
             // UpdateRequestRequest on the write side.
             'append_team_member' => $model !== null
-                && $actor->can('request-management.update')
-                && $actor->can('request-management.appendTeamMember'),
+                && $actor->can($this->permission('update'))
+                && $actor->can($this->permission('appendTeamMember')),
         ];
+    }
+
+    /**
+     * "{resource()}.{ability}" — the same concatenation
+     * `App\RequestManagement\RequestModule::permission()` performs, kept
+     * local so `actionPermissions()` never hardcodes `request-management.`
+     * and a resource subclass (EnrolleeManagementAuthorization) inherits it
+     * correctly for its own `resource()` (spec 0130).
+     */
+    private function permission(string $ability): string
+    {
+        return "{$this->resource()}.{$ability}";
     }
 }

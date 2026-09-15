@@ -149,6 +149,6 @@ describe('Work panel — the Supervisore (AC-013/AC-014)', () => {
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({ supervisor_id: SUPERVISOR_ID })
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({ supervisor_id: SUPERVISOR_ID })
   })
 })

@@ -169,7 +169,7 @@ describe('RequestDashboardPanel', () => {
     renderPanel(true)
 
     await waitFor(() =>
-      expect(fetchRequestManagementDashboardMock).toHaveBeenCalledWith({
+      expect(fetchRequestManagementDashboardMock).toHaveBeenCalledWith('/request-management', {
         date_from: '2026-03-02',
         date_to: '2026-03-06',
         category_keys: ['consulenza'],
@@ -198,7 +198,7 @@ describe('RequestDashboardPanel', () => {
     renderPanel(true)
 
     await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1))
-    const initialQuery = fetchRequestManagementDashboardMock.mock.calls[0][0]
+    const initialQuery = fetchRequestManagementDashboardMock.mock.calls[0][1]
     expect(initialQuery).toEqual({
       date_from: expect.any(String),
       date_to: expect.any(String),
@@ -212,6 +212,7 @@ describe('RequestDashboardPanel', () => {
 
     await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(2))
     expect(fetchRequestManagementDashboardMock).toHaveBeenLastCalledWith(
+      '/request-management',
       expect.objectContaining({ date_from: initialQuery.date_from, date_to: '2099-01-31' }),
     )
   })

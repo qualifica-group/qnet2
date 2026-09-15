@@ -8,6 +8,7 @@ use App\Enums\ExportStatus;
 use App\Enums\RequestManagementReportRowMode;
 use App\Models\ExportRun;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use App\Services\RequestManagement\Report\ReportSiteFilter;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
@@ -35,6 +36,14 @@ use Throwable;
  *     makes the report come out EMPTY instead of scoped.
  *  2. App::setLocale() from the run's FROZEN locale, never
  *     config('app.locale') — the SetLocale middleware never runs in queue.
+ *
+ * Spec 0130: the module is a THIRD frozen value, read the same optional way
+ * as operator_keys/site_keys (`$state['module'] ?? RequestModule::Requests
+ * ->value`) — RequestManagementScope is module-aware, and a queue worker has
+ * no route to resolve it from, so it MUST travel inside the run's own state
+ * rather than be re-derived. Skipping this on a real worker would silently
+ * generate every Iscritti report as if it were Gestione Richieste's own
+ * (no D-2 status filter, no independent D-5 perimeter).
  */
 class GenerateRequestManagementReportJob implements ShouldQueue
 {
@@ -65,7 +74,7 @@ class GenerateRequestManagementReportJob implements ShouldQueue
      */
     private function freezeContext(ExportRun $run): User
     {
-        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>} $state */
+        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>, module?: string} $state */
         $state = $run->state;
 
         /** @var User $actor */
@@ -83,7 +92,7 @@ class GenerateRequestManagementReportJob implements ShouldQueue
      */
     private function write(ExportRun $run, User $actor, RequestManagementReportGenerator $generator): void
     {
-        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>} $state */
+        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>, module?: string} $state */
         $state = $run->state;
 
         $disk = Storage::disk((string) config('exports.disk'));
@@ -101,7 +110,10 @@ class GenerateRequestManagementReportJob implements ShouldQueue
         // operator_keys (spec 0108) is read the same way but is OPTIONAL: a run
         // frozen before that spec has no such key, and its absence is the
         // "every operator" default, not an error (AC-014). site_keys (spec
-        // 0112) is the exact same case, one axis over (0112 AC-013).
+        // 0112) is the exact same case, one axis over (0112 AC-013). module
+        // (spec 0130) is the exact same case, one axis over again: a run
+        // frozen before that spec — or created under request-management —
+        // has no such key, and its absence is RequestModule::Requests.
         $rowCount = $generator->generate(
             $actor,
             $state['date_from'],
@@ -112,6 +124,7 @@ class GenerateRequestManagementReportJob implements ShouldQueue
             $disk->path($path),
             ReportOperatorFilter::fromKeysOrAll($state['operator_keys'] ?? null),
             ReportSiteFilter::fromKeysOrAll($state['site_keys'] ?? null),
+            RequestModule::from($state['module'] ?? RequestModule::Requests->value),
         );
 
         $run->update([

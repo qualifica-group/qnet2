@@ -368,7 +368,7 @@ describe('Work panel — changing the Sede clears the Operatore', () => {
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({
       operational_site_id: SITE_B.id,
       manager_slots: [7, null, null, null],
     })

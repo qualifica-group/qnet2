@@ -1,4 +1,5 @@
 import { useAssignmentScope } from '@/features/assignment/use-assignment-scope'
+import { useRequestModule } from '@/features/request-management/request-module'
 
 /**
  * The scope props of `AssignOperatorsDialog` resolved for a selection of
@@ -39,9 +40,10 @@ export interface QuoteAssignmentScope {
  * popup is actually shown.
  */
 export function useQuoteAssignmentScope(ids: number[], isOpen: boolean): QuoteAssignmentScope {
+  const { assignmentDomain } = useRequestModule()
   const { competenceCategoryIds, operationalSiteId, singleOperatorAvailable, isResolving } =
     useAssignmentScope({
-      selection: ids.length > 0 ? { domain: 'quotes', ids } : null,
+      selection: ids.length > 0 ? { domain: assignmentDomain, ids } : null,
       enabled: isOpen,
     })
 

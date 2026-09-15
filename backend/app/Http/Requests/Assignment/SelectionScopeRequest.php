@@ -41,7 +41,13 @@ class SelectionScopeRequest extends FormRequest
     public function rules(): array
     {
         $importRows = AssignmentDomain::ImportRows->value;
-        $idsDomains = AssignmentDomain::Leads->value.','.AssignmentDomain::Quotes->value;
+        // Every domain but ImportRows carries `ids` instead of `import_run_id`
+        // (spec 0130, D-9 added `enrollees` to that set) — built off the enum
+        // itself so a future domain never needs a second edit here.
+        $idsDomains = implode(',', array_map(
+            static fn (AssignmentDomain $domain): string => $domain->value,
+            array_filter(AssignmentDomain::cases(), static fn (AssignmentDomain $domain): bool => $domain !== AssignmentDomain::ImportRows),
+        ));
 
         return [
             'domain' => ['required', Rule::enum(AssignmentDomain::class)],
@@ -95,7 +101,7 @@ class SelectionScopeRequest extends FormRequest
     }
 
     /**
-     * The selected lead / offer ids (`domain` = leads | quotes).
+     * The selected lead / offer ids (`domain` = leads | quotes | enrollees).
      *
      * @return array<int, int>
      */

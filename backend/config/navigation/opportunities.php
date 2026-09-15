@@ -117,5 +117,19 @@ return [
                 ],
             ],
         ],
+        [
+            // Request Management (spec 0130): the SAME work panel as
+            // "Gestione Richieste" above, restricted to the requests already
+            // `validated`/`closed_won` (D-2) and gated by its OWN, independent
+            // `enrollee-management.*` permission set (D-4) — never
+            // `request-management.*`. No children: unlike Gestione Richieste
+            // it carries no change-request queue of its own (the single FCR
+            // queue stays under Gestione Richieste, scope §out).
+            'key' => 'enrollee-management',
+            'label' => 'navigation.enrolleeManagement',
+            'icon' => 'user-plus',
+            'route' => '/enrollee-management',
+            'permission' => 'enrollee-management.view',
+        ],
     ],
 ];

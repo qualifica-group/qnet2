@@ -36,7 +36,7 @@ trait WritesAttributeCells
         $ids = $this->inner->editableColumnIds($actor);
         $attributes = $this->categoryAttributes();
 
-        if ($attributes->isEmpty() || ! $this->attributeColumns->valuesEditable($actor)) {
+        if ($attributes->isEmpty() || ! $this->attributeColumns->valuesEditable($actor, $this->inner->domain())) {
             return $ids;
         }
 

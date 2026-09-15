@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchCategoryManagerLabels } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { useRequestModule } from '@/features/request-management/request-module'
 import type { ManagerLabels } from '@/features/request-management/types'
 
 /**
@@ -16,8 +17,10 @@ import type { ManagerLabels } from '@/features/request-management/types'
  * resolve from.
  */
 export function useActiveCategoryManagerLabels(categoryId: number | null) {
+  const { key: moduleKey } = useRequestModule()
+
   return useQuery<ManagerLabels>({
-    queryKey: requestManagementKeys.categoryManagerLabels(categoryId),
+    queryKey: requestManagementKeys.categoryManagerLabels(moduleKey, categoryId),
     queryFn: () => fetchCategoryManagerLabels(categoryId as number),
     enabled: categoryId != null,
     staleTime: 5 * 60 * 1000,

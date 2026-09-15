@@ -101,6 +101,7 @@ function renderBar(filtersReady = true) {
   const onEdit = vi.fn()
   render(
     <RequestDashboardFilterBar
+      reportPermission="request-management.report"
       filters={APPLIED_FILTERS}
       payload={APPLIED_PAYLOAD}
       categoryCount={2}
@@ -140,7 +141,7 @@ describe('RequestDashboardFilterBar', () => {
     generate('CSV')
 
     await waitFor(() =>
-      expect(createRequestManagementReportMock).toHaveBeenCalledWith({
+      expect(createRequestManagementReportMock).toHaveBeenCalledWith('/request-management', {
         date_from: '2026-09-01',
         date_to: '2026-09-30',
         category_keys: ['gol', 'consulenza'],
@@ -153,9 +154,10 @@ describe('RequestDashboardFilterBar', () => {
     // second run.
     expect(screen.getByRole('button', { name: /generating/i })).toBeDisabled()
 
-    await waitFor(() => expect(downloadRequestManagementReportMock).toHaveBeenCalledWith(1), {
-      timeout: 3000,
-    })
+    await waitFor(
+      () => expect(downloadRequestManagementReportMock).toHaveBeenCalledWith('/request-management', 1),
+      { timeout: 3000 },
+    )
     expect(await screen.findByText(/download started automatically/)).toBeInTheDocument()
   }, 10000)
 
@@ -210,6 +212,7 @@ describe('RequestDashboardFilterBar', () => {
 
     await waitFor(() =>
       expect(createRequestManagementReportMock).toHaveBeenCalledWith(
+        '/request-management',
         expect.objectContaining({ format: 'xlsx' }),
       ),
     )

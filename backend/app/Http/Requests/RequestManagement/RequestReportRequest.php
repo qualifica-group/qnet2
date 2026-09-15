@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\RequestManagement;
 
 use App\Enums\RequestManagementReportRowMode;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
 use App\Services\RequestManagement\Report\ReportSiteAvailabilityResolver;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,8 +29,13 @@ use Illuminate\Validation\Rule;
  * category ids via config, the raw string never touches SQL.
  *
  * Authorization is intentionally NOT handled here (stays in the controller:
- * the `request-management.report` gate), same convention as every other
- * FormRequest of this module (AssignRequestManagerGa1Request et al.).
+ * the `{module}.report` gate), same convention as every other FormRequest of
+ * this module (AssignRequestManagerGa1Request et al.).
+ *
+ * Spec 0130: the operator/site allow-lists are resolved for the route's OWN
+ * RequestModule (RequestModule::fromRequest($this)), so an Iscritti actor
+ * validates `operator_keys`/`site_keys` against the module's own D-2/D-5
+ * scope, never the Richieste one.
  */
 class RequestReportRequest extends FormRequest
 {
@@ -104,7 +110,7 @@ class RequestReportRequest extends FormRequest
     private function allowedOperatorKeys(): array
     {
         return array_column(
-            app(ReportOperatorAvailabilityResolver::class)->available($this->user()),
+            app(ReportOperatorAvailabilityResolver::class)->available($this->user(), RequestModule::fromRequest($this)),
             'key',
         );
     }
@@ -115,7 +121,7 @@ class RequestReportRequest extends FormRequest
     private function allowedSiteKeys(): array
     {
         return array_column(
-            app(ReportSiteAvailabilityResolver::class)->available($this->user()),
+            app(ReportSiteAvailabilityResolver::class)->available($this->user(), RequestModule::fromRequest($this)),
             'key',
         );
     }

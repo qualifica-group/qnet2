@@ -128,7 +128,7 @@ describe('work panel — Informazioni aggiuntive', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Salva' })[0])
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({
       attribute_values: { preferred_slot: 'pomeriggio' },
     })
   })
@@ -158,7 +158,7 @@ describe('work panel — Stato di lavorazione', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Salva' })[0])
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({ quote_workflow_status_id: 901 })
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({ quote_workflow_status_id: 901 })
   })
 
   it('demands the transition note before submitting when the target requires one', async () => {
@@ -191,7 +191,7 @@ describe('work panel — Stato di lavorazione', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Salva' })[0])
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({
       quote_workflow_status_id: 901,
       note: 'Cliente ricontattato.',
     })

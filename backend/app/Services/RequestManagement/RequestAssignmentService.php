@@ -8,6 +8,7 @@ use App\DataObjects\Assignment\AssignmentOutcome;
 use App\Enums\LeadAssignmentMode;
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\Assignment\AssignmentCandidates;
 use App\Services\Assignment\AssignmentSiteResolver;
 use App\Services\Assignment\QuoteCompetence;
@@ -43,6 +44,12 @@ use Illuminate\Support\Facades\DB;
  * offer's Sede IS `quotes.operational_site_id`, so it is READ to scope each
  * offer's candidates and never rewritten — unlike the other two surfaces,
  * which persist the Sede they resolve from the campaign.
+ *
+ * Spec 0130: both bulk actions are parameterized by `RequestModule`, which
+ * governs the D-3 row scope alone (`RequestManagementScope::scopeToActor()`)
+ * — never the assignment notification's deep link, which spec 0130's scope
+ * §out keeps fixed to `/request-management/:id` regardless of module.
+ * Defaults to `Requests`, at parity for every pre-0130 caller.
  */
 final class RequestAssignmentService
 {
@@ -64,12 +71,15 @@ final class RequestAssignmentService
      * Whole operation is one transaction.
      *
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
+     * @param  RequestModule  $module  spec 0130: governs the D-3 row scope.
+     *                                 Defaults to `Requests`, at parity for
+     *                                 every pre-0130 caller.
      */
-    public function assignOperators(array $requestIds, User $actor, LeadAssignmentMode $mode, ?int $operatorId): AssignmentOutcome
+    public function assignOperators(array $requestIds, User $actor, LeadAssignmentMode $mode, ?int $operatorId, RequestModule $module = RequestModule::Requests): AssignmentOutcome
     {
-        return DB::transaction(function () use ($requestIds, $actor, $mode, $operatorId): AssignmentOutcome {
+        return DB::transaction(function () use ($requestIds, $actor, $mode, $operatorId, $module): AssignmentOutcome {
             // Step 1: drop the ids the actor may not reach (D-3 scoping).
-            $quotes = $this->inScopeQuotes($requestIds, $actor);
+            $quotes = $this->inScopeQuotes($requestIds, $actor, $module);
 
             if ($quotes->isEmpty()) {
                 return new AssignmentOutcome(assigned: 0);
@@ -116,13 +126,16 @@ final class RequestAssignmentService
      * action has a single mode).
      *
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
+     * @param  RequestModule  $module  spec 0130: governs the D-3 row scope.
+     *                                 Defaults to `Requests`, at parity for
+     *                                 every pre-0130 caller.
      * @return int the number of offers reached (in scope)
      */
-    public function assignManagerGa1(array $requestIds, User $actor, ?int $userId): int
+    public function assignManagerGa1(array $requestIds, User $actor, ?int $userId, RequestModule $module = RequestModule::Requests): int
     {
-        return DB::transaction(function () use ($requestIds, $actor, $userId): int {
+        return DB::transaction(function () use ($requestIds, $actor, $userId, $module): int {
             // Step 1: drop the ids the actor may not reach (D-3 scoping).
-            $quotes = $this->inScopeQuotes($requestIds, $actor);
+            $quotes = $this->inScopeQuotes($requestIds, $actor, $module);
 
             // Step 2: move the GA1 slot alone on each of them.
             foreach ($quotes as $quote) {
@@ -140,14 +153,14 @@ final class RequestAssignmentService
      * @param  array<int, int>  $requestIds
      * @return Collection<int, Quote>
      */
-    private function inScopeQuotes(array $requestIds, User $actor): Collection
+    private function inScopeQuotes(array $requestIds, User $actor, RequestModule $module): Collection
     {
         // `opportunity` eager-loaded: both per-offer writers log (and
         // assignOne() notifies) against it for every offer in the batch
         // (D-9), never a per-row lazy load.
         $query = Quote::query()->with('opportunity')->whereIn('id', $requestIds)->orderBy('id');
 
-        return RequestManagementScope::scopeToActor($query, $actor)->get();
+        return RequestManagementScope::scopeToActor($query, $actor, $module)->get();
     }
 
     /**

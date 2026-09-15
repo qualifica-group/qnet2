@@ -189,7 +189,7 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('client_identity')
+    expect(updateRequestWorkMock.mock.calls[0][2]).not.toHaveProperty('client_identity')
   })
 
   /**
@@ -246,7 +246,7 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('source_id')
+    expect(updateRequestWorkMock.mock.calls[0][2]).not.toHaveProperty('source_id')
   })
 
   /**

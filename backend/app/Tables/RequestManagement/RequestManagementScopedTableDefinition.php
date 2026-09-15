@@ -17,9 +17,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 /**
- * Decorator that scopes the `request-management` domain to a single product
- * category (spec 0064's category tab strip), appends that category's
- * `attr.<code>` flexible columns, and relabels its Gestore Account columns
+ * Decorator that scopes the `request-management`/`enrollee-management`
+ * domains (spec 0130: the SAME decorator, `$inner->domain()` tells it which)
+ * to a single product category (spec 0064's category tab strip), appends that
+ * category's `attr.<code>` flexible columns, and relabels its Gestore Account
+ * columns
  * (`operator_ga2`/`manager_ga1`) for it (spec 0080, extended to GA1 by the
  * direttiva utente 2026-09-07, which named position 3 until the direttiva
  * utente 2026-09-08 moved the column onto position 1).
@@ -218,7 +220,7 @@ class RequestManagementScopedTableDefinition implements TableDefinition
             ...$this->attributeColumns->resolvedColumns(
                 $attributes,
                 count($config['columns']),
-                $this->attributeColumns->valuesEditable($actor),
+                $this->attributeColumns->valuesEditable($actor, $this->inner->domain()),
             ),
         ];
 

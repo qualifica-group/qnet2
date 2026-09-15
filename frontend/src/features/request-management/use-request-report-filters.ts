@@ -5,13 +5,16 @@ import type {
   RequestReportRowMode,
   RequestReportSite,
 } from '@/features/request-management/report-api'
+import { useRequestModule } from '@/features/request-management/request-module'
 import {
   ROW_MODES,
   requestReportDefaultValues,
   type RequestReportFormValues,
 } from '@/features/request-management/request-report-schema'
 
-const STORAGE_KEY = 'request-management.report-filters'
+function storageKey(moduleKey: string): string {
+  return `${moduleKey}.report-filters`
+}
 
 /** An absent key list, or a real one: the shape both narrowing fields are stored in. */
 function isOptionalKeyList(value: unknown): boolean {
@@ -46,12 +49,12 @@ function isStoredFilters(value: unknown): value is RequestReportFormValues {
   )
 }
 
-function readStoredFilters(): RequestReportFormValues | null {
+function readStoredFilters(moduleKey: string): RequestReportFormValues | null {
   if (typeof window === 'undefined') {
     return null
   }
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
+    const stored = window.localStorage.getItem(storageKey(moduleKey))
     if (stored === null) {
       return null
     }
@@ -160,8 +163,9 @@ export function reconcileSiteKeys(
  * (it depends on the categories query) — see {@see reconcileCategoryKeys}.
  */
 export function useRequestReportFilters() {
+  const { key: moduleKey } = useRequestModule()
   const [filters, setFiltersState] = useState<RequestReportFormValues>(
-    () => readStoredFilters() ?? requestReportDefaultValues(),
+    () => readStoredFilters(moduleKey) ?? requestReportDefaultValues(),
   )
 
   /**
@@ -184,7 +188,7 @@ export function useRequestReportFilters() {
       }
 
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(resolved))
+        window.localStorage.setItem(storageKey(moduleKey), JSON.stringify(resolved))
       } catch {
         // Storage can be unavailable (private mode, quota): the filters still
         // apply for this session.
@@ -192,7 +196,7 @@ export function useRequestReportFilters() {
 
       return resolved
     })
-  }, [])
+  }, [moduleKey])
 
   return { filters, setFilters }
 }

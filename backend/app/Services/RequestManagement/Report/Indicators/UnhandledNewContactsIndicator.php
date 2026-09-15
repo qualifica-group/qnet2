@@ -6,6 +6,7 @@ namespace App\Services\RequestManagement\Report\Indicators;
 
 use App\Enums\WorkflowStatusSystemKey;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\IndicatorResult;
 use App\Services\RequestManagement\Report\QuoteCountAggregator;
 use App\Services\RequestManagement\Report\ReportBranchQuery;
@@ -28,20 +29,20 @@ final class UnhandledNewContactsIndicator implements ReportIndicator
         private readonly QuoteCountAggregator $aggregator,
     ) {}
 
-    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): IndicatorResult
+    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null, RequestModule $module = RequestModule::Requests): IndicatorResult
     {
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites), 'quotes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites), 'quotes.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'quotes.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'quotes.id'),
         );
     }
 
     /**
      * @param  array<int, int>  $categoryIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites): Builder
+    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites)
+        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
             ->where('current_status.system_key', WorkflowStatusSystemKey::Open->value)
             ->where('quotes.created_at', '>=', $range->start)

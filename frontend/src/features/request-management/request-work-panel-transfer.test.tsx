@@ -189,7 +189,7 @@ describe('RequestWorkPanelScreen — "Trasferisci contatto" button (spec 0079 ad
     fillAndConfirm()
 
     await waitFor(() =>
-      expect(transferRequestsMock).toHaveBeenCalledWith({
+      expect(transferRequestsMock).toHaveBeenCalledWith('/request-management', {
         request_ids: [9],
         operational_site_id: SITE_PICK_ID,
         operator_id: OPERATOR_PICK_ID,

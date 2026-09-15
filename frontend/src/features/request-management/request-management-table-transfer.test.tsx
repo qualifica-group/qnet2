@@ -198,7 +198,7 @@ describe('RequestManagementTable — "transfer-contact" row action (spec 0079 AC
     fillAndConfirm()
 
     await waitFor(() =>
-      expect(transferRequestsMock).toHaveBeenCalledWith({
+      expect(transferRequestsMock).toHaveBeenCalledWith('/request-management', {
         request_ids: [7],
         operational_site_id: SITE_PICK_ID,
         operator_id: OPERATOR_PICK_ID,
@@ -231,7 +231,7 @@ describe('RequestManagementTable — bulk "transfer-contact" action (spec 0079 A
     fillAndConfirm()
 
     await waitFor(() =>
-      expect(transferRequestsMock).toHaveBeenCalledWith({
+      expect(transferRequestsMock).toHaveBeenCalledWith('/request-management', {
         request_ids: [11, 22],
         operational_site_id: SITE_PICK_ID,
         operator_id: OPERATOR_PICK_ID,

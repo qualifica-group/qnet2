@@ -1,5 +1,6 @@
 <?php
 
+use App\RequestManagement\EnrolleeManagementNotable;
 use App\RequestManagement\RequestManagementNotable;
 use App\Services\Tasks\TaskNotable;
 
@@ -27,6 +28,10 @@ return [
 
     'notable_types' => [
         'request-management' => RequestManagementNotable::class,
+        // Spec 0130: same Opportunity host, same read/mentionable rules,
+        // narrowed to RequestModule::Enrollees's own permission prefix and
+        // D-2 status filter by the minimal subclass — never a copy.
+        'enrollee-management' => EnrolleeManagementNotable::class,
         // Spec 0117: the slug is the AUTHORIZATION vocabulary, so it is the
         // plural module key ('tasks', matching TASKS_DOMAIN client-side) --
         // deliberately NOT the singular 'task' morph alias that identifies

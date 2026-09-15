@@ -24,7 +24,7 @@ import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-status-field'
 import { fetchRequestWorkPanel } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { useRequestModule } from '@/features/request-management/request-module'
 import { RequestAttributionSection } from '@/features/request-management/request-attribution-section'
 import { RequestTeamSection } from '@/features/request-management/request-team-section'
 import { RequestCallbackSection } from '@/features/request-management/request-callback-section'
@@ -121,9 +121,10 @@ export function RequestWorkPanelSkeleton() {
  */
 export function RequestWorkPanelScreen({ id }: RequestWorkPanelScreenProps) {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const { data: panel, isLoading, isError, refetch } = useEntityDetail(
-    requestManagementKeys.panel(id),
-    () => fetchRequestWorkPanel(id),
+    requestManagementKeys.panel(module.key, id),
+    () => fetchRequestWorkPanel(module.apiBasePath, id),
   )
 
   if (isError) {
@@ -156,6 +157,7 @@ interface RequestWorkPanelBodyProps {
 
 function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const { canAction, canResource } = useResourcePermissions()
   const canUpdate = canResource('update')
   const canViewActivity = canAction('view_activity')
@@ -177,7 +179,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
   // resolves: refetch it, and realign the control the value landed on (see
   // SOURCE_FIELD).
   const handleChangeRequestHandled = (request: FieldChangeRequestResource) => {
-    void queryClient.invalidateQueries({ queryKey: requestManagementKeys.panel(panel.id) })
+    void queryClient.invalidateQueries({ queryKey: requestManagementKeys.panel(module.key, panel.id) })
 
     if (
       request.status === 'approved' &&
@@ -259,7 +261,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
               className="min-w-0"
             >
               <RecordFieldChangeRequests
-                resource={REQUEST_MANAGEMENT_DOMAIN}
+                resource={module.key}
                 subjectId={panel.id}
                 onHandled={handleChangeRequestHandled}
               />

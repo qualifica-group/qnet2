@@ -10,6 +10,7 @@ use App\Tables\ContractsTableDefinition;
 use App\Tables\ContractStatusesTableDefinition;
 use App\Tables\CustomFieldsTableDefinition;
 use App\Tables\DocumentLayoutsTableDefinition;
+use App\Tables\EnrolleeManagementTableDefinition;
 use App\Tables\FieldChangeRequestsTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
@@ -105,6 +106,9 @@ return [
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersTableDefinition::class,
         'request-management' => RequestManagementTableDefinition::class,
+        // spec 0130: "Gestione Iscritti", the same grid restricted to
+        // validated/closed_won rows and governed by its own permission set.
+        'enrollee-management' => EnrolleeManagementTableDefinition::class,
         'reward-types' => RewardTypesTableDefinition::class,
         'reward-statuses' => RewardStatusesTableDefinition::class,
         'rewarded-referents' => RewardedReferentsTableDefinition::class,

@@ -6,6 +6,7 @@ namespace App\Services\RequestManagement\Report;
 
 use App\Models\OperationalSite;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Support\Facades\DB;
 
@@ -33,6 +34,10 @@ use Illuminate\Support\Facades\DB;
  * address get an EMPTY label and stay in the list, first: they are real,
  * selectable Sedi with requests behind them, and hiding one for a missing
  * address would make it unfilterable.
+ *
+ * Spec 0130: $module (defaulting to RequestModule::Requests) flows into
+ * ReportBranchQuery::build() below, so the Sedi list an Iscritti actor sees
+ * is narrowed to the module's own D-2 row-state filter too.
  */
 final class ReportSiteAvailabilityResolver
 {
@@ -46,12 +51,12 @@ final class ReportSiteAvailabilityResolver
     /**
      * @return array<int, array{key: string, label: string}>
      */
-    public function available(?User $actor): array
+    public function available(?User $actor, RequestModule $module = RequestModule::Requests): array
     {
         // Step 1: the distinct GA2 of every in-scope request. "Non assegnato"
         // (NULL) is dropped here rather than later: it belongs to no Sede, and
         // the user excluded a "senza sede" entry from the picker (D-6).
-        $operatorIds = $this->distinctOperatorIds($actor);
+        $operatorIds = $this->distinctOperatorIds($actor, $module);
 
         // Step 2: their Sedi, the WHOLE pivot — physical and remote alike (D-5).
         $siteIds = $operatorIds === [] ? [] : $this->siteIdsOf($operatorIds);
@@ -63,10 +68,10 @@ final class ReportSiteAvailabilityResolver
     /**
      * @return array<int, int>
      */
-    private function distinctOperatorIds(?User $actor): array
+    private function distinctOperatorIds(?User $actor, RequestModule $module): array
     {
         return $this->branchQuery
-            ->build($this->allCategoryIds(), $actor, ReportOperatorFilter::all())
+            ->build($this->allCategoryIds(), $actor, ReportOperatorFilter::all(), module: $module)
             ->whereNotNull('quotes.operator_id')
             ->distinct()
             ->pluck('quotes.operator_id')

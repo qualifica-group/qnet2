@@ -10,7 +10,7 @@ import { permissions as itLocale, permissionExplorer as itExplorer } from '@/i18
  * empty string would still typecheck, and a missing catalogue entry would
  * only be caught by falling back at runtime. This test additionally asserts:
  * (a) the exact same set of leaf keys in en/it, (b) no empty string value,
- * and (c) every one of the 38 assignable modules and every action of
+ * and (c) every one of the 39 assignable modules and every action of
  * `AssignablePermissionCatalogue::names()` is present in both bundles.
  */
 
@@ -46,6 +46,8 @@ const ASSIGNABLE_RESOURCES = [
   'contracts',
   'custom-fields',
   'document-layouts',
+  // Spec 0130: validated/closed-won subset of Request Management, own permissions.
+  'enrollee-management',
   'leads',
   'notes',
   'operational-sites',

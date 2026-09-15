@@ -32,9 +32,21 @@ use Spatie\Permission\Models\Permission;
  * App\Notes\NoteEntityRegistry via the class-string mapped in
  * config/notes.php ('request-management' => self::class) — pure data there,
  * config:cache-safe.
+ *
+ * Spec 0130: module()'s default return is RequestModule::Requests, so every
+ * permission check and RequestManagementScope call below reads its
+ * prefix/status-filter off it — EnrolleeManagementNotable, registered under
+ * the `enrollee-management` slug, is the minimal subclass overriding ONLY
+ * module() (mirrors EnrolleeManagementPolicy extends
+ * RequestManagementPolicy). No method body is duplicated.
  */
-final class RequestManagementNotable implements NotableEntity
+class RequestManagementNotable implements NotableEntity
 {
+    protected function module(): RequestModule
+    {
+        return RequestModule::Requests;
+    }
+
     public function modelClass(): string
     {
         return Opportunity::class;
@@ -64,18 +76,20 @@ final class RequestManagementNotable implements NotableEntity
      */
     public function authorizeRead(User $user, Model $record): bool
     {
-        if (! $user->can('request-management.view')) {
+        $module = $this->module();
+
+        if (! $user->can($module->permission('view'))) {
             return false;
         }
 
-        if ($user->can('request-management.viewAll')) {
+        if ($user->can($module->permission('viewAll'))) {
             return true;
         }
 
         /** @var Opportunity $record */
         $query = Quote::query()->where('opportunity_id', $record->getKey());
 
-        return RequestManagementScope::scopeToActor($query, $user)->exists();
+        return RequestManagementScope::scopeToActor($query, $user, $module)->exists();
     }
 
     /**
@@ -98,6 +112,8 @@ final class RequestManagementNotable implements NotableEntity
      */
     public function mentionableUsersQuery(Model $record): Builder
     {
+        $module = $this->module();
+
         /** @var Opportunity $record */
         $operatorIds = Quote::query()
             ->where('opportunity_id', $record->getKey())
@@ -122,24 +138,24 @@ final class RequestManagementNotable implements NotableEntity
         // one row per guard, and a hit on the wrong one would leave the
         // branch matching nobody.
         $viewSiteExists = Permission::query()
-            ->where('name', 'request-management.viewSite')
+            ->where('name', $module->permission('viewSite'))
             ->where('guard_name', Guard::getDefaultName(User::class))
             ->exists();
 
         return User::query()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($operatorIds, $siteIds, $viewSiteExists): void {
+            ->where(function (Builder $query) use ($module, $operatorIds, $siteIds, $viewSiteExists): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->orWhere(function (Builder $canRead) use ($operatorIds, $siteIds, $viewSiteExists): void {
-                        $canRead->permission('request-management.view')
-                            ->where(function (Builder $access) use ($operatorIds, $siteIds, $viewSiteExists): void {
+                    ->orWhere(function (Builder $canRead) use ($module, $operatorIds, $siteIds, $viewSiteExists): void {
+                        $canRead->permission($module->permission('view'))
+                            ->where(function (Builder $access) use ($module, $operatorIds, $siteIds, $viewSiteExists): void {
                                 $access->whereIn('id', $operatorIds)
-                                    ->orWhere(function (Builder $viewAll): void {
-                                        $viewAll->permission('request-management.viewAll');
+                                    ->orWhere(function (Builder $viewAll) use ($module): void {
+                                        $viewAll->permission($module->permission('viewAll'));
                                     })
-                                    ->when($viewSiteExists, function (Builder $tiers) use ($siteIds): void {
-                                        $tiers->orWhere(function (Builder $bySite) use ($siteIds): void {
-                                            $bySite->permission('request-management.viewSite')
+                                    ->when($viewSiteExists, function (Builder $tiers) use ($module, $siteIds): void {
+                                        $tiers->orWhere(function (Builder $bySite) use ($module, $siteIds): void {
+                                            $bySite->permission($module->permission('viewSite'))
                                                 ->whereHas(
                                                     'employment.operationalSites',
                                                     fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds)
@@ -210,16 +226,17 @@ final class RequestManagementNotable implements NotableEntity
      */
     public function deepLinkPath(Model $record, User $recipient, ?int $quoteId): ?string
     {
-        $canWorkRequests = $recipient->can('request-management.view');
+        $module = $this->module();
+        $canWorkRequests = $recipient->can($module->permission('view'));
 
         if ($quoteId !== null && $canWorkRequests) {
-            return '/request-management/'.$quoteId;
+            return $module->recordPath().'/'.$quoteId;
         }
 
         if ($recipient->can('opportunities.view')) {
             return '/opportunities/'.$record->getKey();
         }
 
-        return $canWorkRequests ? '/request-management' : null;
+        return $canWorkRequests ? $module->recordPath() : null;
     }
 }

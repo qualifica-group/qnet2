@@ -57,12 +57,17 @@ export async function fetchRequestFormContext(
 /**
  * Fetches the work panel of a single Offerta together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
- * of `data`).
+ * of `data`). `basePath` is the caller's `RequestModuleConfig.apiBasePath`
+ * (spec 0130): the two modules mount the SAME endpoint shape under two
+ * prefixes, never a client-supplied module parameter.
  */
-export async function fetchRequestWorkPanel(quoteId: number): Promise<RequestWorkPanelWithPermissions> {
+export async function fetchRequestWorkPanel(
+  basePath: string,
+  quoteId: number,
+): Promise<RequestWorkPanelWithPermissions> {
   const { data } = await apiClient.get<
     ApiResponseWithPermissions<RequestWorkPanel, ResourcePermissions>
-  >(`/request-management/${quoteId}`)
+  >(`${basePath}/${quoteId}`)
   return { ...data.data, permissions: data.permissions }
 }
 
@@ -71,23 +76,23 @@ export async function fetchRequestWorkPanel(quoteId: number): Promise<RequestWor
  * panel together with the actor's authorization metadata.
  */
 export async function updateRequestWork(
+  basePath: string,
   quoteId: number,
   payload: UpdateRequestWorkPayload,
 ): Promise<RequestWorkPanelWithPermissions> {
   const { data } = await apiClient.patch<
     ApiResponseWithPermissions<RequestWorkPanel, ResourcePermissions>
-  >(`/request-management/${quoteId}`, payload)
+  >(`${basePath}/${quoteId}`, payload)
   return { ...data.data, permissions: data.permissions }
 }
 
 /**
  * Deletes a request (user directive 2026-07-23). The record removed IS the
  * Offerta (spec 0086 D-1); its Opportunity is left untouched. Gated by this
- * module's OWN `request-management.delete` plus its supervisor scope, never
- * `quotes.*`.
+ * module's OWN `{module}.delete` plus its supervisor scope, never `quotes.*`.
  */
-export async function deleteRequest(quoteId: number): Promise<void> {
-  await apiClient.delete(`/request-management/${quoteId}`)
+export async function deleteRequest(basePath: string, quoteId: number): Promise<void> {
+  await apiClient.delete(`${basePath}/${quoteId}`)
 }
 
 /**
@@ -100,10 +105,11 @@ export async function deleteRequest(quoteId: number): Promise<void> {
  * scope are skipped.
  */
 export async function assignRequestOperators(
+  basePath: string,
   payload: AssignRequestOperatorsPayload,
 ): Promise<AssignRequestOperatorsResult> {
   const { data } = await apiClient.post<ApiResponse<AssignRequestOperatorsResult>>(
-    '/request-management/assign-operators',
+    `${basePath}/assign-operators`,
     payload,
   )
   return data.data
@@ -117,10 +123,11 @@ export async function assignRequestOperators(
  * skipped, same D-3 rule as `assignRequestOperators`.
  */
 export async function assignRequestManagerGa1(
+  basePath: string,
   payload: AssignRequestManagerGa1Payload,
 ): Promise<AssignRequestManagerGa1Result> {
   const { data } = await apiClient.post<ApiResponse<AssignRequestManagerGa1Result>>(
-    '/request-management/assign-manager-ga1',
+    `${basePath}/assign-manager-ga1`,
     payload,
   )
   return data.data
@@ -134,10 +141,11 @@ export async function assignRequestManagerGa1(
  * as `assignRequestOperators`.
  */
 export async function transferRequests(
+  basePath: string,
   payload: TransferRequestsPayload,
 ): Promise<TransferRequestsResult> {
   const { data } = await apiClient.post<ApiResponse<TransferRequestsResult>>(
-    '/request-management/transfer',
+    `${basePath}/transfer`,
     payload,
   )
   return data.data
@@ -145,12 +153,14 @@ export async function transferRequests(
 
 /**
  * Fetches the Product Category tab strip (spec 0064): only categories with at
- * least one request in the actor's own scope (`request-management.viewAny`),
- * ordered by name.
+ * least one request in the actor's own scope (`{module}.viewAny`), ordered by
+ * name.
  */
-export async function fetchRequestManagementCategories(): Promise<RequestManagementProductCategory[]> {
+export async function fetchRequestManagementCategories(
+  basePath: string,
+): Promise<RequestManagementProductCategory[]> {
   const { data } = await apiClient.get<ApiResponse<{ categories: RequestManagementProductCategory[] }>>(
-    '/request-management/product-categories',
+    `${basePath}/product-categories`,
   )
   return data.data.categories
 }

@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-
-const STORAGE_KEY = 'request-management.dashboard-collapse'
+import { useRequestModule } from '@/features/request-management/request-module'
 
 /** The three independently collapsible parts of the dashboard (user directive 2026-09-08). */
 export type DashboardCollapseBlock = 'section' | 'tiles' | 'charts'
@@ -25,12 +24,16 @@ function entryKey(sectionKey: string, block: DashboardCollapseBlock): string {
   return `${sectionKey}:${block}`
 }
 
-function readStoredState(): CollapseState {
+function storageKey(moduleKey: string): string {
+  return `${moduleKey}.dashboard-collapse`
+}
+
+function readStoredState(moduleKey: string): CollapseState {
   if (typeof window === 'undefined') {
     return {}
   }
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
+    const stored = window.localStorage.getItem(storageKey(moduleKey))
     if (stored === null) {
       return {}
     }
@@ -63,7 +66,8 @@ export interface RequestDashboardCollapse {
  * rather than being written out eagerly.
  */
 export function useRequestDashboardCollapse(): RequestDashboardCollapse {
-  const [state, setState] = useState<CollapseState>(readStoredState)
+  const { key: moduleKey } = useRequestModule()
+  const [state, setState] = useState<CollapseState>(() => readStoredState(moduleKey))
 
   const isOpen = useCallback(
     (sectionKey: string, block: DashboardCollapseBlock): boolean =>
@@ -71,18 +75,21 @@ export function useRequestDashboardCollapse(): RequestDashboardCollapse {
     [state],
   )
 
-  const setOpen = useCallback((sectionKey: string, block: DashboardCollapseBlock, open: boolean): void => {
-    setState((current) => {
-      const next = { ...current, [entryKey(sectionKey, block)]: open }
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      } catch {
-        // Storage can be unavailable: the toggle still works for this session.
-      }
+  const setOpen = useCallback(
+    (sectionKey: string, block: DashboardCollapseBlock, open: boolean): void => {
+      setState((current) => {
+        const next = { ...current, [entryKey(sectionKey, block)]: open }
+        try {
+          window.localStorage.setItem(storageKey(moduleKey), JSON.stringify(next))
+        } catch {
+          // Storage can be unavailable: the toggle still works for this session.
+        }
 
-      return next
-    })
-  }, [])
+        return next
+      })
+    },
+    [moduleKey],
+  )
 
   return useMemo(() => ({ isOpen, setOpen }), [isOpen, setOpen])
 }

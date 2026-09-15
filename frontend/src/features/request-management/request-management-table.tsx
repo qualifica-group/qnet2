@@ -35,7 +35,8 @@ import { useRequestManagementCategoryTab } from '@/features/request-management/u
 import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import { useRequestManagerGa1Assignment } from '@/features/request-management/use-request-manager-ga1-assignment'
 import { useRequestTransferSelection } from '@/features/request-management/use-request-transfer-selection'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { useRequestModule } from '@/features/request-management/request-module'
+import type { AssignRequestOperatorsPayload } from '@/features/request-management/request-write-types'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
 
 /**
@@ -113,9 +114,10 @@ interface RequestNotesTarget {
 export function RequestManagementTable() {
   const { t } = useTranslation()
   const { can } = useAbilities()
+  const module = useRequestModule()
 
   const { categories, selectedCategoryId, setCategoryId } = useRequestManagementCategoryTab()
-  const dashboard = useStatsPanel(REQUEST_MANAGEMENT_DOMAIN)
+  const dashboard = useStatsPanel(module.key)
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -125,7 +127,7 @@ export function RequestManagementTable() {
     refreshGrid()
     tableRef.current?.clearSelection()
   }, [refreshGrid])
-  const { openCreate, openView, sheet } = useModuleOpener(REQUEST_MANAGEMENT_DOMAIN, {
+  const { openCreate, openView, sheet } = useModuleOpener(module.key, {
     onSaved: refreshGrid,
   })
 
@@ -138,7 +140,7 @@ export function RequestManagementTable() {
     async (row: TableRow) => {
       setDeletingId(row.id)
       try {
-        await deleteRequest(row.id)
+        await deleteRequest(module.apiBasePath, row.id)
         toast.success(t('requestManagement.delete.success'))
         refreshGrid()
       } catch (error) {
@@ -152,7 +154,7 @@ export function RequestManagementTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [module.apiBasePath, refreshGrid, t],
   )
 
   // Transfer to another Sede + Operatore (spec 0079): row and bulk share ONE
@@ -211,7 +213,7 @@ export function RequestManagementTable() {
   // `assignOperator` on top of `update` (user directive 2026-08-03): the popup
   // writes the Operatore, the attribution dimension a role may be restricted
   // on — the same ability the store endpoint and the bulk endpoint gate on.
-  const canAssignOperators = can('request-management.update') && can('request-management.assignOperator')
+  const canAssignOperators = can(module.permission('update')) && can(module.permission('assignOperator'))
 
   // Scope of the Operatore picker (spec 0110 AC-041, spec 0113): the categories
   // the selection requires AND the Sede its offers share, resolved here and
@@ -230,7 +232,8 @@ export function RequestManagementTable() {
   )
 
   const assignMutation = useMutation({
-    mutationFn: assignRequestOperators,
+    mutationFn: (payload: AssignRequestOperatorsPayload) =>
+      assignRequestOperators(module.apiBasePath, payload),
     onSuccess: (result) => {
       toast.success(resolveAssignFeedback(t, 'requestManagement.assign', result))
       refreshGrid()
@@ -357,16 +360,21 @@ export function RequestManagementTable() {
         actions={
           <>
             <RequestDashboardToggle
-              domain={REQUEST_MANAGEMENT_DOMAIN}
+              domain={module.key}
+              permission={module.permission('report')}
               isOpen={dashboard.isOpen}
               onToggle={dashboard.toggle}
             />
-            <Can permission="request-management.create">
-              <Button onClick={openCreate}>
-                <Plus aria-hidden="true" />
-                {t('requestManagement.form.newRequest')}
-              </Button>
-            </Can>
+            {/* D-8: Gestione Iscritti has no creation surface — an explicit
+                config flag, never derived from `can()` (AC-016). */}
+            {module.allowsCreate && (
+              <Can permission={module.permission('create')}>
+                <Button onClick={openCreate}>
+                  <Plus aria-hidden="true" />
+                  {t('requestManagement.form.newRequest')}
+                </Button>
+              </Can>
+            )}
           </>
         }
       />
@@ -391,7 +399,7 @@ export function RequestManagementTable() {
           // from the freshly-scoped config's defaults instead of carrying over.
           key={selectedCategoryId ?? 'all'}
           ref={tableRef}
-          domain={REQUEST_MANAGEMENT_DOMAIN}
+          domain={module.key}
           scope={selectedCategoryId !== null ? { productCategoryId: selectedCategoryId } : undefined}
           renderers={requestManagementColumnRenderers}
           onAction={handleAction}
@@ -444,14 +452,14 @@ export function RequestManagementTable() {
       />
 
       <NotesDialog
-        entityType={REQUEST_MANAGEMENT_DOMAIN}
+        entityType={module.key}
         entityId={notesTarget?.opportunityId ?? null}
         lockedQuoteId={notesTarget?.quoteId ?? null}
         onOpenChange={handleNotesOpenChange}
       />
 
       <ResourceActivityDialog
-        resource={REQUEST_MANAGEMENT_DOMAIN}
+        resource={module.key}
         row={activityRow}
         onOpenChange={handleActivityOpenChange}
       />

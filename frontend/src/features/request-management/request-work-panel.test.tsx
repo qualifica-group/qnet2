@@ -179,7 +179,7 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     // The whole client set travels in the panel's own PATCH; the per-contact
     // endpoints are never touched from this screen.
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({
       client_contacts: [
         { id: 1, type: 'email', value: 'client@acme.test', label: null, is_primary: true },
         { type: 'phone', value: '+39 02 1234567', label: null, is_primary: true },
@@ -204,7 +204,7 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    expect(updateRequestWorkMock.mock.calls[0][1]).toMatchObject({
+    expect(updateRequestWorkMock.mock.calls[0][2]).toMatchObject({
       client_address: { line1: 'Via Roma 1', postal_code: '20100' },
     })
   })
@@ -226,7 +226,7 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     // A full replace of the card's identity fields, no id: the server resolves
     // the card from the request's client.
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({
       client_identity: {
         type: 'company',
         first_name: null,

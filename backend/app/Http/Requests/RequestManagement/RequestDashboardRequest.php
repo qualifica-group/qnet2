@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\RequestManagement;
 
 use App\Enums\RequestManagementReportRowMode;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
 use App\Services\RequestManagement\Report\ReportSiteAvailabilityResolver;
 use Illuminate\Foundation\Http\FormRequest;
@@ -18,8 +19,12 @@ use Illuminate\Validation\Rule;
  * before it can ever reach a query (backend.md §8).
  *
  * Authorization is intentionally NOT handled here (stays in the controller:
- * `request-management.report`, reused verbatim per spec 0107 D-6), same
- * convention as RequestReportRequest.
+ * `{module}.report`, reused verbatim per spec 0107 D-6), same convention as
+ * RequestReportRequest.
+ *
+ * Spec 0130: the operator/site allow-lists are resolved for the route's OWN
+ * RequestModule (RequestModule::fromRequest($this)), same reason as
+ * RequestReportRequest.
  */
 class RequestDashboardRequest extends FormRequest
 {
@@ -93,7 +98,7 @@ class RequestDashboardRequest extends FormRequest
     private function allowedOperatorKeys(): array
     {
         return array_column(
-            app(ReportOperatorAvailabilityResolver::class)->available($this->user()),
+            app(ReportOperatorAvailabilityResolver::class)->available($this->user(), RequestModule::fromRequest($this)),
             'key',
         );
     }
@@ -104,7 +109,7 @@ class RequestDashboardRequest extends FormRequest
     private function allowedSiteKeys(): array
     {
         return array_column(
-            app(ReportSiteAvailabilityResolver::class)->available($this->user()),
+            app(ReportSiteAvailabilityResolver::class)->available($this->user(), RequestModule::fromRequest($this)),
             'key',
         );
     }

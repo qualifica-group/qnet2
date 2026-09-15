@@ -196,10 +196,19 @@ it('transfers fine with no grant holder, notifying only the two operators (AC-02
 // AC-028 — the role lookup is gone, not commented out
 // ---------------------------------------------------------------------------
 
+// Spec 0130 REQUIREMENT CHANGE (declared, not test tampering, CORE §2): the
+// permission name is no longer the literal `request-management.` string —
+// RequestTransferService::supervisors() now composes it from the caller's
+// own `RequestModule` (`$module->permission('receiveTransferNotifications')`)
+// so the SAME service serves `enrollee-management` too (AC-007). The
+// assertion is updated to what AC-028 actually guards — no Spatie role
+// lookup, and the permission-based resolution genuinely present, not
+// hardcoded to one module's string.
 it('resolves the supervisory audience without any role lookup (AC-028)', function () {
     $source = (string) file_get_contents(app_path('Services/RequestManagement/RequestTransferService.php'));
 
     expect($source)->not->toContain('User::role(')
         ->and($source)->not->toContain('use App\Models\Role;')
-        ->and($source)->toContain('request-management.receiveTransferNotifications');
+        ->and($source)->toContain('receiveTransferNotifications')
+        ->and($source)->toContain('$module->permission(');
 });

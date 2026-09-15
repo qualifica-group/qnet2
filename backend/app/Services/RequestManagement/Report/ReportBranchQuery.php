@@ -6,6 +6,7 @@ namespace App\Services\RequestManagement\Report;
 
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\RequestManagementScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -25,13 +26,19 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  * report, which is why no indicator had to learn anything about them. Both
  * are applied LAST, after the scope and each inside its own closure, so they
  * can only ever narrow what the actor may already see (0112 AC-008).
+ *
+ * Spec 0130: $module (defaulting to RequestModule::Requests, so every
+ * existing caller is at parity) flows straight into scopeToActor() — its
+ * own D-2 row-state filter is therefore the ONE place this report ever
+ * narrows by workflow status group, applied before every indicator's own
+ * query runs on top.
  */
 final class ReportBranchQuery
 {
     /**
      * @param  array<int, int>  $categoryIds
      */
-    public function build(array $categoryIds, ?User $actor, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): Builder
+    public function build(array $categoryIds, ?User $actor, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null, RequestModule $module = RequestModule::Requests): Builder
     {
         $query = Quote::query()
             ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
@@ -44,6 +51,6 @@ final class ReportBranchQuery
 
         $sites ??= ReportSiteFilter::all();
 
-        return $sites->applyTo($operators->applyTo(RequestManagementScope::scopeToActor($query, $actor)));
+        return $sites->applyTo($operators->applyTo(RequestManagementScope::scopeToActor($query, $actor, $module)));
     }
 }

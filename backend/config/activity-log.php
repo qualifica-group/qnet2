@@ -42,6 +42,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
+use App\RequestManagement\EnrolleeManagementActivityAuthorizer;
 use App\RequestManagement\RequestManagementActivityAuthorizer;
 
 return [
@@ -180,6 +181,21 @@ return [
             // uploaded documents, and the client anagraphic block edited
             // inline in the panel (Registry's PersonalData card + contacts +
             // address).
+            'relations' => [
+                'notesWithTrashed',
+                'attachments',
+                'registry.personalData',
+                'registry.personalData.contacts',
+                'registry.personalData.addresses',
+            ],
+        ],
+        // Spec 0130: same Opportunity root and relations as `request-management`
+        // above, gated by its OWN authorizer (`enrollee-management.viewActivity`
+        // + the module's D-2/D-5 scope) — the minimal subclass overriding only
+        // module(), never a copy of the timeline shape.
+        'enrollee-management' => [
+            'model' => Opportunity::class,
+            'authorizer' => EnrolleeManagementActivityAuthorizer::class,
             'relations' => [
                 'notesWithTrashed',
                 'attachments',

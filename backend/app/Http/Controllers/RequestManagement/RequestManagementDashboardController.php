@@ -9,6 +9,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\RequestManagement\RequestDashboardRequest;
 use App\Http\Resources\RequestManagementDashboardResource;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\Dashboard\RequestManagementDashboardBuilder;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use App\Services\RequestManagement\Report\ReportSiteFilter;
@@ -21,21 +22,24 @@ use Throwable;
  * polling), deliberately not an extension of the generic stats framework
  * (spec 0026, D-1 — `StatsDefinition::widgets()` takes no parameters and
  * would need every one of its 14 domains touched for a need only this
- * module has). Reuses the `request-management.report` permission verbatim
- * (D-6) — same aggregates as the CSV, no separate grant.
+ * module has). Reuses the `{module}.report` permission verbatim (D-6) —
+ * same aggregates as the CSV, no separate grant.
+ *
+ * Spec 0130: the route carries its own RequestModule
+ * (routes/api/request-management.php's own loop), resolved here via
+ * RequestModule::fromRequest() — never from client input.
  */
 class RequestManagementDashboardController extends BaseApiController
 {
-    private const string PERMISSION = 'request-management.report';
-
     public function __construct(private readonly RequestManagementDashboardBuilder $builder) {}
 
     public function __invoke(RequestDashboardRequest $request): JsonResponse
     {
         try {
+            $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(self::PERMISSION), 403);
+            abort_unless($actor->can($module->permission('report')), 403);
 
             $dateFrom = (string) $request->validated('date_from');
             $dateTo = (string) $request->validated('date_to');
@@ -53,6 +57,7 @@ class RequestManagementDashboardController extends BaseApiController
                 RequestManagementReportRowMode::from($rowMode),
                 ReportOperatorFilter::fromKeysOrAll($operatorKeys),
                 ReportSiteFilter::fromKeysOrAll($siteKeys),
+                $module,
             );
 
             return $this->ok([

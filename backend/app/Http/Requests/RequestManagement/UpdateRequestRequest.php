@@ -16,6 +16,7 @@ use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\RequestWorkflowStatusWriter;
 use App\Support\ManagerPositions;
 use Illuminate\Contracts\Validation\Validator;
@@ -187,9 +188,16 @@ class UpdateRequestRequest extends FormRequest
         ];
     }
 
+    /**
+     * Spec 0130: resolved from the MATCHED route
+     * (`RequestModule::fromRequest()`, never from client input), so
+     * `EnforcesFieldPermissions::enforceFieldPermissions()` resolves
+     * `AuthorizationRegistry::resolve('enrollee-management')` — and its base
+     * `{resource}.update` ability check — for a PATCH under that module.
+     */
     protected function authorizationResource(): string
     {
-        return 'request-management';
+        return RequestModule::fromRequest($this)->value;
     }
 
     protected function authorizationModel(): ?Model
@@ -281,8 +289,8 @@ class UpdateRequestRequest extends FormRequest
 
     /**
      * Whether the actor holds the append-only grant on THIS record's team:
-     * `request-management.appendTeamMember` AND a `manager_slots` the role
-     * matrix still shows them. The visibility half matters — the grant reads
+     * `{module}.appendTeamMember` AND a `manager_slots` the role matrix
+     * still shows them. The visibility half matters — the grant reads
      * "vedere la squadra e potervi solo aggiungere", so a role that hid the
      * block entirely must not be able to append to it through a crafted
      * payload. Nothing is checked about `editable`: this method is only ever
@@ -293,7 +301,7 @@ class UpdateRequestRequest extends FormRequest
         /** @var User $actor */
         $actor = $this->user();
 
-        if (! $actor->can('request-management.appendTeamMember')) {
+        if (! $actor->can(RequestModule::fromRequest($this)->permission('appendTeamMember'))) {
             return false;
         }
 

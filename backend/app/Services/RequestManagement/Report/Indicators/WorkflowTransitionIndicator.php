@@ -7,6 +7,7 @@ namespace App\Services\RequestManagement\Report\Indicators;
 use App\Enums\WorkflowStatusGroup;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\IndicatorResult;
 use App\Services\RequestManagement\Report\QuoteCountAggregator;
 use App\Services\RequestManagement\Report\ReportBranchQuery;
@@ -57,13 +58,13 @@ final class WorkflowTransitionIndicator implements ReportIndicator
         private readonly array $groups,
     ) {}
 
-    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): IndicatorResult
+    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null, RequestModule $module = RequestModule::Requests): IndicatorResult
     {
         $targetIds = $this->targetStatusIds();
 
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites, $targetIds), 'distinct quotes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites, $targetIds), 'distinct quotes.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites, $targetIds, $module), 'distinct quotes.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites, $targetIds, $module), 'distinct quotes.id'),
         );
     }
 
@@ -86,9 +87,9 @@ final class WorkflowTransitionIndicator implements ReportIndicator
      * @param  array<int, int>  $categoryIds
      * @param  array<int, int>  $targetIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, array $targetIds): Builder
+    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, array $targetIds, RequestModule $module): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites)
+        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
             ->whereExists(function (QueryBuilder $sub) use ($targetIds, $range): void {
                 $sub->selectRaw('1')

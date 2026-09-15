@@ -4,6 +4,7 @@ import {
   type RequestDashboardQuery,
 } from '@/features/request-management/dashboard-api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { useRequestModule } from '@/features/request-management/request-module'
 
 /**
  * Server state of the dashboard's aggregates (spec 0107 D-5): synchronous,
@@ -22,9 +23,11 @@ import { requestManagementKeys } from '@/features/request-management/query-keys'
  * delivers it structurally, so no separate client-side comparison is added.
  */
 export function useRequestDashboard(query: RequestDashboardQuery, enabled: boolean) {
+  const module = useRequestModule()
+
   return useQuery({
-    queryKey: requestManagementKeys.dashboard(query),
-    queryFn: () => fetchRequestManagementDashboard(query),
+    queryKey: requestManagementKeys.dashboard(module.key, query),
+    queryFn: () => fetchRequestManagementDashboard(module.apiBasePath, query),
     enabled,
   })
 }

@@ -6,6 +6,7 @@ namespace App\Services\RequestManagement\Report;
 
 use App\Enums\RequestManagementReportRowMode;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use Illuminate\Support\Collection;
 
 /**
@@ -36,6 +37,10 @@ use Illuminate\Support\Collection;
  * contains — no row is filtered out after the fact. That is also why a Sede
  * filter can make the "Non assegnato" row disappear (0112 AC-006) without a
  * single line here knowing about it.
+ *
+ * Spec 0130: $module (defaulting to RequestModule::Requests) is handed down
+ * the same way — it restricts WHAT IS COMPUTED via ReportBranchQuery's own
+ * D-2 status filter, never inspected here.
  */
 final class ReportBranchRowsBuilder
 {
@@ -44,10 +49,10 @@ final class ReportBranchRowsBuilder
     /**
      * @return array<int, ReportRow>
      */
-    public function build(ReportBranch $branch, ?User $actor, ReportDateRange $range, RequestManagementReportRowMode $rowMode, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): array
+    public function build(ReportBranch $branch, ?User $actor, ReportDateRange $range, RequestManagementReportRowMode $rowMode, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null, RequestModule $module = RequestModule::Requests): array
     {
         // Step 1: compute every REAL (non-stub) applicable indicator once for the whole branch.
-        $results = $this->computeIndicators($branch, $actor, $range, $operators, $sites);
+        $results = $this->computeIndicators($branch, $actor, $range, $operators, $sites, $module);
 
         // Step 2: the GA2 breakdown to emit — union of operator ids across every computed indicator.
         $operatorIds = $this->operatorIds($results);
@@ -77,7 +82,7 @@ final class ReportBranchRowsBuilder
     /**
      * @return array<string, IndicatorResult>
      */
-    private function computeIndicators(ReportBranch $branch, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites): array
+    private function computeIndicators(ReportBranch $branch, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): array
     {
         $results = [];
 
@@ -85,7 +90,7 @@ final class ReportBranchRowsBuilder
             $indicator = $this->indicators->resolve($column);
 
             if ($indicator !== null) {
-                $results[$column] = $indicator->compute($branch->categoryIds, $actor, $range, $operators, $sites);
+                $results[$column] = $indicator->compute($branch->categoryIds, $actor, $range, $operators, $sites, $module);
             }
         }
 

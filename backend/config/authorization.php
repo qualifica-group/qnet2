@@ -10,6 +10,7 @@ use App\Authorization\ContractsAuthorization;
 use App\Authorization\ContractStatusesAuthorization;
 use App\Authorization\CustomFieldsAuthorization;
 use App\Authorization\DocumentLayoutsAuthorization;
+use App\Authorization\EnrolleeManagementAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
@@ -98,6 +99,9 @@ return [
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersAuthorization::class,
         'request-management' => RequestManagementAuthorization::class,
+        // Spec 0130: "Gestione Iscritti" — same field/action catalogue as
+        // request-management, own resource() (see the class docblock).
+        'enrollee-management' => EnrolleeManagementAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,
         'rewarded-referents' => RewardedReferentsAuthorization::class,

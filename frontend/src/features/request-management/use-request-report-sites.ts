@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchRequestManagementReportSites } from '@/features/request-management/report-api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { useRequestModule } from '@/features/request-management/request-module'
 
 /**
  * Loads the operational sites the report may be filtered by (spec 0112,
@@ -9,9 +10,11 @@ import { requestManagementKeys } from '@/features/request-management/query-keys'
  * fires when the panel opens or the filter sheet is opened.
  */
 export function useRequestReportSites(enabled: boolean) {
+  const module = useRequestModule()
+
   return useQuery({
-    queryKey: requestManagementKeys.reportSites(),
-    queryFn: fetchRequestManagementReportSites,
+    queryKey: requestManagementKeys.reportSites(module.key),
+    queryFn: () => fetchRequestManagementReportSites(module.apiBasePath),
     enabled,
   })
 }

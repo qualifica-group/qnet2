@@ -89,12 +89,13 @@ export interface CreateRequestReportPayload extends RequestReportFilterPayload {
   format: ExportFormat
 }
 
-/** Creates the run and dispatches the backend job (`POST /request-management/report`). */
+/** Creates the run and dispatches the backend job (`POST {basePath}/report`). */
 export async function createRequestManagementReport(
+  basePath: string,
   payload: CreateRequestReportPayload,
 ): Promise<RequestReportRun> {
   const { data } = await apiClient.post<ApiResponse<{ export_run: RequestReportRun }>>(
-    '/request-management/report',
+    `${basePath}/report`,
     payload,
   )
   return data.data.export_run
@@ -103,13 +104,15 @@ export async function createRequestManagementReport(
 /**
  * Loads the branches the actor may include (rev-2 D-11/D-12): only those
  * with at least one in-scope request, all-time (independent of the date
- * range picked in the dialog). `GET /request-management/report/categories`,
- * NOT the tab strip's `/request-management/product-categories` — that
- * returns real category nodes, not the report's six config branches.
+ * range picked in the dialog). `GET {basePath}/report/categories`, NOT the
+ * tab strip's `{basePath}/product-categories` — that returns real category
+ * nodes, not the report's six config branches.
  */
-export async function fetchRequestManagementReportCategories(): Promise<RequestReportCategory[]> {
+export async function fetchRequestManagementReportCategories(
+  basePath: string,
+): Promise<RequestReportCategory[]> {
   const { data } = await apiClient.get<ApiResponse<{ categories: RequestReportCategory[] }>>(
-    '/request-management/report/categories',
+    `${basePath}/report/categories`,
   )
   return data.data.categories
 }
@@ -117,11 +120,13 @@ export async function fetchRequestManagementReportCategories(): Promise<RequestR
 /**
  * Loads the GA2 the actor may filter by (spec 0109, D-6): all-time and
  * independent of both the dates and the branches picked, exactly like the
- * branch list above. `GET /request-management/report/operators`.
+ * branch list above. `GET {basePath}/report/operators`.
  */
-export async function fetchRequestManagementReportOperators(): Promise<RequestReportOperator[]> {
+export async function fetchRequestManagementReportOperators(
+  basePath: string,
+): Promise<RequestReportOperator[]> {
   const { data } = await apiClient.get<ApiResponse<{ operators: RequestReportOperator[] }>>(
-    '/request-management/report/operators',
+    `${basePath}/report/operators`,
   )
   return data.data.operators
 }
@@ -129,29 +134,32 @@ export async function fetchRequestManagementReportOperators(): Promise<RequestRe
 /**
  * Loads the operational sites the actor may filter by (spec 0112, D-10):
  * all-time and independent of the dates, branches and operators picked,
- * exactly like the two lists above. `GET /request-management/report/sites`.
+ * exactly like the two lists above. `GET {basePath}/report/sites`.
  */
-export async function fetchRequestManagementReportSites(): Promise<RequestReportSite[]> {
+export async function fetchRequestManagementReportSites(basePath: string): Promise<RequestReportSite[]> {
   const { data } = await apiClient.get<ApiResponse<{ sites: RequestReportSite[] }>>(
-    '/request-management/report/sites',
+    `${basePath}/report/sites`,
   )
   return data.data.sites
 }
 
-/** Polls the current state of a report run (`GET /request-management/report/{id}`). */
-export async function getRequestManagementReport(reportRunId: number): Promise<RequestReportRun> {
+/** Polls the current state of a report run (`GET {basePath}/report/{id}`). */
+export async function getRequestManagementReport(
+  basePath: string,
+  reportRunId: number,
+): Promise<RequestReportRun> {
   const { data } = await apiClient.get<ApiResponse<{ export_run: RequestReportRun }>>(
-    `/request-management/report/${reportRunId}`,
+    `${basePath}/report/${reportRunId}`,
   )
   return data.data.export_run
 }
 
 /**
  * Downloads the generated CSV of a completed run
- * (`GET /request-management/report/{id}/download`).
+ * (`GET {basePath}/report/{id}/download`).
  */
-export async function downloadRequestManagementReport(reportRunId: number): Promise<void> {
-  const response = await apiClient.get<Blob>(`/request-management/report/${reportRunId}/download`, {
+export async function downloadRequestManagementReport(basePath: string, reportRunId: number): Promise<void> {
+  const response = await apiClient.get<Blob>(`${basePath}/report/${reportRunId}/download`, {
     responseType: 'blob',
   })
   const filename =

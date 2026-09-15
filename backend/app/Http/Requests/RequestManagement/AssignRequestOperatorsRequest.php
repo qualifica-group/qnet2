@@ -7,6 +7,7 @@ namespace App\Http\Requests\RequestManagement;
 use App\Enums\LeadAssignmentMode;
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\Assignment\AssignmentCandidates;
 use App\Services\Assignment\AssignmentSiteResolver;
 use App\Services\Assignment\QuoteCompetence;
@@ -16,10 +17,11 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * Validates POST /api/request-management/assign-operators (user directive
- * 2026-07-23, "come nei lead"): bulk-assign the GA2 "Operatore" of many
- * requests at once, either to a single chosen operator (`mode=single`) or
- * load-balanced across the operators of each offer's own Sede
+ * Validates POST /api/{module}/assign-operators (user directive 2026-07-23,
+ * "come nei lead"; registered for both `request-management` and
+ * `enrollee-management` by spec 0130): bulk-assign the GA2 "Operatore" of
+ * many requests at once, either to a single chosen operator (`mode=single`)
+ * or load-balanced across the operators of each offer's own Sede
  * (`mode=balanced`).
  *
  * `operational_site_id` is `prohibited` since spec 0113 (AC-021): an offer's
@@ -42,31 +44,11 @@ use Illuminate\Validation\Validator;
  * `request_ids` are Offerta (Quote) ids (spec 0086, D-2).
  *
  * Authorization is intentionally NOT handled here (it stays in the controller:
- * the `request-management.update` gate plus the per-row D-3 scope), same
- * convention as UpdateRequestRequest.
+ * the `{module}.update` gate plus the per-row D-3 scope), same convention as
+ * UpdateRequestRequest.
  */
 class AssignRequestOperatorsRequest extends FormRequest
 {
-    /**
-     * The two abilities RequestManagementController::assignOperators() aborts
-     * on. Mirrored here for ORDERING alone, never as the gate itself: a
-     * FormRequest is validated BEFORE the controller body runs, so without
-     * this an actor who may not assign would be answered with a 422 naming
-     * offers instead of the 403 that is theirs — a regression on the gate and
-     * a leak of which offers exist to someone who may not act on them.
-     *
-     * It therefore reads like a redundant duplicate of the controller's gate
-     * and is not one: DELETING IT to "simplify" silently turns that 403 into
-     * an informative 422. It may only go away if the check itself moves
-     * downstream of the gate.
-     *
-     * @var array<int, string>
-     */
-    private const array ASSIGNMENT_ABILITIES = [
-        'request-management.update',
-        'request-management.assignOperator',
-    ];
-
     public function authorize(): bool
     {
         // Authorization handled in the controller (permission + D-3 scope).
@@ -122,12 +104,13 @@ class AssignRequestOperatorsRequest extends FormRequest
         }
 
         $user = $this->user();
+        $module = RequestModule::fromRequest($this);
 
-        if (! $user instanceof User || ! $this->mayAssign($user)) {
+        if (! $user instanceof User || ! $this->mayAssign($user, $module)) {
             return;
         }
 
-        $requestIds = $this->reachableRequestIds($user);
+        $requestIds = $this->reachableRequestIds($user, $module);
 
         if ($requestIds === []) {
             return;
@@ -144,27 +127,36 @@ class AssignRequestOperatorsRequest extends FormRequest
         }
     }
 
-    private function mayAssign(User $user): bool
+    /**
+     * The two abilities RequestManagementController::assignOperators() aborts
+     * on, resolved against $module. Mirrored here for ORDERING alone, never
+     * as the gate itself: a FormRequest is validated BEFORE the controller
+     * body runs, so without this an actor who may not assign would be
+     * answered with a 422 naming offers instead of the 403 that is theirs —
+     * a regression on the gate and a leak of which offers exist to someone
+     * who may not act on them.
+     *
+     * It therefore reads like a redundant duplicate of the controller's gate
+     * and is not one: DELETING IT to "simplify" silently turns that 403 into
+     * an informative 422. It may only go away if the check itself moves
+     * downstream of the gate.
+     */
+    private function mayAssign(User $user, RequestModule $module): bool
     {
-        foreach (self::ASSIGNMENT_ABILITIES as $ability) {
-            if (! $user->can($ability)) {
-                return false;
-            }
-        }
-
-        return true;
+        return $user->can($module->permission('update')) && $user->can($module->permission('assignOperator'));
     }
 
     /**
      * The submitted offers the actor may actually write, through the SAME
      * RequestManagementScope predicate RequestAssignmentService applies before
-     * writing (D-3). An out-of-scope id must not reach the check at all: the
-     * action skips it in silence, so letting one fail the batch would both
-     * contradict that skip and tell the actor an offer they cannot see exists.
+     * writing (D-3, scoped to $module since spec 0130). An out-of-scope id
+     * must not reach the check at all: the action skips it in silence, so
+     * letting one fail the batch would both contradict that skip and tell
+     * the actor an offer they cannot see exists.
      *
      * @return array<int, int>
      */
-    private function reachableRequestIds(User $user): array
+    private function reachableRequestIds(User $user, RequestModule $module): array
     {
         $requestIds = self::normalizedIds($this->input('request_ids', []));
 
@@ -172,7 +164,7 @@ class AssignRequestOperatorsRequest extends FormRequest
             return [];
         }
 
-        return RequestManagementScope::scopeToActor(Quote::query()->whereIn('id', $requestIds), $user)
+        return RequestManagementScope::scopeToActor(Quote::query()->whereIn('id', $requestIds), $user, $module)
             ->orderBy('id')
             ->pluck('id')
             ->map(intval(...))

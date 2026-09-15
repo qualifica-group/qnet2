@@ -46,6 +46,7 @@ export const navigation = {
   timeEntries: 'Segnatempo',
   commissionConfigurations: 'Configuratore Commissioni',
   requestManagement: 'Gestione Richieste',
+  enrolleeManagement: 'Gestione Iscritti',
   fieldChangeRequests: 'Richieste di modifica',
   rewards: 'Premi e Incentivi',
   rewardTypes: 'Buoni, Premi e Incentivi',

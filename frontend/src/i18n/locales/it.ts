@@ -50,6 +50,7 @@ import { rewardStatuses } from './it-reward-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
 import { documentLayouts } from './it-document-layouts'
 import { requestManagement } from './it-request-management'
+import { enrolleeManagement } from './it-enrollee-management'
 import { fieldChangeRequests } from './it-field-change-requests'
 import { notes } from './it-notes'
 import { richText } from './it-rich-text'
@@ -429,6 +430,7 @@ export const it: TranslationResources = {
   timeEntries,
   commissionConfigurations,
   requestManagement,
+  enrolleeManagement,
   // Messaggi di validazione condivisi della mappa dinamica `attribute_values`
   // (spec 0084): namespace neutro riusato da ogni contesto che la raccoglie
   // (prodotto/opportunità/offerta) invece di uno per dominio.

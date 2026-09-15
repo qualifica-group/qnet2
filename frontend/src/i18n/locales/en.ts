@@ -58,6 +58,7 @@ import { documentLayouts } from './en-document-layouts'
 import { navigation } from './en-navigation'
 import { settings } from './en-settings'
 import { requestManagement } from './en-request-management'
+import { enrolleeManagement } from './en-enrollee-management'
 import { notes } from './en-notes'
 import { richText } from './en-rich-text'
 import { notifications } from './en-notifications'
@@ -443,6 +444,7 @@ export const en = {
   timeEntries,
   commissionConfigurations,
   requestManagement,
+  enrolleeManagement,
   // Shared validation messages of the `attribute_values` dynamic map (spec
   // 0084): a neutral namespace reused by every context that collects it
   // (product/opportunity/quote) instead of one per domain.

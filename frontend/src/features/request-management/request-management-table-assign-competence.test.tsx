@@ -221,7 +221,7 @@ describe('RequestManagementTable — scope-aware assignment (spec 0110/0113)', (
     // TanStack v5 hands the mutation context as a second argument, so the
     // payload itself is asserted rather than the whole call.
     await waitFor(() => expect(assignRequestOperatorsMock).toHaveBeenCalled())
-    expect(assignRequestOperatorsMock.mock.calls[0][0]).toEqual({
+    expect(assignRequestOperatorsMock.mock.calls[0][1]).toEqual({
       request_ids: [11, 22],
       mode: 'balanced',
     })

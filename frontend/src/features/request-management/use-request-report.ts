@@ -12,6 +12,7 @@ import {
   type RequestReportStatus,
 } from '@/features/request-management/report-api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { useRequestModule } from '@/features/request-management/request-module'
 
 /** Interval (ms) between polls while the run is still processing. */
 const POLL_INTERVAL_MS = 1500
@@ -41,6 +42,7 @@ export function resolveRequestReportErrorMessage(error: unknown, t: TFunction): 
  */
 export function useRequestReport() {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const queryClient = useQueryClient()
   const [runId, setRunId] = useState<number | null>(null)
   // Guards the auto-download against firing twice for the same run (e.g. a
@@ -48,16 +50,17 @@ export function useRequestReport() {
   const downloadedRunId = useRef<number | null>(null)
 
   const createMutation = useMutation({
-    mutationFn: (payload: CreateRequestReportPayload) => createRequestManagementReport(payload),
+    mutationFn: (payload: CreateRequestReportPayload) =>
+      createRequestManagementReport(module.apiBasePath, payload),
     onSuccess: (run) => {
       setRunId(run.id)
-      queryClient.setQueryData<RequestReportRun>(requestManagementKeys.reportRun(run.id), run)
+      queryClient.setQueryData<RequestReportRun>(requestManagementKeys.reportRun(module.key, run.id), run)
     },
   })
 
   const runQuery = useQuery({
-    queryKey: requestManagementKeys.reportRun(runId),
-    queryFn: () => getRequestManagementReport(runId as number),
+    queryKey: requestManagementKeys.reportRun(module.key, runId),
+    queryFn: () => getRequestManagementReport(module.apiBasePath, runId as number),
     enabled: runId != null,
     // Re-evaluated on every query update (including the `setQueryData` call
     // above), so creating the run starts polling without a separate effect.
@@ -68,7 +71,7 @@ export function useRequestReport() {
   })
 
   const downloadMutation = useMutation({
-    mutationFn: () => downloadRequestManagementReport(runId as number),
+    mutationFn: () => downloadRequestManagementReport(module.apiBasePath, runId as number),
   })
 
   const reportRun = runId != null ? runQuery.data : undefined

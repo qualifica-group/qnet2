@@ -8,6 +8,7 @@ use App\Http\Requests\Export\CreateExportRequest;
 use App\Http\Resources\ExportRunResource;
 use App\Models\ExportRun;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\ExportService;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
@@ -25,10 +26,13 @@ use Throwable;
  * every domain with a registered TableDefinition; {domain} resolves it
  * through the TableRegistry (unknown → 404), mirroring
  * App\Http\Controllers\Import\ImportController. Every action re-authorizes
- * via the definition's modelClass() `export` ability (deny → 403); a bound
- * {exportRun} that does not belong to the actor OR whose resource does not
- * match {domain} 404s (never 403), mirroring
- * ImportController::assertOwnedRun.
+ * (deny → 403) via `authorizeExport()`: for a domain that maps onto a
+ * `RequestModule` case (`request-management`/`enrollee-management`, spec 0130
+ * D-7) that means the module's OWN `{domain}.export` ability, never
+ * `quotes.export` — every other domain keeps the pre-existing behaviour,
+ * `Gate::allows('export', $definition->modelClass())`. A bound {exportRun}
+ * that does not belong to the actor OR whose resource does not match
+ * {domain} 404s (never 403), mirroring ImportController::assertOwnedRun.
  *
  * @see ExportService
  */
@@ -49,7 +53,7 @@ class ExportController extends BaseApiController
             $definition = $this->registry->resolve($domain); // 404 if unknown
             /** @var User $actor */
             $actor = $request->user();
-            $this->authorizeExport($definition, $actor);
+            $this->authorizeExport($definition, $actor, $domain);
 
             $format = ExportFormat::from($request->validated('format'));
             // `opportunityId` (spec 0067, D-5)/`quoteId` (spec 0095, D-8) are
@@ -73,7 +77,7 @@ class ExportController extends BaseApiController
     {
         try {
             $definition = $this->registry->resolve($domain); // 404 if unknown
-            $this->authorizeExport($definition, $request->user());
+            $this->authorizeExport($definition, $request->user(), $domain);
             $this->assertOwnedRun($exportRun, $request->user(), $domain);
 
             return $this->ok(['export_run' => new ExportRunResource($exportRun)]);
@@ -90,7 +94,7 @@ class ExportController extends BaseApiController
     {
         try {
             $definition = $this->registry->resolve($domain); // 404 if unknown
-            $this->authorizeExport($definition, $request->user());
+            $this->authorizeExport($definition, $request->user(), $domain);
             $this->assertOwnedRun($exportRun, $request->user(), $domain);
             $this->assertHasFile($exportRun);
 
@@ -107,11 +111,25 @@ class ExportController extends BaseApiController
     /**
      * Single enforcement point: deny → AuthorizationException → 403.
      *
+     * Spec 0130, D-7: for `request-management`/`enrollee-management` the
+     * ability is `{domain}.export` — reading it off `RequestModule` rather
+     * than the definition's `modelClass()` closes the pre-existing
+     * incongruity where BOTH resolved `quotes.export` (Quote is what the row
+     * IS, not what governs the module, mirrors `authorizeViewAny()`'s own
+     * deviation in RequestManagementTableDefinition). Every other domain is
+     * untouched.
+     *
      * @throws AuthorizationException
      */
-    private function authorizeExport(TableDefinition $definition, User $actor): void
+    private function authorizeExport(TableDefinition $definition, User $actor, string $domain): void
     {
-        if (! Gate::forUser($actor)->allows('export', $definition->modelClass())) {
+        $module = RequestModule::tryFrom($domain);
+
+        $allowed = $module !== null
+            ? $actor->can($module->permission('export'))
+            : Gate::forUser($actor)->allows('export', $definition->modelClass());
+
+        if (! $allowed) {
             throw new AuthorizationException;
         }
     }

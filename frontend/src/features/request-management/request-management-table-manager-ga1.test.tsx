@@ -187,7 +187,7 @@ describe('RequestManagementTable — bulk GA1 assignment (spec 0104)', () => {
     // Asserted on the first argument alone: TanStack hands the mutationFn a
     // second, internal context object.
     await waitFor(() => expect(assignRequestManagerGa1Mock).toHaveBeenCalled())
-    expect(assignRequestManagerGa1Mock.mock.calls[0][0]).toEqual({
+    expect(assignRequestManagerGa1Mock.mock.calls[0][1]).toEqual({
       request_ids: [11, 22],
       manager_ga1_id: USER_PICK_ID,
     })
@@ -207,7 +207,7 @@ describe('RequestManagementTable — bulk GA1 assignment (spec 0104)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() => expect(assignRequestManagerGa1Mock).toHaveBeenCalled())
-    expect(assignRequestManagerGa1Mock.mock.calls[0][0]).toEqual({
+    expect(assignRequestManagerGa1Mock.mock.calls[0][1]).toEqual({
       request_ids: [11, 22],
       manager_ga1_id: null,
     })

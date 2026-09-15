@@ -4,6 +4,8 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { assignRequestManagerGa1 } from '@/features/request-management/api'
+import { useRequestModule } from '@/features/request-management/request-module'
+import type { AssignRequestManagerGa1Payload } from '@/features/request-management/request-write-types'
 import { GA1_MANAGER_POSITION } from '@/features/request-management/types'
 import { useActiveCategoryManagerLabels } from '@/features/request-management/use-active-category-manager-labels'
 
@@ -30,6 +32,7 @@ export function useRequestManagerGa1Assignment({
   onAssigned,
 }: UseRequestManagerGa1AssignmentOptions) {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const { can } = useAbilities()
 
   const [open, setOpen] = useState(false)
@@ -38,7 +41,7 @@ export function useRequestManagerGa1Assignment({
   // Its OWN ability on top of `update` (D-3): a bulk write resolves no
   // per-field permission, so restricting the `manager_ga1_id` field alone
   // would leave this action as the way around that restriction.
-  const canAssign = can('request-management.update') && can('request-management.assignManagerGa1')
+  const canAssign = can(module.permission('update')) && can(module.permission('assignManagerGa1'))
 
   // The slot's name comes from the SAME source that relabels the grid column
   // (spec 0080, extended to GA1): the active tab's category labels, keyed by
@@ -49,7 +52,8 @@ export function useRequestManagerGa1Assignment({
     managerLabels?.[String(GA1_MANAGER_POSITION)] ?? t('requestManagement.columns.managerGa1')
 
   const mutation = useMutation({
-    mutationFn: assignRequestManagerGa1,
+    mutationFn: (payload: AssignRequestManagerGa1Payload) =>
+      assignRequestManagerGa1(module.apiBasePath, payload),
     onSuccess: (result) => {
       toast.success(t('requestManagement.assignManagerGa1.success', { count: result.assigned }))
       onAssigned()

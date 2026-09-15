@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\RequestManagement\Report;
 
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 
 /**
  * The GA2 Operatore an actor may filter the report by (spec 0108, D-6): the
@@ -21,6 +22,10 @@ use App\Models\User;
  * picker's own endpoint AND the allow-list both FormRequests validate
  * `operator_keys` against (D-5) — one source, so a value that passes
  * validation is by construction a value the picker could have produced.
+ *
+ * Spec 0130: $module (defaulting to RequestModule::Requests) flows into
+ * ReportBranchQuery::build() below, so the GA2 list an Iscritti actor sees
+ * is narrowed to the module's own D-2 row-state filter too.
  */
 final class ReportOperatorAvailabilityResolver
 {
@@ -32,10 +37,10 @@ final class ReportOperatorAvailabilityResolver
     /**
      * @return array<int, array{key: string, label: string}>
      */
-    public function available(?User $actor): array
+    public function available(?User $actor, RequestModule $module = RequestModule::Requests): array
     {
         // Step 1: the distinct GA2 of every in-scope request, "Non assegnato" (NULL) included.
-        $operatorIds = $this->distinctOperatorIds($actor);
+        $operatorIds = $this->distinctOperatorIds($actor, $module);
 
         // Step 2: the named operators, sorted by name as the CSV's own rows are.
         $options = User::query()
@@ -61,10 +66,10 @@ final class ReportOperatorAvailabilityResolver
     /**
      * @return array<int, int|null>
      */
-    private function distinctOperatorIds(?User $actor): array
+    private function distinctOperatorIds(?User $actor, RequestModule $module): array
     {
         return $this->branchQuery
-            ->build($this->allCategoryIds(), $actor, ReportOperatorFilter::all())
+            ->build($this->allCategoryIds(), $actor, ReportOperatorFilter::all(), module: $module)
             ->distinct()
             ->pluck('quotes.operator_id')
             ->map(static fn ($id): ?int => $id === null ? null : (int) $id)

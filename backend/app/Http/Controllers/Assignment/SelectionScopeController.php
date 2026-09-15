@@ -13,6 +13,7 @@ use App\Models\ImportRunRow;
 use App\Models\Lead;
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\Assignment\AssignmentCandidates;
 use App\Services\Assignment\AssignmentSiteResolver;
 use App\Services\Assignment\ImportRowCompetence;
@@ -53,10 +54,16 @@ use Throwable;
  *
  * Read-only, and gated by the READ permission of the requested domain, never
  * by a gate of its own (constraints): `leads.import` + run ownership for the
- * staged rows, `leads.viewAny` for the real leads, `request-management.viewAny`
- * for the offers — plus, for the offers, the module's own D-3 row scope, so
- * an offer the actor may not reach contributes neither its categories nor its
+ * staged rows, `leads.viewAny` for the real leads, `{module}.viewAny` for the
+ * offers — plus, for the offers, the module's own D-2/D-3 row scope, so an
+ * offer the actor may not reach contributes neither its categories nor its
  * Sede to the answer (AC-025).
+ *
+ * Spec 0130, D-9: `Quotes` and `Enrollees` are the SAME Quote-backed reading,
+ * parameterized by `AssignmentDomain::requestModule()` — the picker behind
+ * the Iscritti bulk-assign dialog reaches this endpoint through the
+ * `enrollees` domain, never by widening `Quotes`' own gate with an OR
+ * (constraints: "permessi dei due moduli mai in OR").
  */
 class SelectionScopeController extends BaseApiController
 {
@@ -82,7 +89,7 @@ class SelectionScopeController extends BaseApiController
             $scope = match ($request->domain()) {
                 AssignmentDomain::ImportRows => $this->fromImportRows($request, $actor),
                 AssignmentDomain::Leads => $this->fromLeads($request),
-                AssignmentDomain::Quotes => $this->fromQuotes($request, $actor),
+                AssignmentDomain::Quotes, AssignmentDomain::Enrollees => $this->fromQuotes($request, $actor),
             };
 
             return $this->ok($scope);
@@ -164,18 +171,26 @@ class SelectionScopeController extends BaseApiController
     }
 
     /**
+     * Serves BOTH `Quotes` and `Enrollees` (spec 0130, D-9): the module comes
+     * off `AssignmentDomain::requestModule()`, the ONE place that mapping is
+     * declared — no `if ($domain === ...)` here or anywhere downstream.
+     *
      * @return array<string, mixed>
      */
     private function fromQuotes(SelectionScopeRequest $request, User $actor): array
     {
-        abort_unless($actor->can('request-management.viewAny'), 403);
+        /** @var RequestModule $module */
+        $module = $request->domain()->requestModule();
+        abort_unless($actor->can($module->permission('viewAny')), 403);
 
-        // D-3, restated as a read rule: an offer outside the actor's scope
-        // does not exist for them, so it must not leak what it demands nor
-        // where it sits.
+        // D-2/D-3, restated as a read rule: an offer outside the actor's
+        // scope (wrong module perimeter, or — for Enrollees — the wrong
+        // status group) does not exist for them, so it must not leak what it
+        // demands nor where it sits.
         $inScopeIds = RequestManagementScope::scopeToActor(
             Quote::query()->whereIn('quotes.id', $request->ids()),
             $actor,
+            $module,
         )->pluck('quotes.id')->map(intval(...))->all();
 
         $siteByQuote = $this->siteResolver->forQuotes($inScopeIds);

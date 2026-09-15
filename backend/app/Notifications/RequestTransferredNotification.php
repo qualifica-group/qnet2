@@ -9,6 +9,7 @@ use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Support\Notifications\DetailsTable;
 use App\Support\Notifications\RecordLinkResolver;
 use Illuminate\Bus\Queueable;
@@ -55,6 +56,12 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
      *                               behaviour of reusing $requestId for both
      *                               branches (RecordLinkResolver's own
      *                               default).
+     * @param  RequestModule  $module  spec 0130: the module this transfer
+     *                                 happened under — governs the fallback
+     *                                 branch's permission/path
+     *                                 (RecordLinkResolver::pathFor()).
+     *                                 Defaults to `Requests`, at parity for
+     *                                 every pre-0130 caller.
      */
     public function __construct(
         private readonly int $requestId,
@@ -67,6 +74,7 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
         private readonly Carbon $transferredAt,
         private readonly TransferRecipientRoleEnum $recipientRole,
         private readonly ?int $opportunityId = null,
+        private readonly RequestModule $module = RequestModule::Requests,
     ) {}
 
     /**
@@ -129,6 +137,7 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
             AssignmentTargetEnum::Opportunity,
             $this->opportunityId ?? $this->requestId,
             $this->requestId,
+            $this->module,
         );
     }
 

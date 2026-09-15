@@ -12,6 +12,7 @@ use App\Http\Resources\RequestManagementReportRunResource;
 use App\Jobs\GenerateRequestManagementReportJob;
 use App\Models\ExportRun;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\ReportCategoryAvailabilityResolver;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
 use App\Services\RequestManagement\Report\ReportSiteAvailabilityResolver;
@@ -25,20 +26,27 @@ use Throwable;
 /**
  * The request-management report's own create/poll/download endpoints
  * (spec 0106, D-8) — a bespoke controller, deliberately not ExportController
- * (spec 0014): `resource = 'request-management-report'` is not a
- * config/tables.php domain, so the generic `/api/exports/{domain}` routes
- * fail closed on it (scope §out).
+ * (spec 0014): `resource = '{module}-report'` is not a config/tables.php
+ * domain, so the generic `/api/exports/{domain}` routes fail closed on it
+ * (scope §out).
  *
  * A bound {exportRun} not owned by the actor, or whose `resource` is not
  * this module's own, 404s (never 403) — mirrors
  * ExportController::assertOwnedRun (AC-003-ter).
+ *
+ * Spec 0130: every route below carries its own RequestModule
+ * (routes/api/request-management.php's own loop), resolved here via
+ * RequestModule::fromRequest() — never from client input. The gate is
+ * `$module->permission('report')` and the run's own `resource` is
+ * `"{$module->value}-report"`: for RequestModule::Requests that is the
+ * SAME `'request-management-report'` literal every existing test asserts
+ * (parity), and for Enrollees it is `'enrollee-management-report'` — an
+ * ExportRun created by one module's `report` route can never be read back
+ * through the other (assertOwnedRun below), which is what keeps AC-009's
+ * "an exportRun created by a module is not readable by the other" true.
  */
 class RequestManagementReportController extends BaseApiController
 {
-    private const string PERMISSION = 'request-management.report';
-
-    private const string RESOURCE = 'request-management-report';
-
     public function __construct(
         private readonly ReportCategoryAvailabilityResolver $availability,
         private readonly ReportOperatorAvailabilityResolver $operatorAvailability,
@@ -54,11 +62,12 @@ class RequestManagementReportController extends BaseApiController
     public function categories(Request $request): JsonResponse
     {
         try {
+            $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(self::PERMISSION), 403);
+            abort_unless($actor->can($module->permission('report')), 403);
 
-            return $this->ok(['categories' => $this->availability->available($actor)]);
+            return $this->ok(['categories' => $this->availability->available($actor, $module)]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -72,11 +81,12 @@ class RequestManagementReportController extends BaseApiController
     public function operators(Request $request): JsonResponse
     {
         try {
+            $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(self::PERMISSION), 403);
+            abort_unless($actor->can($module->permission('report')), 403);
 
-            return $this->ok(['operators' => $this->operatorAvailability->available($actor)]);
+            return $this->ok(['operators' => $this->operatorAvailability->available($actor, $module)]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -91,11 +101,12 @@ class RequestManagementReportController extends BaseApiController
     public function sites(Request $request): JsonResponse
     {
         try {
+            $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(self::PERMISSION), 403);
+            abort_unless($actor->can($module->permission('report')), 403);
 
-            return $this->ok(['sites' => $this->siteAvailability->available($actor)]);
+            return $this->ok(['sites' => $this->siteAvailability->available($actor, $module)]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -108,9 +119,10 @@ class RequestManagementReportController extends BaseApiController
     public function store(RequestReportRequest $request): JsonResponse
     {
         try {
+            $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(self::PERMISSION), 403);
+            abort_unless($actor->can($module->permission('report')), 403);
 
             $dateFrom = (string) $request->validated('date_from');
             $dateTo = (string) $request->validated('date_to');
@@ -122,11 +134,11 @@ class RequestManagementReportController extends BaseApiController
             $format = ExportFormat::from((string) $request->validated('format'));
 
             $run = ExportRun::create([
-                'resource' => self::RESOURCE,
+                'resource' => $this->resource($module),
                 'user_id' => $actor->id,
                 'status' => ExportStatus::Processing,
                 'format' => $format,
-                'original_filename' => $this->fileName($dateFrom, $dateTo, $format),
+                'original_filename' => $this->fileName($module, $dateFrom, $dateTo, $format),
                 'state' => [
                     'date_from' => $dateFrom,
                     'date_to' => $dateTo,
@@ -140,6 +152,12 @@ class RequestManagementReportController extends BaseApiController
                     // Same shape, same reason, for the Sede selection (spec
                     // 0112 D-4/AC-014).
                     ...($siteKeys === null ? [] : ['site_keys' => $siteKeys]),
+                    // Spec 0130: written ONLY for a non-default module — a run
+                    // frozen before this spec, or created under
+                    // request-management, has no such key, and the job reads
+                    // its absence as RequestModule::Requests (same optional-key
+                    // convention as operator_keys/site_keys above).
+                    ...($module === RequestModule::Requests ? [] : ['module' => $module->value]),
                 ],
             ]);
 
@@ -158,8 +176,9 @@ class RequestManagementReportController extends BaseApiController
     public function show(Request $request, ExportRun $exportRun): JsonResponse
     {
         try {
-            abort_unless($request->user()->can(self::PERMISSION), 403);
-            $this->assertOwnedRun($exportRun, $request->user());
+            $module = RequestModule::fromRequest($request);
+            abort_unless($request->user()->can($module->permission('report')), 403);
+            $this->assertOwnedRun($exportRun, $request->user(), $module);
 
             return $this->ok(['export_run' => new RequestManagementReportRunResource($exportRun)]);
         } catch (Throwable $exception) {
@@ -174,8 +193,9 @@ class RequestManagementReportController extends BaseApiController
     public function download(Request $request, ExportRun $exportRun): StreamedResponse|JsonResponse
     {
         try {
-            abort_unless($request->user()->can(self::PERMISSION), 403);
-            $this->assertOwnedRun($exportRun, $request->user());
+            $module = RequestModule::fromRequest($request);
+            abort_unless($request->user()->can($module->permission('report')), 403);
+            $this->assertOwnedRun($exportRun, $request->user(), $module);
             $this->assertHasFile($exportRun);
 
             return Storage::disk((string) config('exports.disk'))->download(
@@ -188,17 +208,26 @@ class RequestManagementReportController extends BaseApiController
         }
     }
 
-    private function fileName(string $dateFrom, string $dateTo, ExportFormat $format): string
+    private function fileName(RequestModule $module, string $dateFrom, string $dateTo, ExportFormat $format): string
     {
-        return "request-management-report-{$dateFrom}_{$dateTo}.{$format->extension()}";
+        return "{$this->resource($module)}-{$dateFrom}_{$dateTo}.{$format->extension()}";
+    }
+
+    /**
+     * `"{$module->value}-report"` — for RequestModule::Requests the SAME
+     * `'request-management-report'` literal every existing test asserts.
+     */
+    private function resource(RequestModule $module): string
+    {
+        return "{$module->value}-report";
     }
 
     /**
      * @throws ModelNotFoundException
      */
-    private function assertOwnedRun(ExportRun $exportRun, User $actor): void
+    private function assertOwnedRun(ExportRun $exportRun, User $actor, RequestModule $module): void
     {
-        if ($exportRun->user_id !== $actor->id || $exportRun->resource !== self::RESOURCE) {
+        if ($exportRun->user_id !== $actor->id || $exportRun->resource !== $this->resource($module)) {
             throw (new ModelNotFoundException)->setModel(ExportRun::class, [$exportRun->id]);
         }
     }

@@ -96,7 +96,7 @@ describe('work panel — Linee dell\'offerta', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Salva' })[0])
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({
       offer_lines: [{
         id: OFFER_LINE_FIBRA.id,
         product_id: OFFER_LINE_FIBRA.product_id,
@@ -121,7 +121,7 @@ describe('work panel — Linee dell\'offerta', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Salva' })[0])
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('offer_lines')
+    expect(updateRequestWorkMock.mock.calls[0][2]).not.toHaveProperty('offer_lines')
   })
 
   it('opens on one empty row when the request carries no line yet, and still saves without it', async () => {
@@ -141,7 +141,7 @@ describe('work panel — Linee dell\'offerta', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Salva' })[0])
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('offer_lines')
+    expect(updateRequestWorkMock.mock.calls[0][2]).not.toHaveProperty('offer_lines')
   })
 
   it('blocks the submit on an incomplete row, with the message on that row', async () => {

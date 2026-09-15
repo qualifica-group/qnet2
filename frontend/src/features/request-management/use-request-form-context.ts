@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { fetchRequestFormContext } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { REQUEST_MODULE } from '@/features/request-management/request-module'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import type { RequestProductLinePayload } from '@/features/request-management/request-write-types'
 import type { RequestFormContext } from '@/features/request-management/types'
@@ -50,7 +51,10 @@ export function useRequestFormContext(productLines: ProductLineRow[]) {
   )
 
   const query = useQuery<RequestFormContext, AxiosError>({
-    queryKey: requestManagementKeys.formContext(criteriaKey),
+    // Create-only (D-8): this hook backs the create form alone, which never
+    // mounts under Gestione Iscritti (`ENROLLEE_MODULE.allowsCreate` is
+    // `false`) — the module is fixed to `REQUEST_MODULE`, not read from context.
+    queryKey: requestManagementKeys.formContext(REQUEST_MODULE.key, criteriaKey),
     queryFn: () => fetchRequestFormContext(completeLines),
     enabled: completeLines.length > 0,
   })

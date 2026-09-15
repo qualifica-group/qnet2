@@ -240,7 +240,7 @@ describe('RequestManagementTable (spec 0049 AC-060)', () => {
 
     fireEvent.click(screen.getByText('trigger-view'))
 
-    await waitFor(() => expect(fetchRequestWorkPanelMock).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(fetchRequestWorkPanelMock).toHaveBeenCalledWith('/request-management', 7))
     expect(await screen.findAllByRole('heading', { name: 'Preliminary information' })).not.toHaveLength(0)
     expect(navigateMock).not.toHaveBeenCalled()
   })
@@ -262,7 +262,7 @@ describe('RequestManagementTable (spec 0049 AC-060)', () => {
 
     fireEvent.click(screen.getByText('trigger-delete'))
 
-    await waitFor(() => expect(deleteRequestMock).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(deleteRequestMock).toHaveBeenCalledWith('/request-management', 7))
     expect(navigateMock).not.toHaveBeenCalled()
   })
 

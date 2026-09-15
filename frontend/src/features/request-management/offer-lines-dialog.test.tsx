@@ -95,7 +95,7 @@ describe('Gestione Richieste — linee di prodotto in griglia', () => {
     // onto the next cell.
     expect(stopEditing).toHaveBeenCalledWith(true)
     expect(await screen.findByLabelText('Quantità riga 1')).toHaveValue(1)
-    expect(fetchRequestWorkPanelMock).toHaveBeenCalledWith(4001)
+    expect(fetchRequestWorkPanelMock).toHaveBeenCalledWith('/request-management', 4001)
   })
 
   it('never offers the provvigioni control: this channel does not own that block', async () => {

@@ -8,7 +8,7 @@
  */
 
 /** Record families that can express an assignment scope. */
-export type AssignmentDomain = 'import_rows' | 'leads' | 'quotes'
+export type AssignmentDomain = 'import_rows' | 'leads' | 'quotes' | 'enrollees'
 
 /**
  * Body of `POST /api/assignment/selection-scope`, a discriminated union on
@@ -27,7 +27,7 @@ export type AssignmentScopePayload =
       row_ids: number[]
     }
   | {
-      domain: 'leads' | 'quotes'
+      domain: 'leads' | 'quotes' | 'enrollees'
       ids: number[]
     }
 
@@ -52,7 +52,8 @@ export interface AssignmentScopeResult {
   operational_site_id: number | null
   /**
    * Distinct campaigns of the selection, ascending; always `[]` for
-   * `domain: 'quotes'` (an opportunity has no campaign).
+   * `domain: 'quotes'`/`'enrollees'` (an opportunity has no campaign — spec
+   * 0130 D-9: `enrollees` selects the same quote records, scoped Iscritti).
    */
   campaign_ids: number[]
   /**

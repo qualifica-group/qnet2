@@ -14,6 +14,7 @@ import {
   simplifiedLineValuesFromProduct,
 } from '@/features/quotes/use-quote-lines-field'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { useRequestModule, type RequestModuleKey } from '@/features/request-management/request-module'
 
 /** Two rows are all it takes to tell "exactly one product" from "more than one". */
 const SOLE_PRODUCT_PROBE_LIMIT = 2
@@ -33,10 +34,13 @@ const NO_CATEGORY_IDS: number[] = []
  * what lets the caller settle a category it will never seed from. A key is
  * ABSENT while its probe is in flight (or has failed): nothing is decided yet.
  */
-function useSoleCategoryProducts(categoryIds: number[]): Map<number, QuoteProductForSelectItem | null> {
+function useSoleCategoryProducts(
+  moduleKey: RequestModuleKey,
+  categoryIds: number[],
+): Map<number, QuoteProductForSelectItem | null> {
   return useQueries({
     queries: categoryIds.map((categoryId) => ({
-      queryKey: requestManagementKeys.categorySoleProduct(categoryId),
+      queryKey: requestManagementKeys.categorySoleProduct(moduleKey, categoryId),
       queryFn: async (): Promise<QuoteProductForSelectItem | null> => {
         const page = await fetchForSelect(PRODUCTS_FOR_SELECT_RESOURCE, {
           limit: SOLE_PRODUCT_PROBE_LIMIT,
@@ -144,6 +148,7 @@ export function useOfferLinesAutofill<TFieldValues extends FieldValues>({
   rememberVatRatePercent,
   simplified = false,
 }: UseOfferLinesAutofillArgs<TFieldValues>): void {
+  const { key: moduleKey } = useRequestModule()
   const permission = useResourcePermissions().field(OFFER_LINES_META_KEY)
   // The SAME derivation `MetaField` applies before handing the rows to the
   // editor: a field the actor may not write is not written from here either.
@@ -163,7 +168,7 @@ export function useOfferLinesAutofill<TFieldValues extends FieldValues>({
     [categoryIds, initialCategoryIds],
   )
 
-  const soleProducts = useSoleCategoryProducts(editable ? pendingCategoryIds : NO_CATEGORY_IDS)
+  const soleProducts = useSoleCategoryProducts(moduleKey, editable ? pendingCategoryIds : NO_CATEGORY_IDS)
 
   // Seeded once each, and never again: re-seeding a category whose probe stays
   // cached would make the row impossible to delete.

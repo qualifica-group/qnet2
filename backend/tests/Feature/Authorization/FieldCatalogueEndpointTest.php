@@ -88,6 +88,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0049 `request-management` (RequestManagementAuthorization registered in the generic
         // registry so GET /api/meta/request-management works; the module operates on Opportunity).
         'request-management',
+        // spec 0130 `enrollee-management` (EnrolleeManagementAuthorization extends
+        // RequestManagementAuthorization, overriding only resource() — same field/action
+        // catalogue, registered so GET /api/meta/enrollee-management resolves too).
+        'enrollee-management',
         // spec 0058 `reward-types` (RewardTypesAuthorization: the "Buoni, Premi e Incentivi" lookup
         // — name/color, both mandatory, D-5).
         'reward-types',

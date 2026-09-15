@@ -168,7 +168,7 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateRequestWorkMock.mock.calls[0]
+    const [, id, payload] = updateRequestWorkMock.mock.calls[0]
     expect(id).toBe(4001)
     expect(payload).toEqual({ next_callback_at: '2026-08-03T15:30' })
   })
@@ -182,7 +182,7 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    const [, payload] = updateRequestWorkMock.mock.calls[0]
+    const [, , payload] = updateRequestWorkMock.mock.calls[0]
     expect(payload).toEqual({ next_callback_at: '2026-08-03T00:00' })
   })
 
@@ -195,7 +195,7 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    const [, payload] = updateRequestWorkMock.mock.calls[0]
+    const [, , payload] = updateRequestWorkMock.mock.calls[0]
     expect(payload).toEqual({ next_callback_at: null })
     expect(payload.next_callback_at).not.toBe('')
   })

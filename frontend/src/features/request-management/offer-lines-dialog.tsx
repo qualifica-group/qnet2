@@ -20,6 +20,7 @@ import {
   type OfferLinesEditTarget,
 } from '@/features/request-management/offer-lines-dialog-context'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { useRequestModule } from '@/features/request-management/request-module'
 import { RequestOfferLinesField } from '@/features/request-management/request-offer-lines-section'
 import { useOfferLinesForm } from '@/features/request-management/use-offer-lines-form'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
@@ -56,6 +57,7 @@ interface OfferLinesDialogProps {
 
 function OfferLinesDialog({ target, onClose }: OfferLinesDialogProps) {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const open = target !== null
 
   // Fresh on open, same contract as the work panel: the rows are edited
@@ -63,8 +65,8 @@ function OfferLinesDialog({ target, onClose }: OfferLinesDialogProps) {
   // classification scoping the product picker plus the actor's field
   // permissions — none of which the grid row projects.
   const { data: panel, isLoading, isError, refetch } = useEntityDetail(
-    requestManagementKeys.panel(target?.quoteId ?? null),
-    () => fetchRequestWorkPanel(target?.quoteId as number),
+    requestManagementKeys.panel(module.key, target?.quoteId ?? null),
+    () => fetchRequestWorkPanel(module.apiBasePath, target?.quoteId as number),
     open,
   )
 

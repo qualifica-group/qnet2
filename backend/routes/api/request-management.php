@@ -4,6 +4,7 @@ use App\Http\Controllers\RequestManagement\ProductCategoryTabsController;
 use App\Http\Controllers\RequestManagement\RequestManagementController;
 use App\Http\Controllers\RequestManagement\RequestManagementDashboardController;
 use App\Http\Controllers\RequestManagement\RequestManagementReportController;
+use App\RequestManagement\RequestModule;
 use Illuminate\Support\Facades\Route;
 
 // Request Management work panel (spec 0049; migrated onto the Quote by spec
@@ -23,53 +24,93 @@ use Illuminate\Support\Facades\Route;
 // citing a permission-key glob like `resource.*` is one stray `/` away from
 // closing itself early and invalidating the whole file (every route in it
 // silently disappears, booting no error until something 404s).
-// Declared BEFORE the {quote} routes: a POST to the literal segment must
-// never be swallowed by the wildcard.
-Route::post('request-management/assign-operators', [RequestManagementController::class, 'assignOperators']);
-// Spec 0104 (direttiva utente 2026-09-07, moved onto position 1 by the
-// direttiva utente 2026-09-08): the bulk GA1 assignment, the Sede-less
-// sibling of assign-operators above. Same "declared before the
-// wildcard" rule as every literal segment in this file.
-Route::post('request-management/assign-manager-ga1', [RequestManagementController::class, 'assignManagerGa1']);
-// Spec 0079: same "declared before the wildcard" rule as assign-operators
-// above — a POST to this literal segment must never be swallowed by the
-// GET/PUT/DELETE `{quote}` routes.
-Route::post('request-management/transfer', [RequestManagementController::class, 'transfer']);
-// Spec 0064 (M3): the category tab strip's data source — declared BEFORE
-// GET /request-management/{quote} for the same reason as assign-operators
-// above, otherwise "product-categories" is swallowed by the wildcard's route
-// model binding.
-Route::get('request-management/product-categories', ProductCategoryTabsController::class);
-// User directive 2026-08-07: the create form's "Informazioni aggiuntive"
-// preview. Same "declared before the wildcard" rule as every literal segment
-// above.
-Route::post('request-management/form-context', [RequestManagementController::class, 'formContext']);
-// Spec 0057: the bare POST, gated by `request-management.create` — no
-// {quote} to conflict with (creation), but declared here too for
-// consistency with the file's own convention.
-Route::post('request-management', [RequestManagementController::class, 'store']);
-// Spec 0106: the CSV report's own create/poll/download endpoints. Same
-// "declared before the wildcard" rule as every literal segment above.
-Route::post('request-management/report', [RequestManagementReportController::class, 'store']);
-// Spec 0106 rev-2 (D-14): the branch picker's data source. Declared BEFORE
-// report/{exportRun} below — otherwise this literal segment is swallowed by
-// that route's own wildcard, resolving to show() with exportRun="categories".
-Route::get('request-management/report/categories', [RequestManagementReportController::class, 'categories']);
-// Spec 0107 (D-1/D-5): the dashboard's own synchronous endpoint — same
-// "declared before report/{exportRun}" rule as report/categories above.
-Route::get('request-management/report/dashboard', RequestManagementDashboardController::class);
+//
+// Spec 0130: every route below is registered once PER `RequestModule` case
+// (`request-management/...` AND `enrollee-management/...`) with a loop over
+// literal path segments — never a `{requestModule}` wildcard segment
+// (constraints: "path letterali, niente segmento jolly") — so a 404 on an
+// unknown module surfaces as a routing failure, not a controller one. Each
+// route carries its module on `->defaults(RequestModule::ROUTE_DEFAULT, ...)`
+// so `RequestModule::fromRequest()` resolves it server-side from the MATCHED
+// route, never from client input (constraints). `store`/`formContext` are
+// registered ONLY for a module whose `allowsCreate()` is true (D-8): Gestione
+// Iscritti has no creation surface, so those two paths never exist under
+// `enrollee-management` — not even for a super-admin (AC-018).
+foreach (RequestModule::cases() as $module) {
+    // Declared BEFORE the {quote} routes: a POST to the literal segment must
+    // never be swallowed by the wildcard.
+    Route::post("{$module->value}/assign-operators", [RequestManagementController::class, 'assignOperators'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    // Spec 0104 (direttiva utente 2026-09-07, moved onto position 1 by the
+    // direttiva utente 2026-09-08): the bulk GA1 assignment, the Sede-less
+    // sibling of assign-operators above. Same "declared before the
+    // wildcard" rule as every literal segment in this file.
+    Route::post("{$module->value}/assign-manager-ga1", [RequestManagementController::class, 'assignManagerGa1'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    // Spec 0079: same "declared before the wildcard" rule as assign-operators
+    // above — a POST to this literal segment must never be swallowed by the
+    // GET/PUT/DELETE `{quote}` routes.
+    Route::post("{$module->value}/transfer", [RequestManagementController::class, 'transfer'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    // Spec 0064 (M3): the category tab strip's data source — declared BEFORE
+    // GET {module}/{quote} for the same reason as assign-operators above,
+    // otherwise "product-categories" is swallowed by the wildcard's route
+    // model binding.
+    Route::get("{$module->value}/product-categories", ProductCategoryTabsController::class)
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
 
-// Spec 0108: the GA2 Operatore the report may be filtered by. Same
-// "declared before report/{exportRun}" rule as the two literal segments above.
-Route::get('request-management/report/operators', [RequestManagementReportController::class, 'operators']);
-// Spec 0112: the Sede operativa the report may be filtered by. Same
-// "declared before report/{exportRun}" rule as the three literal segments above.
-Route::get('request-management/report/sites', [RequestManagementReportController::class, 'sites']);
-// ->whereNumber() on top of the declaration order (rev-2 routing_trap):
-// the order alone works until the file gets reorganised, the constraint
-// does not.
-Route::get('request-management/report/{exportRun}', [RequestManagementReportController::class, 'show'])->whereNumber('exportRun');
-Route::get('request-management/report/{exportRun}/download', [RequestManagementReportController::class, 'download'])->whereNumber('exportRun');
-Route::get('request-management/{quote}', [RequestManagementController::class, 'show']);
-Route::delete('request-management/{quote}', [RequestManagementController::class, 'destroy']);
-Route::match(['put', 'patch'], 'request-management/{quote}', [RequestManagementController::class, 'update']);
+    // Spec 0130, D-8: no creation surface at all for a module that does not
+    // allow it — Gestione Iscritti's rows come to exist only by a status
+    // transition, never a POST here (AC-018).
+    if ($module->allowsCreate()) {
+        // User directive 2026-08-07: the create form's "Informazioni
+        // aggiuntive" preview. Same "declared before the wildcard" rule as
+        // every literal segment above.
+        Route::post("{$module->value}/form-context", [RequestManagementController::class, 'formContext'])
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+        // Spec 0057: the bare POST, gated by `{module}.create` — no {quote}
+        // to conflict with (creation), but declared here too for consistency
+        // with the file's own convention.
+        Route::post($module->value, [RequestManagementController::class, 'store'])
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    }
+
+    // Spec 0106: the CSV report's own create/poll/download endpoints. Same
+    // "declared before the wildcard" rule as every literal segment above.
+    Route::post("{$module->value}/report", [RequestManagementReportController::class, 'store'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    // Spec 0106 rev-2 (D-14): the branch picker's data source. Declared
+    // BEFORE report/{exportRun} below — otherwise this literal segment is
+    // swallowed by that route's own wildcard, resolving to show() with
+    // exportRun="categories".
+    Route::get("{$module->value}/report/categories", [RequestManagementReportController::class, 'categories'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    // Spec 0107 (D-1/D-5): the dashboard's own synchronous endpoint — same
+    // "declared before report/{exportRun}" rule as report/categories above.
+    Route::get("{$module->value}/report/dashboard", RequestManagementDashboardController::class)
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+
+    // Spec 0108: the GA2 Operatore the report may be filtered by. Same
+    // "declared before report/{exportRun}" rule as the two literal segments above.
+    Route::get("{$module->value}/report/operators", [RequestManagementReportController::class, 'operators'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    // Spec 0112: the Sede operativa the report may be filtered by. Same
+    // "declared before report/{exportRun}" rule as the three literal segments above.
+    Route::get("{$module->value}/report/sites", [RequestManagementReportController::class, 'sites'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    // ->whereNumber() on top of the declaration order (rev-2 routing_trap):
+    // the order alone works until the file gets reorganised, the constraint
+    // does not.
+    Route::get("{$module->value}/report/{exportRun}", [RequestManagementReportController::class, 'show'])
+        ->whereNumber('exportRun')
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    Route::get("{$module->value}/report/{exportRun}/download", [RequestManagementReportController::class, 'download'])
+        ->whereNumber('exportRun')
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    Route::get("{$module->value}/{quote}", [RequestManagementController::class, 'show'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    Route::delete("{$module->value}/{quote}", [RequestManagementController::class, 'destroy'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    Route::match(['put', 'patch'], "{$module->value}/{quote}", [RequestManagementController::class, 'update'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+}

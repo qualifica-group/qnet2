@@ -97,7 +97,7 @@ describe('RequestGeneralNotesField', () => {
     save()
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({ general_notes: 'Prefers the afternoon' })
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({ general_notes: 'Prefers the afternoon' })
   })
 
   it('sends null once an existing note is emptied', async () => {
@@ -108,7 +108,7 @@ describe('RequestGeneralNotesField', () => {
     save()
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({ general_notes: null })
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({ general_notes: null })
   })
 
   it('omits the key when the note is untouched', async () => {
@@ -120,7 +120,7 @@ describe('RequestGeneralNotesField', () => {
     save()
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('general_notes')
+    expect(updateRequestWorkMock.mock.calls[0][2]).not.toHaveProperty('general_notes')
   })
 
   it('stays read-only for an actor whose matrix locks the field', async () => {

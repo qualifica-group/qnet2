@@ -28,14 +28,28 @@ beforeEach(() => {
 describe('RequestDashboardToggle (spec 0107 AC-040)', () => {
   it('is absent without request-management.report', () => {
     canMock.mockReturnValue(false)
-    render(<RequestDashboardToggle domain="request-management" isOpen={false} onToggle={vi.fn()} />)
+    render(
+      <RequestDashboardToggle
+        domain="request-management"
+        permission="request-management.report"
+        isOpen={false}
+        onToggle={vi.fn()}
+      />,
+    )
 
     expect(screen.queryByRole('button', { name: 'Statistics' })).not.toBeInTheDocument()
   })
 
   it('is offered with request-management.report, wired to the panel it drives', () => {
     canMock.mockReturnValue(true)
-    render(<RequestDashboardToggle domain="request-management" isOpen onToggle={vi.fn()} />)
+    render(
+      <RequestDashboardToggle
+        domain="request-management"
+        permission="request-management.report"
+        isOpen
+        onToggle={vi.fn()}
+      />,
+    )
 
     const toggle = screen.getByRole('button', { name: 'Statistics' })
     expect(toggle).toHaveAttribute('aria-expanded', 'true')

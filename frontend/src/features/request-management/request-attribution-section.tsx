@@ -8,7 +8,7 @@ import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-a
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { InterceptedRelationSelectField } from '@/features/request-management/intercepted-relation-select-field'
 import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/components/record-form/layout'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { useRequestModule } from '@/features/request-management/request-module'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type { RequestRelationRef } from '@/features/request-management/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
@@ -57,6 +57,7 @@ export function RequestAttributionSection({
   rewards,
 }: RequestAttributionSectionProps) {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const control = form.control
   const reporterId = useWatch({ control, name: 'reporter_id' })
   const rewardsValue = useWatch({ control, name: 'rewards' })
@@ -95,7 +96,7 @@ export function RequestAttributionSection({
           })}
           selected={source}
           changeRequestSubjectId={requestId}
-          changeRequestResource={REQUEST_MANAGEMENT_DOMAIN}
+          changeRequestResource={module.key}
           changeRequestField="source_id"
           changeRequestFieldLabelKey="requestManagement.columns.source"
           {...selectLabels}

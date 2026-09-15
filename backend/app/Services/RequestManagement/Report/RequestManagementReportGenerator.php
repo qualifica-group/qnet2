@@ -8,6 +8,7 @@ use App\Enums\ExportFormat;
 use App\Enums\RequestManagementReportRowMode;
 use App\Exports\ExportWriterFactory;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 
 /**
  * Top-level orchestrator of the report's file generation (spec 0106,
@@ -30,6 +31,13 @@ use App\Models\User;
  * `all()`: that is what makes an ExportRun frozen before either spec — its
  * state has no `operator_keys`, no `site_keys` — generate exactly the file it
  * always did (0108 D-2/AC-014, 0112 D-4/AC-013).
+ *
+ * Spec 0130: $module is the LAST, defaulted (RequestModule::Requests)
+ * parameter of both entry points too — GenerateRequestManagementReportJob
+ * reads it off the run's own frozen state (absent = Requests, same
+ * optional-key convention as $operators/$sites above) and hands it straight
+ * through to rows()/generate(), which pass it on to ReportBranchRowsBuilder
+ * unchanged.
  */
 final class RequestManagementReportGenerator
 {
@@ -53,9 +61,10 @@ final class RequestManagementReportGenerator
         string $absolutePath,
         ?ReportOperatorFilter $operators = null,
         ?ReportSiteFilter $sites = null,
+        RequestModule $module = RequestModule::Requests,
     ): int {
         // Step 1: every selected branch's already-computed rows — the reusable core.
-        $branchRows = $this->rows($actor, $dateFrom, $dateTo, $categoryKeys, $rowMode, $operators, $sites);
+        $branchRows = $this->rows($actor, $dateFrom, $dateTo, $categoryKeys, $rowMode, $operators, $sites, $module);
 
         // Step 2: open the format's own writer, translated header row first.
         $writer = $this->writers->make($format);
@@ -96,6 +105,7 @@ final class RequestManagementReportGenerator
         RequestManagementReportRowMode $rowMode,
         ?ReportOperatorFilter $operators = null,
         ?ReportSiteFilter $sites = null,
+        RequestModule $module = RequestModule::Requests,
     ): array {
         $branches = $this->selectedBranches($categoryKeys);
         $range = ReportDateRange::fromRequest($dateFrom, $dateTo);
@@ -105,7 +115,7 @@ final class RequestManagementReportGenerator
         return array_map(
             fn (ReportBranch $branch): array => [
                 'branch' => $branch,
-                'rows' => $this->rowsBuilder->build($branch, $actor, $range, $rowMode, $operators, $sites),
+                'rows' => $this->rowsBuilder->build($branch, $actor, $range, $rowMode, $operators, $sites, $module),
             ],
             $branches,
         );

@@ -6,6 +6,7 @@ import type { AssignOperatorsDialogInput } from '@/features/leads/assign-operato
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { transferRequests } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { useRequestModule } from '@/features/request-management/request-module'
 import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 
@@ -20,6 +21,7 @@ import type { RequestWorkPanel } from '@/features/request-management/types'
  */
 export function useRequestTransfer(panel: RequestWorkPanel) {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const { canAction } = useResourcePermissions()
   const queryClient = useQueryClient()
   const [isOpen, setIsOpen] = useState(false)
@@ -42,7 +44,7 @@ export function useRequestTransfer(panel: RequestWorkPanel) {
       if (input.operational_site_id === undefined || input.operator_id === undefined) {
         return Promise.reject(new Error('Transfer requires both a destination Sede and an operator.'))
       }
-      return transferRequests({
+      return transferRequests(module.apiBasePath, {
         request_ids: [panel.id],
         operational_site_id: input.operational_site_id,
         operator_id: input.operator_id,
@@ -54,9 +56,9 @@ export function useRequestTransfer(panel: RequestWorkPanel) {
       // D-3 scope, same precedent as reassigning the operator from the
       // attribution section (request-attribution-section.tsx: "Changing the
       // operator REASSIGNS the request..."): the invalidated refetch may then
-      // 403 for an actor without `request-management.viewAll` — the intended
-      // semantics of handing the request over, not a bug to guard against.
-      void queryClient.invalidateQueries({ queryKey: requestManagementKeys.panel(panel.id) })
+      // 403 for an actor without `{module}.viewAll` — the intended semantics
+      // of handing the request over, not a bug to guard against.
+      void queryClient.invalidateQueries({ queryKey: requestManagementKeys.panel(module.key, panel.id) })
     },
   })
 

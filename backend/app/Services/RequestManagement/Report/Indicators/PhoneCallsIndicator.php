@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\RequestManagement\Report\Indicators;
 
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\IndicatorResult;
 use App\Services\RequestManagement\Report\QuoteCountAggregator;
 use App\Services\RequestManagement\Report\ReportBranchQuery;
@@ -40,20 +41,20 @@ final class PhoneCallsIndicator implements ReportIndicator
         private readonly QuoteCountAggregator $aggregator,
     ) {}
 
-    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null): IndicatorResult
+    public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null, RequestModule $module = RequestModule::Requests): IndicatorResult
     {
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites), 'notes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites), 'notes.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'notes.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'notes.id'),
         );
     }
 
     /**
      * @param  array<int, int>  $categoryIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites): Builder
+    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites)
+        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
             ->join('notes', 'notes.quote_id', '=', 'quotes.id')
             ->whereNull('notes.deleted_at')
             ->whereColumn('notes.user_id', 'quotes.operator_id')

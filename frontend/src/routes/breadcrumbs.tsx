@@ -62,6 +62,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'time-entries': 'navigation.timeEntries',
   'commission-configurations': 'navigation.commissionConfigurations',
   'request-management': 'navigation.requestManagement',
+  'enrollee-management': 'navigation.enrolleeManagement',
   'reward-types': 'navigation.rewardTypes',
   'reward-statuses': 'navigation.rewardStatuses',
   'rewarded-referents': 'navigation.rewardedReferents',

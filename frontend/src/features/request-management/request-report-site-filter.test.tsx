@@ -103,7 +103,7 @@ async function openFilters() {
 function lastDashboardQuery(): Record<string, unknown> {
   const calls = fetchRequestManagementDashboardMock.mock.calls
 
-  return calls[calls.length - 1][0] as Record<string, unknown>
+  return calls[calls.length - 1][1] as Record<string, unknown>
 }
 
 function apply() {
@@ -185,6 +185,7 @@ describe('report site filter (spec 0112)', () => {
 
     await waitFor(() =>
       expect(createRequestManagementReportMock).toHaveBeenCalledWith(
+        '/request-management',
         expect.objectContaining({ site_keys: ['3'], format: 'csv' }),
       ),
     )

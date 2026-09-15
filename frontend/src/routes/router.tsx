@@ -58,6 +58,8 @@ const TimeEntryNewPage = lazyRoute(() => import('@/pages/time-entry-new-page'))
 const TimeEntryEditPage = lazyRoute(() => import('@/pages/time-entry-edit-page'))
 const CommissionConfigurationsPage = lazyRoute(() => import('@/pages/commission-configurations-page'))
 const RequestManagementPage = lazyRoute(() => import('@/pages/request-management-page'))
+const EnrolleeManagementPage = lazyRoute(() => import('@/pages/enrollee-management-page'))
+const EnrolleeManagementDetailPage = lazyRoute(() => import('@/pages/enrollee-management-detail-page'))
 const RewardTypesPage = lazyRoute(() => import('@/pages/reward-types-page'))
 const RewardStatusesPage = lazyRoute(() => import('@/pages/reward-statuses-page'))
 const RewardedReferentsPage = lazyRoute(() => import('@/pages/rewarded-referents-page'))
@@ -352,6 +354,20 @@ export const router = createBrowserRouter([
           {
             path: 'request-management/:id',
             element: <RequestManagementDetailPage />,
+          },
+          // Gestione Iscritti (spec 0130 D-8): no creation surface at all, so
+          // `enrollee-management`'s `moduleScreen` sets `generateRoutes: false`
+          // and BOTH the list and the `:id` detail are declared here by hand —
+          // no generated `new`/`:id/edit`/`:id/duplicate` exist for this
+          // domain. Same bespoke detail page reasons as `request-management`
+          // above (own page background, no dead-end "Edit").
+          {
+            path: 'enrollee-management',
+            element: <EnrolleeManagementPage />,
+          },
+          {
+            path: 'enrollee-management/:id',
+            element: <EnrolleeManagementDetailPage />,
           },
           // A field change request is never created/edited through a route
           // (spec 0078, D-2: the generic proposal dialog is the only entry

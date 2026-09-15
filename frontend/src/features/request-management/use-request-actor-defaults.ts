@@ -10,6 +10,10 @@ import { OPERATOR_MANAGER_POSITION } from '@/features/request-management/types'
  * RequestManagementPolicy::assignOperator). Owned here, next to the default it
  * gates: the same ability decides whether the control is offered AND whether
  * its value may travel in the payload, and the two must never drift apart.
+ *
+ * Fixed to `request-management.*`, not read from `useRequestModule()` (spec
+ * 0130 D-8): this hook backs the CREATE form alone, which never mounts under
+ * Gestione Iscritti (`ENROLLEE_MODULE.allowsCreate === false`).
  */
 export const ASSIGN_OPERATOR_PERMISSION = 'request-management.assignOperator'
 

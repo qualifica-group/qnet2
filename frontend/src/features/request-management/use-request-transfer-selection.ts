@@ -8,6 +8,7 @@ import type {
 } from '@/features/leads/assign-operators-dialog'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { transferRequests } from '@/features/request-management/api'
+import { useRequestModule } from '@/features/request-management/request-module'
 import type { TransferRequestsPayload } from '@/features/request-management/request-write-types'
 import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import type { TableSelection } from '@/features/table/use-bulk-actions-slot'
@@ -41,6 +42,7 @@ function resolveSharedOperationalSite(rows: TableRow[]): AssignOperatorsDialogSi
  */
 export function useRequestTransferSelection(onTransferred: () => void) {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const { can } = useAbilities()
   const [isOpen, setIsOpen] = useState(false)
   const [ids, setIds] = useState<number[]>([])
@@ -48,12 +50,12 @@ export function useRequestTransferSelection(onTransferred: () => void) {
 
   // Same double gate as the bulk assignment: the popup writes the Sede AND
   // the Operatore.
-  const canTransfer = can('request-management.update') && can('request-management.transferContact')
+  const canTransfer = can(module.permission('update')) && can(module.permission('transferContact'))
 
   const transferMutation = useMutation({
     // Kept as a wrapper, not a bare reference: TanStack hands the mutation
     // context as a second argument, which the api client would forward.
-    mutationFn: (payload: TransferRequestsPayload) => transferRequests(payload),
+    mutationFn: (payload: TransferRequestsPayload) => transferRequests(module.apiBasePath, payload),
     onSuccess: (result) => {
       toast.success(t('requestManagement.transfer.success', { count: result.transferred }))
       onTransferred()

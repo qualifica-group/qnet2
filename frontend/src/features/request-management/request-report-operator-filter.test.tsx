@@ -101,7 +101,7 @@ async function openFilters() {
 function lastDashboardQuery(): Record<string, unknown> {
   const calls = fetchRequestManagementDashboardMock.mock.calls
 
-  return calls[calls.length - 1][0] as Record<string, unknown>
+  return calls[calls.length - 1][1] as Record<string, unknown>
 }
 
 function apply() {
@@ -197,6 +197,7 @@ describe('report operator filter (spec 0109)', () => {
 
     await waitFor(() =>
       expect(createRequestManagementReportMock).toHaveBeenCalledWith(
+        '/request-management',
         expect.objectContaining({ operator_keys: ['9', 'unassigned'], format: 'csv' }),
       ),
     )

@@ -29,16 +29,28 @@ use Illuminate\Database\Eloquent\Model;
  * Lives in this module's OWN namespace alongside RequestManagementNotable
  * (the notes equivalent), referenced as a pure class-string in
  * config/activity-log.php: app/ActivityLog/ stays agnostic.
+ *
+ * Spec 0130: module()'s default return is RequestModule::Requests —
+ * EnrolleeManagementActivityAuthorizer, registered under the
+ * `enrollee-management` resource, is the minimal subclass overriding ONLY
+ * module(), the same pattern as EnrolleeManagementNotable.
  */
-final class RequestManagementActivityAuthorizer implements ActivityLogAuthorizer
+class RequestManagementActivityAuthorizer implements ActivityLogAuthorizer
 {
+    protected function module(): RequestModule
+    {
+        return RequestModule::Requests;
+    }
+
     public function authorize(User $user, Model $record): void
     {
+        $module = $this->module();
+
         abort_unless($record instanceof Opportunity, 403);
-        abort_unless($user->can('request-management.viewActivity'), 403);
+        abort_unless($user->can($module->permission('viewActivity')), 403);
 
         $query = Quote::query()->where('opportunity_id', $record->getKey());
 
-        abort_unless(RequestManagementScope::scopeToActor($query, $user)->exists(), 403);
+        abort_unless(RequestManagementScope::scopeToActor($query, $user, $module)->exists(), 403);
     }
 }

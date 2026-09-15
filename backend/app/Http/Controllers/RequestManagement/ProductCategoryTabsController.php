@@ -6,16 +6,18 @@ namespace App\Http\Controllers\RequestManagement;
 
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Resources\ProductCategoryTabResource;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\RequestCategoryTabsResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
 
 /**
- * GET /api/request-management/product-categories (spec 0064, M3): feeds the
- * "Gestione Richieste" category tab strip — only the product categories with
- * at least one request in the actor's own D-3 scope, each with its own
- * DISTINCT request count (D-2).
+ * GET /api/{module}/product-categories (spec 0064, M3; spec 0130 registers
+ * it for both `request-management` and `enrollee-management`): feeds the
+ * category tab strip — only the product categories with at least one
+ * request in the actor's own D-3 scope, each with its own DISTINCT request
+ * count (D-2).
  *
  * Thin invokable controller: permission gate, resolver call, Resource
  * collection. Declared as its OWN controller (not a method on
@@ -32,9 +34,10 @@ class ProductCategoryTabsController extends BaseApiController
     {
         try {
             $user = $request->user();
-            abort_unless($user->can('request-management.viewAny'), 403);
+            $module = RequestModule::fromRequest($request);
+            abort_unless($user->can($module->permission('viewAny')), 403);
 
-            $categories = $this->resolver->resolve($user);
+            $categories = $this->resolver->resolve($user, $module);
 
             return $this->ok(['categories' => ProductCategoryTabResource::collection($categories)]);
         } catch (Throwable $exception) {

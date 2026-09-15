@@ -16,7 +16,7 @@ import { MAX_LINES_PER_TAB, quoteLineRowSchema } from '@/features/quotes/quote-s
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { openingOfferLines, toProductLineRows } from '@/features/request-management/request-work-payload'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { useRequestModule } from '@/features/request-management/request-module'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 import { updateTableCell } from '@/features/table/api'
 import type { TableRow } from '@/features/table/types'
@@ -104,6 +104,7 @@ export function useOfferLinesForm(
   { node, onDone }: UseOfferLinesFormOptions,
 ) {
   const { t } = useTranslation()
+  const { key: moduleKey } = useRequestModule()
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const schema = useMemo(
@@ -153,7 +154,7 @@ export function useOfferLinesForm(
       // Offerte form configured), so the value is the plain numeric row the
       // payload type describes.
       try {
-        const row = await updateTableCell(REQUEST_MANAGEMENT_DOMAIN, panel.id, {
+        const row = await updateTableCell(moduleKey, panel.id, {
           column: OFFER_LINES_FIELD,
           value: lines.map((line) => ({
             ...(line.id !== undefined ? { id: line.id } : {}),

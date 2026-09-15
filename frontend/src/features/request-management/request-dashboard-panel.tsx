@@ -14,7 +14,7 @@ import {
   isRequestReportQueryReady,
   toRequestReportFilterPayload,
 } from '@/features/request-management/request-report-schema'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { useRequestModule } from '@/features/request-management/request-module'
 import { useRequestDashboard } from '@/features/request-management/use-request-dashboard'
 import { useRequestDashboardCollapse } from '@/features/request-management/use-request-dashboard-collapse'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
@@ -118,6 +118,7 @@ function DashboardResults({ query }: DashboardResultsProps) {
  * same state, which is why nothing else may hold a copy of it.
  */
 function RequestDashboardPanelBody() {
+  const module = useRequestModule()
   const { filters, setFilters } = useRequestReportFilters()
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -174,6 +175,7 @@ function RequestDashboardPanelBody() {
   return (
     <div className="flex flex-col gap-4">
       <RequestDashboardFilterBar
+        reportPermission={module.permission('report')}
         filters={filters}
         payload={payload}
         categoryCount={categories?.length ?? 0}
@@ -208,11 +210,12 @@ export interface RequestDashboardPanelProps {
  */
 export function RequestDashboardPanel({ isOpen }: RequestDashboardPanelProps) {
   const { t } = useTranslation()
+  const module = useRequestModule()
 
   return (
     <Collapsible open={isOpen} onOpenChange={() => {}}>
       <CollapsibleContent
-        id={statsPanelId(REQUEST_MANAGEMENT_DOMAIN)}
+        id={statsPanelId(module.key)}
         role="region"
         aria-label={t('requestManagement.dashboard.regionLabel')}
         className={COLLAPSIBLE_CONTENT_CLASS}

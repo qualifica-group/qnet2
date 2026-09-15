@@ -6,6 +6,7 @@ namespace App\Services\RequestManagement;
 
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -44,21 +45,32 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * `quotes.operator_id` — the Offerta's own GA2, denormalized from `quote_user`
  * (D-3). `quotes.supervisor_id` is no longer read here or anywhere else for
  * authorization (INV-5): `isSupervisorOf` -> `isOperatorOf`.
+ *
+ * Spec 0130: parameterized by `RequestModule` so "Gestione Iscritti" reuses
+ * every shape UNCHANGED rather than forking them — the permission prefix
+ * (`$module->permission(...)`) AND the row-state filter
+ * (`$module->statusGroups()`, D-2) both come off the module. Every method
+ * defaults to `RequestModule::Requests`, so the refactor is at parity: no
+ * existing call-site's behaviour changes by omitting the new parameter.
+ * The state filter is evaluated INDEPENDENTLY of the viewAll/operator/site
+ * tiers below (D-2 is orthogonal to D-5) — a viewAll Iscritti actor still
+ * sees only `validated`/`closed_won` rows.
  */
 final class RequestManagementScope
 {
-    private const string VIEW_ALL_PERMISSION = 'request-management.viewAll';
-
-    private const string VIEW_SITE_PERMISSION = 'request-management.viewSite';
-
     /**
-     * @throws HttpException 403 when $user is neither $quote's GA2 Operatore
-     *                       nor a member of its Sede under the viewSite
-     *                       grant, nor holds the viewAll ability
+     * @throws HttpException 403 when $quote's status is out of $module's
+     *                       filter, or $user is neither $quote's GA2
+     *                       Operatore nor a member of its Sede under the
+     *                       viewSite grant, nor holds the viewAll ability
      */
-    public function assertInScope(User $user, Quote $quote): void
+    public function assertInScope(User $user, Quote $quote, RequestModule $module = RequestModule::Requests): void
     {
-        if ($user->can(self::VIEW_ALL_PERMISSION)) {
+        if (! self::isInStatusScope($quote, $module)) {
+            abort(403);
+        }
+
+        if ($user->can($module->permission('viewAll'))) {
             return;
         }
 
@@ -66,7 +78,7 @@ final class RequestManagementScope
             return;
         }
 
-        if (self::isInActorSites($user, $quote)) {
+        if (self::isInActorSites($user, $quote, $module)) {
             return;
         }
 
@@ -94,17 +106,39 @@ final class RequestManagementScope
      * note affordances of QuotesTableDefinition/OpportunitiesTableDefinition
      * evaluate it with no DI wiring and no instance to hand.
      */
-    public static function isInActorSites(User $user, Quote $quote): bool
+    public static function isInActorSites(User $user, Quote $quote, RequestModule $module = RequestModule::Requests): bool
     {
         if ($quote->operational_site_id === null) {
             return false;
         }
 
-        if (! $user->can(self::VIEW_SITE_PERMISSION)) {
+        if (! $user->can($module->permission('viewSite'))) {
             return false;
         }
 
         return in_array($quote->operational_site_id, self::actorSiteIds($user), true);
+    }
+
+    /**
+     * The D-2 row-state predicate, isolated like isOperatorOf()/
+     * isInActorSites() above so it can be asserted directly on an
+     * already-loaded Quote — the in-memory counterpart of the `whereIn`
+     * scopeToActor() applies to a query. `Requests` (no filter, D-2) always
+     * answers true; `Enrollees` checks `quoteWorkflowStatus.group` against
+     * `$module->statusGroups()`, loaded on demand (Model::preventLazyLoading()
+     * is active outside production, backend.md §3).
+     */
+    public static function isInStatusScope(Quote $quote, RequestModule $module = RequestModule::Requests): bool
+    {
+        $groups = $module->statusGroups();
+
+        if ($groups === null) {
+            return true;
+        }
+
+        $group = $quote->loadMissing('quoteWorkflowStatus')->quoteWorkflowStatus?->group;
+
+        return $group !== null && in_array($group, $groups, true);
     }
 
     /**
@@ -145,14 +179,23 @@ final class RequestManagementScope
      * query-rooted caller (e.g. the category tab counts once they join
      * `quotes`) can call it inline with `Auth::user()`, with no DI wiring.
      *
+     * The D-2 row-state filter (`$module->statusGroups()`) is applied FIRST
+     * and unconditionally — a subquery on `quote_workflow_statuses.group`,
+     * so it composes with any pre-existing join/select instead of requiring
+     * one. It narrows the result independently of the viewAll/operator/site
+     * tiers below: a viewAll Iscritti actor still sees only
+     * `validated`/`closed_won` rows.
+     *
      * @template TModel of \Illuminate\Database\Eloquent\Model
      *
      * @param  Builder<TModel>  $query
      * @return Builder<TModel>
      */
-    public static function scopeToActor(Builder $query, ?User $user): Builder
+    public static function scopeToActor(Builder $query, ?User $user, RequestModule $module = RequestModule::Requests): Builder
     {
-        if ($user?->can(self::VIEW_ALL_PERMISSION)) {
+        self::applyStatusFilter($query, $module);
+
+        if ($user?->can($module->permission('viewAll'))) {
             return $query;
         }
 
@@ -160,7 +203,7 @@ final class RequestManagementScope
             return $query->whereNull('quotes.id');
         }
 
-        $siteIds = $user->can(self::VIEW_SITE_PERMISSION) ? self::actorSiteIds($user) : [];
+        $siteIds = $user->can($module->permission('viewSite')) ? self::actorSiteIds($user) : [];
 
         if ($siteIds === []) {
             return $query->where('quotes.operator_id', $user->id);
@@ -169,6 +212,32 @@ final class RequestManagementScope
         return $query->where(function (Builder $scoped) use ($user, $siteIds): void {
             $scoped->where('quotes.operator_id', $user->id)
                 ->orWhereIn('quotes.operational_site_id', $siteIds);
+        });
+    }
+
+    /**
+     * The query-builder shape of isInStatusScope(): a subquery rather than a
+     * join, so it never collides with a caller's own join/alias on
+     * `quote_workflow_statuses` and composes with any pre-existing condition
+     * on the builder (mirrors scopeToActor()'s own reasoning for its
+     * disjunction closure above).
+     *
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     */
+    private static function applyStatusFilter(Builder $query, RequestModule $module): void
+    {
+        $groups = $module->statusGroups();
+
+        if ($groups === null) {
+            return;
+        }
+
+        $query->whereIn('quotes.quote_workflow_status_id', function ($subQuery) use ($groups): void {
+            $subQuery->select('id')
+                ->from('quote_workflow_statuses')
+                ->whereIn('group', array_map(static fn ($group) => $group->value, $groups));
         });
     }
 }

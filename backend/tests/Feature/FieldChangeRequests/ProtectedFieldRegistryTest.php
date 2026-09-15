@@ -51,7 +51,10 @@ it('permissions() contains request-management.updateSource', function (): void {
 it('resources() lists every resource declared in config', function (): void {
     $registry = app(ProtectedFieldRegistry::class);
 
-    expect($registry->resources())->toBe(['request-management']);
+    // Spec 0130 adds `enrollee-management` (D-4/D-6: same `source_id` field,
+    // its OWN `updateSource` permission) — the requirement this assertion
+    // encodes changed, so the expected set grows with it.
+    expect($registry->resources())->toBe(['request-management', 'enrollee-management']);
 });
 
 // AC-054 groundwork: a second protected field, on a fixture-only resource,

@@ -205,7 +205,7 @@ describe('RequestManagementTable — single-operator availability on the assignm
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() => expect(assignRequestOperatorsMock).toHaveBeenCalled())
-    expect(assignRequestOperatorsMock.mock.calls[0][0]).toEqual({
+    expect(assignRequestOperatorsMock.mock.calls[0][1]).toEqual({
       request_ids: [11, 22],
       mode: 'balanced',
     })

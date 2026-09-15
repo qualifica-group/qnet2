@@ -86,13 +86,13 @@ it('the work panel exposes is_transferred and transferred_from {id,label}, null 
 it('the grid sorts, boolean-filters and exports the is_transferred column (AC-019/AC-020/AC-021)', function () {
     Queue::fake();
 
-    $actor = transferGridActorWith(['viewAny', 'viewAll', 'view']);
-    // ExportController checks the ability against modelClass() (Quote, spec
-    // 0086) via QuotePolicy, not this domain's own permission set —
-    // pre-existing behaviour of the generic export framework, unrelated to
-    // spec 0079.
-    Permission::findOrCreate('quotes.export');
-    $actor->givePermissionTo('quotes.export');
+    // Spec 0130, D-7 (declared change): ExportController now authorizes this
+    // domain's export against its OWN `request-management.export` ability,
+    // not QuotePolicy's `quotes.export` — the pre-existing incongruity this
+    // test used to document. `transferGridActorWith()` already registers
+    // `request-management.export` (its own ability list), so granting
+    // 'export' here is enough.
+    $actor = transferGridActorWith(['viewAny', 'viewAll', 'view', 'export']);
     // `is_transferred` is NOT fillable (AC-024): set directly, not via
     // the factory's mass-assigned `create()`.
     $transferred = Quote::factory()->create();

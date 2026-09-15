@@ -15,6 +15,7 @@ import { addressToDraft } from '@/features/personal-data/drafts'
 import type { ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { updateRequestWork } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { useRequestModule } from '@/features/request-management/request-module'
 import { describeInvalidFields } from '@/features/request-management/request-work-invalid-fields'
 import { buildRequestWorkPayload, openingOfferLines, toProductLineRows } from '@/features/request-management/request-work-payload'
 import {
@@ -121,6 +122,7 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
  */
 export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
   const { t } = useTranslation()
+  const module = useRequestModule()
   const queryClient = useQueryClient()
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -223,8 +225,8 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
         return
       }
       try {
-        const updated = await updateRequestWork(panel.id, payload)
-        queryClient.setQueryData(requestManagementKeys.panel(panel.id), updated)
+        const updated = await updateRequestWork(module.apiBasePath, panel.id, payload)
+        queryClient.setQueryData(requestManagementKeys.panel(module.key, panel.id), updated)
         // The panel's own id is now the Offerta id (spec 0086): the opportunity
         // detail cache is keyed on the underlying Opportunity's own id.
         queryClient.invalidateQueries({ queryKey: opportunityDetailQueryKey(panel.opportunity_id) })

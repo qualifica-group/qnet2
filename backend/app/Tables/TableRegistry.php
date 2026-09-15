@@ -3,6 +3,7 @@
 namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
+use App\RequestManagement\RequestModule;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
@@ -24,15 +25,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 class TableRegistry
 {
     /**
-     * The only domain wrapped in `RequestManagementScopedTableDefinition`
-     * (spec 0064; spec 0084 dropped its `attr.*`-column effect): the
-     * category tab strip's row scope + GA2 relabel are a
-     * `request-management`-specific concept, not a generic table-framework
-     * one (unlike custom fields).
-     */
-    private const string REQUEST_MANAGEMENT_DOMAIN = 'request-management';
-
-    /**
      * The only domain wrapped in `OpportunityScopedTableDefinition` (spec
      * 0067): scoping the Offerte grid to one Opportunity is a `quotes`-
      * specific concept, not a generic table-framework one.
@@ -53,10 +45,10 @@ class TableRegistry
      * Resolve the definition for the given domain, wrapped in
      * `CustomFieldAwareTableDefinition` (spec 0021) when the domain is
      * custom-fieldable, THEN in `RequestManagementScopedTableDefinition`
-     * (spec 0064/0084) for `request-management`, THEN in
-     * `OpportunityScopedTableDefinition` (spec 0067) for `quotes`, THEN in
-     * `QuoteScopedTableDefinition` (spec 0095) for `work-orders` — one line
-     * each here, zero per-module code.
+     * (spec 0064/0084) for `request-management`/`enrollee-management` (spec
+     * 0130), THEN in `OpportunityScopedTableDefinition` (spec 0067) for
+     * `quotes`, THEN in `QuoteScopedTableDefinition` (spec 0095) for
+     * `work-orders` — one line each here, zero per-module code.
      *
      * @throws ModelNotFoundException when the domain is not registered.
      */
@@ -128,11 +120,16 @@ class TableRegistry
 
     /**
      * Wrap in `RequestManagementScopedTableDefinition` (spec 0064/0084) for
-     * `request-management` only — every other domain is returned unchanged.
+     * `request-management` AND `enrollee-management` (spec 0130: the category
+     * tab strip's row scope + GA relabel are a `RequestModule`-family concept,
+     * not a generic table-framework one, unlike custom fields) — every other
+     * domain is returned unchanged. `RequestModule::tryFrom()` is the single
+     * membership test (constraints: no `if ($module === ...)` scattered
+     * outside `RequestModule` itself).
      */
     private function wrapIfRequestManagementScoped(string $domain, TableDefinition $definition): TableDefinition
     {
-        if ($domain !== self::REQUEST_MANAGEMENT_DOMAIN) {
+        if (RequestModule::tryFrom($domain) === null) {
             return $definition;
         }
 

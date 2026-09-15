@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tables\RequestManagement;
 
+use App\RequestManagement\RequestModule;
+
 /**
- * Declarative ACTION catalogue for the `request-management` domain, split out
- * of RequestColumnCatalog (file-size budget, engineering.md §6) when the
- * "Stato di lavorazione" column pushed that file past the hard limit. Pure
- * data, no logic — the same shape RequestColumnCatalog keeps for columns and
- * filters; RequestManagementTableDefinition::actions() delegates here.
+ * Declarative ACTION catalogue for the `request-management`/`enrollee-management`
+ * domains, split out of RequestColumnCatalog (file-size budget, engineering.md
+ * §6) when the "Stato di lavorazione" column pushed that file past the hard
+ * limit. Pure data, no logic — the same shape RequestColumnCatalog keeps for
+ * columns and filters; RequestManagementTableDefinition::actions() delegates
+ * here, passing its own module() (spec 0130) so every `permission` key below
+ * carries the RIGHT prefix for the domain that called it.
  */
 final class RequestActionCatalog
 {
@@ -39,7 +43,7 @@ final class RequestActionCatalog
      *
      * @return array<int, array<string, mixed>>
      */
-    public static function actions(): array
+    public static function actions(RequestModule $module): array
     {
         return [
             [
@@ -48,7 +52,7 @@ final class RequestActionCatalog
                 'icon' => 'eye',
                 'type' => 'link',
                 'confirm' => false,
-                'permission' => 'request-management.view',
+                'permission' => $module->permission('view'),
             ],
             [
                 'key' => 'documents',
@@ -56,7 +60,7 @@ final class RequestActionCatalog
                 'icon' => 'paperclip',
                 'type' => 'action',
                 'confirm' => false,
-                'permission' => 'request-management.viewDocuments',
+                'permission' => $module->permission('viewDocuments'),
                 'count_field' => 'documents_count',
             ],
             [
@@ -65,7 +69,7 @@ final class RequestActionCatalog
                 'icon' => 'messages-square',
                 'type' => 'action',
                 'confirm' => false,
-                'permission' => 'request-management.view',
+                'permission' => $module->permission('view'),
                 'count_field' => 'notes_count',
             ],
             // "Trasferisci contatto" (spec 0079): declared AFTER the first
@@ -73,14 +77,14 @@ final class RequestActionCatalog
             // (INLINE_ACTION_LIMIT = 3, row-actions.tsx:33) — not frequent
             // enough for an inline slot. Opens AssignOperatorsDialog in its
             // `lockedMode="single"` shape, gated by its OWN ability
-            // (transferContact), on top of `request-management.update`.
+            // (transferContact), on top of this module's `update`.
             [
                 'key' => 'transfer-contact',
                 'label' => 'actions.transferContact',
                 'icon' => 'arrow-right-left',
                 'type' => 'action',
                 'confirm' => false,
-                'permission' => 'request-management.transferContact',
+                'permission' => $module->permission('transferContact'),
             ],
             [
                 'key' => 'delete',
@@ -88,7 +92,7 @@ final class RequestActionCatalog
                 'icon' => 'trash',
                 'type' => 'danger',
                 'confirm' => true,
-                'permission' => 'request-management.delete',
+                'permission' => $module->permission('delete'),
             ],
             [
                 'key' => 'activity',
@@ -96,7 +100,7 @@ final class RequestActionCatalog
                 'icon' => 'history',
                 'type' => 'action',
                 'confirm' => false,
-                'permission' => 'request-management.viewActivity',
+                'permission' => $module->permission('viewActivity'),
             ],
         ];
     }

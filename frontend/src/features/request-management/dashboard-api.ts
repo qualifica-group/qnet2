@@ -65,15 +65,16 @@ export interface RequestDashboardData {
 
 /**
  * Fetches the dashboard aggregates for one filter combination
- * (`GET /request-management/report/dashboard`). Array query params use the
- * same indexed serialization as `fetchForSelect` (Laravel's array
- * convention), not the default axios repeated-key form.
+ * (`GET {basePath}/report/dashboard`). Array query params use the same
+ * indexed serialization as `fetchForSelect` (Laravel's array convention), not
+ * the default axios repeated-key form.
  */
 export async function fetchRequestManagementDashboard(
+  basePath: string,
   query: RequestDashboardQuery,
 ): Promise<RequestDashboardData> {
   const { data } = await apiClient.get<ApiResponse<RequestDashboardData>>(
-    '/request-management/report/dashboard',
+    `${basePath}/report/dashboard`,
     {
       params: query,
       paramsSerializer: { indexes: true },
