@@ -12,7 +12,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * An identity must carry at least one phone number AT CREATION: the modules
  * that hold people exist to make them reachable, and a record created without
  * a number is dead weight in the commercial flow. Applied to referenti (user
- * directive 2026-07-31) and to anagrafiche (user directive 2026-09-07).
+ * directive 2026-07-31), to anagrafiche (user directive 2026-09-07) and to the
+ * new-client branch of Gestione Richieste (user directive 2026-09-15).
  *
  * Create-only, by design: this is a gate on how an identity enters the system,
  * not an invariant the update path re-asserts. It also lives in the create
@@ -47,8 +48,12 @@ trait ValidatesRequiredPhoneContact
             return;
         }
 
+        // Same key the uniqueness gate reads, so a surface nesting its contacts
+        // elsewhere (request-management's `client_contacts`) overrides it once.
+        $contactsKey = $this->phoneUniquenessContactsKey();
+
         /** @var array<int, mixed> $contacts */
-        $contacts = (array) $this->input('personal_data.contacts', []);
+        $contacts = (array) $this->input($contactsKey, []);
 
         foreach ($contacts as $row) {
             if (is_array($row) && in_array($row['type'] ?? null, self::PHONE_CONTACT_TYPES, true)) {
@@ -56,7 +61,7 @@ trait ValidatesRequiredPhoneContact
             }
         }
 
-        $validator->errors()->add('personal_data.contacts', 'At least one phone number is required.');
+        $validator->errors()->add($contactsKey, 'At least one phone number is required.');
     }
 
     /** Domain key of the resource, e.g. `referents` — see EnforcesFieldPermissions. */

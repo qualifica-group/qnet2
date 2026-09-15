@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SPEC 0130 GESTIONE ISCRITTI (`enrollee-management`) — VERDE, NON COMMITTATO (2026-09-15)
+## SPEC 0130 GESTIONE ISCRITTI (`enrollee-management`) — VERDE, COMMITTATO c86b49e5 (2026-09-15)
 
 Spec `docs/specs/0130-enrollee-management.xml` (approved). Clone operativo di Gestione Richieste senza file copiati:
 un solo codice, due moduli. Filtro = gruppo stato `validated`/`closed_won`; permessi `enrollee-management.*` separati.
@@ -30,6 +30,16 @@ un solo codice, due moduli. Filtro = gruppo stato `validated`/`closed_won`; perm
 - L'avviso nella voce "telefono obbligatorio" qui sotto su tsc/test rotti dalla 0130 era uno stato intermedio: risolto.
 - Aperti: grant dei permessi `enrollee-management.*` ai ruoli a cura dell'amministratore; deep link notifiche di
   assegnazione restano su `/request-management/:id` (scope/out).
+
+## GESTIONE RICHIESTE: TELEFONO OBBLIGATORIO SUL NUOVO CLIENTE — VERDE (slice), NON COMMITTATO (2026-09-15)
+
+Direttiva utente: in creazione richiesta, ramo `client_identity` (nuovo cliente), serve almeno un contatto `phone`/`mobile`.
+- BE: `StoreRequestRequest` usa `ValidatesRequiredPhoneContact` (solo se `client_identity` presente; ramo `registry_id` invariato),
+  `authorizationResource()` = `request-management`. Il trait ora legge/segnala su `phoneUniquenessContactsKey()`
+  (default `personal_data.contacts`, `client_contacts` qui). Errore 422 su `client_contacts`. Solo create, non il PATCH del pannello.
+- FE: `RequestCreateClientSection` passa `requiredCreateTypes=['phone']`; `useRequestCreateForm` blocca con `hasPhoneContact` → banner `personalData.section.phoneRequired`.
+- Verifica: Pest RequestManagement+Registries+Referents 898/898, Pint ok; Vitest create-form/registry-phone 28/28, ESLint ok.
+- ATTENZIONE: lavoro parallelo spec 0130 non committato in `features/request-management` rompe tsc (`use-request-form-context.ts:53`) e ~30 test del work panel/tabella/report: non causati da questa slice.
 
 ## SPEC 0129 COMPETENZA UTENTE: TUTTE LE CATEGORIE / RIGA "TUTTE" / CATEGORIA MADRE — VERDE, NON COMMITTATO (2026-09-15)
 

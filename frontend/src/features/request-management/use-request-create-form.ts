@@ -7,6 +7,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { hasPhoneContact } from '@/features/personal-data/create-validation'
 import {
   describeAddressIssues,
   describeCardIssues,
@@ -228,6 +229,13 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       const contactIssues = describeContactIssues(contactsDraft, t)
       if (contactIssues.length > 0) {
         refuseClientBlock('requestManagement.form.create.errors.contactsInvalid', contactIssues)
+        return
+      }
+      // Client twin of StoreRequestRequest's ValidatesRequiredPhoneContact
+      // (user directive 2026-09-15).
+      if (!hasPhoneContact(contactsDraft)) {
+        setClientBlockError(t('personalData.section.phoneRequired'))
+        setRevalidateSignal((signal) => signal + 1)
         return
       }
     }

@@ -8,10 +8,14 @@ import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/f
 import { AddressCreateField } from '@/features/personal-data/address-create-field'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { PersonalDataCardForm } from '@/features/personal-data/personal-data-card-form'
+import type { QuickContactType } from '@/features/personal-data/quick-contacts'
 import type { AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { ClientGroup } from '@/features/request-management/request-client-section'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
+
+/** The new client must be reachable by phone (user directive 2026-09-15, same rule as the anagrafiche). */
+const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
 
 interface RequestCreateClientSectionProps {
   control: Control<RequestCreateFormValues>
@@ -113,7 +117,13 @@ export function RequestCreateClientSection({
           <div className="border-t" />
 
           <ClientGroup icon={Phone} title={t('requestManagement.form.create.client.contactsGroup')}>
-            <ContactsManager value={contacts} onChange={onContactsChange} showHeader={false} createMode />
+            <ContactsManager
+              value={contacts}
+              onChange={onContactsChange}
+              showHeader={false}
+              createMode
+              requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
+            />
           </ClientGroup>
 
           <div className="border-t" />

@@ -7,6 +7,7 @@ import {
   completeIdentity,
   renderCreateForm,
 } from '@/features/request-management/request-create-form-harness'
+import type { ContactDraft } from '@/features/personal-data/types'
 
 /**
  * Spec 0057 D-2/D-3/AC-016: the create form's non-render logic — the two
@@ -15,6 +16,14 @@ import {
  * (RHF) plus the `client_*`/`product_lines` blocks (banner, since those
  * sections are outside RHF — see the hook's own doc comment).
  */
+
+const PHONE_CONTACT: ContactDraft = {
+  _key: 'phone-1',
+  type: 'phone',
+  value: '3331234567',
+  label: null,
+  is_primary: true,
+}
 
 const createRequestMock = vi.fn()
 vi.mock('@/features/request-management/api', () => ({
@@ -359,6 +368,7 @@ describe('useRequestCreateForm', () => {
 
     act(() => {
       result.current.setIdentityDraft(completeIdentity())
+      result.current.setContactsDraft([PHONE_CONTACT])
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
       result.current.form.setValue('source_id', TEST_SOURCE_ID)
     })
@@ -370,11 +380,31 @@ describe('useRequestCreateForm', () => {
     expect(createRequestMock).toHaveBeenCalledWith(
       expect.objectContaining({
         client_identity: expect.objectContaining({ type: 'individual', first_name: 'Mario', last_name: 'Rossi' }),
-        client_contacts: [],
+        client_contacts: [expect.objectContaining({ type: 'phone', value: '3331234567' })],
         product_lines: [COMPLETE_ROW],
       }),
     )
     expect(onSuccess).toHaveBeenCalledWith(43)
+  })
+
+  /** User directive 2026-09-15: the new client must carry a phone number, twin of StoreRequestRequest. */
+  it('blocks the new-client branch without a phone number', async () => {
+    const onSuccess = vi.fn()
+    const { result } = renderCreateForm(onSuccess)
+
+    act(() => {
+      result.current.setIdentityDraft(completeIdentity())
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock).not.toHaveBeenCalled()
+    expect(result.current.clientBlockError).toBe('Enter at least one phone number.')
+    expect(onSuccess).not.toHaveBeenCalled()
   })
 
   it('maps a 422 onto registry_id (RHF) and collects client_identity.* into the client banner (AC-016)', async () => {

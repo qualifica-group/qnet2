@@ -12,6 +12,7 @@ use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
+use App\Http\Requests\Concerns\ValidatesRequiredPhoneContact;
 use App\Http\Requests\Concerns\ValidatesRewards;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -53,6 +54,7 @@ class StoreRequestRequest extends FormRequest
     use ValidatesProductLines;
     use ValidatesQuoteLines;
     use ValidatesRequestClientProfile;
+    use ValidatesRequiredPhoneContact;
     use ValidatesRewards;
 
     public function authorize(): bool
@@ -160,6 +162,12 @@ class StoreRequestRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->validateClientProfile($validator);
+            // The new client must be reachable by phone, like any anagrafica
+            // created from its own form (user directive 2026-09-15). An
+            // existing registry is untouched (D-2), so nothing to require.
+            if ($this->filled('client_identity')) {
+                $this->validateRequiredPhoneContact($validator);
+            }
             $this->validateClientIdentityUniqueness($validator);
             $this->validateProductLines($validator);
             $this->validateManagerSlots($validator);
@@ -169,6 +177,11 @@ class StoreRequestRequest extends FormRequest
             // still has rewards" half needs an existing record).
             $this->validateRewards($validator, null);
         });
+    }
+
+    protected function authorizationResource(): string
+    {
+        return 'request-management';
     }
 
     /**
