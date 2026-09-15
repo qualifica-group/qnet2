@@ -6,7 +6,7 @@
  */
 
 import type { PersonalDataCard } from '@/features/personal-data/types'
-import type { ProductLine } from '@/features/product-lines/types'
+import type { ProductLineRelationRef } from '@/features/product-lines/types'
 import type { PersonalDataPayload } from '@/features/personal-data/drafts'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
@@ -49,6 +49,19 @@ export interface EmploymentRelationRef {
 }
 
 /**
+ * A competence row as returned by the server (spec 0111, nullable category
+ * since spec 0129 D-3): `product_category: null` means "all categories of the
+ * function". Distinct from the shared `ProductLine` (category always
+ * present, used by offers/opportunities) since only the user's competence
+ * carries this null.
+ */
+export interface EmploymentProductLine {
+  id: number
+  business_function: ProductLineRelationRef
+  product_category: ProductLineRelationRef | null
+}
+
+/**
  * The user's employment profile (spec 0015), present only when the backend
  * loaded it. `standard_daily_minutes`/`break_daily_minutes` are stored as
  * plain minute counts (0..1440), not a TIME column.
@@ -70,13 +83,18 @@ export interface EmploymentDetail {
   /** The user's remote sites (spec 0103 D-1): operative exactly like the physical one. */
   remote_operational_site_ids: number[]
   /**
+   * Spec 0129 D-1: jolly flag — competent for ANY category, regardless of
+   * business function, when true. Scalar, same semantics as `is_manager`.
+   */
+  covers_all_product_categories: boolean
+  /**
    * Assignment competence (spec 0111): the business-function -> product-category
    * pairs this user covers, the single source of both. Optional because the
    * backend emits it only when the `productLines` relation was eager-loaded
    * (`whenLoaded` discipline); the `{id, name}` projections also label the row
    * editor without a hydration fetch.
    */
-  product_lines?: ProductLine[]
+  product_lines?: EmploymentProductLine[]
   reports_to: EmploymentRelationRef | null
   company: EmploymentRelationRef | null
   /** Present only when the relation is eager-loaded (whenLoaded), like `company`. */
@@ -84,10 +102,14 @@ export interface EmploymentDetail {
   remote_operational_sites?: EmploymentRelationRef[]
 }
 
-/** A competence row as sent to the server (create/update payload, spec 0111). */
+/**
+ * A competence row as sent to the server (create/update payload, spec 0111;
+ * nullable category since spec 0129 D-3: `null` = "all categories of the
+ * function").
+ */
 export interface EmploymentProductLineInput {
   business_function_id: number
-  product_category_id: number
+  product_category_id: number | null
 }
 
 /**
@@ -141,7 +163,13 @@ export interface EmploymentPayload {
   primary_operational_site_id: number | null
   /** Zero or more remote sites (spec 0103 D-1). */
   remote_operational_site_ids: number[]
-  /** Assignment competence (spec 0111): the function/category pairs the user covers. */
+  /** Spec 0129 D-1/D-10: scalar jolly flag, same semantics as `is_manager` (absent = false). */
+  covers_all_product_categories: boolean
+  /**
+   * Assignment competence (spec 0111): the function/category pairs the user
+   * covers. Spec 0129 D-2: always `[]` when `covers_all_product_categories`
+   * is true (the server also enforces this — 422 otherwise).
+   */
   product_lines: EmploymentProductLineInput[]
   qualification_type: QualificationType | null
   hired_at: string | null

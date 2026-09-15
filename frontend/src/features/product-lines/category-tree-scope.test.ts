@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveSimplifiedOfferLine } from '@/features/product-lines/category-tree-scope'
+import { pickableCategoryIdsFor, resolveSimplifiedOfferLine } from '@/features/product-lines/category-tree-scope'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 
 /** Spec 0114: `resolveSimplifiedOfferLine` — the loosest covered category wins. */
@@ -39,5 +39,73 @@ describe('resolveSimplifiedOfferLine', () => {
   it('is false for an empty or unresolved set of ids', () => {
     expect(resolveSimplifiedOfferLine(TREE, [])).toBe(false)
     expect(resolveSimplifiedOfferLine(TREE, [999])).toBe(false)
+  })
+})
+
+/**
+ * Spec 0129 D-6/D-7: `includeContainers` (the `ProductLinesField` competence
+ * variant) admits a container category whose effective function matches, or a
+ * functionless ("neutral") one with at least one descendant under that
+ * function. Default (`includeContainers` omitted) is byte-for-byte the spec
+ * 0111 D-4 behavior — offers/projects/campaigns/requests must see no change.
+ */
+describe('pickableCategoryIdsFor', () => {
+  const FUNCTION_A = 1
+  const FUNCTION_B = 2
+
+  const CONTAINER_TREE: ProductCategoryTreeNode[] = [
+    node({
+      id: 100,
+      name: 'Formazione',
+      business_function_id: FUNCTION_A,
+      is_selectable: false,
+      children: [node({ id: 101, name: 'Corso base', parent_id: 100 })],
+    }),
+    node({
+      id: 200,
+      name: 'Neutral container',
+      business_function_id: null,
+      is_selectable: false,
+      children: [
+        node({ id: 201, name: 'Under A', parent_id: 200, business_function_id: FUNCTION_A }),
+        node({ id: 202, name: 'Under B', parent_id: 200, business_function_id: FUNCTION_B }),
+      ],
+    }),
+    node({
+      id: 300,
+      name: 'Leaf under A',
+      business_function_id: FUNCTION_A,
+    }),
+  ]
+
+  it('default: only is_selectable leaves matching the function (spec 0111 D-4, unchanged)', () => {
+    const ids = pickableCategoryIdsFor(CONTAINER_TREE, FUNCTION_A)
+
+    expect(ids.has(100)).toBe(false)
+    expect(ids.has(101)).toBe(true)
+    expect(ids.has(200)).toBe(false)
+    expect(ids.has(201)).toBe(true)
+    expect(ids.has(300)).toBe(true)
+  })
+
+  it('D-6: with includeContainers, a container whose own function matches is pickable', () => {
+    const ids = pickableCategoryIdsFor(CONTAINER_TREE, FUNCTION_A, { includeContainers: true })
+
+    expect(ids.has(100)).toBe(true)
+    expect(ids.has(101)).toBe(true)
+  })
+
+  it('D-7: a functionless container is pickable for a function held by at least one descendant', () => {
+    const ids = pickableCategoryIdsFor(CONTAINER_TREE, FUNCTION_A, { includeContainers: true })
+    expect(ids.has(200)).toBe(true)
+
+    const idsForB = pickableCategoryIdsFor(CONTAINER_TREE, FUNCTION_B, { includeContainers: true })
+    expect(idsForB.has(200)).toBe(true)
+  })
+
+  it('D-7: a functionless container with no descendant under that function is not pickable', () => {
+    const OTHER_FUNCTION = 3
+    const ids = pickableCategoryIdsFor(CONTAINER_TREE, OTHER_FUNCTION, { includeContainers: true })
+    expect(ids.has(200)).toBe(false)
   })
 })

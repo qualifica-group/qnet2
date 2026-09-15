@@ -38,15 +38,19 @@ function buildEmploymentSchema(t: TFunction) {
       // more remote sites — both operative to the same effect (D-1).
       primary_operational_site_id: z.number().nullable(),
       remote_operational_site_ids: z.array(z.number()),
+      // Spec 0129 D-1: the jolly flag — competent for every category when true.
+      covers_all_product_categories: z.boolean(),
       // Assignment competence (spec 0111): business-function -> product-category
       // rows, on the same per-field tri-state as the remote sites. Either id may
       // still be null WHILE a row is being filled — that is how the shared
       // `ProductLinesField` creates one — so completeness is a refinement, not
-      // a shape constraint.
+      // a shape constraint. `all_categories` (spec 0129 D-3/D-5) makes a null
+      // category a deliberate "all categories of the function" choice.
       product_lines: z.array(
         z.object({
           business_function_id: z.number().nullable(),
           product_category_id: z.number().nullable(),
+          all_categories: z.boolean().optional(),
         }),
       ),
       qualification_type: z.enum(QUALIFICATION_TYPES).nullable(),
@@ -68,9 +72,12 @@ function buildEmploymentSchema(t: TFunction) {
       // receives no assignment at all) — but a half-filled row is not a pair
       // and must never reach the server. The issue is raised on the COLLECTION,
       // not on the row: the whole editor is one `MetaField`, so only an error
-      // at its own path is rendered under it.
+      // at its own path is rendered under it. Spec 0129 AC-021: a row with
+      // `all_categories` checked is complete without a category.
       const hasIncompleteRow = values.product_lines.some(
-        (row) => row.business_function_id === null || row.product_category_id === null,
+        (row) =>
+          row.business_function_id === null ||
+          (row.product_category_id === null && row.all_categories !== true),
       )
       if (hasIncompleteRow) {
         ctx.addIssue({

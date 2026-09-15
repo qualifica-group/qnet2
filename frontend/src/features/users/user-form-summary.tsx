@@ -39,12 +39,18 @@ export function UserFormSummary({ control, selectedPrimaryOperationalSiteItem }:
   const { field: fieldPermission } = useResourcePermissions()
   const assignmentFields = useAssignmentFieldsVisibility()
   const competenceRows = useWatch({ control, name: 'employment.product_lines' })
+  const coversAllProductCategories = useWatch({ control, name: 'employment.covers_all_product_categories' })
   const primarySiteId = useWatch({ control, name: 'employment.primary_operational_site_id' })
   const remoteSiteIds = useWatch({ control, name: 'employment.remote_operational_site_ids' })
   const roles = useWatch({ control, name: 'roles' })
   const isActive = useWatch({ control, name: 'is_active' })
 
-  const summary = summarizeAssignment({ competenceRows, primarySiteId, remoteSiteIds })
+  const summary = summarizeAssignment({
+    competenceRows,
+    coversAllProductCategories,
+    primarySiteId,
+    remoteSiteIds,
+  })
   const primarySiteName =
     primarySiteId !== null && selectedPrimaryOperationalSiteItem?.id === primarySiteId
       ? selectedPrimaryOperationalSiteItem.label
@@ -64,9 +70,13 @@ export function UserFormSummary({ control, selectedPrimaryOperationalSiteItem }:
             recaps: a label alone already tells the actor a hidden field
             exists, so a recap must never outlive its field. */}
         <dl className={SUMMARY_LIST_CLASS}>
-          {assignmentFields.competence ? (
+          {assignmentFields.competence || assignmentFields.coversAllProductCategories ? (
             <SummaryRow label={t('users.form.employment.productLines')}>
-              {summary.competenceCount > 0 ? summary.competenceCount : EMPTY_VALUE}
+              {assignmentFields.coversAllProductCategories && summary.coversAllProductCategories
+                ? t('users.assignment.allCategories')
+                : assignmentFields.competence && summary.competenceCount > 0
+                  ? summary.competenceCount
+                  : EMPTY_VALUE}
             </SummaryRow>
           ) : null}
           {assignmentFields.primarySite ? (

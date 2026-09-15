@@ -23,6 +23,11 @@ use Illuminate\Support\Collection;
  * user is a subordinate reporting to one of them, round-robin. Idempotent:
  * the profile is upserted by owner, its site membership and its competence
  * rows recomputed from the same reseeded Faker sequence.
+ *
+ * Spec 0129: the canonical demo account (`demo@app.com`) is the one profile
+ * that demonstrates the wildcard flag (D-1) — carrying no competence rows,
+ * D-2 — and the first subordinate demonstrates the "every category of this
+ * function" row (D-3), on top of its own random per-category rows.
  */
 class DemoEmploymentProfileSeeder extends Seeder
 {
@@ -73,8 +78,11 @@ class DemoEmploymentProfileSeeder extends Seeder
 
     private function seedManager(Generator $faker, User $manager): void
     {
+        $coversAll = $this->isCompetenceWildcardUser($manager);
+
         $employment = $manager->employment()->updateOrCreate([], [
             'is_manager' => true,
+            'covers_all_product_categories' => $coversAll,
             'reports_to_id' => null,
             'relationship_type' => RelationshipTypeEnum::Employee->value,
             'qualification_type' => QualificationTypeEnum::Coordinator->value,
@@ -85,7 +93,7 @@ class DemoEmploymentProfileSeeder extends Seeder
         ]);
 
         $this->assignOperationalSites($faker, $employment);
-        $this->assignProductLines($faker, $employment);
+        $this->assignProductLines($faker, $employment, coversAll: $coversAll);
     }
 
     /**
@@ -95,9 +103,11 @@ class DemoEmploymentProfileSeeder extends Seeder
     {
         /** @var User $manager */
         $manager = $managers[$index % $managers->count()];
+        $coversAll = $this->isCompetenceWildcardUser($user);
 
         $employment = $user->employment()->updateOrCreate([], [
             'is_manager' => false,
+            'covers_all_product_categories' => $coversAll,
             'reports_to_id' => $manager->id,
             'relationship_type' => $faker->randomElement(RelationshipTypeEnum::values()),
             'qualification_type' => $faker->randomElement(QualificationTypeEnum::values()),
@@ -108,7 +118,21 @@ class DemoEmploymentProfileSeeder extends Seeder
         ]);
 
         $this->assignOperationalSites($faker, $employment);
-        $this->assignProductLines($faker, $employment);
+        // Spec 0129 D-3: the FIRST subordinate also demonstrates a
+        // "every category of this function" row, on top of its random ones —
+        // skipped for the wildcard user above, whose rows stay empty (D-2).
+        $this->assignProductLines($faker, $employment, coversAll: $coversAll, allCategoriesRow: $index === 0 && ! $coversAll);
+    }
+
+    /**
+     * The one deterministic demo account (spec 0129): the sole profile
+     * carrying the wildcard flag, so re-seeding always produces at least one
+     * (AC-019) regardless of where `demo@app.com` lands in the manager/
+     * subordinate split.
+     */
+    private function isCompetenceWildcardUser(User $user): bool
+    {
+        return $user->email === self::DEMO_EMAIL;
     }
 
     /**
@@ -148,18 +172,35 @@ class DemoEmploymentProfileSeeder extends Seeder
      * keyed off the reseeded Faker sequence, so a re-run recomputes the
      * identical set instead of stacking rows (idempotent, same rule as
      * assignOperationalSites() above).
+     *
+     * Spec 0129: $coversAll (D-2) leaves the profile rowless — the flag alone
+     * covers everything, so there is nothing to keep in sync with it.
+     * $allCategoriesRow (D-3) demoes one (function, null) row, on the FIRST
+     * pair's function, with the random rows on that same function excluded
+     * so the two demo states never collide on spec 0129's own redundancy
+     * rule (D-4).
      */
-    private function assignProductLines(Generator $faker, EmploymentProfile $employment): void
+    private function assignProductLines(Generator $faker, EmploymentProfile $employment, bool $coversAll = false, bool $allCategoriesRow = false): void
     {
-        if ($this->competencePairs->isEmpty()) {
+        $employment->productLines()->delete();
+
+        if ($coversAll || $this->competencePairs->isEmpty()) {
             return;
         }
 
-        $lines = $this->competencePairs->filter(fn (): bool => $faker->boolean(self::COMPETENCE_LINE_ODDS));
+        $allCategoriesFunctionId = $allCategoriesRow ? $this->competencePairs->first()['business_function_id'] : null;
 
-        $employment->productLines()->delete();
+        $this->competencePairs
+            ->reject(fn (array $pair): bool => $pair['business_function_id'] === $allCategoriesFunctionId)
+            ->filter(fn (): bool => $faker->boolean(self::COMPETENCE_LINE_ODDS))
+            ->each(fn (array $line) => $employment->productLines()->create($line));
 
-        $lines->each(fn (array $line) => $employment->productLines()->create($line));
+        if ($allCategoriesFunctionId !== null) {
+            $employment->productLines()->create([
+                'business_function_id' => $allCategoriesFunctionId,
+                'product_category_id' => null,
+            ]);
+        }
     }
 
     /**

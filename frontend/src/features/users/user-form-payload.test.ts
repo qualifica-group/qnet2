@@ -64,6 +64,7 @@ const emptyEmployment: UserFormValues['employment'] = {
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
+  covers_all_product_categories: false,
   product_lines: [],
   qualification_type: null,
   hired_at: '',
@@ -219,6 +220,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
       company_id: 5,
       primary_operational_site_id: 8,
       remote_operational_site_ids: [11, 12],
+      covers_all_product_categories: false,
       product_lines: [],
       qualification_type: 'coordinator',
       hired_at: '2026-01-15',
@@ -295,6 +297,41 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     expect(payload.employment.product_lines).toEqual([])
   })
 
+  /** Spec 0129 AC-020: the flag always rides with an empty row set, whatever the form's own row array holds. */
+  it('AC-020 — carries covers_all_product_categories and forces product_lines to [] when it is true', () => {
+    const payload = buildCreatePayload(
+      {
+        ...formValues,
+        employment: {
+          ...emptyEmployment,
+          covers_all_product_categories: true,
+          product_lines: [{ business_function_id: 4, product_category_id: 21 }],
+        },
+      },
+      draft(),
+    )
+
+    expect(payload.employment.covers_all_product_categories).toBe(true)
+    expect(payload.employment.product_lines).toEqual([])
+  })
+
+  /** Spec 0129 AC-021: a row with "all categories" checked serializes its category as null. */
+  it('AC-021 — serializes an "all categories" row with a null category', () => {
+    const payload = buildCreatePayload(
+      {
+        ...formValues,
+        employment: {
+          ...emptyEmployment,
+          product_lines: [{ business_function_id: 4, product_category_id: null, all_categories: true }],
+        },
+      },
+      draft(),
+    )
+
+    expect(payload.employment.covers_all_product_categories).toBe(false)
+    expect(payload.employment.product_lines).toEqual([{ business_function_id: 4, product_category_id: null }])
+  })
+
   it('AC-015 — force-nulls reports_to_id client-side when is_manager is true', () => {
     const payload = buildCreatePayload(
       {
@@ -337,6 +374,7 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
       company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
+      covers_all_product_categories: false,
       product_lines: [],
       qualification_type: null,
       hired_at: null,

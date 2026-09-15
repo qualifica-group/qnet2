@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ForSelectItem } from '@/features/for-select/types'
-import type { ProductLine, ProductLineRow } from '@/features/product-lines/types'
-import type { EmploymentRelationRef, UserLocale } from '@/features/users/types'
+import type { KnownProductLine, ProductLineRow } from '@/features/product-lines/types'
+import type { EmploymentProductLine, EmploymentRelationRef, UserLocale } from '@/features/users/types'
 import type { EmploymentFormValues } from '@/features/users/user-schema'
 import type { UserFormMode } from '@/features/users/user-form'
 import type { UserFormValues } from '@/features/users/use-user-form'
@@ -32,7 +32,7 @@ const EMPTY_PRODUCT_LINES: ProductLineRow[] = []
 const EMPTY_RELATION_REFS: ForSelectItem[] = []
 
 /** Same, for the competence pairs handed to the row editor as known labels. */
-const EMPTY_KNOWN_LINES: ProductLine[] = []
+const EMPTY_KNOWN_LINES: KnownProductLine[] = []
 
 /** A blank employment sub-form, used for both create and an edit user with no profile yet. */
 export const EMPTY_EMPLOYMENT: EmploymentFormValues = {
@@ -43,6 +43,7 @@ export const EMPTY_EMPLOYMENT: EmploymentFormValues = {
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: EMPTY_REMOTE_SITE_IDS,
+  covers_all_product_categories: false,
   product_lines: EMPTY_PRODUCT_LINES,
   qualification_type: null,
   hired_at: '',
@@ -68,14 +69,19 @@ function relationsToForSelectItems(
   return refs.map((ref) => ({ id: ref.id, label: ref.label, subtitle: ref.subtitle ?? null }))
 }
 
-/** Maps the loaded competence pairs onto the row shape the editor mutates in place (spec 0111). */
-function productLinesToRows(lines: ProductLine[] | undefined): ProductLineRow[] {
+/**
+ * Maps the loaded competence pairs onto the row shape the editor mutates in
+ * place (spec 0111). Spec 0129 AC-023: a persisted row with a null category
+ * opens with `all_categories` checked (D-3).
+ */
+function productLinesToRows(lines: EmploymentProductLine[] | undefined): ProductLineRow[] {
   if (!lines || lines.length === 0) {
     return EMPTY_PRODUCT_LINES
   }
   return lines.map((line) => ({
     business_function_id: line.business_function.id,
-    product_category_id: line.product_category.id,
+    product_category_id: line.product_category?.id ?? null,
+    all_categories: line.product_category === null,
   }))
 }
 
@@ -103,6 +109,7 @@ export function useUserFormDefaults(
               company_id: employment.company_id,
               primary_operational_site_id: employment.primary_operational_site_id,
               remote_operational_site_ids: employment.remote_operational_site_ids,
+              covers_all_product_categories: employment.covers_all_product_categories,
               product_lines: productLinesToRows(employment.product_lines),
               qualification_type: employment.qualification_type,
               hired_at: employment.hired_at ?? '',

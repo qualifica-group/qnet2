@@ -13,16 +13,18 @@ uses(RefreshDatabase::class);
 
 /**
  * Feature coverage for AC-012 (spec 0015): UsersAuthorization::fields()
- * includes the 13 `employment.*` keys; a role with a field denied in the
+ * includes the 14 `employment.*` keys; a role with a field denied in the
  * matrix cannot write it (ceiling respected), and pre-existing values are
  * preserved (CHANGE-based enforcement, spec 0008).
  *
  * Spec 0111 replaced `employment.business_function_id` and
  * `employment.product_category_ids` with the single `employment.product_lines`
- * collection.
+ * collection. Spec 0129 adds `employment.covers_all_product_categories`, the
+ * profile-wide wildcard flag (D-1).
  */
 const EMPLOYMENT_FIELD_KEYS = [
-    'employment.is_manager', 'employment.job_description', 'employment.reports_to_id',
+    'employment.is_manager', 'employment.covers_all_product_categories',
+    'employment.job_description', 'employment.reports_to_id',
     'employment.product_lines', 'employment.relationship_type', 'employment.company_id',
     'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
     'employment.qualification_type', 'employment.hired_at',
@@ -46,7 +48,7 @@ if (! function_exists('employmentFieldPermActor')) {
     }
 }
 
-it('AC-012: permissions.fields includes the 13 employment.* keys, editable when the actor may update', function () {
+it('AC-012: permissions.fields includes the 14 employment.* keys, editable when the actor may update', function () {
     $actor = employmentFieldPermActor(['view', 'update']);
     $target = User::factory()->withEmployment()->create();
     Sanctum::actingAs($actor);
@@ -183,6 +185,31 @@ it('AC-014: changing the remote site set on a readonly employment.remote_operati
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['remote_operational_site_ids' => [$siteA->id, $siteC->id]],
     ])->assertStatus(422)->assertJsonValidationErrors(['employment.remote_operational_site_ids']);
+});
+
+// ---------------------------------------------------------------------------
+// AC-017 (spec 0129) — employment.covers_all_product_categories readonly:
+// resubmitting the SAME value is a no-op (200); a real change 422s.
+// ---------------------------------------------------------------------------
+
+it('0129 AC-017: resubmitting the same value on a readonly employment.covers_all_product_categories is a no-op (200)', function () {
+    $actor = roleDenyingEmploymentField('employment.covers_all_product_categories');
+    $target = User::factory()->withEmployment(fn ($f) => $f->coversAllProductCategories())->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/users/{$target->id}", [
+        'employment' => ['covers_all_product_categories' => true],
+    ])->assertOk();
+});
+
+it('0129 AC-017: changing employment.covers_all_product_categories on a readonly field 422s', function () {
+    $actor = roleDenyingEmploymentField('employment.covers_all_product_categories');
+    $target = User::factory()->withEmployment()->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/users/{$target->id}", [
+        'employment' => ['covers_all_product_categories' => true],
+    ])->assertStatus(422)->assertJsonValidationErrors(['employment.covers_all_product_categories']);
 });
 
 // ---------------------------------------------------------------------------

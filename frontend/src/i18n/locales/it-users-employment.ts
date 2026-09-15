@@ -31,9 +31,11 @@ export const usersFormEmployment = {
   reportsToSearch: 'Cerca utenti…',
   reportsToEmpty: 'Nessun utente trovato.',
   reportsToError: 'Impossibile caricare gli utenti.',
+  coversAllProductCategories: 'Competente per tutte le categorie',
+  coversAllProductCategoriesDescription: 'La persona è competente su qualunque categoria prodotto, a prescindere dalla funzione aziendale: le righe sottostanti spariscono e vengono azzerate.',
   productLines: 'Competenza',
-  productLinesHint: 'Ogni riga abbina una funzione aziendale a una categoria prodotto, sottocategorie comprese: sono le competenze su cui la persona può essere assegnata. Senza almeno una riga non riceve alcuna assegnazione.',
-  productLineIncomplete: 'Ogni riga richiede sia la funzione aziendale sia la categoria prodotto.',
+  productLinesHint: 'Ogni riga abbina una funzione aziendale a una categoria prodotto, sottocategorie comprese: spunta "Tutte" per coprire ogni categoria di quella funzione, oppure scegli una categoria madre (es. "Formazione") per coprire lei e le sue figlie. Senza almeno una riga (o senza il flag sopra) non riceve alcuna assegnazione.',
+  productLineIncomplete: 'Ogni riga richiede sia la funzione aziendale sia la categoria prodotto (oppure "Tutte").',
   relationshipType: 'Tipo di rapporto',
   relationshipTypeNone: 'Nessuno',
   company: 'Società',
@@ -106,6 +108,8 @@ export const usersAssignment = {
   sitesHint: "Sede fisica e sedi remote valgono allo stesso modo per l'assegnazione: conta appartenere alla sede, non come ci si lavora.",
   assignable: 'Assegnabile',
   notAssignable: 'Non assegnabile',
+  /** Spec 0129 D-1: mostrata al posto del conteggio/elenco quando il flag jolly è attivo. */
+  allCategories: 'Tutte le categorie',
   chips: {
     competence: 'Competenze',
     physicalSite: 'Sede fisica',

@@ -170,6 +170,7 @@ const UNCONFIGURED_EMPLOYMENT: EmploymentDetail = {
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
+  covers_all_product_categories: false,
   product_lines: [],
   reports_to: null,
   company: null,
@@ -210,7 +211,7 @@ function user(employment: EmploymentDetail): UserDetailWithPermissions {
   }
 }
 
-/** A role that sees none of the three assignment fields. */
+/** A role that sees none of the four assignment fields (spec 0129 added the all-categories flag). */
 function permissionsWithAssignmentHidden(): ResourcePermissions {
   const hidden = {
     visible: false,
@@ -224,6 +225,7 @@ function permissionsWithAssignmentHidden(): ResourcePermissions {
     ...FULL_ACCESS_PERMISSIONS,
     fields: {
       'employment.product_lines': hidden,
+      'employment.covers_all_product_categories': hidden,
       'employment.primary_operational_site_id': hidden,
       'employment.remote_operational_site_ids': hidden,
     },
@@ -329,6 +331,18 @@ describe('UserForm — live assignment verdict', () => {
       within(screen.getByRole('complementary')).queryByRole('status'),
     ).not.toBeInTheDocument()
     // Not even the recap may name a field the actor is not allowed to see.
+    expect(screen.queryByText('Physical site')).not.toBeInTheDocument()
+    expect(screen.queryByText('Remote sites')).not.toBeInTheDocument()
+  })
+
+  it('still shows the assignment section to a role that sees only the all-categories flag', () => {
+    const permissions = permissionsWithAssignmentHidden()
+    const fields = { ...permissions.fields }
+    delete fields['employment.covers_all_product_categories']
+    formMetaPermissions.mockReturnValue({ ...permissions, fields })
+    renderForm(UNCONFIGURED_EMPLOYMENT)
+
+    expect(screen.getByText('Assignment configuration')).toBeInTheDocument()
     expect(screen.queryByText('Physical site')).not.toBeInTheDocument()
     expect(screen.queryByText('Remote sites')).not.toBeInTheDocument()
   })

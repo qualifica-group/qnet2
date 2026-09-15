@@ -117,6 +117,37 @@ it('0111 AC-016: an operator competent through a SECOND row on another function 
     expect($response->json('pagination.total'))->toBe(1);
 });
 
+// ---------------------------------------------------------------------------
+// Spec 0129 AC-007 — the wildcard flag and a (function, null) row both widen
+// the competent set this endpoint answers.
+// ---------------------------------------------------------------------------
+
+it('0129 AC-007: competence_category_ids includes the wildcard-flagged user and the (function, null) user', function () {
+    $actor = competenceForSelectActor();
+    $function = BusinessFunction::factory()->create();
+    $otherFunction = BusinessFunction::factory()->create();
+    $category = ProductCategory::factory()->create(['business_function_id' => $function->id]);
+
+    $flagged = User::factory()->create();
+    EmploymentProfile::factory()->for($flagged)->coversAllProductCategories()->create();
+
+    $wildcardRow = User::factory()->create();
+    EmploymentProfile::factory()->for($wildcardRow)->competentInEveryCategoryOf($function)->create();
+
+    $mismatchedWildcardRow = User::factory()->create();
+    EmploymentProfile::factory()->for($mismatchedWildcardRow)->competentInEveryCategoryOf($otherFunction)->create();
+
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/users/for-select?competence_category_ids[]={$category->id}")->assertOk();
+
+    $ids = collect($response->json('items'))->pluck('id');
+
+    expect($ids)->toContain($flagged->id, $wildcardRow->id);
+    expect($ids)->not->toContain($mismatchedWildcardRow->id);
+    expect($response->json('pagination.total'))->toBe(2);
+});
+
 it('0110 AC-030: an unknown category id is a 422, never a silently empty picker', function () {
     Sanctum::actingAs(competenceForSelectActor());
 

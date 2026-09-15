@@ -186,6 +186,7 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
   company_id: null,
   primary_operational_site_id: 8,
   remote_operational_site_ids: [9, 10],
+  covers_all_product_categories: false,
   reports_to: null,
   company: null,
   primary_operational_site: { id: 8, label: 'Via Roma 1' },

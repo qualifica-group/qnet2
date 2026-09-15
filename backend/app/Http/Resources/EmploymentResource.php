@@ -31,7 +31,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * REPLACES the former `business_function_id`/`business_function` pair (D-1
  * dropped the column) and the category-only keys of spec 0110, and carries
  * the same shape every other owner of the collection emits (see
- * OpportunityResource::summarizeProductLines()).
+ * OpportunityResource::summarizeProductLines()) — except `product_category`
+ * may legitimately be null here (spec 0129 D-3: the row covers every
+ * category of its function), which summarizeByName() already handles.
+ *
+ * `covers_all_product_categories` (spec 0129 D-1) is a plain scalar, emitted
+ * unconditionally like `is_manager` — it needs no eager load.
  */
 class EmploymentResource extends JsonResource
 {
@@ -43,6 +48,7 @@ class EmploymentResource extends JsonResource
         return [
             'id' => $this->id,
             'is_manager' => $this->is_manager,
+            'covers_all_product_categories' => $this->covers_all_product_categories,
             'job_description' => $this->job_description,
             'relationship_type' => $this->relationship_type,
             'qualification_type' => $this->qualification_type,

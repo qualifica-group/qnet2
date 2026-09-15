@@ -1,22 +1,24 @@
 import { Info, Target } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { Control } from 'react-hook-form'
+import { useFormContext, useWatch, type Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { FIELD_GRID_CLASS } from '@/components/record-form/layout'
+import { FormControl, FormDescription } from '@/components/ui/form'
+import { Switch } from '@/components/ui/switch'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
 import { toRelationFieldRef, toRelationFieldRefs } from '@/components/form/relation-field-ref'
 import { MetaField } from '@/features/authorization/MetaField'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
-import type { ProductLine } from '@/features/product-lines/types'
+import type { KnownProductLine } from '@/features/product-lines/types'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { UserFormValues } from '@/features/users/use-user-form'
 
 interface UserAssignmentSectionProps {
   control: Control<UserFormValues>
   /** The persisted competence pairs, whose `{id, name}` projections label the rows without a fetch. */
-  knownProductLines: ProductLine[]
+  knownProductLines: KnownProductLine[]
   selectedPrimaryOperationalSiteItem: ForSelectItem | null
   selectedRemoteOperationalSiteItems: ForSelectItem[]
 }
@@ -35,9 +37,13 @@ interface UserAssignmentSectionProps {
  * other and nowhere else. What stayed behind in those sections is what really
  * describes the contract — relationship type, company, reporting line.
  *
- * The `single`-mode row cap of `ProductLinesField` is opted out here (spec
- * 0111 D-5): it is an invariant of a commercial card, not of a person's
- * competence.
+ * Spec 0129 D-1/D-2: the "competent for all categories" switch is the row
+ * editor's jolly — checking it hides the editor and clears its rows (one
+ * state only, no dormant rows survive under a true flag); unchecking it opens
+ * back on an empty editor, never on what was cleared. The row editor itself
+ * runs the `competence` variant (spec 0111 D-5: no `single`-mode cap; spec
+ * 0129 D-6/D-7: container categories pickable, per-row "all categories"
+ * checkbox).
  */
 export function UserAssignmentSection({
   control,
@@ -46,6 +52,8 @@ export function UserAssignmentSection({
   selectedRemoteOperationalSiteItems,
 }: UserAssignmentSectionProps) {
   const { t } = useTranslation()
+  const { setValue } = useFormContext<UserFormValues>()
+  const coversAllProductCategories = useWatch({ control, name: 'employment.covers_all_product_categories' })
 
   return (
     <FormSection
@@ -60,21 +68,52 @@ export function UserAssignmentSection({
 
       <MetaField
         control={control}
-        name="employment.product_lines"
-        metaKey="employment.product_lines"
-        label={t('users.form.employment.productLines')}
-        hint={t('users.form.employment.productLinesHint')}
+        name="employment.covers_all_product_categories"
+        metaKey="employment.covers_all_product_categories"
+        layout="inline"
+        label={t('users.form.employment.coversAllProductCategories')}
+        description={
+          <FormDescription>{t('users.form.employment.coversAllProductCategoriesDescription')}</FormDescription>
+        }
       >
         {({ field, disabled }) => (
-          <ProductLinesField
-            value={field.value}
-            onChange={field.onChange}
-            knownLines={knownProductLines}
-            disabled={disabled}
-            enforceManagementModeCap={false}
-          />
+          <FormControl>
+            <Switch
+              checked={field.value}
+              onCheckedChange={(checked) => {
+                field.onChange(checked)
+                // D-2: one state only — a row set left under a true flag would be a
+                // dormant value the server discards anyway; clearing it here keeps
+                // the editor's own reappearance (unchecking) genuinely empty.
+                if (checked) {
+                  setValue('employment.product_lines', [], { shouldDirty: true })
+                }
+              }}
+              disabled={disabled}
+            />
+          </FormControl>
         )}
       </MetaField>
+
+      {coversAllProductCategories ? null : (
+        <MetaField
+          control={control}
+          name="employment.product_lines"
+          metaKey="employment.product_lines"
+          label={t('users.form.employment.productLines')}
+          hint={t('users.form.employment.productLinesHint')}
+        >
+          {({ field, disabled }) => (
+            <ProductLinesField
+              value={field.value}
+              onChange={field.onChange}
+              knownLines={knownProductLines}
+              disabled={disabled}
+              variant="competence"
+            />
+          )}
+        </MetaField>
+      )}
 
       <div className="border-t" />
 

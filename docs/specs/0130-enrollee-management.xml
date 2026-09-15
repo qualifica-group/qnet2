@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0130-enrollee-management" status="draft" owner="utente" date="2026-09-15">
+
+  <goal>
+    Nuovo modulo "Gestione Iscritti" (chiave tecnica `enrollee-management`): identico in tutto a
+    "Gestione Richieste" (tabella, filtri, ordinamenti, azioni, dettaglio/pannello di lavoro, bulk,
+    note, documenti, attivita', export, creazione, tab categorie, report/dashboard, richieste di
+    modifica campo) con due sole differenze: (1) mostra esclusivamente le richieste il cui stato
+    appartiene ai gruppi `validated` o `closed_won`; (2) e' governato da un set di permessi proprio
+    `enrollee-management.*`, indipendente da `request-management.*`. Nessuna logica duplicata: i due
+    moduli sono due configurazioni dello stesso codice, cosi' ogni modifica futura a Gestione
+    Richieste si riflette automaticamente su Gestione Iscritti.
+  </goal>
+
+  <context>
+    Decisioni utente (2026-09-15):
+    - D-1 Modulo separato (voce menu, rotta, permessi, dominio tabella propri), non una tab.
+    - D-2 Filtro = `quote_workflow_statuses.group IN ('validated','closed_won')` (enum
+      `App\Enums\WorkflowStatusGroup::Validated`, `::ClosedWon`). Nessuna modifica di schema.
+    - D-3 Gestione Richieste resta invariata (continua a mostrare anche quelle richieste).
+    - D-4 Set completo di permessi dedicato: stesse abilita' di `RequestManagementPolicy::abilities()`
+      (viewAny, view, create, update, delete, export, import, viewActivity, viewAll, viewSite,
+      viewDocuments, assignOperator, assignManagerGa1, transferContact, appendTeamMember,
+      receiveTransferNotifications, report) + campo protetto `updateSource`, con prefisso
+      `enrollee-management.`.
+    - D-5 Perimetro righe con lo stesso schema (operatore proprio / `viewSite` sedi / `viewAll`
+      tutte) ma valutato SOLO sui permessi `enrollee-management.*`.
+    - D-6 Inclusi anche: creazione, report/dashboard, tab categorie prodotto, FCR (`updateSource`).
+    - D-7 [DA CONFERMARE] Export: oggi `ExportController::authorizeExport()` usa
+      `Gate::allows('export', Quote::class)` = `quotes.export` (incongruenza preesistente col
+      pulsante FE che guarda `request-management.export`). Proposta: per i domini `request-management`
+      ed `enrollee-management` l'export si autorizza con `{domain}.export`.
+
+    Nomi reali verificati (backend):
+    - Record = `App\Models\Quote` (spec 0086), stato via `quotes.quote_workflow_status_id` ->
+      `QuoteWorkflowStatus` (`Quote::quoteWorkflowStatus()`), colonna `group`.
+    - Policy `App\Policies\RequestManagementPolicy` (resource `request-management`); permessi creati
+      da `permissions:sync` (glob `app/Policies/*.php` + `NavigationService::permissions()` +
+      `ProtectedFieldRegistry::permissions()`).
+    - Scope `App\Services\RequestManagement\RequestManagementScope` (final, statico, const privati
+      viewAll/viewSite): `scopeToActor`, `assertInScope`, `isInActorSites`, `actorSiteIds`.
+    - Tabella `App\Tables\RequestManagementTableDefinition` (+ `RequestActionCatalog`,
+      `RequestColumnCatalog`, `RequestAdvancedFilterCatalog`), registrata in `config/tables.php:107`,
+      decorata da `TableRegistry::wrapIfRequestManagementScoped` ->
+      `RequestManagementScopedTableDefinition`; `TableController::scopeToProductCategory` usa
+      `instanceof`.
+    - API `routes/api/request-management.php` -> `RequestManagementController` (formContext, store,
+      show, update, destroy, assignOperators, assignManagerGa1, transfer),
+      `ProductCategoryTabsController`, `RequestManagementReportController`,
+      `RequestManagementDashboardController`; job `GenerateRequestManagementReportJob`;
+      `ReportBranchQuery`; `RequestAssignmentService`, `RequestTransferService`,
+      `AssignRequestOperatorsRequest`, `UpdateRequestRequest`,
+      `Assignment\SelectionScopeController`.
+    - Autorizzazione campi `App\Authorization\RequestManagementAuthorization`
+      (`config/authorization.php:100`), blocco `permissions` via `ResourcePermissionsBuilder`.
+    - Note `App\RequestManagement\RequestManagementNotable` (`config/notes.php`), attivita'
+      `RequestManagementActivityAuthorizer` (`config/activity-log.php:167`), FCR
+      `config/field-change-requests.php:20` (`record_path` `/request-management`), menu
+      `config/navigation/opportunities.php` (key `request-management`, permission
+      `request-management.view`, figlio `field-change-requests`).
+    - Precedente di "sottoinsieme con permessi propri": `RewardedReferentsTableDefinition`.
+
+    Nomi reali verificati (frontend):
+    - Feature `frontend/src/features/request-management/` (`REQUEST_MANAGEMENT_DOMAIN` in `types.ts`,
+      `api.ts`, `report-api.ts`, `dashboard-api.ts`, `query-keys.ts`, storage key
+      `request-management.*`, `request-management-screens.tsx` basePath `/request-management`).
+    - Pagine `pages/request-management-page.tsx` (`<Can permission="request-management.viewAny">`),
+      `pages/request-management-detail-page.tsx`; rotte `routes/router.tsx:338,353`; breadcrumb
+      `routes/breadcrumbs.tsx:64`.
+    - Tabella generica `features/table/table-view.tsx` (`domain` guida config/rows/filtri/viste
+      salvate/preferenze/export).
+    - Gate `can('request-management.*')` in `request-management-table.tsx`,
+      `use-request-transfer-selection.ts`, `use-request-manager-ga1-assignment.ts`,
+      `use-request-actor-defaults.ts`, `request-work-collaboration.tsx`,
+      `request-dashboard-toggle.tsx`, `request-dashboard-filter-bar.tsx`; permessi per-record da
+      `ResourcePermissionsProvider` (arrivano dal backend).
+    - i18n `i18n/locales/{it,en}-request-management.ts` (namespace `requestManagement`),
+      etichette permessi `i18n/locales/{it,en}-permissions.ts` (test di parita').
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: enum `App\RequestManagement\RequestModule` (`Requests`='request-management', `Enrollees`='enrollee-management') come unica fonte di: prefisso permessi, filtro di stato, path record. `Requests` non filtra; `Enrollees` filtra sui gruppi D-2.</item>
+      <item>Backend: `RequestManagementScope` parametrizzato da `RequestModule` (permessi viewAll/viewSite del modulo + filtro di stato, sia su query sia sul singolo record in `assertInScope`).</item>
+      <item>Backend: `EnrolleeManagementPolicy` (resource `enrollee-management`, stesse abilita') per `permissions:sync`.</item>
+      <item>Backend: dominio tabella `enrollee-management` (sottoclasse di `RequestManagementTableDefinition` che cambia solo il modulo) con catalogo azioni/permessi derivati dal modulo; stesso decoratore categorie.</item>
+      <item>Backend: tutte le rotte di `routes/api/request-management.php` registrate anche sotto `enrollee-management/...`, stessi controller, modulo risolto dalla rotta; ogni check `request-management.*` e ogni chiamata allo scope passano dal modulo.</item>
+      <item>Backend: autorizzazione campi, note, attivita', FCR (`updateSource`), notifiche di trasferimento (`receiveTransferNotifications`), selection scope assegnazioni, report/dashboard (anche job asincrono) parametrizzati dal modulo e registrati per `enrollee-management`.</item>
+      <item>Backend: voce di menu `enrollee-management` (label `navigation.enrolleeManagement`, route `/enrollee-management`, permission `enrollee-management.view`) nel gruppo di `config/navigation/opportunities.php`, subito dopo Gestione Richieste, senza figli.</item>
+      <item>Frontend: `RequestModuleConfig` + `RequestModuleProvider`/`useRequestModule()` (default = modulo Richieste); tutti i riferimenti hard-coded (domain, path API, path rotta, permessi, query key, storage key, resource note/attivita', entityType) letti dalla config.</item>
+      <item>Frontend: pagine lista e dettaglio `/enrollee-management` e `/enrollee-management/:id`, registrazione module screen, breadcrumb, titolo/forbidden/nav i18n, etichette dei permessi `enrollee-management.*` it/en.</item>
+      <item>D-7 (se confermata): export autorizzato su `{domain}.export` per i due domini.</item>
+    </in>
+    <out>
+      <item>Nessuna modifica di schema DB / migrazione; nessun nuovo flag di "validazione".</item>
+      <item>Nessuna modifica al comportamento di Gestione Richieste oltre al refactor a parita' (e a D-7 se confermata).</item>
+      <item>Nessuna duplicazione di componenti, catalogo colonne, filtri, azioni, servizi: vietato copiare file.</item>
+      <item>Note/tab note dei moduli Opportunita' e Offerte (`opportunity-detail.tsx:59`, `QuotesTableDefinition`/`OpportunitiesTableDefinition::allowsNotes`) restano su `request-management.view`.</item>
+      <item>Documenti: restano autorizzati da `AttachmentPolicy` (`attachments.*`, senza scope per record, gia' cosi' oggi); `viewDocuments` del modulo apre solo la superficie UI.</item>
+      <item>Coda FCR (`/field-change-requests`): resta unica sotto Gestione Richieste; le FCR create da Iscritti vi compaiono con link al record `/enrollee-management/:id`.</item>
+      <item>Deep link delle notifiche di assegnazione (`RecordLinkResolver`) restano verso `/request-management/:id`.</item>
+      <item>Viste salvate/preferenze griglia: separate per dominio (effetto naturale di `domain`), nessuna migrazione di preferenze.</item>
+      <item>Grant dei nuovi permessi ai ruoli esistenti (li assegna l'amministratore; super-admin li ha tutti).</item>
+      <item>Errori di tipo preesistenti in `frontend/src/features/users/*.test.ts` (spec 0129, altra sessione).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessuna shape nuova: gli endpoint Iscritti sono gli STESSI endpoint di Gestione Richieste,
+         stesso request/response/errori, montati sotto un secondo prefisso. Il modulo e' determinato
+         dalla rotta (route default `requestModule`), mai da un parametro client. -->
+    <endpoint method="ANY" path="/api/enrollee-management/{...}">
+      <request>
+        Identico a `/api/request-management/{...}` per ogni rotta esistente:
+        POST assign-operators · POST assign-manager-ga1 · POST transfer · GET product-categories ·
+        POST form-context · POST (store) · POST report · GET report/categories · GET report/dashboard ·
+        GET report/operators · GET report/sites · GET report/{exportRun} ·
+        GET report/{exportRun}/download · GET {quote} · DELETE {quote} · PUT|PATCH {quote}.
+      </request>
+      <response status="200|201|202">
+        Stessa shape di Gestione Richieste (envelope `{ success, message, data }` + blocco
+        `permissions` per show/store/update con `resource` = "enrollee-management" e flag calcolati
+        su `enrollee-management.*`).
+      </response>
+      <errors>
+        403 se manca il permesso `enrollee-management.{ability}` (i permessi `request-management.*` NON
+        valgono); 403 su record fuori perimetro (operatore/sede/viewAll del modulo) OPPURE con stato
+        non in `validated`/`closed_won` (show/update/destroy e bulk). 422 invariati.
+      </errors>
+    </endpoint>
+
+    <endpoint method="ANY" path="/api/tables/enrollee-management/{columns|rows|values|bulk-delete|preferences|filters}">
+      <request>Identico al dominio `request-management` (incluso `productCategoryId`).</request>
+      <response status="200">Stesse colonne/filtri/azioni del dominio `request-management`; righe limitate a D-2 + D-5; permessi delle azioni di riga su `enrollee-management.*`.</response>
+      <errors>403 senza `enrollee-management.viewAny` (update: `.update`, bulk-delete: `.delete`).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/notes?entity_type=enrollee-management | /api/activity-log/enrollee-management/{opportunityId}">
+      <request>Come `request-management`.</request>
+      <response status="200">Come `request-management`.</response>
+      <errors>403 senza `enrollee-management.view` (note) / `.viewActivity` (attivita') o se nessuna Offerta dell'opportunita' e' nel perimetro Iscritti (D-2 + D-5).</errors>
+    </endpoint>
+
+    <frontend_contract>
+      type RequestModuleKey = 'request-management' | 'enrollee-management'
+      interface RequestModuleConfig {
+        key: RequestModuleKey          // = table domain = notes entityType = activity resource
+        apiBasePath: string            // '/request-management' | '/enrollee-management'
+        routeBasePath: string          // '/request-management' | '/enrollee-management'
+        labelKey: string               // 'navigation.requestManagement' | 'navigation.enrolleeManagement'
+        permission: (ability: string) => string   // `${key}.${ability}`
+      }
+      export const REQUEST_MODULE: RequestModuleConfig; export const ENROLLEE_MODULE: RequestModuleConfig
+      RequestModuleProvider({ module, children }); useRequestModule(): RequestModuleConfig (default REQUEST_MODULE)
+      Query key root e storage key prefix = `module.key`.
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato `permissions:sync`, allora esistono tutti i permessi `enrollee-management.{17 abilita'}` e `enrollee-management.updateSource`, e i `request-management.*` restano invariati. (Pest)</criterion>
+    <criterion id="AC-002">Dato un utente con `enrollee-management.viewAny`+`viewAll`, quando chiama `POST /api/tables/enrollee-management/rows`, allora riceve solo quote con stato di gruppo `validated` o `closed_won` (una quote `open`, `pending`, `closed_lost` non compare). (Pest)</criterion>
+    <criterion id="AC-003">Dato un utente con SOLO `request-management.*` (tutti), quando chiama le rotte tabella/API/note/attivita'/report di `enrollee-management`, allora riceve 403; e viceversa un utente con solo `enrollee-management.*` riceve 403 su `request-management`. (Pest, dataset di rotte)</criterion>
+    <criterion id="AC-004">Perimetro D-5: con `enrollee-management.viewAny` senza viewAll/viewSite vede solo le proprie (operator_id); con `enrollee-management.viewSite` anche quelle delle proprie sedi; `request-management.viewAll` NON allarga il perimetro Iscritti. (Pest)</criterion>
+    <criterion id="AC-005">`GET/PUT/DELETE /api/enrollee-management/{quote}` su una quote in perimetro ma con stato `open` -> 403; su una quote `closed_won` in perimetro -> 200 con blocco `permissions.resource = "enrollee-management"`. (Pest)</criterion>
+    <criterion id="AC-006">Colonne, filtri, filtri avanzati, ordinamento di default e catalogo azioni di `GET /api/tables/enrollee-management/columns` coincidono con quelli di `request-management` a meno dei nomi permesso (confronto programmatico, non lista duplicata nel test). (Pest)</criterion>
+    <criterion id="AC-007">Bulk assign-operators / assign-manager-ga1 / transfer sotto `enrollee-management` richiedono `enrollee-management.update` + abilita' specifica e ignorano gli id fuori perimetro o fuori stato (stessa semantica di Gestione Richieste). Il trasferimento notifica gli utenti con `enrollee-management.receiveTransferNotifications`. (Pest)</criterion>
+    <criterion id="AC-008">Tab categorie `GET /api/enrollee-management/product-categories` contano solo quote Iscritti in perimetro. (Pest)</criterion>
+    <criterion id="AC-009">Report/dashboard sotto `enrollee-management` richiedono `enrollee-management.report` e aggregano solo quote Iscritti in perimetro, anche nel job asincrono. (Pest)</criterion>
+    <criterion id="AC-010">Campo protetto `source_id`: senza `enrollee-management.updateSource` e' readonly e change-requestable nel blocco permessi Iscritti; la FCR creata ha link `/enrollee-management/{id}`. (Pest)</criterion>
+    <criterion id="AC-011">`GET /navigation` mostra la voce `enrollee-management` solo con `enrollee-management.view`, indipendentemente da `request-management.view`. (Pest)</criterion>
+    <criterion id="AC-012">Regressione: l'intera suite `tests/Feature/RequestManagement` e i test tabella/note/attivita'/FCR esistenti passano senza modifiche alle asserzioni. (Pest)</criterion>
+    <criterion id="AC-013">[se D-7] Export `enrollee-management` richiede `enrollee-management.export`; export `request-management` richiede `request-management.export`. (Pest)</criterion>
+    <criterion id="AC-014">Frontend: con `ENROLLEE_MODULE`, `TableView` riceve `domain="enrollee-management"`, le chiamate API usano `/enrollee-management/...`, i gate usano `enrollee-management.*` e query/storage key sono separate dal modulo Richieste. (Vitest)</criterion>
+    <criterion id="AC-015">Frontend: `/enrollee-management` senza `enrollee-management.viewAny` mostra il messaggio forbidden; con il permesso monta la stessa tabella di Gestione Richieste; `/enrollee-management/:id` monta il pannello di lavoro con link "indietro" a `/enrollee-management`. (Vitest)</criterion>
+    <criterion id="AC-016">Frontend: creando una richiesta da Iscritti (stato iniziale `open`, fuori filtro) non viene aperto un dettaglio che risponde 403: la griglia si aggiorna e un toast informa che la richiesta sara' visibile tra gli iscritti a validazione/chiusura positiva. (Vitest)</criterion>
+    <criterion id="AC-017">Frontend: i test esistenti di `features/request-management` passano senza provider (default modulo Richieste); parita' etichette permessi it/en verde; `tsc -b --force` ed ESLint puliti sui file toccati. (Vitest + tsc + ESLint)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessuna migrazione.</item>
+    <item>Nessun file copiato: le differenze tra moduli vivono solo in `RequestModule` (BE) e `RequestModuleConfig` (FE). Nessun `if (module === ...)` sparso fuori da quelle due unita' (salvo il toast AC-016).</item>
+    <item>Il modulo e' risolto server-side dalla rotta; mai da input client.</item>
+    <item>Authz server-side su ogni endpoint; permessi dei due moduli mai in OR tra loro.</item>
+    <item>Gruppi di stato Iscritti definiti una sola volta (costante/metodo su `RequestModule`), non come stringhe inline.</item>
+    <item>Refactor a parita' per Gestione Richieste: le asserzioni dei test esistenti non si toccano (CORE §2 test tampering); si toccano solo helper/firme se cambia la firma statica.</item>
+    <item>File entro 300/500 righe; `routes/api/request-management.php` registra le rotte con un loop sui casi di `RequestModule` (path letterali, niente segmento jolly).</item>
+    <item>i18n: stringhe condivise restano in `requestManagement.*`; nuove solo `navigation.enrolleeManagement`, `enrolleeManagement.title`, `enrolleeManagement.forbidden`, toast AC-016 e le etichette permessi.</item>
+  </constraints>
+
+</spec>

@@ -23,6 +23,13 @@ use App\Services\ProductCategories\CategoryHierarchy;
  * NOTHING. Only INV-4a survives (D-9a): a record requiring no category
  * constrains nobody, since there is nothing there to filter on.
  *
+ * Spec 0129 widens D-2 with two more ways to be competent without listing
+ * every category: the profile's own `covers_all_product_categories` flag
+ * (D-1, competent for ANY category, any function) and a row with a null
+ * category (D-3, "every category of this row's function") — both folded into
+ * CompetenceProfile, so this class only has to gather them; see that class'
+ * docblock for the exact reading.
+ *
  * Everything is resolved in batch: the taxonomy is read once
  * (CategoryHierarchy, memoized) and the configured profiles once, then every
  * requirement is answered in memory. No query per record, no query per user.
@@ -123,10 +130,11 @@ class OperatorCompetence
     }
 
     /**
-     * user id => profile, for the users carrying at least one competence row
-     * (spec 0111). Everyone else is deliberately absent, and since rev.2
-     * absence means NOT A CANDIDATE (D-9), no longer "competent for
-     * everything": the whole population of competent users lives in here.
+     * user id => profile, for the users carrying the wildcard flag (spec 0129
+     * D-1) or at least one competence row (spec 0111). Everyone else is
+     * deliberately absent, and since rev.2 absence means NOT A CANDIDATE
+     * (D-9), no longer "competent for everything": the whole population of
+     * competent users lives in here.
      *
      * @return array<int, CompetenceProfile>
      */
@@ -137,8 +145,9 @@ class OperatorCompetence
         }
 
         $profiles = EmploymentProfile::query()
-            ->select(['id', 'user_id'])
-            ->whereHas('productLines')
+            ->select(['id', 'user_id', 'covers_all_product_categories'])
+            ->where('covers_all_product_categories', true)
+            ->orWhereHas('productLines')
             ->with('productLines:id,employment_profile_id,business_function_id,product_category_id')
             ->get();
 
@@ -147,6 +156,8 @@ class OperatorCompetence
         foreach ($profiles as $profile) {
             $this->configuredProfiles[(int) $profile->user_id] = new CompetenceProfile(
                 coveredCategoryIdsByFunction: $this->coveredCategoryIdsByFunction($profile),
+                wildcardFunctionIds: $this->wildcardFunctionIds($profile),
+                allProductCategories: (bool) $profile->covers_all_product_categories,
             );
         }
 
@@ -154,9 +165,11 @@ class OperatorCompetence
     }
 
     /**
-     * The profile's rows folded into "business function id => covered
-     * category id => true": rows sharing a function merge their closures,
-     * which is exactly what covers() asks of them.
+     * The profile's CATEGORY rows folded into "business function id =>
+     * covered category id => true": rows sharing a function merge their
+     * closures, which is exactly what covers() asks of them. A row with a
+     * null category (spec 0129 D-3) carries no closure of its own — it feeds
+     * wildcardFunctionIds() instead — so it is skipped here.
      *
      * @return array<int, array<int, true>>
      */
@@ -165,6 +178,10 @@ class OperatorCompetence
         $covered = [];
 
         foreach ($profile->productLines as $line) {
+            if ($line->product_category_id === null) {
+                continue;
+            }
+
             $functionId = (int) $line->business_function_id;
 
             foreach ($this->closureOf((int) $line->product_category_id) as $categoryId) {
@@ -173,6 +190,27 @@ class OperatorCompetence
         }
 
         return $covered;
+    }
+
+    /**
+     * The business function ids of the profile's null-category rows (spec
+     * 0129 D-3): "every category of this row's function" — read by
+     * CompetenceProfile::covers() against the REQUIRED category's own
+     * effective function, never against the closure map above.
+     *
+     * @return array<int, true>
+     */
+    private function wildcardFunctionIds(EmploymentProfile $profile): array
+    {
+        $wildcards = [];
+
+        foreach ($profile->productLines as $line) {
+            if ($line->product_category_id === null) {
+                $wildcards[(int) $line->business_function_id] = true;
+            }
+        }
+
+        return $wildcards;
     }
 
     /**

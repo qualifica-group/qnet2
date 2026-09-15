@@ -1,32 +1,35 @@
 import { useTranslation } from 'react-i18next'
 import { Boxes, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { ProductCategoryTreeSelect } from '@/features/product-lines/product-category-tree-select'
 import { useProductLinesField } from '@/features/product-lines/use-product-lines-field'
-import type { ProductLine, ProductLineRow } from '@/features/product-lines/types'
+import type { KnownProductLine, ProductLine, ProductLineRow } from '@/features/product-lines/types'
 
 export type { ProductLine, ProductLineRow }
 
 /** Stable empty default: avoids a fresh array reference (and reference-equality churn) on every render (engineering.md §10). */
-const EMPTY_KNOWN_LINES: ProductLine[] = []
+const EMPTY_KNOWN_LINES: KnownProductLine[] = []
 
 interface ProductLinesFieldProps {
   value: ProductLineRow[]
   onChange: (rows: ProductLineRow[]) => void
   /** Rows whose labels are already known without a fetch (edit load, from-lead prefill, in-form pickers). */
-  knownLines?: ProductLine[]
+  knownLines?: KnownProductLine[]
   disabled?: boolean
   /**
-   * Spec 0111 D-5: `false` where the row set is a person's competence, not a
-   * commercial card — there is no "one deal, one single-mode line" invariant to
-   * enforce there. Defaults to `true`: opportunity, project, campaign and
-   * request forms keep capping the card (AC-041).
+   * `'card'` (default): a commercial card — opportunity, project, campaign,
+   * request — keeps the "one deal, one single-mode line" cap (spec 0111
+   * AC-041) and requires `is_selectable` categories (D-4). `'competence'`
+   * (spec 0111 D-5 + spec 0129): a person's competence — the cap does not
+   * apply, a container category is pickable (D-6/D-7), and each row gets an
+   * "all categories of the function" checkbox (D-5).
    */
-  enforceManagementModeCap?: boolean
+  variant?: 'card' | 'competence'
 }
 
 /**
@@ -41,7 +44,7 @@ interface ProductLinesFieldProps {
  * 2026-08-31) revoked INV-1/INV-2, so the function of a row after the first
  * is neither prefilled, nor locked, nor confined to the first row's branch —
  * only the `single`-mode row cap survives (AC-041), and even that one is
- * opt-out (`enforceManagementModeCap`, spec 0111 D-5). All non-render logic
+ * opt-out (`variant="competence"`, spec 0111 D-5). All non-render logic
  * (label resolution) lives in `useProductLinesField` — this component only
  * renders it.
  *
@@ -55,7 +58,7 @@ export function ProductLinesField({
   onChange,
   knownLines = EMPTY_KNOWN_LINES,
   disabled = false,
-  enforceManagementModeCap = true,
+  variant = 'card',
 }: ProductLinesFieldProps) {
   const { t } = useTranslation()
   const {
@@ -63,9 +66,11 @@ export function ProductLinesField({
     removeRow,
     setRowBusinessFunction,
     setRowProductCategory,
+    setRowAllCategories,
     businessFunctionLabel,
     canAddRow,
-  } = useProductLinesField({ value, onChange, knownLines, enforceManagementModeCap })
+  } = useProductLinesField({ value, onChange, knownLines, variant })
+  const isCompetence = variant === 'competence'
   // One quick-create wiring per resource, shared by every row: the refs it
   // tracks are matched by id, so a function created from row 2 also labels
   // row 5 if picked there (spec 0028).
@@ -134,15 +139,31 @@ export function ProductLinesField({
                     value={row.product_category_id}
                     onChange={(id) => setRowProductCategory(index, id)}
                     businessFunctionId={row.business_function_id}
-                    disabled={disabled}
+                    disabled={disabled || row.all_categories === true}
                     action={productCategoryQuickCreate.renderAction(
                       (ref) => setRowProductCategory(index, ref.id),
-                      disabled || row.business_function_id === null,
+                      disabled || row.business_function_id === null || row.all_categories === true,
                     )}
                     triggerLabel={t('productLines.category', { n: index + 1 })}
+                    variant={variant}
                   />
                 </div>
               </div>
+
+              {isCompetence ? (
+                // D-5: "all categories of the function" — mutually exclusive
+                // with a specific category pick, so the select above disables
+                // and clears the moment this is checked.
+                <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                  <Checkbox
+                    checked={row.all_categories === true}
+                    onCheckedChange={(checked) => setRowAllCategories(index, checked === true)}
+                    disabled={disabled || row.business_function_id === null}
+                    aria-label={t('productLines.allCategories', { n: index + 1 })}
+                  />
+                  {t('productLines.allCategoriesShort')}
+                </label>
+              ) : null}
 
               <div className="flex shrink-0 gap-1">
                 <Button

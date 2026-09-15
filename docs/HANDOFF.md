@@ -3,7 +3,56 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SEGNATEMPO — INTESTAZIONE ALLINEATA AGLI ALTRI MODULI — VERDE, NON COMMITTATO (2026-09-15)
+## SPEC 0129 COMPETENZA UTENTE: TUTTE LE CATEGORIE / RIGA "TUTTE" / CATEGORIA MADRE — VERDE, NON COMMITTATO (2026-09-15)
+
+Spec `docs/specs/0129-user-competence-scope.xml` (approved). Estende la 0111.
+- Flag `employment_profiles.covers_all_product_categories` (API `employment.covers_all_product_categories`,
+  campo permesso proprio: chiavi `employment.*` ora 14). True = competente per ogni record; al salvataggio le righe
+  vengono CANCELLATE (anche con `product_lines` assente); flag true + righe non vuote = 422.
+- `employment_product_lines.product_category_id` nullable: riga (F, null) = tutte le categorie con funzione EFFETTIVA F.
+- Righe utente accettano categorie madre `is_selectable=false` (D-6); madre senza funzione ammessa se un discendente ha F (D-7).
+  Ridondanza (F,null)+(F,C) o (F,madre)+(F,discendente) = 422 sulla riga specifica.
+- Regola unica in `OperatorCompetence`/`CompetenceProfile`; validazione in nuovo `App\Services\Assignment\CompetenceLineSetValidator`
+  (`ProductLineSetValidator`/`SelectableProductCategory` INVARIATI per offerte/progetti/campagne/richieste).
+  Rimossa `ValidatesEmployment::persistedCompetenceCategoryIds()`.
+- Migration `2026_09_15_130000_add_competence_scope_to_employment_profiles`; `QuoteWorkflowMigrationTest` `--step` 73.
+- FE: `ProductLinesField` prop `enforceManagementModeCap` SOSTITUITA da `variant?: 'card' | 'competence'` (checkbox "Tutte",
+  madri pickable via `pickableCategoryIdsFor(..., { includeContainers })`); `ProductLineRow.all_categories?`;
+  `useAssignmentFieldsVisibility` include `coversAllProductCategories` in `any`.
+- Verifica: Pest 1502/1503 + 1506/1506 (unico rosso: flaky preesistente order-dependent `MetaEndpointTest` con
+  `PermissionDoesNotExist users.export`, passa isolato, non toccato); Vitest 686 file/5209 test; ESLint e `tsc -b --force` puliti.
+  Pest va lanciato con `XDEBUG_MODE=off` (con Xdebug segfault).
+- Aperti: `CompetenceLineSetValidator.php` 332 righe (sopra soft-limit); flaky MetaEndpointTest da sistemare a parte.
+
+## SPEC 0128 RICH TEXT (TIPTAP) NOTE + DESCRIZIONE TASK/TEMPLATE — VERDE (2026-09-15)
+
+Spec `docs/specs/0128-rich-text-notes-task-description.xml` (approved, D-13 esteso ai template in build).
+Codice interamente committato dall'utente (8e7a6dc6, eabb8802, dbe93b53).
+
+- Formato: HTML sanificato server-side (`symfony/html-sanitizer`, allow-list D-1). Nuove dipendenze autorizzate:
+  `symfony/html-sanitizer`, `@tiptap/*` 3.31.3. Nessun `dangerouslySetInnerHTML`.
+- Backend `app/RichText/`: `RichTextSanitizer`, `RichTextImageProcessor` (data: URI → allegato `rich_text` del
+  proprietario, dentro la transazione; `deleteUnreferenced` dopo commit), `RichTextAttachmentCopier` (ricorrenze e
+  generazione da commessa), `RichTextPlainText`, `RichTextConverter`, `RichTextOwnerAccess`; `config/rich_text.php`.
+  Allegati `rich_text`: visibili a chi legge il proprietario, 403 su POST/DELETE/index esplicito, esclusi da
+  `GET /api/attachments` e da `TaskTemplateItemResource`. Alias attachable `note`, `task_template`.
+- Note: menzione = `span[data-type="mention"][data-id][data-label]` (`MentionParser` via DOM); `NoteBodyProcessor`;
+  body vuoto dopo sanificazione → 422; limite su testo visibile 5000. Task/template: `TaskDescriptionWriter`,
+  `TaskTemplateDescriptionWriter`; vuoto → null. Field type `description` = `richtext`.
+- Migrazione `2026_09_15_120000_convert_rich_text_columns_to_html` (reversibile). OGNI nuova migrazione deve
+  incrementare `migrate:rollback --step` in `QuoteWorkflowMigrationTest` (ora 72).
+- Frontend `components/rich-text/`: `RichTextEditor`, `RichTextContent`, compressione immagini client
+  (1920px, webp 0.85, gif intatte), `isPayloadTooLargeError` (413 → errore su body/description/banner template).
+  Blob URL immagini via `useSyncExternalStore` (StrictMode-safe); `setEditable(x, false)` per non sporcare il form.
+- Verifier finale VERDE: backend 7600/7602 (unico rosso `StateForSelectTest`, flaky Geo non legato, passa isolato),
+  frontend 5179/5179, eslint (solo 2 errori preesistenti quotes/registries), tsc -b, build ok.
+- Da fare / segnalato: limiti Herd locale 2M (`herd.conf` client_max_body_size, `post_max_size`) da alzare;
+  in produzione verificare limite body; verifica manuale UI 375/768/1024; `useAttachmentThumbnail`
+  (`features/attachments/use-attachment-binary.ts`) ha lo stesso bug StrictMode dei blob URL (preesistente, non
+  corretto); `AttachmentPolicy` senza controllo record per collection non `rich_text` (fuori scope); nessun header
+  `X-Content-Type-Options: nosniff` sugli allegati.
+
+## SEGNATEMPO — INTESTAZIONE ALLINEATA AGLI ALTRI MODULI — VERDE (2026-09-15, committato 08434be7)
 
 - `/time-entries`: rimossi titolo/sottotitolo; `TimeEntriesDashboard` ora monta `PageHeader` (solo breadcrumb) con
   "Nuovo segnatempo" in `actions` (stesso schema di `TasksTable`), ancora gated su `meta.can_write` + `time-entries.create`.

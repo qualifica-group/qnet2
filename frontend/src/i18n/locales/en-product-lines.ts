@@ -20,4 +20,10 @@ export const productLines = {
   selectPlaceholder: 'Select…',
   selectEmpty: 'No results found.',
   selectError: 'Unable to load the options.',
+  /** Spec 0129 D-5: per-row accessible name of the "All categories" checkbox (competence variant). */
+  allCategories: 'All categories, row {{n}}',
+  /** Visible label next to the checkbox. */
+  allCategoriesShort: 'All',
+  /** Spec 0129 D-3: read-only rendering of a row with a null category. */
+  allCategoriesReadOnly: 'All categories',
 }

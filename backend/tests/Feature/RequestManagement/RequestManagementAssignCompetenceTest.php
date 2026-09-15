@@ -253,3 +253,35 @@ it('0111 AC-030: a covering operator still takes the offers, the rowless colleag
         ->toBe([$covering->id, $covering->id])
         ->not->toContain($rowless->id);
 });
+
+// ---------------------------------------------------------------------------
+// Spec 0129 AC-006 — a (function, null) row (D-3) reaches this surface
+// through OperatorCompetence alone.
+// ---------------------------------------------------------------------------
+
+it('0129 AC-006: an operator with only a (function, null) row receives offers whose category has that EFFECTIVE function', function () {
+    $actor = requestCompetenceActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
+    $site = OperationalSite::factory()->withAddress()->create();
+
+    $function = BusinessFunction::factory()->create();
+    $otherFunction = BusinessFunction::factory()->create();
+    $matchingCategory = ProductCategory::factory()->create(['business_function_id' => $function->id]);
+    $mismatchingCategory = ProductCategory::factory()->create(['business_function_id' => $otherFunction->id]);
+
+    $wildcardOperator = User::factory()->create();
+    EmploymentProfile::factory()->for($wildcardOperator)->physicalSite($site)->competentInEveryCategoryOf($function)->create();
+
+    $matchingRequest = requestClassifiedAs($site, $function, $matchingCategory);
+    $mismatchingRequest = requestClassifiedAs($site, $otherFunction, $mismatchingCategory);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management/assign-operators', [
+        'request_ids' => [$matchingRequest->id, $mismatchingRequest->id],
+        'mode' => 'balanced',
+    ])->assertOk()
+        ->assertJsonPath('data.assigned', 1)
+        ->assertJsonPath('data.skipped', 1);
+
+    expect($matchingRequest->fresh()->operator_id)->toBe($wildcardOperator->id)
+        ->and($mismatchingRequest->fresh()->operator_id)->toBeNull();
+});

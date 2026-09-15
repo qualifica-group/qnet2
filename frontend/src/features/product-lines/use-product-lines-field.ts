@@ -5,7 +5,7 @@ import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-func
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { CategoryManagementMode, ProductCategoryTreeNode } from '@/features/product-categories/types'
 import { resolveRowSetManagementMode } from '@/features/product-lines/category-tree-scope'
-import { emptyProductLineRow, type ProductLine, type ProductLineRow } from '@/features/product-lines/types'
+import { emptyProductLineRow, type KnownProductLine, type ProductLineRow } from '@/features/product-lines/types'
 
 type LabelMap = Record<number, string>
 
@@ -17,13 +17,18 @@ interface UseProductLinesFieldArgs {
   value: ProductLineRow[]
   onChange: (next: ProductLineRow[]) => void
   /** Rows whose labels are already known without a fetch: edit load, from-lead prefill, in-form pickers. */
-  knownLines: ProductLine[]
-  /** Spec 0111 D-5: `false` only where the row set is NOT a commercial card (see `canAddRow`). */
-  enforceManagementModeCap?: boolean
+  knownLines: KnownProductLine[]
+  /**
+   * `'card'` (default) is a commercial card — offer, opportunity, project,
+   * campaign, request — where the `single`-mode row cap applies (spec 0111
+   * AC-041). `'competence'` is a person's competence (spec 0111 D-5 opts out
+   * of the cap; spec 0129 adds the per-row "all categories" toggle).
+   */
+  variant?: 'card' | 'competence'
 }
 
 /** Builds the `{id: name}` lookup out of a set of already-labeled lines. The CATEGORY labels need no map: the row's picker reads them off the tree it already renders. */
-function indexKnownLabels(lines: ProductLine[]): LabelMap {
+function indexKnownLabels(lines: KnownProductLine[]): LabelMap {
   const businessFunction: LabelMap = {}
   for (const line of lines) {
     businessFunction[line.business_function.id] = line.business_function.name
@@ -51,7 +56,7 @@ export function useProductLinesField({
   value,
   onChange,
   knownLines,
-  enforceManagementModeCap = true,
+  variant = 'card',
 }: UseProductLinesFieldArgs) {
   const queryClient = useQueryClient()
   const [fetchedBusinessFunctionLabels, setFetchedBusinessFunctionLabels] = useState<LabelMap>({})
@@ -68,7 +73,7 @@ export function useProductLinesField({
   // row set as such: a person's competence (spec 0111 D-5) legitimately covers
   // several single-mode categories, so it opts out. Only the cap is dropped —
   // `managementMode` is still resolved, other consumers read it.
-  const canAddRow = !enforceManagementModeCap || managementMode !== 'single'
+  const canAddRow = variant === 'competence' || managementMode !== 'single'
 
   const businessFunctionLabel = (id: number | null): string | undefined =>
     id === null ? undefined : (knownBusinessFunctionLabels[id] ?? fetchedBusinessFunctionLabels[id])
@@ -109,9 +114,12 @@ export function useProductLinesField({
   const setRowBusinessFunction = (index: number, businessFunctionId: number | null) => {
     // Only the edited row changes: its category is reset (it was scoped by
     // the previous function), every other row is left alone — the INV-2
-    // cascade onto the whole set is gone with the invariant (rev.2).
+    // cascade onto the whole set is gone with the invariant (rev.2). The
+    // competence variant also drops a stale "all categories" pick (spec 0129):
+    // it was scoped by the previous function too.
+    const resetRow: ProductLineRow = { business_function_id: businessFunctionId, product_category_id: null }
     const next = value.map((row, rowIndex) =>
-      rowIndex === index ? { business_function_id: businessFunctionId, product_category_id: null } : row,
+      rowIndex === index ? (variant === 'competence' ? { ...resetRow, all_categories: false } : resetRow) : row,
     )
     onChange(next)
     if (businessFunctionId !== null && businessFunctionLabel(businessFunctionId) === undefined) {
@@ -121,7 +129,22 @@ export function useProductLinesField({
 
   const setRowProductCategory = (index: number, productCategoryId: number | null) => {
     const next = value.map((row, rowIndex) =>
-      rowIndex === index ? { ...row, product_category_id: productCategoryId } : row,
+      rowIndex === index
+        ? { ...row, product_category_id: productCategoryId, ...(variant === 'competence' ? { all_categories: false } : {}) }
+        : row,
+    )
+    onChange(next)
+  }
+
+  /**
+   * Spec 0129 D-5: the "all categories of the function" checkbox — competence
+   * variant only. Checking it clears the category (mutually exclusive with a
+   * specific pick); unchecking leaves the category unset, exactly like a
+   * freshly-added row.
+   */
+  const setRowAllCategories = (index: number, checked: boolean) => {
+    const next = value.map((row, rowIndex) =>
+      rowIndex === index ? { ...row, product_category_id: null, all_categories: checked } : row,
     )
     onChange(next)
   }
@@ -131,6 +154,7 @@ export function useProductLinesField({
     removeRow,
     setRowBusinessFunction,
     setRowProductCategory,
+    setRowAllCategories,
     businessFunctionLabel,
     /** `false` once the resolved mode is `single` (AC-041); consumed to hide/disable "Add". */
     canAddRow,

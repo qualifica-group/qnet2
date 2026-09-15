@@ -343,6 +343,41 @@ it('0111 AC-027 rev.2: with no competence configured anywhere no row is assigned
         ->and($firstRow->fresh()->product_ids)->toBe([$product->id]);
 });
 
+// ---------------------------------------------------------------------------
+// Spec 0129 AC-005 — the profile-wide wildcard flag (D-1) reaches this
+// surface through OperatorCompetence alone.
+// ---------------------------------------------------------------------------
+
+it('0129 AC-005: mode=balanced sends every row requiring a category to the wildcard-flagged operator, skipped 0', function () {
+    $actor = competenceImportActor();
+    $site = OperationalSite::factory()->withAddress()->create();
+
+    $flagged = User::factory()->create();
+    EmploymentProfile::factory()->for($flagged)->physicalSite($site)->coversAllProductCategories()->create();
+    // Employed at the same Sede, but not configured at all.
+    $unconfigured = competenceImportOperator($site);
+
+    $category = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
+    $run = competenceImportRun($actor, $site);
+    $rows = collect([1, 2])->map(fn (int $number) => ImportRunRow::factory()->for($run, 'importRun')->create([
+        'row_number' => $number,
+        'product_ids' => [competenceImportProduct($category)->id],
+    ]));
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
+        'mode' => 'balanced',
+        'row_ids' => $rows->pluck('id')->all(),
+    ])->assertOk()
+        ->assertJsonPath('data.updated', 2)
+        ->assertJsonPath('data.skipped', 0);
+
+    expect($rows->map(fn ($row) => $row->fresh()->operator_id)->all())
+        ->toBe([$flagged->id, $flagged->id])
+        ->and($rows->map(fn ($row) => $row->fresh()->operator_id)->all())
+        ->not->toContain($unconfigured->id);
+});
+
 it('0111 AC-030: the covering operator still takes the rows, and the rowless colleague at the same Sede takes none', function () {
     $actor = competenceImportActor();
     $site = OperationalSite::factory()->withAddress()->create();

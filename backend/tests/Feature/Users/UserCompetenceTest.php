@@ -207,10 +207,14 @@ it('0111 AC-005: a category whose EFFECTIVE function differs is rejected on busi
 });
 
 // ---------------------------------------------------------------------------
-// AC-006 — spec 0074 selectability, with the already-persisted exemption.
+// AC-006 — spec 0074 selectability on the employment competence rows is
+// REVOKED by spec 0129 D-6 (requirement changed, declared): a non-selectable
+// MOTHER container is now a valid competence row (covers its branch, AC-003
+// of spec 0129), on this collection only — offers/projects/campaigns keep
+// the old spec 0074 constraint (spec 0129 AC-015 asserts the non-regression).
 // ---------------------------------------------------------------------------
 
-it('0111 AC-006: a non-selectable category is rejected unless it is already persisted on the profile', function () {
+it('0129 D-6: a non-selectable MOTHER category is accepted on a competence row, persisted and never needs the old spec 0074 exemption', function () {
     $actor = competenceActor(['update']);
     $function = BusinessFunction::factory()->create();
     $container = ProductCategory::factory()->create([
@@ -225,16 +229,9 @@ it('0111 AC-006: a non-selectable category is rejected unless it is already pers
         ['business_function_id' => $function->id, 'product_category_id' => $container->id],
     ]]];
 
-    $this->patchJson("/api/users/{$newcomer->id}", $payload)
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('employment.product_lines.0.product_category_id');
+    $this->patchJson("/api/users/{$newcomer->id}", $payload)->assertOk();
 
-    // Same category, but already on the target's profile (spec 0074 D-3b).
-    $grandfathered = competenceTargetWith($function, $container);
-
-    $this->patchJson("/api/users/{$grandfathered->id}", $payload)->assertOk();
-
-    expect(competenceRowsOf($grandfathered))->toBe([
+    expect(competenceRowsOf($newcomer))->toBe([
         ['business_function_id' => $function->id, 'product_category_id' => $container->id],
     ]);
 });

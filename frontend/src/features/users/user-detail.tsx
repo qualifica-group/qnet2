@@ -20,10 +20,11 @@ import { summarizeAssignment } from '@/features/users/user-assignment'
 import { UserDetailHeader, UserDetailStats } from '@/features/users/user-detail-header'
 import { UserDetailSections } from '@/features/users/user-detail-sections'
 import type { EmploymentDetail } from '@/features/users/types'
+import type { ProductLineRow } from '@/features/product-lines/types'
 import { formatDateTime } from '@/lib/formatting/date-display'
 
 /** Stable empty defaults: a user with no employment profile answers like an empty one. */
-const EMPTY_COMPETENCE_ROWS: { business_function_id: number; product_category_id: number }[] = []
+const EMPTY_COMPETENCE_ROWS: ProductLineRow[] = []
 const EMPTY_REMOTE_SITE_IDS: number[] = []
 
 interface UserDetailProps {
@@ -106,17 +107,21 @@ export function UserDetailView({ userId, onEdit }: UserDetailProps) {
 
 /**
  * Projects the persisted profile onto the shape `summarizeAssignment` reads.
- * The persisted competence rows are always complete pairs (the server rejects
- * a half-filled one), so their ids are non-null by construction here — unlike
- * the form, where a row exists while it is being typed.
+ * The persisted competence rows always have a business function (the server
+ * rejects a half-filled one), so only that id is non-null by construction
+ * here — unlike the form, where a row exists while it is being typed. A null
+ * `product_category` (spec 0129 D-3) is a deliberate "all categories of the
+ * function" row, not an incomplete one, and counts as such (`all_categories`).
  */
 function assignmentInput(employment: EmploymentDetail | null | undefined) {
   return {
     competenceRows:
       employment?.product_lines?.map((line) => ({
         business_function_id: line.business_function.id,
-        product_category_id: line.product_category.id,
+        product_category_id: line.product_category?.id ?? null,
+        all_categories: line.product_category === null,
       })) ?? EMPTY_COMPETENCE_ROWS,
+    coversAllProductCategories: employment?.covers_all_product_categories ?? false,
     primarySiteId: employment?.primary_operational_site_id ?? null,
     remoteSiteIds: employment?.remote_operational_site_ids ?? EMPTY_REMOTE_SITE_IDS,
   }

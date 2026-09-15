@@ -22,6 +22,14 @@ export interface ProductCategoryTreeSelectProps {
   action?: ReactNode
   /** Accessible name of the trigger — a repeated row editor has no visible label of its own. */
   triggerLabel: string
+  /**
+   * Spec 0129 D-6/D-7: `'competence'` also offers container categories
+   * (`is_selectable=false`) whose effective — or, for a neutral one, some
+   * descendant's — business function matches the row. Defaults to `'card'`
+   * (spec 0111 D-4 unchanged): offers/projects/campaigns/requests keep
+   * `is_selectable` mandatory.
+   */
+  variant?: 'card' | 'competence'
 }
 
 /**
@@ -48,6 +56,7 @@ export function ProductCategoryTreeSelect({
   disabled = false,
   action,
   triggerLabel,
+  variant = 'card',
 }: ProductCategoryTreeSelectProps) {
   const { t } = useTranslation()
   const treeQuery = useProductCategoryTree()
@@ -60,7 +69,9 @@ export function ProductCategoryTreeSelect({
     // Step 1: what this row may actually target. The whole tree is in scope:
     // spec 0077 rev.2 revoked INV-1, so a row is no longer confined to the
     // branch root the card resolved.
-    const pickableIds = pickableCategoryIdsFor(tree, businessFunctionId)
+    const pickableIds = pickableCategoryIdsFor(tree, businessFunctionId, {
+      includeContainers: variant === 'competence',
+    })
     // Step 2: keep the pickable nodes and the ancestors that lead to them,
     // the latter listed as disabled context. D-3b: the value already saved on
     // the row survives the pruning and stays pickable even when it would no
@@ -71,7 +82,7 @@ export function ProductCategoryTreeSelect({
       pickableIds,
       keepIds: value === null ? undefined : [value],
     })
-  }, [tree, businessFunctionId, value])
+  }, [tree, businessFunctionId, value, variant])
 
   return (
     <SearchableSelect

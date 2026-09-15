@@ -81,7 +81,7 @@ export function UserDetailStats({ user, assignment }: UserDetailStatsProps) {
       <RecordStat
         icon={<Boxes />}
         label={t('users.assignment.stats.competence')}
-        value={assignment.competenceCount}
+        value={assignment.coversAllProductCategories ? t('users.assignment.allCategories') : assignment.competenceCount}
       />
       <RecordStat
         icon={<MapPin />}

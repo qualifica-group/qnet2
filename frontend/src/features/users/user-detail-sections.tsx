@@ -11,17 +11,21 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useEnumOptions } from '@/features/config/use-config'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
-import type { ProductLine } from '@/features/product-lines/types'
 import { UserAssignmentCallout } from '@/features/users/user-assignment-callout'
 import type { AssignmentSummary } from '@/features/users/user-assignment'
-import type { EmploymentDetail, EmploymentRelationRef, UserDetail } from '@/features/users/types'
+import type {
+  EmploymentDetail,
+  EmploymentProductLine,
+  EmploymentRelationRef,
+  UserDetail,
+} from '@/features/users/types'
 import { formatDate } from '@/lib/formatting/date-display'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
 const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
 
 /** Stable empty defaults: a user with no employment reads the same as one with an empty profile. */
-const EMPTY_PRODUCT_LINES: ProductLine[] = []
+const EMPTY_PRODUCT_LINES: EmploymentProductLine[] = []
 const EMPTY_SITES: EmploymentRelationRef[] = []
 
 interface UserDetailSectionsProps {
@@ -59,7 +63,11 @@ export function UserDetailSections({ user, assignment }: UserDetailSectionsProps
 
         <RecordFieldList>
           <RecordField label={t('users.detail.employment.productLines')}>
-            <ProductLinesReadOnlyList lines={employment?.product_lines ?? EMPTY_PRODUCT_LINES} />
+            {employment?.covers_all_product_categories ? (
+              t('users.assignment.allCategories')
+            ) : (
+              <ProductLinesReadOnlyList lines={employment?.product_lines ?? EMPTY_PRODUCT_LINES} />
+            )}
           </RecordField>
           <RecordField label={t('users.detail.employment.primaryOperationalSite')} icon={<MapPin />}>
             {employment?.primary_operational_site ? (

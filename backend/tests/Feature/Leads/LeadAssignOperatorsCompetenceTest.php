@@ -204,6 +204,38 @@ it('0111 AC-028 rev.2: with no competence configured anywhere no lead is assigne
         ->and($secondLead->fresh()->operational_site_id)->toBe($site->id);
 });
 
+// ---------------------------------------------------------------------------
+// Spec 0129 AC-006 — a (function, null) row (D-3) reaches this surface
+// through OperatorCompetence alone.
+// ---------------------------------------------------------------------------
+
+it('0129 AC-006: an operator with only a (function, null) row receives leads whose category has that EFFECTIVE function', function () {
+    $actor = leadCompetenceActor();
+    $site = OperationalSite::factory()->withAddress()->create();
+
+    $function = BusinessFunction::factory()->create();
+    $otherFunction = BusinessFunction::factory()->create();
+    $matchingCategory = ProductCategory::factory()->create(['business_function_id' => $function->id]);
+    $mismatchingCategory = ProductCategory::factory()->create(['business_function_id' => $otherFunction->id]);
+
+    $wildcardOperator = User::factory()->create();
+    EmploymentProfile::factory()->for($wildcardOperator)->physicalSite($site)->competentInEveryCategoryOf($function)->create();
+
+    $matchingLead = leadInterestedIn($site, $matchingCategory);
+    $mismatchingLead = leadInterestedIn($site, $mismatchingCategory);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/leads/assign-operators', [
+        'lead_ids' => [$matchingLead->id, $mismatchingLead->id],
+        'mode' => 'balanced',
+    ])->assertOk()
+        ->assertJsonPath('data.assigned', 1)
+        ->assertJsonPath('data.skipped', 1);
+
+    expect($matchingLead->fresh()->operator_id)->toBe($wildcardOperator->id)
+        ->and($mismatchingLead->fresh()->operator_id)->toBeNull();
+});
+
 it('0111 AC-030: a covering operator still takes the leads, the rowless colleague at the same Sede takes none', function () {
     $actor = leadCompetenceActor();
     $site = OperationalSite::factory()->withAddress()->create();

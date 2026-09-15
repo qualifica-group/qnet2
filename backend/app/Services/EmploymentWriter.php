@@ -69,6 +69,14 @@ class EmploymentWriter
      * `employment_product_lines`: absent leaves the rows alone, any submitted
      * array replaces them wholesale (an empty one clears them, D-8).
      *
+     * Spec 0129 D-2 takes precedence: when the wildcard flag is on, the rows
+     * are cleared REGARDLESS of what (or whether) `product_lines` was
+     * submitted — the FormRequest already 422s a flag+non-empty-rows payload
+     * (ValidatesEmployment::validateEmploymentProductLines), so by the time
+     * this runs the only legitimate combinations are "flag true, rows absent"
+     * (AC-009) and "flag true, rows []" (AC-008); both end up here clearing
+     * any rows left over from before the flag was turned on.
+     *
      * The delete-all + insert itself is NOT reimplemented here: the profile
      * exposes the same `productLines()` relation every other owner does, so
      * the shared ProductLineWriter is the single write path for the
@@ -76,6 +84,12 @@ class EmploymentWriter
      */
     private function syncProductLines(EmploymentProfile $profile, EmploymentData $employment): void
     {
+        if ($employment->coversAllProductCategories) {
+            $profile->productLines()->delete();
+
+            return;
+        }
+
         if (! $employment->productLinesProvided) {
             return;
         }

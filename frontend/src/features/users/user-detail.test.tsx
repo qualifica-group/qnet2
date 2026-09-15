@@ -48,7 +48,10 @@ function user(overrides: Partial<UserDetailWithPermissions> = {}): UserDetailWit
 }
 
 /** An employment profile carrying only what AC-025 is about; every other field is unset. */
-function employment(productLines: EmploymentDetail['product_lines']): EmploymentDetail {
+function employment(
+  productLines: EmploymentDetail['product_lines'],
+  coversAllProductCategories = false,
+): EmploymentDetail {
   return {
     id: 1,
     is_manager: false,
@@ -63,6 +66,7 @@ function employment(productLines: EmploymentDetail['product_lines']): Employment
     company_id: null,
     primary_operational_site_id: null,
     remote_operational_site_ids: [],
+    covers_all_product_categories: coversAllProductCategories,
     product_lines: productLines,
     reports_to: null,
     company: null,
@@ -141,5 +145,29 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
 
     await waitFor(() => expect(screen.getByText('Competence')).toBeInTheDocument())
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+  })
+
+  it('spec 0129 AC-025 — renders a null-category row as "function — all categories"', async () => {
+    renderDetail(
+      user({
+        employment: employment([
+          { id: 91, business_function: { id: 4, name: 'Sales' }, product_category: null },
+        ]),
+      }),
+    )
+
+    await waitFor(() => expect(screen.getByText('Competence')).toBeInTheDocument())
+    const pairs = screen.getAllByRole('listitem')
+    expect(pairs).toHaveLength(1)
+    expect(pairs[0]).toHaveTextContent('Sales')
+    expect(pairs[0]).toHaveTextContent('All categories')
+  })
+
+  it('spec 0129 AC-025 — shows "all categories" instead of the list when the flag is active', async () => {
+    renderDetail(user({ employment: employment([], true) }))
+
+    await waitFor(() => expect(screen.getByText('Competence')).toBeInTheDocument())
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+    expect(screen.getByText('Competence').closest('div')).toHaveTextContent('All categories')
   })
 })

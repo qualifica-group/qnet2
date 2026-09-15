@@ -113,8 +113,12 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // and spec 0128 D-10's
     // `2026_09_15_120000_convert_rich_text_columns_to_html` (72nd), the
     // legacy notes/tasks/task-templates plain-text -> rich-text-HTML
-    // backfill. Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 72]);
+    // backfill, and spec 0129's
+    // `2026_09_15_130000_add_competence_scope_to_employment_profiles` (73rd),
+    // the user-competence wildcard flag plus the nullable category on
+    // `employment_product_lines` rows. Adding a migration means bumping this
+    // number.
+    Artisan::call('migrate:rollback', ['--step' => 73]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

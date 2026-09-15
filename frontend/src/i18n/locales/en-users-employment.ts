@@ -31,9 +31,11 @@ export const usersFormEmployment = {
   reportsToSearch: 'Search users…',
   reportsToEmpty: 'No users found.',
   reportsToError: 'Unable to load users.',
+  coversAllProductCategories: 'Competent for all categories',
+  coversAllProductCategoriesDescription: 'This person is competent on any product category, regardless of business function: the rows below disappear and are cleared.',
   productLines: 'Competence',
-  productLinesHint: 'Each row pairs a business function with a product category, sub-categories included: these are the competences this person can be assigned on. With no row at all they receive no assignment.',
-  productLineIncomplete: 'Each row requires both a business function and a product category.',
+  productLinesHint: 'Each row pairs a business function with a product category, sub-categories included: check "All" to cover every category of that function, or pick a container category (e.g. "Training") to cover it and its children. With neither a row nor the flag above they receive no assignment.',
+  productLineIncomplete: 'Each row requires both a business function and a product category (or "All").',
   relationshipType: 'Relationship type',
   relationshipTypeNone: 'None',
   company: 'Company',
@@ -106,6 +108,8 @@ export const usersAssignment = {
   sitesHint: 'Physical and remote sites weigh the same for assignment: what counts is belonging to the site, not how the person works there.',
   assignable: 'Assignable',
   notAssignable: 'Not assignable',
+  /** Spec 0129 D-1: shown instead of the count/list while the jolly flag is on. */
+  allCategories: 'All categories',
   chips: {
     competence: 'Competences',
     physicalSite: 'Physical site',

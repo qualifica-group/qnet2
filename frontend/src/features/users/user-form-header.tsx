@@ -49,10 +49,16 @@ export function UserFormHeader({
   const isActive = useWatch({ control, name: 'is_active' })
   const isManager = useWatch({ control, name: 'employment.is_manager' })
   const competenceRows = useWatch({ control, name: 'employment.product_lines' })
+  const coversAllProductCategories = useWatch({ control, name: 'employment.covers_all_product_categories' })
   const primarySiteId = useWatch({ control, name: 'employment.primary_operational_site_id' })
   const remoteSiteIds = useWatch({ control, name: 'employment.remote_operational_site_ids' })
 
-  const { assignable } = summarizeAssignment({ competenceRows, primarySiteId, remoteSiteIds })
+  const { assignable } = summarizeAssignment({
+    competenceRows,
+    coversAllProductCategories,
+    primarySiteId,
+    remoteSiteIds,
+  })
 
   return (
     <header className={RECORD_HEADER_CLASS}>

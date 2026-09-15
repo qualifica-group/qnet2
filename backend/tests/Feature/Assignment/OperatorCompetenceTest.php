@@ -205,6 +205,86 @@ it('0111 D-2: the batch stays constant-query, whatever the number of users and r
 });
 
 // ---------------------------------------------------------------------------
+// Spec 0129 — three more ways to cover several categories without listing
+// them one by one: the profile-wide wildcard flag (D-1, AC-001), a
+// (function, null) row (D-3, AC-002) and a row on a non-selectable MOTHER
+// category (D-6, AC-003 — already covered structurally by 0111 AC-013 above,
+// asserted again here with an explicit is_selectable=false fixture).
+// ---------------------------------------------------------------------------
+
+it('0129 AC-001: the wildcard flag makes the user competent for any category, any function, even one with none', function () {
+    $function = BusinessFunction::factory()->create();
+    $otherFunction = BusinessFunction::factory()->create();
+    $matching = categoryWithFunction($function);
+    $mismatching = categoryWithFunction($otherFunction);
+    $functionless = ProductCategory::factory()->create(['business_function_id' => null, 'parent_id' => null]);
+
+    $user = User::factory()->create();
+    EmploymentProfile::factory()->for($user)->coversAllProductCategories()->create();
+
+    $competence = app(OperatorCompetence::class);
+
+    expect($competence->competent([$user->id], [$matching->id]))->toBe([$user->id]);
+    expect($competence->competent([$user->id], [$mismatching->id]))->toBe([$user->id]);
+    expect($competence->competent([$user->id], [$functionless->id]))->toBe([$user->id]);
+});
+
+it('0129 AC-002: a (function, null) row covers every category of that EFFECTIVE function, and nothing else', function () {
+    $function = BusinessFunction::factory()->create();
+    $otherFunction = BusinessFunction::factory()->create();
+    $root = categoryWithFunction($function);
+    // Inherits the root's function (spec 0023): still covered by the wildcard row.
+    $inheritingChild = ProductCategory::factory()->create(['parent_id' => $root->id]);
+    $mismatching = categoryWithFunction($otherFunction);
+    $functionless = ProductCategory::factory()->create(['business_function_id' => null, 'parent_id' => null]);
+
+    $user = User::factory()->create();
+    EmploymentProfile::factory()->for($user)->competentInEveryCategoryOf($function)->create();
+
+    $competence = app(OperatorCompetence::class);
+
+    expect($competence->competent([$user->id], [$root->id]))->toBe([$user->id]);
+    expect($competence->competent([$user->id], [$inheritingChild->id]))->toBe([$user->id]);
+    expect($competence->competent([$user->id], [$mismatching->id]))->toBe([]);
+    // D-3: a category with no effective function at all is never covered by
+    // a function-scoped wildcard row, unlike the profile-wide flag (AC-001).
+    expect($competence->competent([$user->id], [$functionless->id]))->toBe([]);
+});
+
+it('0129 AC-003: a row on a non-selectable MOTHER category covers its descendants and nothing outside the branch', function () {
+    $function = BusinessFunction::factory()->create();
+    $otherFunction = BusinessFunction::factory()->create();
+    $mother = ProductCategory::factory()->create(['business_function_id' => $function->id, 'is_selectable' => false]);
+    $child = ProductCategory::factory()->create(['parent_id' => $mother->id]);
+    $outsideBranch = categoryWithFunction($otherFunction);
+
+    $user = competentUser($function, $mother);
+
+    $competence = app(OperatorCompetence::class);
+
+    expect($competence->competent([$user->id], [$child->id]))->toBe([$user->id]);
+    expect($competence->competent([$user->id], [$outsideBranch->id]))->toBe([]);
+});
+
+it('0129 AC-004: a record requiring no category excludes nobody, with or without the new wildcards configured', function () {
+    $function = BusinessFunction::factory()->create();
+    $flagged = User::factory()->create();
+    EmploymentProfile::factory()->for($flagged)->coversAllProductCategories()->create();
+    $wildcardRow = User::factory()->create();
+    EmploymentProfile::factory()->for($wildcardRow)->competentInEveryCategoryOf($function)->create();
+    $rowless = rowlessUser();
+
+    $competence = app(OperatorCompetence::class);
+
+    expect($competence->competent([$flagged->id, $wildcardRow->id, $rowless->id], []))
+        ->toBe([$flagged->id, $wildcardRow->id, $rowless->id]);
+    // Unconfigured stays excluded from a real requirement (D-9), unaffected
+    // by either new wildcard on OTHER profiles.
+    $category = categoryWithFunction($function);
+    expect($competence->competent([$rowless->id], [$category->id]))->toBe([]);
+});
+
+// ---------------------------------------------------------------------------
 // AC-014 rev.2 / AC-015 — the revoked deroga, and the one still standing.
 // ---------------------------------------------------------------------------
 

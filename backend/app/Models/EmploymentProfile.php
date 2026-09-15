@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'user_id',
     'is_manager',
+    'covers_all_product_categories',
     'job_description',
     'reports_to_id',
     'relationship_type',
@@ -51,6 +52,7 @@ class EmploymentProfile extends BaseModel
     {
         return [
             'is_manager' => 'boolean',
+            'covers_all_product_categories' => 'boolean',
             'relationship_type' => RelationshipTypeEnum::class,
             'qualification_type' => QualificationTypeEnum::class,
             'hired_at' => 'date:Y-m-d',
@@ -116,6 +118,11 @@ class EmploymentProfile extends BaseModel
      * since `business_function_id` was dropped (D-1). The name is load
      * bearing: ProductLineWriter::sync() reaches the collection through
      * `$owner->productLines()`, the same way every other owner exposes it.
+     *
+     * A row's `product_category_id` may be null (spec 0129 D-3: "every
+     * category of this row's function"), and the whole collection is
+     * deliberately empty when `covers_all_product_categories` is true (D-2) —
+     * see App\Services\Assignment\OperatorCompetence for how both are read.
      */
     public function productLines(): HasMany
     {

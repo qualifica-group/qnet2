@@ -5,8 +5,7 @@ namespace App\Http\Requests\Concerns;
 use App\DataObjects\Users\EmploymentData;
 use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
-use App\Models\User;
-use App\Services\ProductLines\ProductLineSetValidator;
+use App\Services\Assignment\CompetenceLineSetValidator;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -28,7 +27,11 @@ use Illuminate\Validation\Rule;
  * `product_lines` (spec 0111, the assignment competence) behaves identically,
  * on its own child table — and, since D-1 dropped the single
  * `business_function_id` column, it is also the only place a user's business
- * function is written.
+ * function is written. Spec 0129 adds a THIRD, plain scalar way to widen that
+ * competence: `covers_all_product_categories` follows the same semantics as
+ * `is_manager` (absent on write = false, D-10), and — unlike the tri-state
+ * fields above — a true value forces `product_lines` empty server-side
+ * (EmploymentWriter, D-2), never trusting the payload's own emptiness.
  *
  * @phpstan-require-extends FormRequest
  */
@@ -52,6 +55,8 @@ trait ValidatesEmployment
             'employment' => ['sometimes', 'nullable', 'array'],
 
             'employment.is_manager' => ['sometimes', 'boolean'],
+            // Spec 0129 D-1: the wildcard flag, a plain scalar like is_manager.
+            'employment.covers_all_product_categories' => ['sometimes', 'boolean'],
             'employment.job_description' => ['nullable', 'string', 'max:255'],
             'employment.reports_to_id' => array_filter([
                 'nullable',
@@ -82,9 +87,12 @@ trait ValidatesEmployment
             // the site membership above — absent leaves the rows untouched,
             // an empty array clears them. Deliberately NO `min:1`, unlike the
             // offer/project/campaign collections (D-8): a user's competence is
-            // optional, so emptying it is a legitimate write.
+            // optional, so emptying it is a legitimate write. Spec 0129 D-6/D-9:
+            // these rows have their OWN rule set (CompetenceLineSetValidator),
+            // not ProductLineSetValidator's — no selectability constraint, a
+            // nullable category.
             'employment.product_lines' => ['sometimes', 'nullable', 'array'],
-            ...$this->productLineSetValidator()->rules('employment.product_lines', $this->persistedCompetenceCategoryIds()),
+            ...$this->competenceLineSetValidator()->rules('employment.product_lines'),
 
             'employment.qualification_type' => ['nullable', Rule::enum(QualificationTypeEnum::class)],
             'employment.hired_at' => ['nullable', 'date'],
@@ -100,58 +108,36 @@ trait ValidatesEmployment
      * OWN withValidator() — same composition as ValidatesProductLines::
      * validateProductLines() on the opportunity requests.
      *
-     * Only the PAIR rules (spec 0111 D-5): the `single`-row cap of spec 0077
-     * governs an offer/project/campaign card, not a user's competence, which
-     * is a free set of pairs (AC-007).
+     * Plus the flag/rows exclusivity of spec 0129 D-2: `covers_all_product_
+     * categories: true` together with a non-empty `product_lines` is a 422 on
+     * the collection itself, not on a row — checked here rather than as a
+     * plain rule because it spans two sibling fields.
      */
     protected function validateEmploymentProductLines(Validator $validator): void
     {
         $lines = $this->input('employment.product_lines');
 
+        if ($this->boolean('employment.covers_all_product_categories') && is_array($lines) && $lines !== []) {
+            $validator->errors()->add(
+                'employment.product_lines',
+                __(CompetenceLineSetValidator::ALL_CATEGORIES_WITH_LINES_MESSAGE),
+            );
+
+            return;
+        }
+
         if (! is_array($lines)) {
             return;
         }
 
-        foreach ($this->productLineSetValidator()->pairErrors($lines, 'employment.product_lines') as $key => $message) {
+        foreach ($this->competenceLineSetValidator()->crossRowErrors($lines, 'employment.product_lines') as $key => $message) {
             $validator->errors()->add($key, $message);
         }
     }
 
-    /**
-     * The competence categories already persisted on the user being updated,
-     * exempt from the selectability rule (spec 0074 D-3b) so a full-replace
-     * that resubmits the current rows never fails because one of them was
-     * made unselectable meanwhile. Empty on create (no route model).
-     *
-     * Queried through the relations rather than read off a loaded tree: rules()
-     * runs before anything eager-loads the user, and lazy loading is blocked
-     * outside production.
-     *
-     * @return array<int, int>
-     */
-    private function persistedCompetenceCategoryIds(): array
+    private function competenceLineSetValidator(): CompetenceLineSetValidator
     {
-        $user = $this->route('user');
-
-        if (! $user instanceof User) {
-            return [];
-        }
-
-        $profile = $user->employment()->first();
-
-        if ($profile === null) {
-            return [];
-        }
-
-        return $profile->productLines()
-            ->pluck('product_category_id')
-            ->map(static fn (mixed $id): int => (int) $id)
-            ->all();
-    }
-
-    private function productLineSetValidator(): ProductLineSetValidator
-    {
-        return app(ProductLineSetValidator::class);
+        return app(CompetenceLineSetValidator::class);
     }
 
     /**
@@ -171,6 +157,7 @@ trait ValidatesEmployment
 
         return new EmploymentData(
             isManager: (bool) $this->input('employment.is_manager', false),
+            coversAllProductCategories: $this->boolean('employment.covers_all_product_categories'),
             jobDescription: $this->input('employment.job_description'),
             reportsToId: $this->nullableInt('employment.reports_to_id'),
             relationshipType: RelationshipTypeEnum::tryFrom((string) $this->input('employment.relationship_type')),
@@ -219,17 +206,22 @@ trait ValidatesEmployment
     /**
      * The submitted competence rows, normalized to the shape ProductLineWriter
      * inserts. Same "absent reads as empty" convention as submittedIds() above
-     * — `productLinesProvided` is what tells the two apart.
+     * — `productLinesProvided` is what tells the two apart. `product_category_id`
+     * may be null (spec 0129 D-3, "every category of this row's function"), so
+     * this checks key PRESENCE (`array_key_exists`), not `isset()`, which would
+     * silently drop a null value.
      *
-     * @return array<int, array{business_function_id: int, product_category_id: int}>
+     * @return array<int, array{business_function_id: int, product_category_id: int|null}>
      */
     private function submittedProductLines(): array
     {
         return collect((array) $this->input('employment.product_lines'))
-            ->filter(fn (mixed $line): bool => is_array($line) && isset($line['business_function_id'], $line['product_category_id']))
+            ->filter(fn (mixed $line): bool => is_array($line)
+                && array_key_exists('business_function_id', $line) && $line['business_function_id'] !== null
+                && array_key_exists('product_category_id', $line))
             ->map(fn (array $line): array => [
                 'business_function_id' => (int) $line['business_function_id'],
-                'product_category_id' => (int) $line['product_category_id'],
+                'product_category_id' => $line['product_category_id'] === null ? null : (int) $line['product_category_id'],
             ])
             ->values()
             ->all();

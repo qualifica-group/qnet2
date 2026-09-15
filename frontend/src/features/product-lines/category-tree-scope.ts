@@ -20,22 +20,54 @@
 import type { CategoryManagementMode, ProductCategoryTreeNode } from '@/features/product-categories/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
 
+export interface PickableCategoryOptions {
+  /**
+   * Spec 0129 D-6/D-7: also admit a container category (`is_selectable=false`)
+   * whose EFFECTIVE function matches `businessFunctionId`, or a functionless
+   * ("neutral") container with at least one descendant under that function.
+   * Used only by the competence row editor (`ProductLinesField`'s
+   * `competence` variant) — offers/projects/campaigns/requests keep the
+   * default (`is_selectable` mandatory, spec 0111 D-4, unchanged).
+   */
+  includeContainers?: boolean
+}
+
 /**
  * The ids a row whose business function is `businessFunctionId` may actually
- * pick: `is_selectable` AND effective business function matching. Every other
- * node stays visible as disabled context (see `flattenCategoryTree`), which is
- * the whole point of reading the tree here.
+ * pick. Default: `is_selectable` AND effective business function matching
+ * (spec 0111 D-4). With `includeContainers` (spec 0129 D-7): effective
+ * function matching regardless of `is_selectable`, OR a functionless node
+ * with at least one descendant whose effective function is
+ * `businessFunctionId`. Every other node stays visible as disabled context
+ * (see `flattenCategoryTree`), which is the whole point of reading the tree
+ * here.
  */
 export function pickableCategoryIdsFor(
   nodes: ProductCategoryTreeNode[],
   businessFunctionId: number,
+  options: PickableCategoryOptions = {},
 ): Set<number> {
+  const { includeContainers = false } = options
   const ids = new Set<number>()
+
+  // D-7: whether some descendant of `node` has EFFECTIVE function
+  // `businessFunctionId` — the test for a "neutral" container (no function of
+  // its own) that still gathers a branch of the row's function.
+  function descendantHasFunction(node: ProductCategoryTreeNode, inheritedFunctionId: number | null): boolean {
+    return node.children.some((child) => {
+      const childEffectiveFunctionId = child.business_function_id ?? inheritedFunctionId
+      return childEffectiveFunctionId === businessFunctionId || descendantHasFunction(child, childEffectiveFunctionId)
+    })
+  }
 
   function visit(candidates: ProductCategoryTreeNode[], inheritedFunctionId: number | null): void {
     for (const node of candidates) {
       const effectiveFunctionId = node.business_function_id ?? inheritedFunctionId
-      if (node.is_selectable && effectiveFunctionId === businessFunctionId) {
+      const matchesFunction = effectiveFunctionId === businessFunctionId
+      const admits = includeContainers
+        ? matchesFunction || (effectiveFunctionId === null && descendantHasFunction(node, effectiveFunctionId))
+        : node.is_selectable && matchesFunction
+      if (admits) {
         ids.add(node.id)
       }
       visit(node.children, effectiveFunctionId)

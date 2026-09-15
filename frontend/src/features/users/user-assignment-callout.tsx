@@ -53,7 +53,7 @@ export function UserAssignmentCallout({ summary, className }: UserAssignmentCall
         <div className="flex flex-wrap gap-1.5">
           <AssignmentCountChip
             label={t('users.assignment.chips.competence')}
-            value={summary.competenceCount}
+            value={summary.coversAllProductCategories ? t('users.assignment.allCategories') : summary.competenceCount}
           />
           <AssignmentCountChip
             label={t('users.assignment.chips.physicalSite')}
@@ -77,8 +77,8 @@ export function UserAssignmentCallout({ summary, className }: UserAssignmentCall
   )
 }
 
-/** One `label value` chip; inherits the band's tone instead of carrying its own. */
-function AssignmentCountChip({ label, value }: { label: string; value: number }) {
+/** One `label value` chip; inherits the band's tone instead of carrying its own. Spec 0129: `value` also takes the "all categories" text while the jolly flag is on. */
+function AssignmentCountChip({ label, value }: { label: string; value: number | string }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-md border border-current/25 px-1.5 py-0.5">
       {label}

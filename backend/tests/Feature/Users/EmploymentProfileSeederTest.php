@@ -9,6 +9,7 @@ use App\Models\ProductCategory;
 use App\Models\User;
 use Database\Seeders\DemoEmploymentProfileSeeder;
 use Database\Seeders\DemoRolesSeeder;
+use Database\Seeders\DemoUserSeeder;
 use Database\Seeders\DemoUsersSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -96,6 +97,12 @@ it('leaves the company FK, the site membership and the competence rows empty whe
  * Spec 0111: the competence is a collection of (function, category) rows, and
  * the seeder must only ever pair a category with its EFFECTIVE business
  * function — anything else is data the user form would refuse to save.
+ *
+ * Spec 0129 (requirement changed, declared): the seeder now also demoes a
+ * (function, null) row (D-3) on the first subordinate — a row with no
+ * category at all, "every category of this function" — so this assertion is
+ * scoped to the rows that DO carry a category; the null-category one is
+ * covered by its own test below.
  */
 it('seeds competence rows pairing each category with its effective business function', function () {
     $this->seed(RolePermissionSeeder::class);
@@ -116,9 +123,26 @@ it('seeds competence rows pairing each category with its effective business func
             $category->id => $category->business_function_id ?? $root->business_function_id,
         ]);
 
-    EmploymentProductLine::all()->each(function (EmploymentProductLine $line) use ($expectedFunctionByCategory): void {
-        expect($line->business_function_id)->toBe($expectedFunctionByCategory[$line->product_category_id]);
-    });
+    EmploymentProductLine::whereNotNull('product_category_id')->get()
+        ->each(function (EmploymentProductLine $line) use ($expectedFunctionByCategory): void {
+            expect($line->business_function_id)->toBe($expectedFunctionByCategory[$line->product_category_id]);
+        });
+});
+
+/**
+ * Spec 0129 D-3: the seeder's demo of the "every category of this function"
+ * row — a row whose category is null.
+ */
+it('0129: seeds one (function, null) competence row demoing "every category of this function"', function () {
+    $this->seed(RolePermissionSeeder::class);
+    $this->seed(DemoRolesSeeder::class);
+    $this->seed(DemoUsersSeeder::class);
+    BusinessFunction::factory()->create();
+    ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
+
+    $this->seed(DemoEmploymentProfileSeeder::class);
+
+    expect(EmploymentProductLine::whereNull('product_category_id')->count())->toBe(1);
 });
 
 it('does not seed competence rows on categories that are not selectable', function () {
@@ -156,6 +180,30 @@ it('is idempotent — re-running does not duplicate employment rows, site member
     expect(EmploymentProfile::count())->toBe($countBefore);
     expect(DB::table('employment_profile_operational_site')->count())->toBe($membershipsBefore);
     expect(EmploymentProductLine::count())->toBe($linesBefore);
+});
+
+/**
+ * AC-019 (spec 0129): re-seeding twice never duplicates rows, and the
+ * canonical demo account always ends up with the wildcard flag.
+ */
+it('0129 AC-019: re-seeding twice keeps the same row count and always yields a profile with the wildcard flag', function () {
+    $this->seed(RolePermissionSeeder::class);
+    $this->seed(DemoRolesSeeder::class);
+    $this->seed(DemoUserSeeder::class);
+    $this->seed(DemoUsersSeeder::class);
+    OperationalSite::factory()->count(4)->create();
+    ProductCategory::factory()->count(3)->create([
+        'business_function_id' => BusinessFunction::factory()->create()->id,
+    ]);
+
+    $this->seed(DemoEmploymentProfileSeeder::class);
+    $linesBefore = EmploymentProductLine::count();
+
+    $this->seed(DemoEmploymentProfileSeeder::class);
+
+    expect(EmploymentProductLine::count())->toBe($linesBefore);
+    expect(EmploymentProfile::where('covers_all_product_categories', true)->count())->toBeGreaterThanOrEqual(1);
+    expect(User::where('email', 'demo@app.com')->first()?->employment?->covers_all_product_categories)->toBeTrue();
 });
 
 // ---------------------------------------------------------------------------
@@ -201,6 +249,22 @@ it('EmploymentProfileFactory::competentIn() attaches one competence row per cate
         ->toEqualCanonicalizing([$first->id, $second->id])
         ->and($employment->productLines()->pluck('business_function_id')->unique()->all())
         ->toBe([$function->id]);
+});
+
+it('0129: EmploymentProfileFactory::competentInEveryCategoryOf() attaches a (function, null) row', function () {
+    $function = BusinessFunction::factory()->create();
+
+    $employment = EmploymentProfile::factory()->competentInEveryCategoryOf($function)->create();
+
+    expect($employment->productLines()->count())->toBe(1)
+        ->and($employment->productLines()->first()->business_function_id)->toBe($function->id)
+        ->and($employment->productLines()->first()->product_category_id)->toBeNull();
+});
+
+it('0129: EmploymentProfileFactory::coversAllProductCategories() sets the wildcard flag', function () {
+    $employment = EmploymentProfile::factory()->coversAllProductCategories()->create();
+
+    expect($employment->covers_all_product_categories)->toBeTrue();
 });
 
 it('EmploymentProfileFactory::physicalSite() attaches the given site as is_primary', function () {

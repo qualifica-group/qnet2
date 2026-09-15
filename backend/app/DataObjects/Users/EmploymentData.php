@@ -36,17 +36,26 @@ use App\Enums\RelationshipTypeEnum;
  * (`employment_product_lines`) pairing a business function with a product
  * category, independent from the site membership and from the scalar columns.
  * Since spec 0111 D-1 it is also the ONLY source of a user's business
- * function — the former `businessFunctionId` column is gone.
+ * function — the former `businessFunctionId` column is gone. Spec 0129 D-3
+ * lets a row's `product_category_id` be null ("every category of this row's
+ * function").
+ *
+ * `coversAllProductCategories` (spec 0129 D-1) is a THIRD way to widen the
+ * competence: a plain scalar column, no tri-state (D-10, same as `isManager`
+ * — absent on write reads as false). EmploymentWriter enforces D-2 (true =>
+ * the rows are cleared) rather than trusting the request to have emptied
+ * `productLines` itself.
  */
 final readonly class EmploymentData
 {
     /**
      * @param  array<int, int>  $remoteOperationalSiteIds
-     * @param  array<int, array{business_function_id: int, product_category_id: int}>  $productLines
+     * @param  array<int, array{business_function_id: int, product_category_id: int|null}>  $productLines
      */
     public function __construct(
         public bool $delete = false,
         public bool $isManager = false,
+        public bool $coversAllProductCategories = false,
         public ?string $jobDescription = null,
         public ?int $reportsToId = null,
         public ?RelationshipTypeEnum $relationshipType = null,
@@ -86,6 +95,7 @@ final readonly class EmploymentData
     {
         return [
             'is_manager' => $this->isManager,
+            'covers_all_product_categories' => $this->coversAllProductCategories,
             'job_description' => $this->jobDescription,
             'reports_to_id' => $this->reportsToId,
             'relationship_type' => $this->relationshipType,

@@ -158,11 +158,11 @@ const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, 
 
 interface HarnessProps {
   defaultValue?: ProductLineRow[]
-  enforceManagementModeCap?: boolean
+  variant?: 'card' | 'competence'
 }
 
 /** Mirrors the real wiring (`opportunity-product-lines-section.tsx`'s `MetaField`): rows flow through RHF like any other field. */
-function Harness({ defaultValue = [], enforceManagementModeCap }: HarnessProps) {
+function Harness({ defaultValue = [], variant }: HarnessProps) {
   const form = useForm<{ product_lines: ProductLineRow[] }>({ defaultValues: { product_lines: defaultValue } })
   const productLines = useWatch({ control: form.control, name: 'product_lines' })
 
@@ -170,7 +170,7 @@ function Harness({ defaultValue = [], enforceManagementModeCap }: HarnessProps) 
     <ProductLinesField
       value={productLines}
       onChange={(next) => form.setValue('product_lines', next, { shouldDirty: true })}
-      enforceManagementModeCap={enforceManagementModeCap}
+      variant={variant}
     />
   )
 }
@@ -303,15 +303,16 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7)', () =>
 })
 
 /**
- * Spec 0111 D-5 / AC-024: the same editor, opted out of the cap. The rows of a
- * user's competence are not a commercial card, so a `single`-mode category no
- * longer closes the set. Everything else (mode resolution, row independence)
- * is unchanged, and the default stays enforcing — the cases above run without
- * the prop and still cap.
+ * Spec 0111 D-5 / AC-024: the same editor, opted out of the cap via
+ * `variant="competence"`. The rows of a user's competence are not a
+ * commercial card, so a `single`-mode category no longer closes the set.
+ * Everything else (mode resolution, row independence) is unchanged, and the
+ * default (`variant` omitted, i.e. `'card'`) stays enforcing — the cases
+ * above run without the prop and still cap.
  */
-describe('ProductLinesField with enforceManagementModeCap={false} (spec 0111 D-5)', () => {
+describe('ProductLinesField with variant="competence" (spec 0111 D-5)', () => {
   it('AC-024: keeps "Add" enabled after picking a single-mode category, and appends the row', async () => {
-    renderHarness({ enforceManagementModeCap: false })
+    renderHarness({ variant: 'competence' })
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
     fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${BUSINESS_FUNCTION_A}` }))
     await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
@@ -333,7 +334,7 @@ describe('ProductLinesField with enforceManagementModeCap={false} (spec 0111 D-5
   it('AC-024 on edit: a row LOADED on a single-mode category still accepts a second one', async () => {
     renderHarness({
       defaultValue: [{ business_function_id: BUSINESS_FUNCTION_A, product_category_id: SINGLE_CATEGORY_ID }],
-      enforceManagementModeCap: false,
+      variant: 'competence',
     })
 
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()

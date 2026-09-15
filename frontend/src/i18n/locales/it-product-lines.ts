@@ -20,4 +20,10 @@ export const productLines = {
   selectPlaceholder: 'Seleziona…',
   selectEmpty: 'Nessun risultato trovato.',
   selectError: 'Impossibile caricare le opzioni.',
+  /** Spec 0129 D-5: nome accessibile per riga della checkbox "Tutte" (variante competenza). */
+  allCategories: 'Tutte le categorie, riga {{n}}',
+  /** Etichetta visibile accanto alla checkbox. */
+  allCategoriesShort: 'Tutte',
+  /** Spec 0129 D-3: resa in sola lettura di una riga con categoria nulla. */
+  allCategoriesReadOnly: 'Tutte le categorie',
 }

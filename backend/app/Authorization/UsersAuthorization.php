@@ -35,9 +35,10 @@ class UsersAuthorization extends AbstractResourceAuthorization
      * `contacts`/`addresses` sections as a SINGLE key each (D1 — no
      * per-column granularity for their child rows).
      *
-     * The 13 `employment.*` keys (spec 0015, plus the competence of spec
+     * The 14 `employment.*` keys (spec 0015, plus the competence of spec
      * 0111 — one `product_lines` collection replacing the former
-     * `business_function_id`/`product_category_ids` pair) mirror the nested
+     * `business_function_id`/`product_category_ids` pair — and spec 0129's
+     * `covers_all_product_categories` wildcard flag) mirror the nested
      * employment object's own dot-path shape, the same way: no dedicated
      * resource permission, governed entirely by this field-permission matrix
      * (like personal_data).
@@ -66,6 +67,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('personal_data.contacts', 'collection', 'personal_data'),
             new FieldDefinition('personal_data.addresses', 'collection', 'personal_data'),
             new FieldDefinition('employment.is_manager', 'boolean', 'employment'),
+            new FieldDefinition('employment.covers_all_product_categories', 'boolean', 'employment'),
             new FieldDefinition('employment.job_description', 'text', 'employment'),
             new FieldDefinition('employment.reports_to_id', 'select', 'employment'),
             new FieldDefinition('employment.product_lines', 'collection', 'employment'),
@@ -143,7 +145,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
     }
 
     /**
-     * Ceiling for the 13 `employment.*` keys: editable whenever the actor may
+     * Ceiling for the 14 `employment.*` keys: editable whenever the actor may
      * write the user at all, else readonly — same write/read boundary as the
      * personal_data section (no employment.* resource permission, spec 0015).
      *
@@ -155,6 +157,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
 
         return [
             'employment.is_manager' => $permission,
+            'employment.covers_all_product_categories' => $permission,
             'employment.job_description' => $permission,
             'employment.reports_to_id' => $permission,
             'employment.product_lines' => $permission,

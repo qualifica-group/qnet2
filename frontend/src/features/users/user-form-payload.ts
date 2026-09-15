@@ -29,7 +29,11 @@ function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload
     company_id: values.company_id,
     primary_operational_site_id: values.primary_operational_site_id,
     remote_operational_site_ids: values.remote_operational_site_ids,
-    product_lines: completeProductLines(values.product_lines),
+    covers_all_product_categories: values.covers_all_product_categories,
+    // Spec 0129 D-2: the flag and the rows are ONE state — defense in depth
+    // behind the UI already hiding/clearing the editor while it is on, so a
+    // stale row never reaches the server alongside a true flag (422 there).
+    product_lines: values.covers_all_product_categories ? [] : completeProductLines(values.product_lines),
     qualification_type: values.qualification_type,
     hired_at: values.hired_at || null,
     terminated_at: values.terminated_at || null,
@@ -39,19 +43,26 @@ function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload
 }
 
 /**
- * Drops any row still missing one of its two ids. The schema already refuses
- * the submit on an incomplete row (`buildEmploymentSchema`), so this never
- * actually drops one in practice — it exists because the form value stays
- * nullable-per-id at the type level (each row is inline-editable), exactly as
- * in the opportunity/project payload builders.
+ * Drops any row still missing its function, or missing BOTH a category and
+ * the "all categories" checkbox. The schema already refuses the submit on an
+ * incomplete row (`buildEmploymentSchema`), so this never actually drops one
+ * in practice — it exists because the form value stays nullable-per-id at the
+ * type level (each row is inline-editable), exactly as in the
+ * opportunity/project payload builders. A checked "all categories" row (spec
+ * 0129 D-3) serializes its category as `null`.
  */
 function completeProductLines(
   rows: EmploymentFormValues['product_lines'],
 ): EmploymentProductLineInput[] {
-  return rows.filter(
-    (row): row is EmploymentProductLineInput =>
-      row.business_function_id !== null && row.product_category_id !== null,
-  )
+  return rows
+    .filter(
+      (row) =>
+        row.business_function_id !== null && (row.product_category_id !== null || row.all_categories === true),
+    )
+    .map((row) => ({
+      business_function_id: row.business_function_id as number,
+      product_category_id: row.all_categories === true ? null : row.product_category_id,
+    }))
 }
 
 /**

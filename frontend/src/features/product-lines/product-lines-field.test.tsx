@@ -147,10 +147,11 @@ interface HarnessProps {
   defaultValue?: ProductLineRow[]
   knownLines?: ProductLine[]
   disabled?: boolean
+  variant?: 'card' | 'competence'
 }
 
 /** Mirrors the real wiring (`opportunity-product-lines-section.tsx`'s `MetaField`): rows flow through RHF like any other field. */
-function Harness({ defaultValue = [], knownLines, disabled }: HarnessProps) {
+function Harness({ defaultValue = [], knownLines, disabled, variant }: HarnessProps) {
   const form = useForm<{ product_lines: ProductLineRow[] }>({ defaultValues: { product_lines: defaultValue } })
   const productLines = useWatch({ control: form.control, name: 'product_lines' })
 
@@ -160,6 +161,7 @@ function Harness({ defaultValue = [], knownLines, disabled }: HarnessProps) {
       onChange={(next) => form.setValue('product_lines', next, { shouldDirty: true })}
       knownLines={knownLines}
       disabled={disabled}
+      variant={variant}
     />
   )
 }
@@ -314,5 +316,50 @@ describe('ProductLinesField (spec 0057, AC-106)', () => {
     expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('true')
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Remove product line' })).toBeDisabled()
+  })
+
+  it('non-regression: renders no "All categories" checkbox in the default (card) variant', () => {
+    renderHarness()
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * Spec 0129 D-5/D-6/AC-021/AC-022: the competence variant. The card variant's
+ * behavior above (no checkbox, container category disabled) is the
+ * non-regression baseline these cases are opted into.
+ */
+describe('ProductLinesField variant="competence" (spec 0129)', () => {
+  it('AC-022 — makes the container category ("Formazione") pickable once a function is chosen', async () => {
+    renderHarness({ variant: 'competence' })
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }))
+
+    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
+    expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(
+      `100,${TEST_PRODUCT_CATEGORY_A},${TEST_PRODUCT_CATEGORY_B}`,
+    )
+  })
+
+  it('AC-021 — renders a disabled "All categories" checkbox before a function is chosen', () => {
+    renderHarness({ variant: 'competence' })
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+
+    expect(screen.getByRole('checkbox')).toBeDisabled()
+  })
+
+  it('AC-021 — checking "All categories" disables and clears the category, and writes a null-category row', async () => {
+    renderHarness({ variant: 'competence' })
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }))
+    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
+
+    fireEvent.click(screen.getByRole('checkbox'))
+
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('true')
+    expect(screen.getByTestId('value-Product category 1')).toBeEmptyDOMElement()
   })
 })

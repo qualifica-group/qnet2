@@ -106,4 +106,31 @@ class EmploymentProfileFactory extends Factory
             }
         });
     }
+
+    /**
+     * Attaches a (function, null) row (spec 0129 D-3): "every category of
+     * this row's function" — the same `afterCreating` timing as
+     * competentIn(), and freely combinable with it (a profile with several
+     * rows, one of which is a wildcard on its own function).
+     */
+    public function competentInEveryCategoryOf(BusinessFunction $function): static
+    {
+        return $this->afterCreating(function (EmploymentProfile $profile) use ($function): void {
+            $profile->productLines()->firstOrCreate([
+                'business_function_id' => $function->id,
+                'product_category_id' => null,
+            ]);
+        });
+    }
+
+    /**
+     * The profile-wide wildcard flag (spec 0129 D-1): competent for ANY
+     * category, any function. Only meaningful with no competence rows (D-2
+     * clears them server-side on write), so this state does not touch
+     * `productLines()` — a factory profile starts with none anyway.
+     */
+    public function coversAllProductCategories(): static
+    {
+        return $this->state(fn (): array => ['covers_all_product_categories' => true]);
+    }
 }
