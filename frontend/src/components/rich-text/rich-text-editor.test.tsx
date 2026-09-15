@@ -91,6 +91,12 @@ describe('RichTextEditor (spec 0128 AC-017/AC-018/AC-019)', () => {
     expect(screen.getByRole('button', { name: 'Image' })).toBeInTheDocument()
   })
 
+  it('suppresses the browser focus outline on the contenteditable itself (container ring only)', () => {
+    render(<RichTextEditor value={null} onChange={vi.fn()} />, { wrapper: wrapper() })
+
+    expect(screen.getByRole('textbox')).toHaveClass('outline-none')
+  })
+
   it('toggles bold/italic/underline/strike and emits the matching tag (AC-017)', async () => {
     const onChange = vi.fn()
     const { container } = render(<RichTextEditor value="<p>hello</p>" onChange={onChange} />, { wrapper: wrapper() })

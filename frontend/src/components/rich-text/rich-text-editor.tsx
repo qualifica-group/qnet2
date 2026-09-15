@@ -76,6 +76,10 @@ export function RichTextEditor({
         ...(id ? { id } : {}),
         role: 'textbox',
         'aria-multiline': 'true',
+        // The focusable node is ProseMirror's own contenteditable, not the
+        // EditorContent wrapper: without this the browser draws its default
+        // focus outline around the text, inside the container's focus ring.
+        class: 'outline-none',
       },
     },
     onUpdate: ({ editor: current }) => {
@@ -163,7 +167,7 @@ export function RichTextEditor({
       <EditorContent
         editor={editor}
         className={cn(
-          'px-3 py-2 text-sm outline-none',
+          'px-3 py-2 text-sm',
           MIN_HEIGHT_CLASS[minHeight],
           RICH_TEXT_PROSE_CLASS,
           RICH_TEXT_PLACEHOLDER_CLASS,

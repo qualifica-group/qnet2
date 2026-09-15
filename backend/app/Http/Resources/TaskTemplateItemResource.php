@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\TaskTemplateItem;
+use App\RichText\RichText;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,7 +18,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * data_contract's `{id, original_name, mime_type, extension, size,
  * created_at}` shape, carrying `download_url`/`view_url` the row's own file
  * management (D-9) needs — the same resource every other attachable already
- * exposes, not a second bespoke projection.
+ * exposes, not a second bespoke projection. The `rich_text` collection (spec
+ * 0128, D-6) is filtered OUT of the already eager-loaded `attachments`
+ * Collection (in-memory `where()`, no extra query): those images are
+ * reachable only through the row's own `description` content, never through
+ * this generic file list.
  *
  * @mixin TaskTemplateItem
  */
@@ -42,7 +47,10 @@ class TaskTemplateItemResource extends JsonResource
             ]),
             'due_offset_days' => $this->due_offset_days,
             'sort_order' => $this->sort_order,
-            'attachments' => AttachmentResource::collection($this->whenLoaded('attachments')),
+            'attachments' => AttachmentResource::collection($this->whenLoaded(
+                'attachments',
+                fn () => $this->attachments->where('collection', '!=', RichText::ATTACHMENT_COLLECTION)->values(),
+            )),
         ];
     }
 }

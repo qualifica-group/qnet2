@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\TaskStatusGroup;
+use App\Models\Attachment;
 use App\Models\TaskStatus;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
 use App\Models\User;
+use App\RichText\RichText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -191,4 +193,24 @@ it('an attachment uploaded on a template item appears in items.*.attachments of 
     $row = collect($response->json('data.items'))->firstWhere('id', $item->id);
     expect($row['attachments'])->toHaveCount(1)
         ->and($row['attachments'][0]['original_name'])->toBe('doc.pdf');
+});
+
+it('spec 0128, D-6: a row\'s rich_text image is never listed among items.*.attachments, only the document is', function () {
+    Storage::fake('local');
+    $actor = taskTemplateUserWith(['view']);
+    $template = TaskTemplate::factory()->create();
+    $item = TaskTemplateItem::factory()->forTemplate($template)->create();
+    $document = $item->attach(UploadedFile::fake()->create('doc.pdf', 10, 'application/pdf'), 'documents');
+
+    $richTextImage = Attachment::factory()->make(['collection' => RichText::ATTACHMENT_COLLECTION]);
+    $richTextImage->attachable()->associate($item);
+    $richTextImage->save();
+
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/task-templates/{$template->id}")->assertOk();
+
+    $row = collect($response->json('data.items'))->firstWhere('id', $item->id);
+    expect($row['attachments'])->toHaveCount(1)
+        ->and($row['attachments'][0]['id'])->toBe($document->id);
 });
