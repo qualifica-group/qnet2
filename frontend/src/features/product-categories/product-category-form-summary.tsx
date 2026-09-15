@@ -34,6 +34,7 @@ export function ProductCategoryFormSummary({
   const generatesContract = useWatch({ control, name: 'generates_contract' })
   const simplifiedOfferLine = useWatch({ control, name: 'simplified_offer_line' })
   const isSelectable = useWatch({ control, name: 'is_selectable' })
+  const isReportable = useWatch({ control, name: 'is_reportable' })
   const attributes = useWatch({ control, name: 'attributes' })
   const managerLabels = useWatch({ control, name: 'manager_labels' })
 
@@ -74,6 +75,9 @@ export function ProductCategoryFormSummary({
         </SummaryRow>
         <SummaryRow label={t('productCategories.form.isSelectable')}>
           {yesNo(isSelectable)}
+        </SummaryRow>
+        <SummaryRow label={t('productCategories.form.isReportable')}>
+          {yesNo(isReportable)}
         </SummaryRow>
         <SummaryRow label={t('productCategories.form.attributes')}>
           {attributes.length > 0 ? attributes.length : EMPTY_VALUE}

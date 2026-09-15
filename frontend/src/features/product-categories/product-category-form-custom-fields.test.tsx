@@ -106,6 +106,7 @@ function category(
     effective_business_function: null,
     requires_quote_source_category: null,
     is_selectable: true,
+    is_reportable: false,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,

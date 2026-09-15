@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Briefcase, EyeOff, FolderTree, History, ListChecks, Users } from 'lucide-react'
+import { Briefcase, ChartNoAxesColumn, EyeOff, FolderTree, History, ListChecks, Users } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RECORD_BODY_GRID_CLASS,
@@ -119,6 +119,12 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
                     <Badge variant="outline">
                       <EyeOff aria-hidden="true" />
                       {t('productCategories.badges.notSelectable')}
+                    </Badge>
+                  ) : null}
+                  {category.is_reportable ? (
+                    <Badge variant="outline">
+                      <ChartNoAxesColumn aria-hidden="true" />
+                      {t('productCategories.badges.reportable')}
                     </Badge>
                   ) : null}
                 </>

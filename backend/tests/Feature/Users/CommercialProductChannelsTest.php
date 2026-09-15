@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
  * Commercial role — the one role whose grants stop at its own module. Split
  * out of QualificaRoleMatrixTest (file-size hard limit, engineering.md §6).
  */
-const COMMERCIAL_EMAIL = 'customer@qualificagroup.it';
+const COMMERCIAL_EMAIL = 'marco.baldi@qualificagroup.com';
 
 function commercialActor(): User
 {

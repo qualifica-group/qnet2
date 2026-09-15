@@ -38,6 +38,7 @@ describe('productCategoryColumnRenderers boolean columns', () => {
   it.each([
     'requires_quote',
     'is_selectable',
+    'is_reportable',
     'single_quote_per_opportunity',
     'generates_contract',
     'simplified_offer_line',

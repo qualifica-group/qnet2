@@ -20,6 +20,7 @@ function node(overrides: Partial<ProductCategoryTreeNode> & { id: number; name: 
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    is_reportable: false,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,

@@ -78,6 +78,7 @@ function baseFields(t: TFunction) {
     business_function_id: z.number().nullable(),
     requires_quote: z.boolean(),
     is_selectable: z.boolean(),
+    is_reportable: z.boolean(),
     management_mode: z.enum(['single', 'multiple']),
     single_quote_per_opportunity: z.boolean(),
     generates_contract: z.boolean(),

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0131 — Categorie del report di Gestione Richieste / Gestione Iscritti rese dinamiche.
+  Sostituisce la lista fissa `config('request-management-report.branches')` della 0106 con un
+  flag per categoria. Prosa italiana senza accenti; identificatori inglesi (engineering.md 1.2).
+-->
+<spec id="0131-report-reportable-categories" status="implemented" owner="utente" date="2026-09-15">
+
+  <goal>
+    I report e le dashboard di Gestione Richieste e Gestione Iscritti non si fermano piu' alle sei
+    categorie fisse (GOL, Autoimpiego, Yisu, Autofinanziato, Consulenza, APL): ogni categoria del
+    sistema puo' comparire, secondo un'impostazione della categoria stessa.
+  </goal>
+
+  <user_directive date="2026-09-15">
+    "I report di gestione richieste e gestione iscritti non si fermano sulle categorie gol, ma su
+    tutte le categorie che ha il sistema, in modo dinamico".
+    Risposte vincolanti:
+    - Nelle impostazioni della categoria c'e' un setting che dice se la categoria e' abilitata a
+      comparire nei report; il seeder imposta gia' le categorie considerate oggi (D-1, D-3).
+    - Selezionando GOL si vedono le statistiche di tutte le categorie figlie; selezionando
+      "GOL - Campania" solo quelle del suo sottoalbero (D-2).
+    - Tutti gli indicatori calcolati per ogni categoria (D-4).
+  </user_directive>
+
+  <decisions>
+    <decision id="D-1">Nuova colonna `product_categories.is_reportable` boolean default false,
+      propria di OGNI nodo e mai ereditata (stessa forma di `is_selectable`). Esposta da
+      `ProductCategoryResource`, accettata `sometimes|boolean` da store/update, campo
+      `is_reportable` in `ProductCategoriesAuthorization` (editabile con `product-categories.update`).</decision>
+    <decision id="D-2">Un ramo del report = una categoria `is_reportable`, chiave `(string) id`,
+      etichetta = nome, `categoryIds` = la categoria + tutti i discendenti. Ordine per nome
+      (naturale, case-insensitive). Padre e figlio entrambi reportable compaiono entrambi: la riga
+      del padre include le richieste del figlio; la sintesi della dashboard usa l'unione degli id,
+      quindi una richiesta conta una volta sola.</decision>
+    <decision id="D-3">Seed: `QualificaCatalogSeeder::REPORTABLE_CATEGORIES` (i sei rami storici
+      piu' "DIL", direttiva utente 2026-09-15), scritto solo alla creazione, mai riallineato. La migrazione fa il backfill per nome sulle
+      installazioni gia' popolate, cosi' il report resta identico al deploy.</decision>
+    <decision id="D-4">Rimossa l'applicabilita' per ramo (`ReportBranch::$columns` e
+      `config('request-management-report.branches')`): ogni indicatore reale e' calcolato per ogni
+      ramo; le colonne stub restano 0.</decision>
+  </decisions>
+
+  <data_contract>
+    GET /api/{module}/report/categories: invariata la shape `[{ key: string, label: string }]`;
+    `key` ora e' l'id della categoria come stringa. POST /api/{module}/report e
+    GET /api/{module}/report/dashboard: `category_keys.*` validato con
+    `Rule::in(ReportBranchResolver::keys())`. Un ExportRun congelato prima della 0131 con chiavi
+    tipo "gol" non corrisponde a nessun ramo.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Creazione senza `is_reportable` = false; il valore e' persistito, aggiornabile, non propagato ai figli. (Pest ProductCategoryReportableTest)</criterion>
+    <criterion id="AC-002">Il seeder marca esattamente i sei rami storici piu DIL. (Pest)</criterion>
+    <criterion id="AC-003">Il resolver produce un ramo per categoria reportable, chiave id, ordinato per nome, con sottoalbero completo. (Pest RequestManagementReportDynamicCategoriesTest)</criterion>
+    <criterion id="AC-004">La riga del padre aggrega il sottoalbero, quella del figlio solo il proprio; "Aziende inserite" calcolato anche su GOL. (Pest)</criterion>
+    <criterion id="AC-005">L'endpoint categorie offre solo categorie reportable con richieste in perimetro; una chiave non reportable da' 422. (Pest)</criterion>
+    <criterion id="AC-006">Il form categoria mostra e salva "Visibile nei report". (Vitest)</criterion>
+  </acceptance_criteria>
+
+</spec>

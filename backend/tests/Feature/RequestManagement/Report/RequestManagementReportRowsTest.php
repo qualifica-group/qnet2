@@ -11,6 +11,7 @@ use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -33,12 +34,12 @@ if (! function_exists('reportCategoryTree')) {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
 
         return [
-            'gol' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']),
-            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']),
-            'yisu' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']),
-            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']),
-            'consulenza' => ProductCategory::factory()->create(['name' => 'Consulenza']),
-            'apl' => ProductCategory::factory()->create(['name' => 'APL']),
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
         ];
     }
 }
@@ -102,7 +103,7 @@ if (! function_exists('createReportRun')) {
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
                 'locale' => $locale,
-                'category_keys' => $categoryKeys ?? array_keys((array) config('request-management-report.branches')),
+                'category_keys' => $categoryKeys ?? app(ReportBranchResolver::class)->keys(),
                 'row_mode' => $rowMode,
             ],
         ]);
@@ -172,7 +173,7 @@ beforeEach(function () {
 // AC-004/AC-005
 // ---------------------------------------------------------------------------
 
-it('writes the 13-column header + all six categories in order, an empty one as TOTALE-only zeros (AC-004/AC-005)', function () {
+it('writes the 13-column header + all six categories by name, an empty one as TOTALE-only zeros (AC-004/AC-005)', function () {
     reportCategoryTree();
     $actor = User::factory()->create();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
@@ -189,7 +190,8 @@ it('writes the 13-column header + all six categories in order, an empty one as T
 
     $categories = array_column($rows, 0);
     array_shift($categories); // drop the header row's "Categoria"
-    expect(array_values(array_unique($categories)))->toBe(['GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'Consulenza', 'APL']);
+    // Spec 0131: branches are ordered by category name (ReportBranchResolver), not config order.
+    expect(array_values(array_unique($categories)))->toBe(['APL', 'Autofinanziato', 'Autoimpiego', 'Consulenza', 'GOL', 'Yisu']);
 
     $golTotal = reportRowsFor($rows, 'GOL')['TOTALE'];
     // D-15 (rev-2, overrides D-9): every numeric cell is '0', applicable or not.
@@ -235,7 +237,7 @@ it('breaks a category down by GA2 sorted by name, with Non assegnato last, TOTAL
 // AC-008
 // ---------------------------------------------------------------------------
 
-it('renders a non-applicable column and an applicable stub identically as 0, never empty (AC-008, D-15 overrides D-9)', function () {
+it('renders a real (computed) column and a stub column identically as 0, never empty (AC-008; spec 0131 overrides D-15/D-9)', function () {
     reportCategoryTree();
     $actor = User::factory()->create();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
@@ -245,12 +247,15 @@ it('renders a non-applicable column and an applicable stub identically as 0, nev
     $rows = reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path));
 
     $golTotal = reportRowsFor($rows, 'GOL')['TOTALE'];
-    expect($golTotal[9])->toBe('0'); // Aziende inserite — NOT applicable to GOL, still 0 (D-15)
-    expect($golTotal[6])->toBe('0'); // Aule in gestione — applicable stub, explicit 0
+    // Spec 0131: every real indicator is computed for every branch — GOL has
+    // no company-adding request, so "Aziende inserite" computes to 0 (no
+    // longer a "not applicable" stub).
+    expect($golTotal[9])->toBe('0'); // Aziende inserite — computed, 0 (no data)
+    expect($golTotal[6])->toBe('0'); // Aule in gestione — stub column, explicit 0
 
     $aplTotal = reportRowsFor($rows, 'APL')['TOTALE'];
-    expect($aplTotal[12])->toBe('0'); // Invio Presa in carico — applicable stub
-    expect($aplTotal[8])->toBe('0'); // Associati — NOT applicable to APL, still 0 (D-15)
+    expect($aplTotal[12])->toBe('0'); // Invio Presa in carico — stub column
+    expect($aplTotal[8])->toBe('0'); // Associati — computed (spec 0131), 0 (no data)
 
     // The only two text cells left are Categoria/GA2 — no other cell is ever empty.
     foreach (array_slice($golTotal, 2) as $cell) {

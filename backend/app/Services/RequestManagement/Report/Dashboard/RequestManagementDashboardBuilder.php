@@ -27,7 +27,7 @@ use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
  *
  * Branch selection is NOT reimplemented here (spec 0107 D-2-bis, point 1):
  * `RequestManagementReportGenerator::rows()` is the ONE place that filters
- * the six branches by `category_keys`, reused verbatim — the CSV and this
+ * the reportable branches by `category_keys`, reused verbatim — the CSV and this
  * dashboard can never see a different set of branches for the same filters.
  *
  * The same holds for the operator selection (spec 0108, D-1) and for the Sede
@@ -41,9 +41,8 @@ use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
  * Rev-3 (user directive 2026-09-08) changed only the SHAPE, never a value:
  * every indicator column is emitted even when it is 0 (D-11), and the charts
  * hang off their own category (D-10) instead of comparing categories.
- * WHAT is computed is untouched — a column outside `ReportBranch::$columns`
- * is still never queried, it simply renders as the 0 the row already carries
- * (spec 0106 D-15), which is exactly what the CSV prints for it.
+ * A stub column renders as the 0 the row already carries (spec 0106 D-15),
+ * which is exactly what the CSV prints for it.
  *
  * Spec 0130: $module (defaulting to RequestModule::Requests) is handed
  * UNTOUCHED to every rows()/rowsBuilder call above, exactly like $operators
@@ -102,10 +101,8 @@ final class RequestManagementDashboardBuilder
 
     /**
      * D-8: categoryIds = union of the selected branches' own (already
-     * subtree-expanded) ids; columns = union of their applicability lists, so
-     * nothing gets QUERIED that a real branch would not query. What is
-     * EMITTED is the full column list either way (D-11): a column outside the
-     * union is the 0 the row already holds.
+     * subtree-expanded) ids, so a request under two selected branches (a
+     * reportable parent and its reportable child, spec 0131) counts once.
      *
      * @param  array<int, ReportBranch>  $branches
      * @return array<int, DashboardSummaryItem>
@@ -116,7 +113,6 @@ final class RequestManagementDashboardBuilder
             key: '__summary__',
             label: '',
             categoryIds: $this->unionOf($branches, static fn (ReportBranch $b): array => $b->categoryIds),
-            columns: $this->unionOf($branches, static fn (ReportBranch $b): array => $b->columns),
         );
 
         /** @var ReportRow $total */

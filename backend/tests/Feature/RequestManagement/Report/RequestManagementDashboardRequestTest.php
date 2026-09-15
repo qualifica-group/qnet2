@@ -2,6 +2,7 @@
 
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Sanctum;
@@ -33,15 +34,21 @@ if (! function_exists('dashboardActorWith')) {
 }
 
 if (! function_exists('dashboardCategoryTree')) {
-    function dashboardCategoryTree(): void
+    /**
+     * @return array<string, ProductCategory>
+     */
+    function dashboardCategoryTree(): array
     {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']);
-        ProductCategory::factory()->create(['name' => 'Consulenza']);
-        ProductCategory::factory()->create(['name' => 'APL']);
+
+        return [
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
+        ];
     }
 }
 
@@ -55,7 +62,7 @@ if (! function_exists('dashboardQuery')) {
         return array_merge([
             'date_from' => '2026-09-01',
             'date_to' => '2026-09-30',
-            'category_keys' => array_keys((array) config('request-management-report.branches')),
+            'category_keys' => app(ReportBranchResolver::class)->keys(),
             'row_mode' => 'all',
         ], $overrides);
     }
@@ -134,11 +141,11 @@ it('422s when category_keys is empty (AC-002)', function () {
 });
 
 it('422s when category_keys has an unknown key, never reaching a query (AC-002)', function () {
-    dashboardCategoryTree();
+    $categories = dashboardCategoryTree();
     $actor = dashboardActorWith(['report']);
     Sanctum::actingAs($actor);
 
-    $query = dashboardQuery(['category_keys' => ['gol', 'not-a-real-branch']]);
+    $query = dashboardQuery(['category_keys' => [(string) $categories['gol']->id, 'not-a-real-branch']]);
 
     $this->getJson('/api/request-management/report/dashboard?'.http_build_query($query))
         ->assertStatus(422)
@@ -162,11 +169,12 @@ it('422s when row_mode is not one of the three values (AC-002)', function () {
 // ---------------------------------------------------------------------------
 
 it('applied reflects exactly the filters received (AC-003)', function () {
-    dashboardCategoryTree();
+    $categories = dashboardCategoryTree();
     $actor = dashboardActorWith(['report', 'viewAll']);
     Sanctum::actingAs($actor);
 
-    $query = dashboardQuery(['category_keys' => ['gol', 'consulenza'], 'row_mode' => 'total_only']);
+    $selectedKeys = [(string) $categories['gol']->id, (string) $categories['consulenza']->id];
+    $query = dashboardQuery(['category_keys' => $selectedKeys, 'row_mode' => 'total_only']);
 
     $response = $this->getJson('/api/request-management/report/dashboard?'.http_build_query($query))->assertOk();
 
@@ -176,7 +184,7 @@ it('applied reflects exactly the filters received (AC-003)', function () {
     $response->assertJsonPath('data.applied', [
         'date_from' => '2026-09-01',
         'date_to' => '2026-09-30',
-        'category_keys' => ['gol', 'consulenza'],
+        'category_keys' => $selectedKeys,
         'row_mode' => 'total_only',
         'operator_keys' => null,
         'site_keys' => null,

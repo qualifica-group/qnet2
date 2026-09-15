@@ -63,6 +63,8 @@ export function buildCreatePayload(
     // inherited and the server resolves it (a divergent value is a 422).
     ...(values.parent_id === null ? { requires_quote: values.requires_quote } : {}),
     is_selectable: values.is_selectable,
+    // Per-node and never inherited, same shape as `is_selectable`.
+    is_reportable: values.is_reportable,
     // Same rule for the management mode (spec 0077 D-2/INV-5): only a ROOT
     // authors it, a child inherits and a divergent value is a 422.
     ...(values.parent_id === null ? { management_mode: values.management_mode } : {}),
@@ -129,6 +131,11 @@ export function buildUpdatePayload(
   // parent-dependent guard around it.
   if (values.is_selectable !== original.is_selectable) {
     payload.is_selectable = values.is_selectable
+  }
+
+  // Same per-node, never-inherited shape as `is_selectable`.
+  if (values.is_reportable !== original.is_reportable) {
+    payload.is_reportable = values.is_reportable
   }
 
   // Same root-only guard as `requires_quote` (spec 0077 D-2): sent only while

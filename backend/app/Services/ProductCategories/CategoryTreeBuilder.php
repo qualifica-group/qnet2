@@ -68,6 +68,8 @@ final class CategoryTreeBuilder
                 // travels with each node so the pickers built on this cache
                 // (the product form's category picker) can filter themselves.
                 'is_selectable' => (bool) $category->is_selectable,
+                // Spec 0131: per-node report flag, travels like is_selectable.
+                'is_reportable' => (bool) $category->is_reportable,
                 'management_mode' => $category->management_mode->value,
                 'single_quote_per_opportunity' => (bool) $category->single_quote_per_opportunity,
                 'generates_contract' => (bool) $category->generates_contract,

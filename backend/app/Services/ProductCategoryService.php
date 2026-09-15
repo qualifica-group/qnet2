@@ -49,6 +49,7 @@ class ProductCategoryService
                 'description' => $data->description,
                 'business_function_id' => $data->businessFunctionId,
                 'is_selectable' => $data->isSelectable,
+                'is_reportable' => $data->isReportable,
                 'manager_labels' => $this->normalizeManagerLabels($data->managerLabels),
                 'inherits_manager_labels' => $data->inheritsManagerLabels,
                 // The five ROOT-OWNED settings: a child never authors any of

@@ -25,7 +25,8 @@ use Illuminate\Support\Collection;
  * Every column of `config('request-management-report.indicator_columns')`
  * is always present in the emitted values, defaulting to 0 (D-15, rev-2 —
  * overrides the former D-9 empty-cell distinction) whether the column is a
- * stub, not applicable to this branch, or simply not computed for this row.
+ * stub or simply not computed for this row (spec 0131: every real indicator is
+ * computed for every branch).
  * That config key is the neutral source both this (calculation) class and
  * ReportSheetBuilder (formatting) read from — this class never depends on the
  * formatting one for it (spec 0107 D-2-bis, point 3).
@@ -86,7 +87,7 @@ final class ReportBranchRowsBuilder
     {
         $results = [];
 
-        foreach ($branch->columns as $column) {
+        foreach ((array) config('request-management-report.indicator_columns') as $column) {
             $indicator = $this->indicators->resolve($column);
 
             if ($indicator !== null) {
@@ -132,7 +133,7 @@ final class ReportBranchRowsBuilder
 
         foreach ((array) config('request-management-report.indicator_columns') as $column) {
             if (! isset($results[$column])) {
-                $values[$column] = 0; // stub, or not applicable to this branch (D-15)
+                $values[$column] = 0; // stub column (D-15)
 
                 continue;
             }

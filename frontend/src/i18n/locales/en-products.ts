@@ -79,6 +79,7 @@ export const productCategories = {
   badges: {
     root: 'Root',
     notSelectable: 'Not selectable',
+    reportable: 'Visible in reports',
   },
   columns: {
     name: 'Name',
@@ -89,6 +90,7 @@ export const productCategories = {
     business_function: 'Business function',
     requires_quote: 'Quoted',
     is_selectable: 'Selectable',
+    is_reportable: 'Visible in reports',
     management_mode: 'Management mode',
     single_quote_per_opportunity: 'One offer per opportunity',
     generates_contract: 'Includes a contract',
@@ -176,6 +178,9 @@ export const productCategories = {
     isSelectable: 'Selectable',
     isSelectableHint:
       'When off, the category can only group subcategories: it disappears from the pickers and can no longer be assigned to a product, a product line, a project, a campaign or a commission rule. Existing associations are kept.',
+    isReportable: 'Visible in reports',
+    isReportableHint:
+      'The category appears in the Gestione Richieste and Gestione Iscritti reports and dashboard; selecting it also shows its subcategories.',
     managementMode: 'Management mode',
     managementModeHint:
       'How Category Product lines behave on a card: this category and every subcategory below it follow the same rule.',
@@ -219,6 +224,9 @@ export const productCategories = {
     isSelectableInfo:
       'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',
     isSelectableInfoLabel: 'More info about Selectable',
+    isReportableInfo:
+      'Decides whether the category shows up as a selectable row in the Gestione Richieste and Gestione Iscritti reports and dashboard. Selecting it also aggregates every one of its subcategories in the report. Like Selectable, this rule belongs to THIS category alone: it is never inherited, so a parent hidden from the reports can still have children that show up in them.',
+    isReportableInfoLabel: 'More info about Visible in reports',
     inheritedFrom: 'Inherited from {{category}}',
     managerLabelLevel: 'A.M. {{n}}',
     managerLabelPlaceholder: 'Account manager {{n}}',

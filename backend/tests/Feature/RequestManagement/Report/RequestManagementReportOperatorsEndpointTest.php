@@ -9,6 +9,7 @@ use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -37,12 +38,12 @@ if (! function_exists('operatorsEndpointTree')) {
     {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
         $tree = [
-            'gol' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']),
-            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']),
-            'yisu' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']),
-            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']),
-            'consulenza' => ProductCategory::factory()->create(['name' => 'Consulenza']),
-            'apl' => ProductCategory::factory()->create(['name' => 'APL']),
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
         ];
 
         return $tree;
@@ -108,7 +109,7 @@ if (! function_exists('operatorsDashboardQuery')) {
         return array_merge([
             'date_from' => '2026-09-01',
             'date_to' => '2026-09-30',
-            'category_keys' => array_keys((array) config('request-management-report.branches')),
+            'category_keys' => app(ReportBranchResolver::class)->keys(),
             'row_mode' => 'all',
         ], $overrides);
     }

@@ -17,6 +17,7 @@ use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Registry;
 use App\Models\User;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -39,12 +40,12 @@ if (! function_exists('reportCategoryTree')) {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
 
         return [
-            'gol' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']),
-            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']),
-            'yisu' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']),
-            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']),
-            'consulenza' => ProductCategory::factory()->create(['name' => 'Consulenza']),
-            'apl' => ProductCategory::factory()->create(['name' => 'APL']),
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
         ];
     }
 }
@@ -143,7 +144,7 @@ if (! function_exists('createReportRun')) {
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
                 'locale' => $locale,
-                'category_keys' => $categoryKeys ?? array_keys((array) config('request-management-report.branches')),
+                'category_keys' => $categoryKeys ?? app(ReportBranchResolver::class)->keys(),
                 'row_mode' => $rowMode,
             ],
         ]);

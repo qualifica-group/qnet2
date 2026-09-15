@@ -12,6 +12,7 @@ use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\RequestManagement\Report\Dashboard\RequestManagementDashboardBuilder;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -34,12 +35,12 @@ if (! function_exists('parityCategoryTree')) {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
 
         return [
-            'gol' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']),
-            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']),
-            'yisu' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']),
-            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']),
-            'consulenza' => ProductCategory::factory()->create(['name' => 'Consulenza']),
-            'apl' => ProductCategory::factory()->create(['name' => 'APL']),
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
         ];
     }
 }
@@ -163,7 +164,7 @@ it('every dashboard point equals the corresponding CSV cell, for the same filter
     app()->setLocale('it');
     $dateFrom = now()->subDay()->toDateString();
     $dateTo = now()->addDay()->toDateString();
-    $categoryKeys = array_keys((array) config('request-management-report.branches'));
+    $categoryKeys = app(ReportBranchResolver::class)->keys();
 
     // Generate the CSV via the SAME 0106 pipeline (no queue: call the
     // generator directly, mirroring GenerateRequestManagementReportJob).
@@ -223,7 +224,7 @@ it('summary is LESS than the sum of the two category totals when a request is sh
         $actor,
         now()->subDay()->toDateString(),
         now()->addDay()->toDateString(),
-        ['gol', 'autoimpiego'],
+        [(string) $categories['gol']->id, (string) $categories['autoimpiego']->id],
         RequestManagementReportRowMode::TotalOnly,
     );
 

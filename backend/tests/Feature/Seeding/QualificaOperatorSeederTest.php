@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\PersonalDataTypeEnum;
 use App\Models\BusinessFunction;
 use App\Models\OperationalSite;
+use App\Models\PersonalData;
 use App\Models\ProductCategory;
 use App\Models\Role;
 use App\Models\User;
@@ -35,24 +37,44 @@ function standInSites(array $aliases): array
 it('creates every roster account with its role, standalone and without imported data', function (): void {
     test()->seed(QualificaOperatorSeeder::class);
 
-    foreach (OperatorRoster::OPERATORS as [, $email, , $role]) {
+    foreach (OperatorRoster::OPERATORS as [, , $email, , $role]) {
         expect(User::query()->where('email', $email)->firstOrFail()->getRoleNames()->all())->toBe([$role]);
     }
 
     expect(User::query()->count())->toBe(count(OperatorRoster::OPERATORS));
 });
 
+it('writes first and last name onto the anagrafica too, converging on a re-run', function (): void {
+    test()->seed(QualificaOperatorSeeder::class);
+    test()->seed(QualificaOperatorSeeder::class);
+
+    $user = User::query()->where('email', 'mariaclelia.bernardi@qualificagroup.com')->with('personalData')->sole();
+
+    expect($user->name)->toBe('Maria Clelia Bernardi')
+        ->and($user->personalData->type)->toBe(PersonalDataTypeEnum::Individual)
+        ->and($user->personalData->first_name)->toBe('Maria Clelia')
+        ->and($user->personalData->last_name)->toBe('Bernardi')
+        ->and(PersonalData::query()->count())->toBe(count(OperatorRoster::OPERATORS));
+});
+
+it('never seeds the accounts highlighted as non-existent', function (): void {
+    test()->seed(QualificaOperatorSeeder::class);
+
+    expect(User::query()->whereIn('name', ['Miriam Del Giudice', 'Maddalena Vitale', 'Elisa Finizio', 'Imma Pascale'])->exists())->toBeFalse()
+        ->and(User::query()->count())->toBe(67);
+});
+
 it('sets the shared password on creation only, so an operator change survives a re-run', function (): void {
     test()->seed(QualificaOperatorSeeder::class);
 
-    $user = User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
+    $user = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
     expect(Hash::check('Qualifica2026!', $user->password))->toBeTrue();
 
     $user->forceFill(['password' => Hash::make('changed-by-hand')])->save();
     test()->seed(QualificaOperatorSeeder::class);
 
     expect(Hash::check('changed-by-hand', $user->fresh()->password))->toBeTrue()
-        ->and(User::query()->where('email', 'customer@qualificagroup.it')->count())->toBe(1);
+        ->and(User::query()->where('email', 'marco.baldi@qualificagroup.com')->count())->toBe(1);
 });
 
 it('expands each city to every site of it: first one physical, the rest remote', function (): void {
@@ -60,7 +82,7 @@ it('expands each city to every site of it: first one physical, the rest remote',
 
     test()->seed(QualificaOperatorSeeder::class);
 
-    $employment = seededOperator('g.dellaporta@qualificagroup.it')->employment;
+    $employment = seededOperator('gaetano.dellaporta@qualificagroup.com')->employment;
 
     expect($employment->primaryOperationalSiteId)->toBe($sites['FRATTAMAGGIORE 1 (HQ)'])
         ->and($employment->remoteOperationalSiteIds)->toEqualCanonicalizing([
@@ -68,15 +90,20 @@ it('expands each city to every site of it: first one physical, the rest remote',
         ]);
 });
 
-it('keeps only the physical Sede and the wildcard competence for a "Tutte" profile', function (): void {
-    standInSites(['FRATTAMAGGIORE 1 (HQ)', 'Frattamaggiore 2']);
+it('leaves a "no operatore" profile unassignable: physical Sede only, no competence, even when seeded as a wildcard before', function (): void {
+    $sites = standInSites(['FRATTAMAGGIORE 1 (HQ)', 'Frattamaggiore 2', 'Roma']);
+    $function = BusinessFunction::factory()->create();
+    ProductCategory::factory()->create(['name' => 'Autoimpiego', 'business_function_id' => $function->id]);
 
     test()->seed(QualificaOperatorSeeder::class);
+    seededOperator('rosa.falzarano@qualificagroup.com')->employment->update(['covers_all_product_categories' => true]);
+    test()->seed(QualificaOperatorSeeder::class);
 
-    $employment = seededOperator('commercialegol@qualificagroup.it')->employment;
+    $employment = seededOperator('rosa.falzarano@qualificagroup.com')->employment;
 
-    expect($employment->operationalSites)->toHaveCount(1)
-        ->and($employment->covers_all_product_categories)->toBeTrue()
+    expect($employment->primaryOperationalSiteId)->toBe($sites['FRATTAMAGGIORE 1 (HQ)'])
+        ->and($employment->remoteOperationalSiteIds)->toBeEmpty()
+        ->and($employment->covers_all_product_categories)->toBeFalse()
         ->and($employment->productLines)->toBeEmpty();
 });
 
@@ -92,7 +119,7 @@ it('pairs every roster category with its effective business function, Consulenza
 
     test()->seed(QualificaOperatorSeeder::class);
 
-    $lines = seededOperator('casalnuovo@qualificagroup.it')->employment->productLines
+    $lines = seededOperator('luca.romano@qualificagroup.com')->employment->productLines
         ->map(fn ($line): array => [$line->business_function_id, $line->product_category_id])
         ->all();
 
@@ -104,7 +131,7 @@ it('pairs every roster category with its effective business function, Consulenza
     ]);
 
     // A Consulenza-only commercial is left with no competence row at all.
-    expect(seededOperator('customer@qualificagroup.it')->employment->productLines)->toBeEmpty();
+    expect(seededOperator('marco.baldi@qualificagroup.com')->employment->productLines)->toBeEmpty();
 });
 
 it('converges on a re-run: no duplicated memberships nor competence rows', function (): void {
@@ -115,7 +142,7 @@ it('converges on a re-run: no duplicated memberships nor competence rows', funct
     test()->seed(QualificaOperatorSeeder::class);
     test()->seed(QualificaOperatorSeeder::class);
 
-    $employment = seededOperator('a.alvoni@qualificagroup.it')->employment;
+    $employment = seededOperator('antonio.alvoni@qualificagroup.com')->employment;
 
     expect($employment->operationalSites)->toHaveCount(2)
         ->and($employment->productLines)->toHaveCount(1);
@@ -124,7 +151,7 @@ it('converges on a re-run: no duplicated memberships nor competence rows', funct
 it('grants the enrollee commercial read-only enrollees of their Sedi, and the teaching supervisor both modules by Sede', function (): void {
     test()->seed(QualificaOperatorSeeder::class);
 
-    $enrollee = User::query()->where('email', 'm.fedele@qualificagroup.it')->firstOrFail();
+    $enrollee = User::query()->where('email', 'marco.fedele@qualificagroup.com')->firstOrFail();
 
     foreach (['viewAny', 'view', 'viewSite'] as $ability) {
         expect($enrollee->can("enrollee-management.{$ability}"))->toBeTrue($ability);
@@ -137,7 +164,7 @@ it('grants the enrollee commercial read-only enrollees of their Sedi, and the te
     expect($enrollee->can('request-management.viewSite'))->toBeFalse()
         ->and($enrollee->can('request-management.report'))->toBeFalse();
 
-    $teaching = User::query()->where('email', 'roma@qualificagroup.it')->firstOrFail();
+    $teaching = User::query()->where('email', 'marlena.jaruga@qualificagroup.com')->firstOrFail();
 
     expect($teaching->can('request-management.viewSite'))->toBeTrue()
         ->and($teaching->can('request-management.viewAll'))->toBeFalse()
@@ -147,7 +174,7 @@ it('grants the enrollee commercial read-only enrollees of their Sedi, and the te
 it('gives the coordinator unrestricted requests without the field-change-requests page', function (): void {
     test()->seed(QualificaOperatorSeeder::class);
 
-    $coordinator = User::query()->where('email', 'commerciale@qualificagroup.it')->firstOrFail();
+    $coordinator = User::query()->where('email', 'michela.fabozzi@qualificagroup.com')->firstOrFail();
 
     expect($coordinator->can('request-management.viewAll'))->toBeTrue()
         ->and($coordinator->can('request-management.report'))->toBeTrue()

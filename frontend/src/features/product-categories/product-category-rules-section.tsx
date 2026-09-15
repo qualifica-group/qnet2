@@ -1,6 +1,6 @@
 import { useController, type Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { MousePointerClick, SlidersHorizontal } from 'lucide-react'
+import { ChartNoAxesColumn, MousePointerClick, SlidersHorizontal } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { FormControl, FormDescription } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
@@ -32,10 +32,11 @@ interface ProductCategoryRulesSectionProps {
  * could not tell an inert label from a rule that changes what the system
  * accepts.
  *
- * Every rule but `is_selectable` is owned by the branch ROOT and inherited by
- * the whole subtree; each carries an (i) tooltip explaining what turning it on
- * actually does. `is_selectable` is the odd one out — a plain per-node flag —
- * so it renders here without the inheritance chrome.
+ * Every rule but `is_selectable`/`is_reportable` is owned by the branch ROOT
+ * and inherited by the whole subtree; each carries an (i) tooltip explaining
+ * what turning it on actually does. `is_selectable`/`is_reportable` are the
+ * odd ones out — plain per-node flags — so they render here without the
+ * inheritance chrome.
  *
  * Two columns from `sm:` up: the tiles stay readable at 375px and the section
  * does not become a tall stack on a desktop config screen.
@@ -54,7 +55,8 @@ export function ProductCategoryRulesSection({
     fieldPermission('single_quote_per_opportunity').visible ||
     fieldPermission('generates_contract').visible ||
     fieldPermission('simplified_offer_line').visible ||
-    fieldPermission('is_selectable').visible
+    fieldPermission('is_selectable').visible ||
+    fieldPermission('is_reportable').visible
 
   if (!visible) {
     return null
@@ -74,6 +76,7 @@ export function ProductCategoryRulesSection({
         <ProductCategorySimplifiedOfferLineField control={control} mode={mode} parentId={parentId} />
 
         <SelectableRule control={control} />
+        <ReportableRule control={control} />
       </div>
     </FormSection>
   )
@@ -104,6 +107,47 @@ function SelectableRule({ control }: SelectableRuleProps) {
         hintLabel={t('productCategories.form.isSelectableInfoLabel')}
         description={
           <FormDescription>{t('productCategories.form.isSelectableHint')}</FormDescription>
+        }
+      >
+        {({ field: switchField, disabled }) => (
+          <FormControl>
+            <Switch
+              checked={switchField.value}
+              onCheckedChange={switchField.onChange}
+              disabled={disabled}
+            />
+          </FormControl>
+        )}
+      </MetaField>
+    </ProductCategoryRuleCard>
+  )
+}
+
+interface ReportableRuleProps {
+  control: Control<ProductCategoryFormValues>
+}
+
+/**
+ * `is_reportable` as a rule tile. Per-node and never inherited, same shape as
+ * `is_selectable` — defined at module level, never inside the section
+ * component.
+ */
+function ReportableRule({ control }: ReportableRuleProps) {
+  const { t } = useTranslation()
+  const { field } = useController({ control, name: 'is_reportable' })
+
+  return (
+    <ProductCategoryRuleCard icon={ChartNoAxesColumn} active={field.value}>
+      <MetaField
+        control={control}
+        name="is_reportable"
+        metaKey="is_reportable"
+        layout="inline"
+        label={t('productCategories.form.isReportable')}
+        hint={t('productCategories.form.isReportableInfo')}
+        hintLabel={t('productCategories.form.isReportableInfoLabel')}
+        description={
+          <FormDescription>{t('productCategories.form.isReportableHint')}</FormDescription>
         }
       >
         {({ field: switchField, disabled }) => (

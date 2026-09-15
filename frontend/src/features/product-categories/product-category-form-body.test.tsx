@@ -87,6 +87,7 @@ function category(
     effective_business_function: null,
     requires_quote_source_category: null,
     is_selectable: true,
+    is_reportable: false,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
@@ -249,6 +250,44 @@ describe('ProductCategoryFormBody — selectable switch (spec 0074)', () => {
   })
 })
 
+describe('ProductCategoryFormBody — reportable switch (same per-node shape as Selectable)', () => {
+  it('create mode: the switch is off by default and can be turned on', async () => {
+    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findAllByRole('button', { name: 'Save' })
+
+    const reportableSwitch = screen.getByRole('switch', { name: 'Visible in reports' })
+    expect(reportableSwitch).not.toBeChecked()
+
+    fireEvent.click(reportableSwitch)
+
+    await waitFor(() => expect(reportableSwitch).toBeChecked())
+  })
+
+  it('edit mode: the switch mirrors the saved value, with no parent-driven read-only state', async () => {
+    render(
+      <ProductCategoryForm
+        mode={{
+          type: 'edit',
+          category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, is_reportable: true }),
+        }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findAllByRole('button', { name: 'Save' })
+
+    const reportableSwitch = screen.getByRole('switch', { name: 'Visible in reports' })
+    expect(reportableSwitch).toBeChecked()
+    // Unlike the quote flag, this one is never inherited: a child still edits it.
+    expect(reportableSwitch).toBeEnabled()
+  })
+})
+
 /**
  * User directive 2026-08-07: the four behavioural rules moved out of the
  * identity fields into their own section, each carrying an (i) explanation.
@@ -267,8 +306,15 @@ describe('ProductCategoryFormBody — management rules section', () => {
     expect(within(rules).getByRole('combobox')).toBeInTheDocument()
     expect(within(rules).getByRole('switch', { name: 'One offer per opportunity' })).toBeInTheDocument()
     expect(within(rules).getByRole('switch', { name: 'Selectable' })).toBeInTheDocument()
+    expect(within(rules).getByRole('switch', { name: 'Visible in reports' })).toBeInTheDocument()
 
-    for (const rule of ['Quoted', 'Management mode', 'One offer per opportunity', 'Selectable']) {
+    for (const rule of [
+      'Quoted',
+      'Management mode',
+      'One offer per opportunity',
+      'Selectable',
+      'Visible in reports',
+    ]) {
       expect(within(rules).getByRole('button', { name: `More info about ${rule}` })).toBeInTheDocument()
     }
   })

@@ -98,18 +98,22 @@ if (! function_exists('reportCategoryTree')) {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
 
         return [
-            'gol' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']),
-            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']),
-            'yisu' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']),
-            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']),
-            'consulenza' => ProductCategory::factory()->create(['name' => 'Consulenza']),
-            'apl' => ProductCategory::factory()->create(['name' => 'APL']),
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
         ];
     }
 }
 
 if (! function_exists('enrolleeReportPayload')) {
     /**
+     * Spec 0131: category_keys are reportable-category ids, never a static
+     * 'apl' string — every caller now passes its own tree's actual id via
+     * $overrides.
+     *
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
      */
@@ -118,7 +122,6 @@ if (! function_exists('enrolleeReportPayload')) {
         return array_merge([
             'date_from' => '2026-09-01',
             'date_to' => '2026-09-30',
-            'category_keys' => ['apl'],
             'row_mode' => 'total_only',
             'format' => 'csv',
         ], $overrides);
@@ -130,26 +133,29 @@ if (! function_exists('enrolleeReportPayload')) {
 // ---------------------------------------------------------------------------
 
 it('403s creating the enrollee-management report without enrollee-management.report', function () {
+    $category = reportCategoryTree()['apl'];
     $actor = enrolleeReportActorWith(['request-management.report', 'request-management.viewAll']);
     Sanctum::actingAs($actor);
     Queue::fake();
 
-    $this->postJson('/api/enrollee-management/report', enrolleeReportPayload())->assertForbidden();
+    $this->postJson('/api/enrollee-management/report', enrolleeReportPayload(['category_keys' => [(string) $category->id]]))->assertForbidden();
 });
 
 it('403s the enrollee-management dashboard without enrollee-management.report', function () {
+    $category = reportCategoryTree()['apl'];
     $actor = enrolleeReportActorWith(['request-management.report', 'request-management.viewAll']);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/enrollee-management/report/dashboard?'.http_build_query(enrolleeReportPayload()))->assertForbidden();
+    $this->getJson('/api/enrollee-management/report/dashboard?'.http_build_query(enrolleeReportPayload(['category_keys' => [(string) $category->id]])))->assertForbidden();
 });
 
 it('403s creating the request-management report with ONLY enrollee-management.report (AC-003)', function () {
+    $category = reportCategoryTree()['apl'];
     $actor = enrolleeReportActorWith(['enrollee-management.report', 'enrollee-management.viewAll']);
     Sanctum::actingAs($actor);
     Queue::fake();
 
-    $this->postJson('/api/request-management/report', enrolleeReportPayload())->assertForbidden();
+    $this->postJson('/api/request-management/report', enrolleeReportPayload(['category_keys' => [(string) $category->id]]))->assertForbidden();
 });
 
 // ---------------------------------------------------------------------------
@@ -167,12 +173,12 @@ it('the dashboard summary counts only validated/closed_won requests, synchronous
 
     Sanctum::actingAs($actor);
 
-    $response = $this->getJson('/api/enrollee-management/report/dashboard?'.http_build_query(enrolleeReportPayload()))->assertOk();
+    $response = $this->getJson('/api/enrollee-management/report/dashboard?'.http_build_query(enrolleeReportPayload(['category_keys' => [(string) $category->id]])))->assertOk();
 
     $summary = collect($response->json('data.summary'))->firstWhere('key', 'telefonate');
     expect($summary)->not->toBeNull();
 
-    $categorySection = collect($response->json('data.categories'))->firstWhere('key', 'apl');
+    $categorySection = collect($response->json('data.categories'))->firstWhere('key', (string) $category->id);
     expect($categorySection)->not->toBeNull();
 });
 
@@ -187,7 +193,7 @@ it('the CSV export row_count reflects only the D-5 perimeter, on top of the D-2 
 
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson('/api/enrollee-management/report', enrolleeReportPayload(['row_mode' => 'all']))->assertCreated();
+    $response = $this->postJson('/api/enrollee-management/report', enrolleeReportPayload(['category_keys' => [(string) $category->id], 'row_mode' => 'all']))->assertCreated();
     $run = ExportRun::findOrFail($response->json('data.export_run.id'));
 
     expect($run->resource)->toBe('enrollee-management-report')
@@ -220,7 +226,7 @@ it('a run frozen with no module key (pre-0130) is generated as request-managemen
             'date_from' => '2026-09-01',
             'date_to' => '2026-09-30',
             'locale' => 'it',
-            'category_keys' => ['apl'],
+            'category_keys' => [(string) $category->id],
             'row_mode' => 'total_only',
             // No 'module' key: the run predates spec 0130.
         ],

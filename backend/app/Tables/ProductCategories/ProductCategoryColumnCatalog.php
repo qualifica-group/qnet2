@@ -110,6 +110,18 @@ final class ProductCategoryColumnCatalog
                 'filterType' => 'boolean',
             ],
             [
+                // Whether the category (with its subtree) is a row of the
+                // Gestione Richieste / Iscritti report (spec 0131). Per-row,
+                // never inherited, same handling as is_selectable.
+                'id' => 'is_reportable',
+                'label' => 'productCategories.columns.is_reportable',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 // Card-line policy ("single"|"multiple"). Owned by the
                 // branch ROOT and mirrored onto every descendant by
                 // CategoryManagementModeInheritance (spec 0077), so this IS a
@@ -244,6 +256,7 @@ final class ProductCategoryColumnCatalog
             ['columnId' => 'business_function', 'type' => 'set'],
             ['columnId' => 'requires_quote', 'type' => 'boolean'],
             ['columnId' => 'is_selectable', 'type' => 'boolean'],
+            ['columnId' => 'is_reportable', 'type' => 'boolean'],
             ['columnId' => 'management_mode', 'type' => 'set'],
             ['columnId' => 'single_quote_per_opportunity', 'type' => 'boolean'],
             ['columnId' => 'generates_contract', 'type' => 'boolean'],

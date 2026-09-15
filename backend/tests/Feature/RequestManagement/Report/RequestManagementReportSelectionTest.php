@@ -11,6 +11,7 @@ use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -33,12 +34,12 @@ if (! function_exists('reportCategoryTree')) {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
 
         return [
-            'gol' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']),
-            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']),
-            'yisu' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']),
-            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']),
-            'consulenza' => ProductCategory::factory()->create(['name' => 'Consulenza']),
-            'apl' => ProductCategory::factory()->create(['name' => 'APL']),
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
         ];
     }
 }
@@ -102,7 +103,7 @@ if (! function_exists('createReportRun')) {
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
                 'locale' => $locale,
-                'category_keys' => $categoryKeys ?? array_keys((array) config('request-management-report.branches')),
+                'category_keys' => $categoryKeys ?? app(ReportBranchResolver::class)->keys(),
                 'row_mode' => $rowMode,
             ],
         ]);
@@ -181,12 +182,14 @@ it('CSV contains only the selected categories, with values identical to the inte
     runReportJob($integralRun);
     $integralRows = reportCsvRows(Storage::disk('local')->get($integralRun->fresh()->file_path));
 
-    $filteredRun = createReportRun($actor, ...$range, categoryKeys: ['gol', 'consulenza']);
+    $filteredRun = createReportRun($actor, ...$range, categoryKeys: [(string) $categories['gol']->id, (string) $categories['consulenza']->id]);
     runReportJob($filteredRun);
     $filteredRows = reportCsvRows(Storage::disk('local')->get($filteredRun->fresh()->file_path));
 
     $filteredCategories = array_values(array_unique(array_slice(array_column($filteredRows, 0), 1)));
-    expect($filteredCategories)->toBe(['GOL', 'Consulenza']); // APL excluded, not just empty
+    // Spec 0131: branches are ordered by name (ReportBranchResolver), so
+    // Consulenza precedes GOL here — APL stays excluded, not just empty.
+    expect($filteredCategories)->toBe(['Consulenza', 'GOL']);
 
     // Same VALUES as the integral report for the two kept branches (AC-032:
     // filtering, not a different calculation).
@@ -208,7 +211,7 @@ it('total_only emits ONLY the TOTALE row per selected category, zero when empty 
         $actor,
         now()->subDay()->toDateString(),
         now()->addDay()->toDateString(),
-        categoryKeys: ['gol', 'consulenza'],
+        categoryKeys: [(string) $categories['gol']->id, (string) $categories['consulenza']->id],
         rowMode: 'total_only',
     );
 
@@ -237,7 +240,7 @@ it('operators_only emits GA2 + Non assegnato but never TOTALE, and NO row at all
         $actor,
         now()->subDay()->toDateString(),
         now()->addDay()->toDateString(),
-        categoryKeys: ['gol', 'consulenza'],
+        categoryKeys: [(string) $categories['gol']->id, (string) $categories['consulenza']->id],
         rowMode: 'operators_only',
     );
 
@@ -263,7 +266,7 @@ it('all (default) emits both TOTALE and GA2 rows, as before rev-2 (AC-033)', fun
         $actor,
         now()->subDay()->toDateString(),
         now()->addDay()->toDateString(),
-        categoryKeys: ['gol'],
+        categoryKeys: [(string) $categories['gol']->id],
         rowMode: 'all',
     );
 

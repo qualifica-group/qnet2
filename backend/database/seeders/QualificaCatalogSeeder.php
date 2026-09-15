@@ -166,6 +166,17 @@ class QualificaCatalogSeeder extends Seeder
     ];
 
     /**
+     * The categories seeded as report rows (spec 0131, `is_reportable`): the
+     * six branches the Gestione Richieste report used to read from config,
+     * plus "DIL" (user directive 2026-09-15).
+     * Written on creation only, never realigned — which categories the
+     * report shows is an operator setting from then on.
+     *
+     * @var list<string>
+     */
+    private const array REPORTABLE_CATEGORIES = ['GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'DIL', 'Consulenza', 'APL'];
+
+    /**
      * The second-level nodes that ARE classification targets, by exception to
      * the container rule above: a subcategory that hosts its own offer instead
      * of grouping children. "Autofinanziato" is one — CatalogProducts files
@@ -419,7 +430,11 @@ class QualificaCatalogSeeder extends Seeder
         /** @var ProductCategory $category */
         $category = ProductCategory::firstOrCreate(
             ['name' => $name],
-            ['parent_id' => $parentId, 'is_selectable' => $isSelectable],
+            [
+                'parent_id' => $parentId,
+                'is_selectable' => $isSelectable,
+                'is_reportable' => in_array($name, self::REPORTABLE_CATEGORIES, true),
+            ],
         );
 
         if (! $realign) {

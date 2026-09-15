@@ -29,6 +29,8 @@ export interface ProductCategoryTreeNode {
   requires_quote: boolean
   /** Whether the node may be picked as a classification target (spec 0074). Per-node: a false one still parents selectable children. */
   is_selectable: boolean
+  /** Whether the node appears as a selectable row in the Gestione Richieste/Iscritti reports and dashboard. Per-node, never inherited, same shape as `is_selectable`. */
+  is_reportable: boolean
   /** The EFFECTIVE management mode: authored by the branch root, mirrored on every descendant server-side (spec 0077). */
   management_mode: CategoryManagementMode
   /** The EFFECTIVE single-offer rule: authored by the branch root, mirrored on every descendant server-side. */
@@ -138,6 +140,8 @@ export interface ProductCategoryDetail {
   requires_quote_source_category: { id: number; name: string } | null
   /** Whether the category may be picked as a classification target (spec 0074). */
   is_selectable: boolean
+  /** Whether the category appears as a selectable row in the Gestione Richieste/Iscritti reports and dashboard. Per-node, never inherited, same shape as `is_selectable`. */
+  is_reportable: boolean
   /** How Category Product lines behave on a card — authored by the branch ROOT, mirrored here on every descendant (spec 0077). */
   management_mode: CategoryManagementMode
   /** The root `management_mode` is inherited from; null when this category IS the root and owns the value. */
@@ -249,6 +253,8 @@ export interface CreateProductCategoryPayload {
   requires_quote?: boolean
   /** Whether the category may be picked as a classification target (spec 0074); omitted on create means selectable. */
   is_selectable?: boolean
+  /** Whether the category appears in the Gestione Richieste/Iscritti reports and dashboard; omitted on create means not reportable. */
+  is_reportable?: boolean
   /** Only ever sent for a ROOT category (`parent_id: null`): a child inherits the value and the server refuses a divergent one (spec 0077). */
   management_mode?: CategoryManagementMode
   /** Same root-only rule: only ever sent for a ROOT category, a child inherits it. */

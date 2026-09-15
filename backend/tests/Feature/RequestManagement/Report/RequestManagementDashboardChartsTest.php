@@ -33,12 +33,12 @@ if (! function_exists('dashboardCategoryTree2')) {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
 
         return [
-            'gol' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']),
-            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']),
-            'yisu' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']),
-            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']),
-            'consulenza' => ProductCategory::factory()->create(['name' => 'Consulenza']),
-            'apl' => ProductCategory::factory()->create(['name' => 'APL']),
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
         ];
     }
 }
@@ -165,20 +165,21 @@ it('emits one section per selected category, keyed and labelled like the report 
     dashboardNote(dashboardQuoteAdvanced($categories['gol']), now());
 
     $actor = dashboardViewAllActor();
-    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['consulenza', 'gol'], RequestManagementReportRowMode::All);
+    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), [(string) $categories['consulenza']->id, (string) $categories['gol']->id], RequestManagementReportRowMode::All);
 
-    // Config order (gol before consulenza), not the order the caller passed.
-    expect(array_map(fn ($c) => $c->key, $result->categories))->toBe(['gol', 'consulenza'])
-        ->and(array_map(fn ($c) => $c->label, $result->categories))->toBe(['GOL', 'Consulenza']);
+    // Spec 0131: branches are ordered by category name (ReportBranchResolver,
+    // Consulenza before GOL), not the order the caller passed.
+    expect(array_map(fn ($c) => $c->key, $result->categories))->toBe([(string) $categories['consulenza']->id, (string) $categories['gol']->id])
+        ->and(array_map(fn ($c) => $c->label, $result->categories))->toBe(['Consulenza', 'GOL']);
 });
 
 it('keeps a section for a category with no data at all, tiles and chart included (AC-008, AC-016)', function () {
-    dashboardCategoryTree2();
+    $categories = dashboardCategoryTree2();
     $actor = dashboardViewAllActor();
 
-    $result = buildDashboard($actor, '2026-09-01', '2026-09-30', ['gol'], RequestManagementReportRowMode::All);
+    $result = buildDashboard($actor, '2026-09-01', '2026-09-30', [(string) $categories['gol']->id], RequestManagementReportRowMode::All);
 
-    $gol = collect($result->categories)->firstWhere('key', 'gol');
+    $gol = collect($result->categories)->firstWhere('key', (string) $categories['gol']->id);
     $chart = collect($gol->charts)->firstWhere('scope', RequestManagementDashboardChartScope::Indicator);
 
     expect($gol)->not->toBeNull()
@@ -196,16 +197,17 @@ it('emits every indicator column in the overall tiles and in each section, even 
     dashboardNote(dashboardQuoteAdvanced($categories['apl']), now());
 
     $actor = dashboardViewAllActor();
-    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['apl'], RequestManagementReportRowMode::TotalOnly);
+    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), [(string) $categories['apl']->id], RequestManagementReportRowMode::TotalOnly);
 
-    $apl = collect($result->categories)->firstWhere('key', 'apl');
+    $apl = collect($result->categories)->firstWhere('key', (string) $categories['apl']->id);
 
     expect(array_map(fn ($item) => $item->key, $result->summary))->toBe(dashboardIndicatorKeys())
         ->and(array_map(fn ($item) => $item->key, $apl->summary))->toBe(dashboardIndicatorKeys());
 
-    // `aule_gestione` is NOT in the APL branch's applicability list: it is
-    // never computed, and still shows up as a 0 tile (rev-3 D-11) — exactly
-    // the cell the CSV prints for it (spec 0106 D-15).
+    // `aule_gestione` is a STUB column (spec 0131: never computed for ANY
+    // branch, unlike the former per-branch applicability list) and still
+    // shows up as a 0 tile (rev-3 D-11) — exactly the cell the CSV prints
+    // for it.
     expect(collect($apl->summary)->firstWhere('key', 'aule_gestione')->value)->toBe(0);
 });
 
@@ -218,7 +220,7 @@ it('total_only yields ONLY scope=indicator charts (AC-004)', function () {
     dashboardNote(dashboardQuoteAdvanced($categories['gol']), now());
 
     $actor = dashboardViewAllActor();
-    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol'], RequestManagementReportRowMode::TotalOnly);
+    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), [(string) $categories['gol']->id], RequestManagementReportRowMode::TotalOnly);
 
     expect(dashboardScopes($result))->toBe(['indicator']);
 });
@@ -228,7 +230,7 @@ it('operators_only yields ONLY scope=operator charts (AC-004)', function () {
     dashboardNote(dashboardQuoteAdvanced($categories['gol'], User::factory()->create()->id), now());
 
     $actor = dashboardViewAllActor();
-    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol'], RequestManagementReportRowMode::OperatorsOnly);
+    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), [(string) $categories['gol']->id], RequestManagementReportRowMode::OperatorsOnly);
 
     expect(dashboardScopes($result))->toBe(['operator']);
 });
@@ -238,9 +240,9 @@ it('all yields both scopes, the indicator chart first inside its section (AC-004
     dashboardNote(dashboardQuoteAdvanced($categories['gol'], User::factory()->create()->id), now());
 
     $actor = dashboardViewAllActor();
-    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol'], RequestManagementReportRowMode::All);
+    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), [(string) $categories['gol']->id], RequestManagementReportRowMode::All);
 
-    $gol = collect($result->categories)->firstWhere('key', 'gol');
+    $gol = collect($result->categories)->firstWhere('key', (string) $categories['gol']->id);
     $scopes = array_map(fn ($c) => $c->scope->value, $gol->charts);
 
     expect($scopes)->toContain('indicator')
@@ -259,9 +261,9 @@ it('scope=indicator has one point per indicator column, in the report column ord
     dashboardNote(dashboardQuoteAdvanced($categories['gol']), now());
 
     $actor = dashboardViewAllActor();
-    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol'], RequestManagementReportRowMode::TotalOnly);
+    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), [(string) $categories['gol']->id], RequestManagementReportRowMode::TotalOnly);
 
-    $chart = collect(collect($result->categories)->firstWhere('key', 'gol')->charts)->first();
+    $chart = collect(collect($result->categories)->firstWhere('key', (string) $categories['gol']->id)->charts)->first();
     $expected = array_map(fn (string $key) => __("request-management-report.headers.{$key}"), dashboardIndicatorKeys());
 
     expect(array_map(fn ($p) => $p->label, $chart->points))->toBe($expected)
@@ -276,9 +278,9 @@ it('scope=operator has one point per GA2, including Non assegnato with the CSV l
     dashboardUnassignedCallback($categories['gol']);
 
     $actor = dashboardViewAllActor();
-    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol'], RequestManagementReportRowMode::OperatorsOnly);
+    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), [(string) $categories['gol']->id], RequestManagementReportRowMode::OperatorsOnly);
 
-    $gol = collect($result->categories)->firstWhere('key', 'gol');
+    $gol = collect($result->categories)->firstWhere('key', (string) $categories['gol']->id);
     $telefonate = collect($gol->charts)->first(fn ($c) => $c->indicatorKey === 'telefonate');
 
     expect($telefonate)->not->toBeNull();
@@ -304,10 +306,10 @@ it('operator points are ordered by value desc then label asc, identically across
     $actor = dashboardViewAllActor();
     $range = [now()->subDay()->toDateString(), now()->addDay()->toDateString()];
 
-    $first = buildDashboard($actor, ...$range, categoryKeys: ['gol'], rowMode: RequestManagementReportRowMode::OperatorsOnly);
-    $second = buildDashboard($actor, ...$range, categoryKeys: ['gol'], rowMode: RequestManagementReportRowMode::OperatorsOnly);
+    $first = buildDashboard($actor, ...$range, categoryKeys: [(string) $categories['gol']->id], rowMode: RequestManagementReportRowMode::OperatorsOnly);
+    $second = buildDashboard($actor, ...$range, categoryKeys: [(string) $categories['gol']->id], rowMode: RequestManagementReportRowMode::OperatorsOnly);
 
-    $chartOf = fn ($result) => collect(collect($result->categories)->firstWhere('key', 'gol')->charts)
+    $chartOf = fn ($result) => collect(collect($result->categories)->firstWhere('key', (string) $categories['gol']->id)->charts)
         ->first(fn ($c) => $c->indicatorKey === 'telefonate');
 
     $chart = $chartOf($first);
@@ -329,9 +331,9 @@ it('keeps the indicator chart of a branch whose every value is 0 (AC-008, rev-3)
     dashboardNote(dashboardQuoteAdvanced($categories['gol']), now());
 
     $actor = dashboardViewAllActor();
-    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol', 'apl'], RequestManagementReportRowMode::TotalOnly);
+    $result = buildDashboard($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), [(string) $categories['gol']->id, (string) $categories['apl']->id], RequestManagementReportRowMode::TotalOnly);
 
-    $apl = collect($result->categories)->firstWhere('key', 'apl');
+    $apl = collect($result->categories)->firstWhere('key', (string) $categories['apl']->id);
     $chart = collect($apl->charts)->first();
 
     expect($chart)->not->toBeNull()
@@ -339,12 +341,12 @@ it('keeps the indicator chart of a branch whose every value is 0 (AC-008, rev-3)
 });
 
 it('emits no operator chart for a branch with no GA2 row at all (AC-008, rev-3)', function () {
-    dashboardCategoryTree2();
+    $categories = dashboardCategoryTree2();
     $actor = dashboardViewAllActor();
 
-    $result = buildDashboard($actor, '2026-09-01', '2026-09-30', ['gol'], RequestManagementReportRowMode::OperatorsOnly);
+    $result = buildDashboard($actor, '2026-09-01', '2026-09-30', [(string) $categories['gol']->id], RequestManagementReportRowMode::OperatorsOnly);
 
-    expect(collect($result->categories)->firstWhere('key', 'gol')->charts)->toBe([]);
+    expect(collect($result->categories)->firstWhere('key', (string) $categories['gol']->id)->charts)->toBe([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -358,9 +360,9 @@ it('an actor scoped to their own requests only sees their own numbers (AC-009)',
     dashboardNote(dashboardQuoteAdvanced($categories['gol'], $operator->id), now());
     dashboardNote(dashboardQuoteAdvanced($categories['gol'], User::factory()->create()->id), now());
 
-    $result = buildDashboard($operator, now()->subDay()->toDateString(), now()->addDay()->toDateString(), ['gol'], RequestManagementReportRowMode::TotalOnly);
+    $result = buildDashboard($operator, now()->subDay()->toDateString(), now()->addDay()->toDateString(), [(string) $categories['gol']->id], RequestManagementReportRowMode::TotalOnly);
 
-    $gol = collect($result->categories)->firstWhere('key', 'gol');
+    $gol = collect($result->categories)->firstWhere('key', (string) $categories['gol']->id);
 
     expect(collect($gol->summary)->firstWhere('key', 'telefonate')->value)->toBe(1); // only the operator's own note
 });

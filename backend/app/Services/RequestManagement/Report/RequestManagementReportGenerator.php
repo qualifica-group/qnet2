@@ -13,7 +13,7 @@ use App\RequestManagement\RequestModule;
 /**
  * Top-level orchestrator of the report's file generation (spec 0106,
  * MT-01..MT-03; rev-2 D-11/D-13). `rows()` (spec 0107 D-2-bis, point 1) is
- * the reusable core — resolves the six branches ONCE, keeps only the ones in
+ * the reusable core — resolves the reportable branches ONCE, keeps only the ones in
  * $categoryKeys (AC-032 — a FILTER on which already-computed branches/rows
  * are written, never a different calculation) and builds every one of their
  * ReportRow — while `generate()` is `rows()` plus the file-specific part:

@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'manager_labels', 'inherits_manager_labels'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_reportable', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'manager_labels', 'inherits_manager_labels'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -63,6 +63,10 @@ class ProductCategory extends BaseModel
             // requires_quote): a container category can be unselectable while
             // its children stay selectable, which is the whole point.
             'is_selectable' => 'boolean',
+            // Spec 0131 — owned by THIS node and never inherited, same shape
+            // as is_selectable: whether the category (with its subtree) is a
+            // row of the Gestione Richieste / Iscritti report.
+            'is_reportable' => 'boolean',
             // Spec 0077 — owned by the branch ROOT and mirrored on every
             // descendant by CategoryManagementModeInheritance, same shape as
             // requires_quote: a child's own column is never authored

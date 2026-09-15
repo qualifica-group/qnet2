@@ -55,7 +55,7 @@ function asOperatorOf(Opportunity $opportunity, User $user): Quote
 it('closes administration and configuration to the supervisor, selects aside', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $supervisor = User::query()->where('email', 'commercialegol@qualificagroup.it')->firstOrFail();
+    $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
 
     foreach (['roles', 'custom-fields', 'company-sites', 'opportunities', 'tasks'] as $resource) {
         foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
@@ -77,7 +77,7 @@ it('closes administration and configuration to the supervisor, selects aside', f
 it('lets the supervisor view and edit every module of its mansione', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $supervisor = User::query()->where('email', 'supportocommerciale@qualificagroup.it')->firstOrFail();
+    $supervisor = User::query()->where('email', 'fabrizio.aliberti@qualificagroup.com')->firstOrFail();
 
     $modules = [
         'projects', 'campaigns', 'leads', 'request-management', 'products', 'product-categories',
@@ -105,7 +105,7 @@ it('lets the supervisor view and edit every module of its mansione', function ()
 it('gives the coordinator the catalogue, anagrafiche and enrollees, not the status configurator nor the rewards', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $coordinator = User::query()->where('email', 'social@qualificagroup.it')->firstOrFail();
+    $coordinator = User::query()->where('email', 'umberto.santamaria@qualificagroup.com')->firstOrFail();
 
     foreach (['products', 'product-categories', 'registries', 'referents', 'enrollee-management'] as $resource) {
         expect($coordinator->can("{$resource}.view"))->toBeTrue("{$resource}.view")
@@ -120,7 +120,7 @@ it('gives the coordinator the catalogue, anagrafiche and enrollees, not the stat
 it('restricts the commercial role to request-management plus the selects it reads', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $commercial = User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
+    $commercial = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
 
     expect($commercial->can('request-management.viewAny'))->toBeTrue()
         ->and($commercial->can('request-management.view'))->toBeTrue()
@@ -178,7 +178,7 @@ it('restricts the commercial role to request-management plus the selects it read
 it('restricts the marketing role to the marketing-leads modules plus the selects they read', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $marketing = User::query()->where('email', 'social2@qualificagroup.it')->firstOrFail();
+    $marketing = User::query()->where('email', 'sabino.figurelli@qualificagroup.com')->firstOrFail();
 
     // The "Marketing e Lead" group in full, writes included.
     foreach (['projects', 'campaigns', 'leads', 'pipeline-statuses'] as $resource) {
@@ -210,7 +210,7 @@ it('restricts the marketing role to the marketing-leads modules plus the selects
 it('leaves the marketing menu with the marketing-leads group only', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $routes = visibleRoutes(User::query()->where('email', 'social2@qualificagroup.it')->firstOrFail());
+    $routes = visibleRoutes(User::query()->where('email', 'sabino.figurelli@qualificagroup.com')->firstOrFail());
 
     // `/dashboard` carries no permission: public to every authenticated user.
     expect($routes)->toBe(['/dashboard', '/projects', '/campaigns', '/leads', '/imports', '/pipeline-statuses']);
@@ -219,7 +219,7 @@ it('leaves the marketing menu with the marketing-leads group only', function () 
 it('blocks the marketing role server-side on the modules its menu hides', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    Sanctum::actingAs(User::query()->where('email', 'social2@qualificagroup.it')->firstOrFail());
+    Sanctum::actingAs(User::query()->where('email', 'sabino.figurelli@qualificagroup.com')->firstOrFail());
 
     foreach (['projects', 'campaigns', 'leads'] as $domain) {
         $this->getJson("/api/tables/{$domain}/columns")->assertOk();
@@ -242,7 +242,7 @@ it('blocks the marketing role server-side on the modules its menu hides', functi
 it('shows the supervisor menu exactly the modules of its mansione', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $routes = visibleRoutes(User::query()->where('email', 'commercialegol@qualificagroup.it')->firstOrFail());
+    $routes = visibleRoutes(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail());
 
     expect($routes)->not->toContain('/users', '/roles', '/custom-fields', '/migrations')
         ->and($routes)->not->toContain('/business-functions', '/sectors', '/tags', '/sources')
@@ -262,7 +262,7 @@ it('scopes the commercial request list to the offers they operate', function () 
     $this->seed(QualificaOperatorSeeder::class);
 
     $lazio = User::query()->where('email', 'biagio.fusco@qualificagroup.it')->firstOrFail();
-    $campania = User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
+    $campania = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
 
     $own = asOperatorOf(Opportunity::factory()->create(), $lazio);
     $othersRequest = asOperatorOf(Opportunity::factory()->create(), $campania);
@@ -284,7 +284,7 @@ it('scopes the commercial request list to the offers they operate', function () 
 it('closes the commercial delete of a request, row action and bulk engine alike', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $actor = User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
+    $actor = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
     $quote = asOperatorOf(Opportunity::factory()->create(), $actor);
 
     Sanctum::actingAs($actor);
@@ -310,7 +310,7 @@ it('closes the commercial delete of a request, row action and bulk engine alike'
 it('lets the commercial role create a referent, for the create form quick-create "+"', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    Sanctum::actingAs(User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail());
+    Sanctum::actingAs(User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail());
 
     // Both endpoints behind the "+" are gated by `referents.create`: the live
     // duplicate check the dialog runs while typing (shared with the anagrafica
@@ -326,7 +326,7 @@ it('lets the commercial role create a referent, for the create form quick-create
 it('lets the commercial role write a collaborative note on a request', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $actor = User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
+    $actor = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
     // A request of theirs: note authorization runs the same D-3 record
     // boundary (RequestManagementNotable), which no longer opens via viewAll.
     $opportunity = Opportunity::factory()->create();
@@ -351,7 +351,7 @@ it('lets the supervisor and the commercial role list, upload and remove request 
 
     $opportunity = Opportunity::factory()->create();
 
-    foreach (['commercialegol@qualificagroup.it', 'customer@qualificagroup.it'] as $email) {
+    foreach (['rosa.falzarano@qualificagroup.com', 'marco.baldi@qualificagroup.com'] as $email) {
         $actor = User::query()->where('email', $email)->firstOrFail();
 
         expect($actor->can('request-management.viewDocuments'))->toBeTrue($email);
@@ -390,7 +390,7 @@ it('leaves the commercial menu with request-management only', function () {
 it('blocks the commercial role server-side on the modules its menu hides', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    Sanctum::actingAs(User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail());
+    Sanctum::actingAs(User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail());
 
     // Its own module answers; every other domain is refused by the definition's
     // viewAny, so a hand-typed URL or a direct API call gains nothing.
@@ -424,10 +424,10 @@ it('blocks the commercial role server-side on the modules its menu hides', funct
 it('leaves the select-only resources list-readable, writes excluded', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    Sanctum::actingAs(User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail());
+    Sanctum::actingAs(User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail());
     $this->getJson('/api/tables/registries/columns')->assertOk();
 
-    Sanctum::actingAs(User::query()->where('email', 'commercialegol@qualificagroup.it')->firstOrFail());
+    Sanctum::actingAs(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail());
     $this->getJson('/api/tables/users/columns')->assertOk();
     // The writes behind them are still refused (`referent-types.create`).
     $this->postJson('/api/referent-types', ['name' => 'Nope'])->assertForbidden();
@@ -436,7 +436,7 @@ it('leaves the select-only resources list-readable, writes excluded', function (
 it('blocks the supervisor server-side on administration and configuration', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    Sanctum::actingAs(User::query()->where('email', 'commercialegol@qualificagroup.it')->firstOrFail());
+    Sanctum::actingAs(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail());
 
     // The modules it does not hold answer nothing.
     foreach (['roles', 'company-sites', 'custom-fields', 'opportunities'] as $domain) {

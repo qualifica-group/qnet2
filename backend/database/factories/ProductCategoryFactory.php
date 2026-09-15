@@ -38,6 +38,12 @@ class ProductCategoryFactory extends Factory
         return $this->state(fn (): array => ['parent_id' => $parent->id]);
     }
 
+    /** A category shown as a row of the Gestione Richieste / Iscritti report, subtree included (spec 0131). */
+    public function reportable(): static
+    {
+        return $this->state(fn (): array => ['is_reportable' => true]);
+    }
+
     /** A category that opts out of inheriting its ancestors' attributes in EVERY usage context. */
     public function notInheriting(): static
     {

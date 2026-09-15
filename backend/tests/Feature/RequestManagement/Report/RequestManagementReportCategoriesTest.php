@@ -24,12 +24,12 @@ if (! function_exists('reportCategoryTree')) {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
 
         return [
-            'gol' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']),
-            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']),
-            'yisu' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']),
-            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']),
-            'consulenza' => ProductCategory::factory()->create(['name' => 'Consulenza']),
-            'apl' => ProductCategory::factory()->create(['name' => 'APL']),
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
         ];
     }
 }
@@ -86,7 +86,7 @@ if (! function_exists('reportActorWith')) {
 // AC-026
 // ---------------------------------------------------------------------------
 
-it('returns only the branches with at least one request in scope, key+label, in config order (AC-026)', function () {
+it('returns only the branches with at least one request in scope, key+label, by name (spec 0131, AC-026)', function () {
     $categories = reportCategoryTree();
     reportQuote($categories['consulenza']);
     reportQuote($categories['apl']);
@@ -99,10 +99,12 @@ it('returns only the branches with at least one request in scope, key+label, in 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
 
     $response->assertJsonPath('success', true);
+    // Spec 0131: branches are ordered by category name (ReportBranchResolver),
+    // not by any config order any more.
     expect($response->json('data.categories'))->toBe([
-        ['key' => 'gol', 'label' => 'GOL'],
-        ['key' => 'consulenza', 'label' => 'Consulenza'],
-        ['key' => 'apl', 'label' => 'APL'],
+        ['key' => (string) $categories['apl']->id, 'label' => 'APL'],
+        ['key' => (string) $categories['consulenza']->id, 'label' => 'Consulenza'],
+        ['key' => (string) $categories['gol']->id, 'label' => 'GOL'],
     ]);
 });
 
@@ -131,7 +133,7 @@ it('respects the actor scope: an operator of only a Consulenza request sees only
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
 
-    expect($response->json('data.categories'))->toBe([['key' => 'consulenza', 'label' => 'Consulenza']]);
+    expect($response->json('data.categories'))->toBe([['key' => (string) $categories['consulenza']->id, 'label' => 'Consulenza']]);
 });
 
 it('returns an empty list when the actor visibility reaches nothing (AC-027)', function () {
@@ -158,7 +160,7 @@ it('lists a branch whose only request falls outside any future range, all-time (
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
 
-    expect(array_column($response->json('data.categories'), 'key'))->toContain('yisu');
+    expect(array_column($response->json('data.categories'), 'key'))->toContain((string) $categories['yisu']->id);
 });
 
 // ---------------------------------------------------------------------------
@@ -175,5 +177,5 @@ it('lists GOL when the only request is classified on a descendant category (AC-0
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
 
-    expect($response->json('data.categories'))->toBe([['key' => 'gol', 'label' => 'GOL']]);
+    expect($response->json('data.categories'))->toBe([['key' => (string) $categories['gol']->id, 'label' => 'GOL']]);
 });

@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## REPORT RICHIESTE/ISCRITTI — CATEGORIE DINAMICHE `is_reportable` (spec 0131, 2026-09-15) — VERDE, NON COMMITTATO
+
+- `product_categories.is_reportable` (default false, per-nodo, mai ereditato, come `is_selectable`): migrazione
+  `2026_09_15_140000` con backfill per nome dei 6 rami storici + DIL; `QualificaCatalogSeeder::REPORTABLE_CATEGORIES`
+  (solo alla creazione). Esposto in Resource, store/update, field authz, tree payload, colonna tabella categorie.
+- `ReportBranchResolver::resolve()`: un ramo per categoria reportable, `key = (string) id`, ordine per nome,
+  `categoryIds` = nodo + discendenti (una query). `keys()` = allow-list di `category_keys.*` nei FormRequest.
+- Rimossi `config('request-management-report.branches')` e `ReportBranch::$columns`: tutti gli indicatori reali
+  per ogni ramo (stub restano 0). ExportRun vecchi con chiavi `gol` non matchano piu' nessun ramo.
+- `QuoteWorkflowMigrationTest` rollback `--step` portato a 74. Frontend: toggle "Visibile nei report" nelle
+  Regole di gestione. Da fare in locale: `php artisan migrate`.
+
 ## DASHBOARD GESTIONE RICHIESTE — "N. TELEFONATE" NON SI AGGIORNAVA (2026-09-15) — VERDE, NON COMMITTATO
 
 - Causa: frontend. Dashboard montata (modale / dialog note di riga) + `refetchOnWindowFocus: false`; la creazione nota
@@ -31,9 +43,17 @@
 Fonte: `Mansionario Operatori_Abilitazioni.csv` (utente). Catena `QualificaProductionDataSeeder`: Template → Catalog →
 TaskTaxonomy → `TestUsersSeeder` (ora SOLO Ciro Cacciapuoti super-admin, attore dell'import) → LegacyImport →
 BusinessFunctionLink → **`QualificaOperatorSeeder`** (sostituisce `QualificaOperatorSiteLinkSeeder`, rimosso).
-- `QualificaCatalog/OperatorRoster.php`: 71 righe (3 senza email saltate). Sedi = CITTA', espanse a runtime su TUTTI i
-  siti con alias `== citta'` o `citta' + ' ...'` (primo per alias = fisico, resto = remoti). "Tutte" = solo fisico +
-  `covers_all_product_categories`. Categorie per nome catalogo; "APL <regione>" = ramo `APL`; **Consulenza mai assegnata
+- `QualificaCatalog/OperatorRoster.php`: 67 righe dall'xlsx `Mansionario_Operatori_Abilitazioni_aggiornato (2)`; righe in
+  GIALLO escluse (Miriam Del Giudice, Maddalena Vitale, Elisa Finizio, Imma Pascale: account inesistenti). Shape riga:
+  `[first, last, email, job, role, physicalCity, cities, categories]` (nome/cognome separati a mano). Email = chiave
+  naturale: account gia' seedati con email vecchie NON vengono rinominati. Nota: `biagio.fusco@qualificagroup.it` (.it
+  nel file), `yailin.calderon@` per "Yadin De Pina Calderon".
+- Anagrafica: `Concerns/SyncsPersonName` upserta la `PersonalData` (individual, first/last) di ogni operatore e di Ciro
+  Cacciapuoti (`TestUsersSeeder::TEST_USERS` ora `first_name`/`last_name`); `users.name` = "Nome Cognome".
+  Sedi = CITTA', espanse a runtime su TUTTI i siti con alias `== citta'` o `citta' + ' ...'` (primo per alias = fisico,
+  resto = remoti). **"no operatore" (7 profili: coordinatori/supervisori/marketing) = `[]` sedi abilitate e `[]` categorie**:
+  solo sede fisica, nessuna competenza, `covers_all_product_categories` sempre false (converge) → mai assegnabili.
+  Costante jolly `OperatorRoster::ALL` rimossa. Categorie per nome catalogo; "APL <regione>" = ramo `APL`; **Consulenza mai assegnata
   e NON collegata a COMMERCIALE** (decisione utente). Pomezia/Gaeta: nessuna sede legacy → warning.
 - `QualificaRoleSeeder` + `QualificaCatalog/OperatorRoleCatalogue.php`: ruoli a blocchi, NOMI RUOLO IN ITALIANO (richiesta
   utente; costanti PHP in inglese). `supervisore-commerciale` ALLINEATO AL CSV (CSV aggiornato 15:34: prodotti + categorie
@@ -43,9 +63,9 @@ BusinessFunctionLink → **`QualificaOperatorSeeder`** (sostituisce `QualificaOp
   configuratore, premi, richieste modifica; + Gestione Iscritti completa), `marketing`, `commerciale` (anche senza `report`), `commerciale-iscritti` (+ iscritti
   viewAny/view/viewSite), `supervisore-didattica` (+ viewSite richieste e iscritti). I vecchi ruoli inglesi
   `supervisor`/`commercial` (`RETIRED_ROLES`) vengono CANCELLATI a ogni run (chi li aveva resta senza quel ruolo).
-- Password: `seeding.test_users_password` SOLO alla creazione; ruolo/sedi/competenza riconvergono a ogni run.
+- Password: `seeding.password` SOLO alla creazione; ruolo/sedi/competenza riconvergono a ogni run.
 - Test: `Seeding/QualificaOperatorSeederTest`, `Users/QualificaRoleMatrixTest` (ex TestUsersSeederTest),
-  `FieldChangeRequests/QualificaRolePermissionsTest`; gli altri test ruolo usano gli account reali .it.
+  `FieldChangeRequests/QualificaRolePermissionsTest`; gli altri test ruolo usano gli account reali .com.
 
 ## SPEC 0130 GESTIONE ISCRITTI (`enrollee-management`) — VERDE, COMMITTATO c86b49e5 (2026-09-15)
 

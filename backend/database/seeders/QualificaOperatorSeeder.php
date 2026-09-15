@@ -8,6 +8,7 @@ use App\Models\OperationalSite;
 use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\Concerns\SyncsPersonName;
 use Database\Seeders\QualificaCatalog\OperatorRoster;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
@@ -15,7 +16,8 @@ use Illuminate\Support\Str;
 
 /**
  * The client's real operators (OperatorRoster, user directive 2026-09-15):
- * one account per roster row, with its mansione's role, its Sedi (spec 0103:
+ * one account per roster row, with its anagrafica's first and last name, its
+ * mansione's role, its Sedi (spec 0103:
  * the physical one plus every remote one) and its product-category
  * competence (spec 0111 / 0129).
  *
@@ -35,6 +37,8 @@ use Illuminate\Support\Str;
  */
 class QualificaOperatorSeeder extends Seeder
 {
+    use SyncsPersonName;
+
     /** @var Collection<int, OperationalSite> */
     private Collection $sites;
 
@@ -51,11 +55,14 @@ class QualificaOperatorSeeder extends Seeder
         $this->competenceByCategoryName = $this->resolveCompetencePairs();
 
         // Step 3: one account per row, with its employment profile.
-        foreach (OperatorRoster::OPERATORS as [$name, $email, $job, $role, $physicalCity, $cities, $categories]) {
-            $user = $this->seedAccount($name, $email, $role);
+        foreach (OperatorRoster::OPERATORS as [$firstName, $lastName, $email, $job, $role, $physicalCity, $cities, $categories]) {
+            $user = $this->seedAccount("{$firstName} {$lastName}", $email, $role);
+            $this->syncPersonName($user, $firstName, $lastName);
+
+            // Never the wildcard: a profile seeded as "Tutte" before converges.
             $employment = $user->employment()->updateOrCreate([], [
                 'job_description' => $job,
-                'covers_all_product_categories' => $categories === OperatorRoster::ALL,
+                'covers_all_product_categories' => false,
             ]);
 
             $this->syncSites($employment, $email, $physicalCity, $cities);
@@ -73,7 +80,7 @@ class QualificaOperatorSeeder extends Seeder
         $user->email_verified_at ??= now();
 
         if (! $user->exists) {
-            $user->password = config('seeding.test_users_password');
+            $user->password = config('seeding.password');
         }
 
         $user->save();
@@ -85,17 +92,15 @@ class QualificaOperatorSeeder extends Seeder
     /**
      * The physical Sede is the FIRST site of the physical city (by alias, so
      * "FRATTAMAGGIORE 1 (HQ)" before "Frattamaggiore 2"); every other site of
-     * the enabled cities is a remote membership. "Tutte" keeps the physical
-     * one only (see OperatorRoster).
+     * the enabled cities is a remote membership.
      *
-     * @param  string|array<int, string>  $cities
+     * @param  array<int, string>  $cities
      */
-    private function syncSites(EmploymentProfile $employment, string $email, string $physicalCity, string|array $cities): void
+    private function syncSites(EmploymentProfile $employment, string $email, string $physicalCity, array $cities): void
     {
         $physical = $this->sitesOfCity($physicalCity, $email)->first();
-        $enabled = $cities === OperatorRoster::ALL ? [] : $cities;
 
-        $membership = collect($enabled)
+        $membership = collect($cities)
             ->flatMap(fn (string $city): Collection => $this->sitesOfCity($city, $email))
             ->reject(fn (OperationalSite $site): bool => $site->is($physical))
             ->mapWithKeys(fn (OperationalSite $site): array => [$site->id => ['is_primary' => false]]);
@@ -132,18 +137,13 @@ class QualificaOperatorSeeder extends Seeder
     }
 
     /**
-     * Delete-and-recreate from the roster. A wildcard profile carries no rows
-     * (spec 0129 D-2).
+     * Delete-and-recreate from the roster.
      *
-     * @param  string|array<int, string>  $categories
+     * @param  array<int, string>  $categories
      */
-    private function syncCompetence(EmploymentProfile $employment, string $email, string|array $categories): void
+    private function syncCompetence(EmploymentProfile $employment, string $email, array $categories): void
     {
         $employment->productLines()->delete();
-
-        if ($categories === OperatorRoster::ALL) {
-            return;
-        }
 
         foreach ($categories as $categoryName) {
             $pair = $this->competenceByCategoryName[$categoryName] ?? null;
@@ -168,8 +168,7 @@ class QualificaOperatorSeeder extends Seeder
     private function resolveCompetencePairs(): array
     {
         $names = collect(OperatorRoster::OPERATORS)
-            ->pluck(6)
-            ->filter(fn (string|array $categories): bool => is_array($categories))
+            ->pluck(7)
             ->flatten()
             ->unique()
             ->all();

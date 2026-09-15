@@ -45,7 +45,7 @@ it('composes structure, catalogue and operators in one run', function (): void {
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->count())->toBe(1)
         ->and(Product::query()->count())->toBe(266)
         ->and(User::query()->where('email', 'ciro.cacciapuoti@qualificagroup.com')->exists())->toBeTrue()
-        ->and(User::query()->where('email', 'commercialegol@qualificagroup.it')->exists())->toBeTrue();
+        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->exists())->toBeTrue();
 });
 
 it('seeds the super-admin before the legacy import, so an actor always exists', function (): void {
@@ -67,7 +67,7 @@ it('gives the operators their operational sites, so they are selectable as opera
     // Spec 0103: the Operatore select filters users on this very pivot
     // membership, so an account without an employment profile never appears
     // in the list.
-    $employment = User::query()->where('email', 'commercialegol@qualificagroup.it')
+    $employment = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')
         ->with('employment.operationalSites')->firstOrFail()->employment;
 
     expect($employment->primaryOperationalSiteId)->toBe($site->getKey());
@@ -96,7 +96,7 @@ it('is idempotent: a second run duplicates nothing', function (): void {
     expect(Source::query()->count())->toBe(10)
         ->and(Product::query()->count())->toBe(266)
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)
-        ->and(User::query()->where('email', 'commercialegol@qualificagroup.it')->count())->toBe(1);
+        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1);
 });
 
 it('runs the q-crm import once, without the catalogue step asking again', function (): void {

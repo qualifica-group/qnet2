@@ -2,6 +2,7 @@
 
 use App\Models\ExportRun;
 use App\Models\OperationalSite;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -31,7 +32,7 @@ function sitesDashboardQuery(array $overrides = []): array
     return array_merge([
         'date_from' => '2026-09-01',
         'date_to' => '2026-09-30',
-        'category_keys' => array_keys((array) config('request-management-report.branches')),
+        'category_keys' => app(ReportBranchResolver::class)->keys(),
         'row_mode' => 'all',
     ], $overrides);
 }

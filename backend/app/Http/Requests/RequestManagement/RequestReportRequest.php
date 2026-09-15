@@ -6,6 +6,7 @@ namespace App\Http\Requests\RequestManagement;
 
 use App\Enums\RequestManagementReportRowMode;
 use App\RequestManagement\RequestModule;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
 use App\Services\RequestManagement\Report\ReportSiteAvailabilityResolver;
 use Illuminate\Foundation\Http\FormRequest;
@@ -23,10 +24,10 @@ use Illuminate\Validation\Rule;
  * the choice picks an ExportWriter, so an unknown value must 422 here rather
  * than reach ExportWriterFactory.
  *
- * `category_keys.*` is validated against the config allow-list
- * (backend.md §8): an unknown key 422s HERE, before it can ever reach a
- * query — the controller/generator translate the validated keys to
- * category ids via config, the raw string never touches SQL.
+ * `category_keys.*` is validated against the reportable-category allow-list
+ * (ReportBranchResolver::keys(), spec 0131; backend.md §8): an unknown key
+ * 422s HERE, before it can ever reach a query — the generator matches the
+ * validated keys to resolved branches, the raw string never touches SQL.
  *
  * Authorization is intentionally NOT handled here (stays in the controller:
  * the `{module}.report` gate), same convention as every other FormRequest of
@@ -54,7 +55,7 @@ class RequestReportRequest extends FormRequest
             'date_from' => ['required', 'date_format:Y-m-d'],
             'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'category_keys' => ['required', 'array', 'min:1'],
-            'category_keys.*' => ['required', 'string', Rule::in($this->configuredCategoryKeys())],
+            'category_keys.*' => ['required', 'string', Rule::in(app(ReportBranchResolver::class)->keys())],
             'row_mode' => ['required', 'string', Rule::in(array_map(
                 static fn (RequestManagementReportRowMode $mode): string => $mode->value,
                 RequestManagementReportRowMode::cases(),
@@ -124,13 +125,5 @@ class RequestReportRequest extends FormRequest
             app(ReportSiteAvailabilityResolver::class)->available($this->user(), RequestModule::fromRequest($this)),
             'key',
         );
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function configuredCategoryKeys(): array
-    {
-        return array_keys((array) config('request-management-report.branches'));
     }
 }

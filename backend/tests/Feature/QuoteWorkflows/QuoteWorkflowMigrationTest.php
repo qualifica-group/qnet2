@@ -116,9 +116,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // backfill, and spec 0129's
     // `2026_09_15_130000_add_competence_scope_to_employment_profiles` (73rd),
     // the user-competence wildcard flag plus the nullable category on
-    // `employment_product_lines` rows. Adding a migration means bumping this
+    // `employment_product_lines` rows, and spec 0131's
+    // `2026_09_15_140000_add_is_reportable_to_product_categories_table`
+    // (74th), the per-node report flag. Adding a migration means bumping this
     // number.
-    Artisan::call('migrate:rollback', ['--step' => 73]);
+    Artisan::call('migrate:rollback', ['--step' => 74]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

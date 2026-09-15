@@ -5,6 +5,7 @@ use App\Jobs\GenerateRequestManagementReportJob;
 use App\Models\ExportRun;
 use App\Models\OperationalSite;
 use App\Services\RequestManagement\Report\Dashboard\RequestManagementDashboardBuilder;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use App\Services\RequestManagement\Report\ReportSiteFilter;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
@@ -70,7 +71,7 @@ it('gives the dashboard summary the CSV TOTALE numbers under the same Sede filte
         $actor,
         now()->subDay()->toDateString(),
         now()->addDay()->toDateString(),
-        ['gol'],
+        [(string) $fixture['gol']->id],
         RequestManagementReportRowMode::All,
         null,
         $sites,
@@ -215,7 +216,7 @@ it('generates on every Sede for a run whose state has no site_keys (AC-013)', fu
             'date_from' => now()->subDay()->toDateString(),
             'date_to' => now()->addDay()->toDateString(),
             'locale' => 'it',
-            'category_keys' => array_keys((array) config('request-management-report.branches')),
+            'category_keys' => app(ReportBranchResolver::class)->keys(),
             'row_mode' => 'all',
             // no site_keys: the shape every run frozen before spec 0112 has
         ],
@@ -239,7 +240,7 @@ it('re-reads the frozen site_keys when the job runs (AC-013)', function () {
             'date_from' => now()->subDay()->toDateString(),
             'date_to' => now()->addDay()->toDateString(),
             'locale' => 'it',
-            'category_keys' => array_keys((array) config('request-management-report.branches')),
+            'category_keys' => app(ReportBranchResolver::class)->keys(),
             'row_mode' => 'all',
             'site_keys' => [(string) $fixture['b']->id],
         ],

@@ -6,6 +6,7 @@ namespace App\Http\Requests\RequestManagement;
 
 use App\Enums\RequestManagementReportRowMode;
 use App\RequestManagement\RequestModule;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
 use App\Services\RequestManagement\Report\ReportSiteAvailabilityResolver;
 use Illuminate\Foundation\Http\FormRequest;
@@ -15,7 +16,7 @@ use Illuminate\Validation\Rule;
  * Validates GET /api/request-management/report/dashboard (spec 0107
  * data_contract): the same four filters as POST /report (spec 0106 rev-2),
  * read from the query string instead of the body — `category_keys.*` is
- * validated against the config allow-list here too, so an unknown key 422s
+ * validated against the reportable-category allow-list here too, so an unknown key 422s
  * before it can ever reach a query (backend.md §8).
  *
  * Authorization is intentionally NOT handled here (stays in the controller:
@@ -43,7 +44,7 @@ class RequestDashboardRequest extends FormRequest
             'date_from' => ['required', 'date_format:Y-m-d'],
             'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'category_keys' => ['required', 'array', 'min:1'],
-            'category_keys.*' => ['required', 'string', Rule::in($this->configuredCategoryKeys())],
+            'category_keys.*' => ['required', 'string', Rule::in(app(ReportBranchResolver::class)->keys())],
             'row_mode' => ['required', 'string', Rule::in(array_map(
                 static fn (RequestManagementReportRowMode $mode): string => $mode->value,
                 RequestManagementReportRowMode::cases(),
@@ -112,13 +113,5 @@ class RequestDashboardRequest extends FormRequest
             app(ReportSiteAvailabilityResolver::class)->available($this->user(), RequestModule::fromRequest($this)),
             'key',
         );
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function configuredCategoryKeys(): array
-    {
-        return array_keys((array) config('request-management-report.branches'));
     }
 }

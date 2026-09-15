@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useWatch, type Control } from 'react-hook-form'
-import { EyeOff, FolderTree, Loader2, TriangleAlert } from 'lucide-react'
+import { ChartNoAxesColumn, EyeOff, FolderTree, Loader2, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
@@ -35,11 +35,11 @@ interface ProductCategoryFormHeaderProps {
  * `formOwnsHeader`, so the dedicated page drops its own title/subtitle block
  * and the Sheet keeps its `SheetHeader` `sr-only`.
  *
- * The two pills answer the questions a category is read by: WHERE it sits
- * (its parent, or "root" — reparenting is the single edit that changes what
- * the whole subtree inherits) and whether it can be picked at all, since an
- * unselectable one behaves like a pure container and that is not otherwise
- * visible without scrolling to the rules.
+ * The pills answer the questions a category is read by: WHERE it sits (its
+ * parent, or "root" — reparenting is the single edit that changes what the
+ * whole subtree inherits), whether it can be picked at all (an unselectable
+ * one behaves like a pure container), and whether it surfaces in the reports
+ * — none of that is otherwise visible without scrolling to the rules.
  */
 export function ProductCategoryFormHeader({
   control,
@@ -53,6 +53,7 @@ export function ProductCategoryFormHeader({
   const { t } = useTranslation()
   const parentId = useWatch({ control, name: 'parent_id' })
   const isSelectable = useWatch({ control, name: 'is_selectable' })
+  const isReportable = useWatch({ control, name: 'is_reportable' })
 
   const parentName =
     parentId === null ? null : (parentOptions.find((option) => option.id === parentId)?.name ?? null)
@@ -81,6 +82,12 @@ export function ProductCategoryFormHeader({
           <Badge variant="outline" className="h-5 min-h-5 max-w-full gap-1.5">
             <EyeOff className="size-3" aria-hidden="true" />
             <span className="truncate">{t('productCategories.badges.notSelectable')}</span>
+          </Badge>
+        ) : null}
+        {isReportable ? (
+          <Badge variant="outline" className="h-5 min-h-5 max-w-full gap-1.5">
+            <ChartNoAxesColumn className="size-3" aria-hidden="true" />
+            <span className="truncate">{t('productCategories.badges.reportable')}</span>
           </Badge>
         ) : null}
       </div>

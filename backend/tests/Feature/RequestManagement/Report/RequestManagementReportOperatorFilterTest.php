@@ -12,6 +12,7 @@ use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
 use App\Services\RequestManagement\Report\Dashboard\RequestManagementDashboardBuilder;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,12 +36,12 @@ if (! function_exists('operatorFilterFixture')) {
     function operatorFilterFixture(): array
     {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
-        $gol = ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']);
-        $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza']);
-        ProductCategory::factory()->create(['name' => 'APL']);
+        $gol = ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']);
+        ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']);
+        ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']);
+        ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']);
+        $consulenza = ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']);
+        ProductCategory::factory()->reportable()->create(['name' => 'APL']);
 
         $ada = User::factory()->create(['name' => 'Ada Rossi']);
         $zoe = User::factory()->create(['name' => 'Zoe Bianchi']);
@@ -119,7 +120,7 @@ if (! function_exists('operatorFilterCsv')) {
             $actor,
             now()->subDay()->toDateString(),
             now()->addDay()->toDateString(),
-            array_keys((array) config('request-management-report.branches')),
+            app(ReportBranchResolver::class)->keys(),
             $rowMode,
             ExportFormat::Csv,
             $path,
@@ -223,7 +224,7 @@ it('leaves every value untouched when no filter is passed (AC-001)', function ()
 it('narrows the dashboard summary tiles to the selected operators (AC-004)', function () {
     $fixture = operatorFilterFixture();
     $actor = operatorFilterActor();
-    $categoryKeys = array_keys((array) config('request-management-report.branches'));
+    $categoryKeys = app(ReportBranchResolver::class)->keys();
 
     $unfiltered = app(RequestManagementDashboardBuilder::class)
         ->build($actor, now()->subDay()->toDateString(), now()->addDay()->toDateString(), $categoryKeys, RequestManagementReportRowMode::All);
@@ -316,7 +317,7 @@ it('keeps every dashboard point equal to its CSV cell under an operator filter (
         $actor,
         now()->subDay()->toDateString(),
         now()->addDay()->toDateString(),
-        array_keys((array) config('request-management-report.branches')),
+        app(ReportBranchResolver::class)->keys(),
         RequestManagementReportRowMode::All,
         $operators,
     );
@@ -352,7 +353,7 @@ it('generates on every operator for a run whose state has no operator_keys (AC-0
             'date_from' => now()->subDay()->toDateString(),
             'date_to' => now()->addDay()->toDateString(),
             'locale' => 'it',
-            'category_keys' => array_keys((array) config('request-management-report.branches')),
+            'category_keys' => app(ReportBranchResolver::class)->keys(),
             'row_mode' => 'all',
             // no operator_keys: the shape every run frozen before spec 0108 has
         ],
@@ -380,7 +381,7 @@ it('re-reads the frozen operator_keys when the job runs (AC-015)', function () {
             'date_from' => now()->subDay()->toDateString(),
             'date_to' => now()->addDay()->toDateString(),
             'locale' => 'it',
-            'category_keys' => array_keys((array) config('request-management-report.branches')),
+            'category_keys' => app(ReportBranchResolver::class)->keys(),
             'row_mode' => 'all',
             'operator_keys' => [(string) $fixture['zoe']->id],
         ],

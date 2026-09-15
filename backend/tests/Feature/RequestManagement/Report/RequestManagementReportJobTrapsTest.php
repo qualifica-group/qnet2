@@ -13,6 +13,7 @@ use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -38,12 +39,12 @@ if (! function_exists('reportCategoryTree')) {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
 
         return [
-            'gol' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']),
-            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']),
-            'yisu' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']),
-            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']),
-            'consulenza' => ProductCategory::factory()->create(['name' => 'Consulenza']),
-            'apl' => ProductCategory::factory()->create(['name' => 'APL']),
+            'gol' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']),
+            'autoimpiego' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']),
+            'yisu' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']),
+            'autofinanziato' => ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+            'apl' => ProductCategory::factory()->reportable()->create(['name' => 'APL']),
         ];
     }
 }
@@ -115,7 +116,7 @@ if (! function_exists('createReportRun')) {
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
                 'locale' => $locale,
-                'category_keys' => $categoryKeys ?? array_keys((array) config('request-management-report.branches')),
+                'category_keys' => $categoryKeys ?? app(ReportBranchResolver::class)->keys(),
                 'row_mode' => $rowMode,
             ],
         ]);
@@ -220,11 +221,16 @@ it('writes the header row translated in the run frozen locale, not config(app.lo
 // ---------------------------------------------------------------------------
 
 it('fails the run on an unhandled exception, leaving no completed file (AC-003-sexies)', function () {
-    // No category tree seeded at all: ReportBranchResolver throws.
+    // Spec 0131: an empty/unseeded category tree no longer throws —
+    // ReportBranchResolver simply resolves to no branches (a legitimate
+    // "nothing is reportable yet" state). The fault is injected instead via
+    // an invalid frozen row_mode, which RequestManagementReportRowMode::from()
+    // (GenerateRequestManagementReportJob::write()) still rejects with a
+    // genuine unhandled exception — the job trap under test here.
     $actor = User::factory()->create();
-    $run = createReportRun($actor, '2026-09-01', '2026-09-30');
+    $run = createReportRun($actor, '2026-09-01', '2026-09-30', rowMode: 'not-a-real-mode');
 
-    expect(fn () => runReportJob($run))->toThrow(Exception::class);
+    expect(fn () => runReportJob($run))->toThrow(ValueError::class);
 
     expect($run->fresh()->status)->toBe(ExportStatus::Failed)
         ->and($run->fresh()->file_path)->toBeNull();
@@ -249,7 +255,7 @@ it('writes a real xlsx, with the same translated header row, when the run format
             'date_from' => '2026-09-01',
             'date_to' => '2026-09-30',
             'locale' => 'it',
-            'category_keys' => array_keys((array) config('request-management-report.branches')),
+            'category_keys' => app(ReportBranchResolver::class)->keys(),
             'row_mode' => 'all',
         ],
     ]);

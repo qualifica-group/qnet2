@@ -35,10 +35,10 @@ interface ProductCategoryDetailRulesProps {
  * 2026-08-07), so the two screens name and order them identically instead of
  * scattering five one-field blocks.
  *
- * Every rule but `is_selectable` is owned by the branch ROOT and mirrored on
- * the whole subtree, so each carries the chip naming the category it comes
- * from; `is_selectable` is per-node and never inherited (spec 0074), hence no
- * chip.
+ * Every rule but `is_selectable`/`is_reportable` is owned by the branch ROOT
+ * and mirrored on the whole subtree, so each carries the chip naming the
+ * category it comes from; `is_selectable`/`is_reportable` are per-node and
+ * never inherited (spec 0074), hence no chip.
  */
 export function ProductCategoryDetailRules({ category }: ProductCategoryDetailRulesProps) {
   const { t } = useTranslation()
@@ -107,6 +107,10 @@ export function ProductCategoryDetailRules({ category }: ProductCategoryDetailRu
 
         <RecordField label={t('productCategories.form.isSelectable')}>
           <RuleValue value={yesNo(category.is_selectable)} />
+        </RecordField>
+
+        <RecordField label={t('productCategories.form.isReportable')}>
+          <RuleValue value={yesNo(category.is_reportable)} />
         </RecordField>
       </RecordFieldList>
     </RecordSection>

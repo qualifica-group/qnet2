@@ -48,7 +48,7 @@ uses(RefreshDatabase::class);
 if (! function_exists('restrictedCommercial')) {
     function restrictedCommercial(): User
     {
-        return User::query()->where('email', 'customer@qualificagroup.it')->firstOrFail();
+        return User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
     }
 }
 
@@ -124,7 +124,7 @@ it('lets the commercial append a manager past the persisted team', function () {
 it('leaves both fields visible and editable for the supervisor', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $supervisor = User::query()->where('email', 'commercialegol@qualificagroup.it')->firstOrFail();
+    $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
     Sanctum::actingAs($supervisor);
     $quote = Quote::factory()->create();
 

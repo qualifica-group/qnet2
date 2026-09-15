@@ -79,6 +79,7 @@ export const productCategories = {
   badges: {
     root: 'Radice',
     notSelectable: 'Non selezionabile',
+    reportable: 'Visibile nei report',
   },
   columns: {
     name: 'Nome',
@@ -89,6 +90,7 @@ export const productCategories = {
     business_function: 'Funzione aziendale',
     requires_quote: 'Prevede preventivo',
     is_selectable: 'Selezionabile',
+    is_reportable: 'Visibile nei report',
     management_mode: 'Modalità di gestione',
     single_quote_per_opportunity: 'Offerta unica per opportunità',
     generates_contract: 'Prevede un contratto',
@@ -178,6 +180,9 @@ export const productCategories = {
     isSelectable: 'Selezionabile',
     isSelectableHint:
       'Se disattivo, la categoria serve solo a raggruppare sottocategorie: sparisce dalle liste di scelta e non è più associabile a un prodotto, a una linea di prodotto, a un progetto, a una campagna o a una regola provvigionale. Le associazioni già esistenti restano.',
+    isReportable: 'Visibile nei report',
+    isReportableHint:
+      'La categoria compare nei report e nella dashboard di Gestione Richieste e Gestione Iscritti; selezionandola si vedono anche le sue sottocategorie.',
     managementMode: 'Modalità di gestione',
     managementModeHint:
       'Come si comportano le righe Categoria Prodotto su una scheda: questa categoria e tutte le sue sottocategorie seguono la stessa regola.',
@@ -221,6 +226,9 @@ export const productCategories = {
     isSelectableInfo:
       "Trasforma la categoria in un puro contenitore. Resta padre delle sue sottocategorie e conserva tutte le associazioni già fatte, ma non compare più nelle liste di scelta. A differenza delle altre regole questa appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non selezionabile può avere figli selezionabili.",
     isSelectableInfoLabel: 'Maggiori informazioni su Selezionabile',
+    isReportableInfo:
+      "Decide se la categoria compare come riga selezionabile nei report e nella dashboard di Gestione Richieste e di Gestione Iscritti. Selezionandola, il report aggrega anche tutte le sue sottocategorie. Come Selezionabile, questa regola appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non visibile nei report può avere figli visibili.",
+    isReportableInfoLabel: 'Maggiori informazioni su Visibile nei report',
     inheritedFrom: 'Ereditata da {{category}}',
     managerLabelLevel: 'G.A. {{n}}',
     managerLabelPlaceholder: 'Gestore account {{n}}',

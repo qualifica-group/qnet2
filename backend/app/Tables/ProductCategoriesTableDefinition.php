@@ -173,6 +173,7 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
             'business_function' => $this->businessFunctionColumn->nameFor($row->id),
             'requires_quote' => (bool) $row->requires_quote,
             'is_selectable' => (bool) $row->is_selectable,
+            'is_reportable' => (bool) $row->is_reportable,
             // Spec 0077: the EFFECTIVE mode, denormalised like requires_quote.
             'management_mode' => $row->management_mode->value,
             // Both denormalised from the branch root too. The single-quote

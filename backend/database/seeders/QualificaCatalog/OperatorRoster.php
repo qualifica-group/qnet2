@@ -5,12 +5,14 @@ namespace Database\Seeders\QualificaCatalog;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Roles;
 
 /**
- * The client's operator roster, transcribed from "Mansionario
- * Operatori_Abilitazioni.csv" (user directive 2026-09-15). Pure data, read by
- * QualificaOperatorSeeder.
+ * The client's operator roster, transcribed from "Mansionario Operatori
+ * Abilitazioni aggiornato (2).xlsx" (user directive 2026-09-15). Pure data,
+ * read by QualificaOperatorSeeder.
  *
  * Normalised at transcription, not at runtime:
- *  - names in Title Case, stray tabs and double spaces removed;
+ *  - names in Title Case, stray tabs and double spaces removed, split into
+ *    first and last name by hand (compound names like "Maria Clelia" or
+ *    "Paternesi Meloni" cannot be split mechanically);
  *  - Sedi as CITY names: the seeder expands each one to EVERY operational site
  *    whose alias is that city ("Frattamaggiore" = "FRATTAMAGGIORE 1 (HQ)" and
  *    "Frattamaggiore 2"); "Roma Casilina" is the "Roma" city;
@@ -18,21 +20,20 @@ use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Roles;
  *    "APL <regione>" is the single "APL" branch, which has no regional split.
  *
  * Deliberately left out (user decisions 2026-09-15):
- *  - the three rows with no email (Linda - Latina, Miriam Cantatore - Nettuno,
- *    Jessica - Riesi): the email is the account's natural key;
+ *  - the rows highlighted in yellow (Miriam Del Giudice, Maddalena Vitale,
+ *    Elisa Finizio, Imma Pascale): those accounts do not exist;
  *  - the "Consulenza" category: it is not assigned as a competence to anyone,
  *    nor linked to a business function to make it assignable;
  *  - "Roma (partner Galletti)", which names no operational site.
  *
- * `sites` / `categories` set to ALL mean "Tutte": the profile covers every
- * product category (spec 0129 D-1) and keeps its physical Sede only — its
- * unrestricted role already sees every record, so no remote membership is
- * needed (and none would pull it into the per-site lead distribution).
+ * The CSV's "no operatore" profiles carry NO enabled city and NO category
+ * (user decision 2026-09-15): they must never be assignable, so they keep
+ * their physical Sede only and no competence row — spec 0111 rev.2 D-9 reads
+ * that as competent for nothing. Their unrestricted role already sees every
+ * record without a remote membership.
  */
 final class OperatorRoster
 {
-    public const string ALL = '*';
-
     private const array FRATTAMAGGIORE_HUB = ['Cassino', 'Roma', 'Milano', 'Frattamaggiore'];
 
     private const array SICILY_HUB = ['Mazzarino', 'Riesi', 'Gela', 'Catania'];
@@ -54,82 +55,78 @@ final class OperatorRoster
     private const array SICILY_CATEGORIES = ['Autoimpiego', 'Autofinanziato', 'GOL - Sicilia'];
 
     /**
-     * name, email, job (the CSV "Settore"), role, physical city, enabled cities
-     * (or ALL), product categories (or ALL).
+     * first name, last name, email, job (the sheet's "Settore"), role, physical
+     * city, enabled cities, product categories.
      *
-     * @var array<int, array{0: string, 1: string, 2: string, 3: string, 4: string, 5: string|array<int, string>, 6: string|array<int, string>}>
+     * @var array<int, array{0: string, 1: string, 2: string, 3: string, 4: string, 5: string, 6: array<int, string>, 7: array<int, string>}>
      */
     public const array OPERATORS = [
-        ['Michela Fabozzi', 'commerciale@qualificagroup.it', 'Coordinatore Commerciale', Roles::COORDINATOR_ROLE, 'Frattamaggiore', self::ALL, self::ALL],
-        ['Rosa Falzarano', 'commercialegol@qualificagroup.it', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', self::ALL, self::ALL],
-        ['Fabrizio Aliberti', 'supportocommerciale@qualificagroup.it', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', self::ALL, self::ALL],
-        ['Umberto Santamaria', 'social@qualificagroup.it', 'Responsabile Marketing', Roles::COORDINATOR_ROLE, 'Frattamaggiore', self::ALL, self::ALL],
-        ['Simona Chiacchio', 'convenzionigol@qualificagroup.it', 'Commerciale - Supporto Marketing', Roles::COORDINATOR_ROLE, 'Frattamaggiore', self::ALL, self::ALL],
-        ['Sabino Figurelli', 'social2@qualificagroup.it', 'Supporto Marketing', Roles::MARKETING_ROLE, 'Frattamaggiore', self::ALL, self::ALL],
-        ['Miriam Del Giudice', 'social3@qualificagroup.it', 'Supporto Marketing', Roles::MARKETING_ROLE, 'Frattamaggiore', self::ALL, self::ALL],
-        ['Gaetano Della Porta', 'g.dellaporta@qualificagroup.it', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
-        ['Marco Fedele', 'm.fedele@qualificagroup.it', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
-        ['Valentina Scala', 'v.v@qualificagroup.it', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
-        ['Simone Seneca', 's.seneca@qualificagroup.it', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
-        ['Anna Garofalo', 'commerciale2@qualificagroup.it', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], self::CAMPANIA_HUB_CATEGORIES],
-        ['Giulia Costanzo', 'assistenzacommerciale@qualificagroup.it', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
-        ['Lea Pellegrino', 'l.pellegrino@qualificagroup.it', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
-        ['Vincenzo Crisci', 'v.crisci@qualificagroup.it', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
-        ['Francesca Forgione', 'benevento@qualificagroup.it', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Benevento', ['Frattamaggiore'], self::CAMPANIA_CATEGORIES],
-        ['Marco Baldi', 'customer@qualificagroup.it', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], []],
-        ['Biagio Fusco', 'biagio.fusco@qualificagroup.it', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], []],
-        ['Antonio Alvoni', 'a.alvoni@qualificagroup.it', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], ['Autoimpiego']],
-        ['Fernando Annunziata', 'sicurezza@qualificagroup.it', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], []],
-        ['Jessica Faettini', 'j.faettini@qualificagroup.it', 'Supervisor APL', Roles::COMMERCIAL_ROLE, 'Grumello del Monte', ['Grumello del Monte'], self::LOMBARDY_APL_CATEGORIES],
-        ['Yadin De Pina Calderon', 'grumellodelmonte@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Grumello del Monte', ['Grumello del Monte'], self::LOMBARDY_CATEGORIES],
-        ['Samantha Egle Castagna', 'bergamo@qualificagroup.it', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Bergamo', ['Bergamo'], self::LOMBARDY_APL_CATEGORIES],
-        ['Cristina Leotta', 'bergamo2@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Bergamo', ['Bergamo'], self::LOMBARDY_CATEGORIES],
-        ['Luana Logozzo', 'bergamo3@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Bergamo', ['Bergamo'], self::LOMBARDY_CATEGORIES],
-        ['Michela Potì', 'milano@qualificagroup.it', 'Formazione', Roles::COMMERCIAL_ROLE, 'Milano', ['Milano'], self::LOMBARDY_CATEGORIES],
-        ['Zhour El Hajiri', 'bologna@qualificagroup.it', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Bologna', ['Milano'], self::LOMBARDY_CATEGORIES],
-        ['Manuela Rivolta', 'pero@qualificagroup.it', 'APL', Roles::COMMERCIAL_ROLE, 'Milano', ['Milano'], self::LOMBARDY_APL_CATEGORIES],
-        ['Constantin Popa', 'c.popa@qualificagroup.it', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Roma', ['Roma'], []],
-        ['Desirè Romito', 'viterbo@qualificagroup.it', 'APL - Commerciale', Roles::COMMERCIAL_ROLE, 'Viterbo', ['Viterbo'], self::LAZIO_APL_CATEGORIES],
-        ['Martina Di Marco', 'viterbo2@qualificagroup.it', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Viterbo', ['Viterbo'], self::LAZIO_CATEGORIES],
-        ['Marlena Jaruga', 'roma@qualificagroup.it', 'Supervisor Didattica', Roles::TEACHING_SUPERVISOR_ROLE, 'Roma', ['Roma', 'Viterbo', 'Fonte Nuova', 'Cassino', 'Latina', 'Nettuno', 'Pomezia', 'Gaeta'], self::LAZIO_CATEGORIES],
-        ['Anastasia Marcacci', 'casilina@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Roma', ['Roma'], self::LAZIO_CATEGORIES],
-        ['Maria Clelia Bernardi', 'casilina2@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Roma', ['Roma'], self::LAZIO_CATEGORIES],
-        ['Silvia Avorio', 'fontenuova@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Fonte Nuova', ['Fonte Nuova'], self::LAZIO_CATEGORIES],
-        ['Silvia Paternesi Meloni', 'fontenuova2@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Fonte Nuova', ['Fonte Nuova'], self::LAZIO_CATEGORIES],
-        ['Alessandra Mentella', 'cassino2@kronosformazione.eu', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Cassino', ['Cassino'], self::LAZIO_CATEGORIES],
-        ["Francesca D'Errico", 'cassino@kronosformazione.eu', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Cassino', ['Cassino'], self::LAZIO_CATEGORIES],
-        ['Tania Macale', 'latina@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Latina', ['Latina'], self::LAZIO_CATEGORIES],
-        ['Aurora Piccinato', 'latina2@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Latina', ['Latina'], self::LAZIO_CATEGORIES],
-        ['Michela Fanti', 'latina3@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Latina', ['Latina'], self::LAZIO_CATEGORIES],
-        ['Marta Maggio', 'nettuno@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Nettuno', ['Nettuno'], self::LAZIO_CATEGORIES],
-        ['Giada Curzola', 'pomezia@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Pomezia', ['Pomezia'], self::LAZIO_CATEGORIES],
-        ['Maddalena Vitale', 'problemsolving.gaeta@gmail.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Gaeta', ['Gaeta'], self::LAZIO_CATEGORIES],
-        ["Giulia D'Angelo", 'pescara@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Pescara', ['Pescara'], ['GOL - Abruzzo', 'Autoimpiego', 'Autofinanziato']],
-        ['Alessandra Gaspari', 'pescara2@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Pescara', ['Pescara'], ['GOL - Abruzzo', 'Autoimpiego', 'Autofinanziato']],
-        ['Simona Curi', 'terni@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Terni', ['Terni'], ['GOL - Umbria', 'Autoimpiego', 'Autofinanziato']],
-        ['Chiara Centracchio', 'isernia@kronosformazione.eu', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Isernia', ['Isernia'], ['GOL - Molise', 'Autoimpiego', 'Autofinanziato']],
-        ['Daila Lo Bartolo', 'gol.mazzarino@qualificagroup.it', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Mazzarino', self::SICILY_HUB, self::SICILY_APL_CATEGORIES],
-        ['Alessia Margiotta', 'a.margiotta@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Mazzarino', self::SICILY_HUB, self::SICILY_APL_CATEGORIES],
-        ['Laura Clessidra', 'palermo@qualificagroup.it', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Palermo', ['Palermo'], self::SICILY_APL_CATEGORIES],
-        ['Valentina Guarino', 'v.guarino@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Comiso', ['Comiso'], self::SICILY_CATEGORIES],
-        ['Eva Spataro', 'comiso@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Comiso', ['Comiso'], self::SICILY_CATEGORIES],
-        ['Maria Concetta Muscia', 'mc.muscia@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Niscemi', ['Niscemi'], self::SICILY_CATEGORIES],
-        ['Tiziana Di Gesù', 'gela2@qualificagroup.it', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Gela', ['Gela'], self::SICILY_APL_CATEGORIES],
-        ['Sara Cavallo', 'gela@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Gela', ['Gela'], self::SICILY_CATEGORIES],
-        ['Daniela Agata Petringa', 'catania@qualificagroup.it', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Catania', ['Catania'], self::SICILY_APL_CATEGORIES],
-        ['Gresia Cannizzo', 'catania2@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Catania', ['Catania'], self::SICILY_APL_CATEGORIES],
-        ['Martina Scognamiglio', 'amministrazionecasalnuovo@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
-        ['Luca Romano', 'casalnuovo@qualificagroup.it', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
-        ['Anna Palumbo', 'casalnuovo1@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
-        ["Stefania D'Andolfi", 'casalnuovo2@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
-        ['Francesco Crispino', 'tutorcasalnuovo@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
-        ['Andreana Giuliano', 'nolagol@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Nola', ['Nola'], self::CAMPANIA_CATEGORIES],
-        ['Elena De Rosa', 'cardito@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Cardito', ['Frattamaggiore 1', 'Cardito', 'Aversa', 'Caserta', 'Nola', 'Teverola', 'Benevento 1', 'Frattamaggiore 2'], self::CAMPANIA_CATEGORIES],
-        ['Francesco Della Corte', 'casaldiprincipe@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casal di Principe', ['Casal di Principe'], self::CAMPANIA_CATEGORIES],
-        ["Francesco D'Arbitrio", 'villaricca@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Villaricca', ['Villaricca'], self::CAMPANIA_CATEGORIES],
-        ['Marilisa Scafati Taglialatela', 'giugliano@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Giugliano in Campania', ['Giugliano in Campania'], self::CAMPANIA_CATEGORIES],
-        ['Sara Armerini', 'edp@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Avellino', ['Avellino'], self::CAMPANIA_CATEGORIES],
-        ['Elisa Finizio', 'edp1@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Avellino', ['Avellino'], self::CAMPANIA_CATEGORIES],
-        ['Imma Pascale', 'castellamare@qualificagroup.it', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Castellammare di Stabia', ['Castellammare di Stabia'], self::CAMPANIA_CATEGORIES],
+        ['Michela', 'Fabozzi', 'michela.fabozzi@qualificagroup.com', 'Coordinatore Commerciale', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],
+        ['Rosa', 'Falzarano', 'rosa.falzarano@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
+        ['Fabrizio', 'Aliberti', 'fabrizio.aliberti@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
+        ['Umberto', 'Santamaria', 'umberto.santamaria@qualificagroup.com', 'Responsabile Marketing', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],
+        ['Simona', 'Chiacchio', 'simona.chiacchio@qualificagroup.com', 'Commerciale - Supporto Marketing', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],
+        ['Sabino', 'Figurelli', 'sabino.figurelli@qualificagroup.com', 'Supporto Marketing', Roles::MARKETING_ROLE, 'Frattamaggiore', [], []],
+        ['Gaetano', 'Della Porta', 'gaetano.dellaporta@qualificagroup.com', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
+        ['Marco', 'Fedele', 'marco.fedele@qualificagroup.com', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
+        ['Valentina', 'Scala', 'valentina.scala@qualificagroup.com', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
+        ['Simone', 'Seneca', 'simone.seneca@qualificagroup.com', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
+        ['Anna', 'Garofalo', 'anna.garofalo@qualificagroup.com', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], self::CAMPANIA_HUB_CATEGORIES],
+        ['Giulia', 'Costanzo', 'giulia.costanzo@qualificagroup.com', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
+        ['Lea', 'Pellegrino', 'lea.pellegrino@qualificagroup.com', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
+        ['Vincenzo', 'Crisci', 'vincenzo.crisci@qualificagroup.com', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Frattamaggiore', self::FRATTAMAGGIORE_HUB, self::CAMPANIA_HUB_CATEGORIES],
+        ['Francesca', 'Forgione', 'francesca.forgione@qualificagroup.com', 'Commerciale', Roles::ENROLLEE_COMMERCIAL_ROLE, 'Benevento', ['Frattamaggiore'], self::CAMPANIA_CATEGORIES],
+        ['Marco', 'Baldi', 'marco.baldi@qualificagroup.com', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], []],
+        ['Biagio', 'Fusco', 'biagio.fusco@qualificagroup.it', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], []],
+        ['Antonio', 'Alvoni', 'antonio.alvoni@qualificagroup.com', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], ['Autoimpiego']],
+        ['Fernando', 'Annunziata', 'fernando.annunziata@qualificagroup.com', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Frattamaggiore', ['Frattamaggiore'], []],
+        ['Jessica', 'Faettini', 'jessica.faettini@qualificagroup.com', 'Supervisor APL', Roles::COMMERCIAL_ROLE, 'Grumello del Monte', ['Grumello del Monte'], self::LOMBARDY_APL_CATEGORIES],
+        ['Yadin', 'De Pina Calderon', 'yailin.calderon@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Grumello del Monte', ['Grumello del Monte'], self::LOMBARDY_CATEGORIES],
+        ['Samantha Egle', 'Castagna', 'samantha.castagna@qualificagroup.com', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Bergamo', ['Bergamo'], self::LOMBARDY_APL_CATEGORIES],
+        ['Cristina', 'Leotta', 'cristina.leotta@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Bergamo', ['Bergamo'], self::LOMBARDY_CATEGORIES],
+        ['Luana', 'Logozzo', 'luana.logozzo@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Bergamo', ['Bergamo'], self::LOMBARDY_CATEGORIES],
+        ['Michela', 'Potì', 'michela.poti@qualificagroup.com', 'Formazione', Roles::COMMERCIAL_ROLE, 'Milano', ['Milano'], self::LOMBARDY_CATEGORIES],
+        ['Zhour', 'El Hajiri', 'elhajiri.zhour@qualificagroup.com', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Bologna', ['Milano'], self::LOMBARDY_CATEGORIES],
+        ['Manuela', 'Rivolta', 'manuela.rivolta@qualificagroup.com', 'APL', Roles::COMMERCIAL_ROLE, 'Milano', ['Milano'], self::LOMBARDY_APL_CATEGORIES],
+        ['Constantin', 'Popa', 'constantin.popa@qualificagroup.com', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Roma', ['Roma'], []],
+        ['Desirè', 'Romito', 'desire.romito@qualificagroup.com', 'APL - Commerciale', Roles::COMMERCIAL_ROLE, 'Viterbo', ['Viterbo'], self::LAZIO_APL_CATEGORIES],
+        ['Martina', 'Di Marco', 'martina.dimarco@qualificagroup.com', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Viterbo', ['Viterbo'], self::LAZIO_CATEGORIES],
+        ['Marlena', 'Jaruga', 'marlena.jaruga@qualificagroup.com', 'Supervisor Didattica', Roles::TEACHING_SUPERVISOR_ROLE, 'Roma', ['Roma', 'Viterbo', 'Fonte Nuova', 'Cassino', 'Latina', 'Nettuno', 'Pomezia', 'Gaeta'], self::LAZIO_CATEGORIES],
+        ['Anastasia', 'Marcacci', 'anastasia.marcacci@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Roma', ['Roma'], self::LAZIO_CATEGORIES],
+        ['Maria Clelia', 'Bernardi', 'mariaclelia.bernardi@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Roma', ['Roma'], self::LAZIO_CATEGORIES],
+        ['Silvia', 'Avorio', 'silvia.avorio@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Fonte Nuova', ['Fonte Nuova'], self::LAZIO_CATEGORIES],
+        ['Silvia', 'Paternesi Meloni', 'silvia.paternesi@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Fonte Nuova', ['Fonte Nuova'], self::LAZIO_CATEGORIES],
+        ['Alessandra', 'Mentella', 'alessandra.mentella@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Cassino', ['Cassino'], self::LAZIO_CATEGORIES],
+        ['Francesca', "D'Errico", 'francesca.derrico@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Cassino', ['Cassino'], self::LAZIO_CATEGORIES],
+        ['Tania', 'Macale', 'tania.macale@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Latina', ['Latina'], self::LAZIO_CATEGORIES],
+        ['Aurora', 'Piccinato', 'aurora.piccinato@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Latina', ['Latina'], self::LAZIO_CATEGORIES],
+        ['Michela', 'Fanti', 'michela.fanti@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Latina', ['Latina'], self::LAZIO_CATEGORIES],
+        ['Marta', 'Maggio', 'marta.maggio@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Nettuno', ['Nettuno'], self::LAZIO_CATEGORIES],
+        ['Giada', 'Curzola', 'giada.curzola@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Pomezia', ['Pomezia'], self::LAZIO_CATEGORIES],
+        ['Giulia', "D'Angelo", 'giulia.dangelo@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Pescara', ['Pescara'], ['GOL - Abruzzo', 'Autoimpiego', 'Autofinanziato']],
+        ['Alessandra', 'Gaspari', 'alessandra.gaspari@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Pescara', ['Pescara'], ['GOL - Abruzzo', 'Autoimpiego', 'Autofinanziato']],
+        ['Simona', 'Curi', 'simona.curi@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Terni', ['Terni'], ['GOL - Umbria', 'Autoimpiego', 'Autofinanziato']],
+        ['Chiara', 'Centracchio', 'chiara.centracchio@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Isernia', ['Isernia'], ['GOL - Molise', 'Autoimpiego', 'Autofinanziato']],
+        ['Daila', 'Lo Bartolo', 'daila.lobartolo@qualificagroup.com', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Mazzarino', self::SICILY_HUB, self::SICILY_APL_CATEGORIES],
+        ['Alessia', 'Margiotta', 'alessia.margiotta@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Mazzarino', self::SICILY_HUB, self::SICILY_APL_CATEGORIES],
+        ['Laura', 'Clessidra', 'laura.clessidra@qualificagroup.com', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Palermo', ['Palermo'], self::SICILY_APL_CATEGORIES],
+        ['Valentina', 'Guarino', 'valentina.guarino@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Comiso', ['Comiso'], self::SICILY_CATEGORIES],
+        ['Eva', 'Spataro', 'eva.spataro@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Comiso', ['Comiso'], self::SICILY_CATEGORIES],
+        ['Maria Concetta', 'Muscia', 'mariaconcetta.muscia@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Niscemi', ['Niscemi'], self::SICILY_CATEGORIES],
+        ['Tiziana', 'Di Gesù', 'tiziana.digesu@qualificagroup.com', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Gela', ['Gela'], self::SICILY_APL_CATEGORIES],
+        ['Sara', 'Cavallo', 'sarasilvana.cavallo@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Gela', ['Gela'], self::SICILY_CATEGORIES],
+        ['Daniela Agata', 'Petringa', 'daniela.petringa@qualificagroup.com', 'APL - Commerciale - Formazione', Roles::COMMERCIAL_ROLE, 'Catania', ['Catania'], self::SICILY_APL_CATEGORIES],
+        ['Gresia', 'Cannizzo', 'gresianovella.cannizzo@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Catania', ['Catania'], self::SICILY_APL_CATEGORIES],
+        ['Martina', 'Scognamiglio', 'martina.scognamiglio@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
+        ['Luca', 'Romano', 'luca.romano@qualificagroup.com', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
+        ['Anna', 'Palumbo', 'anna.palumbo@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
+        ['Stefania', "D'Andolfi", 'stefania.dandolfi@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
+        ['Francesco', 'Crispino', 'francesco.crispino@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casalnuovo di Napoli', ['Casalnuovo di Napoli'], self::CAMPANIA_CATEGORIES],
+        ['Andreana', 'Giuliano', 'andreana.giuliano@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Nola', ['Nola'], self::CAMPANIA_CATEGORIES],
+        ['Elena', 'De Rosa', 'elena.derosa@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Cardito', ['Frattamaggiore 1', 'Cardito', 'Aversa', 'Caserta', 'Nola', 'Teverola', 'Benevento 1', 'Frattamaggiore 2'], self::CAMPANIA_CATEGORIES],
+        ['Francesco', 'Della Corte', 'francesco.dellacorte@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Casal di Principe', ['Casal di Principe'], self::CAMPANIA_CATEGORIES],
+        ['Francesco', "D'Arbitrio", 'francesco.darbitrio@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Villaricca', ['Villaricca'], self::CAMPANIA_CATEGORIES],
+        ['Marilisa', 'Scafati Taglialatela', 'marilisa.taglialatela@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Giugliano in Campania', ['Giugliano in Campania'], self::CAMPANIA_CATEGORIES],
+        ['Sara', 'Armerini', 'sara.armerini@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Avellino', ['Avellino'], self::CAMPANIA_CATEGORIES],
     ];
 }

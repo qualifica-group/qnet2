@@ -4,7 +4,9 @@ use App\Enums\ExportFormat;
 use App\Enums\ExportStatus;
 use App\Jobs\GenerateRequestManagementReportJob;
 use App\Models\ExportRun;
+use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
@@ -35,6 +37,23 @@ if (! function_exists('reportActorWith')) {
     }
 }
 
+if (! function_exists('reportCreateCategoryTree')) {
+    /**
+     * Two reportable categories (spec 0131) — the FormRequest's category_keys
+     * allow-list is empty without at least one, which would 422 a payload
+     * before the controller's own authorization gate ever runs.
+     *
+     * @return array<string, ProductCategory>
+     */
+    function reportCreateCategoryTree(): array
+    {
+        return [
+            'gol' => ProductCategory::factory()->reportable()->create(['name' => 'GOL']),
+            'consulenza' => ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']),
+        ];
+    }
+}
+
 if (! function_exists('reportPayload')) {
     /**
      * A valid POST body: the two dates plus rev-2's two REQUIRED fields
@@ -48,7 +67,7 @@ if (! function_exists('reportPayload')) {
         return array_merge([
             'date_from' => '2026-09-01',
             'date_to' => '2026-09-30',
-            'category_keys' => array_keys((array) config('request-management-report.branches')),
+            'category_keys' => app(ReportBranchResolver::class)->keys(),
             'row_mode' => 'all',
             'format' => 'csv',
         ], $overrides);
@@ -60,12 +79,15 @@ if (! function_exists('reportPayload')) {
 // ---------------------------------------------------------------------------
 
 it('201s with a processing run whose state freezes the dates, category_keys, row_mode and the actor locale (AC-001)', function () {
+    $categories = reportCreateCategoryTree();
     $actor = reportActorWith(['report']);
     Sanctum::actingAs($actor);
     Queue::fake();
 
+    $selectedKeys = [(string) $categories['gol']->id, (string) $categories['consulenza']->id];
+
     $response = $this->withHeader('Accept-Language', 'it')
-        ->postJson('/api/request-management/report', reportPayload(['category_keys' => ['gol', 'consulenza'], 'row_mode' => 'total_only']))
+        ->postJson('/api/request-management/report', reportPayload(['category_keys' => $selectedKeys, 'row_mode' => 'total_only']))
         ->assertCreated();
 
     $response->assertJsonPath('success', true)
@@ -79,7 +101,7 @@ it('201s with a processing run whose state freezes the dates, category_keys, row
             'date_from' => '2026-09-01',
             'date_to' => '2026-09-30',
             'locale' => 'it',
-            'category_keys' => ['gol', 'consulenza'],
+            'category_keys' => $selectedKeys,
             'row_mode' => 'total_only',
         ]);
 
@@ -91,6 +113,7 @@ it('201s with a processing run whose state freezes the dates, category_keys, row
 // ---------------------------------------------------------------------------
 
 it('403s on create without request-management.report (AC-002)', function () {
+    reportCreateCategoryTree();
     $actor = reportActorWith([]);
     Sanctum::actingAs($actor);
 
@@ -100,6 +123,7 @@ it('403s on create without request-management.report (AC-002)', function () {
 });
 
 it('never leaks an internal class/model name in the 403 envelope (AC-002)', function () {
+    reportCreateCategoryTree();
     $actor = reportActorWith([]);
     Sanctum::actingAs($actor);
 
@@ -218,6 +242,7 @@ it('422s when row_mode is not one of total_only|operators_only|all (AC-031)', fu
 // ---------------------------------------------------------------------------
 
 it('never throttles the create endpoint across many rapid requests (AC-025)', function () {
+    reportCreateCategoryTree();
     $actor = reportActorWith(['report']);
     Sanctum::actingAs($actor);
     Queue::fake();
@@ -232,6 +257,7 @@ it('never throttles the create endpoint across many rapid requests (AC-025)', fu
 // ---------------------------------------------------------------------------
 
 it('stores the requested xlsx format on the run, extension included', function () {
+    reportCreateCategoryTree();
     $actor = reportActorWith(['report']);
     Sanctum::actingAs($actor);
     Queue::fake();
@@ -246,6 +272,7 @@ it('stores the requested xlsx format on the run, extension included', function (
 });
 
 it('stores the requested csv format on the run, extension included', function () {
+    reportCreateCategoryTree();
     $actor = reportActorWith(['report']);
     Sanctum::actingAs($actor);
     Queue::fake();

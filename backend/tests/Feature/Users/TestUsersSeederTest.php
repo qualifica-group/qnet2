@@ -19,6 +19,9 @@ it('creates the super-admin account only, standalone on a fresh database', funct
     expect($user->getRoleNames()->all())->toBe(['super-admin'])
         ->and($user->email_verified_at)->not->toBeNull()
         ->and(Hash::check('Qualifica2026!', $user->password))->toBeTrue()
+        ->and($user->name)->toBe('Ciro Cacciapuoti')
+        ->and($user->personalData->first_name)->toBe('Ciro')
+        ->and($user->personalData->last_name)->toBe('Cacciapuoti')
         ->and(User::query()->count())->toBe(1);
 });
 

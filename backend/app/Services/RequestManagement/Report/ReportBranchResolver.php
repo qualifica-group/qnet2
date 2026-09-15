@@ -5,64 +5,77 @@ declare(strict_types=1);
 namespace App\Services\RequestManagement\Report;
 
 use App\Models\ProductCategory;
-use App\Services\ProductCategories\CategoryHierarchy;
-use RuntimeException;
+use Illuminate\Support\Collection;
 
 /**
- * Resolves the six report branches (spec 0106) from
- * config/request-management-report.php: each root category is looked up by
- * NAME (bound by identity to QualificaCatalogSeeder::CATALOG, never an id),
- * then expanded to its full subtree via CategoryHierarchy::descendantIds().
+ * Resolves the report branches (spec 0106, made dynamic by spec 0131): one
+ * branch per product category flagged `is_reportable`, ordered by name, keyed
+ * by its id, each expanded to its own full subtree — so a reportable parent
+ * and a reportable child both appear, the parent's row covering the child's
+ * requests too.
  *
- * `descendantIds()` is neither memoized nor scoped in the container
- * (constraints, backend.md): CategoryHierarchy is injected ONCE here, and
- * resolve() is meant to be called ONCE per request by the caller
- * (RequestManagementReportGenerator) — never re-resolved per row.
+ * The whole tree is read in ONE projection query and every subtree is walked
+ * in memory: the same BFS as CategoryHierarchy::descendantIds(), which would
+ * re-read the table once per branch. resolve() is meant to be called ONCE
+ * per request by the caller — never re-resolved per row.
  */
 final class ReportBranchResolver
 {
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
-
     /**
      * @return array<int, ReportBranch>
      */
     public function resolve(): array
     {
-        $branches = [];
+        // Step 1: the whole tree, as parent_id => child ids.
+        $categories = ProductCategory::query()->get(['id', 'parent_id', 'name', 'is_reportable']);
+        $childIdsByParent = $categories->groupBy('parent_id')->map(static fn (Collection $children): array => $children->pluck('id')->all());
 
-        /** @var array<string, array{category: array{parent: string|null, name: string}, columns: array<int, string>}> $configured */
-        $configured = (array) config('request-management-report.branches');
-
-        foreach ($configured as $key => $definition) {
-            $branches[] = $this->resolveBranch((string) $key, $definition);
-        }
-
-        return $branches;
+        // Step 2: one branch per reportable category, root + every descendant.
+        return $categories
+            ->filter(static fn (ProductCategory $category): bool => $category->is_reportable)
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->map(fn (ProductCategory $category): ReportBranch => new ReportBranch(
+                key: (string) $category->id,
+                label: $category->name,
+                categoryIds: [$category->id, ...$this->descendantIds($category->id, $childIdsByParent)],
+            ))
+            ->values()
+            ->all();
     }
 
     /**
-     * @param  array{category: array{parent: string|null, name: string}, columns: array<int, string>}  $definition
+     * @param  Collection<int|string, array<int, int>>  $childIdsByParent
+     * @return array<int, int>
      */
-    private function resolveBranch(string $key, array $definition): ReportBranch
+    private function descendantIds(int $rootId, Collection $childIdsByParent): array
     {
-        $root = $this->findRoot($definition['category']['parent'], $definition['category']['name']);
-        $categoryIds = array_merge([$root->id], $this->hierarchy->descendantIds($root->id));
+        $ids = [];
+        $visited = [$rootId => true];
+        $queue = $childIdsByParent->get($rootId, []);
 
-        return new ReportBranch($key, $root->name, $categoryIds, $definition['columns']);
-    }
+        while ($queue !== []) {
+            $currentId = array_shift($queue);
 
-    private function findRoot(?string $parentName, string $name): ProductCategory
-    {
-        $query = ProductCategory::query()->where('name', $name);
+            if (isset($visited[$currentId])) {
+                continue;
+            }
 
-        $category = $parentName === null
-            ? $query->whereNull('parent_id')->first()
-            : $query->whereHas('parent', fn ($ancestor) => $ancestor->where('name', $parentName))->first();
-
-        if ($category === null) {
-            throw new RuntimeException("Request management report: category not found for branch [{$parentName}/{$name}].");
+            $visited[$currentId] = true;
+            $ids[] = $currentId;
+            array_push($queue, ...$childIdsByParent->get($currentId, []));
         }
 
-        return $category;
+        return $ids;
+    }
+
+    /**
+     * The branch keys an actor may submit — the allow-list `category_keys.*`
+     * is validated against (backend.md §8).
+     *
+     * @return array<int, string>
+     */
+    public function keys(): array
+    {
+        return array_map(static fn (ReportBranch $branch): string => $branch->key, $this->resolve());
     }
 }

@@ -26,7 +26,7 @@ it('permissions:sync creates the transfer-notification grant (AC-020)', function
 it('the seeded supervisor role holds the transfer-notification grant (AC-020)', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
-    $supervisor = User::query()->where('email', 'commercialegol@qualificagroup.it')->firstOrFail();
+    $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
 
     expect($supervisor->can('request-management.receiveTransferNotifications'))->toBeTrue();
 });

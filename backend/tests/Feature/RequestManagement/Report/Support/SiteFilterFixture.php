@@ -16,6 +16,7 @@ use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use App\Services\RequestManagement\Report\ReportSiteFilter;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
@@ -33,19 +34,21 @@ use Spatie\Permission\Models\Permission;
 final class SiteFilterFixture
 {
     /**
-     * The six report branches' categories, same tree the 0106/0108 tests build.
+     * The six report branches' categories, same tree the 0106/0108 tests
+     * build — every leaf `->reportable()` (spec 0131), the Formazione
+     * container itself never is.
      *
      * @return array{gol: ProductCategory, consulenza: ProductCategory}
      */
     public static function categories(): array
     {
         $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
-        $gol = ProductCategory::factory()->childOf($formazione)->create(['name' => 'GOL']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autoimpiego']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'Yisu']);
-        ProductCategory::factory()->childOf($formazione)->create(['name' => 'Autofinanziato']);
-        $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza']);
-        ProductCategory::factory()->create(['name' => 'APL']);
+        $gol = ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']);
+        ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autoimpiego']);
+        ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Yisu']);
+        ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'Autofinanziato']);
+        $consulenza = ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']);
+        ProductCategory::factory()->reportable()->create(['name' => 'APL']);
 
         return ['gol' => $gol, 'consulenza' => $consulenza];
     }
@@ -179,7 +182,7 @@ final class SiteFilterFixture
             $actor,
             now()->subDay()->toDateString(),
             now()->addDay()->toDateString(),
-            array_keys((array) config('request-management-report.branches')),
+            app(ReportBranchResolver::class)->keys(),
             $rowMode,
             ExportFormat::Csv,
             Storage::disk('local')->path($file),

@@ -38,6 +38,7 @@ const SERVER_ERROR_FIELDS = [
   'business_function_id',
   'requires_quote',
   'is_selectable',
+  'is_reportable',
   'management_mode',
   'single_quote_per_opportunity',
   'generates_contract',
@@ -120,6 +121,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         business_function_id: category.business_function_id,
         requires_quote: category.requires_quote,
         is_selectable: category.is_selectable,
+        is_reportable: category.is_reportable,
         management_mode: category.management_mode,
         single_quote_per_opportunity: category.single_quote_per_opportunity,
         generates_contract: category.generates_contract,
@@ -142,6 +144,9 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       // Spec 0074: a new category is a usable destination unless the
       // operator explicitly turns it into a container.
       is_selectable: true,
+      // A new category stays out of the reports/dashboard until the operator
+      // opts it in — mirrors the backend default (omitted on create = false).
+      is_reportable: false,
       // Spec 0077 D-8: `multiple` is the behavior every existing root already
       // has; a new root starts from the same default.
       management_mode: 'multiple',

@@ -50,7 +50,7 @@ it('returns the 14 columns in order with the declared flags, 403 without viewAny
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'parent', 'description', 'business_function', 'requires_quote', 'is_selectable', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'attributes_count', 'products_count', 'created_at']);
+    expect($ids)->toBe(['id', 'name', 'parent', 'description', 'business_function', 'requires_quote', 'is_selectable', 'is_reportable', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'attributes_count', 'products_count', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()
