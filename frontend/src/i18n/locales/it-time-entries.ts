@@ -7,8 +7,6 @@
 
 export const timeEntries = {
   page: {
-    title: 'Segnatempo',
-    subtitle: 'Registra e monitora il tempo dedicato alle attività.',
     forbidden: 'Non hai i permessi per visualizzare il segnatempo.',
     loadError: 'Impossibile caricare il segnatempo.',
     retry: 'Riprova',

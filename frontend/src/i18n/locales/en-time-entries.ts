@@ -7,8 +7,6 @@
 
 export const timeEntries = {
   page: {
-    title: 'Time tracking',
-    subtitle: 'Log and monitor the time spent on activities.',
     forbidden: 'You do not have permission to view time tracking.',
     loadError: 'Unable to load time tracking.',
     retry: 'Try again',

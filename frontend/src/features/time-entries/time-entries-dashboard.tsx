@@ -1,6 +1,7 @@
 /**
- * `/time-entries` dashboard assembly (spec 0122 D-1/D-10/D-13, MT-F7): error
- * alert, "Nuovo segnatempo", the "Periodo" card (with the view-switch
+ * `/time-entries` dashboard assembly (spec 0122 D-1/D-10/D-13, MT-F7): the
+ * standard `PageHeader` (breadcrumb + "Nuovo segnatempo" action, aligned with
+ * the other modules), error alert, the "Periodo" card (with the view-switch
  * footer), then either the team tree or [KPI+Polso, day list]. Order and
  * composition mirror q-net's `work-activities-list.tsx` (D-2); state/query
  * wiring lives in `useTimeEntriesDashboardView` (engineering.md §2).
@@ -9,6 +10,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, Plus } from 'lucide-react'
+import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Can } from '@/features/auth/can'
 import { TimeEntryCreateSheet } from '@/features/time-entries/form/time-entry-create-sheet'
@@ -50,6 +52,19 @@ export function TimeEntriesDashboard() {
 
   return (
     <div className="space-y-4">
+      <PageHeader
+        actions={
+          meta?.can_write ? (
+            <Can permission="time-entries.create">
+              <Button type="button" onClick={() => openCreateSheet()}>
+                <Plus aria-hidden="true" />
+                {t('timeEntries.page.newTimeEntry')}
+              </Button>
+            </Can>
+          ) : null
+        }
+      />
+
       {view.days.isError ? (
         <div
           role="alert"
@@ -63,17 +78,6 @@ export function TimeEntriesDashboard() {
             {t('timeEntries.page.retry')}
           </Button>
         </div>
-      ) : null}
-
-      {meta?.can_write ? (
-        <Can permission="time-entries.create">
-          <div className="flex justify-end">
-            <Button type="button" className="w-full sm:w-auto" onClick={() => openCreateSheet()}>
-              <Plus className="size-4" aria-hidden="true" />
-              {t('timeEntries.page.newTimeEntry')}
-            </Button>
-          </div>
-        </Can>
       ) : null}
 
       <TimeEntriesPeriodCard

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -34,6 +35,11 @@ vi.mock('@/features/time-entries/api', () => ({
   fetchTimeEntriesTeam: () => fetchTimeEntriesTeamMock(),
   fetchFilteredTimeEntriesExport: vi.fn(),
   fetchMonthlyTimeEntriesExport: vi.fn(),
+}))
+
+// The real header renders router-bound breadcrumbs; only its actions slot matters here.
+vi.mock('@/components/page-header', () => ({
+  PageHeader: ({ actions }: { actions?: ReactNode }) => <div>{actions}</div>,
 }))
 
 const canMock = vi.fn<(permission: string) => boolean>()

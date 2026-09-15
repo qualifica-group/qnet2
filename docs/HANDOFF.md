@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEGNATEMPO — INTESTAZIONE ALLINEATA AGLI ALTRI MODULI — VERDE, NON COMMITTATO (2026-09-15)
+
+- `/time-entries`: rimossi titolo/sottotitolo; `TimeEntriesDashboard` ora monta `PageHeader` (solo breadcrumb) con
+  "Nuovo segnatempo" in `actions` (stesso schema di `TasksTable`), ancora gated su `meta.can_write` + `time-entries.create`.
+  `TimeEntriesPage` non monta piu' `PageHeader`, wrapper `gap-6` come le altre pagine.
+- Chiavi i18n `timeEntries.page.title/subtitle` rimosse (it/en, orfane).
+- Test dashboard: aggiunto mock di `@/components/page-header` (breadcrumb richiede router; stesso mock di
+  `work-orders-table.test.tsx`). Vitest time-entries 144/144, ESLint e `tsc -b --force` puliti.
+
 ## LINK AI RECORD COLLEGATI NELLE SCHEDE DETTAGLIO — VERDE, NON COMMITTATO (2026-09-14)
 
 Richiesta utente (senza spec): nei dettagli, le relazioni verso record operativi diventano `RecordLink`.
