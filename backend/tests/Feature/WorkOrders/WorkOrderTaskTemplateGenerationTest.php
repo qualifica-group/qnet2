@@ -10,6 +10,7 @@ use App\Models\TaskTemplateItem;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Notifications\TaskAssigned;
+use App\RichText\RichText;
 use App\Services\AttachmentService;
 use App\Services\Tasks\TaskInitialStatusResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -156,6 +157,38 @@ it('AC-017: the generated task carries an independent copy of the row attachment
     app(AttachmentService::class)->delete($sourceAttachment->fresh());
     Storage::disk('local')->assertMissing($sourceAttachment->path);
     Storage::disk('local')->assertExists($copy->path);
+});
+
+it('AC-013 (spec 0128, D-6/D-8): a row description image is copied via RichTextAttachmentCopier, not duplicated into documents', function () {
+    Storage::fake('local');
+    $quote = Quote::factory()->create();
+    $supervisor = User::factory()->create();
+    $template = TaskTemplate::factory()->create();
+    $item = TaskTemplateItem::factory()->forTemplate($template)->create();
+
+    $original = Attachment::factory()->make(['collection' => RichText::ATTACHMENT_COLLECTION, 'disk' => 'local']);
+    $original->attachable()->associate($item);
+    $original->save();
+    Storage::disk('local')->put($original->path, 'fake-bytes');
+
+    $item->update(['description' => '<p>x</p><img data-attachment-id="'.$original->id.'" alt="pic">']);
+
+    $actor = taskTemplateGenerationActor(['create', 'view']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/work-orders', [
+        'quote_id' => $quote->id, 'title' => 'Con immagine descrizione', 'type' => 'processing',
+        'start_date' => '2026-10-01', 'supervisor_ids' => [$supervisor->id],
+        'task_template_id' => $template->id,
+    ])->assertCreated();
+
+    $task = Task::query()->where('work_order_id', $response->json('data.id'))->sole();
+    $copy = $task->attachments()->where('collection', RichText::ATTACHMENT_COLLECTION)->sole();
+
+    expect($copy->id)->not->toBe($original->id)
+        ->and($task->description)->toBe('<p>x</p><img data-attachment-id="'.$copy->id.'" alt="pic">')
+        ->and($task->attachments()->where('collection', 'documents')->count())->toBe(0)
+        ->and($task->attachments()->count())->toBe(1);
 });
 
 it('AC-019: an inactive or unknown task_template_id is 422 and creates nothing', function () {

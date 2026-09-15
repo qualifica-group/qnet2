@@ -20,6 +20,31 @@ vi.mock('@/features/attachments/documents-section', () => ({
   DocumentsSection: () => null,
 }))
 
+// Tiptap itself is covered end to end by rich-text-editor.test.tsx; only the
+// WIRING matters here, so a native control stands in — labelled via the same
+// `htmlFor`/`id` pair the real component receives through `FormControl`/`id`.
+vi.mock('@/components/rich-text/rich-text-editor', () => ({
+  RichTextEditor: (p: {
+    id?: string
+    value: string | null
+    onChange: (html: string | null) => void
+    placeholder?: string
+    disabled?: boolean
+    'aria-invalid'?: boolean
+    'aria-describedby'?: string
+  }) => (
+    <textarea
+      id={p.id}
+      placeholder={p.placeholder}
+      disabled={p.disabled}
+      aria-invalid={p['aria-invalid']}
+      aria-describedby={p['aria-describedby']}
+      value={p.value ?? ''}
+      onChange={(event) => p.onChange(event.target.value === '' ? null : event.target.value)}
+    />
+  ),
+}))
+
 const ROW: TaskTemplateItemFormRow = {
   id: 'row-1',
   title: 'Kickoff call',
@@ -117,5 +142,34 @@ describe('TaskTemplateItemsEditor — accessible error triad (frontend.md §10)'
     const titleInput = screen.getByLabelText('Title')
     expect(titleInput).toHaveAttribute('aria-invalid', 'false')
     expect(titleInput).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('wires a description error the same way, via its own sr-only label', () => {
+    renderEditor([ROW], { 'row-1': { description: 'Too long.' } })
+
+    const descriptionField = screen.getByLabelText('Description')
+    expect(descriptionField).toHaveAttribute('aria-invalid', 'true')
+    const message = screen.getByText('Too long.')
+    expect(message).toHaveAttribute('role', 'alert')
+    expect(descriptionField.getAttribute('aria-describedby')).toContain(message.id)
+  })
+})
+
+/** Spec 0128 AC-024: the row's description field is `RichTextEditor`. */
+describe('TaskTemplateItemsEditor — description uses RichTextEditor (AC-024)', () => {
+  it('patches the row with the emitted HTML', () => {
+    const onUpdateRow = renderEditor([ROW])
+
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: '<p>Nota</p>' } })
+
+    expect(onUpdateRow).toHaveBeenCalledWith('row-1', { description: '<p>Nota</p>' })
+  })
+
+  it('patches the row with null when the field is cleared', () => {
+    const onUpdateRow = renderEditor([{ ...ROW, description: '<p>Nota</p>' }])
+
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: '' } })
+
+    expect(onUpdateRow).toHaveBeenCalledWith('row-1', { description: null })
   })
 })

@@ -72,6 +72,15 @@ describe('buildUpdatePayload (spec 0124, D-1)', () => {
     expect(payload.description).toBeUndefined()
   })
 
+  /** Spec 0128 AC-024: the header description is a `RichTextHtml`, same wire contract as `name`. */
+  it('sends the new HTML when the description changed, and null when it was cleared', () => {
+    const changed = buildUpdatePayload({ ...formValues, description: '<p><strong>Ciao</strong></p>' }, [], original())
+    expect(changed.description).toBe('<p><strong>Ciao</strong></p>')
+
+    const cleared = buildUpdatePayload({ ...formValues, description: null }, [], original())
+    expect(cleared).toHaveProperty('description', null)
+  })
+
   it('a new row (no itemId) is sent with an undefined id (dropped on JSON serialization)', () => {
     const payload = buildUpdatePayload(formValues, [itemRow({ id: 'new-1', itemId: undefined })], original())
     expect(payload.items?.[0].id).toBeUndefined()

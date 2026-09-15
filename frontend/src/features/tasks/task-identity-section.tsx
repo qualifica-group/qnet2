@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import type { Control } from 'react-hook-form'
 import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
 import { TASKS_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
@@ -65,18 +65,13 @@ export function TaskIdentitySection({
         metaKey="description"
         label={t('tasks.form.description')}
       >
-        {({ field, disabled, readOnly }) => (
+        {({ field, disabled }) => (
           <FormControl>
-            <Textarea
-              rows={4}
+            <RichTextEditor
               placeholder={t('tasks.form.descriptionPlaceholder')}
               disabled={disabled}
-              readOnly={readOnly}
-              value={field.value ?? ''}
-              onChange={(event) => field.onChange(event.target.value || null)}
-              onBlur={field.onBlur}
-              name={field.name}
-              ref={field.ref}
+              value={field.value}
+              onChange={field.onChange}
             />
           </FormControl>
         )}

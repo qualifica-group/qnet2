@@ -41,13 +41,17 @@ final readonly class CreateTaskTemplateData
     }
 
     /**
+     * `description` is DELIBERATELY absent (spec 0128, D-2/D-3): the raw
+     * HTML may carry inline `data:` URI images that need the header to
+     * already have an id, so TaskTemplateService sets it via
+     * TaskTemplateDescriptionWriter instead of mass assignment.
+     *
      * @return array<string, mixed>
      */
     public function attributes(): array
     {
         return [
             'name' => $this->name,
-            'description' => $this->description,
             'is_active' => $this->isActive,
         ];
     }

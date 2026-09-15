@@ -3,6 +3,7 @@ import { CalendarClock, ClipboardList, Contact, Link2, MessageSquareWarning, Use
 import { formatDate } from '@/lib/formatting/date-display'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
+import { RichTextContent } from '@/components/rich-text/rich-text-content'
 import {
   RecordCanvas,
   RecordCard,
@@ -59,11 +60,7 @@ export function TaskDetailView({ task, onEdit, onOpenSubtask, onCreateSubtask }:
                 {t(task.is_blocked ? 'common.yes' : 'common.no')}
               </RecordField>
               <RecordField label={t('tasks.detail.description')}>
-                {task.description ? (
-                  <span className="whitespace-pre-wrap">{task.description}</span>
-                ) : (
-                  <DetailEmpty />
-                )}
+                {task.description ? <RichTextContent html={task.description} /> : <DetailEmpty />}
               </RecordField>
             </RecordFieldList>
           </RecordSection>

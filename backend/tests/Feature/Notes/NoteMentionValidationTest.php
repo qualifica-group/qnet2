@@ -49,6 +49,15 @@ if (! function_exists('noteManagedOpportunity')) {
     }
 }
 
+if (! function_exists('mentionSpan')) {
+    // D-7: the mention node the client sends/persists in `body`, replacing the
+    // 0052 plain-text token `@[Name](user:id)`.
+    function mentionSpan(int $id, string $label): string
+    {
+        return sprintf('<span data-type="mention" data-id="%d" data-label="%s">@%s</span>', $id, $label, $label);
+    }
+}
+
 if (! function_exists('grantMentionAccess')) {
     /**
      * Grants $user D-10 mentionable access to $opportunity WITHOUT making
@@ -73,7 +82,7 @@ it('a body token without a matching mentions[] entry -> 422 (AC-052)', function 
     $this->postJson('/api/notes', [
         'entity_type' => 'request-management',
         'entity_id' => $opportunity->id,
-        'body' => 'Hey @[Tizio](user:7)',
+        'body' => 'Hey '.mentionSpan(7, 'Tizio'),
         'mentions' => [],
     ])->assertStatus(422)->assertJsonValidationErrors('mentions');
 });
@@ -103,7 +112,7 @@ it('matching token and mentions[] -> 201, mentions ordered by first appearance, 
     $response = $this->postJson('/api/notes', [
         'entity_type' => 'request-management',
         'entity_id' => $opportunity->id,
-        'body' => "Hey @[Tizio Caio](user:{$mentioned->id}) and again @[Tizio Caio](user:{$mentioned->id})",
+        'body' => 'Hey '.mentionSpan($mentioned->id, 'Tizio Caio').' and again '.mentionSpan($mentioned->id, 'Tizio Caio'),
         'mentions' => [$mentioned->id],
     ])->assertCreated();
 
@@ -126,7 +135,7 @@ it('a mention carries the user avatar so the chip matches the avatar shown elsew
     $response = $this->postJson('/api/notes', [
         'entity_type' => 'request-management',
         'entity_id' => $opportunity->id,
-        'body' => "Hey @[Tizio Caio](user:{$mentioned->id})",
+        'body' => 'Hey '.mentionSpan($mentioned->id, 'Tizio Caio'),
         'mentions' => [$mentioned->id],
     ])->assertCreated();
 
@@ -154,7 +163,7 @@ it('a mention outside the mentionable set -> 422, no note created, no notificati
     $this->postJson('/api/notes', [
         'entity_type' => 'request-management',
         'entity_id' => $opportunity->id,
-        'body' => "Hey @[Outsider](user:{$outsider->id})",
+        'body' => 'Hey '.mentionSpan($outsider->id, 'Outsider'),
         'mentions' => [$outsider->id],
     ])->assertStatus(422)->assertJsonValidationErrors('mentions');
 
@@ -172,7 +181,7 @@ it('an inactive or nonexistent mentioned user -> 422 (AC-051)', function () {
     $this->postJson('/api/notes', [
         'entity_type' => 'request-management',
         'entity_id' => $opportunity->id,
-        'body' => "Hey @[Inactive](user:{$inactive->id})",
+        'body' => 'Hey '.mentionSpan($inactive->id, 'Inactive'),
         'mentions' => [$inactive->id],
     ])->assertStatus(422)->assertJsonValidationErrors('mentions');
 
@@ -181,7 +190,7 @@ it('an inactive or nonexistent mentioned user -> 422 (AC-051)', function () {
     $this->postJson('/api/notes', [
         'entity_type' => 'request-management',
         'entity_id' => $opportunity->id,
-        'body' => "Hey @[Ghost](user:{$nonexistentId})",
+        'body' => 'Hey '.mentionSpan($nonexistentId, 'Ghost'),
         'mentions' => [$nonexistentId],
     ])->assertStatus(422)->assertJsonValidationErrors('mentions');
 });

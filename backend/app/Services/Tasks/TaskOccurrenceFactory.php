@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Tasks;
 
 use App\Models\Task;
+use App\RichText\RichTextAttachmentCopier;
 use App\Services\Notifications\TaskNotifier;
 use Carbon\CarbonImmutable;
 
@@ -25,11 +26,12 @@ final class TaskOccurrenceFactory
     public function __construct(
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly TaskNotifier $notifier,
+        private readonly RichTextAttachmentCopier $descriptionCopier,
     ) {}
 
     public function materialize(Task $originator, CarbonImmutable $endDate): Task
     {
-        $originator->loadMissing(['assignees', 'watchers']);
+        $originator->loadMissing(['assignees', 'watchers', 'creator']);
 
         $assigneeIds = $originator->assignees->pluck('id')->all();
         $watcherIds = $originator->watchers->pluck('id')->all();
@@ -45,6 +47,23 @@ final class TaskOccurrenceFactory
         );
         $occurrence->save();
 
+        // Spec 0128, D-8: the occurrence gets its OWN copy of every
+        // `rich_text` attachment the originator's description references, its
+        // `data-attachment-id`s rewritten to the new ids — only possible now
+        // that $occurrence has one. The uploader on record is the same actor
+        // already carried as the occurrence's creator, since a generated
+        // occurrence has no human actor of its own (see class docblock).
+        $occurrence->description = $this->descriptionCopier->copy(
+            $originator->description,
+            $originator,
+            $occurrence,
+            $originator->creator,
+        );
+
+        if ($occurrence->isDirty('description')) {
+            $occurrence->save();
+        }
+
         $occurrence->assignees()->sync($assigneeIds);
         $occurrence->watchers()->sync($watcherIds);
 
@@ -58,6 +77,10 @@ final class TaskOccurrenceFactory
      * D-6's copy list, plus the D-5 date handling and the fields explicitly
      * NOT copied (closure_feedback/completion_date/is_blocked/parent_task_id
      * reset to their neutral value; task_status_id is set separately above).
+     * `description` is ALSO absent (spec 0128, D-8): its `rich_text`
+     * attachments must be copied onto the OCCURRENCE, so it is set via
+     * RichTextAttachmentCopier once $occurrence has an id, never copied
+     * verbatim here.
      *
      * @return array<string, mixed>
      */
@@ -65,7 +88,6 @@ final class TaskOccurrenceFactory
     {
         return [
             'title' => $originator->title,
-            'description' => $originator->description,
             'registry_id' => $originator->registry_id,
             'referent_id' => $originator->referent_id,
             'task_type_id' => $originator->task_type_id,

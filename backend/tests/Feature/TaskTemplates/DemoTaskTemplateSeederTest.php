@@ -21,11 +21,15 @@ uses(RefreshDatabase::class);
 
 /**
  * The status vocabulary DemoTaskTemplateSeeder resolves its open/pending
- * rows from (D-4) — the only dependency it needs.
+ * rows from (D-4), plus the demo account it now writes as (spec 0128:
+ * TaskTemplateService::create() takes the actor it attributes rich text
+ * attachments to — REQUIREMENT CHANGED, DemoUserSeeder joins the dependency
+ * list DemoDataSeeder itself already runs ahead of DemoTaskTemplateSeeder).
  */
 function seedTaskTemplateDependencies(): void
 {
     test()->seed(RolePermissionSeeder::class);
+    test()->seed(DemoUserSeeder::class);
     test()->seed(QualificaTaskTaxonomySeeder::class);
 }
 

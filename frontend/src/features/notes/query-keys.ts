@@ -20,12 +20,4 @@ export const notesKeys = {
    */
   list: (entityType: string, entityId: number, quoteScope: NoteQuoteScope = 'all') =>
     [...notesKeys.lists(entityType, entityId), { quoteScope }] as const,
-  /**
-   * Contextual mention lookup of a single host record (D-10), keyed by the
-   * active search term so each search starts a fresh paginated query. Il
-   * discriminante sta PRIMA del record: cosi' `lists()` resta un prefisso delle
-   * sole liste di note e invalidarle non trascina anche questa lookup.
-   */
-  mentionable: (entityType: string, entityId: number, search: string) =>
-    ['notes', 'mentionable-users', entityType, entityId, { search }] as const,
 }

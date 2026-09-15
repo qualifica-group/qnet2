@@ -3,8 +3,10 @@
 use App\Models\CompanySite;
 use App\Models\Contract;
 use App\Models\DocumentLayout;
+use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\Task;
+use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
 use App\Models\User;
 
@@ -107,6 +109,17 @@ return [
         // Task's own 'documents' collection. Alias already in the global
         // morph map (AppServiceProvider) for the same reason as 'task' above.
         'task_template_item' => TaskTemplateItem::class,
+        // Note and task-template-header images embedded in a rich text field
+        // (spec 0128, D-3): the record is its own attachment owner, under
+        // the reserved `rich_text` collection (RichText::ATTACHMENT_COLLECTION).
+        // Both aliases are already in the global morph map (AppServiceProvider)
+        // for unrelated reasons (activity log / task-template-item sibling
+        // above) — this entry only opens the upload boundary. Uploading
+        // DIRECTLY into the `rich_text` collection through this boundary is
+        // blocked regardless (AttachmentPolicy, D-6): only the owning
+        // record's own content may create/remove those attachments.
+        'note' => Note::class,
+        'task_template' => TaskTemplate::class,
     ],
 
 ];

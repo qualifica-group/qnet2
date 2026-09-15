@@ -111,6 +111,11 @@ final readonly class CreateTaskData
      * The mass-assignable column map. `creator_id` and `task_status_id` are
      * NOT here (D-10/D-3 of spec 0118) — both are set on the model directly
      * by TaskService, since neither is part of Task's #[Fillable].
+     * `description` is ALSO absent (spec 0128, D-2/D-3): the raw HTML may
+     * carry inline `data:` URI images that would overflow the TEXT column,
+     * and any embedded image needs the Task to already have an id —
+     * TaskService::create() sets it via TaskDescriptionWriter once the row
+     * is persisted, never through mass assignment.
      *
      * @return array<string, mixed>
      */
@@ -118,7 +123,6 @@ final readonly class CreateTaskData
     {
         return [
             'title' => $this->title,
-            'description' => $this->description,
             'registry_id' => $this->registryId,
             'referent_id' => $this->referentId,
             'parent_task_id' => $this->parentTaskId,

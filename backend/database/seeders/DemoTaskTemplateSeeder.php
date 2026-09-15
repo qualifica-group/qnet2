@@ -8,7 +8,9 @@ use App\Enums\TaskStatusGroup;
 use App\Models\TaskStatus;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
+use App\Models\User;
 use App\Services\TaskTemplateService;
+use Database\Seeders\Concerns\SeedsDevelopmentUsers;
 use Illuminate\Database\Seeder;
 
 /**
@@ -38,9 +40,17 @@ use Illuminate\Database\Seeder;
  */
 class DemoTaskTemplateSeeder extends Seeder
 {
+    use SeedsDevelopmentUsers;
+
     public function run(): void
     {
         $service = app(TaskTemplateService::class);
+        // Spec 0128: TaskTemplateService::create() now takes the actor it
+        // writes rich text attachments as — no template here embeds an
+        // image, but the demo account (DemoUsersSeeder already ran) is the
+        // same "acting user" convention DemoTimeEntrySeeder's pickUsers()
+        // already follows.
+        $actor = User::query()->where('email', self::DEMO_EMAIL)->firstOrFail();
         $openStatusId = TaskStatus::query()->where('group', TaskStatusGroup::Open)->where('is_active', true)->value('id');
         $pendingStatusId = TaskStatus::query()->where('group', TaskStatusGroup::Pending)->where('is_active', true)->value('id');
 
@@ -52,7 +62,7 @@ class DemoTaskTemplateSeeder extends Seeder
                 description: $description,
                 isActive: true,
                 items: $items,
-            ));
+            ), $actor);
         }
     }
 

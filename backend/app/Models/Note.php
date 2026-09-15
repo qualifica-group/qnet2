@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Abstracts\BaseModel;
+use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\NoteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -33,12 +34,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * the whole host record — null means a general note. It is a scoping
  * column, not a second `notable`: DELIBERATELY absent from #[Fillable] and
  * immutable after creation (D-3), written only by NoteService.
+ *
+ * `HasAttachments` (spec 0128, D-3): a note is its own owner for the images
+ * embedded in its rich text `body`, under the reserved `rich_text`
+ * collection — written only by RichTextImageProcessor inside NoteService's
+ * save transaction, never through the generic attachment endpoints (D-6).
  */
 #[Fillable(['body'])]
 class Note extends BaseModel
 {
     /** @use HasFactory<NoteFactory> */
-    use HasFactory, LogsModelActivity, SoftDeletes;
+    use HasAttachments, HasFactory, LogsModelActivity, SoftDeletes;
 
     /**
      * @return array<string, string>

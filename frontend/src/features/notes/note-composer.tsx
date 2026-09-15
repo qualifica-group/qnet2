@@ -1,22 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Loader2, Send, X } from 'lucide-react'
+import { Loader2, Send } from 'lucide-react'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { NoteQuoteScopeSelect } from '@/features/notes/note-quote-scope-select'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { MentionBadge } from '@/features/notes/mention-badge'
-import { MentionTextarea } from '@/features/notes/mention-textarea'
-import { extractMentionIds, parseMentionRefs, removeMention } from '@/features/notes/mention-tokens'
+import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
+import { RICH_TEXT_NOTE_TEXT_MAX } from '@/components/rich-text/rich-text-constants'
+import { extractMentionIds, getVisibleTextLength } from '@/features/notes/note-rich-text'
+import { useNoteMentionExtension } from '@/features/notes/use-note-mention-extension'
 import { useCreateNote, useUpdateNote } from '@/features/notes/use-note-mutations'
 import type { Note, NoteQuoteRef } from '@/features/notes/types'
-
-/** Mirrors the server-side `body: string (1..5000)` rule (D-12/data_contract). */
-const BODY_MAX_LENGTH = 5000
 
 /** Below this many characters left the hint gives way to a countdown. */
 const CHARACTER_COUNTER_THRESHOLD = 500
@@ -25,15 +23,25 @@ function buildNoteComposerSchema(t: TFunction) {
   return z.object({
     body: z
       .string()
-      .trim()
-      .min(1, t('notes.composer.bodyRequired', { defaultValue: 'Scrivi qualcosa prima di inviare.' }))
-      .max(
-        BODY_MAX_LENGTH,
-        t('notes.composer.bodyTooLong', {
-          defaultValue: `La nota puo' contenere al massimo ${BODY_MAX_LENGTH} caratteri.`,
-          count: BODY_MAX_LENGTH,
-        }),
-      ),
+      .nullable()
+      .superRefine((value, ctx) => {
+        if (!value) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('notes.composer.bodyRequired', { defaultValue: 'Scrivi qualcosa prima di inviare.' }),
+          })
+          return
+        }
+        if (getVisibleTextLength(value) > RICH_TEXT_NOTE_TEXT_MAX) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('notes.composer.bodyTooLong', {
+              defaultValue: `La nota puo' contenere al massimo ${RICH_TEXT_NOTE_TEXT_MAX} caratteri.`,
+              count: RICH_TEXT_NOTE_TEXT_MAX,
+            }),
+          })
+        }
+      }),
   })
 }
 
@@ -64,10 +72,11 @@ export interface NoteComposerProps {
 
 /**
  * Single write surface for the three note-authoring flows (new root, reply,
- * edit — data_contract `POST/PATCH /api/notes`): a `MentionTextarea` plus a
- * submit button. `mentions` is tracked separately from the RHF-validated
- * `body` field because it is derived from the body's tokens by
- * `MentionTextarea` itself (D-12), not something the user types directly.
+ * edit — data_contract `POST/PATCH /api/notes`): the shared `RichTextEditor`
+ * (D-11) plus a submit button. `mentions` is never separate state — it is
+ * derived at submit time straight from the mention nodes the body HTML
+ * actually holds (D-7/D-12), so a mention deleted from the doc drops out on
+ * its own.
  */
 export function NoteComposer({
   entityType,
@@ -85,39 +94,43 @@ export function NoteComposer({
   // Spec 0085 D-4: una reply eredita SEMPRE il contesto della root, quindi qui
   // non si sceglie nulla — il server ignorerebbe comunque un `quote_id` diverso.
   const [quoteTarget, setQuoteTarget] = useState<number | 'general'>(defaultQuoteId ?? 'general')
-  const [mentions, setMentions] = useState<number[]>(
-    () => editingNote?.mentions.map((mention) => mention.id) ?? [],
-  )
-  // Avatars of the people already mentioned (edit mode) plus the ones picked in
-  // this session: the body tokens carry only `{name, id}`, so without this map
-  // a draft chip would fall back to initials for a user who has a photo.
-  const [avatarByUserId, setAvatarByUserId] = useState<ReadonlyMap<number, string | null>>(
-    () => new Map(editingNote?.mentions.map((mention) => [mention.id, mention.avatar_url]) ?? []),
-  )
   const createNote = useCreateNote(entityType, entityId)
   const updateNote = useUpdateNote(entityType, entityId)
   const pending = createNote.isPending || updateNote.isPending
+  const mentionExtension = useNoteMentionExtension({ entityType, entityId })
+  const editorContainerRef = useRef<HTMLDivElement | null>(null)
 
   const form = useForm<NoteComposerFormValues>({
     resolver: zodResolver(buildNoteComposerSchema(t)),
-    defaultValues: { body: editingNote?.body ?? '' },
+    defaultValues: { body: editingNote?.body ?? null },
   })
 
+  // RichTextEditor (D-11) isn't a form control the browser can autofocus by
+  // attribute: it exposes a contentEditable `role="textbox"` inside its own
+  // subtree, so autofocus is a DOM lookup once that subtree is mounted.
+  useEffect(() => {
+    if (!autoFocus) {
+      return
+    }
+    editorContainerRef.current?.querySelector<HTMLElement>('[role="textbox"]')?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: focus once, on mount only.
+  }, [])
+
   const handleSubmit = form.handleSubmit(async (values) => {
-    // Step 1: dispatch create or update depending on the composer's mode
-    // Step 2: on success, reset the draft (root only) and notify the caller
-    // Step 3: on a 422, map it onto the body field with the accessible triad
+    // Step 1: derive the wire body/mentions from what the editor actually holds
+    // Step 2: dispatch create or update depending on the composer's mode
+    // Step 3: on success, reset the draft (root only) and notify the caller
+    // Step 4: on a 422, map it onto the body field with the accessible triad
+    const body = values.body ?? ''
+    const mentions = extractMentionIds(body)
     try {
       if (editingNote) {
-        await updateNote.mutateAsync({
-          noteId: editingNote.id,
-          payload: { body: values.body, mentions },
-        })
+        await updateNote.mutateAsync({ noteId: editingNote.id, payload: { body, mentions } })
       } else {
         await createNote.mutateAsync({
           entity_type: entityType,
           entity_id: entityId,
-          body: values.body,
+          body,
           parent_id: parentId,
           mentions,
           // Spec 0085: la chiave viaggia SOLO quando c'e' davvero un'Offerta
@@ -127,8 +140,7 @@ export function NoteComposer({
           // chiave in piu' su ogni nota di ogni opportunita' senza offerte.
           ...(!parentId && quoteTarget !== 'general' ? { quote_id: quoteTarget } : {}),
         })
-        form.reset({ body: '' })
-        setMentions([])
+        form.reset({ body: null })
       }
       onDone?.()
     } catch (error) {
@@ -142,7 +154,7 @@ export function NoteComposer({
   })
 
   const bodyValue = useWatch({ control: form.control, name: 'body' })
-  const remainingCharacters = BODY_MAX_LENGTH - bodyValue.length
+  const remainingCharacters = RICH_TEXT_NOTE_TEXT_MAX - getVisibleTextLength(bodyValue)
 
   return (
     <Form {...form}>
@@ -152,38 +164,20 @@ export function NoteComposer({
           name="body"
           render={({ field }) => (
             <FormItem>
-              <FormControl>
-                <MentionTextarea
-                  value={field.value}
-                  onChange={(value, nextMentions) => {
-                    field.onChange(value)
-                    setMentions(nextMentions)
-                  }}
-                  onMentionPicked={(item) => {
-                    setAvatarByUserId((current) =>
-                      new Map(current).set(item.id, item.avatar_url ?? null),
-                    )
-                  }}
-                  entityType={entityType}
-                  entityId={entityId}
-                  placeholder={t('notes.composer.placeholder', {
-                    defaultValue: 'Scrivi una nota, usa @ per menzionare un collega…',
-                  })}
-                  disabled={pending}
-                  rows={editingNote || parentId ? 2 : 3}
-                  autoFocus={autoFocus}
-                />
-              </FormControl>
-              <MentionBadges
-                body={field.value}
-                avatarByUserId={avatarByUserId}
-                disabled={pending}
-                onRemove={(userId) => {
-                  const nextBody = removeMention(field.value, userId)
-                  field.onChange(nextBody)
-                  setMentions(extractMentionIds(nextBody))
-                }}
-              />
+              <div ref={editorContainerRef}>
+                <FormControl>
+                  <RichTextEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    extraExtensions={mentionExtension}
+                    placeholder={t('notes.composer.placeholder', {
+                      defaultValue: 'Scrivi una nota, usa @ per menzionare un collega…',
+                    })}
+                    disabled={pending}
+                    minHeight="compact"
+                  />
+                </FormControl>
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -217,7 +211,7 @@ export function NoteComposer({
               {t('common.cancel')}
             </Button>
           ) : null}
-          <Button type="submit" size="sm" disabled={pending || bodyValue.trim().length === 0}>
+          <Button type="submit" size="sm" disabled={pending || !bodyValue}>
             {pending ? (
               <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
             ) : (
@@ -230,55 +224,5 @@ export function NoteComposer({
         </div>
       </form>
     </Form>
-  )
-}
-
-interface MentionBadgesProps {
-  /** Wire body (D-12): the badges are derived from the tokens it still carries. */
-  body: string
-  /** Avatars of the mentioned users, so a draft chip matches the posted one. */
-  avatarByUserId: ReadonlyMap<number, string | null>
-  disabled?: boolean
-  onRemove: (userId: number) => void
-}
-
-/**
- * The people the draft mentions, as removable badges. The field itself only
- * ever shows the readable `@Name`, so this row is where a mention becomes a
- * visible, dismissible entity instead of raw markup.
- */
-function MentionBadges({ body, avatarByUserId, disabled, onRemove }: MentionBadgesProps) {
-  const { t } = useTranslation()
-  const refs = parseMentionRefs(body)
-
-  if (refs.length === 0) {
-    return null
-  }
-
-  return (
-    <ul className="flex flex-wrap items-center gap-1.5 pt-1.5">
-      {refs.map((ref) => (
-        <li key={ref.id} className="flex items-center gap-0.5">
-          <MentionBadge
-            userId={ref.id}
-            name={ref.name}
-            avatarUrl={avatarByUserId.get(ref.id) ?? null}
-            className="max-w-40"
-          />
-          <button
-            type="button"
-            onClick={() => onRemove(ref.id)}
-            disabled={disabled}
-            aria-label={t('notes.composer.removeMention', {
-              defaultValue: 'Rimuovi la menzione di {{name}}',
-              name: ref.name,
-            })}
-            className="flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-          >
-            <X className="size-3" aria-hidden="true" />
-          </button>
-        </li>
-      ))}
-    </ul>
   )
 }

@@ -70,7 +70,7 @@ class TaskTemplateController extends BaseApiController
         try {
             $this->authorize('create', TaskTemplate::class);
 
-            $taskTemplate = $this->service->create($request->toData());
+            $taskTemplate = $this->service->create($request->toData(), $request->user());
 
             return $this->okWithPermissions(
                 new TaskTemplateResource($taskTemplate),
@@ -92,7 +92,7 @@ class TaskTemplateController extends BaseApiController
         try {
             $this->authorize('update', $taskTemplate);
 
-            $taskTemplate = $this->service->update($taskTemplate, $request->toData());
+            $taskTemplate = $this->service->update($taskTemplate, $request->toData(), $request->user());
 
             return $this->okWithPermissions(
                 new TaskTemplateResource($taskTemplate),

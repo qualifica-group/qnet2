@@ -47,6 +47,10 @@ final readonly class TaskTemplateItemData
      * Mass-assignable attributes for this row, INCLUDING `sort_order` — the
      * submission index the writer places this row at (D-1: the array order
      * IS the order, no client-submitted sort_order field exists).
+     * `description` is DELIBERATELY absent (spec 0128, D-2/D-3): the raw
+     * HTML may carry inline `data:` URI images that need the row to already
+     * have an id, so App\Services\TaskTemplates\TaskTemplateItemWriter sets
+     * it via TaskTemplateDescriptionWriter instead of mass assignment.
      *
      * @return array<string, mixed>
      */
@@ -54,7 +58,6 @@ final readonly class TaskTemplateItemData
     {
         return [
             'title' => $this->title,
-            'description' => $this->description,
             'estimated_minutes' => $this->estimatedMinutes,
             'task_status_id' => $this->taskStatusId,
             'due_offset_days' => $this->dueOffsetDays,

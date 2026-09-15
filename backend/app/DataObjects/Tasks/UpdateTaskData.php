@@ -59,11 +59,15 @@ final readonly class UpdateTaskData
     /**
      * Nullable columns, keyed by column name -> [value property, flag
      * property]: only the flag decides whether the column is written.
+     * `description` is DELIBERATELY absent (spec 0128, D-2/D-3/D-4): the raw
+     * HTML is never mass-assigned — TaskService::update() hands it to
+     * TaskDescriptionWriter, which sanitizes it, turns its inline images into
+     * the Task's own attachments and sets the column directly, gated on
+     * `descriptionSubmitted` below the same way every other flag here is.
      *
      * @var array<string, array{string, string}>
      */
     private const array NULLABLE_COLUMNS = [
-        'description' => ['description', 'descriptionSubmitted'],
         'registry_id' => ['registryId', 'registryIdSubmitted'],
         'referent_id' => ['referentId', 'referentIdSubmitted'],
         'parent_task_id' => ['parentTaskId', 'parentTaskIdSubmitted'],

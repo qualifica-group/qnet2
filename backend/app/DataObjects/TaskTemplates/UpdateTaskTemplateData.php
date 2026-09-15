@@ -52,7 +52,10 @@ final readonly class UpdateTaskTemplateData
 
     /**
      * Only the header attributes the client actually submitted, ready for a
-     * partial mass-assignment update.
+     * partial mass-assignment update. `description` is DELIBERATELY absent
+     * (spec 0128, D-2/D-3/D-4): TaskTemplateService reads `description`/
+     * `descriptionSubmitted` directly and hands them to
+     * TaskTemplateDescriptionWriter instead of mass-assigning the raw HTML.
      *
      * @return array<string, mixed>
      */
@@ -62,10 +65,6 @@ final readonly class UpdateTaskTemplateData
 
         if ($this->name !== null) {
             $attributes['name'] = $this->name;
-        }
-
-        if ($this->descriptionSubmitted) {
-            $attributes['description'] = $this->description;
         }
 
         if ($this->isActive !== null) {

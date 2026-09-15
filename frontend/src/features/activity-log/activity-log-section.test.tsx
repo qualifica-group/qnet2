@@ -112,6 +112,31 @@ describe('ActivityLogSection', () => {
     expect(screen.queryByText('8')).not.toBeInTheDocument()
   })
 
+  it('shows the extracted text of a rich text field, never the markup (D-13/AC-025)', async () => {
+    fetchActivityLogMock.mockResolvedValue(
+      page({
+        items: [
+          entry({
+            changes: [
+              {
+                field: 'description',
+                old_value: null,
+                new_value: '<p><strong>Ciao</strong></p>',
+                old_display: null,
+                new_display: null,
+              },
+            ],
+          }),
+        ],
+      }),
+    )
+
+    renderSection()
+
+    await waitFor(() => expect(screen.getByText('Ciao')).toBeInTheDocument())
+    expect(screen.queryByText(/<p>|<strong>/)).not.toBeInTheDocument()
+  })
+
   it('falls back to the raw value when the backend resolved no display label', async () => {
     fetchActivityLogMock.mockResolvedValue(
       page({

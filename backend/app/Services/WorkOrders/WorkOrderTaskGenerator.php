@@ -10,6 +10,8 @@ use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\RichText\RichText;
+use App\RichText\RichTextAttachmentCopier;
 use App\Services\AttachmentService;
 use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskInitialStatusResolver;
@@ -39,6 +41,7 @@ final class WorkOrderTaskGenerator
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly AttachmentService $attachments,
         private readonly TaskNotifier $notifier,
+        private readonly RichTextAttachmentCopier $descriptionCopier,
     ) {}
 
     /**
@@ -105,7 +108,6 @@ final class WorkOrderTaskGenerator
 
         $task = new Task([
             'title' => $item->title,
-            'description' => $item->description,
             'estimated_minutes' => $item->estimated_minutes,
             'work_order_id' => $workOrder->id,
             'registry_id' => $workOrder->quote->opportunity->registry_id,
@@ -121,8 +123,29 @@ final class WorkOrderTaskGenerator
 
         $task->assignees()->sync($supervisorIds);
 
+        // Spec 0128, D-6/D-8: the row's `rich_text` images belong to the
+        // description, copied below via RichTextAttachmentCopier (single
+        // source of copy+rewrite) — skipped here to avoid copying them TWICE
+        // into an unrelated 'documents' collection on the generated Task.
         foreach ($item->attachments as $attachment) {
+            if ($attachment->collection === RichText::ATTACHMENT_COLLECTION) {
+                continue;
+            }
+
             $copy = $this->attachments->copyTo($attachment, $task, 'documents', $actor);
+            $copiedFiles[] = ['disk' => $copy->disk, 'path' => $copy->path];
+        }
+
+        $task->description = $this->descriptionCopier->copy($item->description, $item, $task, $actor);
+
+        if ($task->isDirty('description')) {
+            $task->save();
+        }
+
+        // Track the description's own copied binaries too, so a LATER
+        // failure elsewhere in generate() still rolls every file this Task
+        // pulled in back off disk (rollbackCopiedFiles(), same as 'documents').
+        foreach ($task->attachments()->where('collection', RichText::ATTACHMENT_COLLECTION)->get() as $copy) {
             $copiedFiles[] = ['disk' => $copy->disk, 'path' => $copy->path];
         }
 

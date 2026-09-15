@@ -11,6 +11,8 @@ use App\DataObjects\TaskTemplates\TaskTemplateItemData;
 use App\DataObjects\TaskTemplates\UpdateTaskTemplateData;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
+use App\Models\User;
+use App\Services\TaskTemplates\TaskTemplateDescriptionWriter;
 use App\Services\TaskTemplates\TaskTemplateItemWriter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -23,30 +25,52 @@ use Illuminate\Support\Facades\DB;
  */
 class TaskTemplateService
 {
-    public function __construct(private readonly TaskTemplateItemWriter $itemWriter) {}
+    public function __construct(
+        private readonly TaskTemplateDescriptionWriter $descriptionWriter,
+        private readonly TaskTemplateItemWriter $itemWriter,
+    ) {}
 
-    public function create(CreateTaskTemplateData $data): TaskTemplate
+    public function create(CreateTaskTemplateData $data, User $actor): TaskTemplate
     {
-        return DB::transaction(function () use ($data): TaskTemplate {
-            $taskTemplate = TaskTemplate::create($data->attributes());
-            $this->itemWriter->create($taskTemplate, $data->items);
+        return DB::transaction(function () use ($data, $actor): TaskTemplate {
+            // description is NOT in attributes() (spec 0128, D-2/D-3): the
+            // header needs an id before an inline image can become one of
+            // its own attachments, so it is applied and saved separately.
+            $taskTemplate = new TaskTemplate($data->attributes());
+            $taskTemplate->save();
+
+            $this->descriptionWriter->applyOnCreate($taskTemplate, $data->description, $actor, 'description');
+
+            if ($taskTemplate->isDirty('description')) {
+                $taskTemplate->save();
+            }
+
+            $this->itemWriter->create($taskTemplate, $data->items, $actor);
 
             return $this->loadDetail($taskTemplate);
         });
     }
 
-    public function update(TaskTemplate $taskTemplate, UpdateTaskTemplateData $data): TaskTemplate
+    public function update(TaskTemplate $taskTemplate, UpdateTaskTemplateData $data, User $actor): TaskTemplate
     {
-        return DB::transaction(function () use ($taskTemplate, $data): TaskTemplate {
+        return DB::transaction(function () use ($taskTemplate, $data, $actor): TaskTemplate {
+            $taskTemplate->fill($data->submittedAttributes());
+
+            // Rich text description (spec 0128, D-2/D-3/D-4), only when the
+            // key was actually submitted.
+            if ($data->descriptionSubmitted) {
+                $this->descriptionWriter->applyOnUpdate($taskTemplate, $data->description, $actor, 'description');
+            }
+
             // Unconditional save: fires the model's saved event even when no
             // native attribute changed, so the HasCustomFields write pipeline
             // (spec 0021) persists a custom-fields-only edit.
-            $taskTemplate->fill($data->submittedAttributes())->save();
+            $taskTemplate->save();
 
             if ($data->itemsSubmitted()) {
                 /** @var array<int, TaskTemplateItemData> $items */
                 $items = $data->items;
-                $this->itemWriter->sync($taskTemplate, $items);
+                $this->itemWriter->sync($taskTemplate, $items, $actor);
             }
 
             return $this->loadDetail($taskTemplate->fresh());

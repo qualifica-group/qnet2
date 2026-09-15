@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0128 — RICH TEXT (TIPTAP) PER NOTE E DESCRIZIONE TASK
+  Richiesta utente 2026-09-15: "in task, la descrizione deve essere un rich text, stesso rich text deve
+  stare in tutte le note del sistema". Decisioni utente 2026-09-15 (AskUserQuestion):
+    - editor Tiptap autorizzato (nuove dipendenze frontend @tiptap/*);
+    - ambito: SOLO modulo Note (notes.body) + descrizione task; poi esteso ai template task
+      (intestazione + voci) perche' la loro descrizione viene copiata nei task generati;
+    - formato: HTML sanificato lato server con allow-list, migrazione dei contenuti esistenti;
+    - sanitizer backend: symfony/html-sanitizer (nuova dipendenza composer autorizzata);
+    - toolbar: base (grassetto, corsivo, sottolineato, barrato), liste, link, blocchi (titoli,
+      citazione, codice), immagini; copia-incolla di immagini dagli appunti obbligatorio;
+    - immagini salvate come ALLEGATI DEL RECORD proprietario;
+    - menzioni @utente SOLO nelle note (non nella descrizione task/template).
+  RETTIFICA: 0052 D-12 (formato menzione `@[Nome](user:12)` nel body in testo semplice → nodo HTML),
+  0052 data_contract `body` max 5000 (ora limite sul testo visibile), 0101 catalogo campi
+  (`description` tipo `textarea` → `richtext`).
+-->
+<spec id="0128-rich-text-notes-task-description" status="approved" owner="utente" date="2026-09-15">
+
+  <goal>
+    Chi scrive una nota (su task o richieste) o la descrizione di un task / template task usa lo stesso editor
+    rich text: formattazione base, liste, link, titoli, citazioni, codice e immagini, incluse le immagini
+    incollate dagli appunti. Il contenuto viene salvato come HTML sanificato dal server e mostrato formattato,
+    senza mai eseguire markup non consentito.
+  </goal>
+
+  <context>
+    <existing_names>
+      <item>Note: `notes.body` text NOT NULL (`2026_07_22_150100_create_notes_table.php:35`), `App\Models\Note`
+        (#[Fillable(['body'])], LogsModelActivity, SoftDeletes). `StoreNoteRequest:49` / `UpdateNoteRequest:30`:
+        body required|string|min:1|max:5000 + `mentions` int[]. `NoteService::create/update` (MentionValidator
+        → coerenza token/mentions D-12 → sync `note_mentions` → `NoteMentionNotification`).
+        `MentionParser` (regex `@\[([^\]]*)\]\(user:(\d+)\)`: extractIds, resolveTokens) usato da MentionValidator,
+        NoteResource (ordine `mentions`), NoteMentionNotification (excerpt 140 char). Host note registrati in
+        `config/notes.php`: `request-management` (Opportunity) e `tasks`.</item>
+      <item>Frontend note: `note-composer.tsx` (RHF+zod, BODY_MAX_LENGTH 5000, contatore, stato `mentions`,
+        422 → body), `mention-textarea.tsx` (combobox con `MentionPickerPanel`, trigger `@`, tastiera Enter/Tab/
+        frecce/Esc, ricerca debounced `useMentionableUsers`), `mention-tokens.ts` (toDisplayText/toWireBody/
+        splitIntoSegments), `note-body.tsx` (segmenti testo + `MentionBadge`, nessun dangerouslySetInnerHTML),
+        `note-item.tsx` (edit = NoteComposer editingNote). Nessun altro consumer del body fuori da features/notes.</item>
+      <item>Task: `tasks.description` text nullable; Fillable in `Task.php:46`; `StoreTaskRequest:85` /
+        `UpdateTaskRequest:104` sometimes|nullable|string senza max; `CreateTaskData`/`UpdateTaskData`
+        (descriptionSubmitted); `TaskService::create/update`; `TaskResource:59`; `TasksAuthorization:83`
+        `'description' => 'textarea'`. Copie: `TaskOccurrenceFactory:68` (ricorrenze, NON copia allegati),
+        `WorkOrderTaskGenerator:108` (da `TaskTemplateItem->description`, copia gli allegati della voce con
+        `AttachmentService::copyTo()` → nuovi id). Nessuna colonna griglia/export/notifica sulla descrizione.</item>
+      <item>Frontend task: `task-schema.ts:32`, `task-identity-section.tsx:62-80` (Textarea in MetaField),
+        `task-form-payload.ts`, `use-task-form.ts`, `task-detail.tsx:61-63` (whitespace-pre-wrap).</item>
+      <item>Template task: `task_templates.description` e `task_template_items.description` text nullable;
+        `StoreTaskTemplateRequest:43`, `UpdateTaskTemplateRequest:52`, `ValidatesTaskTemplateItems:44`;
+        `TaskTemplateColumnCatalog:36,93` (colonna testo + filtro), `TaskTemplatesTableDefinition:110`;
+        `TaskTemplateResource:24`, `TaskTemplateItemResource:34`. Frontend: `task-template-form-body.tsx:72-90`,
+        `task-template-items-editor.tsx:148-158`, `task-template-detail.tsx:49-50,71-72`.</item>
+      <item>Allegati: `config/attachments.php` (disk `local` privato, max 10240 KB, MIME immagini jpeg/png/gif/webp,
+        `attachable_types`: user, company_site, opportunity, document_layout, contract, task, task_template_item —
+        NON note, NON task_template). `AttachmentPolicy` = solo permessi `attachments.*`, nessun controllo sul
+        record proprietario. `AttachmentController::index` filtra per owner (+collection opzionale), `view`
+        streamma inline. Frontend: `fetchAttachmentBinary(id, mode)` blob + `use-attachment-binary.ts` (blob URL).</item>
+      <item>Auth: Bearer token in localStorage (`api/client.ts:31-35`): un `img src` verso /api non si autentica,
+        le immagini vanno caricate come blob via axios.</item>
+      <item>Nessun sanitizer HTML presente (composer.lock / node_modules). PHP 8.4 con `Dom\HTMLDocument`.
+        Nessuna CSP configurata.</item>
+      <item>Activity log: `LogsModelActivity` logga i fillable dirty; `activity-log-section.tsx:185-197` mostra
+        vecchio/nuovo valore come stringa troncata (l'HTML apparirebbe come markup).</item>
+    </existing_names>
+  </context>
+
+  <decisions>
+    <decision id="D-1">Formato: frammento HTML (niente html/body). Allow-list server (symfony/html-sanitizer), unica
+      fonte di verita': `p, br, strong, em, u, s, h2, h3, ul, ol, li, blockquote, pre, code, a[href], img[data-attachment-id|alt]`
+      + SOLO nelle note `span[data-type="mention"][data-id][data-label]`. `a[href]` schemi http/https/mailto,
+      il server forza `rel="noopener noreferrer nofollow"` e `target="_blank"`. Tutto il resto (script, style,
+      on*, iframe, attributi style/class, img src remoti) viene rimosso, non rifiutato con 422.</decision>
+    <decision id="D-2">Contenuto vuoto: un HTML il cui testo visibile e' vuoto e senza immagini vale "vuoto" → per la
+      descrizione task/template si salva `null`; per la nota e' 422 `body` (required, come oggi).</decision>
+    <decision id="D-3">Immagini = allegati del record proprietario, collection riservata `rich_text`
+      (costante `RichText::ATTACHMENT_COLLECTION`). Proprietari: la Nota stessa (nuovo alias attachable `note`),
+      il Task (`task`), il Template (`task_template`, nuovo alias), la voce (`task_template_item`).
+      Il client invia le immagini NUOVE inline come `img src="data:image/(png|jpeg|gif|webp);base64,..."` nello
+      stesso payload del salvataggio; il server, nella stessa transazione del salvataggio, decodifica, verifica
+      il MIME reale (finfo sui byte, allow-list immagini), crea l'allegato sul proprietario e riscrive il tag in
+      `img data-attachment-id="{id}"` (niente src persistito). Nessun upload separato, nessun orfano.</decision>
+    <decision id="D-4">Immagini GIA' salvate viaggiano come `img data-attachment-id="{id}"`. Il server le conserva solo
+      se l'id e' un allegato `rich_text` DELLO STESSO proprietario; altrimenti il tag viene rimosso (impedisce di
+      referenziare allegati altrui). All'update, gli allegati `rich_text` del proprietario non piu' referenziati
+      vengono eliminati (file + riga) dopo il commit.</decision>
+    <decision id="D-5">Limiti in `config/rich_text.php`: `image_max_kb` 5120 per immagine, `max_new_images` 10 per
+      campo per salvataggio, `note_text_max` 5000 caratteri di testo visibile (sostituisce max:5000 sul raw),
+      `html_max` 60000 caratteri dell'HTML dopo l'estrazione delle immagini (sta nel tipo TEXT). Superamenti = 422
+      sul campo. Il client applica gli stessi limiti prima di inviare (toast), il server resta la difesa.</decision>
+    <decision id="D-6">Autorizzazione allegati `rich_text`: `view`/`download` concessi a chi puo' leggere il proprietario
+      (Nota → lettura del record ospite via `NoteEntityRegistry::assertReadable`; Task → TaskPolicy `view`;
+      Template/voce → policy template `view`), INDIPENDENTEMENTE da `attachments.view`. `POST /api/attachments`
+      e `DELETE /api/attachments/{id}` con `collection=rich_text` → 403 (gestiti solo dal contenuto).
+      `GET /api/attachments` senza `collection` esclude `rich_text` (la tab Documenti non le mostra).</decision>
+    <decision id="D-7">Menzioni nelle note: nodo `span data-type="mention" data-id="12" data-label="Nome Cognome"`
+      con testo `@Nome Cognome`. `MentionParser` legge gli id dai nodi (DOM, non regex). `mentions[]` resta nel
+      payload e la coerenza D-12 resta verificata (422 invariati). Nella descrizione task/template i nodo
+      mention vengono ridotti a testo semplice dal sanitizer.</decision>
+    <decision id="D-8">Copie: `TaskOccurrenceFactory` e `WorkOrderTaskGenerator` copiano gli allegati `rich_text` del
+      sorgente sul nuovo task (`AttachmentService::copyTo`) e riscrivono i `data-attachment-id` con la mappa
+      vecchio→nuovo id (servizio unico `RichTextAttachmentCopier`). Un id senza allegato sorgente viene rimosso.</decision>
+    <decision id="D-9">Testo semplice derivato (`RichTextPlainText`): excerpt di `NoteMentionNotification` (mention →
+      `@Nome`, blocchi separati da spazio, immagini omesse), riga griglia template (`TaskTemplatesTableDefinition`).
+      Il filtro testo della griglia template resta un LIKE sulla colonna (accettato).</decision>
+    <decision id="D-10">Migrazione dati (nuova migrazione, reversibile): converte `notes.body`, `tasks.description`,
+      `task_templates.description`, `task_template_items.description` da testo a HTML: escape, blocchi separati da
+      riga vuota → `p`, a capo singolo → `br`, token `@[Nome](user:12)` → nodo mention (solo notes). `down()`
+      riconverte HTML → testo (nodo mention → token). Righe null restano null. A chunk (chunkById).</decision>
+    <decision id="D-11">Frontend: componente condiviso `components/rich-text/` — `RichTextEditor` (toolbar compatta
+      text-xs/size-3.5; incolla/trascina/scegli immagine → data URI dopo controllo MIME/size; link con allow-list
+      schemi via `safeUrl`) e `RichTextContent` (Tiptap `editable: false`: nessun dangerouslySetInnerHTML; node
+      view immagine che carica il blob con `fetchAttachmentBinary(id, 'view')` e mostra skeleton/placeholder
+      d'errore; mention renderizzata con `MentionBadge`). Stili con token del design system (no colori hard-coded).</decision>
+    <decision id="D-12">Menzioni nel composer: estensione Tiptap Mention con suggestion alimentata da
+      `useMentionableUsers` (stesso endpoint, debounce, stessa tastiera Enter/Tab/frecce/Esc). `mention-textarea.tsx`
+      e le funzioni di `mention-tokens.ts` non piu' usate vengono cancellate (dead code).</decision>
+    <decision id="D-13">`TasksAuthorization` e `TaskTemplatesAuthorization` field type `description` → `richtext`
+      (template aggiunto in build 2026-09-15, coerenza). Le Resource che annidano allegati di Task/TaskTemplate/
+      TaskTemplateItem escludono la collection `rich_text` (estensione di D-6). Activity log frontend: i valori
+      stringa che iniziano con `&lt;` vengono mostrati come testo estratto (DOMParser → textContent), mai renderizzati.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: dipendenza `symfony/html-sanitizer`; `app/RichText/` (sanitizer D-1, processor immagini D-3/D-4,
+        plain text D-9, copier D-8, converter testo↔HTML D-10); `config/rich_text.php`.</item>
+      <item>Allegati: alias `note` e `task_template` in `attachable_types`; policy/controller D-6.</item>
+      <item>Note: validazione D-2/D-5, NoteService (sanitize + immagini sul Note + mention da DOM), NoteResource,
+        NoteMentionNotification excerpt.</item>
+      <item>Task e template task (intestazione + voci): validazione, service, copie D-8, riga griglia D-9,
+        TasksAuthorization D-13.</item>
+      <item>Migrazione dati D-10.</item>
+      <item>Frontend: dipendenze `@tiptap/*`; `components/rich-text/`; note (composer, body, item edit); form e dettaglio
+        task; form, editor voci e dettaglio template; activity log D-13; i18n it/en toolbar e messaggi.</item>
+    </in>
+    <out>
+      <item>Altri campi note/testo lungo: `leads.notes`, `referents.notes`, `company_sites.notes`, `rewards.notes`,
+        `opportunities.general_notes`, `time_entries.notes`, `time_entry_day_notes.note`, altre colonne description.</item>
+      <item>Menzioni nella descrizione di task/template (D-7).</item>
+      <item>Tabelle, colori testo, allineamenti, video, embed, immagini da URL remoto, ridimensionamento immagini.</item>
+      <item>Ricerca full-text sul contenuto rich text; colonna descrizione nella griglia Task.</item>
+      <item>Correzione generale di `AttachmentPolicy` per le collection diverse da `rich_text` (manca il controllo sul
+        record proprietario: segnalato, non corretto qui).</item>
+      <item>Configurazione CSP.</item>
+      <item>Collaborazione in tempo reale / editing concorrente.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <shape name="RichTextHtml">
+      string | null. Frammento HTML conforme a D-1. In LETTURA: le immagini sono sempre
+      `&lt;img data-attachment-id="123" alt=""&gt;`; nessun `src`. In SCRITTURA il client puo' inviare anche
+      `&lt;img src="data:image/png;base64,..."&gt;` per le immagini nuove (D-3).
+    </shape>
+
+    <endpoint method="POST" path="/api/notes">
+      <request>
+        Invariato tranne `body`: RichTextHtml non vuoto (D-2). Menzioni come nodo D-7; `mentions`: int[] coerente.
+      </request>
+      <response status="201">
+        Envelope invariato. `data.body`: HTML sanificato con immagini riscritte a `data-attachment-id`.
+        `data.mentions` invariato (ordine di prima apparizione dei nodi).
+      </response>
+      <errors>
+        422 `body`: vuoto, testo visibile &gt; `note_text_max`, HTML &gt; `html_max`, immagine non valida
+        (MIME non immagine consentita, &gt; `image_max_kb`, base64 corrotto), &gt; `max_new_images`.
+        422 menzioni come oggi. 403/404 invariati.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/notes/{note}">
+      <request>Come POST per `body`/`mentions`.</request>
+      <response status="200">Come POST. Allegati `rich_text` della nota non piu' referenziati eliminati (D-4).</response>
+      <errors>Come POST + 403/404 invariati.</errors>
+    </endpoint>
+
+    <endpoint method="POST|PATCH" path="/api/tasks, /api/tasks/{task}">
+      <request>`description`: RichTextHtml, nullable (D-2 → null se vuoto). Altri campi invariati.</request>
+      <response status="201|200">`data.description`: HTML sanificato o null.</response>
+      <errors>422 `description`: HTML &gt; `html_max`, immagine non valida, &gt; `max_new_images`. Resto invariato.</errors>
+    </endpoint>
+
+    <endpoint method="POST|PATCH" path="/api/task-templates, /api/task-templates/{taskTemplate}">
+      <request>`description` e `items.*.description`: RichTextHtml nullable. Immagini della voce: proprietario la voce.</request>
+      <response status="201|200">Descrizioni sanificate o null.</response>
+      <errors>422 `description` / `items.N.description` come per i task.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/attachments/{attachment}/view, /download, /api/attachments/{attachment}">
+      <request>Invariato.</request>
+      <response status="200">Invariato. Per `collection=rich_text` autorizzazione D-6.</response>
+      <errors>403 se `rich_text` e l'utente non legge il proprietario; 404 invariato.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/attachments">
+      <request>Invariato.</request>
+      <response status="200">Senza `collection`: esclude `rich_text`.</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="POST|DELETE" path="/api/attachments, /api/attachments/{attachment}">
+      <request>Invariato.</request>
+      <response status="201|200">Invariato per le altre collection.</response>
+      <errors>403 con `collection=rich_text` (D-6).</errors>
+    </endpoint>
+
+    <meta>`TasksAuthorization` field types: `description` = `richtext` (D-13).</meta>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend: Pest in tests/Unit/RichText, tests/Feature/{Notes,Tasks,TaskTemplates,Attachments,WorkOrders} -->
+    <criterion id="AC-001">Dato un HTML con script, style, attributi on*/style/class, iframe, img src remoto e link
+      javascript:, quando passa dal sanitizer, allora restano solo gli elementi/attributi D-1, i link http/https/mailto
+      hanno rel e target forzati e gli altri perdono href. (Unit RichTextSanitizerTest)</criterion>
+    <criterion id="AC-002">Dato un nodo mention in una descrizione task, quando viene salvata, allora il nodo diventa
+      testo `@Nome`; nella nota invece il nodo resta con data-id/data-label. (Feature)</criterion>
+    <criterion id="AC-003">Dato POST /api/notes con body contenente un img data:image/png valido, allora 201, esiste un
+      allegato collection `rich_text` con attachable = la nota, e `data.body` contiene `data-attachment-id` di
+      quell'allegato e nessun `src`. (NoteRichTextImagesTest)</criterion>
+    <criterion id="AC-004">Dato un data URI dichiarato image/png ma con byte non immagine (o &gt; image_max_kb, o
+      &gt; max_new_images immagini), quando salvo nota/task, allora 422 sul campo e nessun allegato ne' riga creati.</criterion>
+    <criterion id="AC-005">Dato un `img data-attachment-id` che punta a un allegato di un altro record o di un'altra
+      collection, quando salvo, allora il tag viene rimosso e l'allegato altrui resta intatto.</criterion>
+    <criterion id="AC-006">Dato una nota/task con due immagini salvate, quando PATCH rimuove un'immagine, allora
+      l'allegato rimosso (riga + file) non esiste piu' e l'altro resta.</criterion>
+    <criterion id="AC-007">Dato una nota con testo visibile &gt; 5000 caratteri, allora 422 `body`; con 4900 caratteri di
+      testo e markup che porta l'HTML oltre 5000, allora 201.</criterion>
+    <criterion id="AC-008">Dato body HTML vuoto (`&lt;p&gt;&lt;/p&gt;`) allora 422 `body`; dato description task `&lt;p&gt;&lt;/p&gt;`
+      allora 200 e `description` null.</criterion>
+    <criterion id="AC-009">Dato un nodo mention per l'utente 12 ma `mentions: []` (o viceversa), allora 422 come D-12
+      di 0052; con coerenza, `note_mentions` sincronizzato e notifica inviata con excerpt in testo semplice
+      (`@Nome`, senza tag). (NoteMentionValidationTest / NoteMentionNotificationTest aggiornati per il nuovo formato)</criterion>
+    <criterion id="AC-010">Dato un utente che legge il task ma senza `attachments.view`, quando GET
+      /api/attachments/{id}/view su un'immagine `rich_text` del task, allora 200; dato un utente con
+      `attachments.view` che NON legge il task, allora 403. Stessa coppia per un'immagine di nota su una richiesta.</criterion>
+    <criterion id="AC-011">Dato POST /api/attachments o DELETE /api/attachments/{id} con collection `rich_text`, allora
+      403; GET /api/attachments per il task senza collection non restituisce gli allegati `rich_text`.</criterion>
+    <criterion id="AC-012">Dato un task con immagine nella descrizione e ricorrenza, quando GenerateTaskRecurrences crea
+      l'occorrenza, allora l'occorrenza ha un proprio allegato `rich_text` copiato e la sua descrizione referenzia il
+      NUOVO id.</criterion>
+    <criterion id="AC-013">Dato una voce di template con immagine nella descrizione, quando la commessa genera i task,
+      allora il task generato referenzia il nuovo allegato copiato (non quello della voce).</criterion>
+    <criterion id="AC-014">Dato righe esistenti con testo multiriga e token `@[Anna](user:3)`, quando gira la migrazione,
+      allora notes.body e le tre descrizioni diventano HTML D-10 (escape di `&lt;`, `p`/`br`, nodo mention solo in notes)
+      e `down()` ripristina il testo originale (round-trip). (RichTextMigrationTest)</criterion>
+    <criterion id="AC-015">Dato GET della griglia template con descrizione HTML, allora la cella contiene testo semplice.</criterion>
+    <criterion id="AC-016">Dato `GET` meta task, allora il tipo campo `description` e' `richtext`.</criterion>
+    <!-- Frontend: Vitest -->
+    <criterion id="AC-017">Dato `RichTextEditor`, quando uso i pulsanti della toolbar (grassetto, corsivo, sottolineato,
+      barrato, elenco puntato/numerato, titolo, citazione, codice), allora `onChange` emette l'HTML con il tag
+      corrispondente; i pulsanti hanno aria-label e aria-pressed. (rich-text-editor.test.tsx)</criterion>
+    <criterion id="AC-018">Dato un evento paste con un File image/png negli appunti, allora l'editor inserisce un img con
+      src data:image/png; con un file &gt; 5 MB o non immagine, allora non inserisce nulla e mostra un toast.</criterion>
+    <criterion id="AC-019">Dato un link inserito con `javascript:alert(1)`, allora il link non viene applicato; con
+      https://… viene applicato.</criterion>
+    <criterion id="AC-020">Dato `RichTextContent` con HTML contenente `img data-attachment-id="5"`, allora chiama
+      `fetchAttachmentBinary(5, 'view')` e mostra l'immagine col blob URL; in errore mostra un placeholder
+      accessibile. Dato HTML con `&lt;script&gt;`, nessuno script entra nel DOM.</criterion>
+    <criterion id="AC-021">Dato il composer note, quando digito `@an` e seleziono un utente con Enter, allora nel body
+      c'e' il nodo mention e il submit invia `mentions: [id]`; modifica di una nota esistente precarica HTML e mention.
+      (note-composer.test.tsx aggiornato)</criterion>
+    <criterion id="AC-022">Dato `NoteBody` con nodo mention, allora mostra `MentionBadge` con avatar da `mentions`.</criterion>
+    <criterion id="AC-023">Dato il form task, allora la descrizione usa `RichTextEditor`, un editor vuoto invia
+      `description: null` e in edit l'invio avviene solo se l'HTML e' cambiato; il dettaglio mostra `RichTextContent`.</criterion>
+    <criterion id="AC-024">Dato il form template (intestazione e voci) e il dettaglio template, allora usano
+      `RichTextEditor` / `RichTextContent`.</criterion>
+    <criterion id="AC-025">Dato una voce di activity log con valore `&lt;p&gt;&lt;strong&gt;Ciao&lt;/strong&gt;&lt;/p&gt;`, allora mostra `Ciao`.</criterion>
+    <criterion id="AC-026">Chiavi i18n rich text presenti in it ed en (test di parita').</criterion>
+    <criterion id="AC-027">Verifica manuale UI a 375/768/1024: toolbar che va a capo senza scroll orizzontale, immagini
+      con max-width 100%, focus visibile, contrasto token. (checklist verifier)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nuove dipendenze AUTORIZZATE solo queste: composer `symfony/html-sanitizer`; npm `@tiptap/react`, `@tiptap/pm`,
+      `@tiptap/starter-kit`, `@tiptap/extension-image`, `@tiptap/extension-mention`, `@tiptap/extensions`
+      (placeholder), `@tiptap/suggestion` (peer di mention). Versioni stabili correnti, bloccate nel lockfile.</item>
+    <item>Il server sanifica SEMPRE prima di persistere; il client non e' mai la difesa. Nessun
+      `dangerouslySetInnerHTML` nel frontend.</item>
+    <item>Authz server-side su ogni endpoint toccato; D-6 testato in positivo e negativo.</item>
+    <item>Nessun `throttle` nuovo. Nessun hard-coding dei limiti: `config/rich_text.php` (backend) e costanti
+      condivise frontend allineate ai valori della spec.</item>
+    <item>Migrazione nuova e reversibile; nessuna modifica a migrazioni esistenti.</item>
+    <item>Operativo: `post_max_size`/limite body del web server devono accogliere il payload con immagini inline
+      (10 × 5 MB in base64 ≈ 70 MB). Da verificare in ambiente prima del rilascio.</item>
+    <item>File entro 300/500 righe; identificatori inglesi; i18n per ogni stringa UI; stile solo via token.</item>
+  </constraints>
+
+</spec>

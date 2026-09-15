@@ -12,6 +12,7 @@ use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskActionOnlyStatusGuard;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
+use App\Services\Tasks\TaskDescriptionWriter;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
 use App\Services\Tasks\TaskManualStatusGuard;
@@ -115,6 +116,7 @@ class TaskService
     public function __construct(
         private readonly TaskActionOnlyStatusGuard $actionOnlyStatusGuard,
         private readonly TaskClosureFeedbackGuard $closureFeedbackGuard,
+        private readonly TaskDescriptionWriter $descriptionWriter,
         private readonly TaskHierarchyGuard $hierarchyGuard,
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly TaskNotifier $notifier,
@@ -190,6 +192,16 @@ class TaskService
 
             $task->save();
 
+            // Step 5c: rich text description (spec 0128, D-2/D-3) — only
+            // once the Task has an id, since an inline image becomes one of
+            // ITS OWN attachments. A second, small UPDATE only when the
+            // sanitized/processed HTML actually differs from the null default.
+            $this->descriptionWriter->applyOnCreate($task, $data->description, $creator);
+
+            if ($task->isDirty('description')) {
+                $task->save();
+            }
+
             // Step 6: assegnatari/osservatori (D-1), same transaction.
             $task->assignees()->sync($data->assigneeIds);
             $task->watchers()->sync($data->watcherIds);
@@ -238,6 +250,13 @@ class TaskService
             TaskManualStatusGuard::assertAllowed($task, $data->taskStatusId);
 
             $task->fill($data->submittedAttributes());
+
+            // Rich text description (spec 0128, D-2/D-3/D-4), only when the
+            // key was actually submitted — an untouched description is never
+            // re-sanitized/re-processed and its attachments are left alone.
+            if ($data->descriptionSubmitted) {
+                $this->descriptionWriter->applyOnUpdate($task, $data->description, $actor);
+            }
 
             // States reserved to the domain actions (spec 0123, D-4): checked
             // first and unconditionally on the actor, ahead of every other
@@ -375,16 +394,22 @@ class TaskService
 
     /**
      * The column keys the client actually submitted on this PATCH, plus
-     * `assignee_ids`/`watcher_ids`/`recurrence` when their own key was
-     * present — none of the three travel through submittedAttributes(),
-     * which only carries `tasks` columns, yet all three are structural
-     * (D-5; spec 0120 D-13 for `recurrence`).
+     * `description`/`assignee_ids`/`watcher_ids`/`recurrence` when their own
+     * key was present — none of the four travel through submittedAttributes(),
+     * which only carries plain mass-assignable `tasks` columns, yet all four
+     * are structural (D-5; spec 0120 D-13 for `recurrence`; spec 0128 for
+     * `description`, which TaskDescriptionWriter now sets directly rather
+     * than through fill()).
      *
      * @return array<int, string>
      */
     private function submittedKeys(UpdateTaskData $data): array
     {
         $keys = array_keys($data->submittedAttributes());
+
+        if ($data->descriptionSubmitted) {
+            $keys[] = 'description';
+        }
 
         if ($data->hasAssigneeIds()) {
             $keys[] = 'assignee_ids';

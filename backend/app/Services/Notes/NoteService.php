@@ -15,6 +15,8 @@ use App\Notes\Mentions\MentionValidator;
 use App\Notes\NoteEntityRegistry;
 use App\Notes\NoteThreadResolver;
 use App\Notifications\NoteMentionNotification;
+use App\RichText\RichTextImageProcessor;
+use App\RichText\RichTextSanitizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -27,6 +29,13 @@ use Illuminate\Support\Facades\Notification;
  * D-7 thread normalization, D-10/D-12 mention validation, D-11 notification
  * dispatch. Controllers stay thin (permission/ownership gate + Resource
  * output); everything else lives here.
+ *
+ * `body` sanitizing (D-1), the D-3/D-4 embedded-image lifecycle and the D-7
+ * mention-node coherence check (against the SANITIZED body, so a mention span
+ * the sanitizer would strip never counts) are this class's job too (spec
+ * 0128) — the FormRequest only checks the body's type and, on the raw input,
+ * its D-2/D-5 emptiness/length (ValidatesRichTextBody), neither of which
+ * needs a sanitizer or the note's own record.
  */
 final class NoteService
 {
@@ -36,6 +45,8 @@ final class NoteService
         private readonly NoteEntityRegistry $registry,
         private readonly NoteThreadResolver $threadResolver,
         private readonly MentionValidator $mentionValidator,
+        private readonly RichTextSanitizer $sanitizer,
+        private readonly RichTextImageProcessor $imageProcessor,
     ) {}
 
     /**
@@ -93,17 +104,35 @@ final class NoteService
         $record = $this->authorizedRecord($user, $data->entityType, $data->entityId);
         $alias = $record->getMorphClass();
 
-        $this->mentionValidator->validate($data->entityType, $record, $data->body, $data->mentionIds);
+        // Step 1: sanitize once, for the D-12 coherence check AND as the
+        // provisional body the note is first saved with below — a brand new
+        // inline `data:` image has no `data-attachment-id` yet, so the
+        // sanitizer's allow-list drops it here; the image processor (Step 3)
+        // restores it for real, working off the ORIGINAL $data->body instead,
+        // once the note exists to attach it to (D-3).
+        $sanitizedBody = $this->sanitizer->sanitize($data->body, allowMentions: true);
+        $this->mentionValidator->validate($data->entityType, $record, $sanitizedBody, $data->mentionIds);
+
         $parentId = $this->threadResolver->resolveParentId($data->parentId, $record, $alias);
         $quoteId = $this->resolveQuoteId($data->quoteId, $parentId);
 
-        return DB::transaction(function () use ($user, $record, $alias, $data, $parentId, $quoteId): Note {
-            $note = new Note(['body' => $data->body]);
+        return DB::transaction(function () use ($user, $record, $alias, $sanitizedBody, $data, $parentId, $quoteId): Note {
+            // Step 2: persist the owner first — RichTextImageProcessor
+            // attaches images to an ALREADY EXISTING record.
+            $note = new Note(['body' => $sanitizedBody]);
             $note->notable_type = $alias;
             $note->notable_id = $record->getKey();
             $note->parent_id = $parentId;
             $note->quote_id = $quoteId;
             $note->user_id = $user->id;
+            $note->save();
+
+            // Step 3: extract the ORIGINAL body's inline images into rich_text
+            // attachments of the note (D-3) and persist the final body. A
+            // second save inside the same transaction — accepted trade-off
+            // (no attachment can exist before its owner's row does).
+            $result = $this->imageProcessor->process($data->body, $note, $user, true, 'body');
+            $note->body = $result->html;
             $note->save();
 
             $this->syncMentionsAndNotify($note, $user, $data->entityType, $record, $data->mentionIds);
@@ -122,10 +151,19 @@ final class NoteService
     {
         [$entityType, $record] = $this->reauthorizeHost($user, $note);
 
-        $this->mentionValidator->validate($entityType, $record, $data->body, $data->mentionIds);
+        $sanitizedBody = $this->sanitizer->sanitize($data->body, allowMentions: true);
+        $this->mentionValidator->validate($entityType, $record, $sanitizedBody, $data->mentionIds);
 
-        return DB::transaction(function () use ($note, $data, $user, $entityType, $record): Note {
-            $note->body = $data->body;
+        $referencedAttachmentIds = [];
+
+        $note = DB::transaction(function () use ($note, $data, $user, $entityType, $record, &$referencedAttachmentIds): Note {
+            // The note already exists (unlike create()): images attach
+            // directly against it, working off the ORIGINAL $data->body so a
+            // newly pasted image is decoded/stored (D-3).
+            $result = $this->imageProcessor->process($data->body, $note, $user, true, 'body');
+            $referencedAttachmentIds = $result->referencedAttachmentIds;
+
+            $note->body = $result->html;
             $note->edited_at = now();
             $note->save();
 
@@ -133,6 +171,12 @@ final class NoteService
 
             return $note->load(['author.avatar', 'mentionedUsers.avatar', 'quote']);
         });
+
+        // D-4: after commit, drop the note's own rich_text attachments the
+        // saved body no longer references (file + row).
+        $this->imageProcessor->deleteUnreferenced($note, $referencedAttachmentIds);
+
+        return $note;
     }
 
     /**

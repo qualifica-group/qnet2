@@ -84,6 +84,15 @@ if (! function_exists('noteManagedOpportunity')) {
     }
 }
 
+if (! function_exists('mentionSpan')) {
+    // D-7: the mention node the client sends/persists in `body`, replacing the
+    // 0052 plain-text token `@[Name](user:id)`.
+    function mentionSpan(int $id, string $label): string
+    {
+        return sprintf('<span data-type="mention" data-id="%d" data-label="%s">@%s</span>', $id, $label, $label);
+    }
+}
+
 if (! function_exists('grantMentionAccess')) {
     /**
      * Grants $user D-10 mentionable access to $opportunity WITHOUT the GA2
@@ -115,7 +124,7 @@ it('mentioning two users notifies both, once each, never the self-mentioning aut
     $this->postJson('/api/notes', [
         'entity_type' => 'request-management',
         'entity_id' => $opportunity->id,
-        'body' => "Hey @[Uno](user:{$mentionedOne->id}) and @[Due](user:{$mentionedTwo->id}), also myself @[Me](user:{$actor->id})",
+        'body' => 'Hey '.mentionSpan($mentionedOne->id, 'Uno').' and '.mentionSpan($mentionedTwo->id, 'Due').', also myself '.mentionSpan($actor->id, 'Me'),
         'mentions' => [$mentionedOne->id, $mentionedTwo->id, $actor->id],
     ])->assertCreated();
 
@@ -136,7 +145,7 @@ it('the database payload matches NotificationData and surfaces via the existing 
     $this->postJson('/api/notes', [
         'entity_type' => 'request-management',
         'entity_id' => $opportunity->id,
-        'body' => "Hey @[Mentioned Person](user:{$mentioned->id})",
+        'body' => 'Hey '.mentionSpan($mentioned->id, 'Mentioned Person'),
         'mentions' => [$mentioned->id],
     ])->assertCreated();
 
@@ -183,7 +192,7 @@ it('updating mentions notifies only the NEW ones, drops the pivot row for remove
     $noteId = $this->postJson('/api/notes', [
         'entity_type' => 'request-management',
         'entity_id' => $opportunity->id,
-        'body' => "Hey @[Kept](user:{$kept->id}) and @[Removed](user:{$removed->id})",
+        'body' => 'Hey '.mentionSpan($kept->id, 'Kept').' and '.mentionSpan($removed->id, 'Removed'),
         'mentions' => [$kept->id, $removed->id],
     ])->assertCreated()->json('data.id');
 
@@ -191,7 +200,7 @@ it('updating mentions notifies only the NEW ones, drops the pivot row for remove
     Notification::assertSentToTimes($removed, NoteMentionNotification::class, 1);
 
     $this->patchJson("/api/notes/{$noteId}", [
-        'body' => "Hey @[Kept](user:{$kept->id}) and @[New](user:{$new->id})",
+        'body' => 'Hey '.mentionSpan($kept->id, 'Kept').' and '.mentionSpan($new->id, 'New'),
         'mentions' => [$kept->id, $new->id],
     ])->assertOk();
 

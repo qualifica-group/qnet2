@@ -11,6 +11,7 @@ import {
   DetailSection,
 } from '@/components/detail/detail-panel'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import { RichTextContent } from '@/components/rich-text/rich-text-content'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
@@ -47,7 +48,11 @@ export function TaskTemplateDetailView({ taskTemplate }: TaskTemplateDetailViewP
       <DetailSection>
         <DetailGrid>
           <DetailField label={t('taskTemplates.detail.description')} full>
-            {taskTemplate.description ? taskTemplate.description : <DetailEmpty />}
+            {taskTemplate.description ? (
+              <RichTextContent html={taskTemplate.description} />
+            ) : (
+              <DetailEmpty />
+            )}
           </DetailField>
           <DetailField label={t('taskTemplates.detail.isActive')}>
             {taskTemplate.is_active ? t('common.yes') : t('common.no')}
@@ -69,7 +74,7 @@ export function TaskTemplateDetailView({ taskTemplate }: TaskTemplateDetailViewP
                   ) : null}
                 </div>
                 {item.description ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
+                  <RichTextContent html={item.description} className="mt-1 text-xs text-muted-foreground" />
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
                   <span>{t('taskTemplates.detail.items.dueOffsetDays', { count: item.due_offset_days })}</span>

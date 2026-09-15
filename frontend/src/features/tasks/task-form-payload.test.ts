@@ -43,6 +43,11 @@ describe('buildCreatePayload', () => {
     expect(payload.requires_validation).toBe(true)
     expect(payload).not.toHaveProperty('closure_feedback')
   })
+
+  /** Spec 0128 AC-023: an empty `RichTextEditor` emits `null`, sent as-is. */
+  it('sends description null when the editor is empty', () => {
+    expect(buildCreatePayload(values({ description: null })).description).toBeNull()
+  })
 })
 
 /** Spec 0120 D-1/D-12/AC-032: only the pertinent fields for the picked frequency/ends travel. */
@@ -104,6 +109,17 @@ describe('buildCreatePayload — recurrence', () => {
 describe('buildUpdatePayload', () => {
   it('sends nothing when nothing changed', () => {
     expect(buildUpdatePayload(values(), task())).toEqual({})
+  })
+
+  /** Spec 0128 AC-023: the description is a `RichTextHtml`, same "changed only" wire contract as any scalar. */
+  it('sends the description only when its HTML actually changed, null included', () => {
+    expect(buildUpdatePayload(values(), task())).not.toHaveProperty('description')
+
+    const changed = buildUpdatePayload(values({ description: '<p><strong>Ciao</strong></p>' }), task())
+    expect(changed.description).toBe('<p><strong>Ciao</strong></p>')
+
+    const cleared = buildUpdatePayload(values({ description: null }), task())
+    expect(cleared).toHaveProperty('description', null)
   })
 
   it('AC-007 (spec 0127): never carries completion_date, even when the task already has one', () => {

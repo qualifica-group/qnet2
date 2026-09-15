@@ -2,45 +2,65 @@
 
 namespace App\Notes\Mentions;
 
+use App\RichText\RichText;
+use App\RichText\RichTextDom;
+use Illuminate\Support\Str;
+
 /**
- * Pure parsing of the @mention token format stored in Note::body (spec 0052,
- * D-12): `@[Name Surname](user:12)`. The single place both directions of the
- * D-12 invariant (server-verified token/mentions coherence) and the
- * notification excerpt (token -> "@Name") rely on.
+ * Reads the mention nodes embedded in Note::body (spec 0128, D-7): a
+ * `span[data-type="mention"][data-id]` node, its own text already the
+ * `@Label` shown to the reader. Off the DOM, not a regex, since D-7 replaced
+ * the 0052 plain-text token `@[Name](user:12)` with an HTML node the
+ * sanitizer itself validates (RichTextSanitizer::enforceMentions) — this
+ * class trusts that a surviving mention span is already well-formed.
  */
 final class MentionParser
 {
-    private const string TOKEN_PATTERN = '/@\[([^\]]*)\]\(user:(\d+)\)/';
-
     /**
-     * User ids embedded in $body's tokens, in order of first appearance,
-     * deduplicated (a token repeated for the same user counts once, D-12).
+     * User ids embedded in $html's mention nodes, in DOCUMENT order,
+     * deduplicated (a user mentioned twice counts once, D-12).
      *
      * @return array<int, int>
      */
-    public static function extractIds(string $body): array
+    public static function extractIds(string $html): array
     {
-        preg_match_all(self::TOKEN_PATTERN, $body, $matches);
+        $body = RichTextDom::parse($html);
+        $ids = [];
 
-        $ids = array_map('intval', $matches[2] ?? []);
+        foreach (iterator_to_array($body->getElementsByTagName(RichText::MENTION_ELEMENT)) as $span) {
+            if (RichTextDom::attr($span, RichText::MENTION_ATTR_TYPE) !== RichText::MENTION_DATA_TYPE) {
+                continue;
+            }
+
+            $id = RichTextDom::attr($span, RichText::MENTION_ATTR_ID);
+
+            if (RichText::isPositiveIntString($id)) {
+                $ids[] = (int) $id;
+            }
+        }
 
         return array_values(array_unique($ids));
     }
 
     /**
-     * Replace every token with "@{name}", preferring $namesById and falling
-     * back to the name embedded in the token itself when the id is unknown.
+     * Single-line excerpt of $html for the mention notification (D-9): a
+     * mention node renders as "@{current name}" — $namesById, falling back to
+     * the label the node itself carries when the id no longer resolves to a
+     * user (D-11). The one place mention id extraction (extractIds) and
+     * mention TEXT resolution both live, so neither can drift from the
+     * other's notion of what a valid mention node looks like.
      *
      * @param  array<int, string>  $namesById
      */
-    public static function resolveTokens(string $body, array $namesById): string
+    public static function excerptWithNames(string $html, array $namesById, int $limit): string
     {
-        $resolved = preg_replace_callback(
-            self::TOKEN_PATTERN,
-            static fn (array $matches): string => '@'.($namesById[(int) $matches[2]] ?? $matches[1]),
-            $body,
+        $blocks = RichTextDom::walkBlocks(
+            RichTextDom::parse($html),
+            static fn (string $id, string $label): string => '@'.($namesById[(int) $id] ?? $label),
         );
 
-        return $resolved ?? $body;
+        $collapsed = preg_replace('/\s+/', ' ', implode(' ', $blocks)) ?? '';
+
+        return Str::limit(trim($collapsed), $limit);
     }
 }

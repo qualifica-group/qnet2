@@ -35,7 +35,7 @@ class TaskTemplatesAuthorization extends AbstractResourceAuthorization
     {
         return [
             new FieldDefinition('name', 'text', mandatory: true),
-            new FieldDefinition('description', 'textarea'),
+            new FieldDefinition('description', 'richtext'),
             new FieldDefinition('is_active', 'boolean'),
             new FieldDefinition('items', 'custom'),
         ];

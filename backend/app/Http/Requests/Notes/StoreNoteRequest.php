@@ -5,14 +5,21 @@ namespace App\Http\Requests\Notes;
 use App\DataObjects\Notes\CreateNoteData;
 use App\Http\Requests\Notes\Concerns\ValidatesNotableEntity;
 use App\Http\Requests\Notes\Concerns\ValidatesQuoteOwnership;
+use App\Http\Requests\Notes\Concerns\ValidatesRichTextBody;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates POST /api/notes (spec 0052 data_contract): the host entity
+ * Validates POST /api/notes (spec 0052/0128 data_contract): the host entity
  * (ValidatesNotableEntity), the body, an optional parent, an optional
  * `quote_id` (spec 0085, D-1) and the raw mentions array.
+ *
+ * `body` is a RichTextHtml (spec 0128, D-1): only its type is checked by the
+ * `required|string` rule, its CONTENT (empty/too long, D-2/D-5) by
+ * ValidatesRichTextBody. Sanitizing it and enforcing the D-7 mention/D-3
+ * image invariants is NoteService's job, not this FormRequest's — both need
+ * the resolved host record and, for images, a persisted owner.
  *
  * `parent_id` only checks the note exists (not soft-deleted): the D-7
  * single-level normalization and the "different host record" 422 both need
@@ -34,6 +41,7 @@ class StoreNoteRequest extends FormRequest
 {
     use ValidatesNotableEntity;
     use ValidatesQuoteOwnership;
+    use ValidatesRichTextBody;
 
     public function authorize(): bool
     {
@@ -46,7 +54,7 @@ class StoreNoteRequest extends FormRequest
     public function rules(): array
     {
         return array_merge($this->notableEntityRules(), [
-            'body' => ['required', 'string', 'min:1', 'max:5000'],
+            'body' => ['required', 'string'],
             'parent_id' => ['sometimes', 'nullable', 'integer', Rule::exists('notes', 'id')->whereNull('deleted_at')],
             'quote_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'mentions' => ['sometimes', 'array'],
@@ -58,6 +66,7 @@ class StoreNoteRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->validateQuoteOwnership($validator, 'quote_id', $this->input('quote_id'));
+            $this->validateBodyContent($validator);
         });
     }
 

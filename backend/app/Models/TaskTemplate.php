@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Abstracts\BaseModel;
+use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\TaskTemplateFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -18,12 +19,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * which is exactly the "in use" set `TaskTemplateService::delete()` guards
  * against (D-5, AC-011) — the FK on `work_orders.task_template_id` is
  * `restrictOnDelete`, defence in depth behind that guard.
+ *
+ * `HasAttachments` (spec 0128, D-3): the header owns the images embedded in
+ * its own rich text `description`, under the reserved `rich_text`
+ * collection — distinct from `items.*.attachments` (D-6, spec 0124), which
+ * each row owns for itself.
  */
 #[Fillable(['name', 'description', 'is_active'])]
 class TaskTemplate extends BaseModel
 {
     /** @use HasFactory<TaskTemplateFactory> */
-    use HasFactory, LogsModelActivity;
+    use HasAttachments, HasFactory, LogsModelActivity;
 
     /**
      * @return array<string, string>

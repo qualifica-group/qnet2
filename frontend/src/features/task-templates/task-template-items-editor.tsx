@@ -3,8 +3,8 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { SortableList } from '@/components/ui/sortable-list'
+import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
 import { TaskTemplateItemStatusSelect } from '@/features/task-templates/task-template-item-status-select'
 import { TaskTemplateItemAttachments } from '@/features/task-templates/task-template-item-attachments'
 import type {
@@ -107,6 +107,8 @@ function TaskTemplateItemRowContent({
   const { t } = useTranslation()
   const titleId = `task-template-item-${row.id}-title`
   const titleErrorId = `${titleId}-error`
+  const descriptionId = `task-template-item-${row.id}-description`
+  const descriptionErrorId = `${descriptionId}-error`
   const estimatedId = `task-template-item-${row.id}-estimated`
   const estimatedErrorId = `${estimatedId}-error`
   const dueOffsetId = `task-template-item-${row.id}-due-offset`
@@ -145,17 +147,26 @@ function TaskTemplateItemRowContent({
         </Button>
       </div>
 
-      <Textarea
-        aria-label={t('taskTemplates.form.items.description')}
-        placeholder={t('taskTemplates.form.items.descriptionPlaceholder')}
-        value={row.description ?? ''}
-        rows={2}
-        disabled={disabled}
-        className="min-h-14 text-xs"
-        onChange={(event) =>
-          onUpdateRow(row.id, { description: event.target.value === '' ? null : event.target.value })
-        }
-      />
+      <div>
+        <Label htmlFor={descriptionId} className="sr-only">
+          {t('taskTemplates.form.items.description')}
+        </Label>
+        <RichTextEditor
+          id={descriptionId}
+          minHeight="compact"
+          placeholder={t('taskTemplates.form.items.descriptionPlaceholder')}
+          value={row.description}
+          disabled={disabled}
+          aria-invalid={!!errors.description}
+          aria-describedby={errors.description ? descriptionErrorId : undefined}
+          onChange={(html) => onUpdateRow(row.id, { description: html })}
+        />
+        {errors.description ? (
+          <span id={descriptionErrorId} role="alert" className="mt-1 block text-xs font-medium text-destructive">
+            {errors.description}
+          </span>
+        ) : null}
+      </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div>

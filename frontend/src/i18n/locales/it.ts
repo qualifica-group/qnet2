@@ -52,6 +52,7 @@ import { documentLayouts } from './it-document-layouts'
 import { requestManagement } from './it-request-management'
 import { fieldChangeRequests } from './it-field-change-requests'
 import { notes } from './it-notes'
+import { richText } from './it-rich-text'
 import { notifications } from './it-notifications'
 import { leadImports } from './it-lead-imports'
 import { businessFunctions } from './it-business-functions'
@@ -442,6 +443,7 @@ export const it: TranslationResources = {
   rewardStatuses,
   rewardedReferents,
   notes,
+  richText,
   importRuns: { stats: moduleStats.importRuns },
   attachments,
   impersonation,

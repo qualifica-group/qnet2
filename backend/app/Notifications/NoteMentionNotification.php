@@ -13,7 +13,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Str;
 
 /**
  * Sent to every NEW @mention on a note (spec 0052, D-11) — never to the
@@ -114,8 +113,7 @@ class NoteMentionNotification extends Notification implements ShouldQueue
     private function message(?string $path): string
     {
         $namesById = $this->note->mentionedUsers->pluck('name', 'id')->all();
-        $resolvedBody = MentionParser::resolveTokens($this->note->body, $namesById);
-        $excerpt = Str::limit($resolvedBody, self::EXCERPT_LENGTH);
+        $excerpt = MentionParser::excerptWithNames($this->note->body, $namesById, self::EXCERPT_LENGTH);
 
         $message = __(':author mentioned you in :label: :excerpt', [
             'author' => $this->author->name,

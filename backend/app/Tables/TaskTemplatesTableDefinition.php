@@ -6,6 +6,7 @@ namespace App\Tables;
 
 use App\Models\TaskTemplate;
 use App\Models\User;
+use App\RichText\RichTextPlainText;
 use App\Services\TaskTemplateService;
 use App\Tables\TaskTemplates\TaskTemplateColumnCatalog;
 use App\Tables\TaskTemplates\TaskTemplateItemsCountColumn;
@@ -97,7 +98,9 @@ class TaskTemplatesTableDefinition extends AbstractTableDefinition
 
     /**
      * Map a TaskTemplate to the row payload. `actions` is attached by the
-     * generic TableService via actionsFor().
+     * generic TableService via actionsFor(). `description` is the PLAIN TEXT
+     * derived from the sanitized rich text HTML (spec 0128, D-9/AC-015): the
+     * grid cell never renders markup.
      *
      * @return array<string, mixed>
      */
@@ -107,7 +110,7 @@ class TaskTemplatesTableDefinition extends AbstractTableDefinition
         return [
             'id' => $row->id,
             'name' => $row->name,
-            'description' => $row->description,
+            'description' => RichTextPlainText::toPlainText($row->description),
             'items_count' => (int) $row->items_count,
             'is_active' => (bool) $row->is_active,
             'created_at' => $row->created_at,

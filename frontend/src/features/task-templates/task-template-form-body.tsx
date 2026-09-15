@@ -4,7 +4,7 @@ import { FormSection } from '@/components/form-section'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
 import { Form, FormControl } from '@/components/ui/form'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
@@ -75,17 +75,9 @@ export function TaskTemplateFormBody({ mode, onSuccess, onCancel }: TaskTemplate
                 metaKey="description"
                 label={t('taskTemplates.form.description')}
               >
-                {({ field, disabled, readOnly }) => (
+                {({ field, disabled }) => (
                   <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
+                    <RichTextEditor disabled={disabled} value={field.value} onChange={field.onChange} />
                   </FormControl>
                 )}
               </MetaField>

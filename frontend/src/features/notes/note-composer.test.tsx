@@ -1,12 +1,34 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { NoteComposer, type NoteComposerProps } from '@/features/notes/note-composer'
+import { RICH_TEXT_NOTE_TEXT_MAX } from '@/components/rich-text/rich-text-constants'
 import type { Note } from '@/features/notes/types'
 
-/** Spec 0052 AC-071/AC-073 — the single write surface for new roots, replies and edits. */
+/**
+ * Spec 0128 AC-021 — the composer's single write surface is now the shared
+ * `RichTextEditor` (D-11) plus F2's `Mention` extension. jsdom has no layout
+ * engine: ProseMirror's view queries these when syncing selection/decorations
+ * (same stubs as `components/rich-text/rich-text-editor.test.tsx`; never in
+ * `src/test/setup.ts`, config-protection hook).
+ */
+if (!Range.prototype.getBoundingClientRect) {
+  Range.prototype.getBoundingClientRect = () =>
+    ({ top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON() {} }) as DOMRect
+}
+if (!Range.prototype.getClientRects) {
+  Range.prototype.getClientRects = () => [] as unknown as DOMRectList
+}
+if (!Element.prototype.getBoundingClientRect) {
+  Element.prototype.getBoundingClientRect = () =>
+    ({ top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON() {} }) as DOMRect
+}
+if (!document.elementFromPoint) {
+  document.elementFromPoint = () => null
+}
 
 const createMutateAsync = vi.fn()
 const updateMutateAsync = vi.fn()
@@ -17,9 +39,15 @@ vi.mock('@/features/notes/use-note-mutations', () => ({
   useUpdateNote: (...args: unknown[]) => useUpdateNoteMock(...args),
 }))
 
+const fetchMentionableUsersMock = vi.fn()
+vi.mock('@/features/notes/api', () => ({
+  fetchMentionableUsers: (...args: unknown[]) => fetchMentionableUsersMock(...args),
+  NOTES_MENTIONABLE_PAGE_SIZE: 25,
+}))
+
 const ROOT_NOTE: Note = {
   id: 42,
-  body: 'Original body',
+  body: '<p>Original body</p>',
   author: { id: 1, name: 'Mario Rossi', avatar_url: null },
   mentions: [],
   parent_id: null,
@@ -30,17 +58,32 @@ const ROOT_NOTE: Note = {
   can: { update: true, delete: true },
 }
 
-function renderComposer(props: Partial<NoteComposerProps> = {}) {
+function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={client}>
-      <NoteComposer entityType="request-management" entityId={1} {...props} />
-    </QueryClientProvider>,
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
 }
 
-function bodyField() {
-  return screen.getByRole('combobox') as HTMLTextAreaElement
+function renderComposer(props: Partial<NoteComposerProps> = {}) {
+  return render(<NoteComposer entityType="request-management" entityId={1} {...props} />, { wrapper: wrapper() })
+}
+
+function bodyEditor() {
+  return screen.getByRole('textbox') as HTMLElement
+}
+
+/** Simulates a plain-text paste (ProseMirror reads `clipboardData` directly, no real DOM typing needed in jsdom). */
+function pasteText(editorDom: Element, text: string) {
+  const event = new Event('paste', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', {
+    value: { files: [], getData: (type: string) => (type === 'text/plain' ? text : '') },
+  })
+  editorDom.dispatchEvent(event)
+}
+
+function mentionableUsersPage(items: { id: number; label: string }[]) {
+  return { items, pagination: { offset: 0, limit: 25, total: items.length } }
 }
 
 beforeAll(async () => {
@@ -52,6 +95,8 @@ beforeEach(() => {
   updateMutateAsync.mockReset()
   useCreateNoteMock.mockReset()
   useUpdateNoteMock.mockReset()
+  fetchMentionableUsersMock.mockReset()
+  fetchMentionableUsersMock.mockResolvedValue(mentionableUsersPage([]))
   useCreateNoteMock.mockReturnValue({ mutateAsync: createMutateAsync, isPending: false })
   useUpdateNoteMock.mockReturnValue({ mutateAsync: updateMutateAsync, isPending: false })
 })
@@ -62,36 +107,42 @@ describe('NoteComposer — submit gating', () => {
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
   })
 
-  it('enables the submit once the body is non-empty', () => {
+  it('enables the submit once the body is non-empty', async () => {
     renderComposer()
-    fireEvent.change(bodyField(), { target: { value: 'Hello' } })
-    expect(screen.getByRole('button', { name: 'Send' })).not.toBeDisabled()
+    pasteText(bodyEditor(), 'Hello')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).not.toBeDisabled())
   })
 
-  it('keeps the submit disabled while the mutation is in flight, even with a non-empty body', () => {
-    useCreateNoteMock.mockReturnValue({ mutateAsync: createMutateAsync, isPending: true })
-    renderComposer()
-    fireEvent.change(bodyField(), { target: { value: 'Hello' } })
-    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
+  it('keeps the submit disabled while the mutation is in flight, even with a non-empty (preloaded) body', () => {
+    useUpdateNoteMock.mockReturnValue({ mutateAsync: updateMutateAsync, isPending: true })
+    renderComposer({ editingNote: ROOT_NOTE })
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 })
 
-describe('NoteComposer — create/reply payload (AC-071)', () => {
-  it('sends the body and the mentions array derived from the tokens', async () => {
+describe('NoteComposer — create/reply payload (AC-021)', () => {
+  it('sends the body and the mentions derived from the mention nodes in the doc', async () => {
     createMutateAsync.mockResolvedValue(ROOT_NOTE)
+    fetchMentionableUsersMock.mockResolvedValue(mentionableUsersPage([{ id: 12, label: 'Alice Verdi' }]))
     renderComposer()
 
-    fireEvent.change(bodyField(), { target: { value: 'Hello @[Alice Verdi](user:12)' } })
+    pasteText(bodyEditor(), '@an')
+    const option = await screen.findByRole('option', { name: /Alice Verdi/ })
+    fireEvent.mouseDown(option)
+
+    await waitFor(() => expect(bodyEditor().textContent).toContain('@Alice Verdi'))
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
     await waitFor(() =>
-      expect(createMutateAsync).toHaveBeenCalledWith({
-        entity_type: 'request-management',
-        entity_id: 1,
-        body: 'Hello @[Alice Verdi](user:12)',
-        parent_id: undefined,
-        mentions: [12],
-      }),
+      expect(createMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entity_type: 'request-management',
+          entity_id: 1,
+          parent_id: undefined,
+          mentions: [12],
+          body: expect.stringContaining('data-id="12"'),
+        }),
+      ),
     )
   })
 
@@ -99,12 +150,13 @@ describe('NoteComposer — create/reply payload (AC-071)', () => {
     createMutateAsync.mockResolvedValue({ ...ROOT_NOTE, parent_id: 42 })
     renderComposer({ parentId: 42 })
 
-    fireEvent.change(bodyField(), { target: { value: 'A reply' } })
+    pasteText(bodyEditor(), 'A reply')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).not.toBeDisabled())
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
     await waitFor(() =>
       expect(createMutateAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ parent_id: 42, body: 'A reply' }),
+        expect.objectContaining({ parent_id: 42, body: expect.stringContaining('A reply') }),
       ),
     )
   })
@@ -114,63 +166,50 @@ describe('NoteComposer — create/reply payload (AC-071)', () => {
     const onDone = vi.fn()
     renderComposer({ onDone })
 
-    fireEvent.change(bodyField(), { target: { value: 'Hello' } })
+    pasteText(bodyEditor(), 'Hello')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).not.toBeDisabled())
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
-    await waitFor(() => expect(bodyField()).toHaveValue(''))
+    await waitFor(() => expect(bodyEditor().textContent).toBe(''))
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 })
 
-describe('NoteComposer — mention badges', () => {
-  it('shows a badge per mentioned user and keeps the field free of raw tokens', () => {
-    renderComposer()
-
-    fireEvent.change(bodyField(), { target: { value: 'Hi @[Alice Verdi](user:12)' } })
-
-    expect(screen.getByRole('button', { name: "Remove Alice Verdi's mention" })).toBeInTheDocument()
-    // The badge itself opens the profile, same affordance as the table person columns.
-    expect(screen.getByRole('button', { name: "View Alice Verdi's profile" })).toBeInTheDocument()
-    expect(bodyField()).toHaveValue('Hi @Alice Verdi')
-  })
-
-  it('dismissing a badge strips the mention from both the body and the payload', async () => {
-    createMutateAsync.mockResolvedValue(ROOT_NOTE)
-    renderComposer()
-
-    fireEvent.change(bodyField(), { target: { value: 'Hi @[Alice Verdi](user:12) ciao' } })
-    fireEvent.click(screen.getByRole('button', { name: "Remove Alice Verdi's mention" }))
-
-    expect(bodyField()).toHaveValue('Hi ciao')
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    await waitFor(() =>
-      expect(createMutateAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ body: 'Hi ciao', mentions: [] }),
-      ),
-    )
-  })
-})
-
 describe('NoteComposer — edit mode', () => {
-  it('pre-fills the body and PATCHes with the edited body/mentions on save', async () => {
-    updateMutateAsync.mockResolvedValue({ ...ROOT_NOTE, body: 'Edited body' })
+  it('preloads the body HTML and PATCHes with the edited body/mentions on save', async () => {
+    updateMutateAsync.mockResolvedValue({ ...ROOT_NOTE, body: '<p>Edited body</p>' })
     renderComposer({ editingNote: ROOT_NOTE })
 
-    expect(bodyField()).toHaveValue('Original body')
+    expect(bodyEditor().textContent).toBe('Original body')
 
-    fireEvent.change(bodyField(), { target: { value: 'Edited body' } })
+    pasteText(bodyEditor(), ' edited')
+    await waitFor(() => expect(bodyEditor().textContent).toContain('edited'))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(updateMutateAsync).toHaveBeenCalledWith({
         noteId: 42,
-        payload: { body: 'Edited body', mentions: [] },
+        payload: { body: expect.stringContaining('edited'), mentions: [] },
       }),
     )
   })
 })
 
-describe('NoteComposer — 422 mapping (AC-073)', () => {
+describe('NoteComposer — visible text limit (D-5)', () => {
+  it('blocks submit past the visible text limit with an accessible error', async () => {
+    createMutateAsync.mockResolvedValue(ROOT_NOTE)
+    renderComposer()
+
+    pasteText(bodyEditor(), 'a'.repeat(RICH_TEXT_NOTE_TEXT_MAX + 1))
+    await waitFor(() => expect(bodyEditor().textContent).toHaveLength(RICH_TEXT_NOTE_TEXT_MAX + 1))
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect(await screen.findByText(/can contain at most/i)).toBeInTheDocument()
+    expect(createMutateAsync).not.toHaveBeenCalled()
+  })
+})
+
+describe('NoteComposer — 422 mapping', () => {
   it('maps a 422 onto the body field with the accessible-error triad', async () => {
     createMutateAsync.mockRejectedValue(
       new AxiosError('Unprocessable', '422', undefined, undefined, {
@@ -185,18 +224,14 @@ describe('NoteComposer — 422 mapping (AC-073)', () => {
     vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
 
     renderComposer()
-    fireEvent.change(bodyField(), { target: { value: 'Hello' } })
+    pasteText(bodyEditor(), 'Hello')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).not.toBeDisabled())
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
-    await waitFor(() =>
-      expect(screen.getByText('La nota supera il limite di caratteri.')).toBeInTheDocument(),
-    )
-    const message = screen.getByText('La nota supera il limite di caratteri.')
+    const message = await screen.findByText('La nota supera il limite di caratteri.')
     expect(message).toHaveAttribute('role', 'alert')
-    expect(bodyField()).toHaveAttribute('aria-invalid', 'true')
-    expect(bodyField()).toHaveAttribute('aria-describedby', expect.stringContaining(message.id))
-    // The message is exactly the server-provided string: no internal class/exception leakage appended.
-    expect(message.textContent).toBe('La nota supera il limite di caratteri.')
+    expect(bodyEditor()).toHaveAttribute('aria-invalid', 'true')
+    expect(bodyEditor()).toHaveAttribute('aria-describedby', expect.stringContaining(message.id))
 
     vi.restoreAllMocks()
   })
@@ -205,7 +240,8 @@ describe('NoteComposer — 422 mapping (AC-073)', () => {
     createMutateAsync.mockRejectedValue(new Error('network down'))
     renderComposer()
 
-    fireEvent.change(bodyField(), { target: { value: 'Hello' } })
+    pasteText(bodyEditor(), 'Hello')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).not.toBeDisabled())
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
     await waitFor(() => expect(screen.getByText("Couldn't send. Try again.")).toBeInTheDocument())

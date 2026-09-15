@@ -6,6 +6,7 @@ import { formatDateTime } from '@/lib/formatting/date-display'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ActivityLogEventFilterTabs } from '@/features/activity-log/activity-log-event-filter'
+import { extractPlainTextFromHtml, looksLikeHtmlValue } from '@/features/activity-log/activity-log-rich-text-value'
 import { useActivityLog } from '@/features/activity-log/use-activity-log'
 import type {
   ActivityLogChange,
@@ -198,10 +199,17 @@ function renderChangeValue(rawValue: unknown, display: string | null): string {
   return display ?? formatChangeValue(rawValue)
 }
 
-/** Renders a raw before/after value as a compact string for the diff line. */
+/**
+ * Renders a raw before/after value as a compact string for the diff line.
+ * D-13: a string that IS an HTML fragment (a rich text field's own value)
+ * shows its extracted text instead of the markup — never rendered as HTML.
+ */
 function formatChangeValue(value: unknown): string {
   if (value === null || value === undefined) {
     return '—'
+  }
+  if (typeof value === 'string') {
+    return looksLikeHtmlValue(value) ? extractPlainTextFromHtml(value) : value
   }
   if (typeof value === 'object') {
     return JSON.stringify(value)

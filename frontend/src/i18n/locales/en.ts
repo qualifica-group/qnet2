@@ -59,6 +59,7 @@ import { navigation } from './en-navigation'
 import { settings } from './en-settings'
 import { requestManagement } from './en-request-management'
 import { notes } from './en-notes'
+import { richText } from './en-rich-text'
 import { notifications } from './en-notifications'
 import { leadImports } from './en-lead-imports'
 import { businessFunctions } from './en-business-functions'
@@ -456,6 +457,7 @@ export const en = {
   rewardStatuses,
   rewardedReferents,
   notes,
+  richText,
   importRuns: { stats: moduleStats.importRuns },
   attachments,
   impersonation,

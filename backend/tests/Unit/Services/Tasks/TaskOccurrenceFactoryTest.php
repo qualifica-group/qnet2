@@ -2,15 +2,18 @@
 
 use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
+use App\Models\Attachment;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
 use App\Notifications\TaskObserver;
+use App\RichText\RichText;
 use App\Services\Tasks\TaskOccurrenceFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /*
@@ -115,6 +118,31 @@ it('AC-014: the occurrence is not a sub-task, and the originator stays deletable
 
     expect($occurrence->parent_task_id)->toBeNull()
         ->and($originator->subtasks()->exists())->toBeFalse();
+});
+
+it('AC-012 (spec 0128, D-8): the occurrence gets its own copy of the originator\'s rich_text image, with the NEW id', function () {
+    Storage::fake(config('attachments.disk'));
+    $originator = Task::factory()->create(['end_date' => '2026-03-15']);
+
+    $original = Attachment::factory()->make(['collection' => RichText::ATTACHMENT_COLLECTION]);
+    $original->attachable()->associate($originator);
+    $original->save();
+    Storage::disk($original->disk)->put($original->path, 'fake-bytes');
+
+    $originator->description = '<p>x</p><img data-attachment-id="'.$original->id.'" alt="pic">';
+    $originator->save();
+
+    Notification::fake();
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
+
+    $copy = Attachment::query()
+        ->where('attachable_type', $occurrence->getMorphClass())
+        ->where('attachable_id', $occurrence->id)
+        ->where('collection', RichText::ATTACHMENT_COLLECTION)
+        ->sole();
+
+    expect($copy->id)->not->toBe($original->id)
+        ->and($occurrence->description)->toBe('<p>x</p><img data-attachment-id="'.$copy->id.'" alt="pic">');
 });
 
 it('D-14: the occurrence notifies its assignees and watchers with the system as actor', function () {

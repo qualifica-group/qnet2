@@ -80,7 +80,7 @@ class TasksAuthorization extends AbstractResourceAuthorization
     private const array FIELD_TYPES = [
         'title' => 'text',
         'task_status_id' => 'select',
-        'description' => 'textarea',
+        'description' => 'richtext',
         'registry_id' => 'select',
         'referent_id' => 'select',
         'parent_task_id' => 'select',
