@@ -50,6 +50,11 @@ export const requestManagementKeys = {
   /** Query key of the report's selectable operational sites (spec 0112). */
   reportSites: (moduleKey: RequestModuleKey) => [moduleKey, 'report-sites'] as const,
   /**
+   * Prefix of EVERY dashboard entry, whatever the filters: what a write that
+   * moves an indicator (e.g. a note, "N. Telefonate Effettuate") invalidates.
+   */
+  dashboardAll: (moduleKey: RequestModuleKey) => [moduleKey, 'dashboard'] as const,
+  /**
    * Query key of the dashboard's aggregates (spec 0107), scoped by the
    * applied filter values themselves: changing a filter is a different key,
    * so TanStack Query fetches/caches it independently — the mechanism
@@ -65,5 +70,5 @@ export const requestManagementKeys = {
       operator_keys?: string[]
       site_keys?: string[]
     },
-  ) => [moduleKey, 'dashboard', query] as const,
+  ) => [...requestManagementKeys.dashboardAll(moduleKey), query] as const,
 }

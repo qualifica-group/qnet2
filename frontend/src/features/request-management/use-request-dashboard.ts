@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
+import { useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchRequestManagementDashboard,
   type RequestDashboardQuery,
@@ -30,4 +31,21 @@ export function useRequestDashboard(query: RequestDashboardQuery, enabled: boole
     queryFn: () => fetchRequestManagementDashboard(module.apiBasePath, query),
     enabled,
   })
+}
+
+/**
+ * Stable callback that marks every dashboard entry of the module stale after
+ * a write that moves an indicator. The panel stays mounted while a note is
+ * written in the modal work panel or the row's notes dialog, and
+ * `refetchOnWindowFocus` is off: without this the tiles keep the value read
+ * when the panel opened. Same semantics as `useInvalidateModuleStats` — an
+ * open panel refetches now, a closed one is served fresh on the next open.
+ */
+export function useInvalidateRequestDashboard(): () => void {
+  const queryClient = useQueryClient()
+  const module = useRequestModule()
+
+  return useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: requestManagementKeys.dashboardAll(module.key) })
+  }, [queryClient, module.key])
 }

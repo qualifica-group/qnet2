@@ -8,6 +8,7 @@ import { NotesSection } from '@/features/notes/notes-section'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { useRequestModule } from '@/features/request-management/request-module'
 import type { RequestWorkPanel } from '@/features/request-management/types'
+import { useInvalidateRequestDashboard } from '@/features/request-management/use-request-dashboard'
 
 const NOTES_TAB = 'notes'
 const DOCUMENTS_TAB = 'documents'
@@ -40,6 +41,7 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
   const { t } = useTranslation()
   const module = useRequestModule()
   const { can } = useAbilities()
+  const invalidateDashboard = useInvalidateRequestDashboard()
 
   const canViewDocuments = can(module.permission('viewDocuments'))
 
@@ -75,6 +77,7 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
               entityId={panel.opportunity_id}
               showHeader={false}
               lockedQuoteId={panel.id}
+              onThreadChanged={invalidateDashboard}
             />
           </TabsContent>
           {canViewDocuments && (

@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DASHBOARD GESTIONE RICHIESTE — "N. TELEFONATE" NON SI AGGIORNAVA (2026-09-15) — VERDE, NON COMMITTATO
+
+- Causa: frontend. Dashboard montata (modale / dialog note di riga) + `refetchOnWindowFocus: false`; la creazione nota
+  invalidava solo `notesKeys.lists`, mai la query dashboard → valore fermo finche' non si cambia filtro o si riapre.
+- Fix: `requestManagementKeys.dashboardAll(moduleKey)` (prefisso, `dashboard(...)` ora lo estende) +
+  `useInvalidateRequestDashboard()` in `use-request-dashboard.ts`, passato come `onThreadChanged` a `NotesSection`
+  (`request-work-collaboration.tsx`) e `NotesDialog` (`request-management-table.tsx`). Test in
+  `request-management-table-notes.test.tsx`.
+- Formula backend invariata: nessun filtro sul primo stato (rev-3 D-16, confermato dall'utente 2026-09-15), solo note
+  dell'operatore GA2 della richiesta (D-17).
+
 ## MIGRAZIONE `product-categories` → FUNZIONE AZIENDALE (2026-09-15) — VERDE, NON COMMITTATO
 
 - Legacy (`/Users/Repository/qnet`, repo separato): `Api/V2/ProductCategoryMigrationController` espone

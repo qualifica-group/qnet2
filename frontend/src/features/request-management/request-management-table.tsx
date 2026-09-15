@@ -31,6 +31,7 @@ import { OfferLinesDialogProvider } from '@/features/request-management/offer-li
 import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
 import { RequestDashboardToggle } from '@/features/request-management/request-dashboard-toggle'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
+import { useInvalidateRequestDashboard } from '@/features/request-management/use-request-dashboard'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
 import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import { useRequestManagerGa1Assignment } from '@/features/request-management/use-request-manager-ga1-assignment'
@@ -118,6 +119,7 @@ export function RequestManagementTable() {
 
   const { categories, selectedCategoryId, setCategoryId } = useRequestManagementCategoryTab()
   const dashboard = useStatsPanel(module.key)
+  const invalidateDashboard = useInvalidateRequestDashboard()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -456,6 +458,7 @@ export function RequestManagementTable() {
         entityId={notesTarget?.opportunityId ?? null}
         lockedQuoteId={notesTarget?.quoteId ?? null}
         onOpenChange={handleNotesOpenChange}
+        onThreadChanged={invalidateDashboard}
       />
 
       <ResourceActivityDialog

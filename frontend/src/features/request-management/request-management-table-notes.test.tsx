@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
@@ -39,7 +39,12 @@ vi.mock('@/components/page-header', () => ({
 
 const notesSectionMock = vi.fn()
 vi.mock('@/features/notes/notes-section', () => ({
-  NotesSection: (props: { entityType: string; entityId: number; lockedQuoteId?: number | null }) => {
+  NotesSection: (props: {
+    entityType: string
+    entityId: number
+    lockedQuoteId?: number | null
+    onThreadChanged?: () => void
+  }) => {
     notesSectionMock(props)
     return <div>{`notes-section:${props.entityType}:${props.entityId}:${props.lockedQuoteId}`}</div>
   },
@@ -75,8 +80,7 @@ vi.mock('@/features/table/table-view', () => ({
   ),
 }))
 
-function renderTable() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+function renderTable(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
@@ -118,5 +122,20 @@ describe('RequestManagementTable — "notes" row action', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(refreshMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks the dashboard stale on every write in the thread, so "N. Telefonate Effettuate" moves', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const dashboardKey = ['request-management', 'dashboard', { date_from: '2026-09-01' }]
+    client.setQueryData(dashboardKey, { summary: [] })
+    renderTable(client)
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-notes' }))
+    const props = notesSectionMock.mock.calls.at(-1)?.[0] as { onThreadChanged?: () => void }
+    expect(client.getQueryState(dashboardKey)?.isInvalidated).toBe(false)
+
+    act(() => props.onThreadChanged?.())
+
+    expect(client.getQueryState(dashboardKey)?.isInvalidated).toBe(true)
   })
 })
