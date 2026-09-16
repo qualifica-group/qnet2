@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Building2, Hash, History, MapPinned } from 'lucide-react'
+import { Building2, Hash, History, MapPinned, Power } from 'lucide-react'
 import {
   RecordCanvas,
   RecordCard,
@@ -72,6 +72,9 @@ export function OperationalSiteDetailView({
                   ) : null}
                   <RecordField label={t('operationalSites.detail.postal_code')} icon={<Hash />}>
                     {operationalSite.postal_code || <DetailEmpty />}
+                  </RecordField>
+                  <RecordField label={t('operationalSites.detail.is_active')} icon={<Power />}>
+                    {operationalSite.is_active ? t('common.yes') : t('common.no')}
                   </RecordField>
                 </RecordFieldList>
               </RecordSection>

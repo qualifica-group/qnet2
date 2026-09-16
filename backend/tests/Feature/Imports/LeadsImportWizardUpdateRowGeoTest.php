@@ -254,7 +254,7 @@ it('AC-008: 403 without leads.import on a geo PATCH', function () {
     ])->assertForbidden();
 });
 
-it('AC-008: 404 for a geo PATCH on a run belonging to another user', function () {
+it('AC-008: a geo PATCH on a run started by another user succeeds (runs are shared)', function () {
     $actor = updateRowGeoActorWith(['import']);
     $geo = updateRowGeoChain();
     $otherUser = User::factory()->create();
@@ -264,7 +264,7 @@ it('AC-008: 404 for a geo PATCH on a run belonging to another user', function ()
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/{$row->id}", [
         'geo' => ['country_id' => $geo['country']->id, 'state_id' => null, 'province_id' => null, 'city_id' => null],
-    ])->assertNotFound();
+    ])->assertOk();
 });
 
 // ---------------------------------------------------------------------------

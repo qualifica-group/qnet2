@@ -39,6 +39,7 @@ class UpdateOperationalSiteRequest extends FormRequest
     {
         return [
             'alias' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'is_active' => ['sometimes', 'boolean'],
             'line1' => ['sometimes', 'required', 'string', 'max:255'],
             'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
             'country_id' => ['sometimes', 'nullable', 'integer', Rule::exists('countries', 'id')],

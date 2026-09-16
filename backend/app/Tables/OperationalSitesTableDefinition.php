@@ -137,6 +137,7 @@ class OperationalSitesTableDefinition extends AbstractTableDefinition
             'postal_code' => $address?->postal_code,
             'province' => $address?->province?->localizedName(),
             'region' => $address?->state?->localizedName(),
+            'is_active' => $row->is_active,
             'created_at' => $row->created_at,
         ];
     }

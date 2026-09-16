@@ -15,14 +15,22 @@ class OperationalSiteFactory extends Factory
     protected $model = OperationalSite::class;
 
     /**
-     * The site itself carries no own columns beyond id/timestamps (spec
-     * 0011): its identity lives entirely on the primary address.
+     * The site's identity lives entirely on the primary address (spec 0011);
+     * its only own flag is `is_active` (spec 0135).
      *
      * @return array<string, mixed>
      */
     public function definition(): array
     {
-        return [];
+        return ['is_active' => true];
+    }
+
+    /**
+     * A deactivated site (spec 0135): no longer offered by the for-select.
+     */
+    public function inactive(): static
+    {
+        return $this->state(['is_active' => false]);
     }
 
     /**

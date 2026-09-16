@@ -221,24 +221,17 @@ it('403 without leads.import on every wizard endpoint', function () {
     $this->getJson('/api/imports/leads')->assertForbidden();
 });
 
-it('404 for a run belonging to another user, on configure/rows/summary/confirm', function () {
+it('rows/summary of a run started by another user are readable (runs are shared)', function () {
     $actor = leadsImportActorWith(['import']);
     $otherUser = User::factory()->create();
-    $campaign = Campaign::factory()->create();
     $run = ImportRun::factory()->create([
         'user_id' => $otherUser->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing,
         'detected_columns' => leadsWizardDetectedColumns(),
     ]);
     Sanctum::actingAs($actor);
 
-    // Valid bodies throughout: ownership must 404 BEFORE any validation/state
-    // check runs, never masked behind a 422.
-    $this->putJson("/api/imports/leads/{$run->id}/configure", [
-        'column_mapping' => ['Email' => 'email'], 'global_config' => ['campaign_id' => $campaign->id], 'dedup_strategy' => 'create_new',
-    ])->assertNotFound();
-    $this->postJson("/api/imports/leads/{$run->id}/rows")->assertNotFound();
-    $this->getJson("/api/imports/leads/{$run->id}/summary")->assertNotFound();
-    $this->postJson("/api/imports/leads/{$run->id}/confirm")->assertNotFound();
+    $this->postJson("/api/imports/leads/{$run->id}/rows")->assertOk();
+    $this->getJson("/api/imports/leads/{$run->id}/summary")->assertOk();
 });
 
 it('404 for a run whose resource does not match the route domain', function () {

@@ -106,6 +106,7 @@ function operationalSite(
     province: { id: 3, name: 'Milan' },
     city_id: 4,
     city: { id: 4, name: 'Milan' },
+    is_active: true,
     created_at: '2026-01-01T00:00:00Z',
     permissions: permissionsWithZone(),
     ...overrides,

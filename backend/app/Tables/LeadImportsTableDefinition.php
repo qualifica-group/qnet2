@@ -5,24 +5,21 @@ namespace App\Tables;
 use App\Enums\ImportStatus;
 use App\Models\ImportRun;
 use App\Models\User;
+use App\Tables\LeadImports\ImportRunUserColumn;
 use App\Tables\LeadImports\LeadImportColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
  * Table definition for the `import-runs` domain (spec 0034 — renamed from
- * `lead-imports`, module extraction): the actor's own lead import runs,
- * served through the generic backend-driven table engine (SSRM) so the
- * history renders as the same AG Grid table as every other module.
+ * `lead-imports`, module extraction): every lead import run, served through
+ * the generic backend-driven table engine (SSRM) so the history renders as the
+ * same AG Grid table as every other module.
  *
- * One deviation from a plain CRUD definition, backend-driven:
- *  - `baseQuery` scopes to the current actor's OWN runs for the `leads`
- *    resource — the generic engine has no built-in per-actor scoping, so it
- *    lives here, exactly reproducing the old endpoint's WHERE clause. The
- *    module now shows only lead runs; other domains may join later without
- *    touching this class's scoping contract.
+ * `baseQuery` scopes to the `leads` resource only. Runs are NOT owner-scoped:
+ * every `leads.import` holder sees every run, and the derived `user` column
+ * names the operator who started it (user decision 2026-09-16).
  *
  * `authorizeViewAny` is not overridden: AbstractTableDefinition's default
  * (`Gate::allows('viewAny', ImportRun::class)`) resolves through
@@ -33,6 +30,10 @@ class LeadImportsTableDefinition extends AbstractTableDefinition
 {
     /** The `import_runs.resource` key this table is scoped to. */
     private const RESOURCE = 'leads';
+
+    public function __construct(
+        private readonly ImportRunUserColumn $userColumn,
+    ) {}
 
     public function domain(): string
     {
@@ -48,9 +49,8 @@ class LeadImportsTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * The actor's own runs for the `leads` resource only. `Auth::id()` is
-     * always set here (authorizeViewAny runs first and requires auth); a null
-     * id would simply match no rows (never fail-open).
+     * Every run for the `leads` resource, eager-loading the operator so mapRow
+     * reads the `user` column from memory (no N+1).
      *
      * @return Builder<ImportRun>
      */
@@ -58,7 +58,7 @@ class LeadImportsTableDefinition extends AbstractTableDefinition
     {
         return ImportRun::query()
             ->where('resource', self::RESOURCE)
-            ->where('user_id', Auth::id());
+            ->with('user');
     }
 
     /**
@@ -139,6 +139,7 @@ class LeadImportsTableDefinition extends AbstractTableDefinition
         return [
             'id' => $row->id,
             'created_at' => $row->created_at,
+            'user' => $this->userSummary($row->user),
             'original_filename' => $row->original_filename,
             'total_rows' => $row->total_rows,
             'imported_rows' => $row->imported_rows,
@@ -148,10 +149,62 @@ class LeadImportsTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * The operator summary carrying the inline avatar (data URI) so the shared
+     * UserCell renders a real avatar — mirrors QuotesTableDefinition::userSummary().
+     *
+     * @return array{id: int, name: string, avatar_url: string|null}
+     */
+    private function userSummary(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'avatar_url' => $user->avatarDataUri(),
+        ];
+    }
+
+    /**
+     * Derived `user` set filter (operator name); every real column falls
+     * through to the generic engine.
+     *
+     * @param  Builder<ImportRun>  $query
+     * @param  array<string, mixed>  $columnConfig
+     * @param  array<string, mixed>  $filter
+     */
+    public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
+    {
+        return $columnId === 'user' && $this->userColumn->applyFilter($query, $filter);
+    }
+
+    /**
+     * @param  Builder<ImportRun>  $query
+     */
+    public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
+    {
+        if ($columnId !== 'user') {
+            return false;
+        }
+
+        $this->userColumn->applySort($query, $direction);
+
+        return true;
+    }
+
+    /**
+     * @param  Builder<ImportRun>  $query
+     * @param  array<string, mixed>  $columnConfig
+     * @return array<int, string>|null
+     */
+    public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
+    {
+        return $columnId === 'user' ? $this->userColumn->distinctValues($query, $search, $limit) : null;
+    }
+
+    /**
      * `view` reopens the run in the wizard (available to any actor that reached
-     * a row, since the table is `leads.import`-gated). `delete` is exposed only
-     * when ImportRunPolicy allows it for this specific row (ownership) — the
-     * same gate the generic bulk-delete engine re-checks server-side.
+     * a row, since the table is `leads.import`-gated). `delete` is exposed when
+     * ImportRunPolicy allows it — the same gate the generic bulk-delete engine
+     * re-checks server-side.
      *
      * @return array<int, string>
      */

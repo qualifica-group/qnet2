@@ -128,7 +128,7 @@ it('404 for a row belonging to a different run', function () {
         ->assertNotFound();
 });
 
-it('404 for a run belonging to another user', function () {
+it('updates a row on a run started by another user (runs are shared)', function () {
     $actor = updateRowLeadsActorWith(['import']);
     $otherUser = User::factory()->create();
     $run = ImportRun::factory()->create(['user_id' => $otherUser->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
@@ -136,7 +136,7 @@ it('404 for a run belonging to another user', function () {
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/{$row->id}", ['values' => ['email' => 'x@example.com']])
-        ->assertNotFound();
+        ->assertOk();
 });
 
 it('422 when the run is not in `reviewing`', function () {

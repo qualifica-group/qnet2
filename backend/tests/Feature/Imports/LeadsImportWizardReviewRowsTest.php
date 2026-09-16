@@ -171,11 +171,11 @@ it('403 without leads.import', function () {
     $this->postJson("/api/imports/leads/{$run->id}/rows")->assertForbidden();
 });
 
-it('404 for a run belonging to another user', function () {
+it('pages the rows of a run started by another user (runs are shared)', function () {
     $actor = leadsImportActorWith(['import']);
     $otherUser = User::factory()->create();
     $run = reviewingLeadsRun($otherUser);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/imports/leads/{$run->id}/rows")->assertNotFound();
+    $this->postJson("/api/imports/leads/{$run->id}/rows")->assertOk();
 });

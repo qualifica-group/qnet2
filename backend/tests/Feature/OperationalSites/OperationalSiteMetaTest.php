@@ -47,7 +47,7 @@ it('200: field catalogue matches the frozen contract, in order, with mandatory f
         ->assertJsonPath('success', true);
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
-    expect($keys)->toBe(['alias', 'country_id', 'state_id', 'province_id', 'city_id', 'line1', 'postal_code']);
+    expect($keys)->toBe(['alias', 'country_id', 'state_id', 'province_id', 'city_id', 'line1', 'postal_code', 'is_active']);
 
     $fields = collect($response->json('data.fields'))->keyBy('key');
     expect($fields['alias']['mandatory'])->toBeFalse()
@@ -60,7 +60,9 @@ it('200: field catalogue matches the frozen contract, in order, with mandatory f
         ->and($fields['postal_code']['mandatory'])->toBeFalse()
         ->and($fields['city_id']['type'])->toBe('select')
         ->and($fields['line1']['type'])->toBe('text')
-        ->and($fields['postal_code']['type'])->toBe('text');
+        ->and($fields['postal_code']['type'])->toBe('text')
+        ->and($fields['is_active']['mandatory'])->toBeFalse()
+        ->and($fields['is_active']['type'])->toBe('boolean');
 
     foreach ($response->json('permissions.fields') as $field) {
         expect($field)->toHaveKeys(['visible', 'hidden', 'editable', 'readonly', 'required', 'disabled']);

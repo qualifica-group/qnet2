@@ -32,6 +32,7 @@ const SERVER_ERROR_FIELDS = [
   'state_id',
   'province_id',
   'city_id',
+  'is_active',
 ] as const
 
 export type OperationalSiteFormValues = CreateOperationalSiteFormValues &
@@ -82,6 +83,7 @@ export function useOperationalSiteForm({ mode, onSuccess }: UseOperationalSiteFo
         state_id: mode.operationalSite.state_id,
         province_id: mode.operationalSite.province_id,
         city_id: mode.operationalSite.city_id,
+        is_active: mode.operationalSite.is_active,
         custom_fields: customFields.defaultValues,
       }
     }
@@ -93,6 +95,7 @@ export function useOperationalSiteForm({ mode, onSuccess }: UseOperationalSiteFo
       state_id: null,
       province_id: null,
       city_id: null,
+      is_active: true,
       custom_fields: customFields.defaultValues,
     }
   }, [mode, customFields.defaultValues])

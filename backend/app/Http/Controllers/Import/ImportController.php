@@ -43,10 +43,11 @@ use Throwable;
  * duplicate, removed 2026-07-17); writes additionally call `authorizeImport()`
  * (the definition's own `{resource}.import`), the same ability — a redundant
  * but harmless second gate on template/upload/configure/updateRow/confirm.
- * A bound {importRun} that does not belong to the actor OR whose resource
- * does not match {domain} 404s (never 403) — assertOwnedRun() always runs
- * BEFORE any gate, so ownership/domain mismatch never leaks as a 403,
- * mirroring TableFilterViewController::assertBelongsToDomain.
+ * A bound {importRun} whose resource does not match {domain} 404s (never
+ * 403) — assertRunMatchesDomain() always runs BEFORE any gate, so a domain
+ * mismatch never leaks as a 403, mirroring
+ * TableFilterViewController::assertBelongsToDomain. Runs are shared across
+ * every `leads.import` holder, not owner-scoped (user decision 2026-09-16).
  *
  * upload()/show()/confirm() are BRANCH-AWARE: a "wizard" definition
  * (isWizardDefinition() — non-empty globalConfig(), supportsExtraFields(), or
@@ -96,22 +97,19 @@ class ImportController extends BaseApiController
     }
 
     /**
-     * GET /api/imports/{domain} — paginated history of the actor's OWN runs
-     * for this domain (spec 0033, AC-018).
+     * GET /api/imports/{domain} — paginated history of every run for this
+     * domain (spec 0033, AC-018; no longer owner-scoped since 2026-09-16).
      */
     public function index(Request $request, string $domain): JsonResponse
     {
         try {
             $this->registry->resolve($domain); // 404 if unknown
-            /** @var User $actor */
-            $actor = $request->user();
             $this->authorize('viewAny', ImportRun::class);
 
             $page = max(1, (int) $request->query('page', 1));
             $perPage = min(self::MAX_LIMIT, max(1, (int) $request->query('per_page', 15)));
 
             $paginator = ImportRun::query()
-                ->where('user_id', $actor->id)
                 ->where('resource', $domain)
                 ->latest('id')
                 ->paginate($perPage, ['*'], 'page', $page);
@@ -164,7 +162,7 @@ class ImportController extends BaseApiController
     {
         try {
             $definition = $this->registry->resolve($domain); // 404 if unknown
-            $this->assertOwnedRun($importRun, $request->user(), $domain);
+            $this->assertRunMatchesDomain($importRun, $domain);
             $this->authorize('view', $importRun);
 
             return $this->ok([
@@ -186,7 +184,7 @@ class ImportController extends BaseApiController
     {
         try {
             $definition = $this->registry->resolve($domain); // 404 if unknown
-            $this->assertOwnedRun($importRun, $request->user(), $domain);
+            $this->assertRunMatchesDomain($importRun, $domain);
             $this->authorize('update', $importRun);
             $this->authorizeImport($definition, $request->user());
 
@@ -215,7 +213,7 @@ class ImportController extends BaseApiController
     {
         try {
             $definition = $this->registry->resolve($domain); // 404 if unknown
-            $this->assertOwnedRun($importRun, $request->user(), $domain);
+            $this->assertRunMatchesDomain($importRun, $domain);
             $this->authorize('view', $importRun);
             $this->assertReadableStatus($importRun);
 
@@ -256,7 +254,7 @@ class ImportController extends BaseApiController
             $definition = $this->registry->resolve($domain); // 404 if unknown
             /** @var User $actor */
             $actor = $request->user();
-            $this->assertOwnedRun($importRun, $actor, $domain);
+            $this->assertRunMatchesDomain($importRun, $domain);
             $this->assertRowBelongsToRun($row, $importRun);
             $this->authorize('update', $importRun);
             $this->authorizeImport($definition, $actor);
@@ -321,7 +319,7 @@ class ImportController extends BaseApiController
             $definition = $this->registry->resolve($domain); // 404 if unknown
             /** @var User $actor */
             $actor = $request->user();
-            $this->assertOwnedRun($importRun, $actor, $domain);
+            $this->assertRunMatchesDomain($importRun, $domain);
             $this->authorize('update', $importRun);
             $this->authorizeImport($definition, $actor);
             $this->assertReviewing($importRun);
@@ -355,7 +353,7 @@ class ImportController extends BaseApiController
             $definition = $this->registry->resolve($domain); // 404 if unknown
             /** @var User $actor */
             $actor = $request->user();
-            $this->assertOwnedRun($importRun, $actor, $domain);
+            $this->assertRunMatchesDomain($importRun, $domain);
             $this->assertRowBelongsToRun($row, $importRun);
             $this->authorize('update', $importRun);
             $this->authorizeImport($definition, $actor);
@@ -381,7 +379,7 @@ class ImportController extends BaseApiController
     {
         try {
             $this->registry->resolve($domain); // 404 if unknown
-            $this->assertOwnedRun($importRun, $request->user(), $domain);
+            $this->assertRunMatchesDomain($importRun, $domain);
             $this->authorize('view', $importRun);
             $this->assertReadableStatus($importRun);
 
@@ -410,7 +408,7 @@ class ImportController extends BaseApiController
     {
         try {
             $definition = $this->registry->resolve($domain); // 404 if unknown
-            $this->assertOwnedRun($importRun, $request->user(), $domain);
+            $this->assertRunMatchesDomain($importRun, $domain);
             $this->authorize('update', $importRun);
             $this->authorizeImport($definition, $request->user());
 
@@ -444,7 +442,7 @@ class ImportController extends BaseApiController
     {
         try {
             $this->registry->resolve($domain); // 404 if unknown
-            $this->assertOwnedRun($importRun, $request->user(), $domain);
+            $this->assertRunMatchesDomain($importRun, $domain);
             $this->authorize('view', $importRun);
             $this->assertHasErrorReport($importRun);
 

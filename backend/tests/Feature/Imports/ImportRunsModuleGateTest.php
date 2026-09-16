@@ -53,13 +53,13 @@ it('show 403 without leads.import', function () {
     $this->getJson("/api/imports/leads/{$run->id}")->assertForbidden();
 });
 
-it('show 404 for a run belonging to another user, even WITH leads.import', function () {
+it('show 200 for a run started by another user WITH leads.import (runs are shared)', function () {
     $actor = leadsImportActor();
     $otherUser = User::factory()->create();
     $run = ImportRun::factory()->create(['user_id' => $otherUser->id, 'resource' => 'leads']);
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/imports/leads/{$run->id}")->assertNotFound();
+    $this->getJson("/api/imports/leads/{$run->id}")->assertOk();
 });
 
 // ---------------------------------------------------------------------------

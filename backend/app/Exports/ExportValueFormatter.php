@@ -69,10 +69,18 @@ class ExportValueFormatter
         ));
     }
 
+    /**
+     * A single related-entity summary (a person column's `{id, name, ...}`)
+     * exports as its `name`, the same rule formatArray() applies per item.
+     */
     private function formatScalar(mixed $value): string
     {
         if ($value === null) {
             return '';
+        }
+
+        if (is_array($value)) {
+            return (string) ($value['name'] ?? json_encode($value));
         }
 
         return is_bool($value) ? ($value ? '1' : '0') : (string) $value;

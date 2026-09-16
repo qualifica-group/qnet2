@@ -14,12 +14,9 @@ use Illuminate\Database\Eloquent\Model;
  * 2026-07-17). `leads` is the only registered import domain (config/imports.php),
  * so reusing its `import` ability is exact, not an approximation.
  *
- * `view`/`delete` additionally require OWNERSHIP (defense in depth): the
- * history table's baseQuery and ImportController's assertOwnedRun() already
- * scope every read/write to the actor's own runs, so this restates the same
- * invariant at the Policy layer for callers that gate through Gate/`can()`
- * directly (e.g. the generic bulk-delete engine). Super-admin bypasses
- * globally via AppServiceProvider's Gate::before.
+ * Runs are NOT owner-scoped: every `leads.import` holder views and deletes
+ * every run, whoever started it (user decision 2026-09-16). Super-admin
+ * bypasses globally via AppServiceProvider's Gate::before.
  */
 class ImportRunPolicy extends BasePolicy
 {
@@ -39,7 +36,7 @@ class ImportRunPolicy extends BasePolicy
 
     public function view(User $user, Model $model): bool
     {
-        return $user->can('leads.import') && $model->user_id === $user->id;
+        return $user->can('leads.import');
     }
 
     public function create(User $user): bool
@@ -54,7 +51,7 @@ class ImportRunPolicy extends BasePolicy
 
     public function delete(User $user, Model $model): bool
     {
-        return $user->can('leads.import') && $model->user_id === $user->id;
+        return $user->can('leads.import');
     }
 
     public function export(User $user): bool

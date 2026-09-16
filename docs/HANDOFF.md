@@ -3,6 +3,41 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## IMPORT CONDIVISI + COLONNA OPERATORE (2026-09-16) — VERDE, NON COMMITTATO
+
+- Decisione utente: gli import (`/imports`) NON sono piu' per-utente. Chi ha `leads.import` vede,
+  apre (dettaglio + wizard), modifica, conferma ed elimina gli import di TUTTI. Nessuna spec dedicata.
+- Backend: rimosso ogni filtro `user_id` da `LeadImportsTableDefinition::baseQuery`, `ImportController::index`,
+  `LeadImportsStatsDefinition`, `ImportRunPolicy::view/delete`. `assertOwnedRun` -> `assertRunMatchesDomain`
+  (resta solo il 404 su dominio diverso); `ImportMappingTemplateController::resolveOwnedRun` -> `resolveRun`;
+  `SelectionScopeController` non ha piu' guard sul run.
+- Nuova colonna derivata `user` (label `leadImports.columns.operator`, set filter per nome, sort via subquery)
+  risolta da `App\Tables\LeadImports\ImportRunUserColumn`; valore `{id,name,avatar_url}`, FE `UserCell`.
+- Fix collaterale: `ExportValueFormatter::formatScalar` esporta un summary `{id,name}` come `name`
+  (prima "Array to string conversion" su OGNI colonna persona di tipo text esportata, es. operatore lead).
+- Test aggiornati (requisito cambiato): i test "404 per run di un altro utente" sono ora positivi.
+- Verifica: suite backend seriale 7790/7800 — i 9 rossi sono `WorkOrderNotesTest` e
+  `DemoOpportunitySeederTest`, estranei a questo lavoro. Vitest imports+i18n 399/399, `tsc -b --force` e Pint puliti.
+
+## SPEC 0135 — SEDI OPERATIVE ATTIVA/DISATTIVA (2026-09-16) — VERDE, NON COMMITTATO
+
+- Spec: `docs/specs/0135-operational-site-active-flag.xml`. Migrazione
+  `2026_09_16_100000_add_is_active_to_operational_sites_table` (default true, indice): va eseguita
+  `php artisan migrate` sul DB di sviluppo.
+- `OperationalSiteService::forSelect` filtra `is_active = true`; `appendHydratedIds` NON filtra
+  (record gia' collegati a una sede disattivata la mostrano ancora). Tutti i select sede FE passano
+  da li': nessuna modifica ai consumer.
+- Nomi: colonna/campo `is_active`; DTO `CreateOperationalSiteData::$isActive` (default true),
+  `UpdateOperationalSiteData::$isActive` (`?bool`, null = non inviato); factory `->inactive()`;
+  FE `OperationalSiteDetail.is_active`, i18n `operationalSites.columns.is_active`,
+  `.detail.is_active`, `.form.isActive`, `.form.sections.status`.
+- Fuori scope (D-4): le FormRequest dei moduli che referenziano una sede non rifiutano una sede
+  inattiva; opzioni filtro report richieste e filtri team segnatempo invariati.
+- Verifica: Pest `tests/Feature/OperationalSites` 67/67 + suite toccate in seriale verdi;
+  `QuoteWorkflowMigrationTest` rollback step 74 -> 75. Vitest completo 5282/5282, `tsc -b --force`
+  EXIT 0, ESLint pulito. Fallimento NON correlato: `TaskConfigPermissionsTest` AC-051
+  dataset task-statuses (422 `group` richiesto invece di 403).
+
 ## SPEC 0132 — CLASSIFICAZIONE PER CATEGORIA GENITORE (2026-09-16) — VERDE, NON COMMITTATO
 
 - Spec: `docs/specs/0132-root-category-classification.xml`. Nei campi `product_lines` delle CARD

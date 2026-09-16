@@ -56,3 +56,7 @@ it('casts a scalar value to its string form for any other type', function () {
     expect(exportValueFormatter()->format('Acme', 'text'))->toBe('Acme')
         ->and(exportValueFormatter()->format(42, 'number'))->toBe('42');
 });
+
+it('formats a single related-entity summary by its name for any other type', function () {
+    expect(exportValueFormatter()->format(['id' => 7, 'name' => 'Mario Rossi', 'avatar_url' => null], 'text'))->toBe('Mario Rossi');
+});

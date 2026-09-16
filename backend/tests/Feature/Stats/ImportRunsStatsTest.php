@@ -9,7 +9,7 @@ use Laravel\Sanctum\Sanctum;
 uses(RefreshDatabase::class);
 
 // ---------------------------------------------------------------------------
-// AC-009 — GET /api/stats/import-runs: scoped to the actor's OWN leads runs
+// AC-009 — GET /api/stats/import-runs: every operator's leads runs
 // ---------------------------------------------------------------------------
 
 it('403 without import-runs.viewAny', function () {
@@ -19,14 +19,13 @@ it('403 without import-runs.viewAny', function () {
     $this->getJson('/api/stats/import-runs')->assertForbidden();
 });
 
-it('aggregates ONLY the actor\'s own runs for the leads resource', function () {
+it('aggregates every operator\'s runs for the leads resource only', function () {
     $actor = User::factory()->create();
     grantImportRunsPermissions($actor, ['viewAny']);
 
     ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Completed, 'imported_rows' => 5]);
-    ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Failed]);
-    // Another user's leads run — must NOT count.
-    ImportRun::factory()->create(['user_id' => User::factory()->create()->id, 'resource' => 'leads', 'status' => ImportStatus::Completed]);
+    // Another user's leads run — counts too (runs are shared).
+    ImportRun::factory()->create(['user_id' => User::factory()->create()->id, 'resource' => 'leads', 'status' => ImportStatus::Failed]);
     // The actor's own run, but a DIFFERENT resource — must NOT count.
     ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'companies', 'status' => ImportStatus::Completed]);
 

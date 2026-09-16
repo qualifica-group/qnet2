@@ -12,11 +12,11 @@ use Illuminate\Validation\Rule;
  * taken from the request body, snapshotted server-side from the resolved run
  * instead (anti-tamper, see ImportMappingTemplateController::store()).
  *
- * `import_run_id` ownership/domain match and the run's own `column_mapping`
- * presence are NOT checked here (no `exists:` rule): both require resolving
- * the run against the actor first, so a mismatch 404s (never 422/403) —
- * stays in the controller, same convention as ImportController::
- * assertOwnedRun() and ConfigureImportRequest's domain-dependent rules.
+ * `import_run_id` domain match and the run's own `column_mapping` presence
+ * are NOT checked here (no `exists:` rule): both require resolving the run
+ * first, so a mismatch 404s (never 422/403) — stays in the controller, same
+ * convention as ImportController::assertRunMatchesDomain() and
+ * ConfigureImportRequest's domain-dependent rules.
  */
 class StoreImportMappingTemplateRequest extends FormRequest
 {

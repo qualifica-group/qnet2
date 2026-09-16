@@ -236,7 +236,7 @@ it('0110 AC-033: domain=import_rows is 403 without the import ability', function
     ])->assertForbidden();
 });
 
-it('0110 AC-033: another actor import run is a 404, never a 403 and never its categories', function () {
+it('0110 AC-033: another actor import run is readable (runs are shared)', function () {
     $actor = selectionScopeActor(['leads.import']);
     $stranger = selectionScopeActor(['leads.import']);
     $run = selectionScopeRun($stranger);
@@ -244,13 +244,11 @@ it('0110 AC-033: another actor import run is a 404, never a 403 and never its ca
     $row = ImportRunRow::factory()->for($run, 'importRun')->create(['product_ids' => [$product->id]]);
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson('/api/assignment/selection-scope', [
+    $this->postJson('/api/assignment/selection-scope', [
         'domain' => 'import_rows',
         'import_run_id' => $run->id,
         'row_ids' => [$row->id],
-    ])->assertNotFound();
-
-    expect($response->json('data'))->toBeNull();
+    ])->assertOk();
 });
 
 it('0110 AC-033: a non-existent import run is the same 404', function () {

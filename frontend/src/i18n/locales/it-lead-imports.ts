@@ -12,6 +12,7 @@ export const leadImports = {
   newImport: 'Nuovo import',
   columns: {
     date: 'Data',
+    operator: 'Operatore',
     file: 'File',
     records: 'Record',
     imported: 'Importati',

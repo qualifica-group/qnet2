@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- renderer registry module: cells are AG Grid render functions, not route/page components */
 import type { ICellRendererParams } from 'ag-grid-community'
 import { DateTimeCell } from '@/features/table/cell-renderers'
+import { BooleanBadgeCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /** Em-dash placeholder for an empty/unknown cell value. */
@@ -31,7 +32,8 @@ function AddressTextCell({ value }: ICellRendererParams) {
 /**
  * Custom cell renderers keyed by the backend column `id`. `alias` is the site's
  * own text column; the geo/address columns (city/street/postal_code/province/
- * region) are derived from its primary address (spec 0011); `created_at` reuses
+ * region) are derived from its primary address (spec 0011); `is_active` renders
+ * the shared yes/no badge (spec 0135); `created_at` reuses
  * the shared domain-agnostic renderer so datetime formatting is not
  * re-implemented per domain.
  */
@@ -42,5 +44,6 @@ export const operationalSiteColumnRenderers: TableRendererMap = {
   postal_code: (params) => <AddressTextCell {...params} />,
   province: (params) => <AddressTextCell {...params} />,
   region: (params) => <AddressTextCell {...params} />,
+  is_active: (params) => <BooleanBadgeCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

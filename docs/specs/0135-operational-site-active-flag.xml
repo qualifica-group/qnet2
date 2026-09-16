@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0135-operational-site-active-flag" status="implemented" owner="utente" date="2026-09-16">
+
+  <goal>
+    Una sede operativa puo' essere attivata o disattivata. I select che propongono le sedi
+    offrono solo quelle attive.
+  </goal>
+
+  <context>
+    - `operational_sites` (spec 0011) aveva solo `old_id`, `alias` e timestamp; nessun flag di stato.
+    - Tutti i select sede del frontend leggono `GET /api/operational-sites/for-select`
+      (`OperationalSiteService::forSelect`): lead, opportunita', preventivi, progetti, gestione
+      richieste, utenti (employment), import wizard, quick-create, filtro avanzato richieste.
+    - Pattern gia' in uso da replicare: `is_active` dei configuratori Task (spec 0101).
+  </context>
+
+  <decisions>
+    D-1  Colonna `operational_sites.is_active` boolean NOT NULL default true, indicizzata. Le sedi
+         esistenti restano attive.
+    D-2  `for-select` filtra `is_active = true` (lista e total). Gli `ids[]` di idratazione
+         bypassano il filtro: un record collegato a una sede disattivata continua a mostrarla.
+         Nessun parametro `include_inactive` (nessun consumer lo richiede).
+    D-3  Il flag e' scrivibile su create/update (`sometimes|boolean`, default true), campo
+         `is_active` di tipo boolean nel catalogo field-permission, esposto in
+         `OperationalSiteResource` e come colonna griglia boolean (filtro boolean).
+    D-4  FUORI SCOPE: la validazione di scrittura dei moduli che referenziano una sede NON rifiuta
+         una sede disattivata; il filtro opzioni del report richieste
+         (`ReportSiteAvailabilityResolver`) e i filtri team del segnatempo restano invariati
+         (dati storici).
+  </decisions>
+
+  <contract>
+    GET  /api/operational-sites/{id}      -> data.is_active: boolean
+    POST /api/operational-sites           -> is_active?: boolean (default true)
+    PATCH /api/operational-sites/{id}     -> is_active?: boolean
+    GET  /api/operational-sites/for-select -> solo sedi attive; ids[] idrata anche le inattive
+    Tabella `operational-sites`           -> colonna `is_active` (type boolean, filterType boolean)
+  </contract>
+
+  <acceptance>
+    AC-001  for-select esclude le sedi inattive da items e total (anche con business_function_id).
+    AC-002  for-select con ids[] di una sede inattiva la restituisce senza gonfiare il total.
+    AC-003  create senza is_active -> true; con false -> persistito false; valore non boolean -> 422.
+    AC-004  PATCH {is_active:false} disattiva senza toccare l'indirizzo; PATCH successivi lo preservano.
+    AC-005  Form sede: switch "Sede attiva" (create default on); il PATCH invia is_active solo se cambiato.
+    AC-006  Dettaglio e griglia mostrano lo stato attiva si'/no.
+  </acceptance>
+
+</spec>

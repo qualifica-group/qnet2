@@ -37,6 +37,8 @@ export interface OperationalSiteDetail {
   province: GeoReference | null
   city_id: number | null
   city: GeoReference | null
+  /** An inactive site is no longer offered by `operational-sites/for-select` (spec 0135). */
+  is_active: boolean
   created_at: string
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
@@ -61,6 +63,7 @@ export interface CreateOperationalSitePayload {
   state_id: number | null
   province_id: number | null
   city_id: number
+  is_active: boolean
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
 }

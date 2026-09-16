@@ -7,8 +7,8 @@ import type { OperationalSiteFormValues } from '@/features/operational-sites/use
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 
 /**
- * Builds the create payload `{line1, postal_code, country_id, state_id,
- * province_id, city_id}` (spec 0011 AC-019). `city_id` is cast to `number`:
+ * Builds the create payload `{alias, line1, postal_code, country_id, state_id,
+ * province_id, city_id, is_active}` (spec 0011 AC-019). `city_id` is cast to `number`:
  * the Zod schema's `refine` guarantees it is non-null by the time RHF calls
  * `onSubmit`, so this never carries `null` over the wire despite the wider
  * `number | null` form type shared with the (nullable) geo cascade.
@@ -25,6 +25,7 @@ export function buildCreatePayload(
     state_id: values.state_id,
     province_id: values.province_id,
     city_id: values.city_id as number,
+    is_active: values.is_active,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
 }
@@ -62,6 +63,9 @@ export function buildUpdatePayload(
   }
   if (values.city_id !== original.city_id) {
     payload.city_id = values.city_id as number
+  }
+  if (values.is_active !== original.is_active) {
+    payload.is_active = values.is_active
   }
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})

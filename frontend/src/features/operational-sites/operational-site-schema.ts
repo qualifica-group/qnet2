@@ -43,6 +43,7 @@ function baseFields(t: TFunction) {
       // — contradicting the comment above (`city_id` must stay `number |
       // null` in the TYPE; only the runtime validation rejects `null`).
       .refine((value): boolean => value !== null, { message: t('operationalSites.form.cityRequired') }),
+    is_active: z.boolean(),
   }
 }
 

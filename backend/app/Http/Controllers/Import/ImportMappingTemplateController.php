@@ -77,7 +77,7 @@ class ImportMappingTemplateController extends BaseApiController
             $this->authorize('create', ImportRun::class);
             $this->authorizeImportGate($definition, $actor);
 
-            $run = $this->resolveOwnedRun((int) $request->validated('import_run_id'), $actor, $domain);
+            $run = $this->resolveRun((int) $request->validated('import_run_id'), $domain);
             $this->assertRunHasMapping($run);
 
             $template = ImportMappingTemplate::create([
@@ -115,18 +115,18 @@ class ImportMappingTemplateController extends BaseApiController
     }
 
     /**
-     * A run not owned by the actor, or whose resource does not match the
-     * route {domain}, must never leak cross-user/cross-domain: surfaced as
-     * 404 (not 403), identical to an unknown id — same semantics as
-     * ImportController::assertOwnedRun().
+     * A run whose resource does not match the route {domain} must never leak
+     * cross-domain: surfaced as 404 (not 403), identical to an unknown id —
+     * same semantics as ImportController::assertRunMatchesDomain(). Runs are
+     * not owner-scoped (user decision 2026-09-16).
      *
      * @throws ModelNotFoundException
      */
-    private function resolveOwnedRun(int $importRunId, User $actor, string $domain): ImportRun
+    private function resolveRun(int $importRunId, string $domain): ImportRun
     {
         $run = ImportRun::find($importRunId);
 
-        if ($run === null || $run->user_id !== $actor->id || $run->resource !== $domain) {
+        if ($run === null || $run->resource !== $domain) {
             throw (new ModelNotFoundException)->setModel(ImportRun::class, [$importRunId]);
         }
 

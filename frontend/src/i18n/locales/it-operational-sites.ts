@@ -17,6 +17,7 @@ export const operationalSites = {
     postal_code: 'CAP',
     province: 'Provincia',
     region: 'Regione',
+    is_active: 'Attiva',
     created_at: 'Creato il',
   },
   detail: {
@@ -30,6 +31,7 @@ export const operationalSites = {
     province: 'Provincia',
     region: 'Regione',
     country: 'Nazione',
+    is_active: 'Attiva',
     created_at: 'Creato il',
     summary: {
       title: 'Riepilogo',
@@ -45,6 +47,7 @@ export const operationalSites = {
     alias: 'Alias',
     line1: 'Via',
     postalCode: 'CAP',
+    isActive: 'Sede attiva',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
@@ -63,6 +66,10 @@ export const operationalSites = {
       address: {
         title: 'Indirizzo',
         description: 'Ubicazione della sede operativa.',
+      },
+      status: {
+        title: 'Stato',
+        description: 'Una sede disattivata non viene più proposta nei menu di selezione.',
       },
     },
   },

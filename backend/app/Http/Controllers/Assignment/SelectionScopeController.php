@@ -53,7 +53,7 @@ use Throwable;
  * it actually assigns (constraints).
  *
  * Read-only, and gated by the READ permission of the requested domain, never
- * by a gate of its own (constraints): `leads.import` + run ownership for the
+ * by a gate of its own (constraints): `leads.import` for the
  * staged rows, `leads.viewAny` for the real leads, `{module}.viewAny` for the
  * offers — plus, for the offers, the module's own D-2/D-3 row scope, so an
  * offer the actor may not reach contributes neither its categories nor its
@@ -103,13 +103,12 @@ class SelectionScopeController extends BaseApiController
      */
     private function fromImportRows(SelectionScopeRequest $request, User $actor): array
     {
-        // Step 1: resolve the run — an unknown id and another actor's run
-        // answer the SAME 404 ImportController answers, never a 403.
+        // Step 1: resolve the run — an unknown id answers the SAME 404
+        // ImportController answers. No {domain} segment here: the run's own
+        // `resource` IS the domain in play, and runs are not owner-scoped
+        // (user decision 2026-09-16), so there is no further run guard.
         $run = ImportRun::query()->findOrFail($request->importRunId());
         $definition = $this->registry->resolve($run->resource); // 404 if unknown
-        // This endpoint carries no {domain} segment: the run's own `resource`
-        // IS the domain in play, so the guard reduces to its ownership half.
-        $this->assertOwnedRun($run, $actor, $run->resource);
 
         // Step 2: the run's own read gates, unchanged (`leads.import`).
         $this->authorize('view', $run);

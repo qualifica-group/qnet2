@@ -46,7 +46,12 @@ it('GET /api/tables/import-runs/columns: 403 without leads.import, 200 with it',
         ->and($data['searchable'])->toBe(['original_filename']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'created_at', 'original_filename', 'total_rows', 'imported_rows', 'invalid_rows', 'status']);
+    expect($ids)->toBe(['id', 'created_at', 'user', 'original_filename', 'total_rows', 'imported_rows', 'invalid_rows', 'status']);
+
+    $user = collect($data['columns'])->firstWhere('id', 'user');
+    expect($user['label'])->toBe('leadImports.columns.operator')
+        ->and($user['sortable'])->toBeTrue()
+        ->and($user['filterType'])->toBe('set');
 });
 
 it('POST /api/tables/import-runs/rows: 403 without leads.import', function () {
@@ -72,11 +77,12 @@ it('exposes the status column as a badge driven by ImportStatus (options + badge
 });
 
 // ---------------------------------------------------------------------------
-// rows — scoped to the actor's OWN runs for the leads resource only
+// rows — every operator's runs for the leads resource only, with the operator
 // ---------------------------------------------------------------------------
 
-it('rows expose the mapped fields + per-row actions, scoped to own leads runs', function () {
+it('rows expose every operator\'s leads runs with the operator column + per-row actions', function () {
     $actor = importRunsTableUserWith(['viewAny', 'view', 'delete']);
+    $otherUser = User::factory()->create(['name' => 'Mario Rossi']);
 
     $own = ImportRun::factory()->create([
         'resource' => 'leads',
@@ -87,34 +93,67 @@ it('rows expose the mapped fields + per-row actions, scoped to own leads runs', 
         'invalid_rows' => 2,
         'imported_rows' => 8,
     ]);
-    // Another user's leads run — must NOT appear.
-    ImportRun::factory()->create(['resource' => 'leads', 'user_id' => User::factory()->create()->id]);
-    // The actor's run for a DIFFERENT resource — must NOT appear.
+    // Another user's leads run — listed too (runs are shared).
+    $foreign = ImportRun::factory()->create(['resource' => 'leads', 'user_id' => $otherUser->id]);
+    // A run for a DIFFERENT resource — must NOT appear.
     ImportRun::factory()->create(['resource' => 'companies', 'user_id' => $actor->id]);
 
     Sanctum::actingAs($actor);
 
-    $items = $this->postJson('/api/tables/import-runs/rows', ['startRow' => 0, 'endRow' => 25])
+    $items = collect($this->postJson('/api/tables/import-runs/rows', ['startRow' => 0, 'endRow' => 25])
         ->assertOk()
-        ->json('items');
+        ->json('items'))->keyBy('id');
 
-    expect($items)->toHaveCount(1);
+    expect($items->keys()->all())->toEqualCanonicalizing([$own->id, $foreign->id]);
 
-    $row = $items[0];
-    expect($row['id'])->toBe($own->id)
-        ->and($row['original_filename'])->toBe('my-leads.csv')
+    $row = $items[$own->id];
+    expect($row['original_filename'])->toBe('my-leads.csv')
+        ->and($row['user']['id'])->toBe($actor->id)
+        ->and($row['user']['name'])->toBe($actor->name)
+        ->and($row['user'])->toHaveKey('avatar_url')
         ->and($row['total_rows'])->toBe(10)
         ->and($row['imported_rows'])->toBe(8)
         ->and($row['invalid_rows'])->toBe(2)
         ->and($row['status'])->toBe('completed')
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete'])
+        ->and($items[$foreign->id]['user']['name'])->toBe('Mario Rossi')
+        ->and($items[$foreign->id]['actions'])->toEqualCanonicalizing(['view', 'delete']);
+});
+
+it('filters, sorts and lists distinct values by operator name', function () {
+    $actor = importRunsTableUserWith(['viewAny']);
+    $alice = User::factory()->create(['name' => 'Alice Bianchi']);
+    $zeno = User::factory()->create(['name' => 'Zeno Verdi']);
+    $aliceRun = ImportRun::factory()->create(['resource' => 'leads', 'user_id' => $alice->id]);
+    $zenoRun = ImportRun::factory()->create(['resource' => 'leads', 'user_id' => $zeno->id]);
+    // A different resource's operator must never leak into the distinct values.
+    ImportRun::factory()->create(['resource' => 'companies', 'user_id' => User::factory()->create(['name' => 'Hidden User'])->id]);
+
+    Sanctum::actingAs($actor);
+
+    $filtered = $this->postJson('/api/tables/import-runs/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'filterModel' => ['user' => ['filterType' => 'set', 'values' => ['Zeno Verdi']]],
+    ])->assertOk()->json('items');
+    expect(array_column($filtered, 'id'))->toBe([$zenoRun->id]);
+
+    $sorted = $this->postJson('/api/tables/import-runs/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'sortModel' => [['colId' => 'user', 'sort' => 'desc']],
+    ])->assertOk()->json('items');
+    expect(array_column($sorted, 'id'))->toBe([$zenoRun->id, $aliceRun->id]);
+
+    $values = $this->postJson('/api/tables/import-runs/values', ['columnId' => 'user'])->assertOk()->json('data.values');
+    expect($values)->toBe(['Alice Bianchi', 'Zeno Verdi']);
 });
 
 // ---------------------------------------------------------------------------
 // delete — through the generic bulk-delete engine (ImportRunPolicy)
 // ---------------------------------------------------------------------------
 
-it('bulk-delete removes an own leads run, and cannot reach another user run', function () {
+it('bulk-delete removes leads runs of any operator', function () {
     $actor = importRunsTableUserWith(['viewAny', 'delete']);
     $own = ImportRun::factory()->create(['resource' => 'leads', 'user_id' => $actor->id]);
     $foreign = ImportRun::factory()->create(['resource' => 'leads', 'user_id' => User::factory()->create()->id]);
@@ -125,11 +164,9 @@ it('bulk-delete removes an own leads run, and cannot reach another user run', fu
         ->assertOk()
         ->json('data');
 
-    expect($result['deleted'])->toBe(1);
+    expect($result['deleted'])->toBe(2);
     $this->assertDatabaseMissing('import_runs', ['id' => $own->id]);
-    // Foreign run is outside baseQuery's scope → reported not_found, never deleted.
-    $this->assertDatabaseHas('import_runs', ['id' => $foreign->id]);
-    expect(collect($result['failed'])->firstWhere('id', $foreign->id)['reason'])->toBe('not_found');
+    $this->assertDatabaseMissing('import_runs', ['id' => $foreign->id]);
 });
 
 it('bulk-delete 403 without leads.import, leaving the run untouched', function () {

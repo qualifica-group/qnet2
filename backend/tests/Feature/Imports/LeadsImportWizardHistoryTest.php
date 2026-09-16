@@ -34,16 +34,16 @@ function historyLeadsActorWith(array $abilities): User
 }
 
 // ---------------------------------------------------------------------------
-// AC-018 — GET /api/imports/{domain} (paginated history, ownership)
+// AC-018 — GET /api/imports/{domain} (paginated history, every operator's runs)
 // ---------------------------------------------------------------------------
 
-it('AC-018: lists only the actor\'s own runs for the domain, paginated', function () {
+it('AC-018: lists every operator\'s runs for the domain, paginated', function () {
     $actor = historyLeadsActorWith(['import']);
     $otherUser = User::factory()->create();
     Sanctum::actingAs($actor);
 
-    ImportRun::factory()->count(3)->create(['user_id' => $actor->id, 'resource' => 'leads']);
-    // Not the actor's own — must never appear.
+    ImportRun::factory()->count(2)->create(['user_id' => $actor->id, 'resource' => 'leads']);
+    // Started by another user — listed too (runs are shared).
     ImportRun::factory()->create(['user_id' => $otherUser->id, 'resource' => 'leads']);
     // The actor's own, but a different domain — must never appear.
     ImportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'business-functions']);

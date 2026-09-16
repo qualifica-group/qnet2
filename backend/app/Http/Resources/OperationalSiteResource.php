@@ -39,6 +39,7 @@ class OperationalSiteResource extends JsonResource
             'province' => $this->geoSummary($address, 'province'),
             'city_id' => $address?->city_id,
             'city' => $this->geoSummary($address, 'city'),
+            'is_active' => $this->is_active,
             'created_at' => $this->created_at,
         ];
     }

@@ -85,15 +85,16 @@ it('403 without import-runs.view (spec 0034: reads no longer require {resource}.
     $this->get("/api/imports/stub-widgets/{$run->id}/errors")->assertForbidden();
 });
 
-it('404 for a run belonging to another user', function () {
+it('downloads the errors report of a run started by another user (runs are shared)', function () {
     registerStubImportDomain();
     Storage::fake('local');
-    $actor = stubImportActorWith(['import']);
+    Storage::disk('local')->put('imports/x.csv', "row,error\n");
+    $actor = stubImportActorWith(['import'], ['view']);
     $otherUser = User::factory()->create();
     $run = ImportRun::factory()->create(['user_id' => $otherUser->id, 'resource' => 'stub-widgets', 'error_report_path' => 'imports/x.csv']);
     Sanctum::actingAs($actor);
 
-    $this->get("/api/imports/stub-widgets/{$run->id}/errors")->assertNotFound();
+    $this->get("/api/imports/stub-widgets/{$run->id}/errors")->assertOk();
 });
 
 it('404 for a run whose resource does not match the route domain', function () {

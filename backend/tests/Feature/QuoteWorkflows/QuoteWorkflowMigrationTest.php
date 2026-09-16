@@ -118,9 +118,10 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // the user-competence wildcard flag plus the nullable category on
     // `employment_product_lines` rows, and spec 0131's
     // `2026_09_15_140000_add_is_reportable_to_product_categories_table`
-    // (74th), the per-node report flag. Adding a migration means bumping this
-    // number.
-    Artisan::call('migrate:rollback', ['--step' => 74]);
+    // (74th), the per-node report flag, and spec 0135's
+    // `2026_09_16_100000_add_is_active_to_operational_sites_table` (75th), the
+    // site active flag. Adding a migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 75]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

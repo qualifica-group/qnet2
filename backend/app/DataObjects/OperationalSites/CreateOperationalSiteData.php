@@ -27,6 +27,7 @@ final readonly class CreateOperationalSiteData
         public ?int $provinceId = null,
         public ?int $cityId = null,
         public ?string $alias = null,
+        public bool $isActive = true,
     ) {}
 
     /**
@@ -44,6 +45,7 @@ final readonly class CreateOperationalSiteData
             provinceId: isset($data['province_id']) ? (int) $data['province_id'] : null,
             cityId: isset($data['city_id']) ? (int) $data['city_id'] : null,
             alias: $data['alias'] ?? null,
+            isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
         );
     }
 

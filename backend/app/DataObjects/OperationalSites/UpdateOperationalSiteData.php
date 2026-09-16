@@ -35,6 +35,7 @@ final readonly class UpdateOperationalSiteData
         public bool $cityIdSubmitted = false,
         public ?string $alias = null,
         public bool $aliasSubmitted = false,
+        public ?bool $isActive = null,
     ) {}
 
     /**
@@ -59,6 +60,7 @@ final readonly class UpdateOperationalSiteData
             cityIdSubmitted: array_key_exists('city_id', $data),
             alias: array_key_exists('alias', $data) ? $data['alias'] : null,
             aliasSubmitted: array_key_exists('alias', $data),
+            isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
         );
     }
 

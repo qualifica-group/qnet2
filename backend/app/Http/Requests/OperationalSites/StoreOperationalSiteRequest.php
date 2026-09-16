@@ -36,6 +36,7 @@ class StoreOperationalSiteRequest extends FormRequest
     {
         return [
             'alias' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['sometimes', 'boolean'],
             'line1' => ['required', 'string', 'max:255'],
             'postal_code' => ['nullable', 'string', 'max:20'],
             'country_id' => ['nullable', 'integer', Rule::exists('countries', 'id')],

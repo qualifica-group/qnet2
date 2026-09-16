@@ -48,6 +48,7 @@ class OperationalSitesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('city_id', 'select', mandatory: true),
             new FieldDefinition('line1', 'text', mandatory: true),
             new FieldDefinition('postal_code', 'text'),
+            new FieldDefinition('is_active', 'boolean'),
         ];
     }
 
@@ -74,6 +75,7 @@ class OperationalSitesAuthorization extends AbstractResourceAuthorization
             'city_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'line1' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'postal_code' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

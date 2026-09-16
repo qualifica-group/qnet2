@@ -29,6 +29,9 @@ class OperationalSite extends BaseModel
         // its address (spec 0011); `alias` exists because the legacy import
         // carries a site name in its `comune` field that is not a real city.
         'alias',
+        // Spec 0135: an inactive site stays on its linked records but is no
+        // longer offered by the for-select pickers.
+        'is_active',
     ];
 
     /**
@@ -38,6 +41,7 @@ class OperationalSite extends BaseModel
      */
     protected $casts = [
         'old_id' => 'integer',
+        'is_active' => 'boolean',
     ];
 
     /**

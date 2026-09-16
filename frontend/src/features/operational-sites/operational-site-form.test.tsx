@@ -87,6 +87,7 @@ function operationalSite(
     province: { id: 3, name: 'Milan' },
     city_id: 4,
     city: { id: 4, name: 'Milan' },
+    is_active: true,
     created_at: '2026-01-01T00:00:00Z',
     permissions: FULL_ACCESS_PERMISSIONS,
     ...overrides,
@@ -137,6 +138,7 @@ describe('OperationalSiteForm — create/edit', () => {
       state_id: 6,
       province_id: 8,
       city_id: 7,
+      is_active: true,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(operationalSite()))
   })
@@ -180,6 +182,27 @@ describe('OperationalSiteForm — create/edit', () => {
     const [id, payload] = updateOperationalSiteMock.mock.calls[0]
     expect(id).toBe(9)
     expect(payload).toEqual({ line1: 'Via Milano 9' })
+  })
+
+  it('deactivates the site through the active switch (spec 0135)', async () => {
+    updateOperationalSiteMock.mockResolvedValue(operationalSite({ is_active: false }))
+
+    render(
+      <OperationalSiteForm
+        mode={{ type: 'edit', operationalSite: operationalSite() }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    const activeSwitch = screen.getByRole('switch', { name: /^Active site/ })
+    expect(activeSwitch).toBeChecked()
+    fireEvent.click(activeSwitch)
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateOperationalSiteMock).toHaveBeenCalledTimes(1))
+    expect(updateOperationalSiteMock.mock.calls[0][1]).toEqual({ is_active: false })
   })
 
   it('AC-020 — forwards the cascade selection so city_id/province_id/state_id land coherently in the payload', async () => {

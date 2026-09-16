@@ -51,7 +51,7 @@ function siteTableGeoChain(string $cityName, string $provinceName, string $state
 // AC-003 — columns config
 // ---------------------------------------------------------------------------
 
-it('returns the 8 columns in order with the declared flags, 403 without viewAny', function () {
+it('returns the 9 columns in order with the declared flags, 403 without viewAny', function () {
     $actor = userWithSiteAbilities([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/operational-sites/columns')->assertForbidden();
@@ -70,7 +70,7 @@ it('returns the 8 columns in order with the declared flags, 403 without viewAny'
         ->and($data['searchable'])->toBe(['alias', 'city', 'street']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'alias', 'city', 'street', 'postal_code', 'province', 'region', 'created_at']);
+    expect($ids)->toBe(['id', 'alias', 'city', 'street', 'postal_code', 'province', 'region', 'is_active', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['visible'])->toBeFalse()
@@ -86,6 +86,8 @@ it('returns the 8 columns in order with the declared flags, 403 without viewAny'
         ->and($columns['postal_code']['hasFilterValues'])->toBeFalse()
         ->and($columns['province']['filterType'])->toBe('set')
         ->and($columns['region']['filterType'])->toBe('set')
+        ->and($columns['is_active']['visible'])->toBeTrue()
+        ->and($columns['is_active']['filterType'])->toBe('boolean')
         ->and($columns['created_at']['filterType'])->toBe('date');
 });
 
@@ -128,6 +130,7 @@ it('rows expose the derived geo/street/postal_code fields and per-row actions', 
         ->and($row['province'])->toBe('Milano')
         ->and($row['region'])->toBe('Lombardia')
         ->and($row['postal_code'])->toBe('20100')
+        ->and($row['is_active'])->toBeTrue()
         ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
 });
 

@@ -1,8 +1,9 @@
-import { MapPin } from 'lucide-react'
+import { MapPin, Power } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { Form, FormControl } from '@/components/ui/form'
 import {
   MAIN_COLUMN_CLASS,
@@ -189,6 +190,32 @@ export function OperationalSiteFormBody({
                   )}
                 </div>
               </FormSection>
+
+              {fieldPermission('is_active').visible && (
+                <FormSection
+                  icon={Power}
+                  title={t('operationalSites.form.sections.status.title')}
+                  description={t('operationalSites.form.sections.status.description')}
+                >
+                  <MetaField
+                    control={form.control}
+                    name="is_active"
+                    metaKey="is_active"
+                    label={t('operationalSites.form.isActive')}
+                    layout="inline"
+                  >
+                    {({ field, disabled }) => (
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={disabled}
+                        />
+                      </FormControl>
+                    )}
+                  </MetaField>
+                </FormSection>
+              )}
 
               <CustomFieldsSection resource="operational-sites" control={form.control} />
 

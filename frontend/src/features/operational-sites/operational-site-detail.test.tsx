@@ -17,6 +17,7 @@ const BASE: OperationalSiteDetailWithPermissions = {
   province: { id: 3, name: 'Milano' },
   city_id: 4,
   city: { id: 4, name: 'Milan' },
+  is_active: true,
   created_at: '2026-01-15T10:30:00Z',
   permissions: {
     resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
@@ -51,6 +52,16 @@ describe('OperationalSiteDetailView', () => {
   it('renders an em dash for a missing postal code', () => {
     render(<OperationalSiteDetailView operationalSite={{ ...BASE, postal_code: null }} />)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('renders whether the site is active (spec 0135)', () => {
+    const { unmount } = render(<OperationalSiteDetailView operationalSite={BASE} />)
+    expect(screen.getByText(i18n.t('operationalSites.detail.is_active'))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('common.yes'))).toBeInTheDocument()
+    unmount()
+
+    render(<OperationalSiteDetailView operationalSite={{ ...BASE, is_active: false }} />)
+    expect(screen.getByText(i18n.t('common.no'))).toBeInTheDocument()
   })
 
   it('renders the formatted creation date', () => {

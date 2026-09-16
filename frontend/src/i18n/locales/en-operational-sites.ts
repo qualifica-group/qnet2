@@ -17,6 +17,7 @@ export const operationalSites = {
     postal_code: 'Postal code',
     province: 'Province',
     region: 'Region',
+    is_active: 'Active',
     created_at: 'Created at',
   },
   detail: {
@@ -30,6 +31,7 @@ export const operationalSites = {
     province: 'Province',
     region: 'Region',
     country: 'Country',
+    is_active: 'Active',
     created_at: 'Created at',
     summary: {
       title: 'Summary',
@@ -45,6 +47,7 @@ export const operationalSites = {
     alias: 'Alias',
     line1: 'Street',
     postalCode: 'Postal code',
+    isActive: 'Active site',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
@@ -63,6 +66,10 @@ export const operationalSites = {
       address: {
         title: 'Address',
         description: 'Location of the operational site.',
+      },
+      status: {
+        title: 'Status',
+        description: 'An inactive site is no longer offered in selection menus.',
       },
     },
   },

@@ -85,14 +85,15 @@ it('403 without {resource}.import', function () {
     $this->postJson("/api/imports/stub-widgets/{$run->id}/confirm")->assertForbidden();
 });
 
-it('404 for a run belonging to another user', function () {
+it('confirms a run started by another user (runs are shared)', function () {
     registerStubImportDomain();
-    $actor = stubImportActorWith(['import']);
+    Queue::fake();
+    $actor = stubImportActorWith(['import'], ['update']);
     $otherUser = User::factory()->create();
     $run = ImportRun::factory()->awaitingConfirmation()->create(['user_id' => $otherUser->id, 'resource' => 'stub-widgets']);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/imports/stub-widgets/{$run->id}/confirm")->assertNotFound();
+    $this->postJson("/api/imports/stub-widgets/{$run->id}/confirm")->assertOk();
 });
 
 it('404 for a run whose resource does not match the route domain', function () {

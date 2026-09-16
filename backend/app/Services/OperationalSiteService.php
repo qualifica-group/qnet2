@@ -44,7 +44,7 @@ class OperationalSiteService
     {
         return DB::transaction(function () use ($data): OperationalSite {
             /** @var OperationalSite $site */
-            $site = OperationalSite::create(['alias' => $data->alias]);
+            $site = OperationalSite::create(['alias' => $data->alias, 'is_active' => $data->isActive]);
 
             $this->addresses->createFor($site, $data->toAddress());
 
@@ -61,6 +61,9 @@ class OperationalSiteService
             // updated_at, no log).
             if ($data->aliasSubmitted) {
                 $site->alias = $data->alias;
+            }
+            if ($data->isActive !== null) {
+                $site->is_active = $data->isActive;
             }
             $site->save();
 
@@ -95,10 +98,13 @@ class OperationalSiteService
      * without inflating total. $businessFunctionId (spec 0040 BR-4), when
      * given, restricts the list to sites linked to that function via the
      * `business_function_operational_site` pivot.
+     *
+     * Only active sites are offered (spec 0135); an inactive one still
+     * hydrates through ids[] so a record keeps showing its current site.
      */
     public function forSelect(ForSelectQuery $query, ?int $businessFunctionId = null): ForSelectResult
     {
-        $base = $this->forSelectBaseQuery();
+        $base = $this->forSelectBaseQuery()->where('is_active', true);
 
         if ($businessFunctionId !== null) {
             $base->whereHas('businessFunctions', function (Builder $functionQuery) use ($businessFunctionId): void {
@@ -177,8 +183,9 @@ class OperationalSiteService
 
     /**
      * Append the explicitly-requested `ids[]` (edit-mode hydration) that are not
-     * already on the page, deduplicated. They bypass search and the same
-     * primary-address projection applies. Total is unaffected.
+     * already on the page, deduplicated. They bypass search AND the
+     * `is_active` filter, and the same primary-address projection applies.
+     * Total is unaffected.
      *
      * @param  Collection<int, OperationalSite>  $page
      * @return Collection<int, OperationalSite>

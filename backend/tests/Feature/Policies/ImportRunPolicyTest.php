@@ -11,7 +11,7 @@ uses(RefreshDatabase::class);
 // ---------------------------------------------------------------------------
 // The import module has no permission set of its own (the former `import-runs.*`
 // was removed 2026-07-17): every ability is gated by the lead module's single
-// `leads.import`, and view/delete additionally require ownership.
+// `leads.import`; runs are shared, so no ability checks ownership.
 // ---------------------------------------------------------------------------
 
 it('denies every ability without leads.import, even for an owned run', function () {
@@ -24,7 +24,7 @@ it('denies every ability without leads.import, even for an owned run', function 
         ->and($user->can('create', ImportRun::class))->toBeFalse();
 });
 
-it('grants view/delete once the actor has leads.import AND owns the run', function () {
+it('grants view/delete once the actor has leads.import', function () {
     Permission::findOrCreate('leads.import');
 
     $user = User::factory()->create();
@@ -37,7 +37,7 @@ it('grants view/delete once the actor has leads.import AND owns the run', functi
         ->and($user->can('create', ImportRun::class))->toBeTrue();
 });
 
-it('denies view/delete on a run owned by someone else, even WITH leads.import', function () {
+it('grants view/update/delete on a run started by someone else (runs are shared)', function () {
     Permission::findOrCreate('leads.import');
 
     $user = User::factory()->create();
@@ -45,20 +45,9 @@ it('denies view/delete on a run owned by someone else, even WITH leads.import', 
     $otherUser = User::factory()->create();
     $run = ImportRun::factory()->create(['user_id' => $otherUser->id, 'resource' => 'leads']);
 
-    expect($user->can('view', $run))->toBeFalse()
-        ->and($user->can('delete', $run))->toBeFalse();
-});
-
-it('update/create are permission-only (no ownership check)', function () {
-    Permission::findOrCreate('leads.import');
-
-    $user = User::factory()->create();
-    $user->givePermissionTo('leads.import');
-    $otherUser = User::factory()->create();
-    $run = ImportRun::factory()->create(['user_id' => $otherUser->id, 'resource' => 'leads']);
-
-    expect($user->can('update', $run))->toBeTrue()
-        ->and($user->can('create', ImportRun::class))->toBeTrue();
+    expect($user->can('view', $run))->toBeTrue()
+        ->and($user->can('update', $run))->toBeTrue()
+        ->and($user->can('delete', $run))->toBeTrue();
 });
 
 it('contributes no permissions of its own to the catalog (reuses leads.import)', function () {

@@ -73,7 +73,8 @@ it('show: 200 with the flat address shape, ids AND names', function () {
         ->assertJsonPath('data.city.name', 'Milano')
         ->assertJsonPath('data.province.name', 'Milano')
         ->assertJsonPath('data.region.name', 'Lombardia')
-        ->assertJsonPath('data.country.name', 'Italia');
+        ->assertJsonPath('data.country.name', 'Italia')
+        ->assertJsonPath('data.is_active', true);
 
     expect($response->json('permissions'))->toHaveKeys(['resource', 'fields', 'actions']);
 });
@@ -227,6 +228,54 @@ it('update: PATCH creates the address when the site had none', function () {
 
     expect($target->addresses()->count())->toBe(1)
         ->and($target->addresses()->first()->is_primary)->toBeTrue();
+});
+
+it('create: is_active defaults to true and can be submitted as false', function () {
+    $actor = userWithSiteAbilities(['create']);
+    $geo = siteGeoChain();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/operational-sites', ['line1' => 'Via Attiva 1', 'city_id' => $geo['city']->id])
+        ->assertCreated()
+        ->assertJsonPath('data.is_active', true);
+
+    $inactiveId = $this->postJson('/api/operational-sites', [
+        'line1' => 'Via Spenta 2',
+        'city_id' => $geo['city']->id,
+        'is_active' => false,
+    ])->assertCreated()
+        ->assertJsonPath('data.is_active', false)
+        ->json('data.id');
+
+    $this->assertDatabaseHas('operational_sites', ['id' => $inactiveId, 'is_active' => false]);
+});
+
+it('create: 422 when is_active is not a boolean', function () {
+    $actor = userWithSiteAbilities(['create']);
+    $geo = siteGeoChain();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/operational-sites', ['line1' => 'Via X', 'city_id' => $geo['city']->id, 'is_active' => 'maybe'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['is_active']);
+});
+
+it('update: PATCH {is_active: false} deactivates the site and leaves the address untouched', function () {
+    $actor = userWithSiteAbilities(['update']);
+    $target = OperationalSite::factory()->create();
+    Address::factory()->primary()->for($target, 'addressable')->create(['line1' => 'Kept Street']);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/operational-sites/{$target->id}", ['is_active' => false])
+        ->assertOk()
+        ->assertJsonPath('data.is_active', false)
+        ->assertJsonPath('data.line1', 'Kept Street');
+
+    expect($target->fresh()->is_active)->toBeFalse();
+
+    $this->patchJson("/api/operational-sites/{$target->id}", ['line1' => 'Other Street'])
+        ->assertOk()
+        ->assertJsonPath('data.is_active', false);
 });
 
 it('update: 403 without operational-sites.update', function () {

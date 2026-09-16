@@ -12,15 +12,12 @@ use App\Stats\Widgets\StatFormat;
 use App\Stats\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Statistics panel of the `import-runs` module (spec 0034): volume and
- * outcome of the actor's OWN lead import runs. Unlike every other
- * StatsDefinition (global counts), every widget here is scoped to
- * `resource='leads' AND user_id=actor` — mirroring LeadImportsTableDefinition's
- * baseQuery — since a run belongs to whoever started it, not to the module at
- * large.
+ * outcome of every lead import run. Every widget is scoped to
+ * `resource='leads'` — mirroring LeadImportsTableDefinition's baseQuery; runs
+ * are no longer owner-scoped (user decision 2026-09-16).
  *
  * Exactly 4 leading stat widgets (total/completed/failed/rows_imported), same
  * as every other module's panel (StatsEndpointTest's cross-module invariant:
@@ -51,22 +48,22 @@ class LeadImportsStatsDefinition extends AbstractStatsDefinition
      */
     public function widgets(): array
     {
-        $total = $this->ownRunsQuery()->count();
+        $total = $this->leadsRunsQuery()->count();
 
         return [
             $this->stat('total', $total, icon: 'layers'),
             $this->stat(
                 key: 'completed',
-                value: $this->ownRunsQuery()->where('status', ImportStatus::Completed)->count(),
+                value: $this->leadsRunsQuery()->where('status', ImportStatus::Completed)->count(),
                 icon: 'check-circle',
             ),
             $this->stat(
                 key: 'failed',
-                value: $this->ownRunsQuery()->where('status', ImportStatus::Failed)->count(),
+                value: $this->leadsRunsQuery()->where('status', ImportStatus::Failed)->count(),
             ),
             $this->stat(
                 key: 'rows_imported',
-                value: (int) $this->ownRunsQuery()->sum('imported_rows'),
+                value: (int) $this->leadsRunsQuery()->sum('imported_rows'),
                 icon: 'package',
             ),
             $this->distribution(
@@ -75,7 +72,7 @@ class LeadImportsStatsDefinition extends AbstractStatsDefinition
                     table: 'import_runs',
                     column: 'status',
                     enum: ImportStatus::class,
-                    constrain: $this->scopeToOwnLeadsRuns(...),
+                    constrain: $this->scopeToLeadsRuns(...),
                 ),
                 total: $total,
             ),
@@ -85,7 +82,7 @@ class LeadImportsStatsDefinition extends AbstractStatsDefinition
                     table: 'import_runs',
                     column: 'created_at',
                     months: self::TREND_MONTHS,
-                    constrain: $this->scopeToOwnLeadsRuns(...),
+                    constrain: $this->scopeToLeadsRuns(...),
                 ),
                 format: StatFormat::Number,
             ),
@@ -95,19 +92,17 @@ class LeadImportsStatsDefinition extends AbstractStatsDefinition
     /**
      * @return EloquentBuilder<ImportRun>
      */
-    private function ownRunsQuery(): EloquentBuilder
+    private function leadsRunsQuery(): EloquentBuilder
     {
-        return ImportRun::query()
-            ->where('resource', self::RESOURCE)
-            ->where('user_id', Auth::id());
+        return ImportRun::query()->where('resource', self::RESOURCE);
     }
 
     /**
-     * The same actor+resource scope as ownRunsQuery(), applied to a raw query
+     * The same resource scope as leadsRunsQuery(), applied to a raw query
      * builder (Aggregates' helpers operate on `DB::table()`, not Eloquent).
      */
-    private function scopeToOwnLeadsRuns(QueryBuilder $query): void
+    private function scopeToLeadsRuns(QueryBuilder $query): void
     {
-        $query->where('resource', self::RESOURCE)->where('user_id', Auth::id());
+        $query->where('resource', self::RESOURCE);
     }
 }

@@ -6,11 +6,10 @@ use App\Enums\ImportStatus;
 
 /**
  * Declarative column/filter/action catalogue for the `lead-imports` domain:
- * the read-only history of the actor's own lead import runs, rendered by the
- * generic table engine instead of a bespoke HTML table. Pure data (no logic).
- * Every column is a real `import_runs`
- * column; `error_rows` is the contract alias for the `invalid_rows` column
- * (see ImportRunResource) and is mapped in LeadImportsTableDefinition::mapRow.
+ * the read-only history of every lead import run, rendered by the generic
+ * table engine instead of a bespoke HTML table. Pure data (no logic). Every
+ * column is a real `import_runs` column except the derived `user` (the
+ * operator who started the run, resolved by ImportRunUserColumn).
  */
 final class LeadImportColumnCatalog
 {
@@ -28,6 +27,19 @@ final class LeadImportColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
+            ],
+            [
+                // Derived: the operator who started the run (user decision
+                // 2026-09-16). Sits right after the date, where "who/when"
+                // read together; saved layouts are keyed by column id, so only
+                // default layouts move.
+                'id' => 'user',
+                'label' => 'leadImports.columns.operator',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
             ],
             [
                 'id' => 'original_filename',
@@ -94,6 +106,7 @@ final class LeadImportColumnCatalog
     {
         return [
             ['columnId' => 'created_at', 'type' => 'date'],
+            ['columnId' => 'user', 'type' => 'set'],
             ['columnId' => 'original_filename', 'type' => 'text'],
             ['columnId' => 'total_rows', 'type' => 'number'],
             ['columnId' => 'imported_rows', 'type' => 'number'],
@@ -115,8 +128,7 @@ final class LeadImportColumnCatalog
      * `/leads/import?runId={id}`), `delete` removes the run through the generic
      * bulk-delete engine. Both gated by the lead module's `leads.import`
      * ability (the former `import-runs.*` set was removed 2026-07-17); `delete`
-     * is additionally per-row gated by ImportRunPolicy (ownership) in
-     * actionsFor().
+     * is additionally per-row gated by ImportRunPolicy in actionsFor().
      *
      * @return array<int, array<string, mixed>>
      */

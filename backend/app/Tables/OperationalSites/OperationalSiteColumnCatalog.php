@@ -105,6 +105,17 @@ final class OperationalSiteColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                // Spec 0135: real column; an inactive site is no longer
+                // offered by the for-select pickers.
+                'id' => 'is_active',
+                'label' => 'operationalSites.columns.is_active',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 'id' => 'created_at',
                 'label' => 'operationalSites.columns.created_at',
                 'type' => 'datetime',
@@ -130,6 +141,7 @@ final class OperationalSiteColumnCatalog
             ['columnId' => 'postal_code', 'type' => 'text'],
             ['columnId' => 'province', 'type' => 'set'],
             ['columnId' => 'region', 'type' => 'set'],
+            ['columnId' => 'is_active', 'type' => 'boolean'],
             ['columnId' => 'created_at', 'type' => 'date'],
         ];
     }

@@ -125,7 +125,7 @@ it('AC-003: 422 when resolution is outside the enum', function () {
         ->assertJsonValidationErrors('resolution');
 });
 
-it('AC-003: 404 for a run belonging to another user', function () {
+it('AC-003: resolves a row on a run started by another user (runs are shared)', function () {
     $actor = duplicateResolutionActor(['import']);
     $otherUser = User::factory()->create();
     $run = ImportRun::factory()->create(['user_id' => $otherUser->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing]);
@@ -133,7 +133,7 @@ it('AC-003: 404 for a run belonging to another user', function () {
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/imports/leads/{$run->id}/rows/{$row->id}/resolution", ['resolution' => 'skip'])
-        ->assertNotFound();
+        ->assertOk();
 });
 
 it('AC-003: 403 without leads.import', function () {

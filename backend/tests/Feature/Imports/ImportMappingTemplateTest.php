@@ -138,7 +138,7 @@ it('AC-002: 422 when a template with the same name already exists in the domain'
 // AC-003 — the run must belong to the actor and match the route {domain}
 // ---------------------------------------------------------------------------
 
-it('AC-003: 404 (never 403) when import_run_id belongs to another user', function () {
+it('AC-003: snapshots a run started by another user (runs are shared)', function () {
     registerStubImportDomain();
     $actor = stubImportActorWith(['import'], ['create']);
     $otherUser = User::factory()->create();
@@ -153,7 +153,7 @@ it('AC-003: 404 (never 403) when import_run_id belongs to another user', functio
     $this->postJson('/api/imports/stub-widgets/mapping-templates', [
         'name' => 'My template',
         'import_run_id' => $run->id,
-    ])->assertNotFound();
+    ])->assertCreated();
 });
 
 it('AC-003: 404 (never 403) when import_run_id belongs to a different domain', function () {

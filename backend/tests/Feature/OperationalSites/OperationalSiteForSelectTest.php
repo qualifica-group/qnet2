@@ -175,6 +175,51 @@ it('appends ids[] even when filtered out by search and does NOT inflate total', 
 });
 
 // ---------------------------------------------------------------------------
+// Spec 0135 — only active sites are offered; ids[] still hydrates inactive ones
+// ---------------------------------------------------------------------------
+
+it('excludes inactive sites from the list and from the total', function () {
+    $actor = userWithSiteAbilities([]);
+    $active = OperationalSite::factory()->withAddress()->create();
+    $inactive = OperationalSite::factory()->inactive()->withAddress()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson('/api/operational-sites/for-select')->assertOk();
+    $ids = collect($response->json('items'))->pluck('id');
+
+    expect($ids)->toContain($active->id)
+        ->and($ids)->not->toContain($inactive->id)
+        ->and($response->json('pagination.total'))->toBe(1);
+});
+
+it('excludes inactive sites from the business_function_id scoped list', function () {
+    $actor = userWithSiteAbilities([]);
+    $function = BusinessFunction::factory()->create();
+    $active = OperationalSite::factory()->withAddress()->create();
+    $inactive = OperationalSite::factory()->inactive()->withAddress()->create();
+    $function->operationalSites()->attach([$active->id, $inactive->id]);
+    Sanctum::actingAs($actor);
+
+    $ids = collect($this->getJson("/api/operational-sites/for-select?business_function_id={$function->id}")
+        ->assertOk()
+        ->json('items'))->pluck('id');
+
+    expect($ids->all())->toBe([$active->id]);
+});
+
+it('hydrates an inactive site requested via ids[] without inflating total', function () {
+    $actor = userWithSiteAbilities([]);
+    OperationalSite::factory()->withAddress()->create();
+    $inactive = OperationalSite::factory()->inactive()->withAddress()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/operational-sites/for-select?ids[]={$inactive->id}")->assertOk();
+
+    expect(collect($response->json('items'))->pluck('id'))->toContain($inactive->id)
+        ->and($response->json('pagination.total'))->toBe(1);
+});
+
+// ---------------------------------------------------------------------------
 // AC-010 — validation bounds
 // ---------------------------------------------------------------------------
 
