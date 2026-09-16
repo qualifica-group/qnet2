@@ -3,6 +3,43 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DIL — ID CORSO + SEDE CORSO, VIA CORSO SCELTO (2026-09-16) — VERDE, NON COMMITTATO
+
+- Decisione utente: la categoria `DIL` ha gli stessi campi corso di GOL (`id_corso`, `course_site`) e non ha piu' `chosen_course`.
+- `ContactProcessingAttributeCatalogue`: specs estratte in `COURSE_ID_SPEC`/`COURSE_SITE_SPEC` (condivise training/DIL);
+  `chosen_course` in `RETIRED_ATTRIBUTES` (riga attributo mantenuta, assegnazioni e item di layout rimossi) e tolto da `ROWS`.
+- Convergenza installazioni gia' seminate: nuovo `PREVIOUS_OWN_ATTRIBUTES` (storia congelata dei codici propri di DIL) +
+  `SeedsAttributeLayouts::effectiveCodeRevisions()` e `composesAs()` (confronto blob ignorando gli id riga, che la
+  retirement non rinumera). Usati da `QualificaContactProcessingSeeder::isOwnComposition` e `QualificaQuoteLayoutSeeder::isPreviousComposition`.
+- Test: nuovo `tests/Feature/Products/QualificaDilCourseFieldsTest.php`; aggiornati (requisito cambiato) i test DIL e
+  l'assegnazione di `course_site` (ora anche su DIL). Suite Products/Seeding/ProductCategories/Unit RequestManagement 567/567 + 20/20 seeder correlati, Pint pulito.
+
+## FORM REFERENTE (SEGNALATORE) — RIEPILOGO IN FONDO SU MOBILE (2026-09-16) — VERDE, NON COMMITTATO
+
+- Richiesta utente: in creazione referente/segnalatore da mobile il form viene prima, il "Riepilogo" va in fondo.
+- `referent-form-body.tsx`: sotto `@4xl` l'aside diventa `@max-4xl:contents` e il riepilogo (wrapper `order-last`)
+  scende dopo il form; l'avviso duplicati resta in cima. Da `@4xl` layout a due colonne invariato.
+- Solo il form referenti: gli altri record form (anagrafiche, opportunita', utenti...) hanno ancora il riepilogo in cima su mobile.
+- Verifica: Vitest `features/referents` 55/55, ESLint e `tsc -b --force` puliti.
+
+## ACTIVITY LOG — LABEL AL POSTO DEGLI ID (2026-09-16) — VERDE, NON COMMITTATO
+
+- Bug cliente: nello Storico di Gestione Richieste "Stato: 209 -> 211" (id grezzi). Causa: le entry ESPLICITE
+  su Opportunity (D-9) riportano campi dell'Offerta (`quote_workflow_status_id`, `operator_id`, `manager_slots`,
+  `product_lines`, `rewards`) per cui Opportunity non ha relation BelongsTo -> `ForeignKeyLabelResolver` non li
+  riconosceva. In piu' Lead/OperationalSite/Quote/WorkOrder/Task non hanno colonna `name` -> label null.
+- Fix (solo backend, contratto `old_display`/`new_display` invariato, FE intatto):
+  - `config/activity-log.php` nuova chiave `foreign_keys` [subject alias][field] => model (Opportunity + 
+    `quote_line_commission.commission_configuration_id`). Vince sulla detection via relation.
+  - Nuovo `App\Services\ActivityLog\ActivityLogLabelFetcher` (estratto dal resolver): label column
+    Quote/WorkOrder=`code`, Task=`title`; label composte OperationalSite (`OperationalSiteLabel` su primaryAddress,
+    fallback `alias`) e Lead (nome anagrafica). Label vuote scartate -> FE mostra l'id grezzo.
+  - Liste di id: `ActivityLogEntryResource::labelFor` unisce le label con ", ", slot null/lista vuota = "—".
+- Non coperto (segnalato): `offer_lines` (snapshot oggetti product_id/vat_rate_id) e `attribute_values` (mappa
+  codici) restano JSON grezzo nello Storico.
+- Verifica: `tests/Feature/ActivityLog` 86/86 (3 test nuovi in `ActivityLogForeignKeyLabelTest`), altri 62 test che
+  leggono l'endpoint activity-log verdi, Pint pulito.
+
 ## IMPORT CONDIVISI + COLONNA OPERATORE (2026-09-16) — VERDE, NON COMMITTATO
 
 - Decisione utente: gli import (`/imports`) NON sono piu' per-utente. Chi ha `leads.import` vede,
@@ -18,6 +55,14 @@
 - Test aggiornati (requisito cambiato): i test "404 per run di un altro utente" sono ora positivi.
 - Verifica: suite backend seriale 7790/7800 — i 9 rossi sono `WorkOrderNotesTest` e
   `DemoOpportunitySeederTest`, estranei a questo lavoro. Vitest imports+i18n 399/399, `tsc -b --force` e Pint puliti.
+
+## SEED OPERATORI — MARLENA JARUGA SENZA COMPETENZE (2026-09-16) — VERDE, NON COMMITTATO
+
+- `OperatorRoster`: la riga di Marlena Jaruga (`supervisore-didattica`) ha categorie `[]` (nessuna
+  competenza, non assegnabile); le citta' abilitate restano, perche' `request-management.viewSite`
+  vede le richieste per Sede di appartenenza. Ruolo invariato.
+- Verifica: Pest `tests/Feature/Seeding/QualificaOperatorSeederTest.php` 11/11, Pint pulito.
+  Sul DB esistente: `php artisan db:seed --class=QualificaOperatorSeeder` (convergente).
 
 ## SPEC 0135 — SEDI OPERATIVE ATTIVA/DISATTIVA (2026-09-16) — VERDE, NON COMMITTATO
 

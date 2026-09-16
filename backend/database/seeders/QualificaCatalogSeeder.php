@@ -56,7 +56,7 @@ use Illuminate\Database\Seeder;
  *     the column defaults;
  *   - the per-node inheritance barriers, delegated to
  *     QualificaCatalog\CategoryInheritanceRules right after them: today the
- *     one "DIL" declares, which keeps that subcategory on its own six offer
+ *     one "DIL" declares, which keeps that subcategory on its own offer
  *     fields instead of the whole "Formazione" set (user directive
  *     2026-09-10);
  *   - the "stati di lavorazione" (spec 0047), delegated to

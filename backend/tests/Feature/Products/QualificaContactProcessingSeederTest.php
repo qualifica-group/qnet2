@@ -95,7 +95,7 @@ it('assigns the training set to the Formazione root, idempotently', function ():
         ->and(effectiveCodes('Trattative in Corso', AttributeContext::Quote))->not->toContain('cpi');
 });
 
-it('keeps "DIL" on its own six offer fields, cut off the Formazione set', function (): void {
+it('keeps "DIL" on its own offer fields, cut off the Formazione set', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaContactProcessingSeeder::class); // re-run: no duplicate pivot row.
 
@@ -105,9 +105,9 @@ it('keeps "DIL" on its own six offer fields, cut off the Formazione set', functi
     );
     sort($expected);
 
-    // EXACTLY the six the client dictated (user directive 2026-09-10) — the
-    // barrier keeps out "Dati corso", "Dati Aula" and the rest of the training
-    // set every sibling inherits from the root.
+    // EXACTLY the ones the client dictated (user directives 2026-09-10 and
+    // 2026-09-16) — the barrier keeps out "Dati corso", "Dati Aula" and the
+    // rest of the training set every sibling inherits from the root.
     $effective = effectiveCodes(ContactProcessingAttributeCatalogue::DIL_CATEGORY, AttributeContext::Quote);
     sort($effective);
 
@@ -116,7 +116,7 @@ it('keeps "DIL" on its own six offer fields, cut off the Formazione set', functi
     // The Commessa is NOT cut: the directive is about the offer form, and the
     // two inheritance flags are independent columns.
     expect(effectiveCodes(ContactProcessingAttributeCatalogue::DIL_CATEGORY, AttributeContext::WorkOrder))
-        ->toContain('cpi', 'profilo_cpi', 'chosen_course');
+        ->toContain('cpi', 'profilo_cpi', 'gol_notice');
 });
 
 it('keeps the self-funded and consulting sets on their own categories', function (): void {
@@ -349,8 +349,9 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
 
     $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
     expect($placed($service->resolveWithFallback($dil, AttributeContext::Quote, FormMode::Create)))->toBe([
-        'chosen_course', 'data_scelta_cpi', 'data_app_apl',
+        'data_scelta_cpi', 'data_app_apl',
         'dote_activation_date', 'dote_expiry_date', 'subsidy_type',
+        'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
     ]);
 
     $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();

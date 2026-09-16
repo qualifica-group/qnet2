@@ -202,7 +202,7 @@ class QualificaContactProcessingSeeder extends Seeder
         // may be a redundant copy of the ancestor's (spec 0115), or a previous
         // revision's, which has to be recomposed or the installation would
         // stay frozen on rows that predate the current catalogue.
-        if ($existing !== null && ! $this->isOwnComposition($existing, $effective, $sections)) {
+        if ($existing !== null && ! $this->isOwnComposition($category, $existing, $effective, $sections)) {
             return;
         }
 
@@ -223,20 +223,28 @@ class QualificaContactProcessingSeeder extends Seeder
 
     /**
      * Whether $blob is one this seeder wrote for THIS category — today's
-     * composition or the one the previous revision of the catalogue's rows
-     * produced. Anything else is a human's work and stays untouched.
+     * composition, the one the previous revision of the catalogue's rows
+     * produced, or either composed against the effective set a previous
+     * revision of the category's own assignments resolved. Anything else is a
+     * human's work and stays untouched.
      *
      * @param  array<string, mixed>  $blob
      * @param  list<string>  $effective
      * @param  list<array<string, mixed>>  $current
      */
-    private function isOwnComposition(array $blob, array $effective, array $current): bool
+    private function isOwnComposition(ProductCategory $category, array $blob, array $effective, array $current): bool
     {
-        $candidates = [$current, $this->compose(ContactProcessingAttributeCatalogue::PREVIOUS_ROWS, $effective)];
+        if ($this->composesAs($blob, $current)) {
+            return true;
+        }
 
-        foreach ($candidates as $sections) {
-            if ($blob == ['sections' => $sections]) {
-                return true;
+        foreach ($this->effectiveCodeRevisions($this->hierarchy, $category, self::LAYOUT_CONTEXT, $effective) as $codes) {
+            foreach ([ContactProcessingAttributeCatalogue::ROWS, ContactProcessingAttributeCatalogue::PREVIOUS_ROWS] as $rows) {
+                $sections = $this->compose($rows, $codes);
+
+                if ($sections !== [] && $this->composesAs($blob, $sections)) {
+                    return true;
+                }
             }
         }
 

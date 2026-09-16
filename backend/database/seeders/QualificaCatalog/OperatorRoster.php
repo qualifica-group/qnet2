@@ -31,6 +31,10 @@ use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Roles;
  * their physical Sede only and no competence row — spec 0111 rev.2 D-9 reads
  * that as competent for nothing. Their unrestricted role already sees every
  * record without a remote membership.
+ *
+ * The teaching supervisor (Marlena Jaruga) is likewise competent for nothing
+ * (user decision 2026-09-16), but keeps her enabled cities: her role sees the
+ * requests by Sede (`viewSite`), so the memberships are her whole reach.
  */
 final class OperatorRoster
 {
@@ -91,7 +95,7 @@ final class OperatorRoster
         ['Constantin', 'Popa', 'constantin.popa@qualificagroup.com', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Roma', ['Roma'], []],
         ['Desirè', 'Romito', 'desire.romito@qualificagroup.com', 'APL - Commerciale', Roles::COMMERCIAL_ROLE, 'Viterbo', ['Viterbo'], self::LAZIO_APL_CATEGORIES],
         ['Martina', 'Di Marco', 'martina.dimarco@qualificagroup.com', 'Commerciale', Roles::COMMERCIAL_ROLE, 'Viterbo', ['Viterbo'], self::LAZIO_CATEGORIES],
-        ['Marlena', 'Jaruga', 'marlena.jaruga@qualificagroup.com', 'Supervisor Didattica', Roles::TEACHING_SUPERVISOR_ROLE, 'Roma', ['Roma', 'Viterbo', 'Fonte Nuova', 'Cassino', 'Latina', 'Nettuno', 'Pomezia', 'Gaeta'], self::LAZIO_CATEGORIES],
+        ['Marlena', 'Jaruga', 'marlena.jaruga@qualificagroup.com', 'Supervisor Didattica', Roles::TEACHING_SUPERVISOR_ROLE, 'Roma', ['Roma', 'Viterbo', 'Fonte Nuova', 'Cassino', 'Latina', 'Nettuno', 'Pomezia', 'Gaeta'], []],
         ['Anastasia', 'Marcacci', 'anastasia.marcacci@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Roma', ['Roma'], self::LAZIO_CATEGORIES],
         ['Maria Clelia', 'Bernardi', 'mariaclelia.bernardi@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Roma', ['Roma'], self::LAZIO_CATEGORIES],
         ['Silvia', 'Avorio', 'silvia.avorio@qualificagroup.com', 'Formazione - Commerciale', Roles::COMMERCIAL_ROLE, 'Fonte Nuova', ['Fonte Nuova'], self::LAZIO_CATEGORIES],

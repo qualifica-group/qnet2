@@ -60,12 +60,15 @@ it('seeds "Sede corso" as a relation to an operational site, on the Formazione r
         ]);
 
     // Assigned on the root, so the whole branch resolves it by inheritance —
-    // and in BOTH contexts, like the rest of this catalogue.
+    // and in BOTH contexts, like the rest of this catalogue. REQUIREMENT
+    // CHANGED (user directive 2026-09-16): "DIL" declares it again on itself,
+    // since its offer barrier cuts the inherited assignment.
     $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+    $dil = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::DIL_CATEGORY)->firstOrFail();
     $assignments = DB::table('attribute_category')->where('attribute_id', $courseSite->id)->get();
 
-    expect($assignments->pluck('category_id')->unique()->values()->all())->toBe([$formazione->id])
-        ->and($assignments->pluck('context')->sort()->values()->all())
+    expect($assignments->pluck('category_id')->unique()->sort()->values()->all())->toBe([$formazione->id, $dil->id])
+        ->and($assignments->pluck('context')->unique()->sort()->values()->all())
         ->toBe([AttributeContext::Quote->value, AttributeContext::WorkOrder->value]);
 
     expect(effectiveCodes('GOL - Molise', AttributeContext::Quote))

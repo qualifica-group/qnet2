@@ -63,8 +63,8 @@ final class ContactProcessingAttributeCatalogue
     /**
      * The "Formazione" subcategory carrying a set of its OWN instead of the
      * branch one: it is cut off the root by
-     * QualificaCatalog\CategoryInheritanceRules, so the six specs assigned
-     * here are the whole of its offer form (user directive 2026-09-10).
+     * QualificaCatalog\CategoryInheritanceRules, so the specs assigned here
+     * are the whole of its offer form (user directive 2026-09-10).
      */
     public const string DIL_CATEGORY = 'DIL';
 
@@ -86,10 +86,13 @@ final class ContactProcessingAttributeCatalogue
      * disappear from every work panel — ApplicableAttributesResolver reads a
      * request's categories, never the global attribute list.
      *
+     * `chosen_course` ("Corso Scelto") left the "DIL" set on user directive
+     * 2026-09-16, replaced there by "ID Corso" and "Sede corso".
+     *
      * @var list<string>
      */
     public const array RETIRED_ATTRIBUTES = [
-        'corso', 'training_site',
+        'corso', 'training_site', 'chosen_course',
         // The company-appointment set: retired, not merely undeclared, or an
         // installation already seeded would keep rendering all seven.
         'appointment_date', 'acceptance_date', 'company_name',
@@ -121,6 +124,16 @@ final class ContactProcessingAttributeCatalogue
      * @var array{code: string, name: string, type: string}
      */
     private const array APL_APPOINTMENT_DATE = ['code' => 'data_app_apl', 'name' => 'OK app. APL', 'type' => 'date'];
+
+    /**
+     * @var array{code: string, name: string, type: string}
+     */
+    private const array COURSE_ID_SPEC = ['code' => 'id_corso', 'name' => 'ID Corso', 'type' => 'text'];
+
+    /**
+     * @var array{code: string, name: string, type: string, relation_target: array<string, mixed>}
+     */
+    private const array COURSE_SITE_SPEC = ['code' => self::COURSE_SITE, 'name' => 'Sede corso', 'type' => 'relation', 'relation_target' => self::COURSE_SITE_RELATION_TARGET];
 
     /**
      * The client's "SFL/ADI/NASPI" pick list.
@@ -171,8 +184,8 @@ final class ContactProcessingAttributeCatalogue
                 ['value' => '104', 'label' => '104'],
             ]],
             self::SUBSIDY_TYPE,
-            ['code' => 'id_corso', 'name' => 'ID Corso', 'type' => 'text'],
-            ['code' => self::COURSE_SITE, 'name' => 'Sede corso', 'type' => 'relation', 'relation_target' => self::COURSE_SITE_RELATION_TARGET],
+            self::COURSE_ID_SPEC,
+            self::COURSE_SITE_SPEC,
             ['code' => 'gol_notice', 'name' => 'Avviso GOL', 'type' => 'text'],
             ['code' => 'application_window', 'name' => 'Finestra', 'type' => 'text'],
             ['code' => 'psp', 'name' => 'PSP', 'type' => 'boolean'],
@@ -212,24 +225,44 @@ final class ContactProcessingAttributeCatalogue
 
     /**
      * The "DIL" offer's whole field set, in the client's order (user directive
-     * 2026-09-10). Three of the six are the codes the training set already
+     * 2026-09-10). Five of the seven are codes the training set already
      * declares: reused by `code`, so DIL resolves the SAME attribute row the
      * rest of the branch does — it just resolves it from its own assignment
-     * rather than by inheritance, which the barrier cuts. The other three are
-     * new to this catalogue.
+     * rather than by inheritance, which the barrier cuts. The two DOTE dates
+     * are DIL's own.
      *
-     * "Corso Scelto" is free text (user decision 2026-09-10): DIL sells one
-     * service, and the course is written down, not picked off the catalogue.
+     * "ID Corso" and "Sede corso" are the GOL fields, replacing the free-text
+     * "Corso Scelto" (user directive 2026-09-16, see RETIRED_ATTRIBUTES).
      *
-     * @var list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>}>
+     * @var list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, relation_target?: array<string, mixed>}>
      */
     private const array DIL_ATTRIBUTES = [
-        ['code' => 'chosen_course', 'name' => 'Corso Scelto', 'type' => 'text'],
         self::CPI_APPOINTMENT_DATE,
         self::APL_APPOINTMENT_DATE,
         ['code' => 'dote_activation_date', 'name' => 'Data Attivazione Dote', 'type' => 'date'],
         ['code' => 'dote_expiry_date', 'name' => 'Data Scadenza Dote', 'type' => 'date'],
         self::SUBSIDY_TYPE,
+        self::COURSE_ID_SPEC,
+        self::COURSE_SITE_SPEC,
+    ];
+
+    /**
+     * A category's OWN codes as a previous revision assigned them — frozen
+     * history, never edited to follow ATTRIBUTES. The layout seeders rebuild
+     * from it the effective set that revision composed against, or they
+     * could not recognise the layout it wrote once the set has changed.
+     *
+     * "DIL" before the 2026-09-16 directive. Retired codes are listed as they
+     * stood: RETIRED_ATTRIBUTES filters them out, like the retirement strips
+     * them from the persisted blob.
+     *
+     * @var array<string, list<string>>
+     */
+    public const array PREVIOUS_OWN_ATTRIBUTES = [
+        self::DIL_CATEGORY => [
+            'chosen_course', 'data_scelta_cpi', 'data_app_apl',
+            'dote_activation_date', 'dote_expiry_date', 'subsidy_type',
+        ],
     ];
 
     /**
@@ -259,14 +292,13 @@ final class ContactProcessingAttributeCatalogue
      * gets a coherent section: outside the GOL branch the times row drops
      * entirely, and in a region without the APL appointment it keeps the CPI
      * time alone, still under its own date. "DIL" is the extreme case — it
-     * resolves six codes and nothing else, so what survives the filter is
-     * exactly the client's own order: the chosen course, the two appointment
-     * dates, the two DOTE ones, the subsidy.
+     * resolves its own seven codes and nothing else, so what survives the
+     * filter is exactly the client's own order: the two appointment dates, the
+     * two DOTE ones, the subsidy, the course references.
      *
      * @var list<list<string>>
      */
     public const array ROWS = [
-        ['chosen_course'],
         ['data_scelta_cpi', 'data_app_apl'],
         ['ora_app_cpi', 'ora_app_apl'],
         ['dote_activation_date', 'dote_expiry_date'],

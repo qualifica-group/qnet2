@@ -10,6 +10,7 @@ import {
   SIDE_COLUMN_CLASS,
 } from '@/components/record-form/layout'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
+import { cn } from '@/lib/utils'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import { AddressesManager } from '@/features/personal-data/addresses-manager'
@@ -43,6 +44,8 @@ const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
  * without either of them nesting the other.
  */
 const REFERENT_FORM_ID = 'referent-form'
+
+const REFERENT_SIDE_COLUMN_CLASS = cn(SIDE_COLUMN_CLASS, '@max-4xl:contents')
 
 interface ReferentFormBodyProps {
   mode: ReferentFormMode
@@ -122,15 +125,20 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
 
         <div className={PANEL_GRID_CLASS}>
           {/* First in the DOM so a narrow container reads the duplicate warning
-              before the form, reordered to the right on two columns. */}
-          <aside className={SIDE_COLUMN_CLASS}>
+              before the form, reordered to the right on two columns. On a
+              single column the aside dissolves (`contents`) so the recap alone
+              drops below the form (user directive 2026-09-16: form first on
+              mobile), while the warning stays on top where the name is typed. */}
+          <aside className={REFERENT_SIDE_COLUMN_CLASS}>
             <IdentityDuplicateWarning matches={duplicateMatches} />
-            <ReferentFormSummary
-              control={form.control}
-              selectedReferentTypeItem={selectedReferentTypeItem}
-              selectedUserItem={selectedUserItem}
-              profileDraft={profileDraft}
-            />
+            <div className="order-last min-w-0">
+              <ReferentFormSummary
+                control={form.control}
+                selectedReferentTypeItem={selectedReferentTypeItem}
+                selectedUserItem={selectedUserItem}
+                profileDraft={profileDraft}
+              />
+            </div>
           </aside>
 
           <div className={MAIN_COLUMN_CLASS}>

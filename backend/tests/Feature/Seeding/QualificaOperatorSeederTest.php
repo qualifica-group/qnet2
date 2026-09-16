@@ -164,9 +164,10 @@ it('grants the enrollee commercial read-only enrollees of their Sedi, and the te
     expect($enrollee->can('request-management.viewSite'))->toBeFalse()
         ->and($enrollee->can('request-management.report'))->toBeFalse();
 
-    $teaching = User::query()->where('email', 'marlena.jaruga@qualificagroup.com')->firstOrFail();
+    $teaching = seededOperator('marlena.jaruga@qualificagroup.com');
 
-    expect($teaching->can('request-management.viewSite'))->toBeTrue()
+    expect($teaching->employment->productLines)->toBeEmpty()
+        ->and($teaching->can('request-management.viewSite'))->toBeTrue()
         ->and($teaching->can('request-management.viewAll'))->toBeFalse()
         ->and($teaching->can('enrollee-management.viewSite'))->toBeTrue();
 });

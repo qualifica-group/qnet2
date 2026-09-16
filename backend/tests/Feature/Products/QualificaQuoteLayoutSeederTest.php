@@ -218,7 +218,7 @@ it('orders the three catalogue sections, each pruned to what the category resolv
         ->and(array_column(quoteLayoutOf('DIL')['sections'], 'sort_order'))->toBe([0]);
 });
 
-it('gives "DIL" an offer form of its own six fields, in the client order', function (): void {
+it('gives "DIL" an offer form of its own fields, in the client order', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $layout = quoteLayoutOf('DIL');
@@ -227,10 +227,10 @@ it('gives "DIL" an offer form of its own six fields, in the client order', funct
     // barrier DIL resolves neither of their codes.
     expect(array_column($layout['sections'], 'id'))->toBe(['contact-processing'])
         ->and(codesOfSection($layout, 'contact-processing'))->toBe([
-            'chosen_course',
             'data_scelta_cpi', 'data_app_apl',
             'dote_activation_date', 'dote_expiry_date',
             'subsidy_type',
+            'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
         ]);
 });
 

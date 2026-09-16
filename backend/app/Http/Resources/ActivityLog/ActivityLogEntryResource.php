@@ -17,6 +17,11 @@ use Spatie\Activitylog\Models\Activity;
  */
 class ActivityLogEntryResource extends JsonResource
 {
+    /** Same placeholder the frontend shows for a null value. */
+    private const string EMPTY_DISPLAY = '—';
+
+    private const string LIST_SEPARATOR = ', ';
+
     /**
      * @param  Activity  $resource
      * @param  array<string, array<string, array<int, string>>>  $labels  [subject_type alias][field][id] => label, resolved for the whole page (see ForeignKeyLabelResolver)
@@ -113,10 +118,24 @@ class ActivityLogEntryResource extends JsonResource
     }
 
     /**
+     * A list of ids (`activity-log.foreign_keys`, e.g. `manager_slots`) joins
+     * each element's label, keeping the raw id of an unresolved one and the
+     * placeholder for an empty slot/list, so the row never shows raw JSON.
+     *
      * @param  array<int, string>  $labels
      */
     private function labelFor(array $labels, mixed $value): ?string
     {
-        return $value === null ? null : ($labels[(int) $value] ?? null);
+        if (! is_array($value)) {
+            return $value === null ? null : ($labels[(int) $value] ?? null);
+        }
+
+        if ($value === []) {
+            return self::EMPTY_DISPLAY;
+        }
+
+        return collect($value)
+            ->map(fn (mixed $id): string => $id === null ? self::EMPTY_DISPLAY : ($labels[(int) $id] ?? (string) $id))
+            ->implode(self::LIST_SEPARATOR);
     }
 }

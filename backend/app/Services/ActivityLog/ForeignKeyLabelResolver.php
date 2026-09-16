@@ -2,15 +2,10 @@
 
 namespace App\Services\ActivityLog;
 
-use App\Models\Company;
-use App\Models\CustomFieldDefinition;
-use App\Models\OperationalSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
 
@@ -26,30 +21,19 @@ use Spatie\Activitylog\Models\Activity;
  * comes straight from the relation, never guessed from the field name. A
  * `_id` field with no matching relation resolves to a null display, not an
  * error.
+ *
+ * The one exception is `activity-log.foreign_keys`: fields an EXPLICIT
+ * `activity()` entry reports on a subject that has no relation for them
+ * (request management logs Quote-level fields on the Opportunity, D-9). Such
+ * a field may also carry a LIST of ids (`product_lines`, `manager_slots`),
+ * whose labels ActivityLogEntryResource joins.
  */
 final class ForeignKeyLabelResolver
 {
-    /**
-     * Exceptions to the default `name` column, verified against each model's
-     * real schema/*ForSelectResource (ADR 0011): Company has no `name`, only
-     * `denomination`; CustomFieldDefinition's own label column is `label`;
-     * OperationalSite has no identity column of its own — its ForSelectResource
-     * composes one from its address — so `alias` (its own free-text label,
-     * often blank) is the closest thing it owns, best-effort only.
-     *
-     * @var array<class-string<Model>, string>
-     */
-    private const array LABEL_COLUMNS = [
-        Company::class => 'denomination',
-        CustomFieldDefinition::class => 'label',
-        OperationalSite::class => 'alias',
-    ];
-
     /** @var array<string, string|null> memo of `{subjectClass}:{field}` => related class, for this request */
     private array $relatedClassCache = [];
 
-    /** @var array<class-string<Model>, string|null> memo of related class => label column, for this request */
-    private array $labelColumnCache = [];
+    public function __construct(private readonly ActivityLogLabelFetcher $labelFetcher) {}
 
     /**
      * @param  Collection<int, Activity>  $activities  one page, already fetched
@@ -64,7 +48,7 @@ final class ForeignKeyLabelResolver
         $idsByClass = $this->collectIds($activities, $relatedClassByAliasField);
 
         // Step 3: one label query per related class
-        $labelsByClass = $this->fetchLabels($idsByClass);
+        $labelsByClass = $this->labelFetcher->fetch($idsByClass);
 
         // Step 4: project back onto [alias][field][id] => label
         return $this->buildLabelMap($relatedClassByAliasField, $labelsByClass);
@@ -109,9 +93,17 @@ final class ForeignKeyLabelResolver
     private function foreignKeyFieldsOf(string $subjectClass, Activity $activity): array
     {
         $fields = collect(($activity->properties ?? new Collection)->get('attributes', []))->keys();
+        /** @var array<string, class-string<Model>> $explicit */
+        $explicit = config("activity-log.foreign_keys.{$activity->subject_type}", []);
         $map = [];
 
         foreach ($fields as $field) {
+            if (isset($explicit[$field])) {
+                $map[$field] = $explicit[$field];
+
+                continue;
+            }
+
             if (! str_ends_with($field, '_id')) {
                 continue;
             }
@@ -172,7 +164,7 @@ final class ForeignKeyLabelResolver
             $old = collect($properties->get('old', []));
 
             foreach ($fields as $field => $relatedClass) {
-                foreach ([$attributes->get($field), $old->get($field)] as $value) {
+                foreach ([...(array) $attributes->get($field), ...(array) $old->get($field)] as $value) {
                     if (is_int($value) || is_numeric($value)) {
                         $idsByClass[$relatedClass][(int) $value] = (int) $value;
                     }
@@ -181,57 +173,6 @@ final class ForeignKeyLabelResolver
         }
 
         return array_map('array_values', $idsByClass);
-    }
-
-    /**
-     * @param  array<class-string<Model>, array<int, int>>  $idsByClass
-     * @return array<class-string<Model>, array<int, string>>
-     */
-    private function fetchLabels(array $idsByClass): array
-    {
-        $labels = [];
-
-        foreach ($idsByClass as $class => $ids) {
-            $column = $this->labelColumnFor($class);
-
-            if ($column === null) {
-                $labels[$class] = [];
-
-                continue;
-            }
-
-            $query = $class::query();
-
-            // Record correlato cancellato (soft-delete): risolvilo comunque,
-            // cosi' l'entry storica resta leggibile invece di finire null.
-            if (in_array(SoftDeletes::class, class_uses_recursive($class), true)) {
-                $query->withTrashed();
-            }
-
-            /** @var array<int, string> $rows */
-            $rows = $query->whereIn('id', $ids)->pluck($column, 'id')->all();
-            $labels[$class] = $rows;
-        }
-
-        return $labels;
-    }
-
-    /**
-     * @param  class-string<Model>  $class
-     */
-    private function labelColumnFor(string $class): ?string
-    {
-        if (array_key_exists($class, $this->labelColumnCache)) {
-            return $this->labelColumnCache[$class];
-        }
-
-        if (isset(self::LABEL_COLUMNS[$class])) {
-            return $this->labelColumnCache[$class] = self::LABEL_COLUMNS[$class];
-        }
-
-        $hasName = Schema::hasColumn((new $class)->getTable(), 'name');
-
-        return $this->labelColumnCache[$class] = $hasName ? 'name' : null;
     }
 
     /**

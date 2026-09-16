@@ -8,6 +8,8 @@ use App\Enums\LayoutItemWidth;
 use App\Enums\LayoutSectionVariant;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\AttributeLayoutService;
+use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Illuminate\Support\Collection;
 
 /**
@@ -92,6 +94,62 @@ trait SeedsAttributeLayouts
         [$inherited] = $layouts->resolveInheritedForScope($category, $context, LayoutFormScope::All);
 
         return $inherited !== null && $inherited == ['sections' => $sections];
+    }
+
+    /**
+     * Whether $blob holds exactly $sections, row ids aside: a retirement
+     * (RetiresAttributes) prunes the rows it empties without renumbering the
+     * others, so a blob a seeder wrote keeps its original ids through one.
+     *
+     * @param  array<string, mixed>  $blob
+     * @param  list<array<string, mixed>>  $sections
+     */
+    protected function composesAs(array $blob, array $sections): bool
+    {
+        $withoutRowIds = static fn (array $sections): array => array_map(
+            static function (array $section): array {
+                $section['rows'] = array_map(static function (array $row): array {
+                    unset($row['id']);
+
+                    return $row;
+                }, $section['rows'] ?? []);
+
+                return $section;
+            },
+            $sections,
+        );
+
+        return array_keys($blob) === ['sections']
+            && is_array($blob['sections'])
+            && $withoutRowIds($blob['sections']) == $withoutRowIds($sections);
+    }
+
+    /**
+     * The effective sets a layout of $category may have been composed
+     * against: today's, plus the one a previous revision resolved when the
+     * category's OWN assignments have changed since
+     * (ContactProcessingAttributeCatalogue::PREVIOUS_OWN_ATTRIBUTES). Retired
+     * codes are left out, as the retirement strips them from the blob.
+     *
+     * @param  list<string>  $effective
+     * @return list<list<string>>
+     */
+    protected function effectiveCodeRevisions(
+        CategoryHierarchy $hierarchy,
+        ProductCategory $category,
+        AttributeContext $context,
+        array $effective,
+    ): array {
+        $previousOwn = ContactProcessingAttributeCatalogue::PREVIOUS_OWN_ATTRIBUTES[$category->name] ?? null;
+
+        if ($previousOwn === null) {
+            return [$effective];
+        }
+
+        $inherited = $hierarchy->ancestorAttributes($category, $context)->pluck('code')->all();
+        $previous = array_diff([...$inherited, ...$previousOwn], ContactProcessingAttributeCatalogue::RETIRED_ATTRIBUTES);
+
+        return [$effective, array_values(array_unique($previous))];
     }
 
     /**

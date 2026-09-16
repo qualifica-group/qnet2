@@ -1,8 +1,13 @@
 <?php
 
+use App\Models\Address;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\Lead;
+use App\Models\OperationalSite;
+use App\Models\Opportunity;
+use App\Models\ProductCategory;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -144,4 +149,88 @@ it('resolves FK labels with one batched query per related class, never per row/f
 
     expect($labelQueries('registries'))->toBe(1)
         ->and($labelQueries('campaigns'))->toBe(1);
+});
+
+// ---------------------------------------------------------------------------
+// Explicit entries (request management, D-9): Quote-level FKs logged on the
+// Opportunity, which has no relation of its own for them
+// ---------------------------------------------------------------------------
+
+it('an explicit opportunity entry resolves Quote-level FKs through the configured foreign-key map', function () {
+    $actor = fkLabelActor('opportunities', ['view', 'viewActivity']);
+    $opportunity = Opportunity::factory()->create();
+    $statusFrom = QuoteWorkflowStatus::factory()->create(['name' => 'Da contattare']);
+    $statusTo = QuoteWorkflowStatus::factory()->create(['name' => 'Contattato']);
+    $operatorFrom = User::factory()->create(['name' => 'Rosa Operatrice']);
+    $operatorTo = User::factory()->create(['name' => 'Fabrizio Operatore']);
+    Sanctum::actingAs($actor);
+
+    activity($opportunity->getTable())
+        ->performedOn($opportunity)
+        ->causedBy($actor)
+        ->event('updated')
+        ->withProperties([
+            'attributes' => ['quote_workflow_status_id' => $statusTo->id, 'operator_id' => $operatorTo->id],
+            'old' => ['quote_workflow_status_id' => $statusFrom->id, 'operator_id' => $operatorFrom->id],
+        ])
+        ->log('Request management work update');
+
+    $items = collect($this->getJson("/api/activity-log/opportunities/{$opportunity->id}")->assertOk()->json('data.items'));
+    $entry = $items->first(fn (array $item): bool => collect($item['changes'])->contains('field', 'quote_workflow_status_id'));
+    $byField = collect($entry['changes'])->keyBy('field');
+
+    expect($byField['quote_workflow_status_id']['old_display'])->toBe('Da contattare')
+        ->and($byField['quote_workflow_status_id']['new_display'])->toBe('Contattato')
+        ->and($byField['operator_id']['old_display'])->toBe('Rosa Operatrice')
+        ->and($byField['operator_id']['new_display'])->toBe('Fabrizio Operatore');
+});
+
+it('an explicit opportunity entry resolves id-list fields to their joined labels', function () {
+    $actor = fkLabelActor('opportunities', ['view', 'viewActivity']);
+    $opportunity = Opportunity::factory()->create();
+    $categoryA = ProductCategory::factory()->create(['name' => 'Corsi']);
+    $categoryB = ProductCategory::factory()->create(['name' => 'Master']);
+    $manager = User::factory()->create(['name' => 'Gino Manager']);
+    Sanctum::actingAs($actor);
+
+    activity($opportunity->getTable())
+        ->performedOn($opportunity)
+        ->causedBy($actor)
+        ->event('updated')
+        ->withProperties([
+            'attributes' => ['product_lines' => [$categoryA->id, $categoryB->id], 'manager_slots' => [null, $manager->id]],
+            'old' => ['product_lines' => [$categoryA->id], 'manager_slots' => []],
+        ])
+        ->log('Request management work update');
+
+    $items = collect($this->getJson("/api/activity-log/opportunities/{$opportunity->id}")->assertOk()->json('data.items'));
+    $entry = $items->first(fn (array $item): bool => collect($item['changes'])->contains('field', 'product_lines'));
+    $byField = collect($entry['changes'])->keyBy('field');
+
+    expect($byField['product_lines']['old_display'])->toBe('Corsi')
+        ->and($byField['product_lines']['new_display'])->toBe('Corsi, Master')
+        ->and($byField['manager_slots']['old_display'])->toBe('—')
+        ->and($byField['manager_slots']['new_display'])->toBe('—, Gino Manager');
+});
+
+// ---------------------------------------------------------------------------
+// Related models with no `name` column: composed labels
+// ---------------------------------------------------------------------------
+
+it('an operational site FK resolves to its primary-address label', function () {
+    $actor = fkLabelActor('leads', ['view', 'viewActivity']);
+    $siteFrom = OperationalSite::factory()->create();
+    $siteTo = OperationalSite::factory()->create();
+    Address::factory()->primary()->for($siteFrom, 'addressable')->create(['line1' => 'Via Roma 1']);
+    Address::factory()->primary()->for($siteTo, 'addressable')->create(['line1' => 'Via Milano 2']);
+    $lead = Lead::factory()->create(['operational_site_id' => $siteFrom->id]);
+    Sanctum::actingAs($actor);
+
+    $lead->update(['operational_site_id' => $siteTo->id]);
+
+    $items = collect($this->getJson("/api/activity-log/leads/{$lead->id}")->assertOk()->json('data.items'));
+    $change = collect($items->firstWhere('event', 'updated')['changes'])->firstWhere('field', 'operational_site_id');
+
+    expect($change['old_display'])->toBe('Via Roma 1')
+        ->and($change['new_display'])->toBe('Via Milano 2');
 });

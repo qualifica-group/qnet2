@@ -26,7 +26,7 @@ final class CategoryInheritanceRules
      * loudly here instead of silently leaving a node in inheritance.
      *
      * "DIL" sells an offer with a field set of its OWN (user directive
-     * 2026-09-10): the six fields ContactProcessingAttributeCatalogue assigns
+     * 2026-09-10): the fields ContactProcessingAttributeCatalogue assigns
      * on it, not the whole Formazione set — "Dati corso", "Dati Aula" and the
      * training block of "Dati Lavorazione Contatto" — it would otherwise pull
      * down from the root. It stays a child of "Formazione": the barrier

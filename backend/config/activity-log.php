@@ -279,4 +279,29 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Foreign keys with no relation on the subject model
+    |--------------------------------------------------------------------------
+    |
+    | [subject alias][field] => related model class, for fields whose label
+    | ForeignKeyLabelResolver cannot infer from a BelongsTo relation of the
+    | subject. Request management writes EXPLICIT Opportunity entries carrying
+    | Quote-level fields (D-9); `product_lines`, `rewards` and `manager_slots`
+    | carry a LIST of ids (a null manager slot is an empty position).
+    |
+    */
+    'foreign_keys' => [
+        'opportunity' => [
+            'quote_workflow_status_id' => QuoteWorkflowStatus::class,
+            'operator_id' => User::class,
+            'manager_slots' => User::class,
+            'product_lines' => ProductCategory::class,
+            'rewards' => RewardType::class,
+        ],
+        'quote_line_commission' => [
+            'commission_configuration_id' => CommissionConfiguration::class,
+        ],
+    ],
+
 ];

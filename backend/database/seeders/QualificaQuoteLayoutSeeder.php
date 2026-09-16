@@ -147,7 +147,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
         // A configured layout is user data: leave it exactly as it is, unless
         // it is verbatim what the previous revision seeded.
-        if ($existing !== null && ! $this->isPreviousComposition($existing, $effective)) {
+        if ($existing !== null && ! $this->isPreviousComposition($category, $existing, $effective)) {
             return;
         }
 
@@ -177,19 +177,24 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
     /**
      * Whether $blob is exactly what one of the previous revisions wrote for
-     * this category, composed from the same catalogue rows this category still
-     * resolves (see PREVIOUS_SECTIONS).
+     * this category (see PREVIOUS_SECTIONS), composed from the codes this
+     * category resolves today or resolved before its own assignments last
+     * changed (SeedsAttributeLayouts::effectiveCodeRevisions).
      *
      * @param  array<string, mixed>  $blob
      * @param  list<string>  $effective
      */
-    private function isPreviousComposition(array $blob, array $effective): bool
+    private function isPreviousComposition(ProductCategory $category, array $blob, array $effective): bool
     {
-        foreach (self::PREVIOUS_SECTIONS as $composition) {
-            $sections = $this->compose($composition, $effective);
+        $revisions = $this->effectiveCodeRevisions($this->hierarchy, $category, AttributeContext::Quote, $effective);
 
-            if ($sections !== [] && $blob == ['sections' => $sections]) {
-                return true;
+        foreach ($revisions as $codes) {
+            foreach (self::PREVIOUS_SECTIONS as $composition) {
+                $sections = $this->compose($composition, $codes);
+
+                if ($sections !== [] && $this->composesAs($blob, $sections)) {
+                    return true;
+                }
             }
         }
 
