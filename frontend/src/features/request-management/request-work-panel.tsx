@@ -210,8 +210,6 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
           reaches the form by id (see REQUEST_WORK_FORM_ID). */}
       <Form {...form}>
         <div className={WORK_PANEL_GRID_CLASS}>
-          {/* First in the DOM so a narrow container reads it before the form,
-              reordered to the right on two columns. */}
           <aside className={WORK_SIDE_COLUMN_CLASS}>
             {/* Directive 2026-07-27: the "Note generali" lead the side column —
                 operators read them before anything else. EDITABLE since the

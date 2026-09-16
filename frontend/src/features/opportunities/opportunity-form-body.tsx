@@ -147,8 +147,6 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
         />
 
         <div className={PANEL_GRID_CLASS}>
-          {/* First in the DOM so a narrow container reads it before the form,
-              reordered to the right on two columns — the panel's own rule. */}
           <aside className={SIDE_COLUMN_CLASS}>
             <OpportunityGeneralNotesSection control={form.control} />
             <OpportunityFormSummary control={form.control} selectedItems={selectedItems} />

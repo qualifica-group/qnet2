@@ -156,8 +156,6 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
 
       <Form {...form}>
         <div className={CREATE_PANEL_GRID_CLASS}>
-          {/* First in the DOM so a narrow container reads it before the form,
-              reordered to the right on two columns — the panel's own rule. */}
           <aside className={CREATE_SIDE_COLUMN_CLASS}>
             {/* Always first (user directive 2026-09-10), as in the work panel. */}
             <RequestCreateGeneralNotes control={form.control} />

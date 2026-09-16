@@ -7,7 +7,7 @@ import { FormSection } from '@/components/form-section'
 import {
   MAIN_COLUMN_CLASS,
   PANEL_GRID_CLASS,
-  SIDE_COLUMN_CLASS,
+  SPLIT_SIDE_COLUMN_CLASS,
 } from '@/components/record-form/layout'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useResourcePermissions } from '@/features/authorization/permissions'
@@ -137,11 +137,13 @@ export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBody
         />
 
         <div className={PANEL_GRID_CLASS}>
-          {/* First in the DOM so a narrow container reads the duplicate warning
-              before the form, reordered to the right on two columns. */}
-          <aside className={SIDE_COLUMN_CLASS}>
+          {/* On a single column the duplicate warning stays above the form,
+              where the name is typed, while the recap drops below it. */}
+          <aside className={SPLIT_SIDE_COLUMN_CLASS}>
             <IdentityDuplicateWarning matches={duplicateMatches} />
-            <RegistryFormSummary control={form.control} selectedItems={selectedItems} />
+            <div className="order-last min-w-0">
+              <RegistryFormSummary control={form.control} selectedItems={selectedItems} />
+            </div>
           </aside>
 
           <div className={MAIN_COLUMN_CLASS}>

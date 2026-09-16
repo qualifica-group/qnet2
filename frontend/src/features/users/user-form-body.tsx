@@ -168,8 +168,6 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
         />
 
         <div className={PANEL_GRID_CLASS}>
-          {/* First in the DOM so a narrow container reads the verdict before
-              the form, reordered to the right on two columns. */}
           <aside className={SIDE_COLUMN_CLASS}>
             <UserFormSummary
               control={form.control}

@@ -135,8 +135,6 @@ export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: Prod
         />
 
         <div className={PANEL_GRID_CLASS}>
-          {/* First in the DOM so a narrow container reads it before the form,
-              reordered to the right on two columns — the panel's own rule. */}
           <aside className={SIDE_COLUMN_CLASS}>
             <ProductFormSummary
               control={form.control}

@@ -21,11 +21,24 @@ export const RECORD_HEADER_CLASS =
  */
 export const PANEL_GRID_CLASS = 'grid items-start gap-4 p-4 @4xl:grid-cols-[minmax(0,1fr)_20rem]'
 
-/** Clears the sticky header (`py-3` around a badge row) so the side column never scrolls under it. */
-export const SIDE_COLUMN_CLASS = 'flex min-w-0 flex-col gap-4 @4xl:sticky @4xl:top-16 @4xl:order-2'
+/**
+ * Clears the sticky header (`py-3` around a badge row) so the side column never scrolls under it.
+ * The order is unconditional: on two columns it sits on the right, on a single
+ * column it drops BELOW the form (user directive 2026-09-16: form first on mobile).
+ */
+export const SIDE_COLUMN_CLASS = 'order-2 flex min-w-0 flex-col gap-4 @4xl:sticky @4xl:top-16'
+
+/**
+ * A side column whose leading block (the identity duplicate warning) must stay
+ * ABOVE the form on a single column while the rest still drops below: under
+ * `@4xl` the aside dissolves (`contents`), its blocks become grid items ordered
+ * on their own — the leading one keeps the default order, the rest is wrapped
+ * in `order-last`.
+ */
+export const SPLIT_SIDE_COLUMN_CLASS = `${SIDE_COLUMN_CLASS} @max-4xl:contents`
 
 /** The main column: its own `@container`, so the sections split on ITS width, not the panel's. */
-export const MAIN_COLUMN_CLASS = '@container flex min-w-0 flex-col gap-4 @4xl:order-1'
+export const MAIN_COLUMN_CLASS = '@container order-1 flex min-w-0 flex-col gap-4'
 
 /**
  * The grid every section lays its pickers on: one column on a narrow panel,

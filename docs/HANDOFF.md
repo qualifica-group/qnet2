@@ -14,13 +14,17 @@
 - Test: nuovo `tests/Feature/Products/QualificaDilCourseFieldsTest.php`; aggiornati (requisito cambiato) i test DIL e
   l'assegnazione di `course_site` (ora anche su DIL). Suite Products/Seeding/ProductCategories/Unit RequestManagement 567/567 + 20/20 seeder correlati, Pint pulito.
 
-## FORM REFERENTE (SEGNALATORE) — RIEPILOGO IN FONDO SU MOBILE (2026-09-16) — VERDE, NON COMMITTATO
+## RECORD FORM — COLONNA LATERALE SOTTO IL FORM SU MOBILE (2026-09-16) — VERDE, NON COMMITTATO
 
-- Richiesta utente: in creazione referente/segnalatore da mobile il form viene prima, il "Riepilogo" va in fondo.
-- `referent-form-body.tsx`: sotto `@4xl` l'aside diventa `@max-4xl:contents` e il riepilogo (wrapper `order-last`)
-  scende dopo il form; l'avviso duplicati resta in cima. Da `@4xl` layout a due colonne invariato.
-- Solo il form referenti: gli altri record form (anagrafiche, opportunita', utenti...) hanno ancora il riepilogo in cima su mobile.
-- Verifica: Vitest `features/referents` 55/55, ESLint e `tsc -b --force` puliti.
+- Richiesta utente: in tutti i record form, su mobile (container sotto `@4xl`) il form viene prima e la sidebar va sotto.
+- Fix nella primitiva condivisa `components/record-form/layout.ts`: `SIDE_COLUMN_CLASS` ha `order-2` e `MAIN_COLUMN_CLASS`
+  `order-1` incondizionati (prima solo `@4xl:`). Vale per anagrafiche, referenti, opportunita', utenti, prodotti,
+  categorie, aziende, sedi azienda, sedi operative, task, Gestione Richieste (work panel + create) e skeleton.
+- Nuovo `SPLIT_SIDE_COLUMN_CLASS` (aside `@max-4xl:contents`): usato da referenti e anagrafiche, l'avviso duplicati
+  resta SOPRA il form su mobile, il riepilogo (wrapper `order-last`) va sotto. Rimosso `REFERENT_SIDE_COLUMN_CLASS`.
+- Nota: su mobile anche le "Note generali" (Gestione Richieste, Opportunita') ora stanno sotto il form.
+- Verifica: Vitest su tutte le feature coinvolte 194 file / 1439 test, `tsc -b --force` pulito, ESLint pulito sui file
+  toccati (1 errore preesistente in `registry-form-metadata.test.tsx`, non toccato).
 
 ## ACTIVITY LOG — LABEL AL POSTO DEGLI ID (2026-09-16) — VERDE, NON COMMITTATO
 
