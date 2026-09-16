@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\Contracts;
 
 use App\Services\Table\FilterApplier;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -49,6 +50,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class ContractRelationColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
      * the WHERE IN cardinality (defence in depth); excess values ignored.
@@ -147,12 +150,25 @@ final class ContractRelationColumns
         }
 
         $values = $this->setFilterValues($filter);
+        $matchesBlank = $this->matchesBlankEntry($filter);
 
-        if ($values !== []) {
-            $query->whereHas($path, static function (Builder $relatedQuery) use ($values): void {
-                $relatedQuery->whereIn(self::LABEL_COLUMN, $values);
-            });
+        if ($values === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($path, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas($path, static function (Builder $relatedQuery) use ($values): void {
+                    $relatedQuery->whereIn(self::LABEL_COLUMN, $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): nothing at the end of that relation
+            // path — what an empty cell means for a derived column.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($path);
+            }
+        });
 
         return true;
     }
@@ -243,7 +259,7 @@ final class ContractRelationColumns
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
         if ($columnId === 'managers') {
-            return $this->distinctManagerNames($search, $query, $limit);
+            return $this->withBlanks($this->distinctManagerNames($search, $query, $limit), 'managers', $search, $query);
         }
 
         [$table, $ids] = $this->idsFor($columnId, $query);
@@ -252,7 +268,7 @@ final class ContractRelationColumns
             return null;
         }
 
-        return DB::table($table)
+        $values = DB::table($table)
             ->whereIn('id', $ids)
             ->when($search !== null && $search !== '', function (QueryBuilder $builder) use ($search): void {
                 $builder->where(self::LABEL_COLUMN, 'like', '%'.$this->escapeLike($search).'%');
@@ -263,6 +279,32 @@ final class ContractRelationColumns
             ->pluck(self::LABEL_COLUMN)
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlanks($values, $columnId, $search, $query);
+    }
+
+    /**
+     * Offer the blank entry when some scoped row reaches nothing at the end of
+     * that column's relation path — the one definition of "empty cell" every
+     * derived column here shares.
+     *
+     * @param  array<int, string|null>  $values
+     * @param  Builder<Model>  $query
+     * @return array<int, string|null>
+     */
+    private function withBlanks(array $values, string $columnId, ?string $search, Builder $query): array
+    {
+        $path = self::RELATION_PATHS[$columnId] ?? null;
+
+        if ($path === null) {
+            return $values;
+        }
+
+        return $this->withBlankEntry(
+            $values,
+            $search,
+            fn (): bool => (clone $query)->whereDoesntHave($path)->exists(),
+        );
     }
 
     /**

@@ -21,7 +21,7 @@ trait ResolvesDistinctJsonValues
 
     /**
      * @param  Builder<Model>  $query
-     * @return array<int, scalar>
+     * @return array<int, scalar|null>
      */
     public function distinctValues(Builder $query, string $column, string $jsonKey): array
     {
@@ -30,15 +30,28 @@ trait ResolvesDistinctJsonValues
             ->pluck('json_value');
 
         $values = [];
+        $hasBlanks = false;
 
         foreach ($raw as $item) {
-            array_push($values, ...$this->flatten($item));
+            $flattened = $this->flatten($item);
+
+            if ($flattened === []) {
+                // No value stored for this row under that key: it feeds AG
+                // Grid's blank entry ("(Vuoti)") instead of a value of its own.
+                $hasBlanks = true;
+
+                continue;
+            }
+
+            array_push($values, ...$flattened);
         }
 
         $unique = array_values(array_unique($values, SORT_REGULAR));
         sort($unique);
 
-        return array_slice($unique, 0, self::MAX_DISTINCT_VALUES);
+        $capped = array_slice($unique, 0, self::MAX_DISTINCT_VALUES);
+
+        return $hasBlanks ? array_merge([null], $capped) : $capped;
     }
 
     /**
@@ -46,7 +59,7 @@ trait ResolvesDistinctJsonValues
      */
     private function flatten(mixed $item): array
     {
-        if ($item === null) {
+        if ($item === null || $item === '' || $item === '[]') {
             return [];
         }
 

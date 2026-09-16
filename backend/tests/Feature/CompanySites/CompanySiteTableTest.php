@@ -211,7 +211,7 @@ it('resolves distinct company denominations via /values', function () {
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/company-sites/values', ['columnId' => 'company'])->assertOk();
-    expect($response->json('data.values'))->toBe(['Acme SpA']);
+    expect($response->json('data.values'))->toBe([null, 'Acme SpA']);
 });
 
 it('a site with no card has empty primary_contact and null derived geo/postal_code fields', function () {
@@ -313,7 +313,8 @@ it('resolves distinct province names and is_default values via /values', functio
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/company-sites/values', ['columnId' => 'province'])->assertOk();
-    expect($response->json('data.values'))->toBe(['Milano']);
+    // `null` first: the blank entry ("(Vuoti)") — the row with no address.
+    expect($response->json('data.values'))->toBe([null, 'Milano']);
 });
 
 it('/values search narrows the distinct province names', function () {

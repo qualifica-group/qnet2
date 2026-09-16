@@ -101,7 +101,8 @@ class TableService
      * `roles`); falls back to a plain `SELECT DISTINCT` on the real column.
      *
      * Fetches one value beyond `$limit` so `hasMore` reflects real truncation
-     * without a second COUNT query.
+     * without a second COUNT query. A `null` in the list is the blank entry
+     * ("(Vuoti)"), never a real value: see capValues().
      *
      * @param  array<string, array<string, mixed>>  $filterModel
      */
@@ -141,9 +142,28 @@ class TableService
         $resolved = $definition->distinctValues($actor, $columnId, $columnConfig, $search, $query, $fetchLimit);
         $values = $resolved ?? $this->distinctForColumn($columnConfig, $query, $columnId, $search, $fetchLimit);
 
+        return $this->capValues($values, $limit);
+    }
+
+    /**
+     * Cap the resolved value list without letting the blank entry consume the
+     * budget: `null` (AG Grid's "(Vuoti)") is lifted out before the cap and put
+     * back in front, so neither the cap nor `hasMore` depends on whether the
+     * column happens to hold empty cells — same rule for the generic fallback
+     * and for a definition's own distinctValues() hook.
+     *
+     * @param  array<int, string|null>  $values
+     */
+    private function capValues(array $values, int $limit): DistinctValuesResult
+    {
+        $hasBlank = in_array(null, $values, true);
+        $present = array_values(array_filter($values, static fn (?string $value): bool => $value !== null));
+
+        $capped = array_slice($present, 0, $limit);
+
         return new DistinctValuesResult(
-            values: array_slice($values, 0, $limit),
-            hasMore: count($values) > $limit,
+            values: $hasBlank ? array_merge([null], $capped) : $capped,
+            hasMore: count($present) > $limit,
         );
     }
 
@@ -192,30 +212,69 @@ class TableService
             return self::BOOLEAN_FILTER_VALUES;
         }
 
-        return $this->distinctFromColumn($query, $column, $search, $limit);
+        return $this->distinctFromColumn($columnConfig, $query, $column, $search, $limit);
     }
 
     /**
      * Plain `SELECT DISTINCT` fallback for a real DB column: optional
-     * case-insensitive substring search (bound, LIKE-escaped), sorted, capped.
+     * case-insensitive substring search (bound, LIKE-escaped), sorted, capped,
+     * plus the blank entry when the scoped rows hold empty cells.
      *
+     * @param  array<string, mixed>  $columnConfig
      * @param  Builder<Model>  $query
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
-    private function distinctFromColumn(Builder $query, string $column, ?string $search, int $limit): array
+    private function distinctFromColumn(array $columnConfig, Builder $query, string $column, ?string $search, int $limit): array
     {
+        $isTextual = $this->filterApplier->treatsEmptyStringAsBlank($columnConfig);
+
         $clone = clone $query;
 
         if ($search !== null && $search !== '') {
             $clone->where($column, 'like', '%'.$this->filterApplier->escapeLike($search).'%');
         }
 
-        return $clone->whereNotNull($column)
+        $values = $clone->whereNotNull($column)
+            ->when($isTextual, static fn (Builder $builder): Builder => $builder->where($column, '<>', ''))
             ->distinct()
             ->orderBy($column)
             ->limit($limit)
             ->pluck($column)
             ->map(static fn (mixed $value): string => (string) $value)
             ->all();
+
+        // `null` is AG Grid's own blank entry: the Set Filter renders it as
+        // "(Vuoti)" and sends it straight back inside the filter model, so an
+        // empty cell becomes selectable like any other value.
+        if ($this->hasBlankValues($query, $column, $isTextual, $search)) {
+            array_unshift($values, null);
+        }
+
+        return $values;
+    }
+
+    /**
+     * Whether the scoped rows hold at least one empty cell on this column —
+     * NULL always, plus the empty string on a textual column, where the two are
+     * indistinguishable to the user. Skipped while a substring search is
+     * active: the blank entry matches no search term.
+     *
+     * @param  Builder<Model>  $query
+     */
+    private function hasBlankValues(Builder $query, string $column, bool $isTextual, ?string $search): bool
+    {
+        if ($search !== null && $search !== '') {
+            return false;
+        }
+
+        return (clone $query)
+            ->where(static function (Builder $group) use ($column, $isTextual): void {
+                $group->whereNull($column);
+
+                if ($isTextual) {
+                    $group->orWhere($column, '=', '');
+                }
+            })
+            ->exists();
     }
 }

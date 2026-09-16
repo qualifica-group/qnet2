@@ -185,11 +185,24 @@ class RegistriesTableDefinition extends AbstractTableDefinition
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names !== []) {
-            $query->whereHas('source', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas('source', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the registries with no source.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('source');
+            }
+        });
 
         return true;
     }
@@ -244,7 +257,7 @@ class RegistriesTableDefinition extends AbstractTableDefinition
     {
         $sourceIds = (clone $query)->whereNotNull('source_id')->select('source_id');
 
-        return DB::table('sources')
+        $values = DB::table('sources')
             ->whereIn('id', $sourceIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -255,6 +268,10 @@ class RegistriesTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('source')
+            ->exists());
     }
 
     /**
@@ -275,13 +292,20 @@ class RegistriesTableDefinition extends AbstractTableDefinition
             $clone->where($columnId, 'like', '%'.$this->escapeLike($search).'%');
         }
 
-        return $clone->whereNotNull($columnId)
+        $values = $clone->whereNotNull($columnId)
+            ->where($columnId, '<>', '')
             ->distinct()
             ->orderBy($columnId)
             ->limit($limit)
             ->pluck($columnId)
             ->map(static fn (mixed $value): string => (string) $value)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->where(static function (Builder $group) use ($columnId): void {
+                $group->whereNull($columnId)->orWhere($columnId, '=', '');
+            })
+            ->exists());
     }
 
     /**

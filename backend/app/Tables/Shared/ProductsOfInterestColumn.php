@@ -71,36 +71,47 @@ final class ProductsOfInterestColumn
     /**
      * Set filter: a `whereHas` on the related product's own `name` — bound,
      * never raw (backend.md §8), same shape as every other to-many column of
-     * these two domains.
+     * these two domains. `$matchesBlank` is AG Grid's "(Vuoti)" entry: the
+     * rows with no product attached.
      *
      * @param  Builder<Model>  $query
      * @param  array<int, string>  $values
      */
-    public static function applyFilter(Builder $query, array $values): void
+    public static function applyFilter(Builder $query, array $values, bool $matchesBlank = false): void
     {
         $values = array_slice($values, 0, self::MAX_FILTER_VALUES);
 
-        if ($values === []) {
+        if ($values === [] && ! $matchesBlank) {
             return;
         }
 
-        $query->whereHas('productsOfInterest', static function (Builder $relatedQuery) use ($values): void {
-            $relatedQuery->whereIn('name', $values);
+        // The blank entry ("(Vuoti)") selects the rows with no product at all.
+        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas('productsOfInterest', static function (Builder $relatedQuery) use ($values): void {
+                    $relatedQuery->whereIn('name', $values);
+                });
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('productsOfInterest');
+            }
         });
     }
 
     /**
      * Excel-like distinct values (spec 0004/0005): the product names attached
-     * to the opportunities matching $query, via a join through the pivot.
+     * to the opportunities matching $query, via a join through the pivot, plus
+     * the blank entry when some of them have no product.
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
     public static function distinctValues(Builder $query, ?string $search, int $limit): array
     {
         $opportunityIds = (clone $query)->select('opportunities.id');
 
-        return DB::table(self::PIVOT_TABLE)
+        $values = DB::table(self::PIVOT_TABLE)
             ->join('products', 'products.id', '=', self::PIVOT_TABLE.'.'.self::PIVOT_PRODUCT_FK)
             ->whereIn(self::PIVOT_TABLE.'.opportunity_id', $opportunityIds)
             ->when($search !== null && $search !== '', static function ($builder) use ($search): void {
@@ -112,6 +123,12 @@ final class ProductsOfInterestColumn
             ->pluck('products.name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        if (($search === null || $search === '') && (clone $query)->whereDoesntHave('productsOfInterest')->exists()) {
+            array_unshift($values, null);
+        }
+
+        return $values;
     }
 
     /** Escape LIKE wildcards in user input so they are treated literally. */

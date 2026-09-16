@@ -4,6 +4,7 @@ namespace App\Tables\Users;
 
 use App\Models\EmploymentProfile;
 use App\Services\Table\FilterApplier;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +35,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class UserBusinessFunctionColumn
 {
+    use HandlesBlankSetFilter;
+
     private const string LINES_TABLE = 'employment_product_lines';
 
     private const string PROFILES_TABLE = 'employment_profiles';
@@ -104,12 +107,24 @@ final class UserBusinessFunctionColumn
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names === []) {
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
             return;
         }
 
-        $query->whereHas(self::RELATION_PATH, static function (Builder $functionQuery) use ($names): void {
-            $functionQuery->whereIn('name', $names);
+        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas(self::RELATION_PATH, static function (Builder $functionQuery) use ($names): void {
+                    $functionQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): no employment line carrying a
+            // function at all.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave(self::RELATION_PATH);
+            }
         });
     }
 
@@ -145,7 +160,7 @@ final class UserBusinessFunctionColumn
     {
         $userIds = (clone $query)->select('users.id');
 
-        return DB::table(self::LINES_TABLE)
+        $values = DB::table(self::LINES_TABLE)
             ->join(self::PROFILES_TABLE, self::PROFILES_TABLE.'.id', '=', self::LINES_TABLE.'.employment_profile_id')
             ->join(self::FUNCTIONS_TABLE, self::FUNCTIONS_TABLE.'.id', '=', self::LINES_TABLE.'.business_function_id')
             ->whereIn(self::PROFILES_TABLE.'.user_id', $userIds)
@@ -158,5 +173,9 @@ final class UserBusinessFunctionColumn
             ->pluck(self::FUNCTIONS_TABLE.'.name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave(self::RELATION_PATH)
+            ->exists());
     }
 }

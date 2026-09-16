@@ -181,9 +181,22 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
         }
 
         $values = array_values(array_filter((array) ($filter['values'] ?? []), 'is_string'));
-        if ($values !== []) {
-            $query->whereHas($relation, fn (Builder $related) => $related->whereIn('name', array_slice($values, 0, 200)));
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($values === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($relation, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas($relation, fn (Builder $related) => $related->whereIn('name', array_slice($values, 0, 200)));
+            }
+
+            // The blank entry ("(Vuoti)"): the rules pointing at no related row.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($relation);
+            }
+        });
 
         return true;
     }
@@ -265,7 +278,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             return [];
         }
 
-        return DB::table($table)
+        $values = DB::table($table)
             ->whereIn('id', (clone $query)->whereNotNull($foreignKey)->select($foreignKey))
             ->when($search !== null && $search !== '', fn ($builder) => $builder->where('name', 'like', '%'.$this->escapeLike($search).'%'))
             ->distinct()
@@ -274,6 +287,10 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereNull($foreignKey)
+            ->exists());
     }
 
     /**

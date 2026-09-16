@@ -197,7 +197,8 @@ it('resolves distinct source names via /values', function () {
 
     $response = $this->postJson('/api/tables/registries/values', ['columnId' => 'source'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['Trade Show']);
+    // `null` first: the blank entry ("(Vuoti)") for the registries with no source.
+    expect($response->json('data.values'))->toBe([null, 'Trade Show']);
 });
 
 it('resolves distinct is_supplier values via /values (cast bypass)', function () {

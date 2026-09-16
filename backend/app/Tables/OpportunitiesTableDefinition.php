@@ -393,13 +393,18 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
         if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
-            $this->operationalSiteColumn->applyFilter($query, self::OPERATIONAL_SITE_RELATION, $this->filterValues($filter));
+            $this->operationalSiteColumn->applyFilter(
+                $query,
+                self::OPERATIONAL_SITE_RELATION,
+                $this->filterValues($filter),
+                $this->matchesBlankEntry($filter),
+            );
 
             return true;
         }
 
         if ($columnId === ProductsOfInterestColumn::COLUMN_ID) {
-            ProductsOfInterestColumn::applyFilter($query, $this->filterValues($filter));
+            ProductsOfInterestColumn::applyFilter($query, $this->filterValues($filter), $this->matchesBlankEntry($filter));
 
             return true;
         }
@@ -457,7 +462,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
-            return $this->operationalSiteColumn->distinctValues($query, self::OPERATIONAL_SITE_FK, $search, $limit);
+            return $this->operationalSiteColumn->distinctValues($query, self::OPERATIONAL_SITE_FK, self::OPERATIONAL_SITE_RELATION, $search, $limit);
         }
 
         if ($columnId === ProductsOfInterestColumn::COLUMN_ID) {

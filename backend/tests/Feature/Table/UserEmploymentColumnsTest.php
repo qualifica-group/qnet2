@@ -355,7 +355,8 @@ it('values: business_function distinct values are resolved from the competence r
 
     $response = $this->postJson('/api/tables/users/values', ['columnId' => 'business_function'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['Legal']);
+    // `null` first: the blank entry ("(Vuoti)") — the actor works on no function.
+    expect($response->json('data.values'))->toBe([null, 'Legal']);
 });
 
 it('values: relationship_type distinct values are the enum catalogue', function () {
@@ -364,5 +365,7 @@ it('values: relationship_type distinct values are the enum catalogue', function 
 
     $response = $this->postJson('/api/tables/users/values', ['columnId' => 'relationship_type'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['employee', 'self_employed', 'other']);
+    // The catalogue, preceded by the blank entry ("(Vuoti)") for the users
+    // carrying no employment profile.
+    expect($response->json('data.values'))->toBe([null, 'employee', 'self_employed', 'other']);
 });

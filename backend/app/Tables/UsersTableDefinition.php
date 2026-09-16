@@ -398,11 +398,16 @@ class UsersTableDefinition extends AbstractTableDefinition
         if ($columnId === 'roles') {
             $roles = $this->userService->assignableRoleNames($actor);
 
-            $matches = $search === null || $search === ''
-                ? $roles
-                : array_values(array_filter($roles, static fn (string $role): bool => stripos($role, $search) !== false));
+            if ($search !== null && $search !== '') {
+                return array_slice(array_values(array_filter(
+                    $roles,
+                    static fn (string $role): bool => stripos($role, $search) !== false,
+                )), 0, $limit);
+            }
 
-            return array_slice($matches, 0, $limit);
+            // The blank entry ("(Vuoti)") sits beside the assignable catalogue
+            // (itself offered unscoped): a user may carry no role at all.
+            return array_merge([null], array_slice($roles, 0, $limit));
         }
 
         if ($columnId === 'user_type') {
@@ -444,11 +449,24 @@ class UsersTableDefinition extends AbstractTableDefinition
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_ROLE_FILTER_VALUES);
 
-        if ($roles !== []) {
-            $query->whereHas('roles', static function (Builder $roleQuery) use ($roles): void {
-                $roleQuery->whereIn('name', $roles);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($roles === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($roles, $matchesBlank): void {
+            if ($roles !== []) {
+                $group->whereHas('roles', static function (Builder $roleQuery) use ($roles): void {
+                    $roleQuery->whereIn('name', $roles);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the users carrying no role at all.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('roles');
+            }
+        });
 
         return true;
     }

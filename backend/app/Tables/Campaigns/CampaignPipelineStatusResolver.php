@@ -3,6 +3,7 @@
 namespace App\Tables\Campaigns;
 
 use App\Models\Campaign;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class CampaignPipelineStatusResolver
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum values honoured in the advanced-filter id set. Mirrors
      * AdvancedFilterApplier::MAX_VALUES — this bypasses that generic
@@ -43,18 +46,28 @@ final class CampaignPipelineStatusResolver
      * @param  Builder<Campaign>  $query
      * @param  array<int, string>  $names
      */
-    public function applyFilter(Builder $query, array $names): void
+    public function applyFilter(Builder $query, array $names, bool $matchesBlank = false): void
     {
-        if ($names === []) {
+        if ($names === [] && ! $matchesBlank) {
             return;
         }
 
-        $query->where(function (Builder $group) use ($names): void {
-            $group->whereHas('pipelineStatus', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            })->orWhereHas('project.pipelineStatus', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        $query->where(function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas('pipelineStatus', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                })->orWhereHas('project.pipelineStatus', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): no own status and none through the
+            // linked project either.
+            if ($matchesBlank) {
+                $group->orWhere(static function (Builder $blank): void {
+                    $blank->whereDoesntHave('pipelineStatus')->whereDoesntHave('project.pipelineStatus');
+                });
+            }
         });
     }
 
@@ -106,7 +119,7 @@ final class CampaignPipelineStatusResolver
             ->whereNotNull('pipeline_status_id')
             ->pluck('pipeline_status_id');
 
-        return DB::table('pipeline_statuses')
+        $values = DB::table('pipeline_statuses')
             ->where(function ($builder) use ($ownStatusIds, $linkedStatusIds): void {
                 $builder->whereIn('id', $ownStatusIds)->orWhereIn('id', $linkedStatusIds);
             })
@@ -119,6 +132,11 @@ final class CampaignPipelineStatusResolver
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('pipelineStatus')
+            ->whereDoesntHave('project.pipelineStatus')
+            ->exists());
     }
 
     /**

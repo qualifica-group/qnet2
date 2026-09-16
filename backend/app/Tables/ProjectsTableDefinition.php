@@ -332,17 +332,31 @@ class ProjectsTableDefinition extends AbstractTableDefinition
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names !== []) {
-            // Geo columns list options in Italian; match on the DB name
-            // (English as in world.sql, or already-Italian if seeded/imported so).
-            if (in_array($columnId, self::GEO_COLUMN_IDS, true)) {
-                $names = GeoNameLocalizer::filterMatchNames($names);
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
+        }
+
+        // Geo columns list options in Italian; match on the DB name
+        // (English as in world.sql, or already-Italian if seeded/imported so).
+        if ($names !== [] && in_array($columnId, self::GEO_COLUMN_IDS, true)) {
+            $names = GeoNameLocalizer::filterMatchNames($names);
+        }
+
+        $query->where(static function (Builder $group) use ($config, $names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas($config['relation'], static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
             }
 
-            $query->whereHas($config['relation'], static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
-        }
+            // The blank entry ("(Vuoti)"): the projects reaching nothing at the
+            // end of that relation.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($config['relation']);
+            }
+        });
 
         return true;
     }
@@ -403,7 +417,7 @@ class ProjectsTableDefinition extends AbstractTableDefinition
 
         $relatedIds = (clone $query)->whereNotNull($config['fk'])->select($config['fk']);
 
-        return DB::table($config['table'])
+        $values = DB::table($config['table'])
             ->whereIn('id', $relatedIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -414,6 +428,10 @@ class ProjectsTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave($config['relation'])
+            ->exists());
     }
 
     /**
@@ -440,7 +458,11 @@ class ProjectsTableDefinition extends AbstractTableDefinition
             $localized = $localized->filter(static fn (string $name): bool => stripos($name, $search) !== false);
         }
 
-        return $localized->sort()->values()->take($limit)->all();
+        return $this->withBlankEntry(
+            $localized->sort()->values()->take($limit)->all(),
+            $search,
+            fn (): bool => (clone $query)->whereDoesntHave($config['relation'])->exists(),
+        );
     }
 
     /**

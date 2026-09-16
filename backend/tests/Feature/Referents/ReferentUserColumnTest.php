@@ -91,5 +91,5 @@ it('resolves distinct linked-user names via /values', function () {
 
     $response = $this->postJson('/api/tables/referents/values', ['columnId' => 'user'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['Ada Lovelace']);
+    expect($response->json('data.values'))->toBe([null, 'Ada Lovelace']);
 });

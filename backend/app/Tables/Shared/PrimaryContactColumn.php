@@ -4,6 +4,7 @@ namespace App\Tables\Shared;
 
 use App\Models\Contact;
 use App\Models\PersonalData;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -25,6 +26,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class PrimaryContactColumn
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of values honoured in the set filter. Caps the WHERE IN
      * cardinality (defence in depth); excess values are ignored.
@@ -108,12 +111,27 @@ final class PrimaryContactColumn
     public function applySetFilter(Builder $query, array $filter): void
     {
         $values = $this->setFilterValues($filter);
+        $matchesBlank = $this->matchesBlankEntry($filter);
 
-        if ($values !== []) {
-            $query->whereHas('personalData.contacts', static function (Builder $contactQuery) use ($values): void {
-                $contactQuery->where('is_primary', true)->whereIn('value', $values);
-            });
+        if ($values === [] && ! $matchesBlank) {
+            return;
         }
+
+        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas('personalData.contacts', static function (Builder $contactQuery) use ($values): void {
+                    $contactQuery->where('is_primary', true)->whereIn('value', $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): no card, no primary contact, or one
+            // with no value — the three ways the cell reads empty.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('personalData.contacts', static function (Builder $contactQuery): void {
+                    $contactQuery->where('is_primary', true)->whereNotNull('value')->where('value', '<>', '');
+                });
+            }
+        });
     }
 
     /**
@@ -143,7 +161,7 @@ final class PrimaryContactColumn
      * LIKE-escaped.
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
     public function distinctValues(Builder $query, string $ownerTable, string $ownerMorphClass, ?string $search, int $limit): array
     {
@@ -154,11 +172,12 @@ final class PrimaryContactColumn
             ->where('personable_type', $ownerMorphClass)
             ->whereIn('personable_id', $ownerIds);
 
-        return DB::table('contacts')
+        $values = DB::table('contacts')
             ->where('contactable_type', (new PersonalData)->getMorphClass())
             ->where('is_primary', true)
             ->whereIn('contactable_id', $cardIds)
             ->whereNotNull('value')
+            ->where('value', '<>', '')
             ->when($search !== null && $search !== '', function (QueryBuilder $q) use ($search): void {
                 $needle = '%'.$this->escapeLike($search).'%';
                 $q->where(function (QueryBuilder $sub) use ($needle): void {
@@ -172,6 +191,12 @@ final class PrimaryContactColumn
             ->pluck('value')
             ->map(static fn (mixed $value): string => (string) $value)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('personalData.contacts', static function (Builder $contactQuery): void {
+                $contactQuery->where('is_primary', true)->whereNotNull('value')->where('value', '<>', '');
+            })
+            ->exists());
     }
 
     /**

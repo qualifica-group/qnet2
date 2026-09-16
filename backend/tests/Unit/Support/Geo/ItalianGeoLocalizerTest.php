@@ -43,3 +43,15 @@ it('translates anglicized cities after cleaning, null for a pure placeholder', f
         ->and($this->localizer->city('Frattamaggiore'))->toBe('Frattamaggiore')
         ->and($this->localizer->city('(HQ)'))->toBeNull();
 });
+
+it('maps a comune the reference dataset spells differently', function () {
+    expect($this->localizer->city('San Nicandro Garganico'))->toBe('Sannicandro Garganico')
+        ->and($this->localizer->city("Godega di Sant'Urbano"))->toBe('Godega')
+        ->and($this->localizer->city('Cancello ed Arnone'))->toBe('Cancello-Arnone')
+        ->and($this->localizer->city('Fonte Nuova'))->toBe('Fonte Nuova');
+});
+
+it('corrects a misspelled comune to its reference name', function () {
+    expect($this->localizer->city('Setsu'))->toBe('Sestu')
+        ->and($this->localizer->city('setsu'))->toBe('Sestu');
+});

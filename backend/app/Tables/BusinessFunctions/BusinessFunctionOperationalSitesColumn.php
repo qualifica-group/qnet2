@@ -5,6 +5,7 @@ namespace App\Tables\BusinessFunctions;
 use App\Models\Address;
 use App\Models\BusinessFunction;
 use App\Models\OperationalSite;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class BusinessFunctionOperationalSitesColumn
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of values honoured in the set filter. Caps the WHERE IN
      * cardinality (defence in depth); excess values are ignored.
@@ -64,11 +67,27 @@ final class BusinessFunctionOperationalSitesColumn
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($values !== []) {
-            $query->whereHas('operationalSites.addresses', static function (Builder $addressQuery) use ($values): void {
-                $addressQuery->where('is_primary', true)->whereIn('line1', $values);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($values === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas('operationalSites.addresses', static function (Builder $addressQuery) use ($values): void {
+                    $addressQuery->where('is_primary', true)->whereIn('line1', $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): no site, or no site with a primary
+            // address line — the rows the value list cannot reach.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('operationalSites.addresses', static function (Builder $addressQuery): void {
+                    $addressQuery->where('is_primary', true)->whereNotNull('line1');
+                });
+            }
+        });
 
         return true;
     }
@@ -85,7 +104,7 @@ final class BusinessFunctionOperationalSitesColumn
     {
         $functionIds = (clone $query)->select('business_functions.id');
 
-        return DB::table('addresses')
+        $values = DB::table('addresses')
             ->join('business_function_operational_site', 'business_function_operational_site.operational_site_id', '=', 'addresses.addressable_id')
             ->where('addresses.addressable_type', (new OperationalSite)->getMorphClass())
             ->where('addresses.is_primary', true)
@@ -100,6 +119,12 @@ final class BusinessFunctionOperationalSitesColumn
             ->pluck('addresses.line1')
             ->map(static fn (mixed $line1): string => (string) $line1)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('operationalSites.addresses', static function (Builder $addressQuery): void {
+                $addressQuery->where('is_primary', true)->whereNotNull('line1');
+            })
+            ->exists());
     }
 
     private function composeLabel(?Address $address): string

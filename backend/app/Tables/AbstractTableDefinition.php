@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\Enums\AdvancedFilterType;
 use App\Models\User;
 use App\Services\Table\AdvancedFilterApplier;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use App\Tables\Concerns\InjectsDefaultIdColumn;
 use App\Tables\Concerns\ResolvesColumnConfig;
 use App\Tables\Concerns\ResolvesEditableColumns;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Gate;
  */
 abstract class AbstractTableDefinition implements TableDefinition
 {
+    use HandlesBlankSetFilter;
     use InjectsDefaultIdColumn;
     use ResolvesColumnConfig;
     use ResolvesEditableColumns;

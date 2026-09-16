@@ -7,6 +7,7 @@ use App\Enums\RelationshipTypeEnum;
 use App\Models\EmploymentProfile;
 use App\Models\User;
 use App\Services\Table\FilterApplier;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,8 @@ use Illuminate\Support\Facades\DB;
  */
 class UserEmploymentColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of values honoured in a set filter. Caps the WHERE IN
      * cardinality (defence in depth); excess values are ignored.
@@ -134,7 +137,17 @@ class UserEmploymentColumns
         }
 
         if (in_array($columnId, self::ENUM_COLUMNS, true) || $columnId === 'is_manager') {
-            $query->whereHas('employment', fn (Builder $q): mixed => $this->filterApplier->apply($q, $columnId, ['filterType' => 'set'], $filter));
+            $matchesBlank = $this->matchesBlankEntry($filter);
+
+            $query->where(function (Builder $group) use ($columnId, $filter, $matchesBlank): void {
+                $group->whereHas('employment', fn (Builder $q): mixed => $this->filterApplier->apply($q, $columnId, ['filterType' => 'set'], $filter));
+
+                // The blank entry ("(Vuoti)"): a user with no employment
+                // profile at all can never satisfy the EXISTS above.
+                if ($matchesBlank) {
+                    $group->orWhereDoesntHave('employment');
+                }
+            });
 
             return;
         }
@@ -171,14 +184,26 @@ class UserEmploymentColumns
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names === []) {
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
             return;
         }
 
         $column = self::RELATED_NAME_COLUMNS[$columnId];
 
-        $query->whereHas($column['relation'], static function (Builder $relatedQuery) use ($column, $names): void {
-            $relatedQuery->whereIn($column['nameColumn'], $names);
+        $query->where(static function (Builder $group) use ($column, $names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas($column['relation'], static function (Builder $relatedQuery) use ($column, $names): void {
+                    $relatedQuery->whereIn($column['nameColumn'], $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): no employment profile, or one that
+            // points at no related row.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($column['relation']);
+            }
         });
     }
 
@@ -273,11 +298,17 @@ class UserEmploymentColumns
      */
     private function distinctEnumValues(array $values, ?string $search, int $limit): array
     {
-        $matches = $search === null || $search === ''
-            ? $values
-            : array_values(array_filter($values, static fn (string $value): bool => stripos($value, $search) !== false));
+        if ($search !== null && $search !== '') {
+            return array_slice(array_values(array_filter(
+                $values,
+                static fn (string $value): bool => stripos($value, $search) !== false,
+            )), 0, $limit);
+        }
 
-        return array_slice($matches, 0, $limit);
+        // The blank entry ("(Vuoti)") sits beside the whole enum catalogue:
+        // like the catalogue itself, it is offered without scoping to the
+        // rows — a user with no employment profile shows an empty cell.
+        return array_merge([null], array_slice($values, 0, $limit));
     }
 
     /**
@@ -295,7 +326,7 @@ class UserEmploymentColumns
             ->whereIn('user_id', $userIds)
             ->whereNotNull($column['fk']);
 
-        return DB::table($column['table'])
+        $values = DB::table($column['table'])
             ->whereIn('id', $relatedIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search, $column): void {
                 $builder->where($column['nameColumn'], 'like', '%'.$this->filterApplier->escapeLike($search).'%');
@@ -306,5 +337,9 @@ class UserEmploymentColumns
             ->pluck($column['nameColumn'])
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave($column['relation'])
+            ->exists());
     }
 }

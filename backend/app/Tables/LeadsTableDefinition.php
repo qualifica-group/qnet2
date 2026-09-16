@@ -292,7 +292,7 @@ class LeadsTableDefinition extends AbstractTableDefinition
         $values = $this->filterValues($filter);
 
         if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
-            $this->operationalSiteColumn->applyFilter($query, $values);
+            $this->operationalSiteColumn->applyFilter($query, $values, $this->matchesBlankEntry($filter));
 
             return true;
         }
@@ -309,11 +309,25 @@ class LeadsTableDefinition extends AbstractTableDefinition
             return false;
         }
 
-        if ($values !== []) {
-            $query->whereHas($config['relation'], static function (Builder $relatedQuery) use ($values): void {
-                $relatedQuery->whereIn('name', $values);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($values === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($config, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas($config['relation'], static function (Builder $relatedQuery) use ($values): void {
+                    $relatedQuery->whereIn('name', $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the leads pointing at no related
+            // row at all.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($config['relation']);
+            }
+        });
 
         return true;
     }
@@ -454,7 +468,7 @@ class LeadsTableDefinition extends AbstractTableDefinition
 
         $relatedIds = (clone $query)->whereNotNull($config['fk'])->select($config['fk']);
 
-        return DB::table($config['table'])
+        $values = DB::table($config['table'])
             ->whereIn('id', $relatedIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -465,6 +479,10 @@ class LeadsTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave($config['relation'])
+            ->exists());
     }
 
     /**

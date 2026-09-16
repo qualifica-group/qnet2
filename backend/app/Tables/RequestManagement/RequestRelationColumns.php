@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\RequestManagement;
 
 use App\Services\Table\FilterApplier;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -58,6 +59,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class RequestRelationColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
      * the WHERE IN cardinality (defence in depth); excess values ignored.
@@ -120,10 +123,23 @@ final class RequestRelationColumns
         }
 
         $values = $this->filterValues($filter);
+        $matchesBlank = $this->matchesBlankEntry($filter);
 
-        if ($values !== []) {
-            $this->applyNameWhereHas($query, $config['relation'], $values);
+        if ($values === [] && ! $matchesBlank) {
+            return true;
         }
+
+        // The blank entry ("(Vuoti)") selects the rows whose relation carries
+        // no row at all — what an empty cell means for a derived column.
+        $query->where(function (Builder $group) use ($config, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $this->applyNameWhereHas($group, $config['relation'], $values);
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($config['relation']);
+            }
+        });
 
         return true;
     }
@@ -204,12 +220,19 @@ final class RequestRelationColumns
      * `hasFilterValues: false`, so TableService never calls this for them).
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>|null
+     * @return array<int, string|null>|null
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
         if (array_key_exists($columnId, self::AGGREGATED_RELATIONS)) {
-            return $this->distinctAggregatedValues(self::AGGREGATED_RELATIONS[$columnId], $search, $query, $limit);
+            $config = self::AGGREGATED_RELATIONS[$columnId];
+
+            return $this->withBlanks(
+                $this->distinctAggregatedValues($config, $search, $query, $limit),
+                $config['relation'],
+                $search,
+                $query,
+            );
         }
 
         $ownConfig = self::QUOTE_RELATIONS[$columnId] ?? null;
@@ -217,7 +240,12 @@ final class RequestRelationColumns
         if ($ownConfig !== null) {
             $relatedIds = (clone $query)->whereNotNull("quotes.{$ownConfig['fk']}")->select("quotes.{$ownConfig['fk']}");
 
-            return $this->distinctNames($ownConfig['table'], $relatedIds, $search, $limit);
+            return $this->withBlanks(
+                $this->distinctNames($ownConfig['table'], $relatedIds, $search, $limit),
+                $ownConfig['relation'],
+                $search,
+                $query,
+            );
         }
 
         $throughConfig = self::OPPORTUNITY_RELATIONS[$columnId] ?? null;
@@ -226,10 +254,33 @@ final class RequestRelationColumns
             $opportunityIds = (clone $query)->select('quotes.opportunity_id');
             $relatedIds = DB::table('opportunities')->whereIn('id', $opportunityIds)->whereNotNull($throughConfig['fk'])->select($throughConfig['fk']);
 
-            return $this->distinctNames($throughConfig['table'], $relatedIds, $search, $limit);
+            return $this->withBlanks(
+                $this->distinctNames($throughConfig['table'], $relatedIds, $search, $limit),
+                $throughConfig['relation'],
+                $search,
+                $query,
+            );
         }
 
         return null;
+    }
+
+    /**
+     * Offer the blank entry when some scoped row has no related row on
+     * `$relation` — the one definition of "empty cell" every column here
+     * shares.
+     *
+     * @param  array<int, string|null>  $values
+     * @param  Builder<Model>  $query
+     * @return array<int, string|null>
+     */
+    private function withBlanks(array $values, string $relation, ?string $search, Builder $query): array
+    {
+        return $this->withBlankEntry(
+            $values,
+            $search,
+            fn (): bool => (clone $query)->whereDoesntHave($relation)->exists(),
+        );
     }
 
     /**

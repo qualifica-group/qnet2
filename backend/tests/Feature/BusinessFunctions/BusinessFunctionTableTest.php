@@ -272,7 +272,8 @@ it('resolves distinct manager names via /values', function () {
 
     $response = $this->postJson('/api/tables/business-functions/values', ['columnId' => 'manager'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['Alice Manager']);
+    // `null` first: the blank entry ("(Vuoti)"), for the rows with none.
+    expect($response->json('data.values'))->toBe([null, 'Alice Manager']);
 });
 
 it('resolves distinct associated user names via /values', function () {
@@ -285,7 +286,7 @@ it('resolves distinct associated user names via /values', function () {
 
     $response = $this->postJson('/api/tables/business-functions/values', ['columnId' => 'users'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['Carol Member']);
+    expect($response->json('data.values'))->toBe([null, 'Carol Member']);
 });
 
 it('resolves distinct parent names via /values', function () {
@@ -297,7 +298,7 @@ it('resolves distinct parent names via /values', function () {
 
     $response = $this->postJson('/api/tables/business-functions/values', ['columnId' => 'parent'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['Root Alpha']);
+    expect($response->json('data.values'))->toBe([null, 'Root Alpha']);
 });
 
 it('resolves distinct operational site addresses (line1) via /values', function () {
@@ -311,7 +312,7 @@ it('resolves distinct operational site addresses (line1) via /values', function 
 
     $response = $this->postJson('/api/tables/business-functions/values', ['columnId' => 'operational_sites'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['Via Torino 5']);
+    expect($response->json('data.values'))->toBe([null, 'Via Torino 5']);
 });
 
 it('/values search narrows the distinct manager names', function () {

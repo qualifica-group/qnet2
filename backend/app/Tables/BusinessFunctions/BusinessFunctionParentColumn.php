@@ -3,6 +3,7 @@
 namespace App\Tables\BusinessFunctions;
 
 use App\Models\BusinessFunction;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class BusinessFunctionParentColumn
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in the set filter. Caps the WHERE IN
      * cardinality (defence in depth); excess values are ignored.
@@ -41,11 +44,24 @@ final class BusinessFunctionParentColumn
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names !== []) {
-            $query->whereHas('parent', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas('parent', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the root functions, with no parent.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('parent');
+            }
+        });
 
         return true;
     }
@@ -81,7 +97,7 @@ final class BusinessFunctionParentColumn
     {
         $parentIds = (clone $query)->whereNotNull('parent_id')->select('parent_id');
 
-        return DB::table('business_functions')
+        $values = DB::table('business_functions')
             ->whereIn('id', $parentIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -92,6 +108,10 @@ final class BusinessFunctionParentColumn
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('parent')
+            ->exists());
     }
 
     /**

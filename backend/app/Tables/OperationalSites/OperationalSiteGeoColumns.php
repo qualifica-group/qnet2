@@ -8,6 +8,7 @@ use App\Models\OperationalSite;
 use App\Models\Province;
 use App\Models\State;
 use App\Support\Geo\GeoNameLocalizer;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class OperationalSiteGeoColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of values honoured in a geo set filter. Caps the WHERE
      * IN cardinality (defence in depth); excess values are ignored.
@@ -94,20 +97,23 @@ class OperationalSiteGeoColumns
      * Excel-like distinct values (spec 0004): the option catalogue, optionally
      * narrowed by a case-insensitive substring search and capped to `$limit`.
      *
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
     public function distinctValues(string $columnId, ?string $search, int $limit): array
     {
         $options = $this->options($columnId);
 
-        $matches = $search === null || $search === ''
-            ? $options
-            : array_values(array_filter(
+        if ($search !== null && $search !== '') {
+            return array_slice(array_values(array_filter(
                 $options,
                 static fn (string $option): bool => stripos($option, $search) !== false,
-            ));
+            )), 0, $limit);
+        }
 
-        return array_slice($matches, 0, $limit);
+        // `null` is AG Grid's blank entry ("(Vuoti)"): the rows with no primary
+        // address carrying that geo level. Always offered, like the option list
+        // itself, which is the whole catalogue rather than the current rows'.
+        return array_merge([null], array_slice($options, 0, $limit));
     }
 
     /**
@@ -120,8 +126,9 @@ class OperationalSiteGeoColumns
     public function applyGeoFilter(Builder $query, string $columnId, array $filter): void
     {
         $names = $this->setFilterValues($filter);
+        $matchesBlank = $this->matchesBlankEntry($filter);
 
-        if ($names === []) {
+        if ($names === [] && ! $matchesBlank) {
             return;
         }
 
@@ -130,11 +137,23 @@ class OperationalSiteGeoColumns
 
         $relation = self::GEO_COLUMNS[$columnId]['relation'];
 
-        $query->whereHas('addresses', static function (Builder $addressQuery) use ($relation, $matchNames): void {
-            $addressQuery->where('is_primary', true)
-                ->whereHas($relation, static function (Builder $geoQuery) use ($matchNames): void {
-                    $geoQuery->whereIn('name', $matchNames);
+        $query->where(static function (Builder $group) use ($relation, $matchNames, $matchesBlank): void {
+            if ($matchNames !== []) {
+                $group->whereHas('addresses', static function (Builder $addressQuery) use ($relation, $matchNames): void {
+                    $addressQuery->where('is_primary', true)
+                        ->whereHas($relation, static function (Builder $geoQuery) use ($matchNames): void {
+                            $geoQuery->whereIn('name', $matchNames);
+                        });
                 });
+            }
+
+            // The blank entry ("(Vuoti)"): no primary address reaching that geo
+            // level at all.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('addresses', static function (Builder $addressQuery) use ($relation): void {
+                    $addressQuery->where('is_primary', true)->has($relation);
+                });
+            }
         });
     }
 

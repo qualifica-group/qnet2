@@ -2,6 +2,7 @@
 
 namespace App\Tables\Quotes;
 
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class QuoteRelationColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
      * the WHERE IN cardinality (defence in depth); excess values ignored.
@@ -67,13 +70,7 @@ final class QuoteRelationColumns
     public function applyFilter(Builder $query, string $columnId, array $filter): bool
     {
         if ($columnId === 'managers') {
-            $values = $this->filterValues($filter);
-
-            if ($values !== []) {
-                $query->whereHas('managers', static function (Builder $relatedQuery) use ($values): void {
-                    $relatedQuery->whereIn('name', $values);
-                });
-            }
+            $this->applyLabelFilter($query, 'managers', 'name', $filter);
 
             return true;
         }
@@ -84,17 +81,40 @@ final class QuoteRelationColumns
             return false;
         }
 
-        $values = $this->filterValues($filter);
-
-        if ($values !== []) {
-            $label = $this->labelColumn($config);
-
-            $query->whereHas($config['relation'], static function (Builder $relatedQuery) use ($label, $values): void {
-                $relatedQuery->whereIn($label, $values);
-            });
-        }
+        $this->applyLabelFilter($query, $config['relation'], $this->labelColumn($config), $filter);
 
         return true;
+    }
+
+    /**
+     * Match the rows whose `$relation` has a row labelled among the filter's
+     * values, plus — when the blank entry ("(Vuoti)") is ticked — the rows
+     * with no such related row at all, which is what an empty cell means for
+     * every relation-derived column.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyLabelFilter(Builder $query, string $relation, string $label, array $filter): void
+    {
+        $values = $this->filterValues($filter);
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($values === [] && ! $matchesBlank) {
+            return;
+        }
+
+        $query->where(static function (Builder $group) use ($relation, $label, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas($relation, static function (Builder $relatedQuery) use ($label, $values): void {
+                    $relatedQuery->whereIn($label, $values);
+                });
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($relation);
+            }
+        });
     }
 
     /**
@@ -128,12 +148,12 @@ final class QuoteRelationColumns
      * names, scoped to the rows matching $query.
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>|null
+     * @return array<int, string|null>|null
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
         if ($columnId === 'managers') {
-            return $this->distinctManagerNames($search, $query, $limit);
+            return $this->withBlanks($this->distinctManagerNames($search, $query, $limit), 'managers', $search, $query);
         }
 
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
@@ -145,7 +165,7 @@ final class QuoteRelationColumns
         $relatedIds = (clone $query)->whereNotNull($config['fk'])->select($config['fk']);
         $label = $this->labelColumn($config);
 
-        return DB::table($config['table'])
+        $values = DB::table($config['table'])
             ->whereIn('id', $relatedIds)
             ->when($search !== null && $search !== '', function ($builder) use ($label, $search): void {
                 $builder->where($label, 'like', '%'.$this->escapeLike($search).'%');
@@ -156,6 +176,26 @@ final class QuoteRelationColumns
             ->pluck($label)
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlanks($values, $config['relation'], $search, $query);
+    }
+
+    /**
+     * Offer the blank entry when some scoped row has no related row on
+     * `$relation` — the one definition of "empty cell" every column here
+     * shares.
+     *
+     * @param  array<int, string|null>  $values
+     * @param  Builder<Model>  $query
+     * @return array<int, string|null>
+     */
+    private function withBlanks(array $values, string $relation, ?string $search, Builder $query): array
+    {
+        return $this->withBlankEntry(
+            $values,
+            $search,
+            fn (): bool => (clone $query)->whereDoesntHave($relation)->exists(),
+        );
     }
 
     /**

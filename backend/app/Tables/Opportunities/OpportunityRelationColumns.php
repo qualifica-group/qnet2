@@ -2,6 +2,7 @@
 
 namespace App\Tables\Opportunities;
 
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class OpportunityRelationColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
      * the WHERE IN cardinality (defence in depth); excess values ignored.
@@ -80,13 +83,7 @@ final class OpportunityRelationColumns
     public function applyFilter(Builder $query, string $columnId, array $filter): bool
     {
         if ($columnId === 'managers') {
-            $values = $this->filterValues($filter);
-
-            if ($values !== []) {
-                $query->whereHas('managers', static function (Builder $relatedQuery) use ($values): void {
-                    $relatedQuery->whereIn('name', $values);
-                });
-            }
+            $this->applyNameFilter($query, 'managers', $filter);
 
             return true;
         }
@@ -97,15 +94,40 @@ final class OpportunityRelationColumns
             return false;
         }
 
-        $values = $this->filterValues($filter);
-
-        if ($values !== []) {
-            $query->whereHas($config['relation'], static function (Builder $relatedQuery) use ($values): void {
-                $relatedQuery->whereIn('name', $values);
-            });
-        }
+        $this->applyNameFilter($query, $config['relation'], $filter);
 
         return true;
+    }
+
+    /**
+     * Match the rows whose `$relation` has a row named among the filter's
+     * values, plus — when the blank entry ("(Vuoti)") is ticked — the rows
+     * that have no such related row at all, which is exactly what an empty
+     * cell means for every relation-derived column.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyNameFilter(Builder $query, string $relation, array $filter): void
+    {
+        $values = $this->filterValues($filter);
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($values === [] && ! $matchesBlank) {
+            return;
+        }
+
+        $query->where(static function (Builder $group) use ($relation, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas($relation, static function (Builder $relatedQuery) use ($values): void {
+                    $relatedQuery->whereIn('name', $values);
+                });
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($relation);
+            }
+        });
     }
 
     /**
@@ -141,16 +163,23 @@ final class OpportunityRelationColumns
      * `opportunity_product_lines` — scoped to the rows matching $query.
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>|null
+     * @return array<int, string|null>|null
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
         if ($columnId === 'managers') {
-            return $this->distinctManagerNames($search, $query, $limit);
+            return $this->withBlanks($this->distinctManagerNames($search, $query, $limit), 'managers', $search, $query);
         }
 
         if (array_key_exists($columnId, self::AGGREGATED_RELATIONS)) {
-            return $this->distinctAggregatedValues(self::AGGREGATED_RELATIONS[$columnId], $search, $query, $limit);
+            $config = self::AGGREGATED_RELATIONS[$columnId];
+
+            return $this->withBlanks(
+                $this->distinctAggregatedValues($config, $search, $query, $limit),
+                $config['relation'],
+                $search,
+                $query,
+            );
         }
 
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
@@ -161,7 +190,7 @@ final class OpportunityRelationColumns
 
         $relatedIds = (clone $query)->whereNotNull($config['fk'])->select($config['fk']);
 
-        return DB::table($config['table'])
+        $values = DB::table($config['table'])
             ->whereIn('id', $relatedIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -172,6 +201,26 @@ final class OpportunityRelationColumns
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlanks($values, $config['relation'], $search, $query);
+    }
+
+    /**
+     * Offer the blank entry when some scoped row has no related row on
+     * `$relation` — the one definition of "empty cell" every column here
+     * shares.
+     *
+     * @param  array<int, string|null>  $values
+     * @param  Builder<Model>  $query
+     * @return array<int, string|null>
+     */
+    private function withBlanks(array $values, string $relation, ?string $search, Builder $query): array
+    {
+        return $this->withBlankEntry(
+            $values,
+            $search,
+            fn (): bool => (clone $query)->whereDoesntHave($relation)->exists(),
+        );
     }
 
     /**

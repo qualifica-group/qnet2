@@ -136,7 +136,8 @@ it('values: parent â†’ distinct parent names, columnId outside the allow-list â†
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/sectors/values', ['columnId' => 'parent'])->assertOk();
-    expect($response->json('data.values'))->toEqualCanonicalizing(['Energy', 'Mobility']);
+    // `null` is the blank entry ("(Vuoti)"): the root sectors have no parent.
+    expect($response->json('data.values'))->toEqualCanonicalizing([null, 'Energy', 'Mobility']);
 
     $this->postJson('/api/tables/sectors/values', ['columnId' => 'not_a_column'])
         ->assertStatus(422)->assertJsonValidationErrors('columnId');

@@ -425,7 +425,12 @@ export interface TableColumnValuesPayload {
 
 /** Response of POST /tables/{domain}/values (envelope `data`). */
 export interface TableColumnValuesResponse {
-  values: string[]
+  /**
+   * The distinct values offered by the Set Filter. A `null` entry is AG Grid's
+   * own blank option (rendered "(Vuoti)"): the backend emits it when the column
+   * holds empty cells, and sends it back unchanged inside the filter model.
+   */
+  values: (string | null)[]
   hasMore: boolean
 }
 

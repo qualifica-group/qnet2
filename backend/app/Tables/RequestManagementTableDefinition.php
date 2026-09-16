@@ -390,13 +390,18 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
         if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
-            $this->operationalSiteColumn->applyFilter($query, self::OPERATIONAL_SITE_RELATION, $this->filterValues($filter));
+            $this->operationalSiteColumn->applyFilter(
+                $query,
+                self::OPERATIONAL_SITE_RELATION,
+                $this->filterValues($filter),
+                $this->matchesBlankEntry($filter),
+            );
 
             return true;
         }
 
         if ($columnId === OfferLinesColumn::COLUMN_ID) {
-            OfferLinesColumn::applyFilter($query, $this->filterValues($filter));
+            OfferLinesColumn::applyFilter($query, $this->filterValues($filter), $this->matchesBlankEntry($filter));
 
             return true;
         }
@@ -467,7 +472,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
-            return $this->operationalSiteColumn->distinctValues($query, 'operational_site_id', $search, $limit);
+            return $this->operationalSiteColumn->distinctValues($query, 'operational_site_id', self::OPERATIONAL_SITE_RELATION, $search, $limit);
         }
 
         if ($columnId === OfferLinesColumn::COLUMN_ID) {

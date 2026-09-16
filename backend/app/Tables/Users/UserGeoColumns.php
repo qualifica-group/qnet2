@@ -88,20 +88,24 @@ class UserGeoColumns
      * optionally narrowed by a case-insensitive substring search and capped
      * to `$limit`.
      *
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
     public function distinctValues(string $columnId, ?string $search, int $limit): array
     {
         $options = $this->options($columnId);
 
-        $matches = $search === null || $search === ''
-            ? $options
-            : array_values(array_filter(
+        if ($search !== null && $search !== '') {
+            return array_slice(array_values(array_filter(
                 $options,
                 static fn (string $option): bool => stripos($option, $search) !== false,
-            ));
+            )), 0, $limit);
+        }
 
-        return array_slice($matches, 0, $limit);
+        // `null` is AG Grid's blank entry ("(Vuoti)"): the rows with no
+        // primary address carrying that geo level. Always offered, like the
+        // option list itself, which is the whole catalogue rather than the
+        // values of the current rows.
+        return array_merge([null], array_slice($options, 0, $limit));
     }
 
     /**
@@ -124,7 +128,9 @@ class UserGeoColumns
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names === []) {
+        $matchesBlank = in_array(null, $values, true);
+
+        if ($names === [] && ! $matchesBlank) {
             return;
         }
 
@@ -133,11 +139,24 @@ class UserGeoColumns
 
         $relation = self::COLUMNS[$columnId]['relation'];
 
-        $query->whereHas('personalData.addresses', static function (Builder $addressQuery) use ($relation, $matchNames): void {
-            $addressQuery->where('is_primary', true)
-                ->whereHas($relation, static function (Builder $geoQuery) use ($matchNames): void {
-                    $geoQuery->whereIn('name', $matchNames);
+        $query->where(static function (Builder $group) use ($relation, $matchNames, $matchesBlank): void {
+            if ($matchNames !== []) {
+                $group->whereHas('personalData.addresses', static function (Builder $addressQuery) use ($relation, $matchNames): void {
+                    $addressQuery->where('is_primary', true)
+                        ->whereHas($relation, static function (Builder $geoQuery) use ($matchNames): void {
+                            $geoQuery->whereIn('name', $matchNames);
+                        });
                 });
+            }
+
+            // The blank entry ("(Vuoti)"): no primary address reaching that
+            // geo level at all — no card, no address, or an address with no
+            // country/region/province/city set.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('personalData.addresses', static function (Builder $addressQuery) use ($relation): void {
+                    $addressQuery->where('is_primary', true)->has($relation);
+                });
+            }
         });
     }
 

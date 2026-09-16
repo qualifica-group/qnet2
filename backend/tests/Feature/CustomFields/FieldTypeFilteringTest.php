@@ -90,6 +90,29 @@ it('filters set values on both single and multi-valued fields', function (): voi
     expect($multi->count())->toBe(1);
 });
 
+it('offers and matches the blank entry on a set-filtered field', function (): void {
+    seedValues([
+        1 => ['tier' => 'gold'],
+        2 => ['tier' => null],
+        3 => ['other' => 'x'],
+        4 => ['tier' => ''],
+    ]);
+    $handler = new EnumFieldType;
+
+    // `null` is AG Grid's blank entry ("(Vuoti)"): a missing key, a null and an
+    // empty string all fold into it rather than becoming values of their own.
+    $values = $handler->distinctValues(CustomFieldValue::query(), 'custom_field_values.values', 'tier');
+    expect($values)->toBe([null, 'gold']);
+
+    $blank = CustomFieldValue::query();
+    $handler->applyFilter($blank, 'custom_field_values.values', 'tier', ['values' => [null]]);
+    expect($blank->count())->toBe(3);
+
+    $combined = CustomFieldValue::query();
+    $handler->applyFilter($combined, 'custom_field_values.values', 'tier', ['values' => ['gold', null]]);
+    expect($combined->count())->toBe(4);
+});
+
 it('sorts by json path', function (): void {
     seedValues([1 => ['score' => 30], 2 => ['score' => 10], 3 => ['score' => 20]]);
     $handler = new IntegerFieldType;

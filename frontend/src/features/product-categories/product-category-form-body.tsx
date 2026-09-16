@@ -14,6 +14,8 @@ import {
   flattenCategoryTree,
 } from '@/features/product-categories/flatten-tree'
 import { useProductCategoryForm } from '@/features/product-categories/use-product-category-form'
+import { useBusinessFunctionResetConfirmation } from '@/features/product-categories/use-business-function-reset-confirmation'
+import { BusinessFunctionResetDialog } from '@/features/product-categories/business-function-reset-dialog'
 import { ProductCategoryFormHeader } from '@/features/product-categories/product-category-form-header'
 import { ProductCategoryFormSummary } from '@/features/product-categories/product-category-form-summary'
 import {
@@ -65,6 +67,9 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
   const { t } = useTranslation()
   const { form, serverError, onSubmit } = useProductCategoryForm({ mode, onSuccess })
   const treeQuery = useProductCategoryTree()
+  // Assigning a business function here wipes the ones the descendants own
+  // (backend cascade, spec 0023): the save waits for an explicit confirmation.
+  const businessFunctionReset = useBusinessFunctionResetConfirmation({ mode, onSubmit })
 
   const parentId = form.watch('parent_id')
   const { isSubmitting } = form.formState
@@ -111,7 +116,7 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
                 submit boundary, it must not become an extra flex box. */}
             <form
               id={PRODUCT_CATEGORY_FORM_ID}
-              onSubmit={form.handleSubmit(onSubmit)}
+              onSubmit={form.handleSubmit(businessFunctionReset.submit)}
               className="contents"
               noValidate
             >
@@ -148,6 +153,13 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
           </div>
         </div>
       </Form>
+
+      <BusinessFunctionResetDialog
+        categories={businessFunctionReset.pendingCategories}
+        isConfirming={businessFunctionReset.isConfirming}
+        onConfirm={() => void businessFunctionReset.confirm()}
+        onCancel={businessFunctionReset.cancel}
+      />
     </div>
   )
 }

@@ -28,6 +28,16 @@ class FilterApplier
     private const int MAX_SET_FILTER_VALUES = 500;
 
     /**
+     * Column types whose empty string reads as "no value" to the user, so the
+     * Set Filter's blank entry covers BOTH `NULL` and `''`. Numeric/date
+     * columns are excluded on purpose: MySQL coerces `= ''` to 0 on a numeric
+     * column, which would match real rows.
+     *
+     * @var array<int, string>
+     */
+    private const array BLANK_INCLUDES_EMPTY_STRING_TYPES = ['text', 'set', 'enum', 'badge', 'tags'];
+
+    /**
      * Apply one column's filter payload to the query.
      *
      * `$filter['filterType']` drives the branch when present — it carries the
@@ -74,6 +84,11 @@ class FilterApplier
             return;
         }
 
+        // AG Grid's blank entry ("(Vuoti)") round-trips as a `null` inside
+        // `values`: it selects the rows whose cell is empty, which no
+        // `whereIn` can express — hence the OR group below.
+        $matchesBlank = in_array(null, $values, true);
+
         $scalarValues = array_values(array_filter($values, static fn ($value): bool => is_scalar($value)));
 
         $options = $columnConfig['options'] ?? null;
@@ -84,9 +99,42 @@ class FilterApplier
 
         $clean = array_slice($clean, 0, self::MAX_SET_FILTER_VALUES);
 
-        if ($clean !== []) {
-            $query->whereIn($column, $clean);
+        if ($clean === [] && ! $matchesBlank) {
+            return;
         }
+
+        $includesEmptyString = $this->treatsEmptyStringAsBlank($columnConfig);
+
+        $query->where(static function (Builder $group) use ($column, $clean, $matchesBlank, $includesEmptyString): void {
+            if ($clean !== []) {
+                $group->whereIn($column, $clean);
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereNull($column);
+
+                if ($includesEmptyString) {
+                    $group->orWhere($column, '=', '');
+                }
+            }
+        });
+    }
+
+    /**
+     * Whether this column's blank entry also covers the empty string, on top of
+     * `NULL`. Public because TableService builds the very same blank entry when
+     * it lists a column's distinct values: both sides must agree on what "empty
+     * cell" means, or a selectable value would filter nothing.
+     *
+     * @param  array<string, mixed>  $columnConfig
+     */
+    public function treatsEmptyStringAsBlank(array $columnConfig): bool
+    {
+        // The DATA type decides, not the widget: a numeric column exposed as a
+        // set filter must still compare against NULL only.
+        $type = $columnConfig['type'] ?? $columnConfig['filterType'] ?? null;
+
+        return is_string($type) && in_array($type, self::BLANK_INCLUDES_EMPTY_STRING_TYPES, true);
     }
 
     /**

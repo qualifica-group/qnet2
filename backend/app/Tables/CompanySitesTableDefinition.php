@@ -241,11 +241,24 @@ class CompanySitesTableDefinition extends AbstractTableDefinition
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names !== []) {
-            $query->whereHas('company', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('denomination', $names);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas('company', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('denomination', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the sites owned by no company.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('company');
+            }
+        });
 
         return true;
     }
@@ -321,7 +334,7 @@ class CompanySitesTableDefinition extends AbstractTableDefinition
     {
         $companyIds = (clone $query)->whereNotNull('company_id')->select('company_id');
 
-        return DB::table('companies')
+        $values = DB::table('companies')
             ->whereIn('id', $companyIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('denomination', 'like', '%'.$this->escapeLike($search).'%');
@@ -332,6 +345,10 @@ class CompanySitesTableDefinition extends AbstractTableDefinition
             ->pluck('denomination')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('company')
+            ->exists());
     }
 
     /**

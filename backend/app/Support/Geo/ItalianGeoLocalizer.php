@@ -56,8 +56,13 @@ class ItalianGeoLocalizer
     ];
 
     /**
-     * City name aliases — only the handful of Italian cities the dataset stores
-     * anglicized. Native names (Frattamaggiore, Aversa, Caserta...) pass through.
+     * City name aliases (normalized legacy value -> reference spelling). Two
+     * kinds: the handful of Italian cities the dataset stores anglicized, and
+     * the comuni it spells differently from the legacy `comune` (one word,
+     * hyphenated, shortened to the historical place name, or plainly
+     * misspelled at the source, like the `Sicillia` typo in REGIONS). Native,
+     * identically spelled names (Frattamaggiore, Aversa, Caserta...) pass
+     * through.
      *
      * @var array<string, string>
      */
@@ -71,6 +76,12 @@ class ItalianGeoLocalizer
         'venezia' => 'Venice',
         'padova' => 'Padua',
         'mantova' => 'Mantua',
+        'san nicandro garganico' => 'Sannicandro Garganico',
+        "godega di sant'urbano" => 'Godega',
+        'cancello ed arnone' => 'Cancello-Arnone',
+        // Legacy typo: the record's own province (CA) and postal code (09028)
+        // are Sestu's, not Setzu's (South Sardinia, 09029).
+        'setsu' => 'Sestu',
     ];
 
     /**

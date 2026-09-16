@@ -36,17 +36,30 @@ trait AppliesSetFilter
             self::MAX_SET_FILTER_VALUES,
         );
 
-        if ($clean === []) {
+        // AG Grid's blank entry ("(Vuoti)") rides along as a null: it selects
+        // the rows storing nothing under that key — absent, null, or an empty
+        // string/array, the three shapes the value list folds into one entry.
+        $matchesBlank = in_array(null, $values, true);
+
+        if ($clean === [] && ! $matchesBlank) {
             return;
         }
 
         $path = $this->jsonColumn($column, $jsonKey);
 
-        $query->where(function (Builder $group) use ($path, $clean): void {
-            $group->whereIn($path, $clean);
+        $query->where(function (Builder $group) use ($path, $clean, $matchesBlank): void {
+            if ($clean !== []) {
+                $group->whereIn($path, $clean);
 
-            foreach ($clean as $value) {
-                $group->orWhereJsonContains($path, $value);
+                foreach ($clean as $value) {
+                    $group->orWhereJsonContains($path, $value);
+                }
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereNull($path)
+                    ->orWhere($path, '=', '')
+                    ->orWhere($path, '=', '[]');
             }
         });
     }

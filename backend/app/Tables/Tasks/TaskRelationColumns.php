@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\Tasks;
 
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class TaskRelationColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
      * the WHERE IN cardinality (defence in depth); excess values ignored.
@@ -104,7 +107,7 @@ final class TaskRelationColumns
         $pivot = self::PIVOT_RELATIONS[$columnId] ?? null;
 
         if ($pivot !== null) {
-            $this->applyNameWhereHas($query, $pivot['relation'], $this->filterValues($filter));
+            $this->applyNameWhereHas($query, $pivot['relation'], $this->filterValues($filter), self::DEFAULT_LABEL_COLUMN, $this->matchesBlankEntry($filter));
 
             return true;
         }
@@ -115,7 +118,7 @@ final class TaskRelationColumns
             return false;
         }
 
-        $this->applyNameWhereHas($query, $config['relation'], $this->filterValues($filter), $this->labelColumn($config));
+        $this->applyNameWhereHas($query, $config['relation'], $this->filterValues($filter), $this->labelColumn($config), $this->matchesBlankEntry($filter));
 
         return true;
     }
@@ -163,7 +166,12 @@ final class TaskRelationColumns
         $pivot = self::PIVOT_RELATIONS[$columnId] ?? null;
 
         if ($pivot !== null) {
-            return $this->distinctPivotNames($pivot['pivot'], $search, $query, $limit);
+            return $this->withBlanks(
+                $this->distinctPivotNames($pivot['pivot'], $search, $query, $limit),
+                $pivot['relation'],
+                $search,
+                $query,
+            );
         }
 
         $config = self::SIMPLE_RELATIONS[$columnId] ?? null;
@@ -175,7 +183,7 @@ final class TaskRelationColumns
         $relatedIds = (clone $query)->whereNotNull(self::TASKS_TABLE.'.'.$config['fk'])->select(self::TASKS_TABLE.'.'.$config['fk']);
         $label = $this->labelColumn($config);
 
-        return DB::table($config['table'])
+        $values = DB::table($config['table'])
             ->whereIn('id', $relatedIds)
             ->when($search !== null && $search !== '', function ($builder) use ($label, $search): void {
                 $builder->where($label, 'like', '%'.$this->escapeLike($search).'%');
@@ -186,6 +194,26 @@ final class TaskRelationColumns
             ->pluck($label)
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlanks($values, $config['relation'], $search, $query);
+    }
+
+    /**
+     * Offer the blank entry when some scoped row has no related row on
+     * `$relation` — the one definition of "empty cell" every column here
+     * shares.
+     *
+     * @param  array<int, string|null>  $values
+     * @param  Builder<Model>  $query
+     * @return array<int, string|null>
+     */
+    private function withBlanks(array $values, string $relation, ?string $search, Builder $query): array
+    {
+        return $this->withBlankEntry(
+            $values,
+            $search,
+            fn (): bool => (clone $query)->whereDoesntHave($relation)->exists(),
+        );
     }
 
     /**
@@ -222,14 +250,23 @@ final class TaskRelationColumns
      * @param  Builder<Model>  $query
      * @param  array<int, string>  $values
      */
-    private function applyNameWhereHas(Builder $query, string $relation, array $values, string $label = self::DEFAULT_LABEL_COLUMN): void
+    private function applyNameWhereHas(Builder $query, string $relation, array $values, string $label = self::DEFAULT_LABEL_COLUMN, bool $matchesBlank = false): void
     {
-        if ($values === []) {
+        if ($values === [] && ! $matchesBlank) {
             return;
         }
 
-        $query->whereHas($relation, static function (Builder $relatedQuery) use ($label, $values): void {
-            $relatedQuery->whereIn($label, $values);
+        $query->where(static function (Builder $group) use ($relation, $label, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas($relation, static function (Builder $relatedQuery) use ($label, $values): void {
+                    $relatedQuery->whereIn($label, $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): nothing at the end of the relation.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($relation);
+            }
         });
     }
 

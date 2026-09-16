@@ -345,7 +345,8 @@ it('resolves distinct province names via /values', function () {
 
     $response = $this->postJson('/api/tables/operational-sites/values', ['columnId' => 'province'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['Milano']);
+    // `null` first: the blank entry ("(Vuoti)") — the row with no address.
+    expect($response->json('data.values'))->toBe([null, 'Milano']);
 });
 
 it('/values search narrows the distinct city names', function () {

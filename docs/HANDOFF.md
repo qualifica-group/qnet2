@@ -3,6 +3,124 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GEO IMPORT — COMUNI NON RISOLTI SUL DATASET DI RIFERIMENTO (2026-09-16) — VERDE, NON COMMITTATO
+
+- Sintomo: `/operational-sites/25` non mostrava il comune. Causa: `addresses.city_id` NULL — il
+  `comune` legacy "Fonte Nuova" non esiste in `cities`. Il dataset `dev/DatabaseWorld/world.sql`
+  (caricato da `locations:add`) e' un estratto GeoNames di *populated places*, non il registro ISTAT:
+  di Fonte Nuova (comune dal 1997) porta solo le ex frazioni Tor Lupara e Santa Lucia.
+- Perimetro deciso scansionando TUTTI i record geo legacy (operational-sites 68, companies 21,
+  company-sites 45, users 393, referents 14384) rigiocando `MigrationGeoResolver`: i casi con
+  provincia/regione risolte ma comune no sono esattamente 7. Il catalogo del seeder contiene solo
+  quelli, niente liste inventate.
+- Fix 1 — `ItalianMunicipalitySeeder` (nuovo, reference data pulito): comuni assenti dal dataset,
+  chiamato da `DatabaseSeeder::run()` subito dopo `locations:add`, stesso criterio di
+  `UnitOfMeasureSeeder`. Oggi una sola riga: `['Fonte Nuova', 'Rome']`. Idempotente
+  (`firstOrCreate` su nome+provincia), no-op se il dataset geo non e' caricato. `world.sql` NON si
+  tocca: i comuni mancanti si aggiungono qui.
+- Fix 2 — `ItalianGeoLocalizer::CITIES` (era gia' il punto di estensione, prima solo per gli
+  anglicizzati): tre grafie che il dataset scrive diversamente dal legacy —
+  `san nicandro garganico` => `Sannicandro Garganico`, `godega di sant'urbano` => `Godega`,
+  `cancello ed arnone` => `Cancello-Arnone`. Piu' `setsu` => `Sestu`: refuso del legacy, non una
+  grafia del dataset — provincia (`CA`) e CAP (`09028`) del record sono di Sestu, non di Setzu
+  (South Sardinia, 09029). Stesso precedente del typo `Sicillia` gia' mappato in `REGIONS`.
+- Righe gia' importate riallineate sul DB di sviluppo ri-risolvendo dai record legacy, solo dove
+  `city_id` era NULL (mai sovrascritto un valore esistente): siti 25, 29, 57, 58 e company 10.
+  L'`alias` del sito resta il valore legacy verbatim (il 58 si chiama ancora "Setsu"): si corregge
+  solo sistemando il `comune` nel gestionale legacy, non da qui.
+- NON risolvibili, restano vuoti (dato legacy errato, non un buco del dataset): siti 12 "Cancello
+  ed Arnone" e 17 "Caserta 2" mandano provincia `NA` ma sono in `CE` — il comune esiste nel dataset
+  e l'alias c'e', ma la ricerca e' scopata sulla provincia sbagliata, quindi servirebbe correggere
+  il legacy o introdurre il fallback a livello regione; 67/68 sono placeholder senza provincia.
+- Segnalato, non toccato: `company-sites`/`users`/`referents` mandano `country: null` e la provincia
+  per NOME esteso ("Potenza") invece del codice targa, che e' l'unico formato accettato da
+  `ItalianGeoLocalizer::province()` — regione e provincia falliscono a monte e il comune non viene
+  nemmeno tentato (~1250 casi nella scansione). Inoltre le 45 `company_sites` non hanno alcuna riga
+  in `addresses` pur avendo `street` nel legacy: import mai eseguito qui, o `buildAddress` scarta.
+- Test eseguiti: `tests/Feature/Seeding/ItalianMunicipalitySeederTest.php` (3, nuovo) e
+  `ItalianGeoLocalizerTest` (7, +2) verdi; 216 verdi su Unit/Support/Geo + Unit/Imports +
+  Unit/Migrations + Feature/Seeding, 219 su Feature/Migration, 61 su Feature/OperationalSites.
+  Pint pulito.
+
+## CATEGORIE PRODOTTO — ALERT PRIMA DELL'AZZERAMENTO FUNZIONI AZIENDALI DEI FIGLI (2026-09-16) — VERDE, NON COMMITTATO
+
+- Direttiva utente: assegnando una funzione aziendale a una categoria che ha discendenti con una
+  funzione PROPRIA, deve comparire un popup che elenca le categorie che verranno azzerate.
+- Il backend gia' azzerava quelle righe in silenzio (`ProductCategoryService::
+  cascadeBusinessFunctionToDescendants`, spec 0023 — al massimo una funzione per catena
+  radice->foglia). Nessuna modifica backend: cambia solo l'avviso lato UI.
+- Frontend (nessun endpoint nuovo, si riusa la cache di `useProductCategoryTree`, che porta gia'
+  `business_function_id` per nodo):
+  - `business-function-inheritance.ts` → `collectDescendantsWithOwnBusinessFunction(nodes, categoryId)`
+    + tipo `BusinessFunctionResetCandidate` (discendenti ricorsivi con funzione propria, depth-first).
+  - `use-business-function-reset-confirmation.ts` (nuovo): intercetta il submit; scatta SOLO in edit
+    quando `business_function_id` e' non-null e diverso da quello salvato. Trattiene i values
+    validati, li salva al confirm.
+  - `business-function-reset-dialog.tsx` (nuovo): `AlertDialog` con la lista dei nomi; l'azione fa
+    `preventDefault()` per restare aperta durante il salvataggio (Radix altrimenti chiude subito).
+  - `product-category-form-body.tsx`: `form.handleSubmit(businessFunctionReset.submit)` + dialog.
+  - i18n `it/en-products.ts`: `businessFunctionResetTitle`, `businessFunctionResetDescription_one/_other`,
+    `businessFunctionResetConfirm`.
+- Confine deliberato: NON copre il caso reparent (spostare la categoria sotto un ramo che gia' porta
+  una funzione azzera anch'esso i discendenti) — fuori dalla richiesta, da valutare se serve.
+- Test: `business-function-reset-dialog.test.tsx` (7 casi: unit sulla raccolta + gate/confirm/cancel/
+  no-op). Verde: 184 test su `src/features/product-categories` (24 file), `tsc -b --force` EXIT=0,
+  ESLint pulito sui file toccati.
+
+## IMPORT CATEGORIE — FUNZIONE "FORMAZIONE OLD" (2026-09-16) — VERDE, NON COMMITTATO
+
+- Direttiva utente: le categorie prodotto IMPORTATE dal legacy che puntano alla funzione aziendale
+  "Formazione" devono finire su una funzione nuova, "FORMAZIONE OLD", per non confondersi con il
+  ramo "Formazione" del catalogo statico (che `QualificaBusinessFunctionLinkSeeder` continua a
+  legare alla funzione "Formazione" vera).
+- Implementato in `CategoryBusinessFunctionLinker::REDIRECTED_FUNCTIONS` (`Formazione` =>
+  `FORMAZIONE OLD`), applicato in `redirect()` dentro `ownFunctionFor()` PRIMA del confronto con la
+  funzione ereditata dal ramo (altrimenti un figlio con la stessa funzione genererebbe un warning di
+  mismatch). Match sul nome case-insensitive; la funzione sostitutiva e' creata on-demand con
+  `firstOrCreate(['name' => ...])`, senza `old_id`, quindi nessun import successivo la rivendica.
+  Memoizzazione per-run in `$redirected`.
+- Confine deliberato: il redirect NON tocca il percorso di ADOZIONE (`fillFreeSlot`) — una categoria
+  adottata e' un nodo del catalogo statico qnet e resta sulla funzione "Formazione" reale.
+- Vale per ogni lancio dell'import `product-categories` (seed `QualificaLegacyImportSeeder` e
+  sezione Migrazioni da UI), non solo per il seed.
+- Test: `tests/Feature/Migration/ProductCategoriesSourceImportTest.php` (+2 casi: redirect su
+  categoria creata, nessun redirect su categoria adottata) — 15 verdi sul file, 490 verdi su
+  `Feature/Migration` + `Feature/ProductCategories` + `Unit/Migrations`, Pint pulito.
+
+## FILTRI TABELLA — VOCE "(VUOTI)" IN TUTTI I SET FILTER (2026-09-16) — VERDE, NON COMMITTATO
+
+- Problema: il set filter mostrava solo i valori esistenti, mai le celle vuote (segnalato su
+  `/product-categories`, "Funzione aziendale"; richiesto poi per OGNI colonna con checkbox).
+- Marker: `null` dentro `values`. E' la voce blank nativa di AG Grid, gia' localizzata "(Vuoti)" da
+  `AG_GRID_LOCALE_IT`, e torna al backend dentro il filter model: nessun codice frontend dedicato
+  (unica modifica FE: il tipo `TableColumnValuesResponse.values` -> `(string | null)[]`).
+- Colonne REALI (motore generico, vale per ogni dominio): `TableService::distinctFromColumn()` antepone
+  `null` se lo scope ha celle vuote (NULL sempre; `''` solo sui tipi testuali —
+  `FilterApplier::treatsEmptyStringAsBlank()`, MySQL castava `= ''` a 0 sulle numeriche) e la stringa
+  vuota non e' piu' un valore a se'. `TableService::capValues()` tiene il blank fuori dal cap e da
+  `hasMore`. `FilterApplier::applySet()` traduce il `null` in `whereNull` (+ `= ''` sui testuali) in OR
+  col `whereIn`, dopo l'allow-list `options`.
+- Colonne DERIVATE: regola unica — "cella vuota" = nessuna riga in fondo alla relazione, quindi
+  `whereDoesntHave(<relazione>)` sia per rilevare il blank sia per filtrarlo. Trait condiviso
+  `App\Tables\Concerns\HandlesBlankSetFilter` (`matchesBlankEntry()` / `withBlankEntry()`), incluso in
+  `AbstractTableDefinition` (quindi in TUTTE le definition) e nelle classi-colonna. Coperti: relation
+  columns di opportunities/quotes/request-management/contracts/work-orders/products/projects/tasks/
+  campaigns/leads/registries/sectors/commission-configurations/rewarded-referents/business-functions,
+  colonne condivise (operational_site, primary_contact, products_of_interest, offer_lines,
+  business_function), geo di users/companies/company-sites/operational-sites/projects, employment e
+  roles/permissions/user_type di users, client columns di request-management.
+- Cataloghi NON scoped (geo, enum employment, ruoli, permessi, user_type): il blank e' offerto sempre,
+  coerente con la lista che gia' mostra l'intero catalogo e non i soli valori presenti.
+- Custom field / attributi (JSON): `ResolvesDistinctJsonValues` emette `null` quando la chiave manca o
+  vale null/''/`[]`; `AppliesSetFilter` lo traduce in `whereNull` + `= ''` + `= '[]'`. Le colonne text
+  passano dal FilterApplier nativo sul json path, quindi sono coperte dal motore generico.
+- Mai offerto durante una ricerca nella checklist (il blank non matcha nessun termine).
+- Colonne senza blank per costruzione: aggregati `*_count`, `status` di opportunities/work-orders,
+  boolean (catalogo fisso Si/No), colonne `hasFilterValues: false` (nessun tab Set).
+- Test: nuovi `TableBlankSetFilterTest` (4), `ProductCategoryTableTest` (+7), caso JSON in
+  `FieldTypeFilteringTest`; aggiornate ~12 asserzioni preesistenti che ora includono `null`.
+  Suite backend completa VERDE (7746 pass, 1 skip). Typecheck + vitest frontend puliti.
+
 ## REPORT RICHIESTE/ISCRITTI — CATEGORIE DINAMICHE `is_reportable` (spec 0131, 2026-09-15) — VERDE, NON COMMITTATO
 
 - `product_categories.is_reportable` (default false, per-nodo, mai ereditato, come `is_selectable`): migrazione

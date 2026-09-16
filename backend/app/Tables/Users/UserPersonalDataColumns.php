@@ -6,6 +6,7 @@ use App\Enums\PersonalDataTypeEnum;
 use App\Models\Address;
 use App\Models\PersonalData;
 use App\Models\User;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use App\Tables\Shared\PrimaryContactColumn;
 use App\Tables\Users\Concerns\CorrelatesPersonalDataToUser;
 use Illuminate\Database\Eloquent\Builder;
@@ -27,6 +28,7 @@ use Illuminate\Database\Eloquent\Model;
 class UserPersonalDataColumns
 {
     use CorrelatesPersonalDataToUser;
+    use HandlesBlankSetFilter;
 
     /**
      * Maximum number of values honoured in the `user_type` set filter. Caps
@@ -77,14 +79,16 @@ class UserPersonalDataColumns
     {
         $values = $this->typeValues();
 
-        $matches = $search === null || $search === ''
-            ? $values
-            : array_values(array_filter(
+        if ($search !== null && $search !== '') {
+            return array_slice(array_values(array_filter(
                 $values,
                 static fn (string $value): bool => stripos($value, $search) !== false,
-            ));
+            )), 0, $limit);
+        }
 
-        return array_slice($matches, 0, $limit);
+        // The blank entry ("(Vuoti)") sits beside the catalogue (itself
+        // offered unscoped): a user may own no personal-data card at all.
+        return array_merge([null], array_slice($values, 0, $limit));
     }
 
     /**
@@ -117,11 +121,26 @@ class UserPersonalDataColumns
             static fn (string $value): bool => PersonalDataTypeEnum::tryFrom($value) !== null,
         ));
 
-        if ($values !== []) {
-            $query->whereHas('personalData', static function (Builder $cardQuery) use ($values): void {
-                $cardQuery->whereIn('type', $values);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($values === [] && ! $matchesBlank) {
+            return;
         }
+
+        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas('personalData', static function (Builder $cardQuery) use ($values): void {
+                    $cardQuery->whereIn('type', $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): no card, or a card with no type.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('personalData', static function (Builder $cardQuery): void {
+                    $cardQuery->whereNotNull('type');
+                });
+            }
+        });
     }
 
     /**

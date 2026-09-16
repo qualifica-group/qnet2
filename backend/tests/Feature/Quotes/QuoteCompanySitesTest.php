@@ -313,7 +313,8 @@ it('offers the operational site address as distinct values and filters on it', f
         ->assertOk()
         ->json('data.values');
 
-    expect($values)->toBe(['Via Distinta 9']);
+    // `null` first: the blank entry ("(Vuoti)"), offered because a row has no site.
+    expect($values)->toBe([null, 'Via Distinta 9']);
 
     $filtered = $this->postJson('/api/tables/quotes/rows', [
         'startRow' => 0,
@@ -322,4 +323,12 @@ it('offers the operational site address as distinct values and filters on it', f
     ])->assertOk()->json('items');
 
     expect(collect($filtered)->pluck('title')->all())->toBe(['Con sede']);
+
+    $blank = $this->postJson('/api/tables/quotes/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'filterModel' => ['operational_site' => ['filterType' => 'set', 'values' => [null]]],
+    ])->assertOk()->json('items');
+
+    expect(collect($blank)->pluck('title')->all())->toBe(['Senza sede']);
 });

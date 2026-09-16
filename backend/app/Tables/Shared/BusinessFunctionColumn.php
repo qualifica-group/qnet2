@@ -66,10 +66,22 @@ final class BusinessFunctionColumn
     public function applyCategoryIdFilter(Builder $query, array $filter): void
     {
         $names = $this->filterNames($filter);
+        $matchesBlank = $this->matchesBlank($filter);
 
-        if ($names !== []) {
-            $query->whereIn('id', $this->categoryIdsForNames($names));
+        if ($names === [] && ! $matchesBlank) {
+            return;
         }
+
+        $ids = $names === [] ? [] : $this->categoryIdsForNames($names);
+
+        // The blank entry ("(Vuoti)") selects the categories with no effective
+        // function at all: they resolve to ids like any named function does, so
+        // both sides of the selection stay one bound WHERE IN.
+        if ($matchesBlank) {
+            $ids = array_values(array_unique(array_merge($ids, $this->categoryIdsWithoutFunction())));
+        }
+
+        $query->whereIn('id', $ids);
     }
 
     /**
@@ -92,24 +104,33 @@ final class BusinessFunctionColumn
     /**
      * Excel-like distinct values (spec 0004/0005): distinct EFFECTIVE
      * function names among $categoryIds (already scoped by the caller's
-     * query — every OTHER active filter), search-narrowed, sorted, capped.
+     * query — every OTHER active filter), search-narrowed, sorted, capped,
+     * plus the blank entry when some of them resolve to no function.
      *
      * @param  Collection<int, int>  $categoryIds
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
     public function distinctValues(Collection $categoryIds, ?string $search, int $limit): array
     {
-        $names = $categoryIds
-            ->map(fn (int $id): ?string => $this->nameFor($id))
-            ->filter(static fn (?string $name): bool => $name !== null)
-            ->unique();
+        $resolved = $categoryIds->map(fn (int $id): ?string => $this->nameFor($id));
+
+        $names = $resolved->filter(static fn (?string $name): bool => $name !== null)->unique();
 
         if ($search !== null && $search !== '') {
             $needle = mb_strtolower($search);
             $names = $names->filter(static fn (string $name): bool => str_contains(mb_strtolower($name), $needle));
         }
 
-        return $names->sort()->values()->take($limit)->all();
+        $values = $names->sort()->values()->take($limit)->all();
+
+        // `null` is AG Grid's blank entry ("(Vuoti)"): offered whenever a scoped
+        // category inherits no function at all, so those rows stay reachable.
+        // Skipped while searching — the blank entry matches no search term.
+        if (($search === null || $search === '') && $resolved->contains(null)) {
+            array_unshift($values, null);
+        }
+
+        return $values;
     }
 
     /**
@@ -126,6 +147,19 @@ final class BusinessFunctionColumn
 
         return collect($this->namesByCategory())
             ->filter(static fn (?string $name): bool => $name !== null && in_array($name, $names, true))
+            ->keys()
+            ->all();
+    }
+
+    /**
+     * Category ids with no EFFECTIVE business function (own or inherited).
+     *
+     * @return array<int, int>
+     */
+    private function categoryIdsWithoutFunction(): array
+    {
+        return collect($this->namesByCategory())
+            ->filter(static fn (?string $name): bool => $name === null)
             ->keys()
             ->all();
     }
@@ -158,5 +192,17 @@ final class BusinessFunctionColumn
         ));
 
         return array_slice($clean, 0, self::MAX_FILTER_VALUES);
+    }
+
+    /**
+     * Whether the set filter payload carries AG Grid's blank entry.
+     *
+     * @param  array<string, mixed>  $filter
+     */
+    private function matchesBlank(array $filter): bool
+    {
+        $values = $filter['values'] ?? null;
+
+        return is_array($values) && in_array(null, $values, true);
     }
 }

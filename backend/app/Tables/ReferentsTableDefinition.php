@@ -206,11 +206,24 @@ class ReferentsTableDefinition extends AbstractTableDefinition
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names !== []) {
-            $query->whereHas('referentType', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas('referentType', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the referents with no type.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('referentType');
+            }
+        });
 
         return true;
     }
@@ -299,7 +312,7 @@ class ReferentsTableDefinition extends AbstractTableDefinition
     {
         $typeIds = (clone $query)->whereNotNull('referent_type_id')->select('referent_type_id');
 
-        return DB::table('referent_types')
+        $values = DB::table('referent_types')
             ->whereIn('id', $typeIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -310,6 +323,10 @@ class ReferentsTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('referentType')
+            ->exists());
     }
 
     /**
@@ -329,13 +346,17 @@ class ReferentsTableDefinition extends AbstractTableDefinition
             $clone->where('contact_scope', 'like', '%'.$this->escapeLike($search).'%');
         }
 
-        return $clone->whereNotNull('contact_scope')
+        $values = $clone->whereNotNull('contact_scope')
             ->distinct()
             ->orderBy('contact_scope')
             ->limit($limit)
             ->pluck('contact_scope')
             ->map(static fn (mixed $value): string => (string) $value)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereNull('contact_scope')
+            ->exists());
     }
 
     /**

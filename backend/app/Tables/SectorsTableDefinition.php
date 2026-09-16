@@ -192,11 +192,24 @@ class SectorsTableDefinition extends AbstractTableDefinition
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names !== []) {
-            $query->whereHas('parent', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas('parent', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the root sectors, with no parent.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('parent');
+            }
+        });
 
         return true;
     }
@@ -251,7 +264,7 @@ class SectorsTableDefinition extends AbstractTableDefinition
     {
         $parentIds = (clone $query)->whereNotNull('parent_id')->select('parent_id');
 
-        return DB::table('sectors')
+        $values = DB::table('sectors')
             ->whereIn('id', $parentIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -262,6 +275,10 @@ class SectorsTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('parent')
+            ->exists());
     }
 
     /**

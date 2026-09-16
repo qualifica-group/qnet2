@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\RewardedReferents;
 
 use App\Models\Referent;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -29,6 +30,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class RewardedReferentDerivedColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in the `registries` set filter. Caps
      * the WHERE IN cardinality (defence in depth); excess values ignored.
@@ -45,12 +48,24 @@ final class RewardedReferentDerivedColumns
     public function applyRegistriesFilter(Builder $query, array $filter): bool
     {
         $names = $this->stringValues($filter['values'] ?? null);
+        $matchesBlank = $this->matchesBlankEntry($filter);
 
-        if ($names !== []) {
-            $query->whereHas('registries', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas('registries', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the referents linked to no registry.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('registries');
+            }
+        });
 
         return true;
     }
@@ -141,7 +156,7 @@ final class RewardedReferentDerivedColumns
     {
         $referentIds = (clone $query)->select('referents.id');
 
-        return DB::table('referent_registry')
+        $values = DB::table('referent_registry')
             ->join('registries', 'registries.id', '=', 'referent_registry.registry_id')
             ->whereIn('referent_registry.referent_id', $referentIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
@@ -153,6 +168,10 @@ final class RewardedReferentDerivedColumns
             ->pluck('registries.name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('registries')
+            ->exists());
     }
 
     /**

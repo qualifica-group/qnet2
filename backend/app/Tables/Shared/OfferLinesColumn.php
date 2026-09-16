@@ -89,16 +89,26 @@ final class OfferLinesColumn
      * @param  Builder<Model>  $query
      * @param  array<int, string>  $values
      */
-    public static function applyFilter(Builder $query, array $values): void
+    public static function applyFilter(Builder $query, array $values, bool $matchesBlank = false): void
     {
         $values = array_slice($values, 0, self::MAX_FILTER_VALUES);
 
-        if ($values === []) {
+        if ($values === [] && ! $matchesBlank) {
             return;
         }
 
-        $query->whereHas('offerLines.product', static function (Builder $relatedQuery) use ($values): void {
-            $relatedQuery->whereIn('name', $values);
+        // The blank entry ("(Vuoti)") selects the quotes with no revenue-line
+        // product at all — exactly what an empty cell shows.
+        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas('offerLines.product', static function (Builder $relatedQuery) use ($values): void {
+                    $relatedQuery->whereIn('name', $values);
+                });
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('offerLines.product');
+            }
         });
     }
 
@@ -109,13 +119,13 @@ final class OfferLinesColumn
      * `offerLines` scope to inherit it from).
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
     public static function distinctValues(Builder $query, ?string $search, int $limit): array
     {
         $quoteIds = (clone $query)->select('quotes.id');
 
-        return DB::table(self::LINES_TABLE)
+        $values = DB::table(self::LINES_TABLE)
             ->join('products', 'products.id', '=', self::LINES_TABLE.'.'.self::PRODUCT_FK)
             ->where(self::LINES_TABLE.'.line_type', QuoteLineType::Revenue->value)
             ->whereIn(self::LINES_TABLE.'.quote_id', $quoteIds)
@@ -128,6 +138,12 @@ final class OfferLinesColumn
             ->pluck('products.name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        if (($search === null || $search === '') && (clone $query)->whereDoesntHave('offerLines.product')->exists()) {
+            array_unshift($values, null);
+        }
+
+        return $values;
     }
 
     /** Escape LIKE wildcards in user input so they are treated literally. */

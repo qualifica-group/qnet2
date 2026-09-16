@@ -2,6 +2,7 @@
 
 namespace App\Tables\Campaigns;
 
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class CampaignRelationColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
      * the WHERE IN cardinality (defence in depth); excess values ignored.
@@ -61,16 +64,30 @@ final class CampaignRelationColumns
         }
 
         $values = $this->filterValues($filter);
+        $matchesBlank = $this->matchesBlankEntry($filter);
 
-        if ($values !== []) {
-            $query->where(function (Builder $group) use ($config, $values): void {
+        if ($values === [] && ! $matchesBlank) {
+            return true;
+        }
+
+        $query->where(function (Builder $group) use ($config, $values, $matchesBlank): void {
+            if ($values !== []) {
                 $group->whereHas($config['ownRelation'], static function (Builder $relatedQuery) use ($values): void {
                     $relatedQuery->whereIn('name', $values);
                 })->orWhereHas($config['projectRelation'], static function (Builder $relatedQuery) use ($values): void {
                     $relatedQuery->whereIn('name', $values);
                 });
-            });
-        }
+            }
+
+            // The blank entry ("(Vuoti)"): neither the campaign's own product
+            // lines nor the linked project's reach that related row.
+            if ($matchesBlank) {
+                $group->orWhere(static function (Builder $blank) use ($config): void {
+                    $blank->whereDoesntHave($config['ownRelation'])
+                        ->whereDoesntHave($config['projectRelation']);
+                });
+            }
+        });
 
         return true;
     }
@@ -91,7 +108,7 @@ final class CampaignRelationColumns
      * campaigns matching $query.
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>|null
+     * @return array<int, string|null>|null
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
@@ -122,7 +139,14 @@ final class CampaignRelationColumns
             $names = $names->filter(fn (string $name): bool => stripos($name, $search) !== false);
         }
 
-        return $names->sort()->values()->take($limit)->all();
+        return $this->withBlankEntry(
+            $names->sort()->values()->take($limit)->all(),
+            $search,
+            fn (): bool => (clone $query)
+                ->whereDoesntHave($config['ownRelation'])
+                ->whereDoesntHave($config['projectRelation'])
+                ->exists(),
+        );
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Tables\Referents;
 
 use App\Models\Referent;
 use App\Models\User;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class ReferentUserColumn
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in the set filter. Caps the WHERE IN
      * cardinality (defence in depth); excess values are ignored.
@@ -43,11 +46,24 @@ final class ReferentUserColumn
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names !== []) {
-            $query->whereHas('user', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas('user', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the referents linked to no user.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('user');
+            }
+        });
 
         return true;
     }
@@ -80,7 +96,7 @@ final class ReferentUserColumn
     {
         $userIds = (clone $query)->whereNotNull('user_id')->select('user_id');
 
-        return DB::table('users')
+        $values = DB::table('users')
             ->whereIn('id', $userIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -91,6 +107,10 @@ final class ReferentUserColumn
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('user')
+            ->exists());
     }
 
     /**

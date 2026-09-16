@@ -370,7 +370,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
         $names = $this->filterNames($filter);
 
         if ($columnId === self::PROJECT_STATUS_COLUMN) {
-            $this->pipelineStatusResolver->applyFilter($query, $names);
+            $this->pipelineStatusResolver->applyFilter($query, $names, $this->matchesBlankEntry($filter));
 
             return true;
         }
@@ -381,11 +381,25 @@ class CampaignsTableDefinition extends AbstractTableDefinition
             return $this->relationColumns->applyFilter($query, $columnId, $filter);
         }
 
-        if ($names !== []) {
-            $query->whereHas($config['relation'], static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($config, $names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas($config['relation'], static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the campaigns pointing at no
+            // related row at all.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($config['relation']);
+            }
+        });
 
         return true;
     }
@@ -459,7 +473,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
 
         $relatedIds = (clone $query)->whereNotNull($config['fk'])->select($config['fk']);
 
-        return DB::table($config['table'])
+        $values = DB::table($config['table'])
             ->whereIn('id', $relatedIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -470,6 +484,10 @@ class CampaignsTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave($config['relation'])
+            ->exists());
     }
 
     /**

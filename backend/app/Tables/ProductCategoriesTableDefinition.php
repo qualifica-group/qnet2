@@ -300,11 +300,25 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names !== []) {
-            $query->whereHas('parent', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        // AG Grid's blank entry ("(Vuoti)") arrives as a null among the values:
+        // here it selects the ROOT categories, which have no parent at all.
+        $matchesBlank = in_array(null, $values, true);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas('parent', static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereNull('parent_id');
+            }
+        });
 
         return true;
     }
@@ -355,13 +369,13 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
 
     /**
      * @param  Builder<ProductCategory>  $query
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
     private function distinctParentNames(Builder $query, ?string $search, int $limit): array
     {
         $parentIds = (clone $query)->whereNotNull('parent_id')->select('parent_id');
 
-        return DB::table('product_categories')
+        $names = DB::table('product_categories')
             ->whereIn('id', $parentIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -372,6 +386,13 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        // Blank entry ("(Vuoti)"): the root categories of the current scope.
+        if (($search === null || $search === '') && (clone $query)->whereNull('parent_id')->exists()) {
+            array_unshift($names, null);
+        }
+
+        return $names;
     }
 
     /**

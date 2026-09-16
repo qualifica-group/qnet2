@@ -18,7 +18,9 @@ use RuntimeException;
  * tree (id, name, parent_id, inherits_attributes, requires_quote,
  * is_selectable, description, business_function_id) created through
  * ProductCategoryService. `business_function_id` is an EXTERNAL business
- * function id remapped via `old_id` (CategoryBusinessFunctionLinker).
+ * function id remapped via `old_id` (CategoryBusinessFunctionLinker), which
+ * also redirects the functions a created category may not be filed on
+ * ("Formazione" to "FORMAZIONE OLD", user directive 2026-09-16).
  * `is_selectable` (spec 0074) is a plain per-node flag; `requires_quote` is
  * owned by the branch root and only authored on a rootless row (see
  * mapRequiresQuote()). `parent_id` is an EXTERNAL id remapped to the qnet

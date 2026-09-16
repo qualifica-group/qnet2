@@ -5,6 +5,7 @@ namespace App\Tables\Leads;
 use App\Models\Address;
 use App\Models\Lead;
 use App\Models\OperationalSite;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class LeadOperationalSiteColumn
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of values honoured in the set filter. Caps the WHERE IN
      * cardinality (defence in depth); excess values are ignored.
@@ -53,16 +56,28 @@ final class LeadOperationalSiteColumn
      * @param  Builder<Lead>  $query
      * @param  array<int, string>  $values
      */
-    public function applyFilter(Builder $query, array $values): void
+    public function applyFilter(Builder $query, array $values, bool $matchesBlank = false): void
     {
         $values = array_slice($values, 0, self::MAX_FILTER_VALUES);
 
-        if ($values === []) {
+        if ($values === [] && ! $matchesBlank) {
             return;
         }
 
-        $query->whereHas('operationalSite.addresses', static function (Builder $addressQuery) use ($values): void {
-            $addressQuery->where('is_primary', true)->whereIn('line1', $values);
+        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas('operationalSite.addresses', static function (Builder $addressQuery) use ($values): void {
+                    $addressQuery->where('is_primary', true)->whereIn('line1', $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): no site, or a site with no primary
+            // address line — the rows the value list cannot reach.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('operationalSite.addresses', static function (Builder $addressQuery): void {
+                    $addressQuery->where('is_primary', true)->whereNotNull('line1');
+                });
+            }
         });
     }
 
@@ -105,7 +120,7 @@ final class LeadOperationalSiteColumn
     {
         $siteIds = (clone $query)->whereNotNull('operational_site_id')->pluck('operational_site_id');
 
-        return Address::query()
+        $values = Address::query()
             ->whereIn('addressable_id', $siteIds)
             ->where('addressable_type', (new OperationalSite)->getMorphClass())
             ->where('is_primary', true)
@@ -119,6 +134,12 @@ final class LeadOperationalSiteColumn
             ->pluck('line1')
             ->map(static fn (mixed $line1): string => (string) $line1)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave('operationalSite.addresses', static function (Builder $addressQuery): void {
+                $addressQuery->where('is_primary', true)->whereNotNull('line1');
+            })
+            ->exists());
     }
 
     /**

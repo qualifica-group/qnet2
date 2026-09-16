@@ -9,6 +9,7 @@ use App\Models\PersonalData;
 use App\Models\Quote;
 use App\Models\Registry;
 use App\Services\Table\FilterApplier;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -41,6 +42,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class RequestClientColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * PersonalData card columns, keyed by the table column id they back
      * (identical names, but the map keeps the allow-list explicit).
@@ -118,24 +121,74 @@ final class RequestClientColumns
     public function applyFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
         if (isset(self::CARD_COLUMNS[$columnId])) {
-            $column = self::CARD_TABLE.'.'.self::CARD_COLUMNS[$columnId];
-            $query->whereHas(self::CARD_RELATION, function (Builder $cardQuery) use ($column, $columnConfig, $filter): void {
-                $this->filterApplier->apply($cardQuery, $column, $columnConfig, $filter);
-            });
+            $column = self::CARD_COLUMNS[$columnId];
+            $qualified = self::CARD_TABLE.'.'.$column;
+
+            // A row with NO card at all can never satisfy an EXISTS, so the
+            // blank entry ("(Vuoti)") needs its own branch beside it — the
+            // in-card "value is empty" case is the FilterApplier's own.
+            $this->applyWithBlankBranch(
+                $query,
+                function (Builder $group) use ($qualified, $columnConfig, $filter): void {
+                    $group->whereHas(self::CARD_RELATION, function (Builder $cardQuery) use ($qualified, $columnConfig, $filter): void {
+                        $this->filterApplier->apply($cardQuery, $qualified, $columnConfig, $filter);
+                    });
+                },
+                static function (Builder $group) use ($column): void {
+                    $group->orWhereDoesntHave(self::CARD_RELATION, static function (Builder $cardQuery) use ($column): void {
+                        $cardQuery->whereNotNull($column)->where($column, '<>', '');
+                    });
+                },
+                $filter,
+            );
 
             return true;
         }
 
         if ($columnId === self::PHONE_COLUMN) {
-            $query->whereHas(self::CONTACTS_RELATION, function (Builder $contactQuery) use ($columnConfig, $filter): void {
-                self::scopeToPrimaryPhone($contactQuery);
-                $this->filterApplier->apply($contactQuery, self::CONTACTS_TABLE.'.value', $columnConfig, $filter);
-            });
+            $this->applyWithBlankBranch(
+                $query,
+                function (Builder $group) use ($columnConfig, $filter): void {
+                    $group->whereHas(self::CONTACTS_RELATION, function (Builder $contactQuery) use ($columnConfig, $filter): void {
+                        self::scopeToPrimaryPhone($contactQuery);
+                        $this->filterApplier->apply($contactQuery, self::CONTACTS_TABLE.'.value', $columnConfig, $filter);
+                    });
+                },
+                static function (Builder $group): void {
+                    $group->orWhereDoesntHave(self::CONTACTS_RELATION, static function (Builder $contactQuery): void {
+                        self::scopeToPrimaryPhone($contactQuery)->whereNotNull('value')->where('value', '<>', '');
+                    });
+                },
+                $filter,
+            );
 
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Wrap the column's own EXISTS match and, when the blank entry is ticked,
+     * the "no related row carries a value" branch in one OR group, so the two
+     * AND-combine with every other active filter instead of widening them.
+     *
+     * @param  Builder<Quote>  $query
+     * @param  callable(Builder<Quote>): void  $match
+     * @param  callable(Builder<Quote>): void  $blankBranch
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyWithBlankBranch(Builder $query, callable $match, callable $blankBranch, array $filter): void
+    {
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        $query->where(static function (Builder $group) use ($match, $blankBranch, $matchesBlank): void {
+            $match($group);
+
+            if ($matchesBlank) {
+                $blankBranch($group);
+            }
+        });
     }
 
     /**
@@ -169,7 +222,7 @@ final class RequestClientColumns
      * collaborator does not own.
      *
      * @param  Builder<Quote>  $query
-     * @return array<int, string>|null
+     * @return array<int, string|null>|null
      */
     public function distinctValues(string $columnId, Builder $query, ?string $search, int $limit): ?array
     {
@@ -177,8 +230,9 @@ final class RequestClientColumns
             $column = self::CARD_COLUMNS[$columnId];
             $needle = $this->needle($search);
 
-            return $this->cardQueryFor($query)
+            $values = $this->cardQueryFor($query)
                 ->whereNotNull($column)
+                ->where($column, '<>', '')
                 ->when($needle !== null, fn (QueryBuilder $builder) => $builder->where($column, 'like', $needle))
                 ->distinct()
                 ->orderBy($column)
@@ -186,10 +240,20 @@ final class RequestClientColumns
                 ->pluck($column)
                 ->map(static fn (mixed $value): string => (string) $value)
                 ->all();
+
+            return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+                ->whereDoesntHave(self::CARD_RELATION, static function (Builder $cardQuery) use ($column): void {
+                    $cardQuery->whereNotNull($column)->where($column, '<>', '');
+                })
+                ->exists());
         }
 
         if ($columnId === self::PHONE_COLUMN) {
-            return $this->distinctPhones($query, $search, $limit);
+            return $this->withBlankEntry($this->distinctPhones($query, $search, $limit), $search, fn (): bool => (clone $query)
+                ->whereDoesntHave(self::CONTACTS_RELATION, static function (Builder $contactQuery): void {
+                    self::scopeToPrimaryPhone($contactQuery)->whereNotNull('value')->where('value', '<>', '');
+                })
+                ->exists());
         }
 
         return null;

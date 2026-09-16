@@ -172,6 +172,12 @@ export const productCategories = {
     businessFunctionError: 'Impossibile caricare le funzioni aziendali.',
     businessFunctionInheritedHint:
       'Ereditata da "{{category}}". Per modificarla, agisci su quella categoria.',
+    businessFunctionResetTitle: 'Le sottocategorie perderanno la loro funzione aziendale',
+    businessFunctionResetDescription_one:
+      'Assegnando una funzione aziendale a questa categoria, la sottocategoria seguente perde la propria e eredita quella scelta qui:',
+    businessFunctionResetDescription_other:
+      'Assegnando una funzione aziendale a questa categoria, le {{count}} sottocategorie seguenti perdono la propria e ereditano quella scelta qui:',
+    businessFunctionResetConfirm: 'Assegna e azzera',
     requiresQuote: 'Prevede preventivo',
     requiresQuoteHint:
       'Se attivo, questa categoria e tutte le sue sottocategorie prevedono il preventivo.',

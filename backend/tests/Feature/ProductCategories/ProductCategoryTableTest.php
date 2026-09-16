@@ -189,8 +189,9 @@ it('values: parent → distinct parent names, columnId outside the allow-list �
     ProductCategory::factory()->childOf($rootB)->create();
     Sanctum::actingAs($actor);
 
+    // `null` is the blank entry ("(Vuoti)"): the two roots have no parent.
     $response = $this->postJson('/api/tables/product-categories/values', ['columnId' => 'parent'])->assertOk();
-    expect($response->json('data.values'))->toEqualCanonicalizing(['Electronics', 'Clothing']);
+    expect($response->json('data.values'))->toEqualCanonicalizing([null, 'Electronics', 'Clothing']);
 
     $this->postJson('/api/tables/product-categories/values', ['columnId' => 'not_a_column'])
         ->assertStatus(422)->assertJsonValidationErrors('columnId');
@@ -241,8 +242,134 @@ it('values: business_function → distinct EFFECTIVE names', function () {
     ProductCategory::factory()->create();
     Sanctum::actingAs($actor);
 
+    // `null` first: the unrelated category inherits no function at all.
     $response = $this->postJson('/api/tables/product-categories/values', ['columnId' => 'business_function'])->assertOk();
-    expect($response->json('data.values'))->toBe(['Sales']);
+    expect($response->json('data.values'))->toBe([null, 'Sales']);
+});
+
+// ---------------------------------------------------------------------------
+// blank entry ("(Vuoti)") on the set filters: AG Grid round-trips it as a
+// `null` among the values, on real and derived columns alike
+// ---------------------------------------------------------------------------
+
+it('values: a real column offers the blank entry when the scoped rows hold empty cells', function () {
+    $actor = productCategoryUserWith(['viewAny']);
+    ProductCategory::factory()->create(['name' => 'Described', 'description' => 'Some text']);
+    ProductCategory::factory()->create(['name' => 'Null desc', 'description' => null]);
+    ProductCategory::factory()->create(['name' => 'Empty desc', 'description' => '']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/product-categories/values', ['columnId' => 'description'])->assertOk();
+
+    // The empty string is NOT a value of its own: it is folded into the single
+    // blank entry, so the checklist never shows two indistinguishable rows.
+    expect($response->json('data.values'))->toBe([null, 'Some text']);
+});
+
+it('values: no blank entry when every scoped row has a value, nor while searching', function () {
+    $actor = productCategoryUserWith(['viewAny']);
+    ProductCategory::factory()->create(['description' => 'Some text']);
+    ProductCategory::factory()->create(['description' => 'Other text']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/product-categories/values', ['columnId' => 'description'])->assertOk();
+    expect($response->json('data.values'))->toEqualCanonicalizing(['Some text', 'Other text']);
+
+    ProductCategory::factory()->create(['description' => null]);
+
+    $response = $this->postJson('/api/tables/product-categories/values', [
+        'columnId' => 'description', 'search' => 'Some',
+    ])->assertOk();
+    expect($response->json('data.values'))->toBe(['Some text']);
+});
+
+it('filter: a real column set filter on the blank entry returns the empty cells only', function () {
+    $actor = productCategoryUserWith(['viewAny']);
+    ProductCategory::factory()->create(['name' => 'Described', 'description' => 'Some text']);
+    ProductCategory::factory()->create(['name' => 'Null desc', 'description' => null]);
+    ProductCategory::factory()->create(['name' => 'Empty desc', 'description' => '']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/product-categories/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['description' => ['filterType' => 'set', 'values' => [null]]],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('name')->all())
+        ->toEqualCanonicalizing(['Null desc', 'Empty desc']);
+});
+
+it('filter: the blank entry combines with the picked values instead of replacing them', function () {
+    $actor = productCategoryUserWith(['viewAny']);
+    ProductCategory::factory()->create(['name' => 'Described', 'description' => 'Some text']);
+    ProductCategory::factory()->create(['name' => 'Other', 'description' => 'Other text']);
+    ProductCategory::factory()->create(['name' => 'Null desc', 'description' => null]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/product-categories/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['description' => ['filterType' => 'set', 'values' => ['Some text', null]]],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('name')->all())
+        ->toEqualCanonicalizing(['Described', 'Null desc']);
+});
+
+it('filter: the blank entry also travels inside the multi filter shape the grid sends for a text column', function () {
+    $actor = productCategoryUserWith(['viewAny']);
+    ProductCategory::factory()->create(['name' => 'Described', 'description' => 'Some text']);
+    ProductCategory::factory()->create(['name' => 'Null desc', 'description' => null]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/product-categories/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => [
+            'description' => [
+                'filterType' => 'multi',
+                'filterModels' => [['filterType' => 'set', 'values' => [null]], null],
+            ],
+        ],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('name')->all())->toBe(['Null desc']);
+});
+
+it('filter: business_function blank entry returns the categories inheriting no function', function () {
+    $actor = productCategoryUserWith(['viewAny']);
+    $function = BusinessFunction::factory()->create(['name' => 'Sales']);
+    $root = ProductCategory::factory()->create(['name' => 'Root', 'business_function_id' => $function->id]);
+    ProductCategory::factory()->childOf($root)->create(['name' => 'Child']);
+    ProductCategory::factory()->create(['name' => 'Unrelated']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/product-categories/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['business_function' => ['filterType' => 'set', 'values' => [null]]],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('name')->all())->toBe(['Unrelated']);
+
+    $response = $this->postJson('/api/tables/product-categories/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['business_function' => ['filterType' => 'set', 'values' => ['Sales', null]]],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('name')->all())
+        ->toEqualCanonicalizing(['Root', 'Child', 'Unrelated']);
+});
+
+it('filter: parent blank entry returns the root categories only', function () {
+    $actor = productCategoryUserWith(['viewAny']);
+    $root = ProductCategory::factory()->create(['name' => 'Electronics']);
+    ProductCategory::factory()->childOf($root)->create(['name' => 'Laptops']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/product-categories/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['parent' => ['filterType' => 'set', 'values' => [null]]],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('name')->all())->toBe(['Electronics']);
 });
 
 it('business_function is declared non-sortable, rejected by the sortModel allow-list (422)', function () {

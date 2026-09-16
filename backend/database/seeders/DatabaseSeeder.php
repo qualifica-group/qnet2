@@ -22,6 +22,9 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         Artisan::call('locations:add');
+        // Clean reference data: the Italian comuni the world.sql extract is
+        // missing, so an import's `comune` string can resolve to a city row.
+        $this->call(ItalianMunicipalitySeeder::class);
 
         $this->call(RolePermissionSeeder::class);
         // Clean reference data (spec 0088, D-3): unlike every other lookup

@@ -8,6 +8,7 @@ use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
 use App\Services\Table\FilterApplier;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -31,6 +32,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class WorkOrderDerivedColumns
 {
+    use HandlesBlankSetFilter;
+
     private const string CONTRACT_NUMBER_COLUMN = 'contract_number';
 
     private const string QUOTE_COLUMN = 'quote';
@@ -83,7 +86,7 @@ final class WorkOrderDerivedColumns
         }
 
         if ($columnId === self::SUPERVISORS_COLUMN) {
-            $this->applySupervisorsFilter($query, $this->setFilterValues($filter));
+            $this->applySupervisorsFilter($query, $this->setFilterValues($filter), $this->matchesBlankEntry($filter));
 
             return true;
         }
@@ -112,14 +115,23 @@ final class WorkOrderDerivedColumns
      * @param  Builder<Model>  $query
      * @param  array<int, string>  $values
      */
-    private function applySupervisorsFilter(Builder $query, array $values): void
+    private function applySupervisorsFilter(Builder $query, array $values, bool $matchesBlank = false): void
     {
-        if ($values === []) {
+        if ($values === [] && ! $matchesBlank) {
             return;
         }
 
-        $query->whereHas(self::SUPERVISORS_RELATION, static function (Builder $userQuery) use ($values): void {
-            $userQuery->whereIn(self::USER_LABEL_COLUMN, $values);
+        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas(self::SUPERVISORS_RELATION, static function (Builder $userQuery) use ($values): void {
+                    $userQuery->whereIn(self::USER_LABEL_COLUMN, $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the commesse with no responsabile.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave(self::SUPERVISORS_RELATION);
+            }
         });
     }
 
@@ -170,7 +182,11 @@ final class WorkOrderDerivedColumns
             self::TYPE_COLUMN => $this->filterOptions($search, WorkOrderType::values()),
             self::IS_FORCE_CLOSED_COLUMN => $this->filterOptions($search, ['true', 'false']),
             self::STATUS_COLUMN => $this->filterOptions($search, WorkOrderStatus::values()),
-            self::SUPERVISORS_COLUMN => $this->distinctSupervisorNames($search, $query, $limit),
+            self::SUPERVISORS_COLUMN => $this->withBlankEntry(
+                $this->distinctSupervisorNames($search, $query, $limit),
+                $search,
+                fn (): bool => (clone $query)->whereDoesntHave(self::SUPERVISORS_RELATION)->exists(),
+            ),
             default => null,
         };
     }

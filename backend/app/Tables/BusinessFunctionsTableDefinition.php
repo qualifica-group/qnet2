@@ -231,11 +231,24 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
             static fn ($value): bool => is_string($value) && $value !== '',
         )), 0, self::MAX_FILTER_VALUES);
 
-        if ($names !== []) {
-            $query->whereHas($relation, static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($names === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($relation, $names, $matchesBlank): void {
+            if ($names !== []) {
+                $group->whereHas($relation, static function (Builder $relatedQuery) use ($names): void {
+                    $relatedQuery->whereIn('name', $names);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): no user on that relation at all.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($relation);
+            }
+        });
 
         return true;
     }
@@ -283,8 +296,8 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         return match ($columnId) {
-            'manager' => $this->distinctManagerNames($query, $search, $limit),
-            'users' => $this->distinctAssociatedUserNames($query, $search, $limit),
+            'manager' => $this->withBlanksFor($this->distinctManagerNames($query, $search, $limit), 'manager', $search, $query),
+            'users' => $this->withBlanksFor($this->distinctAssociatedUserNames($query, $search, $limit), 'users', $search, $query),
             'parent' => $this->parentColumn->distinctValues($query, $search, $limit),
             'operational_sites' => $this->operationalSitesColumn->distinctValues($query, $search, $limit),
             default => null,
@@ -332,6 +345,23 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
             ->pluck('users.name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+    }
+
+    /**
+     * Offer the blank entry when some scoped row has no related user on
+     * `$relation` — what an empty `manager`/`users` cell means.
+     *
+     * @param  array<int, string|null>  $values
+     * @param  Builder<BusinessFunction>  $query
+     * @return array<int, string|null>
+     */
+    private function withBlanksFor(array $values, string $relation, ?string $search, Builder $query): array
+    {
+        return $this->withBlankEntry(
+            $values,
+            $search,
+            fn (): bool => (clone $query)->whereDoesntHave($relation)->exists(),
+        );
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Tables\Shared;
 use App\Models\Address;
 use App\Models\OperationalSite;
 use App\Support\OperationalSiteLabel;
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -27,6 +28,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class OperationalSiteColumn
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of values honoured in the set filter. Caps the WHERE IN
      * cardinality (defence in depth); excess values are ignored.
@@ -43,21 +46,33 @@ final class OperationalSiteColumn
 
     /**
      * Match rows whose site's primary address `line1` is among $values
-     * (bound parameters, no raw SQL).
+     * (bound parameters, no raw SQL). `$matchesBlank` adds the rows the value
+     * list cannot reach at all — no site, or a site with no primary `line1` —
+     * i.e. the ones whose cell reads empty.
      *
      * @param  Builder<Model>  $query
      * @param  array<int, string>  $values
      */
-    public function applyFilter(Builder $query, string $relation, array $values): void
+    public function applyFilter(Builder $query, string $relation, array $values, bool $matchesBlank = false): void
     {
         $values = array_slice($values, 0, self::MAX_FILTER_VALUES);
 
-        if ($values === []) {
+        if ($values === [] && ! $matchesBlank) {
             return;
         }
 
-        $query->whereHas("{$relation}.addresses", static function (Builder $addressQuery) use ($values): void {
-            $addressQuery->where('is_primary', true)->whereIn('line1', $values);
+        $query->where(static function (Builder $group) use ($relation, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas("{$relation}.addresses", static function (Builder $addressQuery) use ($values): void {
+                    $addressQuery->where('is_primary', true)->whereIn('line1', $values);
+                });
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave("{$relation}.addresses", static function (Builder $addressQuery): void {
+                    $addressQuery->where('is_primary', true)->whereNotNull('line1');
+                });
+            }
         });
     }
 
@@ -91,16 +106,17 @@ final class OperationalSiteColumn
     /**
      * Distinct primary-address `line1` values among the sites referenced by
      * rows matching $query (already scoped by every other active filter),
-     * optionally narrowed by a case-insensitive substring search.
+     * optionally narrowed by a case-insensitive substring search, plus the
+     * blank entry when some scoped row has no reachable value at all.
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
-    public function distinctValues(Builder $query, string $fkColumn, ?string $search, int $limit): array
+    public function distinctValues(Builder $query, string $fkColumn, string $relation, ?string $search, int $limit): array
     {
         $siteIds = (clone $query)->whereNotNull($fkColumn)->select($fkColumn);
 
-        return Address::query()
+        $values = Address::query()
             ->whereIn('addressable_id', $siteIds)
             ->where('addressable_type', (new OperationalSite)->getMorphClass())
             ->where('is_primary', true)
@@ -114,6 +130,12 @@ final class OperationalSiteColumn
             ->pluck('line1')
             ->map(static fn (mixed $line1): string => (string) $line1)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave("{$relation}.addresses", static function (Builder $addressQuery): void {
+                $addressQuery->where('is_primary', true)->whereNotNull('line1');
+            })
+            ->exists());
     }
 
     /**

@@ -269,14 +269,16 @@ class ProductsTableDefinition extends AbstractTableDefinition
      * would hydrate the ProductType cast and fail to stringify it).
      *
      * @param  Builder<Product>  $query
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
     private function distinctProductTypes(?string $search, Builder $query, int $limit): array
     {
         $productIds = (clone $query)->select('products.id');
 
-        return DB::table('products')
+        $values = DB::table('products')
             ->whereIn('id', $productIds)
+            ->whereNotNull('product_type')
+            ->where('product_type', '<>', '')
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('product_type', 'like', '%'.$this->escapeLike($search).'%');
             })
@@ -286,6 +288,12 @@ class ProductsTableDefinition extends AbstractTableDefinition
             ->pluck('product_type')
             ->map(static fn (mixed $value): string => (string) $value)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->where(static function (Builder $group): void {
+                $group->whereNull('product_type')->orWhere('product_type', '=', '');
+            })
+            ->exists());
     }
 
     /**

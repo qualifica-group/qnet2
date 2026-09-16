@@ -285,5 +285,6 @@ it('filters, sorts and resolves distinct values for derived category and product
     ])->assertOk()->assertJsonPath('data.values', ['Alpha category']);
     $this->postJson('/api/tables/commission-configurations/values', [
         'columnId' => 'product',
-    ])->assertOk()->assertJsonPath('data.values', ['Alpha product', 'Zeta product']);
+        // `null` first: the blank entry ("(Vuoti)") for the rules with no product.
+    ])->assertOk()->assertJsonPath('data.values', [null, 'Alpha product', 'Zeta product']);
 });

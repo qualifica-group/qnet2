@@ -2,6 +2,7 @@
 
 namespace App\Tables\Projects;
 
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class ProjectRelationColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
      * the WHERE IN cardinality (defence in depth); excess values ignored.
@@ -50,12 +53,25 @@ final class ProjectRelationColumns
         }
 
         $values = $this->filterValues($filter);
+        $matchesBlank = $this->matchesBlankEntry($filter);
 
-        if ($values !== []) {
-            $query->whereHas($config['relation'], static function (Builder $relatedQuery) use ($values): void {
-                $relatedQuery->whereIn('name', $values);
-            });
+        if ($values === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($config, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas($config['relation'], static function (Builder $relatedQuery) use ($values): void {
+                    $relatedQuery->whereIn('name', $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the projects with no product line
+            // reaching that related row.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($config['relation']);
+            }
+        });
 
         return true;
     }
@@ -75,7 +91,7 @@ final class ProjectRelationColumns
      * `project_product_lines` — scoped to the projects matching $query.
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>|null
+     * @return array<int, string|null>|null
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
@@ -87,7 +103,7 @@ final class ProjectRelationColumns
 
         $projectIds = (clone $query)->select('id');
 
-        return DB::table('project_product_lines')
+        $values = DB::table('project_product_lines')
             ->join($config['table'], "{$config['table']}.id", '=', "project_product_lines.{$config['fk']}")
             ->whereIn('project_product_lines.project_id', $projectIds)
             ->when($search !== null && $search !== '', function ($builder) use ($config, $search): void {
@@ -99,6 +115,10 @@ final class ProjectRelationColumns
             ->pluck("{$config['table']}.name")
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave($config['relation'])
+            ->exists());
     }
 
     /**

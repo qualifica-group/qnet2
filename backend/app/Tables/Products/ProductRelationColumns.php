@@ -2,6 +2,7 @@
 
 namespace App\Tables\Products;
 
+use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class ProductRelationColumns
 {
+    use HandlesBlankSetFilter;
+
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
      * the WHERE IN cardinality (defence in depth); excess values ignored.
@@ -54,12 +57,25 @@ final class ProductRelationColumns
         }
 
         $values = $this->filterValues($filter);
+        $matchesBlank = $this->matchesBlankEntry($filter);
 
-        if ($values !== []) {
-            $query->whereHas($config['relation'], static function (Builder $relatedQuery) use ($values): void {
-                $relatedQuery->whereIn('name', $values);
-            });
+        if ($values === [] && ! $matchesBlank) {
+            return true;
         }
+
+        $query->where(static function (Builder $group) use ($config, $values, $matchesBlank): void {
+            if ($values !== []) {
+                $group->whereHas($config['relation'], static function (Builder $relatedQuery) use ($values): void {
+                    $relatedQuery->whereIn('name', $values);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the products pointing at no related
+            // row at all — what an empty cell means here.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave($config['relation']);
+            }
+        });
 
         return true;
     }
@@ -94,7 +110,7 @@ final class ProductRelationColumns
      * active filter). Null for a column this class does not own.
      *
      * @param  Builder<Model>  $query
-     * @return array<int, string>|null
+     * @return array<int, string|null>|null
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
@@ -106,7 +122,7 @@ final class ProductRelationColumns
 
         $relatedIds = (clone $query)->select("products.{$config['fk']}");
 
-        return DB::table($config['table'])
+        $values = DB::table($config['table'])
             ->whereIn('id', $relatedIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
@@ -117,6 +133,10 @@ final class ProductRelationColumns
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+
+        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
+            ->whereDoesntHave($config['relation'])
+            ->exists());
     }
 
     /**

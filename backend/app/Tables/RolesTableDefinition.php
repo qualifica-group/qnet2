@@ -249,7 +249,13 @@ class RolesTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         if ($columnId === 'permissions') {
-            return $this->permissionCatalogue->names($search, $limit);
+            // The blank entry ("(Vuoti)") sits beside the catalogue (itself
+            // offered unscoped): a role may carry no permission at all.
+            return $this->withBlankEntry(
+                $this->permissionCatalogue->names($search, $limit),
+                $search,
+                static fn (): bool => true,
+            );
         }
 
         if ($columnId === 'users_count') {
@@ -355,15 +361,26 @@ class RolesTableDefinition extends AbstractTableDefinition
             static fn ($value): bool => is_string($value) && $value !== '',
         ));
 
-        if ($permissions === []) {
+        $matchesBlank = $this->matchesBlankEntry($filter);
+
+        if ($permissions === [] && ! $matchesBlank) {
             return true;
         }
 
         // Cap cardinality so the WHERE IN stays bounded (defence in depth).
         $permissions = array_slice($permissions, 0, self::MAX_PERMISSION_FILTER_VALUES);
 
-        $query->whereHas('permissions', static function (Builder $permissionQuery) use ($permissions): void {
-            $permissionQuery->whereIn('name', $permissions);
+        $query->where(static function (Builder $group) use ($permissions, $matchesBlank): void {
+            if ($permissions !== []) {
+                $group->whereHas('permissions', static function (Builder $permissionQuery) use ($permissions): void {
+                    $permissionQuery->whereIn('name', $permissions);
+                });
+            }
+
+            // The blank entry ("(Vuoti)"): the roles carrying no permission.
+            if ($matchesBlank) {
+                $group->orWhereDoesntHave('permissions');
+            }
         });
 
         return true;

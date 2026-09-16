@@ -204,7 +204,7 @@ it('resolves distinct referent_type names via /values', function () {
 
     $response = $this->postJson('/api/tables/referents/values', ['columnId' => 'referent_type'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['Commercial']);
+    expect($response->json('data.values'))->toBe([null, 'Commercial']);
 });
 
 it('resolves distinct contact_scope values via /values', function () {
@@ -228,7 +228,8 @@ it('resolves distinct primary_contact values via /values (identical to Users)', 
 
     $response = $this->postJson('/api/tables/referents/values', ['columnId' => 'primary_contact'])->assertOk();
 
-    expect($response->json('data.values'))->toBe(['ada@example.com']);
+    // `null` first: the blank entry ("(Vuoti)") — the referent with no card.
+    expect($response->json('data.values'))->toBe([null, 'ada@example.com']);
 });
 
 // ---------------------------------------------------------------------------

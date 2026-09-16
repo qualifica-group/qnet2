@@ -434,3 +434,60 @@ it('fills the function of an adopted category only when its slot is free', funct
         // An assignment made in qnet is never overwritten by the import.
         ->and($occupied->fresh()->business_function_id)->toBe($manualFunction->id);
 });
+
+// ---------------------------------------------------------------------------
+// Redirected functions — the legacy training tree never lands on "Formazione"
+// (user directive 2026-09-16)
+// ---------------------------------------------------------------------------
+
+it('files an imported category on "FORMAZIONE OLD" instead of the "Formazione" function', function () {
+    seedMigrationsConfig();
+    $imported = BusinessFunction::factory()->create(['old_id' => 2, 'name' => 'Formazione']);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 1, 'name' => 'FOR_Corsi', 'parent_id' => null, 'business_function_id' => 2],
+                ['id' => 2, 'name' => 'FOR_Classi', 'parent_id' => 1, 'business_function_id' => 2],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']);
+
+    runMigrationJobFor($run);
+
+    $replacement = BusinessFunction::query()->where('name', 'FORMAZIONE OLD')->first();
+
+    expect($replacement)->not->toBeNull()
+        // Created by the redirect, not claimed from the legacy catalogue.
+        ->and($replacement->old_id)->toBeNull()
+        ->and($replacement->id)->not->toBe($imported->id)
+        ->and(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBe($replacement->id)
+        // Same redirected function on the child: it inherits, with no mismatch
+        // warning.
+        ->and(ProductCategory::query()->where('old_id', 2)->value('business_function_id'))->toBeNull()
+        ->and($run->fresh()->report)->toBeNull();
+});
+
+it('leaves an adopted category on the "Formazione" function itself', function () {
+    seedMigrationsConfig();
+    $imported = BusinessFunction::factory()->create(['old_id' => 2, 'name' => 'Formazione']);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [['id' => 30, 'name' => 'Formazione', 'parent_id' => null, 'business_function_id' => 2]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $adopted = ProductCategory::factory()->create(['name' => 'Formazione', 'parent_id' => null, 'business_function_id' => null]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
+
+    expect($adopted->fresh()->business_function_id)->toBe($imported->id)
+        ->and(BusinessFunction::query()->where('name', 'FORMAZIONE OLD')->exists())->toBeFalse();
+});

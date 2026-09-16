@@ -54,3 +54,53 @@ export function resolveInheritedBusinessFunction(
 
   return null
 }
+
+/** A descendant whose OWN business function a save is about to clear. */
+export interface BusinessFunctionResetCandidate {
+  id: number
+  name: string
+}
+
+/**
+ * The descendants of `categoryId` carrying their OWN business function —
+ * exactly the rows the backend's cascade-to-null clears once the category
+ * acquires an effective one (spec 0023, `ProductCategoryService::
+ * cascadeBusinessFunctionToDescendants`). Depth-first, so the list reads in
+ * tree order. Empty when the category is not in the tree yet (create mode) or
+ * no descendant owns one.
+ */
+export function collectDescendantsWithOwnBusinessFunction(
+  nodes: ProductCategoryTreeNode[],
+  categoryId: number,
+): BusinessFunctionResetCandidate[] {
+  const target = findCategoryNode(nodes, categoryId)
+
+  return target === null ? [] : collectOwnBusinessFunctionNodes(target.children)
+}
+
+function findCategoryNode(
+  nodes: ProductCategoryTreeNode[],
+  categoryId: number,
+): ProductCategoryTreeNode | null {
+  for (const node of nodes) {
+    if (node.id === categoryId) {
+      return node
+    }
+
+    const found = findCategoryNode(node.children, categoryId)
+    if (found !== null) {
+      return found
+    }
+  }
+
+  return null
+}
+
+function collectOwnBusinessFunctionNodes(
+  nodes: ProductCategoryTreeNode[],
+): BusinessFunctionResetCandidate[] {
+  return nodes.flatMap((node) => [
+    ...(node.business_function_id !== null ? [{ id: node.id, name: node.name }] : []),
+    ...collectOwnBusinessFunctionNodes(node.children),
+  ])
+}

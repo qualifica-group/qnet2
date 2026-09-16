@@ -171,6 +171,12 @@ export const productCategories = {
     businessFunctionError: 'Unable to load business functions.',
     businessFunctionInheritedHint:
       'Inherited from "{{category}}". To change it, edit that category instead.',
+    businessFunctionResetTitle: 'Subcategories will lose their own business function',
+    businessFunctionResetDescription_one:
+      'Assigning a business function to this category clears the one the subcategory below owns: it will inherit the function picked here instead.',
+    businessFunctionResetDescription_other:
+      'Assigning a business function to this category clears the ones the {{count}} subcategories below own: they will inherit the function picked here instead.',
+    businessFunctionResetConfirm: 'Assign and clear',
     requiresQuote: 'Quoted',
     requiresQuoteHint: 'When on, this category and every subcategory below it are quoted.',
     requiresQuoteInheritedHint:
