@@ -134,11 +134,10 @@ export const opportunities = {
     workflowStatusHint:
       'Lo stato di lavorazione interno, distinto dallo Stato Opportunità: limitato al set di stati risolto per questa opportunità.',
     productLines: {
-      fieldLabel: 'Righe funzione/categoria',
-      // Spec 0077 INV-2: tutte le righe di una scheda condividono la stessa
-      // Funzione aziendale, in entrambe le modalità (D-5: solo se la
-      // collezione è stata effettivamente modificata).
-      businessFunctionMismatch: 'Tutte le righe devono condividere la stessa funzione aziendale.',
+      // Spec 0132: non più funzione+categoria ma categoria genitore +
+      // categoria — la funzione aziendale è derivata e mostrata sola in
+      // lettura.
+      fieldLabel: 'Righe di classificazione',
     },
     rewards: {
       fieldLabel: 'Buoni assegnati',

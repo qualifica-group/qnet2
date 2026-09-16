@@ -30,7 +30,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     partner_id: null,
     operational_site_id: null,
     pipeline_status_id: 1,
-    product_lines: [{ business_function_id: 2, product_category_id: 4 }],
+    product_lines: [{ root_category_id: null, product_category_id: 4 }],
     country_id: 10,
     state_id: null,
     province_id: null,
@@ -74,7 +74,7 @@ describe('buildCreateCampaignSchema — standalone (project_id null)', () => {
   it('rejects an incomplete row when standalone', () => {
     const schema = buildCreateCampaignSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
     const result = schema.safeParse(
-      baseValues({ product_lines: [{ business_function_id: 2, product_category_id: null }] }),
+      baseValues({ product_lines: [{ root_category_id: null, product_category_id: null }] }),
     )
     expect(result.success).toBe(false)
     if (!result.success) {

@@ -43,6 +43,7 @@ it('the notes core never references a host module outside config/notes.php (AC-0
     $needles = [
         'Opportunity', 'RequestManagement', 'request-management',
         'Task', 'TaskNotable', 'App\\Services\\Tasks',
+        'WorkOrder', 'App\\Services\\WorkOrders',
     ];
 
     foreach ($files as $file) {

@@ -66,6 +66,19 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 vi.mock('@/features/product-lines/product-category-tree-select', async () =>
   await import('@/features/product-lines/product-category-tree-select-stub'))
 
+/** The row's FIRST step (spec 0132): read-only double, mirrors `AsyncPaginatedSelect` above. */
+vi.mock('@/features/product-lines/product-category-root-select', () => ({
+  ProductCategoryRootSelect: ({
+    value,
+    triggerLabel,
+  }: {
+    value: number | null
+    onChange: (rootCategoryId: number) => void
+    disabled?: boolean
+    triggerLabel: string
+  }) => <button type="button" data-testid={`select-${triggerLabel}`}>{value ?? ''}</button>,
+}))
+
 vi.mock('@/features/geo/geo-select', () => ({
   GeoSelect: ({ value }: { value: { country_id: number | null } }) => (
     <div data-testid="geo-select">{value.country_id ?? ''}</div>
@@ -151,7 +164,8 @@ describe('ProjectForm — duplicate (row action "duplicate")', () => {
     expect(screen.getByRole('textbox', { name: 'Code' })).toHaveValue('PRJ-0200')
     // Every other field is carried over from the source, unattended, into the visible controls.
     expect(screen.getByTestId('select-Status')).toHaveTextContent('3')
-    expect(screen.getByTestId('select-Business function 1')).toHaveTextContent('2')
+    // Spec 0132: only `product_category_id` carries over — the root is
+    // resolved from the tree at render time (own suite, not asserted here).
     expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('4')
     expect(screen.getByTestId('geo-select')).toHaveTextContent('1')
 
@@ -162,7 +176,7 @@ describe('ProjectForm — duplicate (row action "duplicate")', () => {
     const payload = createProjectMock.mock.calls[0][0] as Record<string, unknown>
     expect(payload.name).toBe('Acme rollout (copy)')
     expect(payload.code).toBe('PRJ-0200')
-    expect(payload.product_lines).toEqual([{ business_function_id: 2, product_category_id: 4 }])
+    expect(payload.product_lines).toEqual([{ product_category_id: 4 }])
     expect(payload.country_id).toBe(1)
     expect(payload.pipeline_status_id).toBe(3)
   })

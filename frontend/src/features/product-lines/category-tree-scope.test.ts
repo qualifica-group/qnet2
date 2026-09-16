@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { pickableCategoryIdsFor, resolveSimplifiedOfferLine } from '@/features/product-lines/category-tree-scope'
+import {
+  pickableCategoryIdsFor,
+  resolveSimplifiedOfferLine,
+  rootCategoryIdFor,
+  selectableIdsUnderRoot,
+} from '@/features/product-lines/category-tree-scope'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 
 /** Spec 0114: `resolveSimplifiedOfferLine` — the loosest covered category wins. */
@@ -108,5 +113,96 @@ describe('pickableCategoryIdsFor', () => {
     const OTHER_FUNCTION = 3
     const ids = pickableCategoryIdsFor(CONTAINER_TREE, OTHER_FUNCTION, { includeContainers: true })
     expect(ids.has(200)).toBe(false)
+  })
+})
+
+/**
+ * Spec 0132 D-1/D-2: the CARD row's own scope — every `is_selectable`
+ * descendant of the chosen ROOT, with no business-function constraint (the
+ * function is derived server-side from whichever leaf is picked, never
+ * filtered here).
+ */
+describe('selectableIdsUnderRoot', () => {
+  const ROOT = 100
+  const CONTAINER = 101
+  const LEAF_1 = 102
+  const LEAF_2 = 103
+  const OTHER_ROOT = 200
+  const OTHER_ROOT_LEAF = 201
+
+  const TREE: ProductCategoryTreeNode[] = [
+    node({
+      id: ROOT,
+      name: 'Root',
+      is_selectable: false,
+      children: [
+        node({
+          id: CONTAINER,
+          name: 'Container',
+          parent_id: ROOT,
+          is_selectable: false,
+          children: [node({ id: LEAF_1, name: 'Leaf 1', parent_id: CONTAINER })],
+        }),
+        node({ id: LEAF_2, name: 'Leaf 2', parent_id: ROOT }),
+      ],
+    }),
+    node({ id: OTHER_ROOT, name: 'Other root', children: [node({ id: OTHER_ROOT_LEAF, name: 'Other leaf', parent_id: OTHER_ROOT })] }),
+  ]
+
+  it('collects every selectable descendant of the root, at any depth', () => {
+    const ids = selectableIdsUnderRoot(TREE, ROOT)
+
+    expect(ids.has(LEAF_1)).toBe(true)
+    expect(ids.has(LEAF_2)).toBe(true)
+  })
+
+  it('excludes a non-selectable container and everything under a DIFFERENT root', () => {
+    const ids = selectableIdsUnderRoot(TREE, ROOT)
+
+    expect(ids.has(CONTAINER)).toBe(false)
+    expect(ids.has(ROOT)).toBe(false)
+    expect(ids.has(OTHER_ROOT_LEAF)).toBe(false)
+  })
+
+  it('resolves to an empty set for an id absent from the tree', () => {
+    expect(selectableIdsUnderRoot(TREE, 999).size).toBe(0)
+  })
+})
+
+/** Spec 0132 AC-017: walking the tree from a persisted category to its root ancestor, for the edit-load preselection. */
+describe('rootCategoryIdFor', () => {
+  const ROOT = 100
+  const CONTAINER = 101
+  const LEAF = 102
+  const STANDALONE_ROOT = 200
+
+  const TREE: ProductCategoryTreeNode[] = [
+    node({
+      id: ROOT,
+      name: 'Root',
+      is_selectable: false,
+      children: [
+        node({
+          id: CONTAINER,
+          name: 'Container',
+          parent_id: ROOT,
+          is_selectable: false,
+          children: [node({ id: LEAF, name: 'Leaf', parent_id: CONTAINER })],
+        }),
+      ],
+    }),
+    node({ id: STANDALONE_ROOT, name: 'Standalone root' }),
+  ]
+
+  it('walks up to the root ancestor from a deeply nested category', () => {
+    expect(rootCategoryIdFor(TREE, LEAF)).toBe(ROOT)
+  })
+
+  it('resolves a root category to itself (D-5)', () => {
+    expect(rootCategoryIdFor(TREE, STANDALONE_ROOT)).toBe(STANDALONE_ROOT)
+  })
+
+  it('returns null for an id absent from the tree', () => {
+    expect(rootCategoryIdFor(TREE, 999)).toBeNull()
   })
 })

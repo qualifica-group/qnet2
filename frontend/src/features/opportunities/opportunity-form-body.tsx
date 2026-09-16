@@ -23,7 +23,7 @@ import {
 } from '@/features/opportunities/use-opportunity-form'
 import { useOpportunityLeadSelection } from '@/features/opportunities/use-opportunity-lead-selection'
 import { useOpportunitySelectedItems } from '@/features/opportunities/use-opportunity-selected-items'
-import type { OpportunityDetail, OpportunityFormMode, OpportunityProductLine } from '@/features/opportunities/types'
+import type { OpportunityDetail, OpportunityFormMode } from '@/features/opportunities/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** Stable empty default: create mode has no persisted reward assignments to hydrate. */
@@ -114,13 +114,6 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
   })
   const selectedItems = useOpportunitySelectedItems(mode, leadSelection.state)
 
-  // Amendment rev.3: rows whose label is already known without a fetch — the
-  // loaded instance (edit) or the from-lead prefill (deep-link create) at
-  // mount, plus whatever the in-form Lead picker resolves afterwards.
-  const mountProductLines: OpportunityProductLine[] =
-    mode.type === 'edit' ? mode.opportunity.product_lines : (mode.fromLead?.productLines ?? [])
-  const knownProductLines = [...mountProductLines, ...leadSelection.state.derivedProductLines]
-
   // Products of interest exist only on a loaded opportunity: a lead has none,
   // so create mode starts with nothing to hydrate.
   const knownProductsOfInterest = mode.type === 'edit' ? (mode.opportunity.products_of_interest ?? []) : []
@@ -178,7 +171,6 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
 
               <OpportunityProductLinesSection
                 control={form.control}
-                knownProductLines={knownProductLines}
                 knownProductsOfInterest={knownProductsOfInterest}
               />
 

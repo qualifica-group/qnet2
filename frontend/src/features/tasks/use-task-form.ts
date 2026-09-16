@@ -21,6 +21,7 @@ import {
 import { emptyRecurrenceDefaults, recurrenceDefaults } from '@/features/tasks/task-recurrence-defaults'
 import { buildTaskSchema, type TaskFormValues } from '@/features/tasks/task-schema'
 import { useTaskParentPrefill } from '@/features/tasks/use-task-parent-prefill'
+import { useTaskWorkOrderPrefill } from '@/features/tasks/use-task-work-order-prefill'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { TaskDetail, TaskFormMode } from '@/features/tasks/types'
@@ -36,12 +37,17 @@ interface UseTaskFormArgs {
 
 /**
  * Default values of a brand-new task, with the "crea sotto-task" parent
- * prefill (AC-085) and the requester defaulted to the actor creating it
+ * prefill (AC-085), the work order prefill of the Commessa detail's Task tab
+ * (spec 0133 D-4) and the requester defaulted to the actor creating it
  * (spec 0118 D-1: `requester_id` is now required, and the actor is the
  * requester in the overwhelming majority of cases) — left modifiable, never
  * locked.
  */
-function createDefaults(parentTaskId: number | null, requesterId: number | null): TaskFormValues {
+function createDefaults(
+  parentTaskId: number | null,
+  workOrderId: number | null,
+  requesterId: number | null,
+): TaskFormValues {
   return {
     title: '',
     task_status_id: null,
@@ -54,7 +60,7 @@ function createDefaults(parentTaskId: number | null, requesterId: number | null)
     task_importance_id: null,
     task_category_id: null,
     opportunity_id: null,
-    work_order_id: null,
+    work_order_id: workOrderId,
     requester_id: requesterId,
     start_date: null,
     end_date: null,
@@ -143,7 +149,7 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     () =>
       mode.type === 'edit'
         ? editDefaults(mode.task)
-        : createDefaults(mode.parentTaskId ?? null, user?.id ?? null),
+        : createDefaults(mode.parentTaskId ?? null, mode.workOrderId ?? null, user?.id ?? null),
     [mode, user?.id],
   )
 
@@ -190,6 +196,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     getValues: form.getValues,
     enabled: !isEdit,
   })
+
+  const workOrderPrefillRef = useTaskWorkOrderPrefill(mode.type === 'create' ? (mode.workOrderId ?? null) : null)
 
   const schema = useMemo(
     () => buildTaskSchema(t, !isEdit, parentPrefill.parentDateRange),
@@ -290,5 +298,7 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     removeStagedAttachment,
     /** The parent's own link refs (spec 0123 D-10), for the four pickers' `selected` hydration on create. */
     parentPrefillRefs: parentPrefill,
+    /** The work order the create form was opened for (spec 0133 D-4), for the picker's `selected` hydration. */
+    workOrderPrefillRef,
   }
 }

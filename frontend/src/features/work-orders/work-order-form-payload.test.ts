@@ -41,6 +41,7 @@ function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     internal_notes: null,
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
+    contract: null,
     task_template: null,
     quote_lines: [
       { id: 11, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' } },

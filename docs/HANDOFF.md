@@ -3,6 +3,177 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0132 — CLASSIFICAZIONE PER CATEGORIA GENITORE (2026-09-16) — VERDE, NON COMMITTATO
+
+- Spec: `docs/specs/0132-root-category-classification.xml`. Nei campi `product_lines` delle CARD
+  (opportunita', richieste create/work panel/cella griglia, progetti, campagne) il primo select non e'
+  piu' la funzione aziendale ma la **categoria genitore** (root, `parent_id` null); il secondo offre i
+  discendenti `is_selectable` di quella root, sempre obbligatorio. Competenze utente ESCLUSE (D-4):
+  restano funzione + categoria + "tutte le categorie".
+- Contratto: il payload card invia SOLO `{product_category_id}`. Il backend deriva la funzione EFFETTIVA
+  (`BusinessFunctionResolver`, batch su `CategoryHierarchy::effectiveBusinessFunctionSummaries()`) e la
+  persiste nella colonna esistente: nessuna migrazione. `business_function_id` inviato = ignorato.
+  Duplicato = stessa categoria (`DUPLICATE_CATEGORY_MESSAGE`); nuovo 422
+  `CATEGORY_WITHOUT_BUSINESS_FUNCTION_MESSAGE`. Lettura: ogni riga card espone
+  `root_category {id,name}` (concern `SummarizesProductLines`, `CategoryRootResolver`); riga di griglia
+  richieste con `root_category_id/root_category_name` piatti. `ProjectForSelectResource` NON la espone
+  (la radice si ricava dall'albero in cache).
+- Nomi da rispettare. FE: `ProductLineRow = {root_category_id, product_category_id}` (root = solo stato
+  UI, mai sul filo); `CompetenceLineRow` separato; `ProductLinesField` (card) vs `CompetenceLinesField`;
+  `ProductCategoryRootSelect`; `ProductCategoryTreeSelect` con `scope: CategoryPickScope`
+  (`kind: 'root' | 'business_function'`); `selectableIdsUnderRoot`, `rootCategoryIdFor`. La root in
+  modifica si risolve a render time in `useProductLinesField.rootCategoryFor`, non nell'hook del form.
+  Dettaglio: `ProductLinesReadOnlyList` rende "Root > Categoria — funzione: X" se la riga ha
+  `root_category`, altrimenti il formato competenze invariato. Payload cella: allow-list
+  `PRODUCT_LINE_PAIR_WIRE_KEY` in `use-table-cell-edit.tsx`.
+- Da sapere: `ProductLineWriter::sync()` fa passare invariata una riga CON `business_function_id`
+  (competenze, seeder demo) e deriva per quelle senza; ogni percorso card normalizza a monte
+  (verificato dal verifier). `CategoryHierarchy` e' a ridosso del limite 500 righe: nuova logica di
+  gerarchia va in classi dedicate.
+- Verifica (verifier indipendente): frontend Vitest 699 file / 5272 test verdi, `tsc -b --force` 0
+  errori, ESLint pulito; backend Pint pulito, perimetro 0132 verde (+ test AC-006 opportunita' e
+  AC-010: 240/240). Test adeguati per requisito cambiato, nessuna asserzione competenze toccata.
+- Aperti: `DemoOpportunitySeederTest` "one business function and one branch root" e' flaky
+  (preesistente, verde da solo; verifica INV-1/INV-2 gia' revocate da spec 0077 rev.2: candidato a
+  rimozione). `product-lines-cell-editor.tsx` a 341 righe (soft limit). Dato sporco noto: categorie con
+  `parent_id` ciclico (#76/#122/#179 nel dataset legacy) restano non classificabili.
+- Stato working tree: convive con lavoro NON committato di altre sessioni (spec 0133/0134 work-orders,
+  dashboard richieste, sheet utente, seeder contratti) che fa fallire `WorkOrderNotesTest.php`. Il
+  commit della 0132 va fatto per percorsi espliciti, non con un add globale.
+
+## FIX — Dashboard Gestione Richieste: errori parlanti e stato "nessun dato" (2026-09-16) — VERDE, NON COMMITTATO
+
+- Bug: senza richieste visibili la dashboard mostrava "Impossibile caricare la dashboard.". Causa
+  (riprodotta in locale): `/report/categories` risponde `[]`, la riconciliazione dei filtri salta
+  sulla lista vuota, i `category_keys` ripristinati da localStorage partono verso
+  `/report/dashboard` e il backend li rifiuta con 422 (allow-list) -> messaggio generico.
+- Fix (solo FE, `request-dashboard-panel.tsx`): la query parte solo se ogni `category_key` e' nella
+  lista caricata; lista vuota -> avviso informativo `dashboard.noCategories` (role=status, nessuna
+  fetch); errore categorie -> `report.errors.categoriesLoadFailed` + Riprova; errore dashboard mappato
+  da `dashboardErrorKey`: nessuna risposta `errors.network`, 403 `errors.forbidden`, 422
+  `errors.invalidFilters`, altro `errors.generic`. Chiave `dashboard.loadError` rimossa (it/en).
+- Test cambiato per requisito: il testo atteso di "retryable error (AC-048)"; +7 casi nuovi.
+- Verifica: Vitest request-management 58 file / 417 test verdi (i nuovi falliscono sul codice
+  precedente); ESLint pulito; `tsc -b --force` 0 errori. Backend non toccato.
+
+## FIX — useNavigate fuori dal Router nello sheet utente (2026-09-16) — VERDE, NON COMMITTATO
+
+- Bug: `useNavigate() may be used only in the context of a <Router>` da `RecordLink` ->
+  `useRecordModalLink` -> `useModuleOpener`. Causa: `UserDetailSheetProvider` era montato in
+  `App.tsx` SOPRA `RouterProvider`, e `UserDetailView` renderizza `RecordLink` (sedi, societa').
+- Fix: provider spostato dentro `AppLayout` (quindi dentro il router); `openUserDetailPage` usa
+  `useNavigate` invece di `router.navigate` (niente piu' import di `@/routes/router`, che avrebbe
+  creato un ciclo router -> AppLayout -> sheet -> router). Commento di `SheetDetailPageLink` aggiornato.
+- Test cambiato per requisito: `user-detail-sheet.test.tsx` mocka `useNavigate` invece di `router`.
+- Verifica: Vitest users/detail/layouts/modules 146/146; ESLint pulito; `tsc -b --force` 0 errori.
+- Regola: nessun provider che renderizza `Link`/router hook va montato sopra `RouterProvider`.
+
+## COMMESSA — DETTAGLIO ALLINEATO A OPPORTUNITA'/OFFERTA (2026-09-16) — VERDE, NON COMMITTATO
+
+- Richiesta: dettaglio Commessa con lo stesso template stilistico di Opportunita'/Offerte.
+  Decisione utente: task in pannello a tutta larghezza sotto il record (come Offerte
+  nell'Opportunita'), non piu' strip "Dettagli | Task" -> spec 0133 D-2/AC-009/AC-010 revisionati.
+- Split come Opportunita'/Offerta: `work-order-detail-header.tsx` (`WorkOrderDetailHeader`:
+  monogramma `size-10`, pill stato/tipo, Modifica; `WorkOrderDetailStats`: KPI Data inizio, Data
+  richiamo, Contratto n., Righe prodotto) + `work-order-detail-sections.tsx`
+  (`WorkOrderDetailSections`: callout `GeneralNotesCallout` per le note commessa, Dettagli
+  = descrizione/modello task/motivo chiusura, Team, Offerta + righe come lista semplice,
+  Informazioni aggiuntive). `work-order-detail.tsx` ora solo layout (~80 righe).
+- Tipo/Stato non piu' ripetuti come campi (sono le pill); date e contratto nella strip KPI.
+- `WorkOrderTasksSection` ora e' una `RecordCard` con `RecordCardHeader` (titolo + badge
+  contatore + "Nuovo task"). i18n: rimossi `detail.type`, `detail.status`, `detail.linesEmpty`,
+  `detail.sections.notes`, `detail.tabs.*`; aggiunti `detail.lines`, `detail.tasks.title`.
+- Test cambiati per requisito: `work-order-detail-tabs.test.tsx` -> `work-order-detail-tasks-panel.test.tsx`,
+  una asserzione in `work-order-collaboration-section.test.tsx`.
+- Verifica: Vitest work-orders 98/98 verdi, i18n 157/157; ESLint pulito; `tsc -b --force` 0 errori.
+- Poi (richiesta utente): la sezione nomina il **Contratto**, non l'Offerta. Backend:
+  `WorkOrderResource.contract` = `{ id, code, title }` (id del `Contract`, code/title della quote,
+  come l'header del dettaglio Contratto), `null` finche' la quote non ha contratto;
+  `WorkOrderService::DETAIL_RELATIONS` ora `quote.contract`. Nuovo
+  `tests/Feature/WorkOrders/WorkOrderContractSummaryTest.php` (2). Frontend: `WorkOrderContractRef`
+  in `types.ts`, campo "Contratto" = `RecordLink domain="contracts"` (modale), sezione
+  "Contratto e righe prodotto"; i18n `detail.quote`/`sections.offer` sostituite da
+  `detail.contract`/`sections.contract`. `quote` resta nel payload (form lo usa).
+  Verifica: Pest WorkOrders/Contracts/Tasks 732 verdi, Pint pulito; Vitest
+  work-orders/contracts/tasks/i18n 581 verdi; ESLint pulito; `tsc -b --force` 0 errori.
+- Da verificare a mano: resa nel Sheet stretto e nella pagina `/work-orders/:id`.
+
+## COMMESSA — NOTE, DOCUMENTI, CARD LATERALE E TEAM (spec 0134, 2026-09-16) — VERDE, NON COMMITTATO
+
+- Richiesta: note e documenti sulla Commessa "come opportunita'", card laterale destra nel
+  dettaglio con attivita'/note; poi Responsabili/Partecipanti con il componente utente (click =
+  modale) e collegamenti in modale come Opportunita'/Offerte.
+- Backend note: `App\Services\WorkOrders\WorkOrderNotable` (ricalca `TaskNotable`), slug
+  `work-orders` in `config/notes.php`, `HasNotes` su `WorkOrder`. Lettura = `work-orders.view` AND
+  `WorkOrderVisibilityScope`; menzionabili = membri + `viewAll` + super-admin; niente quote scope;
+  deep link `/work-orders/{id}`. `NoteAgnosticismTest` ha i needle `WorkOrder`.
+- Backend documenti: `HasAttachments` su `WorkOrder`, alias `work_order` in
+  `config/attachments.php`, nuova ability `work-orders.viewDocuments` (`WorkOrderPolicy`) esposta
+  come azione `view_documents` (`WorkOrdersAuthorization`). Allegati autorizzati da
+  `attachments.*` (nessun gate per record, come Opportunita'/Task). SERVE `php artisan
+  permissions:sync` e assegnare `work-orders.viewDocuments` ai ruoli.
+- Frontend: `work-order-collaboration-section.tsx` (Note | Documenti | Log attivita') +
+  `use-work-order-collaboration-gates.ts`; `work-order-detail.tsx` a due colonne
+  (`RECORD_BODY_GRID_CLASS`/`RECORD_BODY_WITH_SIDE_CLASS`), log attivita' tolto dal fondo card.
+  `WORK_ORDER_ATTACHABLE_ALIAS` in `work-orders/api.ts`. Team estratto in
+  `work-order-detail-team.tsx` con `RecordPerson` (una riga per slot "Partecipante n").
+  Offerta/Modello task/Prodotti erano gia' `RecordLink` (modale).
+- Tasto "Modifica" sulla card (come Opportunita'): `WorkOrderDetailView` accetta `onEdit`, bottone
+  nelle `actions` di `RecordCardHeader` gated `permissions.resource.update`; registry
+  `detailOwnsEditAction: true` (niente piu' Edit nell'header pagina; nel Sheet ora c'e').
+- Test cambiati per requisito: `WorkOrderSecurityTest` AC-051 conta 10 permessi (era 9);
+  `work-order-detail.test.tsx`/`work-order-detail-tabs.test.tsx` cercano il log nel tab laterale.
+- Verifica: Pest WorkOrders/Notes/Attachments/Authorization/ActivityLog/Tasks/Seeding = 1029 test,
+  1 fallimento (conteggio permessi) corretto e rieseguito verde; nuovi `WorkOrderNotesTest` (11),
+  `WorkOrderDocumentsTest` (5). Pint pulito. Vitest work-orders/notes/attachments verdi (nuovi
+  `work-order-collaboration-section.test.tsx`, `work-order-detail-team.test.tsx`). ESLint pulito.
+  `tsc -b --force` pulito (0 errori) all'ultimo giro.
+- Da verificare a mano: layout a due colonne nel Sheet stretto e nella pagina, upload documento.
+
+## COMMESSA — TAB "TASK" NEL DETTAGLIO (spec 0133, 2026-09-16) — VERDE, NON COMMITTATO
+
+- Richiesta: nel dettaglio Commessa un tab con i task di quella commessa. Decisioni utente: strip
+  "Dettagli | Task" nella card; log attivita' e metadati restano fuori dai tab; "Nuovo task" con
+  la commessa precompilata (modificabile).
+- Backend: nuovo decorator `App\Tables\Tasks\WorkOrderScopedTableDefinition` (ricalca
+  `QuoteScopedTableDefinition`), avvolge SOLO `tasks` in `TableRegistry`. Parametro `workOrderId`
+  su rows/values/export, `work_order_id` su columns (`exists:work_orders,id`). `where
+  tasks.work_order_id` in AND con `TaskVisibilityScope` (che raggruppa le sue OR). Nessuna
+  migrazione, nessun endpoint nuovo.
+- Frontend: `TableRowScope.workOrderId` propagato come `quoteId` (ssrm-datasource, table-view,
+  data-table/column-def-builder/column-filters, export-dialog). `work-orders/work-order-tasks-section.tsx`
+  (TableView `tasks` + `useTaskRowActions` in modale + contatore + "Nuovo task") montata da
+  `work-order-detail.tsx` solo con `tasks.viewAny`. `useTaskRowActions` espone ora `openCreateWith`.
+- Prefill: `TaskFormMode` create ha `workOrderId`; `TaskFormScreen` legge `params.work_order_id`;
+  `use-task-work-order-prefill.ts` idrata l'etichetta "code — title" dalla cache del dettaglio
+  commessa. Query key condivisa esportata: `workOrderDetailQueryKey` (`work-orders/api.ts`, usata
+  anche da `work-order-screens.tsx`).
+- Verifica: Pest `tests/Feature/Tasks/TaskWorkOrderScopeTest.php` (9 test) + cartelle
+  Tasks/WorkOrders/Exports/Contracts/Quotes/Table = 1289 verdi. Vitest work-orders/tasks/contracts/
+  table/data-table/exports = 796 verdi (nuovi: `work-order-tasks-section.test.tsx`,
+  `work-order-detail-tabs.test.tsx`, 2 casi in `use-task-form.test.tsx`). ESLint pulito sui file
+  toccati. `tsc -b --force` ROSSO ma solo su file del refactor ProductLineRow in corso in un'altra
+  sessione (campaigns/projects/request-management/products): zero errori nei file di questa spec.
+- Da verificare a mano: tab e "Nuovo task" nel browser (Sheet e pagina dedicata).
+- Nota dimensioni: `table-view.tsx` 499 righe (limite 500, accorciato un JSDoc);
+  `use-task-form.ts` 304 (sopra il soft limit 300).
+
+## DEMO SEED — CONTRATTI (2026-09-16) — VERDE, NON COMMITTATO
+
+- Richiesta: seed demo per contratti, offerte, commesse, task, segnatempo. Esistevano gia'
+  `DemoQuoteSeeder`, `DemoWorkOrderSeeder`, `DemoTaskSeeder`, `DemoTimeEntrySeeder`: mancava solo
+  il seeder dei contratti (le offerte demo nascevano tutte `open`, quindi zero contratti).
+- Nuovo `DemoContractSeeder` (in `DemoDataSeeder` dopo `DemoRewardSeeder`): nessun insert diretto
+  (spec 0072 D-6). Chiude un'offerta ogni 2 come vinta via `QuoteService::update()` sulla riga
+  `closed_won` del SUO set di workflow, cosi' `ContractLifecycleManager` apre il contratto (con la
+  regola `generates_contract`, spec 0091). Poi ruota 5 forme via `ContractService`/
+  `ContractActionService`: da validare, validato, stato custom di lavorazione con scadenza entro 20
+  giorni (alert), disdetto, sospeso (offerta riportata a `open`).
+- Idempotente: lo stride gira su tutte le offerte prima del filtro "ha gia' un contratto".
+- Verifica: `tests/Feature/Seeding/DemoContractSeederTest.php` (4 test) + Seeding/Quotes/Contracts
+  242 test verdi; `DemoDataSeeder` completo eseguito due volte su uno schema MySQL temporaneo
+  (poi eliminato): 20 offerte, 10 contratti, 10 commesse, 60 task, 97 segnatempo.
+
 ## GEO IMPORT — COMUNI NON RISOLTI SUL DATASET DI RIFERIMENTO (2026-09-16) — VERDE, NON COMMITTATO
 
 - Sintomo: `/operational-sites/25` non mostrava il comune. Causa: `addresses.city_id` NULL — il

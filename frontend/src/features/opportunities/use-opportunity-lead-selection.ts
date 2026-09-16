@@ -39,14 +39,6 @@ export interface OpportunityLeadSelectionState {
    * picker's, since `setValue` alone writes the id but not the display name.
    */
   managers: RelationFieldRef[] | null
-  /**
-   * The lead's derived product line (spec 0040 amendment rev.3, AC-102/103),
-   * 0 or 1 row: seeded into `product_lines` on a successful selection,
-   * editable and removable like any other row. Kept here (not just written
-   * to the form) so the shared `ProductLinesField` (spec 0057) can resolve
-   * its label without a redundant fetch.
-   */
-  derivedProductLines: OpportunityProductLine[]
   /** True while the one-shot defaults fetch triggered by a fresh selection is in flight. */
   isApplying: boolean
   /** The defaults fetch failed; the selection was rolled back to "none". */
@@ -60,7 +52,6 @@ const EMPTY_STATE: OpportunityLeadSelectionState = {
   registry: null,
   operationalSite: null,
   managers: null,
-  derivedProductLines: [],
   isApplying: false,
   isError: false,
 }
@@ -140,11 +131,14 @@ export function useOpportunityLeadSelection(
       : EMPTY_STATE,
   )
 
+  // Spec 0132: `root_category_id` starts `null` — the shared `ProductLinesField`
+  // resolves it at render time from the cached category tree, nothing to
+  // precompute here (mirrors `use-opportunity-form.ts`'s `toProductLineRows`).
   const applyProductLines = (lines: OpportunityProductLine[]) => {
     setValue(
       'product_lines',
       lines.map((line) => ({
-        business_function_id: line.business_function.id,
+        root_category_id: null,
         product_category_id: line.product_category.id,
       })),
       { shouldDirty: true },
@@ -208,7 +202,6 @@ export function useOpportunityLeadSelection(
         registry: defaults.references.registry,
         operationalSite: toRelationFieldRef(defaults.references.operational_site),
         managers,
-        derivedProductLines: defaults.product_lines,
         isApplying: false,
         isError: false,
       })

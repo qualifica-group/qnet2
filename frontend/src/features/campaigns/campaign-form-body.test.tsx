@@ -108,17 +108,17 @@ vi.mock('@/features/product-lines/product-category-tree-select', () => ({
   ProductCategoryTreeSelect: ({
     value,
     onChange,
-    businessFunctionId,
+    scope,
     disabled,
     triggerLabel,
   }: {
     value: number | null
     onChange: (id: number) => void
-    businessFunctionId: number | null
+    scope: { kind: 'root'; rootCategoryId: number | null }
     disabled?: boolean
     triggerLabel: string
   }) => {
-    const isDisabled = Boolean(disabled) || businessFunctionId === null
+    const isDisabled = Boolean(disabled) || scope.rootCategoryId === null
     return (
       <div>
         <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
@@ -134,6 +134,30 @@ vi.mock('@/features/product-lines/product-category-tree-select', () => ({
       </div>
     )
   },
+}))
+
+/** The row's FIRST step (spec 0132): same clickable-double style as the category picker above. */
+vi.mock('@/features/product-lines/product-category-root-select', () => ({
+  ProductCategoryRootSelect: ({
+    value,
+    onChange,
+    disabled,
+    triggerLabel,
+  }: {
+    value: number | null
+    onChange: (rootCategoryId: number) => void
+    disabled?: boolean
+    triggerLabel: string
+  }) => (
+    <button
+      type="button"
+      disabled={disabled}
+      data-testid={`select-${triggerLabel}`}
+      onClick={() => onChange(3)}
+    >
+      {value ?? ''}
+    </button>
+  ),
 }))
 
 /**
@@ -257,9 +281,9 @@ function fillRequiredDates() {
   fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-12-31' } })
 }
 
-/** Fills the standalone-required product_lines row 1 (spec 0094). */
+/** Fills the standalone-required product_lines row 1 (spec 0132). */
 function fillRequiredClassification() {
-  fireEvent.click(screen.getByTestId('select-Business function 1'))
+  fireEvent.click(screen.getByTestId('select-Parent category 1'))
   fireEvent.click(screen.getByTestId('select-Product category 1'))
 }
 

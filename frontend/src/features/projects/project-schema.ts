@@ -46,15 +46,15 @@ function baseFields(t: TFunction) {
     state_id: z.number().nullable(),
     province_id: z.number().nullable(),
     city_id: z.number().nullable(),
-    // Spec 0094: replaces the former single `business_function_id`/
-    // `product_category_id` pair with an inline-editable row collection
-    // (mirrors the opportunity form, spec 0040 amendment rev.3). Each id is
-    // individually nullable (a row starts empty and fills in place);
-    // `withRequiredProductLinesRule` below requires at least one COMPLETE
-    // row before submit, mirroring the backend's `required|min:1`.
+    // Spec 0132: replaces the former `business_function_id`/`product_category_id`
+    // pair with a root-category-then-category row collection (mirrors the
+    // opportunity form). `root_category_id` is UI-only state (D-3, never
+    // validated as a domain field); `withRequiredProductLinesRule` below
+    // requires at least one COMPLETE row before submit, mirroring the
+    // backend's `required|min:1`.
     product_lines: z.array(
       z.object({
-        business_function_id: z.number().nullable(),
+        root_category_id: z.number().nullable(),
         product_category_id: z.number().nullable(),
       }),
     ),
@@ -100,9 +100,7 @@ function withRequiredProductLinesRule<T extends z.ZodTypeAny>(schema: T, t: TFun
       ctx.addIssue({ code: 'custom', path: ['product_lines'], message: t('productLines.required') })
       return
     }
-    const hasIncompleteRow = record.product_lines.some(
-      (row) => row.business_function_id === null || row.product_category_id === null,
-    )
+    const hasIncompleteRow = record.product_lines.some((row) => row.product_category_id === null)
     if (hasIncompleteRow) {
       ctx.addIssue({ code: 'custom', path: ['product_lines'], message: t('productLines.rowIncomplete') })
     }

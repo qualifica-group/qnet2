@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Enums\FormMode;
+use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Company;
 use App\Models\Quote;
@@ -114,6 +115,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 #[PreserveKeys]
 class QuoteResource extends JsonResource
 {
+    use SummarizesProductLines;
     use SummarizesRewards;
 
     /**
@@ -201,23 +203,6 @@ class QuoteResource extends JsonResource
     private function summarizeCompany(?Company $company): ?array
     {
         return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
-    }
-
-    /**
-     * The parent Opportunity's funzione-aziendale + categoria-prodotto rows,
-     * in OpportunityResource's own shape (spec 0040 amendment rev.3).
-     *
-     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
-     */
-    private function summarizeProductLines(iterable $lines): array
-    {
-        return collect($lines)
-            ->map(fn (Model $line): array => [
-                'id' => $line->id,
-                'business_function' => $this->summarizeByName($line->businessFunction),
-                'product_category' => $this->summarizeByName($line->productCategory),
-            ])
-            ->all();
     }
 
     /**

@@ -11,12 +11,13 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * Shared validation for the `product_lines` payload of every module that
  * carries the collection (spec 0040 amendment rev.3, generalized to
- * projects/campaigns by spec 0094): a to-many collection of
- * {business_function_id, product_category_id} rows, REPLACING the former
- * single scalar columns. A record must ALWAYS carry at least one row
- * (user directive 2026-07-17): create REQUIRES a non-empty collection, and
- * update — a full-replace sync — may omit `product_lines` (partial PATCH,
- * untouched) but may NOT clear it to `[]`.
+ * projects/campaigns by spec 0094): a to-many collection of rows, REPLACING
+ * the former single scalar columns. Spec 0132, D-3: a row is now identified
+ * by `product_category_id` ALONE — the business function is DERIVED
+ * server-side from it, never accepted as input. A record must ALWAYS carry
+ * at least one row (user directive 2026-07-17): create REQUIRES a non-empty
+ * collection, and update — a full-replace sync — may omit `product_lines`
+ * (partial PATCH, untouched) but may NOT clear it to `[]`.
  *
  * The rules themselves are NOT defined here (spec 0075, D-1): they live in
  * ProductLineSetValidator, the one definition shared with the channel that has

@@ -142,10 +142,11 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     expect(screen.getByText('Acme S.p.A.')).toBeInTheDocument()
     expect(screen.getByText('New')).toBeInTheDocument()
 
-    // Funzione aziendale + categoria prodotto: an EDITOR since the user
-    // directive 2026-07-31 (it used to be a read-only badge in the summary),
-    // prefilled with the persisted pair.
-    expect(screen.getByRole('combobox', { name: 'Business function 1' })).toHaveTextContent('Sales')
+    // Categoria genitore + categoria prodotto (spec 0132, supersedes the
+    // funzione+categoria editor of the user directive 2026-07-31): the root
+    // is resolved by walking the tree up from the persisted category (500 ->
+    // its root, 400 "Formazione"), never sent on the wire.
+    expect(screen.getByRole('combobox', { name: 'Parent category 1' })).toHaveTextContent('Formazione')
     expect(screen.getByRole('combobox', { name: 'Product category 1' })).toHaveTextContent('Consulting')
 
     // Anagrafica: the client's channels are ACTIVE, prefilled inputs — not a

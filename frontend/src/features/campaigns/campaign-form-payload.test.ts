@@ -22,7 +22,7 @@ function values(overrides: Partial<CampaignFormValues> = {}): CampaignFormValues
     partner_id: null,
     operational_site_id: null,
     pipeline_status_id: 1,
-    product_lines: [{ business_function_id: 2, product_category_id: 4 }],
+    product_lines: [{ root_category_id: null, product_category_id: 4 }],
     country_id: 10,
     state_id: 3,
     province_id: null,
@@ -83,7 +83,7 @@ describe('buildCreatePayload — standalone (BR-2/BR-5)', () => {
       partner_id: null,
       operational_site_id: null,
       pipeline_status_id: 1,
-      product_lines: [{ business_function_id: 2, product_category_id: 4 }],
+      product_lines: [{ product_category_id: 4 }],
       country_id: 10,
       state_id: 3,
       province_id: null,
@@ -181,7 +181,7 @@ describe('buildUpdatePayload', () => {
       values({
         project_id: null,
         pipeline_status_id: 1,
-        product_lines: [{ business_function_id: 2, product_category_id: 4 }],
+        product_lines: [{ root_category_id: null, product_category_id: 4 }],
       }),
       linkedOriginal,
     )
@@ -189,7 +189,7 @@ describe('buildUpdatePayload', () => {
     expect(payload).toEqual({
       project_id: null,
       pipeline_status_id: 1,
-      product_lines: [{ business_function_id: 2, product_category_id: 4 }],
+      product_lines: [{ product_category_id: 4 }],
     })
   })
 
@@ -215,8 +215,8 @@ describe('buildUpdatePayload', () => {
     const payload = buildUpdatePayload(
       values({
         product_lines: [
-          { business_function_id: 7, product_category_id: 8 },
-          { business_function_id: 2, product_category_id: 4 },
+          { root_category_id: null, product_category_id: 8 },
+          { root_category_id: null, product_category_id: 4 },
         ],
       }),
       original({
@@ -231,10 +231,10 @@ describe('buildUpdatePayload', () => {
 
   it('includes product_lines in the update diff when the set changed (standalone)', () => {
     const payload = buildUpdatePayload(
-      values({ product_lines: [{ business_function_id: 9, product_category_id: 10 }] }),
+      values({ product_lines: [{ root_category_id: null, product_category_id: 10 }] }),
       original(),
     )
-    expect(payload.product_lines).toEqual([{ business_function_id: 9, product_category_id: 10 }])
+    expect(payload.product_lines).toEqual([{ product_category_id: 10 }])
   })
 })
 

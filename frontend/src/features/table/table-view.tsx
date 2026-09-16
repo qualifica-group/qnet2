@@ -71,10 +71,8 @@ interface TableViewProps extends RowActionsOptions {
    * (spec 0067 D-1: the Opportunity detail's Quotes panel). Distinct from
    * `scope` above: `scope` selects a config SHAPE and enters the config's
    * query key; `rowScope` selects a ROW SET and never enters any query key,
-   * because the config is identical scoped or not (D-1). Read once as a
-   * primitive (`rowScope?.opportunityId`), same precaution as `scope`
-   * documented above — a caller may pass a fresh object literal every
-   * render. Omitted ⇒ today's unscoped behavior for every domain.
+   * because the config is identical scoped or not (D-1). Read once as
+   * primitives, like `scope`. Omitted ⇒ today's unscoped behavior.
    */
   rowScope?: TableRowScope
   /**
@@ -169,6 +167,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     const productCategoryId = scope?.productCategoryId
     const opportunityId = rowScope?.opportunityId
     const quoteId = rowScope?.quoteId
+    const workOrderId = rowScope?.workOrderId
     const { data: config, isPending, isError, refetch } = useTableConfig(domain, scope)
 
     // Export is generic (spec 0014): TableView owns the grid api, so it gates,
@@ -269,8 +268,9 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           productCategoryId,
           opportunityId,
           quoteId,
+          workOrderId,
         ),
-      [domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId, opportunityId, quoteId],
+      [domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId, opportunityId, quoteId, workOrderId],
     )
 
     useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection }), [
@@ -380,6 +380,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           productCategoryId={productCategoryId}
           opportunityId={opportunityId}
           quoteId={quoteId}
+          workOrderId={workOrderId}
           columns={config.columns}
           datasource={datasource}
           blockSize={config.defaultPagination.limit}
@@ -489,6 +490,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
             search={toolbar.getSearchTerm()}
             opportunityId={opportunityId}
             quoteId={quoteId}
+            workOrderId={workOrderId}
           />
         ) : null}
       </>

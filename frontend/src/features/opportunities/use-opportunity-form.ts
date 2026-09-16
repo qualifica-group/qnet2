@@ -98,10 +98,16 @@ function defaultManagerSlots(): (number | null)[] {
 }
 
 
-/** Maps the hydrated `OpportunityProductLine[]` onto the form's own row shape. */
+/**
+ * Maps the hydrated `OpportunityProductLine[]` onto the form's own row shape
+ * (spec 0132): `root_category_id` starts `null` — the shared `ProductLinesField`
+ * (`useProductLinesField`'s `rootCategoryFor`) resolves it at render time by
+ * walking the cached category tree up from `product_category_id`, so there is
+ * nothing to precompute here (AC-017).
+ */
 function toProductLineRows(lines: OpportunityProductLine[]): ProductLineRow[] {
   return lines.map((line) => ({
-    business_function_id: line.business_function.id,
+    root_category_id: null,
     product_category_id: line.product_category.id,
   }))
 }
@@ -143,14 +149,8 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
   const { t } = useTranslation()
   const isEdit = mode.type === 'edit'
 
-  // D-5 grandfathering (spec 0077): the update schema's new row-set rules are
-  // gated against the loaded opportunity's own persisted rows, so an
-  // unrelated field edit on a non-conformant historic record still saves.
   const schema = useMemo(
-    () =>
-      mode.type === 'edit'
-        ? buildUpdateOpportunitySchema(t, toProductLineRows(mode.opportunity.product_lines))
-        : buildCreateOpportunitySchema(t),
+    () => (mode.type === 'edit' ? buildUpdateOpportunitySchema(t) : buildCreateOpportunitySchema(t)),
     [mode, t],
   )
 

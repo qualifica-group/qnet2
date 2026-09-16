@@ -1,103 +1,49 @@
 import { useTranslation } from 'react-i18next'
 import { Boxes, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
-import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
+import { ProductCategoryRootSelect } from '@/features/product-lines/product-category-root-select'
 import { ProductCategoryTreeSelect } from '@/features/product-lines/product-category-tree-select'
 import { useProductLinesField } from '@/features/product-lines/use-product-lines-field'
-import type { KnownProductLine, ProductLine, ProductLineRow } from '@/features/product-lines/types'
+import type { ProductLine, ProductLineRow } from '@/features/product-lines/types'
 
 export type { ProductLine, ProductLineRow }
-
-/** Stable empty default: avoids a fresh array reference (and reference-equality churn) on every render (engineering.md §10). */
-const EMPTY_KNOWN_LINES: KnownProductLine[] = []
 
 interface ProductLinesFieldProps {
   value: ProductLineRow[]
   onChange: (rows: ProductLineRow[]) => void
-  /** Rows whose labels are already known without a fetch (edit load, from-lead prefill, in-form pickers). */
-  knownLines?: KnownProductLine[]
   disabled?: boolean
-  /**
-   * `'card'` (default): a commercial card — opportunity, project, campaign,
-   * request — keeps the "one deal, one single-mode line" cap (spec 0111
-   * AC-041) and requires `is_selectable` categories (D-4). `'competence'`
-   * (spec 0111 D-5 + spec 0129): a person's competence — the cap does not
-   * apply, a container category is pickable (D-6/D-7), and each row gets an
-   * "all categories of the function" checkbox (D-5).
-   */
-  variant?: 'card' | 'competence'
 }
 
 /**
- * The business-function + product-category row editor (spec 0057, frozen
- * contract): shared by the opportunity form and the request-management
- * create form (originally `OpportunityProductLinesField`, spec 0040
- * amendment rev.3 AC-106/107). Styled/interacted like `ManagerSlotsField`:
- * "Add" appends an empty row (full-width dashed button), each row edits its
- * pair IN PLACE (numbered chip, two selects, a trailing remove button), the
- * category select is scoped to the row's own function and disabled until it
- * is chosen. Every row is independent: spec 0077 rev.2 (user directive
- * 2026-08-31) revoked INV-1/INV-2, so the function of a row after the first
- * is neither prefilled, nor locked, nor confined to the first row's branch —
- * only the `single`-mode row cap survives (AC-041), and even that one is
- * opt-out (`variant="competence"`, spec 0111 D-5). All non-render logic
- * (label resolution) lives in `useProductLinesField` — this component only
- * renders it.
- *
- * The two selects read DIFFERENT channels on purpose: the function is a flat,
- * server-paginated `for-select`, the category is the structural TREE
- * (`ProductCategoryTreeSelect`, user directive 2026-08-03) so its parents are
- * listed with it — disabled where they may not be picked.
+ * The CARD row editor (spec 0132, superseding the funzione+categoria
+ * contract of spec 0057/0111): a commercial card — opportunity, project,
+ * campaign, request — classifies each `product_lines` row by picking a ROOT
+ * category first, then one of its `is_selectable` descendants; the effective
+ * business function is derived and persisted server-side, never an input
+ * here (D-3). Styled/interacted like `ManagerSlotsField`: "Add" appends an
+ * empty row (full-width dashed button), each row edits its pair IN PLACE
+ * (numbered chip, two selects, a trailing remove button). Rows are
+ * independent (spec 0077 rev.2): only the `single`-mode row cap survives
+ * (AC-041). The competence editor is a separate component,
+ * `CompetenceLinesField` — it kept the funzione+categoria contract (D-4) and
+ * is no longer a variant of this one. All non-render logic lives in
+ * `useProductLinesField` — this component only renders it.
  */
-export function ProductLinesField({
-  value,
-  onChange,
-  knownLines = EMPTY_KNOWN_LINES,
-  disabled = false,
-  variant = 'card',
-}: ProductLinesFieldProps) {
+export function ProductLinesField({ value, onChange, disabled = false }: ProductLinesFieldProps) {
   const { t } = useTranslation()
-  const {
-    addRow,
-    removeRow,
-    setRowBusinessFunction,
-    setRowProductCategory,
-    setRowAllCategories,
-    businessFunctionLabel,
-    canAddRow,
-  } = useProductLinesField({ value, onChange, knownLines, variant })
-  const isCompetence = variant === 'competence'
-  // One quick-create wiring per resource, shared by every row: the refs it
-  // tracks are matched by id, so a function created from row 2 also labels
-  // row 5 if picked there (spec 0028).
-  const businessFunctionQuickCreate = useQuickCreateAction(BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE)
+  const { addRow, removeRow, setRowRootCategory, setRowProductCategory, rootCategoryFor, canAddRow } =
+    useProductLinesField({ value, onChange })
+  // The category quick-create is the only one left (spec 0132 scope: the
+  // function quick-create is removed, not replaced).
   const productCategoryQuickCreate = useQuickCreateAction(PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE)
-
-  const selectLabels = {
-    placeholder: t('productLines.selectPlaceholder'),
-    empty: t('productLines.selectEmpty'),
-    error: t('productLines.selectError'),
-    clearLabel: t('common.clear'),
-    retry: t('common.retry'),
-  }
 
   return (
     <div className="flex flex-col gap-2">
       <ul className="flex flex-col gap-2">
         {value.map((row, index) => {
-          // A just-created record has no label yet in either source, so its
-          // own ref answers before the `#id` fallback (spec 0028 AC-006).
-          const businessFunctionSelected =
-            row.business_function_id !== null
-              ? businessFunctionQuickCreate.selectedItemFor(row.business_function_id) ?? {
-                  id: row.business_function_id,
-                  label: businessFunctionLabel(row.business_function_id) ?? `#${row.business_function_id}`,
-                }
-              : null
+          const rootCategoryId = rootCategoryFor(row)
           return (
             // The row's identity IS its position, so the index is the correct key (mirrors ManagerSlotsField).
             <li key={index} className="flex items-center gap-2">
@@ -111,59 +57,33 @@ export function ProductLinesField({
 
               <div className="flex min-w-0 flex-1 gap-2">
                 <div className="min-w-0 flex-1">
-                  <AsyncPaginatedSelect
-                    resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
-                    value={row.business_function_id}
-                    onChange={(id) => setRowBusinessFunction(index, id)}
-                    selectedItem={businessFunctionSelected}
-                    action={businessFunctionQuickCreate.renderAction(
-                      (ref) => setRowBusinessFunction(index, ref.id),
-                      disabled,
-                    )}
+                  <ProductCategoryRootSelect
+                    value={rootCategoryId}
+                    onChange={(id) => setRowRootCategory(index, id)}
                     disabled={disabled}
-                    labels={{
-                      ...selectLabels,
-                      searchPlaceholder: t('productLines.businessFunctionSearch'),
-                      triggerLabel: t('productLines.businessFunction', { n: index + 1 }),
-                    }}
+                    triggerLabel={t('productLines.rootCategory', { n: index + 1 })}
                   />
                 </div>
 
                 <div className="min-w-0 flex-1">
                   {/* Reads the category TREE, so the parent categories show
                       above the pickable ones (user directive 2026-08-03).
-                      Without a function chosen there is nothing to scope it
-                      by: the disabled placeholder keeps the row's two steps
-                      in order, as before. */}
+                      Without a root chosen there is nothing to scope it by:
+                      the disabled placeholder keeps the row's two steps in
+                      order, as before (AC-014). */}
                   <ProductCategoryTreeSelect
                     value={row.product_category_id}
                     onChange={(id) => setRowProductCategory(index, id)}
-                    businessFunctionId={row.business_function_id}
-                    disabled={disabled || row.all_categories === true}
+                    scope={{ kind: 'root', rootCategoryId }}
+                    disabled={disabled}
                     action={productCategoryQuickCreate.renderAction(
                       (ref) => setRowProductCategory(index, ref.id),
-                      disabled || row.business_function_id === null || row.all_categories === true,
+                      disabled || rootCategoryId === null,
                     )}
                     triggerLabel={t('productLines.category', { n: index + 1 })}
-                    variant={variant}
                   />
                 </div>
               </div>
-
-              {isCompetence ? (
-                // D-5: "all categories of the function" — mutually exclusive
-                // with a specific category pick, so the select above disables
-                // and clears the moment this is checked.
-                <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-                  <Checkbox
-                    checked={row.all_categories === true}
-                    onCheckedChange={(checked) => setRowAllCategories(index, checked === true)}
-                    disabled={disabled || row.business_function_id === null}
-                    aria-label={t('productLines.allCategories', { n: index + 1 })}
-                  />
-                  {t('productLines.allCategoriesShort')}
-                </label>
-              ) : null}
 
               <div className="flex shrink-0 gap-1">
                 <Button

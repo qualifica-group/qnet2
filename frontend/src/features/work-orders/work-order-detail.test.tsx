@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render as rtlRender, screen } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
@@ -42,6 +42,20 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
   },
 }))
 
+// Spec 0134: the side collaboration card mounts notes and documents, which are
+// not what these tests are about and would need a query client.
+vi.mock('@/features/notes/notes-section', () => ({
+  NotesSection: () => <div>notes-section</div>,
+}))
+
+vi.mock('@/features/attachments/documents-section', () => ({
+  DocumentsSection: () => <div>documents-section</div>,
+}))
+
+vi.mock('@/features/work-orders/work-order-tasks-section', () => ({
+  WorkOrderTasksSection: () => <div>tasks-section</div>,
+}))
+
 function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): WorkOrderDetailWithPermissions {
   return {
     id: 4,
@@ -59,6 +73,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     internal_notes: 'Nota interna',
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
+    contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale' },
     task_template: null,
     quote_lines: [
       { id: 11, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' } },
@@ -87,7 +102,7 @@ beforeEach(() => {
 })
 
 describe('WorkOrderDetailView — detail fields (AC-075)', () => {
-  it('shows number, title, type, status, callback date, contract no. and linked offer', () => {
+  it('shows number, title, type, status, callback date, contract no. and contract', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(screen.getByRole('heading', { name: 'Installazione impianto' })).toBeInTheDocument()
@@ -188,6 +203,8 @@ describe('WorkOrderDetailView — additional information (spec 0098, AC-023)', (
 })
 
 describe('WorkOrderDetailView — activity log section', () => {
+  // Spec 0134 D-3 (REQUIREMENT CHANGED): the log moved from the bottom of the
+  // record card into the side collaboration card's own "Activity" tab.
   it('mounts the section when view_activity is granted', () => {
     render(
       <WorkOrderDetailView
@@ -196,6 +213,8 @@ describe('WorkOrderDetailView — activity log section', () => {
         })}
       />,
     )
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Activity log' }))
 
     expect(activityLogSectionMock).toHaveBeenCalledWith({ resource: 'work-orders', id: 4 })
   })
@@ -207,12 +226,36 @@ describe('WorkOrderDetailView — activity log section', () => {
   })
 })
 
+describe('WorkOrderDetailView — edit action on the card', () => {
+  it('renders Edit in the record card and calls onEdit when the actor may update', () => {
+    const onEdit = vi.fn()
+    render(<WorkOrderDetailView workOrder={workOrder()} onEdit={onEdit} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+    expect(onEdit).toHaveBeenCalledTimes(1)
+  })
+
+  it('omits Edit without update permission or without an edit surface', () => {
+    const readOnly = workOrder({
+      permissions: { ...workOrder().permissions, resource: { ...workOrder().permissions.resource, update: false } },
+    })
+    const { unmount } = render(<WorkOrderDetailView workOrder={readOnly} onEdit={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    unmount()
+
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+})
+
 describe('WorkOrderDetailView — related records', () => {
-  it('links the offer, the task template and every line product to their records', () => {
+  // User directive 2026-09-16: the field names the Contratto, not the offer underneath it.
+  it('links the contract, the task template and every line product to their records', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } })} />)
 
     const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
-    expect(hrefOf('Fornitura annuale')).toBe('/quotes/4')
+    expect(hrefOf('Fornitura annuale')).toBe('/contracts/9')
     expect(hrefOf('Onboarding cliente')).toBe('/task-templates/3')
     expect(hrefOf('Consulenza')).toBe('/products/1')
     expect(hrefOf('Installazione')).toBe('/products/2')

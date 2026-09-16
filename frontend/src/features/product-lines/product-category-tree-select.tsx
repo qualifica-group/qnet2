@@ -6,30 +6,38 @@ import {
   pruneToPickable,
 } from '@/features/product-categories/flatten-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import { pickableCategoryIdsFor } from '@/features/product-lines/category-tree-scope'
+import {
+  pickableCategoryIdsFor,
+  selectableIdsUnderRoot,
+} from '@/features/product-lines/category-tree-scope'
+
+/**
+ * How a row scopes its pickable categories (spec 0132): `'root'` — the card
+ * contract — offers every `is_selectable` descendant of the chosen ROOT
+ * category, with no business-function constraint at all (the function is
+ * derived server-side). `'business_function'` is the pre-existing competence
+ * contract (spec 0111 D-4, spec 0129 D-6/D-7), unchanged: pickable ids match
+ * the row's own business function, optionally admitting containers.
+ */
+export type CategoryPickScope =
+  | { kind: 'root'; rootCategoryId: number | null }
+  | { kind: 'business_function'; businessFunctionId: number | null; includeContainers: boolean }
 
 export interface ProductCategoryTreeSelectProps {
   value: number | null
   onChange: (categoryId: number) => void
-  /**
-   * The row's business function: only the categories whose EFFECTIVE one
-   * matches are pickable. `null` (no function chosen yet) offers nothing and
-   * disables the control — the row's two steps stay in order.
-   */
-  businessFunctionId: number | null
+  /** What scopes this row's pickable set — see {@link CategoryPickScope}. Disabled until its id resolves. */
+  scope: CategoryPickScope
   disabled?: boolean
   /** Quick-create affordance rendered next to the trigger (spec 0028). */
   action?: ReactNode
   /** Accessible name of the trigger — a repeated row editor has no visible label of its own. */
   triggerLabel: string
-  /**
-   * Spec 0129 D-6/D-7: `'competence'` also offers container categories
-   * (`is_selectable=false`) whose effective — or, for a neutral one, some
-   * descendant's — business function matches the row. Defaults to `'card'`
-   * (spec 0111 D-4 unchanged): offers/projects/campaigns/requests keep
-   * `is_selectable` mandatory.
-   */
-  variant?: 'card' | 'competence'
+}
+
+/** The id the scope resolves on, or `null` while the row's first step is still unset. */
+function scopeId(scope: CategoryPickScope): number | null {
+  return scope.kind === 'root' ? scope.rootCategoryId : scope.businessFunctionId
 }
 
 /**
@@ -37,14 +45,14 @@ export interface ProductCategoryTreeSelectProps {
  * category TREE (user directive 2026-08-03) so the PARENT categories are
  * listed above the pickable ones, indented, exactly as the product form's
  * picker lists them. A category the row may not target — not `is_selectable`,
- * or belonging to another business function — is shown DISABLED, never
- * hidden: it is the branch its children hang from.
+ * or outside the row's scope — is shown DISABLED, never hidden: it is the
+ * branch its children hang from.
  *
  * This replaces the flat, server-paginated `for-select` list this select used
- * to read. The scoping the endpoint did (effective business function) is
- * resolved client-side against the same cached tree the product form and the
- * category tree view already share — see `category-tree-scope.ts`, which
- * resolves the card's management mode off the very same tree.
+ * to read. The scoping the endpoint did is resolved client-side against the
+ * same cached tree the product form and the category tree view already
+ * share — see `category-tree-scope.ts`, which resolves the card's management
+ * mode off the very same tree.
  *
  * Branches offering nothing pickable are pruned: disabled ancestors are
  * context for what hangs underneath them, an entirely dead branch is noise.
@@ -52,26 +60,27 @@ export interface ProductCategoryTreeSelectProps {
 export function ProductCategoryTreeSelect({
   value,
   onChange,
-  businessFunctionId,
+  scope,
   disabled = false,
   action,
   triggerLabel,
-  variant = 'card',
 }: ProductCategoryTreeSelectProps) {
   const { t } = useTranslation()
   const treeQuery = useProductCategoryTree()
   const tree = treeQuery.data
+  const scopeReady = scopeId(scope) !== null
 
   const options = useMemo(() => {
-    if (!tree || businessFunctionId === null) {
+    if (!tree || !scopeReady) {
       return []
     }
-    // Step 1: what this row may actually target. The whole tree is in scope:
-    // spec 0077 rev.2 revoked INV-1, so a row is no longer confined to the
-    // branch root the card resolved.
-    const pickableIds = pickableCategoryIdsFor(tree, businessFunctionId, {
-      includeContainers: variant === 'competence',
-    })
+    // Step 1: what this row may actually target, per the scope kind.
+    const pickableIds =
+      scope.kind === 'root'
+        ? selectableIdsUnderRoot(tree, scope.rootCategoryId as number)
+        : pickableCategoryIdsFor(tree, scope.businessFunctionId as number, {
+            includeContainers: scope.includeContainers,
+          })
     // Step 2: keep the pickable nodes and the ancestors that lead to them,
     // the latter listed as disabled context. D-3b: the value already saved on
     // the row survives the pruning and stays pickable even when it would no
@@ -82,7 +91,7 @@ export function ProductCategoryTreeSelect({
       pickableIds,
       keepIds: value === null ? undefined : [value],
     })
-  }, [tree, businessFunctionId, value, variant])
+  }, [tree, scope, scopeReady, value])
 
   return (
     <SearchableSelect
@@ -92,7 +101,7 @@ export function ProductCategoryTreeSelect({
       isPending={treeQuery.isPending}
       isError={treeQuery.isError}
       onRetry={() => void treeQuery.refetch()}
-      disabled={disabled || businessFunctionId === null}
+      disabled={disabled || !scopeReady}
       action={action}
       labels={{
         placeholder: t('productLines.selectPlaceholder'),

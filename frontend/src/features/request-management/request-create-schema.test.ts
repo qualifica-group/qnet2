@@ -3,16 +3,15 @@ import i18n from '@/i18n'
 import { buildRequestCreateSchema } from '@/features/request-management/request-create-schema'
 
 /**
- * Spec 0077 INV-2: every `product_lines` row of a request shares the same
- * Funzione aziendale, in both management modes — the create channel has no
- * persisted record to grandfather (D-5 only gates the work panel's edits,
- * see `request-work-schema.test.ts`), so the rule is unconditional here.
+ * Spec 0132: `product_lines` picks a ROOT category then one of its
+ * descendants — `root_category_id` is UI-only state (D-3, never validated as
+ * a domain field); only `product_category_id` must be non-null per row.
  */
 
 function baseValues(overrides: Record<string, unknown> = {}) {
   return {
     registry_id: 1,
-    product_lines: [{ business_function_id: 1, product_category_id: 11 }],
+    product_lines: [{ root_category_id: null, product_category_id: 11 }],
     source_id: 30,
     reporter_id: null,
     supervisor_id: null,
@@ -54,36 +53,17 @@ describe('buildRequestCreateSchema — product lines', () => {
     }
   })
 
-  describe('shared business function (spec 0077 INV-2)', () => {
-    it('rejects two rows with different business functions', () => {
-      const schema = buildRequestCreateSchema(i18n.t)
-      const result = schema.safeParse(
-        baseValues({
-          product_lines: [
-            { business_function_id: 1, product_category_id: 11 },
-            { business_function_id: 2, product_category_id: 22 },
-          ],
-        }),
-      )
+  it('accepts several rows under different root categories', () => {
+    const schema = buildRequestCreateSchema(i18n.t)
+    const result = schema.safeParse(
+      baseValues({
+        product_lines: [
+          { root_category_id: null, product_category_id: 11 },
+          { root_category_id: null, product_category_id: 22 },
+        ],
+      }),
+    )
 
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines')).toBe(true)
-      }
-    })
-
-    it('accepts several rows sharing the same business function', () => {
-      const schema = buildRequestCreateSchema(i18n.t)
-      const result = schema.safeParse(
-        baseValues({
-          product_lines: [
-            { business_function_id: 1, product_category_id: 11 },
-            { business_function_id: 1, product_category_id: 22 },
-          ],
-        }),
-      )
-
-      expect(result.success).toBe(true)
-    })
+    expect(result.success).toBe(true)
   })
 })

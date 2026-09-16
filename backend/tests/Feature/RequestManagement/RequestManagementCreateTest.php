@@ -239,18 +239,16 @@ it('AC-006: POST without product_lines -> 422, no row created', function () {
     expect(Quote::count())->toBe(0);
 });
 
-it('AC-006: POST with a category not belonging to the chosen business function -> 422, no row created', function () {
+it('AC-006 (spec 0132): POST with a category with no EFFECTIVE business function -> 422, no row created', function () {
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->create();
-    $businessFunction = BusinessFunction::factory()->create();
-    $otherBusinessFunction = BusinessFunction::factory()->create();
-    $category = ProductCategory::factory()->create(['business_function_id' => $otherBusinessFunction->id]);
+    $withoutFunction = ProductCategory::factory()->create(['business_function_id' => null]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management', [
         'registry_id' => $registry->id,
-        'product_lines' => [['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id]],
-    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.business_function_id');
+        'product_lines' => [['product_category_id' => $withoutFunction->id]],
+    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.product_category_id');
 
     expect(Opportunity::count())->toBe(0);
     expect(Quote::count())->toBe(0);

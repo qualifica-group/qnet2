@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\FormMode;
+use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Opportunity;
 use App\Models\Quote;
@@ -65,6 +66,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 #[PreserveKeys]
 class RequestManagementResource extends JsonResource
 {
+    use SummarizesProductLines;
     use SummarizesRewards;
 
     /**
@@ -265,20 +267,6 @@ class RequestManagementResource extends JsonResource
             ->map(fn (Model $status): array => [
                 ...$this->summarizeWorkflowStatus($status),
                 'sort_order' => $status->sort_order,
-            ])
-            ->all();
-    }
-
-    /**
-     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
-     */
-    private function summarizeProductLines(iterable $lines): array
-    {
-        return collect($lines)
-            ->map(fn (Model $line): array => [
-                'id' => $line->id,
-                'business_function' => $this->summarizeByName($line->businessFunction),
-                'product_category' => $this->summarizeByName($line->productCategory),
             ])
             ->all();
     }

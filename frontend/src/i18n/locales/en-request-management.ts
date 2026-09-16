@@ -168,10 +168,7 @@ export const requestManagement = {
       success: 'Request created.',
       validation: {
         productLinesRequired: 'Add at least one product line.',
-        productLineIncomplete: 'Select a business function and a product category for every row.',
-        // Spec 0077 INV-2: every row shares the same Business function
-        // (creation: no historic record to grandfather).
-        businessFunctionMismatch: 'All rows must share the same business function.',
+        productLineIncomplete: 'Select a parent category and a product category for every row.',
         sourceRequired: 'Select a source.',
       },
       errors: {
@@ -289,11 +286,7 @@ export const requestManagement = {
       required: 'This field is required.',
       sourceRequired: 'Select a source.',
       productLinesRequired: 'Add at least one product line.',
-      productLineIncomplete: 'Select a business function and a product category for every row.',
-      // Spec 0077 INV-2, D-5: only enforced once `product_lines` was
-      // actually edited (grandfathering a non-conformant historic record,
-      // see `request-work-schema.ts`).
-      businessFunctionMismatch: 'All rows must share the same business function.',
+      productLineIncomplete: 'Select a parent category and a product category for every row.',
       // Direttiva utente 2026-09-09: mirror of the server gate
       // (`RequestWorkflowStatusWriter`), either identifier satisfies it.
       fiscalIdentityRequiredForStatus:
@@ -371,7 +364,15 @@ export const requestManagement = {
     editFilters: 'Filters',
     filtersSummary: 'From {{from}} to {{to}} · {{selected}}/{{total}} categories · {{rowMode}}',
     operatorsSummary: '· {{selected}}/{{total}} operators',
-    loadError: 'Unable to load the dashboard.',
+    noCategories:
+      'Nothing to show yet: there are no requests in the categories included in the report. The dashboard will fill in as soon as one is recorded.',
+    errors: {
+      network: 'Unable to reach the server: check your connection and try again.',
+      forbidden: 'You do not have permission to view the requests dashboard.',
+      invalidFilters:
+        'The applied filters are no longer valid (for example a category is no longer available). Update them from the Filters button.',
+      generic: 'Unable to load the dashboard because of a server error. Please try again shortly.',
+    },
     empty: 'No charts to show for this selection.',
     overall: 'Overall',
     indicatorsChartTitle: 'Indicators',

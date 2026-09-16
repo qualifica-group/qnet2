@@ -55,11 +55,21 @@ class WorkOrderPolicy extends BasePolicy
     }
 
     /**
+     * Resource-level, exactly like OpportunityPolicy::viewDocuments (spec
+     * 0134): it gates the documents tab of the detail, NOT the single
+     * attachment, which AttachmentPolicy keeps authorizing on its own.
+     */
+    public function viewDocuments(User $user): bool
+    {
+        return $user->can($this->permission('viewDocuments'));
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll'];
+        return [...parent::abilities(), 'viewAll', 'viewDocuments'];
     }
 
     private function isInScope(User $user, Model $model): bool

@@ -6,7 +6,7 @@ import { useUserDetailSheet } from '@/features/users/user-detail-sheet-context'
 
 const navigate = vi.hoisted(() => vi.fn())
 
-vi.mock('@/routes/router', () => ({ router: { navigate } }))
+vi.mock('react-router-dom', () => ({ useNavigate: () => navigate }))
 
 vi.mock('@/features/users/user-detail', () => ({
   UserDetailView: ({ userId }: { userId: number }) => <div>{`user-${userId}`}</div>,
@@ -21,8 +21,6 @@ function OpenUserButton() {
   return <button onClick={() => openUserDetail(12)}>open-user</button>
 }
 
-// Mounted with NO router around it, exactly as App.tsx mounts the provider
-// above `RouterProvider`: any router hook or `<Link>` in the Sheet would throw.
 function renderProvider() {
   return render(
     <UserDetailSheetProvider>
@@ -40,7 +38,7 @@ beforeEach(() => {
 })
 
 describe('UserDetailSheetProvider toolbar', () => {
-  it('opens the user detail page outside the router context and closes the Sheet', () => {
+  it('opens the user detail page and closes the Sheet', () => {
     renderProvider()
 
     fireEvent.click(screen.getByRole('button', { name: 'open-user' }))

@@ -338,5 +338,5 @@ export interface RequestTaskUpdatePayload {
  * present means the parent picker renders prefilled AND locked.
  */
 export type TaskFormMode =
-  | { type: 'create'; parentTaskId?: number | null }
+  | { type: 'create'; parentTaskId?: number | null; workOrderId?: number | null }
   | { type: 'edit'; task: TaskDetailWithPermissions }

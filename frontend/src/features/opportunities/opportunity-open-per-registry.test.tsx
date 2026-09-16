@@ -42,7 +42,7 @@ const VALUES = {
   supervisor_id: 1,
   source_id: null,
   operational_site_id: null,
-  product_lines: [{ business_function_id: 1, product_category_id: 2 }],
+  product_lines: [{ root_category_id: null, product_category_id: 2 }],
   products_of_interest: [3],
   manager_slots: [],
   rewards: [],

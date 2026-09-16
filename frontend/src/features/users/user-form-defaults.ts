@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ForSelectItem } from '@/features/for-select/types'
-import type { KnownProductLine, ProductLineRow } from '@/features/product-lines/types'
+import type { CompetenceLineRow, KnownProductLine } from '@/features/product-lines/types'
 import type { EmploymentProductLine, EmploymentRelationRef, UserLocale } from '@/features/users/types'
 import type { EmploymentFormValues } from '@/features/users/user-schema'
 import type { UserFormMode } from '@/features/users/user-form'
@@ -26,7 +26,7 @@ const DEFAULT_LOCALE: UserLocale = 'it'
 const EMPTY_REMOTE_SITE_IDS: number[] = []
 
 /** Same stable-reference reasoning for the competence row field (spec 0111). */
-const EMPTY_PRODUCT_LINES: ProductLineRow[] = []
+const EMPTY_PRODUCT_LINES: CompetenceLineRow[] = []
 
 /** No relations loaded: stable module-level reference, mirrors `EMPTY_REMOTE_SITE_IDS`. */
 const EMPTY_RELATION_REFS: ForSelectItem[] = []
@@ -74,7 +74,7 @@ function relationsToForSelectItems(
  * place (spec 0111). Spec 0129 AC-023: a persisted row with a null category
  * opens with `all_categories` checked (D-3).
  */
-function productLinesToRows(lines: EmploymentProductLine[] | undefined): ProductLineRow[] {
+function productLinesToRows(lines: EmploymentProductLine[] | undefined): CompetenceLineRow[] {
   if (!lines || lines.length === 0) {
     return EMPTY_PRODUCT_LINES
   }

@@ -13,6 +13,18 @@ import type {
 export const WORK_ORDERS_DOMAIN = 'work-orders'
 
 /**
+ * Attachable alias of a work order's documents (spec 0134 D-4): the value
+ * `config/attachments.php` maps to `WorkOrder`, identical to the record's
+ * morph identity. Mirrors `TASK_ATTACHABLE_ALIAS`.
+ */
+export const WORK_ORDER_ATTACHABLE_ALIAS = 'work_order'
+
+/** Query key of a single work order's detail, shared with readers of the same cache (spec 0133 D-4). */
+export function workOrderDetailQueryKey(id: number) {
+  return [WORK_ORDERS_DOMAIN, 'detail', id] as const
+}
+
+/**
  * Fetches a single work order detail together with the actor's authorization
  * metadata for it (`permissions`, a top-level envelope sibling of `data`).
  */

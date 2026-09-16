@@ -10,7 +10,7 @@ import { RelationMultiSelectField } from '@/components/form/relation-multi-selec
 import { toRelationFieldRef, toRelationFieldRefs } from '@/components/form/relation-field-ref'
 import { MetaField } from '@/features/authorization/MetaField'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
-import { ProductLinesField } from '@/features/product-lines/product-lines-field'
+import { CompetenceLinesField } from '@/features/product-lines/competence-lines-field'
 import type { KnownProductLine } from '@/features/product-lines/types'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { UserFormValues } from '@/features/users/use-user-form'
@@ -41,9 +41,10 @@ interface UserAssignmentSectionProps {
  * editor's jolly — checking it hides the editor and clears its rows (one
  * state only, no dormant rows survive under a true flag); unchecking it opens
  * back on an empty editor, never on what was cleared. The row editor itself
- * runs the `competence` variant (spec 0111 D-5: no `single`-mode cap; spec
+ * is `CompetenceLinesField` (spec 0111 D-5: no `single`-mode cap; spec
  * 0129 D-6/D-7: container categories pickable, per-row "all categories"
- * checkbox).
+ * checkbox; spec 0132 D-4: this contract is unaffected by the card's move to
+ * root-category classification).
  */
 export function UserAssignmentSection({
   control,
@@ -104,12 +105,11 @@ export function UserAssignmentSection({
           hint={t('users.form.employment.productLinesHint')}
         >
           {({ field, disabled }) => (
-            <ProductLinesField
+            <CompetenceLinesField
               value={field.value}
               onChange={field.onChange}
               knownLines={knownProductLines}
               disabled={disabled}
-              variant="competence"
             />
           )}
         </MetaField>

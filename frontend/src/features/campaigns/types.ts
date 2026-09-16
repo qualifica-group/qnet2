@@ -88,9 +88,12 @@ export interface CampaignDetailWithPermissions extends CampaignDetail {
   permissions: ResourcePermissions
 }
 
-/** A `product_lines` row as sent to the server (create/update payload, spec 0094). */
+/**
+ * A `product_lines` row as sent to the server (create/update payload, spec
+ * 0132 AC-018): ONLY `product_category_id` travels — the server derives and
+ * persists the effective business function.
+ */
 export interface CampaignProductLineInput {
-  business_function_id: number
   product_category_id: number
 }
 

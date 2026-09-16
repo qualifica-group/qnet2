@@ -15,10 +15,11 @@ const MAX_OFFER_LINES = 200
 
 /**
  * D-3: `product_lines` is mandatory — at least one row — and every row
- * present must be complete (both ids chosen), mirroring the opportunity
- * form's own product-lines rule. The shared `ProductLinesField` enforces the
- * row shape (category disabled until a function is chosen); this only gates
- * the SET.
+ * present must be complete (spec 0132: `product_category_id` chosen;
+ * `root_category_id` is UI-only state, never validated as a domain field),
+ * mirroring the opportunity form's own product-lines rule. The shared
+ * `ProductLinesField` enforces the row shape (category disabled until a root
+ * is chosen); this only gates the SET.
  */
 function buildProductLinesSchema(t: TFunction) {
   return z.array(z.custom<ProductLineRow>()).superRefine((rows, ctx) => {
@@ -30,7 +31,7 @@ function buildProductLinesSchema(t: TFunction) {
       return
     }
     rows.forEach((row, index) => {
-      if (row.business_function_id === null || row.product_category_id === null) {
+      if (row.product_category_id === null) {
         ctx.addIssue({
           code: 'custom',
           path: [index],
@@ -38,18 +39,6 @@ function buildProductLinesSchema(t: TFunction) {
         })
       }
     })
-    // Spec 0077 INV-2: every row shares the same Funzione aziendale, in both
-    // management modes — a fresh creation, so nothing to grandfather (D-5
-    // only applies to the work panel's edits of a persisted record).
-    const businessFunctionIds = new Set(
-      rows.map((row) => row.business_function_id).filter((id): id is number => id !== null),
-    )
-    if (businessFunctionIds.size > 1) {
-      ctx.addIssue({
-        code: 'custom',
-        message: t('requestManagement.form.create.validation.businessFunctionMismatch'),
-      })
-    }
   })
 }
 

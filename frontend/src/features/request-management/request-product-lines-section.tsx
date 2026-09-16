@@ -5,23 +5,21 @@ import { FormSection } from '@/components/form-section'
 import { MetaField } from '@/features/authorization/MetaField'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
-import type { RequestProductLine } from '@/features/request-management/types'
 
 interface RequestProductLinesSectionProps {
   control: Control<RequestWorkFormValues>
-  /** The persisted rows, whose `{id, name}` projections label the selects without a fetch. */
-  productLines: RequestProductLine[]
 }
 
 /**
- * "Funzione aziendale" + "categoria prodotto" of an existing request (user
- * directive 2026-07-31): the commercials change them from the work panel, not
- * only while creating the request. Rendered with the SAME `ProductLinesField`
- * the create form and the opportunity form use, wrapped in `MetaField` like
- * every other field here so its gating comes from the server-derived
- * permissions.
+ * "Categoria genitore" + "categoria prodotto" of an existing request (user
+ * directive 2026-07-31, spec 0132): the commercials change them from the work
+ * panel, not only while creating the request. Rendered with the SAME
+ * `ProductLinesField` the create form and the opportunity form use, wrapped in
+ * `MetaField` like every other field here so its gating comes from the
+ * server-derived permissions. No `knownLines` (spec 0132): every label
+ * resolves off the cached category tree, not a persisted-row projection.
  */
-export function RequestProductLinesSection({ control, productLines }: RequestProductLinesSectionProps) {
+export function RequestProductLinesSection({ control }: RequestProductLinesSectionProps) {
   const { t } = useTranslation()
 
   return (
@@ -38,12 +36,7 @@ export function RequestProductLinesSection({ control, productLines }: RequestPro
         hint={t('requestManagement.workPanel.productLines.hint')}
       >
         {({ field, disabled }) => (
-          <ProductLinesField
-            value={field.value}
-            onChange={field.onChange}
-            knownLines={productLines}
-            disabled={disabled}
-          />
+          <ProductLinesField value={field.value} onChange={field.onChange} disabled={disabled} />
         )}
       </MetaField>
     </FormSection>

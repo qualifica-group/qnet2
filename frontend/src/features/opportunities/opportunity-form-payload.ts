@@ -114,10 +114,9 @@ export function buildUpdatePayload(
     payload.operational_site_id = values.operational_site_id
   }
   // Amendment rev.3: the server replaces the entire row SET (AC-099) — diff
-  // as an unordered collection of pairs, never positionally (row order in
-  // the form carries no meaning).
+  // as an unordered collection of categories, never positionally (row order
+  // in the form carries no meaning).
   const originalProductLines = original.product_lines.map((line) => ({
-    business_function_id: line.business_function.id,
     product_category_id: line.product_category.id,
   }))
   const currentProductLines = completeProductLines(values.product_lines)
@@ -165,22 +164,22 @@ export function buildUpdatePayload(
 }
 
 /**
- * Filters out any row still missing an id and casts the rest to the wire
- * shape. Defensive only: the schema's `superRefine` (spec 0040 amendment
- * rev.3) already blocks submit on an incomplete row, so this never actually
- * drops a row in practice — it exists because `OpportunityFormValues.product_lines`
- * stays nullable-per-id at the type level (each row is inline-editable).
+ * Filters out any row still missing a category and casts the rest to the wire
+ * shape (spec 0132 AC-018: only `product_category_id` travels). Defensive
+ * only: the schema's `superRefine` already blocks submit on an incomplete
+ * row, so this never actually drops a row in practice — it exists because
+ * `OpportunityFormValues.product_lines` stays nullable-per-id at the type
+ * level (each row is inline-editable).
  */
 function completeProductLines(rows: OpportunityFormValues['product_lines']): OpportunityProductLineInput[] {
-  return rows.filter(
-    (row): row is OpportunityProductLineInput =>
-      row.business_function_id !== null && row.product_category_id !== null,
-  )
+  return rows
+    .filter((row) => row.product_category_id !== null)
+    .map((row) => ({ product_category_id: row.product_category_id as number }))
 }
 
-/** Order-independent key of a product-line pair, for set comparison. */
+/** Order-independent key of a product-line category, for set comparison. */
 function productLineKey(line: OpportunityProductLineInput): string {
-  return `${line.business_function_id}:${line.product_category_id}`
+  return `${line.product_category_id}`
 }
 
 function sameProductLines(a: OpportunityProductLineInput[], b: OpportunityProductLineInput[]): boolean {

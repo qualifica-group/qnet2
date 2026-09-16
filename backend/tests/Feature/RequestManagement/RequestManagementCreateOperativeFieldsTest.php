@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\AttributeContext;
+use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
@@ -81,7 +83,7 @@ it('form-context: resolves the applicable set for the picked categories', functi
         ->assertJsonStructure(['data' => ['applicable_attributes', 'attribute_layout']]);
 });
 
-it('form-context: an incomplete product line scopes nothing, never a 422', function () {
+it('form-context: a row with no product_category_id scopes nothing, never a 422 (spec 0132, AC-010)', function () {
     Sanctum::actingAs(requestCreateOperativeActor());
 
     $response = $this->postJson('/api/request-management/form-context', [
@@ -89,6 +91,25 @@ it('form-context: an incomplete product line scopes nothing, never a 422', funct
     ])->assertOk();
 
     expect($response->json('data.applicable_attributes'))->toBe([]);
+});
+
+it('form-context: a row with product_category_id but no business_function_id is still scoped (spec 0132, AC-010)', function () {
+    Sanctum::actingAs(requestCreateOperativeActor());
+    $category = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
+    $attribute = Attribute::factory()->create(['code' => 'no-function-scope']);
+    $category->attributes()->attach($attribute->id, [
+        'is_required' => false, 'sort_order' => 0, 'context' => AttributeContext::Quote->value,
+    ]);
+
+    // Spec 0132, D-3: `business_function_id` is no longer part of a row's
+    // identity — a row missing it, but carrying `product_category_id`, is
+    // NOT discarded (the old semantics required BOTH ids present).
+    $response = $this->postJson('/api/request-management/form-context', [
+        'product_lines' => [['product_category_id' => $category->id]],
+    ])->assertOk();
+
+    expect(collect($response->json('data.applicable_attributes'))->pluck('code')->all())
+        ->toContain('no-function-scope');
 });
 
 it('form-context: requires request-management.create', function () {

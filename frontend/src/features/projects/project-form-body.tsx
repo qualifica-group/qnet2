@@ -189,7 +189,6 @@ export function ProjectFormBody({ mode, onSuccess, onCancel, initialCode }: Proj
                 <ProductLinesField
                   value={field.value}
                   onChange={field.onChange}
-                  knownLines={original?.product_lines}
                   disabled={disabled}
                 />
               )}

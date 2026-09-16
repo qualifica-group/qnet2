@@ -67,41 +67,60 @@ it('create: standalone without product_lines -> 422 on product_lines (AC-015 mir
     expect(Campaign::count())->toBe(0);
 });
 
-it('create: standalone with two identical rows -> 422 with DUPLICATE_PAIR_MESSAGE (AC-015 mirrors AC-011)', function () {
+it('create: standalone with two identical rows -> 422 with DUPLICATE_CATEGORY_MESSAGE (spec 0132, AC-004)', function () {
     $actor = campaignCoherenceUserWith(['create']);
     $businessFunction = BusinessFunction::factory()->create();
     $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/campaigns', [
-        'name' => 'Duplicate Pair',
+        'name' => 'Duplicate Category',
         'product_lines' => [
-            ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
-            ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
+            ['product_category_id' => $category->id],
+            ['product_category_id' => $category->id],
         ],
         ...campaignRequiredFields(),
     ])->assertStatus(422)->assertJsonValidationErrors([
-        'product_lines.1.product_category_id' => 'This business function / product category pair is already present.',
+        'product_lines.1.product_category_id' => 'This product category is already present.',
     ]);
 
     expect(Campaign::count())->toBe(0);
 });
 
-it('create: standalone 422 when the product category belongs to a different business function (AC-015 mirrors AC-012)', function () {
+it('create: standalone a submitted business_function_id is ignored, the EFFECTIVE one is derived and persisted (spec 0132, AC-002)', function () {
     $actor = campaignCoherenceUserWith(['create']);
-    $functionA = BusinessFunction::factory()->create();
-    $functionB = BusinessFunction::factory()->create();
-    $categoryOfB = ProductCategory::factory()->create(['business_function_id' => $functionB->id]);
+    $ownFunction = BusinessFunction::factory()->create();
+    $otherFunction = BusinessFunction::factory()->create();
+    $category = ProductCategory::factory()->create(['business_function_id' => $ownFunction->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/campaigns', [
+        'name' => 'Ignored function',
+        'product_lines' => [
+            ['business_function_id' => $otherFunction->id, 'product_category_id' => $category->id],
+        ],
+        ...campaignRequiredFields(),
+    ])->assertCreated();
+
+    $campaignId = $response->json('data.id');
+    $this->assertDatabaseHas('campaign_product_lines', [
+        'campaign_id' => $campaignId,
+        'business_function_id' => $ownFunction->id,
+        'product_category_id' => $category->id,
+    ]);
+});
+
+it('create: standalone a category with no EFFECTIVE business function -> 422 (spec 0132, AC-003)', function () {
+    $actor = campaignCoherenceUserWith(['create']);
+    $category = ProductCategory::factory()->create(['business_function_id' => null]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/campaigns', [
-        'name' => 'Mismatch',
-        'product_lines' => [
-            ['business_function_id' => $functionA->id, 'product_category_id' => $categoryOfB->id],
-        ],
+        'name' => 'No function category',
+        'product_lines' => [['product_category_id' => $category->id]],
         ...campaignRequiredFields(),
     ])->assertStatus(422)->assertJsonValidationErrors([
-        'product_lines.0.business_function_id' => 'This product category does not belong to the selected business function.',
+        'product_lines.0.product_category_id' => 'This product category has no business function of reference.',
     ]);
 
     expect(Campaign::count())->toBe(0);
@@ -173,20 +192,19 @@ it('create: standalone two rows where one resolves to a `single` management_mode
     expect(Campaign::count())->toBe(0);
 });
 
-it('update: standalone 422 when changing to a product category of a different business function', function () {
+it('update: standalone 422 when changing to a category with no EFFECTIVE business function (spec 0132, AC-003)', function () {
     $actor = campaignCoherenceUserWith(['update']);
     $functionA = BusinessFunction::factory()->create();
-    $functionB = BusinessFunction::factory()->create();
     $categoryOfA = ProductCategory::factory()->create(['business_function_id' => $functionA->id]);
-    $categoryOfB = ProductCategory::factory()->create(['business_function_id' => $functionB->id]);
+    $withoutFunction = ProductCategory::factory()->create(['business_function_id' => null]);
     $campaign = Campaign::factory()->create();
     $campaign->productLines()->delete();
     $campaign->productLines()->create(['business_function_id' => $functionA->id, 'product_category_id' => $categoryOfA->id]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/campaigns/{$campaign->id}", [
-        'product_lines' => [['business_function_id' => $functionA->id, 'product_category_id' => $categoryOfB->id]],
-    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.business_function_id');
+        'product_lines' => [['product_category_id' => $withoutFunction->id]],
+    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.product_category_id');
 });
 
 it('AC-018 (mirrors AC-020): POST linked campaign with product_lines sent -> 422 prohibited; response exposes the project rows', function () {

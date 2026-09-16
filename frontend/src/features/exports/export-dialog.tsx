@@ -53,6 +53,8 @@ export interface ExportDialogProps {
    * export, unchanged.
    */
   quoteId?: number | null
+  /** Row-set scope to one Work Order (spec 0133 D-1), forwarded like `quoteId`. */
+  workOrderId?: number | null
 }
 
 /**
@@ -71,6 +73,7 @@ export function ExportDialog({
   search,
   opportunityId,
   quoteId,
+  workOrderId,
 }: ExportDialogProps) {
   const { t } = useTranslation()
   const exportState = useExport({ domain })
@@ -100,6 +103,7 @@ export function ExportDialog({
       search: gridState.search !== '' ? gridState.search : undefined,
       ...(opportunityId != null ? { opportunityId } : {}),
       ...(quoteId != null ? { quoteId } : {}),
+      ...(workOrderId != null ? { workOrderId } : {}),
     })
   }
 

@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import type { CustomCellEditorProps } from 'ag-grid-react'
@@ -7,12 +7,13 @@ import i18n from '@/i18n'
 import { ProductLinesCellEditor, type ProductLineCellValue } from '@/features/product-lines/product-lines-cell-editor'
 import type { TableRow } from '@/features/table/types'
 
-const fetchForSelectMock = vi.fn()
-
 /**
- * Spec 0077 INV-3 (user directive 2026-08-07): the editor resolves the card's
- * management mode off the same cached category tree the form pickers read.
- * Category 71 hangs from a `single` root, category 7 from a `multiple` one.
+ * Spec 0132 AC-020: the editor's "add a pair" flow reads two steps off the
+ * cached category TREE — root categories, then a chosen root's selectable
+ * descendants — with no `for-select` call of its own. Category 71 hangs from
+ * a `single` root (spec 0077 INV-3), category 7 and 9 from a `multiple` one,
+ * with 8 a non-selectable container between the root and 9 (disabled
+ * context, spec 0132 D-1/D-2).
  */
 const { CATEGORY_TREE } = vi.hoisted(() => {
   const node = (overrides: Record<string, unknown>) => ({
@@ -34,45 +35,36 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
       node({
         id: 70,
         name: 'Single root',
-        business_function_id: 3,
         is_selectable: false,
         management_mode: 'single',
-        single_quote_per_opportunity: false,
-        generates_contract: true,
         children: [node({ id: 71, name: 'Luce singola', parent_id: 70, management_mode: 'single' })],
       }),
       node({
         id: 6,
         name: 'Multi root',
-        business_function_id: 3,
         is_selectable: false,
-        children: [node({ id: 7, name: 'Luce', parent_id: 6 })],
+        children: [
+          node({ id: 7, name: 'Luce', parent_id: 6 }),
+          node({
+            id: 8,
+            name: 'Container',
+            parent_id: 6,
+            is_selectable: false,
+            children: [node({ id: 9, name: 'Gas', parent_id: 8 })],
+          }),
+        ],
       }),
     ],
   }
 })
 
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
-  useProductCategoryTree: () => ({ data: CATEGORY_TREE, isPending: false, isError: false }),
+  useProductCategoryTree: () => ({ data: CATEGORY_TREE, isPending: false, isError: false, refetch: vi.fn() }),
 }))
 
-vi.mock('@/features/for-select/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
-    '@/features/for-select/api',
-  )
-  return {
-    ...actual,
-    fetchForSelect: (resource: string, params: unknown) => fetchForSelectMock(resource, params),
-  }
-})
-
-function page(items: { id: number; label: string }[]) {
-  return { items, pagination: { offset: 0, limit: 25, total: items.length }, export_link: null }
-}
-
 const PAIR: ProductLineCellValue = {
-  business_function_id: 3,
-  business_function_name: 'Energia',
+  root_category_id: 6,
+  root_category_name: 'Multi root',
   product_category_id: 7,
   product_category_name: 'Luce',
 }
@@ -104,43 +96,69 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  fetchForSelectMock.mockReset()
-  fetchForSelectMock.mockImplementation((resource: string) =>
-    Promise.resolve(
-      resource === 'business-functions'
-        ? page([{ id: 3, label: 'Energia' }])
-        : page([{ id: 9, label: 'Gas' }]),
-    ),
-  )
+  vi.clearAllMocks()
 })
 
-describe('ProductLinesCellEditor (spec 0075)', () => {
-  it('AC-013: adds a pair in the form\'s own two steps, category scoped to the picked function', async () => {
+describe('ProductLinesCellEditor (spec 0132 AC-020)', () => {
+  it('AC-020: step 1 lists the root categories, step 2 the selected root\'s selectable descendants, containers disabled', async () => {
     const onValueChange = vi.fn()
     renderEditor([], onValueChange)
 
-    await waitFor(() => expect(screen.getByRole('option', { name: 'Energia' })).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('option', { name: 'Energia' }))
+    expect(await screen.findByRole('option', { name: 'Single root' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Multi root' })).toBeInTheDocument()
 
-    await waitFor(() =>
-      expect(fetchForSelectMock).toHaveBeenCalledWith(
-        'product-categories',
-        expect.objectContaining({ params: { business_function_id: 3 } }),
-      ),
-    )
-    fireEvent.click(await screen.findByRole('option', { name: 'Gas' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Multi root' }))
+
+    expect(await screen.findByRole('option', { name: 'Luce' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Gas' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Container' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('option', { name: 'Gas' }))
 
     expect(onValueChange).toHaveBeenCalledWith([
-      {
-        business_function_id: 3,
-        business_function_name: 'Energia',
-        product_category_id: 9,
-        product_category_name: 'Gas',
-      },
+      { root_category_id: 6, root_category_name: 'Multi root', product_category_id: 9, product_category_name: 'Gas' },
     ])
   })
 
-  it('AC-013: lists the pairs already on the record and removes one', async () => {
+  it('AC-020: the committed pair carries only product_category_id on the wire-facing fields (no business_function_id)', async () => {
+    const onValueChange = vi.fn()
+    renderEditor([], onValueChange)
+
+    fireEvent.click(await screen.findByRole('option', { name: 'Multi root' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Luce' }))
+
+    const [[committed]] = onValueChange.mock.calls
+    expect(committed[0]).not.toHaveProperty('business_function_id')
+    expect(committed[0]).not.toHaveProperty('business_function_name')
+  })
+
+  it('AC-020: "back" returns to the root-category step', async () => {
+    renderEditor([], vi.fn())
+
+    fireEvent.click(await screen.findByRole('option', { name: 'Multi root' }))
+    await screen.findByRole('option', { name: 'Luce' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the parent categories' }))
+
+    expect(await screen.findByRole('option', { name: 'Single root' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Multi root' })).toBeInTheDocument()
+  })
+
+  it('spec 0132: duplicate by category alone — re-picking an already-selected category is refused', async () => {
+    const onValueChange = vi.fn()
+    renderEditor([PAIR], onValueChange)
+
+    fireEvent.click(await screen.findByRole('option', { name: 'Multi root' }))
+
+    const luce = await screen.findByRole('option', { name: 'Luce' })
+    expect(luce).toBeDisabled()
+    expect(luce).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.click(luce)
+    expect(onValueChange).not.toHaveBeenCalled()
+  })
+
+  it('lists the pairs already on the record and removes one', () => {
     const onValueChange = vi.fn()
     renderEditor([PAIR], onValueChange)
 
@@ -150,7 +168,7 @@ describe('ProductLinesCellEditor (spec 0075)', () => {
     expect(onValueChange).toHaveBeenCalledWith([])
   })
 
-  it('AC-014: warns when a product of interest would be left uncovered', () => {
+  it('warns when a product of interest would be left uncovered', () => {
     const row = {
       id: 1,
       products_of_interest: [{ id: 4, name: 'Fibra 1000', category_id: 7 }],
@@ -161,26 +179,30 @@ describe('ProductLinesCellEditor (spec 0075)', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Fibra 1000')
   })
 
-  it('INV-3: a single-mode card already holding its pair refuses a second one', async () => {
+  it('no warning while every product stays covered', () => {
+    const row = {
+      id: 1,
+      products_of_interest: [{ id: 4, name: 'Fibra 1000', category_id: 7 }],
+    } as unknown as TableRow
+
+    renderEditor([PAIR], vi.fn(), row)
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('INV-3: a single-mode card already holding its pair refuses a second one, including a new root pick', async () => {
     const onValueChange = vi.fn()
     renderEditor(
-      [
-        {
-          business_function_id: 3,
-          business_function_name: 'Energia',
-          product_category_id: 71,
-          product_category_name: 'Luce singola',
-        },
-      ],
+      [{ root_category_id: 70, root_category_name: 'Single root', product_category_id: 71, product_category_name: 'Luce singola' }],
       onValueChange,
     )
 
     expect(
       screen.getByText('This product category is managed as a single row: remove the current one to pick another.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Search business functions…' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'Search parent category…' })).toBeDisabled()
 
-    const option = await screen.findByRole('option', { name: 'Energia' })
+    const option = await screen.findByRole('option', { name: 'Multi root' })
     expect(option).toBeDisabled()
 
     fireEvent.click(option)
@@ -190,17 +212,6 @@ describe('ProductLinesCellEditor (spec 0075)', () => {
   it('INV-3: a multiple-mode card stays free to add another pair', async () => {
     renderEditor([PAIR], vi.fn())
 
-    expect(await screen.findByRole('option', { name: 'Energia' })).toBeEnabled()
-  })
-
-  it('AC-014: no warning while every product stays covered', () => {
-    const row = {
-      id: 1,
-      products_of_interest: [{ id: 4, name: 'Fibra 1000', category_id: 7 }],
-    } as unknown as TableRow
-
-    renderEditor([PAIR], vi.fn(), row)
-
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: 'Multi root' })).toBeEnabled()
   })
 })

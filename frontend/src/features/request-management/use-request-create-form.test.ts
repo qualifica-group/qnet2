@@ -3,6 +3,7 @@ import { act } from '@testing-library/react'
 import i18n from '@/i18n'
 import {
   COMPLETE_ROW,
+  COMPLETE_ROW_PAYLOAD,
   TEST_SOURCE_ID,
   completeIdentity,
   renderCreateForm,
@@ -70,7 +71,7 @@ describe('useRequestCreateForm', () => {
     const { result } = renderCreateForm(vi.fn())
 
     expect(result.current.form.getValues('product_lines')).toEqual([
-      { business_function_id: null, product_category_id: null },
+      { root_category_id: null, product_category_id: null },
     ])
   })
 
@@ -220,7 +221,7 @@ describe('useRequestCreateForm', () => {
 
     expect(createRequestMock).toHaveBeenCalledWith({
       registry_id: 10,
-      product_lines: [COMPLETE_ROW],
+      product_lines: [COMPLETE_ROW_PAYLOAD],
       // Attribution slots ride along with either branch; the Fonte is
       // mandatory (user directive 2026-07-29), the Segnalatore empty by
       // default, and `rewards`/`manager_slots` omitted entirely until set.
@@ -249,7 +250,7 @@ describe('useRequestCreateForm', () => {
 
     expect(createRequestMock).toHaveBeenCalledWith({
       registry_id: 10,
-      product_lines: [COMPLETE_ROW],
+      product_lines: [COMPLETE_ROW_PAYLOAD],
       source_id: TEST_SOURCE_ID,
       reporter_id: 3,
       rewards: [{ reward_type_id: 5 }],
@@ -381,7 +382,7 @@ describe('useRequestCreateForm', () => {
       expect.objectContaining({
         client_identity: expect.objectContaining({ type: 'individual', first_name: 'Mario', last_name: 'Rossi' }),
         client_contacts: [expect.objectContaining({ type: 'phone', value: '3331234567' })],
-        product_lines: [COMPLETE_ROW],
+        product_lines: [COMPLETE_ROW_PAYLOAD],
       }),
     )
     expect(onSuccess).toHaveBeenCalledWith(43)

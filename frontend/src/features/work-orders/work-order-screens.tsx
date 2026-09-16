@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchWorkOrder } from '@/features/work-orders/api'
+import { fetchWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderForm } from '@/features/work-orders/work-order-form'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
 import { OPEN_MODE_PAGE } from '@/features/modules/types'
@@ -16,25 +16,20 @@ import type {
 } from '@/features/modules/types'
 import type { WorkOrderDetail } from '@/features/work-orders/types'
 
-/** Query key for a single work order's detail (fresh-on-open pattern). */
-function detailQueryKey(id: number) {
-  return ['work-orders', 'detail', id] as const
-}
-
 /**
  * Content-only `work-orders` screens for the module registry (spec 0042):
  * fetch + the existing presentational view/form, no page chrome. Reused as-is
  * by the generic dedicated pages (`ModuleDetailPage`/`ModuleFormPage`) and by
  * the modal Sheet (`useModuleOpener`), whichever the user's preference picks.
  */
-export function WorkOrderDetailScreen({ id }: ModuleDetailScreenProps) {
+export function WorkOrderDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: workOrder,
     isLoading,
     isError,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchWorkOrder(id))
+  } = useEntityDetail(workOrderDetailQueryKey(id), () => fetchWorkOrder(id))
 
   if (isError) {
     return (
@@ -50,14 +45,14 @@ export function WorkOrderDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <WorkOrderDetailView workOrder={workOrder} />
+  return <WorkOrderDetailView workOrder={workOrder} onEdit={onEdit} />
 }
 
 export function WorkOrderFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const queryClient = useQueryClient()
 
   const handleSuccess = (saved: WorkOrderDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
+    queryClient.invalidateQueries({ queryKey: workOrderDetailQueryKey(saved.id) })
     onSuccess(saved.id)
   }
 
@@ -86,7 +81,7 @@ function WorkOrderEditScreen({ workOrderId, onSuccess, onCancel }: WorkOrderEdit
     isLoading,
     isError,
     refetch,
-  } = useEntityDetail(detailQueryKey(workOrderId), () => fetchWorkOrder(workOrderId))
+  } = useEntityDetail(workOrderDetailQueryKey(workOrderId), () => fetchWorkOrder(workOrderId))
 
   if (isError) {
     return (
@@ -120,4 +115,7 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.workOrders',
   DetailScreen: WorkOrderDetailScreen,
   FormScreen: WorkOrderFormScreen,
+  // The record card renders its own "Modifica" button (same as Opportunita'),
+  // so the page header must not add a second one.
+  detailOwnsEditAction: true,
 }

@@ -89,9 +89,12 @@ export interface OpportunityProductOfInterest {
   product_category: OpportunityRelationRef | null
 }
 
-/** A product-line row as sent to the server (create/update payload, AC-099). */
+/**
+ * A product-line row as sent to the server (create/update payload, spec 0132
+ * AC-018): ONLY `product_category_id` travels — the server derives and
+ * persists the effective business function.
+ */
 export interface OpportunityProductLineInput {
-  business_function_id: number
   product_category_id: number
 }
 

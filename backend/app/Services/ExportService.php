@@ -13,6 +13,7 @@ use App\Services\Table\TableQueryBuilder;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
+use App\Tables\Tasks\WorkOrderScopedTableDefinition;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -37,7 +38,7 @@ class ExportService
     ) {}
 
     /**
-     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, opportunityId?: int|null, quoteId?: int|null}  $state
+     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, opportunityId?: int|null, quoteId?: int|null, workOrderId?: int|null}  $state
      */
     public function start(User $actor, TableDefinition $definition, array $state, ExportFormat $format): ExportRun
     {
@@ -81,12 +82,12 @@ class ExportService
         // The queue worker forgets the guards after every job.
         Auth::setUser($actor);
 
-        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, opportunityId?: int|null, quoteId?: int|null} $state */
+        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, opportunityId?: int|null, quoteId?: int|null, workOrderId?: int|null} $state */
         $state = $run->state;
         $columns = $state['columns'];
 
         // Step 2: re-apply the row scope frozen at request time (spec 0067,
-        // D-5; spec 0095, D-8) — the state, not the request, is the only
+        // D-5; spec 0095, D-8; spec 0133) — the state, not the request, is the only
         // thing that survives the async hop into this job, so the setter is
         // invoked here, never in the controller.
         if ($definition instanceof OpportunityScopedTableDefinition && ($state['opportunityId'] ?? null) !== null) {
@@ -95,6 +96,10 @@ class ExportService
 
         if ($definition instanceof QuoteScopedTableDefinition && ($state['quoteId'] ?? null) !== null) {
             $definition->scopeToQuote($state['quoteId']);
+        }
+
+        if ($definition instanceof WorkOrderScopedTableDefinition && ($state['workOrderId'] ?? null) !== null) {
+            $definition->scopeToWorkOrder($state['workOrderId']);
         }
 
         // Step 3: build the query exactly as the grid would (allow-listed

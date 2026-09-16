@@ -128,6 +128,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
     addStagedAttachments,
     removeStagedAttachment,
     parentPrefillRefs,
+    workOrderPrefillRef,
   } = useTaskForm({ mode, onSuccess })
 
   const task = persistedTask(mode)
@@ -194,7 +195,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
               <TaskLinksSection
                 control={form.control}
                 opportunity={task?.opportunity ?? parentPrefillRefs.opportunity}
-                workOrder={workOrderRefOf(task) ?? parentPrefillRefs.workOrder}
+                workOrder={workOrderRefOf(task) ?? workOrderPrefillRef ?? parentPrefillRefs.workOrder}
               />
 
               <TaskRecurrenceSection control={form.control} />

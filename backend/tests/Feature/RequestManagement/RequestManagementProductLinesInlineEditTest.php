@@ -142,17 +142,34 @@ it('AC-002: several pairs are written in one commit', function () {
 // AC-003 / AC-004 / AC-005 / AC-006 — every rule of the set, on this channel
 // ---------------------------------------------------------------------------
 
-it('AC-003: a category outside the paired business function is refused', function () {
+it('AC-002 (spec 0132): a submitted business_function_id is ignored, the EFFECTIVE one is derived and persisted', function () {
     $actor = inlineLinesActor();
     $category = inlineLinesCategory();
     $quote = inlineLinesRequest($actor, $category);
-    $other = inlineLinesCategory();
+    $replacement = inlineLinesCategory();
+    $unrelatedFunction = BusinessFunction::factory()->create();
     Sanctum::actingAs($actor);
 
     inlineLinesPatch($quote, [[
-        'business_function_id' => (int) $category->business_function_id,
-        'product_category_id' => $other->id,
-    ]])->assertStatus(422);
+        'business_function_id' => $unrelatedFunction->id,
+        'product_category_id' => $replacement->id,
+    ]])->assertOk();
+
+    $this->assertDatabaseHas('opportunity_product_lines', [
+        'opportunity_id' => $quote->opportunity_id,
+        'business_function_id' => $replacement->business_function_id,
+        'product_category_id' => $replacement->id,
+    ]);
+});
+
+it('AC-003 (spec 0132): a category with no EFFECTIVE business function is refused', function () {
+    $actor = inlineLinesActor();
+    $category = inlineLinesCategory();
+    $quote = inlineLinesRequest($actor, $category);
+    $withoutFunction = ProductCategory::factory()->create(['business_function_id' => null]);
+    Sanctum::actingAs($actor);
+
+    inlineLinesPatch($quote, [['product_category_id' => $withoutFunction->id]])->assertStatus(422);
 
     $this->assertDatabaseHas('opportunity_product_lines', [
         'opportunity_id' => $quote->opportunity_id,
@@ -206,13 +223,13 @@ it('AC-006: the classification can never be cleared in-cell', function () {
     ]);
 });
 
-it('AC-006: a malformed pair is refused before it reaches the writer', function () {
+it('AC-006: a malformed row is refused before it reaches the writer', function () {
     $actor = inlineLinesActor();
     $category = inlineLinesCategory();
     $quote = inlineLinesRequest($actor, $category);
     Sanctum::actingAs($actor);
 
-    inlineLinesPatch($quote, [['product_category_id' => $category->id]])->assertStatus(422);
+    inlineLinesPatch($quote, [['product_category_id' => 'not-an-id']])->assertStatus(422);
 });
 
 // ---------------------------------------------------------------------------

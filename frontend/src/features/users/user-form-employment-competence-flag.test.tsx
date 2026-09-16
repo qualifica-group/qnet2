@@ -13,7 +13,7 @@ import type { PersonalDataCard } from '@/features/personal-data/types'
 /**
  * Spec 0129 D-1/D-2 (AC-020), D-3/D-5 (AC-021), D-6/D-7 (AC-022), AC-023: the
  * "competent for all categories" switch, the per-row "All" checkbox and the
- * container category the competence variant of `ProductLinesField` makes
+ * container category `CompetenceLinesField` makes
  * pickable. Split out of `user-form-employment-competence.test.tsx` (spec
  * 0111) purely to stay under the file-size limit (`engineering.md` §6); same
  * boilerplate shape and fixtures.

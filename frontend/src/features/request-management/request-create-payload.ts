@@ -51,13 +51,14 @@ function toClientAddressPayload(draft: AddressDraft): RequestClientAddressPayloa
 }
 
 /**
- * Rows are guaranteed complete (both ids chosen) by the schema that gates the
- * submit — `buildRequestCreateSchema` here, `buildRequestWorkSchema` for the
- * work panel, which shares this mapper (user directive 2026-07-31).
+ * Rows are guaranteed complete (`product_category_id` chosen) by the schema
+ * that gates the submit — `buildRequestCreateSchema` here,
+ * `buildRequestWorkSchema` for the work panel, which shares this mapper (user
+ * directive 2026-07-31). Spec 0132 (AC-018): `root_category_id` is UI-only
+ * state and never travels.
  */
 export function toProductLinesPayload(rows: ProductLineRow[]): RequestProductLinePayload[] {
   return rows.map((row) => ({
-    business_function_id: row.business_function_id as number,
     product_category_id: row.product_category_id as number,
   }))
 }

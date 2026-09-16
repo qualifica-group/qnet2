@@ -168,10 +168,7 @@ export const requestManagement = {
       success: 'Richiesta creata.',
       validation: {
         productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
-        productLineIncomplete: 'Seleziona funzione aziendale e categoria prodotto per ogni riga.',
-        // Spec 0077 INV-2: tutte le righe condividono la stessa Funzione
-        // aziendale (creazione: nessun record storico da salvaguardare).
-        businessFunctionMismatch: 'Tutte le righe devono condividere la stessa funzione aziendale.',
+        productLineIncomplete: 'Seleziona una categoria genitore e una categoria prodotto per ogni riga.',
         sourceRequired: 'Seleziona una fonte.',
       },
       errors: {
@@ -291,11 +288,7 @@ export const requestManagement = {
       required: 'Questo campo è obbligatorio.',
       sourceRequired: 'Seleziona una fonte.',
       productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
-      productLineIncomplete: 'Seleziona funzione aziendale e categoria prodotto per ogni riga.',
-      // Spec 0077 INV-2, D-5: applicato SOLO quando la collezione
-      // `product_lines` è stata effettivamente modificata (grandfathering di
-      // un record storico non conforme, vedi `request-work-schema.ts`).
-      businessFunctionMismatch: 'Tutte le righe devono condividere la stessa funzione aziendale.',
+      productLineIncomplete: 'Seleziona una categoria genitore e una categoria prodotto per ogni riga.',
       // Direttiva utente 2026-09-09: mirror del gate server
       // (`RequestWorkflowStatusWriter`), basta uno dei due identificativi.
       fiscalIdentityRequiredForStatus:
@@ -373,7 +366,15 @@ export const requestManagement = {
     editFilters: 'Filtri',
     filtersSummary: 'Dal {{from}} al {{to}} · {{selected}}/{{total}} categorie · {{rowMode}}',
     operatorsSummary: '· {{selected}}/{{total}} operatori',
-    loadError: 'Impossibile caricare la dashboard.',
+    noCategories:
+      'Nessun dato da mostrare: non ci sono ancora richieste nelle categorie incluse nel report. La dashboard si popolerà non appena ne verrà registrata una.',
+    errors: {
+      network: 'Impossibile contattare il server: verifica la connessione e riprova.',
+      forbidden: 'Non hai il permesso di visualizzare la dashboard delle richieste.',
+      invalidFilters:
+        'I filtri applicati non sono più validi (ad esempio una categoria non è più disponibile). Aggiornali dal pulsante Filtri.',
+      generic: 'Impossibile caricare la dashboard per un errore del server. Riprova tra qualche istante.',
+    },
     empty: 'Nessun grafico da mostrare per questa selezione.',
     overall: 'Totale complessivo',
     indicatorsChartTitle: 'Indicatori',

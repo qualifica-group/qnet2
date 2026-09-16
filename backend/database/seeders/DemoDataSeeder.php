@@ -119,6 +119,10 @@ class DemoDataSeeder extends Seeder
         // (reporters to reward, snapshotted from the opportunity, spec 0086
         // D-4) — must run after both.
         $this->call(DemoRewardSeeder::class);
+        // Contratti (spec 0072): closes some Offerte as won through
+        // QuoteService, so it depends on DemoQuoteSeeder; placed after every
+        // seeder that reads the Offerte in their initial open status.
+        $this->call(DemoContractSeeder::class);
         // The Task classification vocabulary (tipologia, categoria, priorita',
         // importanza, stati): REFERENCE data, not fixtures — hence no `Demo`
         // prefix and no copy of it here. Without this step the four pure

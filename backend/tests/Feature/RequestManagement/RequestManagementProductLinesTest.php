@@ -95,24 +95,32 @@ it('PATCH product_lines replaces the collection and exposes it back', function (
     ]);
 });
 
-it('PATCH product_lines rejects an empty collection and a category outside the paired business function', function () {
+it('PATCH product_lines rejects an empty collection', function () {
     $actor = productLineActor();
     $category = productLineCategory();
     $quote = productLineRequest($actor, $category);
-    $other = productLineCategory();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", ['product_lines' => []])
         ->assertStatus(422)
         ->assertJsonValidationErrors('product_lines');
 
-    // The category belongs to its OWN business function, not to this one.
+    $this->assertDatabaseHas('opportunity_product_lines', [
+        'opportunity_id' => $quote->opportunity_id,
+        'product_category_id' => $category->id,
+    ]);
+});
+
+it('PATCH product_lines rejects a category with no EFFECTIVE business function (spec 0132, AC-003)', function () {
+    $actor = productLineActor();
+    $category = productLineCategory();
+    $quote = productLineRequest($actor, $category);
+    $withoutFunction = ProductCategory::factory()->create(['business_function_id' => null]);
+    Sanctum::actingAs($actor);
+
     $this->patchJson("/api/request-management/{$quote->id}", [
-        'product_lines' => [[
-            'business_function_id' => $category->business_function_id,
-            'product_category_id' => $other->id,
-        ]],
-    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.business_function_id');
+        'product_lines' => [['product_category_id' => $withoutFunction->id]],
+    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.product_category_id');
 
     $this->assertDatabaseHas('opportunity_product_lines', [
         'opportunity_id' => $quote->opportunity_id,
@@ -200,14 +208,8 @@ it('logs the product-lines change explicitly (the collection is a relation, neve
         ->first();
 
     expect($activity)->not->toBeNull()
-        ->and($activity->properties['attributes']['product_lines'])->toBe([[
-            'business_function_id' => $replacement->business_function_id,
-            'product_category_id' => $replacement->id,
-        ]])
-        ->and($activity->properties['old']['product_lines'])->toBe([[
-            'business_function_id' => $category->business_function_id,
-            'product_category_id' => $category->id,
-        ]]);
+        ->and($activity->properties['attributes']['product_lines'])->toBe([$replacement->id])
+        ->and($activity->properties['old']['product_lines'])->toBe([$category->id]);
 });
 
 // ---------------------------------------------------------------------------

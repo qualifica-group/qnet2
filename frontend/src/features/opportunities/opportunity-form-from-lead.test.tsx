@@ -6,6 +6,7 @@ import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { OpportunityForm } from '@/features/opportunities/opportunity-form'
 import type { ResourceMeta } from '@/features/authorization/types'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 
 /**
  * AC-075 (spec 0040 MT-6): the `?lead_id=N` deep-link create-from-lead mode —
@@ -24,6 +25,64 @@ import type { ResourceMeta } from '@/features/authorization/types'
  */
 vi.mock('@/features/product-lines/product-category-tree-select', async () =>
   await import('@/features/product-lines/product-category-tree-select-stub'))
+
+/**
+ * `useProductLinesField` (inside the real, unmocked `ProductLinesField`)
+ * reads the category tree directly — for `rootCategoryFor`'s resolution of
+ * the lead-derived row (spec 0132 AC-017 applies to this prefill too, the
+ * category-select must not stay stuck disabled), the tree fetch needs a real
+ * answer here, unlike the two row pickers themselves (mocked with doubles).
+ */
+function node(overrides: Partial<ProductCategoryTreeNode> & { id: number }): ProductCategoryTreeNode {
+  return {
+    name: 'Node',
+    parent_id: null,
+    children: [],
+    attributes_count: 0,
+    products_count: 0,
+    business_function_id: null,
+    requires_quote: false,
+    is_selectable: true,
+    is_reportable: false,
+    management_mode: 'multiple',
+    single_quote_per_opportunity: false,
+    generates_contract: true,
+    simplified_offer_line: false,
+    ...overrides,
+  }
+}
+
+const CATEGORY_TREE: ProductCategoryTreeNode[] = [
+  node({ id: 20, name: 'Sales root', children: [node({ id: 50, name: 'Consulting', parent_id: 20 })] }),
+]
+
+vi.mock('@/features/product-categories/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/product-categories/api')>(
+    '@/features/product-categories/api',
+  )
+  return {
+    ...actual,
+    fetchProductCategoryTree: () => Promise.resolve(CATEGORY_TREE),
+  }
+})
+
+/** The row's FIRST step (spec 0132): stood in for the same reason as the category picker above. */
+vi.mock('@/features/product-lines/product-category-root-select', () => ({
+  ProductCategoryRootSelect: ({
+    value,
+    disabled,
+    triggerLabel,
+  }: {
+    value: number | null
+    disabled?: boolean
+    triggerLabel: string
+  }) => (
+    <div data-testid={`select-${triggerLabel}`}>
+      <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
+      <span data-testid={`disabled-${triggerLabel}`}>{String(Boolean(disabled))}</span>
+    </div>
+  ),
+}))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
@@ -155,11 +214,13 @@ describe('OpportunityFormBody — create from lead (BR-1/BR-2, AC-075)', () => {
     expect(screen.getByTestId('value-Source')).toHaveTextContent('20')
     expect(screen.getByTestId('disabled-Source')).toHaveTextContent('true')
 
-    // Amendment rev.3 (AC-102/103): the seeded row is editable/removable — never disabled.
-    expect(screen.getByTestId('value-Business function 1')).toHaveTextContent('40')
-    expect(screen.getByTestId('disabled-Business function 1')).toHaveTextContent('false')
+    // Spec 0132: the seeded row is editable/removable — never disabled. Only
+    // `product_category_id` is known from the lead's derived line; the root
+    // is resolved from the cached tree at render time (own suite: `use-product-lines-field.ts`),
+    // so the category select only unlocks once that fetch settles.
     expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('50')
-    expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false')
+    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
+    expect(screen.getByTestId('disabled-Parent category 1')).toHaveTextContent('false')
     expect(screen.getByRole('button', { name: 'Remove product line' })).toBeInTheDocument()
   })
 

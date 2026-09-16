@@ -62,6 +62,7 @@ class WorkOrderResource extends JsonResource
             'contract_number' => $this->quote?->code,
             'task_template' => $this->summarizeTaskTemplate(),
             'quote' => $this->summarizeQuote(),
+            'contract' => $this->summarizeContract(),
             'quote_lines' => $this->summarizeQuoteLines(),
             // Cast to object, non array: un array PHP vuoto serializza come
             // `[]`, e il form legge la chiave come una MAPPA (Zod
@@ -155,6 +156,25 @@ class WorkOrderResource extends JsonResource
         }
 
         return ['id' => $quote->id, 'code' => $quote->code, 'title' => $quote->title];
+    }
+
+    /**
+     * The Contratto born from the linked quote (spec 0072: one per quote,
+     * `code`/`title` are the quote's own, as on the Contract detail), `null`
+     * while the quote has not been won. The detail names this record, not the
+     * offer underneath it (user directive 2026-09-16).
+     *
+     * @return array{id: int, code: string, title: string}|null
+     */
+    private function summarizeContract(): ?array
+    {
+        $contract = $this->quote?->contract;
+
+        if ($contract === null) {
+            return null;
+        }
+
+        return ['id' => $contract->id, 'code' => $this->quote->code, 'title' => $this->quote->title];
     }
 
     /**

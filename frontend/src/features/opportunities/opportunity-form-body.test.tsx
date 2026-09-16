@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -28,9 +28,37 @@ const updateOpportunityMock = vi.fn()
  * The row's category picker reads the category TREE (user directive
  * 2026-08-03) and mounts its own quick-create affordance; this suite is about
  * the surrounding form, so it stands in for the picker with the shared double.
+ * The row's own two-step pick (root category, spec 0132) is exercised against
+ * these same doubles in `opportunity-form-body-product-lines.test.tsx`, split
+ * out for size (engineering.md §6) — this file only asserts the row RENDERS.
  */
 vi.mock('@/features/product-lines/product-category-tree-select', async () =>
   await import('@/features/product-lines/product-category-tree-select-stub'))
+
+/** The row's FIRST step (spec 0132), same double style as the category picker above. */
+vi.mock('@/features/product-lines/product-category-root-select', () => ({
+  ProductCategoryRootSelect: ({
+    value,
+    onChange,
+    disabled,
+    triggerLabel,
+  }: {
+    value: number | null
+    onChange: (rootCategoryId: number) => void
+    disabled?: boolean
+    triggerLabel: string
+  }) => (
+    <div data-testid={`select-${triggerLabel}`}>
+      <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
+      <span data-testid={`disabled-${triggerLabel}`}>{String(Boolean(disabled))}</span>
+      {(SELECT_IDS[triggerLabel] ?? [1]).map((id) => (
+        <button key={id} type="button" onClick={() => onChange(id)}>
+          {`select ${triggerLabel} ${id}`}
+        </button>
+      ))}
+    </div>
+  ),
+}))
 
 vi.mock('@/features/opportunities/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/opportunities/api')>(
@@ -66,6 +94,7 @@ const TEST_REGISTRY_WITH_DEFAULTS = 10
 const TEST_REGISTRY_WITHOUT_DEFAULTS = 20
 const TEST_BUSINESS_FUNCTION = 40
 const TEST_PRODUCT_CATEGORY = 500
+const TEST_ROOT_CATEGORY = 30
 
 function editOpportunity(): OpportunityDetailWithPermissions {
   return {
@@ -116,7 +145,7 @@ function labelFor(text: string): HTMLElement {
 /** Fixed selection ids exposed per field (by accessible trigger label), so BR-4 side effects are exercisable without a real dropdown. */
 const SELECT_IDS: Record<string, number[]> = {
   Registry: [TEST_REGISTRY_WITH_DEFAULTS, TEST_REGISTRY_WITHOUT_DEFAULTS],
-  'Business function 1': [TEST_BUSINESS_FUNCTION],
+  'Parent category 1': [TEST_ROOT_CATEGORY],
   'Product category 1': [TEST_PRODUCT_CATEGORY],
 }
 
@@ -230,12 +259,6 @@ beforeEach(() => {
         ],
       }
     }
-    if (resource === 'business-functions' && params?.ids?.includes(TEST_BUSINESS_FUNCTION)) {
-      return { ...EMPTY_PAGE, items: [{ id: TEST_BUSINESS_FUNCTION, label: 'Sales' }] }
-    }
-    if (resource === 'product-categories' && params?.ids?.includes(TEST_PRODUCT_CATEGORY)) {
-      return { ...EMPTY_PAGE, items: [{ id: TEST_PRODUCT_CATEGORY, label: 'Consulting' }] }
-    }
     return EMPTY_PAGE
   })
 })
@@ -268,8 +291,8 @@ describe('OpportunityFormBody — fields render (AC-071)', () => {
     // User directive 2026-07-29: the create form opens on ONE product-line row
     // (it used to render none until "Add" was clicked).
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeInTheDocument()
-    expect(screen.getByTestId('select-Business function 1')).toBeInTheDocument()
-    expect(screen.queryByTestId('select-Business function 2')).not.toBeInTheDocument()
+    expect(screen.getByTestId('select-Parent category 1')).toBeInTheDocument()
+    expect(screen.queryByTestId('select-Parent category 2')).not.toBeInTheDocument()
   })
 
   /** Directive 2026-07-21: supervisor is never required, in either mode (it derives from the linked Lead's Operatore, which may be empty). */
@@ -379,46 +402,6 @@ describe('OpportunityFormBody — referent scoping + free commercial/reporter (A
     await waitFor(() =>
       expect(screen.queryByTestId('value-Account manager 1')).not.toBeInTheDocument(),
     )
-  })
-})
-
-describe('OpportunityFormBody — product lines (AC-106)', () => {
-  it('scopes the row category by the row own business function', async () => {
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Add product line' })).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
-    expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('true')
-
-    screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION}` }).click()
-
-    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
-    expect(screen.getByTestId('scope-Product category 1')).toHaveTextContent(
-      JSON.stringify({ business_function_id: TEST_BUSINESS_FUNCTION }),
-    )
-  })
-
-  it('blocks the submit and shows an error when a row is left incomplete', async () => {
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Add product line' })).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
-    screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION}` }).click()
-    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
-    // The row's category is left unset on purpose.
-
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() =>
-      expect(
-        screen.getByText('Each row requires both a business function and a product category.'),
-      ).toBeInTheDocument(),
-    )
-    expect(createOpportunityMock).not.toHaveBeenCalled()
   })
 })
 

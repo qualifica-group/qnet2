@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
@@ -11,6 +12,7 @@ import {
 } from '@/features/request-management/request-dashboard-section'
 import { RequestReportFiltersDialog } from '@/features/request-management/request-report-filters-dialog'
 import {
+  isCategoriesEmpty,
   isRequestReportQueryReady,
   toRequestReportFilterPayload,
 } from '@/features/request-management/request-report-schema'
@@ -38,6 +40,57 @@ const SKELETON_TILE_COUNT = 4
 
 /** Hoisted so an unloaded operator/site list keeps a STABLE identity across renders. */
 const EMPTY_KEYS: string[] = []
+
+const HTTP_FORBIDDEN = 403
+const HTTP_UNPROCESSABLE = 422
+
+/**
+ * Picks the message that tells the operator WHY the dashboard is missing and
+ * what to do about it, instead of one catch-all line: no response at all, no
+ * permission, filters the server rejects, or a server-side failure.
+ */
+function dashboardErrorKey(error: unknown): string {
+  if (!axios.isAxiosError(error)) {
+    return 'requestManagement.dashboard.errors.generic'
+  }
+  if (!error.response) {
+    return 'requestManagement.dashboard.errors.network'
+  }
+  if (error.response.status === HTTP_FORBIDDEN) {
+    return 'requestManagement.dashboard.errors.forbidden'
+  }
+  if (error.response.status === HTTP_UNPROCESSABLE) {
+    return 'requestManagement.dashboard.errors.invalidFilters'
+  }
+  return 'requestManagement.dashboard.errors.generic'
+}
+
+interface DashboardNoticeProps {
+  message: string
+  tone: 'error' | 'info'
+  onRetry?: () => void
+}
+
+/** One notice box for every "nothing to chart" outcome, retryable when a refetch can help. */
+function DashboardNotice({ message, tone, onRetry }: DashboardNoticeProps) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3">
+      <p
+        className={tone === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
+        role={tone === 'error' ? 'alert' : 'status'}
+      >
+        {message}
+      </p>
+      {onRetry ? (
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          {t('common.retry')}
+        </Button>
+      ) : null}
+    </div>
+  )
+}
 
 /** Placeholder rows shaped like the eventual tiles/charts, shown while the aggregates load. */
 function DashboardSkeleton() {
@@ -74,7 +127,7 @@ interface DashboardResultsProps {
  */
 function DashboardResults({ query }: DashboardResultsProps) {
   const { t } = useTranslation()
-  const { data, isLoading, isError, refetch } = query
+  const { data, error, isLoading, isError, refetch } = query
   const collapse = useRequestDashboardCollapse()
 
   return (
@@ -82,14 +135,7 @@ function DashboardResults({ query }: DashboardResultsProps) {
       {isLoading ? <DashboardSkeleton /> : null}
 
       {isError ? (
-        <div className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3">
-          <p className="text-sm text-destructive" role="alert">
-            {t('requestManagement.dashboard.loadError')}
-          </p>
-          <Button variant="outline" size="sm" onClick={() => void refetch()}>
-            {t('common.retry')}
-          </Button>
-        </div>
+        <DashboardNotice tone="error" message={t(dashboardErrorKey(error))} onRetry={() => void refetch()} />
       ) : null}
 
       {data && data.summary.length > 0 ? (
@@ -118,6 +164,7 @@ function DashboardResults({ query }: DashboardResultsProps) {
  * same state, which is why nothing else may hold a copy of it.
  */
 function RequestDashboardPanelBody() {
+  const { t } = useTranslation()
   const module = useRequestModule()
   const { filters, setFilters } = useRequestReportFilters()
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -164,7 +211,16 @@ function RequestDashboardPanelBody() {
     setFilters((current) => reconcileSiteKeys(current, sites))
   }, [sites, setFilters])
 
-  const filtersReady = isRequestReportQueryReady(filters, operatorKeys, siteKeys)
+  // No request is visible in any reportable category: there is nothing to
+  // chart, and a selection restored from an earlier session would only be
+  // rejected by the server's allow-list. Say so instead of issuing it.
+  const categoriesEmpty = isCategoriesEmpty(categories, categoriesQuery.isLoading, categoriesQuery.isError)
+  // Until the restored selection is reconciled against the loaded list, a key
+  // the report no longer offers would 422: the query waits for that commit.
+  const categoryKeysKnown =
+    categories !== undefined &&
+    filters.category_keys.every((key) => categories.some((category) => category.key === key))
+  const filtersReady = categoryKeysKnown && isRequestReportQueryReady(filters, operatorKeys, siteKeys)
   // ONE normalization for both consumers (spec 0109 D-9): the charts fetch it
   // and the file is generated from it, so they cannot read the selection
   // differently. It is also the query key, so a changed selection is a
@@ -184,7 +240,17 @@ function RequestDashboardPanelBody() {
         onEdit={() => setFiltersOpen(true)}
       />
 
-      <DashboardResults query={dashboardQuery} />
+      {categoriesQuery.isError ? (
+        <DashboardNotice
+          tone="error"
+          message={t('requestManagement.report.errors.categoriesLoadFailed')}
+          onRetry={() => void categoriesQuery.refetch()}
+        />
+      ) : categoriesEmpty ? (
+        <DashboardNotice tone="info" message={t('requestManagement.dashboard.noCategories')} />
+      ) : (
+        <DashboardResults query={dashboardQuery} />
+      )}
 
       <RequestReportFiltersDialog
         open={filtersOpen}

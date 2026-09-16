@@ -21,17 +21,15 @@ const EMPTY_CONTEXT: RequestFormContext = {
 }
 
 /**
- * Only COMPLETE rows scope anything: a funzione picked without its categoria
- * resolves no attribute, and sending it would make the query key churn while
- * the row is still being filled in.
+ * Only COMPLETE rows scope anything: a row with no category resolves no
+ * attribute, and sending it would make the query key churn while the row is
+ * still being filled in (spec 0132: `root_category_id` is UI-only state,
+ * never part of this payload either).
  */
 function toCompleteLines(rows: ProductLineRow[]): RequestProductLinePayload[] {
   return rows
-    .filter((row) => row.business_function_id !== null && row.product_category_id !== null)
-    .map((row) => ({
-      business_function_id: row.business_function_id as number,
-      product_category_id: row.product_category_id as number,
-    }))
+    .filter((row) => row.product_category_id !== null)
+    .map((row) => ({ product_category_id: row.product_category_id as number }))
 }
 
 /**
@@ -46,7 +44,7 @@ function toCompleteLines(rows: ProductLineRow[]): RequestProductLinePayload[] {
 export function useRequestFormContext(productLines: ProductLineRow[]) {
   const completeLines = useMemo(() => toCompleteLines(productLines), [productLines])
   const criteriaKey = useMemo(
-    () => completeLines.map((line) => `${line.business_function_id}:${line.product_category_id}`).join('|'),
+    () => completeLines.map((line) => `${line.product_category_id}`).join('|'),
     [completeLines],
   )
 

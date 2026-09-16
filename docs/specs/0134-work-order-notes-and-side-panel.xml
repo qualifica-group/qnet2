@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0134-work-order-notes-and-side-panel" status="implemented" owner="nicola" date="2026-09-16">
+
+  <goal>
+    Note collaborative (thread, reply, menzioni) e Documenti anche sulla Commessa, come gia' per
+    Opportunita' e Task. Nel dettaglio Commessa una colonna laterale destra con una card "Note |
+    Documenti | Log attivita'", sullo stesso layout del dettaglio Opportunita'.
+  </goal>
+
+  <context>
+    Fatti VERIFICATI nel repo:
+      - Le note sono un componente agnostico (spec 0052): un host si registra con una classe
+        `App\Notes\Contracts\NotableEntity` mappata in `config/notes.php` e il trait `HasNotes`
+        sul model. Nessuna migrazione (`notes.notable` e' gia' morph), nessun endpoint nuovo.
+      - Precedente da ricalcare 1:1: `App\Services\Tasks\TaskNotable` (spec 0117).
+      - Morph alias `work_order` gia' registrato in `AppServiceProvider::enforceMorphMap`.
+      - Visibilita' Commessa: `work-orders.view` AND `WorkOrderVisibilityScope` (Responsabili,
+        Partecipanti, oppure `work-orders.viewAll`), la stessa di `WorkOrderPolicy::view`.
+      - Dettaglio Commessa oggi: una sola `RecordCard` (tab "Dettagli | Task" di spec 0133) con il
+        log attivita' in fondo alla card. Il dettaglio Opportunita' usa
+        `RECORD_BODY_GRID_CLASS`/`RECORD_BODY_WITH_SIDE_CLASS`/`RECORD_COLUMN_CLASS` con la card
+        di collaborazione a destra.
+      - I campi testuali `description`/`internal_notes` della Commessa sono dati del record, non
+        note collaborative: restano invariati.
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Slug `work-orders` (vocabolario di autorizzazione = chiave modulo, come `tasks`) mappato su
+      `App\Services\WorkOrders\WorkOrderNotable`; `WorkOrder` usa `HasNotes`.
+    </decision>
+    <decision id="D-2">
+      Lettura = `work-orders.view` AND `WorkOrderVisibilityScope::isVisibleTo`. Menzionabili =
+      utenti attivi con `work-orders.view` che sono Responsabili/Partecipanti oppure hanno
+      `work-orders.viewAll`, piu' i super-admin. Scrittura = `notes.create` (core invariato).
+      Nessuna unita' di scoping: `ownsQuote` false, `quoteScopes` vuoto. Deep link
+      `/work-orders/{id}` solo se il destinatario legge la Commessa, altrimenti null.
+    </decision>
+    <decision id="D-3">
+      Layout: colonna sinistra = card attuale (header + tab Dettagli/Task); colonna destra = card
+      `WorkOrderCollaborationSection` con tab "Note | Documenti | Log attivita'", ciascun tab gated
+      dalla propria fonte (`work-orders.view` lato client; `permissions.actions.view_documents`;
+      `permissions.actions.view_activity`). Upload/cancellazione documenti con
+      `attachments.create`/`attachments.delete`, come l'Opportunita'. Il log
+      attivita' esce dal fondo della card principale (niente doppione). Card assente e colonna
+      non riservata quando nessun tab e' autorizzato.
+    </decision>
+    <decision id="D-4">
+      Documenti (richiesta utente 2026-09-16, "sempre come fa opportunita'"): `WorkOrder` usa
+      `HasAttachments`, alias `work_order` in `config/attachments.php` (gia' nella morph map).
+      Nuova ability resource-level `work-orders.viewDocuments` (`WorkOrderPolicy`, sincronizzata da
+      `permissions:sync`) esposta come azione `view_documents` da `WorkOrdersAuthorization`: apre
+      il tab, NON autorizza il singolo allegato (resta `attachments.*`, nessun gate per record,
+      stessa esposizione accettata di Opportunita'/Task, spec 0117 D-8).
+    </decision>
+    <decision id="D-5">
+      Team nel dettaglio (richiesta utente 2026-09-16): Responsabili e Partecipanti resi con il
+      componente condiviso `RecordPerson` (hover card + click apre la modale utente), come
+      Opportunita'/Offerta/Anagrafica; una riga per slot "Partecipante n". Estratto in
+      `work-order-detail-team.tsx`. I collegamenti Offerta/Modello task/Prodotti erano gia'
+      `RecordLink` (apertura in modale): invariati. Nessuna modifica al payload (nessun
+      `avatar_url` nel dettaglio, come Opportunita'/Offerta: iniziali).
+    </decision>
+    <decision id="D-6">
+      Tasto "Modifica" sulla card del record (richiesta utente 2026-09-16, "come in opportunita'"):
+      `onEdit` passato da `WorkOrderDetailScreen` a `WorkOrderDetailView`, bottone nelle `actions`
+      di `RecordCardHeader` solo con `permissions.resource.update`; `detailOwnsEditAction: true`
+      nel registry, cosi' la pagina dedicata non duplica il bottone e il Sheet lo mostra.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: `WorkOrderNotable`, `HasNotes` su `WorkOrder`, registrazione in `config/notes.php`.</item>
+      <item>Backend: `HasAttachments` su `WorkOrder`, alias `work_order`, ability `viewDocuments`, azione `view_documents`.</item>
+      <item>Frontend: `work-orders/work-order-collaboration-section.tsx`, layout a due colonne in `work-order-detail.tsx`.</item>
+      <item>Test Pest (`WorkOrderNotesTest`, `WorkOrderDocumentsTest`) e Vitest (card collaborazione, layout).</item>
+    </in>
+    <out>
+      <item>Nessuna aggregazione delle note nel log attivita' della Commessa.</item>
+      <item>Nessuna modifica ai campi `description`/`internal_notes` ne' al form Commessa.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <ac id="AC-001">`work-orders` e' registrato e risolve a `WorkOrderNotable`.</ac>
+    <ac id="AC-002">Responsabile e Partecipante con `work-orders.view` leggono il thread; `viewAll` legge senza appartenenza.</ac>
+    <ac id="AC-003">`work-orders.view` senza appartenenza ne' `viewAll` = 403 senza leak; appartenenza senza `work-orders.view` = 403.</ac>
+    <ac id="AC-004">Un membro con `notes.create` scrive una nota sulla Commessa; senza `notes.create` = 403.</ac>
+    <ac id="AC-005">Menzionabili = membri + `viewAll` + super-admin, esclusi estranei e disattivati.</ac>
+    <ac id="AC-006">`quote_id` su nota di Commessa = 422; `meta.quotes` vuoto.</ac>
+    <ac id="AC-007">Deep link `/work-orders/{id}` per chi vede la Commessa, null altrimenti.</ac>
+    <ac id="AC-008">Dettaglio: card laterale con tab Note, Documenti e Log attivita'; log non piu' nella card principale; ogni tab assente senza il suo permesso, card assente senza nessuno.</ac>
+    <ac id="AC-009">Alias `work_order` caricabile e listabile via `/api/attachments`; upload 403 senza `attachments.create`.</ac>
+    <ac id="AC-010">`permissions.actions.view_documents` rispecchia `work-orders.viewDocuments`.</ac>
+    <ac id="AC-011">Cancellare la Commessa rimuove righe e binari dei suoi allegati.</ac>
+    <ac id="AC-013">"Modifica" e' sulla card, apre la superficie di modifica, assente senza permesso di update.</ac>
+    <ac id="AC-012">Nel dettaglio ogni Responsabile e Partecipante e' un `RecordPerson` che apre la modale utente al click.</ac>
+  </acceptance>
+
+</spec>

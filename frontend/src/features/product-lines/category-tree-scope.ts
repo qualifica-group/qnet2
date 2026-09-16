@@ -16,18 +16,22 @@
  * Spec 0077 rev.2 (user directive 2026-08-31) revoked INV-1/INV-2: rows are
  * independent, so nothing scopes a picker to a branch root any more and the
  * root id itself has no consumer left — only the mode survives.
+ *
+ * Spec 0132 reintroduces a root id, but for a DIFFERENT purpose: the card
+ * row's own two-step pick (root category, then one of its descendants),
+ * unrelated to the retired INV-1 branch confinement — see
+ * `selectableIdsUnderRoot`/`rootCategoryIdFor` below.
  */
+import { collectSelectableIds } from '@/features/product-categories/flatten-tree'
 import type { CategoryManagementMode, ProductCategoryTreeNode } from '@/features/product-categories/types'
-import type { ProductLineRow } from '@/features/product-lines/types'
 
 export interface PickableCategoryOptions {
   /**
    * Spec 0129 D-6/D-7: also admit a container category (`is_selectable=false`)
    * whose EFFECTIVE function matches `businessFunctionId`, or a functionless
    * ("neutral") container with at least one descendant under that function.
-   * Used only by the competence row editor (`ProductLinesField`'s
-   * `competence` variant) — offers/projects/campaigns/requests keep the
-   * default (`is_selectable` mandatory, spec 0111 D-4, unchanged).
+   * Used only by `CompetenceLinesField` — offers/projects/campaigns/requests
+   * keep the default (`is_selectable` mandatory, spec 0111 D-4, unchanged).
    */
   includeContainers?: boolean
 }
@@ -106,7 +110,11 @@ export function resolveManagementMode(
 }
 
 /**
- * The row set's resolved policy, from the categories its rows carry.
+ * The row set's resolved policy, from the categories its rows carry. Takes
+ * only the slice it actually reads — `product_category_id` — rather than the
+ * full `ProductLineRow` shape, so it stays usable by every row shape that
+ * carries one: the card row (spec 0132), the inline cell editor's own pair
+ * type, and (were it ever needed) a competence row.
  *
  * Resolved from the tree and NOT from what the operator picked in this
  * session (user directive 2026-08-05): a row hydrated on edit — the
@@ -116,7 +124,7 @@ export function resolveManagementMode(
  * record still saves as long as its rows are not resubmitted.
  */
 export function resolveRowSetManagementMode(
-  rows: ProductLineRow[],
+  rows: readonly { product_category_id: number | null }[],
   nodes: ProductCategoryTreeNode[],
 ): CategoryManagementMode | null {
   return resolveManagementMode(
@@ -139,6 +147,53 @@ export function resolveSimplifiedOfferLine(
   categoryIds: number[],
 ): boolean {
   return categoryIds.some((categoryId) => findNode(nodes, categoryId)?.simplified_offer_line === true)
+}
+
+/**
+ * The ids a card row scoped to `rootCategoryId` may pick (spec 0132 D-1/D-2):
+ * every `is_selectable` node in that root's own subtree, root included,
+ * WITHOUT any business-function constraint — the function is derived
+ * server-side from whichever leaf the operator lands on, not filtered here.
+ * An unknown root resolves to an empty set (nothing pickable yet).
+ */
+export function selectableIdsUnderRoot(
+  nodes: ProductCategoryTreeNode[],
+  rootCategoryId: number,
+): Set<number> {
+  const root = findNode(nodes, rootCategoryId)
+  return root === null ? new Set<number>() : collectSelectableIds([root])
+}
+
+/**
+ * Walks the tree from a persisted category up to its ROOT ancestor (spec 0132
+ * AC-017): the id an edit-loaded row's `root_category_id` preselects, off the
+ * same cached tree — no request of its own. A category that IS a root
+ * resolves to itself, matching D-5 ("una categoria che e' essa stessa
+ * radice"). `null` when the id is not found (tree not loaded yet, or the id
+ * does not exist in it).
+ */
+export function rootCategoryIdFor(nodes: ProductCategoryTreeNode[], categoryId: number): number | null {
+  function search(candidates: ProductCategoryTreeNode[], rootId: number): number | null {
+    for (const node of candidates) {
+      if (node.id === categoryId) {
+        return rootId
+      }
+      const found = search(node.children, rootId)
+      if (found !== null) {
+        return found
+      }
+    }
+    return null
+  }
+
+  for (const root of nodes) {
+    const found = search([root], root.id)
+    if (found !== null) {
+      return found
+    }
+  }
+
+  return null
 }
 
 /** Depth-first lookup by id. */

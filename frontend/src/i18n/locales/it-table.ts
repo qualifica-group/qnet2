@@ -105,23 +105,21 @@ export const table = {
     unlockDescription:
       "Scegliendo un elemento fuori dall'ambito di questa riga, quell'ambito verrà esteso automaticamente per includerlo.",
   },
-  // Spec 0075: l'editor in cella {funzione aziendale, categoria prodotto} —
+  // Spec 0132: l'editor in cella {categoria genitore, categoria prodotto} —
   // lo stesso flusso in due passi del ProductLinesField del form.
   productLinesEditor: {
     selected: 'Categorie prodotto di questo record',
     none: 'Nessuna categoria prodotto.',
     remove: 'Rimuovi {{name}}',
-    back: 'Torna alle funzioni aziendali',
-    businessFunctionStep: 'Passo 1: scegli la funzione aziendale.',
+    back: 'Torna alle categorie genitore',
+    rootCategoryStep: 'Passo 1: scegli la categoria genitore.',
     categoryStep: 'Passo 2: scegli una categoria prodotto di {{name}}.',
     singleModeReached:
       'Questa categoria prodotto è gestita a riga singola: rimuovi quella presente per sceglierne un\'altra.',
-    businessFunctionSearch: 'Cerca funzioni aziendali…',
     categorySearch: 'Cerca categorie prodotto…',
     empty: 'Nessun risultato.',
     error: 'Impossibile caricare le opzioni.',
     retry: 'Riprova',
-    loadMore: 'Carica altri',
     uncoveredProducts:
       'Questi prodotti di interesse non sarebbero più coperti da nessuna categoria prodotto: {{names}}. Il salvataggio verrà rifiutato.',
   },

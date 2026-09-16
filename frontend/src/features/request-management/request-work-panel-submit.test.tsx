@@ -148,10 +148,11 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
    * reported nothing where the operator was looking — the button read as
    * broken. The refusal is now stated next to the button itself.
    *
-   * Funzione aziendale + categoria prodotto are editable since the user
-   * directive 2026-07-31, under the same "never empty" rule the server
-   * enforces (`min:1`): emptying the collection is refused before the
-   * request goes out, and the summary names the offending block.
+   * Categoria genitore + categoria prodotto are editable since the user
+   * directive 2026-07-31 (spec 0132 supersedes the funzione+categoria
+   * shape), under the same "never empty" rule the server enforces
+   * (`min:1`): emptying the collection is refused before the request goes
+   * out, and the summary names the offending block.
    */
   it('refuses a save that would leave the request without a product line', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
@@ -159,7 +160,7 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     renderPanel()
 
     await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Business function 1' })).toHaveTextContent('Sales'),
+      expect(screen.getByRole('button', { name: 'Remove product line' })).toBeInTheDocument(),
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove product line' }))

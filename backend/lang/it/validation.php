@@ -184,7 +184,9 @@ return [
         // Direttiva utente 2026-08-03: senza questi, un errore sulla collezione
         // arriva all'operatore come "product lines.0.business function id".
         'product_lines' => 'linee di prodotto',
-        'product_lines.*.business_function_id' => 'funzione aziendale',
+        // Spec 0132: `business_function_id` non e' piu' un input di riga sul
+        // percorso card (derivata, mai validata), quindi non ha piu' un nome
+        // attributo qui.
         'product_lines.*.product_category_id' => 'categoria prodotto',
         'products_of_interest' => 'prodotti di interesse',
         // La chiave del motore di modifica in cella (PATCH /tables/{domain}/rows/{row}).

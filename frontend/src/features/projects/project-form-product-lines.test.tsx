@@ -7,10 +7,11 @@ import { projects as projectsEn } from '@/i18n/locales/en-projects'
 import { ProjectForm } from '@/features/projects/project-form'
 import type { ProjectDetailWithPermissions } from '@/features/projects/types'
 import type { ResourceMeta } from '@/features/authorization/types'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 
 /**
- * Spec 0094 (AC-045): the project form's `product_lines` row editor (shared
- * `ProductLinesField`, spec 0057) and the Sede field — split out of
+ * Spec 0132 (AC-045): the project form's `product_lines` row editor (shared
+ * `ProductLinesField`) and the Sede field — split out of
  * `project-form-body.test.tsx` to stay within the 500-line hard limit
  * (engineering.md §6), mirroring the same mocking setup.
  */
@@ -34,9 +35,9 @@ vi.mock('@/features/projects/api', async () => {
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 /**
- * `ProductLinesField`'s row picker resolves an unknown business-function
- * label through this API directly (`use-product-lines-field.ts`'s
- * `resolveLabel`), bypassing the mocked `AsyncPaginatedSelect` component.
+ * `ProductLinesField`'s row picker resolves an unknown category label
+ * through this API directly, bypassing the mocked `AsyncPaginatedSelect`
+ * component.
  */
 vi.mock('@/features/for-select/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
@@ -49,6 +50,46 @@ vi.mock('@/features/for-select/api', async () => {
       pagination: { offset: 0, limit: 25, total: 0 },
       export_link: null,
     }),
+  }
+})
+
+/**
+ * `useProductLinesField` (inside the real, unmocked `ProductLinesField`)
+ * reads the category tree directly — for `rootCategoryFor`'s edit-mode
+ * resolution (spec 0132 AC-017) to find category 4 under a root, the tree
+ * fetch needs a real answer here, unlike the two row pickers themselves
+ * (mocked below with clickable doubles).
+ */
+function node(overrides: Partial<ProductCategoryTreeNode> & { id: number }): ProductCategoryTreeNode {
+  return {
+    name: 'Node',
+    parent_id: null,
+    children: [],
+    attributes_count: 0,
+    products_count: 0,
+    business_function_id: null,
+    requires_quote: false,
+    is_selectable: true,
+    is_reportable: false,
+    management_mode: 'multiple',
+    single_quote_per_opportunity: false,
+    generates_contract: true,
+    simplified_offer_line: false,
+    ...overrides,
+  }
+}
+
+const CATEGORY_TREE: ProductCategoryTreeNode[] = [
+  node({ id: 2, name: 'Widgets root', children: [node({ id: 4, name: 'Widgets', parent_id: 2 })] }),
+]
+
+vi.mock('@/features/product-categories/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/product-categories/api')>(
+    '@/features/product-categories/api',
+  )
+  return {
+    ...actual,
+    fetchProductCategoryTree: () => Promise.resolve(CATEGORY_TREE),
   }
 })
 
@@ -96,17 +137,17 @@ vi.mock('@/features/product-lines/product-category-tree-select', () => ({
   ProductCategoryTreeSelect: ({
     value,
     onChange,
-    businessFunctionId,
+    scope,
     disabled,
     triggerLabel,
   }: {
     value: number | null
     onChange: (id: number) => void
-    businessFunctionId: number | null
+    scope: { kind: 'root'; rootCategoryId: number | null }
     disabled?: boolean
     triggerLabel: string
   }) => {
-    const isDisabled = Boolean(disabled) || businessFunctionId === null
+    const isDisabled = Boolean(disabled) || scope.rootCategoryId === null
     return (
       <div>
         <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
@@ -122,6 +163,30 @@ vi.mock('@/features/product-lines/product-category-tree-select', () => ({
       </div>
     )
   },
+}))
+
+/** The row's FIRST step (spec 0132): same clickable-double style as the category picker above. */
+vi.mock('@/features/product-lines/product-category-root-select', () => ({
+  ProductCategoryRootSelect: ({
+    value,
+    onChange,
+    disabled,
+    triggerLabel,
+  }: {
+    value: number | null
+    onChange: (rootCategoryId: number) => void
+    disabled?: boolean
+    triggerLabel: string
+  }) => (
+    <button
+      type="button"
+      disabled={disabled}
+      data-testid={`select-${triggerLabel}`}
+      onClick={() => onChange(2)}
+    >
+      {value ?? ''}
+    </button>
+  ),
 }))
 
 vi.mock('@/features/geo/geo-select', () => ({
@@ -209,26 +274,26 @@ beforeEach(() => {
   fetchSystemStatusIdMock.mockResolvedValue(null)
 })
 
-/** Fills the fields made mandatory alongside name/status/country: row 1 (spec 0094) and the planning dates. */
+/** Fills the fields made mandatory alongside name/status/country: row 1 (spec 0132) and the planning dates. */
 function completeRequiredCreateFields() {
-  fireEvent.click(screen.getByTestId('select-Business function 1'))
+  fireEvent.click(screen.getByTestId('select-Parent category 1'))
   fireEvent.click(screen.getByTestId('select-Product category 1'))
   fireEvent.click(screen.getByRole('button', { name: /Planning & budget/ }))
   fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-01-01' } })
   fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-12-31' } })
 }
 
-describe('ProjectForm — product_lines (spec 0094, AC-045)', () => {
+describe('ProjectForm — product_lines (spec 0132, AC-045)', () => {
   it('opens the create form on ONE empty row (mirrors opportunities/request-management)', async () => {
     render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
-    await waitFor(() => expect(screen.getByTestId('select-Business function 1')).toBeInTheDocument())
-    expect(screen.queryByTestId('select-Business function 2')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('select-Parent category 1')).toBeInTheDocument())
+    expect(screen.queryByTestId('select-Parent category 2')).not.toBeInTheDocument()
   })
 
-  it('disables the row category until its own business function is chosen, then enables it', async () => {
+  it('disables the row category until its own root category is chosen, then enables it', async () => {
     render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
@@ -236,12 +301,12 @@ describe('ProjectForm — product_lines (spec 0094, AC-045)', () => {
     await waitFor(() => expect(screen.getByTestId('select-Product category 1')).toBeInTheDocument())
     expect(screen.getByTestId('select-Product category 1')).toBeDisabled()
 
-    fireEvent.click(screen.getByTestId('select-Business function 1'))
+    fireEvent.click(screen.getByTestId('select-Parent category 1'))
 
     await waitFor(() => expect(screen.getByTestId('select-Product category 1')).toBeEnabled())
   })
 
-  it('leaves the row category enabled in edit mode (a business function is already set)', async () => {
+  it('leaves the row category enabled in edit mode (its root resolves from the tree)', async () => {
     render(
       <ProjectForm mode={{ type: 'edit', project: project() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
@@ -251,7 +316,7 @@ describe('ProjectForm — product_lines (spec 0094, AC-045)', () => {
     expect(screen.getByTestId('select-Product category 1')).toBeEnabled()
   })
 
-  it('adds a second independent row via "Add", each scoped by its OWN business function', async () => {
+  it('adds a second independent row via "Add", each scoped by its OWN root category', async () => {
     render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
@@ -259,7 +324,7 @@ describe('ProjectForm — product_lines (spec 0094, AC-045)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add product line' })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
 
-    expect(screen.getByTestId('select-Business function 2')).toBeInTheDocument()
+    expect(screen.getByTestId('select-Parent category 2')).toBeInTheDocument()
     expect(screen.getByTestId('disabled-Product category 2')).toHaveTextContent('true')
   })
 
@@ -275,12 +340,12 @@ describe('ProjectForm — product_lines (spec 0094, AC-045)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Planning & budget/ }))
     fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-01-01' } })
     fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-12-31' } })
-    // The default row is left incomplete on purpose (no business function/category picked).
+    // The default row is left incomplete on purpose (no category picked).
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(
-        screen.getByText('Each row requires both a business function and a product category.'),
+        screen.getByText('Each row requires both a parent category and a product category.'),
       ).toBeInTheDocument(),
     )
     expect(createProjectMock).not.toHaveBeenCalled()
@@ -302,7 +367,9 @@ describe('ProjectForm — product_lines (spec 0094, AC-045)', () => {
 
     await waitFor(() => expect(createProjectMock).toHaveBeenCalledTimes(1))
     const payload = createProjectMock.mock.calls[0][0] as Record<string, unknown>
-    expect(payload.product_lines).toEqual([{ business_function_id: 3, product_category_id: 4 }])
+    // Spec 0132 AC-018: only `product_category_id` travels — the picked root
+    // (`select-Parent category 1`) is UI-only state, never sent.
+    expect(payload.product_lines).toEqual([{ product_category_id: 4 }])
   })
 })
 

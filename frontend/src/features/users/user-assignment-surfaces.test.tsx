@@ -91,8 +91,8 @@ vi.mock('@/features/personal-data/use-personal-data', () => ({
  * the field holds and let a test append a COMPLETE one, which is all the
  * verdict reads.
  */
-vi.mock('@/features/product-lines/product-lines-field', () => ({
-  ProductLinesField: ({
+vi.mock('@/features/product-lines/competence-lines-field', () => ({
+  CompetenceLinesField: ({
     value,
     onChange,
   }: {

@@ -13,8 +13,8 @@ import type { PersonalDataCard } from '@/features/personal-data/types'
 
 /**
  * Spec 0111 AC-023/AC-024: the Profile section configures the user's
- * competence as ROWS ("funzione aziendale -> categoria prodotto") with the
- * shared `ProductLinesField`, gated by the single `employment.product_lines`
+ * competence as ROWS ("funzione aziendale -> categoria prodotto") with
+ * `CompetenceLinesField`, gated by the single `employment.product_lines`
  * field-permission key and written to `employment.product_lines` in the save
  * payload. The row editor itself is covered by its own suite
  * (`features/product-lines`); what is asserted here is the user form's wiring:

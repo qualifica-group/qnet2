@@ -55,7 +55,7 @@ describe('useRequestCreateForm — Informazioni aggiuntive', () => {
     const { result } = renderCreateForm(vi.fn())
 
     act(() => {
-      result.current.form.setValue('product_lines', [{ business_function_id: 1, product_category_id: null }])
+      result.current.form.setValue('product_lines', [{ root_category_id: null, product_category_id: null }])
     })
     expect(fetchRequestFormContextMock).not.toHaveBeenCalled()
 
@@ -63,7 +63,12 @@ describe('useRequestCreateForm — Informazioni aggiuntive', () => {
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
     })
 
-    await waitFor(() => expect(fetchRequestFormContextMock).toHaveBeenCalledWith([COMPLETE_ROW]))
+    // Spec 0132 AC-018: only `product_category_id` travels — `root_category_id` is UI-only state.
+    await waitFor(() =>
+      expect(fetchRequestFormContextMock).toHaveBeenCalledWith([
+        { product_category_id: COMPLETE_ROW.product_category_id },
+      ]),
+    )
     await waitFor(() => expect(result.current.context.applicable_attributes).toHaveLength(1))
   })
 

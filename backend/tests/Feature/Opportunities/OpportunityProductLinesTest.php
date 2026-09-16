@@ -122,35 +122,46 @@ it('create: a duplicate {business_function_id, product_category_id} pair -> 422 
     expect(Opportunity::count())->toBe(0);
 });
 
-it('create: a category whose EFFECTIVE business function differs from the row -> 422 (AC-100)', function () {
+it('create: a submitted business_function_id is ignored, the EFFECTIVE derived one is persisted instead (spec 0132, AC-002)', function () {
     $actor = productLinesOpportunityUserWith(['create']);
     $ownBusinessFunction = BusinessFunction::factory()->create();
     $otherBusinessFunction = BusinessFunction::factory()->create();
     $category = ProductCategory::factory()->create(['business_function_id' => $ownBusinessFunction->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/opportunities', array_merge(productLinesMandatoryOpportunityFks(), [
-        'name' => 'Mismatched pair',
+    $response = $this->postJson('/api/opportunities', array_merge(productLinesMandatoryOpportunityFks(), [
+        'name' => 'Ignored business function',
         'product_lines' => [
             ['business_function_id' => $otherBusinessFunction->id, 'product_category_id' => $category->id],
         ],
-    ]))->assertStatus(422)->assertJsonValidationErrors('product_lines.0.business_function_id');
+        'products_of_interest' => [Product::factory()->create(['category_id' => $category->id])->id],
+    ]))->assertCreated();
 
-    expect(Opportunity::count())->toBe(0);
+    $opportunityId = $response->json('data.id');
+    $this->assertDatabaseHas('opportunity_product_lines', [
+        'opportunity_id' => $opportunityId,
+        'business_function_id' => $ownBusinessFunction->id,
+        'product_category_id' => $category->id,
+    ]);
+    $this->assertDatabaseMissing('opportunity_product_lines', [
+        'opportunity_id' => $opportunityId,
+        'business_function_id' => $otherBusinessFunction->id,
+    ]);
 });
 
-it('create: a category with NO effective business function -> 422 on any submitted pairing (AC-100)', function () {
+it('create: a category with NO effective business function -> 422 (spec 0132, AC-003)', function () {
     $actor = productLinesOpportunityUserWith(['create']);
-    $businessFunction = BusinessFunction::factory()->create();
     $category = ProductCategory::factory()->create(['business_function_id' => null]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/opportunities', array_merge(productLinesMandatoryOpportunityFks(), [
         'name' => 'No function category',
         'product_lines' => [
-            ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
+            ['product_category_id' => $category->id],
         ],
-    ]))->assertStatus(422)->assertJsonValidationErrors('product_lines.0.business_function_id');
+    ]))->assertStatus(422)->assertJsonValidationErrors('product_lines.0.product_category_id');
+
+    expect(Opportunity::count())->toBe(0);
 });
 
 it('update: product_lines is a full-replace sync (AC-099)', function () {
@@ -227,6 +238,56 @@ it('update: omitting product_lines leaves the existing rows untouched (partial P
 
     $this->patchJson("/api/opportunities/{$opportunityId}", ['estimated_value' => 555])->assertOk();
 
+    $this->assertDatabaseCount('opportunity_product_lines', 1);
+    $this->assertDatabaseHas('opportunity_product_lines', [
+        'opportunity_id' => $opportunityId, 'product_category_id' => $category->id,
+    ]);
+});
+
+it('update: the SAME now-unselectable category resubmitted unchanged stays acceptable (spec 0074 D-3b, spec 0132 AC-006)', function () {
+    $actor = productLinesOpportunityUserWith(['create', 'update']);
+    $businessFunction = BusinessFunction::factory()->create();
+    $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id, 'is_selectable' => true]);
+    Sanctum::actingAs($actor);
+
+    $created = $this->postJson('/api/opportunities', array_merge(productLinesMandatoryOpportunityFks(), [
+        'name' => 'Exempt on update',
+        'product_lines' => [
+            ['product_category_id' => $category->id],
+        ],
+        'products_of_interest' => [Product::factory()->create(['category_id' => $category->id])->id],
+    ]))->assertCreated();
+    $opportunityId = $created->json('data.id');
+
+    $category->update(['is_selectable' => false]);
+
+    // Resubmitting the SAME now-unselectable category, unchanged: exempt (D-3b).
+    $this->patchJson("/api/opportunities/{$opportunityId}", [
+        'product_lines' => [
+            ['product_category_id' => $category->id],
+        ],
+    ])->assertOk();
+
+    $this->assertDatabaseCount('opportunity_product_lines', 1);
+    $this->assertDatabaseHas('opportunity_product_lines', [
+        'opportunity_id' => $opportunityId, 'product_category_id' => $category->id,
+    ]);
+
+    // Counter-proof: introducing a DIFFERENT, never-persisted non-selectable
+    // category is still refused — the exemption only ever covers what the
+    // record ALREADY carries.
+    $otherUnselectable = ProductCategory::factory()->create([
+        'business_function_id' => $businessFunction->id,
+        'is_selectable' => false,
+    ]);
+
+    $this->patchJson("/api/opportunities/{$opportunityId}", [
+        'product_lines' => [
+            ['product_category_id' => $otherUnselectable->id],
+        ],
+    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.product_category_id');
+
+    // The exempt row is untouched by the rejected attempt.
     $this->assertDatabaseCount('opportunity_product_lines', 1);
     $this->assertDatabaseHas('opportunity_product_lines', [
         'opportunity_id' => $opportunityId, 'product_category_id' => $category->id,

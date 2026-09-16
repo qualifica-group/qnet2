@@ -67,7 +67,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents'];
     }
 
     /**
@@ -116,6 +116,8 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // record-level `work-orders.view` boundary is enforced
             // separately by GET /api/activity-log/work-orders/{id}.
             'view_activity' => $model !== null && $actor->can('work-orders.viewActivity'),
+            // Spec 0134: gates the DocumentsSection tab in the detail.
+            'view_documents' => $model !== null && $actor->can('work-orders.viewDocuments'),
         ];
     }
 }

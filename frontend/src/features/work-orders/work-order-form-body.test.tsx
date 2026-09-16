@@ -112,6 +112,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     internal_notes: null,
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
+    contract: null,
     task_template: null,
     quote_lines: [],
     applicable_attributes: [],

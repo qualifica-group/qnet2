@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
-import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
  * Zod schema for the opportunity create/edit form, built as a factory so
@@ -51,33 +50,8 @@ function requiredRelationId(message: string) {
     .refine((value): boolean => value !== null, { message })
 }
 
-/** Order-independent equality of two `product_lines` collections (mirrors `request-work-schema.ts`'s `productLinesChanged`). */
-function productLinesRowsEqual(a: ProductLineRow[], b: ProductLineRow[]): boolean {
-  if (a.length !== b.length) {
-    return false
-  }
-  const keyOf = (row: ProductLineRow) => `${row.business_function_id}:${row.product_category_id}`
-  const keysA = new Set(a.map(keyOf))
-  const keysB = new Set(b.map(keyOf))
-  if (keysA.size !== keysB.size) {
-    return false
-  }
-  for (const key of keysA) {
-    if (!keysB.has(key)) {
-      return false
-    }
-  }
-  return true
-}
-
-/**
- * Shared fields common to create and edit. `originalProductLines` is the
- * persisted collection on edit (`null` on create, where D-5 has nothing to
- * grandfather): spec 0077's new row-set rules only fire once the collection
- * actually differs from it, mirroring `request-work-schema.ts`'s sparse gate
- * (AC-016/017 apply to the opportunity form too, not only the work panel).
- */
-function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null) {
+/** Shared fields common to create and edit. */
+function baseFields(t: TFunction) {
   return {
     // D-4/D-5 (spec 0057): registry_id is the required identity field — the
     // name is no longer a form input, it is derived server-side as `OPP_{id}`.
@@ -91,19 +65,19 @@ function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null)
     // Spec 0056: facoltativa, never a submit-blocking requirement — no
     // server-side inheritance from another entity (a plain editable FK).
     operational_site_id: z.number().nullable(),
-    // Amendment rev.3 (AC-097/099): replaces the former single
-    // `business_function_id`/`product_category_id` with an inline-editable
-    // row collection (mirrors `manager_slots`: "Add" appends an EMPTY row).
-    // Each id is individually nullable (a row starts empty and fills in
-    // place), but `superRefine` below requires BOTH non-null per row before
-    // submit — an incomplete row (including a freshly-added empty one)
-    // blocks the form, surfaced as a single error on the collection. User
-    // directive 2026-07-17: at least one row is REQUIRED (an empty collection
-    // blocks submit), mirroring the backend `required|min:1`.
+    // Spec 0132: replaces the former `business_function_id`/`product_category_id`
+    // pair with a root-category-then-category row collection (mirrors
+    // `manager_slots`: "Add" appends an EMPTY row). `root_category_id` is
+    // UI-only state (D-3, never validated as a domain field); only
+    // `product_category_id` must be non-null per row before submit — an
+    // incomplete row (including a freshly-added empty one) blocks the form,
+    // surfaced as a single error on the collection. User directive 2026-07-17:
+    // at least one row is REQUIRED (an empty collection blocks submit),
+    // mirroring the backend `required|min:1`.
     product_lines: z
       .array(
         z.object({
-          business_function_id: z.number().nullable(),
+          root_category_id: z.number().nullable(),
           product_category_id: z.number().nullable(),
         }),
       )
@@ -112,26 +86,9 @@ function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null)
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('productLines.required') })
           return
         }
-        const hasIncompleteRow = rows.some(
-          (row) => row.business_function_id === null || row.product_category_id === null,
-        )
+        const hasIncompleteRow = rows.some((row) => row.product_category_id === null)
         if (hasIncompleteRow) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('productLines.rowIncomplete') })
-        }
-        // Spec 0077 INV-2: every row shares the same Funzione aziendale, in
-        // BOTH management modes — gated by D-5 (see `baseFields` above).
-        const collectionChanged =
-          originalProductLines === null || !productLinesRowsEqual(rows, originalProductLines)
-        if (collectionChanged) {
-          const businessFunctionIds = new Set(
-            rows.map((row) => row.business_function_id).filter((id): id is number => id !== null),
-          )
-          if (businessFunctionIds.size > 1) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: t('opportunities.form.productLines.businessFunctionMismatch'),
-            })
-          }
         }
       }),
     // "Prodotti di interesse": a plain id set, MANDATORY since the user
@@ -184,16 +141,12 @@ function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null)
  * now be empty — so create and edit share the exact same (nullable) shape.
  */
 export function buildCreateOpportunitySchema(t: TFunction) {
-  return z.object(baseFields(t, null))
+  return z.object(baseFields(t))
 }
 
-/**
- * Edit schema; partial PATCH is computed by the caller and supervisor remains
- * nullable. `originalProductLines` is the loaded opportunity's persisted rows
- * (D-5 grandfathering, see `baseFields`).
- */
-export function buildUpdateOpportunitySchema(t: TFunction, originalProductLines: ProductLineRow[]) {
-  return z.object(baseFields(t, originalProductLines))
+/** Edit schema; partial PATCH is computed by the caller and supervisor remains nullable. */
+export function buildUpdateOpportunitySchema(t: TFunction) {
+  return z.object(baseFields(t))
 }
 
 export type CreateOpportunityFormValues = z.infer<ReturnType<typeof buildCreateOpportunitySchema>>

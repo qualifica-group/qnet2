@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { useTaskForm } from '@/features/tasks/use-task-form'
 import { taskDetailQueryKey } from '@/features/tasks/api'
+import { workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { taskDetailWithPermissions, taskStatus } from '@/features/tasks/task-fixtures'
 import { DEFAULT_MODULE_OPEN_PREFERENCES } from '@/features/modules/types'
 import type { TaskStatusForSelectItem } from '@/features/tasks/for-select-api'
@@ -15,6 +16,12 @@ const fetchTaskMock = vi.fn<(id: number) => Promise<TaskDetailWithPermissions>>(
 vi.mock('@/features/tasks/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/tasks/api')>('@/features/tasks/api')
   return { ...actual, createTask: vi.fn(), updateTask: vi.fn(), fetchTask: (id: number) => fetchTaskMock(id) }
+})
+
+const fetchWorkOrderMock = vi.fn()
+vi.mock('@/features/work-orders/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/work-orders/api')>('@/features/work-orders/api')
+  return { ...actual, fetchWorkOrder: (id: number) => fetchWorkOrderMock(id) }
 })
 
 /** The connected actor `useTaskForm` reads to prefill the requester (spec 0118 D-1). */
@@ -72,6 +79,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  fetchWorkOrderMock.mockReset()
   fetchTaskMock.mockReset()
   fetchTaskMock.mockResolvedValue(taskDetailWithPermissions())
 })
@@ -244,6 +252,42 @@ describe('useTaskForm — requester prefill on create (spec 0118 D-1)', () => {
     )
 
     expect(result.current.form.getValues('requester_id')).toBe(21)
+  })
+})
+
+/**
+ * Spec 0133 D-4 (AC-012): "New task" from the Commessa detail's Task tab seeds
+ * `work_order_id` and hydrates the picker label from the work order detail
+ * already cached underneath — no second request.
+ */
+describe('useTaskForm — work order prefill on create (spec 0133)', () => {
+  it('seeds work_order_id and resolves its "code — title" label from the cached detail', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    client.setQueryData(workOrderDetailQueryKey(4), { id: 4, code: 'COM-0004', title: 'Installazione impianto' })
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create', workOrderId: 4 }, onSuccess: () => undefined }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        ),
+      },
+    )
+
+    expect(result.current.form.getValues('work_order_id')).toBe(4)
+    await waitFor(() =>
+      expect(result.current.workOrderPrefillRef).toEqual({ id: 4, name: 'COM-0004 — Installazione impianto' }),
+    )
+    expect(fetchWorkOrderMock).not.toHaveBeenCalled()
+  })
+
+  it('leaves the work order empty and unresolved when the create form has no context', () => {
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    expect(result.current.form.getValues('work_order_id')).toBeNull()
+    expect(result.current.workOrderPrefillRef).toBeNull()
   })
 })
 

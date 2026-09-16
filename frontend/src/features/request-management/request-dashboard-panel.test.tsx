@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
 import type { RequestReportCategory } from '@/features/request-management/report-api'
@@ -259,11 +260,68 @@ describe('RequestDashboardPanel', () => {
     renderPanel(true)
 
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('Unable to load the dashboard.')
+    expect(alert).toHaveTextContent('Unable to load the dashboard because of a server error.')
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
 
     expect(await screen.findByRole('heading', { name: 'GOL' })).toBeInTheDocument()
+  })
+
+  it.each([
+    [undefined, 'Unable to reach the server'],
+    [403, 'You do not have permission to view the requests dashboard.'],
+    [422, 'The applied filters are no longer valid'],
+    [500, 'Unable to load the dashboard because of a server error.'],
+  ])('explains a failed dashboard fetch by its HTTP status (%s)', async (status, message) => {
+    const response = status === undefined ? undefined : { status, data: {}, statusText: '', headers: {}, config: {} }
+    fetchRequestManagementDashboardMock.mockRejectedValue(
+      new AxiosError('failed', undefined, undefined, undefined, response as never),
+    )
+
+    renderPanel(true)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+  })
+
+  it('explains that there is nothing to chart when no category has requests, without fetching', async () => {
+    // A selection from an earlier session must not reach the server once no
+    // category is offered any more: that was a 422 behind a generic error.
+    window.localStorage.setItem(
+      'request-management.report-filters',
+      JSON.stringify({ date_from: '2026-03-02', date_to: '2026-03-06', category_keys: ['gol'], row_mode: 'all' }),
+    )
+    fetchRequestManagementReportCategoriesMock.mockResolvedValue([])
+
+    renderPanel(true)
+
+    expect(await screen.findByRole('status')).toHaveTextContent('there are no requests in the categories')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(fetchRequestManagementDashboardMock).not.toHaveBeenCalled()
+  })
+
+  it('never fetches on a restored category the report no longer offers', async () => {
+    window.localStorage.setItem(
+      'request-management.report-filters',
+      JSON.stringify({ date_from: '2026-03-02', date_to: '2026-03-06', category_keys: ['retired'], row_mode: 'all' }),
+    )
+
+    renderPanel(true)
+
+    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalled())
+    for (const [, query] of fetchRequestManagementDashboardMock.mock.calls) {
+      expect(query.category_keys).not.toContain('retired')
+    }
+  })
+
+  it('shows a retryable error when the category list fails to load', async () => {
+    fetchRequestManagementReportCategoriesMock.mockRejectedValueOnce(new Error('network'))
+
+    renderPanel(true)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load categories.')
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByRole('heading', { name: 'GOL' })).toBeInTheDocument()
+    expect(fetchRequestManagementDashboardMock).toHaveBeenCalled()
   })
 
   it('shows an explicit empty message in a section with no chart (AC-048)', async () => {

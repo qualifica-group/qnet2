@@ -19,7 +19,7 @@ function values(overrides: Partial<ProjectFormValues> = {}): ProjectFormValues {
     state_id: null,
     province_id: null,
     city_id: null,
-    product_lines: [{ business_function_id: 5, product_category_id: 6 }],
+    product_lines: [{ root_category_id: null, product_category_id: 6 }],
     partner_id: null,
     operational_site_id: null,
     start_date: '',
@@ -73,7 +73,7 @@ describe('buildCreatePayload', () => {
       name: 'Acme rollout',
       pipeline_status_id: 3,
       description: null,
-      product_lines: [{ business_function_id: 5, product_category_id: 6 }],
+      product_lines: [{ product_category_id: 6 }],
       country_id: 1,
       state_id: null,
       province_id: null,
@@ -176,26 +176,26 @@ describe('buildUpdatePayload', () => {
   })
 })
 
-/** Spec 0094 (AC-045): the row editor's full-replace collection, diffed as an unordered set. */
-describe('product_lines (spec 0094)', () => {
+/** Spec 0132 (AC-045/AC-018): the row editor's full-replace collection, diffed as an unordered set, only `product_category_id` on the wire. */
+describe('product_lines (spec 0132)', () => {
   it('filters out an incomplete row before sending it (create)', () => {
     const payload = buildCreatePayload(
       values({
         product_lines: [
-          { business_function_id: 5, product_category_id: 6 },
-          { business_function_id: 7, product_category_id: null },
+          { root_category_id: null, product_category_id: 6 },
+          { root_category_id: null, product_category_id: null },
         ],
       }),
     )
-    expect(payload.product_lines).toEqual([{ business_function_id: 5, product_category_id: 6 }])
+    expect(payload.product_lines).toEqual([{ product_category_id: 6 }])
   })
 
   it('omits product_lines from the update diff when the set is unchanged, regardless of row order', () => {
     const payload = buildUpdatePayload(
       values({
         product_lines: [
-          { business_function_id: 7, product_category_id: 8 },
-          { business_function_id: 5, product_category_id: 6 },
+          { root_category_id: null, product_category_id: 8 },
+          { root_category_id: null, product_category_id: 6 },
         ],
       }),
       original({
@@ -210,9 +210,9 @@ describe('product_lines (spec 0094)', () => {
 
   it('includes product_lines in the update diff when the set changed', () => {
     const payload = buildUpdatePayload(
-      values({ product_lines: [{ business_function_id: 9, product_category_id: 10 }] }),
+      values({ product_lines: [{ root_category_id: null, product_category_id: 10 }] }),
       original(),
     )
-    expect(payload.product_lines).toEqual([{ business_function_id: 9, product_category_id: 10 }])
+    expect(payload.product_lines).toEqual([{ product_category_id: 10 }])
   })
 })

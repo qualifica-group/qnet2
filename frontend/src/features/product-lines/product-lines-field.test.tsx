@@ -1,39 +1,32 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useForm, useWatch } from 'react-hook-form'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
-import type { ProductLine, ProductLineRow } from '@/features/product-lines/types'
+import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
- * Spec 0057 (generalized from the opportunity form's original
- * `OpportunityProductLinesField`, spec 0040 amendment rev.3, AC-106): the
- * inline business-function + product-category row editor, styled/interacted
- * like `ManagerSlotsField` ("Add" appends an empty row, edited in place,
- * removed with a trash icon). Covers adding an empty row, category options
- * scoped by the row's own function, removal, and label resolution from
- * already-known rows (no redundant fetch). The former name auto-fill
- * (AC-107) was removed along with the opportunity form's `name` input (spec
- * 0057 D-5) and is not part of this shared component.
+ * Spec 0132: the CARD row editor picks a ROOT category first, then one of its
+ * `is_selectable` descendants — no business-function select anywhere in this
+ * field (D-3: the server derives and persists the function). Covers
+ * AC-013..AC-017. The `single`-mode row cap (AC-041/042) is unaffected by the
+ * contract change and gets its own suite, `product-lines-field-management-mode.test.tsx`.
  */
 
-const TEST_BUSINESS_FUNCTION_A = 1
-const TEST_BUSINESS_FUNCTION_B = 2
-const TEST_PRODUCT_CATEGORY_A = 11
-const TEST_PRODUCT_CATEGORY_B = 22
-
-const SELECT_IDS: Record<string, number[]> = {
-  'Business function 1': [TEST_BUSINESS_FUNCTION_A, TEST_BUSINESS_FUNCTION_B],
-  'Business function 2': [TEST_BUSINESS_FUNCTION_A, TEST_BUSINESS_FUNCTION_B],
-}
+const ROOT_A = 100
+const ROOT_B = 200
+const CATEGORY_A1 = 11
+const CATEGORY_A2 = 22
+const CONTAINER_B = 201
+const LEAF_B = 202
+const DEAD_BRANCH_B = 203
 
 /**
- * The category select now reads the structural TREE (user directive
- * 2026-08-03), so the fixture IS a tree: an unselectable root that owns the
- * business function, its two pickable children, and a second branch under the
- * other function. `vi.hoisted` because the `vi.mock` factory below is hoisted
- * above this module's consts.
+ * `vi.hoisted` because the `vi.mock` factory below is hoisted above this
+ * module's consts. Root B exercises AC-015: a disabled container context
+ * (`Container B`) around the only pickable leaf, and a dead branch
+ * (`Dead branch`, no selectable descendant at all) pruned outright.
  */
 const { CATEGORY_TREE } = vi.hoisted(() => {
   const node = (overrides: Record<string, unknown>) => ({
@@ -54,15 +47,28 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
     CATEGORY_TREE: [
       node({
         id: 100,
-        name: 'Formazione',
-        business_function_id: 1,
+        name: 'Root A',
         is_selectable: false,
         children: [
-          node({ id: 11, name: 'Consulting', parent_id: 100 }),
-          node({ id: 22, name: 'Training', parent_id: 100 }),
+          node({ id: 11, name: 'Category A1', parent_id: 100 }),
+          node({ id: 22, name: 'Category A2', parent_id: 100 }),
         ],
       }),
-      node({ id: 200, name: 'Marketing area', business_function_id: 2 }),
+      node({
+        id: 200,
+        name: 'Root B',
+        is_selectable: false,
+        children: [
+          node({
+            id: 201,
+            name: 'Container B',
+            parent_id: 200,
+            is_selectable: false,
+            children: [node({ id: 202, name: 'Leaf B', parent_id: 201 })],
+          }),
+          node({ id: 203, name: 'Dead branch', parent_id: 200, is_selectable: false }),
+        ],
+      }),
     ],
   }
 })
@@ -76,7 +82,7 @@ vi.mock('@/features/product-categories/use-product-category-tree', () => ({
   }),
 }))
 
-/** Exposes the options it was handed (id + disabled flag), so the scoping under test is asserted on the real builder's output. */
+/** Exposes the options it was handed (id + disabled flag), so scoping/pruning is asserted on the real builder's output. */
 vi.mock('@/components/ui/searchable-select', () => ({
   SearchableSelect: ({
     value,
@@ -108,50 +114,13 @@ vi.mock('@/components/ui/searchable-select', () => ({
   ),
 }))
 
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    value,
-    onChange,
-    disabled,
-    labels,
-  }: {
-    value: number | null
-    onChange: (value: number | null) => void
-    disabled?: boolean
-    labels: { triggerLabel: string }
-  }) => (
-    <div data-testid={`select-${labels.triggerLabel}`}>
-      <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
-      <span data-testid={`disabled-${labels.triggerLabel}`}>{String(Boolean(disabled))}</span>
-      {(SELECT_IDS[labels.triggerLabel] ?? [1]).map((id) => (
-        <button key={id} type="button" onClick={() => onChange(id)}>
-          {`select ${labels.triggerLabel} ${id}`}
-        </button>
-      ))}
-    </div>
-  ),
-}))
-
-const fetchForSelectMock = vi.fn()
-vi.mock('@/features/for-select/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/for-select/api')>('@/features/for-select/api')
-  return {
-    ...actual,
-    fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args),
-  }
-})
-
-const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }
-
 interface HarnessProps {
   defaultValue?: ProductLineRow[]
-  knownLines?: ProductLine[]
   disabled?: boolean
-  variant?: 'card' | 'competence'
 }
 
 /** Mirrors the real wiring (`opportunity-product-lines-section.tsx`'s `MetaField`): rows flow through RHF like any other field. */
-function Harness({ defaultValue = [], knownLines, disabled, variant }: HarnessProps) {
+function Harness({ defaultValue = [], disabled }: HarnessProps) {
   const form = useForm<{ product_lines: ProductLineRow[] }>({ defaultValues: { product_lines: defaultValue } })
   const productLines = useWatch({ control: form.control, name: 'product_lines' })
 
@@ -159,9 +128,7 @@ function Harness({ defaultValue = [], knownLines, disabled, variant }: HarnessPr
     <ProductLinesField
       value={productLines}
       onChange={(next) => form.setValue('product_lines', next, { shouldDirty: true })}
-      knownLines={knownLines}
       disabled={disabled}
-      variant={variant}
     />
   )
 }
@@ -179,187 +146,94 @@ beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-beforeEach(() => {
-  fetchForSelectMock.mockReset()
-  fetchForSelectMock.mockImplementation(async (resource: string, params: { ids?: number[] }) => {
-    if (resource === 'business-functions' && params?.ids?.includes(TEST_BUSINESS_FUNCTION_A)) {
-      return { ...EMPTY_PAGE, items: [{ id: TEST_BUSINESS_FUNCTION_A, label: 'Sales' }] }
-    }
-    if (resource === 'business-functions' && params?.ids?.includes(TEST_BUSINESS_FUNCTION_B)) {
-      return { ...EMPTY_PAGE, items: [{ id: TEST_BUSINESS_FUNCTION_B, label: 'Marketing' }] }
-    }
-    if (resource === 'product-categories' && params?.ids?.includes(TEST_PRODUCT_CATEGORY_A)) {
-      return { ...EMPTY_PAGE, items: [{ id: TEST_PRODUCT_CATEGORY_A, label: 'Consulting' }] }
-    }
-    if (resource === 'product-categories' && params?.ids?.includes(TEST_PRODUCT_CATEGORY_B)) {
-      return { ...EMPTY_PAGE, items: [{ id: TEST_PRODUCT_CATEGORY_B, label: 'Training' }] }
-    }
-    return EMPTY_PAGE
-  })
-})
-
-describe('ProductLinesField (spec 0057, AC-106)', () => {
-  it('renders no row and an enabled "Add" button when empty', () => {
-    renderHarness()
-    expect(screen.queryByTestId('select-Business function 1')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
-  })
-
-  it('adds an empty row on "Add", with the category disabled until a function is chosen', () => {
+describe('ProductLinesField (spec 0132)', () => {
+  it('AC-013: renders "Parent category" and "Product category", no business-function select at all', () => {
     renderHarness()
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
 
-    expect(screen.getByTestId('select-Business function 1')).toBeInTheDocument()
-    expect(screen.getByTestId('value-Business function 1')).toHaveTextContent('')
+    expect(screen.getByTestId('select-Parent category 1')).toBeInTheDocument()
+    expect(screen.getByTestId('select-Product category 1')).toBeInTheDocument()
+    expect(screen.queryByTestId('select-Business function 1')).not.toBeInTheDocument()
+  })
+
+  it('AC-014: the category select is disabled until a parent category is chosen', () => {
+    renderHarness()
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+
     expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('true')
   })
 
-  it('scopes the row category by the row own business function (AC-104)', async () => {
+  it('AC-015: lists the selectable descendants of the chosen root; containers disabled, dead branches pruned', async () => {
     renderHarness()
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
-
-    screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }).click()
+    fireEvent.click(screen.getByRole('button', { name: `select Parent category 1 ${ROOT_B}` }))
 
     await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
-    // The other function's branch is absent; the root that owns THIS function
-    // is listed but disabled (it is not `is_selectable`), which is the whole
-    // point of reading the tree: the children show WHERE they live.
+    // Root B and its Container are context — listed disabled — around the
+    // one pickable leaf; the dead branch offers nothing and is gone entirely.
     expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(
-      `100:disabled,${TEST_PRODUCT_CATEGORY_A},${TEST_PRODUCT_CATEGORY_B}`,
+      `${ROOT_B}:disabled,${CONTAINER_B}:disabled,${LEAF_B}`,
     )
+    expect(screen.getByTestId('options-Product category 1')).not.toHaveTextContent(String(DEAD_BRANCH_B))
   })
 
-  it('swaps the offered branch when the row function changes (user directive 2026-08-03)', async () => {
-    renderHarness()
-    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
-    screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }).click()
-    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
+  it('AC-016: changing the parent category resets only that row\'s category, other rows untouched', async () => {
+    renderHarness({
+      defaultValue: [
+        { root_category_id: ROOT_A, product_category_id: CATEGORY_A1 },
+        { root_category_id: ROOT_B, product_category_id: LEAF_B },
+      ],
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_B}` }))
-
-    await waitFor(() => expect(screen.getByTestId('options-Product category 1')).toHaveTextContent('200'))
-    expect(screen.getByTestId('options-Product category 1')).not.toHaveTextContent('100')
-  })
-
-  it('resets the category when the row function changes', async () => {
-    renderHarness()
-    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
-    screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }).click()
-    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
-    screen.getByRole('button', { name: `select Product category 1 ${TEST_PRODUCT_CATEGORY_A}` }).click()
-    await waitFor(() =>
-      expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(String(TEST_PRODUCT_CATEGORY_A)),
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_B}` }))
+    fireEvent.click(screen.getByRole('button', { name: `select Parent category 1 ${ROOT_B}` }))
 
     await waitFor(() => expect(screen.getByTestId('value-Product category 1')).toBeEmptyDOMElement())
-    // The new function (B) is still set, so the category select stays enabled — just cleared.
+    expect(screen.getByTestId('value-Product category 2')).toHaveTextContent(String(LEAF_B))
+  })
+
+  it('AC-017: preselects the parent category by walking the tree from the persisted category, no extra fetch', () => {
+    renderHarness({ defaultValue: [{ root_category_id: null, product_category_id: CATEGORY_A2 }] })
+
+    expect(screen.getByTestId('value-Parent category 1')).toHaveTextContent(String(ROOT_A))
     expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false')
   })
 
   it('removes a row', () => {
-    renderHarness({
-      knownLines: [
-        {
-          id: 1,
-          business_function: { id: TEST_BUSINESS_FUNCTION_A, name: 'Sales' },
-          product_category: { id: TEST_PRODUCT_CATEGORY_A, name: 'Consulting' },
-        },
-      ],
-      defaultValue: [{ business_function_id: TEST_BUSINESS_FUNCTION_A, product_category_id: TEST_PRODUCT_CATEGORY_A }],
-    })
+    renderHarness({ defaultValue: [{ root_category_id: ROOT_A, product_category_id: CATEGORY_A1 }] })
 
-    expect(screen.getByTestId('select-Business function 1')).toBeInTheDocument()
+    expect(screen.getByTestId('select-Parent category 1')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Remove product line' }))
 
-    expect(screen.queryByTestId('select-Business function 1')).not.toBeInTheDocument()
-  })
-
-  it('resolves row labels from knownLines without a fetch (pre-fill from lead/edit, AC-103)', () => {
-    renderHarness({
-      knownLines: [
-        { id: 1, business_function: { id: 40, name: 'Sales' }, product_category: { id: 50, name: 'Consulting' } },
-      ],
-      defaultValue: [{ business_function_id: 40, product_category_id: 50 }],
-    })
-
-    expect(fetchForSelectMock).not.toHaveBeenCalled()
-    expect(screen.getByTestId('value-Business function 1')).toHaveTextContent('40')
+    expect(screen.queryByTestId('select-Parent category 1')).not.toBeInTheDocument()
   })
 
   it('adds a second row independently of the first', async () => {
-    renderHarness()
-    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
-    screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }).click()
-    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
-    screen.getByRole('button', { name: `select Product category 1 ${TEST_PRODUCT_CATEGORY_A}` }).click()
+    renderHarness({ defaultValue: [{ root_category_id: ROOT_A, product_category_id: CATEGORY_A1 }] })
 
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
     expect(screen.getByTestId('disabled-Product category 2')).toHaveTextContent('true')
 
-    screen.getByRole('button', { name: `select Business function 2 ${TEST_BUSINESS_FUNCTION_B}` }).click()
+    fireEvent.click(screen.getByRole('button', { name: `select Parent category 2 ${ROOT_B}` }))
     await waitFor(() => expect(screen.getByTestId('disabled-Product category 2')).toHaveTextContent('false'))
-    expect(screen.getByTestId('value-Business function 1')).toHaveTextContent(String(TEST_BUSINESS_FUNCTION_A))
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(String(CATEGORY_A1))
   })
 
   it('disables every row control and the "Add" button when `disabled` is set', () => {
     renderHarness({
-      knownLines: [
-        { id: 1, business_function: { id: 40, name: 'Sales' }, product_category: { id: 50, name: 'Consulting' } },
-      ],
-      defaultValue: [{ business_function_id: 40, product_category_id: 50 }],
+      defaultValue: [{ root_category_id: ROOT_A, product_category_id: CATEGORY_A1 }],
       disabled: true,
     })
 
-    expect(screen.getByTestId('disabled-Business function 1')).toHaveTextContent('true')
+    expect(screen.getByTestId('disabled-Parent category 1')).toHaveTextContent('true')
     expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('true')
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Remove product line' })).toBeDisabled()
   })
 
-  it('non-regression: renders no "All categories" checkbox in the default (card) variant', () => {
+  it('non-regression: renders no "All categories" checkbox — that is a CompetenceLinesField affordance', () => {
     renderHarness()
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
 
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-  })
-})
-
-/**
- * Spec 0129 D-5/D-6/AC-021/AC-022: the competence variant. The card variant's
- * behavior above (no checkbox, container category disabled) is the
- * non-regression baseline these cases are opted into.
- */
-describe('ProductLinesField variant="competence" (spec 0129)', () => {
-  it('AC-022 — makes the container category ("Formazione") pickable once a function is chosen', async () => {
-    renderHarness({ variant: 'competence' })
-    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
-    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }))
-
-    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
-    expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(
-      `100,${TEST_PRODUCT_CATEGORY_A},${TEST_PRODUCT_CATEGORY_B}`,
-    )
-  })
-
-  it('AC-021 — renders a disabled "All categories" checkbox before a function is chosen', () => {
-    renderHarness({ variant: 'competence' })
-    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
-
-    expect(screen.getByRole('checkbox')).toBeDisabled()
-  })
-
-  it('AC-021 — checking "All categories" disables and clears the category, and writes a null-category row', async () => {
-    renderHarness({ variant: 'competence' })
-    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
-    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }))
-    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
-
-    fireEvent.click(screen.getByRole('checkbox'))
-
-    expect(screen.getByRole('checkbox')).toBeChecked()
-    expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('true')
-    expect(screen.getByTestId('value-Product category 1')).toBeEmptyDOMElement()
   })
 })

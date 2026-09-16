@@ -8,7 +8,6 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/features/auth/auth-provider'
 import { UiScaleProvider } from '@/features/appearance/ui-scale-provider'
 import { DateDisplayProvider } from '@/features/appearance/date-display-provider'
-import { UserDetailSheetProvider } from '@/features/users/user-detail-sheet'
 import { FieldChangeRequestDialogProvider } from '@/features/field-change-requests/field-change-request-dialog'
 import { ConfigGate } from '@/features/config/config-gate'
 import { FullScreenLoader } from '@/components/full-screen-loader'
@@ -24,15 +23,13 @@ function App() {
             <UiScaleProvider>
               <TooltipProvider>
                 <ConfirmDialogProvider>
-                  <UserDetailSheetProvider>
-                    <FieldChangeRequestDialogProvider>
-                      <Suspense fallback={<FullScreenLoader />}>
-                        <DateDisplayProvider>
-                          <RouterProvider router={router} />
-                        </DateDisplayProvider>
-                      </Suspense>
-                    </FieldChangeRequestDialogProvider>
-                  </UserDetailSheetProvider>
+                  <FieldChangeRequestDialogProvider>
+                    <Suspense fallback={<FullScreenLoader />}>
+                      <DateDisplayProvider>
+                        <RouterProvider router={router} />
+                      </DateDisplayProvider>
+                    </Suspense>
+                  </FieldChangeRequestDialogProvider>
                 </ConfirmDialogProvider>
                 <Toaster />
               </TooltipProvider>

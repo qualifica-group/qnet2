@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0133-work-order-tasks-tab" status="implemented" owner="nicola" date="2026-09-16">
+
+  <goal>
+    Nel dettaglio di una Commessa aggiungere un tab "Task" che elenca i task collegati a quella
+    Commessa, servito dalla STESSA griglia del modulo Task filtrata sulla commessa corrente, con
+    le stesse azioni di riga e un bottone "Nuovo task" che apre il form con la Commessa
+    precompilata.
+  </goal>
+
+  <context>
+    Fatti VERIFICATI nel repo:
+      - `tasks.work_order_id` e' una FK diretta (`Task::workOrder()`, `$fillable` include
+        `work_order_id`): filtrare i task di una commessa e' una `where`, nessuna join.
+      - Precedente esatto da ricalcare (spec 0095 D-8): `App\Tables\WorkOrders\QuoteScopedTableDefinition`
+        (decorator composto in `TableRegistry::resolve()`), plumbing `quoteId` in
+        `TableController` (columns/rows/values), `TableColumnsRequest`/`TableRowsRequest`/
+        `TableValuesRequest`, `CreateExportRequest`/`ExportController`/`ExportService`, e lato
+        frontend `TableRowScope.quoteId` -> `ssrm-datasource.ts` -> `table-view.tsx` ->
+        `export-dialog.tsx`/`data-table`. Montato da `contracts/contract-work-orders-section.tsx`.
+      - `rowScope` NON entra in nessuna query key: la config della griglia e' identica scoped o no.
+      - `TasksTableDefinition::baseQuery()` applica gia' `TaskVisibilityScope`: lo scope per
+        commessa si somma (AND) alla visibilita', non la sostituisce.
+      - Oggi `work-order-detail.tsx` NON ha tab: una sola `RecordCard` con header, sezioni e in
+        fondo il log attivita' (gated `permissions.actions.view_activity`).
+      - Il form task riceve il contesto di creazione via `ModuleCreateParams` (oggi solo
+        `parent_task_id`, `TaskFormScreen` in `task-screens.tsx`); `useModuleOpener(...).openCreateWith`
+        con `forceMode: OPEN_MODE_MODAL` apre il form sopra il dettaglio senza abbandonarlo.
+      - Il campo commessa del form task si idrata con `RelationFieldRef {id, name}` dove
+        `name = "code — title"` (`task-form-body.tsx::workOrderRefOf`).
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Scope backend = nuovo decorator `App\Tables\Tasks\WorkOrderScopedTableDefinition`
+      (ricalca 1:1 `QuoteScopedTableDefinition`), applicato SOLO al dominio `tasks` in
+      `TableRegistry::resolve()`. Parametro `workOrderId` (rows/values/export, camelCase come
+      `quoteId`) e `work_order_id` (columns, snake_case come `quote_id`). No-op per ogni altro
+      dominio e quando assente: la pagina Task resta byte-identica.
+    </decision>
+    <decision id="D-2">
+      Layout (decisione utente 2026-09-16): nella card del dettaglio Commessa una strip di tab
+      compatta "Dettagli | Task". "Dettagli" contiene le sezioni attuali invariate. Il log
+      attivita', i metadati e tutto il resto restano DOVE SONO ORA, fuori dai tab.
+      Tab "Task" presente solo con `tasks.viewAny`; senza, nessuna strip (dettaglio come oggi).
+      REVISIONE (decisione utente 2026-09-16, "stesso template di Opportunita'/Offerte"): la strip
+      "Dettagli | Task" e' rimossa. I task sono un pannello `RecordCard` a tutta larghezza SOTTO la
+      card del record e la card laterale, come il pannello Offerte dell'Opportunita' (titolo +
+      contatore + "Nuovo task" nell'intestazione). Presente solo con `tasks.viewAny`.
+    </decision>
+    <decision id="D-3">
+      Il tab Task riusa `TableView domain="tasks"`, `taskColumnRenderers` e `useTaskRowActions`
+      forzato in modale (`forceMode: OPEN_MODE_MODAL`), con contatore righe (`onRowCountChanged`)
+      mostrato nel pannello del tab accanto a "Nuovo task". CORREZIONE in implementazione: non nel
+      trigger, perche' Radix monta il contenuto del tab solo quando e' attivo, quindi il conteggio
+      non esiste finche' il tab non viene aperto.
+    </decision>
+    <decision id="D-4">
+      "Nuovo task" (decisione utente 2026-09-16), gated `tasks.create`: apre il form in modale
+      con `ModuleCreateParams { work_order_id }`. `TaskFormScreen` lo parsa come gia'
+      fa per `parent_task_id`; `useTaskForm` lo mette nei default di creazione. L'etichetta del campo
+      si idrata leggendo il dettaglio commessa con `useQuery` sulla STESSA query key del
+      dettaglio (`['work-orders','detail',id]`, gia' in cache). Il campo resta modificabile
+      (come il prefill del parent, spec 0123 D-10). Dopo il salvataggio la griglia si ricarica.
+      Nessuna modifica backend: `StoreTaskRequest` accetta gia' `work_order_id`.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: `WorkOrderScopedTableDefinition`, wiring in `TableRegistry`, `TableController`, 3 FormRequest tabella, export (request/controller/service).</item>
+      <item>Frontend: `TableRowScope.workOrderId` + plumbing (datasource, table-view, export).</item>
+      <item>Frontend: `work-orders/work-order-tasks-section.tsx` (griglia + "Nuovo task"), strip tab in `work-order-detail.tsx`.</item>
+      <item>Frontend: prefill `work_order_id` nel form task (`task-screens.tsx`, `use-task-form.ts`, idratazione etichetta).</item>
+      <item>i18n it/en per titolo tab e bottone.</item>
+      <item>Test Pest (scope) e Vitest (sezione, prefill).</item>
+    </in>
+    <out>
+      <item>Nessuna migrazione, nessun endpoint nuovo, nessun cambio a `TaskVisibilityScope`.</item>
+      <item>Nessun tab Task in altri dettagli (Contratto, Offerta, Opportunita').</item>
+      <item>Nessuno spostamento del log attivita' o di altre sezioni del dettaglio Commessa.</item>
+      <item>Nessun blocco del campo commessa nel form task (resta modificabile).</item>
+      <item>Nessun conteggio task nel payload del dettaglio commessa (il contatore viene dalla griglia).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/tables/tasks/rows">
+      <request>Body invariato + `workOrderId?: int|null` (`exists:work_orders,id`).</request>
+      <response status="200">Envelope paginato invariato; righe limitate a `tasks.work_order_id = workOrderId` AND visibilita'.</response>
+      <errors>422 se `workOrderId` non esiste; 403 senza `tasks.viewAny` (invariato).</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/tasks/values">
+      <request>Body invariato + `workOrderId?: int|null`.</request>
+      <response status="200">Valori distinti calcolati solo sulle righe della commessa.</response>
+      <errors>422 se `workOrderId` non esiste.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/tables/tasks/columns">
+      <request>Query invariata + `work_order_id?: int|null`.</request>
+      <response status="200">Shape della config INVARIATA scoped o no.</response>
+      <errors>422 se `work_order_id` non esiste.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/exports/tasks">
+      <request>Body invariato + `workOrderId?: int|null`, propagato alla definizione come negli altri scope.</request>
+      <response status="200">Invariata; il file contiene solo i task della commessa.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dati task su due commesse, quando si chiama rows di `tasks` con `workOrderId` = A, allora tornano solo i task di A e il totale e' quello di A.</criterion>
+    <criterion id="AC-002">Quando si chiama rows di `tasks` senza `workOrderId`, allora tornano tutti i task visibili (comportamento invariato).</criterion>
+    <criterion id="AC-003">Dato un utente che non vede un task di A per `TaskVisibilityScope`, quando chiama rows con `workOrderId` = A, allora quel task non compare.</criterion>
+    <criterion id="AC-004">Quando si chiama values di `tasks` con `workOrderId` = A, allora i valori distinti derivano solo dai task di A.</criterion>
+    <criterion id="AC-005">Quando si passa `workOrderId` inesistente, allora 422.</criterion>
+    <criterion id="AC-006">Quando si passa `workOrderId` a un dominio diverso da `tasks` (es. `work-orders`), allora le righe non cambiano.</criterion>
+    <criterion id="AC-007">Utente senza `tasks.viewAny`: rows di `tasks` scoped risponde 403.</criterion>
+    <criterion id="AC-008">Export di `tasks` con `workOrderId` = A contiene solo i task di A.</criterion>
+    <criterion id="AC-009">Dettaglio Commessa con `tasks.viewAny` (rev. D-2): sotto il record compare il pannello "Task" (nessuna strip di tab), che monta `TableView domain="tasks"` con `rowScope.workOrderId` = id commessa; le sezioni restano sempre visibili.</criterion>
+    <criterion id="AC-010">Dettaglio Commessa senza `tasks.viewAny`: nessun pannello Task, sezioni e attivita' come oggi.</criterion>
+    <criterion id="AC-011">Con `tasks.create`, "Nuovo task" chiama `openCreateWith({ work_order_id })`; senza, il bottone non c'e'.</criterion>
+    <criterion id="AC-012">Form task aperto con `work_order_id` nei params: il campo commessa e' valorizzato con quell'id ed etichetta "code — title", ed e' modificabile.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Authz server-side invariata (`authorizeViewAny` + visibilita').
+    `workOrderId` validato con `exists`, applicato con `where` parametrizzata. Nessun `useEffect`
+    per il fetch. UI compatta (`text-xs px-2.5 py-1`, icone `size-3.5`). File entro 300/500 righe.
+  </constraints>
+
+</spec>

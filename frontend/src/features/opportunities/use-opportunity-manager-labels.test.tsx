@@ -32,7 +32,7 @@ function wrapper() {
 }
 
 function line(productCategoryId: number | null): ProductLineRow {
-  return { business_function_id: 40, product_category_id: productCategoryId }
+  return { root_category_id: null, product_category_id: productCategoryId }
 }
 
 describe('resolveManagerLabels (pure)', () => {

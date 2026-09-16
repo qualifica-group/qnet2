@@ -9,9 +9,8 @@ interface SheetDetailPageLinkProps {
   id: number
   /**
    * Closes the hosting Sheet and navigates to `path`. Owned by the host
-   * because not every Sheet lives inside the router context (the user detail
-   * provider is mounted above `RouterProvider`), and because the Sheet does
-   * not always unmount on navigation, so it must be closed explicitly.
+   * because the Sheet does not always unmount on navigation (e.g. the user
+   * detail provider mounted in `AppLayout`), so it must be closed explicitly.
    */
   onOpen: (path: string) => void
 }

@@ -100,19 +100,20 @@ it('every work-orders endpoint requires authentication (401)', function () {
 });
 
 // ---------------------------------------------------------------------------
-// AC-051 — permissions:sync creates exactly the 9 work-orders permissions
+// AC-051 — permissions:sync creates exactly the 10 work-orders permissions
 // ---------------------------------------------------------------------------
 
-it('permissions:sync creates all 9 work-orders.* permissions, derived from the Policy alone (AC-051)', function () {
+it('permissions:sync creates all 10 work-orders.* permissions, derived from the Policy alone (AC-051)', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
 
-    foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
+    foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'viewDocuments'] as $ability) {
         expect(Permission::where('name', "work-orders.{$ability}")->exists())->toBeTrue();
     }
 
     // 9, not 8: `viewAll` joined the standard CRUD set with the
-    // membership scoping (user directive 2026-09-02).
-    expect(Permission::where('name', 'like', 'work-orders.%')->count())->toBe(9);
+    // membership scoping (user directive 2026-09-02). 10, not 9: spec 0134
+    // D-4 added `viewDocuments` (REQUIREMENT CHANGED).
+    expect(Permission::where('name', 'like', 'work-orders.%')->count())->toBe(10);
 });
 
 // ---------------------------------------------------------------------------

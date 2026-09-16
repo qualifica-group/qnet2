@@ -25,7 +25,7 @@ function baseValues() {
     state_id: null,
     province_id: null,
     city_id: null,
-    product_lines: [{ business_function_id: 5, product_category_id: 6 }],
+    product_lines: [{ root_category_id: null, product_category_id: 6 }],
     partner_id: null,
     operational_site_id: null,
     start_date: '2026-01-01',
@@ -109,23 +109,20 @@ describe('buildCreateProjectSchema — product_lines (spec 0094)', () => {
     }
   })
 
-  it('rejects a row missing its business_function_id', () => {
+  it('accepts a row with no root category picked yet, as long as the category is set', () => {
     const schema = buildCreateProjectSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
     const result = schema.safeParse({
       ...baseValues(),
-      product_lines: [{ business_function_id: null, product_category_id: 6 }],
+      product_lines: [{ root_category_id: null, product_category_id: 6 }],
     })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines')).toBe(true)
-    }
+    expect(result.success).toBe(true)
   })
 
   it('rejects a row missing its product_category_id', () => {
     const schema = buildCreateProjectSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
     const result = schema.safeParse({
       ...baseValues(),
-      product_lines: [{ business_function_id: 5, product_category_id: null }],
+      product_lines: [{ root_category_id: 5, product_category_id: null }],
     })
     expect(result.success).toBe(false)
     if (!result.success) {
@@ -138,8 +135,8 @@ describe('buildCreateProjectSchema — product_lines (spec 0094)', () => {
     const result = schema.safeParse({
       ...baseValues(),
       product_lines: [
-        { business_function_id: 5, product_category_id: 6 },
-        { business_function_id: 7, product_category_id: 8 },
+        { root_category_id: 5, product_category_id: 6 },
+        { root_category_id: 5, product_category_id: 8 },
       ],
     })
     expect(result.success).toBe(true)

@@ -31,7 +31,7 @@ namespace App\DataObjects\Projects;
 final readonly class UpdateProjectData
 {
     /**
-     * @param  array<int, array{business_function_id: int, product_category_id: int}>|null  $productLines
+     * @param  array<int, array{product_category_id: int}>|null  $productLines
      */
     public function __construct(
         public ?string $name = null,
@@ -169,13 +169,16 @@ final readonly class UpdateProjectData
     }
 
     /**
-     * @return array<int, array{business_function_id: int, product_category_id: int}>
+     * Spec 0132, D-3: a row carries only `product_category_id` — the
+     * business function is DERIVED downstream (ProductLineWriter), never
+     * read from the payload even if a client still sends it.
+     *
+     * @return array<int, array{product_category_id: int}>
      */
     private static function normalizeProductLines(mixed $rows): array
     {
         return array_map(
             static fn (array $row): array => [
-                'business_function_id' => (int) $row['business_function_id'],
                 'product_category_id' => (int) $row['product_category_id'],
             ],
             (array) $rows,

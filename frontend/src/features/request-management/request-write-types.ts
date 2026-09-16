@@ -133,11 +133,11 @@ export interface UpdateRequestWorkPayload {
 
 /**
  * One `product_lines` row on the wire, shared by the create payload (D-3) and
- * the work panel's own update (user directive 2026-07-31): both ids are
- * mandatory there, unlike the form's in-progress rows.
+ * the work panel's own update (user directive 2026-07-31). Spec 0132 (AC-018):
+ * ONLY `product_category_id` travels — the server derives and persists the
+ * effective business function, `business_function_id` is no longer accepted.
  */
 export interface RequestProductLinePayload {
-  business_function_id: number
   product_category_id: number
 }
 

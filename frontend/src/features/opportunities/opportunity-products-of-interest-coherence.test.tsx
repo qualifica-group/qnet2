@@ -34,10 +34,10 @@ vi.mock('sonner', () => ({
   toast: { warning: (...args: unknown[]) => toastWarningMock(...args) },
 }))
 
-/** The row editor is covered by its own suite (spec 0057): here it is only the event source. */
+/** The row editor is covered by its own suite (spec 0132): here it is only the event source. */
 vi.mock('@/features/product-lines/product-lines-field', () => ({
   ProductLinesField: ({ onChange }: { onChange: (rows: ProductLineRow[]) => void }) => (
-    <button type="button" onClick={() => onChange([{ business_function_id: 3, product_category_id: 9 }])}>
+    <button type="button" onClick={() => onChange([{ root_category_id: null, product_category_id: 9 }])}>
       Re-point the row
     </button>
   ),
@@ -58,7 +58,7 @@ function wrapper() {
 function Harness({ onValues }: { onValues: (values: OpportunityFormValues) => void }) {
   const form = useForm<OpportunityFormValues>({
     defaultValues: {
-      product_lines: [{ business_function_id: 3, product_category_id: 7 }],
+      product_lines: [{ root_category_id: null, product_category_id: 7 }],
       products_of_interest: [4, 5],
     },
   })
@@ -67,11 +67,7 @@ function Harness({ onValues }: { onValues: (values: OpportunityFormValues) => vo
 
   return (
     <Form {...form}>
-      <OpportunityProductLinesSection
-        control={form.control}
-        knownProductLines={[]}
-        knownProductsOfInterest={[]}
-      />
+      <OpportunityProductLinesSection control={form.control} knownProductsOfInterest={[]} />
     </Form>
   )
 }

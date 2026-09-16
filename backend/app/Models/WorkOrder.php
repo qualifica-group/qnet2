@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\WorkOrderType;
 use App\Models\Abstracts\BaseModel;
+use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\WorkOrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -30,6 +32,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * `App\Services\WorkOrders\WorkOrderAttributeValueWriter::apply()` after
  * per-`code` validation, never by mass assignment.
  *
+ * Spec 0134 adds the two collaborative concerns: `HasNotes` (the thread,
+ * registered as the `work-orders` host in config/notes.php via
+ * WorkOrderNotable) and `HasAttachments` (the documents, alias `work_order`
+ * in config/attachments.php).
+ *
  * `task_template_id` (spec 0124, D-5/D-7) IS fillable — unlike `code`, it is
  * genuine client input (`CreateWorkOrderData`), the same category as
  * `quote_id`: mass-assignable on the model, with its post-create
@@ -51,7 +58,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class WorkOrder extends BaseModel
 {
     /** @use HasFactory<WorkOrderFactory> */
-    use HasFactory, LogsModelActivity;
+    use HasAttachments, HasFactory, HasNotes, LogsModelActivity;
 
     /**
      * @return array<string, string>

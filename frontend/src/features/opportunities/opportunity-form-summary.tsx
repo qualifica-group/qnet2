@@ -36,9 +36,7 @@ export function OpportunityFormSummary({ control, selectedItems }: OpportunityFo
   const expectedCloseDate = useWatch({ control, name: 'expected_close_date' })
   const successProbability = useWatch({ control, name: 'success_probability' })
 
-  const completeLines = productLines.filter(
-    (row) => row.business_function_id !== null && row.product_category_id !== null,
-  ).length
+  const completeLines = productLines.filter((row) => row.product_category_id !== null).length
   const registryName =
     registryId !== null && selectedItems.registry?.id === registryId ? selectedItems.registry.name : null
 

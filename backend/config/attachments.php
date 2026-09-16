@@ -9,6 +9,7 @@ use App\Models\Task;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
 use App\Models\User;
+use App\Models\WorkOrder;
 
 return [
 
@@ -109,6 +110,10 @@ return [
         // Task's own 'documents' collection. Alias already in the global
         // morph map (AppServiceProvider) for the same reason as 'task' above.
         'task_template_item' => TaskTemplateItem::class,
+        // Work order documents (spec 0134): same treatment as 'task' -- the
+        // alias is already in the global morph map, this only opens the
+        // upload boundary.
+        'work_order' => WorkOrder::class,
         // Note and task-template-header images embedded in a rich text field
         // (spec 0128, D-3): the record is its own attachment owner, under
         // the reserved `rich_text` collection (RichText::ATTACHMENT_COLLECTION).

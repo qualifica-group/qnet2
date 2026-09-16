@@ -45,7 +45,7 @@ const PRODUCT_LINES_ERROR_PREFIXES = ['product_lines']
 
 /**
  * Joins every 422 message whose key is `prefix` or `prefix.<anything>` (a
- * per-row key like `product_lines.0.business_function_id`), for a single
+ * per-row key like `product_lines.0.product_category_id`), for a single
  * banner above the field. Reimplemented locally (not imported) from
  * `request-management/use-request-create-form.ts`'s `collectPrefixedServerErrors`:
  * that file is owned by another feature/session, so this ~12-line helper is
@@ -87,8 +87,10 @@ function mapCampaignToFormValues(
     partner_id: campaign.partner_id,
     operational_site_id: campaign.operational_site_id,
     pipeline_status_id: campaign.pipeline_status_id,
+    // Spec 0132: `root_category_id` starts `null` — the shared `ProductLinesField`
+    // resolves it at render time from the cached category tree.
     product_lines: campaign.product_lines.map((line) => ({
-      business_function_id: line.business_function.id,
+      root_category_id: null,
       product_category_id: line.product_category.id,
     })),
     country_id: campaign.country_id,

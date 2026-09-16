@@ -32,10 +32,17 @@ function toForSelectItemFromRef(ref: RelationFieldRef | null): ForSelectItem | n
   return ref ? { id: ref.id, label: ref.name } : null
 }
 
-/** Converts the project's `for-select` `meta.product_lines` (spec 0094) into the form's editable-row shape. */
+/**
+ * Converts the project's `for-select` `meta.product_lines` (spec 0094) into
+ * the campaign's own editable-row shape (spec 0132): `root_category_id` starts
+ * `null` — the shared `ProductLinesField` resolves it at render time from the
+ * cached category tree, so there is nothing to precompute here even though
+ * `ProjectForSelectResource` itself never exposes `root_category` (no
+ * per-row query).
+ */
 function productLineRowsFromMeta(lines: ProjectForSelectProductLine[]): ProductLineRow[] {
   return lines.map((line) => ({
-    business_function_id: line.business_function.id,
+    root_category_id: null,
     product_category_id: line.product_category.id,
   }))
 }

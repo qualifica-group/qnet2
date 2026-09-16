@@ -10,12 +10,10 @@ import type { ProductLineRow } from '@/features/product-lines/types'
 import { ProductsOfInterestField } from '@/features/products/products-of-interest-field'
 import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
-import type { OpportunityProductLine, OpportunityProductOfInterest } from '@/features/opportunities/types'
+import type { OpportunityProductOfInterest } from '@/features/opportunities/types'
 
 interface OpportunityProductLinesSectionProps {
   control: Control<OpportunityFormValues>
-  /** Product-line rows whose labels are already known without a fetch (edit load, from-lead prefill, in-form Lead picker). */
-  knownProductLines: OpportunityProductLine[]
   /** Products already on the loaded opportunity (edit), for badge-label hydration. */
   knownProductsOfInterest: OpportunityProductOfInterest[]
 }
@@ -39,7 +37,6 @@ interface OpportunityProductLinesSectionProps {
  */
 export function OpportunityProductLinesSection({
   control,
-  knownProductLines,
   knownProductsOfInterest,
 }: OpportunityProductLinesSectionProps) {
   const { t } = useTranslation()
@@ -102,7 +99,6 @@ export function OpportunityProductLinesSection({
                 field.onChange(rows)
                 pruneProductsOfInterest(rows)
               }}
-              knownLines={knownProductLines}
               disabled={disabled}
             />
           )}

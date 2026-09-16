@@ -134,11 +134,9 @@ export const opportunities = {
     workflowStatusHint:
       'The internal working status, distinct from the Opportunity Status: limited to the set resolved for this opportunity.',
     productLines: {
-      fieldLabel: 'Function/category rows',
-      // Spec 0077 INV-2: every row of a card shares the same Business
-      // function, in both modes (D-5: only when the collection was actually
-      // edited).
-      businessFunctionMismatch: 'All rows must share the same business function.',
+      // Spec 0132: no longer function+category — root category + category,
+      // the business function is derived and shown read-only.
+      fieldLabel: 'Classification rows',
     },
     rewards: {
       fieldLabel: 'Assigned rewards',

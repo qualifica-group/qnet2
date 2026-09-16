@@ -5,29 +5,30 @@ declare(strict_types=1);
 namespace App\Services\ProductLines;
 
 use App\Enums\CategoryManagementMode;
-use App\Models\ProductCategory;
 use App\Rules\SelectableProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * THE definition of what makes a `product_lines` collection valid (spec 0075,
- * D-1): per-row (the business function exists, the category exists and is
- * SELECTABLE — spec 0074, with the already-persisted ones exempt) and
- * cross-row (no repeated {funzione aziendale, categoria} pair; each row's
- * category belongs to EXACTLY that business function once inheritance is
- * resolved; and, spec 0077 rev.2 INV-3, a card carrying a row whose root
- * management_mode is `single` may carry that row only).
+ * THE definition of what makes a `product_lines` collection valid: per-row
+ * (the category exists and is SELECTABLE — spec 0074, with the
+ * already-persisted ones exempt — and its EFFECTIVE business function is
+ * resolvable) and cross-row (no repeated category; and, spec 0077 rev.2
+ * INV-3, a card carrying a row whose root management_mode is `single` may
+ * carry that row only).
+ *
+ * Spec 0132, D-3: the business function is no longer a row input — a row is
+ * identified by its category ALONE, and the function is DERIVED
+ * (BusinessFunctionResolver) rather than declared and cross-checked. This
+ * revokes the former {funzione aziendale, categoria} pair identity (spec
+ * 0075) and the mismatch check it needed: a descendant may not override the
+ * business function it inherits (ProductCategoryService::
+ * assertNoInheritedBusinessFunction), so once the function follows the
+ * category there is nothing left to mismatch.
  *
  * Spec 0077 rev.2 (user directive 2026-08-31) REVOKED INV-1/INV-2: the rows
- * of a `multiple` card are independent — each picks its own business
- * function and its own category root. The two are one decision, not two: a
- * descendant may not override the business function it inherits
- * (ProductCategoryService::assertNoInheritedBusinessFunction), so a root
- * subtree carries exactly one function and a different function is only
- * reachable under a different root.
+ * of a `multiple` card are independent — each picks its own category root.
  *
  * It exists as a service, and not only as the FormRequest trait it used to
  * be, because the collection is written through TWO channels: the form
@@ -48,26 +49,50 @@ use Illuminate\Validation\ValidationException;
 final class ProductLineSetValidator
 {
     /**
-     * The two cross-row messages, kept as the ENGLISH source strings they are
-     * translated from (`lang/it.json`): they are what `__()` is keyed by, so a
-     * caller comparing against them still matches the untranslated form.
+     * Spec 0129's competence-only sibling (CompetenceLineSetValidator) still
+     * declares a {funzione aziendale, categoria} pair and reuses these two
+     * ENGLISH source strings (`lang/it.json`) verbatim — a competence row is
+     * NOT in scope of spec 0132's derivation (D-4), so the messages stay here
+     * for it even though the card path below no longer raises them itself.
      */
     public const string DUPLICATE_PAIR_MESSAGE = 'This business function / product category pair is already present.';
 
     public const string BUSINESS_FUNCTION_MISMATCH_MESSAGE = 'This product category does not belong to the selected business function.';
 
     /**
-     * The card-level invariant (spec 0077 INV-3). Unlike the two messages
-     * above (which blame a single row), it lands on the collection attribute
+     * Spec 0132: a card row is now identified by its category ALONE — the
+     * duplicate check this validator itself runs (pairErrors()) reports this
+     * message instead of DUPLICATE_PAIR_MESSAGE above.
+     */
+    public const string DUPLICATE_CATEGORY_MESSAGE = 'This product category is already present.';
+
+    /**
+     * Spec 0132, AC-003: a selectable category whose EFFECTIVE business
+     * function cannot be resolved (own, or inherited from its ancestors) —
+     * e.g. the known `parent_id`-cycle data issue — cannot classify a card
+     * row: the function is derived from it, and there would be none to
+     * derive.
+     */
+    public const string CATEGORY_WITHOUT_BUSINESS_FUNCTION_MESSAGE = 'This product category has no business function of reference.';
+
+    /**
+     * The card-level invariant (spec 0077 INV-3). Unlike the messages above
+     * (which blame a single row), it lands on the collection attribute
      * itself — `errors: { product_lines: [...] }`, no row index — because it
      * is not about one row, it is about how the rows relate to each other.
      */
     public const string SINGLE_ROW_ONLY_MESSAGE = 'This product category allows only a single row.';
 
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly CategoryHierarchy $hierarchy,
+        private readonly BusinessFunctionResolver $businessFunctionResolver,
+    ) {}
 
     /**
-     * The per-row rules, keyed for the given collection attribute.
+     * The per-row rules, keyed for the given collection attribute. Spec 0132:
+     * `business_function_id` is no longer accepted as an input — if the
+     * client still sends it, it simply carries no rule and is dropped by
+     * `validated()`, never reaching the DataObjects that write the row.
      *
      * @param  array<int, int>  $exemptCategoryIds  categories already persisted on the record being updated (spec 0074, D-3b)
      * @return array<string, array<int, mixed>>
@@ -75,7 +100,6 @@ final class ProductLineSetValidator
     public function rules(string $attribute, array $exemptCategoryIds): array
     {
         return [
-            $attribute.'.*.business_function_id' => ['required', 'integer', Rule::exists('business_functions', 'id')],
             // Spec 0074: only SELECTABLE categories may classify a line. The
             // categories already on the record are exempt (D-3b), so a
             // full-replace sync that resubmits the current lines unchanged
@@ -100,13 +124,13 @@ final class ProductLineSetValidator
     }
 
     /**
-     * The PAIR rules alone — no repeated {funzione aziendale, categoria}, and
-     * each row's category belonging to exactly the paired function — without
-     * the card-level `single` cap of spec 0077. Exposed separately (spec 0111
-     * D-5) for the owners that carry the collection without that cap: a user's
-     * competence is a free set of pairs, so it reuses these rules and skips
-     * collectionInvariantErrors(). Rows that are not well-formed are skipped:
-     * the per-row rules already report them.
+     * The PAIR rules alone — spec 0132: no repeated category, and each row's
+     * category must have a resolvable EFFECTIVE business function — without
+     * the card-level `single` cap of spec 0077. Kept separate from
+     * `collectionInvariantErrors()` (called together by `crossRowErrors()`)
+     * for the same reason it always was: one concerns each row on its own
+     * merits, the other how the rows relate to each other. Rows that are not
+     * well-formed are skipped: the per-row rules already report them.
      *
      * @param  array<int, mixed>  $lines
      * @return array<string, string>
@@ -114,28 +138,29 @@ final class ProductLineSetValidator
     public function pairErrors(array $lines, string $attribute): array
     {
         $errors = [];
-        $seenPairs = [];
+        $seenCategoryIds = [];
+        $businessFunctionByCategoryId = $this->businessFunctionResolver->resolveMany(
+            $this->wellFormedCategoryIds($lines),
+        );
 
         foreach ($lines as $index => $line) {
             if (! $this->isWellFormedLine($line)) {
                 continue;
             }
 
-            /** @var array{business_function_id: mixed, product_category_id: mixed} $line */
-            $businessFunctionId = (int) $line['business_function_id'];
+            /** @var array{product_category_id: mixed} $line */
             $productCategoryId = (int) $line['product_category_id'];
-            $pairKey = "{$businessFunctionId}:{$productCategoryId}";
 
-            if (isset($seenPairs[$pairKey])) {
-                $errors["{$attribute}.{$index}.product_category_id"] = __(self::DUPLICATE_PAIR_MESSAGE);
+            if (isset($seenCategoryIds[$productCategoryId])) {
+                $errors["{$attribute}.{$index}.product_category_id"] = __(self::DUPLICATE_CATEGORY_MESSAGE);
 
                 continue;
             }
 
-            $seenPairs[$pairKey] = true;
+            $seenCategoryIds[$productCategoryId] = true;
 
-            if (! $this->categoryMatchesBusinessFunction($productCategoryId, $businessFunctionId)) {
-                $errors["{$attribute}.{$index}.business_function_id"] = __(self::BUSINESS_FUNCTION_MISMATCH_MESSAGE);
+            if (($businessFunctionByCategoryId[$productCategoryId] ?? null) === null) {
+                $errors["{$attribute}.{$index}.product_category_id"] = __(self::CATEGORY_WITHOUT_BUSINESS_FUNCTION_MESSAGE);
             }
         }
 
@@ -176,27 +201,24 @@ final class ProductLineSetValidator
         throw ValidationException::withMessages([$errorField => $messages]);
     }
 
-    /**
-     * Whether the category's EFFECTIVE business function (own, or inherited
-     * from its ancestors) is exactly the one the row declares.
-     */
-    private function categoryMatchesBusinessFunction(int $productCategoryId, int $businessFunctionId): bool
-    {
-        $category = ProductCategory::find($productCategoryId);
-
-        if ($category === null) {
-            // The per-row rule on product_category_id already reports this.
-            return true;
-        }
-
-        $effective = $this->hierarchy->effectiveBusinessFunction($category);
-
-        return $effective !== null && $effective['id'] === $businessFunctionId;
-    }
-
     private function isWellFormedLine(mixed $line): bool
     {
-        return is_array($line) && isset($line['business_function_id'], $line['product_category_id']);
+        return is_array($line) && isset($line['product_category_id']);
+    }
+
+    /**
+     * The well-formed rows' category ids, deduplicated — the batch input
+     * `pairErrors()` resolves business functions for in one shot.
+     *
+     * @param  array<int, mixed>  $lines
+     * @return array<int, int>
+     */
+    private function wellFormedCategoryIds(array $lines): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (array $line): int => (int) $line['product_category_id'],
+            array_values(array_filter($lines, fn (mixed $line): bool => $this->isWellFormedLine($line))),
+        )));
     }
 
     /**
@@ -218,20 +240,13 @@ final class ProductLineSetValidator
      */
     private function collectionInvariantErrors(array $lines, string $attribute): array
     {
-        $wellFormed = array_values(array_filter(
-            $lines,
-            fn (mixed $line): bool => $this->isWellFormedLine($line),
-        ));
+        $wellFormedCount = count(array_filter($lines, fn (mixed $line): bool => $this->isWellFormedLine($line)));
 
-        if (count($wellFormed) < 2) {
+        if ($wellFormedCount < 2) {
             return [];
         }
 
-        /** @var array<int, array{business_function_id: mixed, product_category_id: mixed}> $wellFormed */
-        $categoryIds = array_values(array_unique(array_map(
-            static fn (array $line): int => (int) $line['product_category_id'],
-            $wellFormed,
-        )));
+        $categoryIds = $this->wellFormedCategoryIds($lines);
 
         // One batch call resolves every row's root+mode at once (spec 0077
         // constraint: never a walk per row).

@@ -1,25 +1,37 @@
 /**
  * AG Grid popup cell editor for an `editor: 'product_lines'` column (spec
- * 0075): the in-grid twin of `ProductLinesField`, editing the very same
- * {funzione aziendale, categoria prodotto} collection the form edits — never a
- * free string of category names.
+ * 0075, reshaped by spec 0132 AC-020): the in-grid twin of `ProductLinesField`,
+ * editing the very same product-category pairs collection the card form
+ * edits — never a free string of category names.
  *
  * Same flow as the form, in the space a cell has: the pairs already on the
- * request are listed as removable chips, and a new one is built in two steps —
- * pick the business function, then pick a category SCOPED to it
- * (`business_function_id` on `/product-categories/for-select`, exactly the
- * param the form select sends). A category is never pickable without its
- * function, which is what keeps the pair coherent by construction.
+ * request are listed as removable chips, and a new one is built in two
+ * steps — pick the ROOT category (a node with no parent), then one of its
+ * `is_selectable` descendants (containers listed as disabled context, dead
+ * branches pruned). The business function is no longer picked here at all:
+ * the server derives and persists it from the category, exactly like the
+ * card form (spec 0132 D-3). Both steps read the category TREE already
+ * cached by `useProductCategoryTree` — the same one the form's
+ * `ProductCategoryRootSelect`/`ProductCategoryTreeSelect` read — so this
+ * editor makes NO network call of its own (no more `for-select` on business
+ * functions or categories).
+ *
+ * A category is identified alone now (spec 0132: duplicate = same category,
+ * the business function is no longer part of the pair's identity), and the
+ * value committed to the grid carries only `product_category_id` per pair on
+ * the wire — see the note on `resolvePairEntry` below.
  *
  * Two constraints inherited from `RelationCellEditor`/`MultiSelectCellEditor`,
  * both learned the hard way: the lists render INSIDE the popup (a nested Radix
  * Popover portals to `document.body`, and `stopEditingWhenCellsLoseFocus` then
- * tears the editor down mid-open), and nothing here opens a portalled dialog.
+ * tears the editor down mid-open), and nothing here opens a portalled dialog
+ * — which is why this editor hand-rolls its own listbox instead of reusing
+ * `SearchableSelect` (Radix Popover) like the form does.
  * Like the multiselect editor, a pick does NOT close the popup: a collection is
  * built with several picks and committed when the editor closes.
  *
  * The server stays authoritative on every rule (existence, selectability, the
- * category/function match, no repeated pair, the coherence with the products of
+ * derived function, no repeated category, the coherence with the products of
  * interest): the warning this editor shows is anticipatory, never the check.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -28,23 +40,38 @@ import { useTranslation } from 'react-i18next'
 import { AlertTriangle, ChevronLeft, Loader2, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { useForSelect } from '@/features/for-select/use-for-select'
-import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
-import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
+import { flattenCategoryTree, pruneToPickable, type FlatCategoryOption } from '@/features/product-categories/flatten-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
-import { resolveRowSetManagementMode } from '@/features/product-lines/category-tree-scope'
-import type { ForSelectItem } from '@/features/for-select/types'
+import { resolveRowSetManagementMode, selectableIdsUnderRoot } from '@/features/product-lines/category-tree-scope'
 import type { TableRow } from '@/features/table/types'
 import { cn } from '@/lib/utils'
 
-/** One pair as the row projects it and as the PATCH sends it back (the `*_name` keys are dropped at the wire boundary). */
+/**
+ * One pair as the row projects it and as the PATCH sends it back.
+ *
+ * `root_category_id`/`root_category_name` and `product_category_id`/
+ * `product_category_name` are always known: hydrated from the grid row
+ * (`RequestRowMapper`) for a persisted pair, or filled in from the tree at
+ * pick time for one just built in this popup. `business_function_*` is the
+ * row's DERIVED function (spec 0132 D-3): a pair round-tripped from the
+ * server carries it, a pair just picked here does not yet — this editor never
+ * guesses it client-side (see `pick` below), it only ever reads it back once
+ * the commit refreshes the row.
+ *
+ * Only `product_category_id` reaches the PATCH: `resolvePairEntry`
+ * (`features/table/use-table-cell-edit.tsx`) reduces a pair to that one key
+ * alone, dropping the `*_name` labels, `root_category_id` (UI-only editor
+ * state) and `business_function_id` (server-derived, read-only) — spec 0132
+ * `data_contract`.
+ */
 export interface ProductLineCellValue {
-  business_function_id: number
-  business_function_name: string
+  root_category_id: number
+  root_category_name: string
   product_category_id: number
   product_category_name: string
+  business_function_id?: number
+  business_function_name?: string
 }
 
 /** A product of interest as the row projects it, carrying the category it hangs from (spec 0075 D-6). */
@@ -54,20 +81,20 @@ interface ProductOfInterestRef {
   category_id?: number | null
 }
 
-/** Debounce before a typed term reaches the server, matching every other picker. */
-const SEARCH_DEBOUNCE_MS = 300
-
 /** The row key holding the products whose coverage a removal may break. */
 const PRODUCTS_COLUMN = 'products_of_interest'
 
 /** Stable empty tree while the shared query is still loading (mirrors `useProductLinesField`). */
 const EMPTY_TREE: ProductCategoryTreeNode[] = []
 
-/** The step the "add a pair" flow is on: pick the function, then its category. */
-type PickStep = 'business_function' | 'product_category'
+/** Indent per nesting level in the category step, matching `SearchableSelect`'s own hierarchical lists. */
+const INDENT_REM_PER_DEPTH = 0.75
 
-function pairKey(pair: { business_function_id: number; product_category_id: number }): string {
-  return `${pair.business_function_id}:${pair.product_category_id}`
+/** The step the "add a pair" flow is on: pick the root category, then one of its descendants. */
+type PickStep = 'root_category' | 'product_category'
+
+function pairKey(pair: { product_category_id: number }): string {
+  return String(pair.product_category_id)
 }
 
 /** The products of the edited row that no remaining pair covers — what the operator is about to disconnect. */
@@ -83,10 +110,9 @@ function uncoveredProducts(row: TableRow | undefined, pairs: ProductLineCellValu
 export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, ProductLineCellValue[] | null>) {
   const { t } = useTranslation()
   const { value, onValueChange, data } = props
-  const [step, setStep] = useState<PickStep>('business_function')
-  const [businessFunction, setBusinessFunction] = useState<ForSelectItem | null>(null)
+  const [step, setStep] = useState<PickStep>('root_category')
+  const [rootCategory, setRootCategory] = useState<{ id: number; name: string } | null>(null)
   const [search, setSearch] = useState('')
-  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // The single click that opened the cell is the only one the operator makes
@@ -104,34 +130,48 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
   // channel where the second pair could still be picked, only to be refused by
   // the server on commit. Resolved off the SAME cached category tree the form
   // reads, so a pair loaded from the grid row carries the mode too.
-  const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
+  const treeQuery = useProductCategoryTree()
+  const categoryTree = treeQuery.data ?? EMPTY_TREE
   const singleRowReached = pairs.length > 0 && resolveRowSetManagementMode(pairs, categoryTree) === 'single'
 
-  const pickingCategory = step === 'product_category' && businessFunction !== null
+  const pickingCategory = step === 'product_category' && rootCategory !== null
 
-  const {
-    data: pages,
-    isPending,
-    isError,
-    refetch,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-  } = useForSelect({
-    resource: pickingCategory ? PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE : BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE,
-    search: debouncedSearch,
-    params: pickingCategory ? { business_function_id: businessFunction.id } : undefined,
-  })
+  // Step 1: every root (top-level node, no parent) — always the full list
+  // (spec 0132 D-1), never pruned or disabled.
+  const rootOptions = useMemo<FlatCategoryOption[]>(
+    () => categoryTree.map((root) => ({ id: root.id, name: root.name, depth: 0 })),
+    [categoryTree],
+  )
 
-  const options = pages?.pages.flatMap((page) => page.items) ?? []
+  // Step 2: the chosen root's own `is_selectable` descendants, with its
+  // non-selectable containers kept as disabled context and dead branches
+  // pruned (spec 0132 D-1/D-2) — the same tree utilities the form's
+  // `ProductCategoryTreeSelect` reads, scoped to a single root's subtree.
+  const categoryOptions = useMemo<FlatCategoryOption[]>(() => {
+    if (rootCategory === null) {
+      return []
+    }
+    const rootNode = categoryTree.find((node) => node.id === rootCategory.id)
+    if (rootNode === undefined) {
+      return []
+    }
+    const pickableIds = selectableIdsUnderRoot(categoryTree, rootCategory.id)
+    return flattenCategoryTree(pruneToPickable([rootNode], pickableIds), { pickableIds })
+  }, [categoryTree, rootCategory])
+
+  const options = useMemo(() => {
+    const baseOptions = pickingCategory ? categoryOptions : rootOptions
+    const term = search.trim().toLowerCase()
+    return term === '' ? baseOptions : baseOptions.filter((option) => option.name.toLowerCase().includes(term))
+  }, [pickingCategory, categoryOptions, rootOptions, search])
 
   const startOver = () => {
-    setStep('business_function')
-    setBusinessFunction(null)
+    setStep('root_category')
+    setRootCategory(null)
     setSearch('')
   }
 
-  const pick = (item: ForSelectItem) => {
+  const pick = (option: FlatCategoryOption) => {
     // Defense in depth: the options are already disabled once the single-mode
     // card holds its one pair, this guards a programmatic call too.
     if (singleRowReached) {
@@ -139,7 +179,7 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
     }
 
     if (!pickingCategory) {
-      setBusinessFunction(item)
+      setRootCategory({ id: option.id, name: option.name })
       setStep('product_category')
       setSearch('')
 
@@ -147,14 +187,14 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
     }
 
     const next: ProductLineCellValue = {
-      business_function_id: businessFunction.id,
-      business_function_name: businessFunction.label,
-      product_category_id: item.id,
-      product_category_name: item.label,
+      root_category_id: rootCategory.id,
+      root_category_name: rootCategory.name,
+      product_category_id: option.id,
+      product_category_name: option.name,
     }
 
-    // A pair already on the request is a server-side 422 (no repeats): adding
-    // it again would only make the commit fail.
+    // A category already on the request is a server-side 422 (no repeats):
+    // adding it again would only make the commit fail.
     if (!selectedKeys.has(pairKey(next))) {
       onValueChange([...pairs, next])
     }
@@ -174,8 +214,8 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
         ) : (
           pairs.map((pair, index) => (
             <li key={pairKey(pair)} className="flex items-center gap-1.5 rounded-sm bg-muted/40 px-2 py-1">
-              <span className="min-w-0 flex-1 truncate text-xs" title={`${pair.business_function_name} › ${pair.product_category_name}`}>
-                <span className="text-muted-foreground">{pair.business_function_name}</span>
+              <span className="min-w-0 flex-1 truncate text-xs" title={`${pair.root_category_name} › ${pair.product_category_name}`}>
+                <span className="text-muted-foreground">{pair.root_category_name}</span>
                 <span aria-hidden="true" className="px-1 text-muted-foreground">
                   ›
                 </span>
@@ -214,14 +254,10 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
           value={search}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearch(event.target.value)}
           placeholder={
-            pickingCategory
-              ? t('table.productLinesEditor.categorySearch')
-              : t('table.productLinesEditor.businessFunctionSearch')
+            pickingCategory ? t('table.productLinesEditor.categorySearch') : t('productLines.rootCategorySearch')
           }
           aria-label={
-            pickingCategory
-              ? t('table.productLinesEditor.categorySearch')
-              : t('table.productLinesEditor.businessFunctionSearch')
+            pickingCategory ? t('table.productLinesEditor.categorySearch') : t('productLines.rootCategorySearch')
           }
           disabled={singleRowReached}
           className="h-7 text-xs"
@@ -232,29 +268,27 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
         {singleRowReached
           ? t('table.productLinesEditor.singleModeReached')
           : pickingCategory
-            ? t('table.productLinesEditor.categoryStep', { name: businessFunction.label })
-            : t('table.productLinesEditor.businessFunctionStep')}
+            ? t('table.productLinesEditor.categoryStep', { name: rootCategory.name })
+            : t('table.productLinesEditor.rootCategoryStep')}
       </p>
 
       <div
         role="listbox"
         aria-label={
-          pickingCategory
-            ? t('table.productLinesEditor.categorySearch')
-            : t('table.productLinesEditor.businessFunctionSearch')
+          pickingCategory ? t('table.productLinesEditor.categorySearch') : t('productLines.rootCategorySearch')
         }
         className="max-h-48 overflow-y-auto p-1"
       >
-        {isPending ? (
+        {treeQuery.isPending ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
           </div>
-        ) : isError ? (
+        ) : treeQuery.isError ? (
           <div className="flex flex-col items-center gap-2 px-2 py-6 text-center">
             <p className="text-xs text-muted-foreground">{t('table.productLinesEditor.error')}</p>
             <button
               type="button"
-              onClick={() => void refetch()}
+              onClick={() => void treeQuery.refetch()}
               className="text-xs font-medium text-primary underline-offset-4 hover:underline"
             >
               {t('table.productLinesEditor.retry')}
@@ -263,49 +297,34 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
         ) : options.length === 0 ? (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">{t('table.productLinesEditor.empty')}</p>
         ) : (
-          <>
-            {options.map((item) => {
-              const already =
-                pickingCategory &&
-                selectedKeys.has(pairKey({ business_function_id: businessFunction.id, product_category_id: item.id }))
-              // Two distinct reasons to refuse a pick: the pair is already
-              // there (`aria-selected`), or the card is full (INV-3) — which
-              // is not a selection state, only a disabled one.
-              const blocked = already || singleRowReached
+          options.map((option) => {
+            const alreadySelected = pickingCategory && selectedKeys.has(pairKey({ product_category_id: option.id }))
+            const containerDisabled = pickingCategory && option.disabled === true
+            // Three distinct reasons to refuse a pick: the category is already
+            // there (`aria-selected`), it is a non-selectable container shown
+            // only as context, or the card is full (INV-3) — none of which is
+            // a selection state on its own, only a disabled one.
+            const blocked = alreadySelected || containerDisabled || singleRowReached
 
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="option"
-                  aria-selected={already}
-                  disabled={blocked}
-                  onClick={() => pick(item)}
-                  className={cn(
-                    'flex w-full items-center gap-1.5 rounded-sm px-2.5 py-1 text-left text-xs',
-                    'hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
-                    blocked && 'cursor-not-allowed text-muted-foreground',
-                  )}
-                >
-                  <span className="truncate">{item.label}</span>
-                </button>
-              )
-            })}
-            {hasNextPage ? (
+            return (
               <button
+                key={option.id}
                 type="button"
-                onClick={() => void fetchNextPage()}
-                disabled={isFetchingNextPage}
-                className="flex w-full items-center justify-center gap-1.5 rounded-sm px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
-              >
-                {isFetchingNextPage ? (
-                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                ) : (
-                  t('table.productLinesEditor.loadMore')
+                role="option"
+                aria-selected={alreadySelected}
+                disabled={blocked}
+                onClick={() => pick(option)}
+                style={option.depth ? { paddingLeft: `${INDENT_REM_PER_DEPTH * option.depth}rem` } : undefined}
+                className={cn(
+                  'flex w-full items-center gap-1.5 rounded-sm px-2.5 py-1 text-left text-xs',
+                  'hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
+                  blocked && 'cursor-not-allowed text-muted-foreground',
                 )}
+              >
+                <span className="truncate">{option.name}</span>
               </button>
-            ) : null}
-          </>
+            )
+          })
         )}
       </div>
 

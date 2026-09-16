@@ -20,11 +20,11 @@ import { summarizeAssignment } from '@/features/users/user-assignment'
 import { UserDetailHeader, UserDetailStats } from '@/features/users/user-detail-header'
 import { UserDetailSections } from '@/features/users/user-detail-sections'
 import type { EmploymentDetail } from '@/features/users/types'
-import type { ProductLineRow } from '@/features/product-lines/types'
+import type { CompetenceLineRow } from '@/features/product-lines/types'
 import { formatDateTime } from '@/lib/formatting/date-display'
 
 /** Stable empty defaults: a user with no employment profile answers like an empty one. */
-const EMPTY_COMPETENCE_ROWS: ProductLineRow[] = []
+const EMPTY_COMPETENCE_ROWS: CompetenceLineRow[] = []
 const EMPTY_REMOTE_SITE_IDS: number[] = []
 
 interface UserDetailProps {

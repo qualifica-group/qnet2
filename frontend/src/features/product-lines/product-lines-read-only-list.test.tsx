@@ -45,4 +45,42 @@ describe('ProductLinesReadOnlyList', () => {
     expect(screen.getByRole('listitem')).toHaveTextContent('Sales')
     expect(screen.getByRole('listitem')).toHaveTextContent('All categories')
   })
+
+  it('AC-022 — renders "root > category — function: name" for a CARD row', () => {
+    render(
+      <ProductLinesReadOnlyList
+        lines={[
+          {
+            id: 1,
+            business_function: { id: 10, name: 'Training' },
+            product_category: { id: 21, name: 'Photovoltaic' },
+            root_category: { id: 1, name: 'Consulting' },
+          },
+        ]}
+      />,
+    )
+
+    const item = screen.getByRole('listitem')
+    expect(item).toHaveTextContent('Consulting > Photovoltaic')
+    expect(item).toHaveTextContent('function: Training')
+  })
+
+  it('AC-022 — does not repeat the name when the category IS its own root', () => {
+    render(
+      <ProductLinesReadOnlyList
+        lines={[
+          {
+            id: 2,
+            business_function: { id: 10, name: 'Training' },
+            product_category: { id: 1, name: 'Training root' },
+            root_category: { id: 1, name: 'Training root' },
+          },
+        ]}
+      />,
+    )
+
+    const item = screen.getByRole('listitem')
+    expect(item).toHaveTextContent('Training root')
+    expect(item).not.toHaveTextContent('Training root > Training root')
+  })
 })

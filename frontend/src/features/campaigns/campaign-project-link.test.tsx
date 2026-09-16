@@ -107,6 +107,24 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 vi.mock('@/features/product-lines/product-category-tree-select', async () =>
   await import('@/features/product-lines/product-category-tree-select-stub'))
 
+/** The row's FIRST step (spec 0132): same read-only double as the category picker above — never picked manually here either. */
+vi.mock('@/features/product-lines/product-category-root-select', () => ({
+  ProductCategoryRootSelect: ({
+    value,
+    disabled,
+    triggerLabel,
+  }: {
+    value: number | null
+    disabled?: boolean
+    triggerLabel: string
+  }) => (
+    <div data-testid={`select-${triggerLabel}`}>
+      <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
+      <span data-testid={`disabled-${triggerLabel}`}>{String(Boolean(disabled))}</span>
+    </div>
+  ),
+}))
+
 /**
  * `GeoSelect` is covered by its own test; here a controllable read-only stub
  * exposes the wired value and `lockedLevels` so BR-5's prefill+lock (AC-042)
@@ -243,16 +261,17 @@ describe('CampaignForm — selecting a Project (AC-042)', () => {
 
     await waitFor(() => expect(screen.getByTestId('value-Partner')).toHaveTextContent('31'))
     expect(screen.getByTestId('value-Status')).toHaveTextContent('41')
-    // Spec 0094: the project's product_lines row(s), rendered read-only by
-    // the shared ProductLinesField (AC-046).
-    expect(screen.getByTestId('value-Business function 1')).toHaveTextContent('51')
+    // Spec 0132: the project's product_lines row(s), rendered read-only by
+    // the shared ProductLinesField (AC-046). Only `product_category_id`
+    // travels through `productLineRowsFromMeta`; the root is UI-only state,
+    // resolved from the tree at render time (not asserted here, no tree mocked).
     expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('71')
     // The Sede is prefilled from the project's own meta (project -> campaign -> lead chain).
     expect(screen.getByTestId('value-Site')).toHaveTextContent('81')
 
     // Status and the product_lines row are forced read-only while linked; Partner/Sede stay editable.
     expect(screen.getByTestId('disabled-Status')).toHaveTextContent('true')
-    expect(screen.getByTestId('disabled-Business function 1')).toHaveTextContent('true')
+    expect(screen.getByTestId('disabled-Parent category 1')).toHaveTextContent('true')
     expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('true')
     expect(screen.getByTestId('disabled-Partner')).toHaveTextContent('false')
     expect(screen.getByTestId('disabled-Site')).toHaveTextContent('false')
@@ -331,7 +350,7 @@ describe('CampaignForm — deselecting the Project (AC-043)', () => {
     expect(screen.getByTestId('value-Status')).toHaveTextContent('')
     // Spec 0094: unlinking resets product_lines to an EMPTY collection (not a
     // blanked single row) — no row testid survives, "Add" is the only affordance left.
-    expect(screen.queryByTestId('select-Business function 1')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('select-Parent category 1')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
     expect(screen.getByTestId('geo-select')).toHaveAttribute('data-locked', '')
     expect(screen.getByTestId('geo-select')).toHaveAttribute('data-country', '')

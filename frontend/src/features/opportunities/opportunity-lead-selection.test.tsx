@@ -36,6 +36,24 @@ const createOpportunityMock = vi.fn()
 vi.mock('@/features/product-lines/product-category-tree-select', async () =>
   await import('@/features/product-lines/product-category-tree-select-stub'))
 
+/** The row's FIRST step (spec 0132): stood in for the same reason as the category picker above. */
+vi.mock('@/features/product-lines/product-category-root-select', () => ({
+  ProductCategoryRootSelect: ({
+    value,
+    disabled,
+    triggerLabel,
+  }: {
+    value: number | null
+    disabled?: boolean
+    triggerLabel: string
+  }) => (
+    <div data-testid={`select-${triggerLabel}`}>
+      <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
+      <span data-testid={`disabled-${triggerLabel}`}>{String(Boolean(disabled))}</span>
+    </div>
+  ),
+}))
+
 vi.mock('@/features/opportunities/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/opportunities/api')>(
     '@/features/opportunities/api',
@@ -300,9 +318,8 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
     expect(screen.getByTestId('disabled-Contact')).toHaveTextContent('false')
     expect(screen.getByTestId('value-Source')).toHaveTextContent('20')
     expect(screen.getByTestId('disabled-Source')).toHaveTextContent('true')
-    // Amendment rev.3 (AC-102/103): the derived function+category is a
-    // normal, editable/removable product-line row — never a locked field.
-    expect(screen.getByText('Sales')).toBeInTheDocument()
+    // Spec 0132 (AC-102/103): the derived category seeds a normal,
+    // editable/removable product-line row — never a locked field.
     // The category picker is the tree select's double here, so the row is
     // asserted by the id it carries; the label now comes from the tree that
     // component reads (covered against the real one in the work-panel suite).
@@ -404,8 +421,9 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
     // like any other free field (here still unset by the user).
     expect(payload.referent_id).toBeNull()
     expect(payload).not.toHaveProperty('source_id')
-    // Amendment rev.3: product_lines is NEVER locked — always sent, in full.
-    expect(payload.product_lines).toEqual([{ business_function_id: 40, product_category_id: 50 }])
+    // Spec 0132: product_lines is NEVER locked — always sent, in full, with
+    // only `product_category_id` (the server derives the function).
+    expect(payload.product_lines).toEqual([{ product_category_id: 50 }])
     expect(payload.products_of_interest).toEqual([TEST_PRODUCT_ID])
   })
 
@@ -455,11 +473,10 @@ describe('OpportunityFormBody — edit mode Lead field (AC-088)', () => {
       { wrapper: wrapper() },
     )
 
-    await screen.findByTestId('select-Business function 1')
+    await screen.findByTestId('select-Parent category 1')
     expect(screen.queryByText('Lead')).not.toBeInTheDocument()
     expect(screen.queryByTestId('select-Lead')).not.toBeInTheDocument()
     // The edit form's loaded product line still renders, hydrated.
-    expect(screen.getByTestId('value-Business function 1')).toHaveTextContent('40')
     expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('50')
   })
 })

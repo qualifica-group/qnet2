@@ -55,7 +55,8 @@ class WorkOrderService
      * @var array<int, string>
      */
     private const array DETAIL_RELATIONS = [
-        'quote',
+        // `.contract`: the Contratto WorkOrderResource names instead of the offer.
+        'quote.contract',
         // Spec 0098, AC-016: `.category` deepened so WorkOrderResource's
         // attribute trio (`applicable_attributes`/`attribute_layout`) never
         // N+1s on top of the pre-existing `quote_lines` projection.

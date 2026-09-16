@@ -1,5 +1,5 @@
 import { useResourcePermissions } from '@/features/authorization/permissions'
-import type { ProductLineRow } from '@/features/product-lines/types'
+import type { CompetenceLineRow } from '@/features/product-lines/types'
 
 /**
  * The user's assignment configuration, read exactly the way the server reads
@@ -38,7 +38,7 @@ export interface AssignmentSummary {
 }
 
 interface AssignmentInput {
-  competenceRows: readonly ProductLineRow[]
+  competenceRows: readonly CompetenceLineRow[]
   /** Spec 0129 D-1: true bypasses the competence blocker regardless of `competenceRows`. */
   coversAllProductCategories: boolean
   primarySiteId: number | null

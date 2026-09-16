@@ -42,22 +42,23 @@ describe('buildCreatePayload', () => {
     expect(payload.operational_site_id).toBe(8)
   })
 
-  /** Amendment rev.3 (AC-099/107): `product_lines` is always sent in full, never locked, even from a lead. */
+  /**
+   * Spec 0132 AC-018/107: `product_lines` is always sent in full, never
+   * locked, even from a lead — and only `product_category_id` travels
+   * (`root_category_id` is UI-only state, stripped by the payload builder).
+   */
   it('always sends product_lines in full, unlocked even when creating from a lead', () => {
     const payload = buildCreatePayload(
       createValues({
         product_lines: [
-          { business_function_id: 40, product_category_id: 50 },
-          { business_function_id: 41, product_category_id: 51 },
+          { root_category_id: 4, product_category_id: 50 },
+          { root_category_id: 4, product_category_id: 51 },
         ],
       }),
       { leadId: 9, lockedFields: ['registry_id'] },
     )
 
-    expect(payload.product_lines).toEqual([
-      { business_function_id: 40, product_category_id: 50 },
-      { business_function_id: 41, product_category_id: 51 },
-    ])
+    expect(payload.product_lines).toEqual([{ product_category_id: 50 }, { product_category_id: 51 }])
   })
 
   it('includes every set relation/estimate', () => {

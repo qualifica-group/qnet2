@@ -105,22 +105,20 @@ export const table = {
     unlockDescription:
       "Picking an item outside this row's scope will automatically extend that scope to include it.",
   },
-  // Spec 0075: the in-cell {business function, product category} editor — the
+  // Spec 0132: the in-cell {parent category, product category} editor — the
   // same two-step flow as the form's own ProductLinesField.
   productLinesEditor: {
     selected: 'Product categories on this record',
     none: 'No product category yet.',
     remove: 'Remove {{name}}',
-    back: 'Back to the business functions',
-    businessFunctionStep: 'Step 1: pick the business function.',
+    back: 'Back to the parent categories',
+    rootCategoryStep: 'Step 1: pick the parent category.',
     categoryStep: 'Step 2: pick a product category of {{name}}.',
     singleModeReached: 'This product category is managed as a single row: remove the current one to pick another.',
-    businessFunctionSearch: 'Search business functions…',
     categorySearch: 'Search product categories…',
     empty: 'No results.',
     error: 'Could not load the options.',
     retry: 'Retry',
-    loadMore: 'Load more',
     uncoveredProducts:
       'These products of interest would no longer be covered by any product category: {{names}}. The save will be refused.',
   },

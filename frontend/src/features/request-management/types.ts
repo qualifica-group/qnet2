@@ -71,6 +71,8 @@ export interface RequestProductLine {
   id: number
   business_function: RequestRelationRef
   product_category: RequestRelationRef
+  /** The root category the row's category hangs from (spec 0132 D-5); see `ProductLine.root_category`. */
+  root_category?: RequestRelationRef
 }
 
 /** A single contact channel (ContactResource), as exposed to this module. */

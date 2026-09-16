@@ -280,7 +280,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
             <form id={REQUEST_WORK_FORM_ID} onSubmit={onSubmit} className="contents" noValidate>
               {/* Funzione aziendale + categoria prodotto (user directive
                   2026-07-31), right before the working state it precedes. */}
-              <RequestProductLinesSection control={form.control} productLines={panel.product_lines} />
+              <RequestProductLinesSection control={form.control} />
 
               {/* "Linee dell'offerta" (user directive 2026-08-07): right
                   after the classification that scopes its product picker.

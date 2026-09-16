@@ -95,9 +95,12 @@ export interface ProjectDetailWithPermissions extends ProjectDetail {
   permissions: ResourcePermissions
 }
 
-/** A `product_lines` row as sent to the server (create/update payload, spec 0094). */
+/**
+ * A `product_lines` row as sent to the server (create/update payload, spec
+ * 0132 AC-018): ONLY `product_category_id` travels — the server derives and
+ * persists the effective business function.
+ */
 export interface ProjectProductLineInput {
-  business_function_id: number
   product_category_id: number
 }
 

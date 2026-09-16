@@ -76,41 +76,60 @@ it('create: with product_lines: [] -> 422 on product_lines (AC-010)', function (
     expect(Project::count())->toBe(0);
 });
 
-it('create: two identical rows -> 422 on product_lines.1.product_category_id with DUPLICATE_PAIR_MESSAGE (AC-011)', function () {
+it('create: two identical rows -> 422 on product_lines.1.product_category_id with DUPLICATE_CATEGORY_MESSAGE (spec 0132, AC-004)', function () {
     $actor = projectCoherenceUserWith(['create']);
     $businessFunction = BusinessFunction::factory()->create();
     $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/projects', [
-        'name' => 'Duplicate Pair',
+        'name' => 'Duplicate Category',
         'product_lines' => [
-            ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
-            ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
+            ['product_category_id' => $category->id],
+            ['product_category_id' => $category->id],
         ],
         ...projectRequiredFields(),
     ])->assertStatus(422)->assertJsonValidationErrors([
-        'product_lines.1.product_category_id' => 'This business function / product category pair is already present.',
+        'product_lines.1.product_category_id' => 'This product category is already present.',
     ]);
 
     expect(Project::count())->toBe(0);
 });
 
-it('create: a category whose effective business function differs -> 422 on product_lines.0.business_function_id with BUSINESS_FUNCTION_MISMATCH_MESSAGE (AC-012)', function () {
+it('create: a submitted business_function_id is ignored, the EFFECTIVE one is derived and persisted (spec 0132, AC-002)', function () {
     $actor = projectCoherenceUserWith(['create']);
-    $functionA = BusinessFunction::factory()->create();
-    $functionB = BusinessFunction::factory()->create();
-    $categoryOfB = ProductCategory::factory()->create(['business_function_id' => $functionB->id]);
+    $ownFunction = BusinessFunction::factory()->create();
+    $otherFunction = BusinessFunction::factory()->create();
+    $category = ProductCategory::factory()->create(['business_function_id' => $ownFunction->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/projects', [
+        'name' => 'Ignored function',
+        'product_lines' => [
+            ['business_function_id' => $otherFunction->id, 'product_category_id' => $category->id],
+        ],
+        ...projectRequiredFields(),
+    ])->assertCreated();
+
+    $projectId = $response->json('data.id');
+    $this->assertDatabaseHas('project_product_lines', [
+        'project_id' => $projectId,
+        'business_function_id' => $ownFunction->id,
+        'product_category_id' => $category->id,
+    ]);
+});
+
+it('create: a category with no EFFECTIVE business function -> 422 (spec 0132, AC-003)', function () {
+    $actor = projectCoherenceUserWith(['create']);
+    $category = ProductCategory::factory()->create(['business_function_id' => null]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/projects', [
-        'name' => 'Mismatch',
-        'product_lines' => [
-            ['business_function_id' => $functionA->id, 'product_category_id' => $categoryOfB->id],
-        ],
+        'name' => 'No function category',
+        'product_lines' => [['product_category_id' => $category->id]],
         ...projectRequiredFields(),
     ])->assertStatus(422)->assertJsonValidationErrors([
-        'product_lines.0.business_function_id' => 'This product category does not belong to the selected business function.',
+        'product_lines.0.product_category_id' => 'This product category has no business function of reference.',
     ]);
 
     expect(Project::count())->toBe(0);

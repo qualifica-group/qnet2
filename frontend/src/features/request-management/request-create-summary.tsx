@@ -38,7 +38,7 @@ export function RequestCreateSummary({
   const nextCallbackAt = useWatch({ control, name: 'next_callback_at' })
 
   const completeLines = productLines.filter(
-    (row: ProductLineRow) => row.business_function_id !== null && row.product_category_id !== null,
+    (row: ProductLineRow) => row.product_category_id !== null,
   ).length
 
   return (

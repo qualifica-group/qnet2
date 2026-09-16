@@ -84,6 +84,8 @@ interface DataTableProps {
    * `work-orders`.
    */
   quoteId?: number
+  /** Work Order row-set scope (spec 0133 D-1), forwarded like `quoteId`. Absent for every domain but `tasks`. */
+  workOrderId?: number
   /** Backend-driven column schema. */
   columns: TableColumn[]
   /** SSRM datasource feeding the grid. */
@@ -183,6 +185,7 @@ export function DataTable({
   productCategoryId,
   opportunityId,
   quoteId,
+  workOrderId,
   columns,
   datasource,
   blockSize,
@@ -230,6 +233,7 @@ export function DataTable({
         productCategoryId,
         opportunityId,
         quoteId,
+        workOrderId,
         columns,
         cellRenderers,
         renderRowActions,
@@ -243,6 +247,7 @@ export function DataTable({
       productCategoryId,
       opportunityId,
       quoteId,
+      workOrderId,
       columns,
       cellRenderers,
       renderRowActions,

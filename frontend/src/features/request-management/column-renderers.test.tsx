@@ -9,10 +9,11 @@ beforeAll(async () => {
 })
 
 /**
- * Spec 0075: the "Categoria prodotto" cell reads the row's own {funzione
- * aziendale, categoria} pairs — the very collection its inline editor commits
- * — and renders the CATEGORY names out of them, with the full pairs as the
- * native tooltip.
+ * Spec 0132 D-5: the "Categoria prodotto" cell reads the row's own
+ * product-category pairs — the very collection its inline editor commits —
+ * and renders the CATEGORY names out of them, with "root > category —
+ * funzione: Function" pairs as the native tooltip (same format as the card
+ * detail's `ProductLinesReadOnlyList`).
  */
 
 function renderProductCategories(value: unknown) {
@@ -23,12 +24,16 @@ function renderProductCategories(value: unknown) {
 
 const PAIRS = [
   {
+    root_category_id: 6,
+    root_category_name: 'Energia',
     business_function_id: 3,
     business_function_name: 'Energia',
     product_category_id: 7,
     product_category_name: 'Luce',
   },
   {
+    root_category_id: 6,
+    root_category_name: 'Energia',
     business_function_id: 3,
     business_function_name: 'Energia',
     product_category_id: 9,
@@ -36,13 +41,45 @@ const PAIRS = [
   },
 ]
 
-describe('request-management product_categories cell (spec 0075)', () => {
-  it('joins the category names and keeps the pairs in the tooltip', () => {
+describe('request-management product_categories cell (spec 0132 D-5)', () => {
+  it('joins the category names and shows "root > category — funzione: X" pairs in the tooltip', () => {
     renderProductCategories(PAIRS)
 
     const cell = screen.getByText('Luce, Gas')
 
-    expect(cell).toHaveAttribute('title', 'Energia › Luce\nEnergia › Gas')
+    expect(cell).toHaveAttribute('title', 'Energia > Luce — function: Energia\nEnergia > Gas — function: Energia')
+  })
+
+  it('does not repeat the name when the category is its own root', () => {
+    renderProductCategories([
+      {
+        root_category_id: 17,
+        root_category_name: 'Consulenza',
+        business_function_id: 3,
+        business_function_name: 'Consulenza',
+        product_category_id: 17,
+        product_category_name: 'Consulenza',
+      },
+    ])
+
+    const cell = screen.getByText('Consulenza')
+
+    expect(cell).toHaveAttribute('title', 'Consulenza — function: Consulenza')
+  })
+
+  it('omits the funzione segment for a pair not yet round-tripped from the server', () => {
+    renderProductCategories([
+      {
+        root_category_id: 6,
+        root_category_name: 'Energia',
+        product_category_id: 9,
+        product_category_name: 'Gas',
+      },
+    ])
+
+    const cell = screen.getByText('Gas')
+
+    expect(cell).toHaveAttribute('title', 'Energia > Gas')
   })
 
   it('falls back to the shared empty cell with no product line', () => {

@@ -48,16 +48,17 @@ function baseFields(t: TFunction) {
     // held nullable so the controlled selects can represent "unset" — the
     // required-when-standalone superRefine below mirrors the backend's rule.
     pipeline_status_id: z.number().nullable(),
-    // Spec 0094: replaces the former single `business_function_id`/
-    // `product_category_id` pair with an inline-editable row collection
-    // (mirrors the project/opportunity forms). BR-2: required (min 1 complete
-    // row) only while standalone, read-only and holding the linked project's
+    // Spec 0132: replaces the former `business_function_id`/`product_category_id`
+    // pair with a root-category-then-category row collection (mirrors the
+    // project/opportunity forms). `root_category_id` is UI-only state (D-3,
+    // never validated as a domain field). BR-2: required (min 1 complete row)
+    // only while standalone, read-only and holding the linked project's
     // EFFECTIVE rows while linked — `withRequiredProductLinesRule` below
     // skips validation entirely in that case, mirroring
     // `withRequiredDerivedFieldsRule`'s old project_id gate.
     product_lines: z.array(
       z.object({
-        business_function_id: z.number().nullable(),
+        root_category_id: z.number().nullable(),
         product_category_id: z.number().nullable(),
       }),
     ),
@@ -118,9 +119,7 @@ function withRequiredProductLinesRule<T extends z.ZodTypeAny>(schema: T, t: TFun
       ctx.addIssue({ code: 'custom', path: ['product_lines'], message: t('productLines.required') })
       return
     }
-    const hasIncompleteRow = record.product_lines.some(
-      (row) => row.business_function_id === null || row.product_category_id === null,
-    )
+    const hasIncompleteRow = record.product_lines.some((row) => row.product_category_id === null)
     if (hasIncompleteRow) {
       ctx.addIssue({ code: 'custom', path: ['product_lines'], message: t('productLines.rowIncomplete') })
     }

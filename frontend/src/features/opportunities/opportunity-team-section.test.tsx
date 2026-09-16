@@ -132,7 +132,7 @@ describe('OpportunityTeamSection', () => {
     render(
       <TeamSectionHarness
         supervisorRequired={false}
-        productLines={[{ business_function_id: 40, product_category_id: 500 }]}
+        productLines={[{ root_category_id: null, product_category_id: 500 }]}
       />,
     )
 
@@ -150,7 +150,7 @@ describe('OpportunityTeamSection', () => {
     render(
       <TeamSectionHarness
         supervisorRequired={false}
-        productLines={[{ business_function_id: 40, product_category_id: 500 }]}
+        productLines={[{ root_category_id: null, product_category_id: 500 }]}
       />,
     )
 

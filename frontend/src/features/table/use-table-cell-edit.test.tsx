@@ -236,11 +236,16 @@ describe('useTableCellEdit', () => {
     )
   })
 
-  // Spec 0075 AC-015: a `product_lines` cell value is a collection of PAIRS —
-  // only its `*_id` keys travel, and two equal collections never PATCH even
-  // though the editor rebuilds the array on every pick.
-  it('sends a product_lines cell as its id pairs, dropping the labels', async () => {
+  // Spec 0132 D-3 (superseding spec 0075 AC-015): a `product_lines` cell
+  // value is a collection of PAIRS, but only `product_category_id` travels —
+  // `root_category_id` is UI-only editor state and `business_function_id` is
+  // server-derived, read-only once a pair round-trips; neither belongs on the
+  // wire. Two equal collections never PATCH even though the editor rebuilds
+  // the array on every pick.
+  it('sends a product_lines cell as its category ids alone, dropping the labels and the UI/derived ids', async () => {
     const pair = (categoryId: number, categoryName: string) => ({
+      root_category_id: 6,
+      root_category_name: 'Energia',
       business_function_id: 3,
       business_function_name: 'Energia',
       product_category_id: categoryId,
@@ -261,13 +266,15 @@ describe('useTableCellEdit', () => {
     await waitFor(() =>
       expect(updateTableCellMock).toHaveBeenCalledWith('request-management', 7, {
         column: 'product_categories',
-        value: [{ business_function_id: 3, product_category_id: 9 }],
+        value: [{ product_category_id: 9 }],
       }),
     )
   })
 
   it('does nothing for a product_lines collection that comes back identical', () => {
     const pair = {
+      root_category_id: 6,
+      root_category_name: 'Energia',
       business_function_id: 3,
       business_function_name: 'Energia',
       product_category_id: 7,

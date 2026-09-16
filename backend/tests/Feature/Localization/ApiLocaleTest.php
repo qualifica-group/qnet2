@@ -93,26 +93,27 @@ it('answers the coherence refusal in Italian when the client asks for it', funct
         ->toContain('Fibra 1000');
 });
 
-it('translates the product-line rules and names their fields readably', function () {
+it('translates the product-line rules and names their fields readably (spec 0132)', function () {
     $actor = localeActor();
     $category = localeCategory();
     $quote = localeRequest($actor, $category);
-    $other = localeCategory();
+    $withoutFunction = ProductCategory::factory()->create(['business_function_id' => null]);
     Sanctum::actingAs($actor);
 
-    // The category belongs to its OWN business function, not to this one.
+    // A selectable category with no EFFECTIVE business function to derive.
     expect(localePatch($quote, [[
-        'business_function_id' => (int) $category->business_function_id,
-        'product_category_id' => $other->id,
+        'product_category_id' => $withoutFunction->id,
     ]])->assertStatus(422)->json('message'))
-        ->toBe('Questa categoria prodotto non appartiene alla funzione aziendale selezionata.');
+        ->toBe('Questa categoria prodotto non ha una funzione aziendale di riferimento.');
 
     // A Laravel rule message, with the attribute named for a human instead of
-    // "product lines.0.business function id".
-    expect(localePatch($quote, [[
-        'business_function_id' => 0,
-        'product_category_id' => $other->id,
-    ]])->assertStatus(422)->json('message'))->toContain('funzione aziendale');
+    // "product lines.0.product category id" — the panel channel's own
+    // FormRequest merges ProductLineSetValidator::rules() directly, so a
+    // MISSING product_category_id fails Laravel's stock `required` rule
+    // rather than the inline cell's own structural check.
+    expect(test()->withHeader('Accept-Language', 'it')
+        ->patchJson("/api/request-management/{$quote->id}", ['product_lines' => [[]]])
+        ->assertStatus(422)->json('message'))->toContain('categoria prodotto');
 });
 
 it('translates the generic inline-edit engine messages too', function () {

@@ -199,7 +199,9 @@ return [
         // User directive 2026-08-03: without these, a collection error reads
         // "product lines.0.business function id" to the operator.
         'product_lines' => 'product lines',
-        'product_lines.*.business_function_id' => 'business function',
+        // Spec 0132: `business_function_id` is no longer a row input on the
+        // card path (derived, never validated), so it carries no attribute
+        // name here any more.
         'product_lines.*.product_category_id' => 'product category',
         'products_of_interest' => 'products of interest',
         // The inline cell-editing engine's payload key (PATCH /tables/{domain}/rows/{row}).

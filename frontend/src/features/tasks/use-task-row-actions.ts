@@ -4,7 +4,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { deleteTask, TASKS_DOMAIN } from '@/features/tasks/api'
-import type { OpenMode } from '@/features/modules/types'
+import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
@@ -21,6 +21,8 @@ export interface UseTaskRowActionsResult {
   activityRow: TableRow | null
   closeActivity: (open: boolean) => void
   openCreate: () => void
+  /** Opens the create form seeded with `params` (spec 0133 D-4: `work_order_id` from the Commessa detail). */
+  openCreateWith: (params: ModuleCreateParams) => void
   sheet: ReactNode
 }
 
@@ -40,7 +42,7 @@ export function useTaskRowActions({
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(TASKS_DOMAIN, {
+  const { openCreate, openCreateWith, openView, openEdit, sheet } = useModuleOpener(TASKS_DOMAIN, {
     onSaved: onMutated,
     forceMode,
     viewAfterCreate: true,
@@ -99,5 +101,5 @@ export function useTaskRowActions({
     }
   }, [])
 
-  return { handleAction, isBusy, activityRow, closeActivity, openCreate, sheet }
+  return { handleAction, isBusy, activityRow, closeActivity, openCreate, openCreateWith, sheet }
 }

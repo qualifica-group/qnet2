@@ -7,17 +7,58 @@ import { campaigns as campaignsEn } from '@/i18n/locales/en-campaigns'
 import { CampaignForm } from '@/features/campaigns/campaign-form'
 import type { CampaignDetailWithPermissions } from '@/features/campaigns/types'
 import type { ResourceMeta } from '@/features/authorization/types'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 
 /**
- * Spec 0094 (AC-045): the campaign form's `product_lines` row editor (shared
- * `ProductLinesField`, spec 0057) for a STANDALONE campaign, plus the Sede
- * field — split out of `campaign-form-body.test.tsx` to stay within the
- * 500-line hard limit (engineering.md §6). The linked (BR-2 read-only,
- * AC-046) behaviour lives in `campaign-project-link.test.tsx`.
+ * Spec 0132 (AC-045): the campaign form's `product_lines` row editor (shared
+ * `ProductLinesField`) for a STANDALONE campaign, plus the Sede field — split
+ * out of `campaign-form-body.test.tsx` to stay within the 500-line hard limit
+ * (engineering.md §6). The linked (BR-2 read-only, AC-046) behaviour lives in
+ * `campaign-project-link.test.tsx`.
  */
 
 const createCampaignMock = vi.fn()
 const updateCampaignMock = vi.fn()
+
+/**
+ * `useProductLinesField` (inside the real, unmocked `ProductLinesField`)
+ * reads the category tree directly — for `rootCategoryFor`'s edit-mode
+ * resolution (spec 0132 AC-017) to find category 4 under a root, the tree
+ * fetch needs a real answer here, unlike the two row pickers themselves
+ * (mocked below with clickable doubles).
+ */
+function node(overrides: Partial<ProductCategoryTreeNode> & { id: number }): ProductCategoryTreeNode {
+  return {
+    name: 'Node',
+    parent_id: null,
+    children: [],
+    attributes_count: 0,
+    products_count: 0,
+    business_function_id: null,
+    requires_quote: false,
+    is_selectable: true,
+    is_reportable: false,
+    management_mode: 'multiple',
+    single_quote_per_opportunity: false,
+    generates_contract: true,
+    simplified_offer_line: false,
+    ...overrides,
+  }
+}
+
+const CATEGORY_TREE: ProductCategoryTreeNode[] = [
+  node({ id: 2, name: 'Hardware root', children: [node({ id: 4, name: 'Hardware', parent_id: 2 })] }),
+]
+
+vi.mock('@/features/product-categories/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/product-categories/api')>(
+    '@/features/product-categories/api',
+  )
+  return {
+    ...actual,
+    fetchProductCategoryTree: () => Promise.resolve(CATEGORY_TREE),
+  }
+})
 const fetchCampaignNextCodeMock = vi.fn<() => Promise<string>>()
 
 vi.mock('@/features/campaigns/api', async () => {
@@ -92,17 +133,17 @@ vi.mock('@/features/product-lines/product-category-tree-select', () => ({
   ProductCategoryTreeSelect: ({
     value,
     onChange,
-    businessFunctionId,
+    scope,
     disabled,
     triggerLabel,
   }: {
     value: number | null
     onChange: (id: number) => void
-    businessFunctionId: number | null
+    scope: { kind: 'root'; rootCategoryId: number | null }
     disabled?: boolean
     triggerLabel: string
   }) => {
-    const isDisabled = Boolean(disabled) || businessFunctionId === null
+    const isDisabled = Boolean(disabled) || scope.rootCategoryId === null
     return (
       <div>
         <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
@@ -118,6 +159,30 @@ vi.mock('@/features/product-lines/product-category-tree-select', () => ({
       </div>
     )
   },
+}))
+
+/** The row's FIRST step (spec 0132): same clickable-double style as the category picker above. */
+vi.mock('@/features/product-lines/product-category-root-select', () => ({
+  ProductCategoryRootSelect: ({
+    value,
+    onChange,
+    disabled,
+    triggerLabel,
+  }: {
+    value: number | null
+    onChange: (rootCategoryId: number) => void
+    disabled?: boolean
+    triggerLabel: string
+  }) => (
+    <button
+      type="button"
+      disabled={disabled}
+      data-testid={`select-${triggerLabel}`}
+      onClick={() => onChange(3)}
+    >
+      {value ?? ''}
+    </button>
+  ),
 }))
 
 vi.mock('@/features/geo/geo-select', () => ({
@@ -212,21 +277,21 @@ function fillRequiredDates() {
 }
 
 function fillRequiredClassification() {
-  fireEvent.click(screen.getByTestId('select-Business function 1'))
+  fireEvent.click(screen.getByTestId('select-Parent category 1'))
   fireEvent.click(screen.getByTestId('select-Product category 1'))
 }
 
-describe('CampaignForm — product_lines, standalone (spec 0094, AC-045)', () => {
+describe('CampaignForm — product_lines, standalone (spec 0132, AC-045)', () => {
   it('opens the create form on ONE empty row', async () => {
     render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
-    await waitFor(() => expect(screen.getByTestId('select-Business function 1')).toBeInTheDocument())
-    expect(screen.queryByTestId('select-Business function 2')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('select-Parent category 1')).toBeInTheDocument())
+    expect(screen.queryByTestId('select-Parent category 2')).not.toBeInTheDocument()
   })
 
-  it('disables the row category until its own business function is chosen, then enables it', async () => {
+  it('disables the row category until its own root category is chosen, then enables it', async () => {
     render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
@@ -234,7 +299,7 @@ describe('CampaignForm — product_lines, standalone (spec 0094, AC-045)', () =>
     await waitFor(() => expect(screen.getByTestId('select-Product category 1')).toBeInTheDocument())
     expect(screen.getByTestId('select-Product category 1')).toBeDisabled()
 
-    fireEvent.click(screen.getByTestId('select-Business function 1'))
+    fireEvent.click(screen.getByTestId('select-Parent category 1'))
 
     await waitFor(() => expect(screen.getByTestId('select-Product category 1')).toBeEnabled())
   })
@@ -266,7 +331,9 @@ describe('CampaignForm — product_lines, standalone (spec 0094, AC-045)', () =>
 
     await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
     const payload = createCampaignMock.mock.calls[0][0] as Record<string, unknown>
-    expect(payload.product_lines).toEqual([{ business_function_id: 3, product_category_id: 4 }])
+    // Spec 0132 AC-018: only `product_category_id` travels — the picked root
+    // (`select-Parent category 1`) is UI-only state, never sent.
+    expect(payload.product_lines).toEqual([{ product_category_id: 4 }])
   })
 })
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Opportunity;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
@@ -91,6 +92,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 #[PreserveKeys]
 class OpportunityResource extends JsonResource
 {
+    use SummarizesProductLines;
     use SummarizesRewards;
 
     /**
@@ -156,20 +158,6 @@ class OpportunityResource extends JsonResource
     private function summarizeLead(mixed $lead): ?array
     {
         return $lead === null ? null : ['id' => $lead->id, 'label' => $lead->registry?->name ?? ''];
-    }
-
-    /**
-     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
-     */
-    private function summarizeProductLines(iterable $lines): array
-    {
-        return collect($lines)
-            ->map(fn (Model $line): array => [
-                'id' => $line->id,
-                'business_function' => $this->summarizeByName($line->businessFunction),
-                'product_category' => $this->summarizeByName($line->productCategory),
-            ])
-            ->all();
     }
 
     /**

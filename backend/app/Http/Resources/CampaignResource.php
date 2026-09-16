@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\GeoScopeLevel;
+use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Models\Address;
 use App\Models\Campaign;
 use App\Models\Project;
@@ -43,6 +44,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class CampaignResource extends JsonResource
 {
+    use SummarizesProductLines;
+
     /**
      * @return array<string, mixed>
      */
@@ -118,21 +121,6 @@ class CampaignResource extends JsonResource
             $project->province_id !== null ? GeoScopeLevel::Province->value : null,
             $project->city_id !== null ? GeoScopeLevel::City->value : null,
         ]));
-    }
-
-    /**
-     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
-     */
-    private function summarizeProductLines(iterable $lines): array
-    {
-        return collect($lines)
-            ->map(fn (Model $line): array => [
-                'id' => $line->id,
-                'business_function' => $this->summarize($line->businessFunction),
-                'product_category' => $this->summarize($line->productCategory),
-            ])
-            ->values()
-            ->all();
     }
 
     /**

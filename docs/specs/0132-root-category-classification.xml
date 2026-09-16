@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0132-root-category-classification" status="draft" owner="utente" date="2026-09-16">
+
+  <goal>
+    Classificare una riga `product_lines` scegliendo la CATEGORIA GENITORE (categoria root, senza
+    parent) al posto della funzione aziendale, e poi una sua categoria discendente selezionabile.
+    La funzione aziendale non e' piu' un input: il backend la deriva dalla categoria scelta, la
+    persiste invariata e le viste di dettaglio continuano a mostrarla.
+  </goal>
+
+  <context>
+    Stato attuale verificato nel repo (2026-09-16):
+    - Il campo e' uno solo, condiviso: `ProductLinesField` (frontend/src/features/product-lines/),
+      righe `{business_function_id, product_category_id}`, piu' il gemello in griglia
+      `ProductLinesCellEditor` (spec 0075). Consumer: opportunita', gestione richieste (create form
+      + work panel + cella inline), progetti, campagne, competenze utente (variant `competence`).
+    - Il primo select legge `for-select` funzioni aziendali; il secondo legge l'albero
+      `GET /api/product-categories/tree` scopato sulla funzione EFFETTIVA (own-or-inherited),
+      risolta client-side in `category-tree-scope.ts` (`pickableCategoryIdsFor`).
+    - Backend: `ValidatesProductLines` (trait FormRequest) delega a `ProductLineSetValidator`
+      (per-riga + cross-riga); `ProductLineWriter::sync()` e' l'unico write path; la cella inline
+      passa da `RequestProductLineWriter` + `CellValueValidator::validatePairListValue()`.
+    - `CategoryHierarchy::effectiveBusinessFunctionSummaries()` risolve gia' in batch
+      categoria -> funzione effettiva {id,name} in due query: e' la derivazione richiesta qui,
+      non va riscritta.
+    - Le tabelle `opportunity_product_lines`, `project_product_lines`, `campaign_product_lines`
+      hanno colonna `business_function_id` NOT NULL + unique (owner, business_function_id,
+      product_category_id). La colonna RESTA e continua a essere valorizzata: e' letta da
+      report, coverage e assegnazioni.
+
+    Dati reali misurati sul DB di sviluppo `qnet2`:
+    - 3 categorie root: #1 Formazione (funzione #10), #17 Consulenza (NEUTRA, nessuna funzione
+      propria), #20 APL (funzione #3). Nessuna root e' `is_selectable`, nessuna e' senza figli:
+      il secondo select obbligatorio non rende inaccessibile nessuna categoria esistente.
+    - Sotto Consulenza pendono ~150 categorie selezionabili, raggruppate da contenitori di 2o
+      livello che mappano 1:1 le funzioni (ISO, GDPR, SICUREZZA 81/08, SOA...). La funzione
+      effettiva va quindi derivata dalla categoria FOGLIA scelta, mai dalla root.
+    - 215 righe `employment_product_lines`, zero mismatch tra `business_function_id` persistito e
+      funzione effettiva della categoria: la derivazione non cambia alcun dato esistente.
+      Zero righe con categoria nulla e zero profili `covers_all_product_categories`.
+    - Zero righe in `opportunity_product_lines`, `project_product_lines`,
+      `campaign_product_lines`: nessun dato storico da migrare sulle card.
+    - DATO SPORCO NOTO (non introdotto qui): #76 AVVALIMENTI, #122 GARE, #179 SOA sono
+      `is_selectable` con `parent_id` che punta a se stesse. Sono gia' oggi irraggiungibili
+      dall'albero e prive di funzione effettiva; restano tali.
+
+    Decisioni utente (2026-09-16):
+    - D-1: il primo select elenca TUTTE le categorie root di primo livello (3 voci).
+    - D-2: il secondo select e' SEMPRE obbligatorio.
+    - D-3: il payload di scrittura non porta piu' `business_function_id`; il backend deriva e
+      persiste la funzione effettiva.
+    - D-4: le COMPETENZE UTENTE restano sulla funzione aziendale, invariate (la riga "tutte le
+      categorie della funzione" di spec 0129 sopravvive solo li').
+    - D-5: nel dettaglio la riga si legge "Categoria genitore &gt; Categoria - funzione: Funzione".
+  </context>
+
+  <scope>
+    <in>
+      <item>Opportunita': form create/edit (`opportunity-product-lines-section.tsx`) e dettaglio.</item>
+      <item>Gestione richieste: create form, work panel, cella inline `product_lines` della griglia.</item>
+      <item>Progetti e campagne: il campo `product_lines` dei rispettivi form e dettagli.</item>
+      <item>Backend: contratto di scrittura `product_lines` senza `business_function_id`, derivazione
+            server-side della funzione effettiva, persistenza invariata della colonna.</item>
+      <item>Proiezione di lettura: `root_category` aggiunta alle righe `product_lines` delle Resource
+            card e della riga di griglia richieste.</item>
+      <item>Separazione del campo competenza dal campo card (due componenti distinti).</item>
+    </in>
+    <out>
+      <item>Competenze utente (`variant="competence"`, `employment_product_lines`,
+            `CompetenceLineSetValidator`, `EmploymentResource`, `OperatorCompetence`): invariate (D-4).</item>
+      <item>Nessuna migrazione di schema: `business_function_id` resta NOT NULL e valorizzata,
+            gli indici unique restano come sono.</item>
+      <item>Filtri, colonne, report e dashboard che filtrano per funzione aziendale: invariati.</item>
+      <item>Bonifica delle 3 categorie con `parent_id` ciclico (#76, #122, #179): segnalata, non
+            eseguita qui.</item>
+      <item>CRUD delle funzioni aziendali e il form categoria prodotto (dove la funzione resta un
+            campo scrivibile): invariati.</item>
+      <item>Quick-create "nuova funzione aziendale" dentro il campo product lines: rimosso, non
+            sostituito (il quick-create della categoria resta).</item>
+      <item>Prodotti di interesse e `offer_lines`: invariati.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- SCRITTURA: la stessa shape su tutti gli endpoint card. -->
+    <endpoint method="POST|PUT|PATCH" path="/api/opportunities | /api/opportunities/{opportunity} | /api/projects | /api/projects/{project} | /api/campaigns | /api/campaigns/{campaign} | /api/{module}/{quote}">
+      <request>
+        product_lines: array, min 1 (required su create, `sometimes` su update, mai svuotabile a [])
+        product_lines[].product_category_id: int, required, categoria SELEZIONABILE
+          (`SelectableProductCategory`, con esenzione delle categorie gia' persistite, spec 0074 D-3b)
+        product_lines[].business_function_id: NON PIU' ACCETTATO. Se presente viene IGNORATO,
+          mai persistito: la funzione e' sempre quella derivata.
+      </request>
+      <response status="200">
+        { success: true, message: string, data: { ..., product_lines: [
+            { id: int,
+              root_category: { id: int, name: string },
+              product_category: { id: int, name: string },
+              business_function: { id: int, name: string } } ] } }
+        `root_category` e' la radice dell'albero da cui pende la categoria; su una categoria che
+        e' gia' radice coincide con `product_category`.
+      </response>
+      <errors>
+        422 product_lines.{i}.product_category_id — categoria mancante, inesistente o non selezionabile
+        422 product_lines.{i}.product_category_id — "Questa categoria prodotto e' gia' presente."
+            (duplicato: la riga e' identificata dalla sola categoria)
+        422 product_lines.{i}.product_category_id — "Questa categoria prodotto non ha una funzione
+            aziendale di riferimento." (nessuna funzione effettiva risolvibile)
+        422 product_lines — "Questa categoria prodotto ammette una sola riga." (INV-3 spec 0077, invariato)
+        403 senza permesso di modulo; 404 risorsa non accessibile
+      </errors>
+    </endpoint>
+
+    <!-- CELLA INLINE della griglia richieste (spec 0075). -->
+    <endpoint method="PATCH" path="/api/{module}/{quote} (editor: product_lines)">
+      <request>
+        value: array di { product_category_id: int }. `business_function_id` non piu' richiesto
+        ne' letto da `CellValueValidator::validatePairListValue()`.
+      </request>
+      <response status="200">
+        La riga rimappata porta product_lines[] con { id, root_category, product_category,
+        business_function } — stessa shape della Resource.
+      </response>
+      <errors>422 sulla chiave `product_lines`, con gli stessi messaggi dell'endpoint form</errors>
+    </endpoint>
+
+    <!-- CONTESTO FORM: shape esistente, resa tollerante alla riga incompleta. -->
+    <endpoint method="POST" path="/api/{module}/form-context">
+      <request>
+        product_lines[].product_category_id: int|null (una riga senza categoria e' SCARTATA, mai 422)
+        product_lines[].business_function_id: accettato e ignorato (retrocompatibilita' della chiamata)
+      </request>
+      <response status="200">shape invariata</response>
+      <errors>invariati</errors>
+    </endpoint>
+
+    <!-- LETTURA albero: endpoint esistente, nessuna modifica. -->
+    <endpoint method="GET" path="/api/product-categories/tree">
+      <request>nessun parametro nuovo</request>
+      <response status="200">
+        shape invariata. Il frontend ricava da qui sia l'elenco delle root (nodi di primo livello)
+        sia i discendenti selezionabili di una root: NESSUNA nuova chiamata di rete.
+      </response>
+      <errors>invariati</errors>
+    </endpoint>
+
+    <!-- STATO CLIENT della riga in edit (non viaggia sul filo). -->
+    <endpoint method="N/A" path="ProductLineRow (stato del form)">
+      <request>
+        { root_category_id: number | null, product_category_id: number | null }
+        `root_category_id` e' SOLO stato di UI: serve a scopare il secondo select e non e' mai
+        inviato. In edit si ricava risalendo l'albero dalla categoria persistita.
+      </request>
+      <response status="200">n/a</response>
+      <errors>n/a</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- Backend: derivazione e persistenza -->
+    <criterion id="AC-001">Dato un payload `product_lines: [{product_category_id: K}]` su POST /api/opportunities, quando la richiesta e' valida, allora la riga persistita ha `business_function_id` uguale alla funzione EFFETTIVA di K (own-or-inherited) e la risposta la espone in `business_function`. Verifica: test Pest.</criterion>
+    <criterion id="AC-002">Dato un payload che include ANCHE `business_function_id` con un valore diverso dalla funzione effettiva della categoria, quando viene salvato, allora il valore inviato e' ignorato e viene persistita la funzione derivata. Verifica: test Pest.</criterion>
+    <criterion id="AC-003">Data una categoria selezionabile priva di funzione effettiva (es. #76 con parent ciclico), quando la si invia in `product_lines`, allora la risposta e' 422 su `product_lines.0.product_category_id` con il messaggio "nessuna funzione aziendale di riferimento" e nulla viene persistito. Verifica: test Pest.</criterion>
+    <criterion id="AC-004">Dato un payload con la STESSA categoria ripetuta su due righe, quando viene salvato, allora 422 su `product_lines.1.product_category_id` con il messaggio di duplicato. Verifica: test Pest.</criterion>
+    <criterion id="AC-005">Dato un payload con una categoria NON selezionabile (contenitore) non gia' persistita sul record, quando viene salvato, allora 422 su `product_lines.0.product_category_id`. Verifica: test Pest.</criterion>
+    <criterion id="AC-006">Dato un record con una riga la cui categoria e' stata resa non selezionabile dopo il salvataggio, quando l'update la RISOTTOMETTE invariata, allora la richiesta passa (esenzione spec 0074 D-3b conservata). Verifica: test Pest.</criterion>
+    <criterion id="AC-007">Dato un record classificato su una categoria il cui ramo ha `management_mode: single`, quando si inviano due righe, allora 422 sulla chiave `product_lines` (INV-3 spec 0077 invariato). Verifica: test Pest.</criterion>
+    <criterion id="AC-008">Gli stessi AC-001..AC-007 valgono identici su progetti, campagne e sull'update del work panel richieste, che condividono `ProductLineSetValidator`. Verifica: test Pest per modulo.</criterion>
+    <criterion id="AC-009">Dato un PATCH di cella inline `product_lines` con `value: [{product_category_id: K}]`, quando la cella viene committata, allora la collezione e' sincronizzata e la riga di griglia restituita porta `root_category`, `product_category` e `business_function`. Verifica: test Pest.</criterion>
+    <criterion id="AC-010">Data una richiesta a `/form-context` con una riga priva di `product_category_id`, quando viene elaborata, allora la riga e' scartata e la risposta e' 200 (nessun 422). Verifica: test Pest.</criterion>
+    <criterion id="AC-011">Dato un record con righe gia' persistite, quando lo si legge, allora ogni riga di `product_lines` espone `root_category` con la radice corretta dell'albero, e per una categoria che e' essa stessa radice `root_category` coincide con `product_category`. Verifica: test Pest su OpportunityResource, RequestManagementResource, ProjectResource, CampaignResource, QuoteResource.</criterion>
+    <criterion id="AC-012">Dato il contratto delle COMPETENZE utente (POST/PATCH /api/users), quando si invia `employment.product_lines` con `business_function_id` e `product_category_id` nullo, allora il comportamento e' identico a prima della feature: nessuna regressione su spec 0111/0129. Verifica: la suite Pest esistente delle competenze passa invariata, senza modifiche ai test.</criterion>
+
+    <!-- Frontend: scelta a due passi -->
+    <criterion id="AC-013">Dato il form opportunita' aperto in creazione, quando si guarda la prima riga di product lines, allora il primo controllo e' "Categoria genitore" e NON esiste alcun select di funzione aziendale nel campo. Verifica: test Vitest (query per ruolo accessibile).</criterion>
+    <criterion id="AC-014">Dato il campo con nessuna categoria genitore scelta, quando si prova a usare il secondo select, allora e' disabilitato. Verifica: test Vitest.</criterion>
+    <criterion id="AC-015">Data una categoria genitore scelta, quando si apre il secondo select, allora elenca i discendenti SELEZIONABILI di quella root, ad albero indentato, con i contenitori non selezionabili mostrati come contesto disabilitato e i rami senza nulla di selezionabile potati. Verifica: test Vitest.</criterion>
+    <criterion id="AC-016">Data una riga con categoria gia' scelta, quando si cambia la categoria genitore, allora la categoria della sola riga modificata viene azzerata e le altre righe restano intatte. Verifica: test Vitest.</criterion>
+    <criterion id="AC-017">Dato un record esistente aperto in modifica, quando il form si idrata, allora la categoria genitore di ogni riga e' preselezionata risalendo l'albero dalla categoria persistita, senza chiamate di rete aggiuntive. Verifica: test Vitest.</criterion>
+    <criterion id="AC-018">Dato il payload inviato al submit, quando si ispeziona il body, allora ogni riga porta SOLO `product_category_id` (nessun `business_function_id`, nessun `root_category_id`). Verifica: test Vitest sui builder di payload (opportunita', richieste, progetti, campagne).</criterion>
+    <criterion id="AC-019">Data una riga senza categoria selezionata, quando si invia il form, allora la validazione client (Zod) blocca il submit segnalando il campo categoria. Verifica: test Vitest sugli schema.</criterion>
+    <criterion id="AC-020">Dato l'editor di cella inline in griglia richieste, quando si aggiunge una coppia, allora il primo passo elenca le categorie root e il secondo i discendenti selezionabili della root scelta, entrambi letti dall'albero gia' in cache. Verifica: test Vitest.</criterion>
+    <criterion id="AC-021">Dato il campo COMPETENZA nel form utente, quando lo si usa, allora continua a chiedere funzione aziendale + categoria e mantiene la casella "tutte le categorie della funzione". Verifica: i test Vitest esistenti delle competenze passano invariati.</criterion>
+
+    <!-- Dettaglio -->
+    <criterion id="AC-022">Dato il dettaglio di un'opportunita' (idem richieste, progetti, campagne), quando si legge una riga di classificazione, allora compare "Categoria genitore &gt; Categoria - funzione: Funzione" con la funzione derivata. Verifica: test Vitest.</criterion>
+    <criterion id="AC-023">Dato il dettaglio di una COMPETENZA utente, quando si legge una riga, allora il formato resta quello attuale (funzione in evidenza, "tutte le categorie" sulla riga senza categoria). Verifica: test Vitest esistente invariato.</criterion>
+
+    <!-- Igiene -->
+    <criterion id="AC-024">Dopo la feature, nessun file del perimetro contiene riferimenti morti al select di funzione aziendale rimosso dal campo card (import orfani, prop non usate, chiavi i18n orfane). Verifica: ESLint pulito + grep di controllo del verifier.</criterion>
+    <criterion id="AC-025">La suite completa e' verde ed eseguita: `php artisan test` (backend), `npx vitest run` (frontend), `npx tsc -b --force --pretty false` (typecheck), Pint ed ESLint puliti. Verifica: eseguita dal verifier, output allegato.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: solo cio' che e' gia' in composer.json / package.json.</item>
+    <item>Nessuna migrazione di schema. `business_function_id` resta NOT NULL sulle tabelle card e
+          continua a essere valorizzata dal server: ogni lettura esistente (report, coverage,
+          assegnazioni, documenti) continua a funzionare senza modifiche.</item>
+    <item>La derivazione della funzione usa `CategoryHierarchy::effectiveBusinessFunctionSummaries()`
+          in batch: mai una query per riga.</item>
+    <item>Nessuna nuova chiamata di rete lato frontend: root e discendenti si leggono dall'albero
+          `useProductCategoryTree` gia' in cache condivisa.</item>
+    <item>Authorization server-side invariata su ogni endpoint toccato (Policy gia' presenti).</item>
+    <item>`ProductLineSetValidator` resta l'UNICA definizione delle regole per le card, condivisa tra
+          FormRequest e cella inline. `CompetenceLineSetValidator` non si tocca.</item>
+    <item>Identificatori in inglese; stringhe utente via i18next (it/en entrambi aggiornati).</item>
+    <item>File entro 300 righe soft / 500 hard: il campo card e il campo competenza si separano in
+          due componenti invece di accumulare varianti nello stesso file.</item>
+    <item>Non modificare i test esistenti per farli passare: se un test delle competenze fallisce,
+          il bug e' nel codice (le competenze sono fuori scope e devono restare identiche).</item>
+  </constraints>
+
+</spec>

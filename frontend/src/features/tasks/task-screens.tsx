@@ -103,9 +103,11 @@ export function TaskFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
     // `parent_task_id` arrives as a `number` from the modal caller and as a
     // `string` from the page deep-link's query string: normalize both.
     const parentTaskId = parseEntityId(String(mode.params?.parent_task_id ?? ''))
+    // Spec 0133 D-4: "Nuovo task" from the Commessa detail's Task tab.
+    const workOrderId = parseEntityId(String(mode.params?.work_order_id ?? ''))
     return (
       <TaskForm
-        mode={{ type: 'create', parentTaskId }}
+        mode={{ type: 'create', parentTaskId, workOrderId }}
         onSuccess={handleSuccess}
         onCancel={onCancel}
       />

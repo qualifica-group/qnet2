@@ -30,22 +30,21 @@ function geoCreateFields(values: CampaignFormValues): Partial<Record<GeoFieldNam
 }
 
 /**
- * Filters out any row still missing an id and casts the rest to the wire
- * shape. Defensive only: the schema's `superRefine` (spec 0094) already
- * blocks a standalone submit on an incomplete row — this exists because
- * `CampaignFormValues.product_lines` stays nullable-per-id at the type level
- * (each row is inline-editable).
+ * Filters out any row still missing a category and casts the rest to the wire
+ * shape (spec 0132 AC-018: only `product_category_id` travels). Defensive
+ * only: the schema's `superRefine` already blocks a standalone submit on an
+ * incomplete row — this exists because `CampaignFormValues.product_lines`
+ * stays nullable-per-id at the type level (each row is inline-editable).
  */
 function completeProductLines(rows: CampaignFormValues['product_lines']): CampaignProductLineInput[] {
-  return rows.filter(
-    (row): row is CampaignProductLineInput =>
-      row.business_function_id !== null && row.product_category_id !== null,
-  )
+  return rows
+    .filter((row) => row.product_category_id !== null)
+    .map((row) => ({ product_category_id: row.product_category_id as number }))
 }
 
-/** Order-independent key of a product-line pair, for set comparison. */
+/** Order-independent key of a product-line category, for set comparison. */
 function productLineKey(line: CampaignProductLineInput): string {
-  return `${line.business_function_id}:${line.product_category_id}`
+  return `${line.product_category_id}`
 }
 
 function sameProductLines(a: CampaignProductLineInput[], b: CampaignProductLineInput[]): boolean {
@@ -176,7 +175,6 @@ export function buildUpdatePayload(
       }
     }
     const originalProductLines = original.product_lines.map((line) => ({
-      business_function_id: line.business_function.id,
       product_category_id: line.product_category.id,
     }))
     const currentProductLines = completeProductLines(values.product_lines)

@@ -1,233 +1,60 @@
 import { useTranslation } from 'react-i18next'
-import { Boxes, ClipboardList, FileText, Hammer, History, Lock, Users } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { formatDate } from '@/lib/formatting/date-display'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
-import { RecordLink } from '@/components/detail/record-link'
 import {
-  RecordCanvas,
-  RecordCard,
-  RecordCardHeader,
-  RecordField,
-  RecordFieldList,
-  RecordMeta,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
-import { BADGE_BASE, BADGE_COLOR_CLASSES, formatDateTime } from '@/features/table/cell-renderers'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
-import { WorkOrderDetailAttributesSection } from '@/features/work-orders/work-order-detail-attributes'
-import type { WorkOrderDetailWithPermissions, WorkOrderQuoteLine, WorkOrderType } from '@/features/work-orders/types'
-
-const WORK_ORDERS_DOMAIN = 'work-orders'
-
-/** Comma-free vertical list of people, so long names never truncate into each other. */
-function PeopleList({ names }: { names: string[] }) {
-  return (
-    <ul className="flex flex-col gap-0.5">
-      {names.map((name) => (
-        <li key={name} className="truncate">
-          {name}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-/** Colored status pill for the record header (D-3: calculated, sola lettura). */
-function WorkOrderStatusBadge({ isClosed }: { isClosed: boolean }) {
-  const { t } = useTranslation()
-  return (
-    <Badge
-      variant="secondary"
-      className={cn(BADGE_BASE, 'gap-1.5', isClosed ? BADGE_COLOR_CLASSES.slate : BADGE_COLOR_CLASSES.green)}
-    >
-      <span
-        className={cn('size-1.5 shrink-0 rounded-full', isClosed ? 'bg-slate-500' : 'bg-green-500')}
-        aria-hidden="true"
-      />
-      {t(isClosed ? 'workOrders.detail.statusClosed' : 'workOrders.detail.statusOpen')}
-    </Badge>
-  )
-}
-
-/** "Tipo commessa" pill for the record header (D-10). */
-function WorkOrderTypeBadge({ type }: { type: WorkOrderType }) {
-  const { t } = useTranslation()
-  return (
-    <Badge variant="secondary" className={cn(BADGE_BASE, BADGE_COLOR_CLASSES.blue)}>
-      {t(`workOrders.options.type.${type}`)}
-    </Badge>
-  )
-}
-
-/** Read-only list of the linked offer's REVENUE lines (D-6/D-7), ordered like the picker. */
-function WorkOrderLinesList({ lines }: { lines: WorkOrderQuoteLine[] }) {
-  const { t } = useTranslation()
-
-  if (lines.length === 0) {
-    return <p className="text-xs text-muted-foreground">{t('workOrders.detail.linesEmpty')}</p>
-  }
-
-  const sorted = [...lines].sort((a, b) => a.sort_order - b.sort_order)
-
-  return (
-    <ul className="flex flex-col divide-y divide-border/60 rounded-lg border bg-surface text-sm">
-      {sorted.map((line) => (
-        <li key={line.id} className="flex items-center gap-2 px-3 py-2">
-          {line.product ? (
-            <>
-              <span className="font-mono text-xs text-muted-foreground">{line.product.code}</span>
-              <RecordLink domain="products" id={line.product.id} className="min-w-0">
-                {line.product.name}
-              </RecordLink>
-            </>
-          ) : (
-            <DetailEmpty />
-          )}
-        </li>
-      ))}
-    </ul>
-  )
-}
+  RECORD_BODY_GRID_CLASS,
+  RECORD_BODY_WITH_SIDE_CLASS,
+  RECORD_COLUMN_CLASS,
+} from '@/components/detail/record-layout'
+import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { formatDateTime } from '@/features/table/cell-renderers'
+import { useAbilities } from '@/features/auth/use-abilities'
+import { useWorkOrderCollaborationGates } from '@/features/work-orders/use-work-order-collaboration-gates'
+import { WorkOrderCollaborationSection } from '@/features/work-orders/work-order-collaboration-section'
+import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
+import { WorkOrderDetailSections } from '@/features/work-orders/work-order-detail-sections'
+import { WorkOrderTasksSection } from '@/features/work-orders/work-order-tasks-section'
+import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 interface WorkOrderDetailViewProps {
   workOrder: WorkOrderDetailWithPermissions
+  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
+  onEdit?: () => void
 }
 
 /**
- * Read-only detail of a single work order (AC-075), on the same
- * `RecordCanvas` kit as the Contract/Offer records: identity header (status +
- * type badges), titled sections for the offer link and its product lines,
- * the closure reason when force-closed, description/notes, activity log when
- * granted, a metadata footer below.
+ * Read-only detail of a single work order (AC-075), laid out exactly like the
+ * Opportunita' record: on the left ONE card carrying identity header, KPI strip
+ * and titled sections; the collaboration card (notes, documents, activity log,
+ * spec 0134 D-3) on the right; the work order's Task panel full width below
+ * both, like the Opportunita' Offerte panel, only with `tasks.viewAny`; a
+ * metadata footer last.
  */
-export function WorkOrderDetailView({ workOrder }: WorkOrderDetailViewProps) {
+export function WorkOrderDetailView({ workOrder, onEdit }: WorkOrderDetailViewProps) {
   const { t } = useTranslation()
+  const { can } = useAbilities()
+  const { hasAny: hasCollaboration } = useWorkOrderCollaborationGates(workOrder)
   const createdAt = formatDateTime(workOrder.created_at)
   const updatedAt = formatDateTime(workOrder.updated_at)
 
   return (
     <RecordCanvas>
-      <RecordCard>
-        <RecordCardHeader
-          media={<DetailMonogram name={workOrder.title} icon={<Hammer />} />}
-          title={workOrder.title}
-          subtitle={workOrder.code}
-          badges={
-            <>
-              <WorkOrderStatusBadge isClosed={workOrder.status.value === 'closed'} />
-              <WorkOrderTypeBadge type={workOrder.type} />
-            </>
-          }
-        />
+      <div className={cn(RECORD_BODY_GRID_CLASS, hasCollaboration && RECORD_BODY_WITH_SIDE_CLASS)}>
+        <div className={RECORD_COLUMN_CLASS}>
+          <RecordCard>
+            <WorkOrderDetailHeader workOrder={workOrder} onEdit={onEdit} />
+            <WorkOrderDetailStats workOrder={workOrder} />
+            <WorkOrderDetailSections workOrder={workOrder} />
+          </RecordCard>
+        </div>
 
-        <RecordSectionsGrid>
-          <RecordSection title={t('workOrders.detail.sections.identity')} icon={<ClipboardList />}>
-            <RecordFieldList>
-              <RecordField label={t('workOrders.detail.type')}>
-                {t(`workOrders.options.type.${workOrder.type}`)}
-              </RecordField>
-              <RecordField label={t('workOrders.detail.status')}>
-                {t(workOrder.status.value === 'closed' ? 'workOrders.detail.statusClosed' : 'workOrders.detail.statusOpen')}
-              </RecordField>
-              <RecordField label={t('workOrders.detail.startDate')}>
-                {formatDate(workOrder.start_date) || <DetailEmpty />}
-              </RecordField>
-              <RecordField label={t('workOrders.detail.callbackDate')}>
-                {formatDate(workOrder.callback_date) || <DetailEmpty />}
-              </RecordField>
-              <RecordField label={t('workOrders.detail.contractNumber')}>
-                {workOrder.contract_number ?? <DetailEmpty />}
-              </RecordField>
-              <RecordField label={t('workOrders.detail.taskTemplate')}>
-                {workOrder.task_template ? (
-                  <RecordLink domain="task-templates" id={workOrder.task_template.id}>
-                    {workOrder.task_template.name}
-                  </RecordLink>
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordField>
-              {workOrder.is_force_closed ? (
-                <RecordField label={t('workOrders.detail.forceCloseReason')} icon={<Lock />}>
-                  <span className="whitespace-pre-wrap">{workOrder.force_close_reason}</span>
-                </RecordField>
-              ) : null}
-            </RecordFieldList>
-          </RecordSection>
-
-          <RecordSection title={t('workOrders.detail.sections.team')} icon={<Users />}>
-            <RecordFieldList>
-              <RecordField label={t('workOrders.detail.supervisors')}>
-                {workOrder.supervisors.length > 0 ? (
-                  <PeopleList names={workOrder.supervisors.map((supervisor) => supervisor.name)} />
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordField>
-              <RecordField label={t('workOrders.detail.participants')}>
-                {workOrder.participants.length > 0 ? (
-                  <PeopleList names={workOrder.participants.map((participant) => participant.name)} />
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordField>
-            </RecordFieldList>
-          </RecordSection>
-
-          <RecordSection title={t('workOrders.detail.sections.offer')} icon={<Boxes />}>
-            <RecordFieldList>
-              <RecordField label={t('workOrders.detail.quote')}>
-                {workOrder.quote ? (
-                  <RecordLink domain="quotes" id={workOrder.quote.id}>
-                    {workOrder.quote.title}
-                  </RecordLink>
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordField>
-            </RecordFieldList>
-            <div className="mt-3">
-              <WorkOrderLinesList lines={workOrder.quote_lines} />
-            </div>
-          </RecordSection>
-
-          <RecordSection title={t('workOrders.detail.sections.notes')} icon={<FileText />} full>
-            <RecordFieldList>
-              <RecordField label={t('workOrders.detail.description')}>
-                {workOrder.description ? (
-                  <span className="whitespace-pre-wrap">{workOrder.description}</span>
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordField>
-              <RecordField label={t('workOrders.detail.internalNotes')}>
-                {workOrder.internal_notes ? (
-                  <span className="whitespace-pre-wrap">{workOrder.internal_notes}</span>
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordField>
-            </RecordFieldList>
-          </RecordSection>
-
-          <WorkOrderDetailAttributesSection
-            attributes={workOrder.applicable_attributes}
-            values={workOrder.attribute_values}
-            className="@2xl:col-span-2"
-          />
-        </RecordSectionsGrid>
-
-        {workOrder.permissions.actions.view_activity ? (
-          <div className="border-t p-4">
-            <RecordSection title={t('activityLog.title')} icon={<History />}>
-              <ActivityLogSection resource={WORK_ORDERS_DOMAIN} id={workOrder.id} />
-            </RecordSection>
+        {hasCollaboration ? (
+          <div className={RECORD_COLUMN_CLASS}>
+            <WorkOrderCollaborationSection workOrder={workOrder} />
           </div>
         ) : null}
-      </RecordCard>
+      </div>
+
+      {can('tasks.viewAny') ? <WorkOrderTasksSection workOrderId={workOrder.id} /> : null}
 
       <RecordMeta>
         {createdAt ? (

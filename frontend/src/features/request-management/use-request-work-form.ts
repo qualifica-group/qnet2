@@ -193,7 +193,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     'client_contacts' as Path<RequestWorkFormValues>,
     'client_address' as Path<RequestWorkFormValues>,
     // The collection is submitted as a whole: a per-row 422
-    // (`product_lines.0.business_function_id`) has no control of its own here,
+    // (`product_lines.0.product_category_id`) has no control of its own here,
     // so the block root carries the message.
     'product_lines' as Path<RequestWorkFormValues>,
     // A per-row 422 (`offer_lines.0.quantity`) DOES have a matching control:

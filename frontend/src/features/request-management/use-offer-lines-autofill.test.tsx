@@ -24,7 +24,6 @@ import type { ProductCategoryTreeNode } from '@/features/product-categories/type
  * SELEZIONA, non di quelle gia' sul record.
  */
 
-const BUSINESS_FUNCTION_ID = 40
 const SOLE_CATEGORY_ID = 500
 const CROWDED_CATEGORY_ID = 501
 
@@ -87,7 +86,7 @@ interface HarnessProps {
 function Harness({ initialCategoryId = null }: HarnessProps) {
   const form = useForm<RequestOfferLinesFormShape>({
     defaultValues: {
-      product_lines: [{ business_function_id: BUSINESS_FUNCTION_ID, product_category_id: initialCategoryId }],
+      product_lines: [{ root_category_id: null, product_category_id: initialCategoryId }],
       offer_lines: [EMPTY_LINE_ROW],
     },
   })
@@ -99,7 +98,7 @@ function Harness({ initialCategoryId = null }: HarnessProps) {
         type="button"
         onClick={() =>
           form.setValue('product_lines', [
-            { business_function_id: BUSINESS_FUNCTION_ID, product_category_id: SOLE_CATEGORY_ID },
+            { root_category_id: null, product_category_id: SOLE_CATEGORY_ID },
           ])
         }
       >
@@ -109,7 +108,7 @@ function Harness({ initialCategoryId = null }: HarnessProps) {
         type="button"
         onClick={() =>
           form.setValue('product_lines', [
-            { business_function_id: BUSINESS_FUNCTION_ID, product_category_id: CROWDED_CATEGORY_ID },
+            { root_category_id: null, product_category_id: CROWDED_CATEGORY_ID },
           ])
         }
       >

@@ -45,6 +45,17 @@ export interface WorkOrderQuoteRef {
 }
 
 /**
+ * `WorkOrderResource.contract` projection: the Contratto born from the linked
+ * quote (`code`/`title` are the quote's own, as on the Contract detail),
+ * `null` while the quote has not been won.
+ */
+export interface WorkOrderContractRef {
+  id: number
+  code: string
+  title: string
+}
+
+/**
  * `WorkOrderResource.task_template` projection (spec 0124 D-9): the Modello
  * di Task used to generate this work order's tasks, immutable after create
  * (D-5) — shown read-only once set, never re-picked.
@@ -135,6 +146,8 @@ export interface WorkOrderDetail {
   /** = `quote.code`, derived, read-only (D-2). */
   contract_number: string | null
   quote: WorkOrderQuoteRef | null
+  /** The detail names this record, not the offer underneath it. */
+  contract: WorkOrderContractRef | null
   quote_lines: WorkOrderQuoteLine[]
   /** Spec 0124 D-9: `null` when the commessa was not generated from a Modello di Task. */
   task_template: WorkOrderTaskTemplateRef | null

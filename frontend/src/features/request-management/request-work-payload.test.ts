@@ -222,19 +222,19 @@ describe('buildRequestWorkPayload — product lines (user directive 2026-07-31)'
 
   it('sends the whole collection when a pair changed', () => {
     const payload = buildRequestWorkPayload(
-      formValues({ product_lines: [{ business_function_id: 41, product_category_id: 501 }] }),
+      formValues({ product_lines: [{ root_category_id: null, product_category_id: 501 }] }),
       panel({ product_lines: [LINE] }),
     )
 
-    expect(payload.product_lines).toEqual([{ business_function_id: 41, product_category_id: 501 }])
+    expect(payload.product_lines).toEqual([{ product_category_id: 501 }])
   })
 
   it('omits the key when the SET is unchanged, whatever the order', () => {
     const payload = buildRequestWorkPayload(
       formValues({
         product_lines: [
-          { business_function_id: 41, product_category_id: 501 },
-          { business_function_id: 40, product_category_id: 500 },
+          { root_category_id: null, product_category_id: 501 },
+          { root_category_id: null, product_category_id: 500 },
         ],
       }),
       panel({

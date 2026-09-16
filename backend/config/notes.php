@@ -3,6 +3,7 @@
 use App\RequestManagement\EnrolleeManagementNotable;
 use App\RequestManagement\RequestManagementNotable;
 use App\Services\Tasks\TaskNotable;
+use App\Services\WorkOrders\WorkOrderNotable;
 
 return [
 
@@ -39,6 +40,9 @@ return [
         // construction, exactly as 'request-management' maps onto an
         // Opportunity.
         'tasks' => TaskNotable::class,
+        // Spec 0134: same pattern as 'tasks' -- plural module key as slug,
+        // 'work_order' morph alias in notable_type.
+        'work-orders' => WorkOrderNotable::class,
     ],
 
 ];

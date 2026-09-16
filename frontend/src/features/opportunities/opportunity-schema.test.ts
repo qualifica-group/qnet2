@@ -26,7 +26,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     // Spec 0047: Regione, never submit-blocking.
     // product_lines is mandatory (>=1 row, user directive 2026-07-17): the base
     // happy-path carries one valid row; the empty-collection case overrides it.
-    product_lines: [{ business_function_id: 1, product_category_id: 11 }],
+    product_lines: [{ root_category_id: 1, product_category_id: 11 }],
     // products_of_interest is mandatory too (>=1 product, user directive
     // 2026-07-23): the base happy-path carries one; the empty case overrides it.
     products_of_interest: [7],
@@ -79,13 +79,6 @@ describe('buildCreateOpportunitySchema', () => {
     expect(result.success).toBe(true)
   })
 
-  /**
-   * Amendment rev.3 (AC-097/099/106): `product_lines` replaces the single
-   * business_function_id/product_category_id fields with an inline-editable
-   * row collection (mirrors `manager_slots`: "Add" appends an empty row).
-   * Each id is individually nullable, but a `superRefine` requires BOTH
-   * non-null per row before submit.
-   */
   // User directive 2026-07-23: mandatory exactly like `product_lines`.
   describe('products_of_interest', () => {
     it('rejects an empty collection', () => {
@@ -98,9 +91,7 @@ describe('buildCreateOpportunitySchema', () => {
     })
 
     it('rejects an empty collection on update too (never clearable)', () => {
-      const schema = buildUpdateOpportunitySchema(i18n.t, [
-        { business_function_id: 1, product_category_id: 11 },
-      ])
+      const schema = buildUpdateOpportunitySchema(i18n.t)
       const result = schema.safeParse(baseValues({ products_of_interest: [] }))
       expect(result.success).toBe(false)
     })
@@ -111,7 +102,13 @@ describe('buildCreateOpportunitySchema', () => {
     })
   })
 
-  describe('product_lines (amendment rev.3)', () => {
+  /**
+   * Spec 0132: `product_lines` picks a ROOT category then one of its
+   * descendants — `root_category_id` is UI-only state (D-3, never validated
+   * as a domain field); only `product_category_id` must be non-null per row
+   * before submit.
+   */
+  describe('product_lines (spec 0132)', () => {
     it('rejects an empty collection (user directive 2026-07-17: at least one row required)', () => {
       const schema = buildCreateOpportunitySchema(i18n.t)
       const result = schema.safeParse(baseValues({ product_lines: [] }))
@@ -121,16 +118,13 @@ describe('buildCreateOpportunitySchema', () => {
       }
     })
 
-    // Spec 0077 INV-2: every row shares the same Funzione aziendale — the
-    // second row here reuses row 1's, unlike its "different roots" sibling
-    // in the dedicated `INV-2` suite below.
     it('accepts one or more complete rows', () => {
       const schema = buildCreateOpportunitySchema(i18n.t)
       const result = schema.safeParse(
         baseValues({
           product_lines: [
-            { business_function_id: 1, product_category_id: 11 },
-            { business_function_id: 1, product_category_id: 22 },
+            { root_category_id: 1, product_category_id: 11 },
+            { root_category_id: 1, product_category_id: 22 },
           ],
         }),
       )
@@ -140,7 +134,7 @@ describe('buildCreateOpportunitySchema', () => {
     it('rejects a freshly-added empty row (both ids null)', () => {
       const schema = buildCreateOpportunitySchema(i18n.t)
       const result = schema.safeParse(
-        baseValues({ product_lines: [{ business_function_id: null, product_category_id: null }] }),
+        baseValues({ product_lines: [{ root_category_id: null, product_category_id: null }] }),
       )
       expect(result.success).toBe(false)
       if (!result.success) {
@@ -148,18 +142,18 @@ describe('buildCreateOpportunitySchema', () => {
       }
     })
 
-    it('rejects a row missing only business_function_id', () => {
+    it('accepts a row with no root category picked yet, as long as the category is set', () => {
       const schema = buildCreateOpportunitySchema(i18n.t)
       const result = schema.safeParse(
-        baseValues({ product_lines: [{ business_function_id: null, product_category_id: 11 }] }),
+        baseValues({ product_lines: [{ root_category_id: null, product_category_id: 11 }] }),
       )
-      expect(result.success).toBe(false)
+      expect(result.success).toBe(true)
     })
 
     it('rejects a row missing only product_category_id', () => {
       const schema = buildCreateOpportunitySchema(i18n.t)
       const result = schema.safeParse(
-        baseValues({ product_lines: [{ business_function_id: 1, product_category_id: null }] }),
+        baseValues({ product_lines: [{ root_category_id: 1, product_category_id: null }] }),
       )
       expect(result.success).toBe(false)
     })
@@ -169,8 +163,8 @@ describe('buildCreateOpportunitySchema', () => {
       const result = schema.safeParse(
         baseValues({
           product_lines: [
-            { business_function_id: 1, product_category_id: 11 },
-            { business_function_id: 2, product_category_id: null },
+            { root_category_id: 1, product_category_id: 11 },
+            { root_category_id: 2, product_category_id: null },
           ],
         }),
       )
@@ -187,7 +181,7 @@ describe('buildCreateOpportunitySchema', () => {
         reporter_id: 8,
         supervisor_id: 9,
         source_id: 10,
-        product_lines: [{ business_function_id: 5, product_category_id: 11 }],
+        product_lines: [{ root_category_id: 5, product_category_id: 11 }],
         manager_slots: [9, null, 12],
         start_date: '2026-01-01',
         expected_close_date: '2026-06-30',
@@ -254,82 +248,8 @@ describe('operational_site_id (spec 0056)', () => {
 
 describe('buildUpdateOpportunitySchema', () => {
   it('keeps supervisor_id nullable for existing opportunities', () => {
-    const schema = buildUpdateOpportunitySchema(i18n.t, [
-      { business_function_id: 1, product_category_id: 11 },
-    ])
+    const schema = buildUpdateOpportunitySchema(i18n.t)
 
     expect(schema.safeParse(baseValues({ supervisor_id: null })).success).toBe(true)
-  })
-})
-
-/**
- * Spec 0077 INV-2: every `product_lines` row shares the same Funzione
- * aziendale, in both management modes. D-5 grandfathering: on update the rule
- * only fires once the collection differs from what is persisted
- * (`originalProductLines`) — mirrors the work panel's own sparse gate
- * (`request-work-schema.ts`), and AC-016/017 apply here too.
- */
-describe('product_lines — shared business function (spec 0077 INV-2)', () => {
-  it('rejects two rows with different business functions on create', () => {
-    const schema = buildCreateOpportunitySchema(i18n.t)
-    const result = schema.safeParse(
-      baseValues({
-        product_lines: [
-          { business_function_id: 1, product_category_id: 11 },
-          { business_function_id: 2, product_category_id: 22 },
-        ],
-      }),
-    )
-
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines')).toBe(true)
-    }
-  })
-
-  it('accepts several rows sharing the same business function on create', () => {
-    const schema = buildCreateOpportunitySchema(i18n.t)
-    const result = schema.safeParse(
-      baseValues({
-        product_lines: [
-          { business_function_id: 1, product_category_id: 11 },
-          { business_function_id: 1, product_category_id: 22 },
-        ],
-      }),
-    )
-
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects mismatched functions on update once the collection actually changed', () => {
-    const schema = buildUpdateOpportunitySchema(i18n.t, [
-      { business_function_id: 1, product_category_id: 11 },
-    ])
-    const result = schema.safeParse(
-      baseValues({
-        product_lines: [
-          { business_function_id: 1, product_category_id: 11 },
-          { business_function_id: 2, product_category_id: 22 },
-        ],
-      }),
-    )
-
-    expect(result.success).toBe(false)
-  })
-
-  /** AC-016 (opportunity form's own D-5 grandfathering): a legacy record whose rows never conformed stays saveable while `product_lines` is left untouched. */
-  it('leaves a non-conformant historic collection alone while it stays untouched (D-5, AC-016)', () => {
-    const historicRows = [
-      { business_function_id: 1, product_category_id: 11 },
-      { business_function_id: 2, product_category_id: 22 },
-    ]
-    const schema = buildUpdateOpportunitySchema(i18n.t, historicRows)
-
-    // Same rows submitted back unchanged, only `general_notes` differs.
-    const result = schema.safeParse(
-      baseValues({ product_lines: historicRows, general_notes: 'Updated note.' }),
-    )
-
-    expect(result.success).toBe(true)
   })
 })

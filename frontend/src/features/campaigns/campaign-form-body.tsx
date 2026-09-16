@@ -232,7 +232,6 @@ export function CampaignFormBody({ mode, onSuccess, onCancel, initialCode }: Cam
                 <ProductLinesField
                   value={field.value}
                   onChange={field.onChange}
-                  knownLines={original?.product_lines}
                   disabled={disabled || isLinked}
                 />
               )}

@@ -63,7 +63,7 @@ use App\DataObjects\Users\ProfileData;
 final readonly class CreateRequestData
 {
     /**
-     * @param  array<int, array{business_function_id: int, product_category_id: int}>  $productLines
+     * @param  array<int, array{product_category_id: int}>  $productLines
      * @param  array<int, int>|null  $rewards  reward-type ids synced by RewardAssignmentWriter (beneficiary = the created Opportunity's reporter)
      * @param  array<string, mixed>|null  $attributeValues  submitted dynamic values keyed by attribute `code`, validated post-insert against the applicable set the inserted product lines produce; `null` when the key was absent
      * @param  array<int, QuoteLineData>|null  $offerLines  the created Offerta's REVENUE rows, `null` when the key was absent

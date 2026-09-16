@@ -40,7 +40,7 @@ const LABELS_BY_CATEGORY: Record<number, Record<string, string>> = {
 }
 
 function productLine(categoryId: number | null): ProductLineRow {
-  return { business_function_id: 1, product_category_id: categoryId }
+  return { root_category_id: null, product_category_id: categoryId }
 }
 
 /** A revenue row carrying only what the resolution reads: its product. */

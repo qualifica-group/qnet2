@@ -14,8 +14,11 @@ import type { PersonalDataDraft } from '@/features/personal-data/types'
  * still declares its own `@/features/request-management/api` double.
  */
 
-/** A complete funzione+categoria pair — what the schema requires per row. */
-export const COMPLETE_ROW = { business_function_id: 1, product_category_id: 2 }
+/** A complete row — what the schema requires per row (spec 0132: only `product_category_id`). */
+export const COMPLETE_ROW = { root_category_id: null, product_category_id: 2 }
+
+/** The wire shape `COMPLETE_ROW` collapses to (spec 0132 AC-018): `root_category_id` never travels. */
+export const COMPLETE_ROW_PAYLOAD = { product_category_id: COMPLETE_ROW.product_category_id }
 
 /** The Fonte every submitting case must set: mandatory since the user directive 2026-07-29. */
 export const TEST_SOURCE_ID = 7

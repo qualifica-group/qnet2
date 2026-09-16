@@ -217,13 +217,13 @@ describe('buildUpdatePayload', () => {
     })
   })
 
-  describe('product_lines (unordered set diff, amendment rev.3)', () => {
+  describe('product_lines (unordered set diff, spec 0132)', () => {
     it('omits product_lines when the set is unchanged, even reordered', () => {
       const payload = buildUpdatePayload(
         values({
           product_lines: [
-            { business_function_id: 2, product_category_id: 22 },
-            { business_function_id: 1, product_category_id: 11 },
+            { root_category_id: null, product_category_id: 22 },
+            { root_category_id: null, product_category_id: 11 },
           ],
         }),
         original({
@@ -246,10 +246,10 @@ describe('buildUpdatePayload', () => {
 
     it('includes product_lines when a row was added', () => {
       const payload = buildUpdatePayload(
-        values({ product_lines: [{ business_function_id: 1, product_category_id: 11 }] }),
+        values({ product_lines: [{ root_category_id: null, product_category_id: 11 }] }),
         original({ product_lines: [] }),
       )
-      expect(payload).toEqual({ product_lines: [{ business_function_id: 1, product_category_id: 11 }] })
+      expect(payload).toEqual({ product_lines: [{ product_category_id: 11 }] })
     })
 
     it('includes product_lines when every row is removed', () => {

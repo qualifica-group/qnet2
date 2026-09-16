@@ -12,7 +12,7 @@ import { updateTableCell } from '@/features/table/api'
 import type { TableColumn, TableRow } from '@/features/table/types'
 import { useRequestFieldChange } from '@/features/field-change-requests/use-field-change-request-dialog'
 
-/** One {funzione aziendale, categoria prodotto} pair as a `product_lines` cell PATCH sends it (spec 0075). */
+/** One product-category pair as a `product_lines` cell PATCH sends it (spec 0075, restricted to `product_category_id` alone by spec 0132 D-3). */
 type CellPatchPair = Record<string, number>
 
 /**
@@ -39,20 +39,24 @@ function resolveCellUpdateErrorMessage(error: unknown, t: TFunction): string {
 }
 
 /**
- * An entry of an ID-PAIR collection (spec 0075, `product_lines`): only its
- * `*_id` keys travel — the sibling `*_name` keys are there to label the cell
- * and the editor's chips, and have no place in the payload.
+ * The only key an ID-PAIR collection sends on the wire (spec 0075
+ * `product_lines`, restricted by spec 0132 D-3): every sibling key —
+ * `*_name` (labels the cell/editor chips) and, since spec 0132,
+ * `root_category_id` (UI-only state scoping the editor's second step) and
+ * `business_function_id`/`business_function_name` (server-derived, read-only
+ * once a pair round-trips) — has no place in the payload. Kept as an
+ * allow-list rather than a `*_id`-suffix match precisely because those two
+ * keys also end in `_id`: this branch is exercised ONLY by the `product_lines`
+ * editor today (the sibling `offer_lines` editor commits through its own
+ * dialog, never through `resolveCellPatchValue`), so narrowing it here is
+ * safe.
  */
+const PRODUCT_LINE_PAIR_WIRE_KEY = 'product_category_id'
+
+/** An entry of an ID-PAIR collection, reduced to {@link PRODUCT_LINE_PAIR_WIRE_KEY}. */
 function resolvePairEntry(entry: Record<string, unknown>): CellPatchPair {
-  const pair: CellPatchPair = {}
-
-  for (const [key, cell] of Object.entries(entry)) {
-    if (key.endsWith('_id') && typeof cell === 'number') {
-      pair[key] = cell
-    }
-  }
-
-  return pair
+  const value = entry[PRODUCT_LINE_PAIR_WIRE_KEY]
+  return typeof value === 'number' ? { [PRODUCT_LINE_PAIR_WIRE_KEY]: value } : {}
 }
 
 /**
@@ -63,7 +67,7 @@ function resolvePairEntry(entry: Record<string, unknown>): CellPatchPair {
  * directive 2026-07-23) is the ARRAY of those projections and unwraps the same
  * way, element by element, into the id collection the endpoint replaces. An
  * entry with no `id` of its own is an ID PAIR (spec 0075): it keeps its shape,
- * reduced to the `*_id` keys the endpoint reads.
+ * reduced to {@link PRODUCT_LINE_PAIR_WIRE_KEY}.
  */
 function resolveCellPatchValue(value: unknown): CellPatchValue {
   if (Array.isArray(value)) {

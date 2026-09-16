@@ -64,7 +64,7 @@ describe('useProductsOfInterestCoherence (spec 0075, D-5)', () => {
 
     await waitFor(() => expect(fetchForSelectMock).toHaveBeenCalled())
     await waitFor(() =>
-      expect(result.current([{ business_function_id: 3, product_category_id: 9 }])).toEqual([5]),
+      expect(result.current([{ root_category_id: null, product_category_id: 9 }])).toEqual([5]),
     )
 
     expect(toastWarningMock).toHaveBeenCalledWith(expect.stringContaining('Fibra 1000'))
@@ -77,8 +77,8 @@ describe('useProductsOfInterestCoherence (spec 0075, D-5)', () => {
     await waitFor(() =>
       expect(
         result.current([
-          { business_function_id: 3, product_category_id: 7 },
-          { business_function_id: 3, product_category_id: 9 },
+          { root_category_id: null, product_category_id: 7 },
+          { root_category_id: null, product_category_id: 9 },
         ]),
       ).toEqual([4, 5]),
     )
@@ -89,7 +89,7 @@ describe('useProductsOfInterestCoherence (spec 0075, D-5)', () => {
   it('keeps a product whose category is not resolved yet: the server has the last word', () => {
     const { result } = renderCoherence([4])
 
-    expect(result.current([{ business_function_id: 3, product_category_id: 9 }])).toEqual([4])
+    expect(result.current([{ root_category_id: null, product_category_id: 9 }])).toEqual([4])
     expect(toastWarningMock).not.toHaveBeenCalled()
   })
 
@@ -98,7 +98,7 @@ describe('useProductsOfInterestCoherence (spec 0075, D-5)', () => {
 
     await waitFor(() => expect(fetchForSelectMock).toHaveBeenCalled())
     await waitFor(() =>
-      expect(result.current([{ business_function_id: 3, product_category_id: null }])).toEqual([]),
+      expect(result.current([{ root_category_id: null, product_category_id: null }])).toEqual([]),
     )
   })
 })

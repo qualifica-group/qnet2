@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- renderer registry module: cells are AG Grid render functions, not route/page components */
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { AlertTriangle, MapPin, Radio } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -36,13 +37,37 @@ function TextCell({ value }: ICellRendererParams) {
   )
 }
 
+/** The pair's "Root > Category" hierarchy (spec 0132 D-5): never repeated when the category IS its own root. */
+function categoryHierarchyLabel(pair: ProductLineCellValue): string {
+  return pair.root_category_id !== pair.product_category_id
+    ? `${pair.root_category_name} > ${pair.product_category_name}`
+    : pair.product_category_name
+}
+
 /**
- * The "Categoria prodotto" cell (spec 0075): the row projects the request's
- * own {funzione aziendale, categoria} pairs — what the inline editor commits —
- * so the cell renders the CATEGORY names out of them, comma-joined, with the
- * full pair list as its native tooltip.
+ * The pair's tooltip line (spec 0132 D-5): "Root > Category — funzione:
+ * Function" — the same format `ProductLinesReadOnlyList` renders in the card
+ * detail. `business_function_name` is missing for a pair just picked in the
+ * inline editor and not yet round-tripped from the server (it is never
+ * guessed client-side, see `product-lines-cell-editor.tsx`): the function
+ * segment is omitted rather than invented.
+ */
+function pairTooltipLine(pair: ProductLineCellValue, t: TFunction): string {
+  const hierarchy = categoryHierarchyLabel(pair)
+  return pair.business_function_name === undefined
+    ? hierarchy
+    : `${hierarchy} — ${t('productLines.functionReadOnly', { name: pair.business_function_name })}`
+}
+
+/**
+ * The "Categoria prodotto" cell (spec 0075, tooltip reshaped by spec 0132
+ * D-5): the row projects the request's own product-category pairs — what the
+ * inline editor commits — so the cell renders the CATEGORY names out of them,
+ * comma-joined, with the full "root > category — funzione" pair list as its
+ * native tooltip.
  */
 function ProductCategoriesCell({ value }: ICellRendererParams) {
+  const { t } = useTranslation()
   const pairs = Array.isArray(value) ? (value as ProductLineCellValue[]) : []
 
   if (pairs.length === 0) {
@@ -50,7 +75,7 @@ function ProductCategoriesCell({ value }: ICellRendererParams) {
   }
 
   const label = pairs.map((pair) => pair.product_category_name).join(', ')
-  const tooltip = pairs.map((pair) => `${pair.business_function_name} › ${pair.product_category_name}`).join('\n')
+  const tooltip = pairs.map((pair) => pairTooltipLine(pair, t)).join('\n')
 
   return (
     <div className="flex h-full items-center overflow-hidden">

@@ -140,10 +140,11 @@ function addClientIdentityIssues(identity: PersonalDataDraft | null, ctx: z.Refi
 }
 
 /**
- * The edited funzione/categoria rows (user directive 2026-07-31). MIRRORS the
- * create form's own rule (`buildRequestCreateSchema`) and the server's
- * `min:1` + per-row `required` ids: the collection may be replaced but never
- * emptied, and a half-filled row is not a line.
+ * The edited classification rows (user directive 2026-07-31, spec 0132).
+ * MIRRORS the create form's own rule (`buildRequestCreateSchema`) and the
+ * server's `min:1` + per-row `required` category: the collection may be
+ * replaced but never emptied, and a half-filled row (missing
+ * `product_category_id`; `root_category_id` is UI-only) is not a line.
  */
 function addProductLinesIssues(rows: ProductLineRow[], ctx: z.RefinementCtx, t: TFunction): void {
   if (rows.length === 0) {
@@ -157,7 +158,7 @@ function addProductLinesIssues(rows: ProductLineRow[], ctx: z.RefinementCtx, t: 
   }
 
   rows.forEach((row, index) => {
-    if (row.business_function_id === null || row.product_category_id === null) {
+    if (row.product_category_id === null) {
       ctx.addIssue({
         code: 'custom',
         path: ['product_lines', index],
@@ -165,21 +166,6 @@ function addProductLinesIssues(rows: ProductLineRow[], ctx: z.RefinementCtx, t: 
       })
     }
   })
-
-  // Spec 0077 INV-2: every row shares the same Funzione aziendale, in both
-  // management modes. The caller only invokes this function once
-  // `productLinesChanged` is true (D-5), so a non-conformant historic
-  // collection stays saveable for any unrelated edit (AC-044).
-  const businessFunctionIds = new Set(
-    rows.map((row) => row.business_function_id).filter((id): id is number => id !== null),
-  )
-  if (businessFunctionIds.size > 1) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['product_lines'],
-      message: t('requestManagement.workPanel.validation.businessFunctionMismatch'),
-    })
-  }
 }
 
 /**
