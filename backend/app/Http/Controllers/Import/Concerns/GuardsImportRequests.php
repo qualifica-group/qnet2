@@ -81,7 +81,7 @@ trait GuardsImportRequests
 
     /**
      * A {row} not belonging to the bound {importRun} 404s (never 403),
-     * mirroring assertOwnedRun().
+     * mirroring assertRunMatchesDomain().
      *
      * @throws ModelNotFoundException
      */
@@ -105,15 +105,16 @@ trait GuardsImportRequests
     }
 
     /**
-     * A bound {importRun} that is not owned by the actor, or whose resource
-     * does not match the route {domain}, must never leak cross-user/cross-
-     * domain: surfaced as 404 (not 403), identical to an unknown id.
+     * A bound {importRun} whose resource does not match the route {domain}
+     * must never leak cross-domain: surfaced as 404 (not 403), identical to an
+     * unknown id. Runs are NOT owner-scoped: every `leads.import` holder reads
+     * and manages every run (user decision 2026-09-16).
      *
      * @throws ModelNotFoundException
      */
-    private function assertOwnedRun(ImportRun $importRun, User $actor, string $domain): void
+    private function assertRunMatchesDomain(ImportRun $importRun, string $domain): void
     {
-        if ($importRun->user_id !== $actor->id || $importRun->resource !== $domain) {
+        if ($importRun->resource !== $domain) {
             throw (new ModelNotFoundException)->setModel(ImportRun::class, [$importRun->id]);
         }
     }
