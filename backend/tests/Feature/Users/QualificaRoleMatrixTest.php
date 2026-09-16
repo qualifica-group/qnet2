@@ -57,7 +57,9 @@ it('closes administration and configuration to the supervisor, selects aside', f
 
     $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
 
-    foreach (['roles', 'custom-fields', 'company-sites', 'opportunities', 'tasks'] as $resource) {
+    // `opportunities` left this list with the lead conversion grant (user
+    // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest.
+    foreach (['roles', 'custom-fields', 'company-sites', 'tasks'] as $resource) {
         foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
             expect($supervisor->can("{$resource}.{$ability}"))->toBeFalse("{$resource}.{$ability}");
         }
@@ -200,7 +202,9 @@ it('restricts the marketing role to the marketing-leads modules plus the selects
 
     // Everything outside marketing is closed, including the neighbouring
     // commercial domains.
-    foreach (['opportunities', 'request-management', 'products', 'companies', 'roles', 'custom-fields', 'reward-types', 'tags'] as $resource) {
+    // `opportunities` left this list with the lead conversion grant (user
+    // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest.
+    foreach (['request-management', 'products', 'companies', 'roles', 'custom-fields', 'reward-types', 'tags'] as $resource) {
         foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
             expect($marketing->can("{$resource}.{$ability}"))->toBeFalse("{$resource}.{$ability}");
         }
@@ -225,7 +229,9 @@ it('blocks the marketing role server-side on the modules its menu hides', functi
         $this->getJson("/api/tables/{$domain}/columns")->assertOk();
     }
 
-    foreach (['opportunities', 'request-management', 'products', 'companies'] as $domain) {
+    // `opportunities` left this list with the lead conversion grant (user
+    // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest.
+    foreach (['request-management', 'products', 'companies'] as $domain) {
         $this->getJson("/api/tables/{$domain}/columns")->assertForbidden();
         $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertForbidden();
     }
@@ -439,7 +445,9 @@ it('blocks the supervisor server-side on administration and configuration', func
     Sanctum::actingAs(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail());
 
     // The modules it does not hold answer nothing.
-    foreach (['roles', 'company-sites', 'custom-fields', 'opportunities'] as $domain) {
+    // `opportunities` left this list with the lead conversion grant (user
+    // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest.
+    foreach (['roles', 'company-sites', 'custom-fields'] as $domain) {
         $this->getJson("/api/tables/{$domain}/columns")->assertForbidden();
         $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertForbidden();
     }

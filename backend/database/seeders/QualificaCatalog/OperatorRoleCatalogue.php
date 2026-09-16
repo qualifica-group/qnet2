@@ -42,6 +42,9 @@ final class OperatorRoleCatalogue
     /** "Marketing e Lead": its modules in full plus the selects they read. */
     public const string MARKETING = 'marketing';
 
+    /** Lead -> Opportunita' conversion, without the Opportunita' module itself. */
+    public const string LEAD_CONVERSION = 'lead-conversion';
+
     /** "Gestione Richieste" unrestricted: every request, report included. */
     public const string ALL_REQUESTS = 'all-requests';
 
@@ -93,7 +96,7 @@ final class OperatorRoleCatalogue
         self::SUPERVISOR_ROLE => [
             'description' => 'Supervisore commerciale',
             'blocks' => [
-                self::MARKETING, self::ALL_REQUESTS, self::FIELD_CHANGE_REVIEW,
+                self::MARKETING, self::LEAD_CONVERSION, self::ALL_REQUESTS, self::FIELD_CHANGE_REVIEW,
                 self::CATALOG_AND_REGISTRIES, self::STATUS_CONFIGURATOR, self::REWARDS, self::ALL_ENROLLEES,
             ],
         ],
@@ -102,11 +105,11 @@ final class OperatorRoleCatalogue
         // have nothing to propose.
         self::COORDINATOR_ROLE => [
             'description' => 'Coordinatore commerciale',
-            'blocks' => [self::MARKETING, self::ALL_REQUESTS, self::CATALOG_AND_REGISTRIES, self::ALL_ENROLLEES],
+            'blocks' => [self::MARKETING, self::LEAD_CONVERSION, self::ALL_REQUESTS, self::CATALOG_AND_REGISTRIES, self::ALL_ENROLLEES],
         ],
         self::MARKETING_ROLE => [
             'description' => 'Marketing',
-            'blocks' => [self::MARKETING],
+            'blocks' => [self::MARKETING, self::LEAD_CONVERSION],
         ],
         self::COMMERCIAL_ROLE => [
             'description' => 'Commerciale',
@@ -137,6 +140,20 @@ final class OperatorRoleCatalogue
         'campaigns',
         'leads',
         'pipeline-statuses',
+    ];
+
+    /**
+     * LEAD_CONVERSION (user directive 2026-09-16: every operator of the three
+     * marketing roles converts leads). Both conversion paths gate on
+     * `opportunities.create`; the single-lead one opens the Opportunity form,
+     * whose `GET /meta/opportunities` needs `viewAny`. `view` stays out: the
+     * Opportunita' menu entry is gated on it, and the module is not theirs.
+     *
+     * @var array<int, string>
+     */
+    public const array LEAD_CONVERSION_PERMISSIONS = [
+        'opportunities.viewAny',
+        'opportunities.create',
     ];
 
     /**

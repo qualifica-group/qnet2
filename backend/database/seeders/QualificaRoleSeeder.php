@@ -80,6 +80,7 @@ class QualificaRoleSeeder extends Seeder
         return match ($block) {
             Catalogue::MARKETING => in_array($resource, Catalogue::MARKETING_MODULES, true)
                 || $this->isSelectOnlyGrant($resource, $ability, Catalogue::MARKETING_SELECT_ONLY_RESOURCES),
+            Catalogue::LEAD_CONVERSION => in_array($permission, Catalogue::LEAD_CONVERSION_PERMISSIONS, true),
             Catalogue::ALL_REQUESTS => $resource === Catalogue::REQUEST_MODULE
                 || in_array($permission, Catalogue::REQUEST_EXTRA_PERMISSIONS, true)
                 || $this->isSelectOnlyGrant($resource, $ability, Catalogue::ALL_REQUESTS_SELECT_ONLY_RESOURCES),

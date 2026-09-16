@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CONVERSIONE LEAD -> OPPORTUNITA' PER MARKETING/COORDINATORI/SUPERVISORI (2026-09-16) — NON COMMITTATO
+
+- Richiesta utente: Fabozzi, Falzarano, Aliberti, Santamaria, Chiacchio, Figurelli (e Del Giudice) convertono i lead
+  in opportunita', nel seeder di produzione. I sei sono TUTTI i membri di `supervisore-commerciale`,
+  `coordinatore-commerciale`, `marketing` → grant a livello ruolo.
+- `OperatorRoleCatalogue`: nuovo blocco `LEAD_CONVERSION` + `LEAD_CONVERSION_PERMISSIONS`
+  (`opportunities.viewAny` per `GET /meta/opportunities` del form, `opportunities.create` per entrambi i percorsi).
+  `view` escluso: la voce di menu Opportunita' resta nascosta. `QualificaRoleSeeder::blockGrants` gestisce il blocco.
+- Miriam Del Giudice: NON e' nel roster (account inesistente, decisione 2026-09-15) → nessun grant, da chiarire.
+- Test: nuovo `tests/Feature/Users/QualificaLeadConversionPermissionTest.php`; `QualificaRoleMatrixTest` aggiornato
+  (requisito cambiato: `opportunities` tolto dalle liste "chiuse" di supervisore e marketing).
+
 ## DIL — ID CORSO + SEDE CORSO, VIA CORSO SCELTO (2026-09-16) — VERDE, NON COMMITTATO
 
 - Decisione utente: la categoria `DIL` ha gli stessi campi corso di GOL (`id_corso`, `course_site`) e non ha piu' `chosen_course`.
