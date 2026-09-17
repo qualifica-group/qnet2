@@ -26,10 +26,11 @@ import type {
 const POLL_INTERVAL_MS = 1500
 
 /**
- * How long a single phase may run before the poll gives up (ms). Every phase
- * waits on a queued job: with no worker consuming the queue the status never
- * moves and the wizard would poll forever. Generous enough that a genuinely
- * slow staging/commit of a large file is not cut short.
+ * How long a phase may go without moving before the poll gives up (ms). Every
+ * phase waits on a queued job: with no worker consuming the queue the status
+ * never moves and the wizard would poll forever. The window restarts whenever
+ * the run's `progress` advances (spec 0137), so a slow staging/commit of a
+ * large file that keeps moving is never cut short.
  */
 const STALL_TIMEOUT_MS = 120_000
 
@@ -162,7 +163,8 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
 
   const run = runId != null ? (runQuery.data ?? null) : null
 
-  const pollingPhase = run != null && POLLING_STATUSES.has(run.status) ? `${run.id}:${run.status}` : null
+  const pollingPhase =
+    run != null && POLLING_STATUSES.has(run.status) ? `${run.id}:${run.status}:${run.progress?.processed ?? 0}` : null
   const { isStalled: isPollingStalled, resetStall } = useStallTimeout(pollingPhase, STALL_TIMEOUT_MS)
 
   useEffect(() => {

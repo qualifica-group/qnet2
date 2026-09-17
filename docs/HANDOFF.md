@@ -23,6 +23,21 @@
   (294). Suite DIL/catalogo/workflow/seeding verdi. Fallimenti preesistenti non correlati: `TaskConfigPermissionsTest`
   (task-statuses 422) e helper "undefined function" in run parziali/paralleli.
 
+## IMPORT WIZARD — AVANZAMENTO STAGING/PROCESSING (spec 0137, 2026-09-17) — VERDE, NON COMMITTATO
+
+- `GET /api/imports/{domain}/{importRun}` espone `import_run.progress: {processed, total} | null`
+  (solo `ImportRunPayloadBuilder`, NON `ImportRunResource`): `staging` = righe staged / `total_rows`;
+  `processing` = righe persistibili con `persisted_at` / righe persistibili
+  (`ProcessStagedImportJob::PERSISTABLE_STATUSES`, ora pubblica). Null in ogni altro stato o con total 0.
+  Calcolato in lettura, nessuna colonna nuova. Una riga che fallisce il commit non avanza il contatore.
+- FE: tipo `ImportPhaseProgress` (`progress?` opzionale su `ImportRunDetail`), componente
+  `ImportPhaseProgressBar` usato da `ImportStepReview` (staging) e `ImportRunProgress` (processing, fallback
+  barra indeterminata). i18n `importWizard.background.progress`.
+- Stallo: chiave `useStallTimeout` = `${id}:${status}:${progress.processed}` -> la finestra di 120 s riparte a
+  ogni avanzamento (bloccato = 120 s senza progresso). `analyzing` resta senza percentuale (D-1).
+- Verifica: Pest `ImportShowProgressTest` + suite Imports/Unit Jobs/Unit Imports (351 verdi), Vitest
+  `features/imports` (246 verdi), Pint, ESLint (solo warning preesistenti), `tsc -b --force` puliti.
+
 ## IMPORT LEAD — DEDUP SCALABILE + JOB HARDENING (spec 0136, 2026-09-16) — VERDE, NON COMMITTATO
 
 - Sintomo prod: import lead (400 righe) fermo in `staging` e poi `failed`. Causa: `LeadDuplicateMatcher` idratava

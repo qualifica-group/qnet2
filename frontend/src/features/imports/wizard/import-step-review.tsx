@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ReviewGrid } from '@/features/imports/wizard/review-grid'
 import { ImportBackgroundNotice } from '@/features/imports/wizard/import-background-notice'
+import { ImportPhaseProgressBar } from '@/features/imports/wizard/import-phase-progress-bar'
 import { BusyState, StatTile, StepSectionHeader } from '@/features/imports/wizard/wizard-ui'
 import type { ImportRunDetail, ImportRunRowCounts } from '@/features/imports/wizard/types'
 
@@ -57,7 +58,9 @@ export function ImportStepReview({
         label={t('status.staging')}
         isStalled={isPollingStalled}
         onRetry={onRetryPolling}
-      />
+      >
+        {run.progress ? <ImportPhaseProgressBar label={t('status.staging')} progress={run.progress} /> : null}
+      </ImportBackgroundNotice>
     )
   }
 

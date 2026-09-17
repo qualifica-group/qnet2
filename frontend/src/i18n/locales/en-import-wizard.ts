@@ -276,6 +276,7 @@ export const importWizard = {
     stalled:
       'This phase is taking longer than expected, so we stopped checking. The server still owns the run — check again in a moment or, if it does not move, tell your administrator.',
     retry: 'Check again',
+    progress: '{{processed}} of {{total}} rows · {{percent}}%',
   },
   status: {
     analyzing: 'Analyzing',

@@ -3,6 +3,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { ImportErrorReportLink } from '@/features/imports/import-error-report-link'
 import { ImportBackgroundNotice } from '@/features/imports/wizard/import-background-notice'
+import { ImportPhaseProgressBar } from '@/features/imports/wizard/import-phase-progress-bar'
 import { StepAlert } from '@/features/imports/wizard/wizard-ui'
 // Side effect: registers this lane's `progress.*` i18n keys (see the module
 // doc comment there).
@@ -44,7 +45,11 @@ export function ImportRunProgress({
         isStalled={isPollingStalled}
         onRetry={onRetryPolling}
       >
-        <Progress value={null} className="w-full max-w-sm" aria-label={t('progress.processing')} />
+        {run.progress ? (
+          <ImportPhaseProgressBar label={t('progress.processing')} progress={run.progress} />
+        ) : (
+          <Progress value={null} className="w-full max-w-sm" aria-label={t('progress.processing')} />
+        )}
       </ImportBackgroundNotice>
     )
   }

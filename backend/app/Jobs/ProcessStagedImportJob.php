@@ -48,8 +48,8 @@ class ProcessStagedImportJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /** Staged statuses that are actually committed by persistRow(). */
-    private const array PERSISTABLE_STATUSES = [
+    /** Staged statuses that are actually committed by persistRow() (also the commit progress total, spec 0137). */
+    public const array PERSISTABLE_STATUSES = [
         ImportRowStatus::Valid,
         ImportRowStatus::Warning,
         ImportRowStatus::Duplicate,

@@ -94,6 +94,12 @@ export interface ImportRunSummary {
   created_at: string
 }
 
+/** Rows the running job already handled (spec 0137); `processed` never exceeds `total`. */
+export interface ImportPhaseProgress {
+  processed: number
+  total: number
+}
+
 /** Response shape of `GET /imports/{domain}/{importRun}` (envelope `data.import_run`). */
 export interface ImportRunDetail extends ImportRunSummary {
   error_count: number
@@ -129,6 +135,11 @@ export interface ImportRunDetail extends ImportRunSummary {
     column_mapping: Record<string, string>
     dedup_strategy: string | null
   } | null
+  /**
+   * Set only while `staging`/`processing` (spec 0137), null otherwise.
+   * Optional for fixtures predating the field, mirroring `review_fields`.
+   */
+  progress?: ImportPhaseProgress | null
 }
 
 /** A saved column-mapping template (spec 0035), shared team-wide per domain. */

@@ -59,6 +59,17 @@ describe('ImportRunProgress', () => {
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
+  it('shows the committed rows and percentage while processing (spec 0137 AC-004)', () => {
+    render(
+      <MemoryRouter>
+        <ImportRunProgress domain="leads" run={baseRun({ progress: { processed: 250, total: 400 } })} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('progressbar', { name: 'Import in progress…' })).toHaveAttribute('aria-valuenow', '62')
+    expect(screen.getByText('250 of 400 rows · 62%')).toBeInTheDocument()
+  })
+
   it('announces the background run and the incoming notification while processing', () => {
     render(
       <MemoryRouter>

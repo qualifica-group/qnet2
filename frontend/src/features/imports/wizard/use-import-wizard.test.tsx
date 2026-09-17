@@ -196,6 +196,29 @@ describe('useImportWizard', () => {
     }
   })
 
+  it('keeps polling past the stall window while the phase progress advances (spec 0137 AC-005)', async () => {
+    vi.useFakeTimers()
+    try {
+      let processed = 0
+      getImportWizardRunMock.mockImplementation(async () => {
+        processed += 1
+        return detailRun({ status: 'staging', total_rows: 1_000, progress: { processed, total: 1_000 } })
+      })
+
+      const { result } = renderHook(() => useImportWizard({ domain: 'leads', initialRunId: 1 }), {
+        wrapper: wrapper(),
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(130_000)
+      })
+      expect(result.current.isPollingStalled).toBe(false)
+      expect(result.current.run?.progress?.processed).toBeGreaterThan(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('routes processing/completed/failed statuses to the summary step', async () => {
     getImportWizardRunMock.mockResolvedValue(detailRun({ status: 'processing' }))
 

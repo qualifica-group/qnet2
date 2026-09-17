@@ -89,6 +89,29 @@ describe('ImportStepReview', () => {
     expect(screen.getByRole('link', { name: 'Go to the import list' })).toHaveAttribute('href', '/imports')
   })
 
+  it('shows the staged rows and percentage while staging (spec 0137 AC-004)', () => {
+    render(
+      <MemoryRouter>
+        <ImportStepReview
+          domain="leads"
+          run={baseRun({ status: 'staging', progress: { processed: 1, total: 3 } })}
+          onContinue={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('progressbar', { name: 'Applying mapping…' })).toHaveAttribute('aria-valuenow', '33')
+    expect(screen.getByText('1 of 3 rows · 33%')).toBeInTheDocument()
+  })
+
+  it('shows no progressbar while staging without progress', () => {
+    render(
+      <MemoryRouter>
+        <ImportStepReview domain="leads" run={baseRun({ status: 'staging' })} onContinue={vi.fn()} />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
+
   it('renders the run counters and the review grid once reviewing', () => {
     render(<ImportStepReview domain="leads" run={baseRun()} onContinue={vi.fn()} />)
 

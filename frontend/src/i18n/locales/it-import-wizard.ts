@@ -275,6 +275,7 @@ export const importWizard = {
     stalled:
       'Questa fase sta impiegando più del previsto: abbiamo smesso di controllare. L’operazione resta in carico al server — riprova a controllare tra poco o, se non si sblocca, avvisa l’amministratore.',
     retry: 'Controlla di nuovo',
+    progress: '{{processed}} di {{total}} righe · {{percent}}%',
   },
   status: {
     analyzing: 'Analisi in corso',

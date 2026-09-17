@@ -3,10 +3,12 @@
 namespace App\Support\Import;
 
 use App\Enums\ImportDedupMode;
+use App\Enums\ImportStatus;
 use App\Http\Resources\ImportRunResource;
 use App\Imports\ImportDefinition;
 use App\Imports\Support\ColumnAnalysis;
 use App\Imports\Support\ColumnMapper;
+use App\Jobs\ProcessStagedImportJob;
 use App\Models\ImportMappingTemplate;
 use App\Models\ImportRun;
 
@@ -37,6 +39,12 @@ use App\Models\ImportRun;
  * ImportMappingTemplate whose `columns` snapshot EXACTLY matches (same
  * list, same order) this run's detected column keys, or null — computed
  * SERVER-SIDE here, never decided by the client.
+ *
+ * `progress` (spec 0137) counts the rows the running job already handled,
+ * computed on read so neither job writes anything extra: during `staging`
+ * the staged rows against the analysed `total_rows`, during `processing` the
+ * committed (`persisted_at`) rows against the persistable ones. Null in any
+ * other status.
  */
 final class ImportRunPayloadBuilder
 {
@@ -65,8 +73,26 @@ final class ImportRunPayloadBuilder
         $payload['matching_template'] = $importRun->detected_columns !== null
             ? $this->matchingTemplate($importRun)
             : null;
+        $payload['progress'] = $this->progress($importRun);
 
         return $payload;
+    }
+
+    /**
+     * @return array{processed: int, total: int}|null
+     */
+    private function progress(ImportRun $importRun): ?array
+    {
+        [$processed, $total] = match ($importRun->status) {
+            ImportStatus::Staging => [$importRun->rows()->count(), (int) $importRun->total_rows],
+            ImportStatus::Processing => [
+                $importRun->rows()->whereIn('status', ProcessStagedImportJob::PERSISTABLE_STATUSES)->whereNotNull('persisted_at')->count(),
+                $importRun->rows()->whereIn('status', ProcessStagedImportJob::PERSISTABLE_STATUSES)->count(),
+            ],
+            default => [0, 0],
+        };
+
+        return $total > 0 ? ['processed' => min($processed, $total), 'total' => $total] : null;
     }
 
     /**

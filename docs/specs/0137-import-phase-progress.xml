@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0137-import-phase-progress" status="implemented" owner="utente" date="2026-09-17">
+
+  <goal>
+    Durante le fasi asincrone lunghe del wizard import ("Applicazione mappatura…" e
+    "Importazione…") l'operatore vede quante righe sono state elaborate e la percentuale, e il
+    wizard non smette di controllare finche' il job avanza.
+  </goal>
+
+  <context>
+    - Oggi `ImportBackgroundNotice` mostra solo uno spinner; in `processing` la barra `Progress` e'
+      indeterminata (`value={null}`, `import-run-progress.tsx`).
+    - `StageImportJob` scrive una `import_run_rows` per riga del file, in ordine; `total_rows` e'
+      gia' noto dalla fase `analyzing` (`AnalyzeImportJob`).
+    - `ProcessStagedImportJob` persiste le righe con status valid/warning/duplicate e valorizza
+      `persisted_at` nella transazione della riga (spec 0136 D-8).
+    - Indice esistente `import_run_rows (import_run_id, status)`: entrambi i conteggi lo usano.
+    - Il wizard fa polling di `GET /api/imports/{domain}/{importRun}` ogni 1,5 s e dichiara la fase
+      bloccata dopo 120 s dallo stesso `${runId}:${status}` (`useStallTimeout`), anche se il job
+      sta avanzando: un file di centinaia di righe lente supera la finestra.
+    - Decisione utente (2026-09-17): "vedi tu come e' meglio" sulla scelta delle fasi.
+  </context>
+
+  <decisions>
+    D-1  Progresso solo per `staging` e `processing`. `analyzing` escluso: il numero di righe e' il
+         risultato stesso della fase.
+    D-2  Calcolato al volo in lettura (`ImportRunPayloadBuilder`), nessuna nuova colonna e nessuna
+         scrittura aggiuntiva nei job.
+    D-3  `staging`: processed = righe staged del run, total = `total_rows`.
+         `processing`: total = righe con status persistibile, processed = quelle con
+         `persisted_at` valorizzato. Una riga che fallisce il commit non avanza il contatore
+         (rischio accettato: la barra puo' fermarsi sotto il 100% prima di `completed`).
+         processed non supera mai total.
+    D-4  La finestra di stallo riparte a ogni avanzamento di `processed`: la fase e' "bloccata" dopo
+         120 s senza progresso, non dopo 120 s totali.
+    D-5  La percentuale e' calcolata dal client (arrotondata per difetto).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>`ImportRunPayloadBuilder`: campo `progress`</item>
+      <item>`ProcessStagedImportJob::PERSISTABLE_STATUSES` reso pubblico (unica fonte)</item>
+      <item>Frontend: tipo `ImportPhaseProgress`, componente barra determinata in staging e processing, chiave di stallo</item>
+      <item>i18n it/en; test Pest e Vitest</item>
+    </in>
+    <out>
+      <item>Progresso della fase `analyzing` e del flusso legacy (`ValidateImportJob`/`ProcessImportJob`)</item>
+      <item>Progresso nella lista import (`/imports`) o nella pagina dettaglio lead import</item>
+      <item>Stima del tempo residuo; push/websocket al posto del polling</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/imports/{domain}/{importRun}">
+      <response>
+        data.import_run.progress: { processed: int, total: int } | null
+          non null solo con status `staging` o `processing` e total > 0; 0 &lt;= processed &lt;= total.
+        Tutti gli altri campi invariati. Le risposte di create/configure/confirm (ImportRunResource)
+        non espongono `progress`.
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Run `staging` con total_rows 4 e 1 riga staged -> progress {processed 1, total 4}. (Pest `ImportShowProgressTest`)</criterion>
+    <criterion id="AC-002">Run `processing` con 3 righe valid/warning/duplicate (1 con persisted_at) e 1 error -> progress {processed 1, total 3}. (Pest)</criterion>
+    <criterion id="AC-003">Run `reviewing`/`completed`, oppure `staging` con total_rows 0 -> progress null; righe staged oltre total_rows -> processed = total. (Pest)</criterion>
+    <criterion id="AC-004">In `staging` e `processing` con progress il wizard mostra una progressbar con aria-valuenow = percentuale e il testo "X di Y righe · Z%"; senza progress lo staging non mostra barre e il processing resta sulla barra indeterminata. (Vitest)</criterion>
+    <criterion id="AC-005">`useImportWizard`: con progress che avanza tra un poll e l'altro la fase non viene dichiarata bloccata allo scadere dei 120 s; senza avanzamento si'. (Vitest)</criterion>
+    <criterion id="AC-006">Nessuna regressione: `tests/Feature/Imports`, `tests/Unit/Jobs`, suite Vitest `features/imports`, Pint, ESLint, `tsc -b --force` puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza, nessuna migrazione. Query Eloquent sugli indici esistenti.
+    - File entro 300/500 righe; nessun test esistente modificato salvo dichiarazione.
+    - Nessun commit/cambio branch senza ordine esplicito (CLAUDE.md §3.6).
+  </constraints>
+
+</spec>
