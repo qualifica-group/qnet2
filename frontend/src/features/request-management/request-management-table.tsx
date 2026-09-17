@@ -119,6 +119,11 @@ export function RequestManagementTable() {
 
   const { categories, selectedCategoryId, setCategoryId } = useRequestManagementCategoryTab()
   const dashboard = useStatsPanel(module.key)
+  // The stored open state is per browser, not per user: an impersonated actor
+  // without `.report` would inherit the impersonator's open panel (stuck on a
+  // 403, its toggle hidden). Derived on render, never written back, so the
+  // preference survives for whoever holds the permission.
+  const isDashboardOpen = dashboard.isOpen && can(module.permission('report'))
   const invalidateDashboard = useInvalidateRequestDashboard()
 
   const tableRef = useRef<TableViewHandle>(null)
@@ -382,7 +387,7 @@ export function RequestManagementTable() {
       />
 
       {/* User directive 2026-09-08: statistics above, category strip below it. */}
-      <RequestDashboardPanel isOpen={dashboard.isOpen} />
+      <RequestDashboardPanel isOpen={isDashboardOpen} />
 
       <RequestManagementCategoryTabs
         categories={categories}

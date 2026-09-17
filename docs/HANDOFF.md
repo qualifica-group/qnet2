@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE — PANNELLO "STATISTICHE" PERSISTITO VS PERMESSO — NON COMMITTATO (2026-09-17)
+
+Bugfix: lo stato aperto del pannello vive in `localStorage` (`stats-panel:{module.key}`), per browser e non per
+utente; solo il bottone era gated da `.report` (spec 0107 D-6), il pannello no. Un utente impersonificato senza
+`.report` ereditava il pannello aperto dall'impersonificatore: 403 e nessun bottone per chiuderlo.
+
+- Fix (solo frontend): `request-management-table.tsx` passa a `RequestDashboardPanel` `isDashboardOpen =
+  dashboard.isOpen && can(module.permission('report'))`. Derivato al render, la preferenza salvata NON viene
+  riscritta: a fine impersonificazione l'impersonificatore ritrova il pannello. Vale anche per Gestione Iscritti.
+- Test: nuovo `request-management-table-dashboard-permission.test.tsx` (fallback senza permesso + ripristino con
+  permesso). Suite `request-management` + `stats` 470/470, ESLint e `tsc -b --force` puliti.
+- Nota: `request-management-table.tsx` è a 476 righe (soglia hard 500): al prossimo intervento va splittato.
+
 ## LEAD — CAMPO "REGIONE" RIMOSSO (ANCHE A DB) — NON COMMITTATO (2026-09-17)
 
 Direttiva utente 2026-09-17: il campo Regione del Lead non serviva più a niente (restava dal criterio workflow
