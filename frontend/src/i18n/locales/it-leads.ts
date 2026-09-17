@@ -61,7 +61,7 @@ export const leads = {
       },
       details: {
         title: 'Dettagli',
-        description: 'Sede, fonte e operatore associati al lead.',
+        description: 'Sede e operatore incaricato, e la fonte da cui proviene il lead.',
       },
       productsOfInterest: {
         title: 'Prodotti di interesse',
@@ -86,8 +86,6 @@ export const leads = {
     leadStatusSearch: 'Cerca stati lead…',
     operationalSite: 'Sede',
     operationalSiteSearch: 'Cerca sedi…',
-    state: 'Regione',
-    stateSearch: 'Cerca regioni…',
     source: 'Fonte',
     sourceSearch: 'Cerca fonti…',
     operator: 'Operatore',
@@ -188,6 +186,13 @@ export const leads = {
       'Operatori assegnati a {{count}} lead. {{skipped}} senza operatore competente.',
     errors: {
       generic: 'Impossibile assegnare gli operatori. Riprova.',
+    },
+  },
+  convert: {
+    success: 'Opportunità creata.',
+    blocked: 'Lead non convertibile: {{reason}}.',
+    errors: {
+      generic: 'Impossibile convertire il lead. Riprova.',
     },
   },
   bulkConvert: {

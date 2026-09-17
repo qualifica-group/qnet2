@@ -84,13 +84,10 @@ export function LeadsTable() {
 
   const { openCreate, openView, openEdit, sheet } = useModuleOpener(LEADS_DOMAIN, { onSaved })
 
-  // Lead -> opportunity conversion controller (spec 0044, revised;
-  // directive 2026-07-21 dropped the correction gate): opens the prefilled
-  // Opportunity form directly. Reuses the same `onSaved` (grid refresh +
-  // stats invalidation) as the leads opener above.
-  const { startConversion, sheets: conversionSheets } = useLeadConversion({
-    onOpportunitySaved: onSaved,
-  })
+  // Lead -> opportunity conversion (spec 0140): converts the row directly,
+  // no Opportunity form. Reuses the same `onSaved` (grid refresh + stats
+  // invalidation) as the leads opener above.
+  const { startConversion, convertingId } = useLeadConversion({ onConverted: onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -139,7 +136,10 @@ export function LeadsTable() {
     [openView, openEdit, runDelete, startConversion],
   )
 
-  const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
+  const isBusy = useCallback(
+    (row: TableRow) => row.id === deletingId || row.id === convertingId,
+    [deletingId, convertingId],
+  )
 
   // Bulk operator assignment (spec 0048 AC-041): the shared popup collects the
   // mode and, for `single`, the operator; this adapter owns the selection, the
@@ -308,7 +308,6 @@ export function LeadsTable() {
       />
 
       {sheet}
-      {conversionSheets}
 
       <ResourceActivityDialog
         resource={LEADS_DOMAIN}

@@ -48,10 +48,6 @@ class UpdateLeadRequest extends FormRequest
             'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'source_id' => ['sometimes', 'nullable', 'integer', Rule::exists('sources', 'id')],
             'operator_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
-            // spec 0047 / directive 2026-07-21: Regione is now a user input,
-            // editable and auto-filled client-side from the Sede. A submitted
-            // value wins; if only the Sede changed, LeadService re-derives it.
-            'state_id' => ['sometimes', 'nullable', 'integer', Rule::exists('states', 'id')],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'extra_fields' => ['sometimes', 'nullable', 'array'],
             'extra_fields.*' => ['string'],

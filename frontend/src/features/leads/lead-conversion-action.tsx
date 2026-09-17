@@ -26,9 +26,9 @@ interface LeadConversionActionProps {
  * Utenti already own their Edit action.
  *
  * No fetch of its own: the card already holds the lead, so the button reads the
- * relation it was handed. On save it invalidates THIS lead's detail query, so
- * the card refetches and the button flips to "Vai all'opportunita'" (the
- * behaviour the page actions had, kept identical).
+ * relation it was handed. The click converts the lead directly (spec 0140, no
+ * Opportunity form), then invalidates THIS lead's detail query, so the card
+ * refetches and the button flips to "Vai all'opportunita'".
  *
  * `secondary`, not `outline`: the identity band IS `bg-card`, which is exactly
  * what `outline` fills itself with — the button would carry the surface it sits
@@ -39,9 +39,8 @@ export function LeadConversionAction({ leadId, opportunity }: LeadConversionActi
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 
-  const { startConversion, sheets } = useLeadConversion({
-    onOpportunitySaved: () =>
-      queryClient.invalidateQueries({ queryKey: leadDetailQueryKey(leadId) }),
+  const { startConversion, convertingId } = useLeadConversion({
+    onConverted: () => void queryClient.invalidateQueries({ queryKey: leadDetailQueryKey(leadId) }),
   })
 
   if (opportunity) {
@@ -50,11 +49,15 @@ export function LeadConversionAction({ leadId, opportunity }: LeadConversionActi
 
   return (
     <Can permission="opportunities.create">
-      <Button variant="secondary" size="sm" onClick={() => startConversion(leadId)}>
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={convertingId !== null}
+        onClick={() => startConversion(leadId)}
+      >
         <Handshake aria-hidden="true" />
         {t('leads.detail.createOpportunity')}
       </Button>
-      {sheets}
     </Can>
   )
 }

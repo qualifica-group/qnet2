@@ -12,6 +12,7 @@ use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
+use App\Services\Opportunities\LeadConversionOfferCreator;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityStatusResolver;
@@ -96,6 +97,7 @@ class OpportunityService
         private readonly ProductCategoryCoherence $coherence,
         private readonly RegistryOpenOpportunityGuard $openOpportunityGuard,
         private readonly QuoteManagerSyncMode $syncMode,
+        private readonly LeadConversionOfferCreator $conversionOfferCreator,
     ) {}
 
     public function loadDetail(Opportunity $opportunity): Opportunity
@@ -278,6 +280,15 @@ class OpportunityService
                 $opportunity->supervisor_id,
                 $attachedManagers,
             );
+
+            // Spec 0140: an opportunity born from a lead gets its collegata
+            // Offerta on EVERY path (the "Converti lead" form included), in
+            // this same transaction. refresh(): QuoteService re-derives the
+            // opportunity `name` on its own instance.
+            if ($data->leadId !== null) {
+                $this->conversionOfferCreator->create($opportunity, $data->productsOfInterest ?? [], $actor);
+                $opportunity->refresh();
+            }
 
             return $opportunity;
         });

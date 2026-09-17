@@ -65,7 +65,7 @@ it('allows actors with operational-sites.viewAny (200) and returns the paginated
 // AC-010 — item shape (label composed from the address: "line1 - city")
 // ---------------------------------------------------------------------------
 
-it('maps a site to { id, label: "line1 - city", subtitle: postal_code, meta: Regione }', function () {
+it('maps a site to { id, label: "line1 - city", subtitle: postal_code }', function () {
     $actor = userWithSiteAbilities(['viewAny']);
     $city = City::factory()->create(['name' => 'Springfield']);
     $target = OperationalSite::factory()->create();
@@ -78,32 +78,14 @@ it('maps a site to { id, label: "line1 - city", subtitle: postal_code, meta: Reg
     $response = $this->getJson('/api/operational-sites/for-select?search=Evergreen')->assertOk();
 
     $item = collect($response->json('items'))->firstWhere('id', $target->id);
-    $state = $city->state;
 
-    // meta carries the site's Regione (directive 2026-07-21) for the Lead
-    // form's auto-fill; the City factory always seeds a state.
-    expect($item)->toMatchArray([
+    // No `meta`: its Regione bag only fed the Lead form, whose Regione was
+    // removed (user directive 2026-09-17).
+    expect($item)->toBe([
         'id' => $target->id,
         'label' => 'Evergreen Terrace 742 - Springfield',
         'subtitle' => '00100',
-        'meta' => ['state_id' => $state->id, 'state_label' => $state->localizedName()],
-    ])->and(array_keys($item))->toEqualCanonicalizing(['id', 'label', 'subtitle', 'meta']);
-});
-
-it('omits meta when the primary address has no region', function () {
-    $actor = userWithSiteAbilities(['viewAny']);
-    $target = OperationalSite::factory()->create();
-    Address::factory()->primary()->for($target, 'addressable')->create([
-        'line1' => 'No Region Street 9',
-        'postal_code' => null,
     ]);
-    Sanctum::actingAs($actor);
-
-    $response = $this->getJson('/api/operational-sites/for-select?search=No+Region')->assertOk();
-
-    $item = collect($response->json('items'))->firstWhere('id', $target->id);
-
-    expect(array_keys($item))->not->toContain('meta');
 });
 
 it('falls back to line1 alone when the address has no city', function () {

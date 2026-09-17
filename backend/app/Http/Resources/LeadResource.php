@@ -19,9 +19,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * LeadService::loadDetail() having eager-loaded `operationalSite.addresses.city`,
  * so resolving it here never N+1s.
  *
- * Spec 0047 (AC-003): `state`/`state_id` is the Regione (D1), derived
- * server-side from the sede — never user-editable directly.
- *
  * `registry` additionally carries the anagrafica's PRIMARY contacts, so the
  * record card can offer call/mail without a second request. Relies on
  * LeadService::loadDetail() having eager-loaded `registry.personalData.contacts`.
@@ -46,8 +43,6 @@ class LeadResource extends JsonResource
             'campaign' => $this->summarizeCampaign($this->campaign),
             'operational_site_id' => $this->operational_site_id,
             'operational_site' => $this->summarizeOperationalSite($this->operationalSite),
-            'state_id' => $this->state_id,
-            'state' => $this->summarizeByName($this->state),
             'source_id' => $this->source_id,
             'source' => $this->summarizeByName($this->source),
             'operator_id' => $this->operator_id,

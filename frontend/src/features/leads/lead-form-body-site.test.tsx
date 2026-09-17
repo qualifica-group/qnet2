@@ -15,10 +15,6 @@ import type { CampaignForSelectItem } from '@/features/campaigns/for-select-api'
  * Lead's Sede (`operational_site_id`) from the campaign's own
  * `for-select` `meta.operational_site` (`{id, label}`) — a PREFILL, not a
  * lock: the Site field stays fully editable/clearable afterwards.
- * Deliberately does NOT touch `state_id`/Regione: user decision confirms the
- * Regione stays a free, never-inherited field (`lead-form-body-region.test.tsx`);
- * `CampaignForSelectResource.meta.operational_site` carries no Regione data
- * at all, so this lane only ever wires the Sede half of the chain.
  * Split out of `lead-form-body.test.tsx` for size (engineering.md §6).
  */
 
@@ -189,20 +185,6 @@ describe('LeadFormBody — Sede prefill from Campaign (project -> campaign -> le
 
     await waitFor(() => expect(createLeadMock).toHaveBeenCalledTimes(1))
     expect(createLeadMock.mock.calls[0][0].operational_site_id).toBe(55)
-  })
-
-  it('does NOT touch the Regione (directive 2026-07-21: free, never-inherited field)', async () => {
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Campaign')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Region')).toHaveTextContent('')
-
-    fireEvent.click(screen.getByTestId('select-Campaign'))
-
-    await waitFor(() => expect(screen.getByTestId('select-Site')).toHaveTextContent('55'))
-    expect(screen.getByTestId('select-Region')).toHaveTextContent('')
   })
 
   it('a different single-select field never triggers the Sede prefill', async () => {

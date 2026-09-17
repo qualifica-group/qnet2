@@ -14,7 +14,6 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     operational_site_id: null,
     source_id: null,
     operator_id: null,
-    state_id: null,
     notes: null,
     extra_fields: [],
     products_of_interest: [],
@@ -52,28 +51,26 @@ describe('buildCreateLeadSchema', () => {
     }
   })
 
-  it('accepts the 5 optional fields left null', () => {
+  it('accepts the 4 optional fields left null', () => {
     const schema = buildCreateLeadSchema(i18n.t)
     const result = schema.safeParse(
       baseValues({
         operational_site_id: null,
         source_id: null,
         operator_id: null,
-        state_id: null,
         notes: null,
       }),
     )
     expect(result.success).toBe(true)
   })
 
-  it('accepts the 5 optional fields when set', () => {
+  it('accepts the 4 optional fields when set', () => {
     const schema = buildCreateLeadSchema(i18n.t)
     const result = schema.safeParse(
       baseValues({
         operational_site_id: 3,
         source_id: 4,
         operator_id: 5,
-        state_id: 6,
         notes: 'Some note',
       }),
     )

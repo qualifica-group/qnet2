@@ -3,6 +3,51 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## LEAD — CAMPO "REGIONE" RIMOSSO (ANCHE A DB) — NON COMMITTATO (2026-09-17)
+
+Direttiva utente 2026-09-17: il campo Regione del Lead non serviva più a niente (restava dal criterio workflow
+della spec 0047, già tolto dall'Opportunità il 2026-09-01). Spec 0047 aggiornata (AMENDMENT 2026-09-17).
+
+- DB: migrazione `2026_09_17_140000_drop_state_id_from_leads_table` (drop FK + colonna `leads.state_id`, pulizia
+  `role_field_permissions` leads/state_id; `down()` ripristina solo la struttura). `QuoteWorkflowMigrationTest`:
+  rollback portato a 81 passi. **Da eseguire `php artisan migrate`** sugli ambienti.
+- Backend: via `Lead::state()`/fillable, regole `state_id` in Store/UpdateLeadRequest, `state`/`state_id` di
+  `LeadResource`, `stateId`/`stateIdSubmitted` nei DTO, derivazione dalla Sede in `LeadService`. Via anche `meta`
+  {state_id, state_label} di `OperationalSiteForSelectResource` (unico consumatore: il form Lead) e l'eager load
+  `state` in `OperationalSiteService::forSelectBaseQuery`. Contratto: `POST/PATCH /leads` non accetta più `state_id`
+  (chiave ignorata), `GET /leads/{id}` non la espone, `operational-sites/for-select` non ha più `meta`.
+- Frontend: tolta la select Regione dal form e il campo dal dettaglio; tipi, schema Zod, payload, chiavi i18n
+  `leads.form.state`/`stateSearch` rimossi. Sezione "Dettagli" del form ridisegnata: Sede | Operatore affiancati
+  (coppia collegata dal filtro), Fonte a tutta riga sotto; descrizione della sezione aggiornata.
+- Test: eliminati `LeadStateTest.php` e `lead-form-body-region.test.tsx` (requisito ritirato); aggiornati
+  `LeadConversionTest`, `OperationalSiteForSelectTest`, e i test Vitest del form/dettaglio/schema/payload lead.
+- Verifica: Pest Leads/OperationalSites/Imports/Opportunities/Campaigns + migration test 764/765 (1 flaky casuale
+  in `DemoOpportunitySeederTest`, verde 4/4 da solo); Vitest leads/operational-sites/i18n 374/374; `tsc -b --force`
+  pulito; Pint ed ESLint puliti.
+
+## LEAD — "CONVERTI IN OPPORTUNITÀ" DIRETTO + OFFERTA COLLEGATA — NON COMMITTATO (2026-09-17)
+
+Spec `docs/specs/0140-lead-convert-creates-offer.xml`. Richiesta utente: la conversione singola deve funzionare come
+l'import (opportunità + offerta) e senza aprire il form opportunità precompilato.
+
+- Backend: nuovo `Services/Opportunities/LeadConversionOfferCreator` (estratto da `ConvertLeadToOpportunity`: controllo
+  `single` + 2+ prodotti → 422 `offer_lines`, poi `QuoteService::create` con una riga REVENUE per prodotto di interesse,
+  zero righe se non ce ne sono). Lo chiama `OpportunityService::create()` quando `lead_id` è valorizzato, dentro la
+  transazione, poi `refresh()` (il nome viene ricalcolato dai prodotti, spec 0077). Quindi TUTTI i percorsi con lead
+  (import, checkbox, massiva, form opportunità con lead scelto a mano / deep-link `?lead_id=`) creano l'offerta;
+  `ConvertLeadToOpportunity` non la crea più da sé. Nessuna offerta senza `lead_id`.
+- Frontend: `use-lead-conversion.ts` (sostituisce `.tsx`) chiama `POST /leads/convert-to-opportunities` con un solo id,
+  nessun form né popup; toast successo/motivo blocco/messaggio 422. `lead-conversion-error.ts` (`conversionBlockers`)
+  condiviso con `ConvertLeadsDialog`. Tabella lead: riga busy durante la conversione, refresh griglia+stats. Scheda
+  lead: bottone disabilitato durante la conversione, poi invalida il dettaglio → "Vai all'opportunità". i18n `leads.convert.*`.
+- Test: `OpportunityFromLeadOfferTest` (nuovo, 4); `OpportunityFromLeadTest` AC-065 invia `products_of_interest: []`
+  (cambio requisito dichiarato); `leads-table.test.tsx` e `lead-conversion-action.test.tsx` riscritti sui casi di
+  conversione diretta (superano spec 0045 AC-020..025).
+- Verifica: Pest completo 7888 passati / 1 saltato, Leads+Opportunities+Imports 629 verdi a fine lavoro, Pint pulito;
+  Vitest 700 file / 5284 test, ESLint e `tsc -b --force` puliti.
+- Nota: durante il lavoro un'altra sessione modificava in parallelo i lead (rimozione `state_id`, form lead): quelle
+  modifiche non fanno parte di questa voce.
+
 ## OPPORTUNITÀ — "PRODOTTI DI INTERESSE" NON PIÙ OBBLIGATORIO — NON COMMITTATO (2026-09-17)
 
 Direttiva utente 2026-09-17: annulla l'obbligatorietà introdotta il 2026-07-23. Contratto: `products_of_interest`

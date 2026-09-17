@@ -23,11 +23,6 @@ use Illuminate\Validation\Rule;
  * The `opportunities.create` authorization for the flag stays in the
  * controller, alongside the plain `leads.create` check.
  *
- * `state_id` (Regione, spec 0047) is now a first-class USER input (directive
- * 2026-07-21): freely editable, auto-filled client-side from the chosen Sede
- * but overridable. When omitted, LeadService derives it from the Sede as a
- * fallback; a submitted value always wins.
- *
  * `products_of_interest` (spec 0094, D-5): OPTIONAL — a Lead is valid with
  * zero products (AC-036), so this carries no `min:1`. Coherence against the campaign's covered categories is
  * enforced service-side (App\Services\Leads\LeadProductInterestWriter), not
@@ -59,7 +54,6 @@ class StoreLeadRequest extends FormRequest
             'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'source_id' => ['nullable', 'integer', Rule::exists('sources', 'id')],
             'operator_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
-            'state_id' => ['nullable', 'integer', Rule::exists('states', 'id')],
             'notes' => ['nullable', 'string', 'max:5000'],
             'extra_fields' => ['nullable', 'array'],
             'extra_fields.*' => ['string'],

@@ -17,7 +17,6 @@ import { CAMPAIGNS_FOR_SELECT_RESOURCE, type CampaignForSelectItem } from '@/fea
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
-import { STATES_FOR_SELECT_RESOURCE } from '@/features/geo/state-for-select-api'
 import { useLeadForm } from '@/features/leads/use-lead-form'
 import { useLeadCampaignProductInterest } from '@/features/leads/use-lead-campaign-product-interest'
 import { LeadProductInterestSection } from '@/features/leads/lead-product-interest-section'
@@ -56,14 +55,10 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
 
   // Project -> campaign -> lead prefill chain: the just-picked Campaign's Sede,
   // hydrated instantly from its `meta` (no extra fetch) so the trigger shows
-  // the right label the moment it auto-fills `operational_site_id` — mirrors
-  // the (removed, directive 2026-07-21) Sede->Regione `quickCreated`-style
-  // pattern. Wired as the Campaign select's `onItemChange` (event handler,
-  // not a derived-state effect); a campaign with no Sede leaves the current
-  // value untouched, and the user can always override/clear it (prefill, not
-  // a lock). Unlike the superseded Sede->Regione auto-fill, this does NOT
-  // touch `state_id`: directive 2026-07-21 made the Regione a free,
-  // never-inherited field.
+  // the right label the moment it auto-fills `operational_site_id`. Wired as
+  // the Campaign select's `onItemChange` (event handler, not a derived-state
+  // effect); a campaign with no Sede leaves the current value untouched, and
+  // the user can always override/clear it (prefill, not a lock).
   // Sede <-> Operatore, reciprocally filtering/linked (spec 0048 AC-060..062).
   // `previousSiteIdRef` is the baseline every auto-fill/clear below reasons
   // against: it starts at the loaded lead's Sede (edit) or null (create) and
@@ -216,6 +211,12 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
             description={t('leads.form.sections.details.description')}
             className={sectionRevealClassName(1)}
           >
+            {/*
+              Sede and Operatore share a row: the Operatore list is scoped by
+              the Sede (AC-060..062), so the linked pair reads side by side.
+              Fonte describes the lead's origin, not its assignment, and takes
+              the full row below.
+            */}
             <div className="grid gap-3 sm:grid-cols-2">
               <RelationSelectField
                 control={form.control}
@@ -232,29 +233,6 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
                     : null)
                 }
                 onItemChange={handleSiteItemChange}
-                {...selectLabels}
-              />
-
-              <RelationSelectField
-                control={form.control}
-                name="state_id"
-                metaKey="state_id"
-                label={t('leads.form.state')}
-                resource={STATES_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('leads.form.stateSearch')}
-                selected={original?.state ?? null}
-                {...selectLabels}
-              />
-
-              <RelationSelectField
-                control={form.control}
-                name="source_id"
-                metaKey="source_id"
-                label={t('leads.form.source')}
-                hint={t('leads.form.hints.source')}
-                resource={SOURCES_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('leads.form.sourceSearch')}
-                selected={original?.source ?? null}
                 {...selectLabels}
               />
 
@@ -278,6 +256,20 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
                     {t('leads.form.hints.operatorFilteredBySite')}
                   </p>
                 )}
+              </div>
+
+              <div className="sm:col-span-2">
+                <RelationSelectField
+                  control={form.control}
+                  name="source_id"
+                  metaKey="source_id"
+                  label={t('leads.form.source')}
+                  hint={t('leads.form.hints.source')}
+                  resource={SOURCES_FOR_SELECT_RESOURCE}
+                  searchPlaceholder={t('leads.form.sourceSearch')}
+                  selected={original?.source ?? null}
+                  {...selectLabels}
+                />
               </div>
             </div>
           </FormSection>

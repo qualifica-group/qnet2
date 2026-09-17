@@ -9,7 +9,6 @@ import i18n from '@/i18n'
 import { LeadsTable } from '@/features/leads/leads-table'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { ModuleFormScreenMode, OpenMode } from '@/features/modules/types'
 import type { LeadDetailWithPermissions } from '@/features/leads/types'
 
 /**
@@ -45,67 +44,15 @@ const mockLead: LeadDetailWithPermissions = {
   },
 }
 
-// A lead already carrying both Operator and Site (used interchangeably with
-// `mockLead` for conversion: directive 2026-07-21 removed the correction
-// gate, so both open the Opportunity form directly regardless).
-const readyLead: LeadDetailWithPermissions = {
-  ...mockLead,
-  operational_site_id: 3,
-  operational_site: { id: 3, label: 'Main plant' },
-  operator_id: 7,
-  operator: { id: 7, name: 'Operator One' },
-}
-
 const canMock = vi.fn<(permission: string) => boolean>()
-// The leads Sheet stays modal throughout this suite; the opportunities Sheet
-// (spec 0045, second opener for 'convert_to_opportunity') varies per test to
-// cover AC-020 (modal) and AC-021 (page).
-let opportunitiesOpenMode: OpenMode = 'modal'
+// Every Sheet in this suite is modal.
 vi.mock('@/features/modules/use-module-open-mode', () => ({
-  useModuleOpenMode: (domain: string) => (domain === 'opportunities' ? opportunitiesOpenMode : 'modal'),
+  useModuleOpenMode: () => 'modal',
 }))
 
-// Isolates the real `useModuleOpener('opportunities')` call from the actual
-// opportunities FormScreen (owned by another teammate, in flux): the module
-// registry auto-collects every `*-screens.tsx` via `import.meta.glob`, so
-// this mock intercepts that exact file by its resolved path before the
-// registry eagerly imports it, keeping this suite about the leads adapter's
-// own responsibility (AC-020/021/024), not the opportunities form internals.
-vi.mock('@/features/opportunities/opportunity-screens', () => ({
-  moduleScreen: {
-    domain: 'opportunities',
-    basePath: '/opportunities',
-    defaultMode: 'modal',
-    labelKey: 'navigation.opportunities',
-    DetailScreen: () => null,
-    FormScreen: ({
-      mode,
-      onSuccess,
-      onCancel,
-    }: {
-      mode: ModuleFormScreenMode
-      onSuccess: (id: number) => void
-      onCancel: () => void
-    }) => (
-      <div>
-        <div>{`opportunity-form-${mode.type}`}</div>
-        {mode.type === 'create' && (
-          <div>{`opportunity-params:${JSON.stringify(mode.params ?? null)}`}</div>
-        )}
-        <button type="button" onClick={() => onSuccess(99)}>
-          stub-save-opportunity
-        </button>
-        <button type="button" onClick={onCancel}>
-          stub-cancel-opportunity
-        </button>
-      </div>
-    ),
-  },
-}))
-
-// The row action navigates away in 'page' mode (AC-021), so `useNavigate` is
-// mocked and asserted the same way `leads-table-import.test.tsx` does for the
-// "Import" button.
+// Spec 0140: the conversion never navigates, so `useNavigate` is mocked and
+// asserted the same way `leads-table-import.test.tsx` does for the "Import"
+// button.
 const navigateMock = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -176,10 +123,12 @@ vi.mock('@/features/table/table-view', () => ({
 
 const fetchLeadMock = vi.fn<() => Promise<LeadDetailWithPermissions>>()
 const deleteLeadMock = vi.fn()
+const convertLeadsToOpportunitiesMock = vi.fn()
 
 vi.mock('@/features/leads/api', () => ({
   fetchLead: () => fetchLeadMock(),
   deleteLead: (...args: unknown[]) => deleteLeadMock(...args),
+  convertLeadsToOpportunities: (...args: unknown[]) => convertLeadsToOpportunitiesMock(...args),
   leadDetailQueryKey: (id: number | null) => ['leads', 'detail', id],
 }))
 
@@ -225,10 +174,10 @@ function renderTable() {
   }
 }
 
-function axiosErrorWithStatus(status: number) {
+function axiosErrorWithStatus(status: number, data: Record<string, unknown> = { success: false, message: 'error' }) {
   return new AxiosError('failed', String(status), undefined, undefined, {
     status,
-    data: { success: false, message: 'error' },
+    data,
   } as never)
 }
 
@@ -241,12 +190,12 @@ beforeEach(() => {
   canMock.mockReturnValue(true)
   refreshMock.mockReset()
   navigateMock.mockReset()
-  opportunitiesOpenMode = 'modal'
   capturedOnAction = null
   capturedIconMap = undefined
   fetchLeadMock.mockReset()
   fetchLeadMock.mockResolvedValue(mockLead)
   deleteLeadMock.mockReset()
+  convertLeadsToOpportunitiesMock.mockReset()
   vi.mocked(toast.success).mockClear()
   vi.mocked(toast.error).mockClear()
 })
@@ -325,53 +274,48 @@ describe('LeadsTable — Sheet-based CRUD (AC-024)', () => {
     )
   })
 
-  it('AC-020: a ready lead opens the Opportunity modal Sheet prefilled, no navigation', async () => {
-    fetchLeadMock.mockResolvedValue(readyLead)
+  it('spec 0140: the convert action converts the lead directly, then refreshes the grid, no form', async () => {
+    convertLeadsToOpportunitiesMock.mockResolvedValue({ converted: 1, opportunity_ids: [99] })
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-convert'))
 
-    expect(await screen.findByText('opportunity-form-create')).toBeInTheDocument()
-    expect(screen.getByText('opportunity-params:{"lead_id":33}')).toBeInTheDocument()
-    expect(screen.queryByText('Complete the lead first')).not.toBeInTheDocument()
-    expect(navigateMock).not.toHaveBeenCalled()
-  })
-
-  it('AC-021: a ready lead navigates to the Opportunity form deep-link in "page" mode', async () => {
-    fetchLeadMock.mockResolvedValue(readyLead)
-    opportunitiesOpenMode = 'page'
-    renderTable()
-
-    fireEvent.click(screen.getByText('trigger-convert'))
-
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/opportunities/new?lead_id=33'))
-    expect(screen.queryByText('opportunity-form-create')).not.toBeInTheDocument()
-  })
-
-  it('AC-024: saving the Opportunity from the modal Sheet refreshes the leads grid', async () => {
-    fetchLeadMock.mockResolvedValue(readyLead)
-    renderTable()
-
-    fireEvent.click(screen.getByText('trigger-convert'))
-    expect(await screen.findByText('opportunity-form-create')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('stub-save-opportunity'))
-
-    await waitFor(() => expect(screen.queryByText('opportunity-form-create')).not.toBeInTheDocument())
+    await waitFor(() => expect(convertLeadsToOpportunitiesMock).toHaveBeenCalledWith({ lead_ids: [33] }))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Opportunity created.'))
     expect(refreshMock).toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 
-  /** Directive 2026-07-21: Operator/Site are optional, so the former correction gate is gone — a lead missing them still opens the Opportunity form directly. */
-  it('a lead missing Operator/Site opens the Opportunity form directly, no correction step', async () => {
-    fetchLeadMock.mockResolvedValue(mockLead)
+  it('spec 0140: a refused conversion toasts the blocker reason and leaves the grid alone', async () => {
+    convertLeadsToOpportunitiesMock.mockRejectedValue(
+      axiosErrorWithStatus(422, {
+        success: false,
+        message: '1 of the selected leads cannot be converted to an opportunity.',
+        errors: { reason: 'not_convertible', blockers: [{ id: 33, reason: 'registry_has_open_opportunity' }] },
+      }),
+    )
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-convert'))
 
-    expect(await screen.findByText('opportunity-form-create')).toBeInTheDocument()
-    expect(screen.getByText('opportunity-params:{"lead_id":33}')).toBeInTheDocument()
-    expect(screen.queryByText('Complete the lead first')).not.toBeInTheDocument()
-    expect(navigateMock).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'The lead cannot be converted: its registry already has an open opportunity.',
+      ),
+    )
+    expect(refreshMock).not.toHaveBeenCalled()
+  })
+
+  it('spec 0140: any other 422 toasts the server message', async () => {
+    convertLeadsToOpportunitiesMock.mockRejectedValue(
+      axiosErrorWithStatus(422, { success: false, message: 'Only one offer row is allowed.', errors: { offer_lines: ['Only one offer row is allowed.'] } }),
+    )
+    renderTable()
+
+    fireEvent.click(screen.getByText('trigger-convert'))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Only one offer row is allowed.'))
   })
 
   it("threads an icon override for the 'arrow-right-left' action key (spec 0044 action catalog)", () => {

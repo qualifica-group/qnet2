@@ -157,9 +157,7 @@ class OperationalSiteService
         // OperationalSitesTableDefinition::baseQuery.
         return OperationalSite::query()->with([
             'addresses' => function ($addressQuery): void {
-                // `state:id,name` feeds the for-select `meta.state_id`/
-                // `meta.state_label` (Regione auto-fill, directive 2026-07-21).
-                $addressQuery->where('is_primary', true)->with(['city:id,name', 'state:id,name']);
+                $addressQuery->where('is_primary', true)->with('city:id,name');
             },
         ]);
     }

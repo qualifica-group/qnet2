@@ -15,7 +15,7 @@ export type {
  * `GET /api/{resource}/for-select`. `id` + `label` are always present;
  * `subtitle` is the optional secondary line (e.g. the user email). A
  * concrete resource with a richer presentation bag extends this with its own
- * typed `meta` (see `ProjectForSelectItem`, `OperationalSiteForSelectItem`,
+ * typed `meta` (see `ProjectForSelectItem`, `UserForSelectItem`,
  * ...) rather than widening this base shape.
  */
 export interface ForSelectItem {

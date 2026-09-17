@@ -97,10 +97,6 @@ export function LeadDetailSections({ lead }: LeadDetailSectionsProps) {
             )}
           </RecordField>
 
-          <RecordField label={t('leads.form.state')}>
-            {lead.state?.name ?? <DetailEmpty />}
-          </RecordField>
-
           <RecordField label={t('leads.form.source')}>
             {lead.source?.name ?? <DetailEmpty />}
           </RecordField>

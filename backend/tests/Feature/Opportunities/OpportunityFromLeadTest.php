@@ -377,7 +377,11 @@ it('LeadResource exposes opportunity {id,name}|null (AC-065)', function () {
 
     $this->getJson("/api/leads/{$lead->id}")->assertOk()->assertJsonPath('data.opportunity', null);
 
-    $created = $this->postJson('/api/opportunities', array_merge(['lead_id' => $lead->id], nonDerivableOpportunityFks()))
+    // Spec 0140 (requirement change): a from-lead create now generates the
+    // Offerta with one REVENUE line per product of interest, which renames
+    // the opportunity after those products (spec 0077) — no products keeps
+    // the OPP_{id} fallback this assertion is about.
+    $created = $this->postJson('/api/opportunities', array_merge(['lead_id' => $lead->id], nonDerivableOpportunityFks(), ['products_of_interest' => []]))
         ->assertCreated();
     $opportunityId = $created->json('data.id');
 

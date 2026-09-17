@@ -23,7 +23,7 @@ export interface UserForSelectMeta {
 /**
  * A single user option as returned by `GET /api/users/for-select`, carrying
  * its Sede presentation bag so a caller can auto-fill a dependent Sede field
- * without a second fetch (mirrors `OperationalSiteForSelectItem`).
+ * without a second fetch (mirrors `CampaignForSelectItem`).
  */
 export interface UserForSelectItem extends ForSelectItem {
   meta?: UserForSelectMeta

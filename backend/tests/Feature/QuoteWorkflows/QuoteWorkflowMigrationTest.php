@@ -129,9 +129,10 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // (78th), the segnatempo note now mirrored as a commessa comment, and spec
     // 0139's `2026_09_17_130000_merge_mobile_contacts_into_phone` (79th) and
     // `2026_09_17_130100_remap_mobile_import_field_to_phone` (80th), the
-    // `mobile` contact type folded into `phone`. Adding a migration means
-    // bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 80]);
+    // `mobile` contact type folded into `phone`, and
+    // `2026_09_17_140000_drop_state_id_from_leads_table` (81st), the Lead's
+    // Regione removed. Adding a migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 81]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

@@ -5,10 +5,7 @@ import type { LeadFormValues } from '@/features/leads/use-lead-form'
 /**
  * Builds the create payload. `registry_id`/`campaign_id` are validated
  * non-null by the schema's refine before submit (BR-1, D-1). Lead status is
- * derived server-side and is not submitted. `state_id` (directive
- * 2026-07-21) is sent unconditionally, mirroring the opportunity form: the
- * free, user-editable Regione — the form's current value, never inherited
- * from the Sede.
+ * derived server-side and is not submitted.
  */
 export function buildCreatePayload(values: LeadFormValues): CreateLeadPayload {
   return {
@@ -17,7 +14,6 @@ export function buildCreatePayload(values: LeadFormValues): CreateLeadPayload {
     operational_site_id: values.operational_site_id,
     source_id: values.source_id,
     operator_id: values.operator_id,
-    state_id: values.state_id,
     notes: values.notes,
     extra_fields: entriesToRecord(values.extra_fields),
     products_of_interest: values.products_of_interest,
@@ -51,9 +47,6 @@ export function buildUpdatePayload(values: LeadFormValues, original: LeadDetail)
   }
   if (values.operator_id !== original.operator_id) {
     payload.operator_id = values.operator_id
-  }
-  if (values.state_id !== (original.state_id ?? null)) {
-    payload.state_id = values.state_id
   }
   if (values.notes !== original.notes) {
     payload.notes = values.notes

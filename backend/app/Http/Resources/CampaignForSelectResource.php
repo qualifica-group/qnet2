@@ -14,9 +14,7 @@ use Illuminate\Http\Request;
  * before this spec, per the 0023 note). `meta.operational_site` (prefill-
  * modifiable sede) carries {id, label} — same shape ProjectForSelectResource
  * exposes — so the Lead form can prefill the Sede from the chosen campaign,
- * with no extra request. The Lead's Regione stays free/user-editable, never
- * auto-filled from the sede (user directive 2026-07-21): no state_id/
- * state_label here.
+ * with no extra request.
  *
  * Spec 0094, D-1/D-2: `meta.product_category_ids` is NEW — the EFFECTIVE
  * product-category ids (the linked project's when derived, else the

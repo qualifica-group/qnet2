@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -13,14 +12,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import type { TableRow } from '@/features/table/types'
+import { conversionBlockers } from '@/features/leads/lead-conversion-error'
 import { useConvertLeads } from '@/features/leads/use-convert-leads'
-import type { LeadConversionBlocker, LeadConversionBlockedError } from '@/features/leads/types'
+import type { LeadConversionBlocker } from '@/features/leads/types'
 
 /** The lifecycle status a lead already holding an Opportunity is projected with. */
 const CONVERTED_STATUS = 'converted_to_opportunity'
-
-/** Discriminator of the 422 body a refused batch answers with (spec 0071). */
-const NOT_CONVERTIBLE = 'not_convertible'
 
 export interface ConvertLeadsDialogProps {
   open: boolean
@@ -89,12 +86,10 @@ export function ConvertLeadsDialog({
     try {
       await convertMutation.mutateAsync({ lead_ids: rows.map((row) => row.id) })
     } catch (error) {
-      const blocked = axios.isAxiosError(error)
-        ? (error.response?.data?.errors as LeadConversionBlockedError | undefined)
-        : undefined
+      const blocked = conversionBlockers(error)
 
-      if (blocked?.reason === NOT_CONVERTIBLE) {
-        setBlockers(blocked.blockers)
+      if (blocked) {
+        setBlockers(blocked)
         return
       }
 

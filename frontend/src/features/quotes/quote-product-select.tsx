@@ -11,7 +11,7 @@ import type { QuoteLineCategoryRef, QuoteLineUnitOfMeasureRef } from '@/features
  * `unit_of_measure`/`product_typology`.
  * Typed HERE (not in `features/products/for-select-api.ts`, out of this
  * module's write surface) the same way `ProjectForSelectItem`/
- * `OperationalSiteForSelectItem` extend the base `ForSelectItem` for their
+ * `UserForSelectItem` extend the base `ForSelectItem` for their
  * own single consumer. This is what lets a quote line precompile
  * `unit_price`/`vat_rate_id` and show the unit on pick (AC-074).
  */

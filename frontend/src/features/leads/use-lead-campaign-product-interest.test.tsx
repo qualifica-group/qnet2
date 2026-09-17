@@ -55,7 +55,6 @@ function renderGuard(productIds: number[], onCampaignApplied = vi.fn()) {
           operational_site_id: null,
           source_id: null,
           operator_id: null,
-          state_id: null,
           notes: null,
           extra_fields: [],
           products_of_interest: productIds,

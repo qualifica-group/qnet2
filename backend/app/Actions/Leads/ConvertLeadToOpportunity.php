@@ -5,16 +5,11 @@ declare(strict_types=1);
 namespace App\Actions\Leads;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
-use App\DataObjects\Quotes\CreateQuoteData;
-use App\Enums\CategoryManagementMode;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
-use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\OpportunityService;
-use App\Services\Quotes\ProductOfferLineResolver;
-use App\Services\QuoteService;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -28,46 +23,23 @@ use Illuminate\Validation\ValidationException;
  * Reuses LeadOpportunityDefaultsResolver (the single BR-1 derivation point,
  * spec 0040) for registry_id/source_id/product lines, and
  * OpportunityService::create() for the actual persistence (product lines
- * sync, and — spec 0057, D-5 — the `OPP_{id}` name derivation), rather than
- * re-implementing either.
- *
- * Spec 0094, D-3/AC-062, amended by spec 0102 D-1/AC-020: the conversion
- * ALWAYS creates the ONE collegata Offerta, through the SAME
- * QuoteService::create() the quotes module uses — never a second
- * implementation of its code/status/aggregates — with one REVENUE line per
- * product of interest, or zero lines when the Lead carries none (spec 0102
- * D-1 supersedes spec 0094 AC-065, which used to skip the Offerta entirely
- * on zero products). D-6/AC-067: a derived classification resolving to a
- * `single` management-mode root accepts one offer row only; that check runs
- * AFTER the Opportunity (and its product lines) are persisted — mirrors
- * RequestCreationService::assertOfferLinesFitManagementMode(), the same
- * shared OpportunityProductLineCoverage the FormRequest-based
- * ValidatesQuoteLines::enforceSingleOfferLine() cannot reach here, since the
- * Opportunity is born in this very (possibly not self-opened) transaction —
- * a rejection at that point still rolls back everything Step 3 wrote.
+ * sync, the `OPP_{id}` name derivation of spec 0057 D-5, and — spec 0140 —
+ * the collegata Offerta through LeadConversionOfferCreator, since `lead_id`
+ * is always set here), rather than re-implementing any of them.
  */
 final class ConvertLeadToOpportunity
 {
     public function __construct(
         private readonly LeadOpportunityDefaultsResolver $defaultsResolver,
         private readonly OpportunityService $opportunityService,
-        private readonly OpportunityProductLineCoverage $coverage,
-        private readonly QuoteService $quoteService,
-        private readonly ProductOfferLineResolver $offerLineResolver,
     ) {}
 
     /**
      * @param  ?User  $actor  who triggered the conversion, propagated to
      *                        OpportunityService so the assignment notifications
      *                        (spec 0081) can exclude them and name them as the
-     *                        author. Also who the generated Offerta (D-3,
-     *                        always created — spec 0102 D-1) is attributed
-     *                        to — QuoteService::create() requires a non-null
-     *                        actor, so a null one here (today: no caller
-     *                        passes one) skips the Offerta entirely rather
-     *                        than crashing; the Opportunity is still created
-     *                        and still carries the transferred products of
-     *                        interest (AC-061).
+     *                        author, and to whom the generated Offerta is
+     *                        attributed (a null actor skips the Offerta).
      */
     public function handle(Lead $lead, ?User $actor = null): Opportunity
     {
@@ -90,9 +62,10 @@ final class ConvertLeadToOpportunity
         // Step 3: persist through OpportunityService::create(), so product
         // line sync, the products-of-interest transfer (AC-061, covered by
         // construction: they came from categories the SAME campaign lines
-        // cover) and the `OPP_{id}` name derivation (spec 0057 D-5) stay the
+        // cover), the `OPP_{id}` name derivation (spec 0057 D-5) and the
+        // collegata Offerta (spec 0094 D-3, spec 0102 D-1, spec 0140) stay the
         // single implementation.
-        $opportunity = $this->opportunityService->create(new CreateOpportunityData(
+        return $this->opportunityService->create(new CreateOpportunityData(
             registryId: $defaults->values['registry_id'],
             referentId: null,
             commercialId: null,
@@ -118,66 +91,6 @@ final class ConvertLeadToOpportunity
             // User directive 2026-07-27: the "Note generali" are seeded from
             // the lead's own notes (plain default, never BR-2-locked).
             generalNotes: $defaults->values['general_notes'],
-        ), $actor);
-
-        // Step 4 (D-6/AC-067): reject a `single`-managed derivation carrying
-        // 2+ products of interest — see class docblock for why this runs
-        // here rather than through the FormRequest-only ValidatesQuoteLines.
-        $this->assertOfferLinesFitManagementMode($opportunity, $productIds);
-
-        // Step 5 (D-3/D-7/AC-062, spec 0102 D-1/AC-020): with a known actor,
-        // ALWAYS generate the single collegata Offerta — with one REVENUE
-        // line per product of interest, or zero lines when there are none.
-        $this->createOfferForActor($opportunity, $productIds, $actor);
-
-        return $opportunity;
-    }
-
-    /**
-     * @throws ValidationException more than one distinct product of interest on a `single`-managed derivation
-     */
-    private function assertOfferLinesFitManagementMode(Opportunity $opportunity, array $productIds): void
-    {
-        if (count($productIds) < 2) {
-            return;
-        }
-
-        if ($this->coverage->managementModeOf($opportunity) !== CategoryManagementMode::Single) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'offer_lines' => [__(OpportunityProductLineCoverage::SINGLE_OFFER_LINE_MESSAGE)],
-        ]);
-    }
-
-    /**
-     * @param  array<int, int>  $productIds  possibly empty (spec 0102 D-1):
-     *                                       ProductOfferLineResolver::resolve()
-     *                                       returns [] for [], so the Offerta
-     *                                       is created with zero offer lines
-     *                                       rather than skipped.
-     */
-    private function createOfferForActor(Opportunity $opportunity, array $productIds, ?User $actor): void
-    {
-        if ($actor === null) {
-            return;
-        }
-
-        $this->quoteService->create(new CreateQuoteData(
-            code: null,
-            title: $opportunity->name,
-            opportunityId: $opportunity->id,
-            workflowStatusId: null,
-            note: null,
-            commercialId: null,
-            commercialIdSubmitted: false,
-            reporterId: null,
-            reporterIdSubmitted: false,
-            supervisorId: null,
-            supervisorIdSubmitted: false,
-            internalNotes: null,
-            offerLines: $this->offerLineResolver->resolve($productIds),
         ), $actor);
     }
 

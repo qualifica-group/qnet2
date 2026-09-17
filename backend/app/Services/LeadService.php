@@ -10,7 +10,6 @@ use App\DataObjects\Leads\UpdateLeadData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Lead;
-use App\Models\OperationalSite;
 use App\Models\User;
 use App\Services\Leads\LeadProductInterestWriter;
 use App\Services\Opportunities\ProductCategoryCoherence;
@@ -50,8 +49,6 @@ class LeadService
         'operator',
         // spec 0040: LeadResource.opportunity {id,name}|null.
         'opportunity',
-        // spec 0047 (AC-003): Regione, derived from the sede.
-        'state',
         // spec 0094 (AC-030): LeadResource.products_of_interest[], each with
         // its category — never lazy-loaded (preventLazyLoading).
         'productsOfInterest.category',
@@ -80,10 +77,8 @@ class LeadService
      */
     public function create(CreateLeadData $data, ?User $actor = null): Lead
     {
-        $attributes = $this->withResolvedStateId($data);
-
-        $lead = DB::transaction(function () use ($attributes, $data, $actor): Lead {
-            $lead = Lead::create($attributes);
+        $lead = DB::transaction(function () use ($data, $actor): Lead {
+            $lead = Lead::create($data->attributes());
 
             // "Prodotti di interesse" (spec 0094, D-5): synced before a
             // possible conversion, so ConvertLeadToOpportunity always finds
@@ -105,16 +100,6 @@ class LeadService
     public function update(Lead $lead, UpdateLeadData $data): Lead
     {
         $attributes = $data->submittedAttributes();
-
-        // Regione resolution (directive 2026-07-21): a submitted state_id (a
-        // user edit, even an explicit clear to null) wins; otherwise, when
-        // only the Sede changed, re-derive from it (partial PATCH, AC-001) —
-        // an untouched sede leaves the previously stored state_id alone.
-        if ($data->stateIdSubmitted) {
-            $attributes['state_id'] = $data->stateId;
-        } elseif ($data->operationalSiteIdSubmitted) {
-            $attributes['state_id'] = $this->deriveStateId($data->operationalSiteId);
-        }
 
         DB::transaction(function () use ($lead, $data, $attributes): void {
             // AC-034: captured BEFORE the save() overwrites `campaign_id`,
@@ -154,42 +139,6 @@ class LeadService
             'campaign_id',
             ProductCategoryCoherence::LEAD_MESSAGE,
         );
-    }
-
-    /**
-     * Overlay the create's `state_id` (Regione) onto the mass-assignment
-     * $attributes. Directive 2026-07-21: the Regione is now a user input, so a
-     * submitted value (even an explicit null) wins; when the client sent none,
-     * it is derived from the Sede (spec 0047, D1) — the fallback that keeps
-     * API/import clients that don't send a Regione behaving as before. Kept
-     * off CreateLeadData::attributes() so the derivation-vs-submitted decision
-     * lives in one place.
-     *
-     * @return array<string, mixed>
-     */
-    private function withResolvedStateId(CreateLeadData $data): array
-    {
-        $attributes = $data->attributes();
-
-        $attributes['state_id'] = $data->stateIdSubmitted
-            ? $data->stateId
-            : $this->deriveStateId($data->operationalSiteId);
-
-        return $attributes;
-    }
-
-    /**
-     * The sede's Regione (spec 0047, D1: `operational_site->stateId`, itself
-     * the primary address' `state_id`), a single query — none at all when
-     * $operationalSiteId is null.
-     */
-    private function deriveStateId(?int $operationalSiteId): ?int
-    {
-        if ($operationalSiteId === null) {
-            return null;
-        }
-
-        return OperationalSite::with('addresses')->find($operationalSiteId)?->state_id;
     }
 
     /**

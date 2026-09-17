@@ -47,10 +47,6 @@ function baseFields(t: TFunction) {
     operational_site_id: z.number().nullable(),
     source_id: z.number().nullable(),
     operator_id: z.number().nullable(),
-    // Directive 2026-07-21: the Regione is a first-class, free user input —
-    // always present, freely editable/clearable, never required and never
-    // inherited from the chosen Sede (no auto-fill).
-    state_id: z.number().nullable(),
     notes: z.string().max(NOTES_MAX_LENGTH, t('leads.form.notesMax')).nullable(),
     extra_fields: z.array(extraFieldEntrySchema(t)),
     /**

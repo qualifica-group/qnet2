@@ -22,13 +22,6 @@ namespace App\DataObjects\Leads;
  * deliberately absent from attributes() — it must never reach
  * `Lead::create()`'s mass assignment.
  *
- * `stateId` (Regione, spec 0047 / directive 2026-07-21) is a user input:
- * `stateIdSubmitted` carries whether the client actually sent it, so
- * LeadService can honour a submitted value (including an explicit null) and
- * fall back to deriving it from the Sede only when the key was absent. Like
- * `state_id` on the DB, it is set by the Service's overlay, not through
- * attributes().
- *
  * `productsOfInterest` (spec 0094, D-5) follows the SAME null-means-
  * untouched convention as CreateOpportunityData's own field: synced by
  * App\Services\Leads\LeadProductInterestWriter, never mass-assigned, so it
@@ -49,8 +42,6 @@ final readonly class CreateLeadData
         public ?string $notes,
         public ?array $extraFields = null,
         public bool $convertToOpportunity = false,
-        public ?int $stateId = null,
-        public bool $stateIdSubmitted = false,
         public ?array $productsOfInterest = null,
     ) {}
 
@@ -70,8 +61,6 @@ final readonly class CreateLeadData
             notes: $data['notes'] ?? null,
             extraFields: $data['extra_fields'] ?? null,
             convertToOpportunity: (bool) ($data['convert_to_opportunity'] ?? false),
-            stateId: isset($data['state_id']) ? (int) $data['state_id'] : null,
-            stateIdSubmitted: array_key_exists('state_id', $data),
             productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
         );
     }
@@ -91,8 +80,7 @@ final readonly class CreateLeadData
 
     /**
      * The lead attributes for a mass-assignment create (framework array
-     * boundary). `state_id` is intentionally excluded — LeadService overlays
-     * it (submitted value or Sede-derived fallback).
+     * boundary).
      *
      * @return array<string, mixed>
      */

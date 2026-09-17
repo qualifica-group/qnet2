@@ -237,7 +237,6 @@ it('AC-009: missing operational_site_id with convert_to_opportunity -> 201, oppo
     $response = $this->postJson('/api/leads', $payload)->assertCreated();
 
     expect(Opportunity::where('lead_id', $response->json('data.id'))->count())->toBe(1);
-    expect(Lead::find($response->json('data.id'))->state_id)->toBeNull();
 });
 
 it('AC-010: convert_to_opportunity absent keeps the legacy behavior, no opportunity created', function () {

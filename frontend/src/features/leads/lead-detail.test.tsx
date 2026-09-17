@@ -209,21 +209,6 @@ describe('LeadDetailView — contacts', () => {
   })
 })
 
-/** Spec 0047 (D1, AC-003): the Regione is DERIVED server-side, read-only like every other field. */
-describe('LeadDetailView — Regione (spec 0047)', () => {
-  it('shows the derived region name when set', () => {
-    renderDetail(lead({ state_id: 3, state: { id: 3, name: 'Lombardy' } }))
-
-    expect(screen.getByText('Lombardy')).toBeInTheDocument()
-  })
-
-  it('shows the em dash placeholder when no region was derived', () => {
-    renderDetail(lead({ state_id: null, state: null }))
-
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
-  })
-})
-
 /** Spec 0094 (D-5): the chosen products, which the previous card never showed at all. */
 describe('LeadDetailView — products of interest (spec 0094)', () => {
   it('lists each product with the category it belongs to', () => {

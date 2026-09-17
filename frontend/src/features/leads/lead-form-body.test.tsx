@@ -140,7 +140,7 @@ beforeEach(() => {
 })
 
 describe('LeadForm — fields render (AC-061, AC-016)', () => {
-  it('renders the 6 relational selects (Region included, directive 2026-07-21) and a notes textarea', async () => {
+  it('renders the 5 relational selects and a notes textarea', async () => {
     render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
@@ -148,7 +148,6 @@ describe('LeadForm — fields render (AC-061, AC-016)', () => {
     await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
     expect(screen.getByTestId('select-Campaign')).toBeInTheDocument()
     expect(screen.getByTestId('select-Site')).toBeInTheDocument()
-    expect(screen.getByTestId('select-Region')).toBeInTheDocument()
     expect(screen.getByTestId('select-Source')).toBeInTheDocument()
     expect(screen.getByTestId('select-Operator')).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Notes' })).toBeInTheDocument()

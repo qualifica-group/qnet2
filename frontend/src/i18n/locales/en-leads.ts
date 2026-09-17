@@ -61,7 +61,7 @@ export const leads = {
       },
       details: {
         title: 'Details',
-        description: 'Site, source and operator associated with the lead.',
+        description: 'The assigned site and operator, and the source the lead came from.',
       },
       productsOfInterest: {
         title: 'Products of interest',
@@ -86,8 +86,6 @@ export const leads = {
     leadStatusSearch: 'Search lead statuses…',
     operationalSite: 'Site',
     operationalSiteSearch: 'Search sites…',
-    state: 'Region',
-    stateSearch: 'Search regions…',
     source: 'Source',
     sourceSearch: 'Search sources…',
     operator: 'Operator',
@@ -188,6 +186,13 @@ export const leads = {
       'Operators assigned to {{count}} lead(s). {{skipped}} left without a competent operator.',
     errors: {
       generic: 'Unable to assign the operators. Please try again.',
+    },
+  },
+  convert: {
+    success: 'Opportunity created.',
+    blocked: 'The lead cannot be converted: {{reason}}.',
+    errors: {
+      generic: 'Unable to convert the lead. Please try again.',
     },
   },
   bulkConvert: {

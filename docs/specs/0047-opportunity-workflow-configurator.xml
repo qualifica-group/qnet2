@@ -8,6 +8,16 @@
     D3 = al re-match, mappatura per system_key (open->open, closed->closed), altrimenti stato iniziale.
     D4 = tie-break a parità di specificità: workflow più vecchio (id asc). Nessun campo priority.
 
+  AMENDMENT 2026-09-17 (direttiva utente "togli il campo regione da lead, anche a DB"): D1 e'
+  RITIRATO anche per il Lead. La colonna `leads.state_id` e' DROPPATA (migrazione
+  2026_09_17_140000_drop_state_id_from_leads_table, che pulisce anche eventuali righe
+  `role_field_permissions` su `leads.state_id`), insieme a `Lead::state()`, alle regole di
+  Store/UpdateLeadRequest, ai campi `state`/`state_id` di LeadResource, al DTO
+  (`stateId`/`stateIdSubmitted`) e alla derivazione dalla Sede in LeadService. Cade anche
+  `meta` {state_id, state_label} di OperationalSiteForSelectResource, il cui unico consumatore
+  era la Regione del form Lead. AC-001 e l'AMENDMENT 2026-07-21 sono quindi integralmente RITIRATI:
+  D1 non sopravvive su nessuna entita'.
+
   AMENDMENT 2026-09-01 (direttiva utente "eliminare campo regione"): D1 e' RITIRATO per
   l'Opportunita'. La colonna `opportunities.state_id` e' DROPPATA (migrazione
   2026_09_01_120000_drop_state_id_from_opportunities_and_products_tables), insieme alla relazione

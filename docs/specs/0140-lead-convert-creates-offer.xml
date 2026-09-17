@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0140-lead-convert-creates-offer" status="implemented" owner="utente" date="2026-09-17">
+
+  <goal>
+    "Converti in opportunita'" funziona come l'importazione: converte il lead direttamente, senza aprire il
+    form opportunita', e crea l'opportunita' insieme all'offerta collegata.
+  </goal>
+
+  <context>
+    - Import (auto-conversione), checkbox in creazione lead e conversione massiva passano da
+      `ConvertLeadToOpportunity`, che creava l'offerta (spec 0094 D-3, spec 0102 D-1).
+    - L'azione singola "Converti lead" (riga tabella / dettaglio lead) apre il form opportunita'
+      precompilato e salva con `POST /api/opportunities` + `lead_id`: quel percorso passava solo da
+      `OpportunityService::create()` e NON creava l'offerta.
+  </context>
+
+  <decisions>
+    D-1  (utente 2026-09-17) Ogni opportunita' nata da un lead (`lead_id` valorizzato) riceve l'offerta
+         collegata, qualunque sia il percorso. Nessuna offerta per un'opportunita' creata senza lead.
+    D-2  Implementazione unica: `LeadConversionOfferCreator` (estratto da `ConvertLeadToOpportunity`),
+         chiamato da `OpportunityService::create()` nella stessa transazione quando `lead_id` e' presente.
+         `ConvertLeadToOpportunity` non crea piu' l'offerta da se' (passa gia' da `create()`).
+    D-3  Stesse regole dell'import: una riga REVENUE per prodotto di interesse dell'opportunita', zero righe
+         se non ce ne sono; categoria a gestione `single` con 2+ prodotti -> 422 `offer_lines`, rollback totale.
+    D-4  Con righe di offerta il nome dell'opportunita' si ricalcola dai prodotti (spec 0077), come gia'
+         avveniva per l'import; la risposta del POST riporta il nome aggiornato e `quotes_count` = 1.
+    D-5  (utente 2026-09-17) L'azione singola (riga tabella lead e bottone "Crea opportunita'" della scheda lead)
+         NON apre piu' il form precompilato: chiama `POST /api/leads/convert-to-opportunities` con un solo id
+         (stesso percorso della conversione massiva, stessi blocchi). Nessun popup di conferma. Esito: toast di
+         successo e refresh griglia / dettaglio; rifiuto: toast con il motivo del blocco, o il messaggio 422 del server.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: `LeadConversionOfferCreator` (nuovo), `OpportunityService::create`, `ConvertLeadToOpportunity`</item>
+      <item>Test Pest `OpportunityFromLeadOfferTest` (nuovo); `OpportunityFromLeadTest` AC-065 adeguato a D-4</item>
+      <item>Frontend (D-5): `use-lead-conversion.ts` (conversione diretta), `lead-conversion-error.ts` (lettura 422 condivisa col dialog massivo), `leads-table.tsx`, `lead-conversion-action.tsx`, i18n `leads.convert.*`; test `leads-table.test.tsx` e `lead-conversion-action.test.tsx` adeguati (spec 0045 AC-020..025 superati)</item>
+    </in>
+    <out>
+      <item>Creazione manuale di opportunita' senza lead</item>
+      <item>Form opportunita' con lead scelto a mano o deep-link `/opportunities/new?lead_id=N`: restano, e creano l'offerta per D-1</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo, shape della risposta invariata. -->
+    <endpoint method="POST" path="/api/opportunities">con `lead_id`: crea anche 1 offerta collegata; 422 `offer_lines` per D-3</endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST /api/opportunities con `lead_id` e 2 prodotti di interesse -> 1 offerta con 2 righe REVENUE, `quotes_count` 1. (Pest)</criterion>
+    <criterion id="AC-002">POST /api/opportunities con `lead_id` senza prodotti di interesse -> 1 offerta vuota. (Pest)</criterion>
+    <criterion id="AC-003">POST /api/opportunities senza `lead_id` -> nessuna offerta. (Pest)</criterion>
+    <criterion id="AC-004">`lead_id` + categoria `single` + 2 prodotti -> 422 `offer_lines`, nessuna opportunita'/offerta. (Pest)</criterion>
+    <criterion id="AC-005">Nessuna regressione su import, checkbox e conversione massiva (`LeadConversionOfferTest`, `BulkLeadConversionTest`, `ImportOpportunityConversionTest`); suite Pest completa, Pint pulito.</criterion>
+    <criterion id="AC-006">Riga tabella "Converti in opportunita'" -> `POST /leads/convert-to-opportunities` `{lead_ids:[id]}`, nessun form, toast di successo, griglia aggiornata; 422 bloccato -> toast col motivo. (Vitest)</criterion>
+    <criterion id="AC-007">Scheda lead "Crea opportunita'" -> conversione diretta, il bottone diventa "Vai all'opportunita'"; rifiuto -> toast, bottone invariato. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. File entro 500 righe.
+    - Test modificato solo dove il requisito e' cambiato (AC-065, dichiarato nel test).
+    - Nessun commit/cambio branch senza ordine esplicito (CLAUDE.md §3.6).
+  </constraints>
+
+</spec>
