@@ -92,14 +92,15 @@ class StoreOpportunityRequest extends FormRequest
             // "Note generali" (user directive 2026-07-27): free text, same
             // 5000-char ceiling as the lead `notes` it is inherited from.
             'general_notes' => ['nullable', 'string', 'max:5000'],
-            // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
-            // mirroring `product_lines` — at least one product to create, and
-            // the whole collection is replaced when submitted. A product
+            // "Prodotti di interesse": OPTIONAL (user directive 2026-09-17,
+            // reversing the 2026-07-23 mandate) — an opportunity may be
+            // created with none, and the whole collection is replaced when
+            // submitted. A product
             // outside the submitted `product_lines` categories is REFUSED
             // (user directive 2026-08-05): the coherence rule is checked by
             // OpportunityProductInterestWriter, once the lines are persisted,
             // so it cannot be expressed as a rule here.
-            'products_of_interest' => ['required', 'array', 'min:1'],
+            'products_of_interest' => ['sometimes', 'array'],
             'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
         ], $this->managerSlotsRules(), $this->productLinesRules(required: true), $this->rewardsRules());
     }

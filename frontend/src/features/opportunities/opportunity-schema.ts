@@ -91,13 +91,12 @@ function baseFields(t: TFunction) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('productLines.rowIncomplete') })
         }
       }),
-    // "Prodotti di interesse": a plain id set, MANDATORY since the user
-    // directive 2026-07-23 (at least one product, mirroring `product_lines`).
-    // A product outside the `product_lines` categories is refused server-side
+    // "Prodotti di interesse": a plain id set, OPTIONAL (user directive
+    // 2026-09-17, reversing the 2026-07-23 mandate). A product outside the `product_lines` categories is refused server-side
     // (user directive 2026-08-05), but the form never submits one: the picker
     // cannot leave that scope and the section prunes what a row change
     // orphans, so there is nothing to cross-validate here.
-    products_of_interest: z.array(z.number()).min(1, t('products.ofInterest.required')),
+    products_of_interest: z.array(z.number()),
     // Spec 0059 D-3: reward assignments for the reporter (chips under the
     // field). Only the type id travels — beneficiary/date are server-derived.
     // Duplicates are prevented client-side (the add control excludes

@@ -28,9 +28,8 @@ use Illuminate\Validation\Rule;
  * but overridable. When omitted, LeadService derives it from the Sede as a
  * fallback; a submitted value always wins.
  *
- * `products_of_interest` (spec 0094, D-5): OPTIONAL — unlike the opportunity
- * counterpart, a Lead is valid with zero products (AC-036), so this carries
- * no `min:1`. Coherence against the campaign's covered categories is
+ * `products_of_interest` (spec 0094, D-5): OPTIONAL — a Lead is valid with
+ * zero products (AC-036), so this carries no `min:1`. Coherence against the campaign's covered categories is
  * enforced service-side (App\Services\Leads\LeadProductInterestWriter), not
  * here.
  *

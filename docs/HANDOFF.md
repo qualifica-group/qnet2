@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## OPPORTUNITÀ — "PRODOTTI DI INTERESSE" NON PIÙ OBBLIGATORIO — NON COMMITTATO (2026-09-17)
+
+Direttiva utente 2026-09-17: annulla l'obbligatorietà introdotta il 2026-07-23. Contratto: `products_of_interest`
+è `sometimes|array` sia in `StoreOpportunityRequest` sia in `UpdateOpportunityRequest` (omesso = creata senza
+prodotti / lasciata invariata; `[]` = svuota). `OpportunitiesAuthorization`: niente più `mandatory`, soglia massima
+`visibleEditable()` senza `required` → meta `required: false`, e la modifica inline in griglia accetta `[]`.
+Frontend: `opportunity-schema.ts` senza `.min(1)`, rimossa la chiave i18n orfana `products.ofInterest.required`.
+Invariato: la regola di coerenza con le categorie prodotto (`ProductCategoryCoherence`) e l'obbligatorietà di `product_lines`.
+
+- Test aggiornati (cambio di requisito, dichiarato nei commenti): `OpportunityProductsOfInterestTest` (create
+  omesso/`[]` → 201, update `[]` svuota), `ProductsOfInterestInlineEditTest` (`[]` → 200),
+  `OpportunityMetaTest` (`required` false), `InlineCellEditingMandatoryFieldTest` (il controllo sulla collezione
+  vuota ora è coperto marcando il campo `required` tramite la matrice dei permessi nel DB), `opportunity-schema.test.ts`.
+- Verifica: suite Pest completa in seriale verde (7895 passati, 1 saltato), Vitest 1234 verdi, Pint/ESLint e `tsc -b --force` puliti.
+- Nota: `pest --parallel` dà ~75 errori `Call to undefined function` (helper condivisi tra file) e 1 failure in
+  `TaskConfigPermissionsTest`; tutti spariscono in seriale e sono estranei a questa modifica.
+
+## CAMPAGNE — DATA INIZIO PRECOMPILATA DAL PROGETTO — NON COMMITTATO (2026-09-17)
+
+Richiesta: la campagna prende la data inizio dal progetto collegato, ma solo come precompilazione (resta modificabile).
+
+- Backend: `ProjectForSelectResource` espone `meta.start_date` (`Y-m-d` o `null`); `ProjectService::forSelectBaseQuery`
+  seleziona anche `start_date`.
+- Frontend: `ProjectForSelectMeta.start_date: string | null`; `CampaignProjectField` alla selezione del progetto
+  imposta `start_date` SOLO se il progetto ne ha una (una data gia' digitata non viene svuotata). Scollegare il
+  progetto non tocca la data (come Partner/Sede). Nessun lock, `end_date` non ereditata.
+- Test: `ProjectForSelectTest` (meta.start_date valorizzata/null), `campaign-project-link.test.tsx` (+2: prefill
+  modificabile e inviato come editato; data digitata preservata se il progetto non ne ha). Pest Projects+Campaigns
+  165 verdi, Vitest campaigns 94 verdi, Pint/ESLint puliti, `tsc -b --force` pulito.
+
 ## TABELLE AG GRID — PAGINA DA 100 CARICATA A BLOCCHI DA 25 — NON COMMITTATO (2026-09-17)
 
 Bug (Gestione Richieste, vale per ogni tabella SSRM): scelta la dimensione di pagina 100, la griglia continuava a

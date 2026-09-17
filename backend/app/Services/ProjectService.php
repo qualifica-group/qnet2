@@ -288,7 +288,7 @@ class ProjectService
     private function forSelectBaseQuery(): Builder
     {
         return Project::query()
-            ->select(['id', 'code', 'name', 'pipeline_status_id', 'country_id', 'state_id', 'province_id', 'city_id', 'partner_id', 'operational_site_id', 'total_budget'])
+            ->select(['id', 'code', 'name', 'pipeline_status_id', 'country_id', 'state_id', 'province_id', 'city_id', 'partner_id', 'operational_site_id', 'start_date', 'total_budget'])
             ->with(self::DETAIL_RELATIONS)
             ->withSum('campaigns as allocated_budget_sum', 'total_budget');
     }

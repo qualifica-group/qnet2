@@ -171,7 +171,9 @@ it('PATCH with a product outside the row categories is refused (coherence rule)'
         ->and($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
 })->with(['opportunities']);
 
-it('PATCH with an empty collection -> 422, the collection is kept (mandatory field)', function (string $domain) {
+// Requirement CHANGED (user directive 2026-09-17): the field is optional again,
+// so an empty collection clears it instead of being refused.
+it('PATCH with an empty collection -> 200, the collection is cleared', function (string $domain) {
     $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update"]);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
@@ -182,9 +184,9 @@ it('PATCH with an empty collection -> 422, the collection is kept (mandatory fie
     $this->patchJson("/api/tables/{$domain}/rows/{$opportunity->id}", [
         'column' => 'products_of_interest',
         'value' => [],
-    ])->assertStatus(422);
+    ])->assertOk();
 
-    expect($opportunity->fresh()->productsOfInterest)->toHaveCount(1);
+    expect($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
 })->with(['opportunities']);
 
 it('PATCH with an unknown product id -> 422, nothing written', function (string $domain) {

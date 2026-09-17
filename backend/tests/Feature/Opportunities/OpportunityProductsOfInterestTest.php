@@ -128,9 +128,9 @@ it('update: product_lines that leave a persisted product uncovered -> 422 on pro
     expect($opportunity->fresh()->productLines->pluck('product_category_id')->all())->toBe([$category->id]);
 });
 
-// Requirement CHANGED (user directive 2026-07-23): products_of_interest used
-// to be optional — it is now mandatory on create, and never clearable.
-it('create: omitting products_of_interest -> 422, no opportunity created (mandatory since 2026-07-23)', function () {
+// Requirement CHANGED (user directive 2026-09-17): products_of_interest was
+// mandatory since 2026-07-23 — it is optional again on create, and clearable.
+it('create: omitting products_of_interest -> 201, the opportunity carries none', function () {
     $actor = productsOfInterestActor(['create']);
     $category = productsOfInterestCategory();
     Sanctum::actingAs($actor);
@@ -140,12 +140,12 @@ it('create: omitting products_of_interest -> 422, no opportunity created (mandat
         'product_lines' => [
             ['business_function_id' => $category->business_function_id, 'product_category_id' => $category->id],
         ],
-    ]))->assertStatus(422)->assertJsonValidationErrors('products_of_interest');
+    ]))->assertCreated()->assertJsonCount(0, 'data.products_of_interest');
 
-    expect(Opportunity::count())->toBe(0);
+    expect(Opportunity::count())->toBe(1);
 });
 
-it('create: products_of_interest: [] -> 422 (never clearable)', function () {
+it('create: products_of_interest: [] -> 201, the opportunity carries none', function () {
     $actor = productsOfInterestActor(['create']);
     $category = productsOfInterestCategory();
     Sanctum::actingAs($actor);
@@ -156,9 +156,28 @@ it('create: products_of_interest: [] -> 422 (never clearable)', function () {
             ['business_function_id' => $category->business_function_id, 'product_category_id' => $category->id],
         ],
         'products_of_interest' => [],
-    ]))->assertStatus(422)->assertJsonValidationErrors('products_of_interest');
+    ]))->assertCreated()->assertJsonCount(0, 'data.products_of_interest');
 
-    expect(Opportunity::count())->toBe(0);
+    $this->assertDatabaseCount('opportunity_product', 0);
+});
+
+it('update: products_of_interest: [] clears the collection', function () {
+    $actor = productsOfInterestActor(['update']);
+    $opportunity = Opportunity::factory()->create();
+    $category = productsOfInterestCategory();
+    $opportunity->productLines()->create([
+        'business_function_id' => $category->business_function_id,
+        'product_category_id' => $category->id,
+    ]);
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    $opportunity->productsOfInterest()->sync([$product->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/opportunities/{$opportunity->id}", [
+        'products_of_interest' => [],
+    ])->assertOk()->assertJsonCount(0, 'data.products_of_interest');
+
+    expect($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
 });
 
 it('update: products_of_interest is an authoritative replace; omitting it leaves the collection untouched', function () {

@@ -18,9 +18,8 @@ use Illuminate\Database\Eloquent\Model;
  *
  * Lead status is display-only and derived from assignment/opportunity state.
  *
- * Spec 0094, D-5: `products_of_interest` is OPTIONAL (unlike its Opportunity
- * counterpart) — a Lead is valid with zero products (AC-036), so it is not
- * `mandatory` here.
+ * Spec 0094, D-5: `products_of_interest` is OPTIONAL — a Lead is valid with
+ * zero products (AC-036), so it is not `mandatory` here.
  */
 class LeadsAuthorization extends AbstractResourceAuthorization
 {

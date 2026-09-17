@@ -177,6 +177,7 @@ function projectForSelectItem(overrides: {
       allocated_budget: '600.00',
       remaining_budget: '400.00',
       operational_site: { id: 81, label: 'Warehouse A' },
+      start_date: '2026-03-15',
       ...overrides.meta,
       geo: {
         country: { id: 61, name: 'Italy' },
@@ -322,6 +323,51 @@ describe('CampaignForm — selecting a Project (AC-042)', () => {
 
     // The picked project's Sede (81), never the decoy's (1).
     await waitFor(() => expect(screen.getByTestId('value-Site')).toHaveTextContent('81'))
+  })
+})
+
+describe('CampaignForm — start date prefilled from the Project', () => {
+  it('prefills the start date from the project, still editable and submitted as edited', async () => {
+    createCampaignMock.mockResolvedValue(campaign({ project_id: TEST_PROJECT_ID }))
+
+    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByLabelText('Name')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Linked campaign' } })
+    fireEvent.click(screen.getByRole('button', { name: 'select Project' }))
+    fireEvent.click(screen.getByRole('button', { name: /Planning & budget/ }))
+
+    await waitFor(() => expect(screen.getByLabelText('Start date')).toHaveValue('2026-03-15'))
+    expect(screen.getByLabelText('Start date')).toBeEnabled()
+
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-04-01' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
+    const payload = createCampaignMock.mock.calls[0][0] as Record<string, unknown>
+    expect(payload.start_date).toBe('2026-04-01')
+  })
+
+  it('keeps an already typed start date when the project has none', async () => {
+    fetchProjectsForSelectMock.mockResolvedValue({
+      items: [projectForSelectItem({ meta: { start_date: null } })],
+      export_link: null,
+      pagination: { total: 1, offset: 0, limit: 25, total_pages: 1 },
+    })
+
+    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByLabelText('Name')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Planning & budget/ }))
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-05-01' } })
+    fireEvent.click(screen.getByRole('button', { name: 'select Project' }))
+
+    await waitFor(() => expect(screen.getByTestId('value-Site')).toHaveTextContent('81'))
+    expect(screen.getByLabelText('Start date')).toHaveValue('2026-05-01')
   })
 })
 

@@ -80,9 +80,8 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('next_callback_at', 'date'),
             // "Funzione aziendale" + "categoria prodotto" (user directive
             // 2026-07-31): the same `product_lines` collection the create form
-            // writes, made editable from the panel too. MANDATORY for the same
-            // reason as products_of_interest — an opportunity must always
-            // carry at least one row (ValidatesProductLines' `min:1` on both
+            // writes, made editable from the panel too. MANDATORY — an
+            // opportunity must always carry at least one row (ValidatesProductLines' `min:1` on both
             // write channels), so no role matrix may narrow it away.
             new FieldDefinition('product_lines', 'custom', mandatory: true),
             // Attribution block (user directive 2026-07-22): "Fonte",

@@ -66,6 +66,8 @@ export interface ProjectForSelectMeta {
   geo: ProjectForSelectGeo
   /** The project's own Sede, inherited as a prefill (never a lock) by a campaign linking this project. */
   operational_site: ProjectForSelectRelation | null
+  /** The project's start date (`Y-m-d`), inherited as a prefill (never a lock) by a campaign linking this project. */
+  start_date: string | null
 }
 
 /** A single project option as returned by `GET /api/projects/for-select`, label = "PRJ-0001 — Name". */

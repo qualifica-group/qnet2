@@ -93,14 +93,14 @@ class UpdateOpportunityRequest extends FormRequest
             // "Note generali" (user directive 2026-07-27): free text, same
             // 5000-char ceiling as the lead `notes` it is inherited from.
             'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
-            // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
-            // mirroring `product_lines`' own partial-PATCH shape — the key may
-            // be omitted (untouched), but never cleared to `[]`. A product
+            // "Prodotti di interesse": OPTIONAL (user directive 2026-09-17) —
+            // the key may be omitted (untouched), and `[]` clears the
+            // collection. A product
             // outside the opportunity's product-line categories is REFUSED
             // (user directive 2026-08-05): the coherence rule needs the
             // record's persisted lines, so it is checked service-side
             // (OpportunityProductInterestWriter), not here.
-            'products_of_interest' => ['sometimes', 'array', 'min:1'],
+            'products_of_interest' => ['sometimes', 'array'],
             'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
         ], $this->managerSlotsRules(), $this->productLinesRules(required: false), $this->rewardsRules());
     }

@@ -85,6 +85,7 @@ it('200: create-context permissions.fields are editable when the actor may creat
         ->assertOk()
         ->assertJsonPath('permissions.fields.registry_id.required', true)
         ->assertJsonPath('permissions.fields.product_lines.required', true)
+        ->assertJsonPath('permissions.fields.products_of_interest.required', false)
         ->assertJsonPath('permissions.fields.estimated_value.required', false);
 });
 

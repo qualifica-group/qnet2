@@ -196,9 +196,8 @@ class TableCellUpdateService
     /**
      * A required field rejects null, a blank string (empty or whitespace-only)
      * AND an empty collection — `required` semantics, not `nullable`'s (0053,
-     * D-6). The empty-array case is what keeps a mandatory MULTISELECT column
-     * (user directive 2026-07-23: `products_of_interest`) from being cleared
-     * in-grid, where "no value" is `[]` rather than null.
+     * D-6). The empty-array case is what keeps a required MULTISELECT column
+     * from being cleared in-grid, where "no value" is `[]` rather than null.
      */
     private function isBlank(mixed $value): bool
     {

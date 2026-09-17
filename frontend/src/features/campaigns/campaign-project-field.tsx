@@ -49,8 +49,10 @@ function productLineRowsFromMeta(lines: ProjectForSelectProductLine[]): ProductL
 
 /**
  * The campaign's optional Project link. Picking a project prefills Partner
- * (`partner_id`) and the Sede (`operational_site_id`, project -> campaign ->
- * lead inheritance chain) — both still editable — plus `pipeline_status_id`
+ * (`partner_id`), the Sede (`operational_site_id`, project -> campaign ->
+ * lead inheritance chain) and the start date (`start_date`, only when the
+ * project has one, so a date already typed is never blanked) — all still
+ * editable — plus `pipeline_status_id`
  * (which the sibling `CampaignRelationField` then forces read-only),
  * `product_lines` (spec 0094, which the sibling `ProductLinesField` then
  * forces read-only) and the geo levels the project fills (BR-5, spec 0027:
@@ -61,7 +63,7 @@ function productLineRowsFromMeta(lines: ProjectForSelectProductLine[]): ProductL
  * later re-render. Clearing the project resets `pipeline_status_id` to
  * `null`, `product_lines` to `[]`, AND all 4 geo levels to `null` (and
  * unlocks them), so they become editable and required again (AC-043); the
- * always-own fields (Partner, Sede) are left untouched.
+ * always-own fields (Partner, Sede, start date) are left untouched.
  */
 export function CampaignProjectField({ control, setValue, selected }: CampaignProjectFieldProps) {
   const { t } = useTranslation()
@@ -86,6 +88,9 @@ export function CampaignProjectField({ control, setValue, selected }: CampaignPr
     }
     setValue('partner_id', meta.partner?.id ?? null, { shouldDirty: true })
     setValue('operational_site_id', meta.operational_site?.id ?? null, { shouldDirty: true })
+    if (meta.start_date) {
+      setValue('start_date', meta.start_date, { shouldDirty: true, shouldValidate: true })
+    }
     setValue('pipeline_status_id', meta.pipeline_status.id, { shouldDirty: true, shouldValidate: true })
     setValue('product_lines', productLineRowsFromMeta(meta.product_lines), {
       shouldDirty: true,

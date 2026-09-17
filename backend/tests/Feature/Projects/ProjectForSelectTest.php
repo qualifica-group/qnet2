@@ -62,6 +62,7 @@ it('maps a project to label "{code} — {name}" with the full campaign-form meta
         'pipeline_status_id' => $status->id,
         'partner_id' => $partner->id,
         'total_budget' => 1000,
+        'start_date' => '2026-03-15',
     ]);
     $project->productLines()->create(['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id]);
     Campaign::factory()->forProject($project)->create(['total_budget' => 400]);
@@ -77,6 +78,7 @@ it('maps a project to label "{code} — {name}" with the full campaign-form meta
             'business_function' => ['id' => $businessFunction->id, 'name' => 'Marketing'],
             'product_category' => ['id' => $category->id, 'name' => 'Widgets'],
         ]])
+        ->and($item['meta']['start_date'])->toBe('2026-03-15')
         ->and($item['meta']['total_budget'])->toBe('1000.00')
         ->and($item['meta']['allocated_budget'])->toBe('400.00')
         ->and($item['meta']['remaining_budget'])->toBe('600.00');
@@ -88,6 +90,7 @@ it('meta fields are null/empty when the corresponding relation is unset (AC-017)
         'partner_id' => null,
         'state_id' => null,
         'total_budget' => null,
+        'start_date' => null,
     ]);
     Sanctum::actingAs($actor);
 
@@ -97,6 +100,7 @@ it('meta fields are null/empty when the corresponding relation is unset (AC-017)
     expect($item['meta']['partner'])->toBeNull()
         ->and($item['meta']['product_lines'])->toBe([])
         ->and($item['meta']['state'])->toBeNull()
+        ->and($item['meta']['start_date'])->toBeNull()
         ->and($item['meta']['total_budget'])->toBeNull()
         ->and($item['meta']['remaining_budget'])->toBeNull();
 });

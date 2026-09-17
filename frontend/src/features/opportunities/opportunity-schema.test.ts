@@ -27,8 +27,8 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     // product_lines is mandatory (>=1 row, user directive 2026-07-17): the base
     // happy-path carries one valid row; the empty-collection case overrides it.
     product_lines: [{ root_category_id: 1, product_category_id: 11 }],
-    // products_of_interest is mandatory too (>=1 product, user directive
-    // 2026-07-23): the base happy-path carries one; the empty case overrides it.
+    // products_of_interest is optional (user directive 2026-09-17): the base
+    // happy-path carries one; the empty case overrides it.
     products_of_interest: [7],
     rewards: [],
     manager_slots: [],
@@ -79,21 +79,17 @@ describe('buildCreateOpportunitySchema', () => {
     expect(result.success).toBe(true)
   })
 
-  // User directive 2026-07-23: mandatory exactly like `product_lines`.
+  // Requirement CHANGED (user directive 2026-09-17): no longer mandatory —
+  // an empty collection is valid on create and clears it on update.
   describe('products_of_interest', () => {
-    it('rejects an empty collection', () => {
+    it('accepts an empty collection', () => {
       const schema = buildCreateOpportunitySchema(i18n.t)
-      const result = schema.safeParse(baseValues({ products_of_interest: [] }))
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.join('.') === 'products_of_interest')).toBe(true)
-      }
+      expect(schema.safeParse(baseValues({ products_of_interest: [] })).success).toBe(true)
     })
 
-    it('rejects an empty collection on update too (never clearable)', () => {
+    it('accepts an empty collection on update too (clearable)', () => {
       const schema = buildUpdateOpportunitySchema(i18n.t)
-      const result = schema.safeParse(baseValues({ products_of_interest: [] }))
-      expect(result.success).toBe(false)
+      expect(schema.safeParse(baseValues({ products_of_interest: [] })).success).toBe(true)
     })
 
     it('accepts one or more products', () => {

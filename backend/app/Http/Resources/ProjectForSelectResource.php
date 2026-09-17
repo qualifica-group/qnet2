@@ -12,8 +12,8 @@ use Illuminate\Http\Request;
 /**
  * For-select projection of a Project (GET /api/projects/for-select, spec
  * 0023). Label is "{code} — {name}"; `meta` carries the campaign-form
- * defaults (partner/pipeline_status/state/product_lines/operational_site)
- * plus the BR-7 budget figures, so selecting a project in the Campaign form
+ * defaults (partner/pipeline_status/state/product_lines/operational_site/
+ * start_date, the last one a prefill-modifiable `Y-m-d` date) plus the BR-7 budget figures, so selecting a project in the Campaign form
  * precompiles it with no extra request (ADR 0011). `operational_site`
  * (prefill-modifiable sede) has no own name column: its label is composed
  * the same way LeadResource/OperationalSiteForSelectResource do.
@@ -46,6 +46,7 @@ class ProjectForSelectResource extends ForSelectResource
                 'state' => $this->summarize($this->state, geo: true),
                 'product_lines' => $this->summarizeProductLines($this->productLines),
                 'operational_site' => $this->summarizeOperationalSite($this->operationalSite),
+                'start_date' => $this->start_date?->format('Y-m-d'),
                 'total_budget' => $totalBudget === null ? null : $this->formatMoney((float) $totalBudget),
                 'allocated_budget' => $this->formatMoney($allocatedBudget),
                 'remaining_budget' => $totalBudget === null ? null : $this->formatMoney((float) $totalBudget - $allocatedBudget),

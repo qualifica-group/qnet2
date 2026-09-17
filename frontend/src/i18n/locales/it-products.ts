@@ -321,7 +321,6 @@ export const products = {
     prunedNotice:
       'Rimossi dalla selezione, la loro categoria prodotto non è più sul record: {{names}}.',
     hintNoCategories: 'Aggiungi prima una funzione aziendale con la sua categoria prodotto.',
-    required: 'Seleziona almeno un prodotto di interesse.',
   },
   empty: 'Nessun prodotto selezionato.',
   // Differenza prezzo/costo, mostrata sia nella scheda (KPI) sia nel form

@@ -67,10 +67,10 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('source_id', 'select'),
             new FieldDefinition('operational_site_id', 'select'),
             new FieldDefinition('product_lines', 'multiselect', mandatory: true),
-            // "Prodotti di interesse" (user directive 2026-07-23): MANDATORY —
-            // an opportunity must carry at least one product, on every write
-            // channel (form, work panel, inline cell edit).
-            new FieldDefinition('products_of_interest', 'multiselect', mandatory: true),
+            // "Prodotti di interesse": OPTIONAL (user directive 2026-09-17,
+            // reversing the 2026-07-23 mandate) — clearable on every write
+            // channel (form, inline cell edit).
+            new FieldDefinition('products_of_interest', 'multiselect'),
             new FieldDefinition('manager_slots', 'multiselect'),
             new FieldDefinition('start_date', 'date'),
             new FieldDefinition('estimated_value', 'number'),
@@ -106,7 +106,7 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             // operational-sites.viewAny (see class docblock) — never `required`.
             'operational_site_id' => $mayWrite && $actor->can('operational-sites.viewAny') ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'product_lines' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
-            'products_of_interest' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'products_of_interest' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'manager_slots' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'start_date' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'estimated_value' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

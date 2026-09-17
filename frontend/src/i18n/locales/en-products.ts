@@ -319,7 +319,6 @@ export const products = {
     prunedNotice:
       'Removed from the selection, their product category is no longer on the record: {{names}}.',
     hintNoCategories: 'Add a business function with its product category first.',
-    required: 'Select at least one product of interest.',
   },
   empty: 'No product selected.',
   // Price minus cost, shown both on the record (KPI strip) and in the form
