@@ -54,13 +54,13 @@ describe('enumLabelOf', () => {
   })
 
   it('resolves a value to its Italian label', () => {
-    expect(enumLabelOf('contact_type', 'mobile')).toBe('Cellulare')
+    expect(enumLabelOf('contact_type', 'phone')).toBe('Telefono')
     expect(enumLabelOf('personal_data_type', 'company')).toBe('Azienda')
   })
 
   it('resolves the English label after switching language', async () => {
     await i18n.changeLanguage('en')
-    expect(enumLabelOf('contact_type', 'mobile')).toBe('Mobile')
+    expect(enumLabelOf('contact_type', 'phone')).toBe('Phone')
   })
 
   it('falls back to the raw value when the case is not translated', () => {

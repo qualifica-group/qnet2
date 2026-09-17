@@ -96,6 +96,6 @@ it('seeds both individual and company profiles with realistic nested data', func
         ->and($individuals)->not->toBeEmpty()
         ->and($companies->every(fn (User $user): bool => $user->personalData->contacts()->where('type', 'website')->exists()))->toBeTrue()
         ->and($companies->every(fn (User $user): bool => $user->personalData->addresses()->count() >= 2))->toBeTrue()
-        ->and($individuals->every(fn (User $user): bool => $user->personalData->contacts()->where('type', 'mobile')->where('is_primary', true)->exists()))->toBeTrue()
+        ->and($individuals->every(fn (User $user): bool => $user->personalData->contacts()->where('type', 'phone')->where('is_primary', true)->exists()))->toBeTrue()
         ->and($users->every(fn (User $user): bool => $user->personalData->addresses()->whereNotNull('country_id')->whereNotNull('state_id')->whereNotNull('city_id')->exists()))->toBeTrue();
 });

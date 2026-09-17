@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0139-single-phone-contact-type" status="implemented" owner="utente" date="2026-09-17">
+
+  <goal>
+    Un solo tipo di contatto telefonico: "Telefono". La voce "Cellulare" sparisce da ogni punto
+    dell'applicazione (form, griglie, import, duplicati, etichette) e l'import lead salva i
+    contatti come principali, cosi' il numero compare in Gestione richieste.
+  </goal>
+
+  <context>
+    - Segnalazione utente: in Gestione richieste il telefono non compare. Causa: l'import lead
+      (`LeadProfileBuilder::buildContacts`) marcava principale solo il PRIMO contatto della riga
+      (di solito l'email); telefono/cellulare restavano non principali e la colonna "Telefono"
+      (`RequestRowMapper`) legge solo contatti principali.
+    - `ContactService` impone al massimo un principale per (owner, tipo).
+    - DB dev: 101 contatti `mobile`, tutti su `personal_data`; 38 card con fisso e cellulare
+      entrambi principali.
+    - `mobile` e' usato da: enum, import lead (campo, alias, dedup), finder duplicati e unicita'
+      telefono (pool phone+mobile), sorgenti di migrazione Referenti/Sedi aziendali, colonna
+      Telefono di Gestione richieste, factory/seeder, frontend (schema, chip, icone, i18n).
+  </context>
+
+  <decisions>
+    D-1  (utente 2026-09-17) `ContactTypeEnum::Mobile` rimosso. Esiste solo `phone`.
+    D-2  (utente) I contatti `mobile` esistenti diventano `phone` con una migrazione dati. Se l'owner
+         ha gia' un `phone` principale e un `mobile` principale, resta principale l'EX CELLULARE,
+         il fisso diventa secondario. Le etichette `Mobile`/`Cellulare`/`Cell` (case-insensitive)
+         dei contatti convertiti vengono azzerate.
+    D-3  (utente) Import lead: ogni contatto della riga e' principale del proprio tipo (email e
+         telefono). In `update_existing` il valore della riga sovrascrive il principale di quel tipo
+         (altrimenti il primo di quel tipo) e lo rende principale.
+    D-4  Dati gia' importati: per ogni owner che ha contatti `email` o `phone` ma nessun principale di
+         quel tipo, la migrazione promuove quello con id minore (fa ricomparire il numero in griglia).
+    D-5  (utente) Import lead con un solo campo "Telefono": il campo `mobile` sparisce, gli alias
+         `cellulare`/`cell` vanno su `phone`. Un file con entrambe le colonne produce il conflitto di
+         mappatura gia' esistente e l'operatore sceglie la colonna.
+    D-6  Template di mappatura e import gia' configurati: `mobile` -> `phone` se `phone` non e' gia'
+         mappato, altrimenti la mappatura `mobile` viene tolta. Righe staged: `mapped_values.mobile`
+         va in `phone` se vuoto, altrimenti viene tolto.
+    D-7  Sorgenti di migrazione esterne (Referenti, Sedi aziendali): il campo esterno `mobile` resta
+         leggibile ma si salva come `phone`, DOPO il fisso, cosi' l'invariante lascia principale
+         l'ex cellulare (coerente con D-2).
+    D-8  Duplicati e unicita': il pool telefonico e' solo `phone`; `POST /api/identity/duplicate-check` accetta
+         `contacts.*.type` in `email,phone`.
+    D-9  La migrazione dati non e' reversibile (il tipo originale va perso): `down()` e' un no-op
+         dichiarato.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione dati contatti + mappature import (D-2, D-4, D-6)</item>
+      <item>Enum, import lead, dedup/unicita', sorgenti di migrazione, Gestione richieste, factory/seeder, `lang/it.json`, `config/imports.php`</item>
+      <item>Frontend: tipi/schema contatti, chip/icone, duplicati, i18n enum/import/duplicati</item>
+      <item>Test Pest/Vitest che usavano `mobile`: aggiornati a `phone` o rimossi dove il requisito non esiste piu'</item>
+    </in>
+    <out>
+      <item>Layout responsive "mobile" (breakpoint, sidebar): non e' il tipo di contatto</item>
+      <item>Regola "piu' telefoni principali": resta un principale per tipo</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo. Cambia il dominio del valore `type` dei contatti. -->
+    <enum name="contact_type">phone | fax | email | pec | website</enum>
+    <endpoint method="POST" path="/api/identity/duplicate-check">contacts.*.type: in email,phone; matched_on sottoinsieme di email,phone,tax_code,vat_number</endpoint>
+    <import resource="leads">campi contatto: email, phone (alias phone: telefono, tel, cellulare, cell)</import>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazione: owner con phone principale + mobile principale -> due `phone`, principale l'ex mobile, label `Mobile` azzerata; nessuna riga `mobile` residua. (Pest)</criterion>
+    <criterion id="AC-002">Migrazione: owner con soli contatti email/phone non principali -> quello con id minore di ciascun tipo diventa principale. (Pest)</criterion>
+    <criterion id="AC-003">Migrazione: template import con `mobile` e senza `phone` -> mappato su `phone`; con entrambi -> `mobile` tolto; riga staged `mobile` con `phone` vuoto -> spostato su `phone`. (Pest)</criterion>
+    <criterion id="AC-004">Import lead `create_new` con email e telefono -> entrambi principali (la colonna "Telefono" legge il principale). (Pest `LeadImportPrimaryContactsTest`)</criterion>
+    <criterion id="AC-005">Import lead `update_existing` su un'anagrafica con telefono non principale -> il telefono aggiornato e' principale. (Pest)</criterion>
+    <criterion id="AC-006">Il catalogo campi import lead non contiene `mobile`; l'intestazione "Cellulare" si mappa su `phone`. (Pest)</criterion>
+    <criterion id="AC-007">`GET /api/config` non espone `mobile` in `contact_type`; un contatto `type: mobile` viene rifiutato (422). (Pest)</criterion>
+    <criterion id="AC-008">Nessuna occorrenza di "Cellulare"/`mobile` come tipo di contatto nel frontend; Vitest, ESLint, `tsc -b --force` puliti.</criterion>
+    <criterion id="AC-009">Nessuna regressione: suite Pest completa di Contacts/PersonalData/Identity/Imports/Leads/Referents/Registries/RequestManagement/Migration, Pint pulito.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. File entro 300/500 righe.
+    - Test modificati solo dove il requisito "mobile" e' cambiato (dichiarato qui).
+    - Nessun commit/cambio branch senza ordine esplicito (CLAUDE.md §3.6).
+  </constraints>
+
+</spec>

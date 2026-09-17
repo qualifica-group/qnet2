@@ -29,7 +29,7 @@ class CheckIdentityDuplicatesRequest extends FormRequest
             'tax_code' => ['nullable', 'string', 'max:32'],
             'vat_number' => ['nullable', 'string', 'max:32'],
             'contacts' => ['nullable', 'array'],
-            'contacts.*.type' => ['required', 'in:email,phone,mobile'],
+            'contacts.*.type' => ['required', 'in:email,phone'],
             'contacts.*.value' => ['required', 'string', 'max:255'],
         ];
     }

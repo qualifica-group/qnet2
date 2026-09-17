@@ -161,7 +161,7 @@ it('refuses a client_identity.vat_number already held inside the namespace (422)
 });
 
 // ---------------------------------------------------------------------------
-// phone / mobile — one pooled namespace, as on the anagrafica form
+// phone — the same namespace as on the anagrafica form
 // ---------------------------------------------------------------------------
 
 it('refuses a client phone already assigned to another record (422)', function () {
@@ -179,28 +179,13 @@ it('refuses a client phone already assigned to another record (422)', function (
     assertNoRequestCreated();
 });
 
-it('refuses a client mobile colliding with another card PHONE (one pooled namespace) (422)', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $card = PersonalData::factory()->individual()->for(Referent::factory()->create(), 'personable')->create();
-    Contact::factory()->phone()->for($card, 'contactable')->create(['value' => '3331234567']);
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', newClientPayload([], [
-        ['type' => 'mobile', 'value' => '333 1234567', 'is_primary' => true],
-    ]))
-        ->assertStatus(422)
-        ->assertJsonValidationErrors(['client_contacts.0.value']);
-
-    assertNoRequestCreated();
-});
-
 it('refuses the same number submitted twice on the client card (422)', function () {
     $actor = requestManagementCreatorWith(['create']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management', newClientPayload([], [
         ['type' => 'phone', 'value' => '3331234567', 'is_primary' => true],
-        ['type' => 'mobile', 'value' => '333 1234-567'],
+        ['type' => 'phone', 'value' => '333 1234-567'],
     ]))
         ->assertStatus(422)
         ->assertJsonValidationErrors(['client_contacts.1.value']);

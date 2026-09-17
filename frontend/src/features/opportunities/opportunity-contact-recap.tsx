@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Globe, Mail, Phone, Printer, Smartphone, type LucideIcon } from 'lucide-react'
+import { Globe, Mail, Phone, Printer, type LucideIcon } from 'lucide-react'
 import {
   useReferentContacts,
   type ReferentContactType,
@@ -15,7 +15,6 @@ const CONTACT_ICON: Record<ReferentContactType, LucideIcon> = {
   email: Mail,
   pec: Mail,
   phone: Phone,
-  mobile: Smartphone,
   fax: Printer,
   website: Globe,
 }

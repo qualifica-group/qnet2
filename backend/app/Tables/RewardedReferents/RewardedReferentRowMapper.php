@@ -38,8 +38,7 @@ final class RewardedReferentRowMapper
             'full_name' => $card?->full_name,
             'registries' => $this->summarizeRegistries($row->registries),
             'email' => $this->primaryValue($contacts, ContactTypeEnum::Email),
-            'phone' => $this->primaryValue($contacts, ContactTypeEnum::Phone)
-                ?? $this->primaryValue($contacts, ContactTypeEnum::Mobile),
+            'phone' => $this->primaryValue($contacts, ContactTypeEnum::Phone),
             'rewards_count' => (int) ($row->rewards_count ?? 0),
             'pending_rewards_count' => (int) ($row->pending_rewards_count ?? 0),
             'approved_rewards_count' => (int) ($row->approved_rewards_count ?? 0),

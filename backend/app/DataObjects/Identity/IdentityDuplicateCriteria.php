@@ -9,7 +9,7 @@ namespace App\DataObjects\Identity;
  * match against the EXISTING cards of the shared identity namespace.
  * `contacts` entries stay plain `{type, value}` arrays
  * (CheckIdentityDuplicatesRequest already constrains `type` to
- * email|phone|mobile) rather than typed further — IdentityDuplicateFinder is
+ * email|phone) rather than typed further — IdentityDuplicateFinder is
  * their only consumer.
  */
 final readonly class IdentityDuplicateCriteria

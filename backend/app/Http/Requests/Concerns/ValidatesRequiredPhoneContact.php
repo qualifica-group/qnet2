@@ -20,8 +20,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * FormRequest and NOT in the service, so the paths that legitimately create a
  * record without contacts — import, lead conversion, seeders — keep working.
  *
- * "A phone number" means the same channels the uniqueness gate pools: a person
- * reachable only on a mobile is no less reachable. That list is
+ * "A phone number" means the same channels the uniqueness gate covers. That list is
  * `PHONE_CONTACT_TYPES`, owned by `ValidatesPhoneUniqueness` — which the host
  * request MUST also use, since a trait constant is only reachable through the
  * class that composes it.

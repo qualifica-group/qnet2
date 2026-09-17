@@ -62,7 +62,7 @@ describe('referentColumnRenderers.primary_contact', () => {
   it('reuses the shared ContactsCell: a count badge for the primary contacts', () => {
     renderCell('primary_contact', [
       { type: 'email', icon: 'mail', label: 'Work', value: 'ada@example.com' },
-      { type: 'phone', icon: 'phone', label: 'Mobile', value: '+39 333 1234567' },
+      { type: 'phone', icon: 'phone', label: 'Personal', value: '+39 333 1234567' },
     ])
     expect(screen.getByLabelText('2 primary contacts')).toBeInTheDocument()
   })

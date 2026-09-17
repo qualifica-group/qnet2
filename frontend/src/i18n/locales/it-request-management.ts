@@ -27,6 +27,7 @@ export const requestManagement = {
     taxCode: 'Codice fiscale',
     vatNumber: 'Partita IVA',
     phone: 'Telefono',
+    email: 'Email',
     createdAt: 'Caricato il',
     nextCallbackAt: 'Prossimo richiamo',
     transferred: 'Trasferito',

@@ -13,7 +13,7 @@ import { normalizeVatNumber } from '@/lib/fiscal/vat-number'
  */
 
 /** Contact types whose value is a phone number. */
-const PHONE_TYPES = new Set(['phone', 'mobile', 'fax'])
+const PHONE_TYPES = new Set(['phone', 'fax'])
 /** Contact types whose value is a mail address (case-insensitive in practice). */
 const EMAIL_TYPES = new Set(['email', 'pec'])
 

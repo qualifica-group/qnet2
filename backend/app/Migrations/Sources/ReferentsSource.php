@@ -79,7 +79,7 @@ class ReferentsSource extends AbstractMigrationSource
             ['id' => 'email', 'label' => 'Email', 'type' => 'string'],
             ['id' => 'pec', 'label' => 'PEC', 'type' => 'string'],
             ['id' => 'phone', 'label' => 'Phone', 'type' => 'string'],
-            ['id' => 'mobile', 'label' => 'Mobile', 'type' => 'string'],
+            ['id' => 'mobile', 'label' => 'Phone 2', 'type' => 'string'],
             ['id' => 'fax', 'label' => 'Fax', 'type' => 'string'],
         ];
     }
@@ -166,8 +166,10 @@ class ReferentsSource extends AbstractMigrationSource
     }
 
     /**
-     * The referent's contact channels: email, PEC, phone, mobile and fax, each
-     * flagged primary (distinct types, so all stay primary). Delegates to the
+     * The referent's contact channels: email, PEC, phone and fax, each flagged
+     * primary. The external `mobile` field is stored as a second `phone` AFTER
+     * the landline, so the one-primary-per-type invariant keeps it primary
+     * (spec 0139 D-7). Delegates to the
      * shared candidate-driven builder.
      *
      * @param  array<string, mixed>  $record
@@ -179,7 +181,7 @@ class ReferentsSource extends AbstractMigrationSource
             ['field' => 'email', 'type' => ContactTypeEnum::Email, 'label' => 'Email'],
             ['field' => 'pec', 'type' => ContactTypeEnum::Pec, 'label' => 'PEC'],
             ['field' => 'phone', 'type' => ContactTypeEnum::Phone, 'label' => 'Telefono'],
-            ['field' => 'mobile', 'type' => ContactTypeEnum::Mobile, 'label' => 'Cellulare'],
+            ['field' => 'mobile', 'type' => ContactTypeEnum::Phone, 'label' => null],
             ['field' => 'fax', 'type' => ContactTypeEnum::Fax, 'label' => 'Fax'],
         ]);
     }

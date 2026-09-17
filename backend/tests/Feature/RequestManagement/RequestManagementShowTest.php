@@ -57,7 +57,7 @@ if (! function_exists('quoteWithContacts')) {
 
         $referent = Referent::factory()->create();
         $referentCard = PersonalData::factory()->for($referent, 'personable')->create();
-        Contact::factory()->mobile()->for($referentCard, 'contactable')->create([
+        Contact::factory()->phone()->for($referentCard, 'contactable')->create([
             'value' => '+39 333 0000000',
             'is_primary' => true,
         ]);

@@ -109,7 +109,8 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_15_100200_add_task_template_id_to_work_orders_table` (70th),
     // the task-templates module's two tables and its link onto `work_orders`,
     // and `2026_09_15_110000_add_work_order_note_to_time_entries_table`
-    // (71st), the snapshot of the segnatempo note mirrored onto its commessa,
+    // (71st), the snapshot of the segnatempo note mirrored onto its commessa
+    // (replaced by the 78th),
     // and spec 0128 D-10's
     // `2026_09_15_120000_convert_rich_text_columns_to_html` (72nd), the
     // legacy notes/tasks/task-templates plain-text -> rich-text-HTML
@@ -123,9 +124,14 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // site active flag, and spec 0136's
     // `2026_09_16_110000_add_normalized_value_to_contacts_table` (76th) and
     // `2026_09_16_120000_add_persisted_at_to_import_run_rows_table` (77th), the
-    // indexed contact dedup key and the per-row commit marker. Adding a
-    // migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 77]);
+    // indexed contact dedup key and the per-row commit marker, and
+    // `2026_09_17_100000_replace_work_order_note_with_note_id_on_time_entries_table`
+    // (78th), the segnatempo note now mirrored as a commessa comment, and spec
+    // 0139's `2026_09_17_130000_merge_mobile_contacts_into_phone` (79th) and
+    // `2026_09_17_130100_remap_mobile_import_field_to_phone` (80th), the
+    // `mobile` contact type folded into `phone`. Adding a migration means
+    // bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 80]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

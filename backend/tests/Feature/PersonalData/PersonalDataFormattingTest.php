@@ -140,11 +140,11 @@ it('contact update: re-formats an existing value', function () {
     Permission::findOrCreate('contacts.update');
     $actor->givePermissionTo('contacts.update');
     $card = PersonalData::factory()->individual()->create();
-    $contact = Contact::factory()->for($card, 'contactable')->create(['type' => 'mobile', 'value' => '333 0000000']);
+    $contact = Contact::factory()->for($card, 'contactable')->create(['type' => 'phone', 'value' => '333 0000000']);
     Sanctum::actingAs($actor);
 
     $this->putJson("/api/contacts/{$contact->id}", [
-        'type' => 'mobile',
+        'type' => 'phone',
         'value' => '+39 333 / 000 0000',
     ])->assertOk();
 

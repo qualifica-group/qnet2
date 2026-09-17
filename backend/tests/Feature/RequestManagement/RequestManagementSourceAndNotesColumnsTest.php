@@ -67,7 +67,10 @@ if (! function_exists('worklistColumns')) {
 // The config the grid builds its columns from
 // ---------------------------------------------------------------------------
 
-it('source opens the worklist and advertises a relation editor over sources', function () {
+// Direttiva utente 2026-09-17 moved "Fonte" from first place to right before
+// "Tutor": the full default order is asserted in
+// RequestManagementDefaultColumnsTest.
+it('source advertises a relation editor over sources', function () {
     Sanctum::actingAs(worklistColumnsActor(['viewAny', 'update']));
 
     $columns = worklistColumns();
@@ -78,15 +81,12 @@ it('source opens the worklist and advertises a relation editor over sources', fu
         ->and($source['relation']['resource'])->toBe('sources')
         ->and($source['sortable'])->toBeTrue()
         ->and($source['filterType'])->toBe('set')
-        // "tra le prime colonne": declared before every other worklist column.
-        ->and($source['order'])->toBeLessThan($columns['product_categories']['order']);
+        ->and($source['order'])->toBe($columns['general_notes']['order'] + 1);
 });
 
-// User directive 2026-08-31: `quote_workflow_status` ("Stato di lavorazione")
-// now sits BETWEEN the two — the operator reads what the offer contains, then
-// where it stands. `general_notes` keeps its place right after that block, and
-// its display-only contract is untouched.
-it('general_notes follows the offer_lines block and stays display-only', function () {
+// Direttiva utente 2026-09-17: `general_notes` now follows the client's
+// "Codice fiscale"; its display-only contract is untouched.
+it('general_notes follows tax_code and stays display-only', function () {
     Sanctum::actingAs(worklistColumnsActor(['viewAny', 'update']));
 
     $columns = worklistColumns();
@@ -95,8 +95,7 @@ it('general_notes follows the offer_lines block and stays display-only', functio
     expect($notes['editable'])->toBeFalse()
         ->and($notes)->not->toHaveKey('editor')
         ->and($notes['filterType'])->toBe('text')
-        ->and($columns['quote_workflow_status']['order'])->toBe($columns['offer_lines']['order'] + 1)
-        ->and($notes['order'])->toBe($columns['quote_workflow_status']['order'] + 1);
+        ->and($notes['order'])->toBe($columns['tax_code']['order'] + 1);
 });
 
 // ---------------------------------------------------------------------------

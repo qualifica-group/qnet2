@@ -15,8 +15,8 @@ uses(RefreshDatabase::class);
 
 /**
  * Phone number, codice fiscale and partita IVA unique across the shared
- * identity namespace — users, anagrafiche and referenti — with phone and mobile
- * pooled into one channel (user directive 2026-08-06, superseding the
+ * identity namespace — users, anagrafiche and referenti (user directive
+ * 2026-08-06, superseding the
  * per-module/per-channel scope of 2026-08-03).
  *
  * `referentUserWith()` is the ReferentCrudTest helper, guarded so either file
@@ -82,7 +82,7 @@ function referentPayloadWith(array $contacts, array $identity = []): array
 }
 
 // ---------------------------------------------------------------------------
-// create — phone/mobile
+// create — phone
 // ---------------------------------------------------------------------------
 
 it('create: 422 when the phone number already belongs to another referent', function () {
@@ -108,16 +108,6 @@ it('create: the collision ignores formatting, not just the exact string', functi
         ->assertJsonValidationErrors('personal_data.contacts.0.value');
 });
 
-it('create: 422 when the same number sits on another referent MOBILE (channels are pooled)', function () {
-    $actor = referentUserWith(['create']);
-    referentWithContact('mobile', REFERENT_PHONE);
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/referents', referentPayloadWith([['type' => 'phone', 'value' => REFERENT_PHONE]]))
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('personal_data.contacts.0.value');
-});
-
 it('create: 422 when the same number belongs to an ANAGRAFICA', function () {
     $actor = referentUserWith(['create']);
     cardWithContact(Registry::factory()->create(), 'phone', REFERENT_PHONE);
@@ -130,7 +120,7 @@ it('create: 422 when the same number belongs to an ANAGRAFICA', function () {
 
 it('create: 422 when the same number belongs to a USER account', function () {
     $actor = referentUserWith(['create']);
-    cardWithContact(User::factory()->create(), 'mobile', REFERENT_PHONE);
+    cardWithContact(User::factory()->create(), 'phone', REFERENT_PHONE);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/referents', referentPayloadWith([['type' => 'phone', 'value' => REFERENT_PHONE]]))

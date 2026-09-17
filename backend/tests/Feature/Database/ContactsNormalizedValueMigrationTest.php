@@ -56,7 +56,6 @@ it('backfills normalized_value for every contact and leaves value untouched', fu
     DB::table('contacts')->insert([
         rawContactRow('email', ' Mario@X.it '),
         rawContactRow('phone', '333 123-4567'),
-        rawContactRow('mobile', '+39 333 1234567'),
         rawContactRow('legacy_channel', 'something'),
     ]);
 
@@ -70,8 +69,6 @@ it('backfills normalized_value for every contact and leaves value untouched', fu
         ->and($rows['email']->value)->toBe(' Mario@X.it ')
         ->and($rows['phone']->normalized_value)->toBe('3331234567')
         ->and($rows['phone']->value)->toBe('333 123-4567')
-        ->and($rows['mobile']->normalized_value)->toBe('+393331234567')
-        ->and($rows['mobile']->value)->toBe('+39 333 1234567')
         ->and($rows['legacy_channel']->normalized_value)->toBeNull()
         ->and($rows['legacy_channel']->value)->toBe('something');
 });

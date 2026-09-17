@@ -117,17 +117,17 @@ it('creates a referent with its card, primary address, contacts and derived name
         ->and($address->line1)->toBe('Via Roma 1')
         ->and($address->country_id)->toBe($country->id);
 
-    // Every migrated contact is primary: the channels are distinct types
-    // (email/pec/phone/mobile/fax), so the one-primary-per-type invariant keeps
-    // them all primary.
+    // Every migrated contact is flagged primary; the external `mobile` is a
+    // second phone written AFTER the landline, so the one-primary-per-type
+    // invariant keeps the former mobile as the primary phone (spec 0139 D-7).
     $contacts = $referent->personalData->contacts;
     expect($contacts)->toHaveCount(5)
         ->and($contacts->where('type', 'email'))->toHaveCount(1)
         ->and($contacts->where('type', 'pec'))->toHaveCount(1)
-        ->and($contacts->where('type', 'phone'))->toHaveCount(1)
-        ->and($contacts->where('type', 'mobile'))->toHaveCount(1)
+        ->and($contacts->where('type', 'phone'))->toHaveCount(2)
         ->and($contacts->where('type', 'fax'))->toHaveCount(1)
-        ->and($contacts->every(fn ($contact) => $contact->is_primary))->toBeTrue();
+        ->and($contacts->where('type', 'phone')->firstWhere('is_primary', true)?->value)->toBe('+39 333 1234567')
+        ->and($contacts->where('is_primary', true))->toHaveCount(4);
 
     expect($run->fresh()->created_rows)->toBe(1);
 });

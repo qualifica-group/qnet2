@@ -187,7 +187,7 @@ interface ImportDefinition
     /**
      * Resolve the primary-key id of the EXISTING dominant record this staged
      * row would collide with / update (for leads: the matching Registry id,
-     * found by email/phone/mobile), or null when the row is new. Drives the
+     * found by email/phone), or null when the row is new. Drives the
      * wizard's duplicate handling at staging: StageImportJob stores it on
      * import_run_rows.duplicate_of_id and maps it to a row status per the
      * chosen dedup strategy (ignore→skipped, manual→duplicate, create_new/

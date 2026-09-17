@@ -249,10 +249,10 @@ class QualificaSampleLeadSeeder extends Seeder
             'label' => $isCompany ? 'General email' : 'Personal email',
         ]);
 
-        Contact::factory()->mobile()->primary()->for($card, 'contactable')->create(['label' => 'Mobile']);
+        Contact::factory()->phone()->primary()->for($card, 'contactable')->create();
 
         if ($isCompany) {
-            Contact::factory()->phone()->primary()->for($card, 'contactable')->create(['label' => 'Switchboard']);
+            Contact::factory()->phone()->for($card, 'contactable')->create(['label' => 'Switchboard']);
         }
     }
 

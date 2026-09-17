@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\RequestManagement;
 
 use App\Support\ManagerPositions;
+use InvalidArgumentException;
 
 /**
  * The Gestori Account SLOT columns of the `request-management` grid: the GA2
@@ -45,6 +46,23 @@ final class RequestManagerColumns
         ManagerPositions::OPERATOR => self::OPERATOR_COLUMN_ID,
         ManagerPositions::GA1 => self::GA1_COLUMN_ID,
     ];
+
+    /**
+     * One slot column by id: RequestColumnCatalog places the two slots apart
+     * (direttiva utente 2026-09-17: Operatore second, GA1 after "Fonte").
+     *
+     * @return array<string, mixed>
+     */
+    public static function column(string $columnId): array
+    {
+        foreach (self::columns() as $column) {
+            if ($column['id'] === $columnId) {
+                return $column;
+            }
+        }
+
+        throw new InvalidArgumentException("Unknown Gestore Account column [{$columnId}].");
+    }
 
     /**
      * @return array<int, array<string, mixed>>
@@ -115,8 +133,7 @@ final class RequestManagerColumns
             ],
             [
                 // GA1 (direttiva utente 2026-09-08, which moved this column
-                // off position 3): the slot right before the Operatore,
-                // editable in-cell exactly like it — same picker,
+                // off position 3): editable in-cell exactly like the Operatore — same picker,
                 // same nullable "clear the slot" semantics, same per-tab
                 // relabel. Three deliberate differences, each mirroring how
                 // the FORM already treats the two slots:

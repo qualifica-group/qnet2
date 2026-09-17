@@ -26,7 +26,7 @@ uses(RefreshDatabase::class);
  */
 
 // ---------------------------------------------------------------------------
-// AC-001 — tax_code match (email/phone/mobile pre-existing, tax_code new)
+// AC-001 — tax_code match (email/phone pre-existing, tax_code new)
 // ---------------------------------------------------------------------------
 
 it('AC-001: resolveDuplicateMatch matches an existing Registry by normalized tax_code', function () {
@@ -111,16 +111,16 @@ it('AC-001: staging a tax_code-matching row under the manual strategy resolves t
 // case/whitespace, via the normalized_value column.
 // ---------------------------------------------------------------------------
 
-it('AC-003: resolveDuplicateMatch finds a legacy-formatted mobile contact by its normalized_value', function () {
+it('AC-003: resolveDuplicateMatch finds a legacy-formatted phone contact by its normalized_value', function () {
     $registry = Registry::factory()->create();
     $card = PersonalData::factory()->individual()->for($registry, 'personable')->create();
-    Contact::factory()->mobile()->for($card, 'contactable')->create(['value' => '+39 333 123 4567']);
+    Contact::factory()->phone()->for($card, 'contactable')->create(['value' => '+39 333 123 4567']);
 
-    $match = app(LeadsImportDefinition::class)->resolveDuplicateMatch(['mobile' => '+393331234567'], []);
+    $match = app(LeadsImportDefinition::class)->resolveDuplicateMatch(['phone' => '+393331234567'], []);
 
     expect($match['id'])->toBe($registry->id)
         ->and($match['meta']['registry_id'])->toBe($registry->id)
-        ->and($match['meta']['matched_on'])->toBe(['mobile']);
+        ->and($match['meta']['matched_on'])->toBe(['phone']);
 });
 
 it('AC-003: resolveDuplicateMatch finds a contact by email regardless of case/whitespace', function () {

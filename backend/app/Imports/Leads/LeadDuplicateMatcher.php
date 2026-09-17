@@ -11,11 +11,11 @@ use App\Support\ContactValueNormalizer;
 
 /**
  * Resolves the EXISTING Registry (Anagrafica) a staged row collides with, by
- * email/phone/mobile (spec 0033 decision) or, additionally, by the card's
+ * email/phone (spec 0033 decision) or, additionally, by the card's
  * fiscal identifiers — `tax_code` (spec 0036) and `vat_number` (user directive
  * 2026-09-09). Spec 0041 D-1: the contact matched is a Registry,
  * not a Referent. Values are compared NORMALIZED (case/whitespace for email/
- * tax_code/vat_number, digits-only for phone/mobile).
+ * tax_code/vat_number, digits-only for phone).
  *
  * Spec 0136 (D-3/D-4): the candidate set is fetched with an INDEXED lookup —
  * `contacts.normalized_value` (`type`, `normalized_value`) for contacts,
@@ -31,7 +31,7 @@ use App\Support\ContactValueNormalizer;
 final class LeadDuplicateMatcher
 {
     /** Canonical, deterministic order for `LeadDuplicateMatch::$matchedOn`. */
-    private const array MATCH_ORDER = ['email', 'phone', 'mobile', 'tax_code', 'vat_number'];
+    private const array MATCH_ORDER = ['email', 'phone', 'tax_code', 'vat_number'];
 
     /**
      * The fiscal identifiers a row is matched on, in lookup order (user
@@ -51,7 +51,7 @@ final class LeadDuplicateMatcher
      */
     public function match(array $mapped): ?LeadDuplicateMatch
     {
-        // Step 1: an email/phone/mobile Contact match takes priority
+        // Step 1: an email/phone Contact match takes priority
         // (unchanged pre-0036 lookup); the fiscal columns are tried only when
         // no contact channel hits, keeping the existing semantics intact.
         $registryId = $this->matchByContact($mapped) ?? $this->matchByFiscalColumns($mapped);

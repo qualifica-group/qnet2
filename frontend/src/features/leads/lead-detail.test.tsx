@@ -167,7 +167,7 @@ describe('LeadDetailView — contacts', () => {
           name: 'Mario Rossi',
           primary_contacts: [
             { type: 'email', icon: 'mail', label: 'Work', value: 'mario@example.com' },
-            { type: 'mobile', icon: 'smartphone', label: 'Mobile', value: '+39 333 123 4567' },
+            { type: 'phone', icon: 'phone', label: 'Personal', value: '+39 333 123 4567' },
           ],
         },
       }),

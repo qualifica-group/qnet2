@@ -36,12 +36,10 @@ class DemoUserContactSeeder extends Seeder
             'label' => $card->type === PersonalDataTypeEnum::Company ? 'General email' : 'Personal email',
         ]);
 
-        Contact::factory()->mobile()->primary()->for($card, 'contactable')->create([
-            'label' => 'Mobile',
-        ]);
+        Contact::factory()->phone()->primary()->for($card, 'contactable')->create();
 
         if ($card->type === PersonalDataTypeEnum::Company) {
-            Contact::factory()->phone()->primary()->for($card, 'contactable')->create([
+            Contact::factory()->phone()->for($card, 'contactable')->create([
                 'label' => 'Switchboard',
             ]);
             Contact::factory()->pec()->for($card, 'contactable')->create([

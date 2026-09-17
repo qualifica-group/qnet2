@@ -96,9 +96,9 @@ it('returns attribute values when the attributes are present', function () {
 
 it('returns null/false when the attributes are absent', function () {
     // ContactType cases carry no #[Color] and (except Phone) no #[IsDefault].
-    expect(ContactTypeEnum::Mobile->color())->toBeNull()
-        ->and(ContactTypeEnum::Mobile->isDefault())->toBeFalse()
-        ->and(ContactTypeEnum::Mobile->hiddenOnForm())->toBeFalse();
+    expect(ContactTypeEnum::Fax->color())->toBeNull()
+        ->and(ContactTypeEnum::Fax->isDefault())->toBeFalse()
+        ->and(ContactTypeEnum::Fax->hiddenOnForm())->toBeFalse();
 });
 
 it('never throws for a case decorated with unrelated attributes and reads only the five presentation ones', function () {
@@ -152,10 +152,10 @@ it('serializes EnumMeta with snake_case keys', function () {
 it('returns options for every case in declaration order as EnumMeta', function () {
     $options = ContactTypeEnum::options();
 
-    expect($options)->toHaveCount(6)
+    expect($options)->toHaveCount(5)
         ->and($options)->each->toBeInstanceOf(EnumMeta::class)
         ->and(array_map(fn (EnumMeta $m) => $m->value, $options))
-        ->toBe(['phone', 'mobile', 'fax', 'email', 'pec', 'website']);
+        ->toBe(['phone', 'fax', 'email', 'pec', 'website']);
 });
 
 /*

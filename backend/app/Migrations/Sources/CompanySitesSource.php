@@ -68,7 +68,7 @@ class CompanySitesSource extends AbstractMigrationSource
             ['id' => 'email', 'label' => 'Email', 'type' => 'string'],
             ['id' => 'pec', 'label' => 'PEC', 'type' => 'string'],
             ['id' => 'phone', 'label' => 'Phone', 'type' => 'string'],
-            ['id' => 'mobile', 'label' => 'Mobile', 'type' => 'string'],
+            ['id' => 'mobile', 'label' => 'Phone 2', 'type' => 'string'],
             ['id' => 'fax', 'label' => 'Fax', 'type' => 'string'],
         ];
     }
@@ -176,7 +176,7 @@ class CompanySitesSource extends AbstractMigrationSource
             ['field' => 'email', 'type' => ContactTypeEnum::Email, 'label' => 'Email'],
             ['field' => 'pec', 'type' => ContactTypeEnum::Pec, 'label' => 'PEC'],
             ['field' => 'phone', 'type' => ContactTypeEnum::Phone, 'label' => 'Phone'],
-            ['field' => 'mobile', 'type' => ContactTypeEnum::Mobile, 'label' => 'Mobile'],
+            ['field' => 'mobile', 'type' => ContactTypeEnum::Phone, 'label' => null],
             ['field' => 'fax', 'type' => ContactTypeEnum::Fax, 'label' => 'Fax'],
         ]);
     }

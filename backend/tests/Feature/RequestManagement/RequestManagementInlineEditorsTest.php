@@ -314,7 +314,7 @@ it('AC-010: PATCH phone updates the primary telephone row and leaves the other c
     $card = $quote->opportunity->registry->personalData;
     $phone = Contact::factory()->create([
         'contactable_type' => 'personal_data', 'contactable_id' => $card->id,
-        'type' => ContactTypeEnum::Mobile, 'value' => '3330000000', 'is_primary' => true,
+        'type' => ContactTypeEnum::Phone, 'value' => '3330000000', 'is_primary' => true,
     ]);
     $email = Contact::factory()->create([
         'contactable_type' => 'personal_data', 'contactable_id' => $card->id,
@@ -328,8 +328,7 @@ it('AC-010: PATCH phone updates the primary telephone row and leaves the other c
     ])->assertOk()->assertJsonPath('data.phone', '3331234567');
 
     expect($phone->fresh()->value)->toBe('3331234567')
-        // the row keeps its own kind: a mobile stays a mobile
-        ->and($phone->fresh()->type)->toBe(ContactTypeEnum::Mobile)
+        ->and($phone->fresh()->type)->toBe(ContactTypeEnum::Phone)
         ->and($email->fresh())->not->toBeNull();
 });
 

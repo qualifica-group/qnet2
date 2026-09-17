@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Note;
 use App\Models\Task;
 use App\Models\TaskType;
 use App\Models\TimeEntry;
@@ -13,34 +14,38 @@ uses(RefreshDatabase::class);
 
 /*
 |--------------------------------------------------------------------------
-| Segnatempo note mirrored into the commessa's internal_notes
-| (user decision 2026-09-14: plain text, kept in sync on update/delete)
+| Segnatempo note mirrored as a comment on the commessa
+| (user decision 2026-09-17: collaborative note, not internal_notes; kept in
+| sync on update/delete; authored by the segnatempo owner)
 |--------------------------------------------------------------------------
 */
 
-if (! function_exists('workOrderNoteActor')) {
-    function workOrderNoteActor(): User
+if (! function_exists('timeEntryCommentActor')) {
+    /**
+     * @param  array<int, string>  $extraAbilities
+     */
+    function timeEntryCommentActor(array $extraAbilities = []): User
     {
         foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'exportMonthly', 'manageAll', 'viewAll'] as $ability) {
             Permission::findOrCreate("time-entries.{$ability}");
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo(['time-entries.create', 'time-entries.view', 'time-entries.update', 'time-entries.delete']);
+        $user->givePermissionTo(['time-entries.create', 'time-entries.view', 'time-entries.update', 'time-entries.delete', ...$extraAbilities]);
 
         return $user;
     }
 }
 
-if (! function_exists('workOrderNotePayload')) {
+if (! function_exists('timeEntryCommentPayload')) {
     /**
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
      */
-    function workOrderNotePayload(array $overrides = []): array
+    function timeEntryCommentPayload(array $overrides = []): array
     {
         return [
-            'date' => '2026-09-14',
+            'date' => '2026-09-17',
             'title' => 'Sopralluogo',
             'task_type_id' => TaskType::factory()->create()->id,
             'minutes' => 60,
@@ -49,163 +54,227 @@ if (! function_exists('workOrderNotePayload')) {
     }
 }
 
-it('appends the note to the commessa internal_notes on create', function () {
-    Sanctum::actingAs(workOrderNoteActor());
+if (! function_exists('workOrderComments')) {
+    /**
+     * @return array<int, string>
+     */
+    function workOrderComments(WorkOrder $workOrder): array
+    {
+        return Note::query()
+            ->where('notable_type', $workOrder->getMorphClass())
+            ->where('notable_id', $workOrder->id)
+            ->orderBy('id')
+            ->pluck('body')
+            ->all();
+    }
+}
+
+it('adds the note as a comment on the commessa and leaves internal_notes alone', function () {
+    $actor = timeEntryCommentActor();
+    Sanctum::actingAs($actor);
     $workOrder = WorkOrder::factory()->create(['internal_notes' => 'Nota manuale']);
 
-    $this->postJson('/api/time-entries', workOrderNotePayload([
+    $id = $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
-        'notes' => '  Cliente assente  ',
-    ]))->assertCreated();
+        'notes' => "  Cliente assente\n<b>richiamare</b>  ",
+    ]))->assertCreated()->json('data.id');
 
-    expect($workOrder->fresh()->internal_notes)->toBe("Nota manuale\n\nCliente assente");
+    $note = Note::query()->sole();
+
+    expect($workOrder->fresh()->internal_notes)->toBe('Nota manuale')
+        ->and($note->notable_type)->toBe($workOrder->getMorphClass())
+        ->and($note->notable_id)->toBe($workOrder->id)
+        ->and($note->body)->toBe('<p>Cliente assente<br>&lt;b&gt;richiamare&lt;/b&gt;</p>')
+        ->and($note->user_id)->toBe($actor->id)
+        ->and($note->parent_id)->toBeNull()
+        ->and($note->quote_id)->toBeNull()
+        ->and(TimeEntry::query()->find($id)->work_order_note_id)->toBe($note->id);
 });
 
-it('fills empty internal_notes with the note alone', function () {
-    Sanctum::actingAs(workOrderNoteActor());
-    $workOrder = WorkOrder::factory()->create(['internal_notes' => null]);
+it('shows the comment in the commessa notes thread', function () {
+    foreach (['view', 'viewAll'] as $ability) {
+        Permission::findOrCreate("work-orders.{$ability}");
+    }
+    Sanctum::actingAs(timeEntryCommentActor(['work-orders.view', 'work-orders.viewAll']));
+    $workOrder = WorkOrder::factory()->create();
 
-    $this->postJson('/api/time-entries', workOrderNotePayload([
+    $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
-        'notes' => 'Primo intervento',
+        'notes' => 'Visibile nel thread',
     ]))->assertCreated();
 
-    expect($workOrder->fresh()->internal_notes)->toBe('Primo intervento');
+    $this->getJson("/api/notes?entity_type=work-orders&entity_id={$workOrder->id}")
+        ->assertOk()
+        ->assertJsonPath('data.0.body', '<p>Visibile nel thread</p>');
 });
 
-it('leaves the commessa untouched when the segnatempo has no note', function () {
-    Sanctum::actingAs(workOrderNoteActor());
-    $workOrder = WorkOrder::factory()->create(['internal_notes' => 'Nota manuale']);
+it('adds no comment when the segnatempo has no note or no commessa', function () {
+    Sanctum::actingAs(timeEntryCommentActor());
+    $workOrder = WorkOrder::factory()->create();
 
-    $this->postJson('/api/time-entries', workOrderNotePayload([
+    $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
         'notes' => '   ',
     ]))->assertCreated();
 
-    expect($workOrder->fresh()->internal_notes)->toBe('Nota manuale');
+    $this->postJson('/api/time-entries', timeEntryCommentPayload(['notes' => 'Senza commessa']))->assertCreated();
+
+    expect(Note::query()->count())->toBe(0);
+});
+
+it('signs the comment with the segnatempo owner, not the acting admin', function () {
+    $admin = timeEntryCommentActor(['time-entries.manageAll']);
+    $owner = User::factory()->create();
+    Sanctum::actingAs($admin);
+    $workOrder = WorkOrder::factory()->create();
+
+    $this->postJson('/api/time-entries', timeEntryCommentPayload([
+        'user_id' => $owner->id,
+        'work_order_id' => $workOrder->id,
+        'notes' => 'Per conto di',
+    ]))->assertCreated();
+
+    expect(Note::query()->sole()->user_id)->toBe($owner->id);
 });
 
 it('mirrors the note onto the commessa of the linked Task', function () {
-    $actor = workOrderNoteActor();
+    $actor = timeEntryCommentActor();
     Permission::findOrCreate('tasks.view');
     $actor->givePermissionTo('tasks.view');
-    $workOrder = WorkOrder::factory()->create(['internal_notes' => null]);
+    $workOrder = WorkOrder::factory()->create();
     $task = Task::factory()->create(['work_order_id' => $workOrder->id]);
     $task->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/tasks/{$task->id}/time-entries", [
-        'date' => '2026-09-14',
+        'date' => '2026-09-17',
         'task_type_id' => TaskType::factory()->create()->id,
         'minutes' => 30,
         'notes' => 'Dal task',
     ])->assertCreated();
 
-    expect($workOrder->fresh()->internal_notes)->toBe('Dal task');
+    expect(workOrderComments($workOrder))->toBe(['<p>Dal task</p>']);
 });
 
-it('replaces the copied block in place when the note changes', function () {
-    Sanctum::actingAs(workOrderNoteActor());
-    $workOrder = WorkOrder::factory()->create(['internal_notes' => 'Prima']);
+it('rewrites the same comment when the note changes', function () {
+    Sanctum::actingAs(timeEntryCommentActor());
+    $workOrder = WorkOrder::factory()->create();
 
-    $id = $this->postJson('/api/time-entries', workOrderNotePayload([
+    $id = $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
         'notes' => 'Vecchia',
     ]))->assertCreated()->json('data.id');
+    $noteId = TimeEntry::query()->find($id)->work_order_note_id;
 
-    $workOrder->update(['internal_notes' => "Prima\n\nVecchia\n\nDopo"]);
-
-    $this->putJson("/api/time-entries/{$id}", workOrderNotePayload([
+    $this->putJson("/api/time-entries/{$id}", timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
         'notes' => 'Nuova',
     ]))->assertOk();
 
-    expect($workOrder->fresh()->internal_notes)->toBe("Prima\n\nNuova\n\nDopo")
-        ->and(TimeEntry::query()->find($id)->work_order_note)->toBe('Nuova');
+    expect(workOrderComments($workOrder))->toBe(['<p>Nuova</p>'])
+        ->and(TimeEntry::query()->find($id)->work_order_note_id)->toBe($noteId);
 });
 
-it('removes the copied block when the note is cleared', function () {
-    Sanctum::actingAs(workOrderNoteActor());
-    $workOrder = WorkOrder::factory()->create(['internal_notes' => 'Prima']);
+it('leaves a comment edited in the thread alone when the note does not change', function () {
+    Sanctum::actingAs(timeEntryCommentActor());
+    $workOrder = WorkOrder::factory()->create();
 
-    $id = $this->postJson('/api/time-entries', workOrderNotePayload([
+    $id = $this->postJson('/api/time-entries', timeEntryCommentPayload([
+        'work_order_id' => $workOrder->id,
+        'notes' => 'Originale',
+    ]))->assertCreated()->json('data.id');
+    Note::query()->sole()->update(['body' => '<p>Corretta nel thread</p>']);
+
+    $this->putJson("/api/time-entries/{$id}", timeEntryCommentPayload([
+        'work_order_id' => $workOrder->id,
+        'notes' => 'Originale',
+        'minutes' => 90,
+    ]))->assertOk();
+
+    expect(workOrderComments($workOrder))->toBe(['<p>Corretta nel thread</p>']);
+});
+
+it('deletes the comment when the note is cleared', function () {
+    Sanctum::actingAs(timeEntryCommentActor());
+    $workOrder = WorkOrder::factory()->create();
+
+    $id = $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
         'notes' => 'Da togliere',
     ]))->assertCreated()->json('data.id');
 
-    $this->putJson("/api/time-entries/{$id}", workOrderNotePayload([
+    $this->putJson("/api/time-entries/{$id}", timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
         'notes' => null,
     ]))->assertOk();
 
-    expect($workOrder->fresh()->internal_notes)->toBe('Prima');
+    expect(workOrderComments($workOrder))->toBe([])
+        ->and(TimeEntry::query()->find($id)->work_order_note_id)->toBeNull();
 });
 
-it('moves the copied block when the commessa changes', function () {
-    Sanctum::actingAs(workOrderNoteActor());
-    $from = WorkOrder::factory()->create(['internal_notes' => null]);
-    $to = WorkOrder::factory()->create(['internal_notes' => 'Esistente']);
+it('moves the comment when the commessa changes', function () {
+    Sanctum::actingAs(timeEntryCommentActor());
+    $from = WorkOrder::factory()->create();
+    $to = WorkOrder::factory()->create();
 
-    $id = $this->postJson('/api/time-entries', workOrderNotePayload([
+    $id = $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $from->id,
         'notes' => 'Spostata',
     ]))->assertCreated()->json('data.id');
 
-    $this->putJson("/api/time-entries/{$id}", workOrderNotePayload([
+    $this->putJson("/api/time-entries/{$id}", timeEntryCommentPayload([
         'work_order_id' => $to->id,
         'notes' => 'Spostata',
     ]))->assertOk();
 
-    expect($from->fresh()->internal_notes)->toBeNull()
-        ->and($to->fresh()->internal_notes)->toBe("Esistente\n\nSpostata");
+    expect(workOrderComments($from))->toBe([])
+        ->and(workOrderComments($to))->toBe(['<p>Spostata</p>']);
 });
 
-it('removes the copied block when the commessa is unlinked', function () {
-    Sanctum::actingAs(workOrderNoteActor());
-    $workOrder = WorkOrder::factory()->create(['internal_notes' => 'Manuale']);
+it('deletes the comment when the commessa is unlinked', function () {
+    Sanctum::actingAs(timeEntryCommentActor());
+    $workOrder = WorkOrder::factory()->create();
 
-    $id = $this->postJson('/api/time-entries', workOrderNotePayload([
+    $id = $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
         'notes' => 'Scollegata',
     ]))->assertCreated()->json('data.id');
 
-    $this->putJson("/api/time-entries/{$id}", workOrderNotePayload(['notes' => 'Scollegata']))->assertOk();
+    $this->putJson("/api/time-entries/{$id}", timeEntryCommentPayload(['notes' => 'Scollegata']))->assertOk();
 
-    expect($workOrder->fresh()->internal_notes)->toBe('Manuale')
-        ->and(TimeEntry::query()->find($id)->work_order_note)->toBeNull();
+    expect(workOrderComments($workOrder))->toBe([])
+        ->and(TimeEntry::query()->find($id)->work_order_note_id)->toBeNull();
 });
 
-it('removes the copied block when the segnatempo is deleted', function () {
-    Sanctum::actingAs(workOrderNoteActor());
-    $workOrder = WorkOrder::factory()->create(['internal_notes' => null]);
+it('deletes the comment when the segnatempo is deleted', function () {
+    Sanctum::actingAs(timeEntryCommentActor());
+    $workOrder = WorkOrder::factory()->create();
 
-    $id = $this->postJson('/api/time-entries', workOrderNotePayload([
+    $id = $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
         'notes' => 'Prima riga',
     ]))->assertCreated()->json('data.id');
 
-    $workOrder->update(['internal_notes' => "Prima riga\n\nManuale"]);
-
     $this->deleteJson("/api/time-entries/{$id}")->assertOk();
 
-    expect($workOrder->fresh()->internal_notes)->toBe('Manuale');
+    expect(workOrderComments($workOrder))->toBe([])
+        ->and(Note::withTrashed()->count())->toBe(1);
 });
 
-it('never overwrites a copied block the user edited by hand', function () {
-    Sanctum::actingAs(workOrderNoteActor());
-    $workOrder = WorkOrder::factory()->create(['internal_notes' => null]);
+it('adds a new comment when the previous one was deleted from the thread and the note changes', function () {
+    Sanctum::actingAs(timeEntryCommentActor());
+    $workOrder = WorkOrder::factory()->create();
 
-    $id = $this->postJson('/api/time-entries', workOrderNotePayload([
+    $id = $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
-        'notes' => 'Originale',
+        'notes' => 'Prima',
     ]))->assertCreated()->json('data.id');
+    Note::query()->sole()->delete();
 
-    $workOrder->update(['internal_notes' => 'Originale corretta a mano']);
-
-    $this->putJson("/api/time-entries/{$id}", workOrderNotePayload([
+    $this->putJson("/api/time-entries/{$id}", timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
-        'notes' => 'Aggiornata',
+        'notes' => 'Seconda',
     ]))->assertOk();
 
-    expect($workOrder->fresh()->internal_notes)->toBe("Originale corretta a mano\n\nAggiornata");
+    expect(workOrderComments($workOrder))->toBe(['<p>Seconda</p>']);
 });

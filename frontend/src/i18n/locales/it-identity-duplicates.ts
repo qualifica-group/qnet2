@@ -15,7 +15,6 @@ export const identityDuplicates = {
   criteria: {
     email: 'email',
     phone: 'telefono',
-    mobile: 'cellulare',
     taxCode: 'codice fiscale',
     vatNumber: 'partita IVA',
   },

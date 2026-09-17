@@ -44,7 +44,7 @@ function leadWithRegistryContacts(): Lead
         'value' => 'ada@example.com',
         'is_primary' => true,
     ]);
-    Contact::factory()->mobile()->for($card, 'contactable')->create([
+    Contact::factory()->phone()->for($card, 'contactable')->create([
         'value' => '+39 333 1234567',
         'is_primary' => true,
     ]);

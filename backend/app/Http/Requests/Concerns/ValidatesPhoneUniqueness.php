@@ -15,9 +15,9 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * A phone number is unique across the shared identity namespace — users,
  * anagrafiche and referenti (user directive 2026-08-06, see
- * `IdentityUniquenessScope`) — and `phone` and `mobile` are ONE namespace, not
- * two: the same number cannot sit on one card's landline and on another's
- * mobile. This supersedes the per-channel, referent-only scope of 2026-08-03.
+ * `IdentityUniquenessScope`). `phone` is the only telephone channel since spec
+ * 0139 folded `mobile` into it. This supersedes the per-channel, referent-only
+ * scope of 2026-08-03.
  *
  * Distinct from `IdentityDuplicateFinder` (spec 0037), which answers the live,
  * NON-blocking duplicate panel on the anagrafica/referente create forms: this
@@ -35,15 +35,13 @@ use Illuminate\Foundation\Http\FormRequest;
 trait ValidatesPhoneUniqueness
 {
     /**
-     * The channels the constraint covers, as one pooled namespace. Fax, email
-     * and website are out: an email has its own uniqueness elsewhere in the
+     * The channels the constraint covers. Fax, email and website are out: an email has its own uniqueness elsewhere in the
      * stack, and a shared fax line is normal.
      *
      * @var array<int, string>
      */
     private const array PHONE_CONTACT_TYPES = [
         'phone',
-        'mobile',
     ];
 
     /**
@@ -58,7 +56,7 @@ trait ValidatesPhoneUniqueness
     }
 
     /**
-     * After-hook: every submitted phone/mobile row is checked against the cards
+     * After-hook: every submitted phone row is checked against the cards
      * in the namespace AND against the rest of the same payload (submitting the
      * same number twice on one card is the same violation, caught before the
      * write).
@@ -113,12 +111,11 @@ trait ValidatesPhoneUniqueness
     }
 
     /**
-     * Whether another card in the namespace already carries this number, on
-     * either channel.
+     * Whether another card in the namespace already carries this number.
      *
      * Matched through the indexed `normalized_value` column (spec 0136 D-6):
      * `Contact::saving` keeps it in sync with `value`/`type`, so this is an
-     * indexed lookup instead of fetching every phone/mobile row in the
+     * indexed lookup instead of fetching every phone row in the
      * namespace and comparing in PHP. Mirrors
      * `IdentityDuplicateFinder::matchContactType` verbatim.
      */
@@ -137,11 +134,6 @@ trait ValidatesPhoneUniqueness
             ->exists();
     }
 
-    /**
-     * Phone and mobile are pooled, and `ContactValueNormalizer` treats every
-     * non-email channel identically (digits and `+` only), so one channel
-     * stands for both here.
-     */
     private function normalizePhone(string $value): string
     {
         return ContactValueNormalizer::contact(ContactTypeEnum::Phone, $value);

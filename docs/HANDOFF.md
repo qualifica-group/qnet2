@@ -3,6 +3,78 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE — COLONNE DI DEFAULT + COLONNA EMAIL — NON COMMITTATO (2026-09-17)
+
+Richiesta utente (screenshot Excel): la griglia mostra di default SOLO, in quest'ordine: Categoria prodotto,
+Operatore, Stato di lavorazione, Prossimo richiamo, Linee di prodotto, Nome, Cognome, Telefono, Email, Codice
+fiscale, Note generali, Fonte, Tutor (GA1); poi, nei tab categoria, le colonne `attr.*` come prima. Decisioni
+utente: Nome/Cognome restano DUE colonne affiancate; "Email" e' una colonna nuova gemella di "Telefono"
+(editabile, filtro/sort/ricerca); vale anche per Gestione Iscritti (stesso catalogo); preferenze colonne salvate
+NON azzerate (chi ha un layout personale usa "Ripristina predefinito").
+
+- `RequestColumnCatalog::columns()` riordinato; `pending_change_requests`/`operational_site`/`is_transferred`/
+  `vat_number` ora `visible: false` (restano nel selettore colonne). `RequestManagerColumns::column($id)` per
+  piazzare Operatore e GA1 separati. `operational_site` resta sulla riga: lo scope del picker Operatore funziona.
+- Email: `RequestClientColumns::CONTACT_COLUMNS` (phone/email) sostituisce la logica solo-telefono;
+  `RequestRowMapper::primaryContact()`; `RequestClientProfileWriter::CONTACT_KEY_TYPES` (`client_phone`,
+  `client_email`, update in place / create / clear); chiave permesso `client_email` in
+  `RequestManagementAuthorization` (nessuna riga matrice = non ristretta); `CellValueValidator` format `email`
+  (lowercase + `email:rfc`). i18n `requestManagement.columns.email` = "Email".
+- Test: nuovo `RequestManagementDefaultColumnsTest.php` (ordine + email); aggiornati per requisito cambiato
+  `RequestManagementSourceAndNotesColumnsTest` (posizioni Fonte/Note) e `RequestManagementTableSearchTest`
+  (ordine `searchable`).
+
+## TELEFONO UNICO: TIPO CONTATTO `mobile` RIMOSSO + IMPORT LEAD CONTATTI PRINCIPALI (spec 0139, 2026-09-17) — VERDE, NON COMMITTATO
+
+Segnalazione utente: in Gestione richieste il telefono non compariva. Causa: `LeadProfileBuilder::buildContacts` marcava
+principale solo il PRIMO contatto della riga (l'email); la colonna "Telefono" legge solo i principali. Decisioni utente:
+"Cellulare" sparisce ovunque, esiste solo `phone`; ex cellulare resta principale; import con un solo campo Telefono.
+
+- `ContactTypeEnum::Mobile` rimosso (enum = phone, fax, email, pec, website). Tolto da import lead (campo, dedup
+  `MATCH_ORDER`), `IdentityDuplicateFinder`, `ValidatesPhoneUniqueness` (pool = solo phone), `CheckIdentityDuplicatesRequest`
+  (`in:email,phone`), `InputFormat`, `RewardedReferentRowMapper`, Gestione richieste (RowMapper/ClientColumns/
+  ProfileWriter: `client_phone` => [Phone]), factory (`mobile()` state eliminato), seeder demo, `lang/it.json`.
+- `config/imports.php`: alias `cellulare`/`cell` ora su `phone` (file con Telefono+Cellulare = conflitto di mappatura).
+- Import lead: `buildContacts` salva ogni contatto come principale del suo tipo; `mergeContacts` sovrascrive il principale
+  di quel tipo (altrimenti il primo) e lo rende principale (`mergeTargetIds`).
+- Sorgenti migrazione Referenti/Sedi: campo esterno `mobile` salvato come `phone` dopo il fisso (resta principale).
+- Migrazioni (down no-op dichiarato, D-9): `2026_09_17_130000_merge_mobile_contacts_into_phone` (demote fisso se c'e'
+  un mobile principale, label Mobile/Cellulare/Cell azzerate, retype, promuove id minore di email/phone senza principale);
+  `2026_09_17_130100_remap_mobile_import_field_to_phone` (template/run leads + `mapped_values` staged).
+  `QuoteWorkflowMigrationTest` rollback a 80 step. GIA' APPLICATE al DB dev (insieme alla pending 100000 del segnatempo):
+  0 mobile, 20/20 richieste con telefono principale.
+- Frontend: tolti `mobile` da tipi/schema/chip/icone (`smartphone` tolto da enum-icon-map e tint), duplicati, i18n
+  enum/import/duplicati. `icon-catalog` dei campi custom invariato (non e' il tipo contatto).
+- Test: nuovi `Feature/Database/MergeMobileContactsMigrationTest` (4), `Feature/Imports/LeadImportPrimaryContactsTest` (4);
+  test `mobile` aggiornati a `phone` o rimossi dove il requisito non esiste piu' (pool phone/mobile, "solo cellulare = 201";
+  `RegistryCrudTest` ora verifica 422 su `type: mobile`).
+- Verifica: Pest completo 7893 passati / 1 skipped; Pint pulito; Vitest (13 feature toccate) 1652/1652; ESLint e
+  `tsc -b --force` puliti.
+- Da segnalare (fuori scope): in RequestClientColumns/RowMapper/ProfileWriter le mappe colonna -> ARRAY di tipi ora hanno
+  un solo tipo ciascuna; si potrebbero semplificare a tipo singolo.
+
+## NOTA SEGNATEMPO -> COMMENTO SULLA COMMESSA — VERDE, NON COMMITTATO (2026-09-17)
+
+Richiesta utente: la nota del segnatempo collegato a commessa non va piu' in `work_orders.internal_notes` ma nelle
+note collaborative (commenti, spec 0134) della commessa. Supera la voce "NOTA SEGNATEMPO -> NOTE INTERNE COMMESSA"
+(2026-09-14). Decisioni utente: commento SINCRONIZZATO (testo cambiato = stesso commento riscritto; nota svuotata /
+commessa tolta / segnatempo eliminato = commento soft-deleted; commessa cambiata = spostato); autore = TITOLARE del
+segnatempo (non chi salva); i blocchi gia' copiati in `internal_notes` restano dove sono e non sono piu' aggiornati.
+
+- `Services/TimeEntries/WorkOrderNoteSynchronizer` riscritto: crea `Note` (morph `work_order`, `quote_id` null,
+  nessuna menzione/notifica) direttamente sul model, senza `NoteService`. Corpo = `RichTextConverter::plainTextToHtml`
+  del testo trim (escape HTML). Agisce solo se `notes` o `work_order_id` cambiano: una modifica fatta nel thread
+  sopravvive ai salvataggi che non toccano la nota; un commento cancellato dal thread si ricrea solo al prossimo
+  cambio di testo. Chiamate in `TimeEntryService` invariate.
+- Migrazione `2026_09_17_100000_replace_work_order_note_with_note_id_on_time_entries_table`: drop
+  `time_entries.work_order_note`, nuova FK `work_order_note_id` -> `notes` (nullOnDelete, non fillable, non esposta).
+  `QuoteWorkflowMigrationTest` rollback a 78 step.
+- Test: `TimeEntryWorkOrderNoteSyncTest.php` riscritto (12). Helper rinominati `timeEntryCommentActor`/
+  `timeEntryCommentPayload`: il vecchio `workOrderNoteActor` collideva (via `function_exists`) con quello di
+  `WorkOrderNotesTest`, causa probabile dei 9 rossi in suite completa.
+- Verifica: Pest TimeEntries + Tasks + WorkOrders + Notes + QuoteWorkflowMigrationTest = 799/799 in un solo run;
+  Pint pulito. Nessuna modifica frontend (il thread si aggiorna alla riapertura della commessa, come prima).
+
 ## CATALOGO CORSI DIL - LOMBARDIA (seed produzione, 2026-09-17) — VERDE, NON COMMITTATO
 
 - Fonte: i 3 PDF "Catalogo DIL - Lombardia" (Bergamo, Grumello del Monte, Milano) hanno gli STESSI corsi, cambiano
@@ -663,7 +735,7 @@ testo in sola lettura, DENTRO la card prodotto.
 - Aperto (altra sessione): `product-detail.test.tsx` "VAT rate + Supplier" fallisce con
   "useAuth must be used within an AuthProvider" per il nuovo `RecordLink` sul fornitore, non per questa modifica.
 
-## NOTA SEGNATEMPO -> NOTE INTERNE COMMESSA — VERDE, NON COMMITTATO (2026-09-14)
+## NOTA SEGNATEMPO -> NOTE INTERNE COMMESSA — SUPERATA IL 2026-09-17 (vedi voce commento sulla commessa)
 
 Richiesta utente (senza spec): se un segnatempo ha una commessa, la sua nota va anche sulla commessa.
 Decisioni utente: destinazione `work_orders.internal_notes` (non il componente note collaborative); solo il

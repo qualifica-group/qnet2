@@ -95,10 +95,6 @@ describe('hasPhoneContact', () => {
     expect(hasPhoneContact([contact({ type: 'phone', value: '+39 02 1234567' })])).toBe(true)
   })
 
-  it('is true on a mobile', () => {
-    expect(hasPhoneContact([contact({ type: 'mobile', value: '+39 333 1234567' })])).toBe(true)
-  })
-
   it('is false when the phone row was emptied but still buffered', () => {
     expect(hasPhoneContact([contact({ type: 'phone', value: '   ' })])).toBe(false)
   })

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\RequestManagement;
 
+use App\Enums\ContactTypeEnum;
 use App\Rules\TaxCode;
 use App\Rules\VatNumber;
 use App\Tables\Shared\OfferLinesColumn;
@@ -39,13 +40,14 @@ use App\Tables\Shared\OfferLinesColumn;
  *  - `operator_ga2` ("Operatore") and `manager_ga1` (direttiva utente
  *    2026-09-07) — the offer's own GA2/GA1 Gestori Account, two slots of the
  *    `quote_user` pivot, inline-editable and relabelled per category tab.
- *    Declared together in RequestManagerColumns (see its docblock for the
- *    write-key and scoping rules that differ between the two).
- *  - `first_name`/`last_name`/`tax_code`/`phone` — the CLIENT's anagraphic
- *    fields, read from the Registry's PersonalData card through
- *    `quote.opportunity.registry` (phone = its primary phone/mobile
- *    contact), inline-editable, sortable + text-filterable + searchable, all
- *    three resolved against that card by RequestClientColumns.
+ *    Declared in RequestManagerColumns (see its docblock for the write-key
+ *    and scoping rules that differ between the two).
+ *  - `first_name`/`last_name`/`tax_code`/`vat_number`/`phone`/`email` — the
+ *    CLIENT's anagraphic fields, read from the Registry's PersonalData card
+ *    through `quote.opportunity.registry` (phone/email = its primary
+ *    phone/email contact), inline-editable, sortable +
+ *    text-filterable + searchable, all resolved against that card by
+ *    RequestClientColumns.
  *  - `next_callback_at` ("Prossimo richiamo", spec 0052 D-1/D-5; user
  *    directive 2026-09-04) — a real `quotes` column now, so the generic
  *    engine sorts, filters and lists its distinct values with no
@@ -53,8 +55,7 @@ use App\Tables\Shared\OfferLinesColumn;
  *  - `operational_site` ("Sede operativa", spec 0056/0086 D-6) — a real FK on
  *    `quotes` itself (SPECIALLY-derived: the site has no own name), sortable
  *    + set-filterable via the shared App\Tables\Shared\OperationalSiteColumn,
- *    and inline-editable since it is what scopes the operator picker of the
- *    column right after it.
+ *    and inline-editable since it is what scopes the Operatore picker.
  * All derived/anagraphic values are resolved by
  * RequestManagementTableDefinition::mapRow() from eager-loaded relations. A
  * hidden `created_at` column exists solely to back the default sort — a real
@@ -70,41 +71,21 @@ final class RequestColumnCatalog
     private const int CLIENT_FIELD_MAX_LENGTH = 255;
 
     /**
+     * Declaration order IS the default column order (spec 0001's persisted
+     * layout is a sparse delta over this baseline). Direttiva utente
+     * 2026-09-17 fixed the default worklist to exactly these visible columns,
+     * in this order: Categoria prodotto, Operatore, Stato di lavorazione,
+     * Prossimo richiamo, Linee di prodotto, Nome, Cognome, Telefono, Email,
+     * Codice fiscale, Note generali, Fonte, Tutor (GA1). Every other column is
+     * declared after them with `visible: false` — still in the column chooser,
+     * never removed — and the category tab's `attr.*` columns follow the whole
+     * catalogue (RequestManagementScopedTableDefinition), as before.
+     *
      * @return array<int, array<string, mixed>>
      */
     public static function columns(): array
     {
         return [
-            // "Fonte" (user directive 2026-07-31): declared FIRST — the
-            // request's provenance is what the operator reads before anything
-            // else. Inline-editable through the SAME `sources/for-select`
-            // picker LeadColumnCatalog's own `source` column already uses, and
-            // writing the real FK (`source_id`), a field this module's
-            // authorization already owns. NOT nullable on purpose: `source_id`
-            // is mandatory there (required: true), and it is a criterion the
-            // workflow resolution reads (spec 0047) — clearing it in-cell 422s
-            // instead of silently un-setting it.
-            [
-                ...self::derivedColumn('source', 'requestManagement.columns.source'),
-                'editable' => true,
-                'editableField' => 'source_id',
-                'relation' => ['resource' => 'sources'],
-            ],
-            // "Richieste di modifica in attesa" (spec 0078, AC-037): a
-            // per-record pending-count badge/alert, declared right after
-            // "Fonte" since it is today's only protected field. A real
-            // aggregated value (withCount on the HasFieldChangeRequests
-            // relation, RequestManagementTableDefinition::baseQuery()),
-            // display-only — never editable, and not sortable/filterable
-            // (no operative need for either in this microtask).
-            [
-                'id' => 'pending_change_requests',
-                'label' => 'requestManagement.columns.pendingChangeRequests',
-                'type' => 'number',
-                'visible' => true,
-                'sortable' => false,
-                'filterable' => false,
-            ],
             // Inline-editable (user directive 2026-08-03, spec 0075 D-3 —
             // REVERSING spec 0055's "work-panel concern" call): the cell edits
             // the `product_lines` collection itself, in the SAME flow as the
@@ -122,22 +103,14 @@ final class RequestColumnCatalog
                 'editor' => 'product_lines',
                 'editableField' => 'product_lines',
             ],
-            // "Linee di prodotto" (spec 0086, D-7): replaces "Prodotti di
-            // interesse" on this domain ONLY — the opportunities grid keeps
-            // its own untouched ProductsOfInterestColumn (AC-009). Projects
-            // the products of the offer's own REVENUE lines
-            // (`Quote::offerLines()`), never a COST line's product (AC-007).
-            // Read-only (AC-021/AC-022): the offer's lines are written
-            // exclusively by the Offerte module.
-            OfferLinesColumn::declaration('requestManagement.columns.offerLines'),
+            // The GA2 "Operatore" slot (RequestManagerColumns owns its
+            // declaration and the position->column map the per-tab header
+            // relabel reads). Its picker scope still reads the row's
+            // `operational_site`, which the row carries whether that column
+            // is visible or not.
+            RequestManagerColumns::column(RequestManagerColumns::OPERATOR_COLUMN_ID),
             [
-                // "Stato di lavorazione" (user directive 2026-08-31, position
-                // fixed by the same directive): right AFTER "Linee di
-                // prodotto" — the operator reads what the offer contains, then
-                // where it stands. Inserting it mid-catalogue shifts the
-                // default order of every column after it (spec 0001's
-                // persisted layout is a sparse delta over this baseline): an
-                // accepted, explicitly requested cost, not an oversight.
+                // "Stato di lavorazione" (user directive 2026-08-31).
                 //
                 // The DISPLAYED id (`quote_workflow_status`, the relation the
                 // cell renders) differs from the WRITTEN field
@@ -175,78 +148,6 @@ final class RequestColumnCatalog
                 'editableField' => 'quote_workflow_status_id',
                 'notable' => true,
             ],
-            // "Note generali" (user directive 2026-07-31): the opportunity's
-            // own `general_notes` free text, right beside the products the
-            // operator reads it against. Spec 0086, D-11: this is a real DB
-            // column, but on `opportunities`, not `quotes` — sorting and the
-            // `text` filter are therefore DERIVED (RequestRelationColumns'
-            // OPPORTUNITY_SCALAR_COLUMNS), and `hasFilterValues: false` skips
-            // the generic distinct-values fallback, which has no `quotes`
-            // column to SELECT DISTINCT on (mirrors ContractColumnCatalog's
-            // QUOTE_SCALAR_COLUMNS precedent). Display-only IN THE GRID: the
-            // field IS writable from the work panel since the direttiva utente
-            // 2026-09-09 (and catalogued in RequestManagementAuthorization),
-            // but no inline cell editor was asked for — a 5000-char free text
-            // is not a cell-sized edit.
-            [
-                'id' => 'general_notes',
-                'label' => 'requestManagement.columns.generalNotes',
-                'type' => 'text',
-                'visible' => true,
-                'sortable' => true,
-                'filterable' => true,
-                'filterType' => 'text',
-                'hasFilterValues' => false,
-            ],
-            // Inline-editable (user directive 2026-07-23): the site is picked
-            // in-cell so the operator column right after it can be narrowed to
-            // that site's own operators without leaving the grid. Same shape
-            // LeadColumnCatalog already declares for its own `operational_site`
-            // — a `/for-select` picker writing the real FK, nullable (clearing
-            // the cell un-sets the site).
-            [
-                ...self::derivedColumn('operational_site', 'requestManagement.columns.operationalSite'),
-                'editable' => true,
-                'editableField' => 'operational_site_id',
-                'relation' => ['resource' => 'operational-sites'],
-                'nullable' => true,
-            ],
-            // "Trasferito" (spec 0079): a real, sortable/filterable boolean
-            // column — the generic engine serves ordering, the `boolean`
-            // filter and export with no derived-column hook. A system flag,
-            // deliberately NOT `editable`: no inline-editor or endpoint of
-            // this module accepts it in writing (AC-024).
-            [
-                'id' => 'is_transferred',
-                'label' => 'requestManagement.columns.transferred',
-                'type' => 'boolean',
-                'visible' => true,
-                'sortable' => true,
-                'filterable' => true,
-                'filterType' => 'boolean',
-            ],
-            // The two Gestore Account SLOT columns (GA2 "Operatore", GA1):
-            // declared together in RequestManagerColumns, which also owns the
-            // position->column map the per-tab header relabel reads.
-            ...RequestManagerColumns::columns(),
-            // `format` (user directive 2026-07-23): an inline edit stores the
-            // value in the SAME canonical shape the card form does — the
-            // engine applies it before the rules run (CellValueValidator).
-            self::clientColumn('first_name', 'requestManagement.columns.firstName', 'client_first_name', format: 'person_name'),
-            self::clientColumn('last_name', 'requestManagement.columns.lastName', 'client_last_name', format: 'person_name'),
-            // The inline editor sends the cell alone, so TaxCode can only check
-            // format + control character here: the anagraphic-consistency check
-            // needs the whole card and lives in ValidatesRequestClientProfile.
-            self::clientColumn('tax_code', 'requestManagement.columns.taxCode', 'client_tax_code', [new TaxCode], 'tax_code'),
-            // "Partita IVA" (direttiva utente 2026-09-09): declared right
-            // beside the codice fiscale because the two now answer ONE gate —
-            // a positive close demands either of them
-            // (RequestWorkflowStatusWriter), so the operator must be able to
-            // fill the missing one without leaving the grid. Same card, same
-            // sparse `client_*` write key, and the `vat_number` format so a
-            // typed `IT 007431 10157` lands canonical like the card form's own.
-            self::clientColumn('vat_number', 'requestManagement.columns.vatNumber', 'client_vat_number', [new VatNumber], 'vat_number'),
-            self::clientColumn('phone', 'requestManagement.columns.phone', 'client_phone', format: 'phone'),
             [
                 // Real DB column on `quotes` itself since the user directive
                 // 2026-09-04 (the planned callback is per-OFFER now, no
@@ -272,6 +173,120 @@ final class RequestColumnCatalog
                 // hand over.
                 'editor' => 'datetime',
                 'nullable' => true,
+            ],
+            // "Linee di prodotto" (spec 0086, D-7): replaces "Prodotti di
+            // interesse" on this domain ONLY — the opportunities grid keeps
+            // its own untouched ProductsOfInterestColumn (AC-009). Projects
+            // the products of the offer's own REVENUE lines
+            // (`Quote::offerLines()`), never a COST line's product (AC-007).
+            // Read-only (AC-021/AC-022): the offer's lines are written
+            // exclusively by the Offerte module.
+            OfferLinesColumn::declaration('requestManagement.columns.offerLines'),
+            // `format` (user directive 2026-07-23): an inline edit stores the
+            // value in the SAME canonical shape the card form does — the
+            // engine applies it before the rules run (CellValueValidator).
+            self::clientColumn('first_name', 'requestManagement.columns.firstName', 'client_first_name', format: 'person_name'),
+            self::clientColumn('last_name', 'requestManagement.columns.lastName', 'client_last_name', format: 'person_name'),
+            self::clientColumn('phone', 'requestManagement.columns.phone', 'client_phone', format: 'phone'),
+            // "Email" (direttiva utente 2026-09-17): the card's primary email
+            // contact, the twin of "Telefono" in every respect — its own
+            // `client_email` key, the rule and canonical shape ContactTypeEnum
+            // already imposes on an email contact written anywhere else.
+            self::clientColumn('email', 'requestManagement.columns.email', 'client_email', ContactTypeEnum::Email->valueRules(), 'email'),
+            // The inline editor sends the cell alone, so TaxCode can only check
+            // format + control character here: the anagraphic-consistency check
+            // needs the whole card and lives in ValidatesRequestClientProfile.
+            self::clientColumn('tax_code', 'requestManagement.columns.taxCode', 'client_tax_code', [new TaxCode], 'tax_code'),
+            // "Note generali" (user directive 2026-07-31): the opportunity's
+            // own `general_notes` free text. Spec 0086, D-11: this is a real DB
+            // column, but on `opportunities`, not `quotes` — sorting and the
+            // `text` filter are therefore DERIVED (RequestRelationColumns'
+            // OPPORTUNITY_SCALAR_COLUMNS), and `hasFilterValues: false` skips
+            // the generic distinct-values fallback, which has no `quotes`
+            // column to SELECT DISTINCT on (mirrors ContractColumnCatalog's
+            // QUOTE_SCALAR_COLUMNS precedent). Display-only IN THE GRID: the
+            // field IS writable from the work panel since the direttiva utente
+            // 2026-09-09 (and catalogued in RequestManagementAuthorization),
+            // but no inline cell editor was asked for — a 5000-char free text
+            // is not a cell-sized edit.
+            [
+                'id' => 'general_notes',
+                'label' => 'requestManagement.columns.generalNotes',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'text',
+                'hasFilterValues' => false,
+            ],
+            // "Fonte" (user directive 2026-07-31): inline-editable through the
+            // SAME `sources/for-select` picker LeadColumnCatalog's own `source`
+            // column already uses, and writing the real FK (`source_id`), a
+            // field this module's authorization already owns. NOT nullable on
+            // purpose: `source_id` is mandatory there (required: true), and it
+            // is a criterion the workflow resolution reads (spec 0047) —
+            // clearing it in-cell 422s instead of silently un-setting it.
+            [
+                ...self::derivedColumn('source', 'requestManagement.columns.source'),
+                'editable' => true,
+                'editableField' => 'source_id',
+                'relation' => ['resource' => 'sources'],
+            ],
+            // GA1, labelled "Tutor" (direttiva utente 2026-09-17: right after
+            // "Fonte"); see RequestManagerColumns for how it differs from the
+            // Operatore slot.
+            RequestManagerColumns::column(RequestManagerColumns::GA1_COLUMN_ID),
+            // ----- Hidden by default (direttiva utente 2026-09-17) -----
+            // "Richieste di modifica in attesa" (spec 0078, AC-037): a
+            // per-record pending-count badge/alert. A real aggregated value
+            // (withCount on the HasFieldChangeRequests relation,
+            // RequestManagementTableDefinition::baseQuery()), display-only —
+            // never editable, and not sortable/filterable (no operative need
+            // for either in this microtask).
+            [
+                'id' => 'pending_change_requests',
+                'label' => 'requestManagement.columns.pendingChangeRequests',
+                'type' => 'number',
+                'visible' => false,
+                'sortable' => false,
+                'filterable' => false,
+            ],
+            // Inline-editable (user directive 2026-07-23): the site is picked
+            // in-cell so the Operatore picker can be narrowed to that site's
+            // own operators without leaving the grid. Same shape
+            // LeadColumnCatalog already declares for its own `operational_site`
+            // — a `/for-select` picker writing the real FK, nullable (clearing
+            // the cell un-sets the site).
+            [
+                ...self::derivedColumn('operational_site', 'requestManagement.columns.operationalSite'),
+                'visible' => false,
+                'editable' => true,
+                'editableField' => 'operational_site_id',
+                'relation' => ['resource' => 'operational-sites'],
+                'nullable' => true,
+            ],
+            // "Trasferito" (spec 0079): a real, sortable/filterable boolean
+            // column — the generic engine serves ordering, the `boolean`
+            // filter and export with no derived-column hook. A system flag,
+            // deliberately NOT `editable`: no inline-editor or endpoint of
+            // this module accepts it in writing (AC-024).
+            [
+                'id' => 'is_transferred',
+                'label' => 'requestManagement.columns.transferred',
+                'type' => 'boolean',
+                'visible' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            // "Partita IVA" (direttiva utente 2026-09-09): the codice fiscale's
+            // alternative in the positive-close gate (RequestWorkflowStatusWriter),
+            // so it stays editable in-cell when shown. Same card, same sparse
+            // `client_*` write key, and the `vat_number` format so a typed
+            // `IT 007431 10157` lands canonical like the card form's own.
+            [
+                ...self::clientColumn('vat_number', 'requestManagement.columns.vatNumber', 'client_vat_number', [new VatNumber], 'vat_number'),
+                'visible' => false,
             ],
             [
                 // Hidden: not shown, but a real sortable DB column so the

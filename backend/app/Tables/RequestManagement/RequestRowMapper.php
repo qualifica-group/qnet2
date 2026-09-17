@@ -164,8 +164,8 @@ final class RequestRowMapper
 
     /**
      * The client anagraphic columns, read from the Registry's PersonalData
-     * card (phone = its primary phone/mobile contact), through the offer's
-     * opportunity (spec 0086: `quotes` carries no `registry_id` of its own).
+     * card (phone/email = its primary phone/email contact), through
+     * the offer's opportunity (spec 0086: `quotes` carries no `registry_id` of its own).
      *
      * @return array<string, string|null>
      */
@@ -178,7 +178,8 @@ final class RequestRowMapper
             'last_name' => $card?->last_name,
             'tax_code' => $card?->tax_code,
             'vat_number' => $card?->vat_number,
-            'phone' => $this->primaryPhone($card?->contacts),
+            'phone' => $this->primaryContact($card?->contacts, [ContactTypeEnum::Phone]),
+            'email' => $this->primaryContact($card?->contacts, [ContactTypeEnum::Email]),
         ];
     }
 
@@ -211,17 +212,19 @@ final class RequestRowMapper
     }
 
     /**
-     * The client's primary phone number: the first primary contact of a
-     * telephone kind (phone or mobile) on the card, or null.
+     * The value of the first primary contact of one of $types on the card
+     * (the "Telefono" column reads phone, "Email" reads email), or
+     * null.
      *
      * @param  Collection<int, Contact>|null  $contacts
+     * @param  array<int, ContactTypeEnum>  $types
      */
-    private function primaryPhone(?Collection $contacts): ?string
+    private function primaryContact(?Collection $contacts, array $types): ?string
     {
-        $phone = $contacts?->first(static fn (Contact $contact): bool => $contact->is_primary
-            && in_array($contact->type, [ContactTypeEnum::Phone, ContactTypeEnum::Mobile], true));
+        $contact = $contacts?->first(static fn (Contact $contact): bool => $contact->is_primary
+            && in_array($contact->type, $types, true));
 
-        return $phone?->value;
+        return $contact?->value;
     }
 
     /**

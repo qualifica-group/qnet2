@@ -16,7 +16,7 @@ use Throwable;
  * POST /api/identity/duplicate-check — live, non-blocking duplicate check
  * shared by the anagrafica and referente create forms (spec 0037, extended by
  * the user directive 2026-09-09): given a tax_code, a vat_number and/or
- * email/phone/mobile contacts, returns the (max 5) EXISTING holders inside the
+ * email/phone contacts, returns the (max 5) EXISTING holders inside the
  * identity namespace, with the matched channel(s).
  *
  * Thin invokable controller: validation (CheckIdentityDuplicatesRequest),

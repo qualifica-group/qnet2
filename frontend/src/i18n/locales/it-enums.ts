@@ -39,7 +39,6 @@ export const enums = {
   },
   contact_type: {
     phone: 'Telefono',
-    mobile: 'Cellulare',
     fax: 'Fax',
     email: 'Email',
     pec: 'PEC',

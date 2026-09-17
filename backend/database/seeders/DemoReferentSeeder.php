@@ -22,7 +22,7 @@ use Illuminate\Support\Collection;
  * HasPersonalData: it owns exactly one personal-data card, which in turn owns
  * its own contacts and addresses. The card is shaped as an individual or a
  * company (round-robin) and gets a COMPLETE contact/address form — several
- * channels (email/mobile/phone, plus pec/website for companies) and one or two
+ * channels (email/phone, plus pec/website for companies) and one or two
  * addresses tied to REAL seeded cities — so the derived grid columns
  * (referent_type, contact_scope, primary_contact) and the detail form have
  * realistic values to exercise.
@@ -118,12 +118,10 @@ class DemoReferentSeeder extends Seeder
             'label' => $isCompany ? 'General email' : 'Personal email',
         ]);
 
-        Contact::factory()->mobile()->primary()->for($card, 'contactable')->create([
-            'label' => 'Mobile',
-        ]);
+        Contact::factory()->phone()->primary()->for($card, 'contactable')->create();
 
         if ($isCompany) {
-            Contact::factory()->phone()->primary()->for($card, 'contactable')->create([
+            Contact::factory()->phone()->for($card, 'contactable')->create([
                 'label' => 'Switchboard',
             ]);
             Contact::factory()->pec()->for($card, 'contactable')->create([

@@ -5,7 +5,6 @@ import {
   Phone,
   Printer,
   ShieldCheck,
-  Smartphone,
   Tag,
   User,
   type LucideIcon,
@@ -25,7 +24,6 @@ export const defaultEnumIconMap: EnumIconMap = {
   building: Building2,
   // contact types (ContactTypeEnum)
   phone: Phone,
-  smartphone: Smartphone,
   printer: Printer,
   mail: Mail,
   'shield-check': ShieldCheck,

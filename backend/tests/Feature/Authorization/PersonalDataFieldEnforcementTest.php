@@ -140,14 +140,14 @@ it('AC-007: locked personal_data.contacts — resubmitting the IDENTICAL set (di
     $target = User::factory()->create();
     $card = PersonalData::factory()->individual()->for($target, 'personable')->create();
     Contact::factory()->email()->for($card, 'contactable')->create(['value' => 'ada@example.com', 'label' => 'Work', 'is_primary' => true]);
-    Contact::factory()->mobile()->for($card, 'contactable')->create(['value' => '+39 333 0000000', 'label' => null, 'is_primary' => false]);
+    Contact::factory()->phone()->for($card, 'contactable')->create(['value' => '+39 333 0000000', 'label' => null, 'is_primary' => false]);
     Sanctum::actingAs($actor);
 
     // Same two contacts, submitted in the REVERSE order — order-insensitive.
     $this->patchJson("/api/users/{$target->id}", [
         'personal_data' => lockedFieldPayload([
             'contacts' => [
-                ['type' => 'mobile', 'value' => '+39 333 0000000', 'label' => null, 'is_primary' => false],
+                ['type' => 'phone', 'value' => '+39 333 0000000', 'label' => null, 'is_primary' => false],
                 ['type' => 'email', 'value' => 'ada@example.com', 'label' => 'Work', 'is_primary' => true],
             ],
         ]),

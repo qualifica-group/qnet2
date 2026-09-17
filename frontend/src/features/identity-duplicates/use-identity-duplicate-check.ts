@@ -11,7 +11,7 @@ import {
 import type { ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 
 /** Contact types the check matches on — the rest of the type enum (pec, fax, website…) is out of scope (spec 0037). */
-const MATCHED_CONTACT_TYPES = new Set<string>(['email', 'phone', 'mobile'])
+const MATCHED_CONTACT_TYPES = new Set<string>(['email', 'phone'])
 
 interface UseIdentityDuplicateCheckArgs {
   /** The check only runs on CREATE: an edit form would match the very card it is editing. */
@@ -24,7 +24,7 @@ interface UseIdentityDuplicateCheckResult {
   matches: IdentityDuplicateMatch[]
 }
 
-/** Non-empty, trimmed email/phone/mobile contacts from the draft, shaped for the wire. */
+/** Non-empty, trimmed email/phone contacts from the draft, shaped for the wire. */
 function relevantContacts(contacts: ContactDraft[]): IdentityDuplicateContact[] {
   return contacts
     .filter((contact) => MATCHED_CONTACT_TYPES.has(contact.type) && contact.value.trim().length > 0)
@@ -37,7 +37,7 @@ function relevantContacts(contacts: ContactDraft[]): IdentityDuplicateContact[] 
 /**
  * Debounced, non-blocking duplicate check (spec 0037, extended by the user
  * directive 2026-09-09): watches the buffered tax_code, vat_number and
- * email/phone/mobile contacts of a CREATE form and asks the backend which
+ * email/phone contacts of a CREATE form and asks the backend which
  * users/anagrafiche/referenti already carry them. Never fires while every
  * criterion is empty (AC-008) — that, like `enabled`, is baked into the query,
  * not just hidden in the UI.

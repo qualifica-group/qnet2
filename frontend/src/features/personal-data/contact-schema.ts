@@ -7,12 +7,12 @@ const PHONE_PATTERN = /^\+?[0-9 ().-]{6,20}$/
 /** Contact types whose value must validate as an email (email + PEC). */
 const EMAIL_TYPES = new Set(['email', 'pec'])
 /** Contact types whose value must validate as a phone number. */
-const PHONE_TYPES = new Set(['phone', 'mobile', 'fax'])
+const PHONE_TYPES = new Set(['phone', 'fax'])
 
 /**
  * Zod schema for the contact form, built as a factory for localized messages.
  * The `value` is validated per `type`, mirroring the backend single-source-of-
- * truth rules (email/PEC → email, website → url, phone/mobile/fax → pattern).
+ * truth rules (email/PEC → email, website → url, phone/fax → pattern).
  * The list of valid types itself comes from the server (config enum), so this
  * only checks that one was chosen and that the value matches its shape.
  */

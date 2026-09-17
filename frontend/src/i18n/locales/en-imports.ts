@@ -30,7 +30,6 @@ export const imports = {
       vat_number: 'VAT number',
       email: 'Email',
       phone: 'Phone',
-      mobile: 'Mobile',
       street: 'Street',
       postal_code: 'Postal code',
       country: 'Country',

@@ -6,7 +6,6 @@ import type { IdentityDuplicateMatch } from '@/features/identity-duplicates/dupl
 const MATCH_CRITERION_LABEL_KEYS: Record<string, string> = {
   email: 'identityDuplicates.criteria.email',
   phone: 'identityDuplicates.criteria.phone',
-  mobile: 'identityDuplicates.criteria.mobile',
   tax_code: 'identityDuplicates.criteria.taxCode',
   vat_number: 'identityDuplicates.criteria.vatNumber',
 }

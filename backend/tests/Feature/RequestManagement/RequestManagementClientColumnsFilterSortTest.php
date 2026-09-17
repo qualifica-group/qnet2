@@ -14,7 +14,7 @@ uses(RefreshDatabase::class);
  * User directive 2026-08-03: Nome / Cognome / Codice fiscale / Telefono were
  * the last columns of the worklist an operator could not narrow from the grid
  * header. They are DERIVED (the client Registry's PersonalData card, phone =
- * its primary phone/mobile contact), so filter, sort and value list are all
+ * its primary phone contact), so filter, sort and value list are all
  * resolved by RequestClientColumns — this file is that contract.
  */
 if (! function_exists('requestManagementUserWith')) {

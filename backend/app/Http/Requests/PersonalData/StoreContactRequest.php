@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
  * Validates the payload for POST /api/contacts.
  *
  * The `value` is validated per-type (email/PEC must be a valid email, website a
- * valid URL, phone/mobile/fax a phone pattern). The per-type rules live on
+ * valid URL, phone/fax a phone pattern). The per-type rules live on
  * ContactTypeEnum::valueRules() so they stay a single source of truth. The
  * contact is attached to a polymorphic owner (contactable_type/contactable_id)
  * resolved through the config allowlist. Authorization stays in the controller

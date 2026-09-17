@@ -23,7 +23,6 @@ export const imports = {
       vat_number: 'Partita IVA',
       email: 'Email',
       phone: 'Telefono',
-      mobile: 'Cellulare',
       street: 'Indirizzo',
       postal_code: 'CAP',
       country: 'Nazione',

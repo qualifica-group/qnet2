@@ -26,6 +26,7 @@ export const requestManagement = {
     taxCode: 'Tax code',
     vatNumber: 'VAT number',
     phone: 'Phone',
+    email: 'Email',
     createdAt: 'Created at',
     nextCallbackAt: 'Next callback',
     transferred: 'Transferred',

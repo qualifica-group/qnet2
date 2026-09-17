@@ -49,7 +49,7 @@ function seedNonMatchingNoise(int $count): void
 it('AC-004: LeadDuplicateMatcher::match issues the same number of queries with 5 or 500 non-matching contacts', function () {
     $row = [
         'email' => 'nobody-matches@example.com',
-        'mobile' => '+393339999999',
+        'phone' => '+393339999999',
         'tax_code' => 'NOMTCH80A01H501U',
     ];
     $matcher = app(LeadDuplicateMatcher::class);

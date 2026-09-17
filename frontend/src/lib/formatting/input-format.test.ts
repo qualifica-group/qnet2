@@ -98,7 +98,6 @@ describe('formatIdentityField', () => {
 describe('formatContactValue', () => {
   it.each([
     ['phone', '333 12 34 567', '3331234567'],
-    ['mobile', '+39 333 1234567', '+393331234567'],
     ['fax', '02 / 1234567', '021234567'],
     ['email', '  Mario.Rossi@Example.COM ', 'mario.rossi@example.com'],
     ['pec', ' MARIO@PEC.IT', 'mario@pec.it'],

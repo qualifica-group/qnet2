@@ -17,9 +17,9 @@ use Illuminate\Support\Facades\DB;
  * cannot enforce is D-5 (the link/title override), delegated whole to
  * TimeEntryLinkResolver — see its own docblock for why. Everything else
  * (ownership, permissions) is decided by the controller before either
- * method here ever runs. Every write also mirrors `notes` into the linked
- * commessa's `internal_notes` (WorkOrderNoteSynchronizer), in the same
- * transaction as the TimeEntry row.
+ * method here ever runs. Every write also mirrors `notes` as a comment on
+ * the linked commessa (WorkOrderNoteSynchronizer), in the same transaction
+ * as the TimeEntry row.
  *
  * @see TimeEntryLinkResolver
  * @see WorkOrderNoteSynchronizer
@@ -60,7 +60,7 @@ final class TimeEntryService
         $entry->user_id = $owner->id;
         $this->applyLinks($entry, $links);
 
-        // Step 3: mirror the note onto the commessa and persist.
+        // Step 3: mirror the note as a commessa comment and persist.
         $this->persist($entry);
 
         return $this->loadDetail($entry);
@@ -84,7 +84,7 @@ final class TimeEntryService
         $entry->fill($data->attributes());
         $this->applyLinks($entry, $links);
 
-        // Step 3: re-sync the commessa note (changed text, changed or
+        // Step 3: re-sync the commessa comment (changed text, changed or
         // cleared commessa) and persist.
         $this->persist($entry);
 

@@ -169,11 +169,11 @@ it('AC-012: resolveDuplicate matches an existing Registry by normalized email', 
 it('AC-012: resolveDuplicate matches an existing Registry by normalized phone (formatting-insensitive)', function () {
     $registry = Registry::factory()->create();
     $card = PersonalData::factory()->individual()->for($registry, 'personable')->create();
-    Contact::factory()->mobile()->for($card, 'contactable')->create(['value' => '333 123 4567']);
+    Contact::factory()->phone()->for($card, 'contactable')->create(['value' => '333 123 4567']);
 
     $definition = app(LeadsImportDefinition::class);
 
-    expect($definition->resolveDuplicate(['mobile' => '3331234567']))->toBe($registry->id);
+    expect($definition->resolveDuplicate(['phone' => '3331234567']))->toBe($registry->id);
 });
 
 it('AC-012: resolveDuplicate returns null when nothing matches', function () {

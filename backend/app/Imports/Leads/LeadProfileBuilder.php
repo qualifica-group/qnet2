@@ -12,12 +12,13 @@ use App\Enums\ContactTypeEnum;
 use App\Enums\PersonalDataTypeEnum;
 use App\Models\Contact;
 use App\Models\Registry;
+use Illuminate\Support\Collection;
 
 /**
  * Builds the `ProfileData` (card + contacts + address) RegistryService needs
  * from a staged leads-import row's merged mapped+recognized values (spec
  * 0033: `full_name`/`first_name`/`last_name`/`company_name`/`tax_code`/
- * `vat_number` for the card, `email`/`phone`/`mobile` for contacts,
+ * `vat_number` for the card, `email`/`phone` for contacts,
  * `street`/`postal_code` + the GeoRecognizer's `*_id` for the address).
  * spec 0041 D-1: the import row's contact is an Anagrafica (Registry), not a
  * Referent.
@@ -81,6 +82,10 @@ final class LeadProfileBuilder
     }
 
     /**
+     * Every contact of the row is the PRIMARY of its own type (spec 0139 D-3):
+     * the row holds at most one value per type, and the grids read primaries
+     * only — flagging just the first one left the phone invisible.
+     *
      * @param  array<string, mixed>  $mapped
      * @return array<int, ContactInput>|null
      */
@@ -93,25 +98,22 @@ final class LeadProfileBuilder
         }
 
         $inputs = [];
-        $primaryAssigned = false;
 
         foreach ($values as $typeValue => $value) {
-            $inputs[] = new ContactInput(null, new CreateContact(
-                ContactTypeEnum::from($typeValue),
-                $value,
-                null,
-                ! $primaryAssigned,
-            ));
-            $primaryAssigned = true;
+            $inputs[] = new ContactInput(null, new CreateContact(ContactTypeEnum::from($typeValue), $value, null, true));
         }
 
         return $inputs;
     }
 
     /**
+     * The row's value overwrites, for each type it carries, the Registry's
+     * primary contact of that type (else its first one) and makes it primary;
+     * a type the Registry lacks is added as primary (spec 0139 D-3).
+     *
      * @param  array<string, mixed>  $mapped
      * @return array<int, ContactInput>|null null leaves the Registry's
-     *                                       contacts entirely untouched (the row carries none of email/phone/mobile)
+     *                                       contacts entirely untouched (the row carries neither email nor phone)
      */
     private function mergeContacts(Registry $registry, array $mapped): ?array
     {
@@ -121,46 +123,56 @@ final class LeadProfileBuilder
             return null;
         }
 
+        /** @var Collection<int, Contact> $owned */
         $owned = $registry->personalData?->contacts ?? collect();
+        $targetIds = $this->mergeTargetIds($owned, array_keys($newValues));
         $inputs = [];
-        $touchedTypes = [];
 
-        /** @var Contact $contact */
         foreach ($owned as $contact) {
             $typeValue = $contact->type->value;
+            $isTarget = ($targetIds[$typeValue] ?? null) === $contact->id;
 
-            if (! in_array($typeValue, $touchedTypes, true) && array_key_exists($typeValue, $newValues)) {
-                $inputs[] = new ContactInput($contact->id, new CreateContact(
-                    $contact->type,
-                    $newValues[$typeValue],
-                    $contact->label,
-                    $contact->is_primary,
-                ));
-                $touchedTypes[] = $typeValue;
-
-                continue;
-            }
-
-            // Preserve every other currently-owned contact (different type,
-            // or an extra row of an already-touched type) unchanged, so the
+            // Every non-target contact is re-submitted unchanged, so the
             // authoritative sync() never deletes it.
             $inputs[] = new ContactInput($contact->id, new CreateContact(
                 $contact->type,
-                $contact->value,
+                $isTarget ? $newValues[$typeValue] : $contact->value,
                 $contact->label,
-                $contact->is_primary,
+                $isTarget || $contact->is_primary,
             ));
         }
 
         foreach ($newValues as $typeValue => $value) {
-            if (in_array($typeValue, $touchedTypes, true)) {
-                continue;
+            if (! array_key_exists($typeValue, $targetIds)) {
+                $inputs[] = new ContactInput(null, new CreateContact(ContactTypeEnum::from($typeValue), $value, null, true));
             }
-
-            $inputs[] = new ContactInput(null, new CreateContact(ContactTypeEnum::from($typeValue), $value));
         }
 
         return $inputs;
+    }
+
+    /**
+     * For each contact type the row carries, the id of the owned contact it
+     * overwrites: the primary of that type, else the first of that type.
+     *
+     * @param  Collection<int, Contact>  $owned
+     * @param  array<int, string>  $typeValues
+     * @return array<string, int> contact type value => contact id
+     */
+    private function mergeTargetIds(Collection $owned, array $typeValues): array
+    {
+        $targetIds = [];
+
+        foreach ($typeValues as $typeValue) {
+            $ofType = $owned->filter(static fn (Contact $contact): bool => $contact->type->value === $typeValue);
+            $target = $ofType->first(static fn (Contact $contact): bool => $contact->is_primary) ?? $ofType->first();
+
+            if ($target instanceof Contact) {
+                $targetIds[$typeValue] = $target->id;
+            }
+        }
+
+        return $targetIds;
     }
 
     /**

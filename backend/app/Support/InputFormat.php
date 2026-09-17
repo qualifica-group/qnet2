@@ -140,7 +140,7 @@ final class InputFormat
     public static function contactValue(ContactTypeEnum $type, string $value): string
     {
         return match ($type) {
-            ContactTypeEnum::Phone, ContactTypeEnum::Mobile, ContactTypeEnum::Fax => self::phone($value),
+            ContactTypeEnum::Phone, ContactTypeEnum::Fax => self::phone($value),
             ContactTypeEnum::Email, ContactTypeEnum::Pec => mb_strtolower(trim($value)),
             ContactTypeEnum::Website => trim($value),
         };

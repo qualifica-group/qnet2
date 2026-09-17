@@ -34,7 +34,7 @@ final class LeadRowValidator
         $errors = [];
 
         if (! $this->hasUsableIdentity($mapped)) {
-            $errors[] = 'A row needs a first name + last name, a company name, or at least one contact (email, phone or mobile).';
+            $errors[] = 'A row needs a first name + last name, a company name, or at least one contact (email or phone).';
         }
 
         return array_merge($errors, $this->campaignErrors($mapped), $this->contactFormatErrors($mapped));

@@ -31,7 +31,6 @@ final class LeadImportFieldCatalog
         'vat_number' => ['group' => 'identity', 'type' => 'text'],
         'email' => ['group' => 'contact', 'type' => 'text'],
         'phone' => ['group' => 'contact', 'type' => 'text'],
-        'mobile' => ['group' => 'contact', 'type' => 'text'],
         'street' => ['group' => 'address', 'type' => 'text'],
         'postal_code' => ['group' => 'address', 'type' => 'text'],
         'country' => ['group' => 'address', 'type' => 'text'],

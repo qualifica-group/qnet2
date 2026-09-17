@@ -6,7 +6,7 @@ import {
 import type { ForSelectItem } from '@/features/for-select/types'
 
 /** Contact channel kinds (mirrors backend `ContactTypeEnum`). */
-export type ReferentContactType = 'phone' | 'mobile' | 'fax' | 'email' | 'pec' | 'website'
+export type ReferentContactType = 'phone' | 'fax' | 'email' | 'pec' | 'website'
 
 /** A referent's primary contact, as projected in `referents/for-select` `meta.contacts` (spec 0040 A-4). */
 export interface ReferentContact {

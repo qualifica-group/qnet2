@@ -280,20 +280,6 @@ it('create: 422 when the only contact is not a phone number', function () {
     expect(Referent::count())->toBe(0);
 });
 
-it('create: 201 when the only number is a mobile (mobile counts as a phone number)', function () {
-    $actor = referentUserWith(['create']);
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/referents', [
-        'contact_scope' => 'internal',
-        'personal_data' => minimalReferentProfilePayload([
-            'contacts' => [['type' => 'mobile', 'value' => '+39 333 1234567', 'is_primary' => true]],
-        ]),
-    ])->assertCreated();
-
-    expect(Referent::count())->toBe(1);
-});
-
 it('create: the missing-phone 422 never masks the 403 of an actor who may not create', function () {
     $actor = referentUserWith([]);
     Sanctum::actingAs($actor);

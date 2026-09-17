@@ -89,7 +89,6 @@ it('formats a contact value per its channel', function (ContactTypeEnum $type, s
     expect(InputFormat::contactValue($type, $typed))->toBe($expected);
 })->with([
     [ContactTypeEnum::Phone, '333 12 34 567', '3331234567'],
-    [ContactTypeEnum::Mobile, '+39 333 1234567', '+393331234567'],
     [ContactTypeEnum::Fax, '02 / 1234567', '021234567'],
     [ContactTypeEnum::Email, '  Mario.Rossi@Example.COM ', 'mario.rossi@example.com'],
     [ContactTypeEnum::Pec, ' MARIO@PEC.IT', 'mario@pec.it'],

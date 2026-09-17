@@ -265,7 +265,6 @@ export function DateTimeCell({ value, optionalTime }: DateTimeCellProps) {
 const CONTACT_ICON_TINT: Record<string, string> = {
   mail: 'text-blue-600 dark:text-blue-300',
   phone: 'text-emerald-600 dark:text-emerald-300',
-  smartphone: 'text-emerald-600 dark:text-emerald-300',
   printer: 'text-slate-500 dark:text-slate-300',
   'shield-check': 'text-violet-600 dark:text-violet-300',
   globe: 'text-amber-600 dark:text-amber-300',

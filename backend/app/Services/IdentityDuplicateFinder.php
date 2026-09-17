@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Finds the EXISTING holders of a codice fiscale, a partita IVA or an
- * email/phone/mobile contact, backing the live, non-blocking duplicate panel
+ * email/phone contact, backing the live, non-blocking duplicate panel
  * of the anagrafica and referente create forms (spec 0037, extended by the
  * user directive 2026-09-09: also CF and P.IVA, and across the whole
  * namespace).
@@ -29,7 +29,7 @@ use Illuminate\Support\Collection;
  * the save refused on the very same value.
  *
  * Shares its normalization semantics with `LeadDuplicateMatcher` via
- * `ContactValueNormalizer`. Email/phone/mobile all match through
+ * `ContactValueNormalizer`. Email/phone both match through
  * `normalized_value` (spec 0136 D-6), an indexed `(type, normalized_value)`
  * lookup — never a full-table hydration, since this runs on every debounced
  * keystroke rather than once per import row. The fiscal columns
@@ -41,7 +41,7 @@ final class IdentityDuplicateFinder
     private const int MAX_MATCHES = 5;
 
     /** Canonical, deterministic order for `IdentityDuplicateMatch::$matchedOn`. */
-    private const array MATCH_ORDER = ['email', 'phone', 'mobile', 'tax_code', 'vat_number'];
+    private const array MATCH_ORDER = ['email', 'phone', 'tax_code', 'vat_number'];
 
     /**
      * The fiscal columns the check covers. The value reaches `whereRaw` as a
@@ -90,7 +90,7 @@ final class IdentityDuplicateFinder
             $type = ContactTypeEnum::tryFrom((string) ($contact['type'] ?? ''));
             $value = trim((string) ($contact['value'] ?? ''));
 
-            if ($type === null || $value === '' || ! in_array($type, [ContactTypeEnum::Email, ContactTypeEnum::Phone, ContactTypeEnum::Mobile], true)) {
+            if ($type === null || $value === '' || ! in_array($type, [ContactTypeEnum::Email, ContactTypeEnum::Phone], true)) {
                 continue;
             }
 
@@ -140,8 +140,8 @@ final class IdentityDuplicateFinder
         $morph = (new PersonalData)->getMorphClass();
         $channelsByCardId = [];
 
-        // Email/phone/mobile all compare through the same indexed column.
-        foreach ([ContactTypeEnum::Email, ContactTypeEnum::Phone, ContactTypeEnum::Mobile] as $type) {
+        // Email/phone both compare through the same indexed column.
+        foreach ([ContactTypeEnum::Email, ContactTypeEnum::Phone] as $type) {
             if (($contactTargets[$type->value] ?? []) === []) {
                 continue;
             }

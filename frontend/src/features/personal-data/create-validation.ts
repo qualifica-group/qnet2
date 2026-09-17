@@ -20,7 +20,7 @@ export function isCreateAddressValid(addresses: AddressDraft[], t: TFunction): b
  * Contact types that count as a telephone number. Mirrors
  * `StoreReferentRequest::PHONE_CONTACT_TYPES` — keep the two in step.
  */
-const PHONE_CONTACT_TYPES: string[] = ['phone', 'mobile']
+const PHONE_CONTACT_TYPES: string[] = ['phone']
 
 /**
  * Whether the buffer carries at least one telephone number. Client twin of the

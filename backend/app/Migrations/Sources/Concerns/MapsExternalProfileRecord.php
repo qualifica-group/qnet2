@@ -83,7 +83,7 @@ trait MapsExternalProfileRecord
      * reconciled to one.
      *
      * @param  array<string, mixed>  $record
-     * @param  array<int, array{field: string, type: ContactTypeEnum, label: string}>  $candidates
+     * @param  array<int, array{field: string, type: ContactTypeEnum, label: ?string}>  $candidates
      * @return array{0: array<int, ContactInput>, 1: array<int, string>}
      */
     private function buildContactInputs(array $record, array $candidates): array

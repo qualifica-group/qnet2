@@ -181,17 +181,6 @@ it('POST with client_identity but no phone contact -> 422 on client_contacts, no
     'email only' => [[['type' => 'email', 'value' => 'mario@example.com', 'is_primary' => true]]],
 ]);
 
-it('POST with client_identity and only a mobile number -> 201', function () {
-    Sanctum::actingAs(requestManagementCreatorWith(['create']));
-
-    $this->postJson('/api/request-management', [
-        'client_identity' => ['type' => 'individual', 'first_name' => 'Mario', 'last_name' => 'Rossi'],
-        'client_contacts' => [['type' => 'mobile', 'value' => '3339876543', 'is_primary' => true]],
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-    ])->assertCreated();
-});
-
 // ---------------------------------------------------------------------------
 // AC-004 / AC-005 — the D-2 XOR
 // ---------------------------------------------------------------------------

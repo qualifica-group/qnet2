@@ -96,8 +96,8 @@ return [
         'first_name' => ['nome', 'first name'],
         'last_name' => ['cognome', 'last name'],
         'email' => ['e mail', 'indirizzo email'],
-        'phone' => ['telefono', 'tel'],
-        'mobile' => ['cellulare', 'cell'],
+        // Spec 0139: one telephone field — a "cellulare" column maps here too.
+        'phone' => ['telefono', 'tel', 'cellulare', 'cell'],
         'company_name' => ['ragione sociale', 'azienda', 'company'],
         'tax_code' => ['codice fiscale', 'cf'],
         'vat_number' => ['partita iva', 'piva', 'vat'],

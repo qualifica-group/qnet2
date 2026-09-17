@@ -17,17 +17,17 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The CLIENT anagraphic columns of the `request-management` domain — Nome,
- * Cognome, Codice fiscale, Partita IVA, Telefono — as a single column contract:
- * quick-search (spec 0009), column filter, sort and Excel-like distinct
- * values (spec 0004/0005).
+ * Cognome, Codice fiscale, Partita IVA, Telefono, Email — as a single column
+ * contract: quick-search (spec 0009), column filter, sort and Excel-like
+ * distinct values (spec 0004/0005).
  *
  * None of them is a real `quotes` column: RequestRowMapper reads them from
  * the client Registry's PersonalData card, reached THROUGH the row's
  * opportunity (spec 0086: `quotes` carries no `registry_id` of its own —
- * `phone` = its primary phone/mobile contact). Each hook translates into the
- * relation the mapper reads — `whereHas` for search/filter, a correlated
- * subquery joined through `opportunities` for the sort, a scoped
- * `SELECT DISTINCT` for the value list.
+ * `phone`/`email` = its primary phone/email contact). Each hook
+ * translates into the relation the mapper reads — `whereHas` for
+ * search/filter, a correlated subquery joined through `opportunities` for the
+ * sort, a scoped `SELECT DISTINCT` for the value list.
  *
  * The per-type filter SHAPES (text conditions, set, `multi`/combined
  * envelopes) are NOT re-implemented here: the generic FilterApplier is
@@ -57,7 +57,16 @@ final class RequestClientColumns
         'vat_number' => 'vat_number',
     ];
 
-    private const string PHONE_COLUMN = 'phone';
+    /**
+     * Primary-contact columns, keyed by column id, each with the contact types
+     * it reads — the same sets RequestRowMapper projects.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const array CONTACT_COLUMNS = [
+        'phone' => [ContactTypeEnum::Phone->value],
+        'email' => [ContactTypeEnum::Email->value],
+    ];
 
     /**
      * The card relation path from a Quote, as read by RequestRowMapper (spec
@@ -95,10 +104,11 @@ final class RequestClientColumns
             return true;
         }
 
-        if ($columnId === self::PHONE_COLUMN) {
+        if (isset(self::CONTACT_COLUMNS[$columnId])) {
+            $types = self::CONTACT_COLUMNS[$columnId];
             $query->orWhereHas(
                 self::CONTACTS_RELATION,
-                static fn (Builder $contactQuery) => self::scopeToPrimaryPhone($contactQuery)
+                static fn (Builder $contactQuery) => self::scopeToPrimaryContact($contactQuery, $types)
                     ->where('value', 'like', $pattern),
             );
 
@@ -145,18 +155,19 @@ final class RequestClientColumns
             return true;
         }
 
-        if ($columnId === self::PHONE_COLUMN) {
+        if (isset(self::CONTACT_COLUMNS[$columnId])) {
+            $types = self::CONTACT_COLUMNS[$columnId];
             $this->applyWithBlankBranch(
                 $query,
-                function (Builder $group) use ($columnConfig, $filter): void {
-                    $group->whereHas(self::CONTACTS_RELATION, function (Builder $contactQuery) use ($columnConfig, $filter): void {
-                        self::scopeToPrimaryPhone($contactQuery);
+                function (Builder $group) use ($columnConfig, $filter, $types): void {
+                    $group->whereHas(self::CONTACTS_RELATION, function (Builder $contactQuery) use ($columnConfig, $filter, $types): void {
+                        self::scopeToPrimaryContact($contactQuery, $types);
                         $this->filterApplier->apply($contactQuery, self::CONTACTS_TABLE.'.value', $columnConfig, $filter);
                     });
                 },
-                static function (Builder $group): void {
-                    $group->orWhereDoesntHave(self::CONTACTS_RELATION, static function (Builder $contactQuery): void {
-                        self::scopeToPrimaryPhone($contactQuery)->whereNotNull('value')->where('value', '<>', '');
+                static function (Builder $group) use ($types): void {
+                    $group->orWhereDoesntHave(self::CONTACTS_RELATION, static function (Builder $contactQuery) use ($types): void {
+                        self::scopeToPrimaryContact($contactQuery, $types)->whereNotNull('value')->where('value', '<>', '');
                     });
                 },
                 $filter,
@@ -206,8 +217,8 @@ final class RequestClientColumns
             return true;
         }
 
-        if ($columnId === self::PHONE_COLUMN) {
-            $query->orderBy($this->phoneSortSubquery(), $direction);
+        if (isset(self::CONTACT_COLUMNS[$columnId])) {
+            $query->orderBy($this->contactSortSubquery(self::CONTACT_COLUMNS[$columnId]), $direction);
 
             return true;
         }
@@ -248,10 +259,12 @@ final class RequestClientColumns
                 ->exists());
         }
 
-        if ($columnId === self::PHONE_COLUMN) {
-            return $this->withBlankEntry($this->distinctPhones($query, $search, $limit), $search, fn (): bool => (clone $query)
-                ->whereDoesntHave(self::CONTACTS_RELATION, static function (Builder $contactQuery): void {
-                    self::scopeToPrimaryPhone($contactQuery)->whereNotNull('value')->where('value', '<>', '');
+        if (isset(self::CONTACT_COLUMNS[$columnId])) {
+            $types = self::CONTACT_COLUMNS[$columnId];
+
+            return $this->withBlankEntry($this->distinctContacts($query, $types, $search, $limit), $search, fn (): bool => (clone $query)
+                ->whereDoesntHave(self::CONTACTS_RELATION, static function (Builder $contactQuery) use ($types): void {
+                    self::scopeToPrimaryContact($contactQuery, $types)->whereNotNull('value')->where('value', '<>', '');
                 })
                 ->exists());
         }
@@ -261,9 +274,10 @@ final class RequestClientColumns
 
     /**
      * @param  Builder<Quote>  $query
+     * @param  array<int, string>  $types
      * @return array<int, string>
      */
-    private function distinctPhones(Builder $query, ?string $search, int $limit): array
+    private function distinctContacts(Builder $query, array $types, ?string $search, int $limit): array
     {
         $cardIds = $this->cardQueryFor($query)->select(self::CARD_TABLE.'.id');
         $needle = $this->needle($search);
@@ -272,7 +286,7 @@ final class RequestClientColumns
             ->where('contactable_type', (new PersonalData)->getMorphClass())
             ->whereIn('contactable_id', $cardIds)
             ->where('is_primary', true)
-            ->whereIn('type', self::phoneTypes())
+            ->whereIn('type', $types)
             ->whereNotNull('value')
             ->when($needle !== null, fn (QueryBuilder $builder) => $builder->where('value', 'like', $needle))
             ->distinct()
@@ -323,11 +337,13 @@ final class RequestClientColumns
     }
 
     /**
-     * The smallest primary phone/mobile value of the row's client — `min()`
-     * so a card carrying both a phone AND a mobile still orders
-     * deterministically (mirrors PrimaryContactColumn::sortSubquery).
+     * The smallest primary contact value of the given types for the row's
+     * client — `min()` so a card carrying several primaries of those types
+     * still orders deterministically (mirrors PrimaryContactColumn::sortSubquery).
+     *
+     * @param  array<int, string>  $types
      */
-    private function phoneSortSubquery(): QueryBuilder
+    private function contactSortSubquery(array $types): QueryBuilder
     {
         return DB::table(self::CONTACTS_TABLE)
             ->selectRaw('min(contacts.value)')
@@ -335,7 +351,7 @@ final class RequestClientColumns
             ->join('opportunities', 'opportunities.'.self::OPPORTUNITY_REGISTRY_FK, '=', self::CARD_TABLE.'.personable_id')
             ->where(self::CONTACTS_TABLE.'.contactable_type', (new PersonalData)->getMorphClass())
             ->where(self::CONTACTS_TABLE.'.is_primary', true)
-            ->whereIn(self::CONTACTS_TABLE.'.type', self::phoneTypes())
+            ->whereIn(self::CONTACTS_TABLE.'.type', $types)
             ->where(self::CARD_TABLE.'.personable_type', (new Registry)->getMorphClass())
             ->whereColumn('opportunities.id', 'quotes.opportunity_id')
             ->limit(1);
@@ -355,22 +371,15 @@ final class RequestClientColumns
     }
 
     /**
-     * Narrow a contacts query to the PRIMARY telephone contacts (phone or
-     * mobile) — the exact set RequestRowMapper::primaryPhone() displays.
+     * Narrow a contacts query to the PRIMARY contacts of the given types —
+     * the exact set RequestRowMapper::primaryContact() displays.
      *
      * @param  Builder<Model>  $contactQuery
+     * @param  array<int, string>  $types
      * @return Builder<Model>
      */
-    private static function scopeToPrimaryPhone(Builder $contactQuery): Builder
+    private static function scopeToPrimaryContact(Builder $contactQuery, array $types): Builder
     {
-        return $contactQuery->where('is_primary', true)->whereIn('type', self::phoneTypes());
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private static function phoneTypes(): array
-    {
-        return [ContactTypeEnum::Phone->value, ContactTypeEnum::Mobile->value];
+        return $contactQuery->where('is_primary', true)->whereIn('type', $types);
     }
 }

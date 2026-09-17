@@ -45,8 +45,20 @@ use Illuminate\Validation\ValidationException;
  */
 final class RequestClientProfileWriter
 {
-    /** The inline payload key addressing the client's primary telephone channel (spec 0055, D-7). */
-    private const string CLIENT_PHONE_KEY = 'client_phone';
+    /**
+     * The inline payload keys addressing one of the client's primary contact
+     * channels (spec 0055, D-7; `client_email`, direttiva utente 2026-09-17),
+     * each with the contact types its column displays — the same sets
+     * RequestRowMapper::primaryContact() projects, so the cell writes back
+     * exactly the row it displays. The FIRST type is the one a missing
+     * channel is created as.
+     *
+     * @var array<string, array<int, ContactTypeEnum>>
+     */
+    private const array CONTACT_KEY_TYPES = [
+        'client_phone' => [ContactTypeEnum::Phone],
+        'client_email' => [ContactTypeEnum::Email],
+    ];
 
     /**
      * Inline payload key -> PersonalData attribute, for the identity fields
@@ -72,7 +84,8 @@ final class RequestClientProfileWriter
         'client_last_name',
         'client_tax_code',
         'client_vat_number',
-        self::CLIENT_PHONE_KEY,
+        'client_phone',
+        'client_email',
     ];
 
     /**
@@ -82,15 +95,6 @@ final class RequestClientProfileWriter
      * @var array<int, string>
      */
     private const array BLOCK_KEYS = ['client_identity', 'client_contacts', 'client_address'];
-
-    /**
-     * The contact kinds the "Telefono" column may address — the same pair
-     * RequestRowMapper::primaryPhone() projects, so the cell writes back
-     * exactly the row it displays.
-     *
-     * @var array<int, ContactTypeEnum>
-     */
-    private const array TELEPHONE_TYPES = [ContactTypeEnum::Phone, ContactTypeEnum::Mobile];
 
     public function __construct(
         private readonly PersonalDataService $personalData,
@@ -214,12 +218,12 @@ final class RequestClientProfileWriter
      *    edited field replaced, then written through the same writeIdentity()
      *    the panel uses — so `registries.name` is re-derived identically and
      *    no untouched field of the card is nulled.
-     *  - phone (`client_phone`): NEVER ContactService::sync(), which is
-     *    authoritative over the whole set and would delete every other
-     *    contact of a client the inline editor never loaded. The existing
-     *    primary phone/mobile row is updated in place (its `type` preserved:
-     *    a mobile stays a mobile); with none present, one is created as a
-     *    primary `phone`.
+     *  - contact (`client_phone`/`client_email`): NEVER ContactService::sync(),
+     *    which is authoritative over the whole set and would delete every
+     *    other contact of a client the inline editor never loaded. The
+     *    existing primary row of the key's types is updated in place (its
+     *    `type` preserved); with none present, one is
+     *    created as a primary contact of the key's first type.
      *
      * A client with no anagraphic card is a 422, never a silent create: this
      * channel has no way to know whether the card should be an individual or
@@ -236,8 +240,8 @@ final class RequestClientProfileWriter
     {
         $card = $this->resolveCard($opportunity, $key);
 
-        if ($key === self::CLIENT_PHONE_KEY) {
-            return $this->writePrimaryPhone($card, $value);
+        if (isset(self::CONTACT_KEY_TYPES[$key])) {
+            return $this->writePrimaryContact($card, self::CONTACT_KEY_TYPES[$key], $value);
         }
 
         $attribute = self::IDENTITY_ATTRIBUTES[$key] ?? null;
@@ -287,18 +291,20 @@ final class RequestClientProfileWriter
     }
 
     /**
-     * Update-in-place of the card's primary telephone channel (see
+     * Update-in-place of the card's primary contact of $types (see
      * writeClientField's docblock for why this is not a sync). Returns the
-     * number held before the write.
+     * value held before the write.
+     *
+     * @param  array<int, ContactTypeEnum>  $types
      */
-    private function writePrimaryPhone(PersonalData $card, ?string $value): ?string
+    private function writePrimaryContact(PersonalData $card, array $types, ?string $value): ?string
     {
         // Queried, not read off the loaded relation: this writer must behave
         // the same whether its caller eager-loaded the contacts or not
         // (Model::preventLazyLoading is active outside production).
         $existing = $card->contacts()
             ->where('is_primary', true)
-            ->whereIn('type', array_map(static fn (ContactTypeEnum $type): string => $type->value, self::TELEPHONE_TYPES))
+            ->whereIn('type', array_map(static fn (ContactTypeEnum $type): string => $type->value, $types))
             ->first();
 
         $blank = $value === null || trim($value) === '';
@@ -319,7 +325,7 @@ final class RequestClientProfileWriter
             }
         } elseif (! $blank) {
             $this->contacts->createFor($card, new CreateContact(
-                type: ContactTypeEnum::Phone,
+                type: $types[0],
                 value: $value,
                 isPrimary: true,
             ));

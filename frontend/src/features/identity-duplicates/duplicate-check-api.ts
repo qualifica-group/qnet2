@@ -4,10 +4,10 @@ import type { ApiResponse } from '@/api/types'
 /**
  * Contact types the duplicate check matches on (spec 0037): a deliberate
  * subset of the full contact type enum (`pec`/`website`/... exist, but only
- * these three are duplicate-check criteria, mirroring the import dedup rules
+ * these two are duplicate-check criteria, mirroring the import dedup rules
  * of spec 0036).
  */
-export type IdentityDuplicateContactType = 'email' | 'phone' | 'mobile'
+export type IdentityDuplicateContactType = 'email' | 'phone'
 
 /** One contact criterion sent to the duplicate-check endpoint. */
 export interface IdentityDuplicateContact {

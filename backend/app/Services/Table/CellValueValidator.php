@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Table;
 
+use App\Enums\ContactTypeEnum;
 use App\Quotes\QuoteLineRules;
 use App\Support\InputFormat;
 use Illuminate\Support\Facades\Validator;
@@ -73,6 +74,8 @@ final class CellValueValidator
     private const string FORMAT_TAX_CODE = 'tax_code';
 
     private const string FORMAT_VAT_NUMBER = 'vat_number';
+
+    private const string FORMAT_EMAIL = 'email';
 
     public function __construct(private readonly RelationValueScopeChecker $relationScope) {}
 
@@ -147,6 +150,7 @@ final class CellValueValidator
             self::FORMAT_PHONE => InputFormat::phone($value),
             self::FORMAT_TAX_CODE => InputFormat::taxCode($value),
             self::FORMAT_VAT_NUMBER => InputFormat::vatNumber($value),
+            self::FORMAT_EMAIL => InputFormat::contactValue(ContactTypeEnum::Email, $value),
             default => $value,
         };
     }

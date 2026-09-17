@@ -177,13 +177,13 @@ it('PATCH client_contacts creates, updates and deletes to match the submitted se
     $this->patchJson("/api/request-management/{$quote->id}", [
         'client_contacts' => [
             ['id' => $kept->id, 'type' => 'email', 'value' => 'new@example.test', 'is_primary' => true],
-            ['type' => 'mobile', 'value' => '3331234567'],
+            ['type' => 'phone', 'value' => '3331234567'],
         ],
     ])->assertOk();
 
     expect($kept->fresh()->value)->toBe('new@example.test');
     expect(Contact::query()->whereKey($dropped->id)->exists())->toBeFalse();
-    expect($card->contacts()->where('type', 'mobile')->value('value'))->toBe('3331234567');
+    expect($card->contacts()->where('type', 'phone')->value('value'))->toBe('3331234567');
 });
 
 it('PATCH without client_contacts leaves the client contacts untouched', function () {

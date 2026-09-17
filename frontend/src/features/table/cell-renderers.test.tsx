@@ -145,7 +145,7 @@ describe('TagsCountCell', () => {
 
 const CONTACTS: PrimaryContact[] = [
   { type: 'email', icon: 'mail', label: 'Work', value: 'work@example.com' },
-  { type: 'phone', icon: 'phone', label: 'Mobile', value: '+39 333 1234567' },
+  { type: 'phone', icon: 'phone', label: 'Personal', value: '+39 333 1234567' },
 ]
 
 function renderContacts(value: unknown) {
@@ -158,7 +158,7 @@ describe('ContactsCell', () => {
     const { getByText, queryByText } = renderContacts(CONTACTS)
     expect(getByText('2')).toBeInTheDocument()
     expect(queryByText('Work')).toBeNull()
-    expect(queryByText('Mobile')).toBeNull()
+    expect(queryByText('Personal')).toBeNull()
   })
 
   it('exposes the badge count via an accessible label', () => {
@@ -178,7 +178,7 @@ describe('ContactsCell', () => {
     const contactList = tooltip.querySelector<HTMLElement>('.flex.flex-col.divide-y')!
     expect(within(contactList).getByText('Work')).toBeInTheDocument()
     expect(within(contactList).getByText('work@example.com')).toBeInTheDocument()
-    expect(within(contactList).getByText('Mobile')).toBeInTheDocument()
+    expect(within(contactList).getByText('Personal')).toBeInTheDocument()
     expect(within(contactList).getByText('+39 333 1234567')).toBeInTheDocument()
   })
 

@@ -184,9 +184,9 @@ it('create: 422 when the phone number already belongs to another anagrafica', fu
     expect(Registry::count())->toBe(1);
 });
 
-it('create: 422 when the number belongs to a REFERENT, on the other channel', function () {
+it('create: 422 when the number belongs to a REFERENT', function () {
     $actor = registryUserWith(['create']);
-    registryHolderWithContact(Referent::factory()->create(), 'mobile', REGISTRY_PHONE);
+    registryHolderWithContact(Referent::factory()->create(), 'phone', REGISTRY_PHONE);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/registries', registryPayloadWith([

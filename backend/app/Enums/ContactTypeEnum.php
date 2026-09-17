@@ -22,10 +22,6 @@ enum ContactTypeEnum: string
     #[IsDefault(true)]
     case Phone = 'phone';
 
-    #[Label('Mobile')]
-    #[Icon('smartphone')]
-    case Mobile = 'mobile';
-
     #[Label('Fax')]
     #[Icon('printer')]
     case Fax = 'fax';
@@ -63,7 +59,7 @@ enum ContactTypeEnum: string
         return match ($this) {
             self::Email, self::Pec => ['email:rfc'],
             self::Website => ['url'],
-            self::Phone, self::Mobile, self::Fax => ['regex:/^\+?[0-9 ().-]{6,20}$/'],
+            self::Phone, self::Fax => ['regex:/^\+?[0-9 ().-]{6,20}$/'],
         };
     }
 }

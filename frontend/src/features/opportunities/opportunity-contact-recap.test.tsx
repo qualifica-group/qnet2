@@ -56,7 +56,7 @@ describe('OpportunityContactRecap (AC-094)', () => {
     fetchReferentsForSelectMock.mockResolvedValue(
       page(7, [
         { type: 'email', label: 'Work', value: 'ada@example.test', is_primary: true },
-        { type: 'mobile', label: null, value: '+39 333 1112223', is_primary: true },
+        { type: 'phone', label: null, value: '+39 333 1112223', is_primary: true },
       ]),
     )
 

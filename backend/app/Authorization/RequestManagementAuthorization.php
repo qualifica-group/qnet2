@@ -148,6 +148,9 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('client_tax_code', 'text'),
             new FieldDefinition('client_vat_number', 'text'),
             new FieldDefinition('client_phone', 'text'),
+            // Direttiva utente 2026-09-17: the grid's "Email" cell, the
+            // card's primary email contact — its own key, like the phone.
+            new FieldDefinition('client_email', 'text'),
             // "Informazioni aggiuntive" (user directive 2026-08-07): ONE key
             // for the whole dynamic block, exactly as QuotesAuthorization
             // declares it — the per-code 422 rules live in
@@ -205,6 +208,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'client_tax_code' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'client_vat_number' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'client_phone' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'client_email' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'quote_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

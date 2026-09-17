@@ -267,7 +267,7 @@ it('create: 422 when the only contact is not a phone number', function () {
     expect(Registry::count())->toBe(0);
 });
 
-it('create: 201 when the only number is a mobile (mobile counts as a phone number)', function () {
+it('create: 422 on a `mobile` contact, no longer a contact type (spec 0139)', function () {
     $actor = registryUserWith(['create']);
     Sanctum::actingAs($actor);
 
@@ -276,9 +276,9 @@ it('create: 201 when the only number is a mobile (mobile counts as a phone numbe
         'personal_data' => minimalRegistryProfilePayload([
             'contacts' => [['type' => 'mobile', 'value' => '+39 333 1234567', 'is_primary' => true]],
         ]),
-    ])->assertCreated();
+    ])->assertStatus(422)->assertJsonValidationErrors('personal_data.contacts.0.type');
 
-    expect(Registry::count())->toBe(1);
+    expect(Registry::count())->toBe(0);
 });
 
 it('create: the missing-phone 422 never masks the 403 of an actor who may not create', function () {

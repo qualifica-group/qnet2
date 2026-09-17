@@ -70,7 +70,7 @@ it('preserves enum declaration order', function () {
         $this->getJson('/api/config')->assertOk()->json('data.enums.contact_type')
     )->pluck('value')->all();
 
-    expect($values)->toBe(['phone', 'mobile', 'fax', 'email', 'pec', 'website']);
+    expect($values)->toBe(['phone', 'fax', 'email', 'pec', 'website']);
 });
 
 it('exposes the expected option count per enum', function () {
@@ -78,7 +78,7 @@ it('exposes the expected option count per enum', function () {
 
     expect($enums['locale'])->toHaveCount(2)
         ->and($enums['personal_data_type'])->toHaveCount(2)
-        ->and($enums['contact_type'])->toHaveCount(6)
+        ->and($enums['contact_type'])->toHaveCount(5)
         ->and($enums['notification_level'])->toHaveCount(4)
         ->and($enums['referent_contact_scope'])->toHaveCount(2)
         ->and($enums['site_type'])->toHaveCount(4)

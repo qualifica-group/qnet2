@@ -49,17 +49,6 @@ class ContactFactory extends Factory
     }
 
     /**
-     * A mobile phone contact.
-     */
-    public function mobile(): static
-    {
-        return $this->state(fn (array $attributes): array => [
-            'type' => ContactTypeEnum::Mobile->value,
-            'value' => $this->faker->numerify('+39 3## #######'),
-        ]);
-    }
-
-    /**
      * A fax contact.
      */
     public function fax(): static

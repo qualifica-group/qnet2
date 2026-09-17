@@ -2,7 +2,6 @@
 
 use App\Models\Contact;
 use App\Models\PersonalData;
-use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,9 +10,9 @@ use Spatie\Permission\Models\Permission;
 
 // AC-008 (spec 0136 D-6) — `ValidatesPhoneUniqueness::phoneValueTaken` now
 // reads the indexed `contacts.normalized_value` column instead of hydrating
-// every phone/mobile row in the namespace and comparing in PHP
+// every phone row in the namespace and comparing in PHP
 // (`RegistryIdentityUniquenessTest` already covers the field-error shape;
-// this file pins the "already assigned" message and the phone/mobile pool on
+// this file pins the "already assigned" message on
 // the value that column comparison must produce).
 
 uses(RefreshDatabase::class);
@@ -62,21 +61,6 @@ it('AC-008: refuses a phone already held, in a completely different format, with
         ->assertJsonValidationErrors([
             'personal_data.contacts.0.value' => 'The phone number is already assigned to another record.',
         ]);
-});
-
-it('AC-008: refuses a mobile colliding with a phone on another card (one pooled namespace)', function () {
-    $actor = phoneUniquenessRegistryUser();
-    $holder = Referent::factory()->create();
-    $card = PersonalData::factory()->individual()->for($holder, 'personable')->create();
-    Contact::factory()->for($card, 'contactable')->create(['type' => 'phone', 'value' => '3331234567']);
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/registries', phoneUniquenessRegistryPayload([
-        'type' => 'mobile',
-        'value' => '333 1234567',
-    ]))
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('personal_data.contacts.0.value');
 });
 
 it('AC-008: 200 when a card keeps its own number, submitted in a different format, on update', function () {
