@@ -84,8 +84,10 @@ final class WorkflowStatusCatalogue
      * products actually sit on — "Consulenza" is exactly that (its products
      * live two levels down, under `ISO` and its siblings) and so is the "APL"
      * root (its offer sits on the "Orientamento Specialistico" child), so an
-     * exact-category criterion would never match a single offer. Both are
-     * roots, so the two branches never overlap.
+     * exact-category criterion would never match a single offer. "DIL" too,
+     * since its courses moved onto "DIL - Lombardia" (user directive
+     * 2026-09-17). The three branches never overlap: two are roots, and no
+     * ancestor of "DIL" carries a branch workflow.
      */
     public const string BRANCH_CRITERION_FIELD = 'product_category_branch_id';
 
@@ -319,9 +321,10 @@ final class WorkflowStatusCatalogue
         'GOL - Abruzzo' => ['section' => self::GOL, 'statuses' => self::GOL_BASE_STATUSES],
         // Block 5 of the sheet: the GOL vocabulary in DIL's own order, with no
         // CPI confirmation ("OK App. Fissato CPI" is absent from the column)
-        // and no validated state. Matched on the EXACT category, like the
-        // regions: DIL hosts its own product, so an offer lands on it directly.
-        'DIL' => ['section' => self::GOL, 'statuses' => [
+        // and no validated state. Matched on the whole BRANCH (user directive
+        // 2026-09-17): DIL is a container now, its courses sit on
+        // "DIL - Lombardia" and on any region added under it tomorrow.
+        'DIL' => ['section' => self::GOL, 'criterion_field' => self::BRANCH_CRITERION_FIELD, 'statuses' => [
             'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL',
             'OK App. Fissato APL', 'Attesa Attivazione DOTE', 'Attesa Iscrizione SIUF',
             'In attesa aggancio BES', 'Associato SI _ NOI', 'Non interessato/a', 'Stato Rinunciatario',

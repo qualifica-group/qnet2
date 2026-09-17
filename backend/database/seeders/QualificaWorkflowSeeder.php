@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\DataObjects\QuoteWorkflows\CreateQuoteWorkflowData;
+use App\DataObjects\QuoteWorkflows\UpdateQuoteWorkflowData;
 use App\Enums\WorkflowStatusGroup;
 use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
@@ -35,7 +36,8 @@ use Illuminate\Database\Seeder;
  *
  * Idempotent: a category whose workflow already exists (by name OR by criteria
  * signature, both unique) is skipped, so a re-run neither duplicates nor
- * overwrites the manual edits made from the configurator.
+ * overwrites the manual edits made from the configurator. The one exception is
+ * a criterion FIELD the catalogue changed since: see realignCriterionField().
  */
 class QualificaWorkflowSeeder extends Seeder
 {
@@ -66,12 +68,15 @@ class QualificaWorkflowSeeder extends Seeder
             'value_id' => $category->id,
         ]];
 
-        $exists = QuoteWorkflow::query()
-            ->where('name', $category->name)
-            ->orWhere('criteria_signature', CreateQuoteWorkflowData::computeSignature($criteria))
-            ->exists();
+        $existing = QuoteWorkflow::query()->where('name', $category->name)->first();
 
-        if ($exists) {
+        if ($existing !== null) {
+            $this->realignCriterionField($service, $existing, $category, $criteria);
+
+            return;
+        }
+
+        if (QuoteWorkflow::query()->where('criteria_signature', CreateQuoteWorkflowData::computeSignature($criteria))->exists()) {
             return;
         }
 
@@ -89,5 +94,31 @@ class QualificaWorkflowSeeder extends Seeder
             closedWonStatus: $pinned[WorkflowStatusGroup::ClosedWon->value],
             closedLostStatus: $pinned[WorkflowStatusGroup::ClosedLost->value],
         ));
+    }
+
+    /**
+     * Moves an already-seeded workflow onto the criterion field the catalogue
+     * declares today, when it still carries the one an earlier revision wrote:
+     * the same category, the OTHER field. "DIL" is the case — matched on its
+     * exact category until it became a container (user directive 2026-09-17),
+     * so its offers on "DIL - Lombardia" would otherwise never reach its set.
+     *
+     * Any other criteria set is a configurator edit and is left alone.
+     *
+     * @param  list<array{field: string, value_id: int}>  $criteria
+     */
+    private function realignCriterionField(QuoteWorkflowService $service, QuoteWorkflow $workflow, ProductCategory $category, array $criteria): void
+    {
+        $staleField = $criteria[0]['field'] === WorkflowStatusCatalogue::BRANCH_CRITERION_FIELD
+            ? WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD
+            : WorkflowStatusCatalogue::BRANCH_CRITERION_FIELD;
+
+        $staleSignature = CreateQuoteWorkflowData::computeSignature([['field' => $staleField, 'value_id' => $category->id]]);
+
+        if ($workflow->criteria_signature !== $staleSignature) {
+            return;
+        }
+
+        $service->update($workflow, new UpdateQuoteWorkflowData(criteria: $criteria));
     }
 }

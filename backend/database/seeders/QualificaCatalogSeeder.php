@@ -30,9 +30,9 @@ use Illuminate\Database\Seeder;
  *     false`, spec 0074): they group the tree and hand their attributes down,
  *     while products, opportunity lines, projects, campaigns and commission
  *     rules are classified on the third level, today the `GOL - <Regione>`
- *     rows — plus the subcategories that host their offer directly,
- *     "Autofinanziato", "Autoimpiego", "Yisu", "DIL" and "Orientamento
- *     Specialistico" (see SELECTABLE_SUBCATEGORIES). The "Formazione" branch
+ *     rows and "DIL - Lombardia" — plus the subcategories that host their
+ *     offer directly, "Autofinanziato", "Autoimpiego", "Yisu" and
+ *     "Orientamento Specialistico" (see SELECTABLE_SUBCATEGORIES). The "Formazione" branch
  *     also carries its OFFERTA-context attributes (spec 0061/0084) — the
  *     "Dati corso" pair of QualificaCatalog\CourseDataAttributeCatalogue and
  *     the "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue,
@@ -44,10 +44,10 @@ use Illuminate\Database\Seeder;
  *     groups all three sets into sections (spec 0062) to
  *     QualificaQuoteLayoutSeeder;
  *   - every product of the catalogue, delegated to
- *     QualificaCatalog\CatalogProducts once the tree exists: the GOL courses
- *     under their own region, the self-funded ones under "Autofinanziato"
- *     with their price and delivery mode, and the one product each
- *     single-offer category sells ("Autoimpiego", "Yisu", "DIL" and
+ *     QualificaCatalog\CatalogProducts once the tree exists: the GOL and DIL
+ *     courses under their own region, the self-funded ones under
+ *     "Autofinanziato" with their price and delivery mode, and the one
+ *     product each single-offer category sells ("Autoimpiego", "Yisu" and
  *     "Orientamento Specialistico"). No other product is seeded;
  *   - the ROOT-OWNED rules of the two roots that declare them (how many
  *     product lines a card carries, how many offers an opportunity may hold),
@@ -151,7 +151,11 @@ class QualificaCatalogSeeder extends Seeder
             'Autoimpiego' => [],
             'Yisu' => [],
             'Autofinanziato' => [],
-            'DIL' => [],
+            // A container like GOL since its course catalogue arrived (user
+            // directive 2026-09-17): the courses sit on the regional leaf.
+            'DIL' => [
+                'DIL - Lombardia',
+            ],
         ],
         'Consulenza' => [
             'Trattative in Corso' => [],

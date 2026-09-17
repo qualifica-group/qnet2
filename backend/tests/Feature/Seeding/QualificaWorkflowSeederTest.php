@@ -417,16 +417,16 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
     ]);
 });
 
-it('seeds the DIL set matched on its own category, pinned rows around the column', function (): void {
+it('seeds the DIL set on the DIL branch, pinned rows around the column', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
     $workflow = QuoteWorkflow::query()->where('name', 'DIL')->with('criteria')->firstOrFail();
 
-    // Matched on the EXACT category, like a region and unlike Consulenza/APL:
-    // DIL hosts its own product, so an offer line lands on it directly.
+    // Matched on the whole BRANCH, like Consulenza/APL (user directive
+    // 2026-09-17): DIL is a container, its courses sit on "DIL - Lombardia".
     expect($workflow->criteria)->toHaveCount(1)
-        ->and($workflow->criteria->first()->field)->toBe(WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD)
+        ->and($workflow->criteria->first()->field)->toBe(WorkflowStatusCatalogue::BRANCH_CRITERION_FIELD)
         ->and($workflow->criteria->first()->value_id)->toBe($dil->id);
 
     $statuses = QuoteWorkflowStatus::query()

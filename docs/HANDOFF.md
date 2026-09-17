@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATALOGO CORSI DIL - LOMBARDIA (seed produzione, 2026-09-17) — VERDE, NON COMMITTATO
+
+- Fonte: i 3 PDF "Catalogo DIL - Lombardia" (Bergamo, Grumello del Monte, Milano) hanno gli STESSI corsi, cambiano
+  solo i recapiti sede. Unione = 29 righe / 28 nomi: "Make-up Artist Professionale" 30 e 40 ore = due corsi distinti
+  (`CatalogProducts::disambiguate` -> suffisso "(N ore)").
+- Dati: `database/seeders/QualificaCatalog/DilCourseCatalogue.php` (stessa shape di `TrainingCourseCatalogue`, chiave
+  `DIL - Lombardia`); `CatalogProducts::seedTrainingCourses` itera GOL + DIL.
+- Albero: `QualificaCatalogSeeder::CATALOG` `DIL => ['DIL - Lombardia']`. Decisione utente: "DIL" diventa CONTENITORE
+  come GOL (non selezionabile, uscito da `SINGLE_OFFER_CATEGORIES`, il prodotto "DIL" non si semina più; su DB già
+  seminati resta, non viene cancellato). "DIL - Lombardia" eredita da DIL campi Offerta/Commessa e layout (barriera
+  su DIL invariata) e competenze operatori (`OperatorRoster` su "DIL" copre i discendenti).
+- Workflow: "DIL" ora su `product_category_branch_id`. `QualificaWorkflowSeeder::realignCriterionField` riallinea un
+  workflow esistente SOLO se la sua signature è lo stesso categoria-id con l'altro field (installazioni seminate prima);
+  criteri modificati dal configuratore restano intatti.
+- Totale prodotti seed catalogo: 294 (252 GOL + 29 DIL + 10 autofinanziati + 3 single-offer).
+- Test: nuovo `tests/Feature/Products/QualificaDilCatalogueTest.php`; aggiornati `QualificaCatalogSeederTest`
+  (selezionabili/contenitori, totale), `QualificaWorkflowSeederTest` (DIL su branch), `QualificaProductionDataSeederTest`
+  (294). Suite DIL/catalogo/workflow/seeding verdi. Fallimenti preesistenti non correlati: `TaskConfigPermissionsTest`
+  (task-statuses 422) e helper "undefined function" in run parziali/paralleli.
+
 ## IMPORT LEAD — DEDUP SCALABILE + JOB HARDENING (spec 0136, 2026-09-16) — VERDE, NON COMMITTATO
 
 - Sintomo prod: import lead (400 righe) fermo in `staging` e poi `failed`. Causa: `LeadDuplicateMatcher` idratava

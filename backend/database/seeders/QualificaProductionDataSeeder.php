@@ -24,8 +24,9 @@ use Illuminate\Database\Seeder;
  *   2. QualificaCatalogSeeder      — the hard-coded reference data: sources,
  *                                    reward types, the product category tree
  *                                    with its OFFER attributes and their form
- *                                    sections, the 252 GOL training courses
- *                                    and the 10 self-funded ones.
+ *                                    sections, the 252 GOL training courses,
+ *                                    the 29 DIL ones and the 10 self-funded
+ *                                    ones.
  *   3. QualificaTaskTaxonomySeeder — the other block of hard-coded reference
  *                                    data: the four Task classification
  *                                    lookups (tipologia, categoria, priorita',

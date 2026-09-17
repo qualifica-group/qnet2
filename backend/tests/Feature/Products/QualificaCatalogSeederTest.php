@@ -16,6 +16,7 @@ use App\Services\ProductCategoryService;
 use App\Services\UserService;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\DilCourseCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,10 +28,10 @@ use Illuminate\Support\Facades\Http;
 uses(RefreshDatabase::class);
 
 /**
- * Every product the catalogue seeds: the GOL courses, the self-funded ones and
- * one per CatalogProducts::SINGLE_OFFER_CATEGORIES.
+ * Every product the catalogue seeds: the GOL and DIL courses, the self-funded
+ * ones and one per CatalogProducts::SINGLE_OFFER_CATEGORIES.
  */
-const TOTAL_SEEDED_PRODUCTS = 266;
+const TOTAL_SEEDED_PRODUCTS = 294;
 
 it('provisions the client source catalogue, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
@@ -137,7 +138,7 @@ it('seeds the first two catalogue levels as containers, third level only selecta
     // host their own offer.
     $containers = [
         'Formazione', 'Consulenza',
-        'GOL', 'APL',
+        'GOL', 'APL', 'DIL',
         'Trattative in Corso', 'Presa Appuntamenti',
     ];
     foreach ($containers as $name) {
@@ -151,9 +152,9 @@ it('seeds the first two catalogue levels as containers, third level only selecta
     expect($selectable)->toBe([
         'Autofinanziato',
         'Autoimpiego',
-        // Hosts its own single offer since the user directive 2026-09-10, so
-        // it stopped being a container like its GOL sibling.
-        'DIL',
+        // Its courses' leaf: "DIL" itself is a container again since the
+        // user directive 2026-09-17.
+        'DIL - Lombardia',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
@@ -371,11 +372,11 @@ it('seeds every GOL training course under its own region, idempotently', functio
         expect(Product::query()->where('category_id', $category->id)->count())->toBe($count, $categoryName);
     }
 
-    // Outside the regions: the self-funded courses, plus the one product of
-    // each single-offer category ("Autoimpiego", "Yisu", "Orientamento
-    // Specialistico").
+    // Outside the GOL regions: the DIL courses, the self-funded ones, plus the
+    // one product of each single-offer category.
     expect(Product::query()->count())
-        ->toBe(array_sum($expectedPerRegion) + count(SelfFundedCourseCatalogue::COURSES) + count(CatalogProducts::SINGLE_OFFER_CATEGORIES));
+        ->toBe(array_sum($expectedPerRegion) + count(DilCourseCatalogue::COURSES['DIL - Lombardia'])
+            + count(SelfFundedCourseCatalogue::COURSES) + count(CatalogProducts::SINGLE_OFFER_CATEGORIES));
 });
 
 it('files each course with no attribute value of its own', function (): void {
