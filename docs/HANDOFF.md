@@ -23,6 +23,23 @@
   (294). Suite DIL/catalogo/workflow/seeding verdi. Fallimenti preesistenti non correlati: `TaskConfigPermissionsTest`
   (task-statuses 422) e helper "undefined function" in run parziali/paralleli.
 
+## IMPORT LEAD — PULIZIA CARATTERI SPECIALI NEI NOMI (spec 0138, 2026-09-17) — VERDE, NON COMMITTATO
+
+- Nuovo `App\Imports\Recognition\PersonNameRecognizer`, in `LeadsImportDefinition::recognizers()` tra
+  `CampaignRecognizer` e `NameSplitRecognizer` (ordine vincolante: la divisione lavora sul `full_name` pulito).
+  Pulisce `full_name`/`first_name`/`last_name`: NFKC (`Normalizer`, polyfill senza ext-intl) -> lettere non latine
+  via `Str::ascii` -> punteggiatura e `|` diventano spazio, cifre/emoji/simboli via -> spazi compattati.
+  Accenti latini MANTENUTI (`Macrì`). Poi `InputFormat::personName` (stesso title case dei form, D-5): un cambio di
+  sole maiuscole/spazi NON segnala la riga (`ALESSIA` -> `Alessia` resta valid).
+- Cambio oltre gli spazi = riga `warning` con messaggio `{field} contained special characters and was cleaned to
+  "{value}"; review it.`; nome vuoto dopo la pulizia -> placeholder esistente. Il valore pulito finisce in
+  `mapped_values`, quindi un edit in revisione non ri-segnala la riga.
+- Limiti noti: maiuscoletto (`Sᴀʀᴀ` -> `S`) e alfabeti decorativi senza traslitterazione (`Vᥲᥣᥱᥒtιᥒᥲ` -> `Vti`)
+  perdono lettere ma restano segnalati; bio nel nome ("Jessica / Mental Coach...") restano parole.
+- Test dichiarato modificato: `LeadsImportDefinitionTest` (lista recognizer del contratto). Nuovi:
+  `PersonNameRecognizerTest`, `LeadImportNameCleaningTest`. Suite Unit/Imports, Feature/Imports,
+  Unit/Support, Unit/Jobs, Feature/PersonalData: 568 verdi; Pint pulito. Verificato sul file reale (46 nomi anomali su 400).
+
 ## IMPORT WIZARD — AVANZAMENTO STAGING/PROCESSING (spec 0137, 2026-09-17) — VERDE, NON COMMITTATO
 
 - `GET /api/imports/{domain}/{importRun}` espone `import_run.progress: {processed, total} | null`

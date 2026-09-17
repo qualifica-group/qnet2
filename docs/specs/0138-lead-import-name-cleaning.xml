@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0138-lead-import-name-cleaning" status="implemented" owner="utente" date="2026-09-17">
+
+  <goal>
+    Nell'import lead nome e cognome arrivano con caratteri normali: niente lettere "stilizzate",
+    emoji, simboli, underscore o cifre copiati dai profili social. Le righe ripulite restano
+    segnalate in revisione.
+  </goal>
+
+  <context>
+    - File reale `Progetto per l'Autoimpiego_Leads_2026-06-30_2026-07-30.xls.xlsx` (400 righe,
+      colonna `full_name`): 46 nomi con caratteri anomali. Esempi: `𝓜𝓮𝓻𝔂.`, `𝐀𝐋𝐄𝐒𝐒𝐈𝐀`,
+      `𝗦𝗮𝗺𝘂𝗲𝗹𝗲 𝗤𝘂𝗮𝗿𝗲𝘀𝗶𝗺𝗮` (Unicode Mathematical Alphanumeric), `Deny♡`, `asja ☾`,
+      `Julie J.L. 𓆩𓆪 𓂆`, `Martina_Lipari`, `Vale__92`, `|Chiara Simonte|`, `•Rossella Ciuffreda`,
+      `Sᴀʀᴀ` (maiuscoletto), `Vᥲᥣᥱᥒtιᥒᥲ` (Tai Le), `Марио` (cirillico). Accenti legittimi:
+      `Federica Macrì`, `Elisa Fogaça`, `Liliana Huamán`.
+    - Oggi `NameSplitRecognizer` divide `full_name` senza alcuna pulizia; l'import non applica
+      nemmeno `InputFormat::personName` (title case dei form).
+    - Recognizer lead: `CampaignRecognizer`, `NameSplitRecognizer`, `GeoRecognizer`
+      (`LeadsImportDefinition::recognizers`). `persistRow` unisce `mapped_values` + `resolved`.
+    - `Normalizer` disponibile senza `ext-intl` tramite `symfony/polyfill-intl-normalizer`
+      (dipendenza di Laravel); `Str::ascii` (voku/portable-ascii) traslittera cirillico/greco.
+    - Decisione utente (2026-09-17): "nell'import voglio il carattere normale".
+  </context>
+
+  <decisions>
+    D-1  Nuovo `PersonNameRecognizer`, eseguito PRIMA di `NameSplitRecognizer`, pulisce i campi
+         `full_name`, `first_name`, `last_name` presenti e non vuoti.
+    D-2  Pulizia: normalizzazione NFKC (lettere stilizzate -> lettere normali); ogni carattere non
+         latino che e' una lettera viene traslitterato (`Str::ascii`), tutto il resto viene tolto.
+         Restano lettere latine CON accento, spazi, apostrofo (' e ’) e trattino. `_`, `.`, `|`,
+         `/`, `(`, `)`, `•` diventano spazio; cifre, emoji e simboli spariscono. Spazi compattati.
+    D-3  Gli accenti NON si tolgono (`Macrì` resta `Macrì`).
+    D-4  Se la pulizia cambia qualcosa oltre agli spazi, la riga va in revisione con messaggio
+         "{campo} contained special characters and was cleaned to "{valore}"; review it.".
+         Un nome che diventa vuoto ricade nel placeholder esistente (gia' segnalato).
+    D-5  (utente 2026-09-17: si') Dopo la pulizia il nome prende la capitalizzazione canonica dei form
+         (`InputFormat::personName`: `ALESSIA` -> `Alessia`, `maria d'angelo` -> `Maria D'Angelo`).
+         Un cambio di sole maiuscole/spazi NON segnala la riga; il messaggio mostra il valore formattato.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>`App\Imports\Recognition\PersonNameRecognizer` + registrazione in `LeadsImportDefinition::recognizers()`</item>
+      <item>Test Pest unit del recognizer e test di staging sulla riga lead</item>
+    </in>
+    <out>
+      <item>Heuristiche sul contenuto (bio tipo "Jessica / Mental Coach", lettere spaziate "L I S S E T H")</item>
+      <item>Mappatura del maiuscoletto (`ᴀ`, `ʀ`) e di alfabeti decorativi senza traslitterazione: i caratteri si perdono, la riga e' segnalata</item>
+      <item>Form anagrafica, editor inline, altri domini import, dati gia' importati</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint cambia. Cambiano i valori di mapped/resolved delle righe staged. -->
+    <internal>
+      PersonNameRecognizer::recognize(ImportRowContext, array $mapped): RecognitionResult
+        resolved: solo i campi nome il cui valore cambia (pulito + InputFormat::personName); needsReview true se la pulizia cambia caratteri oltre spazi/maiuscole.
+      PersonNameRecognizer::clean(string): string (pubblico, puro)
+    </internal>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">`clean`: `𝓜𝓮𝓻𝔂.` -> `Mery`; `𝗦𝗮𝗺𝘂𝗲𝗹𝗲 𝗤𝘂𝗮𝗿𝗲𝘀𝗶𝗺𝗮` -> `Samuele Quaresima`; `Deny♡` -> `Deny`; `Martina_Lipari` -> `Martina Lipari`; `Vale__92` -> `Vale`; `|Chiara Simonte|` -> `Chiara Simonte`; `Julie J.L. 𓆩𓆪 𓂆` -> `Julie J L`; `Марио` -> `Mario`; `D'Angelo` e `Anna-Maria` invariati. (Pest `PersonNameRecognizerTest`)</criterion>
+    <criterion id="AC-002">`Federica Macrì`, `Elisa Fogaça`, `Märtinä Rubicone` invariati e nessuna segnalazione. (Pest)</criterion>
+    <criterion id="AC-003">`recognize`: `full_name` `Martina_Lipari` -> resolved `full_name` `Martina Lipari`, needsReview true con messaggio; `  Mario   Rossi ` -> resolved ripulito senza segnalazione; `Mario Rossi` -> none. (Pest)</criterion>
+    <criterion id="AC-004">Staging di una riga lead con `full_name` `𝓜𝓮𝓻𝔂 𝓡𝓸𝓼𝓼𝓲` -> first_name `Mery`, last_name `Rossi`, status warning; con `♡` -> nome placeholder e riga segnalata. (Pest)</criterion>
+    <criterion id="AC-005">`ALESSIA` -> `Alessia`, `alessietta dettori` -> `Alessietta Dettori` senza segnalazione;
+      `Alessietta_dettori` -> `Alessietta Dettori` segnalato; staging di `MARIA TERESA ROSSI` -> `Maria Teresa` /
+      `Rossi`, riga valid. (Pest)</criterion>
+    <criterion id="AC-006">Nessuna regressione: `tests/Unit/Imports`, `tests/Feature/Imports`, Pint puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza; niente `ext-intl` obbligatoria (Transliterator escluso).
+    - File entro 300/500 righe; nessun test esistente modificato salvo dichiarazione.
+    - Nessun commit/cambio branch senza ordine esplicito (CLAUDE.md §3.6).
+  </constraints>
+
+</spec>

@@ -8,6 +8,7 @@ use App\Imports\LeadsImportDefinition;
 use App\Imports\Recognition\CampaignRecognizer;
 use App\Imports\Recognition\GeoRecognizer;
 use App\Imports\Recognition\NameSplitRecognizer;
+use App\Imports\Recognition\PersonNameRecognizer;
 use App\Models\Campaign;
 use App\Models\City;
 use App\Models\Contact;
@@ -323,9 +324,11 @@ it('exposes recognizers()/supportsExtraFields()/dedupModes() per the frozen cont
     $definition = app(LeadsImportDefinition::class);
 
     // Spec 0108: CampaignRecognizer joins the list (campaign code -> id, per
-    // row) — the frozen contract changed, the assertion follows it.
+    // row); spec 0138: PersonNameRecognizer cleans names before the split —
+    // the frozen contract changed, the assertion follows it.
     expect($definition->recognizers())->toBe([
         CampaignRecognizer::class,
+        PersonNameRecognizer::class,
         NameSplitRecognizer::class,
         GeoRecognizer::class,
     ])

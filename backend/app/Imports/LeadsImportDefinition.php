@@ -11,6 +11,7 @@ use App\Imports\Leads\LeadRowValidator;
 use App\Imports\Recognition\CampaignRecognizer;
 use App\Imports\Recognition\GeoRecognizer;
 use App\Imports\Recognition\NameSplitRecognizer;
+use App\Imports\Recognition\PersonNameRecognizer;
 use App\Models\ImportRunRow;
 use App\Models\Lead;
 use App\Models\User;
@@ -94,7 +95,7 @@ class LeadsImportDefinition extends AbstractImportDefinition
      */
     public function recognizers(): array
     {
-        return [CampaignRecognizer::class, NameSplitRecognizer::class, GeoRecognizer::class];
+        return [CampaignRecognizer::class, PersonNameRecognizer::class, NameSplitRecognizer::class, GeoRecognizer::class];
     }
 
     public function supportsExtraFields(): bool
