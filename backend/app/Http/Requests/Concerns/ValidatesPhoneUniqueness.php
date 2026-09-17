@@ -116,10 +116,11 @@ trait ValidatesPhoneUniqueness
      * Whether another card in the namespace already carries this number, on
      * either channel.
      *
-     * The candidate set is fetched and compared in PHP rather than in SQL:
-     * phone formatting varies too much for a portable transform, and
-     * legacy/migrated rows were never canonicalized by `InputFormat`. Mirrors
-     * `IdentityDuplicateFinder::matchPhoneLike` verbatim.
+     * Matched through the indexed `normalized_value` column (spec 0136 D-6):
+     * `Contact::saving` keeps it in sync with `value`/`type`, so this is an
+     * indexed lookup instead of fetching every phone/mobile row in the
+     * namespace and comparing in PHP. Mirrors
+     * `IdentityDuplicateFinder::matchContactType` verbatim.
      */
     private function phoneValueTaken(string $normalized): bool
     {
@@ -131,9 +132,9 @@ trait ValidatesPhoneUniqueness
         return Contact::query()
             ->where('contactable_type', (new PersonalData)->getMorphClass())
             ->whereIn('type', self::PHONE_CONTACT_TYPES)
+            ->where('normalized_value', $normalized)
             ->whereIn('contactable_id', $cards)
-            ->pluck('value')
-            ->contains(fn (mixed $value): bool => $this->normalizePhone((string) $value) === $normalized);
+            ->exists();
     }
 
     /**

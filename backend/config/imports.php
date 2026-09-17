@@ -50,10 +50,19 @@ return [
     // goes to the downloadable errors report regardless of this cap).
     'preview_invalid' => (int) env('IMPORT_PREVIEW_INVALID', 50),
 
-    // Rows grouped per commit batch during ProcessImportJob (a future
-    // chunked-commit optimization hook; per-row transactions are the current
-    // isolation unit — see ProcessImportJob).
+    // Rows grouped per commit batch during ProcessStagedImportJob (also the
+    // lazyById() chunk size reading persistable staged rows — spec 0136,
+    // D-8): per-row transactions are the isolation unit, this only bounds
+    // how many staged rows are held in memory at once.
     'batch_size' => (int) env('IMPORT_BATCH_SIZE', 200),
+
+    // StageImportJob/ProcessStagedImportJob `$timeout` (spec 0136, D-7):
+    // this — not `queue:work --timeout` — is what Laravel's worker actually
+    // enforces per job (Worker::timeoutForJob favors it over the CLI flag).
+    // Must stay BELOW queue.connections.database.retry_after, otherwise a
+    // second worker picks the same job back up while the first is still
+    // legitimately running it.
+    'job_timeout' => (int) env('IMPORT_JOB_TIMEOUT', 1800),
 
     // Value StagedRowBuilder defaults a still-blank `requiredForCreation()`
     // field to, after recognizers ran, instead of rejecting the row outright

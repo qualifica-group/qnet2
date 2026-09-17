@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0136-lead-import-scalable-dedup" status="implemented" owner="utente" date="2026-09-16">
+
+  <goal>
+    Un import lead termina in produzione anche con un'anagrafica di centinaia di migliaia di
+    contatti: la ricerca duplicati costa una query indicizzata per riga, non una lettura di tutti
+    i contatti. Lo stesso vale per il pannello duplicati dei form anagrafica/referente e per il
+    vincolo di unicita' del telefono in scrittura.
+  </goal>
+
+  <context>
+    - Sintomo (prod, 2026-09-16): file lead di 400 righe (`Progetto per l'Autoimpiego_Leads_...xlsx`,
+      colonne full_name/phone_number/email/city) resta in `staging` ("Applicazione mappatura...") e
+      dopo molto tempo va in `failed`. `failed_jobs` non disponibile.
+    - Root cause misurata in locale (MySQL, contatti fittizi in transazione poi rollback):
+      `LeadDuplicateMatcher::matchByContact` idrata TUTTI i `contacts` email/phone/mobile e
+      normalizza in PHP a ogni riga: 858 contatti = 9 ms/riga; ~21k = 156 ms/riga (+34 MB);
+      ~101k = 750 ms/riga (+134 MB). `matchByFiscalColumn` fa lo stesso su `personal_data`
+      (tax_code, vat_number). Il costo fisso di `GeoRecognizer` e' ~30 ms/riga (12 s su 400).
+    - La stessa ricerca si ripete al commit: `LeadsImportDefinition::persistRow`
+      (`$row->duplicate_of_id ?? $this->duplicateMatcher->match($mapped)`). Il re-match e'
+      VOLUTO: intercetta i duplicati interni al file (la riga N trova l'anagrafica appena creata
+      dalla riga M) e va mantenuto, non eliminato.
+    - Stesso pattern full-scan in `IdentityDuplicateFinder::matchPhoneLike` (pannello live,
+      spec 0037), `IdentityDuplicateFinder::matchEmail` (`LOWER(value) IN (...)`, non indicizzabile)
+      e `ValidatesPhoneUniqueness::phoneValueTaken` (gate bloccante a ogni salvataggio).
+    - Schema: `contacts` (`contactable` morph, `type`, `label`, `value`, `is_primary`) non ha indici
+      su `value` ne' un valore normalizzato; `value` e' in `$hidden` (fuori da activity log e JSON).
+      I record migrati dal gestionale legacy non sono canonici (commento in
+      `ValidatesPhoneUniqueness::phoneValueTaken`). `personal_data.tax_code`/`vat_number` sono gia'
+      indicizzati. Unica via di scrittura dei contatti: `ContactService` (Eloquent `create`/`update`).
+    - Normalizzazione di confronto: `App\Support\ContactValueNormalizer::contact()` (email
+      lower+trim; altri tipi solo cifre e `+`) e `::taxCode()` (upper+trim). Distinta da
+      `InputFormat` (forma canonica di scrittura), che NON si tocca.
+    - Test su SQLite in memoria (`phpunit.xml`), produzione MySQL `utf8mb4_unicode_ci`: nessuna
+      trasformazione SQL non portabile (REGEXP_REPLACE) e' ammessa.
+    - Job: `StageImportJob`/`ProcessStagedImportJob` senza `$timeout`/`$tries`; worker e `.env` di
+      produzione NON modificabili da chi sviluppa (decisione utente). In Laravel il `$timeout` del
+      job prevale su `queue:work --timeout` (`Worker::timeoutForJob`); `retry_after` della
+      connessione `database` e' `env('DB_QUEUE_RETRY_AFTER', 90)`.
+    - Unico dominio registrato sul wizard: `leads` (`config/imports.php`).
+  </context>
+
+  <decisions>
+    D-1  (utente: 1A) Nuova colonna `contacts.normalized_value` string nullable, indice composito
+         (`type`, `normalized_value`). Valorizzata dal model `Contact` su `saving` con
+         `ContactValueNormalizer::contact($type, $value)`; mai fillable; aggiunta a `$hidden`
+         (e' PII quanto `value`). Tipi non presenti in `ContactTypeEnum` restano null.
+    D-2  Backfill nella stessa migrazione, `chunkById` su `contacts`, update per riga via query
+         builder parametrizzato; `down()` rimuove indice e colonna. Nessun valore `value`
+         esistente viene riscritto.
+    D-3  `LeadDuplicateMatcher::matchByContact`: una query per tipo presente nella riga
+         (`contactable_type` = PersonalData, `type` = t, `normalized_value` IN target[t]),
+         ordine `id` asc, prima card con registry vince — stessa semantica di oggi.
+    D-4  `LeadDuplicateMatcher::matchByFiscalColumn`: candidati via uguaglianza indicizzata
+         (`where($column, $target)`, colonna da allow-list `FISCAL_COLUMNS`), ricontrollo in PHP con
+         `ContactValueNormalizer::taxCode`, ordine `id` asc. Rischio residuo accettato: un valore
+         legacy con spazi INIZIALI non viene trovato (MySQL unicode_ci copre maiuscole e spazi finali).
+    D-5  Il re-match al commit in `LeadsImportDefinition::persistRow` resta invariato (ora costa
+         query indicizzate).
+    D-6  (utente: 2 si') `IdentityDuplicateFinder::matchEmail` e `::matchPhoneLike` e
+         `ValidatesPhoneUniqueness::phoneValueTaken` leggono `normalized_value` in SQL (exists/pluck),
+         senza idratare i contatti. phone e mobile restano pool unico nel gate. I rami fiscali di
+         `IdentityDuplicateFinder` e `UniquePersonalDataIdentifier` restano invariati.
+    D-7  Job hardening (`StageImportJob`, `ProcessStagedImportJob`): `$tries = 1`,
+         `$timeout` = `config('imports.job_timeout')` (nuova chiave, default 1800 s,
+         env `IMPORT_JOB_TIMEOUT`). Default di `DB_QUEUE_RETRY_AFTER` in `config/queue.php`
+         portato a 1900 (deve superare il timeout, altrimenti un secondo worker riprende il job in
+         corso). Effetto collaterale accettato: un job di QUALSIASI tipo rimasto orfano per crash
+         del worker viene ripreso dopo ~32 min invece di 90 s. Se `.env` di produzione definisce
+         esplicitamente `DB_QUEUE_RETRY_AFTER`, prevale: nota operativa in HANDOFF.
+    D-8  (utente: 4 ok) Nuova colonna `import_run_rows.persisted_at` timestamp nullable.
+         `ProcessStagedImportJob` legge solo righe persistibili con `persisted_at` null, a blocchi
+         (`lazyById`), e imposta `persisted_at` DENTRO la transazione della riga. `imported_rows`
+         e' ricalcolato a fine job dalle righe con `persisted_at` valorizzato che hanno davvero
+         scritto (stessa regola di `isWritten`). Nessun pulsante "Riprova" (fuori scope).
+    D-9  `StageImportJob` cancella le `import_run_rows` del run prima di ricostruirle: una
+         riesecuzione non duplica le righe di staging.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione `contacts.normalized_value` + indice + backfill (D-1, D-2)</item>
+      <item>Model `Contact`: valorizzazione su saving, `$hidden` (D-1)</item>
+      <item>`LeadDuplicateMatcher` contatti e fiscali in SQL mirato (D-3, D-4)</item>
+      <item>`IdentityDuplicateFinder` email/telefono e `ValidatesPhoneUniqueness` su `normalized_value` (D-6)</item>
+      <item>Migrazione `import_run_rows.persisted_at`, cast su `ImportRunRow` (D-8)</item>
+      <item>`StageImportJob`/`ProcessStagedImportJob`: tries/timeout, lettura a blocchi, idempotenza (D-7, D-8, D-9)</item>
+      <item>`config/imports.php` (`job_timeout`), `config/queue.php` (default retry_after database)</item>
+      <item>Test Pest per ogni AC; benchmark operativo locale per AC-011; nota operativa in `docs/HANDOFF.md`</item>
+    </in>
+    <out>
+      <item>Frontend: nessuna modifica (nessun contratto HTTP cambia)</item>
+      <item>Pulsante/endpoint "Riprova" o ripresa di un run `failed`</item>
+      <item>Costo di `GeoRecognizer`/`GeoFuzzyMatcher` (~30 ms/riga): segnalato, non trattato</item>
+      <item>`StagingErrorReporter` che carica tutte le righe error/skipped: segnalato, non trattato</item>
+      <item>Rami fiscali di `IdentityDuplicateFinder` e `UniquePersonalDataIdentifier` (whereRaw UPPER(TRIM))</item>
+      <item>Riscrittura in forma canonica dei `contacts.value` o dei codici fiscali esistenti</item>
+      <item>Flusso legacy `ValidateImportJob`/`ProcessImportJob`, `AnalyzeImportJob`</item>
+      <item>Modifiche a worker, supervisor o `.env` di produzione</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint HTTP cambia: request/response/errori di import wizard, identity check e
+         form anagrafica/referente restano identici. Si congelano schema e contratti interni. -->
+    <schema table="contacts">
+      normalized_value: string|null — ContactValueNormalizer::contact(type, value); null per type fuori enum
+      index: (type, normalized_value)
+    </schema>
+    <schema table="import_run_rows">
+      persisted_at: timestamp|null — valorizzato nella transazione di persistRow riuscita
+    </schema>
+    <config>
+      imports.job_timeout: int, default 1800 (env IMPORT_JOB_TIMEOUT)
+      queue.connections.database.retry_after: default 1900 (env DB_QUEUE_RETRY_AFTER)
+    </config>
+    <internal>
+      LeadDuplicateMatcher::match(array $mapped): ?LeadDuplicateMatch — firma e risultato invariati
+      IdentityDuplicateFinder::find(IdentityDuplicateCriteria): array — firma e risultato invariati
+      Contact::$fillable invariato; normalized_value in $hidden
+    </internal>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un contatto creato o aggiornato via Eloquent (email ` Mario@X.it `,
+      phone `333 123-4567`), allora `normalized_value` vale `mario@x.it` / `3331234567`; cambiando
+      `value` o `type` si riallinea; `normalized_value` non compare in `toArray()` ne' nelle
+      proprieta' dell'activity log. (Pest Unit/Feature `ContactNormalizedValueTest`)</criterion>
+    <criterion id="AC-002">Dati contatti esistenti con `normalized_value` null, eseguita la
+      migrazione, allora nessun contatto con type in enum resta null e ogni valore coincide con
+      `ContactValueNormalizer::contact`; `migrate:rollback` rimuove colonna e indice.
+      (Pest: backfill invocato su righe inserite via query builder + verifica operativa su MySQL locale)</criterion>
+    <criterion id="AC-003">Dato un contatto legacy `+39 333 123 4567` su un'anagrafica, quando una
+      riga lead porta `+393331234567`, allora `resolveDuplicateMatch` restituisce quell'anagrafica
+      con `matched_on` corretto; i casi esistenti di `LeadDuplicateMatchTest` restano verdi.</criterion>
+    <criterion id="AC-004">Il numero di query di `LeadDuplicateMatcher::match()` su una riga senza
+      duplicato e' identico con 5 e con 500 contatti non corrispondenti nel DB (nessuna lettura
+      proporzionale ai contatti). (Pest con `DB::getQueryLog`)</criterion>
+    <criterion id="AC-005">Match fiscale: `tax_code`/`vat_number` con maiuscole e spazi diversi
+      trovano la card canonica; un valore non presente non matcha; ordine per id asc.
+      (casi esistenti AC-001/AC-101 di `LeadDuplicateMatchTest` verdi)</criterion>
+    <criterion id="AC-006">[revised] Dato un file con due righe nuove con la stessa email
+      (strategia `update_existing`), quando si conferma l'import, allora esiste UNA sola anagrafica
+      con quell'email (il re-match al commit funziona ancora). Nota: `create_only` non e' una
+      strategia dei lead (`dedupModes()` = create_new, update_existing, ignore, manual); con
+      `create_new` le due righe creano due anagrafiche e con `manual` la seconda viene saltata:
+      comportamento preesistente, invariato da questa spec. (Pest `LeadImportScalableDedupTest`)</criterion>
+    <criterion id="AC-007">`POST` identity duplicate check: email case-insensitive, telefono in
+      formato legacy e mobile trovano la card; tutti i casi di `IdentityDuplicateCheckTest` restano
+      verdi; il numero di query non cresce col numero di contatti non corrispondenti.</criterion>
+    <criterion id="AC-008">Salvataggio anagrafica/referente con un telefono gia' presente su altra
+      card in formato diverso (anche phone vs mobile) -> 422 "already assigned"; stesso numero sul
+      proprio record -> nessun errore; test esistenti (es. `RequestManagementClientUniquenessTest`) verdi.</criterion>
+    <criterion id="AC-009">`StageImportJob` e `ProcessStagedImportJob` espongono `tries` = 1 e
+      `timeout` = `config('imports.job_timeout')`; rieseguire `StageImportJob` sullo stesso run
+      produce esattamente una `import_run_rows` per riga del file. (Pest `StageImportJobTest`)</criterion>
+    <criterion id="AC-010">Dato un run in cui alcune righe hanno gia' `persisted_at`, rieseguendo
+      `ProcessStagedImportJob` quelle righe non vengono ripersistite (nessun lead/anagrafica
+      duplicata), le altre si', `persisted_at` e' valorizzato solo su righe riuscite, una riga che
+      lancia eccezione resta null e finisce nel report, `imported_rows` conta tutte le righe scritte
+      tra le esecuzioni. Il test di isolamento esistente resta verde. (Pest `ProcessStagedImportJobTest`)</criterion>
+    <criterion id="AC-011">Benchmark operativo (non Pest), MySQL locale, 100.000 contatti aggiunti
+      in transazione poi rollback: preparazione delle 400 righe del file reale sotto 60 s e aumento
+      di memoria della ricerca duplicati per riga sotto 5 MB, indipendente dal numero di contatti.
+      Dopo il rollback il conteggio contatti torna al valore iniziale.</criterion>
+    <criterion id="AC-012">Nessuna regressione: suite `tests/Feature/Imports`, `tests/Unit/Imports`,
+      `tests/Unit/Jobs`, `tests/Feature/Identity`, `tests/Feature/RequestManagement` e le suite
+      anagrafica/referente verdi; Pint pulito.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Solo Eloquent/query builder parametrizzati; `whereRaw` vietato sui
+      nuovi percorsi; colonne dinamiche solo da allow-list (`FISCAL_COLUMNS`).
+    - Query portabili SQLite (test) e MySQL (prod).
+    - Migrazioni nuove e reversibili; nessuna migrazione esistente modificata.
+    - `ContactValueNormalizer` resta l'unica fonte della normalizzazione di confronto.
+    - Nessun endpoint, envelope, permesso o comportamento visibile cambia, oltre alla velocita'.
+    - File entro 300/500 righe; nessun test modificato per farlo passare (solo aggiunte, o
+      aggiornamenti dichiarati dove il requisito cambia).
+    - Nessun commit/cambio branch senza ordine esplicito (CLAUDE.md §3.6).
+  </constraints>
+
+</spec>

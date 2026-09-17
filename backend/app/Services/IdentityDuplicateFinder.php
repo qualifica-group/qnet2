@@ -29,10 +29,12 @@ use Illuminate\Support\Collection;
  * the save refused on the very same value.
  *
  * Shares its normalization semantics with `LeadDuplicateMatcher` via
- * `ContactValueNormalizer`, but queries per channel with bound `whereRaw` for
- * the deterministic transforms (email/fiscal case) instead of hydrating a
- * whole contact type, since this runs on every debounced keystroke rather
- * than once per import row.
+ * `ContactValueNormalizer`. Email/phone/mobile all match through
+ * `normalized_value` (spec 0136 D-6), an indexed `(type, normalized_value)`
+ * lookup — never a full-table hydration, since this runs on every debounced
+ * keystroke rather than once per import row. The fiscal columns
+ * (`matchFiscalColumn`) are untouched by spec 0136 and keep their bound
+ * `whereRaw`.
  */
 final class IdentityDuplicateFinder
 {
@@ -138,23 +140,13 @@ final class IdentityDuplicateFinder
         $morph = (new PersonalData)->getMorphClass();
         $channelsByCardId = [];
 
-        // Email: a single deterministic transform (LOWER), matched directly
-        // in SQL with bound placeholders.
-        if (($contactTargets[ContactTypeEnum::Email->value] ?? []) !== []) {
-            foreach ($this->matchEmail($contactTargets[ContactTypeEnum::Email->value], $morph) as $cardId) {
-                $channelsByCardId[$cardId] = $this->mergeChannel($channelsByCardId[$cardId] ?? [], ContactTypeEnum::Email->value);
-            }
-        }
-
-        // Phone/mobile: formatting varies too much for a portable SQL
-        // transform, so fetch the bounded per-type candidate set and
-        // normalize in PHP (mirrors LeadDuplicateMatcher).
-        foreach ([ContactTypeEnum::Phone, ContactTypeEnum::Mobile] as $type) {
+        // Email/phone/mobile all compare through the same indexed column.
+        foreach ([ContactTypeEnum::Email, ContactTypeEnum::Phone, ContactTypeEnum::Mobile] as $type) {
             if (($contactTargets[$type->value] ?? []) === []) {
                 continue;
             }
 
-            foreach ($this->matchPhoneLike($type, $contactTargets[$type->value], $morph) as $cardId) {
+            foreach ($this->matchContactType($type, $contactTargets[$type->value], $morph) as $cardId) {
                 $channelsByCardId[$cardId] = $this->mergeChannel($channelsByCardId[$cardId] ?? [], $type->value);
             }
         }
@@ -163,37 +155,15 @@ final class IdentityDuplicateFinder
     }
 
     /**
-     * @param  array<int, string>  $targets
+     * @param  array<int, string>  $targets  already normalized via ContactValueNormalizer::contact
      * @return array<int, int> distinct personal_data.id (Contact::contactable_id)
      */
-    private function matchEmail(array $targets, string $morph): array
-    {
-        $placeholders = implode(',', array_fill(0, count($targets), '?'));
-
-        return Contact::query()
-            ->where('contactable_type', $morph)
-            ->where('type', ContactTypeEnum::Email->value)
-            ->whereRaw("LOWER(value) IN ({$placeholders})", $targets)
-            ->pluck('contactable_id')
-            ->unique()
-            ->all();
-    }
-
-    /**
-     * @param  array<int, string>  $targets
-     * @return array<int, int> distinct personal_data.id (Contact::contactable_id)
-     */
-    private function matchPhoneLike(ContactTypeEnum $type, array $targets, string $morph): array
+    private function matchContactType(ContactTypeEnum $type, array $targets, string $morph): array
     {
         return Contact::query()
             ->where('contactable_type', $morph)
             ->where('type', $type->value)
-            ->get(['value', 'contactable_id'])
-            ->filter(fn (Contact $contact): bool => in_array(
-                ContactValueNormalizer::contact($type, (string) $contact->value),
-                $targets,
-                true,
-            ))
+            ->whereIn('normalized_value', $targets)
             ->pluck('contactable_id')
             ->unique()
             ->all();

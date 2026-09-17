@@ -7,6 +7,7 @@ use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -292,4 +293,73 @@ it('the response never contains a contact value, tax code or VAT number', functi
         ->and($body)->not->toContain('RSSMRA80A01H501U')
         ->and($body)->not->toContain('01234567890')
         ->and(array_keys($response->json('data.matches.0')))->toEqualCanonicalizing(['owner_type', 'owner_id', 'name', 'matched_on']);
+});
+
+// ---------------------------------------------------------------------------
+// AC-007 (spec 0136 D-6) — the match reads `normalized_value` (indexed),
+// never hydrates the contacts of the type being searched
+// ---------------------------------------------------------------------------
+
+it('AC-007: matches a phone stored in a legacy format by its normalized digits', function () {
+    $actor = identityDuplicateCheckUserWith(['referents.create']);
+    $referent = Referent::factory()->create();
+    $card = PersonalData::factory()->individual()->for($referent, 'personable')->create();
+    Contact::factory()->phone()->for($card, 'contactable')->create(['value' => '+39 333 123 4567']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/identity/duplicate-check', [
+        'contacts' => [['type' => 'phone', 'value' => '+393331234567']],
+    ])->assertOk();
+
+    expect($response->json('data.matches'))->toHaveCount(1)
+        ->and($response->json('data.matches.0.owner_id'))->toBe($referent->id);
+});
+
+it('AC-007: matches a trailing-space, mixed-case email regardless of the submitted casing', function () {
+    $actor = identityDuplicateCheckUserWith(['referents.create']);
+    $referent = Referent::factory()->create();
+    $card = PersonalData::factory()->individual()->for($referent, 'personable')->create();
+    Contact::factory()->email()->for($card, 'contactable')->create(['value' => 'Mario@Example.it ']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/identity/duplicate-check', [
+        'contacts' => [['type' => 'email', 'value' => 'mario@example.it']],
+    ])->assertOk();
+
+    expect($response->json('data.matches'))->toHaveCount(1)
+        ->and($response->json('data.matches.0.owner_id'))->toBe($referent->id);
+});
+
+it('AC-007: the number of contacts-table queries does not grow with the number of non-matching contacts', function () {
+    $actor = identityDuplicateCheckUserWith(['referents.create']);
+    Sanctum::actingAs($actor);
+
+    $searchDuplicateCheckQueryCount = function () {
+        DB::flushQueryLog();
+
+        $this->postJson('/api/identity/duplicate-check', [
+            'contacts' => [['type' => 'phone', 'value' => '+39 333 0000000']],
+        ])->assertOk();
+
+        return collect(DB::getQueryLog())
+            ->filter(fn (array $entry): bool => str_contains($entry['query'], 'contacts'))
+            ->count();
+    };
+
+    Referent::factory()->count(5)->create()->each(function (Referent $referent): void {
+        $card = PersonalData::factory()->individual()->for($referent, 'personable')->create();
+        Contact::factory()->phone()->for($card, 'contactable')->create();
+    });
+
+    DB::enableQueryLog();
+    $fewContactsQueryCount = $searchDuplicateCheckQueryCount();
+
+    Referent::factory()->count(500)->create()->each(function (Referent $referent): void {
+        $card = PersonalData::factory()->individual()->for($referent, 'personable')->create();
+        Contact::factory()->phone()->for($card, 'contactable')->create();
+    });
+
+    $manyContactsQueryCount = $searchDuplicateCheckQueryCount();
+
+    expect($manyContactsQueryCount)->toBe($fewContactsQueryCount);
 });

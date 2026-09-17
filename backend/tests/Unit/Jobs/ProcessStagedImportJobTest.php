@@ -131,3 +131,106 @@ it('moves the run to failed on an unhandled exception (e.g. unknown domain)', fu
 
     expect($run->fresh()->status)->toBe(ImportStatus::Failed);
 });
+
+// ---------------------------------------------------------------------------
+// AC-010 — tries/timeout hardening, per-row persisted_at idempotency (D-7, D-8)
+// ---------------------------------------------------------------------------
+
+it('exposes tries = 1 and timeout = config imports.job_timeout', function () {
+    config(['imports.job_timeout' => 987]);
+
+    $run = processingRun();
+    $job = new ProcessStagedImportJob($run->id);
+
+    expect($job->tries)->toBe(1)
+        ->and($job->timeout)->toBe(987);
+});
+
+it('skips a row already persisted by a previous execution and still counts it toward imported_rows', function () {
+    Storage::fake('local');
+    Notification::fake();
+
+    $run = processingRun();
+    $alreadyPersistedAt = now()->subMinutes(5);
+
+    $alreadyPersisted = ImportRunRow::factory()->create([
+        'import_run_id' => $run->id,
+        'row_number' => 1,
+        'status' => ImportRowStatus::Valid,
+        'mapped_values' => ['full_name' => 'Mario Rossi'],
+        'persisted_at' => $alreadyPersistedAt,
+    ]);
+    ImportRunRow::factory()->create([
+        'import_run_id' => $run->id,
+        'row_number' => 2,
+        'status' => ImportRowStatus::Valid,
+        'mapped_values' => ['full_name' => 'Anna Verdi'],
+    ]);
+
+    runProcessStagedImportJob($run);
+
+    $fresh = $run->fresh();
+
+    expect($fresh->status)->toBe(ImportStatus::Completed)
+        ->and($fresh->imported_rows)->toBe(2) // Mario (already persisted) + Anna (this run)
+        ->and($fresh->error_count)->toBe(0);
+
+    // Only Anna Verdi is written THIS run: Mario Rossi is never re-persisted
+    // (no duplicate anagrafica/lead), leaving exactly one BusinessFunction.
+    expect(BusinessFunction::query()->count())->toBe(1)
+        ->and(BusinessFunction::query()->where('name', 'Anna Verdi')->exists())->toBeTrue();
+
+    // Second precision: SQLite round-trips the datetime column without
+    // microseconds, so compare at the same precision it was stored with.
+    expect($alreadyPersisted->fresh()->persisted_at->format('Y-m-d H:i:s'))
+        ->toBe($alreadyPersistedAt->format('Y-m-d H:i:s'));
+});
+
+it('leaves persisted_at null on a row whose commit throws, so it stays pending for the next run', function () {
+    Storage::fake('local');
+    Notification::fake();
+
+    $run = processingRun();
+
+    $failing = ImportRunRow::factory()->create([
+        'import_run_id' => $run->id,
+        'row_number' => 1,
+        'status' => ImportRowStatus::Valid,
+        'mapped_values' => ['full_name' => FakeWizardImportDefinition::SENTINEL_FAILING_NAME],
+    ]);
+    ImportRunRow::factory()->create([
+        'import_run_id' => $run->id,
+        'row_number' => 2,
+        'status' => ImportRowStatus::Valid,
+        'mapped_values' => ['full_name' => 'Luca Neri'],
+    ]);
+
+    runProcessStagedImportJob($run);
+
+    $fresh = $run->fresh();
+
+    expect($fresh->imported_rows)->toBe(1)
+        ->and($fresh->error_count)->toBe(1)
+        ->and($failing->fresh()->persisted_at)->toBeNull();
+
+    Storage::disk('local')->assertExists($fresh->error_report_path);
+});
+
+it('re-running the job after completion never re-persists already committed rows', function () {
+    Storage::fake('local');
+    Notification::fake();
+
+    $run = processingRun();
+    ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 1, 'status' => ImportRowStatus::Valid, 'mapped_values' => ['full_name' => 'Mario Rossi']]);
+    ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 2, 'status' => ImportRowStatus::Valid, 'mapped_values' => ['full_name' => 'Anna Verdi']]);
+
+    runProcessStagedImportJob($run);
+    expect(BusinessFunction::query()->count())->toBe(2);
+
+    // Simulate a re-dispatch (e.g. the run was manually reset to processing).
+    $run->fresh()->update(['status' => ImportStatus::Processing]);
+    runProcessStagedImportJob($run->fresh());
+
+    expect(BusinessFunction::query()->count())->toBe(2) // unchanged: nothing re-persisted
+        ->and($run->fresh()->imported_rows)->toBe(2);
+});

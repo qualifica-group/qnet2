@@ -31,12 +31,25 @@ use Throwable;
  * from the staged error/skipped rows. The run moves to `reviewing`. On any
  * unhandled failure the run moves to `failed` instead of staying stuck
  * (AC-010).
+ *
+ * Hardening (spec 0136, D-7/D-9): `$tries = 1` — a killed worker must land
+ * in failed() below, never in a silent Laravel retry. `$timeout` comes from
+ * `imports.job_timeout` (prevails over `queue:work --timeout`, see that
+ * config key). Any previously staged rows for this run are dropped before
+ * re-staging, so a retry never doubles up `import_run_rows`.
  */
 class StageImportJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(private readonly int $importRunId) {}
+    public int $tries = 1;
+
+    public int $timeout;
+
+    public function __construct(private readonly int $importRunId)
+    {
+        $this->timeout = (int) config('imports.job_timeout');
+    }
 
     public function handle(
         ImportRegistry $registry,
@@ -57,6 +70,11 @@ class StageImportJob implements ShouldQueue
             $dedupMode = ImportDedupMode::from($run->dedup_strategy ?? ImportDedupMode::CreateOnly->value);
             $builder = new StagedRowBuilder($definition, $actor, $run->column_mapping ?? [], $dedupMode, $run->global_config ?? []);
 
+            // Step 1: drop any rows staged by a previous attempt (D-9) so a
+            // retry never leaves duplicate import_run_rows behind.
+            $run->rows()->delete();
+
+            // Step 2: re-read the file and re-stage every row from scratch.
             $this->stageRows($run, $reader, $builder);
 
             $importService->recomputeCounts($run->fresh());

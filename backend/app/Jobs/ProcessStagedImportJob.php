@@ -16,11 +16,11 @@ use App\Notifications\ImportCompletedNotification;
 use App\Services\ImportService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\LazyCollection;
 use Throwable;
 
 /**
@@ -33,6 +33,16 @@ use Throwable;
  * ImportCompletedNotification exactly once (guarded by `notified_at`). On any
  * unhandled failure the run moves to `failed` instead of staying stuck
  * (AC-010).
+ *
+ * Hardening (spec 0136, D-7/D-8): `$tries = 1` — a killed worker must land
+ * in failed() below, never in a silent Laravel retry. `$timeout` comes from
+ * `imports.job_timeout`. Only persistable rows still missing `persisted_at`
+ * are read, in `imports.batch_size` chunks (`lazyById()`), and each row's
+ * `persisted_at` is set INSIDE the same transaction that commits it — a
+ * re-run of this job never re-persists an already-written row. `error_count`
+ * stays scoped to failures of THIS run (unchanged semantics); `imported_rows`
+ * is recomputed by query across ALL executions (rows with `persisted_at` set
+ * that actually wrote, same rule as the former isWritten() check).
  */
 class ProcessStagedImportJob implements ShouldQueue
 {
@@ -45,7 +55,14 @@ class ProcessStagedImportJob implements ShouldQueue
         ImportRowStatus::Duplicate,
     ];
 
-    public function __construct(private readonly int $importRunId) {}
+    public int $tries = 1;
+
+    public int $timeout;
+
+    public function __construct(private readonly int $importRunId)
+    {
+        $this->timeout = (int) config('imports.job_timeout');
+    }
 
     public function handle(ImportRegistry $registry, ImportService $importService, StagingErrorReporter $errorReporter): void
     {
@@ -60,12 +77,12 @@ class ProcessStagedImportJob implements ShouldQueue
             /** @var User $actor */
             $actor = User::query()->findOrFail($run->user_id);
 
-            [$imported, $failures] = $this->persistStagedRows($run, $definition, $actor);
+            $failures = $this->persistStagedRows($run, $definition, $actor);
 
             $errorReporter->write($run, $failures);
 
             $run->update([
-                'imported_rows' => $imported,
+                'imported_rows' => $this->countImportedRows($run),
                 'error_count' => count($failures),
                 'status' => ImportStatus::Completed,
             ]);
@@ -92,7 +109,7 @@ class ProcessStagedImportJob implements ShouldQueue
     }
 
     /**
-     * @return array{0: int, 1: array<int, array{row: ImportRunRow, message: string}>}
+     * @return array<int, array{row: ImportRunRow, message: string}>
      */
     private function persistStagedRows(ImportRun $run, ImportDefinition $definition, User $actor): array
     {
@@ -100,52 +117,65 @@ class ProcessStagedImportJob implements ShouldQueue
         $dedupStrategy = $run->dedup_strategy ?? ImportDedupMode::CreateOnly->value;
         $convertToOpportunity = $run->convert_to_opportunity;
 
-        /** @var Collection<int, ImportRunRow> $rows */
-        $rows = $run->rows()
-            ->whereIn('status', self::PERSISTABLE_STATUSES)
-            ->orderBy('row_number')
-            ->get();
-
-        $imported = 0;
         $failures = [];
 
-        foreach ($rows as $row) {
+        foreach ($this->pendingRows($run) as $row) {
             $message = $this->persistOneRow($definition, $actor, $row, $globalConfig, $dedupStrategy, $convertToOpportunity);
 
             if ($message !== null) {
                 $failures[] = ['row' => $row, 'message' => $message];
-
-                continue;
-            }
-
-            if ($this->isWritten($row)) {
-                $imported++;
             }
         }
 
-        return [$imported, $failures];
+        return $failures;
     }
 
     /**
-     * A `duplicate` row only actually writes when its per-row `resolution`
-     * (spec 0036) is `create`/`update`; every other persistable row (valid,
-     * warning) is always written by persistRow(). An unresolved/`skip`
-     * duplicate never reaches the database, so it must never count as
-     * imported (spec 0036 AC-005 bug fix).
+     * Persistable rows not yet committed by a previous execution of this job
+     * (D-8: `persisted_at` still null). Chunked via lazyById() instead of one
+     * `get()` so memory stays bounded on large files — StageImportJob writes
+     * rows strictly in file/row_number order with strictly increasing ids,
+     * so ordering by id is equivalent, no extra `orderBy('row_number')`
+     * needed.
      */
-    private function isWritten(ImportRunRow $row): bool
+    private function pendingRows(ImportRun $run): LazyCollection
     {
-        if ($row->status !== ImportRowStatus::Duplicate) {
-            return true;
-        }
+        return $run->rows()
+            ->whereIn('status', self::PERSISTABLE_STATUSES)
+            ->whereNull('persisted_at')
+            ->lazyById((int) config('imports.batch_size'));
+    }
 
-        return in_array($row->resolution, [ImportRowResolution::Create, ImportRowResolution::Update], true);
+    /**
+     * Rows actually written across ALL executions of this job (D-8), not
+     * just this run's loop — a retry that only revisits the still-pending
+     * rows must still report the full total. A `valid`/`warning` row always
+     * writes; a `duplicate` row only writes when its per-row `resolution`
+     * (spec 0036) is `create`/`update` — an unresolved/`skip` duplicate
+     * never reaches the database and must never count as imported (spec
+     * 0036 AC-005 bug fix).
+     */
+    private function countImportedRows(ImportRun $run): int
+    {
+        return $run->rows()
+            ->whereNotNull('persisted_at')
+            ->where(function ($query): void {
+                $query->whereIn('status', [ImportRowStatus::Valid, ImportRowStatus::Warning])
+                    ->orWhere(function ($query): void {
+                        $query->where('status', ImportRowStatus::Duplicate)
+                            ->whereIn('resolution', [ImportRowResolution::Create, ImportRowResolution::Update]);
+                    });
+            })
+            ->count();
     }
 
     /**
      * Persist one staged row in its OWN transaction, isolating a commit-time
-     * failure so it never blocks the other rows. Returns a motivated error
-     * string on failure, null on success.
+     * failure so it never blocks the other rows, and stamp `persisted_at`
+     * INSIDE that same transaction (D-8): a row that throws rolls back
+     * together with its would-be `persisted_at`, so it is picked up again by
+     * the next execution. Returns a motivated error string on failure, null
+     * on success.
      *
      * @param  array<string, mixed>  $globalConfig
      */
@@ -154,6 +184,7 @@ class ProcessStagedImportJob implements ShouldQueue
         try {
             DB::transaction(function () use ($definition, $actor, $row, $globalConfig, $dedupStrategy, $convertToOpportunity): void {
                 $definition->persistRow($actor, $row, $globalConfig, $dedupStrategy, $convertToOpportunity);
+                $row->update(['persisted_at' => now()]);
             });
 
             return null;

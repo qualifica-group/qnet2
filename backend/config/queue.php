@@ -40,7 +40,12 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Spec 0136 (D-7): default raised to 1900s so it stays ABOVE
+            // imports.job_timeout (1800s default) — below it, a second
+            // worker would reclaim a long-running import job still in
+            // progress on the first. If production `.env` sets
+            // DB_QUEUE_RETRY_AFTER explicitly, that value prevails.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1900),
             'after_commit' => false,
         ],
 

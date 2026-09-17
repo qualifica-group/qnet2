@@ -162,3 +162,37 @@ it('leaves a run that already moved past staging untouched when a late failure l
 
     expect($run->fresh()->status)->toBe(ImportStatus::Reviewing);
 });
+
+// ---------------------------------------------------------------------------
+// AC-009 — tries/timeout hardening, idempotent re-run (D-7, D-9)
+// ---------------------------------------------------------------------------
+
+it('exposes tries = 1 and timeout = config imports.job_timeout', function () {
+    config(['imports.job_timeout' => 1234]);
+
+    $run = stagingRun();
+    $job = new StageImportJob($run->id);
+
+    expect($job->tries)->toBe(1)
+        ->and($job->timeout)->toBe(1234);
+});
+
+it('re-running on the same run produces exactly one import_run_rows per file row, never doubling up', function () {
+    Storage::fake('local');
+    Storage::disk('local')->put('imports/upload.csv', "Full Name,Email\nMario Rossi,mario@test.com\nAnna Verdi,anna@test.com\n");
+
+    $run = stagingRun();
+
+    runStageImportJob($run);
+    expect(ImportRunRow::query()->where('import_run_id', $run->id)->count())->toBe(2);
+
+    // Simulate a retry after a killed worker: the run is still `staging`
+    // (failed() never fired, or a fresh dispatch), StageImportJob runs again.
+    $run->fresh()->update(['status' => ImportStatus::Staging]);
+    runStageImportJob($run->fresh());
+
+    $rows = ImportRunRow::query()->where('import_run_id', $run->id)->orderBy('row_number')->get();
+    expect($rows)->toHaveCount(2)
+        ->and($rows[0]->mapped_values['full_name'])->toBe('Mario Rossi')
+        ->and($rows[1]->mapped_values['full_name'])->toBe('Anna Verdi');
+});

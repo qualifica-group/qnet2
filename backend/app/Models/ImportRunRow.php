@@ -23,6 +23,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * collection: `null` inherits the run's global `product_ids`, `[]` means
  * this row carries none, a non-empty array is the row's own explicit
  * override. Resolved to labels by ImportRunRowResource, batched per page.
+ *
+ * `persisted_at` (spec 0136, D-8): set by ProcessStagedImportJob inside the
+ * SAME transaction that commits the row, making the commit phase idempotent
+ * per row — a re-run only ever revisits rows still null here.
  */
 class ImportRunRow extends BaseModel
 {
@@ -45,6 +49,7 @@ class ImportRunRow extends BaseModel
         'operator_id',
         'operational_site_id',
         'product_ids',
+        'persisted_at',
     ];
 
     protected $casts = [
@@ -63,6 +68,7 @@ class ImportRunRow extends BaseModel
         'operator_id' => 'int',
         'operational_site_id' => 'int',
         'product_ids' => 'array',
+        'persisted_at' => 'datetime',
     ];
 
     public function importRun(): BelongsTo

@@ -3,6 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## IMPORT LEAD — DEDUP SCALABILE + JOB HARDENING (spec 0136, 2026-09-16) — VERDE, NON COMMITTATO
+
+- Sintomo prod: import lead (400 righe) fermo in `staging` e poi `failed`. Causa: `LeadDuplicateMatcher` idratava
+  TUTTI i contatti per riga (lineare nei contatti: ~101k = 750 ms e 134 MB per riga).
+- `contacts.normalized_value` (indice `type,normalized_value`, backfill in migrazione `2026_09_16_110000`): valorizzato
+  SOLO da `Contact::booted()` saving con `ContactValueNormalizer::contact`; non fillable, in `$hidden` (PII).
+  Chi scrive contatti fuori da Eloquent (DB::table) deve valorizzarlo a mano, altrimenti il dedup non li vede.
+- Lookup indicizzati su `normalized_value`: `LeadDuplicateMatcher::matchByContact` (una query, ordine id globale),
+  `IdentityDuplicateFinder::matchContactType` (email/phone/mobile), `ValidatesPhoneUniqueness::phoneValueTaken`.
+  Fiscale del matcher lead: `where(col, target)` + ricontrollo PHP (rischio residuo: legacy con spazi iniziali).
+  Rami fiscali di `IdentityDuplicateFinder`/`UniquePersonalDataIdentifier` invariati (whereRaw UPPER(TRIM)).
+- Job: `StageImportJob`/`ProcessStagedImportJob` `tries=1`, `timeout=config('imports.job_timeout')` (1800, env
+  `IMPORT_JOB_TIMEOUT`); staging cancella le righe del run prima di ricostruirle; commit legge `lazyById`
+  (`imports.batch_size`) solo righe con `persisted_at` null e lo imposta nella transazione della riga;
+  `imported_rows` ricalcolato via query, `error_count` = failures dell'esecuzione corrente.
+- **Nota operativa prod:** default `DB_QUEUE_RETRY_AFTER` portato a 1900 in `config/queue.php` (deve superare
+  `IMPORT_JOB_TIMEOUT`). Se il `.env` di prod lo definisce esplicitamente, va allineato (>= 1900). Effetto: un job
+  orfano per crash del worker viene ripreso dopo ~32 min invece di 90 s. Al deploy gira il backfill su `contacts`.
+- AC-006 [revised]: il re-match al commit deduplica righe interne al file solo con `update_existing`; con
+  `create_new` due righe uguali creano due anagrafiche, con `manual` la seconda viene saltata (preesistente).
+- Verifica: suite mirate 1469/1469, Pint pulito, benchmark MySQL locale 100k contatti: staging 400 righe 12.85 s,
+  memoria dedup 0.012 MB/riga costante. Migrazioni applicate al MySQL locale. `QuoteWorkflowMigrationTest` step 75->77.
+- Segnalati, non trattati: `GeoRecognizer` ~30 ms/riga; `StagingErrorReporter` carica tutte le righe error;
+  `TaskConfigPermissionsTest` (campo `group`) rosso anche su main; activity log lancia `ValueError` su update di un
+  contatto con `type` fuori enum; formato `+39...` e numero senza prefisso restano diversi nel dedup.
+
 ## CONVERSIONE LEAD -> OPPORTUNITA' PER MARKETING/COORDINATORI/SUPERVISORI (2026-09-16) — NON COMMITTATO
 
 - Richiesta utente: Fabozzi, Falzarano, Aliberti, Santamaria, Chiacchio, Figurelli (e Del Giudice) convertono i lead

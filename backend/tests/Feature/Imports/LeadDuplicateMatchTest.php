@@ -107,6 +107,35 @@ it('AC-001: staging a tax_code-matching row under the manual strategy resolves t
 });
 
 // ---------------------------------------------------------------------------
+// AC-003 (spec 0136) — indexed contact match: legacy-formatted phone, email
+// case/whitespace, via the normalized_value column.
+// ---------------------------------------------------------------------------
+
+it('AC-003: resolveDuplicateMatch finds a legacy-formatted mobile contact by its normalized_value', function () {
+    $registry = Registry::factory()->create();
+    $card = PersonalData::factory()->individual()->for($registry, 'personable')->create();
+    Contact::factory()->mobile()->for($card, 'contactable')->create(['value' => '+39 333 123 4567']);
+
+    $match = app(LeadsImportDefinition::class)->resolveDuplicateMatch(['mobile' => '+393331234567'], []);
+
+    expect($match['id'])->toBe($registry->id)
+        ->and($match['meta']['registry_id'])->toBe($registry->id)
+        ->and($match['meta']['matched_on'])->toBe(['mobile']);
+});
+
+it('AC-003: resolveDuplicateMatch finds a contact by email regardless of case/whitespace', function () {
+    $registry = Registry::factory()->create();
+    $card = PersonalData::factory()->individual()->for($registry, 'personable')->create();
+    Contact::factory()->email()->for($card, 'contactable')->create(['value' => ' Mario@Example.COM ']);
+
+    $match = app(LeadsImportDefinition::class)->resolveDuplicateMatch(['email' => 'mario@example.com'], []);
+
+    expect($match['id'])->toBe($registry->id)
+        ->and($match['meta']['registry_id'])->toBe($registry->id)
+        ->and($match['meta']['matched_on'])->toBe(['email']);
+});
+
+// ---------------------------------------------------------------------------
 // AC-002 — lead-level match: same-campaign lead surfaces, other-campaign doesn't
 // ---------------------------------------------------------------------------
 

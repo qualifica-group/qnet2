@@ -15,11 +15,17 @@ use App\Support\ContactValueNormalizer;
  * fiscal identifiers — `tax_code` (spec 0036) and `vat_number` (user directive
  * 2026-09-09). Spec 0041 D-1: the contact matched is a Registry,
  * not a Referent. Values are compared NORMALIZED (case/whitespace for email/
- * tax_code/vat_number, digits-only for phone/mobile) rather than via a raw SQL LIKE/
- * collation trick, mirroring GeoResolver::findByName()/
- * CompaniesImportDefinition::existsInDatabase() — fetch the (bounded)
- * candidate set via Eloquent, compare in PHP, never interpolate the row's
- * value into SQL. Backs `LeadsImportDefinition::resolveDuplicate()`/
+ * tax_code/vat_number, digits-only for phone/mobile).
+ *
+ * Spec 0136 (D-3/D-4): the candidate set is fetched with an INDEXED lookup —
+ * `contacts.normalized_value` (`type`, `normalized_value`) for contacts,
+ * plain equality on the fiscal column for cards — never a full scan of every
+ * contact/card in the database normalized in PHP row by row. Only the fiscal
+ * comparison still runs in PHP (`ContactValueNormalizer::taxCode` against the
+ * equality-matched candidates), because MySQL's `utf8mb4_unicode_ci`
+ * collation already folds case/trailing whitespace, so the indexed
+ * `where($column, $target)` over-matches by at most a few rows, never by the
+ * whole table. Backs `LeadsImportDefinition::resolveDuplicate()`/
  * `resolveDuplicateMatch()`.
  */
 final class LeadDuplicateMatcher
@@ -87,6 +93,12 @@ final class LeadDuplicateMatcher
     }
 
     /**
+     * One indexed query on `(type, normalized_value)`, conditions grouped
+     * per type present in the row and OR-ed together, ordered by `id` asc —
+     * the SAME evaluation order as the former full-scan (a single unordered
+     * fetch across every mappable type falls back to insertion/id order),
+     * so "the first candidate whose card is a Registry wins" is unchanged.
+     *
      * @param  array<string, mixed>  $mapped
      */
     private function matchByContact(array $mapped): ?int
@@ -99,21 +111,17 @@ final class LeadDuplicateMatcher
 
         $contacts = Contact::query()
             ->where('contactable_type', (new PersonalData)->getMorphClass())
-            ->whereIn('type', array_map(
-                static fn (ContactTypeEnum $type): string => $type->value,
-                array_values(LeadContactFields::map()),
-            ))
-            ->get(['id', 'type', 'value', 'contactable_id']);
+            ->where(function ($query) use ($targets): void {
+                foreach ($targets as $type => $values) {
+                    $query->orWhere(function ($query) use ($type, $values): void {
+                        $query->where('type', $type)->whereIn('normalized_value', $values);
+                    });
+                }
+            })
+            ->orderBy('id')
+            ->get(['id', 'contactable_id']);
 
         foreach ($contacts as $contact) {
-            /** @var ContactTypeEnum $type */
-            $type = $contact->type;
-            $normalizedValue = ContactValueNormalizer::contact($type, (string) $contact->value);
-
-            if (! in_array($normalizedValue, $targets[$type->value] ?? [], true)) {
-                continue;
-            }
-
             $registryId = $this->registryIdForCard((int) $contact->contactable_id);
 
             if ($registryId !== null) {
@@ -144,6 +152,15 @@ final class LeadDuplicateMatcher
     }
 
     /**
+     * Indexed equality on the allow-listed fiscal column (`$column` only
+     * ever comes from FISCAL_COLUMNS, never the mapped field id) narrows the
+     * candidate set; MySQL's `utf8mb4_unicode_ci` collation already folds
+     * case and trailing whitespace, so this over-matches by at most a
+     * handful of rows, never the whole table. The PHP recheck with
+     * `ContactValueNormalizer::taxCode` is a cheap safety net over that
+     * bounded set, ordered by `id` asc — same "first card wins" semantics
+     * as before.
+     *
      * @param  string  $column  one of FISCAL_COLUMNS
      * @param  array<string, mixed>  $mapped
      */
@@ -157,7 +174,8 @@ final class LeadDuplicateMatcher
 
         $cards = PersonalData::query()
             ->where('personable_type', (new Registry)->getMorphClass())
-            ->whereNotNull($column)
+            ->where($column, $target)
+            ->orderBy('id')
             ->get(['id', $column, 'personable_id']);
 
         foreach ($cards as $card) {
