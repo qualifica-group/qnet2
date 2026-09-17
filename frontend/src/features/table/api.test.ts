@@ -103,6 +103,19 @@ describe('saveTablePreferences', () => {
       product_category_id: 12,
     })
   })
+
+  // A save sent on page unload must outlive the page: an ordinary XHR is cancelled.
+  it('sends through the fetch adapter with keepalive when asked to survive an unload', async () => {
+    postMock.mockResolvedValue({ data: { success: true, message: 'ok', data: { resource: 'users' } } })
+
+    await saveTablePreferences('users', [{ id: 'email', visible: true, order: 0 }], undefined, { keepalive: true })
+
+    expect(postMock).toHaveBeenCalledWith(
+      '/tables/users/preferences',
+      { columns: [{ id: 'email', visible: true, order: 0 }] },
+      { adapter: 'fetch', fetchOptions: { keepalive: true } },
+    )
+  })
 })
 
 describe('resetTableFilters', () => {

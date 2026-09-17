@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { GridApi } from 'ag-grid-community'
+import { saveTableFilters, saveTablePreferences } from '@/features/table/api'
+import type { ColumnPreferenceInput } from '@/features/table/types'
 import {
   toColumnPreferences,
   useResetTablePreferences,
@@ -15,6 +17,15 @@ const PERSIST_DEBOUNCE_MS = 500
 
 /** Stable empty filter model (module-level so its identity never changes). */
 export const EMPTY_FILTER_MODEL: Record<string, unknown> = {}
+
+function clearTimer(timerRef: { current: ReturnType<typeof setTimeout> | null }): void {
+  if (timerRef.current) {
+    clearTimeout(timerRef.current)
+    timerRef.current = null
+  }
+}
+
+function ignoreUnloadFailure(): void {}
 
 interface UseTableLayoutPersistenceInput {
   domain: string
@@ -74,29 +85,51 @@ export function useTableLayoutPersistence({
   const [filtersCustomizedLocally, setFiltersCustomizedLocally] = useState(false)
   const isFilterCustomized = filtersCustomizedLocally || configFiltersCustomized
 
+  // Payloads waiting out their debounce. They are captured when the change
+  // happens, not when the timer fires: a save flushed on unmount runs after AG
+  // Grid has already been destroyed, so the grid can no longer be read then.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingLayoutRef = useRef<ColumnPreferenceInput[] | null>(null)
+  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingFilterRef = useRef<Record<string, unknown> | null>(null)
+
+  const { mutate: mutateLayout } = savePreferences
+  const flushLayout = useCallback(() => {
+    clearTimer(debounceRef)
+    const columns = pendingLayoutRef.current
+    pendingLayoutRef.current = null
+    if (columns) {
+      mutateLayout(columns)
+    }
+  }, [mutateLayout])
+
+  const { mutate: mutateFilters } = saveFilters
+  const flushFilters = useCallback(() => {
+    clearTimer(filterDebounceRef)
+    const filterModel = pendingFilterRef.current
+    pendingFilterRef.current = null
+    if (filterModel) {
+      mutateFilters({ filterModel })
+    }
+  }, [mutateFilters])
+
   // Persist the user's column layout, debounced so a drag/resize burst yields a
   // single save. The full current state is read from the grid and sent to the
   // backend, which computes the sparse delta (the frontend never diffs).
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleColumnStateChanged = useCallback(() => {
     if (!gridApi) {
       return
     }
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-    }
     // The user just changed columns → offer reset immediately, before the
     // debounced save round-trips.
     setCustomizedLocally(true)
-    debounceRef.current = setTimeout(() => {
-      const preferences = toColumnPreferences(gridApi.getColumnState(), knownColumnIds)
-      savePreferences.mutate(preferences)
-    }, PERSIST_DEBOUNCE_MS)
-  }, [gridApi, knownColumnIds, savePreferences])
+    pendingLayoutRef.current = toColumnPreferences(gridApi.getColumnState(), knownColumnIds)
+    clearTimer(debounceRef)
+    debounceRef.current = setTimeout(flushLayout, PERSIST_DEBOUNCE_MS)
+  }, [gridApi, knownColumnIds, flushLayout])
 
   // Debounce filter persistence, and hold the last-persisted model (serialized)
   // so the grid's own echo of the saved filters on mount is not re-saved.
-  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastPersistedFilterRef = useRef<string>(JSON.stringify(EMPTY_FILTER_MODEL))
   useEffect(() => {
     lastPersistedFilterRef.current = JSON.stringify(initialFilterModel)
@@ -114,29 +147,52 @@ export function useTableLayoutPersistence({
     }
     lastPersistedFilterRef.current = serialized
     setFiltersCustomizedLocally(Object.keys(model).length > 0)
-    if (filterDebounceRef.current) {
-      clearTimeout(filterDebounceRef.current)
-    }
-    filterDebounceRef.current = setTimeout(() => {
-      saveFilters.mutate({ filterModel: model })
-    }, PERSIST_DEBOUNCE_MS)
-  }, [gridApi, saveFilters])
+    pendingFilterRef.current = model
+    clearTimer(filterDebounceRef)
+    filterDebounceRef.current = setTimeout(flushFilters, PERSIST_DEBOUNCE_MS)
+  }, [gridApi, flushFilters])
 
-  // Flush any pending debounce on unmount so the last change is not lost.
+  // Send a pending save immediately on unmount (in-app navigation) instead of
+  // dropping it with its timer: the mutation outlives the component and still
+  // refreshes the cached config the next mount reads.
   useEffect(
     () => () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
-      if (filterDebounceRef.current) {
-        clearTimeout(filterDebounceRef.current)
-      }
+      flushLayout()
+      flushFilters()
     },
-    [],
+    [flushLayout, flushFilters],
   )
+
+  // A reload or tab close never unmounts React, and the browser cancels an
+  // ordinary request on unload: a change made within the debounce window was
+  // lost. `pagehide` sends what is pending as `keepalive` requests, which the
+  // browser completes after the page is gone. Their outcome is ignored because
+  // no page is left to report it on.
+  const productCategoryId = scope?.productCategoryId
+  useEffect(() => {
+    const handlePageHide = () => {
+      clearTimer(debounceRef)
+      clearTimer(filterDebounceRef)
+      const columns = pendingLayoutRef.current
+      const filterModel = pendingFilterRef.current
+      pendingLayoutRef.current = null
+      pendingFilterRef.current = null
+      if (columns) {
+        saveTablePreferences(domain, columns, productCategoryId, { keepalive: true }).catch(ignoreUnloadFailure)
+      }
+      if (filterModel) {
+        saveTableFilters(domain, { filterModel }, productCategoryId, { keepalive: true }).catch(ignoreUnloadFailure)
+      }
+    }
+    window.addEventListener('pagehide', handlePageHide)
+    return () => window.removeEventListener('pagehide', handlePageHide)
+  }, [domain, productCategoryId])
 
   const handleResetLayout = useCallback(async () => {
     try {
+      // Drop any pending save so it can't re-persist the layout we are resetting.
+      clearTimer(debounceRef)
+      pendingLayoutRef.current = null
       await resetPreferences.mutateAsync()
       // Refetch defaults BEFORE remounting so the new grid mounts on the pure
       // PHP default layout, then bump the key to rebuild it cleanly.
@@ -152,9 +208,8 @@ export function useTableLayoutPersistence({
   const handleResetFilters = useCallback(async () => {
     try {
       // Drop any pending save so it can't re-persist the filters we are clearing.
-      if (filterDebounceRef.current) {
-        clearTimeout(filterDebounceRef.current)
-      }
+      clearTimer(filterDebounceRef)
+      pendingFilterRef.current = null
       await resetFilters.mutateAsync()
       // Refetch BEFORE remounting so the grid mounts with an empty filterModel,
       // then bump the key to rebuild it cleanly (SSRM re-queries unfiltered).

@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TABELLE AG GRID — PAGINA DA 100 CARICATA A BLOCCHI DA 25 — NON COMMITTATO (2026-09-17)
+
+Bug (Gestione Richieste, vale per ogni tabella SSRM): scelta la dimensione di pagina 100, la griglia continuava a
+chiamare `POST /tables/{domain}/rows` mentre si scorreva. Causa: `cacheBlockSize` resta a
+`defaultPagination.limit` (25) anche quando il selettore cambia `paginationPageSize`, quindi l'SSRM caricava la
+pagina in 4 blocchi (0-25, 25-50, ...), una chiamata per blocco.
+
+- Nuovo `components/data-table/pagination-block-size.ts` → `syncCacheBlockToPageSize` su `onPaginationChanged` in
+  `DataTable`: con `newPageSize` imposta `cacheBlockSize` = page size (AG Grid resetta lo store → 1 chiamata
+  `0-100`). Guardia di uguaglianza contro il loop sul `paginationChanged` emesso dal reset.
+- Verificato in browser (Playwright, 3000 righe simulate): prima 25-50/50-75/75-100 allo scroll; dopo `0-100`,
+  pagina 2 `100-200`, nessuna chiamata a riposo. Test: `pagination-block-size.test.ts` (4), data-table 159 e
+  features/table 198 verdi, ESLint e `tsc -b --force` puliti.
+- Vincolo: il selettore offre `blockSize × {1,2,4}` e il backend ha `MAX_LIMIT = 100`; oggi tutte le
+  `TableDefinition` hanno limit 25. Un limit > 25 farebbe andare in 422 la pagina più grande.
+
+## TABELLE AG GRID — LAYOUT COLONNE PERSO AL RELOAD IMMEDIATO — NON COMMITTATO (2026-09-17)
+
+Bug: cambiando una colonna (sposta/ridimensiona/nascondi) e ricaricando subito la pagina, la modifica si perdeva.
+Root cause in `use-table-layout-persistence.ts`: il salvataggio aspettava un debounce di 500 ms; al reload React
+non smonta e il timer muore con la pagina, e anche lo smontaggio (navigazione interna) CANCELLAVA il timer invece di
+inviare il salvataggio (il commento diceva "flush", il codice scartava). Stesso difetto per il filterModel della griglia.
+
+- Payload catturati al momento della modifica (`pendingLayoutRef`/`pendingFilterRef`), non allo scadere del timer
+  (allo smontaggio AG Grid e' gia' distrutto).
+- Smontaggio: `flushLayout`/`flushFilters` inviano subito via mutation (aggiorna la cache config).
+- `pagehide` (reload/chiusura tab): chiamata diretta a `saveTablePreferences`/`saveTableFilters` con
+  `{ keepalive: true }` → `api.ts` usa `adapter: 'fetch'` + `fetchOptions.keepalive` (passa dagli interceptor axios,
+  quindi Bearer + Accept-Language; `sendBeacon` non puo' mandare l'header Authorization). Esito ignorato.
+- Reset layout/filtri: svuotano anche il payload pendente, cosi' non viene reinviato.
+- Test: `use-table-layout-persistence.test.tsx` (nuovo, 5 casi; 3 falliscono sul codice precedente) + caso keepalive
+  in `api.test.ts`. Suite FE 700 file / 5290 test verdi, `tsc -b --force` e ESLint puliti.
+- Da verificare a mano nel browser: sposta una colonna e premi subito F5 → in DevTools/Network la POST
+  `/tables/{domain}/preferences` parte con keepalive e al reload il layout resta. Fuori scope: i filtri avanzati
+  (`use-advanced-filters.ts`) hanno un salvataggio proprio, non toccato.
+
 ## GESTIONE RICHIESTE — COLONNE DI DEFAULT + COLONNA EMAIL — NON COMMITTATO (2026-09-17)
 
 Richiesta utente (screenshot Excel): la griglia mostra di default SOLO, in quest'ordine: Categoria prodotto,

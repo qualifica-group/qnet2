@@ -33,6 +33,7 @@ import {
   TableEmptyOverlay,
 } from '@/components/data-table/data-table-overlays'
 import { buildDataTableTheme } from '@/components/data-table/data-table-theme'
+import { syncCacheBlockToPageSize } from '@/components/data-table/pagination-block-size'
 import { buildRowSelectionOptions } from '@/components/data-table/row-selection'
 import type { TableColumn, TableRow } from '@/features/table/types'
 import { MAX_COLUMN_WIDTH } from '@/features/table/use-table-preferences'
@@ -443,6 +444,7 @@ export function DataTable({
         onColumnVisible={handleColumnVisible}
         onFilterChanged={onFilterChanged}
         onModelUpdated={handleModelUpdated}
+        onPaginationChanged={syncCacheBlockToPageSize}
         onSelectionChanged={enableSelection ? handleSelectionChanged : undefined}
         {...gridOptions}
       />

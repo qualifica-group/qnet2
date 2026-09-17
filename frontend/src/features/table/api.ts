@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from 'axios'
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import type {
@@ -61,6 +62,26 @@ function productCategoryBody(productCategoryId?: number): { product_category_id?
 }
 
 /**
+ * Request config for a save sent while the page is unloading (reload, tab
+ * close). The browser cancels an ordinary XHR on unload, so the request goes
+ * through axios' fetch adapter with `keepalive`, which lets it outlive the page
+ * while still passing through the client interceptors (Bearer token, locale).
+ * `sendBeacon` is not an option: it cannot carry the Authorization header.
+ */
+const UNLOAD_SAFE_REQUEST: AxiosRequestConfig = { adapter: 'fetch', fetchOptions: { keepalive: true } }
+
+/** Options shared by the layout/filter writes. */
+export interface TableSaveOptions {
+  /** Send with `keepalive` so the save survives a page unload. */
+  keepalive?: boolean
+}
+
+/** Extra `post` arguments for a save: none for an ordinary one, so its call stays unchanged. */
+function saveRequestArgs(options?: TableSaveOptions): [] | [AxiosRequestConfig] {
+  return options?.keepalive ? [UNLOAD_SAFE_REQUEST] : []
+}
+
+/**
  * Persists the current user's column layout (order/width/visibility) for a
  * domain. Self-scoped server-side (the user_id is never sent). Returns the
  * freshly merged config so the cache can stay in sync. See 0003.
@@ -73,10 +94,12 @@ export async function saveTablePreferences(
   domain: string,
   columns: ColumnPreferenceInput[],
   productCategoryId?: number,
+  options?: TableSaveOptions,
 ): Promise<TableConfig> {
   const { data } = await apiClient.post<ApiResponse<TableConfig>>(
     `/tables/${domain}/preferences`,
     { columns, ...productCategoryBody(productCategoryId) },
+    ...saveRequestArgs(options),
   )
   return data.data
 }
@@ -143,10 +166,12 @@ export async function saveTableFilters(
   domain: string,
   payload: SaveTableFiltersPayload,
   productCategoryId?: number,
+  options?: TableSaveOptions,
 ): Promise<TableConfig> {
   const { data } = await apiClient.post<ApiResponse<TableConfig>>(
     `/tables/${domain}/filters`,
     { ...payload, ...productCategoryBody(productCategoryId) },
+    ...saveRequestArgs(options),
   )
   return data.data
 }
