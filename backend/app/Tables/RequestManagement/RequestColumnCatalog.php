@@ -71,6 +71,29 @@ final class RequestColumnCatalog
     private const int CLIENT_FIELD_MAX_LENGTH = 255;
 
     /**
+     * Default pixel width of each visible column (direttiva utente 2026-09-17),
+     * applied by columns() onto the declarations. A column absent here keeps
+     * the frontend's own default width.
+     *
+     * @var array<string, int>
+     */
+    private const array DEFAULT_WIDTHS = [
+        'product_categories' => 214,
+        RequestManagerColumns::OPERATOR_COLUMN_ID => 201,
+        'quote_workflow_status' => 212,
+        'next_callback_at' => 198,
+        OfferLinesColumn::COLUMN_ID => 214,
+        'first_name' => 120,
+        'last_name' => 137,
+        'phone' => 145,
+        'email' => 206,
+        'tax_code' => 171,
+        'general_notes' => 239,
+        'source' => 127,
+        RequestManagerColumns::GA1_COLUMN_ID => 177,
+    ];
+
+    /**
      * Declaration order IS the default column order (spec 0001's persisted
      * layout is a sparse delta over this baseline). Direttiva utente
      * 2026-09-17 fixed the default worklist to exactly these visible columns,
@@ -84,6 +107,21 @@ final class RequestColumnCatalog
      * @return array<int, array<string, mixed>>
      */
     public static function columns(): array
+    {
+        return array_map(
+            static fn (array $column): array => isset(self::DEFAULT_WIDTHS[$column['id']])
+                ? [...$column, 'width' => self::DEFAULT_WIDTHS[$column['id']]]
+                : $column,
+            self::declarations(),
+        );
+    }
+
+    /**
+     * The column declarations, in default order (see columns()).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function declarations(): array
     {
         return [
             // Inline-editable (user directive 2026-08-03, spec 0075 D-3 —

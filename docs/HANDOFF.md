@@ -15,6 +15,8 @@ NON azzerate (chi ha un layout personale usa "Ripristina predefinito").
 - `RequestColumnCatalog::columns()` riordinato; `pending_change_requests`/`operational_site`/`is_transferred`/
   `vat_number` ora `visible: false` (restano nel selettore colonne). `RequestManagerColumns::column($id)` per
   piazzare Operatore e GA1 separati. `operational_site` resta sulla riga: lo scope del picker Operatore funziona.
+- Larghezze di default delle 13 colonne visibili in `RequestColumnCatalog::DEFAULT_WIDTHS` (valori forniti
+  dall'utente); le nascoste restano `width: null`. Il catalogo e' a 452 righe: al prossimo ampliamento va diviso.
 - Email: `RequestClientColumns::CONTACT_COLUMNS` (phone/email) sostituisce la logica solo-telefono;
   `RequestRowMapper::primaryContact()`; `RequestClientProfileWriter::CONTACT_KEY_TYPES` (`client_phone`,
   `client_email`, update in place / create / clear); chiave permesso `client_email` in

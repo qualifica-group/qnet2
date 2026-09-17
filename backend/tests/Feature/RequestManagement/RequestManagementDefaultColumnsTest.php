@@ -101,6 +101,28 @@ it('shows exactly the requested columns, in the requested order, and hides the r
     ]);
 });
 
+it('gives every visible column its requested default width, and none to the hidden ones', function () {
+    Sanctum::actingAs(defaultColumnsActor(['viewAny', 'viewAll']));
+
+    $columns = collect($this->getJson('/api/tables/request-management/columns')->assertOk()->json('data.columns'));
+
+    expect($columns->where('visible', true)->pluck('width', 'id')->all())->toBe([
+        'product_categories' => 214,
+        'operator_ga2' => 201,
+        'quote_workflow_status' => 212,
+        'next_callback_at' => 198,
+        'offer_lines' => 214,
+        'first_name' => 120,
+        'last_name' => 137,
+        'phone' => 145,
+        'email' => 206,
+        'tax_code' => 171,
+        'general_notes' => 239,
+        'source' => 127,
+        'manager_ga1' => 177,
+    ])->and($columns->where('visible', false)->pluck('width')->unique()->all())->toBe([null]);
+});
+
 it('keeps the hidden operational_site on the row, so the Operatore picker scope still resolves', function () {
     Sanctum::actingAs(defaultColumnsActor(['viewAny', 'viewAll']));
     defaultColumnsRequest('mario@example.test');
