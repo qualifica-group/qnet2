@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement\Report\Indicators;
 
+use App\Enums\WorkflowStatusSystemKey;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\IndicatorResult;
@@ -22,12 +23,12 @@ use Illuminate\Database\Eloquent\Builder;
  * the same request count twice. Excludes soft-deleted notes, general notes
  * (`quote_id IS NULL`) and notes created outside the range (AC-010).
  *
- * Two deliberate rules, direttiva utente 2026-09-09:
+ * Two deliberate rules:
  *
- * - NO filter on the current workflow status. Every note of the module
- *   counts, first state included: the column measures the operator's calls,
- *   not the progress of the request (rev-3 replaces the old
- *   `system_key <> 'open'` restriction of AC-010/AC-011).
+ * - Only requests NOT in the first workflow state (`system_key <> 'open'`):
+ *   "note inserite per ogni offerta che non ha il primo stato" (user
+ *   directive 2026-09-18, which reinstates the AC-010 restriction the
+ *   2026-09-09 directive had dropped).
  * - `notes.user_id = quotes.operator_id` (AC-011, rev-3): only what the GA2
  *   wrote on their OWN requests. A note by anyone else (admin, colleague)
  *   is not a call that operator made, so it is not counted at all — and a
@@ -55,6 +56,11 @@ final class PhoneCallsIndicator implements ReportIndicator
     private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
     {
         return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
+            ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
+            ->where(function (Builder $status): void {
+                $status->whereNull('current_status.system_key')
+                    ->orWhere('current_status.system_key', '<>', WorkflowStatusSystemKey::Open->value);
+            })
             ->join('notes', 'notes.quote_id', '=', 'quotes.id')
             ->whereNull('notes.deleted_at')
             ->whereColumn('notes.user_id', 'quotes.operator_id')

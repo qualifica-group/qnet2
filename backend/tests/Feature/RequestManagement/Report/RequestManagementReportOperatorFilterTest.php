@@ -18,6 +18,7 @@ use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
+use Tests\Feature\RequestManagement\Report\Support\SiteFilterFixture;
 
 // Spec 0108 — the operator filter RESTRICTS THE CALCULATION (D-1), it does
 // not hide rows after the fact: AC-002..AC-006 and AC-014..AC-016.
@@ -58,10 +59,11 @@ if (! function_exists('operatorFilterFixture')) {
 
 if (! function_exists('operatorFilterQuote')) {
     /**
-     * A request on the FIRST workflow state with a callback due in range: its
-     * notes count as phone calls all the same since rev-3 (D-16), and
-     * "N. Richiami non gestiti" gives it a GA2 row even when it has no
-     * operator at all — which a note alone can no longer do (D-17).
+     * A request in a WORKED state (past the first, not closed) with a callback
+     * due today: its notes count as phone calls (the user directive of
+     * 2026-09-18 skips first-state requests), and "N. Richiami non gestiti"
+     * gives it a GA2 row even when it has no operator at all — which a note
+     * alone can no longer do (D-17).
      */
     function operatorFilterQuote(ProductCategory $category, ?int $operatorId): Quote
     {
@@ -74,7 +76,11 @@ if (! function_exists('operatorFilterQuote')) {
 
         return Quote::factory()
             ->create(['opportunity_id' => $opportunity->id])
-            ->forceFill(['operator_id' => $operatorId, 'next_callback_at' => now()]);
+            ->forceFill([
+                'operator_id' => $operatorId,
+                'next_callback_at' => now(),
+                'quote_workflow_status_id' => SiteFilterFixture::workedStatus()->id,
+            ]);
     }
 }
 

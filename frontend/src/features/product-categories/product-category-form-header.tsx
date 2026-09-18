@@ -4,7 +4,9 @@ import { ChartNoAxesColumn, EyeOff, FolderTree, Loader2, TriangleAlert } from 'l
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
+import type { ProductCategoryFormMode } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
+import { useReportableInheritance } from '@/features/product-categories/use-reportable-inheritance'
 
 /** The parent picker's option shape, reduced to what the pill needs to resolve a name. */
 export interface ParentOptionRef {
@@ -14,8 +16,8 @@ export interface ParentOptionRef {
 
 interface ProductCategoryFormHeaderProps {
   control: Control<ProductCategoryFormValues>
-  /** Drives the heading pair (create/edit); the badges are live in both modes. */
-  isEdit: boolean
+  /** Drives the heading pair (create/edit) and the report-flag fallback; the badges are live in both modes. */
+  mode: ProductCategoryFormMode
   /** The parent picker's own option list: the only place a parent id has a NAME here. */
   parentOptions: readonly ParentOptionRef[]
   /** id of the RHF `<form>` the save action attaches to via the HTML `form=` attribute. */
@@ -43,7 +45,7 @@ interface ProductCategoryFormHeaderProps {
  */
 export function ProductCategoryFormHeader({
   control,
-  isEdit,
+  mode,
   parentOptions,
   formId,
   isSubmitting,
@@ -53,7 +55,8 @@ export function ProductCategoryFormHeader({
   const { t } = useTranslation()
   const parentId = useWatch({ control, name: 'parent_id' })
   const isSelectable = useWatch({ control, name: 'is_selectable' })
-  const isReportable = useWatch({ control, name: 'is_reportable' })
+  const isReportable = useReportableInheritance(control, mode).effective
+  const isEdit = mode.type === 'edit'
 
   const parentName =
     parentId === null ? null : (parentOptions.find((option) => option.id === parentId)?.name ?? null)

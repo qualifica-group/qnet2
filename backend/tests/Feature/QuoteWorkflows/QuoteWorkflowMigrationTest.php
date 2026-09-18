@@ -131,8 +131,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_17_130100_remap_mobile_import_field_to_phone` (80th), the
     // `mobile` contact type folded into `phone`, and
     // `2026_09_17_140000_drop_state_id_from_leads_table` (81st), the Lead's
-    // Regione removed. Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 81]);
+    // Regione removed, and
+    // `2026_09_18_100000_make_is_reportable_inheritable_on_product_categories_table`
+    // (82nd), the report flag turned into an inheritable override. Adding a
+    // migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 82]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

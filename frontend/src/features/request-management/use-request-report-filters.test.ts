@@ -18,8 +18,8 @@ import type { RequestReportCategory, RequestReportSite } from '@/features/reques
 const STORAGE_KEY = 'request-management.report-filters'
 
 const CATEGORIES: RequestReportCategory[] = [
-  { key: 'gol', label: 'GOL' },
-  { key: 'consulenza', label: 'Consulenza' },
+  { key: 'gol', label: 'GOL', depth: 0, parent_key: null },
+  { key: 'consulenza', label: 'Consulenza', depth: 0, parent_key: null },
 ]
 
 const SITES: RequestReportSite[] = [

@@ -15,6 +15,7 @@ use App\Http\Resources\ProductCategoryResource;
 use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\ProductCategories\BulkMoveCategories;
+use App\Services\ProductCategories\ReportableInheritance;
 use App\Services\ProductCategoryService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -42,6 +43,7 @@ class ProductCategoryController extends BaseApiController
         private readonly BulkMoveCategories $bulkMove,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
+        private readonly ReportableInheritance $reportable,
     ) {}
 
     /**
@@ -233,6 +235,7 @@ class ProductCategoryController extends BaseApiController
     private function resourceWithInherited(ProductCategory $productCategory): array
     {
         $productCategory->loadMissing('businessFunction');
+        $reportable = $this->reportable->resolve($productCategory);
 
         return array_merge(
             (new ProductCategoryResource($productCategory))->resolve(),
@@ -251,6 +254,11 @@ class ProductCategoryController extends BaseApiController
                 // `manager_labels`) — the form's read-only "ereditate dal
                 // padre" preview.
                 'inherited_manager_labels' => $this->service->inheritedManagerLabels($productCategory),
+                // User directive 2026-09-18: the EFFECTIVE report flag (own
+                // `is_reportable` override, else inherited) and the ancestor
+                // it is inherited from (null when own or nothing inherited).
+                'effective_is_reportable' => $reportable['value'],
+                'is_reportable_source_category' => $reportable['source_category'],
             ],
         );
     }

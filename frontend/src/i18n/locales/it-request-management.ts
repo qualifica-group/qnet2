@@ -320,7 +320,21 @@ export const requestManagement = {
       // Spec 0112: gruppo delle Sedi operative, mostrato accanto a quello GA2.
       sites: 'Sedi',
       selectAllSites: 'Seleziona tutto',
+      // Direttiva utente 2026-09-18: le Sedi scelte restringono l'elenco operatori.
+      operatorsBySite: 'Sono elencati solo gli operatori delle sedi selezionate.',
       rowMode: 'Righe da includere',
+    },
+    // Select ricercabili dei tre gruppi (direttiva utente 2026-09-18).
+    picker: {
+      placeholder: 'Nessuna selezione',
+      search: 'Cerca…',
+      noMatch: 'Nessun risultato',
+      clear: 'Svuota',
+      count: '{{selected}} di {{total}} selezionati',
+      includeChildrenHint: 'Clicca di nuovo per includere le sottocategorie',
+      allCategories: 'Tutte le categorie',
+      allSites: 'Tutte le sedi',
+      allOperators: 'Tutti gli operatori',
     },
     // rev-2 D-13: le tre opzioni mutuamente esclusive di `row_mode`.
     rowModes: {
@@ -365,8 +379,18 @@ export const requestManagement = {
   dashboard: {
     regionLabel: 'Dashboard di Gestione Richieste',
     editFilters: 'Filtri',
-    filtersSummary: 'Dal {{from}} al {{to}} · {{selected}}/{{total}} categorie · {{rowMode}}',
-    operatorsSummary: '· {{selected}}/{{total}} operatori',
+    // Chip dei filtri applicati sopra i grafici (direttiva utente 2026-09-18).
+    applied: {
+      title: 'Filtri applicati',
+      period: 'Periodo',
+      periodValue: '{{from}} – {{to}}',
+      categories: 'Categorie',
+      sites: 'Sedi',
+      operators: 'Operatori',
+      rowMode: 'Righe',
+      more: '+{{count}}',
+      allOperatorsOfSites: 'Tutti quelli delle sedi scelte',
+    },
     noCategories:
       'Nessun dato da mostrare: non ci sono ancora richieste nelle categorie incluse nel report. La dashboard si popolerà non appena ne verrà registrata una.',
     errors: {

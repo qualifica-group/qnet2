@@ -144,9 +144,9 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       // Spec 0074: a new category is a usable destination unless the
       // operator explicitly turns it into a container.
       is_selectable: true,
-      // A new category stays out of the reports/dashboard until the operator
-      // opts it in — mirrors the backend default (omitted on create = false).
-      is_reportable: false,
+      // A new category inherits its parent's report flag (a root: not
+      // reportable) until the operator forces it — mirrors the backend default.
+      is_reportable: null,
       // Spec 0077 D-8: `multiple` is the behavior every existing root already
       // has; a new root starts from the same default.
       management_mode: 'multiple',

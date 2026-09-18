@@ -142,8 +142,8 @@ it('lists the in-scope GA2 sorted by name, for an authorized actor (AC-010)', fu
     $response = $this->getJson('/api/request-management/report/operators')->assertOk();
 
     expect($response->json('data.operators'))->toBe([
-        ['key' => (string) $ada->id, 'label' => 'Ada Rossi'],
-        ['key' => (string) $zoe->id, 'label' => 'Zoe Bianchi'],
+        ['key' => (string) $ada->id, 'label' => 'Ada Rossi', 'site_keys' => []],
+        ['key' => (string) $zoe->id, 'label' => 'Zoe Bianchi', 'site_keys' => []],
     ]);
 });
 
@@ -167,13 +167,13 @@ it('appends "Non assegnato" last, and only when such a request exists (AC-012)',
     $italian = ['Accept-Language' => 'it'];
 
     expect($this->getJson('/api/request-management/report/operators', $italian)->json('data.operators'))
-        ->toBe([['key' => (string) $ada->id, 'label' => 'Ada Rossi']]);
+        ->toBe([['key' => (string) $ada->id, 'label' => 'Ada Rossi', 'site_keys' => []]]);
 
     operatorsEndpointQuote($tree['gol'], null);
 
     expect($this->getJson('/api/request-management/report/operators', $italian)->json('data.operators'))->toBe([
-        ['key' => (string) $ada->id, 'label' => 'Ada Rossi'],
-        ['key' => ReportOperatorFilter::UNASSIGNED_KEY, 'label' => 'Non assegnato'],
+        ['key' => (string) $ada->id, 'label' => 'Ada Rossi', 'site_keys' => []],
+        ['key' => ReportOperatorFilter::UNASSIGNED_KEY, 'label' => 'Non assegnato', 'site_keys' => []],
     ]);
 });
 

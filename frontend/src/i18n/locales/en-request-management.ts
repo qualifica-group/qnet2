@@ -318,7 +318,19 @@ export const requestManagement = {
       // Spec 0112: the operational site group, shown alongside the GA2 one.
       sites: 'Sites',
       selectAllSites: 'Select all',
+      operatorsBySite: 'Only the operators of the selected sites are listed.',
       rowMode: 'Rows to include',
+    },
+    picker: {
+      placeholder: 'Nothing selected',
+      search: 'Search…',
+      noMatch: 'No results',
+      clear: 'Clear',
+      count: '{{selected}} of {{total}} selected',
+      includeChildrenHint: 'Click again to include the subcategories',
+      allCategories: 'All categories',
+      allSites: 'All sites',
+      allOperators: 'All operators',
     },
     // rev-2 D-13: the three mutually exclusive `row_mode` options.
     rowModes: {
@@ -363,8 +375,17 @@ export const requestManagement = {
   dashboard: {
     regionLabel: 'Request Management dashboard',
     editFilters: 'Filters',
-    filtersSummary: 'From {{from}} to {{to}} · {{selected}}/{{total}} categories · {{rowMode}}',
-    operatorsSummary: '· {{selected}}/{{total}} operators',
+    applied: {
+      title: 'Applied filters',
+      period: 'Period',
+      periodValue: '{{from}} – {{to}}',
+      categories: 'Categories',
+      sites: 'Sites',
+      operators: 'Operators',
+      rowMode: 'Rows',
+      more: '+{{count}}',
+      allOperatorsOfSites: 'All of the selected sites',
+    },
     noCategories:
       'Nothing to show yet: there are no requests in the categories included in the report. The dashboard will fill in as soon as one is recorded.',
     errors: {

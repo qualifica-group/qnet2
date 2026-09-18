@@ -26,4 +26,27 @@ return [
         'presa_appuntamenti', 'trattative_concluse', 'invio_presa_in_carico',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Active columns per reportable category (user directive 2026-09-18)
+    |--------------------------------------------------------------------------
+    |
+    | Keyed by the category NAME, matched case-insensitively (the branches
+    | are dynamic, spec 0131, but these are the business' own categories).
+    | A column absent from a category's list is 0 for that category, in the
+    | dashboard AND in the file; a reportable category absent from this map
+    | has every column at 0.
+    |
+    */
+
+    'category_columns' => [
+        'gol' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
+        'autoimpiego' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
+        'yisu' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
+        'dil' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
+        'autofinanziato' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_partenza', 'associati'],
+        'consulenza' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aziende_inserite', 'presa_appuntamenti', 'trattative_concluse'],
+        'apl' => ['telefonate', 'richiami', 'nuovi_contatti', 'invio_presa_in_carico'],
+    ],
+
 ];

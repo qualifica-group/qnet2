@@ -229,6 +229,10 @@
         l'etichetta "Non assegnato" del catalogo del CSV (D-6). Ordine: per `name` crescente, con
         `unassigned` sempre in coda. La voce `unassigned` compare solo se esiste almeno una
         richiesta in perimetro senza operatore.
+        Emendamento 2026-09-18 (direttiva utente, additivo): ogni voce porta anche `site_keys: string[]`,
+        gli id (stringa) delle Sedi operative dell'operatore (pivot `employment_profile_operational_site`
+        intero, come `ReportSiteFilter`); `[]` per `unassigned` e per chi non ha membership. Serve al
+        picker per mostrare solo gli operatori delle Sedi scelte; la validazione legge solo `key`.
       </response>
       <errors>403 senza `request-management.report`. Nessun 404.</errors>
       <routing_trap>

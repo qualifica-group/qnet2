@@ -6,6 +6,7 @@ namespace App\Services\RequestManagement\Report;
 
 use App\Models\User;
 use App\RequestManagement\RequestModule;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The GA2 Operatore an actor may filter the report by (spec 0108, D-6): the
@@ -29,34 +30,51 @@ use App\RequestManagement\RequestModule;
  */
 final class ReportOperatorAvailabilityResolver
 {
+    private const string PIVOT_TABLE = 'employment_profile_operational_site';
+
     public function __construct(
         private readonly ReportBranchResolver $branches,
         private readonly ReportBranchQuery $branchQuery,
     ) {}
 
     /**
-     * @return array<int, array{key: string, label: string}>
+     * Each option carries `site_keys`, the Sedi of that GA2 (the WHOLE pivot,
+     * physical and remote alike, as ReportSiteFilter reads it): the picker
+     * narrows the operator list to the Sedi already chosen with it (user
+     * directive 2026-09-18). Validation only reads `key`.
+     *
+     * @return array<int, array{key: string, label: string, site_keys: array<int, string>}>
      */
     public function available(?User $actor, RequestModule $module = RequestModule::Requests): array
     {
         // Step 1: the distinct GA2 of every in-scope request, "Non assegnato" (NULL) included.
         $operatorIds = $this->distinctOperatorIds($actor, $module);
+        $namedIds = array_values(array_filter($operatorIds, static fn (?int $id): bool => $id !== null));
 
-        // Step 2: the named operators, sorted by name as the CSV's own rows are.
+        // Step 2: the Sedi of each named operator, in one query.
+        $siteKeys = $namedIds === [] ? [] : $this->siteKeysByOperator($namedIds);
+
+        // Step 3: the named operators, sorted by name as the CSV's own rows are.
         $options = User::query()
-            ->whereIn('id', array_values(array_filter($operatorIds, static fn (?int $id): bool => $id !== null)))
+            ->whereIn('id', $namedIds)
             ->orderBy('name')
             ->get(['id', 'name'])
-            ->map(static fn (User $user): array => ['key' => (string) $user->id, 'label' => $user->name])
+            ->map(static fn (User $user): array => [
+                'key' => (string) $user->id,
+                'label' => $user->name,
+                'site_keys' => $siteKeys[$user->id] ?? [],
+            ])
             ->all();
 
-        // Step 3: "Non assegnato" last, and ONLY when such a request exists —
+        // Step 4: "Non assegnato" last, and ONLY when such a request exists —
         // the same condition under which the CSV emits that row (AC-012). Its
         // label comes from the report's own catalogue, never from a second one.
         if (in_array(null, $operatorIds, true)) {
             $options[] = [
                 'key' => ReportOperatorFilter::UNASSIGNED_KEY,
                 'label' => __('request-management-report.labels.unassigned'),
+                // It belongs to no Sede (spec 0112 D-6).
+                'site_keys' => [],
             ];
         }
 
@@ -74,6 +92,27 @@ final class ReportOperatorAvailabilityResolver
             ->pluck('quotes.operator_id')
             ->map(static fn ($id): ?int => $id === null ? null : (int) $id)
             ->all();
+    }
+
+    /**
+     * @param  array<int, int>  $operatorIds
+     * @return array<int, array<int, string>>
+     */
+    private function siteKeysByOperator(array $operatorIds): array
+    {
+        $siteKeys = [];
+
+        DB::table(self::PIVOT_TABLE.' as membership')
+            ->join('employment_profiles', 'employment_profiles.id', '=', 'membership.employment_profile_id')
+            ->whereIn('employment_profiles.user_id', $operatorIds)
+            ->distinct()
+            ->orderBy('membership.operational_site_id')
+            ->get(['employment_profiles.user_id', 'membership.operational_site_id'])
+            ->each(static function (object $row) use (&$siteKeys): void {
+                $siteKeys[(int) $row->user_id][] = (string) $row->operational_site_id;
+            });
+
+        return $siteKeys;
     }
 
     /**

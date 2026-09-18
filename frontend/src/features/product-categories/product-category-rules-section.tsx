@@ -2,6 +2,7 @@ import { useController, type Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { ChartNoAxesColumn, MousePointerClick, SlidersHorizontal } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
+import { Badge } from '@/components/ui/badge'
 import { FormControl, FormDescription } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
 import { MetaField } from '@/features/authorization/MetaField'
@@ -12,8 +13,10 @@ import { ProductCategoryRequiresQuoteField } from '@/features/product-categories
 import { ProductCategoryRuleCard } from '@/features/product-categories/product-category-rule-card'
 import { ProductCategorySimplifiedOfferLineField } from '@/features/product-categories/product-category-simplified-offer-line-field'
 import { ProductCategorySingleQuoteField } from '@/features/product-categories/product-category-single-quote-field'
+import { reportableOverrideFor } from '@/features/product-categories/reportable-inheritance'
 import type { ProductCategoryFormMode } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
+import { useReportableInheritance } from '@/features/product-categories/use-reportable-inheritance'
 
 interface ProductCategoryRulesSectionProps {
   control: Control<ProductCategoryFormValues>
@@ -34,9 +37,9 @@ interface ProductCategoryRulesSectionProps {
  *
  * Every rule but `is_selectable`/`is_reportable` is owned by the branch ROOT
  * and inherited by the whole subtree; each carries an (i) tooltip explaining
- * what turning it on actually does. `is_selectable`/`is_reportable` are the
- * odd ones out — plain per-node flags — so they render here without the
- * inheritance chrome.
+ * what turning it on actually does. `is_selectable` is a plain per-node flag;
+ * `is_reportable` is inherited from the nearest ancestor but can be forced on
+ * any node (ReportableRule).
  *
  * Two columns from `sm:` up: the tiles stay readable at 375px and the section
  * does not become a tall stack on a desktop config screen.
@@ -76,7 +79,7 @@ export function ProductCategoryRulesSection({
         <ProductCategorySimplifiedOfferLineField control={control} mode={mode} parentId={parentId} />
 
         <SelectableRule control={control} />
-        <ReportableRule control={control} />
+        <ReportableRule control={control} mode={mode} />
       </div>
     </FormSection>
   )
@@ -125,19 +128,30 @@ function SelectableRule({ control }: SelectableRuleProps) {
 
 interface ReportableRuleProps {
   control: Control<ProductCategoryFormValues>
+  mode: ProductCategoryFormMode
 }
 
 /**
- * `is_reportable` as a rule tile. Per-node and never inherited, same shape as
- * `is_selectable` — defined at module level, never inside the section
- * component.
+ * `is_reportable` as a rule tile (user directive 2026-09-18): a child inherits
+ * its parent's value by default and the switch forces it. The switch shows the
+ * EFFECTIVE value; setting it back to the inherited one stores null again
+ * (reportableOverrideFor), so there is no separate reset control.
  */
-function ReportableRule({ control }: ReportableRuleProps) {
+function ReportableRule({ control, mode }: ReportableRuleProps) {
   const { t } = useTranslation()
-  const { field } = useController({ control, name: 'is_reportable' })
+  const { override, inherited, effective } = useReportableInheritance(control, mode)
+  const sourceName = inherited?.sourceCategory?.name ?? null
+  const forced = override !== null && inherited !== null
+
+  let description = t('productCategories.form.isReportableHint')
+  if (forced) {
+    description = t('productCategories.form.isReportableForcedHint', { category: sourceName ?? '' })
+  } else if (sourceName !== null) {
+    description = t('productCategories.form.isReportableInheritedHint', { category: sourceName })
+  }
 
   return (
-    <ProductCategoryRuleCard icon={ChartNoAxesColumn} active={field.value}>
+    <ProductCategoryRuleCard icon={ChartNoAxesColumn} active={effective}>
       <MetaField
         control={control}
         name="is_reportable"
@@ -146,20 +160,28 @@ function ReportableRule({ control }: ReportableRuleProps) {
         label={t('productCategories.form.isReportable')}
         hint={t('productCategories.form.isReportableInfo')}
         hintLabel={t('productCategories.form.isReportableInfoLabel')}
-        description={
-          <FormDescription>{t('productCategories.form.isReportableHint')}</FormDescription>
-        }
+        description={<FormDescription>{description}</FormDescription>}
       >
         {({ field: switchField, disabled }) => (
           <FormControl>
             <Switch
-              checked={switchField.value}
-              onCheckedChange={switchField.onChange}
+              checked={effective}
+              onCheckedChange={(checked) => switchField.onChange(reportableOverrideFor(checked, inherited))}
               disabled={disabled}
             />
           </FormControl>
         )}
       </MetaField>
+      {forced ? (
+        <Badge variant="outline" className="text-[11px] font-normal">
+          {t('productCategories.form.isReportableForcedBadge')}
+        </Badge>
+      ) : null}
+      {!forced && sourceName !== null ? (
+        <Badge variant="outline" className="text-[11px] font-normal">
+          {t('productCategories.form.inheritedFrom', { category: sourceName })}
+        </Badge>
+      ) : null}
     </ProductCategoryRuleCard>
   )
 }

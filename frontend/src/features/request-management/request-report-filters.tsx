@@ -1,10 +1,15 @@
 import type { ReactNode } from 'react'
-import { type Control, useWatch } from 'react-hook-form'
+import { type Control, useFormContext, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { CircleAlert, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { RequestReportKeyGroup } from '@/features/request-management/request-report-key-group'
+import type { SearchableMultiSelectLabels } from '@/components/ui/searchable-multi-select'
+import { KeySelectField, type PickerGroup } from '@/features/request-management/request-report-key-select-field'
+import {
+  followSiteSelection,
+  operatorsForSites,
+} from '@/features/request-management/request-report-site-operators'
 import {
   ROW_MODES,
   type RequestReportFormValues,
@@ -49,6 +54,10 @@ function ErrorNotice({ children }: { children: ReactNode }) {
   )
 }
 
+/** Hoisted so an unloaded list keeps a stable identity across renders. */
+const EMPTY_SITES: RequestReportSite[] = []
+const EMPTY_OPERATORS: RequestReportOperator[] = []
+
 export interface RequestReportFiltersProps {
   control: Control<RequestReportFormValues>
   categories: RequestReportCategory[] | undefined
@@ -69,7 +78,12 @@ export interface RequestReportFiltersProps {
 
 /**
  * Filter controls of specs 0106/0107/0108 (rev-2 D-4, 0107 D-4): date range,
- * branch group, GA2 operator group, and the row-mode choice. One selection
+ * then one searchable picker each for branches (a tree: every category
+ * enabled for the report with its subcategories indented under it, a parent
+ * ticking its whole subtree), Sedi and GA2 operators, and
+ * the row-mode choice. The Sedi come BEFORE the operators and narrow them
+ * (user directive 2026-09-18): the operator picker only offers the GA2 of the
+ * chosen Sedi, see `operatorsForSites`. One selection
  * now drives both consumers — the charts and the CSV (user directive
  * 2026-09-08) — so `RequestReportDialog` is its only host; the file stays
  * split off it purely for size.
@@ -102,8 +116,40 @@ export function RequestReportFilters({
   disabled,
 }: RequestReportFiltersProps) {
   const { t } = useTranslation()
+  const { getValues, setValue } = useFormContext<RequestReportFormValues>()
   const rowMode = useWatch({ control, name: 'row_mode' })
+  const siteKeys = useWatch({ control, name: 'site_keys' })
+
   const showNarrowingGroups = rowMode !== 'total_only'
+  const availableSiteKeys = (sites ?? EMPTY_SITES).map((site) => site.key)
+  const offeredOperators = operatorsForSites(operators ?? EMPTY_OPERATORS, siteKeys, availableSiteKeys)
+
+  const pickerLabels = (group: PickerGroup): SearchableMultiSelectLabels => ({
+    placeholder: t('requestManagement.report.picker.placeholder'),
+    allSelected: t(`requestManagement.report.picker.all${group}`),
+    searchPlaceholder: t('requestManagement.report.picker.search'),
+    selectAll: t(`requestManagement.report.fields.selectAll${group}`),
+    noMatch: t('requestManagement.report.picker.noMatch'),
+    clear: t('requestManagement.report.picker.clear'),
+    count: (selected, total) => t('requestManagement.report.picker.count', { selected, total }),
+    includeChildrenHint: t('requestManagement.report.picker.includeChildrenHint'),
+  })
+
+  // The operator picker follows the Sedi (user directive 2026-09-18): the
+  // operator selection is re-derived from the list the NEW Sedi offer, so it
+  // never keeps an operator the picker no longer shows.
+  const changeSites = (nextSiteKeys: string[]) => {
+    const allOperators = operators ?? EMPTY_OPERATORS
+    const previousOffered = offeredOperators.map((operator) => operator.key)
+    const nextOffered = operatorsForSites(allOperators, nextSiteKeys, availableSiteKeys).map(
+      (operator) => operator.key,
+    )
+
+    setValue('site_keys', nextSiteKeys, { shouldDirty: true, shouldValidate: true })
+    setValue('operator_keys', followSiteSelection(getValues('operator_keys'), previousOffered, nextOffered), {
+      shouldDirty: true,
+    })
+  }
 
   return (
     <>
@@ -150,54 +196,13 @@ export function RequestReportFilters({
       {categoriesEmpty ? <ErrorNotice>{t('requestManagement.report.errors.categoriesEmpty')}</ErrorNotice> : null}
 
       {categories && categories.length > 0 ? (
-        <FormField
+        <KeySelectField
           control={control}
           name="category_keys"
-          render={({ field }) => (
-            <FormItem className="gap-1.5">
-              <FormControl>
-                <RequestReportKeyGroup
-                  label={t('requestManagement.report.fields.categories')}
-                  selectAllLabel={t('requestManagement.report.fields.selectAllCategories')}
-                  options={categories}
-                  value={field.value}
-                  onChange={field.onChange}
-                  disabled={disabled}
-                />
-              </FormControl>
-              <FormMessage className="text-xs" />
-            </FormItem>
-          )}
-        />
-      ) : null}
-
-      {showNarrowingGroups && operatorsLoading ? (
-        <LoadingNotice>{t('requestManagement.report.status.loadingOperators')}</LoadingNotice>
-      ) : null}
-
-      {showNarrowingGroups && operatorsError ? (
-        <ErrorNotice>{t('requestManagement.report.errors.operatorsLoadFailed')}</ErrorNotice>
-      ) : null}
-
-      {showNarrowingGroups && operators && operators.length > 0 ? (
-        <FormField
-          control={control}
-          name="operator_keys"
-          render={({ field }) => (
-            <FormItem className="gap-1.5">
-              <FormControl>
-                <RequestReportKeyGroup
-                  label={t('requestManagement.report.fields.operators')}
-                  selectAllLabel={t('requestManagement.report.fields.selectAllOperators')}
-                  options={operators}
-                  value={field.value}
-                  onChange={field.onChange}
-                  disabled={disabled}
-                />
-              </FormControl>
-              <FormMessage className="text-xs" />
-            </FormItem>
-          )}
+          label={t('requestManagement.report.fields.categories')}
+          labels={pickerLabels('Categories')}
+          items={categories}
+          disabled={disabled}
         />
       ) : null}
 
@@ -210,24 +215,34 @@ export function RequestReportFilters({
       ) : null}
 
       {showNarrowingGroups && sites && sites.length > 0 ? (
-        <FormField
+        <KeySelectField
           control={control}
           name="site_keys"
-          render={({ field }) => (
-            <FormItem className="gap-1.5">
-              <FormControl>
-                <RequestReportKeyGroup
-                  label={t('requestManagement.report.fields.sites')}
-                  selectAllLabel={t('requestManagement.report.fields.selectAllSites')}
-                  options={sites}
-                  value={field.value}
-                  onChange={field.onChange}
-                  disabled={disabled}
-                />
-              </FormControl>
-              <FormMessage className="text-xs" />
-            </FormItem>
-          )}
+          label={t('requestManagement.report.fields.sites')}
+          labels={pickerLabels('Sites')}
+          items={sites}
+          onChange={changeSites}
+          disabled={disabled}
+        />
+      ) : null}
+
+      {showNarrowingGroups && operatorsLoading ? (
+        <LoadingNotice>{t('requestManagement.report.status.loadingOperators')}</LoadingNotice>
+      ) : null}
+
+      {showNarrowingGroups && operatorsError ? (
+        <ErrorNotice>{t('requestManagement.report.errors.operatorsLoadFailed')}</ErrorNotice>
+      ) : null}
+
+      {showNarrowingGroups && operators && operators.length > 0 ? (
+        <KeySelectField
+          control={control}
+          name="operator_keys"
+          label={t('requestManagement.report.fields.operators')}
+          labels={pickerLabels('Operators')}
+          items={offeredOperators}
+          hint={offeredOperators.length < operators.length ? t('requestManagement.report.fields.operatorsBySite') : undefined}
+          disabled={disabled}
         />
       ) : null}
 

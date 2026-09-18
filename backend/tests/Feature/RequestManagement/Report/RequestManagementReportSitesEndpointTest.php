@@ -85,6 +85,32 @@ it('offers no Sede to an actor who sees no request (AC-009)', function () {
     expect($this->getJson('/api/request-management/report/sites')->assertOk()->json('data.sites'))->toBe([]);
 });
 
+it('tags every GA2 option with the keys of its Sedi, physical and remote alike', function () {
+    $categories = Fixture::categories();
+    $alfa = Fixture::site('Via Alfa 1', 'Frattamaggiore');
+    $beta = Fixture::site('Via Beta 2', 'Aversa');
+    $ada = Fixture::operator('Ada', $alfa, [$beta]);
+    $bruno = Fixture::operator('Bruno', $beta);
+    $nomad = Fixture::operator('Carla');
+    Fixture::quote($categories['gol'], $ada->id);
+    Fixture::quote($categories['gol'], $bruno->id);
+    Fixture::quote($categories['gol'], $nomad->id);
+    Fixture::quote($categories['gol'], null);
+
+    Sanctum::actingAs(Fixture::actor());
+
+    $siteKeys = collect($this->getJson('/api/request-management/report/operators')->assertOk()->json('data.operators'))
+        ->mapWithKeys(static fn (array $option): array => [$option['key'] => $option['site_keys']])
+        ->all();
+
+    expect($siteKeys)->toBe([
+        (string) $ada->id => [(string) $alfa->id, (string) $beta->id],
+        (string) $bruno->id => [(string) $beta->id],
+        (string) $nomad->id => [],
+        'unassigned' => [],
+    ]);
+});
+
 // ---------------------------------------------------------------------------
 // AC-010 — authorization and the routing trap
 // ---------------------------------------------------------------------------

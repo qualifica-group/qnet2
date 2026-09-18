@@ -105,6 +105,7 @@ export const productCategories = {
     loadError: 'Impossibile caricare la categoria. Riprova.',
     businessFunctionInherited: 'Ereditata da {{category}}',
     requiresQuoteInherited: 'Ereditato da {{category}}',
+    isReportableInherited: 'Ereditato da {{category}}',
     managementModeInherited: 'Ereditata da {{category}}',
     singleQuotePerOpportunityInherited: 'Ereditata da {{category}}',
     generatesContractInherited: 'Ereditata da {{category}}',
@@ -189,6 +190,11 @@ export const productCategories = {
     isReportable: 'Visibile nei report',
     isReportableHint:
       'La categoria compare nei report e nella dashboard di Gestione Richieste e Gestione Iscritti; selezionandola si vedono anche le sue sottocategorie.',
+    isReportableInheritedHint:
+      'Valore ereditato da "{{category}}". Cambialo per forzarlo solo su questa categoria e sulle sue sottocategorie.',
+    isReportableForcedHint:
+      'Valore forzato su questa categoria: non segue più "{{category}}". Riportalo al valore del padre per tornare a ereditarlo.',
+    isReportableForcedBadge: 'Forzato',
     managementMode: 'Modalità di gestione',
     managementModeHint:
       'Come si comportano le righe Categoria Prodotto su una scheda: questa categoria e tutte le sue sottocategorie seguono la stessa regola.',
@@ -233,7 +239,7 @@ export const productCategories = {
       "Trasforma la categoria in un puro contenitore. Resta padre delle sue sottocategorie e conserva tutte le associazioni già fatte, ma non compare più nelle liste di scelta. A differenza delle altre regole questa appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non selezionabile può avere figli selezionabili.",
     isSelectableInfoLabel: 'Maggiori informazioni su Selezionabile',
     isReportableInfo:
-      "Decide se la categoria compare come riga selezionabile nei report e nella dashboard di Gestione Richieste e di Gestione Iscritti. Selezionandola, il report aggrega anche tutte le sue sottocategorie. Come Selezionabile, questa regola appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non visibile nei report può avere figli visibili.",
+      'Decide se la categoria compare come riga selezionabile nei report e nella dashboard di Gestione Richieste e di Gestione Iscritti. Una sottocategoria eredita il valore del padre: se il padre è visibile nei report lo sono anche i figli, ma ogni figlio può essere forzato a "no" (e con lui le sue sottocategorie). Una categoria esclusa non viene conteggiata neanche nei totali del padre.',
     isReportableInfoLabel: 'Maggiori informazioni su Visibile nei report',
     inheritedFrom: 'Ereditata da {{category}}',
     managerLabelLevel: 'G.A. {{n}}',

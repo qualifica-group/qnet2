@@ -21,6 +21,7 @@ use App\Services\Quotes\QuoteAttributeValueWriter;
 use App\Services\Quotes\QuoteLineCoverageWriter;
 use App\Services\Quotes\QuoteManagerInheritance;
 use App\Services\Quotes\QuoteManagerWriter;
+use App\Services\Quotes\QuoteStatusChangeLogger;
 use App\Services\Quotes\QuoteTotalsCalculator;
 use App\Services\Quotes\QuoteWorkflowStatusAssigner;
 use Illuminate\Support\Facades\DB;
@@ -117,6 +118,7 @@ class QuoteService
         private readonly ContractLifecycleManager $contractLifecycleManager,
         private readonly OpportunityTitleBuilder $titleBuilder,
         private readonly QuoteWorkflowStatusAssigner $workflowStatusAssigner,
+        private readonly QuoteStatusChangeLogger $statusChangeLogger,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly QuoteManagerWriter $managerWriter,
@@ -211,6 +213,12 @@ class QuoteService
             $this->workflowStatusAssigner->assign($quote, $data->workflowStatusId, $data->note, $actor);
             $quote->save();
 
+            // Step 6b: an explicitly chosen status is a transition the report
+            // must see (user directive 2026-09-18); the resolved baseline alone is not.
+            if ($data->workflowStatusId !== null) {
+                $this->statusChangeLogger->log($quote, null, $actor);
+            }
+
             // Step 7: Contract lifecycle automation (spec 0072, BR-1) — a
             // fresh quote never had a prior status group.
             $this->contractLifecycleManager->syncOnStatusChange($quote, previousStatusId: null);
@@ -295,6 +303,10 @@ class QuoteService
             // apply an explicit client choice on top, note-gated.
             $this->workflowStatusAssigner->assign($quote, $data->workflowStatusIdSubmitted ? $data->workflowStatusId : null, $data->note, $actor);
             $quote->save();
+
+            // The change lands on the opportunity trail the report reads
+            // (user directive 2026-09-18); no entry when nothing changed.
+            $this->statusChangeLogger->log($quote, $previousStatusId, $actor);
 
             // Contract lifecycle automation (spec 0072, BR-1).
             $this->contractLifecycleManager->syncOnStatusChange($quote, $previousStatusId);

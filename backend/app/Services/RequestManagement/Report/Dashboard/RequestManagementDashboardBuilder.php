@@ -113,6 +113,7 @@ final class RequestManagementDashboardBuilder
             key: '__summary__',
             label: '',
             categoryIds: $this->unionOf($branches, static fn (ReportBranch $b): array => $b->categoryIds),
+            columnCategoryIds: $this->columnUnionOf($branches),
         );
 
         /** @var ReportRow $total */
@@ -271,5 +272,28 @@ final class RequestManagementDashboardBuilder
     private function unionOf(array $branches, callable $pluck): array
     {
         return array_values(array_unique(array_merge([], ...array_map($pluck, $branches))));
+    }
+
+    /**
+     * Per column, the union of the category ids of the branches where it is
+     * ACTIVE (user directive 2026-09-18): the overall tiles never count a
+     * column on a category it does not belong to.
+     *
+     * @param  array<int, ReportBranch>  $branches
+     * @return array<string, array<int, int>>
+     */
+    private function columnUnionOf(array $branches): array
+    {
+        $map = [];
+
+        foreach ((array) config('request-management-report.indicator_columns') as $column) {
+            $ids = $this->unionOf($branches, static fn (ReportBranch $b): array => $b->categoryIdsFor($column) ?? []);
+
+            if ($ids !== []) {
+                $map[$column] = $ids;
+            }
+        }
+
+        return $map;
     }
 }

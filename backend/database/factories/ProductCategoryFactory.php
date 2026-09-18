@@ -38,7 +38,7 @@ class ProductCategoryFactory extends Factory
         return $this->state(fn (): array => ['parent_id' => $parent->id]);
     }
 
-    /** A category shown as a row of the Gestione Richieste / Iscritti report, subtree included (spec 0131). */
+    /** A category forced into the Gestione Richieste / Iscritti report; its inheriting subtree follows (spec 0131). */
     public function reportable(): static
     {
         return $this->state(fn (): array => ['is_reportable' => true]);

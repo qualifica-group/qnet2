@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement\Report\Indicators;
 
-use App\Enums\WorkflowStatusSystemKey;
+use App\Enums\WorkflowStatusGroup;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\IndicatorResult;
@@ -14,13 +14,16 @@ use App\Services\RequestManagement\Report\ReportDateRange;
 use App\Services\RequestManagement\Report\ReportIndicator;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use App\Services\RequestManagement\Report\ReportSiteFilter;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * "N. Richiami non gestiti" (spec 0106, D-4): `quotes.next_callback_at`
- * inside the range AND the request is still in the FIRST workflow state
- * (`system_key = 'open'`) — `next_callback_reminded_at` is unusable as an
- * "already handled" marker (D-4: never written in production).
+ * "N. Richiami non gestiti" (user directive 2026-09-18, replaces spec 0106
+ * D-4's "in range and first state"): `quotes.next_callback_at` on or before
+ * TODAY — overdue or due now, whatever the picked range — on a request that
+ * is NOT closed (neither `closed_won` nor `closed_lost` group); every other
+ * state counts. `next_callback_reminded_at` stays unusable as an "already
+ * handled" marker (D-4: never written in production).
  */
 final class UnhandledCallbacksIndicator implements ReportIndicator
 {
@@ -32,20 +35,19 @@ final class UnhandledCallbacksIndicator implements ReportIndicator
     public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null, RequestModule $module = RequestModule::Requests): IndicatorResult
     {
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'quotes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'quotes.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $operators, $sites, $module), 'quotes.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $operators, $sites, $module), 'quotes.id'),
         );
     }
 
     /**
      * @param  array<int, int>  $categoryIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
+    private function query(array $categoryIds, ?User $actor, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
     {
         return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
-            ->where('current_status.system_key', WorkflowStatusSystemKey::Open->value)
-            ->where('quotes.next_callback_at', '>=', $range->start)
-            ->where('quotes.next_callback_at', '<', $range->endExclusive);
+            ->whereNotIn('current_status.group', [WorkflowStatusGroup::ClosedWon->value, WorkflowStatusGroup::ClosedLost->value])
+            ->where('quotes.next_callback_at', '<', CarbonImmutable::today()->addDay());
     }
 }

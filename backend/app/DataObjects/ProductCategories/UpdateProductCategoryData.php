@@ -89,7 +89,7 @@ final readonly class UpdateProductCategoryData
             requiresQuoteSubmitted: array_key_exists('requires_quote', $data),
             isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : null,
             isSelectableSubmitted: array_key_exists('is_selectable', $data),
-            isReportable: array_key_exists('is_reportable', $data) ? (bool) $data['is_reportable'] : null,
+            isReportable: isset($data['is_reportable']) ? (bool) $data['is_reportable'] : null,
             isReportableSubmitted: array_key_exists('is_reportable', $data),
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
             managementModeSubmitted: array_key_exists('management_mode', $data),
@@ -172,7 +172,9 @@ final readonly class UpdateProductCategoryData
             $attributes['is_selectable'] = $this->isSelectable;
         }
 
-        // Spec 0131: per-node flag too, written verbatim.
+        // Spec 0131: the node's own override (null = inherit), written
+        // verbatim — the effective value is resolved at read time
+        // (ReportableInheritance), so nothing to reconcile across the subtree.
         if ($this->isReportableSubmitted) {
             $attributes['is_reportable'] = $this->isReportable;
         }

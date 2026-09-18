@@ -49,8 +49,8 @@ vi.mock('@/features/request-management/dashboard-api', () => ({
 }))
 
 const CATEGORIES: RequestReportCategory[] = [
-  { key: 'gol', label: 'GOL' },
-  { key: 'consulenza', label: 'Consulenza' },
+  { key: 'gol', label: 'GOL', depth: 0, parent_key: null },
+  { key: 'consulenza', label: 'Consulenza', depth: 0, parent_key: null },
 ]
 
 function dashboardData(overrides: Partial<RequestDashboardData> = {}): RequestDashboardData {
@@ -132,10 +132,16 @@ function renderPanel(isOpen: boolean) {
   return render(<RequestDashboardPanel isOpen={isOpen} />, { wrapper: wrapper() })
 }
 
-/** Opens the shared filter sheet and waits for its branch checkboxes. */
+/** Opens the shared filter sheet, then its branch picker, and waits for the branch checkboxes. */
 async function openFilters() {
   fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Categories/ }))
   return screen.findByRole('checkbox', { name: 'GOL' })
+}
+
+/** The applied-filter chips of the bar (user directive 2026-09-18). */
+function appliedChips() {
+  return within(screen.getByRole('list', { name: 'Applied filters' }))
 }
 
 describe('RequestDashboardPanel', () => {
@@ -149,7 +155,8 @@ describe('RequestDashboardPanel', () => {
   it('shows the applied filters as a summary instead of the controls (user directive 2026-09-08)', async () => {
     renderPanel(true)
 
-    await waitFor(() => expect(screen.getByText(/2\/2 categories/)).toHaveTextContent('Everything'))
+    await waitFor(() => expect(appliedChips().getByText('All categories')).toBeInTheDocument())
+    expect(appliedChips().getByText('Everything')).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     // The CSV action sits next to the one that opens the sheet, not in the table.
     expect(screen.getByRole('button', { name: /Generate report/ })).toBeInTheDocument()
@@ -177,7 +184,8 @@ describe('RequestDashboardPanel', () => {
         row_mode: 'total_only',
       }),
     )
-    expect(await screen.findByText(/1\/2 categories/)).toHaveTextContent('Total only')
+    await waitFor(() => expect(appliedChips().getByText('Consulenza')).toBeInTheDocument())
+    expect(appliedChips().getByText('Total only')).toBeInTheDocument()
   })
 
   it('prefills the same defaults as the CSV modal once opened (AC-043)', async () => {

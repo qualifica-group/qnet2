@@ -105,6 +105,7 @@ export const productCategories = {
     loadError: 'Unable to load the category. Please try again.',
     businessFunctionInherited: 'Inherited from {{category}}',
     requiresQuoteInherited: 'Inherited from {{category}}',
+    isReportableInherited: 'Inherited from {{category}}',
     managementModeInherited: 'Inherited from {{category}}',
     singleQuotePerOpportunityInherited: 'Inherited from {{category}}',
     generatesContractInherited: 'Inherited from {{category}}',
@@ -187,6 +188,11 @@ export const productCategories = {
     isReportable: 'Visible in reports',
     isReportableHint:
       'The category appears in the Gestione Richieste and Gestione Iscritti reports and dashboard; selecting it also shows its subcategories.',
+    isReportableInheritedHint:
+      'Inherited from "{{category}}". Change it to force it on this category and its subcategories only.',
+    isReportableForcedHint:
+      'Forced on this category: it no longer follows "{{category}}". Set it back to the parent\'s value to inherit it again.',
+    isReportableForcedBadge: 'Forced',
     managementMode: 'Management mode',
     managementModeHint:
       'How Category Product lines behave on a card: this category and every subcategory below it follow the same rule.',
@@ -231,7 +237,7 @@ export const productCategories = {
       'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',
     isSelectableInfoLabel: 'More info about Selectable',
     isReportableInfo:
-      'Decides whether the category shows up as a selectable row in the Gestione Richieste and Gestione Iscritti reports and dashboard. Selecting it also aggregates every one of its subcategories in the report. Like Selectable, this rule belongs to THIS category alone: it is never inherited, so a parent hidden from the reports can still have children that show up in them.',
+      'Decides whether the category shows up as a selectable row in the Gestione Richieste and Gestione Iscritti reports and dashboard. A subcategory inherits its parent\'s value: when the parent is visible in the reports so are its children, but each child can be forced to "no" (and its subcategories with it). An excluded category is not counted in its parent\'s totals either.',
     isReportableInfoLabel: 'More info about Visible in reports',
     inheritedFrom: 'Inherited from {{category}}',
     managerLabelLevel: 'A.M. {{n}}',

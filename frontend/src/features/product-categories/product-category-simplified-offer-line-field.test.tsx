@@ -124,6 +124,8 @@ function category(
     requires_quote_source_category: null,
     is_selectable: true,
     is_reportable: false,
+    effective_is_reportable: false,
+    is_reportable_source_category: null,
     management_mode: 'multiple',
     management_mode_source_category: null,
     single_quote_per_opportunity: false,

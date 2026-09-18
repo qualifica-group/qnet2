@@ -165,7 +165,7 @@ beforeEach(function () {
 // AC-009/AC-010/AC-011 + AC-058/AC-059/AC-060 (rev-3) — "N. Telefonate Effettuate"
 // ---------------------------------------------------------------------------
 
-it('counts NOTES not requests, excludes deleted/out-of-range/general notes, first state included (AC-009/010, AC-058)', function () {
+it('counts NOTES not requests, excludes deleted/out-of-range/general notes and first-state requests (AC-009/010, directive 2026-09-18)', function () {
     $categories = reportCategoryTree();
     $ada = User::factory()->create(['name' => 'Ada Rossi']);
 
@@ -194,8 +194,9 @@ it('counts NOTES not requests, excludes deleted/out-of-range/general notes, firs
         'created_at' => Carbon::parse('2026-09-10'),
     ]);
 
-    // AC-058 (rev-3, D-16): still in the FIRST state ('open') -> COUNTED.
-    // Before rev-3 this note was dropped by the `system_key <> 'open'` filter.
+    // Still in the FIRST state ('open') -> NOT counted: "note per ogni
+    // offerta che non ha il primo stato" (user directive 2026-09-18, which
+    // supersedes rev-3 AC-058).
     reportNote(reportQuote($categories['gol'], $ada->id), Carbon::parse('2026-09-10'));
 
     $actor = reportViewAllActor();
@@ -205,8 +206,8 @@ it('counts NOTES not requests, excludes deleted/out-of-range/general notes, firs
 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'GOL');
 
-    expect($rows['TOTALE'][2])->toBe('3')
-        ->and($rows['Ada Rossi'][2])->toBe('3');
+    expect($rows['TOTALE'][2])->toBe('2')
+        ->and($rows['Ada Rossi'][2])->toBe('2');
 });
 
 it('counts only the notes written BY the request own GA2, in no row at all for anyone else (AC-011, AC-059 rev-3)', function () {
@@ -260,28 +261,33 @@ it('gives an unassigned request 0 phone calls while its Non assegnato row still 
 // AC-012 — "N. Richiami non gestiti"
 // ---------------------------------------------------------------------------
 
-it('counts requests with next_callback_at in range still in the first state (AC-012)', function () {
+it('counts callbacks due on or before today on every request that is not closed (directive 2026-09-18)', function () {
+    Carbon::setTestNow('2026-09-18 10:00:00');
     $categories = reportCategoryTree();
+    $closedWon = QuoteWorkflowStatus::factory()->global()->create(['system_key' => null, 'group' => WorkflowStatusGroup::ClosedWon]);
+    $closedLost = QuoteWorkflowStatus::factory()->global()->create(['system_key' => null, 'group' => WorkflowStatusGroup::ClosedLost]);
 
-    $unhandled = reportQuote($categories['gol']); // stays on the global 'open' status
-    $unhandled->forceFill(['next_callback_at' => Carbon::parse('2026-09-15')])->save();
+    // Counted: first state, worked state, overdue before the range, due later today.
+    reportQuote($categories['gol'])->forceFill(['next_callback_at' => Carbon::parse('2026-09-15')])->save();
+    reportQuoteWithOpenAdvance($categories['gol'])->forceFill(['next_callback_at' => Carbon::parse('2026-09-15')])->save();
+    reportQuote($categories['gol'])->forceFill(['next_callback_at' => Carbon::parse('2026-08-01')])->save();
+    reportQuote($categories['gol'])->forceFill(['next_callback_at' => Carbon::parse('2026-09-18 23:00:00')])->save();
 
-    // Advanced past the first state: excluded even with next_callback_at in range.
-    $advanced = reportQuoteWithOpenAdvance($categories['gol']);
-    $advanced->forceFill(['next_callback_at' => Carbon::parse('2026-09-15')])->save();
-
-    // Out of range: excluded.
-    $outOfRange = reportQuote($categories['gol']);
-    $outOfRange->forceFill(['next_callback_at' => Carbon::parse('2026-08-01')])->save();
+    // Excluded: due tomorrow, or on a closed request (won or lost), or no callback at all.
+    reportQuote($categories['gol'])->forceFill(['next_callback_at' => Carbon::parse('2026-09-19 08:00:00')])->save();
+    reportQuote($categories['gol'], statusId: $closedWon->id)->forceFill(['next_callback_at' => Carbon::parse('2026-09-15')])->save();
+    reportQuote($categories['gol'], statusId: $closedLost->id)->forceFill(['next_callback_at' => Carbon::parse('2026-09-15')])->save();
+    reportQuote($categories['gol']);
 
     $actor = reportViewAllActor();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
 
     runReportJob($run);
+    Carbon::setTestNow();
 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'GOL');
 
-    expect($rows['TOTALE'][3])->toBe('1');
+    expect($rows['TOTALE'][3])->toBe('4');
 });
 
 // ---------------------------------------------------------------------------

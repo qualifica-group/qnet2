@@ -57,8 +57,9 @@ class UpdateProductCategoryRequest extends FormRequest
             // Spec 0074: whether the category may be picked as a
             // classification target. Never inherited, so no guard here.
             'is_selectable' => ['sometimes', 'boolean'],
-            // Spec 0131: whether the category is a report row. Never inherited, so no guard here.
-            'is_reportable' => ['sometimes', 'boolean'],
+            // Spec 0131 (user directive 2026-09-18): the node's own override of
+            // the inherited report flag — null = inherit from the parent.
+            'is_reportable' => ['sometimes', 'nullable', 'boolean'],
             // Spec 0077: same root-only semantics as requires_quote — a
             // reparent (parent_id changes) or an edit of the mode itself
             // triggers ProductCategoryService's subtree resync.

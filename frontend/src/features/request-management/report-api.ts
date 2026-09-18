@@ -25,6 +25,13 @@ export interface RequestReportCategory {
   key: string
   /** Domain value (e.g. "GOL"), rendered as-is — NOT run through i18next (rev-2 D-14). */
   label: string
+  /**
+   * 0 for a category enabled for the report, n for its n-th level
+   * subcategory (user directive 2026-09-18): the two feed separate pickers.
+   */
+  depth: number
+  /** The parent branch's key; null for a depth-0 category. */
+  parent_key: string | null
 }
 
 /**
@@ -37,6 +44,13 @@ export interface RequestReportCategory {
 export interface RequestReportOperator {
   key: string
   label: string
+  /**
+   * Keys of the operational sites this GA2 belongs to (user directive
+   * 2026-09-18), matching `RequestReportSite.key`: the picker narrows the
+   * operator list to the Sedi already chosen. Empty for "Non assegnato" and
+   * for an operator with no membership.
+   */
+  site_keys: string[]
 }
 
 /**

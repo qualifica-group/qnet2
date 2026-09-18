@@ -37,8 +37,9 @@ interface ProductCategoryDetailRulesProps {
  *
  * Every rule but `is_selectable`/`is_reportable` is owned by the branch ROOT
  * and mirrored on the whole subtree, so each carries the chip naming the
- * category it comes from; `is_selectable`/`is_reportable` are per-node and
- * never inherited (spec 0074), hence no chip.
+ * category it comes from; `is_selectable` is per-node and never inherited
+ * (spec 0074), hence no chip; `is_reportable` shows the chip only while it is
+ * inherited, not forced (user directive 2026-09-18).
  */
 export function ProductCategoryDetailRules({ category }: ProductCategoryDetailRulesProps) {
   const { t } = useTranslation()
@@ -110,7 +111,17 @@ export function ProductCategoryDetailRules({ category }: ProductCategoryDetailRu
         </RecordField>
 
         <RecordField label={t('productCategories.form.isReportable')}>
-          <RuleValue value={yesNo(category.is_reportable)} />
+          <RuleValue
+            value={yesNo(category.effective_is_reportable)}
+            inheritedFrom={
+              category.is_reportable === null
+                ? category.is_reportable_source_category?.name
+                : undefined
+            }
+            inheritedLabel={t('productCategories.detail.isReportableInherited', {
+              category: category.is_reportable_source_category?.name ?? '',
+            })}
+          />
         </RecordField>
       </RecordFieldList>
     </RecordSection>

@@ -77,9 +77,10 @@ function readStoredFilters(moduleKey: string): RequestReportFormValues | null {
 
 /**
  * Drops branch keys the report no longer offers and, when nothing survives,
- * falls back to the whole list — the same "everything selected" seeding the
- * filter sheet used to do (rev-2 AC-050). Returns the SAME object when there
- * is nothing to change, so the caller can skip a pointless write.
+ * falls back to the whole list — every category and subcategory, the same
+ * "everything selected" seeding the filter sheet used to do (rev-2 AC-050).
+ * Returns the SAME object when there is nothing to change, so the caller can
+ * skip a pointless write.
  */
 export function reconcileCategoryKeys(
   filters: RequestReportFormValues,

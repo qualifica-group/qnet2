@@ -5,6 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
+import type {
+  RequestReportCategory,
+  RequestReportOperator,
+  RequestReportSite,
+} from '@/features/request-management/report-api'
 import { RequestDashboardFilterBar } from '@/features/request-management/request-dashboard-filter-bar'
 import {
   DashboardCategorySection,
@@ -40,6 +45,9 @@ const SKELETON_TILE_COUNT = 4
 
 /** Hoisted so an unloaded operator/site list keeps a STABLE identity across renders. */
 const EMPTY_KEYS: string[] = []
+const EMPTY_CATEGORIES: RequestReportCategory[] = []
+const EMPTY_SITES: RequestReportSite[] = []
+const EMPTY_OPERATORS: RequestReportOperator[] = []
 
 const HTTP_FORBIDDEN = 403
 const HTTP_UNPROCESSABLE = 422
@@ -234,8 +242,9 @@ function RequestDashboardPanelBody() {
         reportPermission={module.permission('report')}
         filters={filters}
         payload={payload}
-        categoryCount={categories?.length ?? 0}
-        operatorCount={operators?.length ?? 0}
+        categories={categories ?? EMPTY_CATEGORIES}
+        sites={sites ?? EMPTY_SITES}
+        operators={operators ?? EMPTY_OPERATORS}
         filtersReady={filtersReady}
         onEdit={() => setFiltersOpen(true)}
       />

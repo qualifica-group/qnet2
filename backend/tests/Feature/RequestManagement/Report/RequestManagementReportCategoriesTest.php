@@ -86,7 +86,7 @@ if (! function_exists('reportActorWith')) {
 // AC-026
 // ---------------------------------------------------------------------------
 
-it('returns only the branches with at least one request in scope, key+label, by name (spec 0131, AC-026)', function () {
+it('returns only the branches with at least one request in scope, key+label+depth, by name (spec 0131, AC-026)', function () {
     $categories = reportCategoryTree();
     reportQuote($categories['consulenza']);
     reportQuote($categories['apl']);
@@ -102,9 +102,9 @@ it('returns only the branches with at least one request in scope, key+label, by 
     // Spec 0131: branches are ordered by category name (ReportBranchResolver),
     // not by any config order any more.
     expect($response->json('data.categories'))->toBe([
-        ['key' => (string) $categories['apl']->id, 'label' => 'APL'],
-        ['key' => (string) $categories['consulenza']->id, 'label' => 'Consulenza'],
-        ['key' => (string) $categories['gol']->id, 'label' => 'GOL'],
+        ['key' => (string) $categories['apl']->id, 'label' => 'APL', 'depth' => 0, 'parent_key' => null],
+        ['key' => (string) $categories['consulenza']->id, 'label' => 'Consulenza', 'depth' => 0, 'parent_key' => null],
+        ['key' => (string) $categories['gol']->id, 'label' => 'GOL', 'depth' => 0, 'parent_key' => null],
     ]);
 });
 
@@ -133,7 +133,7 @@ it('respects the actor scope: an operator of only a Consulenza request sees only
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
 
-    expect($response->json('data.categories'))->toBe([['key' => (string) $categories['consulenza']->id, 'label' => 'Consulenza']]);
+    expect($response->json('data.categories'))->toBe([['key' => (string) $categories['consulenza']->id, 'label' => 'Consulenza', 'depth' => 0, 'parent_key' => null]]);
 });
 
 it('returns an empty list when the actor visibility reaches nothing (AC-027)', function () {
@@ -167,7 +167,7 @@ it('lists a branch whose only request falls outside any future range, all-time (
 // AC-029 — a request on a descendant category surfaces the branch root
 // ---------------------------------------------------------------------------
 
-it('lists GOL when the only request is classified on a descendant category (AC-029)', function () {
+it('lists GOL and, under it, the descendant category the only request is classified on (AC-029, directive 2026-09-18)', function () {
     $categories = reportCategoryTree();
     $child = ProductCategory::factory()->childOf($categories['gol'])->create(['name' => 'GOL - Lombardia']);
     reportQuote($child);
@@ -177,5 +177,8 @@ it('lists GOL when the only request is classified on a descendant category (AC-0
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
 
-    expect($response->json('data.categories'))->toBe([['key' => (string) $categories['gol']->id, 'label' => 'GOL']]);
+    expect($response->json('data.categories'))->toBe([
+        ['key' => (string) $categories['gol']->id, 'label' => 'GOL', 'depth' => 0, 'parent_key' => null],
+        ['key' => (string) $child->id, 'label' => 'GOL - Lombardia', 'depth' => 1, 'parent_key' => (string) $categories['gol']->id],
+    ]);
 });

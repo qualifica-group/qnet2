@@ -32,8 +32,8 @@ vi.mock('@/features/request-management/report-api', () => ({
 
 /** The two branches most tests load; both applied by default (AC-050 seeding lives in the panel). */
 const DEFAULT_CATEGORIES: RequestReportCategory[] = [
-  { key: 'gol', label: 'GOL' },
-  { key: 'consulenza', label: 'Consulenza' },
+  { key: 'gol', label: 'GOL', depth: 0, parent_key: null },
+  { key: 'consulenza', label: 'Consulenza', depth: 0, parent_key: null },
 ]
 
 beforeAll(async () => {
@@ -69,8 +69,18 @@ function fillDates(from: string, to: string) {
   fireEvent.change(screen.getByLabelText(/^To/), { target: { value: to } })
 }
 
-/** Waits for the branch checkbox group to land — apply stays disabled until then (AC-049). */
+/** The searchable branch picker's trigger, named by its field label. */
+function categoriesTrigger() {
+  return screen.getByRole('button', { name: /^Categories/ })
+}
+
+/**
+ * Waits for the branch picker to land — apply stays disabled until then
+ * (AC-049) — and opens it, so its checkboxes are on screen (user directive
+ * 2026-09-18: searchable selects instead of always-open checkbox cards).
+ */
 async function waitForCategories() {
+  fireEvent.click(await screen.findByRole('button', { name: /^Categories/ }))
   return screen.findByRole('checkbox', { name: 'GOL' })
 }
 
@@ -210,7 +220,7 @@ describe('RequestReportFiltersDialog', () => {
   })
 
   it('blocks apply with an accessible group error when every branch is unchecked (AC-051/AC-054)', async () => {
-    fetchRequestManagementReportCategoriesMock.mockResolvedValue([{ key: 'gol', label: 'GOL' }])
+    fetchRequestManagementReportCategoriesMock.mockResolvedValue([{ key: 'gol', label: 'GOL', depth: 0, parent_key: null }])
     const { onApply } = renderDialog(vi.fn(), requestReportDefaultValues(['gol']))
     const gol = await waitForCategories()
 
@@ -221,10 +231,85 @@ describe('RequestReportFiltersDialog', () => {
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Select at least one category.')
 
-    const group = screen.getByRole('group')
-    expect(group).toHaveAttribute('aria-invalid', 'true')
-    expect(group.getAttribute('aria-describedby')).toContain(alert.id)
+    const trigger = categoriesTrigger()
+    expect(trigger).toHaveAttribute('aria-invalid', 'true')
+    expect(trigger.getAttribute('aria-describedby')).toContain(alert.id)
     expect(onApply).not.toHaveBeenCalled()
+  })
+
+  it('narrows the branch list by search, and select-all picks only the matches (user directive 2026-09-18)', async () => {
+    const { onApply } = renderDialog(vi.fn(), requestReportDefaultValues(['gol']))
+    await waitForCategories()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search…' }), { target: { value: 'consu' } })
+
+    expect(screen.queryByRole('checkbox', { name: 'GOL' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select all' }))
+    expect(screen.getByRole('checkbox', { name: 'Consulenza' })).toBeChecked()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search…' }), { target: { value: 'zzz' } })
+    expect(screen.getByText('No results')).toBeInTheDocument()
+
+    fillDates('2026-09-01', '2026-09-30')
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+
+    await waitFor(() =>
+      expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ category_keys: ['gol', 'consulenza'] })),
+    )
+  })
+
+  it('summarises the selection on the trigger and empties it from the footer', async () => {
+    renderDialog()
+    await waitForCategories()
+
+    expect(categoriesTrigger()).toHaveTextContent('All categories')
+    expect(screen.getByText('2 of 2 selected')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+
+    expect(categoriesTrigger()).toHaveTextContent('Nothing selected')
+    expect(screen.getByRole('checkbox', { name: 'GOL' })).not.toBeChecked()
+  })
+
+  it('cycles a category on click: itself, then with its subcategories, then nothing (directive 2026-09-18)', async () => {
+    fetchRequestManagementReportCategoriesMock.mockResolvedValue([
+      { key: 'gol', label: 'GOL', depth: 0, parent_key: null },
+      { key: 'campania', label: 'GOL - Campania', depth: 1, parent_key: 'gol' },
+      { key: 'lombardia', label: 'GOL - Lombardia', depth: 1, parent_key: 'gol' },
+      { key: 'consulenza', label: 'Consulenza', depth: 0, parent_key: null },
+    ])
+    const { onApply } = renderDialog(vi.fn(), requestReportDefaultValues(['consulenza']))
+    await waitForCategories()
+    const gol = () => screen.getByRole('checkbox', { name: 'GOL' })
+    const campania = () => screen.getByRole('checkbox', { name: 'GOL - Campania' })
+
+    // First click: the parent alone, shown as "–" (a second click adds the subtree).
+    fireEvent.click(gol())
+    expect(gol()).toBePartiallyChecked()
+    expect(campania()).not.toBeChecked()
+    expect(screen.getByText('0/2')).toBeInTheDocument()
+
+    // Second click: its subcategories too, and a full tick.
+    fireEvent.click(gol())
+    expect(gol()).toBeChecked()
+    expect(campania()).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'GOL - Lombardia' })).toBeChecked()
+    expect(screen.getByText('2/2')).toBeInTheDocument()
+
+    // Third click: nothing; a lone subcategory leaves the parent unticked.
+    fireEvent.click(gol())
+    expect(gol()).not.toBeChecked()
+    expect(campania()).not.toBeChecked()
+    fireEvent.click(campania())
+    expect(gol()).not.toBeChecked()
+    expect(gol()).not.toBePartiallyChecked()
+
+    fillDates('2026-09-01', '2026-09-30')
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+
+    await waitFor(() =>
+      expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ category_keys: ['campania', 'consulenza'] })),
+    )
   })
 
   it('exposes the three row-mode options with "all" preselected and applies the choice (AC-052)', async () => {

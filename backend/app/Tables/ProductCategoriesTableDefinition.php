@@ -6,7 +6,9 @@ use App\Models\Attribute;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\ProductCategories\ReportableInheritance;
 use App\Services\ProductCategoryService;
+use App\Services\Table\FilterApplier;
 use App\Tables\ProductCategories\ProductCategoryColumnCatalog;
 use App\Tables\ProductCategories\ProductCategoryCountColumn;
 use App\Tables\Shared\BusinessFunctionColumn;
@@ -50,7 +52,17 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
         private readonly ProductCategoryService $service,
         private readonly ProductCategoryCountColumn $countColumn,
         private readonly BusinessFunctionColumn $businessFunctionColumn,
+        private readonly ReportableInheritance $reportable,
+        private readonly FilterApplier $filterApplier,
     ) {}
+
+    /**
+     * Effective report flag per category id, resolved once per request (the
+     * whole tree is one small projection) and shared by mapRow and the filter.
+     *
+     * @var array<int, bool>|null
+     */
+    private ?array $effectiveReportable = null;
 
     public function domain(): string
     {
@@ -173,7 +185,9 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
             'business_function' => $this->businessFunctionColumn->nameFor($row->id),
             'requires_quote' => (bool) $row->requires_quote,
             'is_selectable' => (bool) $row->is_selectable,
-            'is_reportable' => (bool) $row->is_reportable,
+            // EFFECTIVE flag (own override, else inherited — user directive
+            // 2026-09-18), not the nullable own column.
+            'is_reportable' => $this->effectiveReportable()[$row->id] ?? false,
             // Spec 0077: the EFFECTIVE mode, denormalised like requires_quote.
             'management_mode' => $row->management_mode->value,
             // Both denormalised from the branch root too. The single-quote
@@ -259,6 +273,7 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'parent' => $this->filterByParentName($query, $filter),
             'business_function' => $this->filterByBusinessFunctionName($query, $filter),
+            'is_reportable' => $this->filterByEffectiveReportable($query, $filter),
             'attributes_count' => $this->countColumn->applyDerivedFilter($query, 'attributes', $filter),
             'products_count' => $this->countColumn->applyDerivedFilter($query, 'products', $filter),
             default => false,
@@ -278,6 +293,35 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
         $this->businessFunctionColumn->applyCategoryIdFilter($query, $filter);
 
         return true;
+    }
+
+    /**
+     * Derived boolean filter on the EFFECTIVE report flag: the column holds
+     * only the nullable own override, so the match is the resolved id list.
+     *
+     * @param  Builder<ProductCategory>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function filterByEffectiveReportable(Builder $query, array $filter): bool
+    {
+        $values = $this->filterApplier->booleanFilterValues($filter);
+
+        if ($values === null || count($values) > 1) {
+            return true;
+        }
+
+        $ids = array_keys(array_filter($this->effectiveReportable(), static fn (bool $value): bool => $value === $values[0]));
+        $query->whereIn('id', $ids);
+
+        return true;
+    }
+
+    /**
+     * @return array<int, bool>
+     */
+    private function effectiveReportable(): array
+    {
+        return $this->effectiveReportable ??= $this->reportable->effectiveMapForAll();
     }
 
     /**

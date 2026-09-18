@@ -60,7 +60,7 @@ if (! function_exists('dynamicReportCompanyQuote')) {
     }
 }
 
-it('resolves one branch per reportable category, keyed by id, ordered by name, subtree included', function () {
+it('resolves every reportable category and, under it, each subcategory in tree order with its depth (directive 2026-09-18)', function () {
     $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
     $gol = ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']);
     $campania = ProductCategory::factory()->childOf($gol)->reportable()->create(['name' => 'GOL - Campania']);
@@ -70,21 +70,62 @@ it('resolves one branch per reportable category, keyed by id, ordered by name, s
 
     $branches = app(ReportBranchResolver::class)->resolve();
 
-    expect(array_map(static fn (ReportBranch $branch): array => [$branch->key, $branch->label], $branches))->toBe([
-        [(string) $apl->id, 'APL'],
-        [(string) $gol->id, 'GOL'],
-        [(string) $campania->id, 'GOL - Campania'],
+    // "Formazione" is not reportable: not a branch. "GOL - Campania" is
+    // reportable too, but it is reached UNDER GOL, never as a second root.
+    expect(array_map(static fn (ReportBranch $branch): array => [$branch->key, $branch->label, $branch->depth], $branches))->toBe([
+        [(string) $apl->id, 'APL', 0],
+        [(string) $gol->id, 'GOL', 0],
+        [(string) $campania->id, 'GOL - Campania', 1],
+        [(string) $campaniaCourse->id, 'Corso Campania', 2],
+        [(string) $lombardia->id, 'GOL - Lombardia', 1],
     ]);
 
     expect($branches[1]->categoryIds)->toEqualCanonicalizing([$gol->id, $campania->id, $lombardia->id, $campaniaCourse->id])
         ->and($branches[2]->categoryIds)->toEqualCanonicalizing([$campania->id, $campaniaCourse->id])
+        ->and($branches[3]->categoryIds)->toBe([$campaniaCourse->id])
         ->and($branches[0]->categoryIds)->toBe([$apl->id]);
+
+    // A subcategory inherits its parent's active columns.
+    expect($branches[4]->categoryIdsFor('associati'))->toBe([$lombardia->id])
+        ->and($branches[4]->categoryIdsFor('aziende_inserite'))->toBeNull();
 });
 
-it('aggregates the whole subtree on a parent row and only its own subtree on a child row, computing every indicator', function () {
+it('drops a subcategory forced off, with its subtree, from its row and its ancestors rows (directive 2026-09-18)', function () {
     $gol = ProductCategory::factory()->reportable()->create(['name' => 'GOL']);
-    $campania = ProductCategory::factory()->childOf($gol)->reportable()->create(['name' => 'GOL - Campania']);
-    $lombardia = ProductCategory::factory()->childOf($gol)->create(['name' => 'GOL - Lombardia']);
+    $campania = ProductCategory::factory()->childOf($gol)->create(['name' => 'GOL - Campania']);
+    $lombardia = ProductCategory::factory()->childOf($gol)->create(['name' => 'GOL - Lombardia', 'is_reportable' => false]);
+    $lombardiaCourse = ProductCategory::factory()->childOf($lombardia)->create(['name' => 'Corso Lombardia']);
+    $milano = ProductCategory::factory()->childOf($lombardia)->create(['name' => 'Corso Milano', 'is_reportable' => true]);
+
+    $branches = app(ReportBranchResolver::class)->resolve();
+
+    // Lombardia and its inheriting course are out; Milano, forced back on
+    // under an excluded parent, becomes a root of its own.
+    expect(array_map(static fn (ReportBranch $branch): array => [$branch->key, $branch->depth], $branches))->toBe([
+        [(string) $milano->id, 0],
+        [(string) $gol->id, 0],
+        [(string) $campania->id, 1],
+    ]);
+
+    expect($branches[1]->categoryIds)->toEqualCanonicalizing([$gol->id, $campania->id])
+        ->and($branches[1]->categoryIds)->not->toContain($lombardiaCourse->id);
+});
+
+it('a report root under a non-reportable mapped parent keeps that parent columns (directive 2026-09-18)', function () {
+    $apl = ProductCategory::factory()->create(['name' => 'APL']);
+    $orientamento = ProductCategory::factory()->childOf($apl)->reportable()->create(['name' => 'Orientamento Specialistico']);
+
+    $branches = app(ReportBranchResolver::class)->resolve();
+
+    expect(array_map(static fn (ReportBranch $branch): string => $branch->key, $branches))->toBe([(string) $orientamento->id])
+        ->and($branches[0]->categoryIdsFor('invio_presa_in_carico'))->toBe([$orientamento->id])
+        ->and($branches[0]->categoryIdsFor('associati'))->toBeNull();
+});
+
+it('aggregates the whole subtree on a parent row and only its own subtree on a child row', function () {
+    $consulenza = ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']);
+    $campania = ProductCategory::factory()->childOf($consulenza)->create(['name' => 'Consulenza Campania']);
+    $lombardia = ProductCategory::factory()->childOf($consulenza)->create(['name' => 'Consulenza Lombardia']);
 
     dynamicReportCompanyQuote($campania, Carbon::parse('2026-09-10 10:00:00'));
     dynamicReportCompanyQuote($lombardia, Carbon::parse('2026-09-11 10:00:00'));
@@ -93,18 +134,56 @@ it('aggregates the whole subtree on a parent row and only its own subtree on a c
         dynamicReportActor(),
         '2026-09-01',
         '2026-09-30',
-        [(string) $gol->id, (string) $campania->id],
+        [(string) $consulenza->id],
         RequestManagementReportRowMode::TotalOnly,
     );
 
-    $totals = [];
+    expect($rows[0]['rows'][0]->values['aziende_inserite'])->toBe(2);
+});
+
+it('sets to 0 every column not active for the category, and every column of an unmapped one (directive 2026-09-18)', function () {
+    $gol = ProductCategory::factory()->reportable()->create(['name' => 'GOL']);
+    $consulenza = ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']);
+    $unmapped = ProductCategory::factory()->reportable()->create(['name' => 'Varie']);
+
+    dynamicReportCompanyQuote($gol, Carbon::parse('2026-09-10 10:00:00'));
+    dynamicReportCompanyQuote($consulenza, Carbon::parse('2026-09-10 10:00:00'));
+    dynamicReportCompanyQuote($unmapped, Carbon::parse('2026-09-10 10:00:00'));
+
+    $rows = app(RequestManagementReportGenerator::class)->rows(
+        dynamicReportActor(),
+        '2026-09-01',
+        '2026-09-30',
+        [(string) $gol->id, (string) $consulenza->id, (string) $unmapped->id],
+        RequestManagementReportRowMode::TotalOnly,
+    );
+
+    $companies = [];
     foreach ($rows as $pair) {
-        $totals[$pair['branch']->label] = $pair['rows'][0]->values['aziende_inserite'];
+        $companies[$pair['branch']->label] = $pair['rows'][0]->values['aziende_inserite'];
     }
 
-    // "Aziende inserite" used to be skipped for GOL (config applicability):
-    // spec 0131 computes every real indicator for every branch.
-    expect($totals)->toBe(['GOL' => 2, 'GOL - Campania' => 1]);
+    // "Aziende inserite" is a Consulenza column only.
+    expect($companies)->toBe(['Consulenza' => 1, 'GOL' => 0, 'Varie' => 0]);
+});
+
+it('computes each overall dashboard tile only on the categories the column is active for (directive 2026-09-18)', function () {
+    $gol = ProductCategory::factory()->reportable()->create(['name' => 'GOL']);
+    $consulenza = ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']);
+
+    dynamicReportCompanyQuote($gol, Carbon::parse('2026-09-10 10:00:00'));
+    dynamicReportCompanyQuote($consulenza, Carbon::parse('2026-09-10 10:00:00'));
+
+    Sanctum::actingAs(dynamicReportActor());
+
+    $summary = $this->getJson('/api/request-management/report/dashboard?'.http_build_query([
+        'date_from' => '2026-09-01',
+        'date_to' => '2026-09-30',
+        'category_keys' => [(string) $gol->id, (string) $consulenza->id],
+        'row_mode' => 'total_only',
+    ]))->assertOk()->json('data.summary');
+
+    expect(collect($summary)->firstWhere('key', 'aziende_inserite')['value'])->toBe(1);
 });
 
 it('offers only reportable categories with requests in scope on the categories endpoint', function () {
@@ -119,7 +198,10 @@ it('offers only reportable categories with requests in scope on the categories e
     Sanctum::actingAs(dynamicReportActor());
 
     expect($this->getJson('/api/request-management/report/categories')->assertOk()->json('data.categories'))
-        ->toBe([['key' => (string) $gol->id, 'label' => 'GOL']]);
+        ->toBe([
+            ['key' => (string) $gol->id, 'label' => 'GOL', 'depth' => 0, 'parent_key' => null],
+            ['key' => (string) $campania->id, 'label' => 'GOL - Campania', 'depth' => 1, 'parent_key' => (string) $gol->id],
+        ]);
 });
 
 it('422s a category key that is not a reportable category', function () {

@@ -88,6 +88,8 @@ function category(
     requires_quote_source_category: null,
     is_selectable: true,
     is_reportable: false,
+    effective_is_reportable: false,
+    is_reportable_source_category: null,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
@@ -250,7 +252,7 @@ describe('ProductCategoryFormBody — selectable switch (spec 0074)', () => {
   })
 })
 
-describe('ProductCategoryFormBody — reportable switch (same per-node shape as Selectable)', () => {
+describe('ProductCategoryFormBody — reportable switch (inherited, can be forced)', () => {
   it('create mode: the switch is off by default and can be turned on', async () => {
     render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
@@ -266,12 +268,14 @@ describe('ProductCategoryFormBody — reportable switch (same per-node shape as 
     await waitFor(() => expect(reportableSwitch).toBeChecked())
   })
 
-  it('edit mode: the switch mirrors the saved value, with no parent-driven read-only state', async () => {
+  it('edit mode: a child inherits a reportable parent, and switching it off forces it', async () => {
+    fetchProductCategoryTreeMock.mockResolvedValue([reportableTreeNode({ id: 1, name: 'Electronics', is_reportable: true })])
+
     render(
       <ProductCategoryForm
         mode={{
           type: 'edit',
-          category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, is_reportable: true }),
+          category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, is_reportable: null }),
         }}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
@@ -282,11 +286,43 @@ describe('ProductCategoryFormBody — reportable switch (same per-node shape as 
     await screen.findAllByRole('button', { name: 'Save' })
 
     const reportableSwitch = screen.getByRole('switch', { name: 'Visible in reports' })
-    expect(reportableSwitch).toBeChecked()
-    // Unlike the quote flag, this one is never inherited: a child still edits it.
+    await waitFor(() => expect(reportableSwitch).toBeChecked())
     expect(reportableSwitch).toBeEnabled()
+    expect(screen.getByText(/Inherited from "Electronics"\. Change it to force it/)).toBeInTheDocument()
+
+    fireEvent.click(reportableSwitch)
+
+    await waitFor(() => expect(reportableSwitch).not.toBeChecked())
+    expect(screen.getByText('Forced')).toBeInTheDocument()
+    expect(screen.getByText(/Forced on this category: it no longer follows "Electronics"/)).toBeInTheDocument()
+
+    // Back to the parent's value: inheriting again, no longer forced.
+    fireEvent.click(reportableSwitch)
+
+    await waitFor(() => expect(reportableSwitch).toBeChecked())
+    expect(screen.queryByText('Forced')).not.toBeInTheDocument()
   })
 })
+
+function reportableTreeNode(overrides: Partial<ProductCategoryTreeNode>): ProductCategoryTreeNode {
+  return {
+    id: 1,
+    name: 'Node',
+    parent_id: null,
+    children: [],
+    attributes_count: 0,
+    products_count: 0,
+    business_function_id: null,
+    requires_quote: false,
+    is_selectable: true,
+    is_reportable: null,
+    management_mode: 'multiple',
+    single_quote_per_opportunity: false,
+    generates_contract: true,
+    simplified_offer_line: false,
+    ...overrides,
+  }
+}
 
 /**
  * User directive 2026-08-07: the four behavioural rules moved out of the

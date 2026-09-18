@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import i18n from '@/i18n'
@@ -9,7 +9,12 @@ import {
   requestReportDefaultValues,
   toRequestReportFilterPayload,
 } from '@/features/request-management/request-report-schema'
-import type { RequestReportRun } from '@/features/request-management/report-api'
+import type {
+  RequestReportCategory,
+  RequestReportOperator,
+  RequestReportRun,
+  RequestReportSite,
+} from '@/features/request-management/report-api'
 
 /**
  * Spec 0106 AC-040/AC-041, AC-045..AC-046: the report action, which the user
@@ -40,6 +45,19 @@ vi.mock('@/features/auth/use-abilities', () => ({
     isLoading: false,
   }),
 }))
+
+const CATEGORIES: RequestReportCategory[] = [
+  { key: 'gol', label: 'GOL', depth: 0, parent_key: null },
+  { key: 'consulenza', label: 'Consulenza', depth: 0, parent_key: null },
+]
+const SITES: RequestReportSite[] = [
+  { key: '3', label: 'Via Roma 1 - Frattamaggiore' },
+  { key: '7', label: 'Corso Italia 9 - Napoli' },
+]
+const OPERATORS: RequestReportOperator[] = [
+  { key: '11', label: 'Ada Rossi', site_keys: ['3'] },
+  { key: '12', label: 'Zoe Bianchi', site_keys: ['7'] },
+]
 
 const APPLIED_FILTERS = {
   ...requestReportDefaultValues(['gol', 'consulenza']),
@@ -97,15 +115,16 @@ function generate(format: 'CSV' | 'Excel (XLSX)') {
   fireEvent.click(screen.getByRole('menuitem', { name: format }))
 }
 
-function renderBar(filtersReady = true) {
+function renderBar(filtersReady = true, filters = APPLIED_FILTERS) {
   const onEdit = vi.fn()
   render(
     <RequestDashboardFilterBar
       reportPermission="request-management.report"
-      filters={APPLIED_FILTERS}
+      filters={filters}
       payload={APPLIED_PAYLOAD}
-      categoryCount={2}
-      operatorCount={0}
+      categories={CATEGORIES}
+      sites={SITES}
+      operators={OPERATORS}
       filtersReady={filtersReady}
       onEdit={onEdit}
     />,
@@ -115,14 +134,46 @@ function renderBar(filtersReady = true) {
 }
 
 describe('RequestDashboardFilterBar', () => {
-  it('summarizes the applied filters and opens the sheet on demand', () => {
-    const { onEdit } = renderBar()
+  it('shows the applied filters as chips and opens the sheet on demand (user directive 2026-09-18)', () => {
+    const { onEdit } = renderBar(true, {
+      ...APPLIED_FILTERS,
+      site_keys: SITES.map((site) => site.key),
+      operator_keys: OPERATORS.map((operator) => operator.key),
+    })
 
-    expect(screen.getByText(/01\/09\/2026/)).toHaveTextContent('2/2 categories')
-    expect(screen.getByText(/2\/2 categories/)).toHaveTextContent('Everything')
+    const chips = within(screen.getByRole('list', { name: 'Applied filters' })).getAllByRole('listitem')
+    expect(chips.map((chip) => chip.textContent)).toEqual([
+      'Period01/09/2026 – 30/09/2026',
+      'CategoriesAll categories',
+      'SitesAll sites',
+      'OperatorsAll operators',
+      'RowsEverything',
+    ])
 
     fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     expect(onEdit).toHaveBeenCalledTimes(1)
+  })
+
+  it('names the narrowed dimensions, operators included when they follow the sites', () => {
+    renderBar(true, {
+      ...APPLIED_FILTERS,
+      category_keys: ['consulenza'],
+      site_keys: ['7'],
+      operator_keys: ['12'],
+    })
+
+    const list = within(screen.getByRole('list', { name: 'Applied filters' }))
+    expect(list.getByText('Consulenza')).toBeInTheDocument()
+    expect(list.getByText('Corso Italia 9 - Napoli')).toBeInTheDocument()
+    expect(list.getByText('All of the selected sites')).toBeInTheDocument()
+  })
+
+  it('hides the site and operator chips under "total only"', () => {
+    renderBar(true, { ...APPLIED_FILTERS, row_mode: 'total_only' })
+
+    const list = within(screen.getByRole('list', { name: 'Applied filters' }))
+    expect(list.queryByText('Sites')).not.toBeInTheDocument()
+    expect(list.queryByText('Operators')).not.toBeInTheDocument()
   })
 
   it('is absent without request-management.report, while the filters stay reachable (AC-040)', () => {

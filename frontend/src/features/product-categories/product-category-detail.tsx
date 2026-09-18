@@ -121,7 +121,7 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
                       {t('productCategories.badges.notSelectable')}
                     </Badge>
                   ) : null}
-                  {category.is_reportable ? (
+                  {category.effective_is_reportable ? (
                     <Badge variant="outline">
                       <ChartNoAxesColumn aria-hidden="true" />
                       {t('productCategories.badges.reportable')}

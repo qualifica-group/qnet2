@@ -27,6 +27,8 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     requires_quote_source_category: null,
     is_selectable: true,
     is_reportable: true,
+    effective_is_reportable: true,
+    is_reportable_source_category: null,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
@@ -286,7 +288,7 @@ describe('buildUpdatePayload', () => {
     expect(buildUpdatePayload(values, original())).toEqual({ is_selectable: false })
   })
 
-  it('sends is_reportable on its own, whatever the parent (same per-node shape as is_selectable)', () => {
+  it('sends the is_reportable override on its own, whatever the parent', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
@@ -308,8 +310,10 @@ describe('buildUpdatePayload', () => {
       custom_fields: {},
     }
 
-    // Under a parent — where requires_quote would be withheld — the flag still travels.
+    // Under a parent — where requires_quote would be withheld — the override still travels.
     expect(buildUpdatePayload(values, original())).toEqual({ is_reportable: false })
+    // Back to inheriting: null is a change too.
+    expect(buildUpdatePayload({ ...values, is_reportable: null }, original())).toEqual({ is_reportable: null })
   })
 
   it('sends requires_quote when a root category changes it, and on promotion to root', () => {

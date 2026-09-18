@@ -4,10 +4,13 @@ import { Info } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { EMPTY_VALUE, SUMMARY_LIST_CLASS, SummaryRow } from '@/components/record-form/record-summary'
 import type { ParentOptionRef } from '@/features/product-categories/product-category-form-header'
+import type { ProductCategoryFormMode } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
+import { useReportableInheritance } from '@/features/product-categories/use-reportable-inheritance'
 
 interface ProductCategoryFormSummaryProps {
   control: Control<ProductCategoryFormValues>
+  mode: ProductCategoryFormMode
   /** The parent picker's own option list: the only place a parent id has a name here. */
   parentOptions: readonly ParentOptionRef[]
 }
@@ -24,6 +27,7 @@ interface ProductCategoryFormSummaryProps {
  */
 export function ProductCategoryFormSummary({
   control,
+  mode,
   parentOptions,
 }: ProductCategoryFormSummaryProps) {
   const { t } = useTranslation()
@@ -34,7 +38,7 @@ export function ProductCategoryFormSummary({
   const generatesContract = useWatch({ control, name: 'generates_contract' })
   const simplifiedOfferLine = useWatch({ control, name: 'simplified_offer_line' })
   const isSelectable = useWatch({ control, name: 'is_selectable' })
-  const isReportable = useWatch({ control, name: 'is_reportable' })
+  const isReportable = useReportableInheritance(control, mode).effective
   const attributes = useWatch({ control, name: 'attributes' })
   const managerLabels = useWatch({ control, name: 'manager_labels' })
 

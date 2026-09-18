@@ -19,15 +19,20 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Can } from '@/features/auth/can'
 import type { ExportFormat } from '@/features/exports/types'
-import type { RequestReportFilterPayload } from '@/features/request-management/report-api'
+import type {
+  RequestReportCategory,
+  RequestReportFilterPayload,
+  RequestReportOperator,
+  RequestReportSite,
+} from '@/features/request-management/report-api'
+import { RequestDashboardAppliedFilters } from '@/features/request-management/request-dashboard-applied-filters'
 import type { RequestReportFormValues } from '@/features/request-management/request-report-schema'
 import { useRequestReport } from '@/features/request-management/use-request-report'
-import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
 
 /** Rung 2 under the page body, so the rung-3 (`bg-card`) buttons read as raised on it. */
 const BAR_CLASS = 'flex flex-col gap-2 rounded-xl border bg-surface px-3 py-2'
-const BAR_ROW_CLASS = 'flex flex-wrap items-center justify-between gap-2'
+const BAR_ROW_CLASS = 'flex flex-wrap items-start justify-between gap-2'
 
 /** The formats the backend enables (`config('exports.formats')`) — the same two the table export offers. */
 const REPORT_FORMATS: readonly ExportFormat[] = ['csv', 'xlsx']
@@ -69,7 +74,7 @@ function ReportStatusNote({ tone, children }: { tone: ReportStatusTone; children
 export interface RequestDashboardFilterBarProps {
   /** The caller's `module.permission('report')` (spec 0130), same gate `RequestDashboardToggle` renders on. */
   reportPermission: string
-  /** Filters currently applied to the charts, for the human-readable summary. */
+  /** Filters currently applied to the charts, shown as chips. */
   filters: RequestReportFormValues
   /**
    * The SAME normalized payload the charts were fetched with (spec 0109 D-9):
@@ -77,10 +82,10 @@ export interface RequestDashboardFilterBarProps {
    * apply the operator selection differently.
    */
   payload: RequestReportFilterPayload
-  /** Branches the report offers in total; the summary reads "selected/total". */
-  categoryCount: number
-  /** GA2 the report offers in total; the summary reads "selected/total". */
-  operatorCount: number
+  /** The lists the report offers, so the chips can name what is picked. */
+  categories: RequestReportCategory[]
+  sites: RequestReportSite[]
+  operators: RequestReportOperator[]
   /** False while the applied filters cannot drive a request (branch list not seeded yet). */
   filtersReady: boolean
   onEdit: () => void
@@ -88,7 +93,7 @@ export interface RequestDashboardFilterBarProps {
 
 /**
  * Replaces the filter controls the dashboard used to render inline (user
- * directive 2026-09-08): a read-only summary of what the charts below show,
+ * directive 2026-09-08): the applied-filter chips of what the charts below show,
  * the report action, and the button that opens the sheet where the filters
  * are edited. The report runs on the APPLIED filters — the same values the charts
  * were built from, so the file and the screen can never disagree — through
@@ -101,8 +106,9 @@ export function RequestDashboardFilterBar({
   reportPermission,
   filters,
   payload,
-  categoryCount,
-  operatorCount,
+  categories,
+  sites,
+  operators,
   filtersReady,
   onEdit,
 }: RequestDashboardFilterBarProps) {
@@ -113,23 +119,14 @@ export function RequestDashboardFilterBar({
   return (
     <div className={BAR_CLASS}>
       <div className={BAR_ROW_CLASS}>
-        <p className="min-w-0 truncate text-xs text-muted-foreground">
-          {t('requestManagement.dashboard.filtersSummary', {
-            from: formatDate(filters.date_from),
-            to: formatDate(filters.date_to),
-            selected: filters.category_keys.length,
-            total: categoryCount,
-            rowMode: t(`requestManagement.report.rowModes.${filters.row_mode}`),
-          })}
-          {filters.row_mode !== 'total_only' && operatorCount > 0
-            ? ` ${t('requestManagement.dashboard.operatorsSummary', {
-                selected: filters.operator_keys.length,
-                total: operatorCount,
-              })}`
-            : null}
-        </p>
+        <RequestDashboardAppliedFilters
+          filters={filters}
+          categories={categories}
+          sites={sites}
+          operators={operators}
+        />
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {/* The permission ships unassigned by default, and the backend
               re-authorizes the three report routes regardless (spec 0106). */}
           <Can permission={reportPermission}>

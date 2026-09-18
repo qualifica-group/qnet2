@@ -63,9 +63,10 @@ class ProductCategory extends BaseModel
             // requires_quote): a container category can be unselectable while
             // its children stay selectable, which is the whole point.
             'is_selectable' => 'boolean',
-            // Spec 0131 — owned by THIS node and never inherited, same shape
-            // as is_selectable: whether the category (with its subtree) is a
-            // row of the Gestione Richieste / Iscritti report.
+            // Spec 0131 — whether the category is a row of the Gestione
+            // Richieste / Iscritti report. Nullable OWN override (user
+            // directive 2026-09-18): null inherits the parent's effective
+            // value, resolved by ReportableInheritance.
             'is_reportable' => 'boolean',
             // Spec 0077 — owned by the branch ROOT and mirrored on every
             // descendant by CategoryManagementModeInheritance, same shape as

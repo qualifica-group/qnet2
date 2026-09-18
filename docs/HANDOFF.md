@@ -3,6 +3,90 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATEGORIE PRODOTTO — "VISIBILE NEI REPORT" EREDITABILE CON FORZATURA — NON COMMITTATO (2026-09-18)
+
+Direttiva utente: se il padre è visibile nei report, i figli lo sono di default (ereditano) ma si possono forzare a
+"no". Spec 0131 D-5 (supera D-1 "mai ereditata"), AC-007..009.
+- DB: `product_categories.is_reportable` ora nullable = override PROPRIO (null = eredita). Migrazione
+  `2026_09_18_100000_make_is_reportable_inheritable_on_product_categories_table` (false -> null, report invariato al
+  deploy). `QuoteWorkflowMigrationTest` rollback step 81 -> 82.
+- `App\Services\ProductCategories\ReportableInheritance`: `effectiveMap()`, `effectiveMapForAll()`, `resolve()`
+  (valore + `source_category`). Risolto a lettura, NON denormalizzato.
+- API: `is_reportable` `boolean|null` (write `sometimes|nullable|boolean`); show/store/update aggiungono
+  `effective_is_reportable` e `is_reportable_source_category`. Tree: override proprio. Tabella: valore effettivo,
+  filtro derivato (`FilterApplier::booleanFilterValues` reso public), colonna non ordinabile.
+- Report (`ReportBranchResolver`): usa il valore effettivo; figlio forzato a no escluso col sottoalbero anche dai
+  totali degli antenati; radice eredita le colonne dall'antenato mappato più vicino (`inheritedColumns`).
+- Seed `QualificaCatalogSeeder::REPORTABLE_CATEGORIES` = GOL, Autoimpiego, Yisu, Autofinanziato, DIL, Orientamento
+  Specialistico (figli null => ereditano). Consulenza/APL non più reportable nel seed (solo alla creazione: le
+  installazioni esistenti non cambiano).
+- FE: `reportable-inheritance.ts` (`resolveInheritedReportable`, `reportableOverrideFor`: switch = valore effettivo,
+  tornare al valore ereditato salva null), hook `use-reportable-inheritance.ts` usato da tile, header, summary;
+  detail usa `effective_is_reportable` + chip "Ereditato da".
+- Verifica: Pest suite completa seriale verde (1 flaky noto `CampaignCrudTest` budget casuale, 3/3 da solo);
+  Vitest 5307/5307; `tsc -b --force` pulito; ESLint/Pint puliti.
+- DA VERIFICARE a mano: /product-categories/160/edit (figlio di categoria reportable -> switch attivo + "Ereditata
+  da"; spegnendolo compare "Forzato").
+
+## GESTIONE RICHIESTE — REPORT: CATEGORIE AD ALBERO (SOTTOCATEGORIE) — NON COMMITTATO (2026-09-18)
+
+Direttiva utente (dopo due ripensamenti: niente select separato per le sottocategorie): un solo select Categorie ad
+albero come il picker "categoria prodotto" di Gestione Richieste.
+- Backend: `ReportBranchResolver` emette, sotto ogni categoria reportable (radice = reportable senza antenati
+  reportable), ogni sottocategoria a ogni livello in ordine ad albero; `ReportBranch` ha `depth` e `parentKey`; una
+  sottocategoria eredita le colonne attive dell'antenato mappato in `category_columns`.
+  `GET report/categories` -> `[{key,label,depth,parent_key}]`, solo rami con richieste in perimetro, calcolati con UNA
+  query (`usedCategoryIds`) invece di un EXISTS per ramo. Allow-list `category_keys` include le sottocategorie.
+- Frontend: `SearchableMultiSelect` accetta `parentValue` sulle opzioni (indentazione + contatore figlie selezionate
+  `k/n`, aria-hidden). Click su una madre = ciclo: solo madre -> madre + tutto il sottoalbero -> niente. Figlia = toggle.
+  Casella madre: "–" (indeterminate) = madre selezionata SENZA tutto il sottoalbero (tooltip `includeChildrenHint`:
+  "clicca di nuovo"), spunta = madre + sottoalbero, vuota = madre non selezionata (anche con figlie scelte).
+  Default/reconcile: tutto selezionato (radici + figlie).
+- Ogni chiave selezionata e' una riga/sezione propria (la madre aggrega il suo sottoalbero, spec 0131).
+
+## GESTIONE RICHIESTE — REPORT: COLONNE ATTIVE PER CATEGORIA + DEFINIZIONI INDICATORI — NON COMMITTATO (2026-09-18)
+
+Direttiva utente: per ogni categoria solo le sue colonne, le altre tassativamente 0 (dashboard + Excel/CSV).
+Spec 0131 D-4-bis (supera D-4).
+- `config/request-management-report.php` -> `category_columns` (chiave nome categoria lowercase). Categoria reportable
+  non mappata = tutto 0.
+- `ReportBranch`: nuovo `columnCategoryIds` + `withColumns()`/`categoryIdsFor()`; `ReportBranchResolver::activeColumns()`;
+  `ReportBranchRowsBuilder` calcola solo le colonne attive; dashboard `columnUnionOf()` per il riepilogo complessivo.
+- Indicatori: Telefonate esclude primo stato (supera rev-3 AC-058); Richiami = callback <= oggi, qualunque periodo,
+  stato non chiuso (supera 0106 D-4/AC-012); `invio_presa_in_carico` = closed_won (stesso `WorkflowTransitionIndicator`).
+- Test adeguati (requisito cambiato): Counters AC-058/AC-012 riscritti; fixture filtri Sede/Operatore spostate su uno
+  stato "lavorato" (`SiteFilterFixture::workedStatus()`); DynamicCategories riscritto + 2 nuovi casi; nuovo
+  `RequestManagementReportTransitionsEndToEndTest` (Potenziali via PATCH reale di Gestione Richieste: OK).
+- Decisioni utente 2026-09-18: (1) "Presa appuntamenti" resta 0 per ora (gli stati indicati esistono solo nel
+  workflow APL). (2) CORRETTO: `App\Services\Quotes\QuoteStatusChangeLogger` scrive sul trail dell'Opportunity
+  (`activity('opportunities')`, stessa shape attributes/old di Gestione Richieste) ogni cambio stato fatto dal modulo
+  Offerte (`QuoteService::update`, e `create` con stato esplicito); prima Potenziali/Associati/Trattative/Invio presa
+  in carico lo ignoravano. Non registra i riallineamenti amministrativi (QuoteWorkflowResolver delete-reassign,
+  `ResyncQuoteWorkflowStatuses`). Test: `Quotes/QuoteStatusChangeActivityTest`, caso Offerte in
+  `RequestManagementReportTransitionsEndToEndTest`. (3) Richiami: confermato "fino a oggi, a prescindere dal periodo".
+
+## GESTIONE RICHIESTE — FILTRI DASHBOARD: SELECT RICERCABILI, SEDI -> OPERATORI, CHIP APPLICATI — NON COMMITTATO (2026-09-18)
+
+Direttiva utente: select ricercabili con "seleziona tutto"; Sedi sopra Operatori e operatori limitati alle Sedi
+scelte; filtro applicato visibile sulla pagina; grafica da CRM moderno.
+- Backend (additivo, spec 0109 emendata): `ReportOperatorAvailabilityResolver::available()` aggiunge `site_keys`
+  a ogni operatore (`siteKeysByOperator`, una query sulla pivot). Test: nuovo caso in
+  `RequestManagementReportSitesEndpointTest`; shape aggiornato in `RequestManagementReportOperatorsEndpointTest`.
+- Nuovo atomo `components/ui/searchable-multi-select.tsx` (`SearchableMultiSelect`): trigger a pill (max 2 + "+N",
+  "Tutte..." se completo), popover con ricerca, "Seleziona tutto" tri-state SUI RISULTATI filtrati, footer
+  contatore + "Svuota". Label passate dal chiamante (domain-agnostic).
+- `request-report-key-group.tsx` ELIMINATO (sostituito da `request-report-key-select-field.tsx`, `KeySelectField`).
+- `request-report-site-operators.ts`: `operatorsForSites` (tutte le Sedi -> tutti gli operatori, incluso
+  "Non assegnato"; altrimenti solo membri) e `followSiteSelection` ("tutti" resta "tutti", parziale -> intersezione).
+  Applicate in `RequestReportFilters.changeSites` via `useFormContext().setValue`.
+- `request-dashboard-applied-filters.tsx`: chip per Periodo/Categorie/Sedi/Operatori/Righe, tinta primary sulle
+  dimensioni che restringono. `RequestDashboardFilterBar` ora riceve `categories/sites/operators` (non piu' i conteggi).
+- i18n: nuovi `requestManagement.report.picker.*`, `report.fields.operatorsBySite`, `dashboard.applied.*`;
+  rimossi `dashboard.filtersSummary`/`operatorsSummary`.
+- Test aggiornati (requisito cambiato: i gruppi non sono piu' checkbox sempre aperte, i test aprono il picker).
+- Verificato: Pest Report 137/137, Vitest 5299/5299, tsc -b pulito, ESLint e Pint puliti. NON verificato a schermo
+  (nessun browser automatizzato): controllare 375/768/1024 dentro lo sheet.
+
 ## RUOLI QUALIFICA — RAGGIO GESTIONE ISCRITTI PER RUOLO COMMERCIALE — NON COMMITTATO (2026-09-18)
 
 Direttiva utente (corregge la prima versione, gia' nel commit 7bd99898, che toglieva le Sedi al commerciale-iscritti):

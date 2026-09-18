@@ -13,12 +13,13 @@ use App\Services\RequestManagement\Report\Indicators\WorkflowTransitionIndicator
 
 /**
  * Column key -> ReportIndicator (spec 0106 data_contract): the ONLY "real"
- * (computed) indicators. The four stub columns
- * (aule_gestione/aule_partenza/presa_appuntamenti/invio_presa_in_carico,
- * D-5) resolve to nothing here — ReportBranchRowsBuilder emits their
- * constant 0 directly (D-15, rev-2). "associati" and "trattative_concluse"
- * resolve to the SAME WorkflowTransitionIndicator instance ("una sola
- * implementazione, due colonne").
+ * (computed) indicators. The three stub columns
+ * (aule_gestione/aule_partenza/presa_appuntamenti, D-5) resolve to nothing
+ * here — ReportBranchRowsBuilder emits their constant 0 directly (D-15,
+ * rev-2). "associati", "trattative_concluse" and "invio_presa_in_carico"
+ * ("chiuso con esito positivo", user directive 2026-09-18) resolve to the
+ * SAME WorkflowTransitionIndicator instance: one formula, three columns,
+ * told apart only by the category they are active for.
  */
 final class ReportIndicatorRegistry
 {
@@ -38,6 +39,7 @@ final class ReportIndicatorRegistry
             'potenziali' => new WorkflowTransitionIndicator($branchQuery, $aggregator, [WorkflowStatusGroup::Pending, WorkflowStatusGroup::Validated]),
             'associati' => $closedWon,
             'trattative_concluse' => $closedWon,
+            'invio_presa_in_carico' => $closedWon,
             'aziende_inserite' => new CompaniesAddedIndicator($branchQuery, $aggregator),
         ];
     }

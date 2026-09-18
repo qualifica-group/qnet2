@@ -6,6 +6,7 @@ namespace Tests\Feature\RequestManagement\Report\Support;
 
 use App\Enums\ExportFormat;
 use App\Enums\RequestManagementReportRowMode;
+use App\Enums\WorkflowStatusGroup;
 use App\Models\BusinessFunction;
 use App\Models\City;
 use App\Models\EmploymentProfile;
@@ -15,6 +16,7 @@ use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
 use App\Models\Quote;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
@@ -102,9 +104,11 @@ final class SiteFilterFixture
     }
 
     /**
-     * A request on the first workflow state with a callback due in range
-     * ("richiami") plus one note written by its own GA2 ("telefonate", 0106
-     * rev-3 D-17 — an unassigned request can never have one).
+     * A request in a WORKED state — neither the first nor a closed one — with
+     * a callback due today ("richiami", not closed) plus one note written by
+     * its own GA2 ("telefonate", which skips first-state requests since the
+     * user directive of 2026-09-18; an unassigned request can never have
+     * one, 0106 rev-3 D-17).
      */
     public static function quote(ProductCategory $category, ?int $operatorId): Quote
     {
@@ -116,7 +120,11 @@ final class SiteFilterFixture
         ]);
 
         $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
-        $quote->forceFill(['operator_id' => $operatorId, 'next_callback_at' => now()])->save();
+        $quote->forceFill([
+            'operator_id' => $operatorId,
+            'next_callback_at' => now(),
+            'quote_workflow_status_id' => self::workedStatus()->id,
+        ])->save();
 
         Note::factory()->create([
             'notable_type' => 'opportunity',
@@ -126,6 +134,17 @@ final class SiteFilterFixture
         ])->forceFill(['quote_id' => $quote->id])->save();
 
         return $quote;
+    }
+
+    /** One shared global status past the first state and not closed. */
+    public static function workedStatus(): QuoteWorkflowStatus
+    {
+        return QuoteWorkflowStatus::query()->where('name', 'Report fixture - in lavorazione')->first()
+            ?? QuoteWorkflowStatus::factory()->global()->create([
+                'name' => 'Report fixture - in lavorazione',
+                'system_key' => null,
+                'group' => WorkflowStatusGroup::Pending,
+            ]);
     }
 
     /**

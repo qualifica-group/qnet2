@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
@@ -41,7 +41,7 @@ vi.mock('@/features/request-management/dashboard-api', () => ({
   fetchRequestManagementDashboard: (...args: unknown[]) => fetchRequestManagementDashboardMock(...args),
 }))
 
-const CATEGORIES: RequestReportCategory[] = [{ key: 'gol', label: 'GOL' }]
+const CATEGORIES: RequestReportCategory[] = [{ key: 'gol', label: 'GOL', depth: 0, parent_key: null }]
 
 /** Composed addresses, exactly as the backend serves them (D-8): never i18n keys. */
 const SITES: RequestReportSite[] = [
@@ -95,8 +95,13 @@ function renderPanel() {
 
 async function openFilters() {
   renderPanel()
-  await screen.findByText(/1\/1 categories/)
+  await screen.findByText('All categories')
   fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+}
+
+/** Opens the searchable site picker (user directive 2026-09-18), so its checkboxes are on screen. */
+async function openSites() {
+  fireEvent.click(await screen.findByRole('button', { name: /^Sites/ }))
 }
 
 /** The query the charts were last fetched with. */
@@ -121,24 +126,23 @@ describe('report site filter (spec 0112)', () => {
 
   it('shows the site group for "operators only" and "everything", never for "total only" (AC-016)', async () => {
     await openFilters()
+    await openSites()
 
     expect(await screen.findByRole('checkbox', { name: 'Via Roma 1 - Frattamaggiore' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Corso Italia 9 - Napoli' })).toBeInTheDocument()
 
     pickRowMode('Total only')
-    await waitFor(() =>
-      expect(screen.queryByRole('checkbox', { name: 'Via Roma 1 - Frattamaggiore' })).not.toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Sites/ })).not.toBeInTheDocument())
 
     pickRowMode('Operators only')
-    expect(await screen.findByRole('checkbox', { name: 'Via Roma 1 - Frattamaggiore' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Sites/ })).toBeInTheDocument()
   })
 
   it('keeps the selection while the group is hidden and restores it on the way back (AC-016)', async () => {
     await openFilters()
-    await screen.findByRole('checkbox', { name: 'Corso Italia 9 - Napoli' })
+    await openSites()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Corso Italia 9 - Napoli' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Corso Italia 9 - Napoli' }))
     pickRowMode('Total only')
     apply()
 
@@ -147,6 +151,7 @@ describe('report site filter (spec 0112)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     pickRowMode('Everything')
+    await openSites()
 
     // The selection was never cleared, only hidden.
     expect(await screen.findByRole('checkbox', { name: 'Via Roma 1 - Frattamaggiore' })).toBeChecked()
@@ -159,6 +164,7 @@ describe('report site filter (spec 0112)', () => {
 
   it('starts with every site selected and omits site_keys from the payload (AC-017)', async () => {
     await openFilters()
+    await openSites()
 
     for (const site of SITES) {
       expect(await screen.findByRole('checkbox', { name: site.label })).toBeChecked()
@@ -169,12 +175,14 @@ describe('report site filter (spec 0112)', () => {
 
   it('sends the remaining keys to the charts and generates the file from the same payload (AC-017)', async () => {
     await openFilters()
-    await screen.findByRole('checkbox', { name: 'Corso Italia 9 - Napoli' })
+    await openSites()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Corso Italia 9 - Napoli' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Corso Italia 9 - Napoli' }))
     apply()
 
     await waitFor(() => expect(lastDashboardQuery().site_keys).toEqual(['3']))
+    // The page says it is filtered: the site chip names the one left.
+    expect(within(screen.getByRole('list', { name: 'Applied filters' })).getByText('Via Roma 1 - Frattamaggiore')).toBeInTheDocument()
 
     // Radix opens the menu on pointerdown, not click.
     fireEvent.pointerDown(screen.getByRole('button', { name: /Generate report/ }), {
@@ -193,6 +201,7 @@ describe('report site filter (spec 0112)', () => {
 
   it('blocks apply and fires no request when every site is deselected (AC-020)', async () => {
     await openFilters()
+    await openSites()
     await screen.findByRole('checkbox', { name: 'Corso Italia 9 - Napoli' })
     const callsBefore = fetchRequestManagementDashboardMock.mock.calls.length
 
@@ -235,6 +244,7 @@ describe('report site filter (spec 0112)', () => {
     fetchRequestManagementReportSitesMock.mockResolvedValue([{ key: '9', label: 'requestManagement.report' }])
 
     await openFilters()
+    await openSites()
 
     expect(await screen.findByRole('checkbox', { name: 'requestManagement.report' })).toBeInTheDocument()
   })

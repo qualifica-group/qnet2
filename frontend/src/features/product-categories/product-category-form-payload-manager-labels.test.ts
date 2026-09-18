@@ -31,6 +31,8 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     requires_quote_source_category: null,
     is_selectable: true,
     is_reportable: true,
+    effective_is_reportable: true,
+    is_reportable_source_category: null,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,

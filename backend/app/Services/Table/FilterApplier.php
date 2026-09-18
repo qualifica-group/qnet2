@@ -167,9 +167,11 @@ class FilterApplier
      * Returns null when the payload carries no usable boolean value.
      *
      * @param  array<string, mixed>  $filter
+     *                                        Public for the derived boolean columns a definition filters itself
+     *                                        (applyDerivedFilter), so they read the payload exactly as this class does.
      * @return array<int, bool>|null
      */
-    private function booleanFilterValues(array $filter): ?array
+    public function booleanFilterValues(array $filter): ?array
     {
         $values = $filter['values'] ?? null;
 

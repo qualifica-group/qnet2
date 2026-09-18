@@ -96,7 +96,7 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
       <Form {...form}>
         <ProductCategoryFormHeader
           control={form.control}
-          isEdit={mode.type === 'edit'}
+          mode={mode}
           parentOptions={parentOptions}
           formId={PRODUCT_CATEGORY_FORM_ID}
           isSubmitting={isSubmitting}
@@ -106,7 +106,11 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
 
         <div className={PANEL_GRID_CLASS}>
           <aside className={SIDE_COLUMN_CLASS}>
-            <ProductCategoryFormSummary control={form.control} parentOptions={parentOptions} />
+            <ProductCategoryFormSummary
+              control={form.control}
+              mode={mode}
+              parentOptions={parentOptions}
+            />
           </aside>
 
           <div className={MAIN_COLUMN_CLASS}>

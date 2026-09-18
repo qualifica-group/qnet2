@@ -39,13 +39,13 @@ vi.mock('@/features/request-management/dashboard-api', () => ({
   fetchRequestManagementDashboard: (...args: unknown[]) => fetchRequestManagementDashboardMock(...args),
 }))
 
-const CATEGORIES: RequestReportCategory[] = [{ key: 'gol', label: 'GOL' }]
+const CATEGORIES: RequestReportCategory[] = [{ key: 'gol', label: 'GOL', depth: 0, parent_key: null }]
 
 /** Two named GA2 plus "Non assegnato", exactly as the backend serves it (D-6). */
 const OPERATORS: RequestReportOperator[] = [
-  { key: '7', label: 'Ada Rossi' },
-  { key: '9', label: 'Zoe Bianchi' },
-  { key: 'unassigned', label: 'Unassigned' },
+  { key: '7', label: 'Ada Rossi', site_keys: ['3'] },
+  { key: '9', label: 'Zoe Bianchi', site_keys: ['5'] },
+  { key: 'unassigned', label: 'Unassigned', site_keys: [] },
 ]
 
 const DASHBOARD_DATA: RequestDashboardData = {
@@ -91,8 +91,15 @@ function wrapper() {
 /** Mounts the open panel and opens the filter sheet on its loaded lists. */
 async function openFilters() {
   render(<RequestDashboardPanel isOpen />, { wrapper: wrapper() })
-  await screen.findByText(/1\/1 categories/)
+  await screen.findByText('All categories')
   fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+
+  return openOperators()
+}
+
+/** Opens the searchable operator picker (user directive 2026-09-18) and waits for its checkboxes. */
+async function openOperators() {
+  fireEvent.click(await screen.findByRole('button', { name: /^Operators/ }))
 
   return screen.findByRole('checkbox', { name: 'Ada Rossi' })
 }
@@ -123,10 +130,10 @@ describe('report operator filter (spec 0109)', () => {
     expect(screen.getByRole('checkbox', { name: 'Zoe Bianchi' })).toBeInTheDocument()
 
     pickRowMode('Total only')
-    await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Ada Rossi' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Operators/ })).not.toBeInTheDocument())
 
     pickRowMode('Operators only')
-    expect(await screen.findByRole('checkbox', { name: 'Ada Rossi' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Operators/ })).toBeInTheDocument()
   })
 
   it('offers "Non assegnato" as a selectable GA2, labelled by the server (AC-040)', async () => {
@@ -155,14 +162,14 @@ describe('report operator filter (spec 0109)', () => {
   it('drives the select-all control tri-state and the counter (AC-041)', async () => {
     await openFilters()
 
-    const selectAll = screen.getAllByRole('checkbox', { name: 'Select all' })[1]
+    const selectAll = screen.getByRole('checkbox', { name: 'Select all' })
     expect(selectAll).toHaveAttribute('data-state', 'checked')
-    expect(screen.getByText('3/3')).toBeInTheDocument()
+    expect(screen.getByText('3 of 3 selected')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Zoe Bianchi' }))
 
     await waitFor(() => expect(selectAll).toHaveAttribute('data-state', 'indeterminate'))
-    expect(screen.getByText('2/3')).toBeInTheDocument()
+    expect(screen.getByText('2 of 3 selected')).toBeInTheDocument()
   })
 
   // -------------------------------------------------------------------------
@@ -239,7 +246,7 @@ describe('report operator filter (spec 0109)', () => {
     pickRowMode('Operators only')
 
     // The selection was never cleared, only hidden.
-    expect(await screen.findByRole('checkbox', { name: 'Ada Rossi' })).toBeChecked()
+    expect(await openOperators()).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Zoe Bianchi' })).not.toBeChecked()
 
     apply()
@@ -268,5 +275,49 @@ describe('report operator filter (spec 0109)', () => {
     // ...and the field that did not exist back then seeds to "everything".
     expect(screen.getByRole('checkbox', { name: 'Ada Rossi' })).toBeChecked()
     expect(lastDashboardQuery()).not.toHaveProperty('operator_keys')
+  })
+})
+
+describe('operators follow the chosen sites (user directive 2026-09-18)', () => {
+  const SITES = [
+    { key: '3', label: 'Via Roma 1 - Frattamaggiore' },
+    { key: '5', label: 'Corso Italia 9 - Napoli' },
+  ]
+
+  beforeEach(() => {
+    fetchRequestManagementReportSitesMock.mockResolvedValue(SITES)
+  })
+
+  it('lists only the operators of the chosen sites, keeping "all" as all of them', async () => {
+    await openFilters()
+    // Every site chosen: every operator on offer, "Non assegnato" included.
+    expect(screen.getByRole('checkbox', { name: 'Unassigned' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Sites/ }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Corso Italia 9 - Napoli' }))
+
+    expect(await screen.findByText('Only the operators of the selected sites are listed.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Operators/ }))
+    expect(screen.queryByRole('checkbox', { name: 'Zoe Bianchi' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Unassigned' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Ada Rossi' })).toBeChecked()
+
+    apply()
+
+    await waitFor(() => expect(lastDashboardQuery()).toMatchObject({ site_keys: ['3'], operator_keys: ['7'] }))
+  })
+
+  it('drops a picked operator whose site is deselected', async () => {
+    await openFilters()
+    // Partial pick: Zoe only.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ada Rossi' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Unassigned' }))
+
+    fireEvent.click(screen.getByRole('button', { name: /^Sites/ }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Corso Italia 9 - Napoli' }))
+    apply()
+
+    // Zoe belongs to the deselected site: nothing left to pick, so apply is blocked.
+    expect(await screen.findByText('Select at least one operator.')).toBeInTheDocument()
   })
 })

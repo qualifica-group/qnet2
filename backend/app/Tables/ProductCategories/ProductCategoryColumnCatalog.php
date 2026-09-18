@@ -110,14 +110,16 @@ final class ProductCategoryColumnCatalog
                 'filterType' => 'boolean',
             ],
             [
-                // Whether the category (with its subtree) is a row of the
-                // Gestione Richieste / Iscritti report (spec 0131). Per-row,
-                // never inherited, same handling as is_selectable.
+                // Whether the category is a row of the Gestione Richieste /
+                // Iscritti report (spec 0131): the EFFECTIVE value, inherited
+                // unless overridden (user directive 2026-09-18). Resolved in
+                // memory, not a SQL column: filtered by the definition's
+                // derived hook, not sortable.
                 'id' => 'is_reportable',
                 'label' => 'productCategories.columns.is_reportable',
                 'type' => 'boolean',
                 'visible' => true,
-                'sortable' => true,
+                'sortable' => false,
                 'filterable' => true,
                 'filterType' => 'boolean',
             ],

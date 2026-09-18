@@ -39,6 +39,31 @@
     <decision id="D-4">Rimossa l'applicabilita' per ramo (`ReportBranch::$columns` e
       `config('request-management-report.branches')`): ogni indicatore reale e' calcolato per ogni
       ramo; le colonne stub restano 0.</decision>
+    <decision id="D-4-bis" date="2026-09-18">SUPERA D-4 (direttiva utente): colonne attive per categoria in
+      `config('request-management-report.category_columns')`, chiave = nome categoria case-insensitive
+      (GOL/Autoimpiego/Yisu/DIL: telefonate, richiami, nuovi_contatti, potenziali, aule_gestione, aule_partenza,
+      associati; Autofinanziato: idem senza aule_gestione; Consulenza: telefonate, richiami, nuovi_contatti,
+      potenziali, aziende_inserite, presa_appuntamenti, trattative_concluse; APL: telefonate, richiami,
+      nuovi_contatti, invio_presa_in_carico). Una colonna non attiva vale 0 in dashboard e nel file; una
+      categoria reportable non mappata ha tutte le colonne a 0. Il riepilogo complessivo della dashboard
+      calcola ogni colonna solo sulle categorie dove e' attiva (`ReportBranch::$columnCategoryIds`).
+      Definizioni aggiornate nella stessa direttiva: telefonate esclude le offerte nel primo stato;
+      richiami = `next_callback_at` fino a oggi incluso, a prescindere dal periodo, su offerte non chiuse
+      (ne' closed_won ne' closed_lost); invio_presa_in_carico = chiuso con esito positivo (stesso indicatore
+      di associati). presa_appuntamenti resta 0 (confermato dall'utente). Richiami indipendenti dal periodo:
+      confermato. Un cambio stato dal modulo Offerte ora scrive la stessa voce di activity sull'Opportunity
+      (`QuoteStatusChangeLogger`), cosi' gli indicatori di transizione lo contano come quelli di Gestione Richieste.</decision>
+    <decision id="D-5" date="2026-09-18">SUPERA D-1 "mai ereditata" (direttiva utente): `is_reportable` diventa
+      l'override PROPRIO del nodo, nullable (migrazione 2026_09_18_100000: i false esistenti diventano null).
+      null = eredita il valore effettivo del padre (false su una radice); true/false = forzato su questo nodo e
+      passato al suo sottoalbero che eredita. Valore effettivo risolto a lettura da
+      `App\Services\ProductCategories\ReportableInheritance` (mai denormalizzato). Report: rami = categorie
+      effettivamente reportable; un figlio forzato a false esce, con il suo sottoalbero, dalla propria riga E
+      dai totali degli antenati; un nipote forzato a true sotto un escluso diventa radice. Una radice prende le
+      colonne attive dall'antenato piu' vicino mappato in `category_columns` (es. "Orientamento Specialistico"
+      sotto "APL"). Seed (QualificaCatalogSeeder::REPORTABLE_CATEGORIES): GOL, Autoimpiego, Yisu, Autofinanziato,
+      DIL, Orientamento Specialistico; sottocategorie null (ereditano). Consulenza e APL non piu' seedate come
+      reportable (solo nuove installazioni: il seed scrive alla creazione).</decision>
   </decisions>
 
   <data_contract>
@@ -47,6 +72,10 @@
     GET /api/{module}/report/dashboard: `category_keys.*` validato con
     `Rule::in(ReportBranchResolver::keys())`. Un ExportRun congelato prima della 0131 con chiavi
     tipo "gol" non corrisponde a nessun ramo.
+    D-5 (2026-09-18): `is_reportable` in lettura/scrittura e' `boolean|null` (override proprio). Lo show
+    (e le risposte store/update) aggiungono `effective_is_reportable: boolean` e
+    `is_reportable_source_category: {id,name}|null`. Il tree espone l'override proprio (nullable); la tabella
+    espone il valore effettivo (filtrabile, non ordinabile).
   </data_contract>
 
   <acceptance_criteria>
@@ -55,6 +84,9 @@
     <criterion id="AC-003">Il resolver produce un ramo per categoria reportable, chiave id, ordinato per nome, con sottoalbero completo. (Pest RequestManagementReportDynamicCategoriesTest)</criterion>
     <criterion id="AC-004">La riga del padre aggrega il sottoalbero, quella del figlio solo il proprio; "Aziende inserite" calcolato anche su GOL. (Pest)</criterion>
     <criterion id="AC-005">L'endpoint categorie offre solo categorie reportable con richieste in perimetro; una chiave non reportable da' 422. (Pest)</criterion>
+    <criterion id="AC-007">Un figlio eredita il padre reportable, puo' essere forzato a no e tornare a ereditare (null); il forzato passa "no" al sottoalbero. (Pest ProductCategoryReportableTest)</criterion>
+    <criterion id="AC-008">Il report esclude un figlio forzato a no con il suo sottoalbero, anche dai totali del padre; una radice sotto un padre mappato ne eredita le colonne. (Pest RequestManagementReportDynamicCategoriesTest)</criterion>
+    <criterion id="AC-009">Il form mostra il valore effettivo, "Ereditato da X" o "Forzato"; riportare lo switch al valore ereditato salva null. (Vitest product-category-form-body, reportable-inheritance)</criterion>
     <criterion id="AC-006">Il form categoria mostra e salva "Visibile nei report". (Vitest)</criterion>
   </acceptance_criteria>
 
