@@ -25,6 +25,8 @@ Direttiva utente: se il padre è visibile nei report, i figli lo sono di default
   detail usa `effective_is_reportable` + chip "Ereditato da".
 - Verifica: Pest suite completa seriale verde (1 flaky noto `CampaignCrudTest` budget casuale, 3/3 da solo);
   Vitest 5307/5307; `tsc -b --force` pulito; ESLint/Pint puliti.
+- Tile: "Forzato" solo se un antenato imposta il flag; senza antenato che lo imposta, un valore proprio è il punto
+  di partenza del ramo (`isReportableOriginHint`), e l'ereditato "no" senza sorgente mostra `isReportableNoSourceHint`.
 - DA VERIFICARE a mano: /product-categories/160/edit (figlio di categoria reportable -> switch attivo + "Ereditata
   da"; spegnendolo compare "Forzato").
 

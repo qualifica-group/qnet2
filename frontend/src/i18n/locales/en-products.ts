@@ -193,6 +193,10 @@ export const productCategories = {
     isReportableForcedHint:
       'Forced on this category: it no longer follows "{{category}}". Set it back to the parent\'s value to inherit it again.',
     isReportableForcedBadge: 'Forced',
+    isReportableOriginHint:
+      'Set on this category: every subcategory inherits it, unless forced otherwise.',
+    isReportableNoSourceHint:
+      'No parent category is visible in the reports. Turn it on here to include this category and all of its subcategories.',
     managementMode: 'Management mode',
     managementModeHint:
       'How Category Product lines behave on a card: this category and every subcategory below it follow the same rule.',

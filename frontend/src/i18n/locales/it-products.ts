@@ -195,6 +195,10 @@ export const productCategories = {
     isReportableForcedHint:
       'Valore forzato su questa categoria: non segue più "{{category}}". Riportalo al valore del padre per tornare a ereditarlo.',
     isReportableForcedBadge: 'Forzato',
+    isReportableOriginHint:
+      'Impostato su questa categoria: tutte le sue sottocategorie lo ereditano, salvo quelle forzate diversamente.',
+    isReportableNoSourceHint:
+      'Nessuna categoria superiore è visibile nei report. Attivalo qui per includere questa categoria e tutte le sue sottocategorie.',
     managementMode: 'Modalità di gestione',
     managementModeHint:
       'Come si comportano le righe Categoria Prodotto su una scheda: questa categoria e tutte le sue sottocategorie seguono la stessa regola.',

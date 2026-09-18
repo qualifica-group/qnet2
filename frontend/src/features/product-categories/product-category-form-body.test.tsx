@@ -304,6 +304,34 @@ describe('ProductCategoryFormBody — reportable switch (inherited, can be force
   })
 })
 
+describe('ProductCategoryFormBody — reportable switch with no ancestor setting it', () => {
+  it('turning it on under a non-reportable branch makes it the starting point, not a forced value', async () => {
+    fetchProductCategoryTreeMock.mockResolvedValue([reportableTreeNode({ id: 1, name: 'Electronics' })])
+
+    render(
+      <ProductCategoryForm
+        mode={{
+          type: 'edit',
+          category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, is_reportable: null }),
+        }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findAllByRole('button', { name: 'Save' })
+    expect(await screen.findByText(/No parent category is visible in the reports/)).toBeInTheDocument()
+
+    const reportableSwitch = screen.getByRole('switch', { name: 'Visible in reports' })
+    fireEvent.click(reportableSwitch)
+
+    await waitFor(() => expect(reportableSwitch).toBeChecked())
+    expect(screen.getByText(/Set on this category: every subcategory inherits it/)).toBeInTheDocument()
+    expect(screen.queryByText('Forced')).not.toBeInTheDocument()
+  })
+})
+
 function reportableTreeNode(overrides: Partial<ProductCategoryTreeNode>): ProductCategoryTreeNode {
   return {
     id: 1,

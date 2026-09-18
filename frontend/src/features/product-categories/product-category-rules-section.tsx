@@ -141,13 +141,19 @@ function ReportableRule({ control, mode }: ReportableRuleProps) {
   const { t } = useTranslation()
   const { override, inherited, effective } = useReportableInheritance(control, mode)
   const sourceName = inherited?.sourceCategory?.name ?? null
-  const forced = override !== null && inherited !== null
+  // Forced = diverging from a value an ancestor sets. With no ancestor setting
+  // it, an own value is where the flag STARTS for this branch, not a deviation.
+  const forced = override !== null && sourceName !== null
 
   let description = t('productCategories.form.isReportableHint')
   if (forced) {
-    description = t('productCategories.form.isReportableForcedHint', { category: sourceName ?? '' })
+    description = t('productCategories.form.isReportableForcedHint', { category: sourceName })
+  } else if (override !== null) {
+    description = t('productCategories.form.isReportableOriginHint')
   } else if (sourceName !== null) {
     description = t('productCategories.form.isReportableInheritedHint', { category: sourceName })
+  } else if (inherited !== null) {
+    description = t('productCategories.form.isReportableNoSourceHint')
   }
 
   return (
