@@ -51,7 +51,11 @@ final class OperatorRoleCatalogue
     /** "Gestione Richieste: accesso ai soli contatti che gestiscono", no report. */
     public const string OWN_REQUESTS = 'own-requests';
 
-    /** Tier-3 visibility (spec 0105): the requests of the user's own Sedi. */
+    /**
+     * Tier-3 visibility (spec 0105): the requests of the user's own Sedi — and,
+     * by the same grant, their enrollees (user directive 2026-09-18: the reach
+     * in Gestione Iscritti mirrors the reach in Gestione Richieste).
+     */
     public const string SITE_REQUESTS = 'site-requests';
 
     /** "prodotti + categorie prodotti + anagrafiche + referenti", viewed and edited. */
@@ -69,8 +73,18 @@ final class OperatorRoleCatalogue
     /** "gestione iscritti" unrestricted: the whole enrollee module. */
     public const string ALL_ENROLLEES = 'all-enrollees';
 
-    /** "Gestione Iscritti: sola visualizzazione sulle Sedi abilitate". */
-    public const string SITE_ENROLLEES_READ = 'site-enrollees-read';
+    /**
+     * "Gestione Iscritti" read-only. It opens the module, not a reach: the rows
+     * are those of the role's request tier (user directive 2026-09-18) — its
+     * own offers, plus its Sedi' when SITE_REQUESTS is among its blocks.
+     */
+    public const string ENROLLEES_READ = 'enrollees-read';
+
+    /**
+     * The "Utenti" and "Ruoli" administration sections, every ability but
+     * `create` (user directive 2026-09-18).
+     */
+    public const string USERS_AND_ROLES = 'users-and-roles';
 
     public const string REQUEST_MODULE = 'request-management';
 
@@ -98,6 +112,7 @@ final class OperatorRoleCatalogue
             'blocks' => [
                 self::MARKETING, self::LEAD_CONVERSION, self::ALL_REQUESTS, self::FIELD_CHANGE_REVIEW,
                 self::CATALOG_AND_REGISTRIES, self::STATUS_CONFIGURATOR, self::REWARDS, self::ALL_ENROLLEES,
+                self::USERS_AND_ROLES,
             ],
         ],
         // The CSV's "( no richieste modifica )", and no status configurator nor
@@ -117,14 +132,14 @@ final class OperatorRoleCatalogue
         ],
         self::ENROLLEE_COMMERCIAL_ROLE => [
             'description' => 'Commerciale con Gestione Iscritti',
-            'blocks' => [self::OWN_REQUESTS, self::SITE_ENROLLEES_READ],
+            'blocks' => [self::OWN_REQUESTS, self::ENROLLEES_READ],
         ],
         // "Abilitazione a visionare tutti i dati delle sedi Lazio sia per
         // Richieste che per Iscritti": the commercial matrix widened to the
         // Sedi of the profile on both modules.
         self::TEACHING_SUPERVISOR_ROLE => [
             'description' => 'Supervisore didattica',
-            'blocks' => [self::OWN_REQUESTS, self::SITE_REQUESTS, self::SITE_ENROLLEES_READ],
+            'blocks' => [self::OWN_REQUESTS, self::SITE_REQUESTS, self::ENROLLEES_READ],
         ],
     ];
 
@@ -201,6 +216,25 @@ final class OperatorRoleCatalogue
         'sectors',
         'tags',
         'companies',
+    ];
+
+    /**
+     * USERS_AND_ROLES: the administration modules it opens.
+     *
+     * @var array<int, string>
+     */
+    public const array USERS_AND_ROLES_MODULES = [
+        'users',
+        'roles',
+    ];
+
+    /**
+     * The abilities USERS_AND_ROLES withholds on its modules.
+     *
+     * @var array<int, string>
+     */
+    public const array USERS_AND_ROLES_DENIED_ABILITIES = [
+        'create',
     ];
 
     /**
@@ -325,15 +359,14 @@ final class OperatorRoleCatalogue
     ];
 
     /**
-     * Read-only on the enrollees of the Sedi the profile belongs to: no write,
-     * no viewAll — `viewSite` is the whole reach (spec 0105 tier 3, applied to
-     * the enrollee module by spec 0130).
+     * ENROLLEES_READ: no write, and no `viewAll`/`viewSite` of its own — without
+     * them RequestManagementScope narrows the module to the offers the user
+     * operates (tier 2); SITE_REQUESTS adds the Sedi' tier on top.
      *
      * @var array<int, string>
      */
-    public const array SITE_ENROLLEES_READ_ABILITIES = [
+    public const array ENROLLEES_READ_ABILITIES = [
         'viewAny',
         'view',
-        'viewSite',
     ];
 }

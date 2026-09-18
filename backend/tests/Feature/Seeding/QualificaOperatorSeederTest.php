@@ -5,12 +5,16 @@ use App\Models\BusinessFunction;
 use App\Models\OperationalSite;
 use App\Models\PersonalData;
 use App\Models\ProductCategory;
+use App\Models\Quote;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue;
 use Database\Seeders\QualificaCatalog\OperatorRoster;
 use Database\Seeders\QualificaOperatorSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\Sanctum;
 
 // The client's real operators ("Mansionario Operatori", user directive
 // 2026-09-15): account, role, Sedi and competence per roster row. The sites and
@@ -148,16 +152,19 @@ it('converges on a re-run: no duplicated memberships nor competence rows', funct
         ->and($employment->productLines)->toHaveCount(1);
 });
 
-it('grants the enrollee commercial read-only enrollees of their Sedi, and the teaching supervisor both modules by Sede', function (): void {
+// User directive 2026-09-18: the reach in Gestione Iscritti mirrors the reach in
+// Gestione Richieste — own requests only -> own enrollees only; Sedi -> Sedi;
+// every request -> every enrollee. The enrollee commercial lost `viewSite`.
+it('grants the enrollee commercial read-only enrollees of their own requests, and the teaching supervisor both modules by Sede', function (): void {
     test()->seed(QualificaOperatorSeeder::class);
 
     $enrollee = User::query()->where('email', 'marco.fedele@qualificagroup.com')->firstOrFail();
 
-    foreach (['viewAny', 'view', 'viewSite'] as $ability) {
+    foreach (['viewAny', 'view'] as $ability) {
         expect($enrollee->can("enrollee-management.{$ability}"))->toBeTrue($ability);
     }
 
-    foreach (['update', 'viewAll', 'export', 'report'] as $ability) {
+    foreach (['update', 'viewAll', 'viewSite', 'export', 'report'] as $ability) {
         expect($enrollee->can("enrollee-management.{$ability}"))->toBeFalse($ability);
     }
 
@@ -170,6 +177,50 @@ it('grants the enrollee commercial read-only enrollees of their Sedi, and the te
         ->and($teaching->can('request-management.viewSite'))->toBeTrue()
         ->and($teaching->can('request-management.viewAll'))->toBeFalse()
         ->and($teaching->can('enrollee-management.viewSite'))->toBeTrue();
+});
+
+it('aligns every role reach in Gestione Iscritti to its reach in Gestione Richieste', function (): void {
+    test()->seed(QualificaOperatorSeeder::class);
+
+    foreach (array_keys(OperatorRoleCatalogue::ROLES) as $name) {
+        $role = Role::findByName($name);
+
+        if (! $role->hasPermissionTo('enrollee-management.viewAny')) {
+            continue;
+        }
+
+        foreach (['viewAll', 'viewSite'] as $tier) {
+            expect($role->hasPermissionTo("enrollee-management.{$tier}"))
+                ->toBe($role->hasPermissionTo("request-management.{$tier}"), "{$name}: {$tier}");
+        }
+    }
+});
+
+it('lists in Gestione Iscritti exactly the rows each role reaches in Gestione Richieste', function (): void {
+    $sites = standInSites(['FRATTAMAGGIORE 1 (HQ)', 'Frattamaggiore 2', 'Roma']);
+    test()->seed(QualificaOperatorSeeder::class);
+
+    $enrollee = User::query()->where('email', 'marco.fedele@qualificagroup.com')->firstOrFail();
+    $teaching = User::query()->where('email', 'marlena.jaruga@qualificagroup.com')->firstOrFail();
+    $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
+
+    $validated = QuoteWorkflowStatus::factory()->global()->system('validated')->create()->id;
+    $own = Quote::factory()->create(['operator_id' => $enrollee->id, 'quote_workflow_status_id' => $validated]);
+    // Roma is a Sede of both the enrollee commercial and the teaching supervisor.
+    $sameSite = Quote::factory()->create(['operational_site_id' => $sites['Roma'], 'quote_workflow_status_id' => $validated]);
+    $elsewhere = Quote::factory()->create(['quote_workflow_status_id' => $validated]);
+
+    $rowIds = function (User $user): array {
+        Sanctum::actingAs($user);
+
+        return collect(test()->postJson('/api/tables/enrollee-management/rows', ['startRow' => 0, 'endRow' => 25])
+            ->assertOk()
+            ->json('items'))->pluck('id')->sort()->values()->all();
+    };
+
+    expect($rowIds($enrollee))->toBe([$own->id])
+        ->and($rowIds($teaching))->toBe([$sameSite->id])
+        ->and($rowIds($supervisor))->toBe(collect([$own->id, $sameSite->id, $elsewhere->id])->sort()->values()->all());
 });
 
 it('gives the coordinator unrestricted requests without the field-change-requests page', function (): void {

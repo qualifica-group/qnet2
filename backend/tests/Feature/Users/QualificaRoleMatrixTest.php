@@ -59,7 +59,7 @@ it('closes administration and configuration to the supervisor, selects aside', f
 
     // `opportunities` left this list with the lead conversion grant (user
     // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest.
-    foreach (['roles', 'custom-fields', 'company-sites', 'tasks'] as $resource) {
+    foreach (['custom-fields', 'company-sites', 'tasks'] as $resource) {
         foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
             expect($supervisor->can("{$resource}.{$ability}"))->toBeFalse("{$resource}.{$ability}");
         }
@@ -67,13 +67,37 @@ it('closes administration and configuration to the supervisor, selects aside', f
 
     // The select-only resources keep the option list and lose everything else:
     // `view` is what the navigation config gates each menu entry on.
-    foreach (['sources', 'operational-sites', 'business-functions', 'users', 'companies', 'vat-rates', 'referent-types'] as $resource) {
+    foreach (['sources', 'operational-sites', 'business-functions', 'companies', 'vat-rates', 'referent-types'] as $resource) {
         expect($supervisor->can("{$resource}.viewAny"))->toBeTrue("{$resource}.viewAny")
             ->and($supervisor->can("{$resource}.view"))->toBeFalse("{$resource}.view")
             ->and($supervisor->can("{$resource}.create"))->toBeFalse("{$resource}.create")
             ->and($supervisor->can("{$resource}.update"))->toBeFalse("{$resource}.update")
             ->and($supervisor->can("{$resource}.delete"))->toBeFalse("{$resource}.delete");
     }
+});
+
+// User directive 2026-09-18: the Utenti and Ruoli sections open to the
+// supervisor with every ability but `create`.
+it('opens users and roles to the supervisor, creation excluded', function () {
+    $this->seed(QualificaOperatorSeeder::class);
+
+    $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
+
+    foreach (['users', 'roles'] as $resource) {
+        foreach (['viewAny', 'view', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
+            expect($supervisor->can("{$resource}.{$ability}"))->toBeTrue("{$resource}.{$ability}");
+        }
+
+        expect($supervisor->can("{$resource}.create"))->toBeFalse("{$resource}.create");
+    }
+
+    expect(visibleRoutes($supervisor))->toContain('/users', '/roles');
+
+    // The coordinator's mansione does not include them.
+    $coordinator = User::query()->where('email', 'umberto.santamaria@qualificagroup.com')->firstOrFail();
+
+    expect($coordinator->can('users.view'))->toBeFalse()
+        ->and($coordinator->can('roles.viewAny'))->toBeFalse();
 });
 
 it('lets the supervisor view and edit every module of its mansione', function () {
@@ -447,7 +471,7 @@ it('blocks the supervisor server-side on administration and configuration', func
     // The modules it does not hold answer nothing.
     // `opportunities` left this list with the lead conversion grant (user
     // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest.
-    foreach (['roles', 'company-sites', 'custom-fields'] as $domain) {
+    foreach (['company-sites', 'custom-fields'] as $domain) {
         $this->getJson("/api/tables/{$domain}/columns")->assertForbidden();
         $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertForbidden();
     }
@@ -460,4 +484,12 @@ it('blocks the supervisor server-side on administration and configuration', func
     $this->getJson('/api/tables/request-management/columns')->assertOk();
     $this->getJson('/api/tables/products/columns')->assertOk();
     $this->getJson('/api/tables/leads/columns')->assertOk();
+
+    // Utenti and Ruoli answer too (user directive 2026-09-18), creation aside.
+    foreach (['users', 'roles'] as $domain) {
+        $this->getJson("/api/tables/{$domain}/columns")->assertOk();
+        $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertOk();
+    }
+
+    $this->postJson('/api/roles', ['name' => 'nuovo-ruolo'])->assertForbidden();
 });
