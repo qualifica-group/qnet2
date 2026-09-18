@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { buildCreatePayload, buildUpdatePayload } from '@/features/product-categories/product-category-form-payload'
+import { buildUpdatePayload } from '@/features/product-categories/product-category-form-payload'
 import type { ProductCategoryDetail } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
 
 /**
- * Manager-labels payload diffing (spec 0080) — split out of
- * `product-category-form-payload.test.ts` once that file reached its size
- * limit (engineering.md §6).
+ * `buildUpdatePayload` — the root-only rules (single_quote_per_opportunity,
+ * generates_contract, simplified_offer_line) + `report_columns` diffing —
+ * split out of `product-category-form-payload.test.ts` once that file
+ * reached its size limit (engineering.md §6).
  */
 
 function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCategoryDetail {
@@ -41,7 +42,7 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
-    simplified_offer_line: false,
+    simplified_offer_line: true,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
@@ -53,8 +54,9 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
   }
 }
 
-describe('buildUpdatePayload — manager labels (spec 0080)', () => {
-  it('strips blank/whitespace-only rows and trims the rest before sending (AC-042)', () => {
+describe('buildUpdatePayload — root-only rules', () => {
+  // Spec 0080.
+  it('never sends single_quote_per_opportunity under a parent, sends it when a root changes it', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
@@ -68,22 +70,26 @@ describe('buildUpdatePayload — manager labels (spec 0080)', () => {
       is_selectable: true,
       is_reportable: true,
       management_mode: 'multiple',
-      single_quote_per_opportunity: false,
+      single_quote_per_opportunity: true,
       generates_contract: true,
-      simplified_offer_line: false,
+      simplified_offer_line: true,
       report_columns: null,
-      manager_labels: { '1': '  Commercial  ', '2': '', '3': '   ', '4': 'Tutor' },
+      manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
     }
 
-    expect(buildUpdatePayload(values, original())).toEqual({
-      manager_labels: { '1': 'Commercial', '4': 'Tutor' },
+    // Under a parent the flag is read-only: the root owns it, so a diff there
+    // would be an override attempt the server refuses.
+    expect(buildUpdatePayload(values, original())).toEqual({})
+    // Already a root: only the flag changed.
+    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
+      single_quote_per_opportunity: true,
     })
   })
 
-  it('does not send manager_labels when the resolved (trimmed) set is unchanged (position-by-position diff)', () => {
-    const withOwnLabel = original({ manager_labels: { '2': 'Operator' } })
+  // Spec 0091: identical root-only diffing for the contract rule.
+  it('never sends generates_contract under a parent, sends it when a root changes it', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
@@ -98,20 +104,22 @@ describe('buildUpdatePayload — manager labels (spec 0080)', () => {
       is_reportable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
-      generates_contract: true,
-      simplified_offer_line: false,
+      generates_contract: false,
+      simplified_offer_line: true,
       report_columns: null,
-      // Different key order / extra blank rows: the position-by-position diff
-      // must still see this as unchanged from `withOwnLabel`.
-      manager_labels: { '1': '', '2': 'Operator', '3': '', '4': '' },
+      manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
     }
 
-    expect(buildUpdatePayload(values, withOwnLabel)).toEqual({})
+    expect(buildUpdatePayload(values, original())).toEqual({})
+    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
+      generates_contract: false,
+    })
   })
 
-  it('includes only the changed inherits_manager_labels flag', () => {
+  // Spec 0114: identical root-only diffing for the simplified-offer-line rule.
+  it('never sends simplified_offer_line under a parent, sends it when a root changes it', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
@@ -130,45 +138,22 @@ describe('buildUpdatePayload — manager labels (spec 0080)', () => {
       simplified_offer_line: false,
       report_columns: null,
       manager_labels: {},
-      inherits_manager_labels: false,
+      inherits_manager_labels: true,
       custom_fields: {},
     }
 
-    expect(buildUpdatePayload(values, original())).toEqual({ inherits_manager_labels: false })
-  })
-
-  it('create payload always sends the trimmed manager_labels and the inheritance flag', () => {
-    const values: ProductCategoryFormValues = {
-      name: 'Laptops',
-      parent_id: null,
-      inherits_product_attributes: true,
-      inherits_quote_attributes: true,
-      inherits_work_order_attributes: true,
-      description: null,
-      attributes: [],
-      business_function_id: null,
-      requires_quote: true,
-      is_selectable: true,
-      is_reportable: true,
-      management_mode: 'multiple',
-      single_quote_per_opportunity: false,
-      generates_contract: true,
+    // Under a parent the flag is read-only: the root owns it, so a diff there
+    // would be an override attempt the server refuses.
+    expect(buildUpdatePayload(values, original())).toEqual({})
+    // Already a root: only the flag changed.
+    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
       simplified_offer_line: false,
-      report_columns: null,
-      manager_labels: { '1': 'Commercial', '2': '  ' },
-      inherits_manager_labels: false,
-      custom_fields: {},
-    }
-
-    expect(buildCreatePayload(values)).toMatchObject({
-      manager_labels: { '1': 'Commercial' },
-      inherits_manager_labels: false,
     })
   })
+})
 
-  // Spec 0080 amendment A1: the cap moved from 4 to 12, positions beyond the
-  // old fixed range are ordinary payload keys, no special-casing needed.
-  it('sends positions beyond the 4th unchanged, up to the 12-level ceiling (AC-050)', () => {
+describe('buildUpdatePayload — report_columns (spec 0141)', () => {
+  it('sends the override on its own, order-independent against the original', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
@@ -184,18 +169,23 @@ describe('buildUpdatePayload — manager labels (spec 0080)', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
-      simplified_offer_line: false,
-      report_columns: null,
-      manager_labels: { '5': 'Regional lead', '12': 'Director' },
+      simplified_offer_line: true,
+      report_columns: ['richiami', 'telefonate'],
+      manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
     }
+    const withOwnColumns = original({ report_columns: ['telefonate', 'richiami'] })
 
-    expect(buildUpdatePayload(values, original())).toEqual({
-      manager_labels: { '5': 'Regional lead', '12': 'Director' },
+    // Same set, different order: not a change.
+    expect(buildUpdatePayload(values, withOwnColumns)).toEqual({})
+    // A different set travels.
+    expect(buildUpdatePayload({ ...values, report_columns: ['telefonate'] }, withOwnColumns)).toEqual({
+      report_columns: ['telefonate'],
     })
-    expect(buildCreatePayload(values)).toMatchObject({
-      manager_labels: { '5': 'Regional lead', '12': 'Director' },
+    // Back to inheriting: null is a change too.
+    expect(buildUpdatePayload({ ...values, report_columns: null }, withOwnColumns)).toEqual({
+      report_columns: null,
     })
   })
 })

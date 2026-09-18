@@ -66,17 +66,20 @@ final class RequestManagementReportGenerator
         // Step 1: every selected branch's already-computed rows — the reusable core.
         $branchRows = $this->rows($actor, $dateFrom, $dateTo, $categoryKeys, $rowMode, $operators, $sites, $module);
 
-        // Step 2: open the format's own writer, translated header row first.
+        // Step 2: this export's own column set (spec 0141 D-4) — the union,
+        // in catalog order, of every selected branch's configured columns —
+        // then open the format's own writer, translated header row first.
+        $columns = $this->exportColumns($branchRows);
         $writer = $this->writers->make($format);
         $writer->open($absolutePath);
-        $writer->writeHeaders($this->sheetBuilder->headers());
+        $writer->writeHeaders($this->sheetBuilder->headers($columns));
 
         // Step 3: one selected branch at a time — TOTALE/GA2/"Non assegnato" rows, as $rowMode allowed.
         $rowCount = 0;
 
         foreach ($branchRows as $branchRow) {
             foreach ($branchRow['rows'] as $row) {
-                $writer->writeRow($this->sheetBuilder->row($branchRow['branch']->label, $row));
+                $writer->writeRow($this->sheetBuilder->row($branchRow['branch']->label, $row, $columns));
                 $rowCount++;
             }
         }
@@ -131,5 +134,31 @@ final class RequestManagementReportGenerator
             $this->branches->resolve(),
             static fn (ReportBranch $branch): bool => in_array($branch->key, $categoryKeys, true),
         ));
+    }
+
+    /**
+     * Spec 0141 D-4: the union, in catalog order, of every branch's own
+     * configured columns — never the full catalog. A column absent from
+     * every selected branch's configuration is dropped from the header
+     * entirely, not merely zeroed.
+     *
+     * @param  array<int, array{branch: ReportBranch, rows: array<int, ReportRow>}>  $branchRows
+     * @return array<int, string>
+     */
+    private function exportColumns(array $branchRows): array
+    {
+        $columns = [];
+
+        foreach ((array) config('request-management-report.indicator_columns') as $column) {
+            foreach ($branchRows as $branchRow) {
+                if ($branchRow['branch']->categoryIdsFor($column) !== null) {
+                    $columns[] = $column;
+
+                    continue 2;
+                }
+            }
+        }
+
+        return $columns;
     }
 }

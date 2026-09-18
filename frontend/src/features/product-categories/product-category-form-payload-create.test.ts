@@ -25,6 +25,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: false,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -41,6 +42,7 @@ describe('buildCreatePayload', () => {
       business_function_id: null,
       is_selectable: true,
       is_reportable: false,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
     })
@@ -63,6 +65,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: false,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -89,6 +92,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: false,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -115,6 +119,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: true,
       generates_contract: true,
       simplified_offer_line: false,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -145,6 +150,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -152,5 +158,33 @@ describe('buildCreatePayload', () => {
 
     expect(buildCreatePayload(values)).not.toHaveProperty('simplified_offer_line')
     expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({ simplified_offer_line: true })
+  })
+
+  // Spec 0141: per-node like `is_reportable`, always sent (null included).
+  it('always sends report_columns, own or null', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_quote_attributes: true,
+      inherits_work_order_attributes: true,
+      description: null,
+      attributes: [],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      is_reportable: true,
+      management_mode: 'multiple',
+      single_quote_per_opportunity: false,
+      generates_contract: true,
+      simplified_offer_line: false,
+      report_columns: ['richiami', 'telefonate'],
+      manager_labels: {},
+      inherits_manager_labels: true,
+      custom_fields: {},
+    }
+
+    expect(buildCreatePayload(values)).toMatchObject({ report_columns: ['richiami', 'telefonate'] })
+    expect(buildCreatePayload({ ...values, report_columns: null })).toMatchObject({ report_columns: null })
   })
 })

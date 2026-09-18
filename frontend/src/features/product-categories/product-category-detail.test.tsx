@@ -14,8 +14,13 @@ import type { ProductCategoryDetailWithPermissions } from '@/features/product-ca
  * `product-category-attribute-layout-section.test.tsx`, so here its data
  * hook is stubbed to keep this suite focused on the attribute sections above
  * it (and QueryClient-free, since the stub replaces the only `useQuery` call
- * in the tree).
+ * in the tree). Spec 0141's report-columns catalogue (`ProductCategoryDetailRules`)
+ * is stubbed the same way, for the same reason.
  */
+vi.mock('@/features/product-categories/use-report-columns-catalog', () => ({
+  useReportColumnsCatalog: () => ({ data: undefined, isPending: false, isError: false }),
+}))
+
 vi.mock('@/features/product-categories/use-attribute-layout', () => ({
   useAttributeLayout: () => ({
     attributes: [],
@@ -60,6 +65,11 @@ function category(
     is_reportable: false,
     effective_is_reportable: false,
     is_reportable_source_category: null,
+    report_columns: null,
+    effective_report_columns: [],
+    report_columns_source_category: null,
+    inherited_report_columns: [],
+    inherited_report_columns_source_category: null,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
@@ -266,6 +276,54 @@ describe('ProductCategoryDetailView — management rules', () => {
     const field = ruleValue('Simplified offer line')
     expect(within(field).getByText('Yes')).toBeInTheDocument()
     expect(within(field).getByText('Inherited from Electronics')).toBeInTheDocument()
+  })
+
+  // Spec 0141 AC-003/AC-006.
+  it('omits the report-columns row entirely while the category is not effectively reportable', () => {
+    render(<ProductCategoryDetailView category={category()} />)
+
+    expect(screen.queryByText('Report columns')).not.toBeInTheDocument()
+  })
+
+  it('shows the own report columns with no source badge', () => {
+    render(
+      <ProductCategoryDetailView
+        category={category({
+          effective_is_reportable: true,
+          report_columns: ['telefonate', 'richiami'],
+          effective_report_columns: ['telefonate', 'richiami'],
+          report_columns_source_category: null,
+        })}
+      />,
+    )
+
+    const field = screen.getByText('Report columns').nextElementSibling as HTMLElement
+    expect(within(field).getByText('telefonate')).toBeInTheDocument()
+    expect(within(field).getByText('richiami')).toBeInTheDocument()
+    expect(within(field).queryByText(/Inherited from/)).not.toBeInTheDocument()
+  })
+
+  it('names the ancestor the report columns are inherited from', () => {
+    render(
+      <ProductCategoryDetailView
+        category={category({
+          effective_is_reportable: true,
+          report_columns: null,
+          effective_report_columns: ['telefonate'],
+          report_columns_source_category: { id: 1, name: 'Electronics' },
+        })}
+      />,
+    )
+
+    const field = screen.getByText('Report columns').nextElementSibling as HTMLElement
+    expect(within(field).getByText('telefonate')).toBeInTheDocument()
+    expect(within(field).getByText('Inherited from Electronics')).toBeInTheDocument()
+  })
+
+  it('shows the empty state when no column applies even though the category is reportable', () => {
+    render(<ProductCategoryDetailView category={category({ effective_is_reportable: true })} />)
+
+    expect(screen.getByText('Report columns')).toBeInTheDocument()
   })
 })
 

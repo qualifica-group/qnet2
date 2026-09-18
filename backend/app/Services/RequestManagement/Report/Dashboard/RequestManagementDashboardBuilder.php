@@ -39,10 +39,13 @@ use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
  * same filters.
  *
  * Rev-3 (user directive 2026-09-08) changed only the SHAPE, never a value:
- * every indicator column is emitted even when it is 0 (D-11), and the charts
- * hang off their own category (D-10) instead of comparing categories.
- * A stub column renders as the 0 the row already carries (spec 0106 D-15),
- * which is exactly what the CSV prints for it.
+ * a configured indicator column is emitted even when it is 0 (D-11), and the
+ * charts hang off their own category (D-10) instead of comparing categories.
+ * A configured stub column renders as the 0 the row already carries (spec
+ * 0106 D-15), which is exactly what the CSV prints for it. Spec 0141 D-5
+ * narrows D-11 further: only a category's own CONFIGURED columns become
+ * tiles/points — `ReportRow::$values` is null for the rest (D-3), which is
+ * exactly how this class tells "configured, zero" from "not configured" apart.
  *
  * Spec 0130: $module (defaulting to RequestModule::Requests) is handed
  * UNTOUCHED to every rows()/rowsBuilder call above, exactly like $operators
@@ -144,16 +147,17 @@ final class RequestManagementDashboardBuilder
     private function chartsOf(ReportBranch $branch, ReportRow $total, array $operatorRows, RequestManagementReportRowMode $rowMode): array
     {
         $charts = [];
+        $activeColumns = $this->activeColumnsOf($total);
 
         if ($rowMode !== RequestManagementReportRowMode::OperatorsOnly) {
-            $charts[] = $this->indicatorChart($branch, $total);
+            $charts[] = $this->indicatorChart($branch, $total, $activeColumns);
         }
 
         // A branch with neither a named GA2 nor an unassigned request has no
         // operator rows at all: a chart with no bar cannot be drawn, and is
         // the ONE case rev-3 still leaves out.
         if ($rowMode !== RequestManagementReportRowMode::TotalOnly && $operatorRows !== []) {
-            foreach ($this->indicatorKeys() as $indicatorKey) {
+            foreach ($activeColumns as $indicatorKey) {
                 $charts[] = $this->operatorChart($branch, $operatorRows, $indicatorKey);
             }
         }
@@ -162,11 +166,14 @@ final class RequestManagementDashboardBuilder
     }
 
     /**
-     * The category's own indicators side by side, in the report's canonical
-     * column order — NOT sorted by value: two sections must stay comparable
-     * bar by bar, and the order is deterministic either way (AC-007).
+     * The category's own CONFIGURED indicators side by side (spec 0141 D-5),
+     * in the report's canonical column order — NOT sorted by value: two
+     * sections must stay comparable bar by bar, and the order is
+     * deterministic either way (AC-007).
+     *
+     * @param  array<int, string>  $activeColumns
      */
-    private function indicatorChart(ReportBranch $branch, ReportRow $total): DashboardChart
+    private function indicatorChart(ReportBranch $branch, ReportRow $total, array $activeColumns): DashboardChart
     {
         return new DashboardChart(
             id: "indicator-{$branch->key}",
@@ -175,7 +182,7 @@ final class RequestManagementDashboardBuilder
             indicatorLabel: null,
             points: array_map(
                 fn (string $key): DashboardPoint => new DashboardPoint($this->indicatorLabel($key), $total->values[$key]),
-                $this->indicatorKeys(),
+                $activeColumns,
             ),
         );
     }
@@ -216,8 +223,9 @@ final class RequestManagementDashboardBuilder
     }
 
     /**
-     * D-11: EVERY indicator column becomes a tile, zeros included — the same
-     * eleven cells the CSV prints for the same row.
+     * D-11/D-5: every CONFIGURED indicator column becomes a tile, zeros
+     * included — the same cells the CSV prints for the same row; a column
+     * not configured for $row's branch is skipped entirely, not zeroed.
      *
      * @return array<int, DashboardSummaryItem>
      */
@@ -225,8 +233,22 @@ final class RequestManagementDashboardBuilder
     {
         return array_map(
             fn (string $key): DashboardSummaryItem => new DashboardSummaryItem($key, $this->indicatorLabel($key), $row->values[$key]),
-            $this->indicatorKeys(),
+            $this->activeColumnsOf($row),
         );
+    }
+
+    /**
+     * The catalog columns $row actually carries a value for (spec 0141 D-3:
+     * null means "not configured for this branch"), in catalog order.
+     *
+     * @return array<int, string>
+     */
+    private function activeColumnsOf(ReportRow $row): array
+    {
+        return array_values(array_filter(
+            $this->indicatorKeys(),
+            static fn (string $key): bool => $row->values[$key] !== null,
+        ));
     }
 
     /**

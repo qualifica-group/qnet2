@@ -72,6 +72,10 @@ final class CategoryTreeBuilder
                 // like business_function_id: the form resolves the inherited
                 // value by walking this cached tree.
                 'is_reportable' => $category->is_reportable,
+                // Spec 0141: the node's OWN report column selection (null =
+                // inherit), same shape as is_reportable above: the form
+                // resolves the inherited value by walking this cached tree.
+                'report_columns' => $category->report_columns,
                 'management_mode' => $category->management_mode->value,
                 'single_quote_per_opportunity' => (bool) $category->single_quote_per_opportunity,
                 'generates_contract' => (bool) $category->generates_contract,

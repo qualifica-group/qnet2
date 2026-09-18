@@ -114,12 +114,13 @@ interface DashboardCategorySectionProps {
 }
 
 /**
- * One category section (rev-3 D-10): the category's own tiles — every
- * indicator column, zeros included (D-11) — then its own charts, each block
- * collapsible on its own so the numbers can stay while the (much taller)
- * charts fold away. A section with no chart at all only happens in
- * `operators_only` when the category has no GA2 whatsoever, so the empty
- * message belongs here, per section.
+ * One category section (rev-3 D-10): the category's own tiles — ONLY the
+ * columns this category has configured (spec 0141 D-3/D-5), zeros included
+ * for a configured column, empty when it has none — then its own charts,
+ * each block collapsible on its own so the numbers can stay while the (much
+ * taller) charts fold away. Both blocks can legitimately be empty (a
+ * category reportable but with no column configured), each with its own
+ * compact empty notice rather than assuming a fixed set of either.
  */
 export function DashboardCategorySection({ category, collapse }: DashboardCategorySectionProps) {
   const { t } = useTranslation()
@@ -135,14 +136,18 @@ export function DashboardCategorySection({ category, collapse }: DashboardCatego
         onOpenChange={(open) => collapse.setOpen(category.key, 'section', open)}
       >
         <div className="flex flex-col gap-3">
-          <DashboardCollapsible
-            title={t('requestManagement.dashboard.tilesTitle')}
-            level={3}
-            open={collapse.isOpen(category.key, 'tiles')}
-            onOpenChange={(open) => collapse.setOpen(category.key, 'tiles', open)}
-          >
-            <SummaryTiles items={category.summary} />
-          </DashboardCollapsible>
+          {category.summary.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('requestManagement.dashboard.tilesEmpty')}</p>
+          ) : (
+            <DashboardCollapsible
+              title={t('requestManagement.dashboard.tilesTitle')}
+              level={3}
+              open={collapse.isOpen(category.key, 'tiles')}
+              onOpenChange={(open) => collapse.setOpen(category.key, 'tiles', open)}
+            >
+              <SummaryTiles items={category.summary} />
+            </DashboardCollapsible>
+          )}
 
           {category.charts.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('requestManagement.dashboard.empty')}</p>

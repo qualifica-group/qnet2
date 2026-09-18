@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE — COLONNE REPORT CONFIGURABILI PER CATEGORIA — NON COMMITTATO (2026-09-18)
+
+Spec 0141 (supera 0131 D-4-bis, nota D-6 in 0131). Catalogo colonne resta `config('request-management-report.indicator_columns')`;
+`category_columns` (mappa per nome) ELIMINATA: nessuna logica per nome categoria nel codice.
+- DB: `product_categories.report_columns` JSON nullable (null = eredita dall'antenato configurato piu' vicino, walk
+  strutturale). Migrazione `2026_09_18_110000_add_report_columns_to_product_categories_table` copia lo snapshot D-7 per
+  nome. `QuoteWorkflowMigrationTest` rollback step 82 -> 83.
+- `App\Services\ProductCategories\ReportColumnsInheritance` (`effectiveMap`, `resolve`, `resolveFromAncestors`);
+  normalizzazione unica `ProductCategoryService::normalizeReportColumns()` ([] -> null, ordine catalogo).
+- API: `GET product-categories/report-columns` -> `[{key,label}]` (viewAny). Resource `report_columns`; show/store/update
+  `effective_report_columns`, `report_columns_source_category`, `inherited_report_columns`,
+  `inherited_report_columns_source_category` (solo antenati). Field permission `report_columns` (multiselect).
+- Report: colonna non configurata = null (non calcolata), cella vuota nel file; export header = unione colonne
+  configurate delle categorie selezionate (ordine catalogo); dashboard per sezione solo le sue colonne, summary = unione.
+- Factory: `reportable()` imposta tutto il catalogo (test pre-0141 invariati); state `reportColumns(?array)`.
+- Seed produzione: `QualificaCatalog/ReportColumnsCatalogue` chiamato da `QualificaCatalogSeeder`, solo se null.
+- FE: `product-category-report-columns-field.tsx` + `product-category-report-column-tile.tsx` (card, contatore, stato
+  Proprie/Ereditate da X/Nessuna, Tutte/Nessuna/Torna alle ereditate), hook `use-report-columns-inheritance.ts`,
+  `use-report-columns-catalog.ts`; dashboard con stato vuoto tile.
+- Verifica: Pest suite completa verde (7918, pre rev-1) + ProductCategories/Report 414/414 dopo rev-1 e test AC-005/006
+  (`RequestManagementReportColumnConfigurationTest`); Vitest 5336/5336; tsc -b --force pulito; Pint/ESLint puliti.
+- DA VERIFICARE a mano: /product-categories/2/edit (GOL origine: niente "Torna alle ereditate"); export con piu' categorie.
+
 ## CATEGORIE PRODOTTO — "VISIBILE NEI REPORT" EREDITABILE CON FORZATURA — NON COMMITTATO (2026-09-18)
 
 Direttiva utente: se il padre è visibile nei report, i figli lo sono di default (ereditano) ma si possono forzare a

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0141-category-report-columns" status="approved" owner="utente" date="2026-09-18">
+
+  <goal>
+    Configurare per ogni Categoria Prodotto quali colonne statistiche di Gestione Richieste usare, con la stessa
+    configurazione per Dashboard e Report/Export (CSV/Excel). Le regole di calcolo restano identiche: cambia solo
+    quali colonne sono mostrate per categoria. Sparisce la mappa hardcoded per nome categoria.
+  </goal>
+
+  <context>
+    - Supera spec 0131 D-4-bis: la mappa `config('request-management-report.category_columns')` (chiave = nome
+      categoria) viene ELIMINATA e sostituita dalla configurazione per categoria in DB.
+    - Il catalogo delle colonne resta `config('request-management-report.indicator_columns')` (11 chiavi, ordine
+      contrattuale). La regola di calcolo resta in `ReportIndicatorRegistry` (chiave -> indicatore); le colonne stub
+      (aule_gestione, aule_partenza, presa_appuntamenti) valgono 0 quando configurate, come oggi.
+    - Label colonna = `__("request-management-report.headers.{key}")` (gia' esistenti).
+    - `is_reportable` e la sua ereditarieta' (ReportableInheritance) restano invariati.
+    - File reali: ReportBranch, ReportBranchResolver, ReportBranchRowsBuilder, ReportRow, ReportSheetBuilder,
+      RequestManagementReportGenerator, Dashboard/RequestManagementDashboardBuilder, ProductCategory model/Resource,
+      Store/UpdateProductCategoryRequest, ProductCategoryController::resourceWithInherited, QualificaCatalogSeeder.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Catalogo colonne in config (`indicator_columns`), non in DB (scelta utente).</decision>
+    <decision id="D-2">Selezione per categoria in `product_categories.report_columns` (JSON nullable, array di chiavi
+      del catalogo). null = eredita dall'antenato piu' vicino (walk strutturale, reportable o no) con
+      `report_columns` non null; nessun antenato configurato = nessuna colonna. Un array vuoto in scrittura viene
+      normalizzato a null. Le chiavi salvate sono deduplicate e ordinate nell'ordine del catalogo.</decision>
+    <decision id="D-3">Colonna non configurata per una categoria = NON calcolata e VUOTA (null nel ReportRow, cella ''
+      nel file, assente in dashboard). Supera spec 0106 D-15 ("mai vuota") solo per le colonne non configurate.
+      Nessun valore forzato, nessuna condizione per nome categoria nel codice.</decision>
+    <decision id="D-4">Export: intestazioni = Categoria, GA2 + unione delle colonne configurate delle categorie
+      selezionate, nell'ordine del catalogo; colonne comuni una sola volta.</decision>
+    <decision id="D-5">Dashboard: ogni sezione categoria mostra tile e grafici (indicatore + per operatore) solo delle
+      colonne configurate della categoria; il riepilogo complessivo mostra l'unione delle colonne configurate delle
+      categorie selezionate, ciascuna calcolata solo sulle categorie dove e' configurata (come oggi,
+      `columnUnionOf`).</decision>
+    <decision id="D-6">Deploy: migrazione aggiunge la colonna e copia la mappa attuale per nome (snapshot congelato
+      dentro la migrazione, match case-insensitive su nome trim) cosi' il report non cambia al deploy.
+      QualificaCatalogSeeder (seed di produzione) semina la stessa configurazione, SOLO se la categoria ha
+      `report_columns` null (non sovrascrive modifiche dell'admin; idempotente).</decision>
+    <decision id="D-7">Mappa (snapshot): GOL, Autoimpiego, Yisu, DIL = telefonate, richiami, nuovi_contatti,
+      potenziali, aule_gestione, aule_partenza, associati; Autofinanziato = telefonate, richiami, nuovi_contatti,
+      potenziali, aule_partenza, associati; Consulenza = telefonate, richiami, nuovi_contatti, potenziali,
+      aziende_inserite, presa_appuntamenti, trattative_concluse; APL = telefonate, richiami, nuovi_contatti,
+      invio_presa_in_carico.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione `report_columns` + copia snapshot; model fillable/cast; Resource; Store/Update request.</item>
+      <item>Servizio di ereditarieta' colonne (bulk per il resolver, singolo per show).</item>
+      <item>Endpoint catalogo colonne.</item>
+      <item>Report: resolver da DB, righe con null per non configurate, export con unione colonne, dashboard filtrata.</item>
+      <item>Seed di produzione (QualificaCatalogSeeder).</item>
+      <item>FE: selezione colonne nel form categoria (accanto a "Visibile nei report"), dettaglio, dashboard robusta a
+        un numero variabile di colonne.</item>
+    </in>
+    <out>
+      <item>Nuove regole di calcolo o modifica di quelle esistenti.</item>
+      <item>Catalogo colonne editabile da UI (resta in config).</item>
+      <item>Ordinamento personalizzato delle colonne per categoria (ordine = catalogo).</item>
+      <item>Nuovi permessi: si usano quelli di product-categories.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/product-categories/report-columns">
+      <request>nessun parametro</request>
+      <response status="200">{ success, message, data: [ { key: string, label: string } ] } — ordine del catalogo,
+        label tradotta server-side (request-management-report.headers.{key}).</response>
+      <errors>401 non autenticato; 403 senza product-categories.view (ProductCategoryPolicy::viewAny).</errors>
+    </endpoint>
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/product-categories[/{id}]">
+      <request>POST/PUT/PATCH: `report_columns`: `sometimes|nullable|array`; `report_columns.*`:
+        `string|distinct|in:<chiavi indicator_columns>`. [] => salvato null.</request>
+      <response status="200">ProductCategoryResource aggiunge `report_columns: string[] | null` (valore PROPRIO).
+        show/store/update aggiungono inoltre `effective_report_columns: string[]` (proprie o ereditate, ordine
+        catalogo) e `report_columns_source_category: { id: number, name: string } | null` (antenato da cui sono
+        ereditate; null se proprie o nessuna). In piu' (rev-1, 2026-09-18) `inherited_report_columns: string[]` e
+        `inherited_report_columns_source_category: { id, name } | null`: risoluzione dai SOLI antenati, a prescindere
+        dal valore proprio (cio' che la categoria erediterebbe tornando a null); [] e null se nessun antenato e'
+        configurato.</response>
+      <errors>422 chiave non nel catalogo o duplicata.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/request-management/report/dashboard (e varianti modulo)">
+      <response status="200">Shape invariata. `categories[].summary` e i grafici contengono SOLO le colonne
+        configurate della categoria (anche nessuna); `summary` complessivo = unione delle configurate.
+        Il grafico `indicator` ha un punto per colonna configurata; i grafici `operator` uno per colonna configurata.</response>
+    </endpoint>
+    <file name="export CSV/XLSX">Header: Categoria, GA2, unione colonne configurate (ordine catalogo). Celle di
+      colonne non configurate per la riga = stringa vuota. Colonna configurata = valore numerico (0 incluso).</file>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con product-categories.view, GET /product-categories/report-columns
+      restituisce le 11 chiavi in ordine catalogo con label; senza permesso 403.</criterion>
+    <criterion id="AC-002">PUT di una categoria con report_columns [richiami, telefonate, richiami] fallisce 422
+      (distinct); con [richiami, telefonate] salva [telefonate, richiami]; con chiave ignota 422; con [] salva null.</criterion>
+    <criterion id="AC-003">Show di una sottocategoria con report_columns null sotto una categoria configurata restituisce
+      effective_report_columns del padre e report_columns_source_category = padre; con colonne proprie source null.</criterion>
+    <criterion id="AC-004">Report: una categoria GOL configurata senza trattative_concluse non calcola quella colonna:
+      nel ReportRow e' null; nessun codice fa riferimento a nomi di categoria.</criterion>
+    <criterion id="AC-005">Export con GOL [telefonate, richiami, nuovi_contatti] e APL [telefonate, trattative_concluse,
+      associati] ha header Categoria, GA2, Telefonate, Richiami, Nuovi contatti, Associati, Trattative concluse
+      (ordine catalogo, comuni una volta); le righe GOL hanno vuote associati/trattative_concluse, le righe APL
+      vuote richiami/nuovi_contatti.</criterion>
+    <criterion id="AC-006">Dashboard: sezione di una categoria mostra solo le sue colonne configurate (tile e grafici);
+      summary complessivo = unione.</criterion>
+    <criterion id="AC-007">Migrazione: categorie esistenti con nome nella mappa D-7 ottengono le colonne; le altre null;
+      rollback rimuove la colonna.</criterion>
+    <criterion id="AC-008">QualificaCatalogSeeder semina D-7 sulle categorie con report_columns null e non modifica una
+      categoria gia' configurata; rieseguito non cambia nulla.</criterion>
+    <criterion id="AC-009">FE: nel form categoria, con categoria effettivamente reportable, l'admin seleziona le colonne
+      dal catalogo; senza colonne proprie vede quelle ereditate con "Ereditate da X" e puo' tornare all'ereditato
+      (salva null). Payload invia solo se cambiato. L'azione "Torna alle ereditate" compare SOLO se la categoria ha
+      colonne proprie E un antenato ha colonne configurate (`inherited_report_columns` non vuoto, parent non
+      cambiato nel form); per una categoria che e' l'origine della configurazione (es. GOL sotto Formazione non
+      configurata) non compare.</criterion>
+    <criterion id="AC-010">FE: la dashboard renderizza correttamente sezioni con numero variabile di tile (anche 0).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Authz server-side via ProductCategoryPolicy. Envelope { success, message, data }.
+    Identificatori inglesi. Nessun riferimento a nomi categoria nel codice applicativo (solo migrazione snapshot e
+    seeder). File sotto 300/500 righe. Test Pest/Vitest eseguiti; tsc -b --force pulito; Pint/ESLint puliti.
+  </constraints>
+</spec>

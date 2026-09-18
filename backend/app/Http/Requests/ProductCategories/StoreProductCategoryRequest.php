@@ -60,6 +60,12 @@ class StoreProductCategoryRequest extends FormRequest
             // Spec 0131 (user directive 2026-09-18): the node's own override of
             // the inherited report flag. Omitted or null = inherit from the parent.
             'is_reportable' => ['sometimes', 'nullable', 'boolean'],
+            // Spec 0141: the node's own report column selection — an allow-list
+            // of the indicator catalog (backend.md §8: never raw input).
+            // Omitted, null or [] = inherit from the parent (normalized by
+            // ProductCategoryService). Duplicates 422 (AC-002).
+            'report_columns' => ['sometimes', 'nullable', 'array'],
+            'report_columns.*' => ['string', 'distinct', Rule::in((array) config('request-management-report.indicator_columns'))],
             // Spec 0077: same root-only semantics as requires_quote — omitted
             // = server-resolved (inherited, or "multiple" at a fresh root).
             'management_mode' => ['sometimes', Rule::enum(CategoryManagementMode::class)],

@@ -106,6 +106,7 @@ export const productCategories = {
     businessFunctionInherited: 'Ereditata da {{category}}',
     requiresQuoteInherited: 'Ereditato da {{category}}',
     isReportableInherited: 'Ereditato da {{category}}',
+    reportColumnsInherited: 'Ereditato da {{category}}',
     managementModeInherited: 'Ereditata da {{category}}',
     singleQuotePerOpportunityInherited: 'Ereditata da {{category}}',
     generatesContractInherited: 'Ereditata da {{category}}',
@@ -245,6 +246,26 @@ export const productCategories = {
     isReportableInfo:
       'Decide se la categoria compare come riga selezionabile nei report e nella dashboard di Gestione Richieste e di Gestione Iscritti. Una sottocategoria eredita il valore del padre: se il padre è visibile nei report lo sono anche i figli, ma ogni figlio può essere forzato a "no" (e con lui le sue sottocategorie). Una categoria esclusa non viene conteggiata neanche nei totali del padre.',
     isReportableInfoLabel: 'Maggiori informazioni su Visibile nei report',
+    reportColumns: 'Colonne report',
+    reportColumnsInfo:
+      'Sceglie quali colonne statistiche di Gestione Richieste vengono calcolate per questa categoria: la stessa selezione vale per il report (CSV/Excel) e per la dashboard. Una sottocategoria eredita le colonne della categoria antenata più vicina che le ha configurate.',
+    reportColumnsInfoLabel: 'Maggiori informazioni su Colonne report',
+    // Badge contatore nell'header della card ("7/11").
+    reportColumnsCount: '{{selected}}/{{total}}',
+    reportColumnsStatusOwn: 'Proprie',
+    reportColumnsStatusNone: 'Nessuna colonna',
+    reportColumnsSelectAll: 'Tutte',
+    reportColumnsSelectNone: 'Nessuna',
+    reportColumnsError: 'Impossibile caricare il catalogo delle colonne. Riprova.',
+    // Nessun antenato configurato: questa categoria è l'origine della configurazione (spec 0141 rev-1).
+    reportColumnsOwnHint: 'Impostate su questa categoria: ogni sottocategoria le eredita.',
+    // Un antenato ha colonne proprie: qui vengono sovrascritte (l'azione "Torna alle ereditate" è disponibile).
+    reportColumnsOverridesHint: 'Sovrascrivono quelle ereditate da "{{category}}".',
+    reportColumnsInheritedHint: 'Ereditate da "{{category}}".',
+    reportColumnsNoSourceHint:
+      'Nessuna categoria superiore ha colonne configurate. Selezionane alcune per includere questa categoria nel report e nella dashboard.',
+    reportColumnsUnknownHint: 'Le colonne ereditate si vedranno dopo il salvataggio.',
+    reportColumnsResetToInherited: 'Torna alle ereditate',
     inheritedFrom: 'Ereditata da {{category}}',
     managerLabelLevel: 'G.A. {{n}}',
     managerLabelPlaceholder: 'Gestore account {{n}}',

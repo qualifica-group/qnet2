@@ -13,6 +13,7 @@ use Database\Seeders\QualificaCatalog\CatalogRootRules;
 use Database\Seeders\QualificaCatalog\CategoryInheritanceRules;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\ReportColumnsCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Illuminate\Database\Seeder;
 
@@ -351,6 +352,10 @@ class QualificaCatalogSeeder extends Seeder
                 $this->seedCatalogChildren($subcategory, $childNames);
             }
         }
+
+        // Spec 0141 D-6/D-8 (AC-008): the report column selection, only where
+        // still unset — independent of the attributes/root-owned steps below.
+        app(ReportColumnsCatalogue::class)->apply();
 
         // The attributes come after the WHOLE tree: an assignment can target
         // any node, at any depth, not just the root being built above.

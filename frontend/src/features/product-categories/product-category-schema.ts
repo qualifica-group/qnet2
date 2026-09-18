@@ -79,6 +79,9 @@ function baseFields(t: TFunction) {
     requires_quote: z.boolean(),
     is_selectable: z.boolean(),
     is_reportable: z.boolean().nullable(),
+    // null = inherit the nearest configured ancestor's columns (spec 0141);
+    // key validity against the catalogue is enforced server-side (422).
+    report_columns: z.array(z.string()).nullable(),
     management_mode: z.enum(['single', 'multiple']),
     single_quote_per_opportunity: z.boolean(),
     generates_contract: z.boolean(),

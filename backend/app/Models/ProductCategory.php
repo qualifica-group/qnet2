@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_reportable', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'manager_labels', 'inherits_manager_labels'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'manager_labels', 'inherits_manager_labels'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -68,6 +68,14 @@ class ProductCategory extends BaseModel
             // directive 2026-09-18): null inherits the parent's effective
             // value, resolved by ReportableInheritance.
             'is_reportable' => 'boolean',
+            // Spec 0141 — this node's OWN selection of Gestione Richieste /
+            // Iscritti report indicator columns (keys of `config('request-
+            // management-report.indicator_columns')`). Nullable: null =
+            // inherit the nearest ancestor's (ReportColumnsInheritance,
+            // structural walk, same shape as is_reportable above). Never an
+            // empty array on read: ProductCategoryService normalizes [] to
+            // null at write time.
+            'report_columns' => 'array',
             // Spec 0077 — owned by the branch ROOT and mirrored on every
             // descendant by CategoryManagementModeInheritance, same shape as
             // requires_quote: a child's own column is never authored

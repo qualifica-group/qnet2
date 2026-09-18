@@ -60,6 +60,9 @@ class UpdateProductCategoryRequest extends FormRequest
             // Spec 0131 (user directive 2026-09-18): the node's own override of
             // the inherited report flag — null = inherit from the parent.
             'is_reportable' => ['sometimes', 'nullable', 'boolean'],
+            // Spec 0141: same allow-list convention as StoreProductCategoryRequest.
+            'report_columns' => ['sometimes', 'nullable', 'array'],
+            'report_columns.*' => ['string', 'distinct', Rule::in((array) config('request-management-report.indicator_columns'))],
             // Spec 0077: same root-only semantics as requires_quote — a
             // reparent (parent_id changes) or an edit of the mode itself
             // triggers ProductCategoryService's subtree resync.

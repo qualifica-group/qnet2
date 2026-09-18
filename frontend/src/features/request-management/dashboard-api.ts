@@ -57,7 +57,11 @@ export interface RequestDashboardData {
     operator_keys: string[] | null
     site_keys: string[] | null
   }
-  /** Overall tiles over the union of the selected branches (D-8), every indicator column included (rev-3 D-11). */
+  /**
+   * Overall tiles over the union of the selected branches (D-8): the union of
+   * each category's OWN configured columns (spec 0141 D-5), never a fixed
+   * catalogue — can be empty when no selected category configures any.
+   */
   summary: RequestDashboardSummaryItem[]
   /** One section per selected category, in the report's own branch order (rev-3 D-10). */
   categories: RequestDashboardCategory[]

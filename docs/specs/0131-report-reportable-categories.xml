@@ -64,6 +64,8 @@
       sotto "APL"). Seed (QualificaCatalogSeeder::REPORTABLE_CATEGORIES): GOL, Autoimpiego, Yisu, Autofinanziato,
       DIL, Orientamento Specialistico; sottocategorie null (ereditano). Consulenza e APL non piu' seedate come
       reportable (solo nuove installazioni: il seed scrive alla creazione).</decision>
+    <decision id="D-6" date="2026-09-18">SUPERA D-4-bis: la mappa `category_columns` per nome categoria e' eliminata;
+      le colonne per categoria sono configurate in `product_categories.report_columns` (spec 0141).</decision>
   </decisions>
 
   <data_contract>

@@ -16,6 +16,7 @@ use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\ProductCategories\BulkMoveCategories;
 use App\Services\ProductCategories\ReportableInheritance;
+use App\Services\ProductCategories\ReportColumnsInheritance;
 use App\Services\ProductCategoryService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -44,6 +45,7 @@ class ProductCategoryController extends BaseApiController
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
         private readonly ReportableInheritance $reportable,
+        private readonly ReportColumnsInheritance $reportColumns,
     ) {}
 
     /**
@@ -55,6 +57,28 @@ class ProductCategoryController extends BaseApiController
             $this->authorize('viewAny', ProductCategory::class);
 
             return $this->ok($this->service->tree());
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
+     * GET /api/product-categories/report-columns — the Gestione Richieste /
+     * Iscritti report's indicator catalog (spec 0141 data_contract), catalog
+     * order, label translated server-side: feeds the category form's report
+     * column picker.
+     */
+    public function reportColumns(Request $request): JsonResponse
+    {
+        try {
+            $this->authorize('viewAny', ProductCategory::class);
+
+            $columns = array_map(
+                static fn (string $key): array => ['key' => $key, 'label' => __("request-management-report.headers.{$key}")],
+                (array) config('request-management-report.indicator_columns'),
+            );
+
+            return $this->ok($columns);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -236,6 +260,8 @@ class ProductCategoryController extends BaseApiController
     {
         $productCategory->loadMissing('businessFunction');
         $reportable = $this->reportable->resolve($productCategory);
+        $reportColumns = $this->reportColumns->resolve($productCategory);
+        $inheritedReportColumns = $this->reportColumns->resolveFromAncestors($productCategory);
 
         return array_merge(
             (new ProductCategoryResource($productCategory))->resolve(),
@@ -259,6 +285,18 @@ class ProductCategoryController extends BaseApiController
                 // it is inherited from (null when own or nothing inherited).
                 'effective_is_reportable' => $reportable['value'],
                 'is_reportable_source_category' => $reportable['source_category'],
+                // Spec 0141: same own-or-inherited shape as is_reportable
+                // above, for the report column picker's "Ereditate da X".
+                'effective_report_columns' => $reportColumns['value'],
+                'report_columns_source_category' => $reportColumns['source_category'],
+                // Spec 0141 rev-1: what this category would inherit from its
+                // ANCESTORS ALONE, regardless of its own `report_columns` —
+                // the form needs this even when the category already has its
+                // own selection, to know whether "back to inherited" has
+                // anything to fall back to (bug fix: it showed up even with
+                // nothing to inherit).
+                'inherited_report_columns' => $inheritedReportColumns['value'],
+                'inherited_report_columns_source_category' => $inheritedReportColumns['source_category'],
             ],
         );
     }

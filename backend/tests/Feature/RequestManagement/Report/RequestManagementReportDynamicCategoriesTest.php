@@ -19,8 +19,11 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 // Spec 0131 — the report branches are the product categories flagged
-// `is_reportable`, each expanded to its own subtree, every real indicator
-// computed for every branch (no per-branch applicability list).
+// `is_reportable`, each expanded to its own subtree. Spec 0141 reinstates a
+// per-branch column applicability list, now DB-driven (`report_columns`,
+// ReportColumnsInheritance) instead of the retired category-NAME config map:
+// these tests configure it explicitly via the factory's `reportColumns()`
+// state, never relying on a category's name.
 
 uses(RefreshDatabase::class);
 
@@ -62,7 +65,7 @@ if (! function_exists('dynamicReportCompanyQuote')) {
 
 it('resolves every reportable category and, under it, each subcategory in tree order with its depth (directive 2026-09-18)', function () {
     $formazione = ProductCategory::factory()->create(['name' => 'Formazione']);
-    $gol = ProductCategory::factory()->childOf($formazione)->reportable()->create(['name' => 'GOL']);
+    $gol = ProductCategory::factory()->childOf($formazione)->reportable()->reportColumns(['associati'])->create(['name' => 'GOL']);
     $campania = ProductCategory::factory()->childOf($gol)->reportable()->create(['name' => 'GOL - Campania']);
     $campaniaCourse = ProductCategory::factory()->childOf($campania)->create(['name' => 'Corso Campania']);
     $lombardia = ProductCategory::factory()->childOf($gol)->create(['name' => 'GOL - Lombardia']);
@@ -85,7 +88,7 @@ it('resolves every reportable category and, under it, each subcategory in tree o
         ->and($branches[3]->categoryIds)->toBe([$campaniaCourse->id])
         ->and($branches[0]->categoryIds)->toBe([$apl->id]);
 
-    // A subcategory inherits its parent's active columns.
+    // A subcategory with no own `report_columns` inherits its parent's.
     expect($branches[4]->categoryIdsFor('associati'))->toBe([$lombardia->id])
         ->and($branches[4]->categoryIdsFor('aziende_inserite'))->toBeNull();
 });
@@ -111,9 +114,9 @@ it('drops a subcategory forced off, with its subtree, from its row and its ances
         ->and($branches[1]->categoryIds)->not->toContain($lombardiaCourse->id);
 });
 
-it('a report root under a non-reportable mapped parent keeps that parent columns (directive 2026-09-18)', function () {
-    $apl = ProductCategory::factory()->create(['name' => 'APL']);
-    $orientamento = ProductCategory::factory()->childOf($apl)->reportable()->create(['name' => 'Orientamento Specialistico']);
+it('a report root under a non-reportable configured parent keeps that parent columns (directive 2026-09-18)', function () {
+    $apl = ProductCategory::factory()->reportColumns(['invio_presa_in_carico'])->create(['name' => 'APL']);
+    $orientamento = ProductCategory::factory()->childOf($apl)->reportable()->reportColumns(null)->create(['name' => 'Orientamento Specialistico']);
 
     $branches = app(ReportBranchResolver::class)->resolve();
 
@@ -141,20 +144,20 @@ it('aggregates the whole subtree on a parent row and only its own subtree on a c
     expect($rows[0]['rows'][0]->values['aziende_inserite'])->toBe(2);
 });
 
-it('sets to 0 every column not active for the category, and every column of an unmapped one (directive 2026-09-18)', function () {
-    $gol = ProductCategory::factory()->reportable()->create(['name' => 'GOL']);
-    $consulenza = ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']);
-    $unmapped = ProductCategory::factory()->reportable()->create(['name' => 'Varie']);
+it('is null for a column not configured for the category, and computes the real value for a configured one (spec 0141 D-3)', function () {
+    $gol = ProductCategory::factory()->reportable()->reportColumns(['telefonate'])->create(['name' => 'GOL']);
+    $consulenza = ProductCategory::factory()->reportable()->reportColumns(['aziende_inserite'])->create(['name' => 'Consulenza']);
+    $unconfigured = ProductCategory::factory()->reportable()->reportColumns(null)->create(['name' => 'Varie']);
 
     dynamicReportCompanyQuote($gol, Carbon::parse('2026-09-10 10:00:00'));
     dynamicReportCompanyQuote($consulenza, Carbon::parse('2026-09-10 10:00:00'));
-    dynamicReportCompanyQuote($unmapped, Carbon::parse('2026-09-10 10:00:00'));
+    dynamicReportCompanyQuote($unconfigured, Carbon::parse('2026-09-10 10:00:00'));
 
     $rows = app(RequestManagementReportGenerator::class)->rows(
         dynamicReportActor(),
         '2026-09-01',
         '2026-09-30',
-        [(string) $gol->id, (string) $consulenza->id, (string) $unmapped->id],
+        [(string) $gol->id, (string) $consulenza->id, (string) $unconfigured->id],
         RequestManagementReportRowMode::TotalOnly,
     );
 
@@ -163,13 +166,14 @@ it('sets to 0 every column not active for the category, and every column of an u
         $companies[$pair['branch']->label] = $pair['rows'][0]->values['aziende_inserite'];
     }
 
-    // "Aziende inserite" is a Consulenza column only.
-    expect($companies)->toBe(['Consulenza' => 1, 'GOL' => 0, 'Varie' => 0]);
+    // "aziende_inserite" is configured for Consulenza only; GOL and the
+    // unconfigured "Varie" get null (not 0) for it.
+    expect($companies)->toBe(['Consulenza' => 1, 'GOL' => null, 'Varie' => null]);
 });
 
 it('computes each overall dashboard tile only on the categories the column is active for (directive 2026-09-18)', function () {
-    $gol = ProductCategory::factory()->reportable()->create(['name' => 'GOL']);
-    $consulenza = ProductCategory::factory()->reportable()->create(['name' => 'Consulenza']);
+    $gol = ProductCategory::factory()->reportable()->reportColumns(['telefonate'])->create(['name' => 'GOL']);
+    $consulenza = ProductCategory::factory()->reportable()->reportColumns(['aziende_inserite'])->create(['name' => 'Consulenza']);
 
     dynamicReportCompanyQuote($gol, Carbon::parse('2026-09-10 10:00:00'));
     dynamicReportCompanyQuote($consulenza, Carbon::parse('2026-09-10 10:00:00'));

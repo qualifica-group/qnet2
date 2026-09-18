@@ -11,4 +11,6 @@ export const productCategoryKeys = {
     ['product-categories', categoryId, 'effective-manager-labels'] as const,
   attributeLayout: (categoryId: number, context: AttributeContext, scope: LayoutFormScope) =>
     ['product-categories', categoryId, 'attribute-layout', context, scope] as const,
+  /** The static statistics-column catalogue (spec 0141) — one cache entry, shared by every category form/detail. */
+  reportColumns: ['product-categories', 'report-columns'] as const,
 }

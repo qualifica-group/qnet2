@@ -50,6 +50,7 @@ class ProductCategoryService
                 'business_function_id' => $data->businessFunctionId,
                 'is_selectable' => $data->isSelectable,
                 'is_reportable' => $data->isReportable,
+                'report_columns' => $this->normalizeReportColumns($data->reportColumns),
                 'manager_labels' => $this->normalizeManagerLabels($data->managerLabels),
                 'inherits_manager_labels' => $data->inheritsManagerLabels,
                 // The five ROOT-OWNED settings: a child never authors any of
@@ -91,6 +92,14 @@ class ProductCategoryService
             // out for exactly this reason.
             if ($data->managerLabelsSubmitted) {
                 $attributes['manager_labels'] = $this->normalizeManagerLabels($data->managerLabels);
+            }
+
+            // Spec 0141: same normalize-on-top-of-the-DTO treatment as
+            // manager_labels above — dedup is already guaranteed by the
+            // FormRequest's `distinct` rule, this only reorders to the
+            // catalog's contract order (AC-002) and collapses [] to null.
+            if ($data->reportColumnsSubmitted) {
+                $attributes['report_columns'] = $this->normalizeReportColumns($data->reportColumns);
             }
 
             // Unconditional save: fire the model's saved event even when no native
@@ -353,5 +362,27 @@ class ProductCategoryService
         }
 
         return $normalized === [] ? null : $normalized;
+    }
+
+    /**
+     * Normalizes a submitted `report_columns` payload (spec 0141 D-2): the
+     * FormRequest's `distinct` rule already guarantees uniqueness, so this
+     * only reorders the submitted keys to the indicator catalog's contract
+     * order (AC-002) and collapses an empty result to null — "inherit",
+     * never a stored empty array.
+     *
+     * @param  array<int, string>|null  $columns
+     * @return array<int, string>|null
+     */
+    private function normalizeReportColumns(?array $columns): ?array
+    {
+        if ($columns === null || $columns === []) {
+            return null;
+        }
+
+        $catalog = (array) config('request-management-report.indicator_columns');
+        $ordered = array_values(array_intersect($catalog, $columns));
+
+        return $ordered === [] ? null : $ordered;
     }
 }

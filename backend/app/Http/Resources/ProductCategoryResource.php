@@ -58,6 +58,10 @@ class ProductCategoryResource extends JsonResource
             // of the report flag, null = inherited. The effective value and
             // its source are attached by the controller.
             'is_reportable' => $this->is_reportable,
+            // Spec 0141: this node's OWN report column selection, null =
+            // inherited. The effective value and its source are attached by
+            // the controller, mirroring is_reportable/effective_is_reportable.
+            'report_columns' => $this->report_columns,
             // Spec 0077: the EFFECTIVE card-line policy — on a child this
             // already mirrors its root (CategoryManagementModeInheritance
             // keeps the column in sync), so no walk is needed here.

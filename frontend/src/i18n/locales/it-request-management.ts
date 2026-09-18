@@ -401,6 +401,8 @@ export const requestManagement = {
       generic: 'Impossibile caricare la dashboard per un errore del server. Riprova tra qualche istante.',
     },
     empty: 'Nessun grafico da mostrare per questa selezione.',
+    // Spec 0141: una categoria reportable puo' non avere colonne configurate.
+    tilesEmpty: 'Nessuna colonna configurata per questa categoria.',
     overall: 'Totale complessivo',
     indicatorsChartTitle: 'Indicatori',
     tilesTitle: 'Riepilogo',

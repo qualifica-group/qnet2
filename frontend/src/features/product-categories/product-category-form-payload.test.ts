@@ -29,6 +29,11 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     is_reportable: true,
     effective_is_reportable: true,
     is_reportable_source_category: null,
+    report_columns: null,
+    effective_report_columns: [],
+    report_columns_source_category: null,
+    inherited_report_columns: [],
+    inherited_report_columns_source_category: null,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
@@ -62,6 +67,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -87,6 +93,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -112,6 +119,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -147,6 +155,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -174,6 +183,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -201,6 +211,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -226,6 +237,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -254,6 +266,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -279,6 +292,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -305,6 +319,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -333,6 +348,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -363,6 +379,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -388,6 +405,7 @@ describe('buildUpdatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -399,99 +417,6 @@ describe('buildUpdatePayload', () => {
     })
     // Promoted to root in the same save: both travel, the server accepts it.
     expect(buildUpdatePayload(values, original())).toEqual({ parent_id: null, management_mode: 'single' })
-  })
-
-  // Spec 0080.
-  it('never sends single_quote_per_opportunity under a parent, sends it when a root changes it', () => {
-    const values: ProductCategoryFormValues = {
-      name: 'Laptops',
-      parent_id: 1,
-      inherits_product_attributes: true,
-      inherits_quote_attributes: true,
-      inherits_work_order_attributes: true,
-      description: null,
-      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
-      business_function_id: null,
-      requires_quote: false,
-      is_selectable: true,
-      is_reportable: true,
-      management_mode: 'multiple',
-      single_quote_per_opportunity: true,
-      generates_contract: true,
-      simplified_offer_line: true,
-      manager_labels: {},
-      inherits_manager_labels: true,
-      custom_fields: {},
-    }
-
-    // Under a parent the flag is read-only: the root owns it, so a diff there
-    // would be an override attempt the server refuses.
-    expect(buildUpdatePayload(values, original())).toEqual({})
-    // Already a root: only the flag changed.
-    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
-      single_quote_per_opportunity: true,
-    })
-  })
-
-  // Spec 0091: identical root-only diffing for the contract rule.
-  it('never sends generates_contract under a parent, sends it when a root changes it', () => {
-    const values: ProductCategoryFormValues = {
-      name: 'Laptops',
-      parent_id: 1,
-      inherits_product_attributes: true,
-      inherits_quote_attributes: true,
-      inherits_work_order_attributes: true,
-      description: null,
-      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
-      business_function_id: null,
-      requires_quote: false,
-      is_selectable: true,
-      is_reportable: true,
-      management_mode: 'multiple',
-      single_quote_per_opportunity: false,
-      generates_contract: false,
-      simplified_offer_line: true,
-      manager_labels: {},
-      inherits_manager_labels: true,
-      custom_fields: {},
-    }
-
-    expect(buildUpdatePayload(values, original())).toEqual({})
-    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
-      generates_contract: false,
-    })
-  })
-
-  // Spec 0114: identical root-only diffing for the simplified-offer-line rule.
-  it('never sends simplified_offer_line under a parent, sends it when a root changes it', () => {
-    const values: ProductCategoryFormValues = {
-      name: 'Laptops',
-      parent_id: 1,
-      inherits_product_attributes: true,
-      inherits_quote_attributes: true,
-      inherits_work_order_attributes: true,
-      description: null,
-      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
-      business_function_id: null,
-      requires_quote: false,
-      is_selectable: true,
-      is_reportable: true,
-      management_mode: 'multiple',
-      single_quote_per_opportunity: false,
-      generates_contract: true,
-      simplified_offer_line: false,
-      manager_labels: {},
-      inherits_manager_labels: true,
-      custom_fields: {},
-    }
-
-    // Under a parent the flag is read-only: the root owns it, so a diff there
-    // would be an override attempt the server refuses.
-    expect(buildUpdatePayload(values, original())).toEqual({})
-    // Already a root: only the flag changed.
-    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
-      simplified_offer_line: false,
-    })
   })
 
 })

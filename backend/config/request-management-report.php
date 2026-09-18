@@ -26,27 +26,11 @@ return [
         'presa_appuntamenti', 'trattative_concluse', 'invio_presa_in_carico',
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Active columns per reportable category (user directive 2026-09-18)
-    |--------------------------------------------------------------------------
-    |
-    | Keyed by the category NAME, matched case-insensitively (the branches
-    | are dynamic, spec 0131, but these are the business' own categories).
-    | A column absent from a category's list is 0 for that category, in the
-    | dashboard AND in the file; a reportable category absent from this map
-    | has every column at 0.
-    |
-    */
-
-    'category_columns' => [
-        'gol' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
-        'autoimpiego' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
-        'yisu' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
-        'dil' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
-        'autofinanziato' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_partenza', 'associati'],
-        'consulenza' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aziende_inserite', 'presa_appuntamenti', 'trattative_concluse'],
-        'apl' => ['telefonate', 'richiami', 'nuovi_contatti', 'invio_presa_in_carico'],
-    ],
+    // The per-category column selection (formerly `category_columns`, keyed
+    // by category NAME) is retired by spec 0141: it now lives in
+    // `product_categories.report_columns` (DB), resolved read-side by
+    // App\Services\ProductCategories\ReportColumnsInheritance. The snapshot
+    // this map used to hold is frozen, once, inside migration
+    // `2026_09_18_110000_add_report_columns_to_product_categories_table`.
 
 ];

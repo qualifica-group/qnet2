@@ -9,6 +9,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { ProductCategoryGeneratesContractField } from '@/features/product-categories/product-category-generates-contract-field'
 import { ProductCategoryManagementModeField } from '@/features/product-categories/product-category-management-mode-field'
+import { ProductCategoryReportColumnsField } from '@/features/product-categories/product-category-report-columns-field'
 import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
 import { ProductCategoryRuleCard } from '@/features/product-categories/product-category-rule-card'
 import { ProductCategorySimplifiedOfferLineField } from '@/features/product-categories/product-category-simplified-offer-line-field'
@@ -39,7 +40,9 @@ interface ProductCategoryRulesSectionProps {
  * and inherited by the whole subtree; each carries an (i) tooltip explaining
  * what turning it on actually does. `is_selectable` is a plain per-node flag;
  * `is_reportable` is inherited from the nearest ancestor but can be forced on
- * any node (ReportableRule).
+ * any node (ReportableRule). While the category is EFFECTIVELY reportable
+ * (own or inherited), the statistics-column picker (spec 0141) appears right
+ * below the tiles, spanning both columns.
  *
  * Two columns from `sm:` up: the tiles stay readable at 375px and the section
  * does not become a tall stack on a desktop config screen.
@@ -51,6 +54,10 @@ export function ProductCategoryRulesSection({
 }: ProductCategoryRulesSectionProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
+  // Drives the report-columns picker below: it only makes sense once the
+  // category actually behaves as reportable, live watched value included
+  // (reparenting/toggling the switch shows or hides it without a save).
+  const reportable = useReportableInheritance(control, mode)
 
   const visible =
     fieldPermission('requires_quote').visible ||
@@ -59,7 +66,8 @@ export function ProductCategoryRulesSection({
     fieldPermission('generates_contract').visible ||
     fieldPermission('simplified_offer_line').visible ||
     fieldPermission('is_selectable').visible ||
-    fieldPermission('is_reportable').visible
+    fieldPermission('is_reportable').visible ||
+    fieldPermission('report_columns').visible
 
   if (!visible) {
     return null
@@ -80,6 +88,10 @@ export function ProductCategoryRulesSection({
 
         <SelectableRule control={control} />
         <ReportableRule control={control} mode={mode} />
+
+        {reportable.effective ? (
+          <ProductCategoryReportColumnsField control={control} mode={mode} className="sm:col-span-2" />
+        ) : null}
       </div>
     </FormSection>
   )

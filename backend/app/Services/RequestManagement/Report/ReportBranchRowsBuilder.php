@@ -23,10 +23,12 @@ use Illuminate\Support\Collection;
  * request — AC-034), `all` keeps every row.
  *
  * Every column of `config('request-management-report.indicator_columns')`
- * is always present in the emitted values, defaulting to 0 (D-15, rev-2 —
- * overrides the former D-9 empty-cell distinction) whether the column is a
- * stub or not active for the branch (user directive 2026-09-18, which
- * reinstates per-category columns after spec 0131 D-4).
+ * is always present (as a KEY) in the emitted values (spec 0141 D-3,
+ * supersedes rev-2 D-15): a column not configured for the branch is null
+ * (NOT calculated, empty cell), a configured STUB column
+ * (aule_gestione/aule_partenza/presa_appuntamenti — never implemented in
+ * ReportIndicatorRegistry) is 0 same as before, and a configured REAL column
+ * is the computed value.
  * That config key is the neutral source both this (calculation) class and
  * ReportSheetBuilder (formatting) read from — this class never depends on the
  * formatting one for it (spec 0107 D-2-bis, point 3).
@@ -64,16 +66,16 @@ final class ReportBranchRowsBuilder
         $rows = [];
 
         if ($rowMode !== RequestManagementReportRowMode::OperatorsOnly) {
-            $rows[] = $this->row(__('request-management-report.labels.total'), null, isTotal: true, results: $results);
+            $rows[] = $this->row(__('request-management-report.labels.total'), null, isTotal: true, branch: $branch, results: $results);
         }
 
         if ($rowMode !== RequestManagementReportRowMode::TotalOnly) {
             foreach ($namedOperators as $operator) {
-                $rows[] = $this->row($operator->name, $operator->id, isTotal: false, results: $results);
+                $rows[] = $this->row($operator->name, $operator->id, isTotal: false, branch: $branch, results: $results);
             }
 
             if ($hasUnassigned) {
-                $rows[] = $this->row(__('request-management-report.labels.unassigned'), null, isTotal: false, results: $results);
+                $rows[] = $this->row(__('request-management-report.labels.unassigned'), null, isTotal: false, branch: $branch, results: $results);
             }
         }
 
@@ -130,13 +132,21 @@ final class ReportBranchRowsBuilder
     /**
      * @param  array<string, IndicatorResult>  $results
      */
-    private function row(string $label, ?int $operatorId, bool $isTotal, array $results): ReportRow
+    private function row(string $label, ?int $operatorId, bool $isTotal, ReportBranch $branch, array $results): ReportRow
     {
         $values = [];
 
         foreach ((array) config('request-management-report.indicator_columns') as $column) {
+            $categoryIds = $branch->categoryIdsFor($column);
+
+            if ($categoryIds === null || $categoryIds === []) {
+                $values[$column] = null; // not configured for this branch (D-3)
+
+                continue;
+            }
+
             if (! isset($results[$column])) {
-                $values[$column] = 0; // stub column (D-15)
+                $values[$column] = 0; // configured stub column, same as before
 
                 continue;
             }

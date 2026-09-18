@@ -38,10 +38,33 @@ class ProductCategoryFactory extends Factory
         return $this->state(fn (): array => ['parent_id' => $parent->id]);
     }
 
-    /** A category forced into the Gestione Richieste / Iscritti report; its inheriting subtree follows (spec 0131). */
+    /**
+     * A category forced into the Gestione Richieste / Iscritti report (spec
+     * 0131); its inheriting subtree follows. Also defaults `report_columns`
+     * to the FULL indicator catalog (spec 0141 D-2): most of the report/
+     * dashboard test suite only cares that every real indicator computes,
+     * never about which subset is configured — narrow it explicitly with
+     * `reportColumns()` in a test that exercises D-3's per-category
+     * restriction itself.
+     */
     public function reportable(): static
     {
-        return $this->state(fn (): array => ['is_reportable' => true]);
+        return $this->state(fn (): array => [
+            'is_reportable' => true,
+            'report_columns' => (array) config('request-management-report.indicator_columns'),
+        ]);
+    }
+
+    /**
+     * Explicit `report_columns` override (spec 0141 D-2/D-3), replacing
+     * `reportable()`'s full-catalog default: null = inherit from the nearest
+     * configured ancestor, an array = this node's own restricted selection.
+     *
+     * @param  array<int, string>|null  $columns
+     */
+    public function reportColumns(?array $columns): static
+    {
+        return $this->state(fn (): array => ['report_columns' => $columns]);
     }
 
     /** A category that opts out of inheriting its ancestors' attributes in EVERY usage context. */

@@ -106,6 +106,7 @@ export const productCategories = {
     businessFunctionInherited: 'Inherited from {{category}}',
     requiresQuoteInherited: 'Inherited from {{category}}',
     isReportableInherited: 'Inherited from {{category}}',
+    reportColumnsInherited: 'Inherited from {{category}}',
     managementModeInherited: 'Inherited from {{category}}',
     singleQuotePerOpportunityInherited: 'Inherited from {{category}}',
     generatesContractInherited: 'Inherited from {{category}}',
@@ -243,6 +244,26 @@ export const productCategories = {
     isReportableInfo:
       'Decides whether the category shows up as a selectable row in the Gestione Richieste and Gestione Iscritti reports and dashboard. A subcategory inherits its parent\'s value: when the parent is visible in the reports so are its children, but each child can be forced to "no" (and its subcategories with it). An excluded category is not counted in its parent\'s totals either.',
     isReportableInfoLabel: 'More info about Visible in reports',
+    reportColumns: 'Report columns',
+    reportColumnsInfo:
+      'Picks which Gestione Richieste statistics columns are computed for this category: the same selection drives the report (CSV/Excel) and the dashboard. A subcategory inherits the columns of the nearest ancestor that has some configured.',
+    reportColumnsInfoLabel: 'More info about Report columns',
+    // Counter badge in the card header ("7/11").
+    reportColumnsCount: '{{selected}}/{{total}}',
+    reportColumnsStatusOwn: 'Own',
+    reportColumnsStatusNone: 'No columns',
+    reportColumnsSelectAll: 'All',
+    reportColumnsSelectNone: 'None',
+    reportColumnsError: 'Unable to load the column catalogue. Try again.',
+    // No ancestor configured: this category is the configuration's own origin (spec 0141 rev-1).
+    reportColumnsOwnHint: 'Set on this category: every subcategory inherits it.',
+    // An ancestor has its own columns: this category overrides them ("Back to inherited" is available).
+    reportColumnsOverridesHint: 'Overrides the columns inherited from "{{category}}".',
+    reportColumnsInheritedHint: 'Inherited from "{{category}}".',
+    reportColumnsNoSourceHint:
+      'No ancestor category has columns configured. Pick some to include this category in the report and dashboard.',
+    reportColumnsUnknownHint: 'Inherited columns will show once this is saved.',
+    reportColumnsResetToInherited: 'Back to inherited',
     inheritedFrom: 'Inherited from {{category}}',
     managerLabelLevel: 'A.M. {{n}}',
     managerLabelPlaceholder: 'Account manager {{n}}',

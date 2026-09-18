@@ -6,6 +6,7 @@ namespace App\Services\RequestManagement\Report;
 
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\ReportableInheritance;
+use App\Services\ProductCategories\ReportColumnsInheritance;
 use Illuminate\Support\Collection;
 
 /**
@@ -17,10 +18,13 @@ use Illuminate\Support\Collection;
  * row covers its reportable children's requests too. A child forced off is
  * left out with its subtree, from its own row AND from its ancestors' rows.
  *
- * A category takes the active columns of its nearest ancestor-or-self named
- * in `config('request-management-report.category_columns')` — walking the
- * whole tree, so a report root under a non-reportable mapped parent (e.g.
- * "Orientamento Specialistico" under "APL") keeps its parent's columns.
+ * A category's active columns are its own EFFECTIVE `report_columns` (spec
+ * 0141, resolved by ReportColumnsInheritance): its own selection, or its
+ * nearest ancestor's (structural walk, reportable or not — so a report root
+ * under a non-reportable configured parent, e.g. "Orientamento Specialistico"
+ * under "APL", keeps its parent's columns), or none. This retires the
+ * hardcoded `config('request-management-report.category_columns')` name map
+ * (spec 0131 D-4-bis).
  *
  * The whole tree is read in ONE projection query and every subtree is walked
  * in memory. resolve() is meant to be called ONCE per request by the caller —
@@ -28,17 +32,21 @@ use Illuminate\Support\Collection;
  */
 final class ReportBranchResolver
 {
-    public function __construct(private readonly ReportableInheritance $reportable) {}
+    public function __construct(
+        private readonly ReportableInheritance $reportable,
+        private readonly ReportColumnsInheritance $columns,
+    ) {}
 
     /**
      * @return array<int, ReportBranch>
      */
     public function resolve(): array
     {
-        // Step 1: the whole tree, indexed by id and by parent, and the
-        // effective report flag of every node.
-        $categories = ProductCategory::query()->get(['id', 'parent_id', 'name', 'is_reportable'])->keyBy('id');
+        // Step 1: the whole tree, indexed by id, the effective report flag
+        // and the effective columns of every node.
+        $categories = ProductCategory::query()->get(['id', 'parent_id', 'name', 'is_reportable', 'report_columns'])->keyBy('id');
         $reportable = $this->reportable->effectiveMap($categories);
+        $columnsMap = $this->columns->effectiveMap($categories);
         $childrenByParent = $categories
             ->filter(fn (ProductCategory $category): bool => $reportable[$category->id])
             ->groupBy('parent_id');
@@ -52,7 +60,7 @@ final class ReportBranchResolver
         // Step 3: each root, then its reportable subtree depth-first.
         $branches = [];
         foreach ($roots as $root) {
-            $this->appendSubtree($root, 0, null, $this->inheritedColumns($root, $categories), $childrenByParent, $branches);
+            $this->appendSubtree($root, 0, null, $columnsMap, $childrenByParent, $branches);
         }
 
         return $branches;
@@ -70,67 +78,25 @@ final class ReportBranchResolver
     }
 
     /**
-     * @param  array<int, string>  $inheritedColumns
+     * @param  array<int, array<int, string>>  $columnsMap  effective columns per category id
      * @param  Collection<int|string, Collection<int, ProductCategory>>  $childrenByParent  reportable categories only
      * @param  array<int, ReportBranch>  $branches
      */
-    private function appendSubtree(ProductCategory $category, int $depth, ?string $parentKey, array $inheritedColumns, Collection $childrenByParent, array &$branches): void
+    private function appendSubtree(ProductCategory $category, int $depth, ?string $parentKey, array $columnsMap, Collection $childrenByParent, array &$branches): void
     {
-        $columns = $this->activeColumns($category->name) ?? $inheritedColumns;
-
         $branches[] = ReportBranch::withColumns(
             key: (string) $category->id,
             label: $category->name,
             categoryIds: [$category->id, ...$this->descendantIds($category->id, $childrenByParent)],
-            columns: $columns,
+            columns: $columnsMap[$category->id] ?? [],
             depth: $depth,
             parentKey: $parentKey,
         );
 
         $children = $childrenByParent->get($category->id, collect())->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE);
         foreach ($children as $child) {
-            $this->appendSubtree($child, $depth + 1, (string) $category->id, $columns, $childrenByParent, $branches);
+            $this->appendSubtree($child, $depth + 1, (string) $category->id, $columnsMap, $childrenByParent, $branches);
         }
-    }
-
-    /**
-     * The active columns a report root inherits from its nearest mapped
-     * ANCESTOR (structural walk, reportable or not); [] when none is mapped.
-     *
-     * @param  Collection<int, ProductCategory>  $categories  keyed by id
-     * @return array<int, string>
-     */
-    private function inheritedColumns(ProductCategory $root, Collection $categories): array
-    {
-        $visited = [$root->id => true];
-        $ancestor = $categories->get($root->parent_id);
-
-        while ($ancestor !== null && ! isset($visited[$ancestor->id])) {
-            $columns = $this->activeColumns($ancestor->name);
-
-            if ($columns !== null) {
-                return $columns;
-            }
-
-            $visited[$ancestor->id] = true;
-            $ancestor = $categories->get($ancestor->parent_id);
-        }
-
-        return [];
-    }
-
-    /**
-     * The indicator columns mapped to a category NAME (user directive
-     * 2026-09-18), case-insensitive; null when the name is not in the map.
-     *
-     * @return array<int, string>|null
-     */
-    private function activeColumns(string $categoryName): ?array
-    {
-        $map = (array) config('request-management-report.category_columns');
-        $columns = $map[mb_strtolower(trim($categoryName))] ?? null;
-
-        return $columns === null ? null : array_values((array) $columns);
     }
 
     /**

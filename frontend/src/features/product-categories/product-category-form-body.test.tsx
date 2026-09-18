@@ -33,6 +33,9 @@ vi.mock('@/features/product-categories/api', () => ({
   fetchEffectiveManagerLabels: (categoryId: number) => fetchEffectiveManagerLabelsMock(categoryId),
   fetchAttributeLayout: (...args: [number, string, string]) => fetchAttributeLayoutMock(...args),
   saveAttributeLayout: vi.fn(),
+  // The reportable-switch suite below flips the category into "effectively
+  // reportable" live, which mounts `ProductCategoryReportColumnsField`.
+  fetchReportColumnsCatalog: () => Promise.resolve([]),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -90,6 +93,11 @@ function category(
     is_reportable: false,
     effective_is_reportable: false,
     is_reportable_source_category: null,
+    report_columns: null,
+    effective_report_columns: [],
+    report_columns_source_category: null,
+    inherited_report_columns: [],
+    inherited_report_columns_source_category: null,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,

@@ -332,7 +332,7 @@ describe('RequestDashboardPanel', () => {
     expect(fetchRequestManagementDashboardMock).toHaveBeenCalled()
   })
 
-  it('shows an explicit empty message in a section with no chart (AC-048)', async () => {
+  it('shows an explicit empty message in a section with no tile and no chart (AC-048, spec 0141 AC-010)', async () => {
     fetchRequestManagementDashboardMock.mockResolvedValue(
       dashboardData({
         categories: [{ key: 'gol', label: 'GOL', summary: [], charts: [] }],
@@ -341,10 +341,13 @@ describe('RequestDashboardPanel', () => {
 
     renderPanel(true)
 
-    expect(await screen.findByText('No charts to show for this selection.')).toBeInTheDocument()
+    // Spec 0141: a reportable category with no column configured has neither
+    // tiles nor charts — both blocks fold to their own compact empty notice.
+    expect(await screen.findByText('No columns configured for this category.')).toBeInTheDocument()
+    expect(screen.getByText('No charts to show for this selection.')).toBeInTheDocument()
   })
 
-  it('renders a section per category, with every indicator tile including the zeros (rev-3 D-10/D-11)', async () => {
+  it('renders a section per category, with only the columns THAT category configures, zeros included (spec 0141 D-3/D-5)', async () => {
     renderPanel(true)
 
     // Overall tiles first, then one section per selected category.

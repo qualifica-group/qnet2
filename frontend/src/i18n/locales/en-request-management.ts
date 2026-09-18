@@ -396,6 +396,8 @@ export const requestManagement = {
       generic: 'Unable to load the dashboard because of a server error. Please try again shortly.',
     },
     empty: 'No charts to show for this selection.',
+    // Spec 0141: a reportable category may have no column configured.
+    tilesEmpty: 'No columns configured for this category.',
     overall: 'Overall',
     indicatorsChartTitle: 'Indicators',
     tilesTitle: 'Summary',

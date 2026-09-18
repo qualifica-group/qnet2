@@ -39,6 +39,7 @@ const SERVER_ERROR_FIELDS = [
   'requires_quote',
   'is_selectable',
   'is_reportable',
+  'report_columns',
   'management_mode',
   'single_quote_per_opportunity',
   'generates_contract',
@@ -122,6 +123,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         requires_quote: category.requires_quote,
         is_selectable: category.is_selectable,
         is_reportable: category.is_reportable,
+        report_columns: category.report_columns,
         management_mode: category.management_mode,
         single_quote_per_opportunity: category.single_quote_per_opportunity,
         generates_contract: category.generates_contract,
@@ -147,6 +149,9 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       // A new category inherits its parent's report flag (a root: not
       // reportable) until the operator forces it — mirrors the backend default.
       is_reportable: null,
+      // A new category inherits its ancestry's report columns (spec 0141)
+      // until the operator picks its own.
+      report_columns: null,
       // Spec 0077 D-8: `multiple` is the behavior every existing root already
       // has; a new root starts from the same default.
       management_mode: 'multiple',

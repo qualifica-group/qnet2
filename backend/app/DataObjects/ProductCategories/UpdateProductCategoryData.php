@@ -48,6 +48,9 @@ final readonly class UpdateProductCategoryData
         public bool $isSelectableSubmitted = false,
         public ?bool $isReportable = null,
         public bool $isReportableSubmitted = false,
+        /** Spec 0141: own report column selection. Normalized (catalog order, [] -> null) by ProductCategoryService, never here — same treatment as manager_labels, excluded from submittedAttributes(). */
+        public ?array $reportColumns = null,
+        public bool $reportColumnsSubmitted = false,
         public ?CategoryManagementMode $managementMode = null,
         public bool $managementModeSubmitted = false,
         public ?bool $singleQuotePerOpportunity = null,
@@ -91,6 +94,8 @@ final readonly class UpdateProductCategoryData
             isSelectableSubmitted: array_key_exists('is_selectable', $data),
             isReportable: isset($data['is_reportable']) ? (bool) $data['is_reportable'] : null,
             isReportableSubmitted: array_key_exists('is_reportable', $data),
+            reportColumns: array_key_exists('report_columns', $data) && $data['report_columns'] !== null ? (array) $data['report_columns'] : null,
+            reportColumnsSubmitted: array_key_exists('report_columns', $data),
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
             managementModeSubmitted: array_key_exists('management_mode', $data),
             singleQuotePerOpportunity: array_key_exists('single_quote_per_opportunity', $data) ? (bool) $data['single_quote_per_opportunity'] : null,
@@ -178,6 +183,11 @@ final readonly class UpdateProductCategoryData
         if ($this->isReportableSubmitted) {
             $attributes['is_reportable'] = $this->isReportable;
         }
+
+        // Spec 0141: `report_columns` is deliberately NOT added here, same
+        // reasoning as `manager_labels` above — its VALUE needs normalizing
+        // (catalog order, [] -> null), which ProductCategoryService applies
+        // on top of this array, reading `reportColumnsSubmitted` itself.
 
         // Spec 0077: only a ROOT category authors this mode; on a child the
         // value written here is immediately re-aligned on the root's by

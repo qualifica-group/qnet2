@@ -13,6 +13,7 @@ import type {
   ProductCategoryDetail,
   ProductCategoryDetailWithPermissions,
   ProductCategoryTreeNode,
+  ReportColumnOption,
   UpdateProductCategoryPayload,
 } from '@/features/product-categories/types'
 
@@ -52,6 +53,19 @@ export async function fetchEffectiveManagerLabels(categoryId: number): Promise<M
     `/product-categories/${categoryId}/effective-manager-labels`,
   )
   return data.data.manager_labels
+}
+
+/**
+ * Fetches the statistics-column catalogue a category may pick from (spec
+ * 0141): `GET /product-categories/report-columns`, catalog order, labels
+ * already translated server-side. Shared by the form's field and the detail
+ * view — both resolve a column's label from this list, never invent one.
+ */
+export async function fetchReportColumnsCatalog(): Promise<ReportColumnOption[]> {
+  const { data } = await apiClient.get<ApiResponse<ReportColumnOption[]>>(
+    '/product-categories/report-columns',
+  )
+  return data.data
 }
 
 /**

@@ -7,6 +7,7 @@ import type {
 } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
+import { sameReportColumns } from '@/features/product-categories/report-columns-inheritance'
 
 function sameAssignments(a: AttributeAssignmentInput[], b: AttributeAssignmentInput[]): boolean {
   if (a.length !== b.length) {
@@ -65,6 +66,9 @@ export function buildCreatePayload(
     is_selectable: values.is_selectable,
     // Per-node and never inherited, same shape as `is_selectable`.
     is_reportable: values.is_reportable,
+    // Own statistics-column selection (spec 0141): null inherits the nearest
+    // configured ancestor's, same null-means-inherit shape as `is_reportable`.
+    report_columns: values.report_columns,
     // Same rule for the management mode (spec 0077 D-2/INV-5): only a ROOT
     // authors it, a child inherits and a divergent value is a 422.
     ...(values.parent_id === null ? { management_mode: values.management_mode } : {}),
@@ -136,6 +140,12 @@ export function buildUpdatePayload(
   // Same per-node, never-inherited shape as `is_selectable`.
   if (values.is_reportable !== original.is_reportable) {
     payload.is_reportable = values.is_reportable
+  }
+
+  // Own value vs own value (never the effective/inherited one) — order-independent,
+  // since the picker's own toggling order does not reflect a real change.
+  if (!sameReportColumns(values.report_columns, original.report_columns)) {
+    payload.report_columns = values.report_columns
   }
 
   // Same root-only guard as `requires_quote` (spec 0077 D-2): sent only while

@@ -146,6 +146,22 @@ export interface ProductCategoryDetail {
   effective_is_reportable: boolean
   /** The ancestor `effective_is_reportable` is inherited from; null when the category overrides it or nothing is inherited. */
   is_reportable_source_category: { id: number; name: string } | null
+  /** This category's OWN report-columns selection (spec 0141): null inherits the nearest ancestor's own non-null value. */
+  report_columns: string[] | null
+  /** Own or inherited report columns, in catalog order — what the report/dashboard actually use for this category. */
+  effective_report_columns: string[]
+  /** The ancestor `report_columns` is inherited from; null when the category owns its columns or nothing is inherited. */
+  report_columns_source_category: { id: number; name: string } | null
+  /**
+   * What this category would inherit if its OWN `report_columns` were null,
+   * resolved from the ancestry ALONE — independent of the category's actual
+   * own value (spec 0141 rev-1). Empty when no ancestor configures any.
+   * Drives the form's "back to inherited" action: it only makes sense to
+   * offer it when there is something to fall back to.
+   */
+  inherited_report_columns: string[]
+  /** The ancestor `inherited_report_columns` comes from; null when none is configured. */
+  inherited_report_columns_source_category: { id: number; name: string } | null
   /** How Category Product lines behave on a card — authored by the branch ROOT, mirrored here on every descendant (spec 0077). */
   management_mode: CategoryManagementMode
   /** The root `management_mode` is inherited from; null when this category IS the root and owns the value. */
@@ -259,6 +275,8 @@ export interface CreateProductCategoryPayload {
   is_selectable?: boolean
   /** Own report override: true/false forces it, null (or omitted on create) inherits the parent's. */
   is_reportable?: boolean | null
+  /** Own report-columns selection (spec 0141): an array forces it, null inherits the nearest configured ancestor's. An empty array is normalized server-side to null. */
+  report_columns?: string[] | null
   /** Only ever sent for a ROOT category (`parent_id: null`): a child inherits the value and the server refuses a divergent one (spec 0077). */
   management_mode?: CategoryManagementMode
   /** Same root-only rule: only ever sent for a ROOT category, a child inherits it. */
@@ -310,6 +328,18 @@ export interface BulkMoveConflict {
 export interface BulkMoveConflictError {
   reason: BulkMoveConflictReason
   conflicts: BulkMoveConflict[]
+}
+
+/**
+ * One selectable entry of the Gestione Richieste statistics-column catalogue
+ * (spec 0141), as returned by `GET /product-categories/report-columns`:
+ * `key` matches `config('request-management-report.indicator_columns')`,
+ * `label` is already translated server-side. Catalog order (11 keys), never
+ * re-sorted client-side.
+ */
+export interface ReportColumnOption {
+  key: string
+  label: string
 }
 
 /**

@@ -380,6 +380,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // delete, plus the effective-attributes cross-resource rule) is enforced
     // server-side in ProductCategoryController via ProductCategoryPolicy.
     Route::get('product-categories/tree', [ProductCategoryController::class, 'tree']);
+    Route::get('product-categories/report-columns', [ProductCategoryController::class, 'reportColumns']); // spec 0141: catalog lookup, same literal-segment-wins reasoning
     Route::get('product-categories/{productCategory}/effective-attributes', [ProductCategoryController::class, 'effectiveAttributes']);
 
     // "Gestore Account" label preview (spec 0080): same literal-segment-wins

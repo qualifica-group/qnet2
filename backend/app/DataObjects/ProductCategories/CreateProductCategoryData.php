@@ -33,6 +33,8 @@ final readonly class CreateProductCategoryData
         public bool $isSelectable = true,
         /** Spec 0131 (user directive 2026-09-18): own override of the inherited report flag; null = inherit. */
         public ?bool $isReportable = null,
+        /** Spec 0141: own report column selection; null = inherit. Normalized (catalog order, [] -> null) by ProductCategoryService, never here. */
+        public ?array $reportColumns = null,
         /** Spec 0077: null = not submitted, resolved server-side (root's value, or "multiple" at a fresh root — D-8). */
         public ?CategoryManagementMode $managementMode = null,
         /** User directive 2026-08-07: same root-only semantics, null = not submitted (root's value, or false at a fresh root). */
@@ -66,6 +68,7 @@ final readonly class CreateProductCategoryData
             requiresQuote: array_key_exists('requires_quote', $data) ? (bool) $data['requires_quote'] : null,
             isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : true,
             isReportable: isset($data['is_reportable']) ? (bool) $data['is_reportable'] : null,
+            reportColumns: array_key_exists('report_columns', $data) && $data['report_columns'] !== null ? (array) $data['report_columns'] : null,
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
             singleQuotePerOpportunity: array_key_exists('single_quote_per_opportunity', $data) ? (bool) $data['single_quote_per_opportunity'] : null,
             generatesContract: array_key_exists('generates_contract', $data) ? (bool) $data['generates_contract'] : null,
