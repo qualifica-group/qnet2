@@ -151,6 +151,7 @@ final class WorkflowStatusCatalogue
      */
     public const array SECTIONS = [
         self::GOL => [
+            'Nuovo Contatto' => ['legend' => self::OPEN, 'description' => 'Nuovo contatto acquisito, non ancora lavorato.'],
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Contatto da ricontattare per completare la lavorazione o fornire ulteriori informazioni.'],
             'Attesa esito SFL/ADI' => ['legend' => self::OPEN, 'description' => 'In attesa dell\'esito relativo alla pratica SFL/ADI del candidato.'],
             'Attesa Attivazione DOTE' => ['legend' => self::PENDING, 'description' => 'In attesa dell\'attivazione della DOTE necessaria per procedere.'],
@@ -182,6 +183,7 @@ final class WorkflowStatusCatalogue
             'In Standby' => ['legend' => self::OPEN, 'description' => 'Pratica temporaneamente sospesa in attesa di ulteriori sviluppi.'],
         ],
         self::SELF_EMPLOYMENT => [
+            'Nuovo Contatto' => ['legend' => self::OPEN, 'description' => 'Nuovo contatto acquisito, non ancora lavorato.'],
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Candidato da ricontattare per completare la lavorazione, fornire informazioni o aggiornare la pratica.'],
             'Attesa Documenti' => ['legend' => self::PENDING, 'description' => 'In attesa della ricezione della documentazione necessaria per procedere con la gestione della pratica.'],
             'Problema DOC' => ['legend' => self::OPEN, 'description' => 'Documentazione mancante, incompleta, errata o con anomalie che impediscono il proseguimento della pratica.'],
@@ -198,6 +200,7 @@ final class WorkflowStatusCatalogue
             'In Standby' => ['legend' => self::OPEN, 'description' => 'Pratica temporaneamente sospesa in attesa di ulteriori informazioni, aggiornamenti o condizioni necessarie per procedere.'],
         ],
         self::SELF_FUNDED => [
+            'Nuovo Contatto' => ['legend' => self::OPEN, 'description' => 'Nuovo contatto acquisito, non ancora lavorato.'],
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Candidato da ricontattare per completare la gestione del contatto, fornire informazioni o procedere con le attività successive.'],
             'Pre-Iscrizione' => ['legend' => self::PENDING, 'description' => 'Candidato che ha manifestato interesse ed è stato inserito nella fase iniziale di raccolta dati e avvio della procedura di iscrizione.'],
             'Appuntamento' => ['legend' => self::OPEN, 'description' => 'Appuntamento fissato con il candidato per approfondire la proposta, verificare l\'interesse o procedere con la fase successiva.'],
@@ -213,6 +216,7 @@ final class WorkflowStatusCatalogue
             'Doppione' => ['legend' => self::NEGATIVE, 'description' => 'Anagrafica o contatto duplicato già presente nel sistema.'],
         ],
         self::CONSULTING => [
+            'Nuovo Contatto' => ['legend' => self::OPEN, 'description' => 'Nuovo contatto acquisito, non ancora lavorato.'],
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Contatto da ricontattare per fornire informazioni, aggiornamenti o proseguire la gestione della trattativa.'],
             'In trattativa' => ['legend' => self::PENDING, 'description' => 'Opportunità in fase di valutazione/negoziazione, con attività ancora in corso prima della definizione dell\'esito finale.'],
             'Appuntamento Fissato' => ['legend' => self::PENDING, 'description' => 'Appuntamento fissato con il cliente/candidato per approfondire la proposta o procedere con la fase successiva.'],
@@ -226,6 +230,7 @@ final class WorkflowStatusCatalogue
             'Numero inesistente' => ['legend' => self::NEGATIVE, 'description' => 'Recapito telefonico errato, inesistente o non valido.'],
         ],
         self::APL => [
+            'Nuovo Contatto' => ['legend' => self::OPEN, 'description' => 'Nuovo contatto acquisito, non ancora lavorato.'],
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Contatto da ricontattare per completare la lavorazione o fornire ulteriori informazioni.'],
             'Attesa esito SFL/ADI' => ['legend' => self::OPEN, 'description' => 'In attesa dell\'esito relativo alla pratica SFL/ADI del candidato.'],
             'Attesa _ App. CPI' => ['legend' => self::OPEN, 'description' => 'In attesa della definizione dell\'appuntamento presso il CPI.'],
@@ -258,7 +263,7 @@ final class WorkflowStatusCatalogue
      * @var list<string>
      */
     private const array GOL_BASE_STATUSES = [
-        'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'Associato SI _ NOI',
+        'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'Associato SI _ NOI',
         'Percorso 101', 'Autofinanziato', 'Associato NO _ Altro Ente', 'Frequenta già corso GOL',
         'NO _ Non ha Requisiti', 'Non interessato/a', 'Stato Rinunciatario', 'Irreperibile',
         'Trasferito altra Sede QG', 'Non pertinente - Altra regione', 'Numero Inesistente/Errato', 'Doppione',
@@ -279,7 +284,7 @@ final class WorkflowStatusCatalogue
      */
     public const array WORKFLOWS = [
         'GOL - Lombardia' => ['section' => self::GOL, 'statuses' => [
-            'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa Attivazione DOTE', 'Attesa DOC APL', 'Inviata MAIL APL',
+            'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa Attivazione DOTE', 'Attesa DOC APL', 'Inviata MAIL APL',
             'OK App. Fissato APL', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'Attesa Iscrizione SIUF',
             'In attesa aggancio BES', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'NO _ Non ha Requisiti', 'Non interessato/a', 'Stato Rinunciatario',
@@ -287,28 +292,28 @@ final class WorkflowStatusCatalogue
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Campania' => ['section' => self::GOL, 'statuses' => [
-            'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'APL-Orientamento',
+            'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'APL-Orientamento',
             'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato', 'Associato NO _ Altro Ente',
             'NO _ Non ha Requisiti', 'Frequenta già corso GOL', 'Non interessato/a', 'Stato Rinunciatario',
             'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione', 'Numero Inesistente/Errato',
             'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Lazio' => ['section' => self::GOL, 'statuses' => [
-            'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
+            'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
             'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
             'Stato Rinunciatario', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Sicilia' => ['section' => self::GOL, 'statuses' => [
-            'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
+            'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
             'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
             'Stato Rinunciatario', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Umbria' => ['section' => self::GOL, 'statuses' => [
-            'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa ok Assegno GOL', 'Attesa _ App. CPI',
+            'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa ok Assegno GOL', 'Attesa _ App. CPI',
             'OK App. Fissato CPI', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
             'Stato Rinunciatario', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
@@ -325,7 +330,7 @@ final class WorkflowStatusCatalogue
         // 2026-09-17): DIL is a container now, its courses sit on
         // "DIL - Lombardia" and on any region added under it tomorrow.
         'DIL' => ['section' => self::GOL, 'criterion_field' => self::BRANCH_CRITERION_FIELD, 'statuses' => [
-            'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL',
+            'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL',
             'OK App. Fissato APL', 'Attesa Attivazione DOTE', 'Attesa Iscrizione SIUF',
             'In attesa aggancio BES', 'Associato SI _ NOI', 'Non interessato/a', 'Stato Rinunciatario',
             'Numero Inesistente/Errato', 'Associato NO _ Altro Ente', 'NO _ Non ha Requisiti',
@@ -351,7 +356,8 @@ final class WorkflowStatusCatalogue
      * pinned rows whose default labels ("Aperta", "Chiusa positiva", "Chiusa
      * negativa") belong to no block of the sheet, so each takes the label of
      * the first state the sheet classifies under its own group instead — the
-     * `open` one lands on "Da Richiamare" in every block.
+     * `open` one lands on "Nuovo Contatto" in every block (user directive
+     * 2026-09-18: it precedes "Da Richiamare" everywhere).
      *
      * @var list<string>
      */

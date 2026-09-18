@@ -89,8 +89,13 @@ final class AttributeScopeResolver
     {
         $merged = [];
 
-        foreach (ProductCategory::query()->pluck('id') as $categoryId) {
-            foreach ($this->forCategory((int) $categoryId) as $row) {
+        // One batched read for the whole catalogue (the per-category walk cost
+        // ~5 queries per category on every grid request), seeding the
+        // per-category memo on the way so forCategory() never re-reads it.
+        foreach ($this->hierarchy->effectiveAttributesByCategory(AttributeContext::Quote) as $categoryId => $attributes) {
+            $this->byCategory[$categoryId] ??= self::sortBySortOrderThenCode($attributes);
+
+            foreach ($this->byCategory[$categoryId] as $row) {
                 $merged[$row['code']] ??= $row;
             }
         }

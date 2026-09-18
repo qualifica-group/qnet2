@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## STATI DI LAVORAZIONE — "NUOVO CONTATTO" PRIMA DI "DA RICHIAMARE" — NON COMMITTATO (2026-09-18)
+
+Direttiva utente 2026-09-18: nel seed di produzione (`QualificaProductionDataSeeder` → `QualificaWorkflowSeeder`)
+ogni set di stati apre con lo stato aperto "Nuovo Contatto", subito prima di "Da Richiamare".
+
+- `WorkflowStatusCatalogue`: aggiunto in tutte e 5 le SECTIONS (GOL, Autoimpiego/Yisu, Autofinanziato, Consulenza,
+  APL; legend `open`, descrizione unica) e in tutte le liste esplicite (`GOL_BASE_STATUSES`, Lombardia, Campania,
+  Lazio, Sicilia, Umbria, DIL). Essendo il primo `open`, ora è lui la riga pinned `system_key='open'`;
+  "Da Richiamare" diventa riga custom aperta.
+- Test: `QualificaWorkflowSeederTest` aggiornato al nuovo requisito. Seeding/QuoteWorkflows/RequestManagement/
+  Opportunities/RoleMatrix verdi, Pint pulito.
+- **Attenzione:** il seeder salta i workflow già esistenti (per nome): sugli ambienti già seedati lo stato NON
+  compare da solo. Va aggiunto dal configuratore, o serve una migrazione/comando dedicato se richiesto.
+- Nota: `tests/Feature/Opportunities` in `--parallel` dà 9 errori preesistenti (`opportunityFromLeadActor()`
+  definita in `OpportunityFromLeadTest.php`); in sequenza 238/238.
+
 ## GESTIONE RICHIESTE — PANNELLO "STATISTICHE" PERSISTITO VS PERMESSO — NON COMMITTATO (2026-09-17)
 
 Bugfix: lo stato aperto del pannello vive in `localStorage` (`stats-panel:{module.key}`), per browser e non per

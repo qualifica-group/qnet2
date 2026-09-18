@@ -68,8 +68,8 @@ it('seeds a GOL region column in the sheet order, between the pinned system rows
         ->toBe(array_column($custom, 'name'));
 
     // First and last custom row of the column, as the sheet lists them —
-    // 'Da Richiamare' is no longer here: it now labels the pinned open row.
-    expect($statuses->get(1)->name)->toBe('Attesa esito SFL/ADI')
+    // 'Nuovo Contatto' is no longer here: it now labels the pinned open row.
+    expect($statuses->get(1)->name)->toBe('Da Richiamare')
         ->and($statuses->get(count($custom))->name)->toBe('In Standby');
 });
 
@@ -97,31 +97,31 @@ it('labels the pinned system rows with the sheet states, never the generic defau
         // first loss of the column is the one below it.
         'closed_lost' => 'Autofinanziato',
         'closed_won' => 'Associato SI _ NOI',
-        'open' => 'Da Richiamare',
+        'open' => 'Nuovo Contatto',
     ]);
 
     expect($pinned('Consulenza'))->toBe([
         'closed_lost' => 'Persa',
         'closed_won' => 'VINTO',
-        'open' => 'Da Richiamare',
+        'open' => 'Nuovo Contatto',
     ]);
 
     expect($pinned('Autoimpiego'))->toBe([
         'closed_lost' => 'Non ha i Requisiti',
         'closed_won' => 'Associato SI _ NOI',
-        'open' => 'Da Richiamare',
+        'open' => 'Nuovo Contatto',
     ]);
 
     expect($pinned('Yisu'))->toBe([
         'closed_lost' => 'Non ha i Requisiti',
         'closed_won' => 'Associato SI _ NOI',
-        'open' => 'Da Richiamare',
+        'open' => 'Nuovo Contatto',
     ]);
 
     expect($pinned('Autofinanziato'))->toBe([
         'closed_lost' => 'Non risponde',
         'closed_won' => 'OK_Iscritto',
-        'open' => 'Da Richiamare',
+        'open' => 'Nuovo Contatto',
     ]);
 });
 
@@ -170,6 +170,7 @@ it('seeds the consulting pick list with the client mapping (user directive 2026-
     // The pinned rows anchor the set: `open` first, the two closed outcomes
     // last, so VINTO/Persa sit at the tail rather than mid-list.
     expect($statuses->pluck('name')->all())->toBe([
+        'Nuovo Contatto',
         'Da Richiamare',
         'In trattativa',
         'Appuntamento Fissato',
@@ -185,6 +186,7 @@ it('seeds the consulting pick list with the client mapping (user directive 2026-
 
     expect($statuses->mapWithKeys(fn (QuoteWorkflowStatus $status): array => [$status->name => $status->group->value])->all())
         ->toBe([
+            'Nuovo Contatto' => WorkflowStatusGroup::Open->value,
             'Da Richiamare' => WorkflowStatusGroup::Open->value,
             'In trattativa' => WorkflowStatusGroup::Pending->value,
             'Appuntamento Fissato' => WorkflowStatusGroup::Pending->value,
@@ -227,6 +229,7 @@ it('seeds the APL pick list on the APL branch (user directive 2026-09-07)', func
     // The pinned rows anchor the set: `open` first, the two closed outcomes
     // last, so "Assegnato"/"Percorso 101" sit at the tail rather than mid-list.
     expect($statuses->pluck('name')->all())->toBe([
+        'Nuovo Contatto',
         'Da Richiamare',
         'Attesa esito SFL/ADI',
         'Attesa _ App. CPI',
@@ -254,7 +257,7 @@ it('seeds the APL pick list on the APL branch (user directive 2026-09-07)', func
         ->toBe([
             WorkflowStatusGroup::ClosedLost->value => 13,
             WorkflowStatusGroup::ClosedWon->value => 1,
-            WorkflowStatusGroup::Open->value => 5,
+            WorkflowStatusGroup::Open->value => 6,
         ]);
 
     $assegnato = $statuses->firstWhere('name', 'Assegnato');
@@ -392,6 +395,7 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
     );
 
     expect($transcribed)->toBe([
+        ['Nuovo Contatto', WorkflowStatusGroup::Open->value],
         ['Da Richiamare', WorkflowStatusGroup::Open->value],
         ['Attesa esito SFL/ADI', WorkflowStatusGroup::Open->value],
         ['Attesa _ App. CPI', WorkflowStatusGroup::Pending->value],
@@ -443,7 +447,7 @@ it('seeds the DIL set on the DIL branch, pinned rows around the column', functio
     expect($statuses)->toHaveCount(count($all))
         ->and(count($custom))->toBe(count($all) - 3)
         ->and($statuses->first()->system_key)->toBe('open')
-        ->and($statuses->first()->name)->toBe('Da Richiamare')
+        ->and($statuses->first()->name)->toBe('Nuovo Contatto')
         ->and($statuses->slice(-2)->pluck('system_key')->all())->toBe(['closed_won', 'closed_lost'])
         ->and($statuses->slice(-2)->pluck('name')->all())->toBe(['Associato SI _ NOI', 'Non interessato/a'])
         ->and($statuses->pluck('system_key')->filter()->values()->all())->not->toContain('validated');
