@@ -18,7 +18,20 @@ valore ottimistico in cella ~35 ms.
   riempie anche la memo per-categoria. Dopo: 82 query costanti, 206 categorie = 82 ms.
 - Test: `tests/Unit/Tables/AttributeScopeResolverUnionTest.php` (union identica al merge per-categoria; query
   costanti al crescere delle categorie). Suite backend seriale 7890/7890, Pint pulito.
-- Residuo non toccato: la PATCH rilegge la riga con `baseQuery()->find()` due volte (~20 query ciascuna).
+- Residuo non toccato: la PATCH rilegge la riga con `baseQuery()->find()` due volte (~14 query ciascuna).
+
+### Seconda passata — costo CPU del batch — NON COMMITTATO (2026-09-18)
+
+Dopo il deploy: prod da ~4 s a ~1 s. Col catalogo di produzione in locale (200 categorie, 253 attributi, 2969
+assegnazioni `quote`) `columns()` costava ancora 612 ms con sole 4 query: idratare 2969 `Attribute`+pivot e
+ricostruire le stesse voci/opzioni per 4275 entry.
+- `effectiveAttributesByCategory()` legge i pivot come righe semplici (`DB::table('attribute_category')`) e
+  descrive ogni attributo UNA volta (`EffectiveAttributeComposer::describe()`), riusato da tutte le categorie.
+- `compose()` ora riceve "assignment" (`descriptor` + `is_required` + `sort_order`); il percorso per-livello li
+  costruisce con `assignmentFromPivot()`. Shape e ordine delle chiavi delle entry invariati.
+- Misure locali: `columns()` 612 → 49 ms, PATCH completa 519 → 78 ms. `CategoryHierarchy.php` a 493 righe.
+- Test: suite correlate 1200/1200; suite seriale 7889/7890 con 1 flaky preesistente
+  (`CampaignCrudTest` budget random del faker, 5/5 verde in isolamento). Pint pulito.
 
 ## STATI DI LAVORAZIONE — "NUOVO CONTATTO" PRIMA DI "DA RICHIAMARE" — NON COMMITTATO (2026-09-18)
 

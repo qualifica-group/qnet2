@@ -13,8 +13,9 @@ use Illuminate\Support\Collection;
  * each level's own assignments were read. Split out so the per-category read
  * (one query per level) and the batched read of every category at once
  * (CategoryHierarchy::effectiveAttributesByCategory()) share one truth about
- * the override rule and the row shape. Stateless: static, so CategoryHierarchy
- * keeps its argument-less construction.
+ * the override rule and the row shape. An assignment is the attribute's
+ * category-independent descriptor plus the pivot's per-category flags.
+ * Stateless: static, so CategoryHierarchy keeps its argument-less construction.
  */
 final class EffectiveAttributeComposer
 {
@@ -23,10 +24,10 @@ final class EffectiveAttributeComposer
      * wins, but keeps the position where the attribute FIRST appeared.
      *
      * @param  Collection<int, ProductCategory>  $chain  root-first, ending with $category
-     * @param  callable(ProductCategory): iterable<int, Attribute>  $ownRows  a level's own assignments in $context, pivot loaded
+     * @param  callable(ProductCategory): iterable<int, array{descriptor: array{fields: array<string, mixed>, options: array<int, array<string, mixed>>}, is_required: bool, sort_order: int}>  $ownAssignments  a level's own assignments in $context
      * @return Collection<int, array<string, mixed>>
      */
-    public static function compose(ProductCategory $category, Collection $chain, AttributeContext $context, callable $ownRows): Collection
+    public static function compose(ProductCategory $category, Collection $chain, AttributeContext $context, callable $ownAssignments): Collection
     {
         $ordered = [];
         $index = [];
@@ -34,14 +35,22 @@ final class EffectiveAttributeComposer
         foreach ($chain as $level) {
             $isOwn = $level->is($category);
 
-            foreach ($ownRows($level) as $attribute) {
-                $entry = self::entry($attribute, ! $isOwn, $context);
+            foreach ($ownAssignments($level) as $assignment) {
+                $attributeId = $assignment['descriptor']['fields']['id'];
+                $entry = [
+                    ...$assignment['descriptor']['fields'],
+                    'is_required' => $assignment['is_required'],
+                    'sort_order' => $assignment['sort_order'],
+                    'inherited' => ! $isOwn,
+                    'context' => $context->value,
+                    'options' => $assignment['descriptor']['options'],
+                ];
 
-                if (isset($index[$attribute->id])) {
-                    $ordered[$index[$attribute->id]] = $entry;
+                if (isset($index[$attributeId])) {
+                    $ordered[$index[$attributeId]] = $entry;
                 } else {
                     $ordered[] = $entry;
-                    $index[$attribute->id] = array_key_last($ordered);
+                    $index[$attributeId] = array_key_last($ordered);
                 }
             }
         }
@@ -50,25 +59,40 @@ final class EffectiveAttributeComposer
     }
 
     /**
-     * @return array<string, mixed>
+     * An assignment read through the `attributes` relation (pivot loaded).
+     *
+     * @return array{descriptor: array{fields: array<string, mixed>, options: array<int, array<string, mixed>>}, is_required: bool, sort_order: int}
      */
-    private static function entry(Attribute $attribute, bool $inherited, AttributeContext $context): array
+    public static function assignmentFromPivot(Attribute $attribute): array
     {
         return [
-            'id' => $attribute->id,
-            'code' => $attribute->code,
-            'name' => $attribute->name,
-            'type' => $attribute->type,
-            'description' => $attribute->description,
-            'help_text' => $attribute->help_text,
-            'placeholder' => $attribute->placeholder,
-            'icon' => $attribute->icon,
-            'config' => $attribute->config,
-            'relation_target' => $attribute->relation_target,
+            'descriptor' => self::describe($attribute),
             'is_required' => (bool) $attribute->pivot->is_required,
             'sort_order' => (int) $attribute->pivot->sort_order,
-            'inherited' => $inherited,
-            'context' => $context->value,
+        ];
+    }
+
+    /**
+     * The category-independent half of an entry. Computed ONCE per attribute
+     * by the batched read, which reuses it across every category assigning it.
+     *
+     * @return array{fields: array<string, mixed>, options: array<int, array<string, mixed>>}
+     */
+    public static function describe(Attribute $attribute): array
+    {
+        return [
+            'fields' => [
+                'id' => $attribute->id,
+                'code' => $attribute->code,
+                'name' => $attribute->name,
+                'type' => $attribute->type,
+                'description' => $attribute->description,
+                'help_text' => $attribute->help_text,
+                'placeholder' => $attribute->placeholder,
+                'icon' => $attribute->icon,
+                'config' => $attribute->config,
+                'relation_target' => $attribute->relation_target,
+            ],
             'options' => self::optionsFor($attribute),
         ];
     }

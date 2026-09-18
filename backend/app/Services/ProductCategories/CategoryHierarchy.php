@@ -7,8 +7,8 @@ use App\Enums\CategoryManagementMode;
 use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Read-side resolution of the product-category tree (spec 0017): ancestor
@@ -391,32 +391,50 @@ final class CategoryHierarchy
             $category,
             $this->inheritedAncestors($category, $context)->push($category),
             $context,
-            fn (ProductCategory $level): Collection => $this->ownAttributeRows($level, $context),
+            fn (ProductCategory $level): Collection => $this->ownAttributeRows($level, $context)
+                ->map(EffectiveAttributeComposer::assignmentFromPivot(...)),
         );
     }
 
     /**
      * effectiveAttributes() for EVERY category, keyed by category id, from a
-     * constant number of queries (the memoized tree + one eager load of every
-     * own assignment in $context) instead of ~2 per chain level per category:
-     * the request-management grid resolves this union on every request,
-     * inline cell PATCH included, so its cost must not grow with the catalogue.
+     * constant number of queries (the memoized tree, the pivot rows, the
+     * assigned attributes with their options) instead of ~2 per chain level
+     * per category: the request-management grid resolves this union on every
+     * request, inline cell PATCH included, so its cost must not grow with the
+     * catalogue. Pivot rows stay plain rows and each attribute is described
+     * once, not once per assignment: thousands of assignments share a few
+     * hundred attributes, and hydrating/describing each one dominated the cost.
      *
      * @return Collection<int, Collection<int, array<string, mixed>>>
      */
     public function effectiveAttributesByCategory(AttributeContext $context): Collection
     {
-        $ownRowsById = ProductCategory::query()
-            ->select('id')
-            ->with(['attributes' => static fn (BelongsToMany $query): BelongsToMany => self::scopeOwnAttributeRows($query, $context)])
+        $pivots = DB::table('attribute_category')
+            ->where('context', $context->value)
+            ->orderBy('sort_order')
+            ->get(['category_id', 'attribute_id', 'is_required', 'sort_order']);
+
+        $descriptors = Attribute::query()
+            ->whereIn('id', $pivots->pluck('attribute_id')->unique())
+            ->with('options')
             ->get()
-            ->mapWithKeys(static fn (ProductCategory $category): array => [$category->id => $category->getRelation('attributes')]);
+            ->mapWithKeys(static fn (Attribute $attribute): array => [$attribute->id => EffectiveAttributeComposer::describe($attribute)]);
+
+        $ownAssignments = $pivots
+            ->filter(static fn (object $pivot): bool => $descriptors->has($pivot->attribute_id))
+            ->groupBy('category_id')
+            ->map(static fn (Collection $rows): Collection => $rows->map(static fn (object $pivot): array => [
+                'descriptor' => $descriptors->get($pivot->attribute_id),
+                'is_required' => (bool) $pivot->is_required,
+                'sort_order' => (int) $pivot->sort_order,
+            ]));
 
         return $this->categoriesById()->map(fn (ProductCategory $category): Collection => EffectiveAttributeComposer::compose(
             $category,
             $this->inheritedAncestors($category, $context)->push($category),
             $context,
-            static fn (ProductCategory $level): Collection => $ownRowsById->get($level->id, collect()),
+            static fn (ProductCategory $level): Collection => $ownAssignments->get($level->id, collect()),
         ));
     }
 
@@ -466,18 +484,10 @@ final class CategoryHierarchy
      */
     private function ownAttributeRows(ProductCategory $level, AttributeContext $context): Collection
     {
-        return self::scopeOwnAttributeRows($level->attributes(), $context)->get();
-    }
-
-    /**
-     * The one definition of "own assignments in $context", shared by the
-     * per-level read and the batched eager load.
-     */
-    private static function scopeOwnAttributeRows(BelongsToMany $query, AttributeContext $context): BelongsToMany
-    {
-        return $query
+        return $level->attributes()
             ->wherePivot('context', $context->value)
             ->with('options')
-            ->orderBy('attribute_category.sort_order');
+            ->orderBy('attribute_category.sort_order')
+            ->get();
     }
 }
