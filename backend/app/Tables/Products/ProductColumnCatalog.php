@@ -122,6 +122,8 @@ final class ProductColumnCatalog
                 'filterable' => true,
                 'filterType' => 'set',
             ],
+            // Spec 0142: the Offerta usages, filtered/sorted by ProductUsageColumn.
+            ProductUsageColumn::declaration(),
             [
                 'id' => 'created_at',
                 'label' => 'products.columns.created_at',
@@ -149,6 +151,7 @@ final class ProductColumnCatalog
             ['columnId' => 'unit_of_measure', 'type' => 'set'],
             ['columnId' => 'product_typology', 'type' => 'set'],
             ['columnId' => 'product_type', 'type' => 'set'],
+            ['columnId' => ProductUsageColumn::COLUMN_ID, 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
         ];
     }

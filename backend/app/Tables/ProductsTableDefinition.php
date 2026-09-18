@@ -3,6 +3,7 @@
 namespace App\Tables;
 
 use App\Enums\ProductType;
+use App\Enums\ProductUsage;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
@@ -10,6 +11,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Tables\Products\ProductColumnCatalog;
 use App\Tables\Products\ProductRelationColumns;
+use App\Tables\Products\ProductUsageColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -25,12 +27,13 @@ use Illuminate\Support\Facades\Gate;
  * name) and are DERIVED: their set filter/sort/distinct-values are resolved
  * here against the related name, mirroring BusinessFunctionsTableDefinition's
  * `manager` derived column. No dynamic attribute is ever a column (spec 0017
- * decision).
+ * decision). `usages` (spec 0142) is delegated to ProductUsageColumn.
  */
 class ProductsTableDefinition extends AbstractTableDefinition
 {
     public function __construct(
         private readonly ProductRelationColumns $relationColumns,
+        private readonly ProductUsageColumn $usageColumn,
     ) {}
 
     public function domain(): string
@@ -123,7 +126,11 @@ class ProductsTableDefinition extends AbstractTableDefinition
      */
     protected function enumKeyFor(string $columnId, User $actor): ?string
     {
-        return $columnId === 'product_type' ? 'product_type' : null;
+        return match ($columnId) {
+            'product_type' => 'product_type',
+            ProductUsageColumn::COLUMN_ID => ProductUsageColumn::ENUM_KEY,
+            default => null,
+        };
     }
 
     /**
@@ -146,6 +153,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'unit_of_measure' => $this->unitOfMeasureSummary($row->unitOfMeasure),
             'product_typology' => $this->productTypologySummary($row->productTypology),
             'product_type' => $row->product_type,
+            'usages' => $row->usages?->map(static fn (ProductUsage $usage): string => $usage->value)->values()->all() ?? [],
             'created_at' => $row->created_at,
         ];
     }
@@ -231,6 +239,12 @@ class ProductsTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
+        if ($columnId === ProductUsageColumn::COLUMN_ID) {
+            $this->usageColumn->applyFilter($query, $filter);
+
+            return true;
+        }
+
         return $this->relationColumns->applyFilter($query, $columnId, $filter);
     }
 
@@ -242,6 +256,12 @@ class ProductsTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === ProductUsageColumn::COLUMN_ID) {
+            $this->usageColumn->applySort($query, $direction);
+
+            return true;
+        }
+
         return $this->relationColumns->applySort($query, $columnId, $direction);
     }
 
@@ -258,6 +278,10 @@ class ProductsTableDefinition extends AbstractTableDefinition
     {
         if ($columnId === 'product_type') {
             return $this->distinctProductTypes($search, $query, $limit);
+        }
+
+        if ($columnId === ProductUsageColumn::COLUMN_ID) {
+            return $this->usageColumn->distinctValues($search, $query);
         }
 
         return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Quotes;
 
 use App\DataObjects\Quotes\QuoteLineData;
+use App\Enums\ProductUsage;
 use App\Models\Product;
 
 /**
@@ -21,6 +22,9 @@ use App\Models\Product;
  * `sortOrder` is left null: QuoteLineData already treats that as "use this
  * row's own index in the submitted array" (AC-038), which IS the progressive
  * order AC-062 asks for.
+ *
+ * A product of interest that is not Sellable (spec 0142, D-6) yields no row:
+ * QuoteLineWriter would reject it on the REVENUE tab.
  */
 final class ProductOfferLineResolver
 {
@@ -38,9 +42,14 @@ final class ProductOfferLineResolver
         // One query for the whole set, never one per product.
         $products = Product::query()->whereIn('id', $productIds)->get()->keyBy('id');
 
+        $sellable = array_filter(
+            $productIds,
+            static fn (int $productId): bool => $products[$productId]->isUsableAs(ProductUsage::Sale),
+        );
+
         return array_values(array_map(
             fn (int $productId): QuoteLineData => $this->lineFor($products[$productId]),
-            $productIds,
+            $sellable,
         ));
     }
 

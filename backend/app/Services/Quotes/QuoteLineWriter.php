@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Quotes;
 
 use App\DataObjects\Quotes\QuoteLineData;
+use App\Enums\ProductUsage;
 use App\Enums\QuoteLineType;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\VatRate;
 use App\Services\Commissions\QuoteLineCommissionWriter;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 final class QuoteLineWriter
@@ -42,6 +44,8 @@ final class QuoteLineWriter
             ]);
         }
 
+        $this->assertProductsUsable($type, $lines, $existing);
+
         $rates = $this->resolveVatRates($lines);
         $units = $this->resolveProductUnits($lines);
 
@@ -68,6 +72,7 @@ final class QuoteLineWriter
                 // unit on the very next unrelated edit, erasing the freeze
                 // (bug found by the verifier, fixed 2026-09-01).
                 'unit_of_measure_id' => $isNew || $productChanged ? ($units[$data->productId] ?? null) : $line->unit_of_measure_id,
+                'additional_description' => $data->hasAdditionalDescription ? $data->additionalDescription : $line->additional_description,
                 'net_amount' => $amounts['net'],
                 'vat_amount' => $amounts['vat'],
                 'total_amount' => $amounts['total'],
@@ -83,6 +88,48 @@ final class QuoteLineWriter
 
         $existing->except($submittedIds)->each->delete();
         $quote->unsetRelations();
+    }
+
+    /**
+     * Spec 0142, D-5: every row that is new, or whose product changes, must
+     * carry a product usable on this tab (Sellable for REVENUE, Usable as
+     * cost for COST). A persisted row resubmitting its own product is exempt,
+     * so a historic quote stays saveable after its product's usages change.
+     * Enforced HERE because every channel (Offerte, Gestione Richieste,
+     * inline edit, Lead conversion) reaches this one writer.
+     *
+     * @param  array<int, QuoteLineData>  $lines
+     * @param  Collection<int, QuoteLine>  $existing
+     */
+    private function assertProductsUsable(QuoteLineType $type, array $lines, Collection $existing): void
+    {
+        $toCheck = array_filter(
+            array_values($lines),
+            static fn (QuoteLineData $line): bool => $line->id === null || $existing->get($line->id)?->product_id !== $line->productId,
+        );
+
+        if ($toCheck === []) {
+            return;
+        }
+
+        $usage = ProductUsage::forLineType($type);
+        $usable = Product::query()
+            ->whereIn('id', array_unique(array_map(static fn (QuoteLineData $line): int => $line->productId, $toCheck)))
+            ->whereJsonContains('usages', $usage->value)
+            ->pluck('id')
+            ->all();
+        $field = $type === QuoteLineType::Revenue ? 'offer_lines' : 'cost_lines';
+        $errors = [];
+
+        foreach ($toCheck as $index => $line) {
+            if (! in_array($line->productId, $usable, true)) {
+                $errors["{$field}.{$index}.product_id"] = [__('quotes.product_not_usable.'.$usage->value)];
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     /** @param array<int, QuoteLineData> $lines @return array<int, float> */

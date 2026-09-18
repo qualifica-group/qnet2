@@ -135,9 +135,12 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_18_100000_make_is_reportable_inheritable_on_product_categories_table`
     // (82nd), the report flag turned into an inheritable override, and spec
     // 0141's `2026_09_18_110000_add_report_columns_to_product_categories_table`
-    // (83rd), the per-category report column selection. Adding a migration
-    // means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 83]);
+    // (83rd), the per-category report column selection, and
+    // `2026_09_18_120000_add_additional_description_to_quote_lines_table`
+    // (84th), the per-line free text, and spec 0142's
+    // `2026_09_18_130000_add_usages_to_products_table` (85th), the product's
+    // Offerta usages. Adding a migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 85]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

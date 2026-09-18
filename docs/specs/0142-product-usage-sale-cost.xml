@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0142-product-usage-sale-cost" status="implemented" owner="utente" date="2026-09-18">
+
+  <goal>
+    Il prodotto dichiara in quali sezioni dell'Offerta puo' essere usato: "Vendibile" (tab Prodotti,
+    righe REVENUE) e/o "Utilizzabile come costo" (tab Costi, righe COST). I due setting sono
+    indipendenti e modellati con un enum.
+  </goal>
+
+  <context>
+    - Le righe offerta condividono `quote_lines`, discriminate da `QuoteLineType` (REVENUE/COST, spec 0065 D-11).
+    - Entrambi i tab usano lo stesso picker `QuoteProductSelect` su `GET /api/products/for-select`;
+      Gestione Richieste riusa la stessa riga REVENUE (`offer_lines`), anche via inline-edit griglia.
+    - Tutti i canali di scrittura (Offerte store/update, Gestione Richieste, inline-edit, conversione
+      Lead) convergono su `QuoteLineWriter::sync()`.
+  </context>
+
+  <decisions>
+    D-1  Enum `App\Enums\ProductUsage` { Sale = 'SALE', Cost = 'COST' } (HasMeta, esposto in
+         `config.form_enums.product_usage`). Mapping `ProductUsage::forLineType(QuoteLineType)`:
+         REVENUE -> SALE, COST -> COST.
+    D-2  Colonna `products.usages` JSON (array di valori ProductUsage), cast
+         `AsEnumCollection::of(ProductUsage::class)`. Almeno un valore obbligatorio.
+    D-3  Default (decisione utente): prodotti esistenti backfillati a `["SALE"]`; su create senza
+         `usages` il valore e' `["SALE"]` (default del model).
+    D-4  `for-select` accetta `usage` (SALE|COST) opzionale: filtra lista e total. Gli `ids[]` di
+         idratazione bypassano il filtro. Senza `usage` nessun filtro (picker prodotti di interesse,
+         import, ecc. invariati).
+    D-5  Enforcement server in `QuoteLineWriter::sync()` (unico punto comune a tutti i canali): una
+         riga NUOVA o il cui prodotto CAMBIA deve avere un prodotto abilitato per il tab, altrimenti
+         422 su `{offer_lines|cost_lines}.{index}.product_id`. Una riga esistente che ripresenta lo
+         stesso prodotto e' esente (offerte storiche restano salvabili).
+    D-6  Conversione Lead -> Offerta (`ProductOfferLineResolver`): i prodotti di interesse non
+         vendibili non generano righe REVENUE (sarebbero rifiutati da D-5).
+    D-7  FE: il form prodotto mostra due checkbox indipendenti; il picker riga invia
+         `usage=SALE` sul tab Prodotti/Gestione Richieste, `usage=COST` sul tab Costi; il probe
+         "prodotto unico di categoria" dell'autofill richieste invia `usage=SALE`.
+    D-8  FUORI SCOPE: colonna griglia prodotti, filtro nel picker "prodotti di interesse",
+         import prodotti (usa il default D-3).
+  </decisions>
+
+  <contract>
+    GET   /api/products/{id}           -> data.usages: ("SALE"|"COST")[]
+    POST  /api/products                -> usages?: ("SALE"|"COST")[] (min 1, distinct; default ["SALE"])
+    PATCH /api/products/{id}           -> usages?: ("SALE"|"COST")[] (min 1, distinct)
+    GET   /api/products/for-select     -> usage?: "SALE"|"COST"; ids[] bypassa il filtro
+    GET   /api/config                  -> data.enums.product_usage: [{value,label}]
+    Field permission `products.usages` (tipo multiselect).
+    POST/PATCH offerte (e canali offer_lines) -> 422 `{field}.{i}.product_id` se prodotto non abilitato (D-5)
+  </contract>
+
+  <acceptance>
+    AC-001  Migrazione: prodotti esistenti hanno usages = ["SALE"]; rollback rimuove la colonna.
+    AC-002  Create senza usages -> ["SALE"]; con ["COST"] o ["SALE","COST"] persistito; [] / valore
+            ignoto / duplicato -> 422.
+    AC-003  PATCH usages aggiorna; PATCH senza usages lo preserva.
+    AC-004  for-select usage=SALE esclude i solo-COST (items e total); usage=COST esclude i
+            solo-SALE; entrambi inclusi quando il prodotto ha entrambi; ids[] idrata comunque.
+    AC-005  Offerta: nuova riga REVENUE con prodotto solo-COST -> 422; nuova riga COST con prodotto
+            solo-SALE -> 422; prodotto con entrambi accettato su entrambi i tab.
+    AC-006  Riga esistente con prodotto poi disabilitato per quel tab: resubmit invariato -> 200;
+            cambio prodotto verso uno non abilitato -> 422.
+    AC-007  Conversione Lead: prodotto di interesse solo-COST non genera riga REVENUE.
+    AC-008  Form prodotto: due checkbox (create: solo Vendibile spuntato); almeno una obbligatoria;
+            dettaglio mostra gli utilizzi.
+    AC-009  Picker riga: tab Prodotti invia usage=SALE, tab Costi usage=COST.
+  </acceptance>
+
+</spec>

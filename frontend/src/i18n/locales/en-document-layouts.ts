@@ -180,6 +180,7 @@ export const documentLayouts = {
         code: 'Code',
         name: 'Name',
         description: 'Description',
+        additional_description: 'Row additional description',
         quantity: 'Quantity',
         unit_price: 'Unit price',
         vat_rate: 'VAT rate',

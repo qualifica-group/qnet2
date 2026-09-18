@@ -193,7 +193,7 @@ describe('QuoteOfferTab (spec 0065 AC-072)', () => {
 
     expect(fetchForSelectMock).toHaveBeenCalledWith(
       'products',
-      expect.objectContaining({ params: { category_ids: [7, 9] } }),
+      expect.objectContaining({ params: { usage: 'SALE', category_ids: [7, 9] } }),
     )
   })
 
@@ -213,9 +213,10 @@ describe('QuoteOfferTab (spec 0065 AC-072)', () => {
     fetchForSelectMock.mockClear()
     await addRowAndOpenProductPicker()
 
+    // Spec 0142: unlocked means no category scope; the tab's usage stays.
     expect(fetchForSelectMock).toHaveBeenCalledWith(
       'products',
-      expect.not.objectContaining({ params: expect.anything() }),
+      expect.objectContaining({ params: { usage: 'SALE' } }),
     )
   })
 

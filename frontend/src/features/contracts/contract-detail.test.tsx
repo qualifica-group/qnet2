@@ -419,6 +419,7 @@ describe('ContractDetailView — products (AC-046)', () => {
             product: { id: 1, code: 'P-1', name: 'Consulenza', category: null, product_typology: null, business_function: null },
             quantity: '2.00',
             unit_of_measure: null,
+            additional_description: null,
             unit_price: '100.00',
             vat_rate_id: null,
             vat_rate: null,

@@ -45,7 +45,7 @@ final class DocumentLayoutProductsTableBlockValidator
      * @var array<int, string>
      */
     private const array COLUMN_KEY_VALUES = [
-        'code', 'name', 'description', 'quantity', 'unit_price', 'vat_rate', 'net_amount', 'vat_amount', 'total_amount',
+        'code', 'name', 'description', 'additional_description', 'quantity', 'unit_price', 'vat_rate', 'net_amount', 'vat_amount', 'total_amount',
     ];
 
     /** @var array<int, string> */

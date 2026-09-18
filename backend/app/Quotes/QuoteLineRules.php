@@ -31,6 +31,9 @@ final class QuoteLineRules
     /** Backend per-collection row ceiling, mirrored by the frontend's `MAX_LINES_PER_TAB`. */
     public const int MAX_ROWS = 200;
 
+    /** Mirrored by the frontend's `ADDITIONAL_DESCRIPTION_MAX_LENGTH`. */
+    public const int ADDITIONAL_DESCRIPTION_MAX_LENGTH = 5000;
+
     /**
      * @param  string  $field  the payload key the rows travel under (`offer_lines`, `cost_lines`, or `value` for a single inline cell)
      * @param  bool  $withCommissions  whether the row may carry the provvigioni block at all
@@ -50,6 +53,7 @@ final class QuoteLineRules
             "{$field}.*.unit_price" => ['required', 'numeric', 'min:0', 'decimal:0,2', 'max:99999999.99'],
             "{$field}.*.vat_rate_id" => ['nullable', 'integer', Rule::exists('vat_rates', 'id')],
             "{$field}.*.sort_order" => ['nullable', 'integer', 'min:0'],
+            "{$field}.*.additional_description" => ['sometimes', 'nullable', 'string', 'max:'.self::ADDITIONAL_DESCRIPTION_MAX_LENGTH],
             "{$field}.*.net_amount" => ['prohibited'],
             "{$field}.*.vat_amount" => ['prohibited'],
             "{$field}.*.total_amount" => ['prohibited'],

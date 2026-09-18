@@ -72,6 +72,7 @@ export const COLUMN_KEYS = [
   'code',
   'name',
   'description',
+  'additional_description',
   'quantity',
   'unit_price',
   'vat_rate',

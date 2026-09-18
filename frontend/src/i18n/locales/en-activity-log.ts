@@ -117,6 +117,7 @@ export const activityLog = {
     cost: 'Cost',
     price: 'Price',
     product_type: 'Type',
+    usages: 'Offer usage',
     inherits_product_attributes: 'Inherits product attributes',
     inherits_quote_attributes: 'Inherits quote attributes',
     inherits_work_order_attributes: 'Inherits work order attributes',

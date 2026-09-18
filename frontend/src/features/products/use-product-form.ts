@@ -11,7 +11,12 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import { useEffectiveAttributes } from '@/features/product-categories/use-effective-attributes'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import { createProduct, productDetailQueryKey, updateProduct } from '@/features/products/api'
-import { buildCreatePayload, buildUpdatePayload, normalizeDecimal } from '@/features/products/product-form-payload'
+import {
+  buildCreatePayload,
+  buildUpdatePayload,
+  DEFAULT_PRODUCT_USAGES,
+  normalizeDecimal,
+} from '@/features/products/product-form-payload'
 import {
   buildCreateProductSchema,
   buildUpdateProductSchema,
@@ -35,6 +40,7 @@ const SERVER_ERROR_FIELDS = [
   'price',
   'category_id',
   'product_type',
+  'usages',
   'vat_rate_id',
   'supplier_id',
   'unit_of_measure_id',
@@ -134,6 +140,7 @@ export function useProductForm({ mode, onSuccess, initialCode }: UseProductFormA
         price: normalizeDecimal(product.price),
         category_id: product.category_id,
         product_type: product.product_type,
+        usages: product.usages ?? DEFAULT_PRODUCT_USAGES,
         vat_rate_id: product.vat_rate_id,
         supplier_id: product.supplier_id,
         unit_of_measure_id: product.unit_of_measure_id,
@@ -150,6 +157,7 @@ export function useProductForm({ mode, onSuccess, initialCode }: UseProductFormA
       price: null,
       category_id: null,
       product_type: DEFAULT_PRODUCT_TYPE,
+      usages: DEFAULT_PRODUCT_USAGES,
       vat_rate_id: null,
       supplier_id: null,
       unit_of_measure_id: null,

@@ -46,6 +46,8 @@ function baseFields(t: TFunction) {
     price: z.number().nonnegative(t('products.form.priceInvalid')).nullable(),
     category_id: z.number().nullable(),
     product_type: z.enum(['SERVICE']),
+    // Spec 0142: the independent Sellable / Usable-as-cost set, at least one.
+    usages: z.array(z.enum(['SALE', 'COST'])).min(1, t('products.form.usagesRequired')),
     vat_rate_id: z.number().nullable(),
     supplier_id: z.number().nullable(),
     // `null`/unset resolves server-side to the default unit (spec 0088, D-4).

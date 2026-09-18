@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * ResourceAuthorization for the `products` resource (spec 0017; `code`
  * writable-on-create per spec 0065, D-1b).
  *
- * Covers ONLY the generic fields (name/description/cost/price/category_id/product_type)
+ * Covers ONLY the generic fields (name/description/cost/price/category_id/product_type/usages)
  * plus `code`: dynamic attributes are authorized at the resource level
  * (products.update), never per-field (spec 0017 decision — no
  * field-permission granularity on EAV values). Every field's ceiling is
@@ -46,6 +46,9 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('price', 'number', mandatory: true),
             new FieldDefinition('category_id', 'select', mandatory: true),
             new FieldDefinition('product_type', 'select', mandatory: true),
+            // Spec 0142: NOT `mandatory` — absent resolves to the model's
+            // default (Sellable only), like unit_of_measure_id below.
+            new FieldDefinition('usages', 'multiselect'),
             new FieldDefinition('vat_rate_id', 'select'),
             new FieldDefinition('supplier_id', 'select'),
             // Spec 0088, D-4: NOT `mandatory` — an absent value still resolves
@@ -84,6 +87,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             'price' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'category_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'product_type' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'usages' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'vat_rate_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'supplier_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'unit_of_measure_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

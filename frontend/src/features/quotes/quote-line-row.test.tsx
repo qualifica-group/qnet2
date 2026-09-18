@@ -118,6 +118,35 @@ describe('QuoteLineRow (spec 0065)', () => {
     )
   })
 
+  it.each([
+    ['revenue', 'SALE'],
+    ['cost', 'COST'],
+  ] as const)('spec 0142: a %s row only offers the products usable as %s', async (variant, usage) => {
+    render(
+      <QuoteLineRow
+        index={0}
+        variant={variant}
+        row={EMPTY_ROW}
+        disabled={false}
+        withCommissions={false}
+        vatRatePercentFor={() => null}
+        onChangeProduct={vi.fn()}
+        onChangeField={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Row 1 product' }))
+
+    await waitFor(() =>
+      expect(fetchForSelectMock).toHaveBeenCalledWith(
+        'products',
+        expect.objectContaining({ params: { usage } }),
+      ),
+    )
+  })
+
   it('shows the product code read-only after picking it', async () => {
     // A small controlled harness: the row is a controlled component, so its
     // `product_id` only reflects the pick once the caller feeds it back in

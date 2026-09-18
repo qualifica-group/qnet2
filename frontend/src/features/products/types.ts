@@ -12,6 +12,9 @@ import type { ApplicableAttribute } from '@/features/request-management/types'
 /** Product classification (spec 0017). SERVICE-only for now; mirrors the `ProductType` enum. */
 export type ProductType = 'SERVICE'
 
+/** Where the product may be used inside an Offerta (spec 0142); mirrors the `ProductUsage` enum. */
+export type ProductUsage = 'SALE' | 'COST'
+
 /** Minimal category projection hydrating the product's grid/detail. */
 export interface ProductCategorySummary {
   id: number
@@ -70,6 +73,12 @@ export interface ProductDetail {
   category_id: number
   category: ProductCategorySummary | null
   product_type: ProductType
+  /**
+   * Offerta tabs the product may be picked on (spec 0142): SALE -> Prodotti,
+   * COST -> Costi. Optional under the same fixture-compatibility convention
+   * as `business_function`.
+   */
+  usages?: ProductUsage[]
   created_at: string
   /**
    * Effective business function of the product's category, read-only
@@ -142,6 +151,8 @@ export interface CreateProductPayload {
   price: number
   category_id: number
   product_type: ProductType
+  /** At least one (spec 0142); omitted resolves server-side to `['SALE']`. */
+  usages: ProductUsage[]
   vat_rate_id: number | null
   supplier_id: number | null
   /** `null`/omitted resolves server-side to the default unit (spec 0088, D-4). */

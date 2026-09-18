@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
+import type { ProductUsage } from '@/features/products/types'
 import type { QuoteLineCategoryRef, QuoteLineUnitOfMeasureRef } from '@/features/quotes/types'
 
 /**
@@ -52,6 +53,8 @@ interface QuoteProductSelectProps {
    * array locks the picker with nothing to scope to — the caller disables it.
    */
   categoryIds?: number[]
+  /** Spec 0142: only the products usable on the row's tab (SALE = Prodotti, COST = Costi). */
+  usage: ProductUsage
   disabled?: boolean
   triggerLabel: string
   id?: string
@@ -70,6 +73,7 @@ export function QuoteProductSelect({
   onChange,
   selectedItem = null,
   categoryIds,
+  usage,
   disabled = false,
   triggerLabel,
   id,
@@ -79,8 +83,9 @@ export function QuoteProductSelect({
   const { t } = useTranslation()
 
   const params = useMemo(
-    () => (categoryIds ? { category_ids: categoryIds } : undefined),
-    [categoryIds],
+    (): Record<string, string | number[]> =>
+      categoryIds ? { usage, category_ids: categoryIds } : { usage },
+    [categoryIds, usage],
   )
 
   return (

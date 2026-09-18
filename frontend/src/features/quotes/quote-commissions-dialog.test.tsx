@@ -97,6 +97,10 @@ describe('QuoteCommissionsDialog', () => {
     await waitFor(() =>
       expect(screen.getAllByRole('button', { name: 'Add manual commission' })[0]).toBeEnabled(),
     )
+    // Before any commission exists, each role already names who was picked upstream.
+    for (const name of ['Mario Rossi', 'Elio Fabbri', 'Ivo Bianchi', 'ACME Spa']) {
+      expect(screen.getByText(name)).toBeInTheDocument()
+    }
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Add manual commission' })[0])
 

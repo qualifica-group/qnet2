@@ -23,6 +23,7 @@ use PhpOffice\PhpWord\Style\Table as TableStyle;
  *     shading, marked `tblHeader` so it repeats on every page (AC-246);
  *  3. one row per QuoteLine; each cell holds one PARAGRAPH per `lines[]`
  *     entry, its `keys` concatenated by `separator` (0069 D-11, AC-242);
+ *     an entry resolving to empty text is skipped unless the whole cell is;
  *  4. no lines at all -> a single row, `empty_text` spanning every column
  *     via `gridSpan` (AC-243) — never an empty products row;
  *  5. `totals.show` -> one row per `totals.rows[]`: blank cells for every
@@ -123,11 +124,24 @@ final class ProductsTableRenderer
      */
     private function renderColumnLines(CellElement $cell, array $column, QuoteLine $line): void
     {
-        foreach ($column['lines'] as $columnLine) {
-            $text = implode(
+        $texts = array_map(
+            fn (array $columnLine): string => implode(
                 (string) ($columnLine['separator'] ?? ''),
                 array_map(fn (string $key): string => $this->columnResolver->value($key, $line), $columnLine['keys']),
-            );
+            ),
+            $column['lines'],
+        );
+        // An optional value (e.g. a line without additional_description) must
+        // not print a blank paragraph under the others; a cell whose lines are
+        // ALL empty still keeps them, since a Word cell needs a paragraph.
+        $keepEmpty = implode('', $texts) === '';
+
+        foreach ($column['lines'] as $index => $columnLine) {
+            $text = $texts[$index];
+
+            if ($text === '' && ! $keepEmpty) {
+                continue;
+            }
 
             $cell->addText($text, [
                 'bold' => (bool) ($columnLine['bold'] ?? false),

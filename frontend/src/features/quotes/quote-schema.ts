@@ -54,6 +54,9 @@ export const QUANTITY_MAX = 999999.99
 /** Backend `unit_price` ceiling (`max:99999999.99`). */
 export const UNIT_PRICE_MAX = 99999999.99
 
+/** Backend `QuoteLineRules::ADDITIONAL_DESCRIPTION_MAX_LENGTH`. */
+export const ADDITIONAL_DESCRIPTION_MAX_LENGTH = 5000
+
 /**
  * `true` when `value` has at most 2 decimal digits (AC-032: `10.005` fails,
  * `10.01` passes). Shifts the decimal point via the number's own (exact,
@@ -108,6 +111,7 @@ export function quoteLineRowSchema(t: TFunction) {
         .optional(),
       unit_price: z.number().nullable(),
       vat_rate_id: z.number().nullable(),
+      additional_description: z.string().max(ADDITIONAL_DESCRIPTION_MAX_LENGTH).nullable().optional(),
       commissions: z.array(z.object({
         id: z.number().optional(),
         recipient_role: z.enum(COMMISSION_ROLES),

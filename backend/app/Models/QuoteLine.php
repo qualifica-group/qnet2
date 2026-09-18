@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'unit_price',
     'vat_rate_id',
     'unit_of_measure_id',
+    'additional_description',
     'net_amount',
     'vat_amount',
     'total_amount',

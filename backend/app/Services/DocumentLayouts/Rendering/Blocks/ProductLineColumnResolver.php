@@ -8,7 +8,7 @@ use App\Models\QuoteLine;
 use App\Services\DocumentLayouts\Rendering\ValueFormatter;
 
 /**
- * Resolves ONE of the products_table's 9 closed ColumnKey values (spec 0069
+ * Resolves ONE of the products_table's 10 closed ColumnKey values (spec 0069
  * config_schema #4) to display text for a single QuoteLine — shared by
  * ProductsTableRenderer for every `lines[].keys` entry. `discount` is
  * deliberately absent (0069 D-4): there is no such column in this allow-list.
@@ -21,6 +21,7 @@ final class ProductLineColumnResolver
             'code' => ValueFormatter::text($line->product?->code),
             'name' => ValueFormatter::text($line->product?->name),
             'description' => ValueFormatter::text($line->product?->description),
+            'additional_description' => ValueFormatter::text($line->additional_description),
             'quantity' => ValueFormatter::quantity($line->quantity),
             'unit_price' => ValueFormatter::currency($line->unit_price),
             'vat_rate' => ValueFormatter::vatRate($line->vatRate),

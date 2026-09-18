@@ -76,6 +76,11 @@ export const enums = {
   product_type: {
     SERVICE: 'Service',
   },
+  // Product usage inside an offer (spec 0142).
+  product_usage: {
+    SALE: 'Sellable',
+    COST: 'Usable as cost',
+  },
   // Registry convention status (spec 0020).
   agreement_status: {
     negotiating: 'Negotiating',

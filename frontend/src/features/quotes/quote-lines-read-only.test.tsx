@@ -17,6 +17,7 @@ function lineFixture(overrides: Partial<QuoteLine> = {}): QuoteLine {
     product: { id: 42, code: 'PRD-0042', name: 'Widget Pro', category: null, product_typology: null, business_function: null },
     quantity: '2.00',
     unit_of_measure: { id: 1, name: 'Kilogram', symbol: 'kg' },
+    additional_description: null,
     unit_price: '120.00',
     vat_rate_id: 7,
     vat_rate: { id: 7, name: 'IVA 22%', rate: '22.00' },
@@ -49,6 +50,11 @@ describe('QuoteLinesReadOnlyList', () => {
   it('shows the unit of measure symbol next to the quantity (spec 0088 AC-061)', () => {
     render(<QuoteLinesReadOnlyList lines={[lineFixture()]} />)
     expect(screen.getByText('kg')).toBeInTheDocument()
+  })
+
+  it('shows the line additional description under the row when present', () => {
+    render(<QuoteLinesReadOnlyList lines={[lineFixture({ additional_description: 'Montaggio incluso' })]} />)
+    expect(screen.getByText('Montaggio incluso')).toBeInTheDocument()
   })
 
   it('falls back to a placeholder for a legacy line with no frozen unit of measure', () => {

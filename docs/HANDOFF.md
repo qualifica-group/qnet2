@@ -3,6 +3,65 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## PRODOTTI — UTILIZZO IN OFFERTA (VENDIBILE / COSTO) — NON COMMITTATO (2026-09-18)
+
+Spec 0142. Enum `App\Enums\ProductUsage` { Sale='SALE', Cost='COST' } (HasMeta, `config.form_enums.product_usage`,
+`ProductUsage::forLineType(QuoteLineType)`).
+- DB: `products.usages` JSON (cast `AsEnumCollection::of(ProductUsage)`), migrazione `2026_09_18_130000_add_usages_to_products_table`
+  backfill `["SALE"]` (decisione utente: esistenti e nuovi = solo Vendibile). Default nel model (`$attributes`).
+  `QuoteWorkflowMigrationTest` rollback step 84 -> 85.
+- API prodotto: `usages` (`sometimes|array|min:1`, `distinct`, enum) su store/update; `ProductResource.usages`; field permission
+  `usages` (multiselect, non mandatory). `GET products/for-select?usage=SALE|COST` (`ForSelectQuery::$productUsage`,
+  `whereJsonContains`); `ids[]` bypassa il filtro.
+- Enforcement: `QuoteLineWriter::assertProductsUsable()` (unico punto comune a Offerte / Gestione Richieste / inline-edit / conversione
+  Lead): riga nuova o con prodotto cambiato -> 422 `{offer_lines|cost_lines}.{i}.product_id` (`quotes.product_not_usable.{SALE|COST}`);
+  riga esistente con lo stesso prodotto esente. `ProductOfferLineResolver` salta i prodotti di interesse non vendibili.
+- Factory: default ENTRAMBI gli usi (comportamento pre-0142, non rompe i test su cost_lines); stati `saleOnly()` / `costOnly()`.
+- FE: `ProductUsageField` (2 checkbox, sezione Classificazione), `DEFAULT_PRODUCT_USAGES` in `product-form-payload.ts`, badge nel
+  dettaglio. `QuoteProductSelect` ha prop obbligatoria `usage` (da `variant` in `QuoteLineRow`); il probe autofill richieste invia
+  `usage: 'SALE'`. i18n `enums.product_usage.*`, `products.form.usages[Required]`, `products.columns.usages`.
+- Test: `tests/Feature/Products/ProductUsageTest.php` (AC-001..007), FE `product-form-usages.test.tsx`, casi in
+  `quote-line-row.test.tsx` / `product-form-payload.test.ts`; aggiornati i test che asserivano la shape esatta dei `params` del picker.
+- Fuori scope (D-8): colonna griglia prodotti, filtro nel picker "prodotti di interesse".
+- Seed demo: `DemoCostProductSeeder` + `DemoCatalog\DemoCostProductCatalogue` (13 voci solo COST: noleggio auto, carburante,
+  biglietti treno AV/regionale, aereo, taxi, pedaggio, parcheggio, hotel, pasto, materiale didattico, affitto aula, docente
+  esterno) sotto la radice "Spese e Trasferte" SENZA funzione aziendale (mai prodotto di interesse / riga REVENUE). Chiamato da
+  `DemoDataSeeder` dopo `DemoProductSeeder`. `DemoProductSeeder` marca i corsi demo SALE+COST e `DemoQuoteSeeder` pesca le righe
+  costo tra i prodotti COST. Test `tests/Feature/Products/DemoCostProductSeederTest.php`.
+- Nota verifica: `migrate:fresh --seed` su SQLite fallisce in `locations:add` (SQL world, "near ghair") — preesistente, non 0142.
+
+## SEED DEMO vs SPEC 0142 (usages prodotto) — FIX NON COMMITTATO (2026-09-18)
+
+`DemoQuoteSeeder` falliva ("The selected product cannot be used as a cost."): la migrazione 0142 porta tutti i prodotti a
+`["SALE"]` e `QuoteLineWriter::assertProductsUsable()` rifiuta le righe costo. Fix: `DemoProductSeeder` crea i prodotti demo
+con `usages: [Sale, Cost]`; `DemoQuoteSeeder` pesca le righe costo solo tra prodotti con `usages` contenente `COST`
+(nessuno -> offerta senza riga costo). `DemoQuoteSeederTest` rosso senza fix, verde con fix; 152 test seeder verdi.
+Un DB gia' popolato resta con prodotti SALE-only (seeder idempotente, non li aggiorna): serve `migrate:fresh` + seed.
+
+## OFFERTE — DESCRIZIONE AGGIUNTIVA SULLA RIGA PRODOTTO — NON COMMITTATO (2026-09-18)
+
+- DB: `quote_lines.additional_description` TEXT nullable (migrazione `2026_09_18_120000_add_additional_description_to_quote_lines_table`).
+  `QuoteWorkflowMigrationTest` rollback step 83 -> 84 (poi 84 -> 85 per la migrazione di spec 0142, gia' applicato).
+- API: `offer_lines[*]`/`cost_lines[*].additional_description` (`sometimes|nullable|string|max:5000`, `QuoteLineRules::ADDITIONAL_DESCRIPTION_MAX_LENGTH`).
+  Chiave ASSENTE = il writer conserva il valore salvato (`QuoteLineData::$hasAdditionalDescription`): griglia/cell PATCH e
+  Gestione Richieste non la inviano e non la cancellano. `QuoteLineResource.additional_description`.
+- Preventivo: nuova ColumnKey `additional_description` (validator BE + `COLUMN_KEYS` FE + label i18n). `ProductsTableRenderer`
+  salta una riga di cella vuota se la cella ha altro contenuto (niente paragrafo bianco sotto il nome).
+- FE: `quote-line-additional-description.tsx` (azione compatta -> textarea a tutta riga), solo tab Offerta del form Offerte
+  (`variant=revenue && withCommissions`); `linesToFormValues`/`originalLineInputs` idratano il campo solo con `withCommissions`;
+  `toLineInputs` invia trim o null solo se la riga ha la chiave. Read-only list mostra il testo sotto la riga.
+- Test: BE `QuoteLineAdditionalDescriptionTest` + nuovo caso `ProductsTableRendererTest` (1330 verdi su Quotes/QuoteWorkflows/
+  DocumentLayouts/RequestManagement); FE `quote-line-additional-description.test.tsx` + read-only (935 verdi), tsc -b pulito.
+- Da fare lato utente: `php artisan migrate`; nel layout del preventivo aggiungere la chiave "Descrizione aggiuntiva riga"
+  come seconda riga della colonna prodotto.
+
+## OFFERTE — POPUP COMMISSIONI MOSTRA IL DESTINATARIO SELEZIONATO — NON COMMITTATO (2026-09-18)
+
+`quote-commissions-dialog.tsx`: per i ruoli senza commissione, sotto il titolo del ruolo compare
+"Selezionato sull'offerta: <nome>" (da `POST /quotes/commission-recipients`, gated da field permission
+`commission_recipient`). Nuova chiave i18n `quotes.form.commissions.selectedRecipient` (it/en). Test aggiornato in
+`quote-commissions-dialog.test.tsx`. Vitest quotes 260/260, tsc -b, eslint puliti.
+
 ## GESTIONE RICHIESTE — COLONNE REPORT CONFIGURABILI PER CATEGORIA — NON COMMITTATO (2026-09-18)
 
 Spec 0141 (supera 0131 D-4-bis, nota D-6 in 0131). Catalogo colonne resta `config('request-management-report.indicator_columns')`;

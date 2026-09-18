@@ -128,6 +128,11 @@ class ProductService
                 'product_typology_id' => $data->productTypologyId,
             ]);
 
+            // Spec 0142, D-3: absent keeps the model's default (Sellable only).
+            if ($data->usages !== null) {
+                $product->usages = $data->usages;
+            }
+
             if ($data->hasAttributeValues()) {
                 $this->applyAttributeValues($product, $data->attributeValues);
             }
@@ -283,7 +288,8 @@ class ProductService
      * `code`/`price`/`cost`/`vat_rate_id`/`vat_rate` (spec 0065, AC-009) ride
      * along on the SAME projection: the Quote line form precompiles
      * `unit_price` and the VAT rate from a single for-select pick, no extra
-     * request.
+     * request. `productUsage` (spec 0142, D-4) narrows the page to one Offerta
+     * tab's usable products.
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
@@ -295,6 +301,12 @@ class ProductService
 
         if ($query->hasCategoryIds()) {
             $base->whereIn('category_id', $query->categoryIds);
+        }
+
+        // Spec 0142, D-4: the Offerta line picker only offers what its tab
+        // may use; the `ids[]` hydration below bypasses it like the rest.
+        if ($query->productUsage !== null) {
+            $base->whereJsonContains('usages', $query->productUsage->value);
         }
 
         $total = (clone $base)->count();

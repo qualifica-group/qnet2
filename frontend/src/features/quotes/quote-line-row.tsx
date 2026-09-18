@@ -14,6 +14,7 @@ import type { ForSelectItem } from '@/features/for-select/types'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteCommissionContext, QuoteLineProductRef, QuoteLineVatRateRef } from '@/features/quotes/types'
 import { QuoteCommissionsDialog } from '@/features/quotes/quote-commissions-dialog'
+import { QuoteLineAdditionalDescription } from '@/features/quotes/quote-line-additional-description'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { quoteLineGridClass } from './quote-line-grid'
 
@@ -147,6 +148,9 @@ export function QuoteLineRow({
   const collectionPermission = fieldPermission('commissions')
   const canViewCommissions = collectionPermission.visible
   const canEditCommissions = collectionPermission.editable && !collectionPermission.disabled
+  // Offerte revenue tab only: the other channels sharing this row (Gestione
+  // Richieste, cost tab) never carry the key, so the server keeps the text.
+  const withAdditionalDescription = variant === 'revenue' && withCommissions
 
   return (
     <div className={cn(quoteLineGridClass(variant, withCommissions, simplified), 'items-start border-b px-2 py-2 last:border-b-0')}>
@@ -156,6 +160,7 @@ export function QuoteLineRow({
           onChange={handleProductChange}
           selectedItem={productItem}
           categoryIds={categoryIds}
+          usage={variant === 'revenue' ? 'SALE' : 'COST'}
           disabled={productSelectDisabled}
           triggerLabel={t('quotes.form.lineProduct', { n: index + 1 })}
           id={`${rowId}-product`}
@@ -288,6 +293,17 @@ export function QuoteLineRow({
       >
         <Trash2 aria-hidden="true" />
       </Button>
+
+      {withAdditionalDescription ? (
+        <div className="col-span-full">
+          <QuoteLineAdditionalDescription
+            lineNumber={index + 1}
+            value={row.additional_description ?? null}
+            disabled={disabled}
+            onChange={(additionalDescription) => onChangeField({ additional_description: additionalDescription })}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

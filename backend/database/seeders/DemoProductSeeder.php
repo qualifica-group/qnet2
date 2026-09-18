@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\DataObjects\Products\CreateProductData;
 use App\Enums\ProductType;
+use App\Enums\ProductUsage;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\ProductService;
@@ -69,6 +70,9 @@ class DemoProductSeeder extends Seeder
             categoryId: $category->id,
             productType: ProductType::from($product['type']),
             attributeValues: $product['attribute_values'],
+            // Spec 0142: demo products fit both Offerta tabs, so the demo
+            // quotes can pick them for revenue AND cost lines.
+            usages: [ProductUsage::Sale, ProductUsage::Cost],
         ));
     }
 }

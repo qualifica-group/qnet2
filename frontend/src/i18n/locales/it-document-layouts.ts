@@ -182,6 +182,7 @@ export const documentLayouts = {
         code: 'Codice',
         name: 'Nome',
         description: 'Descrizione',
+        additional_description: 'Descrizione aggiuntiva riga',
         quantity: 'Quantità',
         unit_price: 'Prezzo unitario',
         vat_rate: 'Aliquota IVA',

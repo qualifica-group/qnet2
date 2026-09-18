@@ -8,6 +8,7 @@ use App\Enums\LocaleEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Enums\PersonalDataTypeEnum;
 use App\Enums\ProductType;
+use App\Enums\ProductUsage;
 use App\Enums\ReferentContactScopeEnum;
 use App\Enums\SiteTypeEnum;
 use App\Enums\SizeClassEnum;
@@ -58,6 +59,9 @@ return [
         // Product classification (spec 0017): the products table's
         // `product_type` badge. SERVICE-only for now.
         'product_type' => ProductType::class,
+        // Product usage (spec 0142): the product form's Sellable / Usable as
+        // cost checkboxes.
+        'product_usage' => ProductUsage::class,
         // Address site type (spec 0020): shared `addresses.site_type` column,
         // rendered only by the Registries form (showSiteType opt-in).
         'site_type' => SiteTypeEnum::class,

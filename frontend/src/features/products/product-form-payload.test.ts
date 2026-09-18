@@ -23,6 +23,7 @@ function original(overrides: Partial<ProductDetail> = {}): ProductDetail {
     category_id: 3,
     category: { id: 3, name: 'Laptops' },
     product_type: 'SERVICE',
+    usages: ['SALE'],
     created_at: '2026-01-01T00:00:00Z',
     vat_rate_id: null,
     vat_rate: null,
@@ -45,6 +46,7 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
     price: 1200,
     category_id: 3,
     product_type: 'SERVICE',
+    usages: ['SALE'],
     vat_rate_id: null,
     supplier_id: null,
     // Match `original()`'s own defaults so the "nothing changed" PATCH
@@ -66,6 +68,7 @@ describe('buildCreatePayload', () => {
       price: 1200,
       category_id: 3,
       product_type: 'SERVICE',
+      usages: ['SALE'],
       vat_rate_id: null,
       supplier_id: null,
       unit_of_measure_id: 1,
@@ -137,6 +140,15 @@ describe('buildUpdatePayload', () => {
     const serialized = original({ cost: '800.00', price: '1200.00' })
 
     expect(buildUpdatePayload(values(), serialized, [])).toEqual({})
+  })
+
+  it('spec 0142: sends usages only when the set changed, ignoring the checkbox order', () => {
+    expect(buildUpdatePayload(values({ usages: ['SALE', 'COST'] }), original(), [])).toEqual({
+      usages: ['SALE', 'COST'],
+    })
+    expect(
+      buildUpdatePayload(values({ usages: ['COST', 'SALE'] }), original({ usages: ['SALE', 'COST'] }), []),
+    ).toEqual({})
   })
 
   it('includes only the changed VAT rate id', () => {

@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Enums\ProductType;
+use App\Enums\ProductUsage;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -32,12 +34,40 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * column is always populated without being a `mandatory` field-permission.
  * `product_typology_id` (spec 0099, D-3) is the exact same arrangement,
  * defaulting to the `code='institution'` typology.
+ *
+ * `usages` (spec 0142) is the set of App\Enums\ProductUsage values deciding
+ * which Offerta tab may pick the product; it defaults to Sellable only.
  */
-#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'vat_rate_id', 'supplier_id', 'unit_of_measure_id', 'product_typology_id'])]
+#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'usages', 'vat_rate_id', 'supplier_id', 'unit_of_measure_id', 'product_typology_id'])]
 class Product extends BaseModel
 {
     /** @use HasFactory<ProductFactory> */
     use HasFactory, LogsModelActivity;
+
+    /**
+     * Spec 0142, D-3: a product created without an explicit choice is
+     * Sellable only.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'usages' => '["'.ProductUsage::Sale->value.'"]',
+    ];
+
+    /**
+     * Spec 0142: `usages` is stored in canonical case order, so one set is
+     * always the same JSON string — what the products grid sorts on.
+     */
+    protected static function booted(): void
+    {
+        static::saving(static function (Product $product): void {
+            $usages = $product->usages;
+
+            if ($usages !== null) {
+                $product->usages = collect(ProductUsage::cases())->filter(static fn (ProductUsage $usage): bool => $usages->contains($usage))->values();
+            }
+        });
+    }
 
     /**
      * @return array<string, string>
@@ -48,8 +78,14 @@ class Product extends BaseModel
             'cost' => 'decimal:2',
             'price' => 'decimal:2',
             'product_type' => ProductType::class,
+            'usages' => AsEnumCollection::of(ProductUsage::class),
             'attribute_values' => 'array',
         ];
+    }
+
+    public function isUsableAs(ProductUsage $usage): bool
+    {
+        return $this->usages?->contains($usage) ?? false;
     }
 
     public function category(): BelongsTo

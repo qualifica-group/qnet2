@@ -187,6 +187,8 @@ export interface QuoteLine {
    * payload (`QuoteLineInput`), the backend rejects it with 422 if sent.
    */
   unit_of_measure: QuoteLineUnitOfMeasureRef | null
+  /** Free text the operator adds to this line, printable in the quote document (`additional_description` column key). */
+  additional_description: string | null
   /** decimal(15,2) */
   unit_price: string
   vat_rate_id: number | null
@@ -365,6 +367,8 @@ export interface QuoteLineInput {
   /** >= 0, max 99999999.99, max 2 decimals. */
   unit_price: number
   vat_rate_id?: number | null
+  /** Omitted = the server keeps the stored value; `null` clears it. */
+  additional_description?: string | null
   /** Row position; when omitted the server uses the array index. */
   sort_order?: number
   commissions?: QuoteLineCommissionInput[]

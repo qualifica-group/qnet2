@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\ProductType;
+use App\Enums\ProductUsage;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
@@ -28,11 +29,25 @@ class ProductFactory extends Factory
             'price' => fake()->randomFloat(2, 1, 1000),
             'category_id' => ProductCategory::factory(),
             'product_type' => ProductType::Service,
+            // Both usages (spec 0142): the pre-0142 behaviour, where any
+            // product fit either Offerta tab. The model's own default
+            // (Sellable only) is exercised through saleOnly()/the Service.
+            'usages' => [ProductUsage::Sale, ProductUsage::Cost],
             'vat_rate_id' => null,
             'supplier_id' => null,
             'unit_of_measure_id' => UnitOfMeasure::factory(),
             'product_typology_id' => ProductTypology::factory(),
         ];
+    }
+
+    public function saleOnly(): static
+    {
+        return $this->state(['usages' => [ProductUsage::Sale]]);
+    }
+
+    public function costOnly(): static
+    {
+        return $this->state(['usages' => [ProductUsage::Cost]]);
     }
 
     /**

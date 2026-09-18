@@ -18,7 +18,9 @@ import type { QuoteLine, QuoteLineInput } from '@/features/quotes/types'
  * `withCommissions: false` omits the block entirely — Gestione Richieste
  * neither renders nor sends it, and carrying it in the form values would make
  * every save ship a `commissions` key the endpoint prohibits (and make the
- * payload diff below see a change where there is none).
+ * payload diff below see a change where there is none). The same flag omits
+ * `additional_description`, which only the Offerte form edits: without the
+ * key the server keeps the stored text.
  */
 export function linesToFormValues(lines: QuoteLine[], withCommissions = true): QuoteLineFormValues[] {
   return lines
@@ -35,6 +37,7 @@ export function linesToFormValues(lines: QuoteLine[], withCommissions = true): Q
       vat_rate_id: line.vat_rate_id,
       ...(withCommissions
         ? {
+            additional_description: line.additional_description ?? null,
             commissions: (line.commissions ?? []).map((commission) => ({
               ...commission,
               value: Number(commission.value),
@@ -60,6 +63,7 @@ export function isPristineLineRow(row: QuoteLineFormValues): boolean {
     row.quantity === null &&
     row.unit_price === null &&
     row.vat_rate_id === null &&
+    !row.additional_description &&
     (row.commissions?.length ?? 0) === 0
   )
 }
@@ -72,6 +76,9 @@ export function isPristineLineRow(row: QuoteLineFormValues): boolean {
  * field is non-null, since the schema's per-row `superRefine`
  * (quote-schema.ts) already blocks submit on an incomplete row.
  *
+ * `additional_description` travels only when the row carries the key (an
+ * absent key keeps the stored value server-side); blank text is sent as null.
+ *
  * `commissions` travel only when the row carries them: Gestione Richieste
  * never fills that block in (the endpoint prohibits it), the Offerte form
  * always does.
@@ -83,6 +90,9 @@ export function toLineInputs(rows: QuoteLineFormValues[]): QuoteLineInput[] {
     quantity: row.quantity as number,
     unit_price: row.unit_price as number,
     vat_rate_id: row.vat_rate_id,
+    ...(row.additional_description !== undefined
+      ? { additional_description: row.additional_description?.trim() || null }
+      : {}),
     sort_order: index,
     ...(row.commissions
       ? { commissions: row.commissions.map((commission) => ({
@@ -120,6 +130,7 @@ export function originalLineInputs(lines: QuoteLine[], withCommissions = true): 
       quantity: Number(line.quantity),
       unit_price: Number(line.unit_price),
       vat_rate_id: line.vat_rate_id,
+      ...(withCommissions ? { additional_description: line.additional_description ?? null } : {}),
       sort_order: index,
       ...(withCommissions && line.commissions
         ? {
@@ -150,7 +161,8 @@ export function sameLines(a: QuoteLineInput[], b: QuoteLineInput[]): boolean {
       line.product_id === other.product_id &&
       line.quantity === other.quantity &&
       line.unit_price === other.unit_price &&
-      (line.vat_rate_id ?? null) === (other.vat_rate_id ?? null)
+      (line.vat_rate_id ?? null) === (other.vat_rate_id ?? null) &&
+      (line.additional_description ?? null) === (other.additional_description ?? null)
       && JSON.stringify(line.commissions ?? []) === JSON.stringify(other.commissions ?? [])
     )
   })

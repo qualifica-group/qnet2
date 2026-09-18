@@ -119,6 +119,7 @@ function offerLineFixture(): QuoteLine {
     product: { id: 7, name: 'Product 7', code: 'P7', category: null, product_typology: null, business_function: null },
     quantity: '1.00',
     unit_of_measure: null,
+    additional_description: null,
     unit_price: '100.00',
     vat_rate_id: null,
     vat_rate: null,

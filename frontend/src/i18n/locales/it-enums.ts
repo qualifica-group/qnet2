@@ -75,6 +75,11 @@ export const enums = {
   product_type: {
     SERVICE: 'Servizio',
   },
+  // Utilizzo del prodotto nell'offerta (spec 0142).
+  product_usage: {
+    SALE: 'Vendibile',
+    COST: 'Utilizzabile come costo',
+  },
   // Stato convenzione anagrafica (spec 0020).
   agreement_status: {
     negotiating: 'In trattativa',

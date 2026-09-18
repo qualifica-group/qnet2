@@ -2,6 +2,8 @@
 
 namespace App\DataObjects\Shared;
 
+use App\Enums\ProductUsage;
+
 /**
  * Validated query for a for-select endpoint (GET /api/{resource}/for-select).
  *
@@ -59,6 +61,10 @@ namespace App\DataObjects\Shared;
  *   narrows to the records of ONE client, the latter via
  *   `quote.opportunity.registry_id`. Null by default (no filter), so every
  *   other consumer is unaffected (AC-026).
+ * - `productUsage` (spec 0142, D-4): ADDITIVE, consumed ONLY by
+ *   ProductService::forSelect (the Offerta line picker narrowed to the
+ *   products usable on its tab). Null by default (no filter), so every
+ *   other consumer is unaffected.
  */
 final readonly class ForSelectQuery
 {
@@ -83,6 +89,7 @@ final readonly class ForSelectQuery
         public bool $includeInactive = false,
         public array $competenceCategoryIds = [],
         public ?int $registryId = null,
+        public ?ProductUsage $productUsage = null,
     ) {}
 
     /**
@@ -133,6 +140,7 @@ final readonly class ForSelectQuery
             includeInactive: (bool) ($data['include_inactive'] ?? false),
             competenceCategoryIds: $competenceCategoryIds,
             registryId: isset($data['registry_id']) ? (int) $data['registry_id'] : null,
+            productUsage: isset($data['usage']) ? ProductUsage::from((string) $data['usage']) : null,
         );
     }
 

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\Enums\AttributeContext;
+use App\Enums\ProductUsage;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quote;
@@ -105,7 +106,13 @@ class DemoQuoteSeeder extends Seeder
             return;
         }
 
-        $costProductIds = Product::query()->orderBy('id')->pluck('id')->all();
+        // Spec 0142: the Costi tab only accepts products usable as cost
+        // (QuoteLineWriter rejects the others).
+        $costProductIds = Product::query()
+            ->whereJsonContains('usages', ProductUsage::Cost->value)
+            ->orderBy('id')
+            ->pluck('id')
+            ->all();
         $users = User::query()->orderBy('id')->get();
 
         $faker = FakerFactory::create('it_IT');
@@ -178,7 +185,7 @@ class DemoQuoteSeeder extends Seeder
             supervisorIdSubmitted: false,
             internalNotes: $faker->optional(0.5)->sentence(10),
             offerLines: [$offerLine],
-            costLines: [$this->costLine($faker, $costProductIds, $index)],
+            costLines: $costProductIds === [] ? [] : [$this->costLine($faker, $costProductIds, $index)],
             // Spec 0084 (AC-050): coherent with the REVENUE line's own
             // category — resolved from the SAME QUOTE-context effective set
             // QuoteAttributeValueWriter validates against post-insert, so a

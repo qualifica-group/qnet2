@@ -61,6 +61,9 @@ class DemoDataSeeder extends Seeder
         // The offer sold under those categories — what "prodotti di interesse"
         // (mandatory on the opportunity form) is picked from.
         $this->call(DemoProductSeeder::class);
+        // Cost-only items (spec 0142: travel, lodging, materials) the demo
+        // quotes' Costi tab draws from — before DemoQuoteSeeder.
+        $this->call(DemoCostProductSeeder::class);
         $this->call(DemoEmploymentProfileSeeder::class);
         // Depends on sources/sectors/referents (lookups, seeded above) and
         // users (internal managers, seeded above) — must run after all of them.

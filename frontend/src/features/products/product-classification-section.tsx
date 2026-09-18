@@ -20,6 +20,7 @@ import type { FlatCategoryOption } from '@/features/product-categories/flatten-t
 import { PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE } from '@/features/product-typologies/for-select-api'
 import { UNITS_OF_MEASURE_FOR_SELECT_RESOURCE } from '@/features/units-of-measure/for-select-api'
 import type { ProductSelectedRelations } from '@/features/products/product-form-summary'
+import { ProductUsageField } from '@/features/products/product-usage-field'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 import type { ProductType } from '@/features/products/types'
 
@@ -46,7 +47,8 @@ interface ProductClassificationSectionProps {
 
 /**
  * Where the product SITS in the catalogue: category, typology, unit of
- * measure and the `product_type` enum, two per row on the shared field grid.
+ * measure, the `product_type` enum and the Offerta usages (spec 0142), two per
+ * row on the shared field grid.
  * The category comes first because it is the field the rest of the form
  * depends on — it decides which dynamic attributes exist below.
  */
@@ -64,7 +66,8 @@ export function ProductClassificationSection({
     fieldPermission('category_id').visible ||
     fieldPermission('product_typology_id').visible ||
     fieldPermission('unit_of_measure_id').visible ||
-    fieldPermission('product_type').visible
+    fieldPermission('product_type').visible ||
+    fieldPermission('usages').visible
 
   if (!visible) {
     return null
@@ -166,6 +169,8 @@ export function ProductClassificationSection({
             </Select>
           )}
         </MetaField>
+
+        <ProductUsageField control={control} />
       </div>
     </FormSection>
   )

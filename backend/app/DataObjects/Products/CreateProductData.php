@@ -3,6 +3,7 @@
 namespace App\DataObjects\Products;
 
 use App\Enums\ProductType;
+use App\Enums\ProductUsage;
 
 /**
  * Validated payload for creating a product (POST /api/products, spec 0017;
@@ -18,11 +19,14 @@ use App\Enums\ProductType;
  * need no `*Submitted` flag (unlike UpdateProductData).
  * `productTypologyId` (spec 0099, D-3) behaves identically: absent OR null
  * both collapse to the Service falling back to the default typology.
+ * `usages` (spec 0142) absent leaves the Product model's default (Sellable
+ * only) in place.
  */
 final readonly class CreateProductData
 {
     /**
      * @param  array<string, mixed>|null  $attributeValues
+     * @param  array<int, ProductUsage>|null  $usages
      */
     public function __construct(
         public string $name,
@@ -37,6 +41,7 @@ final readonly class CreateProductData
         public ?int $productTypologyId = null,
         public ?array $attributeValues = null,
         public ?string $code = null,
+        public ?array $usages = null,
     ) {}
 
     /**
@@ -58,6 +63,7 @@ final readonly class CreateProductData
             unitOfMeasureId: array_key_exists('unit_of_measure_id', $data) && $data['unit_of_measure_id'] !== null ? (int) $data['unit_of_measure_id'] : null,
             productTypologyId: array_key_exists('product_typology_id', $data) && $data['product_typology_id'] !== null ? (int) $data['product_typology_id'] : null,
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
+            usages: array_key_exists('usages', $data) ? array_map(static fn (mixed $usage): ProductUsage => ProductUsage::from((string) $usage), (array) $data['usages']) : null,
             code: array_key_exists('code', $data) && $data['code'] !== null && $data['code'] !== '' ? (string) $data['code'] : null,
         );
     }

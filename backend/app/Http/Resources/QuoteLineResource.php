@@ -57,6 +57,7 @@ class QuoteLineResource extends JsonResource
             // predating the module (unit_of_measure_id NULL) — the product's
             // CURRENT unit, so an old row never renders blank.
             'unit_of_measure' => $this->summarizeUnitOfMeasure(),
+            'additional_description' => $this->additional_description,
             'unit_price' => $this->unit_price,
             'vat_rate_id' => $this->vat_rate_id,
             'vat_rate' => $this->summarizeVatRate(),

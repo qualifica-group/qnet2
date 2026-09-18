@@ -3,6 +3,7 @@
 namespace App\DataObjects\Products;
 
 use App\Enums\ProductType;
+use App\Enums\ProductUsage;
 
 /**
  * Validated payload for a partial (PATCH) product update
@@ -27,11 +28,15 @@ use App\Enums\ProductType;
  * `productTypologyId` (spec 0099, D-3) is the exact same shape: absent leaves
  * the persisted FK untouched, submitted as null resets it to the default
  * typology resolved by ProductService.
+ *
+ * `usages` (spec 0142) is never a legitimate null (min:1), so absent = null
+ * needs no `*Submitted` flag, like `attributeValues`.
  */
 final readonly class UpdateProductData
 {
     /**
      * @param  array<string, mixed>|null  $attributeValues
+     * @param  array<int, ProductUsage>|null  $usages
      */
     public function __construct(
         public ?string $name = null,
@@ -54,6 +59,7 @@ final readonly class UpdateProductData
         public ?int $productTypologyId = null,
         public bool $productTypologyIdSubmitted = false,
         public ?array $attributeValues = null,
+        public ?array $usages = null,
     ) {}
 
     /**
@@ -84,6 +90,7 @@ final readonly class UpdateProductData
             productTypologyId: array_key_exists('product_typology_id', $data) && $data['product_typology_id'] !== null ? (int) $data['product_typology_id'] : null,
             productTypologyIdSubmitted: array_key_exists('product_typology_id', $data),
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
+            usages: array_key_exists('usages', $data) ? array_map(static fn (mixed $usage): ProductUsage => ProductUsage::from((string) $usage), (array) $data['usages']) : null,
         );
     }
 
@@ -124,6 +131,10 @@ final readonly class UpdateProductData
 
         if ($this->productTypeSubmitted) {
             $attributes['product_type'] = $this->productType;
+        }
+
+        if ($this->usages !== null) {
+            $attributes['usages'] = $this->usages;
         }
 
         if ($this->vatRateIdSubmitted) {

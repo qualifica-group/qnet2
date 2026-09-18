@@ -44,7 +44,8 @@ function useSoleCategoryProducts(
       queryFn: async (): Promise<QuoteProductForSelectItem | null> => {
         const page = await fetchForSelect(PRODUCTS_FOR_SELECT_RESOURCE, {
           limit: SOLE_PRODUCT_PROBE_LIMIT,
-          params: { category_ids: [categoryId] },
+          // Spec 0142: only a Sellable product may seed a REVENUE row.
+          params: { usage: 'SALE', category_ids: [categoryId] },
         })
 
         return page.pagination.total === 1

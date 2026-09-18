@@ -155,7 +155,9 @@ export function buildSetFilterParams(
     params.valueFormatter = (formatterParams: ValueFormatterParams): string =>
       formatBooleanFilterValue(formatterParams.value, translate)
   }
-  if (column.type === 'badge') {
+  // `tags` too (spec 0142 `usages`): each value of a multi-valued enum cell
+  // is one checklist entry, localized the same way as its cell.
+  if (column.type === 'badge' || column.type === 'tags') {
     params.valueFormatter = (formatterParams: ValueFormatterParams): string =>
       formatBadgeFilterValue(formatterParams.value, column)
   }

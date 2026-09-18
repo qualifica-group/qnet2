@@ -3,12 +3,16 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type {
   CreateProductPayload,
   ProductDetail,
+  ProductUsage,
   UpdateProductPayload,
 } from '@/features/products/types'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 
 type AttributeValues = Record<string, CustomFieldValue>
+
+/** A product with no explicit choice is Sellable only (spec 0142, D-3), mirroring the server default. */
+export const DEFAULT_PRODUCT_USAGES: ProductUsage[] = ['SALE']
 
 /** Additive (spec 0061): every VALUED code among the CURRENT category's PRODUCT attributes, empty/unset ones omitted. */
 function buildAttributeValuesCreate(values: AttributeValues, codes: string[]): AttributeValues {
@@ -60,6 +64,7 @@ export function buildCreatePayload(
     price: values.price as number,
     category_id: values.category_id as number,
     product_type: values.product_type,
+    usages: values.usages,
     vat_rate_id: values.vat_rate_id,
     supplier_id: values.supplier_id,
     unit_of_measure_id: values.unit_of_measure_id,
@@ -102,6 +107,9 @@ export function buildUpdatePayload(
   if (values.product_type !== original.product_type) {
     payload.product_type = values.product_type
   }
+  if (!sameUsages(values.usages, original.usages ?? DEFAULT_PRODUCT_USAGES)) {
+    payload.usages = values.usages
+  }
   if (values.vat_rate_id !== original.vat_rate_id) {
     payload.vat_rate_id = values.vat_rate_id
   }
@@ -130,6 +138,11 @@ export function buildUpdatePayload(
   }
 
   return payload
+}
+
+/** Order-insensitive: the usages are a set, the checkbox order is not a change. */
+function sameUsages(next: ProductUsage[], original: ProductUsage[]): boolean {
+  return next.length === original.length && next.every((usage) => original.includes(usage))
 }
 
 /**

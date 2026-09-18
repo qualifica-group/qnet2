@@ -11,7 +11,10 @@ namespace App\DataObjects\Quotes;
  * ONLY `product_id` is stored (D-7): the amounts below are RAW inputs,
  * rounded and frozen by QuoteTotalsCalculator/QuoteLineWriter, never by this
  * DTO. `sortOrder` null means "use this row's own index in the submitted
- * array" (AC-038).
+ * array" (AC-038). `additional_description` is optional per channel: only a
+ * row that carries the key changes it, so a channel that never edits it (the
+ * Gestione Richieste grid cell, request creation) cannot wipe it on its
+ * full-replace resubmit.
  */
 final readonly class QuoteLineData
 {
@@ -24,6 +27,9 @@ final readonly class QuoteLineData
         public ?int $id = null,
         /** @var array<int, QuoteLineCommissionData>|null */
         public ?array $commissions = null,
+        public ?string $additionalDescription = null,
+        /** `false` = the key was absent: the writer keeps the stored value (see QuoteLineWriter::sync()). */
+        public bool $hasAdditionalDescription = false,
     ) {}
 
     /**
@@ -44,6 +50,8 @@ final readonly class QuoteLineData
                     (array) $row['commissions'],
                 )
                 : null,
+            additionalDescription: isset($row['additional_description']) ? (string) $row['additional_description'] : null,
+            hasAdditionalDescription: array_key_exists('additional_description', $row),
         );
     }
 }

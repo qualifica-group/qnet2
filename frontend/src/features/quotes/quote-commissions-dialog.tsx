@@ -139,6 +139,12 @@ export function QuoteCommissionsDialog(props: Props) {
               return (
                 <section key={role} className="rounded-md border bg-card p-3">
                   <h3 className="text-sm font-semibold">{t(`quotes.form.commissions.roles.${role}`)}</h3>
+                  {allowed && recipientPermission.visible ? (
+                    <p className="mt-1 truncate text-sm">
+                      <span className="text-muted-foreground">{t('quotes.form.commissions.selectedRecipient')}: </span>
+                      <span className="font-medium">{allowed.name}</span>
+                    </p>
+                  ) : null}
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm text-muted-foreground">
                       {unavailable ? t('quotes.form.commissions.roleUnavailable') : t('quotes.form.commissions.empty')}

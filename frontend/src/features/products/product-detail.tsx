@@ -124,6 +124,19 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
                   <RecordField label={t('products.columns.product_type')}>
                     <Badge variant="secondary">{productTypeLabel}</Badge>
                   </RecordField>
+                  <RecordField label={t('products.columns.usages')}>
+                    {product.usages && product.usages.length > 0 ? (
+                      <span className="flex flex-wrap gap-1">
+                        {product.usages.map((usage) => (
+                          <Badge key={usage} variant="outline">
+                            {enumLabelOf('product_usage', usage)}
+                          </Badge>
+                        ))}
+                      </span>
+                    ) : (
+                      <DetailEmpty />
+                    )}
+                  </RecordField>
                   <RecordField label={t('products.columns.description')}>
                     {product.description ?? <DetailEmpty />}
                   </RecordField>

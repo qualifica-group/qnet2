@@ -7,4 +7,9 @@ return [
     'no_layout_available' => 'Nessun layout disponibile per generare il documento: crea o attiva un layout predefinito per i Preventivi.',
     'offer_line_required' => "L'offerta deve contenere almeno una riga prodotto.",
     'offer_line_required_for_status' => "Non puoi portare l'offerta a questo stato senza almeno una riga prodotto.",
+    // Spec 0142, D-5: keyed by App\Enums\ProductUsage value.
+    'product_not_usable' => [
+        'SALE' => 'Il prodotto selezionato non è vendibile.',
+        'COST' => 'Il prodotto selezionato non è utilizzabile come costo.',
+    ],
 ];

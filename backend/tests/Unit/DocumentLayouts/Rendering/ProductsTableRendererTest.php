@@ -114,6 +114,29 @@ it('a 2-line column produces TWO paragraphs in the same cell, the first joining 
         ->and($cell['paragraphs'][1])->toBe('Sedia da ufficio');
 });
 
+it('prints the line additional description under the name and skips it on a line without one', function () {
+    $quote = dlrFullQuote();
+    $product = Product::factory()->create(['name' => 'Sedia']);
+    QuoteLine::factory()->create(['quote_id' => $quote->id, 'product_id' => $product->id, 'sort_order' => 0, 'additional_description' => 'Montaggio incluso']);
+    QuoteLine::factory()->create(['quote_id' => $quote->id, 'product_id' => $product->id, 'sort_order' => 1, 'additional_description' => null]);
+
+    $column = [
+        'lines' => [
+            ['keys' => ['name'], 'separator' => '', 'bold' => false, 'italic' => false, 'size' => null],
+            ['keys' => ['additional_description'], 'separator' => '', 'bold' => false, 'italic' => true, 'size' => null],
+        ],
+        'label' => 'Prodotto',
+        'width_pct' => 100,
+        'align' => 'left',
+    ];
+
+    $config = dlrDocConfig(['body' => ['blocks' => [dlrProductsTableBlock([$column])]]]);
+    $rows = dlrExtractTable(dlrOpenZip(dlrRender($config, $quote->fresh(['offerLines']))));
+
+    expect($rows[1]['cells'][0]['paragraphs'])->toBe(['Sedia', 'Montaggio incluso'])
+        ->and($rows[2]['cells'][0]['paragraphs'])->toBe(['Sedia']);
+});
+
 // ---------------------------------------------------------------------------
 // AC-243 — no lines -> one row, empty_text spanning every column via gridSpan
 // ---------------------------------------------------------------------------

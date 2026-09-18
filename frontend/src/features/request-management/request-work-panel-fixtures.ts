@@ -34,6 +34,7 @@ export const OFFER_LINE_FIBRA: QuoteLine = {
   },
   quantity: '1.00',
   unit_of_measure: null,
+  additional_description: null,
   unit_price: '100.00',
   vat_rate_id: null,
   vat_rate: null,

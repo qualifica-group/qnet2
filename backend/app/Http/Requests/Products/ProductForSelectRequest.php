@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Products;
 
 use App\DataObjects\Shared\ForSelectQuery;
+use App\Enums\ProductUsage;
 use App\Http\Controllers\Abstract\BaseApiController;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the query for GET /api/products/for-select (ADR 0011), mirroring
@@ -12,7 +14,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * 2026-07-22, optional): scopes the results to the products of those exact
  * categories — the "prodotti di interesse" picker always sends the categories
  * of the record's product lines; the quotes offer tab omits the key when the
- * operator explicitly unlocks the whole catalogue.
+ * operator explicitly unlocks the whole catalogue. `usage` (spec 0142,
+ * optional): narrows to the products usable on one Offerta tab.
  *
  * Authorization is intentionally NOT handled here (it stays in the controller
  * via authorize('viewAny', Product::class)). Pagination bounds mirror
@@ -41,6 +44,7 @@ class ProductForSelectRequest extends FormRequest
             'ids.*' => ['integer'],
             'category_ids' => ['sometimes', 'array'],
             'category_ids.*' => ['integer', 'exists:product_categories,id'],
+            'usage' => ['sometimes', 'nullable', Rule::enum(ProductUsage::class)],
         ];
     }
 

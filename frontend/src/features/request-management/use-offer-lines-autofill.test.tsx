@@ -171,7 +171,7 @@ describe('offer-line autofill', () => {
     await waitFor(() =>
       expect(fetchForSelectMock).toHaveBeenCalledWith(
         'products',
-        expect.objectContaining({ params: { category_ids: [CROWDED_CATEGORY_ID] } }),
+        expect.objectContaining({ params: { usage: 'SALE', category_ids: [CROWDED_CATEGORY_ID] } }),
       ),
     )
     expect(screen.getByLabelText('Quantità riga 1')).toHaveValue(null)
@@ -184,7 +184,7 @@ describe('offer-line autofill', () => {
     await waitFor(() => expect(screen.getByLabelText('Quantità riga 1')).toHaveValue(null))
     expect(fetchForSelectMock).not.toHaveBeenCalledWith(
       'products',
-      expect.objectContaining({ params: { category_ids: [SOLE_CATEGORY_ID] } }),
+      expect.objectContaining({ params: { usage: 'SALE', category_ids: [SOLE_CATEGORY_ID] } }),
     )
   })
 

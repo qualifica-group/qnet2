@@ -94,9 +94,10 @@ describe('QuoteCostsTab (spec 0065 AC-073)', () => {
 
     await waitFor(() => expect(fetchForSelectMock).toHaveBeenCalledWith('products', expect.anything()))
 
+    // Spec 0142: the only scoping is the tab's own usage, never a category.
     expect(fetchForSelectMock).toHaveBeenCalledWith(
       'products',
-      expect.not.objectContaining({ params: expect.anything() }),
+      expect.objectContaining({ params: { usage: 'COST' } }),
     )
   })
 })

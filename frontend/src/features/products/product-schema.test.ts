@@ -26,6 +26,7 @@ function baseValues() {
     price: 1200,
     category_id: 3,
     product_type: 'SERVICE' as const,
+    usages: ['SALE' as const],
     vat_rate_id: null,
     supplier_id: null,
     unit_of_measure_id: null,

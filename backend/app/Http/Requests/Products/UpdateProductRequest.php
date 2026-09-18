@@ -4,6 +4,7 @@ namespace App\Http\Requests\Products;
 
 use App\DataObjects\Products\UpdateProductData;
 use App\Enums\ProductType;
+use App\Enums\ProductUsage;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\Product;
 use App\Rules\SelectableProductCategory;
@@ -56,6 +57,10 @@ class UpdateProductRequest extends FormRequest
             // that category has been made unselectable.
             'category_id' => ['sometimes', 'required', 'integer', new SelectableProductCategory($this->currentCategoryIds())],
             'product_type' => ['sometimes', 'required', Rule::enum(ProductType::class)],
+            // Spec 0142, D-2: the independent Sellable / Usable-as-cost set,
+            // at least one, no repeats.
+            'usages' => ['sometimes', 'array', 'min:1'],
+            'usages.*' => ['distinct', Rule::enum(ProductUsage::class)],
             'vat_rate_id' => ['sometimes', 'nullable', 'integer', 'exists:vat_rates,id'],
             'supplier_id' => ['sometimes', 'nullable', 'integer', 'exists:registries,id'],
             // Spec 0088, D-4: a submitted null resets to the default unit in

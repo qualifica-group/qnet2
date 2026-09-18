@@ -52,6 +52,8 @@ class ProductResource extends JsonResource
             'category_id' => $this->category_id,
             'category' => $this->categorySummary($this->category),
             'product_type' => $this->product_type,
+            // Spec 0142: the Offerta tabs the product may be picked on.
+            'usages' => $this->usages?->values()->all() ?? [],
             'vat_rate_id' => $this->vat_rate_id,
             'vat_rate' => $this->vatRateSummary($this->vatRate),
             'supplier_id' => $this->supplier_id,
