@@ -402,7 +402,7 @@ it('lets the supervisor and the commercial role list, upload and remove request 
     }
 });
 
-it('leaves the commercial menu with request-management only', function () {
+it('leaves the commercial menu with request-management and enrollee-management only', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
     $routes = visibleRoutes(User::query()->where('email', 'biagio.fusco@qualificagroup.it')->firstOrFail());
@@ -413,8 +413,9 @@ it('leaves the commercial menu with request-management only', function () {
     // 2026-08-04 made that page supervisor-only, so the seed dropped
     // `field-change-requests.view` — the very permission the navigation entry
     // is gated on (config/navigation/opportunities.php). The role keeps
-    // `.create`, which carries no menu entry.
-    expect($routes)->toBe(['/dashboard', '/request-management']);
+    // `.create`, which carries no menu entry. `/enrollee-management` joined
+    // with the user directive 2026-09-18 (read-only, own enrollees only).
+    expect($routes)->toBe(['/dashboard', '/request-management', '/enrollee-management']);
 });
 
 it('blocks the commercial role server-side on the modules its menu hides', function () {

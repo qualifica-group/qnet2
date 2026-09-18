@@ -95,12 +95,12 @@ class QualificaRoleSeeder extends Seeder
             Catalogue::REWARDS => in_array($resource, Catalogue::REWARDS_MODULES, true),
             Catalogue::USERS_AND_ROLES => in_array($resource, Catalogue::USERS_AND_ROLES_MODULES, true)
                 && ! in_array($ability, Catalogue::USERS_AND_ROLES_DENIED_ABILITIES, true),
-            Catalogue::SITE_REQUESTS => $ability === 'viewSite'
-                && in_array($resource, [Catalogue::REQUEST_MODULE, Catalogue::ENROLLEE_MODULE], true),
+            Catalogue::SITE_REQUESTS => $permission === Catalogue::REQUEST_MODULE.'.viewSite',
             Catalogue::FIELD_CHANGE_REVIEW => $resource === Catalogue::FIELD_CHANGE_MODULE,
             Catalogue::ALL_ENROLLEES => $resource === Catalogue::ENROLLEE_MODULE,
             Catalogue::ENROLLEES_READ => $resource === Catalogue::ENROLLEE_MODULE
                 && in_array($ability, Catalogue::ENROLLEES_READ_ABILITIES, true),
+            Catalogue::SITE_ENROLLEES => $permission === Catalogue::ENROLLEE_MODULE.'.viewSite',
         };
     }
 

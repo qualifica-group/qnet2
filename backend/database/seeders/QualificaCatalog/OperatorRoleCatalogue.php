@@ -51,11 +51,7 @@ final class OperatorRoleCatalogue
     /** "Gestione Richieste: accesso ai soli contatti che gestiscono", no report. */
     public const string OWN_REQUESTS = 'own-requests';
 
-    /**
-     * Tier-3 visibility (spec 0105): the requests of the user's own Sedi — and,
-     * by the same grant, their enrollees (user directive 2026-09-18: the reach
-     * in Gestione Iscritti mirrors the reach in Gestione Richieste).
-     */
+    /** Tier-3 visibility (spec 0105): the requests of the user's own Sedi. */
     public const string SITE_REQUESTS = 'site-requests';
 
     /** "prodotti + categorie prodotti + anagrafiche + referenti", viewed and edited. */
@@ -74,11 +70,13 @@ final class OperatorRoleCatalogue
     public const string ALL_ENROLLEES = 'all-enrollees';
 
     /**
-     * "Gestione Iscritti" read-only. It opens the module, not a reach: the rows
-     * are those of the role's request tier (user directive 2026-09-18) — its
-     * own offers, plus its Sedi' when SITE_REQUESTS is among its blocks.
+     * "Gestione Iscritti" read-only, reach limited to the offers the user
+     * operates (user directive 2026-09-18). SITE_ENROLLEES widens it.
      */
     public const string ENROLLEES_READ = 'enrollees-read';
+
+    /** Tier-3 visibility on Gestione Iscritti: the enrollees of the user's own Sedi. */
+    public const string SITE_ENROLLEES = 'site-enrollees';
 
     /**
      * The "Utenti" and "Ruoli" administration sections, every ability but
@@ -128,18 +126,18 @@ final class OperatorRoleCatalogue
         ],
         self::COMMERCIAL_ROLE => [
             'description' => 'Commerciale',
-            'blocks' => [self::OWN_REQUESTS],
+            'blocks' => [self::OWN_REQUESTS, self::ENROLLEES_READ],
         ],
         self::ENROLLEE_COMMERCIAL_ROLE => [
             'description' => 'Commerciale con Gestione Iscritti',
-            'blocks' => [self::OWN_REQUESTS, self::ENROLLEES_READ],
+            'blocks' => [self::OWN_REQUESTS, self::ENROLLEES_READ, self::SITE_ENROLLEES],
         ],
         // "Abilitazione a visionare tutti i dati delle sedi Lazio sia per
         // Richieste che per Iscritti": the commercial matrix widened to the
         // Sedi of the profile on both modules.
         self::TEACHING_SUPERVISOR_ROLE => [
             'description' => 'Supervisore didattica',
-            'blocks' => [self::OWN_REQUESTS, self::SITE_REQUESTS, self::ENROLLEES_READ],
+            'blocks' => [self::OWN_REQUESTS, self::SITE_REQUESTS, self::ENROLLEES_READ, self::SITE_ENROLLEES],
         ],
     ];
 
@@ -359,9 +357,9 @@ final class OperatorRoleCatalogue
     ];
 
     /**
-     * ENROLLEES_READ: no write, and no `viewAll`/`viewSite` of its own — without
-     * them RequestManagementScope narrows the module to the offers the user
-     * operates (tier 2); SITE_REQUESTS adds the Sedi' tier on top.
+     * ENROLLEES_READ: no write, and no `viewAll`/`viewSite` — without them
+     * RequestManagementScope narrows the module to the offers the user
+     * operates (tier 2).
      *
      * @var array<int, string>
      */

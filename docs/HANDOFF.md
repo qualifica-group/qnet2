@@ -3,21 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## RUOLI QUALIFICA — RAGGIO GESTIONE ISCRITTI ALLINEATO A GESTIONE RICHIESTE — NON COMMITTATO (2026-09-18)
+## RUOLI QUALIFICA — RAGGIO GESTIONE ISCRITTI PER RUOLO COMMERCIALE — NON COMMITTATO (2026-09-18)
 
-Direttiva utente: in Gestione Iscritti ognuno vede lo stesso raggio che ha in Gestione Richieste — solo le proprie
-richieste -> solo i propri iscritti (tier 2, `quotes.operator_id`); Sedi -> Sedi (`viewSite`); tutte -> tutti (`viewAll`).
-- `OperatorRoleCatalogue`: `SITE_ENROLLEES_READ` (viewAny/view/viewSite) sostituito da `ENROLLEES_READ` (viewAny/view,
-  `ENROLLEES_READ_ABILITIES`): apre il modulo in sola lettura, NON da' raggio. Il blocco `SITE_REQUESTS` concede ora
-  `viewSite` su ENTRAMBI i moduli (`QualificaRoleSeeder::blockGrants`). `ALL_ENROLLEES` invariato (supervisore/coordinatore).
-- Effetto: `commerciale-iscritti` perde `enrollee-management.viewSite` (vede solo gli iscritti delle proprie richieste);
-  `supervisore-didattica` invariato (proprie + Sedi); `commerciale` semplice resta SENZA Gestione Iscritti (scelta:
-  il ruolo con/senza iscritti resta distinto, cambia solo il raggio).
-- Nessun codice applicativo toccato: lo scope (`RequestManagementScope`) era gia' a tier per modulo.
-- Test: `Seeding/QualificaOperatorSeederTest` — test esistente aggiornato (requisito cambiato: viewSite ora false per il
-  commerciale-iscritti) + 2 nuovi (invariante viewAll/viewSite iscritti == richieste per ogni ruolo; righe HTTP
-  `enrollee-management/rows` per commerciale-iscritti/supervisore-didattica/supervisore). 3 falliscono sul codice precedente.
-- Da applicare in produzione: rieseguire `QualificaProductionDataSeeder` (o `QualificaOperatorSeeder`): i ruoli fanno sync completo.
+Direttiva utente (corregge la prima versione, gia' nel commit 7bd99898, che toglieva le Sedi al commerciale-iscritti):
+- `commerciale`: Gestione Iscritti in sola lettura, SOLO i propri (tier 2, `quotes.operator_id`) — prima non aveva il modulo.
+- `commerciale-iscritti`: Gestione Iscritti in sola lettura sulle Sedi (`enrollee-management.viewSite`) — come prima.
+- `supervisore-didattica` (proprie + Sedi su entrambi) e supervisore/coordinatore (tutto) invariati.
+- `OperatorRoleCatalogue`: `ENROLLEES_READ` (viewAny/view, raggio = proprie) + nuovo blocco `SITE_ENROLLEES`
+  (`enrollee-management.viewSite`). `SITE_REQUESTS` torna a concedere SOLO `request-management.viewSite`: i due raggi
+  sono indipendenti (il commerciale-iscritti ha Sedi in Iscritti ma solo proprie in Richieste).
+- Test: `Seeding/QualificaOperatorSeederTest` (permessi per ruolo + righe HTTP `enrollee-management/rows` per
+  commerciale/commerciale-iscritti/supervisore-didattica/supervisore); `Users/QualificaRoleMatrixTest` menu commerciale
+  ora include `/enrollee-management` (requisito cambiato).
+- Da applicare in produzione: rieseguire `QualificaProductionDataSeeder` (o `QualificaOperatorSeeder`): sync completo dei ruoli.
 
 ## SUPERVISORE COMMERCIALE — UTENTI E RUOLI TRANNE CREAZIONE — NON COMMITTATO (2026-09-18)
 
@@ -821,8 +819,8 @@ BusinessFunctionLink → **`QualificaOperatorSeeder`** (sostituisce `QualificaOp
   prodotti + anagrafiche + referenti completi, Marketing e Lead, Richieste complete + report, `quote-workflows`
   "configuratore di stati", gruppo Premi e Incentivi, Richieste di modifica, Gestione Iscritti completa (CSV 15:46); niente Opportunita'/Task),
   `coordinatore-commerciale` (prodotti/categorie/anagrafiche/referenti + Marketing e Lead + Richieste + report; niente
-  configuratore, premi, richieste modifica; + Gestione Iscritti completa), `marketing`, `commerciale` (anche senza `report`), `commerciale-iscritti` (+ iscritti
-  viewAny/view, SENZA viewSite dal 2026-09-18), `supervisore-didattica` (+ viewSite richieste e iscritti). I vecchi ruoli inglesi
+  configuratore, premi, richieste modifica; + Gestione Iscritti completa), `marketing`, `commerciale` (anche senza `report`; + iscritti viewAny/view, solo propri, dal 2026-09-18), `commerciale-iscritti` (+ iscritti
+  viewAny/view/viewSite), `supervisore-didattica` (+ viewSite richieste e iscritti). I vecchi ruoli inglesi
   `supervisor`/`commercial` (`RETIRED_ROLES`) vengono CANCELLATI a ogni run (chi li aveva resta senza quel ruolo).
 - Password: `seeding.password` SOLO alla creazione; ruolo/sedi/competenza riconvergono a ogni run.
 - Test: `Seeding/QualificaOperatorSeederTest`, `Users/QualificaRoleMatrixTest` (ex TestUsersSeederTest),
