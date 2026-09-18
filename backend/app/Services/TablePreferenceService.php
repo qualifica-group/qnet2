@@ -79,10 +79,16 @@ class TablePreferenceService
 
     /**
      * Persist the actor's current column state as a SPARSE delta and return the
-     * stored delta. The frontend sends the full current state; we diff it against
-     * the definition default and keep only deviations. Idempotent upsert on
-     * (user_id, domain). Columns unknown to the definition are ignored
-     * defensively (the FormRequest already 422s them).
+     * stored delta. The frontend sends the full state of the columns it shows;
+     * we diff it against the definition default and keep only deviations.
+     * Idempotent upsert on (user_id, domain). Columns unknown to the definition
+     * are ignored defensively (the FormRequest already 422s them).
+     *
+     * A submitted column replaces its stored override entirely; a column the
+     * client did not submit keeps its stored override. The grid can show only
+     * part of the domain's columns (request-management's category tabs each
+     * carry their own `attr.*` set), so a save from one view must not discard
+     * what another view customized.
      *
      * @param  array<int, ColumnState>  $columnsState
      * @return array<string, array<string, mixed>>
@@ -90,7 +96,7 @@ class TablePreferenceService
     public function save(TableDefinition $definition, User $actor, array $columnsState): array
     {
         $defaults = $definition->defaultColumnLayout();
-        $delta = [];
+        $delta = $this->deltaFor($definition, $actor);
 
         foreach ($columnsState as $column) {
             if (! array_key_exists($column->id, $defaults)) {
@@ -106,10 +112,15 @@ class TablePreferenceService
                 }
             }
 
+            unset($delta[$column->id]);
+
             if ($diff !== []) {
                 $delta[$column->id] = $diff;
             }
         }
+
+        // Stored overrides of columns no longer defined are dropped, not carried on.
+        $delta = array_intersect_key($delta, $defaults);
 
         UserTablePreference::query()->updateOrCreate(
             ['user_id' => $actor->id, 'domain' => $definition->domain()],

@@ -241,9 +241,12 @@ class RequestManagementScopedTableDefinition implements TableDefinition
 
         $order = count($layout);
 
+        // Same baseline a tab shows (AttributeColumnBuilder::resolved(): visible,
+        // no width): a hidden attribute column must differ from its default,
+        // or the preferences delta drops it and the column reappears on reload.
         foreach ($this->attributeColumns->rawColumns($attributes) as $column) {
             $order++;
-            $layout[$column['id']] = ['visible' => false, 'width' => null, 'order' => $order];
+            $layout[$column['id']] = ['visible' => true, 'width' => null, 'order' => $order];
         }
 
         return $layout;

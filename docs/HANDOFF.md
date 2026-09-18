@@ -3,6 +3,31 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE — LAYOUT COLONNE ATTRIBUTI/TAB NON SALVATO — NON COMMITTATO (2026-09-18)
+
+Segnalazione utente: modificando/spostando le colonne degli attributi flessibili, o gestendo le colonne dal pannello
+Colonne di AG Grid, il layout non si salvava correttamente. Il layout e' UNA riga per dominio, ma ogni tab categoria
+mostra (e salva) solo le proprie colonne `attr.*`. Tre cause:
+- `RequestManagementScopedTableDefinition::defaultColumnLayout()` dava alle `attr.*` `visible: false`, mentre il tab
+  le mostra visibili: nascondere una colonna attributo = uguale al default = nessun delta → ricompariva al reload.
+  Ora `visible: true` (stesso baseline di `AttributeColumnBuilder::resolved()`).
+- `TablePreferenceService::save()` SOSTITUIVA l'intero delta con le sole colonne inviate: salvare dal tab B (o da
+  "Tutte") cancellava le personalizzazioni `attr.*` del tab A. Ora una colonna inviata sostituisce il proprio override,
+  una non inviata lo conserva; gli override di colonne non piu' definite vengono scartati. Per gli altri domini il
+  client invia sempre tutte le colonne: comportamento invariato.
+- Frontend: dopo un salvataggio solo la cache config del tab corrente veniva aggiornata; gli altri tab (staleTime
+  10 min) mostravano il layout vecchio e la modifica successiva lo risalvava sopra. `useSaveTablePreferences` e
+  `useResetTablePreferences` invalidano ora tutte le config del dominio (`tableKeys.configs(domain)`,
+  `refetchType: 'none'`); il salvataggio riscrive poi il proprio tab.
+- Test: `RequestManagementAttributeColumnPreferencesTest.php` (4, 3 falliscono sul codice precedente),
+  `use-table-preferences-cache.test.tsx` (2, falliscono sul codice precedente). Backend Table/RequestManagement/Unit
+  2040 + Quotes/Tasks/CustomFields 412 verdi, Pint pulito; Vitest table/data-table/request-management 778 verdi,
+  ESLint e `tsc -b --force` puliti.
+- Fuori scope, stesso difetto: `use-table-filters.ts` (filtri salvati per dominio) aggiorna solo la cache del tab
+  corrente. `QuoteOpportunityScopeTest` isolato fallisce (helper `quoteTableUserWith` definito in un altro file).
+- Da verificare a mano: in un tab categoria nascondi/ridimensiona una colonna attributo, passa a un altro tab e
+  modifica una colonna, torna al primo tab e ricarica: le modifiche restano.
+
 ## GESTIONE RICHIESTE — PATCH CELLA INLINE LENTA (N+1 SULLE CATEGORIE) — COMMITTATO IN 4af506b6 (2026-09-18)
 
 Segnalazione utente: in produzione `PATCH /api/tables/request-management/rows/{id}` (modifica inline da griglia)

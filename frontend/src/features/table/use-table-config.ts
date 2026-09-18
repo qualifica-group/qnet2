@@ -9,6 +9,8 @@ export interface TableConfigScope {
 
 /** Query keys for the generic table feature, namespaced by domain (and scope, when given). */
 export const tableKeys = {
+  /** Prefix of every scope's config entry for one domain. */
+  configs: (domain: string) => ['table', domain, 'config'] as const,
   config: (domain: string, scope?: TableConfigScope) =>
     ['table', domain, 'config', scope?.productCategoryId ?? null] as const,
 }

@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { ColumnState } from 'ag-grid-community'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -74,6 +74,10 @@ export function toColumnPreferences(
  * is ALSO sent to the server, so the config written back into that per-tab
  * entry is the scoped shape — otherwise the response's unscoped column set
  * would drop the tab's `attr.*` columns out of the live grid.
+ *
+ * The layout is stored ONCE per domain, so every OTHER scope's cached config
+ * is now stale too: they are invalidated (refetched on their next mount) so
+ * switching tab never shows, and then re-saves, the previous layout.
  */
 export function useSaveTablePreferences(domain: string, scope?: TableConfigScope) {
   const queryClient = useQueryClient()
@@ -83,6 +87,7 @@ export function useSaveTablePreferences(domain: string, scope?: TableConfigScope
     mutationFn: (columns: ColumnPreferenceInput[]) =>
       saveTablePreferences(domain, columns, scope?.productCategoryId),
     onSuccess: (config) => {
+      invalidateDomainConfigs(queryClient, domain)
       queryClient.setQueryData(tableKeys.config(domain, scope), config)
     },
     // Surface a rejected persist (e.g. a validation 422) instead of swallowing
@@ -98,7 +103,15 @@ export function useSaveTablePreferences(domain: string, scope?: TableConfigScope
  * refetches the config and remounts the grid so the defaults take effect.
  */
 export function useResetTablePreferences(domain: string) {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: () => resetTablePreferences(domain),
+    onSuccess: () => invalidateDomainConfigs(queryClient, domain),
   })
+}
+
+/** Marks every scope's cached config of `domain` stale without refetching the inactive ones now. */
+function invalidateDomainConfigs(queryClient: QueryClient, domain: string): Promise<void> {
+  return queryClient.invalidateQueries({ queryKey: tableKeys.configs(domain), refetchType: 'none' })
 }
