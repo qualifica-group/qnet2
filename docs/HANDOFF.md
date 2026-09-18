@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE — PATCH CELLA INLINE LENTA (N+1 SULLE CATEGORIE) — COMMITTATO IN 4af506b6 (2026-09-18)
+
+Segnalazione utente: in produzione `PATCH /api/tables/request-management/rows/{id}` (modifica inline da griglia)
+lenta, mentre il salvataggio dalla scheda è immediato. Non era AG Grid: misurato nel browser, apertura menu ~45 ms,
+valore ottimistico in cella ~35 ms.
+
+- Causa: `TableCellUpdateService` chiama `columns()`, che per `request-management` calcola
+  `AttributeScopeResolver::union()` — un giro su OGNI categoria prodotto con ~5 query ciascuna (find + attributi e
+  opzioni per ogni livello della catena). Costo lineare nel catalogo: 206 categorie = 1102 query / 486 ms in locale.
+- Fix: nuovo `CategoryHierarchy::effectiveAttributesByCategory(AttributeContext)` (3 query fisse, eager load di
+  tutte le assegnazioni); composizione estratta in `EffectiveAttributeComposer::compose()` (statico: i test fanno
+  `new CategoryHierarchy` senza argomenti), condivisa da `effectiveAttributes()`. `resolveUnion()` usa il batch e
+  riempie anche la memo per-categoria. Dopo: 82 query costanti, 206 categorie = 82 ms.
+- Test: `tests/Unit/Tables/AttributeScopeResolverUnionTest.php` (union identica al merge per-categoria; query
+  costanti al crescere delle categorie). Suite backend seriale 7890/7890, Pint pulito.
+- Residuo non toccato: la PATCH rilegge la riga con `baseQuery()->find()` due volte (~20 query ciascuna).
+
 ## STATI DI LAVORAZIONE — "NUOVO CONTATTO" PRIMA DI "DA RICHIAMARE" — NON COMMITTATO (2026-09-18)
 
 Direttiva utente 2026-09-18: nel seed di produzione (`QualificaProductionDataSeeder` → `QualificaWorkflowSeeder`)
