@@ -22,7 +22,11 @@ Spec 0142. Enum `App\Enums\ProductUsage` { Sale='SALE', Cost='COST' } (HasMeta, 
   `usage: 'SALE'`. i18n `enums.product_usage.*`, `products.form.usages[Required]`, `products.columns.usages`.
 - Test: `tests/Feature/Products/ProductUsageTest.php` (AC-001..007), FE `product-form-usages.test.tsx`, casi in
   `quote-line-row.test.tsx` / `product-form-payload.test.ts`; aggiornati i test che asserivano la shape esatta dei `params` del picker.
-- Fuori scope (D-8): colonna griglia prodotti, filtro nel picker "prodotti di interesse".
+- Griglia prodotti (D-9): colonna `usages` in `App\Tables\Products\ProductUsageColumn` (tags + enumKey `product_usage`, filtro set
+  `whereJsonContains` OR, sort `CAST(products.usages AS CHAR)` con direzione allow-listed, values = casi presenti). `Product::booted()`
+  salva `usages` in ordine canonico. FE `column-filters.ts`: valueFormatter del Set Filter anche per `tags` (etichette enum).
+  `ProductTableTest` aggiornato (lista colonne).
+- Fuori scope (D-8): filtro nel picker "prodotti di interesse".
 - Seed demo: `DemoCostProductSeeder` + `DemoCatalog\DemoCostProductCatalogue` (13 voci solo COST: noleggio auto, carburante,
   biglietti treno AV/regionale, aereo, taxi, pedaggio, parcheggio, hotel, pasto, materiale didattico, affitto aula, docente
   esterno) sotto la radice "Spese e Trasferte" SENZA funzione aziendale (mai prodotto di interesse / riga REVENUE). Chiamato da

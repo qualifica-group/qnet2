@@ -35,8 +35,13 @@
     D-7  FE: il form prodotto mostra due checkbox indipendenti; il picker riga invia
          `usage=SALE` sul tab Prodotti/Gestione Richieste, `usage=COST` sul tab Costi; il probe
          "prodotto unico di categoria" dell'autofill richieste invia `usage=SALE`.
-    D-8  FUORI SCOPE: colonna griglia prodotti, filtro nel picker "prodotti di interesse",
-         import prodotti (usa il default D-3).
+    D-8  FUORI SCOPE: filtro nel picker "prodotti di interesse", import prodotti (usa il default D-3).
+    D-9  (richiesta utente) Colonna griglia prodotti `usages`: type `tags`, enumKey `product_usage`,
+         filtro `set` sui valori enum (OR, allow-list via tryFrom), ordinabile sul JSON salvato. Il model
+         salva `usages` in ordine canonico dei casi (SALE, COST) cosi' un insieme e' sempre la stessa
+         stringa: asc = solo costo, entrambi, solo vendibile.
+    D-10 (richiesta utente) Seed demo `DemoCostProductSeeder`: voci solo COST (auto, treno, hotel...)
+         sotto la radice "Spese e Trasferte" senza funzione aziendale.
   </decisions>
 
   <contract>
@@ -46,6 +51,7 @@
     GET   /api/products/for-select     -> usage?: "SALE"|"COST"; ids[] bypassa il filtro
     GET   /api/config                  -> data.enums.product_usage: [{value,label}]
     Field permission `products.usages` (tipo multiselect).
+    Tabella `products`                 -> colonna `usages` (tags, enumKey product_usage, set, sortable)
     POST/PATCH offerte (e canali offer_lines) -> 422 `{field}.{i}.product_id` se prodotto non abilitato (D-5)
   </contract>
 
@@ -64,6 +70,8 @@
     AC-008  Form prodotto: due checkbox (create: solo Vendibile spuntato); almeno una obbligatoria;
             dettaglio mostra gli utilizzi.
     AC-009  Picker riga: tab Prodotti invia usage=SALE, tab Costi usage=COST.
+    AC-010  Griglia: colonna usages filtrabile (set, qualsiasi valore selezionato) e ordinabile; values
+            restituisce solo gli utilizzi presenti; checklist filtro localizzata.
   </acceptance>
 
 </spec>

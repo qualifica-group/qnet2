@@ -233,6 +233,23 @@ describe('buildColumnFilter', () => {
     expect(format({ value: null })).toBe('')
   })
 
+  it('spec 0142: localizes each value of a tags column Set Filter through its enumKey', async () => {
+    const i18n = (await import('@/i18n')).default
+    await i18n.changeLanguage('it')
+    const { filterParams } = buildColumnFilter(
+      'products',
+      stubColumn({ id: 'usages', type: 'tags', filterType: 'set', enumKey: 'product_usage' }),
+      vi.fn(),
+      translate,
+    )
+
+    const format = (filterParams as { valueFormatter: (p: { value: unknown }) => string })
+      .valueFormatter
+    expect(format({ value: 'SALE' })).toBe('Vendibile')
+    expect(format({ value: 'COST' })).toBe('Utilizzabile come costo')
+    expect(format({ value: null })).toBe('')
+  })
+
   it('does not attach a boolean valueFormatter to a non-boolean Set Filter column', () => {
     const { filterParams } = buildColumnFilter(
       'users',
