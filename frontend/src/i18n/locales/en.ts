@@ -67,6 +67,7 @@ import { businessFunctions } from './en-business-functions'
 import { moduleStats, statsPanel } from './en-stats'
 import { impersonation } from './en-impersonation'
 import { permissions, permissionExplorer } from './en-permissions'
+import { help } from './en-help'
 import {
   usersAssignment,
   usersColumnsEmployment,
@@ -464,6 +465,7 @@ export const en = {
   attachments,
   impersonation,
   documentLayouts,
+  help,
 }
 
 export type TranslationResources = typeof en

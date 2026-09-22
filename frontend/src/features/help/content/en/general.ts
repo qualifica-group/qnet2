@@ -1,0 +1,227 @@
+import type { HelpGuide } from '../../types'
+
+const guide: HelpGuide = {
+  key: 'general',
+  title: 'General guide',
+  summary:
+    'Quick guide to find your way around qnet: getting started, lists and records, functions shared across all modules, FAQ and glossary.',
+  sections: [
+    {
+      id: 'sign-in-and-password',
+      title: 'Sign-in and password',
+      blocks: [
+        { type: 'paragraph', text: "Open qnet's address in your browser, enter your credentials and press **Sign in**: the **Dashboard** opens." },
+        { type: 'steps', items: ["Open qnet's address in your browser.", 'Enter **Email** and **Password**.', 'Press **Sign in**. The **Dashboard** opens.'] },
+        { type: 'paragraph', text: 'If the details are wrong, "Invalid email or password." appears. The eye icon in the password field shows or hides what you typed.' },
+        { type: 'paragraph', text: 'If you forgot your password, from the sign-in page:' },
+        { type: 'steps', items: ['Press **Forgot your password?**.', 'Enter your email and press **Send reset link**.', 'Open the email you received and follow the link.', 'Type the **New password** and repeat it in **Repeat password** (at least 8 characters).', 'Press **Reset password**, then sign in with the new password.'] },
+        { type: 'warning', text: 'If "This reset link is invalid or has expired." appears, request a new one.' },
+        { type: 'paragraph', text: 'To change your password while signed in:' },
+        { type: 'steps', items: ['Open the user menu at the top right and choose **Settings**.', 'Select the **Password** section.', 'Fill in **Current password**, **New password** and **Repeat new password**.', 'Press **Change password**.'] },
+      ],
+    },
+    {
+      id: 'interface-overview',
+      title: 'How the interface is laid out',
+      blocks: [
+        { type: 'paragraph', text: 'The screen has three areas: the side menu on the left, the header at the top and the work area in the center.' },
+        { type: 'paragraph', text: 'The **side menu** contains the **Dashboard** and the work areas: **Marketing & Leads**, **Opportunities & Contracts**, **Tasks**, **Time tracking**, **Registries**, **Products**, **Rewards & Incentives**, **Configuration** and **Administration**. Click a group name to open or close it. **Settings** is at the bottom.' },
+        { type: 'list', items: ['Press the round button with the arrow on the edge of the menu (**Toggle sidebar**).', 'Or use **Ctrl+B** (Mac **Cmd+B**).'] },
+        { type: 'paragraph', text: 'When the menu is collapsed only the icons remain; hover over one to see its name. Drag the edge of the menu to widen it; double-click to restore the original width.' },
+        {
+          type: 'table',
+          headers: ['Element', 'What it does'],
+          rows: [
+            ['Bell', 'Opens notifications.'],
+            ['Sun/moon (**Change theme**)', 'Picks the **Light**, **Dark** or **System** theme.'],
+            ['Name and avatar', 'Opens the user menu with **Settings** and **Sign out**.'],
+          ],
+        },
+        { type: 'paragraph', text: 'Below the header, every page shows the navigation path; to its right is the button to create a new record. If **New version available** appears, press **Update now**.' },
+      ],
+    },
+    {
+      id: 'using-lists-and-export',
+      title: 'Using lists and exporting data',
+      blocks: [
+        { type: 'paragraph', text: 'Almost every module shows its data in a row-and-column list, with the same set of tools.' },
+        {
+          type: 'table',
+          headers: ['Tool', 'How to use it'],
+          rows: [
+            ['**Search…**', "Type and the list updates. **Ctrl+K** (Mac **Cmd+K**) jumps straight into the field. Next to it you see how many rows were found."],
+            ['Sorting', 'Click a column header; click again to reverse it.'],
+            ['Column filter', 'Hover the header and open the filter: check values or set a condition, for example "Contains".'],
+            ['**Advanced filters**', 'Where available, opens extra search fields: fill them in and press **Apply**; **Clear** empties them.'],
+            ['**Clear filters**', 'Removes all filters at once.'],
+            ['Columns', 'Drag the headers to reorder them and their edges to resize them. The **Columns** tab on the right shows or hides them.'],
+            ['**Reset layout**', 'In **Table options** (the three dots): restores columns and filters to their initial setting.'],
+            ['**Page size:**', 'At the bottom: how many rows to show per page.'],
+            ['**Full screen**', 'Expands the list to the whole window; **Esc** to exit.'],
+          ],
+        },
+        { type: 'paragraph', text: 'qnet remembers on its own the columns and filters you set.' },
+        { type: 'paragraph', text: 'To keep a combination of filters, with **Saved filters**:' },
+        { type: 'steps', items: ['Apply the filters you need.', 'Open **Saved filters** and type a name in **View name**.', 'Choose **Private** or **Shared** with your colleagues.', 'Press **Save view**. To reuse it, click its name under **My views** or **Shared**.'] },
+        { type: 'paragraph', text: "The **Actions** column holds the record's commands: **View**, **Edit**, **Duplicate**, **Delete**, **Activity**. If there are more than three, the rest sit under **More actions**. Sensitive operations ask for confirmation." },
+        { type: 'paragraph', text: 'Some columns can be edited directly in the cell: click the cell, change the value and press **Enter** or click elsewhere. If the value needs an explanation, **Add a note** opens.' },
+        { type: 'paragraph', text: 'Where available, check the boxes to the left of the rows for multi-select. The **Actions** button appears with the number of rows chosen, from which you can for example use **Delete selected**.' },
+        { type: 'warning', text: 'Bulk deletion is final and cannot be undone.' },
+        { type: 'paragraph', text: 'To export the data you see in the list:' },
+        { type: 'steps', items: ['Set search, filters, sorting and columns the way you need them.', 'Open **Table options** and choose **Export**.', 'In the **Export data** panel choose **CSV** or **Excel (XLSX)**.', 'Check the summary and press **Export**.', 'When processing finishes, press **Download file**.'] },
+        { type: 'note', text: 'The file contains exactly what you see in the list.' },
+      ],
+    },
+    {
+      id: 'opening-records-and-quick-create',
+      title: 'Opening a record and quick create',
+      blocks: [
+        { type: 'paragraph', text: 'A record opens in two ways: **Single page** (it takes up the whole work area) or **Modal** (it opens in a side panel and the list stays where it is).' },
+        { type: 'paragraph', text: 'In the side panel, the **Open detail page** icon takes the record to a full page. A link to another record opens in the panel; **Ctrl+click** (Mac **Cmd+click**) opens it in a new browser tab.' },
+        { type: 'paragraph', text: 'To choose the mode, go to **Settings › System settings › Module opening mode**:' },
+        { type: 'list', items: ['**Modal only**: every module opens in the side panel.', '**Single page only**: every module opens as a full page.', '**Custom**: choose **Modal** or **Single page** module by module.'] },
+        { type: 'paragraph', text: 'Press **Save changes**. **Restore default** returns every module to single page.' },
+        { type: 'paragraph', text: 'Next to some selection fields there is a **+** button, useful when the value you need does not exist yet:' },
+        { type: 'steps', items: ['Press **+** next to the field.', 'Fill in the creation window.', 'Save: the new value is inserted into the field right away.'] },
+        { type: 'note', text: 'The button only appears if you can create that type of record.' },
+      ],
+    },
+    {
+      id: 'notifications-and-preferences',
+      title: 'Notifications and personal preferences',
+      blocks: [
+        { type: 'paragraph', text: "The bell shows how many notifications you haven't read; the browser tab title flags it too." },
+        { type: 'list', items: ['Filter by **All**, **Unread** or **Read**.', 'Click a notification to open the linked record: it is marked as read.', 'Use **Mark as read** on a notification, or **Mark all as read**.'] },
+        {
+          type: 'table',
+          headers: ['Settings section', 'What you can do'],
+          rows: [
+            ['**Profile**', 'Upload or remove your avatar, choose the **Language** (Italian or English), update your personal details.'],
+            ['**Password**', 'Change your password.'],
+            ['**System settings**', 'Choose **Module opening mode**, **Interface scale** and **Date format**.'],
+          ],
+        },
+        { type: 'paragraph', text: '**Interface scale** enlarges or shrinks the whole application (100% is the normal size). **Date format** decides how you see dates and times, for example **Day/Month/Year** and **24-hour (14:30)**, with a preview. Save with **Save changes**.' },
+        { type: 'note', text: 'The avatar accepts JPEG, PNG, GIF or WebP up to 10 MB. The profile email cannot be changed from here.' },
+        { type: 'tip', text: 'Administrators can sign into qnet as another user with **Impersonate**; it is explained in the **Users** guide.' },
+      ],
+    },
+    {
+      id: 'dashboard-and-statistics',
+      title: 'Dashboard and statistics',
+      blocks: [
+        { type: 'paragraph', text: 'The **Dashboard** is the first page after signing in; right now it shows "This section is not available yet." The main numbers are found inside each module, in the **Statistics** panel (for example in **Users**, **Registries**, **Company Sites**, **Products**, **Product Categories**, **Projects**, **Leads** and **Opportunities**).' },
+        { type: 'steps', items: ['Open the module.', 'Press the button with the chart icon (**Show statistics**).', 'To close it, press it again (**Hide statistics**).'] },
+        { type: 'paragraph', text: 'The panel shows totals and indicators (for example the allocated budget), distributions such as "By status" and monthly trends such as "New projects per month". qnet remembers if you left it open.' },
+      ],
+    },
+    {
+      id: 'notes-and-documents',
+      title: 'Notes and documents',
+      blocks: [
+        { type: 'paragraph', text: 'Notes are used to discuss a record with colleagues, for example in **Opportunities**, **Quotes**, **Work orders**, **Tasks** and **Request Management**. They open from the **Notes** action on the row or the **Notes** section of the record.' },
+        { type: 'steps', items: ['Type in the box "Write a note, use @ to mention a colleague…".', 'To involve a colleague, type **@**, pick the name and confirm with **Tab** or **Enter**: they will receive a notification.', 'Press **Send**.'] },
+        { type: 'paragraph', text: 'Use **Reply** to open a response under the note. Only the author sees **Edit note** and **Delete note**; an edited note shows "(edited)". In **Opportunities**, a note can be general or tied to a quote: filter by **All notes**, **General notes** or the quote name.' },
+        { type: 'warning', text: 'Deleting a note also removes its replies.' },
+        { type: 'paragraph', text: 'The **Documents** section collects the files of a record, for example in **Opportunities**, **Quotes**, **Contracts**, **Work orders**, **Tasks** and **Request Management**.' },
+        { type: 'steps', items: ["Open the record's **Documents** section, or the **Documents** action on the row.", 'Drag one or more files into the upload area, or click it to pick them.', 'Wait for the upload to finish.'] },
+        {
+          type: 'table',
+          headers: ['Command', 'What it does'],
+          rows: [
+            ['**Preview**', 'Opens the file in a new browser window.'],
+            ['**Download**', 'Saves the file to your computer.'],
+            ['**Delete document**', 'Removes the file, after confirmation and with no way to undo it.'],
+          ],
+        },
+        { type: 'tip', text: "If the preview does not open, allow pop-up windows for qnet's site." },
+      ],
+    },
+    {
+      id: 'activity-history',
+      title: 'Activity history',
+      blocks: [
+        { type: 'paragraph', text: 'The **Activity history** shows who changed what and when. It opens from the **Activity** action on the row or inside the record.' },
+        { type: 'list', items: ['The type: **Creation**, **Update**, **Deletion** or **Restore**.', 'The affected part, for example **Contact**, **Address**, **Note** or **Document**.', 'Who did it (**System** if it was automatic).', 'The fields changed, with the previous value struck through and the new value.'] },
+        { type: 'paragraph', text: 'Filter by **All**, **Creation only** or **Update only**; **Load more** shows older operations.' },
+      ],
+    },
+    {
+      id: 'master-data-and-custom-fields',
+      title: 'Master data and custom fields',
+      blocks: [
+        { type: 'paragraph', text: 'The **Personal details** section appears in **Registries**, **Referents**, **Users** and your own **Profile**. Choose the **Type** (**Individual** or **Company**) and fill in the required fields: qnet checks that the tax code and VAT number are valid.' },
+        { type: 'paragraph', text: 'Use **Add contact** for phone, email, certified email, fax or website and **Add address** for addresses; you can mark one as primary. On an already-saved record, every contact or address is registered right away.' },
+        { type: 'tip', text: 'If "Save the record first to add contacts and addresses." appears, save the record and then add them.' },
+        { type: 'paragraph', text: 'For the **Possible duplicate** warning, see the **Registries** guide.' },
+        { type: 'paragraph', text: 'An administrator can add extra fields to modules (see the **Custom Fields** guide). You find them in the chosen group or in the **Other fields** section, often also as list columns. They are filled in like any other field: text, numbers, a **Yes/No** switch, a choice from a list, a link to records in other modules, dates and times, email, URL or color. If a value is not accepted, the reason appears below the field, for example "This field is required."' },
+      ],
+    },
+    {
+      id: 'assignment',
+      title: 'Assigning to operators',
+      blocks: [
+        { type: 'paragraph', text: 'In **Leads** and **Request Management** you can assign multiple records in a single operation.' },
+        { type: 'steps', items: ['Select the rows with the checkboxes on the left.', 'Open **Actions** and choose **Assign operators**.', 'If asked, choose the **Site**.', 'Choose the **Assignment type**: **Even distribution** (balances the load across the site operators) or **Assign to operator** (all to the same **Operator**).', 'Press **Assign**.'] },
+        { type: 'note', text: 'qnet only suggests competent operators, meaning those whose user record has the site and the competency on the category. If no one is suitable, "No competent operator for the selected records." appears. At the end, a message states how many records were assigned and how many were left without an operator.' },
+      ],
+    },
+    {
+      id: 'faq',
+      title: 'FAQ',
+      blocks: [
+        {
+          type: 'table',
+          headers: ['Question', 'Answer'],
+          rows: [
+            ["I don't see a menu item or button described in the manual.", 'The menu and actions depend on your role permissions. Ask the administrator to check the role in **Administration › Roles**.'],
+            ["I can't edit a field.", 'Your role may have it as read-only, or the field is inherited (for example from a project or a lead) or protected: for **Source**, propose a change from the **Change Requests** guide.'],
+            ["I can't delete a configuration value.", "It is already used by some record. Turn off **Active** instead: it disappears from drop-downs without touching existing data."],
+            ["A product doesn't show up among the ones selectable on a quote.", 'Check **Usage in quote** on the product record (**Sellable** for the Quote tab, **Usable as cost** for the Costs tab) and the category: products are limited to the categories of the opportunity, unless **Show all products** is on.'],
+            ["I closed a quote as won but don't see the contract.", 'The product category may have **Generates a contract** turned off. Check it in **Product Categories**.'],
+            ["An operator doesn't receive assignments.", "Their user record is missing the competency on the category or the site: the module flags it at the top with **Not assignable**."],
+            ["I can't convert a lead.", 'The lead already has an opportunity, the campaign has no business function or category, or the registry already has an open opportunity.'],
+            ['The quote PDF gives an error.', 'At least one active layout is needed for Quotes: check **Configuration › Layouts** and the **Default** layout.'],
+            ["I don't receive the password reset email.", 'Check the spam folder; if the link expired, request a new one.'],
+          ],
+        },
+      ],
+    },
+    {
+      id: 'glossary',
+      title: 'Glossary',
+      blocks: [
+        {
+          type: 'table',
+          headers: ['Term', 'Meaning'],
+          rows: [
+            ['Registry', "A customer or supplier record, whether an individual or a company."],
+            ['Referent', 'A contact person, internal or external, linkable to registries.'],
+            ["Referrer", 'The referent who referred the customer; receives any vouchers and commissions.'],
+            ['Salesperson', 'The commercial referent of a registry, opportunity or quote.'],
+            ['Supervisor / Account managers', 'qnet users who follow the customer, in order of importance.'],
+            ['Operational site', "A physical place where the organization works; decides assignments."],
+            ['Business function', 'An organizational unit (Business Unit or Business Service) that product categories belong to.'],
+            ['Project / Campaign', 'Marketing initiatives: the campaign generates leads and can belong to a project.'],
+            ['Lead', 'A contact born from a campaign, to be qualified and converted.'],
+            ['Opportunity', 'A deal with a registry; it contains one or more quotes.'],
+            ['Quote', 'The economic proposal, with sold lines and cost lines.'],
+            ['Workflow', 'The set of statuses a quote goes through, chosen based on criteria.'],
+            ['Contract', 'Born from a quote closed as won; it is validated, renewed or terminated.'],
+            ['Work order', 'The work to carry out on a contract, with owners and tasks.'],
+            ['Request', "In Request Management, a customer's request tied to a quote."],
+            ['Enrollee', 'A request that reached a Validated or Closed-won status.'],
+            ['Task', 'An activity with a requester, assignees and a due date.'],
+            ['Task template', 'A list of standard tasks generated when a work order is created.'],
+            ['Voucher', 'A reward or incentive assigned to the referrer, with status Pending, Approved or Denied.'],
+            ['Role', 'A set of permissions assigned to users.'],
+            ['Custom field', 'A field added by the administrator to a module.'],
+            ['Attribute', 'An extra field defined by a product category for products, quotes or work orders.'],
+          ],
+        },
+      ],
+    },
+  ],
+}
+
+export default guide

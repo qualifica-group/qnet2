@@ -67,6 +67,7 @@ import {
   usersFormEmployment,
   usersFormEmploymentSections,
 } from './it-users-employment'
+import { help } from './it-help'
 
 export const it: TranslationResources = {
   common: {
@@ -450,4 +451,5 @@ export const it: TranslationResources = {
   attachments,
   impersonation,
   documentLayouts,
+  help,
 }

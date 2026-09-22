@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0143-in-app-module-help" status="implemented" owner="utente" date="2026-09-22">
+
+  <goal>
+    Ogni utente autenticato apre, da un'icona (?) nell'header accanto alla campanella notifiche,
+    un pannello laterale con la guida d'uso del modulo della pagina corrente, un indice delle guide
+    dei soli moduli che vede nel menu e una ricerca nel testo delle guide. I testi sono statici
+    (nel codice frontend), in italiano e inglese, e derivano dal Manuale Utente QNet.
+  </goal>
+
+  <context>
+    Decisioni utente (2026-09-22):
+    - Contenuti SOLO testo statico nel codice: nessun modulo di gestione/modifica, nessuna tabella DB.
+    - Lingue: italiano E inglese, con parity test (come gli altri locale).
+    - Copertura al primo rilascio: tutte le voci di menu con route + una "Guida generale"
+      (Primi passi + Funzioni comuni) sempre visibile. Commesse (work-orders) mostra solo
+      "modulo in fase di sviluppo". Dashboard descrive lo stato attuale (sezione non disponibile).
+    - UX: pannello laterale destro = guida del modulo corrente + indice altri moduli + ricerca.
+    Fonte contenuti: documento "Manuale Utente QNet" (Claude Docs, artifact KwvSrXafsGqT9qzZULxJhh),
+    trascritto per modulo. I diagrammi del manuale (mermaid) non sono renderizzabili senza nuove
+    dipendenze: vengono resi come testo/elenco.
+
+    Fatti verificati nel repo:
+    - Header: frontend/src/layouts/app-layout.tsx:39-48, div "ml-auto flex items-center gap-0.5"
+      con NotificationBell (features/notifications/notification-bell.tsx) e ThemeToggle.
+    - Sheet shadcn: frontend/src/components/ui/sheet.tsx (SheetContent: side, resizable,
+      defaultWidth=640, storageKey). Esempio: features/quote-workflows/default-statuses-sheet.tsx.
+    - Menu backend-driven gia' filtrato per permessi: GET /api/navigation (routes/api.php:95,
+      auth:sanctum) -> NavigationItemResource { key, label, icon, route, type, children }.
+      Frontend: features/navigation/use-navigation.ts (useNavigation, queryKey ['navigation']),
+      types.ts NavigationItem. Nessun helper "chiavi visibili" in produzione.
+    - Match route->voce: logica esistente findNavItemByRoute (routes/breadcrumbs.tsx:90) e isActive
+      (components/nav-main.tsx:180: pathname === route || startsWith(route + '/')).
+    - Chiavi di navigazione con route (= chiavi guida), da backend/config/navigation/*.php:
+      dashboard, projects, campaigns, leads, imports, pipeline-statuses, opportunities,
+      quote-workflows, quotes, work-orders, contract-statuses, contracts, request-management,
+      field-change-requests, enrollee-management, tasks, task-statuses, task-types,
+      task-categories, task-priorities, task-importances, task-templates, time-entries, registries,
+      referents, referent-types, companies, company-sites, operational-sites, products,
+      product-categories, attributes, vat-rates, units-of-measure, product-typologies,
+      rewarded-referents, reward-types, reward-statuses, business-functions, sectors, tags, sources,
+      commission-configurations, payment-methods, document-layouts, users, roles, custom-fields,
+      migrations (49) + chiave speciale "general".
+    - i18n: frontend/src/i18n/index.ts (lng/fallbackLng), locale per dominio it-*.ts / en-*.ts
+      aggregati in it.ts / en.ts, parity test *-i18n-parity.test.ts.
+    - Nessuna libreria markdown/sanitizer nel frontend: il contenuto e' dato strutturato renderizzato
+      come nodi React (mai innerHTML).
+  </context>
+
+  <scope>
+    <in>
+      <item>Pulsante icona (lucide CircleHelp) nell'header, prima di NotificationBell, con tooltip/aria-label i18n.</item>
+      <item>Pannello laterale (Sheet, side right) "Guida": vista guida del modulo corrente, indice guide visibili, ricerca.</item>
+      <item>Risoluzione modulo corrente dal pathname contro le route del menu (match esatto o prefisso route + '/'); nessun match -> guida "general".</item>
+      <item>Indice = "general" + voci del menu restituite da GET /api/navigation (foglie con route), raggruppate per gruppo di menu con le label del menu.</item>
+      <item>Ricerca client-side (>= 2 caratteri, case- e accent-insensitive) su titolo guida, titoli sezione e testo dei blocchi delle sole guide visibili.</item>
+      <item>Schema dati tipizzato del contenuto guida + renderer dei blocchi (paragraph, steps, list, table, tip, warning, note) con grassetto inline **...**.</item>
+      <item>Contenuti IT e EN per le 50 chiavi, caricati in lazy (dynamic import per lingua e chiave).</item>
+      <item>Etichette dell'interfaccia del pannello in i18n (it-help.ts / en-help.ts) + parity test.</item>
+      <item>Parity test dei contenuti: ogni chiave ha IT ed EN con gli stessi id di sezione.</item>
+    </in>
+    <out>
+      <item>Modifica dei contenuti da interfaccia, tabelle DB, endpoint backend, permesso dedicato.</item>
+      <item>Qualsiasi modifica backend (il filtro permessi riusa GET /api/navigation invariato).</item>
+      <item>Help contestuale per singolo campo/tooltip dentro i form.</item>
+      <item>Immagini, screenshot, video, diagrammi renderizzati (mermaid).</item>
+      <item>URL/deep link condivisibili verso una guida; stampa/esportazione PDF.</item>
+      <item>Nuove dipendenze npm/composer.</item>
+      <item>Aggiornamento del documento Claude Docs (resta la fonte, non e' sincronizzato automaticamente).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun nuovo endpoint. Contratto = endpoint esistente + schema contenuto (types.ts), congelato. -->
+    <endpoint method="GET" path="/api/navigation">
+      <request>Invariato (auth:sanctum).</request>
+      <response status="200">Invariato: { success, message, data: NavigationItem[] }.</response>
+      <errors>401 non autenticato (gestito dall'interceptor esistente).</errors>
+    </endpoint>
+
+    <typescript file="frontend/src/features/help/types.ts"><![CDATA[
+export type HelpGuideKey = string; // chiave navigation con route, oppure 'general'
+
+export type HelpBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'steps'; items: string[] }             // elenco numerato
+  | { type: 'list'; items: string[] }              // elenco puntato
+  | { type: 'table'; headers: string[]; rows: string[][] }
+  | { type: 'tip'; text: string }                  // "Suggerimento"
+  | { type: 'warning'; text: string }              // "Attenzione"
+  | { type: 'note'; text: string };                // avviso neutro (es. modulo in sviluppo)
+
+export interface HelpSection {
+  id: string;        // kebab-case inglese, stabile, identico tra IT ed EN
+  title: string;
+  blocks: HelpBlock[];
+}
+
+export interface HelpGuide {
+  key: HelpGuideKey;
+  title: string;
+  summary: string;   // frase d'apertura
+  sections: HelpSection[];
+}
+// Testo: solo testo semplice; unico markup inline ammesso **grassetto** (renderizzato <strong>).
+// Contenuto: frontend/src/features/help/content/{it,en}/<key>.ts, export default HelpGuide.
+]]></typescript>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente autenticato su qualsiasi pagina del layout applicativo, quando la pagina e' renderizzata, allora nell'header compare un pulsante con aria-label "Guida" (EN "Help") posizionato prima della campanella notifiche. [Vitest app-layout / help-button]</criterion>
+    <criterion id="AC-002">Dato il menu che contiene la voce request-management, quando l'utente e' su /request-management oppure /request-management/12 e clicca il pulsante, allora si apre il pannello laterale con il titolo della guida "Gestione Richieste" e le sue sezioni. [Vitest]</criterion>
+    <criterion id="AC-003">Dato un pathname senza voce di menu corrispondente (es. /settings), quando si apre il pannello, allora viene mostrata la guida "general". [Vitest]</criterion>
+    <criterion id="AC-004">Dato un menu restituito senza la voce leads, quando si apre l'indice, allora la guida Lead non compare ne' nell'indice ne' nei risultati di ricerca, mentre "general" compare sempre; le voci sono raggruppate con le label dei gruppi di menu. [Vitest]</criterion>
+    <criterion id="AC-005">Quando l'utente digita almeno 2 caratteri nella ricerca (es. "telefonate", "TELEFONATE" o senza accenti), allora compaiono i risultati "Guida › Sezione" delle sole guide visibili; cliccando un risultato si apre quella guida posizionata sulla sezione; con 0 risultati compare il messaggio i18n di nessun risultato; con meno di 2 caratteri non si filtra. [Vitest]</criterion>
+    <criterion id="AC-006">Data la lingua interfaccia EN, quando si apre una guida, allora titolo e testi sono quelli EN; con IT quelli IT. [Vitest]</criterion>
+    <criterion id="AC-007">Per ognuna delle 50 chiavi elencate nel context esistono content/it/&lt;key&gt;.ts e content/en/&lt;key&gt;.ts validi rispetto a HelpGuide, con key uguale al nome file e la stessa sequenza di id di sezione tra IT ed EN. [Vitest parity]</criterion>
+    <criterion id="AC-008">Il renderer mostra steps come &lt;ol&gt;, list come &lt;ul&gt;, table come &lt;table&gt; con &lt;th&gt; nell'intestazione dentro un contenitore con overflow orizzontale, tip/warning/note con etichetta testuale (non solo colore), **x** come &lt;strong&gt;; un testo contenente "&lt;script&gt;" viene mostrato come testo letterale e non crea elementi. [Vitest]</criterion>
+    <criterion id="AC-009">La guida work-orders contiene solo un blocco note con il messaggio "modulo in fase di sviluppo" (IT) / equivalente EN. [Vitest]</criterion>
+    <criterion id="AC-010">Il pannello ha un titolo accessibile; Esc lo chiude e il focus torna al pulsante (?); tutti i controlli (indice, risultati, ricerca) sono raggiungibili da tastiera. [Vitest + review manuale]</criterion>
+    <criterion id="AC-011">A 375px il pannello occupa la larghezza disponibile senza scrollbar orizzontale della pagina; le tabelle scorrono dentro il proprio contenitore. [Review manuale verifier]</criterion>
+    <criterion id="AC-012">I contenuti delle guide non sono nel bundle iniziale: `vite build` produce chunk separati per content/{it,en}/*.ts e il pannello li carica on demand, mostrando uno stato di caricamento. [Verifica build verifier + Vitest stato loading]</criterion>
+    <criterion id="AC-013">Lint ESLint, typecheck `cd frontend &amp;&amp; npx tsc -b --force` e intera suite Vitest passano; nessun file oltre 500 righe. [Verifier]</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Solo librerie gia' presenti (React, shadcn Sheet/Input/ScrollArea se presente, lucide, i18next, TanStack Query tramite useNavigation). Nessuna nuova dipendenza.</item>
+    <item>Nessun dangerouslySetInnerHTML: il testo e' renderizzato come nodi React; il parser inline gestisce solo **grassetto**.</item>
+    <item>Visibilita' guide = voci di GET /api/navigation (gia' filtrate server-side per permesso). Nota: i testi sono nel bundle pubblico, quindi non devono contenere dati riservati.</item>
+    <item>Stile solo tramite token del design system (ui-design.md: scala superfici, compattezza text-xs/text-sm, niente colori hard-coded).</item>
+    <item>Etichette UI del pannello via i18next (it-help.ts / en-help.ts) con parity test; i contenuti guida vivono nei file content/{it,en}.</item>
+    <item>File sotto 300 righe (soft) / 500 (hard): una guida per file; guide lunghe (es. product-categories) mantenute entro il limite condensando o dividendo in piu' sezioni.</item>
+    <item>Identificatori in inglese (feature "help"); testi utente in italiano/inglese.</item>
+  </constraints>
+
+</spec>

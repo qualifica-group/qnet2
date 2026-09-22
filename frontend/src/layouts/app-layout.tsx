@@ -6,6 +6,7 @@ import { NavUserHeader } from '@/components/nav-user-header'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { NotificationBell } from '@/features/notifications/notification-bell'
 import { useNotificationTitle } from '@/features/notifications/use-notification-title'
+import { HelpButton } from '@/features/help/components/help-button'
 import { useAuth } from '@/features/auth/use-auth'
 import { ImpersonationBanner } from '@/features/auth/impersonation-banner'
 import { VersionUpdateBanner } from '@/components/version-update-banner'
@@ -39,6 +40,7 @@ export function AppLayout() {
             <header className="relative flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground">
               <SidebarSeamToggle />
               <div className="ml-auto flex items-center gap-0.5">
+                <HelpButton />
                 <NotificationBell />
                 <ThemeToggle />
                 <Separator

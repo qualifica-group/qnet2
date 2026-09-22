@@ -1,0 +1,227 @@
+import type { HelpGuide } from '../../types'
+
+const guide: HelpGuide = {
+  key: 'general',
+  title: 'Guida generale',
+  summary:
+    'Guida rapida per orientarsi in QNet: primi passi, elenchi e schede, funzioni comuni a tutti i moduli, domande frequenti e glossario.',
+  sections: [
+    {
+      id: 'sign-in-and-password',
+      title: 'Accesso e password',
+      blocks: [
+        { type: 'paragraph', text: 'Apri l’indirizzo di QNet nel browser, inserisci le credenziali e premi **Accedi**: si apre la **Dashboard**.' },
+        { type: 'steps', items: ['Apri l’indirizzo di QNet nel browser.', 'Inserisci **Email** e **Password**.', 'Premi **Accedi**. Si apre la **Dashboard**.'] },
+        { type: 'paragraph', text: 'Se i dati non sono corretti compare "Email o password non validi." L’icona a forma di occhio nel campo password mostra o nasconde quello che hai scritto.' },
+        { type: 'paragraph', text: 'Se hai dimenticato la password, dalla pagina di accesso:' },
+        { type: 'steps', items: ['Premi **Password dimenticata?**.', 'Inserisci la tua email e premi **Invia link di reset**.', 'Apri l’email ricevuta e segui il link.', 'Scrivi la **Nuova password** e ripetila in **Ripeti la password** (almeno 8 caratteri).', 'Premi **Reimposta password**, poi accedi con la nuova password.'] },
+        { type: 'warning', text: 'Se compare "Questo link di reset non è valido o è scaduto", richiedine uno nuovo.' },
+        { type: 'paragraph', text: 'Per cambiare la password quando sei già connesso:' },
+        { type: 'steps', items: ['Apri il menu utente in alto a destra e scegli **Impostazioni**.', 'Seleziona la sezione **Password**.', 'Compila **La password attuale**, **Nuova password** e **Ripeti la nuova password**.', 'Premi **Cambia la password**.'] },
+      ],
+    },
+    {
+      id: 'interface-overview',
+      title: 'Com’è fatta l’interfaccia',
+      blocks: [
+        { type: 'paragraph', text: 'La schermata ha tre zone: il menu laterale a sinistra, l’intestazione in alto e l’area di lavoro al centro.' },
+        { type: 'paragraph', text: 'Il **menu laterale** contiene la **Dashboard** e le aree di lavoro: **Marketing e Lead**, **Opportunità e Commesse**, **Task**, **Segnatempo**, **Anagrafiche**, **Prodotti**, **Premi e Incentivi**, **Configurazione** e **Amministrazione**. Clicca il nome di un gruppo per aprirlo o chiuderlo. In fondo trovi **Impostazioni**.' },
+        { type: 'list', items: ['Premi il pulsante rotondo con la freccia sul bordo del menu (**Apri/chiudi sidebar**).', 'Oppure usa **Ctrl+B** (su Mac **Cmd+B**).'] },
+        { type: 'paragraph', text: 'A menu chiuso restano solo le icone; passandoci sopra col mouse compare il nome. Trascina il bordo del menu per allargarlo; un doppio clic lo riporta alla larghezza iniziale.' },
+        {
+          type: 'table',
+          headers: ['Elemento', 'A cosa serve'],
+          rows: [
+            ['Campanella', 'Apre le notifiche.'],
+            ['Sole/luna (**Cambia tema**)', 'Sceglie il tema **Chiaro**, **Scuro** o **Sistema**.'],
+            ['Nome e avatar', 'Apre il menu utente con **Impostazioni** ed **Esci**.'],
+          ],
+        },
+        { type: 'paragraph', text: 'Sotto l’intestazione ogni pagina mostra il percorso di navigazione; alla sua destra c’è il pulsante per creare un nuovo record. Se compare **Nuova versione disponibile**, premi **Aggiorna ora**.' },
+      ],
+    },
+    {
+      id: 'using-lists-and-export',
+      title: 'Usare gli elenchi ed esportare i dati',
+      blocks: [
+        { type: 'paragraph', text: 'Quasi tutti i moduli mostrano i dati in un elenco a righe e colonne, con gli stessi strumenti.' },
+        {
+          type: 'table',
+          headers: ['Strumento', 'Come si usa'],
+          rows: [
+            ['**Cerca…**', 'Scrivi e l’elenco si aggiorna. **Ctrl+K** (Mac **Cmd+K**) porta subito nel campo. Accanto vedi quante righe sono state trovate.'],
+            ['Ordinamento', 'Clicca l’intestazione di una colonna; clicca di nuovo per invertire.'],
+            ['Filtro di colonna', 'Passa sull’intestazione e apri il filtro: spunta i valori o imposta una condizione, per esempio "Contiene".'],
+            ['**Filtri avanzati**', 'Dove presente, apre campi di ricerca aggiuntivi: compila e premi **Applica**; **Azzera** li svuota.'],
+            ['**Azzera filtri**', 'Toglie tutti i filtri in una volta.'],
+            ['Colonne', 'Trascina le intestazioni per riordinarle e i bordi per allargarle. La linguetta **Colonne** a destra le mostra o nasconde.'],
+            ['**Ripristina layout**', 'In **Opzioni tabella** (i tre puntini): riporta colonne e filtri all’impostazione iniziale.'],
+            ['**Dimensione Pagina:**', 'In fondo: quante righe vedere per pagina.'],
+            ['**Schermo intero**', 'Allarga l’elenco a tutta la finestra; **Esc** per uscire.'],
+          ],
+        },
+        { type: 'paragraph', text: 'QNet ricorda da solo le colonne e i filtri che hai impostato.' },
+        { type: 'paragraph', text: 'Per conservare una combinazione di filtri, con **Filtri salvati**:' },
+        { type: 'steps', items: ['Applica i filtri che ti servono.', 'Apri **Filtri salvati** e scrivi un nome in **Nome vista**.', 'Scegli **Privata** oppure **Condivisa** con i colleghi.', 'Premi **Salva vista**. Per riusarla, clicca il suo nome sotto **Le mie viste** o **Condivise**.'] },
+        { type: 'paragraph', text: 'Nella colonna **Azioni** trovi i comandi del record: **Visualizza**, **Modifica**, **Duplica**, **Elimina**, **Attività**. Se sono più di tre, gli altri stanno in **Altre azioni**. Le operazioni delicate chiedono conferma.' },
+        { type: 'paragraph', text: 'Alcune colonne si modificano direttamente nella cella: clicca la cella, cambia il valore e premi **Invio** o clicca altrove. Se il valore richiede una spiegazione si apre **Aggiungi una nota**.' },
+        { type: 'paragraph', text: 'Dove previsto, spunta le caselle a sinistra delle righe per la selezione multipla. Compare il pulsante **Azioni** con il numero di righe scelte, da cui puoi per esempio usare **Elimina selezionati**.' },
+        { type: 'warning', text: 'L’eliminazione multipla è definitiva e non si può annullare.' },
+        { type: 'paragraph', text: 'Per esportare i dati che vedi nell’elenco:' },
+        { type: 'steps', items: ['Imposta ricerca, filtri, ordinamento e colonne come ti servono.', 'Apri **Opzioni tabella** e scegli **Esporta**.', 'Nel pannello **Esporta dati** scegli **CSV** o **Excel (XLSX)**.', 'Controlla il riepilogo e premi **Esporta**.', 'A elaborazione completata premi **Scarica il file**.'] },
+        { type: 'note', text: 'Il file contiene esattamente quello che vedi nell’elenco.' },
+      ],
+    },
+    {
+      id: 'opening-records-and-quick-create',
+      title: 'Aprire un record e creazione rapida',
+      blocks: [
+        { type: 'paragraph', text: 'Un record si apre in due modi: **Pagina singola** (occupa tutta l’area di lavoro) oppure **Modale** (si apre in un pannello laterale e l’elenco resta al suo posto).' },
+        { type: 'paragraph', text: 'Nel pannello laterale l’icona **Apri pagina di dettaglio** porta il record a pagina intera. Un collegamento a un altro record si apre nel pannello; con **Ctrl+clic** (Mac **Cmd+clic**) si apre in una nuova scheda del browser.' },
+        { type: 'paragraph', text: 'Per scegliere la modalità vai in **Impostazioni › Impostazioni sistema › Modalità apertura moduli**:' },
+        { type: 'list', items: ['**Solo modale**: tutti i moduli nel pannello laterale.', '**Solo pagina singola**: tutti i moduli a pagina intera.', '**Personalizzata**: scegli **Modale** o **Pagina singola** modulo per modulo.'] },
+        { type: 'paragraph', text: 'Premi **Salva modifiche**. **Ripristina default** riporta tutti i moduli alla pagina singola.' },
+        { type: 'paragraph', text: 'Accanto ad alcuni campi di scelta c’è un pulsante **+**, utile se il valore che cerchi non esiste ancora:' },
+        { type: 'steps', items: ['Premi **+** accanto al campo.', 'Compila la finestra di creazione.', 'Salva: il nuovo valore viene inserito subito nel campo.'] },
+        { type: 'note', text: 'Il pulsante compare solo se puoi creare quel tipo di record.' },
+      ],
+    },
+    {
+      id: 'notifications-and-preferences',
+      title: 'Notifiche e preferenze personali',
+      blocks: [
+        { type: 'paragraph', text: 'La campanella mostra quante notifiche non hai letto; anche il titolo della scheda del browser te lo segnala.' },
+        { type: 'list', items: ['Filtra con **Tutte**, **Non lette** o **Lette**.', 'Clicca una notifica per aprire il record collegato: viene segnata come letta.', 'Usa **Segna come letta** su una notifica, oppure **Segna tutte come lette**.'] },
+        {
+          type: 'table',
+          headers: ['Sezione di Impostazioni', 'Cosa puoi fare'],
+          rows: [
+            ['**Profilo**', 'Caricare o togliere l’avatar, scegliere la **Lingua** (Italiano o Inglese), aggiornare i tuoi dati anagrafici.'],
+            ['**Password**', 'Cambiare la password.'],
+            ['**Impostazioni sistema**', 'Scegliere **Modalità apertura moduli**, **Risoluzione interfaccia** e **Formato data**.'],
+          ],
+        },
+        { type: 'paragraph', text: '**Risoluzione interfaccia** ingrandisce o rimpicciolisce tutta l’applicazione (100% è la dimensione normale). **Formato data** decide come vedi date e orari, per esempio **Giorno/Mese/Anno** e **24 ore (14:30)**, con anteprima. Salva con **Salva modifiche**.' },
+        { type: 'note', text: 'L’avatar accetta JPEG, PNG, GIF o WebP fino a 10 MB. L’email del profilo non si modifica da qui.' },
+        { type: 'tip', text: 'Gli amministratori possono entrare in QNet come un altro utente con **Impersona**; è spiegato nella guida **Utenti**.' },
+      ],
+    },
+    {
+      id: 'dashboard-and-statistics',
+      title: 'Dashboard e statistiche',
+      blocks: [
+        { type: 'paragraph', text: 'La **Dashboard** è la prima pagina dopo l’accesso; al momento mostra "Questa sezione non è ancora disponibile." I numeri principali si trovano nei singoli moduli, nel pannello **Statistiche** (per esempio in **Utenti**, **Anagrafiche**, **Società sedi**, **Prodotti**, **Categorie Prodotto**, **Progetti**, **Lead** e **Opportunità**).' },
+        { type: 'steps', items: ['Apri il modulo.', 'Premi il pulsante con l’icona del grafico (**Mostra statistiche**).', 'Per chiudere premi di nuovo (**Nascondi statistiche**).'] },
+        { type: 'paragraph', text: 'Il pannello mostra totali e indicatori (per esempio il budget allocato), distribuzioni come "Per stato" e andamenti mensili come "Nuovi progetti per mese". QNet ricorda se lo hai lasciato aperto.' },
+      ],
+    },
+    {
+      id: 'notes-and-documents',
+      title: 'Note e documenti',
+      blocks: [
+        { type: 'paragraph', text: 'Le note servono a discutere un record con i colleghi, per esempio in **Opportunità**, **Offerte**, **Commesse**, **Task** e **Gestione Richieste**. Si aprono dall’azione **Note** nella riga o dalla sezione **Note** della scheda.' },
+        { type: 'steps', items: ['Scrivi nel riquadro "Scrivi una nota, usa @ per menzionare un collega…".', 'Per coinvolgere un collega digita **@**, scegli il nome e conferma con **Tab** o **Invio**: riceverà una notifica.', 'Premi **Invia**.'] },
+        { type: 'paragraph', text: 'Con **Rispondi** apri una risposta sotto la nota. Solo l’autore vede **Modifica nota** ed **Elimina nota**; una nota modificata riporta "(modificato)". Nelle **Opportunità** una nota può essere generale o legata a un’offerta: filtra con **Tutte le note**, **Note generali** o il nome dell’offerta.' },
+        { type: 'warning', text: 'Eliminando una nota scompaiono anche le sue risposte.' },
+        { type: 'paragraph', text: 'La sezione **Documenti** raccoglie i file di un record, per esempio in **Opportunità**, **Offerte**, **Contratti**, **Commesse**, **Task** e **Gestione Richieste**.' },
+        { type: 'steps', items: ['Apri la sezione **Documenti** del record, oppure l’azione **Documenti** nella riga.', 'Trascina uno o più file nell’area di caricamento, oppure cliccala per sceglierli.', 'Attendi la fine del caricamento.'] },
+        {
+          type: 'table',
+          headers: ['Comando', 'A cosa serve'],
+          rows: [
+            ['**Anteprima**', 'Apre il file in una nuova finestra del browser.'],
+            ['**Scarica**', 'Salva il file sul computer.'],
+            ['**Elimina documento**', 'Rimuove il file, dopo conferma e senza possibilità di annullare.'],
+          ],
+        },
+        { type: 'tip', text: 'Se l’anteprima non si apre, consenti le finestre pop-up per il sito di QNet.' },
+      ],
+    },
+    {
+      id: 'activity-history',
+      title: 'Cronologia attività',
+      blocks: [
+        { type: 'paragraph', text: 'La **Cronologia attività** mostra chi ha cambiato cosa e quando. Si apre dall’azione **Attività** nella riga o dentro la scheda.' },
+        { type: 'list', items: ['Il tipo: **Creazione**, **Modifica**, **Eliminazione** o **Ripristino**.', 'La parte interessata, per esempio **Contatto**, **Indirizzo**, **Nota** o **Documento**.', 'Chi l’ha fatta (**Sistema** se è automatica).', 'I campi cambiati, con il valore precedente barrato e il nuovo valore.'] },
+        { type: 'paragraph', text: 'Filtra con **Tutto**, **Solo creazione** o **Solo modifica**; **Carica altro** mostra le operazioni più vecchie.' },
+      ],
+    },
+    {
+      id: 'master-data-and-custom-fields',
+      title: 'Dati anagrafici e campi personalizzati',
+      blocks: [
+        { type: 'paragraph', text: 'La sezione **Dati anagrafici** compare in **Anagrafiche**, **Referenti**, **Utenti** e nel tuo **Profilo**. Scegli il **Tipo** (**Persona fisica** o **Azienda**) e compila i campi richiesti: QNet controlla che codice fiscale e partita IVA siano validi.' },
+        { type: 'paragraph', text: 'Usa **Aggiungi contatto** per telefono, email, PEC, fax o sito web e **Aggiungi indirizzo** per gli indirizzi; puoi segnarne uno come principale. Su un record già salvato, ogni contatto o indirizzo si registra subito.' },
+        { type: 'tip', text: 'Se compare "Salva prima la scheda per aggiungere contatti e indirizzi.", salva la scheda e poi aggiungili.' },
+        { type: 'paragraph', text: 'Per l’avviso **Possibile duplicato** vedi la guida **Anagrafiche**.' },
+        { type: 'paragraph', text: 'L’amministratore può aggiungere campi extra ai moduli (vedi guida **Campi personalizzati**). Li trovi nel gruppo scelto o nella sezione **Altri campi**, spesso anche come colonne dell’elenco. Si compilano come gli altri campi: testo, numeri, interruttore **Sì/No**, scelta da elenco, collegamento a record di altri moduli, date e orari, email, URL o colore. Se un valore non è accettato, sotto il campo compare il motivo, per esempio "Questo campo è obbligatorio."' },
+      ],
+    },
+    {
+      id: 'assignment',
+      title: 'Assegnazione agli operatori',
+      blocks: [
+        { type: 'paragraph', text: 'In **Lead** e **Gestione Richieste** puoi assegnare più record in un’unica operazione.' },
+        { type: 'steps', items: ['Seleziona le righe con le caselle a sinistra.', 'Apri **Azioni** e scegli **Assegna operatori**.', 'Se richiesto, scegli la **Sede**.', 'Scegli il **Tipo di assegnazione**: **Smistamento equo** (bilancia il carico tra gli operatori della sede) o **Assegna a operatore** (tutti allo stesso **Operatore**).', 'Premi **Assegna**.'] },
+        { type: 'note', text: 'QNet propone solo operatori competenti, cioè con la sede e la competenza sulla categoria impostate nella loro scheda utente. Se nessuno è adatto compare "Nessun operatore competente per i record selezionati." Al termine un messaggio indica quanti record sono stati assegnati e quanti sono rimasti senza operatore.' },
+      ],
+    },
+    {
+      id: 'faq',
+      title: 'Domande frequenti',
+      blocks: [
+        {
+          type: 'table',
+          headers: ['Domanda', 'Risposta'],
+          rows: [
+            ['Non vedo una voce di menu o un pulsante descritto nel manuale.', 'Il menu e le azioni dipendono dai permessi del tuo ruolo. Chiedi all’amministratore di verificare il ruolo in **Amministrazione › Ruoli**.'],
+            ['Non riesco a modificare un campo.', 'Il tuo ruolo può averlo in sola lettura, oppure il campo è ereditato (per esempio da un progetto o da un lead) o protetto: nel caso della **Fonte** proponi una modifica dalla guida **Richieste di modifica**.'],
+            ['Non riesco a eliminare un valore di configurazione.', 'È già usato da qualche record. Disattivalo con **Attivo**: sparisce dai menu a tendina senza toccare i dati esistenti.'],
+            ['Un prodotto non compare tra quelli selezionabili in un’offerta.', 'Controlla **Utilizzo in offerta** nella scheda prodotto (**Vendibile** per la scheda Offerta, **Utilizzabile come costo** per la scheda Costi) e la categoria: i prodotti sono limitati alle categorie dell’opportunità, salvo **Mostra tutti i prodotti**.'],
+            ['Ho chiuso positivamente un’offerta ma non vedo il contratto.', 'La categoria prodotto può avere **Prevede un contratto** spento. Verificalo in **Categorie Prodotto**.'],
+            ['Un operatore non riceve assegnazioni.', 'Nella sua scheda utente mancano la competenza sulla categoria o la sede: in alto il modulo lo segnala con **Non assegnabile**.'],
+            ['Non posso convertire un lead.', 'Il lead ha già un’opportunità, la campagna non ha funzione aziendale o categoria, oppure l’anagrafica ha già un’opportunità aperta.'],
+            ['Il preventivo PDF dà errore.', 'Serve almeno un layout attivo per i Preventivi: controlla **Configurazione › Layout** e il layout **Predefinito**.'],
+            ['Non ricevo la mail di reset password.', 'Controlla la cartella spam; se il link è scaduto, richiedine uno nuovo.'],
+          ],
+        },
+      ],
+    },
+    {
+      id: 'glossary',
+      title: 'Glossario',
+      blocks: [
+        {
+          type: 'table',
+          headers: ['Termine', 'Significato'],
+          rows: [
+            ['Anagrafica', 'La scheda di un cliente o fornitore, persona fisica o azienda.'],
+            ['Referente', 'Una persona di contatto, interna o esterna, collegabile alle anagrafiche.'],
+            ['Segnalatore', 'Il referente che ha segnalato il cliente; riceve eventuali buoni e commissioni.'],
+            ['Commerciale', 'Il referente commerciale di anagrafica, opportunità o offerta.'],
+            ['Supervisore / Gestori account', 'Utenti QNet che seguono il cliente, in ordine di importanza.'],
+            ['Sede operativa', 'Luogo fisico in cui l’organizzazione lavora; decide le assegnazioni.'],
+            ['Funzione aziendale', 'Unità dell’organizzazione (Business Unit o Business Service) a cui appartengono le categorie prodotto.'],
+            ['Progetto / Campagna', 'Iniziative di marketing: la campagna genera i lead e può far parte di un progetto.'],
+            ['Lead', 'Un contatto nato da una campagna, da qualificare e convertire.'],
+            ['Opportunità', 'Una trattativa con un’anagrafica; contiene una o più offerte.'],
+            ['Offerta', 'La proposta economica, con righe vendute e righe di costo.'],
+            ['Workflow', 'L’insieme di stati che un’offerta attraversa, scelto in base a criteri.'],
+            ['Contratto', 'Nasce dalla chiusura positiva di un’offerta; si valida, rinnova o disdice.'],
+            ['Commessa', 'Il lavoro da svolgere su un contratto, con responsabili e task.'],
+            ['Richiesta', 'In Gestione Richieste, la domanda di un cliente legata a un’offerta.'],
+            ['Iscritto', 'Una richiesta arrivata a uno stato Validato o Chiuso con esito positivo.'],
+            ['Task', 'Un’attività con richiedente, assegnatari e scadenza.'],
+            ['Modello di Task', 'Elenco di task standard generati alla creazione di una commessa.'],
+            ['Buono', 'Premio o incentivo assegnato al segnalatore, con stato In attesa, Approvato o Negato.'],
+            ['Ruolo', 'Insieme di permessi assegnato agli utenti.'],
+            ['Campo personalizzato', 'Campo aggiunto dall’amministratore a un modulo.'],
+            ['Attributo', 'Campo aggiuntivo stabilito da una categoria prodotto per prodotti, offerte o commesse.'],
+          ],
+        },
+      ],
+    },
+  ],
+}
+
+export default guide

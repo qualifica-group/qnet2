@@ -44,9 +44,18 @@ Ingegnere software senior su questo stack. Ogni decisione riflette gli standard 
 - Oltre 5-6 scambi su un tema: includi un riepilogo di file modificati, decisioni, nomi da rispettare.
 - Conflitto con una decisione precedente: segnalalo, niente sovrascritture silenziose. Informazione mancante: leggi il file reale o chiedi.
 
+## §4-bis — MANUALE UTENTE (vincolante, decisione utente 2026-09-22)
+
+Ogni modifica va valutata anche sul **manuale utente**: se cambia qualcosa che l'utente finale vede o fa (menu, pulsanti, campi, etichette, messaggi, regole, stati, calcoli, permessi, flussi), il manuale va aggiornato **nella stessa modifica**. Le fonti sono due:
+
+1. **Guide in-app** (fonte versionata, spec 0143): `frontend/src/features/help/content/{it,en}/<key>.ts`, una per chiave di navigazione + `general`. Aggiorna **IT ed EN** con gli stessi id di sezione; nuovo modulo nel menu → nuova guida + chiave in `HELP_GUIDE_KEYS`. Il parity test `help-content-parity.test.ts` deve restare verde.
+2. **Manuale completo** (documento Claude Docs "Manuale Utente QNet", https://claude.ai/artifact/KwvSrXafsGqT9qzZULxJhh, e il PDF derivato): aggiornalo se il connettore Claude Docs è disponibile nella sessione; altrimenti **segnala esplicitamente** all'utente quali sezioni vanno aggiornate.
+
+Se una modifica non ha impatto sul manuale, dichiaralo nel riepilogo finale ("manuale: nessun impatto"). Un modulo in sviluppo resta marcato "in fase di sviluppo" finché non è completo.
+
 ## §5 — QUALITY GATES (Definition of Done)
 
-Una modifica è completa solo se: sviluppata + **testata ed eseguita** (Pest/Vitest) + autorizzata server-side + responsive (se UI) + contratto/envelope rispettato + zero dead code + lint pulito + **typecheck pulito** (`cd frontend && npx tsc -b --force`). **Non usare `tsc --noEmit`**: il `tsconfig.json` root è solution-style (`files: []` + `references`), quindi senza `-b` non compila nulla e restituisce sempre EXIT=0 — un falso verde.
+Una modifica è completa solo se: sviluppata + **testata ed eseguita** (Pest/Vitest) + autorizzata server-side + responsive (se UI) + contratto/envelope rispettato + **manuale utente aggiornato o "nessun impatto" dichiarato (§4-bis)** + zero dead code + lint pulito + **typecheck pulito** (`cd frontend && npx tsc -b --force`). **Non usare `tsc --noEmit`**: il `tsconfig.json` root è solution-style (`files: []` + `references`), quindi senza `-b` non compila nulla e restituisce sempre EXIT=0 — un falso verde.
 L'enforcement è deterministico via hook (`.claude/hooks/`): una regola senza hook è solo un suggerimento. Vedi §HOOK.
 
 ## §6 — AGENT TEAM / TEAMMATE (paradigma di lavoro)
@@ -131,5 +140,6 @@ Gli hook **bloccano** (exit 2 = correggi, non aggirare). Convenzioni meccanicame
 - [ ] Nomi verificati (non ipotizzati) e coerenti col codebase?
 - [ ] Ho toccato solo i file nello scope (e nella mia ownership se sono un teammate)?
 - [ ] Ho aggiunto/aggiornato i test e li ho **eseguiti** (non "dovrebbero passare")?
+- [ ] Ho verificato l'impatto sul **manuale utente** (guide in-app IT+EN e manuale Claude Docs, §4-bis) e l'ho aggiornato o dichiarato "nessun impatto"?
 - [ ] È la soluzione più semplice che risolve il problema?
 - [ ] Handoff finale: cosa fatto, cosa verificare, prossimo owner? `docs/HANDOFF.md` aggiornato se stato verde?

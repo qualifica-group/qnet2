@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GUIDA IN-APP PER MODULO + REGOLA MANUALE — NON COMMITTATO (2026-09-22)
+
+Spec 0143 (`docs/specs/0143-in-app-module-help.xml`), solo frontend, nessuna modifica backend/dipendenze. Verifier: VERDE
+(tsc -b --force EXIT 0, vitest 722 file / 5442 test pass, eslint pulito, vite build con chunk separati per guida).
+- Header: `HelpButton` (lucide CircleHelp, `SheetTrigger asChild` per il ritorno focus su Esc) prima di `NotificationBell`
+  in `layouts/app-layout.tsx`. Pannello `components/help-panel.tsx` (Sheet, `storageKey="sheet-width:help"`).
+- Contratto congelato `features/help/types.ts` (`HelpGuide`/`HelpSection`/`HelpBlock`: paragraph, steps, list, table, tip,
+  warning, note; inline solo `**grassetto**`, renderizzato come nodi React, mai innerHTML).
+- Contenuti statici `features/help/content/{it,en}/<key>.ts` (50 chiavi: `general` + 49 chiavi navigation con route), elenco in
+  `help-guide-keys.ts` (`HELP_GUIDE_KEYS`, `GENERAL_HELP_KEY`). Loader lazy `help-content-loader.ts` (`import.meta.glob` non eager).
+- Visibilita' = voci di `useNavigation()` (gia' filtrate per permesso lato server); guida corrente = match pathname su route
+  (esatto o prefisso `route + '/'`), altrimenti `general`. Ricerca client-side accent-insensitive solo sulle guide visibili.
+- Test: `content/help-content-parity.test.ts` (IT/EN stessi id sezione, `work-orders` = sola nota "in fase di sviluppo"),
+  `i18n/locales/help-i18n-parity.test.ts`, test componenti in `features/help/components/*.test.tsx`, `layouts/app-layout.test.tsx`.
+- `CLAUDE.md` §4-bis (decisione utente): ogni modifica aggiorna il manuale (guide in-app IT+EN + manuale Claude Docs
+  https://claude.ai/artifact/KwvSrXafsGqT9qzZULxJhh) o dichiara "manuale: nessun impatto"; aggiunto a DoD §5 e checklist.
+- Fonte dei testi: manuale Claude Docs (export md in scratchpad di sessione, non versionato). PDF manuale consegnato all'utente
+  fuori repo (Desktop). Commesse = "in fase di sviluppo" sia nel manuale sia nella guida.
+- Da verificare a mano: resa a 375px e leggibilita' contenuti nel pannello reale. Prossimo passo: commit su richiesta utente.
+- Nota: questo file supera i ~50 KB indicati; l'archiviazione delle voci vecchie in `docs/handoff-archive/` e' da fare.
+
 ## PRODOTTI — UTILIZZO IN OFFERTA (VENDIBILE / COSTO) — NON COMMITTATO (2026-09-18)
 
 Spec 0142. Enum `App\Enums\ProductUsage` { Sale='SALE', Cost='COST' } (HasMeta, `config.form_enums.product_usage`,
