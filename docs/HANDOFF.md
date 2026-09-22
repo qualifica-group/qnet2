@@ -5,7 +5,9 @@
 
 ## TASK: FILTRI DELLA BOARD + STATISTICHE NELLA TABELLA — NON COMMITTATO (2026-09-22)
 
-Spec 0147 (`docs/specs/0147-task-table-filters-and-stats.xml`).
+Spec 0147 (`docs/specs/0147-task-table-filters-and-stats.xml`, implemented). Stato: VERDE.
+- Pest seriale: 8059 test, 8058 passati + 1 skipped. Vitest: 749 file / 5686 test.
+- `tsc -b --force` EXIT 0, ESLint e Pint puliti. Manuale Claude Docs: nuova sezione "Filtri e statistiche" (Parte 3 › Task).
 
 **Filtri** (filtri avanzati del dominio `tasks`, nessun endpoint nuovo)
 - Catalogo `App\Tables\Tasks\TaskAdvancedFilterCatalog`; derivati in `TaskAdvancedFilterApplier`
