@@ -4,13 +4,22 @@ import { resolveCurrentHelpGuideKey } from '@/features/help/help-current-guide'
 import type { HelpVisibleGuide } from '@/features/help/help-visible-guides'
 
 const GUIDES: HelpVisibleGuide[] = [
-  { key: GENERAL_HELP_KEY, label: 'General', route: null, groupLabel: null },
-  { key: 'request-management', label: 'Request management', route: '/request-management', groupLabel: null },
+  { key: GENERAL_HELP_KEY, label: 'General', route: null, groupLabel: null, groupIcon: null, icon: null },
+  {
+    key: 'request-management',
+    label: 'Request management',
+    route: '/request-management',
+    groupLabel: null,
+    groupIcon: null,
+    icon: null,
+  },
   {
     key: 'field-change-requests',
     label: 'Field change requests',
     route: '/field-change-requests',
     groupLabel: null,
+    groupIcon: null,
+    icon: null,
   },
 ]
 

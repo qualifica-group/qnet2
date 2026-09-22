@@ -21,6 +21,12 @@ Spec 0143 (`docs/specs/0143-in-app-module-help.xml`), solo frontend, nessuna mod
   https://claude.ai/artifact/KwvSrXafsGqT9qzZULxJhh) o dichiara "manuale: nessun impatto"; aggiunto a DoD §5 e checklist.
 - Fonte dei testi: manuale Claude Docs (export md in scratchpad di sessione, non versionato). PDF manuale consegnato all'utente
   fuori repo (Desktop). Commesse = "in fase di sviluppo" sia nel manuale sia nella guida.
+- Rev 2 (AC-014..018, verifier VERDE: vitest 725 file / 5457 test x2, tsc/eslint puliti): schede Radix "Questa pagina" /
+  "Tutte le guide" in `help-panel.tsx`; indice `help-guide-index.tsx` con icone da `resolveIcon` (menu) e `help-icons.ts`
+  (`resolveHelpGuideIcon`, BookOpen per `general`), gruppi `Collapsible` con contatore, aperto il gruppo corrente, badge
+  "Sei qui" + `aria-current="page"`; `help-guide-view.tsx` con icona e indice sezioni. `HelpVisibleGuide` ha ora `icon`/`groupIcon`.
+  Chiave i18n `allGuides` rimossa (sostituita da `tabCurrentPage`/`tabAllGuides`/`youAreHere`/`sectionsIndexLabel`).
+  `features/navigation/icon-map.ts`: aggiunte `shapes` e `layout-template` (prima fallback Circle anche nella sidebar).
 - Da verificare a mano: resa a 375px e leggibilita' contenuti nel pannello reale. Prossimo passo: commit su richiesta utente.
 - Nota: questo file supera i ~50 KB indicati; l'archiviazione delle voci vecchie in `docs/handoff-archive/` e' da fare.
 

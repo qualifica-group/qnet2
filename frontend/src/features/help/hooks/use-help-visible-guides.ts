@@ -23,6 +23,8 @@ export function useHelpVisibleGuides(): { guides: HelpVisibleGuide[]; isLoading:
       label: t('help.generalGuideTitle'),
       route: null,
       groupLabel: null,
+      groupIcon: null,
+      icon: null,
     }
     return [general, ...flattenVisibleHelpGuides(items, t)]
   }, [items, t])

@@ -10,28 +10,31 @@ function item(overrides: Partial<NavigationItem> & Pick<NavigationItem, 'key' | 
 
 /** A small tree mirroring the real shapes: top-level leaf, section, route-less group, nested leaf-with-children. */
 const TREE: NavigationItem[] = [
-  item({ key: 'dashboard', label: 'nav.dashboard', route: '/dashboard' }),
+  item({ key: 'dashboard', label: 'nav.dashboard', route: '/dashboard', icon: 'layout-dashboard' }),
   item({
     key: 'administration',
     label: 'nav.administration',
     type: 'section',
+    // Sections never carry their own icon (backend config), unlike route-less groups.
     children: [
-      item({ key: 'users', label: 'nav.users', route: '/users' }),
-      item({ key: 'roles', label: 'nav.roles', route: '/roles' }),
+      item({ key: 'users', label: 'nav.users', route: '/users', icon: 'users' }),
+      item({ key: 'roles', label: 'nav.roles', route: '/roles', icon: 'shield-check' }),
       item({ key: 'not-a-guide-key', label: 'nav.other', route: '/other' }),
     ],
   }),
   item({
     key: 'marketing-leads',
     label: 'nav.marketingLeads',
+    icon: 'megaphone',
     children: [
       item({
         key: 'leads',
         label: 'nav.leads',
         route: '/leads',
-        children: [item({ key: 'imports', label: 'nav.imports', route: '/imports' })],
+        icon: 'handshake',
+        children: [item({ key: 'imports', label: 'nav.imports', route: '/imports', icon: 'file-up' })],
       }),
-      item({ key: 'pipeline-statuses', label: 'nav.pipelineStatuses', route: '/pipeline-statuses' }),
+      item({ key: 'pipeline-statuses', label: 'nav.pipelineStatuses', route: '/pipeline-statuses', icon: 'waypoints' }),
     ],
   }),
 ]
@@ -75,6 +78,19 @@ describe('flattenVisibleHelpGuides (AC-004)', () => {
     // from its ancestor GROUP, not from `leads` itself (a module, not a group).
     expect(guides.find((guide) => guide.key === 'imports')?.groupLabel).toBe('nav.marketingLeads')
   })
+
+  it('carries each guide\'s own menu icon (AC-014)', () => {
+    const guides = flattenVisibleHelpGuides(TREE, translate)
+    expect(guides.find((guide) => guide.key === 'users')?.icon).toBe('users')
+    expect(guides.find((guide) => guide.key === 'roles')?.icon).toBe('shield-check')
+  })
+
+  it('carries the group icon of a route-less collapsible parent, and null for a section (AC-014)', () => {
+    const guides = flattenVisibleHelpGuides(TREE, translate)
+    expect(guides.find((guide) => guide.key === 'users')?.groupIcon).toBeNull()
+    expect(guides.find((guide) => guide.key === 'leads')?.groupIcon).toBe('megaphone')
+    expect(guides.find((guide) => guide.key === 'imports')?.groupIcon).toBe('megaphone')
+  })
 })
 
 describe('groupConsecutiveHelpGuides', () => {
@@ -89,5 +105,12 @@ describe('groupConsecutiveHelpGuides', () => {
     ])
     expect(groups[1]?.guides.map((guide) => guide.key)).toEqual(['users', 'roles'])
     expect(groups[2]?.guides.map((guide) => guide.key)).toEqual(['leads', 'imports', 'pipeline-statuses'])
+  })
+
+  it('carries the group icon on each bucket (AC-014)', () => {
+    const guides = flattenVisibleHelpGuides(TREE, translate)
+    const groups = groupConsecutiveHelpGuides(guides)
+
+    expect(groups.map((group) => group.icon)).toEqual([null, null, 'megaphone'])
   })
 })

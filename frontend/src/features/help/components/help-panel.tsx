@@ -1,7 +1,5 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ListTree } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
   Sheet,
   SheetContent,
@@ -10,6 +8,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { normalizeHelpLocale } from '@/features/help/help-content-loader'
 import { useHelpVisibleGuides } from '@/features/help/hooks/use-help-visible-guides'
 import { useHelpCurrentGuideKey } from '@/features/help/hooks/use-help-current-guide-key'
@@ -19,6 +18,8 @@ import { HelpSearchResults } from '@/features/help/components/help-search-result
 import { HelpGuideIndex } from '@/features/help/components/help-guide-index'
 import { HelpGuideView } from '@/features/help/components/help-guide-view'
 import type { HelpSearchResult } from '@/features/help/help-search-utils'
+
+type HelpPanelTab = 'page' | 'index'
 
 interface HelpPanelProps {
   open: boolean
@@ -44,17 +45,18 @@ export function HelpPanel({ open, onOpenChange, trigger }: HelpPanelProps) {
 
   const [query, setQuery] = useState('')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
-  const [showIndex, setShowIndex] = useState(false)
+  const [activeTab, setActiveTab] = useState<HelpPanelTab>('page')
   const [scrollToSectionId, setScrollToSectionId] = useState<string | null>(null)
 
   const search = useHelpSearch(locale, guides, query)
   const activeKey = selectedKey ?? currentGuideKey
+  const activeGuideIcon = guides.find((guide) => guide.key === activeKey)?.icon ?? null
 
-  // Step 1: opening a guide (from the index or a search hit) always leaves
-  // both the index and the search behind, landing on that guide's content.
+  // Step 1: opening a guide (from the index or a search hit) always switches
+  // to the "this page" tab, landing on that guide's content (AC-015).
   const openGuide = (key: string, sectionId: string | null = null) => {
     setSelectedKey(key)
-    setShowIndex(false)
+    setActiveTab('page')
     setQuery('')
     setScrollToSectionId(sectionId)
   }
@@ -62,6 +64,12 @@ export function HelpPanel({ open, onOpenChange, trigger }: HelpPanelProps) {
   const handleSearchResultSelect = (result: HelpSearchResult) => {
     openGuide(result.guideKey, result.sectionId)
   }
+
+  // Step 2: search stays visible above both tabs and, once active (>= 2
+  // chars), its results replace whichever tab's content is on screen.
+  const searchResults = search.isActive ? (
+    <HelpSearchResults results={search.results} isLoading={search.isLoading} onSelect={handleSearchResultSelect} />
+  ) : null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -72,40 +80,36 @@ export function HelpPanel({ open, onOpenChange, trigger }: HelpPanelProps) {
           <SheetDescription>{t('help.description')}</SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-col gap-2 border-b border-border px-4 pb-3">
+        <div className="border-b border-border px-4 pb-3">
           <HelpSearchBox value={query} onChange={setQuery} />
-          {!search.isActive && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-fit text-xs"
-              onClick={() => setShowIndex(true)}
-            >
-              <ListTree className="size-3.5" aria-hidden="true" />
-              {t('help.allGuides')}
-            </Button>
-          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {search.isActive ? (
-            <HelpSearchResults
-              results={search.results}
-              isLoading={search.isLoading}
-              onSelect={handleSearchResultSelect}
-            />
-          ) : showIndex ? (
-            <HelpGuideIndex guides={guides} onSelect={openGuide} />
-          ) : (
-            <HelpGuideView
-              locale={locale}
-              guideKey={activeKey}
-              scrollToSectionId={scrollToSectionId}
-              onScrolled={() => setScrollToSectionId(null)}
-            />
-          )}
-        </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as HelpPanelTab)}
+          className="min-h-0 flex-1 gap-0 px-4 pt-3"
+        >
+          <TabsList>
+            <TabsTrigger value="page">{t('help.tabCurrentPage')}</TabsTrigger>
+            <TabsTrigger value="index">{t('help.tabAllGuides')}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="page" className="mt-3 min-h-0 overflow-y-auto">
+            {searchResults ?? (
+              <HelpGuideView
+                locale={locale}
+                guideKey={activeKey}
+                guideIcon={activeGuideIcon}
+                scrollToSectionId={scrollToSectionId}
+                onScrolled={() => setScrollToSectionId(null)}
+              />
+            )}
+          </TabsContent>
+          <TabsContent value="index" className="mt-3 min-h-0 overflow-y-auto">
+            {searchResults ?? (
+              <HelpGuideIndex guides={guides} currentGuideKey={currentGuideKey} onSelect={openGuide} />
+            )}
+          </TabsContent>
+        </Tabs>
       </SheetContent>
     </Sheet>
   )

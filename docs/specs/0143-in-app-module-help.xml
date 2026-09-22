@@ -58,6 +58,8 @@
       <item>Contenuti IT e EN per le 50 chiavi, caricati in lazy (dynamic import per lingua e chiave).</item>
       <item>Etichette dell'interfaccia del pannello in i18n (it-help.ts / en-help.ts) + parity test.</item>
       <item>Parity test dei contenuti: ogni chiave ha IT ed EN con gli stessi id di sezione.</item>
+      <item>[rev 2, 2026-09-22] Menu guide migliorato (scelta utente "elenco compatto con schede"): schede "Questa pagina" / "Tutte le guide"; indice con icona di modulo e di gruppo presa dal menu (resolveIcon di features/navigation/icon-map.ts), gruppi richiudibili con contatore, modulo corrente evidenziato "Sei qui"; vista guida con icona nell'intestazione e indice delle sezioni cliccabile.</item>
+      <item>[rev 2] Aggiunta a features/navigation/icon-map.ts delle icone 'shapes' (product-typologies) e 'layout-template' (task-templates), oggi in fallback Circle anche nella sidebar (decisione utente).</item>
     </in>
     <out>
       <item>Modifica dei contenuti da interfaccia, tabelle DB, endpoint backend, permesso dedicato.</item>
@@ -121,6 +123,11 @@ export interface HelpGuide {
     <criterion id="AC-011">A 375px il pannello occupa la larghezza disponibile senza scrollbar orizzontale della pagina; le tabelle scorrono dentro il proprio contenitore. [Review manuale verifier]</criterion>
     <criterion id="AC-012">I contenuti delle guide non sono nel bundle iniziale: `vite build` produce chunk separati per content/{it,en}/*.ts e il pannello li carica on demand, mostrando uno stato di caricamento. [Verifica build verifier + Vitest stato loading]</criterion>
     <criterion id="AC-013">Lint ESLint, typecheck `cd frontend &amp;&amp; npx tsc -b --force` e intera suite Vitest passano; nessun file oltre 500 righe. [Verifier]</criterion>
+    <criterion id="AC-014">[rev 2] Nell'indice ogni guida di modulo mostra l'icona della sua voce di menu (stesso componente restituito da resolveIcon(item.icon)); ogni gruppo con icona nel menu la mostra nell'intestazione; la Guida generale ha un'icona propria; le icone sono decorative (aria-hidden). [Vitest]</criterion>
+    <criterion id="AC-015">[rev 2] Il pannello ha due schede accessibili (role tab) "Questa pagina" e "Tutte le guide" (EN equivalenti): la prima mostra la guida corrente, la seconda l'indice; aprendo una guida dall'indice o dalla ricerca si torna alla scheda guida con quella guida. [Vitest]</criterion>
+    <criterion id="AC-016">[rev 2] Nell'indice i gruppi sono richiudibili (pulsante con aria-expanded) e mostrano il numero di guide; il gruppo che contiene il modulo corrente e' aperto e la sua voce e' marcata "Sei qui" (EN "You are here") con aria-current="page". [Vitest]</criterion>
+    <criterion id="AC-017">[rev 2] La vista guida mostra icona e titolo del modulo e un indice delle sezioni: cliccando una sezione il contenuto scorre a quella sezione. [Vitest]</criterion>
+    <criterion id="AC-018">[rev 2] resolveIcon('shapes') e resolveIcon('layout-template') non restituiscono piu' il fallback Circle. [Vitest icon-map]</criterion>
   </acceptance_criteria>
 
   <constraints>

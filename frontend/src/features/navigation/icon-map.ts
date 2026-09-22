@@ -36,6 +36,8 @@ import {
   Flag,
   Folder,
   Star,
+  Shapes,
+  LayoutTemplate,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -85,6 +87,10 @@ const iconMap: Record<string, LucideIcon> = {
   flag: Flag,
   folder: Folder,
   star: Star,
+  // Spec 0143 rev 2 (AC-018): 'product-typologies' and 'task-templates' fell
+  // through to the neutral Circle fallback, in the sidebar too.
+  shapes: Shapes,
+  'layout-template': LayoutTemplate,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {
