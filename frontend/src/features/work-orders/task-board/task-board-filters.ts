@@ -24,6 +24,8 @@ export const DEFAULT_TASK_BOARD_FILTERS: TaskBoardFilters = {
   assigneeIds: [],
   watcherIds: [],
   taskPriorityIds: [],
+  taskStatusIds: [],
+  taskImportanceIds: [],
 }
 
 function isRoot(task: BoardTask): boolean {
@@ -134,7 +136,9 @@ function matchesBoardFilters(
     matchesIdSet(task.requester?.id, filters.requesterIds) &&
     matchesAnyIdSet(task.assignees, filters.assigneeIds) &&
     matchesAnyIdSet(task.watchers, filters.watcherIds) &&
-    matchesIdSet(task.task_priority?.id, filters.taskPriorityIds)
+    matchesIdSet(task.task_priority?.id, filters.taskPriorityIds) &&
+    matchesIdSet(task.task_status.id, filters.taskStatusIds) &&
+    matchesIdSet(task.task_importance?.id, filters.taskImportanceIds)
   )
 }
 
@@ -237,6 +241,8 @@ export interface TaskBoardFilterOptions {
   watchers: TaskNamedRef[]
   taskTypes: TaskLookupRef[]
   taskPriorities: TaskLookupRef[]
+  taskStatuses: TaskLookupRef[]
+  taskImportances: TaskLookupRef[]
 }
 
 function byName<T extends { name: string }>(a: T, b: T): number {
@@ -249,6 +255,8 @@ export function deriveTaskBoardFilterOptions(tasks: BoardTask[]): TaskBoardFilte
   const watchers = new Map<number, TaskNamedRef>()
   const taskTypes = new Map<number, TaskLookupRef>()
   const taskPriorities = new Map<number, TaskLookupRef>()
+  const taskStatuses = new Map<number, TaskLookupRef>()
+  const taskImportances = new Map<number, TaskLookupRef>()
 
   for (const task of tasks.filter(isRoot)) {
     if (task.requester) {
@@ -266,6 +274,10 @@ export function deriveTaskBoardFilterOptions(tasks: BoardTask[]): TaskBoardFilte
     if (task.task_priority) {
       taskPriorities.set(task.task_priority.id, task.task_priority)
     }
+    taskStatuses.set(task.task_status.id, task.task_status)
+    if (task.task_importance) {
+      taskImportances.set(task.task_importance.id, task.task_importance)
+    }
   }
 
   return {
@@ -274,5 +286,7 @@ export function deriveTaskBoardFilterOptions(tasks: BoardTask[]): TaskBoardFilte
     watchers: [...watchers.values()].sort(byName),
     taskTypes: [...taskTypes.values()].sort(byName),
     taskPriorities: [...taskPriorities.values()].sort(byName),
+    taskStatuses: [...taskStatuses.values()].sort(byName),
+    taskImportances: [...taskImportances.values()].sort(byName),
   }
 }

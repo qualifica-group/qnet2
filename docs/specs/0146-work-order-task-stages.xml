@@ -304,6 +304,7 @@
         task_status: { id, name, color, icon, system_key: string|null, group: string, completion_percentage: int },
         task_type: {id,name,color,icon}|null,
         task_priority: {id,name,color,icon}|null,
+        task_importance: {id,name,color,icon}|null (aggiunto 2026-09-22 per il filtro Importanza),
         requester: {id,name}|null,
         assignees: [{id,name}],
         watchers: [{id,name}],

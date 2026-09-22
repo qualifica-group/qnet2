@@ -16,6 +16,7 @@ import { UserAvatar } from '@/components/user-avatar'
 import { UserProfileHoverCard } from '@/components/user-profile-hover-card'
 import type { TaskNamedRef } from '@/features/tasks/types'
 import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
+import { completionTone } from '@/features/work-orders/task-board/task-board-completion-tone'
 import type { TaskBoardStageMetrics } from '@/features/work-orders/task-board/task-board-metrics'
 import { cn } from '@/lib/utils'
 
@@ -69,10 +70,18 @@ export function TaskBoardPeople({ people }: { people: TaskNamedRef[] }) {
 }
 
 export function TaskBoardCompletion({ percentage, label }: { percentage: number; label: string }) {
+  const tone = completionTone(percentage)
+
   return (
     <>
-      <Progress value={percentage} size="xs" className="w-14 shrink-0" aria-label={label} />
-      <span className="tabular-nums">{percentage}%</span>
+      <Progress
+        value={percentage}
+        size="xs"
+        className={cn('w-14 shrink-0', tone.track)}
+        indicatorClassName={tone.indicator}
+        aria-label={label}
+      />
+      <span className={cn('font-medium tabular-nums', tone.text)}>{percentage}%</span>
     </>
   )
 }

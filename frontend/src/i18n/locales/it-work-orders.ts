@@ -88,7 +88,11 @@ export const workOrders = {
         overdue: 'Scadute',
         this_week: 'Questa settimana',
       },
-      status: 'Stato',
+      status: 'Mostra',
+      taskStatus: 'Stato',
+      taskStatusPlaceholder: 'Tutti gli stati',
+      importance: 'Importanza',
+      importancePlaceholder: 'Tutte le importanze',
       statusOption: {
         open: 'Aperti',
         completed: 'Completati',

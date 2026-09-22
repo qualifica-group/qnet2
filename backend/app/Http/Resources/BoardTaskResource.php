@@ -64,6 +64,7 @@ class BoardTaskResource extends JsonResource
             'task_status' => $this->statusRef(),
             'task_type' => $this->badgeRef($this->taskType),
             'task_priority' => $this->badgeRef($this->taskPriority),
+            'task_importance' => $this->badgeRef($this->taskImportance),
             'requester' => $this->nameRef($this->requester),
             'assignees' => $this->summarizeUsers($this->assignees),
             'watchers' => $this->summarizeUsers($this->watchers),

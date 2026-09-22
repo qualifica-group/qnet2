@@ -91,7 +91,8 @@ it('GET task-board: only visible tasks of THIS commessa, subtasks included, actu
         ->and($taskIds)->not->toContain($invisibleRoot->id);
 
     $boardRoot = collect($response->json('data.tasks'))->firstWhere('id', $visibleRoot->id);
-    expect($boardRoot['actual_minutes'])->toBe(75)
+    expect($boardRoot)->toHaveKey('task_importance')
+        ->and($boardRoot['actual_minutes'])->toBe(75)
         ->and($boardRoot['permissions'])->toHaveKeys(['resource', 'fields', 'actions', 'change_requestable_fields']);
 });
 

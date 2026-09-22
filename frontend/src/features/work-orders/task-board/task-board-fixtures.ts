@@ -37,6 +37,7 @@ export function boardTask(overrides: Partial<BoardTask> = {}): BoardTask {
     },
     task_type: null,
     task_priority: null,
+    task_importance: null,
     requester: { id: 21, name: 'Bruno Bianchi' },
     assignees: [{ id: 31, name: 'Dario Dini' }],
     watchers: [],

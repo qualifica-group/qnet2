@@ -35,7 +35,9 @@ function isDefaultFilters(filters: TaskBoardFilters): boolean {
     filters.requesterIds.length === 0 &&
     filters.assigneeIds.length === 0 &&
     filters.watcherIds.length === 0 &&
-    filters.taskPriorityIds.length === 0
+    filters.taskPriorityIds.length === 0 &&
+    filters.taskStatusIds.length === 0 &&
+    filters.taskImportanceIds.length === 0
   )
 }
 

@@ -59,6 +59,42 @@ describe('filterBoardTasks (AC-025)', () => {
     expect(result.map((task) => task.id)).toEqual([1])
   })
 
+  it('filters by specific task status', () => {
+    const inProgress = { id: 3, name: 'In lavorazione', color: 'blue', icon: null, system_key: null, group: 'open' as const, completion_percentage: 50 }
+    const waiting = { ...inProgress, id: 4, name: 'In attesa', completion_percentage: 10 }
+    const matching = boardTask({ id: 1, task_status: inProgress })
+    const other = boardTask({ id: 2, task_status: waiting })
+
+    const result = filterBoardTasks([matching, other], { ...DEFAULT_TASK_BOARD_FILTERS, taskStatusIds: [3] }, CURRENT_USER_ID, TODAY)
+
+    expect(result.map((task) => task.id)).toEqual([1])
+  })
+
+  it('filters by importance, excluding tasks without one', () => {
+    const matching = boardTask({ id: 1, task_importance: { id: 7, name: 'Alta', color: 'red', icon: null } })
+    const other = boardTask({ id: 2, task_importance: { id: 8, name: 'Bassa', color: 'gray', icon: null } })
+    const none = boardTask({ id: 3, task_importance: null })
+
+    const result = filterBoardTasks(
+      [matching, other, none],
+      { ...DEFAULT_TASK_BOARD_FILTERS, taskImportanceIds: [7] },
+      CURRENT_USER_ID,
+      TODAY,
+    )
+
+    expect(result.map((task) => task.id)).toEqual([1])
+  })
+
+  it('offers the statuses and importance levels found on the root tasks', () => {
+    const options = deriveTaskBoardFilterOptions([
+      boardTask({ id: 1, task_importance: { id: 7, name: 'Alta', color: 'red', icon: null } }),
+      boardTask({ id: 2, parent_task_id: 1, task_importance: { id: 8, name: 'Bassa', color: 'gray', icon: null } }),
+    ])
+
+    expect(options.taskImportances.map((item) => item.id)).toEqual([7])
+    expect(options.taskStatuses.map((item) => item.id)).toEqual([3])
+  })
+
   it('due filter "today" keeps only end_date === today, falling back to start_date when unset', () => {
     const dueToday = boardTask({ id: 1, end_date: TODAY, start_date: null })
     const dueTomorrow = boardTask({ id: 2, end_date: '2026-09-23', start_date: null })

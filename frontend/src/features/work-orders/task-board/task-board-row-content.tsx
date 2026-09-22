@@ -52,7 +52,7 @@ export function TaskBoardRowContent({ task, today, onOpen }: TaskBoardRowContent
           ) : null}
         </div>
         {task.description_excerpt ? (
-          <p className="line-clamp-1 text-xs text-muted-foreground" title={task.description_excerpt}>
+          <p className="line-clamp-1 text-xs text-muted-foreground/80" title={task.description_excerpt}>
             {task.description_excerpt}
           </p>
         ) : null}

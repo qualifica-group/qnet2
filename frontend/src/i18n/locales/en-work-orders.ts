@@ -88,7 +88,11 @@ export const workOrders = {
         overdue: 'Overdue',
         this_week: 'This week',
       },
-      status: 'Status',
+      status: 'Show',
+      taskStatus: 'Status',
+      taskStatusPlaceholder: 'All statuses',
+      importance: 'Importance',
+      importancePlaceholder: 'All importance levels',
       statusOption: {
         open: 'Open',
         completed: 'Completed',

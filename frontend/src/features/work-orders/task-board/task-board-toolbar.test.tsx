@@ -14,6 +14,8 @@ const OPTIONS: TaskBoardFilterOptions = {
   watchers: [{ id: 41, name: 'Elena Verdi' }],
   taskTypes: [{ id: 5, name: 'Sopralluogo', color: 'blue', icon: null }],
   taskPriorities: [{ id: 9, name: 'Alta', color: 'red', icon: null }],
+  taskStatuses: [{ id: 3, name: 'In lavorazione', color: 'blue', icon: null }],
+  taskImportances: [{ id: 7, name: 'Critica', color: 'red', icon: null }],
 }
 
 function renderToolbar(overrides: Partial<Parameters<typeof TaskBoardToolbar>[0]> = {}) {
@@ -48,10 +50,20 @@ describe('TaskBoardToolbar — applied filters bar', () => {
   })
 
   it('adds a chip naming the picked values of an id filter', () => {
-    renderToolbar({ filters: { ...DEFAULT_TASK_BOARD_FILTERS, taskTypeIds: [5], assignment: 'assigned_to_me' } })
+    renderToolbar({
+      filters: {
+        ...DEFAULT_TASK_BOARD_FILTERS,
+        taskTypeIds: [5],
+        taskStatusIds: [3],
+        taskImportanceIds: [7],
+        assignment: 'assigned_to_me',
+      },
+    })
 
     const chips = screen.getByRole('list', { name: 'Filtri applicati' })
     expect(within(chips).getByText('Sopralluogo')).toBeInTheDocument()
+    expect(within(chips).getByText('In lavorazione')).toBeInTheDocument()
+    expect(within(chips).getByText('Critica')).toBeInTheDocument()
     expect(within(chips).getByText('Assegnati a me')).toBeInTheDocument()
   })
 
@@ -118,11 +130,24 @@ describe('TaskBoardToolbar — "Modifica filtri" sheet', () => {
     expect(onFiltersChange).toHaveBeenCalledWith({ ...DEFAULT_TASK_BOARD_FILTERS, taskTypeIds: [5] })
   })
 
+  it('picks a status and an importance level', async () => {
+    const { onFiltersChange } = renderToolbar()
+    const sheet = await openSheet()
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Stato' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'In lavorazione' }))
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Importanza' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Critica' }))
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Applica' }))
+
+    expect(onFiltersChange).toHaveBeenCalledWith({ ...DEFAULT_TASK_BOARD_FILTERS, taskStatusIds: [3], taskImportanceIds: [7] })
+  })
+
   it('discards the draft on "Annulla"', async () => {
     const { onFiltersChange } = renderToolbar()
     const sheet = await openSheet()
 
-    const statusGroup = within(sheet).getByRole('radiogroup', { name: 'Stato' })
+    const statusGroup = within(sheet).getByRole('radiogroup', { name: 'Mostra' })
     fireEvent.click(within(statusGroup).getByRole('radio', { name: 'Tutti' }))
     fireEvent.click(within(sheet).getByRole('button', { name: 'Annulla' }))
 

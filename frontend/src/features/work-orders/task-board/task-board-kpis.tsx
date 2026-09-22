@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
+import { completionTone } from '@/features/work-orders/task-board/task-board-completion-tone'
 import type { TaskBoardMetrics } from '@/features/work-orders/task-board/task-board-metrics'
 
 interface KpiTileProps {
@@ -27,18 +28,33 @@ const TILE_CLASS = 'flex min-w-0 flex-1 basis-36 items-start gap-3 rounded-xl bg
 const ICON_CHIP_CLASS = 'flex size-8 shrink-0 items-center justify-center rounded-lg'
 
 function KpiTile({ icon: Icon, label, value, accent = false, progress }: KpiTileProps) {
+  // A tile with a progress bar takes the completion colour (same rule as rows and phases).
+  const tone = progress !== undefined ? completionTone(progress) : null
+  const iconChipTone = tone
+    ? cn(tone.track, tone.text)
+    : accent
+      ? 'bg-destructive/10 text-destructive'
+      : 'bg-primary/10 text-primary'
+
   return (
     <div className={cn(TILE_CLASS, accent && 'ring-destructive/40')}>
-      <span
-        aria-hidden="true"
-        className={cn(ICON_CHIP_CLASS, accent ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary')}
-      >
+      <span aria-hidden="true" className={cn(ICON_CHIP_CLASS, iconChipTone)}>
         <Icon className="size-4" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate text-xs text-muted-foreground">{label}</span>
-        <span className={cn('text-lg leading-tight font-semibold tabular-nums', accent && 'text-destructive')}>{value}</span>
-        {progress !== undefined ? <Progress value={progress} size="xs" className="mt-1" aria-label={label} /> : null}
+        <span className={cn('text-lg leading-tight font-semibold tabular-nums', accent && 'text-destructive', tone?.text)}>
+          {value}
+        </span>
+        {tone ? (
+          <Progress
+            value={progress}
+            size="xs"
+            className={cn('mt-1', tone.track)}
+            indicatorClassName={tone.indicator}
+            aria-label={label}
+          />
+        ) : null}
       </div>
     </div>
   )

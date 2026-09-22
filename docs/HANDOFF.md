@@ -74,6 +74,8 @@ Spec 0146 (`docs/specs/0146-work-order-task-stages.xml`, implemented). Verifier:
   - kanban: colonne con intestazione sul canvas e corpo `bg-muted/40`.
   - Rimossi `task-board-due-badge.tsx` e `task-board-avatar-stack.tsx`.
 - "Scadenza" rinominata "Data fine" (riga e filtro). `TaskBoardEndDate`: chip rosso + triangolo + tooltip "Scaduto" se passata, tooltip "Oggi" se odierna.
+- Filtri Stato (per singolo stato) e Importanza, entrambi multi-select (`taskStatusIds`, `taskImportanceIds`); il segmentato Aperti/Completati/Bloccati/Tutti ora si chiama "Mostra". Contratto board esteso con `BoardTask.task_importance`. "Modifica filtri" solo icona, anche in Gestione richieste.
+- Completamento colorato (task, fase, KPI commessa) con una sola regola in `task-board-completion-tone.ts`: 0-33 rosso, 34-66 ambra, 67-99 blu, 100 verde. Nuovo token `--warning` / `--color-warning` in `index.css` (light 38, dark 55), accanto a `--success`.
 - Contratto board esteso con `BoardTask.description_excerpt` (`RichTextPlainText::excerpt`, 160 caratteri, null se vuota), mostrata sotto il titolo; spec 0146 aggiornata.
 
 **D-10.** Rimosso lo scope `workOrderId` della griglia Task (spec 0133), sia BE (`WorkOrderScopedTableDefinition`) sia FE (`TableRowScope.workOrderId`); lo scope `quoteId` e' invariato. Eliminato `work-order-tasks-section.tsx`.

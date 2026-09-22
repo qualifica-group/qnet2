@@ -87,6 +87,18 @@ export function TaskBoardAppliedFilters({ filters, options }: TaskBoardAppliedFi
       options: options.assignees,
     },
     { key: 'watcher', label: t('workOrders.taskBoard.filters.watcher'), ids: filters.watcherIds, options: options.watchers },
+    {
+      key: 'taskStatus',
+      label: t('workOrders.taskBoard.filters.taskStatus'),
+      ids: filters.taskStatusIds,
+      options: options.taskStatuses,
+    },
+    {
+      key: 'importance',
+      label: t('workOrders.taskBoard.filters.importance'),
+      ids: filters.taskImportanceIds,
+      options: options.taskImportances,
+    },
   ]
 
   return (

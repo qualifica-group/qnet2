@@ -43,7 +43,14 @@ const STATUS_OPTIONS: readonly TaskBoardStatusFilter[] = ['open', 'completed', '
 const DUE_OPTIONS: readonly TaskBoardDueFilter[] = ['all', 'today', 'overdue', 'this_week']
 const ASSIGNMENT_OPTIONS: readonly TaskBoardAssignmentFilter[] = ['all', 'assigned_to_me', 'requested_by_me']
 
-type IdFilterKey = 'taskTypeIds' | 'taskPriorityIds' | 'requesterIds' | 'assigneeIds' | 'watcherIds'
+type IdFilterKey =
+  | 'taskStatusIds'
+  | 'taskTypeIds'
+  | 'taskPriorityIds'
+  | 'taskImportanceIds'
+  | 'requesterIds'
+  | 'assigneeIds'
+  | 'watcherIds'
 
 interface IdFilterField {
   key: IdFilterKey
@@ -120,6 +127,12 @@ function TaskBoardFiltersForm({ initial, options, onCancel, onApply }: TaskBoard
 
   const idFields: IdFilterField[] = [
     {
+      key: 'taskStatusIds',
+      label: t('workOrders.taskBoard.filters.taskStatus'),
+      placeholder: t('workOrders.taskBoard.filters.taskStatusPlaceholder'),
+      options: options.taskStatuses,
+    },
+    {
       key: 'taskTypeIds',
       label: t('workOrders.taskBoard.filters.type'),
       placeholder: t('workOrders.taskBoard.filters.typePlaceholder'),
@@ -130,6 +143,12 @@ function TaskBoardFiltersForm({ initial, options, onCancel, onApply }: TaskBoard
       label: t('workOrders.taskBoard.filters.priority'),
       placeholder: t('workOrders.taskBoard.filters.priorityPlaceholder'),
       options: options.taskPriorities,
+    },
+    {
+      key: 'taskImportanceIds',
+      label: t('workOrders.taskBoard.filters.importance'),
+      placeholder: t('workOrders.taskBoard.filters.importancePlaceholder'),
+      options: options.taskImportances,
     },
     {
       key: 'requesterIds',

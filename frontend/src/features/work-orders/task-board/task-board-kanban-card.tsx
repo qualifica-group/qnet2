@@ -88,7 +88,7 @@ export function TaskBoardKanbanCard({
       </div>
 
       {task.description_excerpt ? (
-        <p className="line-clamp-2 text-xs text-muted-foreground" title={task.description_excerpt}>
+        <p className="line-clamp-2 text-xs text-muted-foreground/80" title={task.description_excerpt}>
           {task.description_excerpt}
         </p>
       ) : null}

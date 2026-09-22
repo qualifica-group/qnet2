@@ -42,6 +42,7 @@ export interface BoardTask {
   task_status: TaskStatusRef
   task_type: TaskLookupRef | null
   task_priority: TaskLookupRef | null
+  task_importance: TaskLookupRef | null
   requester: TaskNamedRef | null
   assignees: TaskNamedRef[]
   watchers: TaskNamedRef[]
@@ -199,4 +200,6 @@ export interface TaskBoardFilters {
   assigneeIds: number[]
   watcherIds: number[]
   taskPriorityIds: number[]
+  taskStatusIds: number[]
+  taskImportanceIds: number[]
 }

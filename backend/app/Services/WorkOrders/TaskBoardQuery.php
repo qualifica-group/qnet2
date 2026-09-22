@@ -32,7 +32,7 @@ final class TaskBoardQuery
     /**
      * @var array<int, string>
      */
-    private const array RELATIONS = ['taskStatus', 'taskType', 'taskPriority', 'requester', 'assignees', 'watchers'];
+    private const array RELATIONS = ['taskStatus', 'taskType', 'taskPriority', 'taskImportance', 'requester', 'assignees', 'watchers'];
 
     /**
      * @return Collection<int, Task>
