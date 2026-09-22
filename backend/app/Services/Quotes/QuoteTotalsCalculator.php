@@ -43,7 +43,11 @@ final class QuoteTotalsCalculator
      * the sum of each row's OWN already-rounded amount (D-12 — never a
      * re-derivation from quantity/price), so it stays correct whichever tab
      * was actually rewritten by this write. Margin is revenue net minus cost
-     * net (D-5) and MAY be negative (AC-043, no clamp).
+     * net minus the total of every REVENUE line's commissions, all roles
+     * (spec 0145, D-3/D-4 — supersedes spec 0065 D-5) and MAY be negative
+     * (AC-043, no clamp). The caller MUST have already run
+     * QuoteLineCommissionWriter::recalculateQuoteMargins() on $quote in this
+     * same write, so `calculated_amount` reflects the current margin base.
      *
      * @return array{revenue_net: float, revenue_vat: float, cost_net: float, cost_vat: float, margin_net: float}
      */
@@ -51,14 +55,31 @@ final class QuoteTotalsCalculator
     {
         $revenue = $this->sumLines($quote, QuoteLineType::Revenue);
         $cost = $this->sumLines($quote, QuoteLineType::Cost);
+        $commissions = $this->commissionTotal($quote);
 
         return [
             'revenue_net' => $revenue['net'],
             'revenue_vat' => $revenue['vat'],
             'cost_net' => $cost['net'],
             'cost_vat' => $cost['vat'],
-            'margin_net' => round($revenue['net'] - $cost['net'], 2, PHP_ROUND_HALF_UP),
+            'margin_net' => round($revenue['net'] - $cost['net'] - $commissions, 2, PHP_ROUND_HALF_UP),
         ];
+    }
+
+    /**
+     * Spec 0145, D-3/D-4: every role's commission on $quote's REVENUE lines,
+     * summed in ONE query — the total feeding `margin_net` is net of ALL of
+     * them, independent of which roles the current actor may see
+     * (QuoteResource's permission gate only hides the per-role breakdown,
+     * never this total, D-7).
+     */
+    private function commissionTotal(Quote $quote): float
+    {
+        return round((float) QuoteLine::query()
+            ->where('quote_id', $quote->id)
+            ->where('line_type', QuoteLineType::Revenue)
+            ->join('quote_line_commissions', 'quote_lines.id', '=', 'quote_line_commissions.quote_line_id')
+            ->sum('quote_line_commissions.calculated_amount'), 2, PHP_ROUND_HALF_UP);
     }
 
     /**

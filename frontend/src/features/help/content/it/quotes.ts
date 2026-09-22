@@ -71,7 +71,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Il riepilogo mostra **Ricavi attesi**, **Costi attesi** e **Margine atteso**, con **Imponibile**, **IVA** e **Totale**, più il **Riepilogo Commissioni**, il **Riepilogo per Tipologia Prodotto** e il **Margine per prodotto** (ricavo, costo imputato e margine di ogni riga prodotto, più una riga "Costi generici" per i costi non associati).',
+          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** e il **Margine atteso** (ricavi netti meno costi netti meno commissioni), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto, più una riga "Costi generici" per i costi non associati. Questo blocco è visibile solo a chi può vedere le commissioni.',
         },
         {
           type: 'warning',

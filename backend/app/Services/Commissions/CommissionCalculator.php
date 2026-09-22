@@ -12,7 +12,7 @@ final class CommissionCalculator
     public function calculate(CommissionCalculationInput $input): string
     {
         $amount = $input->type === CommissionType::Percentage
-            ? ((float) $input->lineNetAmount * (float) $input->value) / 100
+            ? ((float) $input->baseAmount * (float) $input->value) / 100
             : (float) $input->value;
 
         return number_format(round($amount, 2, PHP_ROUND_HALF_UP), 2, '.', '');

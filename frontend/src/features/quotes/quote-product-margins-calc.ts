@@ -15,6 +15,7 @@
  * numbers.
  */
 
+import { allocatedCostNetByOfferLineKey, calculateCommissionAmount, calculateCommissionBaseNet } from '@/features/quotes/commission-calculator'
 import { isPristineLineRow, lineClientKey } from '@/features/quotes/quote-line-values'
 import { round2 } from '@/features/quotes/quote-totals'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
@@ -28,6 +29,15 @@ export interface ProductMarginProductInput {
   /** 1-based position among the offer's rows, for the "riga N" label. */
   rowNumber: number
   net: number
+  /**
+   * Spec 0145 (D-9): this row's own commission total, already resolved on
+   * the D-1 base by the caller (`productLinesFromFormOfferLines`'s live
+   * recompute, `productLinesFromPersistedOfferLines`'s sum of persisted
+   * `calculated_amount`). Without the `commissions` field permission the
+   * whole block is hidden (`quote-product-margins.tsx`), never a margin
+   * computed without them.
+   */
+  commissionsNet: number
 }
 
 /** One COST row's contribution, attributed or generic. */
@@ -43,6 +53,7 @@ export interface ProductMarginRow {
   rowNumber: number
   revenueNet: number
   costNet: number
+  commissionsNet: number
   margin: number
 }
 
@@ -81,27 +92,49 @@ export function computeProductMargins(
       rowNumber: line.rowNumber,
       revenueNet: line.net,
       costNet,
-      margin: round2(line.net - costNet),
+      commissionsNet: line.commissionsNet,
+      // Spec 0145 (D-9): net of commissions when known, unchanged (pre-0145)
+      // when the caller has no visibility into them (D-9's documented gap).
+      margin: round2(line.net - costNet - line.commissionsNet),
     }
   })
 
   return { rows, genericCostNet: round2(genericCostNet) }
 }
 
-/** Live form mapping (spec 0144): every OFFER row carrying a product, net computed the same way the live summary does. */
+/**
+ * Live form mapping (spec 0144/0145): every OFFER row carrying a product,
+ * net computed the same way the live summary does, plus its own commission
+ * total recomputed on the D-1 base (this row's net minus the SAME costLines'
+ * imputed net `computeProductMargins` below buckets onto `costNet` — kept in
+ * sync via the shared `allocatedCostNetByOfferLineKey`, not duplicated math).
+ */
 export function productLinesFromFormOfferLines(
   offerLines: QuoteLineFormValues[],
+  costLines: QuoteLineFormValues[],
   productNameFor: (productId: number) => string | null,
 ): ProductMarginProductInput[] {
+  const costNetByKey = allocatedCostNetByOfferLineKey(costLines)
+
   return offerLines.reduce<ProductMarginProductInput[]>((lines, row, index) => {
     if (row.product_id === null) {
       return lines
     }
+    const key = row.client_key ?? `index-${index}`
+    const net = round2((row.quantity ?? 0) * (row.unit_price ?? 0))
+    const base = calculateCommissionBaseNet(net, costNetByKey.get(key) ?? 0)
+    const commissionsNet = round2(
+      (row.commissions ?? []).reduce(
+        (sum, commission) => round2(sum + calculateCommissionAmount(commission.commission_type, commission.value, base)),
+        0,
+      ),
+    )
     lines.push({
-      key: row.client_key ?? `index-${index}`,
+      key,
       productName: productNameFor(row.product_id),
       rowNumber: index + 1,
-      net: round2((row.quantity ?? 0) * (row.unit_price ?? 0)),
+      net,
+      commissionsNet,
     })
     return lines
   }, [])
@@ -117,13 +150,19 @@ export function costLinesFromFormCostLines(costLines: QuoteLineFormValues[]): Pr
     }))
 }
 
-/** Detail mapping (spec 0144): persisted OFFER rows, using the CONGEALED `net_amount` (never recomputed). */
+/**
+ * Detail mapping (spec 0144/0145): persisted OFFER rows, using the
+ * CONGEALED `net_amount` (never recomputed) and the sum of each row's
+ * already server-computed `calculated_amount` — never recomputed FE-side, the
+ * server ran D-1/D-6 at save time and its numbers are authoritative.
+ */
 export function productLinesFromPersistedOfferLines(offerLines: QuoteLine[]): ProductMarginProductInput[] {
   return offerLines.map((line, index) => ({
     key: lineClientKey(line.id),
     productName: line.product.name,
     rowNumber: index + 1,
     net: Number(line.net_amount),
+    commissionsNet: round2((line.commissions ?? []).reduce((sum, commission) => sum + Number(commission.calculated_amount), 0)),
   }))
 }
 

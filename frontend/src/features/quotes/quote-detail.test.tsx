@@ -293,6 +293,18 @@ describe('QuoteDetailView — Margine per prodotto', () => {
     expect(screen.getByText('Generic costs')).toBeInTheDocument()
   })
 
+  it('hides the block without the commissions permission (user decision 2026-09-22)', () => {
+    const quote = quoteFixture({
+      offer_lines: [quoteLineFixture({ id: 1, product_id: 7, net_amount: '100.00' })],
+      permissions: {
+        ...BASE_PERMISSIONS,
+        fields: { ...BASE_PERMISSIONS.fields, commissions: { visible: false, hidden: true, editable: false, readonly: true, disabled: false, required: false } },
+      },
+    })
+    renderDetail(<QuoteDetailView quote={quote} />)
+    expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()
+  })
+
   it('hides the block when the offer has no product row', () => {
     renderDetail(<QuoteDetailView quote={quoteFixture()} />)
     expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()

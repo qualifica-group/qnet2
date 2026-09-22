@@ -3,6 +3,30 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## OFFERTE: COMMISSIONI SUL MARGINE + MARGINE ATTESO NETTO — NON COMMITTATO (2026-09-22)
+
+Spec 0145 (`docs/specs/0145-quote-commissions-on-margin.xml`, implemented), sopra la 0144. Verifier: VERDE (Pest
+sequenziale 7977 pass / 1 skip / 1 flaky estraneo `DemoOpportunitySeederTest` che passa da solo; Vitest 728/5534;
+eslint pulito; `tsc -b --force` EXIT 0).
+- Base commissioni PERCENTAGE = max(0, net riga REVENUE - costi imputati via `offer_line_id`); costi generici esclusi;
+  FIXED invariato. BE: unico punto `App\Services\Commissions\QuoteLineCommissionBaseResolver`
+  (`resolve()`/`resolveForLines()`); `CommissionCalculationInput::lineNetAmount` rinominato `baseAmount`.
+- Ricalcolo: `QuoteLineCommissionWriter::recalculateQuoteMargins()` chiamato da `QuoteService::create()/update()` dopo
+  `writeSubmitted()` e prima degli aggregates. Tutti i canali (Gestione Richieste, inline-edit, conversione Lead)
+  passano da QuoteService. Nessun backfill: offerte esistenti si aggiornano al prossimo salvataggio.
+- `margin_net` PERSISTITO = revenue_net - cost_net - totale commissioni (griglia, Contratti, layout documento);
+  `summary.margin.net` visibile anche senza permesso commissioni. API: shape invariata.
+- FE: base in `commission-calculator.ts` (`calculateCommissionBaseNet`, `allocatedCostNetByOfferLineKey`,
+  `sumCommissionTotals`), riusata da riepilogo live, dialog commissioni (`allocatedCostNet`) e margini per prodotto.
+  Riepilogo: Ricavi, Costi, Commissioni, Margine atteso, Tipologia. "Margine per prodotto" con colonna Commissioni;
+  NASCOSTO senza permesso `commissions` (decisione utente).
+- Limite noto: nel FORM, un utente senza permesso commissioni non riceve le commissioni delle righe, quindi il Margine
+  atteso live e' al lordo commissioni fino al salvataggio (poi il dettaglio mostra il netto dal server).
+- Da ottimizzare (bassa): `QuoteLineWriter::sync()` calcola la base per riga (1 query/riga REVENUE) poi sovrascritta dal
+  ricalcolo batch.
+- Manuale: guida in-app `quotes` IT/EN + manuale Claude Docs aggiornati.
+- Prossimo passo: commit (0144 + 0145) su ordine esplicito dell'utente.
+
 ## OFFERTE: COSTO IMPUTATO A RIGA PRODOTTO — NON COMMITTATO (2026-09-22)
 
 Spec 0144 (`docs/specs/0144-quote-cost-line-allocation.xml`, status implemented). Verifier: VERDE (Pest sequenziale

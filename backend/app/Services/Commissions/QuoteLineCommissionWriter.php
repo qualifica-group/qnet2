@@ -9,6 +9,7 @@ use App\DataObjects\Commissions\CommissionCalculationInput;
 use App\DataObjects\Commissions\QuoteCommissionDefaultsData;
 use App\DataObjects\Quotes\QuoteLineCommissionData;
 use App\Enums\CommissionOrigin;
+use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\Referent;
 use App\Models\Registry;
@@ -29,12 +30,16 @@ final class QuoteLineCommissionWriter
     public function __construct(
         private readonly QuoteCommissionInitializer $initializer,
         private readonly CommissionCalculator $calculator,
+        private readonly QuoteLineCommissionBaseResolver $baseResolver,
     ) {}
 
     /** @param array<int, QuoteLineCommissionData>|null $submitted */
     public function sync(QuoteLine $line, ?array $submitted, bool $regenerate = false): void
     {
-        $defaults = $this->defaults($line);
+        // Spec 0145, D-1: resolved ONCE per call and reused below, so a
+        // manual override and the automatic defaults never disagree on it.
+        $base = $this->baseResolver->resolve($line);
+        $defaults = $this->defaults($line, $base);
 
         if ($regenerate || ($submitted === null && ! $line->commissions()->exists())) {
             $this->replaceWithDefaults($line, $defaults);
@@ -43,7 +48,7 @@ final class QuoteLineCommissionWriter
         }
 
         if ($submitted === null) {
-            $this->recalculateAndInitializeMissing($line, $defaults);
+            $this->recalculateAndInitializeMissing($line, $defaults, $base);
 
             return;
         }
@@ -73,7 +78,7 @@ final class QuoteLineCommissionWriter
             $amount = $this->calculator->calculate(new CommissionCalculationInput(
                 type: $commission->type,
                 value: $commission->value,
-                lineNetAmount: $line->net_amount,
+                baseAmount: $base,
             ));
 
             $line->commissions()->updateOrCreate(
@@ -114,7 +119,7 @@ final class QuoteLineCommissionWriter
     }
 
     /** @param array<int, AppliedCommissionDraft> $defaults */
-    private function recalculateAndInitializeMissing(QuoteLine $line, array $defaults): void
+    private function recalculateAndInitializeMissing(QuoteLine $line, array $defaults, string $base): void
     {
         $defaultsByRole = collect($defaults)->keyBy(fn ($draft) => $draft->role->value);
 
@@ -139,7 +144,7 @@ final class QuoteLineCommissionWriter
             $commission->calculated_amount = $this->calculator->calculate(new CommissionCalculationInput(
                 type: $commission->commission_type,
                 value: $commission->value,
-                lineNetAmount: $line->net_amount,
+                baseAmount: $base,
             ));
             $commission->save();
         }
@@ -147,6 +152,44 @@ final class QuoteLineCommissionWriter
         foreach ($defaults as $draft) {
             if (! $line->commissions()->where('recipient_role', $draft->role)->exists()) {
                 $this->persistDraft($line, $draft);
+            }
+        }
+    }
+
+    /**
+     * Spec 0145, D-6: after ANY line-set write (REVENUE or COST, any channel
+     * — they all converge on QuoteService::create()/update()), every REVENUE
+     * line's EXISTING commissions are recomputed on the fresh margin base
+     * (D-1), without re-resolving rules or recipients (the persisted
+     * `commission_type`/`value` snapshot is untouched, mirroring
+     * recalculateAndInitializeMissing()'s own discipline). This is the only
+     * place the margin base is known correct for every REVENUE line at once:
+     * the per-line sync() above runs BEFORE the COST tab is (re)written, and
+     * a cost-only submission never touches REVENUE lines' commissions at
+     * all. One aggregate query for the whole quote (no N+1).
+     */
+    public function recalculateQuoteMargins(Quote $quote): void
+    {
+        $lines = $quote->offerLines()->with('commissions')->get();
+
+        if ($lines->isEmpty()) {
+            return;
+        }
+
+        $bases = $this->baseResolver->resolveForLines($lines);
+
+        foreach ($lines as $line) {
+            foreach ($line->commissions as $commission) {
+                $amount = $this->calculator->calculate(new CommissionCalculationInput(
+                    type: $commission->commission_type,
+                    value: $commission->value,
+                    baseAmount: $bases[$line->id],
+                ));
+
+                if ($amount !== $commission->calculated_amount) {
+                    $commission->calculated_amount = $amount;
+                    $commission->save();
+                }
             }
         }
     }
@@ -169,12 +212,16 @@ final class QuoteLineCommissionWriter
     }
 
     /** @return array<int, AppliedCommissionDraft> */
-    private function defaults(QuoteLine $line): array
+    private function defaults(QuoteLine $line, string $base): array
     {
         return $this->initializer->initialize(new QuoteCommissionDefaultsData(
             quoteId: $line->quote_id,
             productId: $line->product_id,
-            lineNetAmount: $line->net_amount,
+            // Spec 0145, D-1: the margin base (QuoteLineCommissionBaseResolver),
+            // not the line's plain net_amount — this DTO's field keeps its
+            // wire name (`line_net_amount`, the commission-defaults endpoint's
+            // own anteprima contract), it just carries a different value here.
+            lineNetAmount: $base,
             commercialId: null,
             reporterId: null,
             supervisorId: null,

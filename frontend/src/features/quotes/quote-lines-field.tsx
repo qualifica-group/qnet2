@@ -62,6 +62,14 @@ interface QuoteLinesFieldProps {
   offerLineOptions?: QuoteCostOfferLineOption[]
   commissionContext?: QuoteCommissionContext
   /**
+   * Spec 0145 (D-1), revenue variant only: each OFFER row's own `client_key`
+   * resolved to the net of the COST rows imputed to it (`QuoteOfferTab`'s
+   * `allocatedCostNetByOfferLineKey`), forwarded to that row's commissions
+   * dialog as its base (D-1/D-2). `undefined` on the cost tab, which never
+   * renders the dialog at all.
+   */
+  allocatedCostNetByOfferLineKey?: Map<string, number>
+  /**
    * `false` mounts the editor WITHOUT the provvigioni column and without the
    * role-change re-sync below: Gestione Richieste edits these same rows (user
    * directive 2026-08-07) but never that block — its endpoint prohibits
@@ -80,6 +88,8 @@ interface QuoteLinesFieldProps {
 
 /** Hoisted: an inline `[]` default would be a new reference on every render. */
 const NO_OFFER_LINE_OPTIONS: QuoteCostOfferLineOption[] = []
+/** Hoisted: an inline `new Map()` default would be a new reference on every render. */
+const NO_ALLOCATED_COST_NET = new Map<string, number>()
 
 /**
  * One tab's (`offer_lines`/`cost_lines`) repeatable row editor (D-11: both
@@ -103,6 +113,7 @@ export function QuoteLinesField({
   rememberProductName,
   offerLineOptions = NO_OFFER_LINE_OPTIONS,
   commissionContext,
+  allocatedCostNetByOfferLineKey = NO_ALLOCATED_COST_NET,
   withCommissions = true,
   simplified = false,
 }: QuoteLinesFieldProps) {
@@ -272,6 +283,7 @@ export function QuoteLinesField({
                 error={errors?.[index]}
                 variant={variant}
                 commissionContext={commissionContext}
+                allocatedCostNet={row.client_key ? allocatedCostNetByOfferLineKey.get(row.client_key) ?? 0 : 0}
                 withCommissions={withCommissions}
                 simplified={simplified}
                 offerLineOptions={offerLineOptions}

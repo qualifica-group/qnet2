@@ -137,3 +137,84 @@ describe('totalsFromPersistedSummary (spec 0065 D-9)', () => {
     expect(screen.getByText('-20.00')).toBeInTheDocument()
   })
 })
+
+/** Spec 0145 (AC-009): Ricavi, Costi, Commissioni, Margine atteso, Tipologia — in this order, form and detail alike. */
+describe('QuoteSummary block order (spec 0145 D-8/AC-009)', () => {
+  it('renders the blocks in the order Revenue, Cost, Commissions, Margin, Typology', () => {
+    render(
+      <QuoteSummary
+        totals={{ revenue: { net: 100, vat: 0, gross: 100 }, cost: { net: 10, vat: 0, gross: 10 }, margin: { net: 60 } }}
+        commissionTotals={{ commercial: 30, reporter: 0, supervisor: 0, supplier: 0 }}
+      />,
+    )
+
+    const revenue = screen.getByText(i18n.t('quotes.form.summary.revenue'))
+    const cost = screen.getByText(i18n.t('quotes.form.summary.cost'))
+    const commissions = screen.getByText(i18n.t('quotes.form.summary.commissions'))
+    const margin = screen.getByText(i18n.t('quotes.form.summary.margin'))
+    const typology = screen.getByText(i18n.t('quotes.form.summary.productTypologies'))
+
+    for (const [earlier, later] of [
+      [revenue, cost],
+      [cost, commissions],
+      [commissions, margin],
+      [margin, typology],
+    ] as const) {
+      expect(earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+  })
+
+  it('updates the margin hint to reflect the commissions subtraction (D-8)', () => {
+    render(<QuoteSummary totals={{ revenue: { net: 0, vat: 0, gross: 0 }, cost: { net: 0, vat: 0, gross: 0 }, margin: { net: 0 } }} />)
+    expect(screen.getByText('Net revenue minus net cost minus commissions.')).toBeInTheDocument()
+  })
+})
+
+/** Spec 0145 (D-1/D-3/AC-010): the live form's own commission preview reduces both the shown role totals and the margin, with zero network calls. */
+describe('QuoteLiveSummary — commissions on margin (spec 0145 AC-010)', () => {
+  const COMMISSION_VALUES: QuoteFormValues = {
+    ...EMPTY_VALUES,
+    offer_lines: [{
+      product_id: 1,
+      quantity: 1,
+      unit_price: 1000,
+      vat_rate_id: null,
+      client_key: 'row-1',
+      commissions: [{
+        recipient_role: 'COMMERCIAL',
+        recipient_type: 'user',
+        recipient_id: 1,
+        commission_type: 'PERCENTAGE',
+        value: 10,
+        internal_note: null,
+        origin: 'MANUAL_OVERRIDE',
+        commission_configuration_id: null,
+      }],
+    }],
+    // Imputed to the offer row above (spec 0144 D-1): the commission base
+    // becomes 1000 - 400 = 600, not the row's raw 1000 net.
+    cost_lines: [{ product_id: 2, quantity: 1, unit_price: 400, vat_rate_id: null, offer_line_key: 'row-1' }],
+  }
+
+  function CommissionHarness() {
+    const form = useForm<QuoteFormValues>({ defaultValues: COMMISSION_VALUES })
+    return (
+      <QuoteLiveSummary control={form.control} vatRatePercentFor={() => null} productTypologyIdFor={() => null} />
+    )
+  }
+
+  it('bases the live commission on the row net minus its imputed cost, and nets the margin by it', () => {
+    render(<CommissionHarness />)
+
+    // Scoped to each card: the "Margine per prodotto" block below renders the
+    // SAME two numbers on this single-row fixture (a row fully covered by its
+    // own imputed cost), so an unscoped query would be ambiguous.
+    const commissionsCard = screen.getByText(i18n.t('quotes.form.summary.commissions')).closest('div')!.parentElement!
+    const marginCard = screen.getByText(i18n.t('quotes.form.summary.margin')).closest('div')!.parentElement!
+
+    // Base = 1000 - 400 = 600; 10% commercial commission = 60.00.
+    expect(within(commissionsCard).getByText('60.00')).toBeInTheDocument()
+    // Margin = revenue.net (1000) - cost.net (400) - commissions (60) = 540.00.
+    expect(within(marginCard).getByText('540.00')).toBeInTheDocument()
+  })
+})

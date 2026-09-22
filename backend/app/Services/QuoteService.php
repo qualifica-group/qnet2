@@ -181,6 +181,13 @@ class QuoteService
             // cover the opportunity for REVENUE lines only (D-7).
             $this->lineCoverageWriter->writeSubmitted($quote, $opportunity, $data->offerLines, $data->costLines);
 
+            // Step 4a (spec 0145, D-6): recompute every REVENUE line's
+            // commission amounts on the margin base (D-1) now that COST
+            // lines are persisted too — the REVENUE tab's own per-line sync
+            // (above, inside writeSubmitted) runs BEFORE the COST tab, so it
+            // cannot yet see a cost imputed in this SAME request.
+            $this->commissionWriter->recalculateQuoteMargins($quote);
+
             // Step 4b (spec 0084, D-5): "Informazioni aggiuntive" — written
             // AFTER the offer lines, so the applicable set validated against
             // is the one THOSE lines' categories produce, exactly the set the
@@ -278,6 +285,11 @@ class QuoteService
                     fn ($line) => $this->commissionWriter->sync($line, null),
                 );
             }
+
+            // Spec 0145, D-6: unconditional — e.g. a cost_lines-only PATCH
+            // (AC-004) never touches the REVENUE tab above, so its existing
+            // commissions would otherwise keep their pre-write amounts.
+            $this->commissionWriter->recalculateQuoteMargins($quote);
 
             // "Informazioni aggiuntive" (spec 0084, D-5): validated against
             // the applicable set as it is AFTER any submitted `offer_lines`
@@ -406,9 +418,12 @@ class QuoteService
     /**
      * Recalculates and persists the 5 header aggregates (D-9) from the
      * lines currently in the database — always, independent of which (if
-     * any) line set this write actually touched. The columns are outside
-     * Quote's #[Fillable] (D-9), so they are written via forceFill(),
-     * mirroring OpportunityService's own `name` assignment.
+     * any) line set this write actually touched. `margin_net` is net of
+     * every REVENUE line's commissions too (spec 0145, D-3/D-4), so it MUST
+     * run AFTER `recalculateQuoteMargins()` has settled their amounts on the
+     * current margin base. The columns are outside Quote's #[Fillable] (D-9),
+     * so they are written via forceFill(), mirroring OpportunityService's own
+     * `name` assignment.
      */
     private function persistAggregates(Quote $quote): void
     {

@@ -69,6 +69,8 @@ interface QuoteLineRowProps {
   error?: QuoteLineRowErrors
   /** The quote's live role selections, from which the commissions dialog resolves its locked recipients (revenue rows only). */
   commissionContext?: QuoteCommissionContext
+  /** Spec 0145 (D-1): this row's own imputed-cost net, resolved by `QuoteOfferTab` from the sibling `cost_lines` — feeds the commissions dialog's base (D-1/D-2). Revenue rows only. */
+  allocatedCostNet?: number
   /**
    * `false` drops the provvigioni control from a revenue row: Gestione
    * Richieste writes these same rows but never that block (its endpoint
@@ -121,6 +123,7 @@ export function QuoteLineRow({
   rememberVatRatePercent,
   error,
   commissionContext,
+  allocatedCostNet = 0,
   withCommissions = true,
   simplified = false,
   offerLineOptions = NO_OFFER_LINE_OPTIONS,
@@ -318,6 +321,7 @@ export function QuoteLineRow({
             commissionContext={commissionContext}
             quantity={row.quantity}
             unitPrice={row.unit_price}
+            allocatedCostNet={allocatedCostNet}
             commissions={row.commissions ?? []}
             disabled={disabled || !canEditCommissions}
             onSave={(commissions) => onChangeField({ commissions })}

@@ -123,6 +123,61 @@ describe('QuoteCommissionsDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
+  /** Spec 0145 (D-1/D-2/AC-012): the base a PERCENTAGE commission applies to nets out the row's own imputed cost. */
+  it('bases the calculated amount on the row net minus its allocated cost (D-1)', async () => {
+    renderDialog(
+      <QuoteCommissionsDialog
+        open
+        onOpenChange={vi.fn()}
+        lineNumber={1}
+        productName="Router"
+        productId={4}
+        commissionContext={COMMISSION_CONTEXT}
+        quantity={2}
+        unitPrice={100}
+        allocatedCostNet={150}
+        commissions={[]}
+        disabled={false}
+        onSave={vi.fn()}
+      />,
+    )
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Add manual commission' })[0]).toBeEnabled(),
+    )
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add manual commission' })[0])
+
+    // Line net 200, allocated cost 150 -> base 50; 10% of 50 = 5.00 (not 20.00).
+    fireEvent.change(screen.getByLabelText('Value'), { target: { value: '10' } })
+    expect(screen.getByLabelText('Calculated amount')).toHaveTextContent('5.00')
+  })
+
+  /** Spec 0145 (D-2): an allocated cost exceeding the row net clamps the base at zero. */
+  it('clamps the calculated amount at zero when the allocated cost exceeds the row net (D-2)', async () => {
+    renderDialog(
+      <QuoteCommissionsDialog
+        open
+        onOpenChange={vi.fn()}
+        lineNumber={1}
+        productName="Router"
+        productId={4}
+        commissionContext={COMMISSION_CONTEXT}
+        quantity={1}
+        unitPrice={100}
+        allocatedCostNet={150}
+        commissions={[]}
+        disabled={false}
+        onSave={vi.fn()}
+      />,
+    )
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Add manual commission' })[0]).toBeEnabled(),
+    )
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add manual commission' })[0])
+
+    fireEvent.change(screen.getByLabelText('Value'), { target: { value: '10' } })
+    expect(screen.getByLabelText('Calculated amount')).toHaveTextContent('0.00')
+  })
+
   it('offers no way to commission a role with nobody picked upstream', async () => {
     vi.mocked(fetchQuoteCommissionRecipients).mockResolvedValue({
       ...ALL_ROLES_PICKED,

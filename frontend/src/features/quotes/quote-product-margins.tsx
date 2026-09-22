@@ -8,19 +8,27 @@ import type { ProductMarginRow } from '@/features/quotes/quote-product-margins-c
 interface QuoteProductMarginsProps {
   rows: ProductMarginRow[]
   genericCostNet: number
+  /**
+   * The `commissions` field permission. Denied, the whole block is hidden
+   * (user decision 2026-09-22): the rows' margins are net of commissions the
+   * viewer never receives, so any row figure shown would contradict the
+   * always-net Margine atteso (spec 0145 D-7).
+   */
+  showCommissions?: boolean
 }
 
 /**
- * "Margine per prodotto" block (spec 0144 D-6/AC-015): compact table, one row
- * per OFFER product plus a closing "Costi generici" row. Hidden entirely
- * when the offer has no product row yet — a quote with only costs has
- * nothing to attribute them to.
+ * "Margine per prodotto" block (spec 0144 D-6/AC-015, spec 0145 D-9): compact
+ * table, one row per OFFER product plus a closing "Costi generici" row.
+ * Hidden entirely when the offer has no product row yet — a quote with only
+ * costs has nothing to attribute them to — or when the viewer may not see
+ * commissions.
  */
-export function QuoteProductMargins({ rows, genericCostNet }: QuoteProductMarginsProps) {
+export function QuoteProductMargins({ rows, genericCostNet, showCommissions = true }: QuoteProductMarginsProps) {
   const { t } = useTranslation()
   const titleId = useId()
 
-  if (rows.length === 0) {
+  if (rows.length === 0 || !showCommissions) {
     return null
   }
 
@@ -44,6 +52,9 @@ export function QuoteProductMargins({ rows, genericCostNet }: QuoteProductMargin
                 {t('quotes.columns.costNet')}
               </th>
               <th scope="col" className="py-1 text-right font-medium">
+                {t('quotes.columns.commissionsNet')}
+              </th>
+              <th scope="col" className="py-1 text-right font-medium">
                 {t('quotes.columns.marginNet')}
               </th>
             </tr>
@@ -59,6 +70,7 @@ export function QuoteProductMargins({ rows, genericCostNet }: QuoteProductMargin
                 </td>
                 <td className="py-1 text-right tabular-nums">{formatQuoteAmount(row.revenueNet)}</td>
                 <td className="py-1 text-right tabular-nums">{formatQuoteAmount(row.costNet)}</td>
+                <td className="py-1 text-right tabular-nums">{formatQuoteAmount(row.commissionsNet)}</td>
                 <td
                   className={cn(
                     'py-1 text-right font-medium tabular-nums',
@@ -73,6 +85,7 @@ export function QuoteProductMargins({ rows, genericCostNet }: QuoteProductMargin
               <td className="py-1 font-medium">{t('quotes.form.summary.productMargins.genericCosts')}</td>
               <td className="py-1 text-right text-muted-foreground">—</td>
               <td className="py-1 text-right tabular-nums">{formatQuoteAmount(genericCostNet)}</td>
+              <td className="py-1 text-right text-muted-foreground">—</td>
               <td className="py-1 text-right text-muted-foreground">—</td>
             </tr>
           </tbody>

@@ -257,8 +257,12 @@ class QuoteResource extends JsonResource
 
     /**
      * D-5: revenue/cost side by side, margin computed on the net (revenue
-     * net minus cost net, persisted as `margin_net` — may be negative,
-     * AC-043, never clamped).
+     * net minus cost net minus the total of every REVENUE line's
+     * commissions — spec 0145, D-3/D-4 — persisted as `margin_net`; may be
+     * negative, AC-043, never clamped). `margin.net` is UNCONDITIONAL (spec
+     * 0145, D-7): unlike `commissions` below, no permission gates it, so a
+     * user without commission visibility still sees the net-of-commission
+     * figure, just not the breakdown.
      *
      * @return array<string, array<string, string>>
      */

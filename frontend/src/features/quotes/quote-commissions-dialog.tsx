@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { calculateCommissionAmount, roundCommission } from './commission-calculator'
+import { calculateCommissionAmount, calculateCommissionBaseNet, roundCommission } from './commission-calculator'
 import { formatQuoteAmount } from './quote-summary'
 import { fetchQuoteCommissionRecipients, quoteCommissionRecipientsQueryKey } from './api'
 import type { CommissionRole } from '@/features/commission-configurations/types'
@@ -29,6 +29,14 @@ interface Props {
   productId: number | null
   quantity: number | null
   unitPrice: number | null
+  /**
+   * Spec 0145 (D-1/D-2): the net of the costs THIS row already has imputed
+   * to it (spec 0144 `offer_line_id`/`offer_line_key`) — subtracted from the
+   * line's own net before a PERCENTAGE commission applies. `0` (default) =
+   * no imputed cost, i.e. the base is the line's full net (pre-0145
+   * behaviour, still correct for a row with nothing imputed).
+   */
+  allocatedCostNet?: number
   commissions: QuoteLineCommissionInput[]
   disabled: boolean
   /** The other half: the quote's live role selections. Omitted only where the caller has none (cost lines never reach here). */
@@ -50,6 +58,9 @@ export function QuoteCommissionsDialog(props: Props) {
   const confirm = useConfirm()
   const [draft, setDraft] = useState(props.commissions)
   const lineNet = roundCommission((props.quantity ?? 0) * (props.unitPrice ?? 0))
+  // Spec 0145 (D-1/D-2): the SAME base rule the live summary and the
+  // per-product margins block apply, never negative.
+  const commissionBase = calculateCommissionBaseNet(lineNet, props.allocatedCostNet ?? 0)
   const byRole = useMemo(() => new Map(draft.map((item) => [item.recipient_role, item])), [draft])
 
   const collectionPermission = fieldPermission('commissions')
@@ -165,7 +176,7 @@ export function QuoteCommissionsDialog(props: Props) {
                 </section>
               )
             }
-            const amount = calculateCommissionAmount(commission.commission_type, commission.value, lineNet)
+            const amount = calculateCommissionAmount(commission.commission_type, commission.value, commissionBase)
             const recipientId = `commission-${role}-recipient`
             const typeId = `commission-${role}-type`
             const amountId = `commission-${role}-amount`

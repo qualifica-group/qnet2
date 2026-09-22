@@ -19,10 +19,11 @@ import {
   productLinesFromFormOfferLines,
 } from '@/features/quotes/quote-product-margins-calc'
 import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteSummary as QuoteSummaryData, QuoteTypologyTotal } from '@/features/quotes/types'
 import type { ForSelectItem } from '@/features/for-select/types'
-import { calculateCommissionTotals, type CommissionTotals } from './commission-calculator'
+import { calculateCommissionTotals, sumCommissionTotals, type CommissionTotals } from './commission-calculator'
 
 /**
  * Formats a plain, already-numeric amount using the active UI locale (mirrors
@@ -170,10 +171,11 @@ interface QuoteSummaryProps {
 }
 
 /**
- * Presentational three-block economic summary (D-5): Ricavi Attesi / Costi
- * Attesi / Margine Atteso, the margin computed on the imponibile only
- * (never clamped to zero, AC-043). Pure render — every number is precomputed
- * by the caller (`QuoteLiveSummary` for the live form preview,
+ * Presentational economic summary (D-5, spec 0145 D-8): Ricavi Attesi / Costi
+ * Attesi / Riepilogo Commissioni / Margine Atteso / Riepilogo per Tipologia,
+ * IN THIS ORDER — the margin sits right after the commissions it nets out
+ * (D-3), never clamped to zero (AC-043). Pure render — every number is
+ * precomputed by the caller (`QuoteLiveSummary` for the live form preview,
  * `totalsFromPersistedSummary` for the read-only detail).
  */
 export function QuoteSummary({
@@ -205,6 +207,20 @@ export function QuoteSummary({
         />
         <div className="flex flex-col gap-1.5 rounded-md border bg-card p-3">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <HandCoins aria-hidden="true" className="size-3.5" />
+            {t('quotes.form.summary.commissions')}
+          </div>
+          <dl className="grid gap-1 text-xs">
+            {(['commercial', 'reporter', 'supervisor', 'supplier'] as const).map((role) => (
+              <div key={role} className="flex items-center justify-between">
+                <dt className="text-muted-foreground">{t(`quotes.form.summary.roles.${role}`)}</dt>
+                <dd className="font-medium tabular-nums">{formatQuoteAmount(commissionTotals[role])}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <div className="flex flex-col gap-1.5 rounded-md border bg-card p-3">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
             <Wallet aria-hidden="true" className="size-3.5" />
             {t('quotes.form.summary.margin')}
           </div>
@@ -217,20 +233,6 @@ export function QuoteSummary({
             {formatQuoteAmount(totals.margin.net)}
           </p>
           <p className="text-[11px] text-muted-foreground">{t('quotes.form.summary.marginHint')}</p>
-        </div>
-        <div className="flex flex-col gap-1.5 rounded-md border bg-card p-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <HandCoins aria-hidden="true" className="size-3.5" />
-            {t('quotes.form.summary.commissions')}
-          </div>
-          <dl className="grid gap-1 text-xs">
-            {(['commercial', 'reporter', 'supervisor', 'supplier'] as const).map((role) => (
-              <div key={role} className="flex items-center justify-between">
-                <dt className="text-muted-foreground">{t(`quotes.form.summary.roles.${role}`)}</dt>
-                <dd className="font-medium tabular-nums">{formatQuoteAmount(commissionTotals[role])}</dd>
-              </div>
-            ))}
-          </dl>
         </div>
         <QuoteTypologyBlock buckets={typologyBuckets} />
       </div>
@@ -282,17 +284,31 @@ export function QuoteLiveSummary({
 }: QuoteLiveSummaryProps) {
   const offerLines = useWatch({ control, name: 'offer_lines' })
   const costLines = useWatch({ control, name: 'cost_lines' })
+  const { field: fieldPermission } = useResourcePermissions()
 
+  // Spec 0145 D-1/D-9: the base of a PERCENTAGE commission is this row's own
+  // net minus whatever cost the SAME `cost_lines` imputes to it — the one
+  // base rule reused by the summary here, the dialog and the per-product
+  // margins block below.
+  const commissionTotals = useMemo(
+    () => calculateCommissionTotals(offerLines, costLines),
+    [offerLines, costLines],
+  )
+
+  // Spec 0145 D-3/D-8: the live margin nets out the SAME live commission
+  // preview above — `computeQuoteTotals` itself stays commission-agnostic
+  // (D-5's original revenue - cost), the subtraction happens here so the
+  // detail path (already net from the server, D-4) never double-subtracts.
   const totals = useMemo(() => {
     if (offerLines.length === 0 && costLines.length === 0) {
       return EMPTY_QUOTE_TOTALS_SUMMARY
     }
-    return computeQuoteTotals(
+    const base = computeQuoteTotals(
       offerLines.map((row) => toLineForTotals(row, vatRatePercentFor)),
       costLines.map((row) => toLineForTotals(row, vatRatePercentFor)),
     )
-  }, [offerLines, costLines, vatRatePercentFor])
-  const commissionTotals = useMemo(() => calculateCommissionTotals(offerLines), [offerLines])
+    return { ...base, margin: { net: round2(base.margin.net - sumCommissionTotals(commissionTotals)) } }
+  }, [offerLines, costLines, vatRatePercentFor, commissionTotals])
 
   // Spec 0099, D-6: the SAME arithmetic the buckets' server-side counterpart
   // uses — each revenue row's already-rounded net (`quote-totals.ts`), summed
@@ -324,7 +340,7 @@ export function QuoteLiveSummary({
   const productMargins = useMemo(
     () =>
       computeProductMargins(
-        productLinesFromFormOfferLines(offerLines, productNameFor),
+        productLinesFromFormOfferLines(offerLines, costLines, productNameFor),
         costLinesFromFormCostLines(costLines),
       ),
     [offerLines, costLines, productNameFor],
@@ -337,7 +353,11 @@ export function QuoteLiveSummary({
         commissionTotals={commissionTotals}
         typologyBuckets={typologyBuckets}
       />
-      <QuoteProductMargins rows={productMargins.rows} genericCostNet={productMargins.genericCostNet} />
+      <QuoteProductMargins
+        rows={productMargins.rows}
+        genericCostNet={productMargins.genericCostNet}
+        showCommissions={fieldPermission('commissions').visible}
+      />
     </div>
   )
 }

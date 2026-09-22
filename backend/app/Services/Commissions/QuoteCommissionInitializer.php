@@ -60,7 +60,12 @@ final class QuoteCommissionInitializer
                 calculatedAmount: $this->calculator->calculate(new CommissionCalculationInput(
                     type: $rule->type,
                     value: $rule->value,
-                    lineNetAmount: $data->lineNetAmount,
+                    // Spec 0145, D-6: an anteprima call (commission-defaults
+                    // endpoint) sends its OWN base here; a persisted-line
+                    // call (QuoteLineCommissionWriter::defaults()) has
+                    // already resolved the margin base (D-1) before
+                    // building this DTO.
+                    baseAmount: $data->lineNetAmount,
                 )),
                 internalNote: $rule->internalNote,
                 origin: $rule->origin,

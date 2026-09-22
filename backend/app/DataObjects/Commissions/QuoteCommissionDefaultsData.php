@@ -11,6 +11,10 @@ final readonly class QuoteCommissionDefaultsData
     public function __construct(
         public ?int $quoteId,
         public int $productId,
+        // The commission-defaults endpoint's own wire field (`line_net_amount`,
+        // unchanged contract): an anteprima base computed by the FE. The SAME
+        // property is fed the authoritative margin base (spec 0145, D-1) when
+        // QuoteLineCommissionWriter builds this DTO for a persisted line.
         public string $lineNetAmount,
         public ?int $commercialId,
         public ?int $reporterId,

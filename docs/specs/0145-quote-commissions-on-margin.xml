@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0145-quote-commissions-on-margin" status="draft" owner="utente" date="2026-09-22">
+<spec id="0145-quote-commissions-on-margin" status="implemented" owner="utente" date="2026-09-22">
 
   <goal>
     Nell'Offerta le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto
@@ -45,6 +45,9 @@
     D-9  Blocco "Margine per prodotto" (spec 0144): colonna Commissioni per riga; margine riga =
          ricavo - costi imputati - commissioni riga; invariante: somma margini righe - costi generici =
          Margine atteso. Dialog commissioni: importo percentuale calcolato sulla base D-1.
+    D-10 (utente, post-verifica) Senza permesso `commissions` il blocco "Margine per prodotto" e' NASCOSTO
+         (form e dettaglio): il FE non riceve le commissioni per riga, quindi i margini riga non
+         potrebbero coincidere con il Margine atteso netto (D-7).
   </decisions>
 
   <scope>

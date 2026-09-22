@@ -11,6 +11,7 @@ import { fetchOpportunity, opportunityDetailQueryKey } from '@/features/opportun
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 import { resolveManagementMode } from '@/features/product-lines/category-tree-scope'
+import { allocatedCostNetByOfferLineKey } from '@/features/quotes/commission-calculator'
 import { QuoteLinesField, knownProductsFrom, knownVatRatesFrom } from '@/features/quotes/quote-lines-field'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
@@ -62,6 +63,11 @@ export function QuoteOfferTab({
   const commercialId = useWatch({ control, name: 'commercial_id' })
   const reporterId = useWatch({ control, name: 'reporter_id' })
   const supervisorId = useWatch({ control, name: 'supervisor_id' })
+  // Spec 0145 (D-1): the sibling Cost tab's own live rows, read through the
+  // SAME shared `control` the Cost tab itself watches `offer_lines` through —
+  // resolved to a base-net-per-row map for the commissions dialog below.
+  const costLines = useWatch({ control, name: 'cost_lines' })
+  const allocatedCostNetMap = useMemo(() => allocatedCostNetByOfferLineKey(costLines), [costLines])
 
   const opportunityQuery = useQuery({
     queryKey: opportunityId !== null ? opportunityDetailQueryKey(opportunityId) : ['opportunities', 'detail', null],
@@ -137,6 +143,7 @@ export function QuoteOfferTab({
               rememberProductTypology={rememberProductTypology}
               rememberProductName={rememberProductName}
               commissionContext={{ quoteId, commercialId, reporterId, supervisorId }}
+              allocatedCostNetByOfferLineKey={allocatedCostNetMap}
             />
 
             <div className="flex flex-wrap items-center justify-between gap-2">

@@ -17,6 +17,7 @@ import {
   totalsFromPersistedSummary,
   typologyBucketsFromPersistedSummary,
 } from '@/features/quotes/quote-summary'
+import { round2 } from '@/features/quotes/quote-totals'
 import {
   computeProductMargins,
   costLinesFromPersistedCostLines,
@@ -149,8 +150,23 @@ function QuoteDetailLines({ quote }: { quote: QuoteDetailWithPermissions }) {
     return labels
   }, [quote.offer_lines, t])
 
+  // Spec 0145 (D-1), revenue variant only: `offer_line_id -> imputed cost
+  // net`, feeding each row's own commissions dialog base (D-1/D-2).
+  const allocatedCostNetByOfferId = useMemo(() => {
+    const totals: Record<number, number> = {}
+    for (const cost of quote.cost_lines) {
+      if (cost.offer_line_id != null) {
+        totals[cost.offer_line_id] = round2((totals[cost.offer_line_id] ?? 0) + Number(cost.net_amount))
+      }
+    }
+    return totals
+  }, [quote.cost_lines])
+
   // Spec 0144 AC-015: the detail's own "Margine per prodotto" block reads the
-  // CONGEALED `net_amount`s (D-9), never recomputed client-side.
+  // CONGEALED `net_amount`s (D-9), never recomputed client-side. Spec 0145
+  // (D-9): the "Commissioni" column sums each row's persisted
+  // `calculated_amount`; the block itself is hidden without the SAME
+  // `showCommissions` field permission.
   const productMargins = useMemo(
     () =>
       computeProductMargins(
@@ -178,7 +194,11 @@ function QuoteDetailLines({ quote }: { quote: QuoteDetailWithPermissions }) {
           </TabsTrigger>
         </FormTabStrip>
         <TabsContent value={OFFER_TAB}>
-          <QuoteLinesReadOnlyList lines={quote.offer_lines} showCommissions={showCommissions} />
+          <QuoteLinesReadOnlyList
+            lines={quote.offer_lines}
+            showCommissions={showCommissions}
+            allocatedCostNetById={allocatedCostNetByOfferId}
+          />
         </TabsContent>
         <TabsContent value={COSTS_TAB}>
           <QuoteLinesReadOnlyList
@@ -197,7 +217,11 @@ function QuoteDetailLines({ quote }: { quote: QuoteDetailWithPermissions }) {
           }}
           typologyBuckets={typologyBucketsFromPersistedSummary(quote.summary)}
         />
-        <QuoteProductMargins rows={productMargins.rows} genericCostNet={productMargins.genericCostNet} />
+        <QuoteProductMargins
+          rows={productMargins.rows}
+          genericCostNet={productMargins.genericCostNet}
+          showCommissions={showCommissions}
+        />
       </div>
     </Tabs>
   )
