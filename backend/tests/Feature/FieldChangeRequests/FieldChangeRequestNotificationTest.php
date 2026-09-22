@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\FieldChangeRequestedNotification;
 use App\Notifications\FieldChangeRequestResolvedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -157,5 +158,68 @@ it('AC-026: rejection notifies the requester with level warning', function () {
         $data = $notification->toArray($requester);
 
         return $data['level'] === NotificationLevelEnum::Warning->value;
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Localization — the field label is translated in the recipient's locale,
+// never leaked as the frontend i18n key (requestManagement.columns.source).
+// ---------------------------------------------------------------------------
+
+it('renders the creation notification in Italian with the translated field label', function () {
+    Notification::fake();
+
+    $requester = fcrNotifActorWith(['create']);
+    $viewer = fcrNotifActorWith(['viewAny']);
+    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+    $quote = Quote::factory()->for($opportunity)->create();
+    Sanctum::actingAs($requester);
+
+    $this->postJson('/api/field-change-requests', [
+        'resource' => 'request-management',
+        'subject_id' => $quote->id,
+        'field' => 'source_id',
+        'requested_value' => Source::factory()->create()->id,
+    ])->assertCreated();
+
+    Notification::assertSentTo($viewer, function (FieldChangeRequestedNotification $notification) use ($viewer): bool {
+        App::setLocale('it');
+        $data = $notification->toArray($viewer);
+
+        return $data['title'] === 'Nuova richiesta di modifica'
+            && str_contains((string) $data['message'], 'chiede di modificare Fonte di')
+            && ! str_contains((string) $data['message'], 'requestManagement.');
+    });
+});
+
+it('renders the resolution notification in Italian with the translated field label', function () {
+    Notification::fake();
+
+    $manager = fcrNotifActorWith(['manage'], ['view', 'viewAll', 'update', 'updateSource']);
+    $requester = fcrNotifActorWith(['create']);
+    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+    $quote = Quote::factory()->for($opportunity)->create();
+    $fieldChangeRequest = FieldChangeRequest::factory()->create([
+        'resource' => 'request-management',
+        'subject_type' => 'quote',
+        'subject_id' => $quote->id,
+        'field' => 'source_id',
+        'current_value' => $opportunity->source_id,
+        'requested_value' => Source::factory()->create()->id,
+        'status' => 'pending',
+        'pending_key' => "quote:{$quote->id}:source_id",
+        'requested_by_id' => $requester->id,
+    ]);
+    Sanctum::actingAs($manager);
+
+    $this->postJson("/api/field-change-requests/{$fieldChangeRequest->id}/reject")->assertOk();
+
+    Notification::assertSentTo($requester, function (FieldChangeRequestResolvedNotification $notification) use ($requester): bool {
+        App::setLocale('it');
+        $data = $notification->toArray($requester);
+
+        return $data['title'] === 'Richiesta di modifica rifiutata'
+            && str_contains((string) $data['message'], 'ha rifiutato la tua richiesta su Fonte di')
+            && ! str_contains((string) $data['message'], 'requestManagement.');
     });
 });

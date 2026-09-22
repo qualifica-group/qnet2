@@ -18,9 +18,9 @@ use Illuminate\Notifications\Notification;
  * Sent to the REQUESTER when their field-change-request is approved or
  * rejected (spec 0078, D-3/AC-026): `level` is `success`/`warning`
  * depending on the outcome, the message carries the handler's optional
- * `handling_note`. `$fieldLabel`/`$subjectLabel`/`$subjectPath` are
- * precomputed by the caller (FieldChangeRequestApprover/Rejecter), same
- * reasoning as FieldChangeRequestedNotification.
+ * `handling_note`. `$subjectLabel`/`$subjectPath` are precomputed by the
+ * caller (FieldChangeRequestApprover/Rejecter), same reasoning as
+ * FieldChangeRequestedNotification.
  */
 class FieldChangeRequestResolvedNotification extends Notification implements ShouldQueue
 {
@@ -29,7 +29,6 @@ class FieldChangeRequestResolvedNotification extends Notification implements Sho
     public function __construct(
         private readonly FieldChangeRequest $fieldChangeRequest,
         private readonly User $handler,
-        private readonly string $fieldLabel,
         private readonly string $subjectLabel,
         private readonly string $subjectPath,
     ) {}
@@ -76,12 +75,13 @@ class FieldChangeRequestResolvedNotification extends Notification implements Sho
 
     private function message(): string
     {
-        $outcome = $this->approved() ? __('approved') : __('rejected');
+        $template = $this->approved()
+            ? ':handler approved your request on :field of :subject'
+            : ':handler rejected your request on :field of :subject';
 
-        $message = __(':handler has :outcome your request on :field of :subject', [
+        $message = __($template, [
             'handler' => $this->handler->name,
-            'outcome' => $outcome,
-            'field' => $this->fieldLabel,
+            'field' => $this->fieldChangeRequest->fieldLabel(),
             'subject' => $this->subjectLabel,
         ]);
 

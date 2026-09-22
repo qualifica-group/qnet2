@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\Lang;
 
 /**
  * A proposed change to a single protected field on a single record (spec
@@ -73,5 +74,16 @@ class FieldChangeRequest extends BaseModel
     public function handledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'handled_by_id');
+    }
+
+    /**
+     * The changed field's label in the CURRENT locale (the recipient's, when
+     * rendered by a notification), falling back to the raw field name.
+     */
+    public function fieldLabel(): string
+    {
+        $key = "field-change-requests.fields.{$this->field}";
+
+        return Lang::has($key) ? __($key) : $this->field;
     }
 }

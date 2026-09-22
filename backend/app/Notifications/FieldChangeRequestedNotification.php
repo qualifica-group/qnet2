@@ -22,9 +22,10 @@ use Illuminate\Notifications\Notification;
  * message, level, action_url), so the campanella/NotificationResource/unread
  * counter work unchanged.
  *
- * `$fieldLabel`/`$subjectLabel` are precomputed by the caller (never
- * resolved here): a Notification class should stay a thin presentation of
- * already-known facts, not a second place that talks to TableRegistry.
+ * `$subjectLabel` is precomputed by the caller (never resolved here): a
+ * Notification class should stay a thin presentation of already-known facts,
+ * not a second place that talks to TableRegistry. The field label is instead
+ * translated at render time, so it follows the recipient's locale.
  */
 class FieldChangeRequestedNotification extends Notification implements ShouldQueue
 {
@@ -33,7 +34,6 @@ class FieldChangeRequestedNotification extends Notification implements ShouldQue
     public function __construct(
         private readonly FieldChangeRequest $fieldChangeRequest,
         private readonly User $requester,
-        private readonly string $fieldLabel,
         private readonly string $subjectLabel,
     ) {}
 
@@ -82,7 +82,7 @@ class FieldChangeRequestedNotification extends Notification implements ShouldQue
     {
         return __(':requester requests to change :field of :subject from :current to :requested', [
             'requester' => $this->requester->name,
-            'field' => $this->fieldLabel,
+            'field' => $this->fieldChangeRequest->fieldLabel(),
             'subject' => $this->subjectLabel,
             'current' => $this->fieldChangeRequest->current_label ?? '—',
             'requested' => $this->fieldChangeRequest->requested_label ?? '—',

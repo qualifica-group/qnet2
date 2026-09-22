@@ -151,13 +151,11 @@ final class FieldChangeRequestCreator
             return;
         }
 
-        $protectedField = $this->registry->find($fieldChangeRequest->resource, $fieldChangeRequest->field);
-        $fieldLabel = $protectedField?->fieldLabel ?? $fieldChangeRequest->field;
         $subjectLabel = $this->resolver->subjectLabelOrFallback($fieldChangeRequest->resource, (int) $fieldChangeRequest->subject_id, $actor);
 
         Notification::send(
             $recipients,
-            new FieldChangeRequestedNotification($fieldChangeRequest, $actor, $fieldLabel, $subjectLabel),
+            new FieldChangeRequestedNotification($fieldChangeRequest, $actor, $subjectLabel),
         );
     }
 
