@@ -64,6 +64,19 @@ export const taskTemplates = {
         title: 'Righe',
         description: 'Task generati dal modello, in ordine.',
       },
+      stages: {
+        title: 'Fasi',
+        description: 'Raggruppa le righe in fasi, trascinale tra una fase e l\'altra.',
+      },
+    },
+    /** Spec 0146 D-2: le fasi raggruppano le righe del modello; copiate nei `work_order_stages` della commessa alla generazione. */
+    stages: {
+      add: 'Aggiungi fase',
+      namePlaceholder: 'Nome fase…',
+      remove: 'Rimuovi fase',
+      dragHandleLabel: 'Riordina fase',
+      noStage: 'Senza fase',
+      empty: 'Nessuna fase.',
     },
     items: {
       add: 'Aggiungi riga',

@@ -155,9 +155,16 @@ export function RequestDashboardFilterBar({
             </DropdownMenu>
           </Can>
 
-          <Button type="button" size="sm" variant="outline" onClick={onEdit}>
+          {/* Icon-only (user directive 2026-09-22): the label stays as the accessible name and hover hint. */}
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="outline"
+            onClick={onEdit}
+            aria-label={t('requestManagement.dashboard.editFilters')}
+            title={t('requestManagement.dashboard.editFilters')}
+          >
             <SlidersHorizontal aria-hidden="true" className="size-3.5" />
-            {t('requestManagement.dashboard.editFilters')}
           </Button>
         </div>
       </div>

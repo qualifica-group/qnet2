@@ -18,6 +18,8 @@ interface TaskIdentitySectionProps {
   excludeTaskId?: number
   /** "Crea sotto-task": the parent arrives prefilled and must not be changed (AC-085). */
   parentLocked?: boolean
+  /** Spec 0146 D-3: a sub-task's fase is `prohibited` server-side — picking a parent clears it. */
+  onParentChange: () => void
 }
 
 /**
@@ -38,6 +40,7 @@ export function TaskIdentitySection({
   parentTask,
   excludeTaskId,
   parentLocked = false,
+  onParentChange,
 }: TaskIdentitySectionProps) {
   const { t } = useTranslation()
   const selectLabels = useTaskSelectLabels()
@@ -93,6 +96,7 @@ export function TaskIdentitySection({
         pinned={parentTask}
         params={excludeTaskId !== undefined ? { exclude_id: excludeTaskId } : undefined}
         forceDisabled={parentLocked}
+        onValueChange={onParentChange}
         {...selectLabels}
       />
     </section>

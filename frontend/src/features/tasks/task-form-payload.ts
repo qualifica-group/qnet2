@@ -108,6 +108,7 @@ function scalarsOf(values: TaskFormValues) {
     task_category_id: values.task_category_id,
     opportunity_id: values.opportunity_id,
     work_order_id: values.work_order_id,
+    work_order_stage_id: values.work_order_stage_id,
     requester_id: values.requester_id,
     start_date: values.start_date,
     end_date: values.end_date,
@@ -188,6 +189,9 @@ export function buildUpdatePayload(
   if (scalars.task_category_id !== original.task_category_id) payload.task_category_id = scalars.task_category_id
   if (scalars.opportunity_id !== original.opportunity_id) payload.opportunity_id = scalars.opportunity_id
   if (scalars.work_order_id !== original.work_order_id) payload.work_order_id = scalars.work_order_id
+  if (scalars.work_order_stage_id !== original.work_order_stage_id) {
+    payload.work_order_stage_id = scalars.work_order_stage_id
+  }
   // D-2: `requester_id` and `end_date` are `sometimes|required` on PATCH — not
   // annullable. A null here would be a 422, so it is simply not sent: the guard
   // is the contract, not a convenience.

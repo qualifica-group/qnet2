@@ -6,7 +6,6 @@ use App\CustomFields\CustomFieldEntityRegistry;
 use App\RequestManagement\RequestModule;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
-use App\Tables\Tasks\WorkOrderScopedTableDefinition;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -40,13 +39,6 @@ class TableRegistry
      */
     private const string WORK_ORDERS_DOMAIN = 'work-orders';
 
-    /**
-     * The only domain wrapped in `WorkOrderScopedTableDefinition` (spec
-     * 0133): scoping the Task grid to one Work Order (the Commessa detail's
-     * "Task" tab) is a `tasks`-specific concept.
-     */
-    private const string TASKS_DOMAIN = 'tasks';
-
     public function __construct(private readonly Container $container) {}
 
     /**
@@ -56,8 +48,7 @@ class TableRegistry
      * (spec 0064/0084) for `request-management`/`enrollee-management` (spec
      * 0130), THEN in `OpportunityScopedTableDefinition` (spec 0067) for
      * `quotes`, THEN in `QuoteScopedTableDefinition` (spec 0095) for
-     * `work-orders`, THEN in `WorkOrderScopedTableDefinition` (spec 0133) for
-     * `tasks` — one line each here, zero per-module code.
+     * `work-orders` — one line each here, zero per-module code.
      *
      * @throws ModelNotFoundException when the domain is not registered.
      */
@@ -67,9 +58,7 @@ class TableRegistry
         $definition = $this->wrapIfRequestManagementScoped($domain, $definition);
         $definition = $this->wrapIfOpportunityScoped($domain, $definition);
 
-        $definition = $this->wrapIfQuoteScoped($domain, $definition);
-
-        return $this->wrapIfWorkOrderScoped($domain, $definition);
+        return $this->wrapIfQuoteScoped($domain, $definition);
     }
 
     /**
@@ -182,24 +171,6 @@ class TableRegistry
 
         /** @var QuoteScopedTableDefinition $wrapped */
         $wrapped = $this->container->make(QuoteScopedTableDefinition::class, [
-            'inner' => $definition,
-        ]);
-
-        return $wrapped;
-    }
-
-    /**
-     * Wrap in `WorkOrderScopedTableDefinition` (spec 0133) for `tasks` only —
-     * every other domain is returned unchanged.
-     */
-    private function wrapIfWorkOrderScoped(string $domain, TableDefinition $definition): TableDefinition
-    {
-        if ($domain !== self::TASKS_DOMAIN) {
-            return $definition;
-        }
-
-        /** @var WorkOrderScopedTableDefinition $wrapped */
-        $wrapped = $this->container->make(WorkOrderScopedTableDefinition::class, [
             'inner' => $definition,
         ]);
 

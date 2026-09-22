@@ -141,7 +141,17 @@ abstract class BaseApiController
         return response()->json(null, HttpStatusEnum::NO_CONTENT->value);
     }
 
-    protected function fail(string $message, int $status, mixed $errors = null): JsonResponse
+    /**
+     * `$data` (spec 0146): the one shape an error response needs to carry a
+     * payload of its own alongside `message` — e.g. `POST
+     * .../stages/{stage}/close`'s 409 `data.open_tasks_count`. Emitted only
+     * when not null, so every EXISTING caller of `fail()` keeps its exact
+     * `{success, message[, errors]}` shape unchanged (backward compatible,
+     * purely additive).
+     *
+     * @param  array<string, mixed>|null  $data
+     */
+    protected function fail(string $message, int $status, mixed $errors = null, ?array $data = null): JsonResponse
     {
         $payload = [
             'success' => false,
@@ -150,6 +160,10 @@ abstract class BaseApiController
 
         if (! is_null($errors)) {
             $payload['errors'] = $errors;
+        }
+
+        if (! is_null($data)) {
+            $payload['data'] = $data;
         }
 
         return response()->json($payload, $status);

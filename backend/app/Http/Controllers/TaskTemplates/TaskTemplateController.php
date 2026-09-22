@@ -51,7 +51,7 @@ class TaskTemplateController extends BaseApiController
         try {
             $this->authorize('view', $taskTemplate);
 
-            $taskTemplate->load(['items.taskStatus', 'items.attachments']);
+            $taskTemplate->load(['stages', 'items.taskStatus', 'items.attachments']);
 
             return $this->okWithPermissions(
                 new TaskTemplateResource($taskTemplate),

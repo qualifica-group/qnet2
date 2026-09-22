@@ -13,6 +13,7 @@ export const SERVER_ERROR_FIELDS = [
   'task_category_id',
   'opportunity_id',
   'work_order_id',
+  'work_order_stage_id',
   'requester_id',
   'start_date',
   'end_date',
@@ -52,4 +53,19 @@ export function serverFieldMessage(error: unknown, field: string): string | null
   }
   const errors = error.response.data?.errors as Record<string, string[]> | undefined
   return errors?.[field]?.[0] ?? null
+}
+
+/**
+ * Spec 0146 D-4/AC-015: a store/update 409 on this endpoint has exactly one
+ * documented cause — the picked fase is closed. Unlike a 422 it carries no
+ * per-field `errors` map, only the envelope's own `message` (backend.md
+ * `{success, message}`), so it is surfaced verbatim as the "Fase" field's
+ * error rather than extracted by key.
+ */
+export function workOrderStageConflictMessage(error: unknown): string | null {
+  if (!axios.isAxiosError(error) || error.response?.status !== 409) {
+    return null
+  }
+  const message = error.response.data?.message as string | undefined
+  return message ?? null
 }

@@ -1,14 +1,17 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
-import { TaskTemplateItemsEditor } from '@/features/task-templates/task-template-items-editor'
+import { TaskTemplateItemRowContent } from '@/features/task-templates/task-template-items-editor'
 import type { TaskTemplateItemFormRow } from '@/features/task-templates/types'
 
 /**
  * Spec 0124 AC-025: the row status select shows only `meta.group`
  * open/pending options, and a row's validation error is wired with the
  * accessible triad (aria-invalid + aria-describedby + `role="alert"`,
- * frontend.md §10).
+ * frontend.md §10). Spec 0146: exercises `TaskTemplateItemRowContent`
+ * directly — the row's own fields, now shared between
+ * `<TaskTemplateStagesEditor>`'s stage cards rather than a retired
+ * single-container `<SortableList>` wrapper.
  */
 
 const useTaskStatusesForSelectMock = vi.fn()
@@ -52,21 +55,21 @@ const ROW: TaskTemplateItemFormRow = {
   estimated_minutes: null,
   task_status_id: null,
   due_offset_days: 0,
+  stage_key: null,
 }
 
-function renderEditor(rows: TaskTemplateItemFormRow[], errors = {}) {
+function renderRow(row: TaskTemplateItemFormRow, errors = {}) {
   const onUpdateRow = vi.fn()
   render(
-    <TaskTemplateItemsEditor
-      rows={rows}
+    <TaskTemplateItemRowContent
+      row={row}
       errors={errors}
-      stagedFilesByRow={{}}
-      onReorder={vi.fn()}
-      onAdd={vi.fn()}
-      onRemove={vi.fn()}
+      stagedFiles={[]}
       onUpdateRow={onUpdateRow}
+      onRemove={vi.fn()}
       onAddStagedFiles={vi.fn()}
       onRemoveStagedFile={vi.fn()}
+      disabled={false}
     />,
   )
   return onUpdateRow
@@ -100,9 +103,9 @@ beforeEach(() => {
   })
 })
 
-describe('TaskTemplateItemsEditor — status select filtered to open/pending (AC-025)', () => {
+describe('TaskTemplateItemRowContent — status select filtered to open/pending (AC-025)', () => {
   it('lists only the open/pending options, never in_validation/closed_*', () => {
-    renderEditor([ROW])
+    renderRow(ROW)
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Initial status' }))
 
@@ -113,7 +116,7 @@ describe('TaskTemplateItemsEditor — status select filtered to open/pending (AC
   })
 
   it('patches the row with the picked status id', () => {
-    const onUpdateRow = renderEditor([ROW])
+    const onUpdateRow = renderRow(ROW)
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Initial status' }))
     fireEvent.click(screen.getByRole('option', { name: 'Waiting' }))
@@ -122,9 +125,9 @@ describe('TaskTemplateItemsEditor — status select filtered to open/pending (AC
   })
 })
 
-describe('TaskTemplateItemsEditor — accessible error triad (frontend.md §10)', () => {
+describe('TaskTemplateItemRowContent — accessible error triad (frontend.md §10)', () => {
   it('wires a title error with aria-invalid, aria-describedby and role=alert', () => {
-    renderEditor([ROW], { 'row-1': { title: 'Title is required.' } })
+    renderRow(ROW, { title: 'Title is required.' })
 
     const titleInput = screen.getByLabelText('Title')
     expect(titleInput).toHaveAttribute('aria-invalid', 'true')
@@ -137,7 +140,7 @@ describe('TaskTemplateItemsEditor — accessible error triad (frontend.md §10)'
   })
 
   it('renders no aria-invalid/aria-describedby when the row has no error', () => {
-    renderEditor([ROW])
+    renderRow(ROW)
 
     const titleInput = screen.getByLabelText('Title')
     expect(titleInput).toHaveAttribute('aria-invalid', 'false')
@@ -145,7 +148,7 @@ describe('TaskTemplateItemsEditor — accessible error triad (frontend.md §10)'
   })
 
   it('wires a description error the same way, via its own sr-only label', () => {
-    renderEditor([ROW], { 'row-1': { description: 'Too long.' } })
+    renderRow(ROW, { description: 'Too long.' })
 
     const descriptionField = screen.getByLabelText('Description')
     expect(descriptionField).toHaveAttribute('aria-invalid', 'true')
@@ -156,9 +159,9 @@ describe('TaskTemplateItemsEditor — accessible error triad (frontend.md §10)'
 })
 
 /** Spec 0128 AC-024: the row's description field is `RichTextEditor`. */
-describe('TaskTemplateItemsEditor — description uses RichTextEditor (AC-024)', () => {
+describe('TaskTemplateItemRowContent — description uses RichTextEditor (AC-024)', () => {
   it('patches the row with the emitted HTML', () => {
-    const onUpdateRow = renderEditor([ROW])
+    const onUpdateRow = renderRow(ROW)
 
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: '<p>Nota</p>' } })
 
@@ -166,7 +169,7 @@ describe('TaskTemplateItemsEditor — description uses RichTextEditor (AC-024)',
   })
 
   it('patches the row with null when the field is cleared', () => {
-    const onUpdateRow = renderEditor([{ ...ROW, description: '<p>Nota</p>' }])
+    const onUpdateRow = renderRow({ ...ROW, description: '<p>Nota</p>' })
 
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: '' } })
 

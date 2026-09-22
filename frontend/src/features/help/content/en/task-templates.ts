@@ -28,8 +28,9 @@ const guide: HelpGuide = {
           items: [
             'Open **Task › Task Templates** and press **New task template**.',
             'Enter **Name** and **Description**, leaving **Active** on.',
-            'In the rows, press **Add row** for every task of the template.',
-            'Drag the rows into the order you want and press **Save**.',
+            'In **Phases** press **Add phase** for every phase of the work (optional) and name each one.',
+            'Press **Add row** for every task of the template.',
+            'Drag phases and rows into the order you want (rows also from one phase to another) and press **Save**.',
           ],
         },
         {
@@ -43,6 +44,28 @@ const guide: HelpGuide = {
             ['Initial status', 'The status the task is created with.'],
             ['Attachments', 'Files to attach to the generated task.'],
           ],
+        },
+      ],
+    },
+    {
+      id: 'stages',
+      title: 'Phases',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Phases group the rows into the stages of the work (e.g. Analysis, Execution, Testing). A row without a phase goes to **No phase**.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Drag a phase by its handle to change its order.',
+            "Drag a row into another phase, or pick the phase from the row's menu (handy from the keyboard).",
+            '**Remove phase** deletes the phase: its rows move to **No phase**.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'When the Commessa is created, the phases are copied into the Commessa, in the same order, together with the tasks.',
         },
       ],
     },

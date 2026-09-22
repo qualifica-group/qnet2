@@ -24,8 +24,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * is. `HasAttachments` backs `items.*.attachments` (D-6) — files an admin
  * uploads here are the SOURCE `AttachmentService::copyTo()` physically
  * duplicates onto the generated Task's own `documents` collection.
+ *
+ * `task_template_stage_id` (spec 0146, D-2): the "Fase" this row sits in,
+ * null for "Senza fase" — written by the same full-sync writer as every
+ * other column here, never a dedicated endpoint.
  */
-#[Fillable(['title', 'description', 'estimated_minutes', 'task_status_id', 'due_offset_days', 'sort_order'])]
+#[Fillable(['title', 'description', 'estimated_minutes', 'task_status_id', 'due_offset_days', 'sort_order', 'task_template_stage_id'])]
 class TaskTemplateItem extends BaseModel
 {
     /** @use HasFactory<TaskTemplateItemFactory> */
@@ -51,6 +55,16 @@ class TaskTemplateItem extends BaseModel
     public function template(): BelongsTo
     {
         return $this->belongsTo(TaskTemplate::class, 'task_template_id');
+    }
+
+    /**
+     * The "Fase" this row sits in (spec 0146, D-2), null for "Senza fase".
+     *
+     * @return BelongsTo<TaskTemplateStage, $this>
+     */
+    public function stage(): BelongsTo
+    {
+        return $this->belongsTo(TaskTemplateStage::class, 'task_template_stage_id');
     }
 
     /**

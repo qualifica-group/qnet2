@@ -166,6 +166,10 @@ export const tasks = {
     opportunitySearch: 'Search an opportunity by name…',
     workOrder: 'Work order',
     workOrderSearch: 'Search a work order by number or title…',
+    /** Spec 0146 D-3/AC-030: shown only once a commessa is selected and the task has no parent; lists that commessa's OPEN phases only. */
+    workOrderStage: 'Phase',
+    workOrderStagePlaceholder: 'Select a phase',
+    workOrderStageNoStage: 'No phase',
     requiresClosureFeedback: 'Feedback required',
     requiresClosureFeedbackHint:
       'When on, closing the task requires a written feedback.',

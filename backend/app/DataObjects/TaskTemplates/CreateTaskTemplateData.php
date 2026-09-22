@@ -14,12 +14,14 @@ final readonly class CreateTaskTemplateData
 {
     /**
      * @param  array<int, TaskTemplateItemData>  $items
+     * @param  array<int, TaskTemplateStageData>  $stages
      */
     public function __construct(
         public string $name,
         public ?string $description,
         public bool $isActive,
         public array $items,
+        public array $stages = [],
     ) {}
 
     /**
@@ -31,12 +33,15 @@ final readonly class CreateTaskTemplateData
     {
         /** @var array<int, array<string, mixed>> $items */
         $items = $data['items'];
+        /** @var array<int, array<string, mixed>> $stages */
+        $stages = array_key_exists('stages', $data) ? $data['stages'] : [];
 
         return new self(
             name: (string) $data['name'],
             description: array_key_exists('description', $data) ? $data['description'] : null,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
             items: array_map(TaskTemplateItemData::fromValidated(...), $items),
+            stages: array_map(TaskTemplateStageData::fromValidated(...), $stages),
         );
     }
 

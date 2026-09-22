@@ -14,6 +14,7 @@ use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Services\WorkOrders\WorkOrderLineWriter;
+use App\Services\WorkOrders\WorkOrderTaskForceCloser;
 use App\Services\WorkOrders\WorkOrderTaskGenerator;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Support\ManagerPositions;
@@ -73,6 +74,7 @@ class WorkOrderService
         private readonly WorkOrderLineWriter $lineWriter,
         private readonly WorkOrderAttributeValueWriter $attributeValueWriter,
         private readonly WorkOrderTaskGenerator $taskGenerator,
+        private readonly WorkOrderTaskForceCloser $taskForceCloser,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
@@ -243,6 +245,13 @@ class WorkOrderService
                 $this->taskGenerator->generate($workOrder, $template, $actor);
             }
 
+            // Step 5 (spec 0146, D-8): a Commessa that is BORN force-closed
+            // force-closes its just-generated tasks too, AFTER Step 4 so
+            // there is something to close — still inside this transaction.
+            if ($workOrder->is_force_closed) {
+                $this->taskForceCloser->closeOpenTasks($workOrder, $workOrder->force_close_reason);
+            }
+
             return $workOrder;
         });
 
@@ -258,9 +267,19 @@ class WorkOrderService
     public function update(WorkOrder $workOrder, UpdateWorkOrderData $data): WorkOrder
     {
         DB::transaction(function () use ($workOrder, $data): void {
+            $wasForceClosed = $workOrder->is_force_closed;
+
             $workOrder->fill($data->submittedAttributes());
             $this->enforceForceCloseInvariant($workOrder);
             $workOrder->save();
+
+            // Spec 0146, D-8: only the false->true TRANSITION force-closes
+            // the open tasks, in this SAME transaction — an update that
+            // merely stays closed (already true) or reopens (true->false,
+            // out of scope per D-8) never re-runs it.
+            if (! $wasForceClosed && $workOrder->is_force_closed) {
+                $this->taskForceCloser->closeOpenTasks($workOrder, $workOrder->force_close_reason);
+            }
 
             $this->lineWriter->writeSubmitted($workOrder, $workOrder->quote_id, $data->quoteLineIds);
 

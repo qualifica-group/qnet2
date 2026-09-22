@@ -1,9 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { SortableList } from '@/components/ui/sortable-list'
 import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
 import { TaskTemplateItemStatusSelect } from '@/features/task-templates/task-template-item-status-select'
 import { TaskTemplateItemAttachments } from '@/features/task-templates/task-template-item-attachments'
@@ -13,88 +12,30 @@ import type {
   TaskTemplateItemRowPatch,
 } from '@/features/task-templates/types'
 
-export interface TaskTemplateItemsEditorProps {
-  rows: TaskTemplateItemFormRow[]
-  errors: TaskTemplateItemErrors
-  stagedFilesByRow: Record<string, File[]>
-  onReorder: (orderedIds: string[]) => void
-  onAdd: () => void
-  onRemove: (id: string) => void
-  onUpdateRow: (id: string, patch: TaskTemplateItemRowPatch) => void
-  onAddStagedFiles: (rowId: string, files: File[]) => void
-  onRemoveStagedFile: (rowId: string, index: number) => void
-  disabled?: boolean
-}
-
-/**
- * SortableList-based row editor for a template's `items[]` (spec 0124 D-9):
- * add/edit/remove/reorder, no pinned rows (every row is equally reorderable,
- * unlike `WorkflowStatusesEditor`'s system-locked ones). Local state owned by
- * the caller's hook (`useTaskTemplateForm`) — this module's own equivalent of
- * `WorkflowStatusesEditor`.
- */
-export function TaskTemplateItemsEditor({
-  rows,
-  errors,
-  stagedFilesByRow,
-  onReorder,
-  onAdd,
-  onRemove,
-  onUpdateRow,
-  onAddStagedFiles,
-  onRemoveStagedFile,
-  disabled = false,
-}: TaskTemplateItemsEditorProps) {
-  const { t } = useTranslation()
-
-  return (
-    <div className="flex flex-col gap-2">
-      <SortableList
-        items={rows}
-        dragHandleLabel={t('taskTemplates.form.items.dragHandleLabel')}
-        onReorder={onReorder}
-        renderItem={(row) => (
-          <TaskTemplateItemRowContent
-            row={row}
-            errors={errors[row.id] ?? {}}
-            stagedFiles={stagedFilesByRow[row.id] ?? []}
-            onUpdateRow={onUpdateRow}
-            onRemove={onRemove}
-            onAddStagedFiles={onAddStagedFiles}
-            onRemoveStagedFile={onRemoveStagedFile}
-            disabled={disabled}
-          />
-        )}
-      />
-
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full border-dashed text-muted-foreground hover:text-foreground"
-        disabled={disabled}
-        onClick={onAdd}
-      >
-        <Plus aria-hidden="true" />
-        {t('taskTemplates.form.items.add')}
-      </Button>
-    </div>
-  )
-}
-
-interface TaskTemplateItemRowContentProps {
+export interface TaskTemplateItemRowContentProps {
   row: TaskTemplateItemFormRow
   errors: TaskTemplateItemErrors[string]
   stagedFiles: File[]
-  onUpdateRow: TaskTemplateItemsEditorProps['onUpdateRow']
-  onRemove: TaskTemplateItemsEditorProps['onRemove']
-  onAddStagedFiles: TaskTemplateItemsEditorProps['onAddStagedFiles']
-  onRemoveStagedFile: TaskTemplateItemsEditorProps['onRemoveStagedFile']
+  onUpdateRow: (id: string, patch: TaskTemplateItemRowPatch) => void
+  onRemove: (id: string) => void
+  onAddStagedFiles: (rowId: string, files: File[]) => void
+  onRemoveStagedFile: (rowId: string, index: number) => void
   disabled: boolean
 }
 
-/** One row's fields, wired with the accessible-error triad (aria-invalid + aria-describedby + `role="alert"`, frontend.md §10). */
-function TaskTemplateItemRowContent({
+/**
+ * One template row's editable fields (title/description/estimate/due
+ * offset/status/attachments), wired with the accessible-error triad
+ * (aria-invalid + aria-describedby + `role="alert"`, frontend.md §10).
+ *
+ * Spec 0146 D-2: this is the SAME content every stage's card renders one of
+ * — `<TaskTemplateStageItemRow>` wraps it with the drag handle and the
+ * "Fase" move-select, so the row's own fields never drift between the two
+ * call sites. Previously mounted through a single flat `<SortableList>`
+ * (retired: item order/grouping is now owned by
+ * `<TaskTemplateStagesEditor>`'s multi-container board).
+ */
+export function TaskTemplateItemRowContent({
   row,
   errors,
   stagedFiles,

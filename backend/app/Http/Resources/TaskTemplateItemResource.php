@@ -14,6 +14,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * returned on its own (D-1: no dedicated endpoint) — always nested under
  * TaskTemplateResource, ordered by `sort_order` (TaskTemplate::items()).
  *
+ * `task_template_stage_id` (spec 0146, D-2): the "Fase" this row sits in,
+ * null for "Senza fase" — a plain column, always present, no eager load
+ * needed.
+ *
  * `attachments` reuses AttachmentResource as-is: a superset of the
  * data_contract's `{id, original_name, mime_type, extension, size,
  * created_at}` shape, carrying `download_url`/`view_url` the row's own file
@@ -47,6 +51,7 @@ class TaskTemplateItemResource extends JsonResource
             ]),
             'due_offset_days' => $this->due_offset_days,
             'sort_order' => $this->sort_order,
+            'task_template_stage_id' => $this->task_template_stage_id,
             'attachments' => AttachmentResource::collection($this->whenLoaded(
                 'attachments',
                 fn () => $this->attachments->where('collection', '!=', RichText::ATTACHMENT_COLLECTION)->values(),

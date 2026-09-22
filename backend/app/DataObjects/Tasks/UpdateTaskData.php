@@ -77,6 +77,11 @@ final readonly class UpdateTaskData
         'task_category_id' => ['taskCategoryId', 'taskCategoryIdSubmitted'],
         'opportunity_id' => ['opportunityId', 'opportunityIdSubmitted'],
         'work_order_id' => ['workOrderId', 'workOrderIdSubmitted'],
+        // Spec 0146, D-3/AC-015/AC-016: submitted vs. merely-inherited is
+        // exactly what App\Services\Tasks\TaskStageGuard needs to tell an
+        // explicit client mistake (422/409) apart from a value AC-016
+        // detaches silently.
+        'work_order_stage_id' => ['workOrderStageId', 'workOrderStageIdSubmitted'],
         'requester_id' => ['requesterId', 'requesterIdSubmitted'],
         'start_date' => ['startDate', 'startDateSubmitted'],
         'end_date' => ['endDate', 'endDateSubmitted'],
@@ -115,6 +120,8 @@ final readonly class UpdateTaskData
         public bool $opportunityIdSubmitted = false,
         public ?int $workOrderId = null,
         public bool $workOrderIdSubmitted = false,
+        public ?int $workOrderStageId = null,
+        public bool $workOrderStageIdSubmitted = false,
         public ?int $requesterId = null,
         public bool $requesterIdSubmitted = false,
         public ?string $startDate = null,
@@ -167,6 +174,8 @@ final readonly class UpdateTaskData
             opportunityIdSubmitted: array_key_exists('opportunity_id', $data),
             workOrderId: self::nullableInt($data, 'work_order_id'),
             workOrderIdSubmitted: array_key_exists('work_order_id', $data),
+            workOrderStageId: self::nullableInt($data, 'work_order_stage_id'),
+            workOrderStageIdSubmitted: array_key_exists('work_order_stage_id', $data),
             requesterId: self::nullableInt($data, 'requester_id'),
             requesterIdSubmitted: array_key_exists('requester_id', $data),
             startDate: self::nullableString($data, 'start_date'),

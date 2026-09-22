@@ -28,8 +28,9 @@ const guide: HelpGuide = {
           items: [
             'Apri **Task › Modelli di Task** e premi **Nuovo modello di task**.',
             'Inserisci **Nome** e **Descrizione**, lasciando attivo **Attivo**.',
-            'In **Righe** premi **Aggiungi riga** per ogni task del modello.',
-            'Trascina le righe nell\'ordine voluto e premi **Salva**.',
+            'In **Fasi** premi **Aggiungi fase** per ogni fase del lavoro (facoltativo) e dai un nome a ciascuna.',
+            'Premi **Aggiungi riga** per ogni task del modello.',
+            'Trascina fasi e righe nell\'ordine voluto (le righe anche da una fase all\'altra) e premi **Salva**.',
           ],
         },
         {
@@ -47,12 +48,34 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'stages',
+      title: 'Fasi',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Le fasi raggruppano le righe nelle tappe del lavoro (es. Analisi, Esecuzione, Collaudo). Una riga senza fase finisce in **Senza fase**.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Trascina una fase dalla maniglia per cambiarne l\'ordine.',
+            'Trascina una riga in un\'altra fase, oppure scegli la fase dal menu della riga (utile da tastiera).',
+            '**Rimuovi fase** elimina la fase: le sue righe passano in **Senza fase**.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Alla creazione della Commessa le fasi vengono copiate nella Commessa, nello stesso ordine, insieme ai task.',
+        },
+      ],
+    },
+    {
       id: 'using-a-template',
       title: 'Usare un modello',
       blocks: [
         {
           type: 'paragraph',
-          text: 'Un modello si sceglie con l\'azione **Programma** sul contratto, alla creazione della Commessa: QNet crea i task del modello e li assegna ai responsabili. Li trovi nella sezione **Task** della Commessa.',
+          text: 'Un modello si sceglie con l\'azione **Programma** sul contratto, alla creazione della Commessa: QNet crea i task del modello e li assegna ai responsabili. Li trovi nella sezione **Task** della Commessa, raggruppati per fase.',
         },
       ],
     },

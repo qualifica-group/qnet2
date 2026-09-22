@@ -77,10 +77,6 @@ class CreateExportRequest extends FormRequest
             // Spec 0095, D-8: scopes a `work-orders` export to one Quote's
             // own Commesse — a no-op key for every other domain.
             'quoteId' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
-
-            // Spec 0133, D-1: scopes a `tasks` export to one Work Order's own
-            // tasks — a no-op key for every other domain.
-            'workOrderId' => ['sometimes', 'nullable', 'integer', Rule::exists('work_orders', 'id')],
         ];
     }
 

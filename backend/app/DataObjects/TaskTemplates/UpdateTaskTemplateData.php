@@ -17,11 +17,18 @@ namespace App\DataObjects\TaskTemplates;
  * is how the Service tells "items omitted, leave them alone" apart from
  * "items sent" (a null array can never mean the latter: the FormRequest
  * requires at least one row when the key is present).
+ *
+ * `stages` (spec 0146, D-2) follows the exact same "omitted vs sent" shape,
+ * one level up: when submitted it triggers a full sync via
+ * App\Services\TaskTemplates\TaskTemplateStageWriter::sync, resolved BEFORE
+ * `items` so `items.*.stage_key` can map onto the fresh stage ids
+ * (TaskTemplateService::update()).
  */
 final readonly class UpdateTaskTemplateData
 {
     /**
      * @param  array<int, TaskTemplateItemData>|null  $items
+     * @param  array<int, TaskTemplateStageData>|null  $stages
      */
     public function __construct(
         public ?string $name = null,
@@ -29,6 +36,7 @@ final readonly class UpdateTaskTemplateData
         public bool $descriptionSubmitted = false,
         public ?bool $isActive = null,
         public ?array $items = null,
+        public ?array $stages = null,
     ) {}
 
     /**
@@ -40,6 +48,8 @@ final readonly class UpdateTaskTemplateData
     {
         /** @var array<int, array<string, mixed>>|null $items */
         $items = array_key_exists('items', $data) ? $data['items'] : null;
+        /** @var array<int, array<string, mixed>>|null $stages */
+        $stages = array_key_exists('stages', $data) ? $data['stages'] : null;
 
         return new self(
             name: array_key_exists('name', $data) ? (string) $data['name'] : null,
@@ -47,6 +57,7 @@ final readonly class UpdateTaskTemplateData
             descriptionSubmitted: array_key_exists('description', $data),
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
             items: $items === null ? null : array_map(TaskTemplateItemData::fromValidated(...), $items),
+            stages: $stages === null ? null : array_map(TaskTemplateStageData::fromValidated(...), $stages),
         );
     }
 
@@ -77,5 +88,10 @@ final readonly class UpdateTaskTemplateData
     public function itemsSubmitted(): bool
     {
         return $this->items !== null;
+    }
+
+    public function stagesSubmitted(): bool
+    {
+        return $this->stages !== null;
     }
 }

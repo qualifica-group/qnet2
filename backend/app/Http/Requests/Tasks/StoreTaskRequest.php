@@ -92,6 +92,12 @@ class StoreTaskRequest extends FormRequest
             'task_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_categories', 'id')],
             'opportunity_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
             'work_order_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_orders', 'id')],
+            // Spec 0146, D-3: shape only (the row exists at all) — whether it
+            // belongs to `work_order_id` and isn't on a sub-task is a
+            // resulting-state question App\Services\Tasks\TaskStageGuard
+            // answers inside the write transaction (422/409), the same split
+            // the referent/registry coherence rule already draws.
+            'work_order_stage_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_order_stages', 'id')],
             'requester_id' => ['required', 'integer', Rule::exists('users', 'id')],
             'start_date' => ['sometimes', 'nullable', 'date'],
             'end_date' => ['required', 'date'],

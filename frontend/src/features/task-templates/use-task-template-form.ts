@@ -8,13 +8,17 @@ import { toast } from 'sonner'
 import axios from 'axios'
 import { isPayloadTooLargeError } from '@/components/rich-text/rich-text-errors'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { uploadAttachment } from '@/features/attachments/api'
-import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
 import { createTaskTemplate, updateTaskTemplate } from '@/features/task-templates/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
 } from '@/features/task-templates/task-template-form-payload'
+import {
+  itemRowsFromDetail,
+  newEmptyItemRow,
+  stageRowsFromDetail,
+  uploadStagedRowAttachments,
+} from '@/features/task-templates/task-template-form-hydration'
 import {
   buildCreateTaskTemplateSchema,
   buildUpdateTaskTemplateSchema,
@@ -24,67 +28,25 @@ import {
   extractItemServerErrors,
   validateTaskTemplateItemRows,
 } from '@/features/task-templates/task-template-item-validation'
-import { TASK_TEMPLATE_ITEM_ATTACHABLE_ALIAS } from '@/features/task-templates/types'
+import { moveItemRowToStage } from '@/features/task-templates/task-template-item-stage-grouping'
+import {
+  extractStageServerErrors,
+  validateTaskTemplateStageRows,
+} from '@/features/task-templates/task-template-stage-validation'
+import { useTaskTemplateStages } from '@/features/task-templates/use-task-template-stages'
 import type {
   TaskTemplateDetail,
   TaskTemplateFormMode,
   TaskTemplateItemErrors,
   TaskTemplateItemFormRow,
   TaskTemplateItemRowPatch,
+  TaskTemplateStageErrors,
 } from '@/features/task-templates/types'
 
-/** Server-side field names mapped onto the form for 422 handling. `items` is never an RHF path (local state, D-1) — its server errors go through `extractItemServerErrors` instead. */
+/** Server-side field names mapped onto the form for 422 handling. `items`/`stages` are never an RHF path (local state, D-1/D-2) — their server errors go through `extractItemServerErrors`/`extractStageServerErrors` instead. */
 const SERVER_ERROR_FIELDS = ['name', 'description'] as const
 
 export type TaskTemplateFormValues = CreateTaskTemplateFormValues
-
-function newEmptyRow(id: string): TaskTemplateItemFormRow {
-  return {
-    id,
-    title: '',
-    description: null,
-    estimated_minutes: null,
-    task_status_id: null,
-    due_offset_days: 0,
-  }
-}
-
-/** Hydrates the editable rows from a persisted template (already ordered by `sort_order`). */
-function itemRowsFromDetail(taskTemplate: TaskTemplateDetail): TaskTemplateItemFormRow[] {
-  return taskTemplate.items.map((item) => ({
-    id: String(item.id),
-    itemId: item.id,
-    title: item.title,
-    description: item.description,
-    estimated_minutes: item.estimated_minutes,
-    task_status_id: item.task_status_id,
-    due_offset_days: item.due_offset_days,
-  }))
-}
-
-/**
- * Uploads every staged file of a row against the item id the server just
- * assigned it, one request at a time (mirrors `useTaskForm`'s own sequential
- * upload: the endpoint takes one file per request). Never throws: a rejected
- * file is reported back by name so the caller can still succeed the save
- * (the template — and its rows — are already persisted).
- */
-async function uploadStagedRowAttachments(itemId: number, files: File[]): Promise<string[]> {
-  const failed: string[] = []
-  for (const file of files) {
-    try {
-      await uploadAttachment({
-        resource: TASK_TEMPLATE_ITEM_ATTACHABLE_ALIAS,
-        id: itemId,
-        collection: DOCUMENTS_COLLECTION,
-        file,
-      })
-    } catch {
-      failed.push(file.name)
-    }
-  }
-  return failed
-}
 
 interface UseTaskTemplateFormArgs {
   mode: TaskTemplateFormMode
@@ -94,10 +56,10 @@ interface UseTaskTemplateFormArgs {
 
 /**
  * Owns every non-render concern of `TaskTemplateFormBody`: RHF/Zod wiring for
- * the header, the `items` local editor state (`<SortableList>`-driven, not an
- * RHF field array — mirrors `useQuoteWorkflowForm`'s `statusRows`), the
- * per-row attachment staging for not-yet-persisted rows (D-9), and the
- * create/update submit.
+ * the header, the `items`/`stages` local editor state (`<TaskTemplateStagesEditor>`-
+ * driven, not an RHF field array — mirrors `useQuoteWorkflowForm`'s
+ * `statusRows`), the per-row attachment staging for not-yet-persisted rows
+ * (D-9), and the create/update submit.
  */
 export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs) {
   const { t } = useTranslation()
@@ -105,6 +67,8 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
   const [serverError, setServerError] = useState<string | null>(null)
   const [itemsError, setItemsError] = useState<string | null>(null)
   const [itemErrors, setItemErrors] = useState<TaskTemplateItemErrors>({})
+  const [stagesError, setStagesError] = useState<string | null>(null)
+  const [stageErrors, setStageErrors] = useState<TaskTemplateStageErrors>({})
 
   const isEdit = mode.type === 'edit'
 
@@ -130,6 +94,22 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
     mode.type === 'edit' ? itemRowsFromDetail(mode.taskTemplate) : [],
   )
 
+  // Spec 0146 D-2: removing a stage falls its items back to "Senza fase" —
+  // the SAME rule `TaskTemplateStageWriter::sync` enforces server-side.
+  const { stageRows, addStageRow, updateStageRow, removeStageRow, reorderStageRows } = useTaskTemplateStages({
+    initialStageRows: mode.type === 'edit' ? stageRowsFromDetail(mode.taskTemplate) : [],
+    onStageRemoved: (removedStageId) => {
+      setItemRows((rows) => rows.map((row) => (row.stage_key === removedStageId ? { ...row, stage_key: null } : row)))
+    },
+  })
+
+  const renameStageRow = (id: string, name: string) => updateStageRow(id, { name })
+
+  /** Moves one item row to `targetContainerId` (a stage's own `id`, or the "Senza fase" sentinel) at `targetIndex` — from a pointer drop or the row's "Fase" select (AC-031). */
+  const moveItemRow = (rowId: string, targetContainerId: string, targetIndex: number) => {
+    setItemRows((rows) => moveItemRowToStage(rows, stageRows, rowId, targetContainerId, targetIndex))
+  }
+
   /**
    * In-memory files staged per NEW row (no `itemId` yet), keyed by the row's
    * local `id` — uploaded only after that row gets a real id from the create
@@ -146,7 +126,7 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
     // updater: two `addItemRow()` calls batched into the same commit would
     // otherwise both read `nextRowId.current` at FLUSH time (by then already
     // incremented twice) and mint the same id for both rows.
-    const newRow = newEmptyRow(`new-${nextRowId.current}`)
+    const newRow = newEmptyItemRow(`new-${nextRowId.current}`)
     setItemRows((rows) => [...rows, newRow])
   }
 
@@ -164,15 +144,6 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
     setItemRows((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)))
   }
 
-  const reorderItemRows = (orderedIds: string[]) => {
-    setItemRows((rows) => {
-      const byId = new Map(rows.map((row) => [row.id, row]))
-      return orderedIds
-        .map((id) => byId.get(id))
-        .filter((row): row is TaskTemplateItemFormRow => row !== undefined)
-    })
-  }
-
   const addStagedRowFiles = (rowId: string, files: File[]) => {
     setStagedFilesByRow((current) => ({ ...current, [rowId]: [...(current[rowId] ?? []), ...files] }))
   }
@@ -188,22 +159,26 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
     setServerError(null)
 
     // Step 1: validate the local rows client-side (title/due offset/estimate
-    // ranges, row count) before ever hitting the network.
-    const validation = validateTaskTemplateItemRows(itemRows, t)
-    setItemErrors(validation.errors)
-    setItemsError(validation.formError)
-    if (validation.formError !== null) {
+    // ranges, row count; stage names) before ever hitting the network.
+    const itemValidation = validateTaskTemplateItemRows(itemRows, t)
+    setItemErrors(itemValidation.errors)
+    setItemsError(itemValidation.formError)
+    const stageValidation = validateTaskTemplateStageRows(stageRows, t)
+    setStageErrors(stageValidation.errors)
+    setStagesError(stageValidation.formError)
+    if (itemValidation.formError !== null || stageValidation.formError !== null) {
       return
     }
 
     const errorFields: Path<TaskTemplateFormValues>[] = [...SERVER_ERROR_FIELDS]
     const orderedRowIds = itemRows.map((row) => row.id)
+    const orderedStageIds = stageRows.map((row) => row.id)
 
     try {
       if (mode.type === 'edit') {
         const saved = await updateTaskTemplate(
           mode.taskTemplate.id,
-          buildUpdatePayload(values, itemRows, mode.taskTemplate),
+          buildUpdatePayload(values, itemRows, stageRows, mode.taskTemplate),
         )
         queryClient.setQueryData(['task-templates', 'detail', mode.taskTemplate.id], saved)
         toast.success(t('taskTemplates.form.updated'))
@@ -211,8 +186,8 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
         return
       }
 
-      // Step 2 (create): POST the template with every row in visual order.
-      const created = await createTaskTemplate(buildCreatePayload(values, itemRows))
+      // Step 2 (create): POST the template with every row and every stage in visual order.
+      const created = await createTaskTemplate(buildCreatePayload(values, itemRows, stageRows))
 
       // Step 3: upload each row's staged files against the id the server
       // assigned it, matched positionally — same order sent, same order
@@ -244,17 +219,23 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
 
       const appliedField = applyServerValidationErrors(error, form.setError, errorFields)
 
-      let appliedItems = false
+      let appliedRows = false
       if (axios.isAxiosError(error) && error.response?.status === 422) {
         const serverItemErrors = extractItemServerErrors(error.response.data?.errors, orderedRowIds)
         if (Object.keys(serverItemErrors).length > 0) {
           setItemErrors((current) => ({ ...current, ...serverItemErrors }))
           setItemsError(t('taskTemplates.form.items.hasErrors'))
-          appliedItems = true
+          appliedRows = true
+        }
+        const serverStageErrors = extractStageServerErrors(error.response.data?.errors, orderedStageIds)
+        if (Object.keys(serverStageErrors).length > 0) {
+          setStageErrors((current) => ({ ...current, ...serverStageErrors }))
+          setStagesError(t('taskTemplates.form.items.hasErrors'))
+          appliedRows = true
         }
       }
 
-      if (!appliedField && !appliedItems) {
+      if (!appliedField && !appliedRows) {
         setServerError(t('taskTemplates.form.genericError'))
       }
     }
@@ -270,10 +251,17 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
     addItemRow,
     removeItemRow,
     updateItemRow,
-    reorderItemRows,
+    moveItemRow,
     stagedFilesByRow,
     addStagedRowFiles,
     removeStagedRowFile,
+    stageRows,
+    stagesError,
+    stageErrors,
+    addStageRow,
+    renameStageRow,
+    removeStageRow,
+    reorderStageRows,
     onSubmit,
   }
 }

@@ -17,9 +17,11 @@ import {
   SERVER_ERROR_FIELDS,
   serverFieldMessage,
   TOAST_ONLY_SERVER_ERROR_FIELDS,
+  workOrderStageConflictMessage,
 } from '@/features/tasks/task-form-server-error-fields'
 import { emptyRecurrenceDefaults, recurrenceDefaults } from '@/features/tasks/task-recurrence-defaults'
 import { buildTaskSchema, type TaskFormValues } from '@/features/tasks/task-schema'
+import { resolveWorkOrderStagePrefill, useTaskFormStageHandlers } from '@/features/tasks/use-task-form-stage-handlers'
 import { useTaskParentPrefill } from '@/features/tasks/use-task-parent-prefill'
 import { useTaskWorkOrderPrefill } from '@/features/tasks/use-task-work-order-prefill'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
@@ -46,6 +48,7 @@ interface UseTaskFormArgs {
 function createDefaults(
   parentTaskId: number | null,
   workOrderId: number | null,
+  workOrderStageId: number | null,
   requesterId: number | null,
 ): TaskFormValues {
   return {
@@ -61,6 +64,7 @@ function createDefaults(
     task_category_id: null,
     opportunity_id: null,
     work_order_id: workOrderId,
+    work_order_stage_id: resolveWorkOrderStagePrefill(parentTaskId, workOrderStageId),
     requester_id: requesterId,
     start_date: null,
     end_date: null,
@@ -90,6 +94,7 @@ function editDefaults(task: TaskDetail): TaskFormValues {
     task_category_id: task.task_category_id,
     opportunity_id: task.opportunity_id,
     work_order_id: task.work_order_id,
+    work_order_stage_id: task.work_order_stage_id,
     requester_id: task.requester_id,
     start_date: task.start_date,
     end_date: task.end_date,
@@ -149,7 +154,12 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     () =>
       mode.type === 'edit'
         ? editDefaults(mode.task)
-        : createDefaults(mode.parentTaskId ?? null, mode.workOrderId ?? null, user?.id ?? null),
+        : createDefaults(
+            mode.parentTaskId ?? null,
+            mode.workOrderId ?? null,
+            mode.workOrderStageId ?? null,
+            user?.id ?? null,
+          ),
     [mode, user?.id],
   )
 
@@ -215,6 +225,9 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     form.setValue('referent_id', null, { shouldDirty: true })
   }
 
+  // Spec 0146 D-3: the "Fase" field's two reset handlers, split out for file size.
+  const { handleWorkOrderChange, handleParentChange } = useTaskFormStageHandlers(form.setValue)
+
   // AC-084: choosing another status re-derives the read-only percentage,
   // without any write to the form.
   const handleStatusItemChange = (item: ForSelectItem | null) => {
@@ -265,6 +278,13 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
         form.setError('description', { message: t('richText.errors.payloadTooLarge') })
         return
       }
+      // Spec 0146 D-4/AC-015: a closed-fase 409 has no `errors` map — surface
+      // the envelope's own message directly on the "Fase" field.
+      const stageConflict = workOrderStageConflictMessage(error)
+      if (stageConflict !== null) {
+        form.setError('work_order_stage_id', { message: stageConflict })
+        return
+      }
       // AC-022: `closure_feedback`/`task_status_id` have no field to land on
       // any more (D-5/D-7) — surface the server's own message as a toast
       // before falling back to the normal field mapping.
@@ -287,6 +307,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     serverError,
     onSubmit,
     handleRegistryChange,
+    handleWorkOrderChange,
+    handleParentChange,
     handleStatusItemChange,
     /** Derived, read-only, never submitted (D-6/AC-084); `null` while no status is picked. */
     completionPercentage: statusMeta?.completion_percentage ?? null,

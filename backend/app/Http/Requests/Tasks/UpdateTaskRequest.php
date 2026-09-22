@@ -111,6 +111,11 @@ class UpdateTaskRequest extends FormRequest
             'task_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_categories', 'id')],
             'opportunity_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
             'work_order_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_orders', 'id')],
+            // Spec 0146, D-3: shape only, same split as StoreTaskRequest's
+            // own copy — App\Services\Tasks\TaskStageGuard owns the
+            // resulting-state rule (belongs to work_order_id, not a
+            // sub-task, not a closed stage).
+            'work_order_stage_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_order_stages', 'id')],
             'requester_id' => ['sometimes', 'required', 'integer', Rule::exists('users', 'id')],
             'start_date' => ['sometimes', 'nullable', 'date'],
             'end_date' => ['sometimes', 'required', 'date'],

@@ -41,7 +41,7 @@ const guide: HelpGuide = {
             ['Anagrafica e referente', 'Anagrafica, Referente (tra quelli dell\'anagrafica).'],
             ['Persone', 'Richiedente (obbligatorio), Assegnatari (almeno uno), Osservatori.'],
             ['Pianificazione', 'Data inizio, Data fine (obbligatoria), orari, Tempo stimato (minuti).'],
-            ['Record collegati', 'Opportunità o Commessa.'],
+            ['Record collegati', 'Opportunità o Commessa; con una Commessa, la Fase in cui mettere il task (solo fasi aperte, non per i sottotask).'],
             ['Chiusura', 'Feedback obbligatorio, Validazione.'],
             ['Ricorrenza', 'Frequenza e fine della ripetizione.'],
           ],

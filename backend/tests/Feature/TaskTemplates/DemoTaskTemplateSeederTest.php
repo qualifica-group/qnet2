@@ -3,6 +3,7 @@
 use App\Enums\TaskStatusGroup;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
+use App\Models\TaskTemplateStage;
 use Database\Seeders\DemoTaskTemplateSeeder;
 use Database\Seeders\DemoUserSeeder;
 use Database\Seeders\ProductTypologySeeder;
@@ -95,6 +96,30 @@ it('re-running does not duplicate templates or items (idempotent)', function ():
     // (fresh primary keys), which is expected — only the shape is stable.
     $secondItemIds = TaskTemplateItem::query()->orderBy('id')->pluck('id')->all();
     expect($secondItemIds)->not->toBe($firstItemIds);
+});
+
+it('assigns stages (spec 0146, D-2) in dense sort_order, and leaves at least one item unstaged', function (): void {
+    seedTaskTemplateDependencies();
+
+    test()->seed(DemoTaskTemplateSeeder::class);
+
+    expect(TaskTemplateStage::count())->toBeGreaterThan(0);
+
+    foreach (TaskTemplate::all() as $template) {
+        $stages = $template->stages()->get();
+
+        if ($stages->isEmpty()) {
+            continue;
+        }
+
+        expect($stages->pluck('sort_order')->all())->toBe(range(0, $stages->count() - 1));
+
+        foreach ($stages as $stage) {
+            expect($stage->items()->exists())->toBeTrue();
+        }
+    }
+
+    expect(TaskTemplateItem::query()->whereNull('task_template_stage_id')->exists())->toBeTrue();
 });
 
 it('DatabaseSeeder alone creates no task templates', function (): void {

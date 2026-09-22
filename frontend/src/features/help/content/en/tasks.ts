@@ -41,7 +41,7 @@ const guide: HelpGuide = {
             ['Account and contact', "Account, Contact (among the account's own)."],
             ['People', 'Requested by (required), Assignees (at least one), Watchers.'],
             ['Scheduling', 'Start date, Due date (required), times, Estimated time (minutes).'],
-            ['Linked records', 'Opportunity or Work order.'],
+            ['Linked records', 'Opportunity or Work order; with a Work order, the Phase to place the task in (open phases only, not for subtasks).'],
             ['Closure', 'Feedback required, Validation.'],
             ['Recurrence', 'Frequency and end of the repetition.'],
           ],

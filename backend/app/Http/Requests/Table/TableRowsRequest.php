@@ -8,7 +8,6 @@ use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
-use App\Tables\Tasks\WorkOrderScopedTableDefinition;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -93,10 +92,6 @@ class TableRowsRequest extends FormRequest
             // other domain, mirroring `opportunityId` (AC-053: OMITTED by
             // every existing caller, so their payload stays byte-identical).
             'quoteId' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
-
-            // Spec 0133, D-1: scopes `tasks` to one Work Order's own tasks
-            // (the Commessa detail's tab) — a no-op key for every other domain.
-            'workOrderId' => ['sometimes', 'nullable', 'integer', Rule::exists('work_orders', 'id')],
         ];
     }
 
@@ -179,10 +174,6 @@ class TableRowsRequest extends FormRequest
                 $definition->scopeToQuote($this->quoteIdInput());
             }
 
-            if ($definition instanceof WorkOrderScopedTableDefinition) {
-                $definition->scopeToWorkOrder($this->workOrderIdInput());
-            }
-
             $this->resolvedDefinition = $definition;
         }
 
@@ -220,17 +211,6 @@ class TableRowsRequest extends FormRequest
     private function quoteIdInput(): ?int
     {
         $value = $this->input('quoteId');
-
-        return is_numeric($value) ? (int) $value : null;
-    }
-
-    /**
-     * The raw `workOrderId` request input, coerced to int (spec 0133),
-     * mirroring `quoteIdInput()`.
-     */
-    private function workOrderIdInput(): ?int
-    {
-        $value = $this->input('workOrderId');
 
         return is_numeric($value) ? (int) $value : null;
     }

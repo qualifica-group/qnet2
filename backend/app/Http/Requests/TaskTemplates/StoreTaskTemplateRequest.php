@@ -7,6 +7,7 @@ namespace App\Http\Requests\TaskTemplates;
 use App\DataObjects\TaskTemplates\CreateTaskTemplateData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateItems;
+use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateStages;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -14,6 +15,10 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for POST /api/task-templates (spec 0124, D-1).
+ *
+ * `stages` (spec 0146, D-2): `stages.*.id` is `prohibited` (a brand-new
+ * template owns no stage yet) and every `items.*.stage_key` must resolve to
+ * a `stages.*.key` of this SAME request (AC-003).
  *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('create', TaskTemplate::class)).
@@ -24,6 +29,7 @@ class StoreTaskTemplateRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesTaskTemplateItems;
+    use ValidatesTaskTemplateStages;
 
     private const int NAME_MAX = 191;
 
@@ -43,6 +49,7 @@ class StoreTaskTemplateRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
             ...$this->itemsRules(required: true, allowIds: false),
+            ...$this->stagesRules(allowIds: false),
         ];
     }
 
@@ -50,6 +57,7 @@ class StoreTaskTemplateRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->assertItemStageKeysResolve($validator);
         });
     }
 

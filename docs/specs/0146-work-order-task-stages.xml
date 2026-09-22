@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0146-work-order-task-stages" status="implemented" owner="nicola" date="2026-09-22">
+
+  <goal>
+    Sostituire la griglia Task nel dettaglio Commessa con un "Task board" in stile CRM moderno
+    (ClickUp/Asana/monday) che replica il flusso del vecchio qnet (`manageorder`):
+    - task raggruppati per FASE, con filtri sopra e azioni massive;
+    - fasi e task riordinabili con drag and drop;
+    - due viste: Lista raggruppata e Board kanban.
+
+    Le fasi nascono dal Modello di Task, dove si definiscono e si riordinano anch'esse con drag and
+    drop, e vengono copiate nella commessa.
+
+    Chiudere una commessa chiude forzatamente, con esito negativo, tutti i suoi task non chiusi.
+  </goal>
+
+  <context>
+    <legacy>
+      Vecchio qnet (`/Users/Repository/qnet`, analisi 2026-09-22):
+      - La fase e' `ordermilestones`, ordinata per `position`, con stato aperta/chiusa.
+      - `tasks.ordermilestone_id` + `position` collegano e ordinano i task nella fase.
+      - Il modello ha le sue fasi (`templatebtypemilestones`) con i task dentro
+        (`templatebtypemilestoneactions`); la generazione della commessa li copia.
+
+      UI: `resources/views/livewire/task-servizi/task-servizi.blade.php`.
+      - Sezione "Task ordinarie" (senza fase), poi una card per fase con drag, rinomina,
+        contatori (task, tempo stimato, tempo effettivo) e chiudi/riapri.
+      - Righe task con sottotask espandibili.
+
+      Filtri:
+      - Tipo;
+      - Scadenze: oggi / scadute / tutte;
+      - Stato: di default "non completate";
+      - A me / Da me;
+      - per colonna: richiedente, assegnatario, osservatore, titolo, scadenza, priorita'.
+
+      Azioni massive: assegna, fatta, da completare, blocca, priorita', date.
+    </legacy>
+
+    <verified_facts>
+      Fatti VERIFICATI in qnet-2:
+      - Modello di Task:
+        - `App\Models\TaskTemplate` (`name`, `description`, `is_active`) e
+          `App\Models\TaskTemplateItem` (`title`, `description`, `estimated_minutes`,
+          `task_status_id`, `due_offset_days`, `sort_order`), lista piatta.
+        - Le righe si scrivono solo in full-sync dentro store/update del template
+          (`StoreTaskTemplateRequest`/`UpdateTaskTemplateRequest` + concern `itemsRules()`,
+          `TaskTemplateItemWriter`). Resource: `TaskTemplateResource.items`.
+        - FE: `task-templates/task-template-items-editor.tsx` usa gia' `components/ui/sortable-list.tsx`
+          (`@dnd-kit/core` + `@dnd-kit/sortable`, gia' in `package.json`).
+      - Commessa e generazione task:
+        - `WorkOrder.task_template_id`.
+        - `App\Services\WorkOrders\WorkOrderTaskGenerator::generate()` crea un Task per item, in
+          `sort_order`, dentro la transazione di `WorkOrderService::create()`.
+      - Task:
+        - `App\Models\Task` ha `work_order_id` e `parent_task_id`, `assignees()` (`task_assignee`)
+          e `watchers()` (`task_watcher`); `requester_id`, `task_type_id`, `task_priority_id`,
+          `start_date`/`end_date`, `estimated_minutes`, `is_blocked`.
+        - Tempo effettivo = somma di `time_entries.minutes` su `task_id`.
+      - Stati:
+        - la "fase" di uno stato si chiama gia' `group` (`TaskStatusGroup`: open, pending,
+          in_validation, closed_positive, closed_negative).
+        - Esiste `TaskStatusSystemKey::ClosedNegative`.
+        - Per non collidere con quel nome, il nuovo concetto usa l'identificatore **stage**; in
+          interfaccia resta "Fase".
+      - Chiusura commessa:
+        - `WorkOrder.is_force_closed` + `force_close_reason`, scritti via `PATCH /api/work-orders/{id}`
+          (`WorkOrderService::update()`).
+        - Lo stato e' calcolato da `WorkOrderStatusResolver`.
+      - Azioni di dominio del task:
+        - `TaskCompletionService::complete|uncomplete`, `TaskActionService::block|unblock`, con i
+          guard `TaskWriteLock`, `TaskClosureFeedbackGuard`, subtask aperti e validazione.
+        - Il completamento richiede `time_entry` (`CompleteTaskRequest` +
+          `TimeEntryValidationRules`).
+        - Permessi per record: `ResourcePermissionsBuilder` + `TaskAbilityResolver`.
+        - FE: `task.permissions.actions.X` AND `task-action-availability.ts`.
+      - Pannello attuale: `work-orders/work-order-tasks-section.tsx` (`TableView domain="tasks"`,
+        `rowScope.workOrderId`, spec 0133), montato da `work-order-detail.tsx` con `tasks.viewAny`.
+      - Form task: prefill commessa via `ModuleCreateParams.work_order_id`
+        (`use-task-work-order-prefill.ts`, `task-screens.tsx`).
+    </verified_facts>
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Livello unico, deciso dall'utente il 2026-09-22: le fasi appartengono alla COMMESSA.
+      Non c'e' il livello "servizio / riga d'offerta" del vecchio qnet.
+    </decision>
+
+    <decision id="D-2">
+      Fasi del modello, deciso dall'utente il 2026-09-22.
+
+      Nel Modello di Task:
+      - Nuova tabella `task_template_stages`.
+      - Ogni item sta in una fase oppure in "Senza fase" (`task_template_stage_id` null).
+      - Si scrive in full-sync con il template, come gia' `items`.
+
+      Alla generazione della commessa:
+      - `WorkOrderTaskGenerator` copia le fasi in `work_order_stages`, nello stesso ordine.
+      - Assegna a ogni task generato la fase copiata, con `stage_position` progressiva
+        dentro la fase, nell'ordine degli item.
+
+      Nessun catalogo globale di fasi. Nella commessa le fasi si aggiungono, rinominano,
+      riordinano ed eliminano. Eliminando una fase, i suoi task passano a "Senza fase".
+    </decision>
+
+    <decision id="D-3">
+      Solo i task RADICE (`parent_task_id` null) hanno una fase e una posizione.
+
+      Sottotask:
+      - si mostrano annidati ed espandibili sotto il padre;
+      - `work_order_stage_id` su un sottotask da' 422 (`prohibited`).
+      - Se un task diventa sottotask, la sua fase si azzera.
+
+      Coerenza con la commessa:
+      - la fase deve appartenere alla commessa del task (`work_order_id`);
+      - se `work_order_id` cambia o si svuota, la fase si azzera.
+    </decision>
+
+    <decision id="D-4">
+      Chiusura della fase, deciso dall'utente il 2026-09-22.
+
+      - Si chiude solo se non contiene task NON chiusi, contando radici e sottotask.
+        Un task e' chiuso se il `group` del suo stato e' closed_positive o closed_negative.
+        Altrimenti 409 con messaggio esplicito e conteggio.
+      - Una fase chiusa non riceve nuovi task: create, spostamento o update con quella fase danno 409.
+      - Una fase chiusa si puo' riaprire.
+      - NESSUNA chiusura a cascata della commessa o dell'offerta.
+    </decision>
+
+    <decision id="D-5">
+      Due viste con un toggle, deciso dall'utente il 2026-09-22. La vista scelta si ricorda in
+      localStorage, con try/catch.
+
+      Lista raggruppata per fase (predefinita):
+      - Ogni fase ha un header con accento colorato, barra di avanzamento, contatori (task, % chiusi,
+        stimato/effettivo), si comprime, si trascina, ha il menu rinomina/chiudi/riapri/elimina e
+        il "+ Task".
+      - Le righe task si trascinano dentro la stessa fase e tra fasi diverse.
+
+      Board kanban: una colonna per fase piu' "Senza fase", card trascinabili tra le colonne.
+
+      Sopra le viste, una strip KPI:
+      - task totali;
+      - % completamento;
+      - scaduti;
+      - in scadenza oggi;
+      - ore stimate/effettive.
+
+      "+ Task" apre il form task in modale con commessa e fase precompilate (niente quick-add
+      inline).
+
+      Animazioni solo con Tailwind e `@dnd-kit`, nessuna libreria nuova.
+    </decision>
+
+    <decision id="D-6">
+      Filtri CLIENT-SIDE su un unico payload con tutti i task visibili della commessa. Si applicano
+      ai task radice: un sottotask si vede se il suo padre passa il filtro, come nel vecchio.
+
+      Filtri:
+      - Ricerca: titolo, contiene, case-insensitive.
+      - Tipo: multi `task_type_id`.
+      - Scadenza: tutte / oggi / scaduti / questa settimana. Riferimento: `end_date ?? start_date`.
+      - Stato:
+        - Aperti (predefinito): group open, pending o in_validation;
+        - Completati: closed_*;
+        - Bloccati: `is_blocked`;
+        - Tutti.
+      - Assegnazione: tutti / assegnati a me (sono tra gli `assignees`) / richiesti da me
+        (`requester.id` = me).
+      - Richiedente, Assegnatario, Osservatore: multi utenti, ricavati dal payload.
+      - Priorita': multi `task_priority_id`.
+
+      "Azzera filtri" riporta ai predefiniti.
+    </decision>
+
+    <decision id="D-7">
+      Azioni massive, deciso dall'utente il 2026-09-22 (tutte in questa iterazione).
+
+      Le sei azioni:
+      - assegna: sostituisce gli assegnatari;
+      - completa;
+      - riapri;
+      - blocca;
+      - cambia priorita';
+      - cambia date.
+
+      Esecuzione:
+      - Ogni task passa dai service di dominio esistenti, con policy e guard per singolo task e
+        una transazione per task.
+      - Un fallimento non annulla gli altri: la risposta riporta l'esito di ogni task.
+
+      Parametri condivisi:
+      - "Completa" usa un solo `closure_feedback` e un solo `time_entry` (data, tipo, minuti)
+        applicato a ciascun task.
+      - I task che richiedono validazione falliscono con motivo esplicito: la validazione resta
+        un'azione singola.
+      - "Blocca" usa gli stessi parametri di `BlockTaskRequest`.
+
+      Selezione: solo task radice, al massimo 200 per richiesta.
+    </decision>
+
+    <decision id="D-8">
+      Chiusura forzata della commessa: richiesta PLUS dell'utente, 2026-09-22.
+
+      Quando `is_force_closed` passa da false a true (update, oppure create con la commessa gia'
+      chiusa, dopo la generazione), nella STESSA transazione ogni task con quel `work_order_id`
+      NON chiuso passa allo stato `ClosedNegative`:
+      - vale per radici e sottotask, in open/pending/in_validation, anche se bloccati;
+      - `completion_date` = oggi;
+      - `closure_feedback` = `force_close_reason` se il task non ne ha gia' uno;
+      - `is_blocked` torna false.
+
+      Questa chiusura scavalca i guard di completamento (feedback, validazione, subtask, blocco) e
+      la visibilita' dell'attore:
+      - e' un effetto di sistema dell'aggiornamento della commessa, autorizzato da `update` sulla
+        commessa;
+      - nessuna notifica, nessun segnatempo;
+      - resta il log attivita' per task via `LogsModelActivity`.
+
+      Riaprendo la commessa i task NON si riaprono.
+
+      Il dettaglio commessa espone `open_tasks_count`; la conferma di chiusura in UI mostra
+      "N task aperti verranno chiusi con esito negativo".
+    </decision>
+
+    <decision id="D-9">
+      Autorizzazione.
+
+      Lettura del board: `view` sulla commessa + `tasks.viewAny`; i task sono filtrati da
+      `TaskVisibilityScope`.
+
+      Commessa:
+      - gestione delle fasi (crea, rinomina, riordina, elimina, chiudi, riapri): `update`;
+      - commessa chiusa: ogni mutazione di fasi, spostamento e azione massiva da' 409, e il board
+        e' in sola lettura.
+
+      Singolo task:
+      - spostamento: `TaskAbilityResolver::canUpdate` sul task;
+      - azioni massive: l'ability della singola azione (canUpdate, canComplete, canBlock)
+        su ogni task.
+
+      Ogni task del board porta `permissions` (lo stesso blocco di `GET /api/tasks/{id}`),
+      cosi' la UI nasconde cio' che il server rifiuterebbe.
+    </decision>
+    <decision id="D-10">
+      Pulizia dello scope per commessa della griglia Task (spec 0133), decisione utente 2026-09-22
+      (opzione a): tolto il pannello griglia, lo scope `workOrderId` non ha piu' chiamanti.
+
+      Si rimuovono:
+      - lato server: `App\Tables\Tasks\WorkOrderScopedTableDefinition`, il wiring in
+        `TableRegistry`/`TableController`, i FormRequest tabella, l'export;
+      - lato client: `TableRowScope.workOrderId` e il relativo plumbing;
+      - i test associati.
+
+      Lo scope `quoteId` (spec 0095) resta intatto.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>DB: `task_template_stages`, `task_template_items.task_template_stage_id`, `work_order_stages`, `tasks.work_order_stage_id` + `tasks.stage_position`.</item>
+      <item>BE template: `stages` in store/update/resource, `items.*.stage_key` / `items.*.task_template_stage_id`, writer full-sync delle fasi.</item>
+      <item>BE generazione: copia delle fasi e assegnazione di fase e posizione in `WorkOrderTaskGenerator`.</item>
+      <item>BE commessa: endpoint fasi (index/store/update/destroy/reorder/close/reopen), `task-board` (read), `task-board/move`, `task-board/bulk`, `open_tasks_count` nel dettaglio, chiusura forzata dei task (D-8).</item>
+      <item>BE task: `work_order_stage_id` in store/update/resource, con validazione D-3/D-4.</item>
+      <item>FE: nuovo `features/work-orders/task-board/` (vista lista, kanban, toolbar filtri, KPI, barra azioni massive e relativi dialog). Sostituisce `work-order-tasks-section.tsx` nel dettaglio commessa.</item>
+      <item>FE: editor delle fasi nel form del Modello di Task (fasi riordinabili, item trascinabili tra fasi) + fasi nel dettaglio del modello.</item>
+      <item>FE: select "Fase" nel form task quando c'e' una commessa, con prefill da `ModuleCreateParams.work_order_stage_id`.</item>
+      <item>FE: conferma di chiusura della commessa con il conteggio dei task aperti.</item>
+      <item>i18n it/en; guide in-app `work-orders`, `task-templates`, `tasks` (IT+EN); manuale Claude Docs (§4-bis).</item>
+      <item>Test Pest (tutti gli AC backend) e Vitest (filtri puri, viste, azioni massive, editor fasi).</item>
+      <item>Rimozione dello scope `workOrderId` della griglia Task (D-10), BE+FE, con i relativi test.</item>
+      <item>`DemoWorkOrderSeeder`/`DemoTaskTemplateSeeder` (se esistono): modelli demo con fasi (percorso `DemoDataSeeder`).</item>
+    </in>
+    <out>
+      <item>"Ricarica modello" sulla commessa (deciso dall'utente).</item>
+      <item>Migrazione dei dati `ordermilestones` / `templatebtypemilestones` dal vecchio DB (deciso dall'utente).</item>
+      <item>Fase sui task fuori commessa, e colonna/filtro "Fase" nella griglia generica del modulo Task.</item>
+      <item>Chiusura a cascata fase -> commessa -> offerta (D-4).</item>
+      <item>Quick-add inline di un task; editing inline dei campi nelle righe (si modifica dal form modale esistente).</item>
+      <item>Riapertura automatica dei task quando si riapre la commessa (D-8).</item>
+      <item>Catalogo globale di fasi, colori delle fasi configurabili, date della fase.</item>
+      <item>Paginazione del board: un solo payload per commessa (vedi constraints).</item>
+      <item>Nessun cambio a `TaskVisibilityScope`, alle regole di completamento e validazione, alla griglia del modulo Task.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Tutte le risposte usano l'envelope di progetto { success, message, data }. -->
+
+    <shape name="WorkOrderStage">
+      { id: int, name: string, sort_order: int, closed_at: string|null (ISO), closed_by: {id:int,name:string}|null }
+    </shape>
+
+    <shape name="BoardTask">
+      {
+        id: int,
+        title: string,
+        description_excerpt: string|null (descrizione in testo semplice, max 160 caratteri; aggiunto 2026-09-22 su richiesta utente),
+        parent_task_id: int|null,
+        work_order_stage_id: int|null,
+        stage_position: int,
+        task_status: { id, name, color, icon, system_key: string|null, group: string, completion_percentage: int },
+        task_type: {id,name,color,icon}|null,
+        task_priority: {id,name,color,icon}|null,
+        requester: {id,name}|null,
+        assignees: [{id,name}],
+        watchers: [{id,name}],
+        start_date: "Y-m-d"|null,
+        end_date: "Y-m-d"|null,
+        estimated_minutes: int|null,
+        actual_minutes: int,
+        is_blocked: bool,
+        attachments_count: int,
+        permissions: { ...stesso blocco di GET /api/tasks/{id} }
+      }
+      I campi badge usano la stessa forma di `TaskResource::badgeRef()` e `statusRef()`.
+    </shape>
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/task-board">
+      <response status="200">
+        data: {
+          stages: WorkOrderStage[],
+          tasks: BoardTask[],
+          is_read_only: bool
+        }
+        - `stages` in `sort_order`.
+        - `tasks` e' la lista piatta di TUTTI i task visibili della commessa, radici e sottotask;
+          le radici sono ordinate per (fase, `stage_position`).
+        - `is_read_only` = commessa chiusa, oppure niente `update` sulla commessa.
+      </response>
+      <errors>403 senza `view` sulla commessa o senza `tasks.viewAny`; 404 se la commessa non esiste.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/stages">
+      <response status="200">data: WorkOrderStage[] (per la select "Fase" del form task)</response>
+      <errors>403 senza `view` sulla commessa.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/stages">
+      <request>{ name: string required max:191 }</request>
+      <response status="201">data: WorkOrderStage. La fase viene accodata in fondo.</response>
+      <errors>403 senza `update`; 409 se la commessa e' chiusa; 422 se `name` manca.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/work-orders/{workOrder}/stages/{stage}">
+      <request>{ name: string required max:191 }</request>
+      <response status="200">data: WorkOrderStage</response>
+      <errors>403; 404 se la fase appartiene a un'altra commessa (scopeBindings); 409 se la commessa e' chiusa; 422.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/work-orders/{workOrder}/stages/{stage}">
+      <response status="200">data: null. I task della fase passano a `work_order_stage_id` null, accodati in "Senza fase".</response>
+      <errors>403; 404; 409 se la commessa e' chiusa.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/stages/reorder">
+      <request>{ stage_ids: int[] required }, permutazione ESATTA delle fasi della commessa.</request>
+      <response status="200">data: WorkOrderStage[] nel nuovo ordine.</response>
+      <errors>403; 409 se la commessa e' chiusa; 422 se l'elenco non coincide (id mancanti, estranei o duplicati).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/stages/{stage}/close">
+      <response status="200">data: WorkOrderStage (con `closed_at` e `closed_by` valorizzati).</response>
+      <errors>403; 404; 409 se la commessa e' chiusa; 409 se la fase contiene task non chiusi, con messaggio i18n e `data: { open_tasks_count: int }`.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/stages/{stage}/reopen">
+      <response status="200">data: WorkOrderStage (con `closed_at` null).</response>
+      <errors>403; 404; 409 se la commessa e' chiusa.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/task-board/move">
+      <request>
+        { task_id: int required, work_order_stage_id: int|null, position: int required min:0 }
+        `position` e' l'indice di destinazione nel gruppo target (fase o "Senza fase"), contato
+        dopo aver tolto il task dal gruppo di origine.
+      </request>
+      <response status="200">
+        data: { tasks: [{ id, work_order_stage_id, stage_position }] }
+        Contiene le righe riposizionate dei gruppi di origine e di destinazione. Le posizioni sono
+        compatte (0..n-1).
+      </response>
+      <errors>
+        - 403 senza `canUpdate` sul task.
+        - 409 se la commessa e' chiusa o la fase di destinazione e' chiusa.
+        - 422 se il task non appartiene alla commessa, e' un sottotask, o la fase appartiene a
+          un'altra commessa.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/task-board/bulk">
+      <request>
+        { action: "assign"|"complete"|"uncomplete"|"block"|"priority"|"dates",
+          task_ids: int[] required min:1 max:200 distinct (radici di questa commessa),
+          assignee_ids?: int[] (required_if assign, min:1, users esistenti),
+          closure_feedback?: string|null (complete),
+          time_entry?: object (required_if complete; stesse regole di `TimeEntryValidationRules`),
+          block?: object (stesse regole di BlockTaskRequest, per block),
+          task_priority_id?: int (required_if priority, priorita' attiva),
+          start_date?: "Y-m-d"|null, end_date?: "Y-m-d"|null (dates: almeno una delle due; end >= start) }
+      </request>
+      <response status="200">
+        data: {
+          results: [{ task_id: int, ok: bool, message: string|null }],
+          succeeded: int,
+          failed: int
+        }
+        `message` e' il motivo i18n del fallimento del singolo task: 403, 409 o regola di dominio.
+      </response>
+      <errors>
+        - 409 se la commessa e' chiusa.
+        - 422 se il payload non e' valido, o un `task_id` non e' una radice di questa commessa.
+        - 403 senza `view` sulla commessa.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST|PATCH" path="/api/tasks, /api/tasks/{task}">
+      <request>
+        + `work_order_stage_id?: int|null`.
+        - Deve appartenere a `work_order_id` (quello inviato o quello persistito): altrimenti 422.
+        - Su un task con `parent_task_id`: `prohibited`, 422.
+        - Su una fase chiusa: 409.
+        - In create il task viene accodato in fondo alla fase (o a "Senza fase").
+      </request>
+      <response status="200|201">`TaskResource` + `work_order_stage_id`, `work_order_stage: {id,name}|null`.</response>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/task-templates, /api/task-templates/{taskTemplate}">
+      <request>
+        + `stages?: [{ id?: int (solo update, deve appartenere al template), key: string required distinct, name: string required max:191 }]`
+          in ordine di visualizzazione. Full-sync quando la chiave viene inviata: le fasi non
+          inviate vengono eliminate e i loro item passano a "Senza fase".
+        + `items.*.stage_key?: string|null`: deve essere una `stages.*.key` della STESSA richiesta,
+          altrimenti 422 su `items.N.stage_key`. Null = senza fase.
+        L'ordine degli item resta l'indice nell'array `items`, come oggi.
+      </request>
+      <response status="200|201">
+        `TaskTemplateResource`:
+        - `stages: [{id, name, sort_order}]`;
+        - `items[].task_template_stage_id: int|null`.
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}">
+      <response status="200">
+        + `open_tasks_count: int`: task della commessa non chiusi, contati SENZA visibilita'
+          (sono quelli che D-8 chiuderebbe).
+      </response>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/work-orders/{workOrder}">
+      <request>Invariata.</request>
+      <response status="200">Invariata. Effetto collaterale D-8 quando `is_force_closed` passa da false a true.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Modello di Task -->
+    <criterion id="AC-001">Dato uno store di un template con 2 `stages` e degli item con `stage_key`, quando si legge il template, allora `stages` torna nell'ordine inviato e ogni item ha il `task_template_stage_id` giusto.</criterion>
+    <criterion id="AC-002">Dato un update che omette una fase esistente, allora la fase viene eliminata e i suoi item hanno `task_template_stage_id` null.</criterion>
+    <criterion id="AC-003">Quando un item ha uno `stage_key` che non e' in `stages`, allora 422 su `items.N.stage_key`, e quando `stages.*.id` appartiene a un altro template, allora 422.</criterion>
+
+    <!-- Generazione della commessa -->
+    <criterion id="AC-004">Data la creazione di una commessa da un template con fasi, allora vengono create `work_order_stages` nello stesso ordine e ogni task generato ha la fase copiata e `stage_position` progressiva nell'ordine degli item. Gli item senza fase finiscono in "Senza fase".</criterion>
+
+    <!-- Gestione delle fasi della commessa -->
+    <criterion id="AC-005">Store/rename/delete di una fase con `update` sulla commessa funzionano; eliminando una fase i suoi task passano a null, accodati in "Senza fase".</criterion>
+    <criterion id="AC-006">Reorder con una permutazione esatta aggiorna `sort_order`; con id mancanti, estranei o duplicati risponde 422.</criterion>
+    <criterion id="AC-007">Una fase di un'altra commessa usata nell'URL da' 404 (scopeBindings).</criterion>
+    <criterion id="AC-008">Chiudere una fase con almeno un task non chiuso (anche un sottotask) da' 409 con `open_tasks_count`; con tutti i task chiusi si chiude, con `closed_at` e `closed_by`; riaprirla azzera `closed_at`.</criterion>
+    <criterion id="AC-009">Un utente senza `update` sulla commessa riceve 403 su ogni endpoint delle fasi, del move e del bulk.</criterion>
+    <criterion id="AC-010">Su una commessa chiusa le mutazioni di fasi, move e bulk danno 409, e il board risponde con `is_read_only` true.</criterion>
+
+    <!-- Lettura del board -->
+    <criterion id="AC-011">Il board restituisce solo i task visibili all'attore (`TaskVisibilityScope`) e solo quelli di quella commessa, sottotask inclusi, con `actual_minutes` = somma dei `time_entries.minutes` del task.</criterion>
+    <criterion id="AC-012">Senza `tasks.viewAny` il board risponde 403.</criterion>
+
+    <!-- Spostamento -->
+    <criterion id="AC-013">Spostare un task in un'altra fase a una data posizione aggiorna fase e posizione; le posizioni restano compatte 0..n-1 sia nel gruppo di origine sia in quello di destinazione.</criterion>
+    <criterion id="AC-014">Il move di un sottotask, di un task di un'altra commessa o verso una fase di un'altra commessa da' 422; verso una fase chiusa da' 409; senza `canUpdate` sul task da' 403.</criterion>
+
+    <!-- Fase nel form task -->
+    <criterion id="AC-015">Store/update di un task con `work_order_stage_id` di un'altra commessa da' 422; lo stesso campo su un sottotask da' 422; su una fase chiusa da' 409; con una fase valida il task viene accodato in fondo alla fase.</criterion>
+    <criterion id="AC-016">Quando si svuota o si cambia `work_order_id`, o il task diventa sottotask, allora `work_order_stage_id` torna null.</criterion>
+
+    <!-- Azioni massive -->
+    <criterion id="AC-017">Bulk `assign` sostituisce gli assegnatari su ogni task autorizzato e risponde con l'esito per task; un task non autorizzato ha `ok:false` senza bloccare gli altri.</criterion>
+    <criterion id="AC-018">Bulk `complete` chiude positivamente i task completabili e crea un time entry per ciascuno. Un task che richiede validazione, uno bloccato e uno con sottotask aperti hanno `ok:false` con il motivo. Nessuna modifica parziale sul task che fallisce.</criterion>
+    <criterion id="AC-019">Bulk `uncomplete`, `block`, `priority` e `dates` applicano l'effetto tramite i service esistenti. `dates` con `end_date` precedente a `start_date` da' 422.</criterion>
+    <criterion id="AC-020">Bulk con piu' di 200 id, con id duplicati o con un id che non e' una radice della commessa da' 422.</criterion>
+
+    <!-- Chiusura forzata della commessa -->
+    <criterion id="AC-021">Data una commessa con task open, pending, in_validation, bloccati, sottotask e task gia' chiusi, quando un PATCH porta `is_force_closed` a true, allora tutti i task non chiusi hanno lo stato ClosedNegative, `completion_date` di oggi, `closure_feedback` = motivo (se prima era vuoto) e `is_blocked` false; i task gia' chiusi restano invariati.</criterion>
+    <criterion id="AC-022">La chiusura forzata chiude anche i task che l'attore non vede, non genera notifiche ne' time entry, e riaprendo la commessa i task restano chiusi.</criterion>
+    <criterion id="AC-023">Il dettaglio della commessa espone `open_tasks_count` coerente con i task che la chiusura chiuderebbe.</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-024">FE: il dettaglio della commessa con `tasks.viewAny` monta il Task board, non piu' la griglia `TableView`; senza, nessun pannello.</criterion>
+    <criterion id="AC-025">FE: la funzione pura dei filtri applica ogni filtro di D-6 ai task radice, mostra i sottotask sotto un padre che passa il filtro, e il predefinito e' "Aperti".</criterion>
+    <criterion id="AC-026">FE: la vista lista mostra un gruppo per fase in `sort_order` + "Senza fase", con contatori e barra di avanzamento; il toggle passa alla board kanban con una colonna per fase.</criterion>
+    <criterion id="AC-027">FE: il drop di un task (da tastiera, sensore `@dnd-kit`) chiama `move` con fase e posizione di destinazione e aggiorna la UI in modo ottimistico; in caso di errore ripristina l'ordine e mostra un toast.</criterion>
+    <criterion id="AC-028">FE: selezionando task compare la barra delle azioni massive. Ogni azione apre il suo dialog, invia `bulk` e mostra un riepilogo successi/fallimenti con i motivi.</criterion>
+    <criterion id="AC-029">FE: con `is_read_only` nessuna maniglia di drag, nessuna azione di fase e nessuna azione massiva.</criterion>
+    <criterion id="AC-030">FE: "+ Task" di una fase apre il form task in modale con commessa e fase precompilate; la select "Fase" del form elenca solo le fasi aperte della commessa scelta.</criterion>
+    <criterion id="AC-031">FE: nell'editor del Modello di Task si aggiungono, rinominano, rimuovono e riordinano le fasi, e un item si trascina da una fase all'altra; il payload invia `stages` e `items.*.stage_key` coerenti.</criterion>
+    <criterion id="AC-032">FE: chiudendo la commessa con `open_tasks_count` maggiore di 0, la conferma mostra quanti task verranno chiusi con esito negativo.</criterion>
+    <criterion id="AC-033">Guide in-app `work-orders`, `task-templates` e `tasks` aggiornate in IT+EN con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza: `@dnd-kit/*`, `recharts`, shadcn e lucide ci sono gia'. Niente
+    framer-motion; le animazioni si fanno con transizioni Tailwind e i `DragOverlay` di dnd-kit.
+
+    Backend:
+    - Ogni endpoint ha FormRequest + Policy; `Route::scopeBindings()` sulle route delle fasi;
+      envelope `{success, message, data}`.
+    - Niente `whereRaw`.
+    - Il board carica tutto con eager loading (status, type, priority, requester, assignees,
+      watchers, `withSum` sui time entries, `withCount` sugli allegati): nessun N+1, e
+      `preventLazyLoading` resta attivo.
+    - Scritture di posizione e reorder dentro una transazione con `lockForUpdate` sulla commessa,
+      per evitare corse concorrenti.
+
+    Payload unico del board: si assume che una commessa abbia al massimo qualche centinaio di task.
+    Oltre ~1000 va rivista la paginazione (fuori scope).
+
+    Frontend:
+    - Dati del board via TanStack Query (`['work-orders','task-board',id]`), invalidata dopo ogni
+      mutazione del form task; move con aggiornamento ottimistico e `setQueryData`.
+    - Filtri in `useState`, logica in funzioni pure e hook (niente logica nel JSX).
+    - UI compatta (`text-xs`, `size-3.5`), superfici secondo la scala `ui-design.md §1-bis`
+      (pannello `bg-surface`, gruppi e card `bg-card`), responsive:
+      - a 375px il kanban scorre orizzontalmente dentro il proprio contenitore, mai la pagina;
+      - la lista riduce le colonne.
+    - Accessibilita': drag da tastiera (KeyboardSensor), `aria-label` sulle maniglie, lo stato
+      non si comunica col solo colore.
+    - File entro 300/500 righe: il board e' diviso in piu' componenti.
+
+    Migrazioni nuove e reversibili; `QuoteWorkflowMigrationTest` aggiorna il conteggio dei passi
+    di migrazione se lo include.
+
+    Il working tree ha gia' modifiche non committate delle spec 0144/0145 (offerte): nessun file di
+    questa spec coincide con quei file, salvo `docs/HANDOFF.md` e il conteggio in
+    `QuoteWorkflowMigrationTest`.
+  </constraints>
+
+</spec>

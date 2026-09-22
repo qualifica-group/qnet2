@@ -169,6 +169,10 @@ export const tasks = {
     opportunitySearch: "Cerca un'opportunità per nome…",
     workOrder: 'Commessa',
     workOrderSearch: 'Cerca una commessa per numero o titolo…',
+    /** Spec 0146 D-3/AC-030: mostrato solo quando è selezionata una commessa e il task non ha un padre; elenca solo le fasi APERTE di quella commessa. */
+    workOrderStage: 'Fase',
+    workOrderStagePlaceholder: 'Seleziona una fase',
+    workOrderStageNoStage: 'Senza fase',
     requiresClosureFeedback: 'Feedback obbligatorio',
     requiresClosureFeedbackHint:
       'Se attivo, chiudere il task richiede un feedback scritto.',

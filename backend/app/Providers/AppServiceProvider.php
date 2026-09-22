@@ -58,6 +58,7 @@ use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
+use App\Models\TaskTemplateStage;
 use App\Models\TaskType;
 use App\Models\TimeEntry;
 use App\Models\TimeEntryDayNote;
@@ -66,6 +67,7 @@ use App\Models\User;
 use App\Models\UserTablePreference;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderStage;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\QuoteWorkflows\CategoryBranchResolver;
@@ -251,6 +253,11 @@ class AppServiceProvider extends ServiceProvider
             // config('attachments.attachable_types').
             'task_template' => TaskTemplate::class,
             'task_template_item' => TaskTemplateItem::class,
+            // Spec 0146 (task board module): TaskTemplateStage/WorkOrderStage
+            // both use LogsModelActivity, same reasoning as document_layout
+            // above.
+            'task_template_stage' => TaskTemplateStage::class,
+            'work_order_stage' => WorkOrderStage::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

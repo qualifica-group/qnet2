@@ -7,6 +7,7 @@ namespace App\Http\Requests\TaskTemplates;
 use App\DataObjects\TaskTemplates\UpdateTaskTemplateData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateItems;
+use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateStages;
 use App\Models\TaskTemplate;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,12 @@ use Illuminate\Validation\Rule;
  * App\Services\TaskTemplates\TaskTemplateItemWriter::sync, which trusts
  * every id it receives (AC-005).
  *
+ * `stages` (spec 0146, D-2) follows the identical full-sync shape one level
+ * up: a `stages.*.id`, if present, must belong to THIS template (AC-003),
+ * and every `items.*.stage_key` must resolve to a `stages.*.key` of the
+ * SAME request (AC-003) — both asserted here, ahead of
+ * App\Services\TaskTemplates\TaskTemplateStageWriter::sync.
+ *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('update', $taskTemplate)).
  * EnforcesFieldPermissions (spec 0004) additionally rejects any submitted
@@ -30,6 +37,7 @@ class UpdateTaskTemplateRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesTaskTemplateItems;
+    use ValidatesTaskTemplateStages;
 
     private const int NAME_MAX = 191;
 
@@ -52,6 +60,7 @@ class UpdateTaskTemplateRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
             ...$this->itemsRules(required: false, allowIds: true),
+            ...$this->stagesRules(allowIds: true),
         ];
     }
 
@@ -60,6 +69,8 @@ class UpdateTaskTemplateRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
             $this->assertItemIdsBelongToTemplate($validator);
+            $this->assertStageIdsBelongToTemplate($validator);
+            $this->assertItemStageKeysResolve($validator);
         });
     }
 
@@ -85,6 +96,32 @@ class UpdateTaskTemplateRequest extends FormRequest
 
             if ($id !== null && ! in_array((int) $id, $ownedIds, true)) {
                 $validator->errors()->add("items.{$index}.id", 'This row does not belong to this task template.');
+            }
+        }
+    }
+
+    /**
+     * Every submitted `stages.*.id` must resolve to a row already owned by
+     * THIS template — a foreign or unknown id 422s on `stages.N.id`, and
+     * neither template is touched (AC-003).
+     */
+    private function assertStageIdsBelongToTemplate(Validator $validator): void
+    {
+        $stages = $this->input('stages');
+
+        if (! is_array($stages)) {
+            return;
+        }
+
+        /** @var TaskTemplate $taskTemplate */
+        $taskTemplate = $this->route('taskTemplate');
+        $ownedIds = $taskTemplate->stages()->pluck('id')->all();
+
+        foreach ($stages as $index => $row) {
+            $id = is_array($row) ? ($row['id'] ?? null) : null;
+
+            if ($id !== null && ! in_array((int) $id, $ownedIds, true)) {
+                $validator->errors()->add("stages.{$index}.id", 'This stage does not belong to this task template.');
             }
         }
     }

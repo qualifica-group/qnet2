@@ -50,3 +50,10 @@ Route::get('work-orders/{workOrder}', [WorkOrderController::class, 'show']);
 Route::post('work-orders', [WorkOrderController::class, 'store']);
 Route::match(['put', 'patch'], 'work-orders/{workOrder}', [WorkOrderController::class, 'update']);
 Route::delete('work-orders/{workOrder}', [WorkOrderController::class, 'destroy']);
+
+// Task board + "Fasi" (spec 0146): nested here rather than required directly
+// from routes/api.php (which sits at engineering.md §6's own 500-line hard
+// limit already) — required from WITHIN this file so every route in it still
+// inherits the SAME `auth:sanctum` group api.php's own require already
+// established, exactly as if inlined there.
+require __DIR__.'/work-order-task-board.php';

@@ -8,12 +8,14 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\TaskTemplates\CreateTaskTemplateData;
 use App\DataObjects\TaskTemplates\TaskTemplateItemData;
+use App\DataObjects\TaskTemplates\TaskTemplateStageData;
 use App\DataObjects\TaskTemplates\UpdateTaskTemplateData;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
 use App\Models\User;
 use App\Services\TaskTemplates\TaskTemplateDescriptionWriter;
 use App\Services\TaskTemplates\TaskTemplateItemWriter;
+use App\Services\TaskTemplates\TaskTemplateStageWriter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -28,6 +30,7 @@ class TaskTemplateService
     public function __construct(
         private readonly TaskTemplateDescriptionWriter $descriptionWriter,
         private readonly TaskTemplateItemWriter $itemWriter,
+        private readonly TaskTemplateStageWriter $stageWriter,
     ) {}
 
     public function create(CreateTaskTemplateData $data, User $actor): TaskTemplate
@@ -45,7 +48,10 @@ class TaskTemplateService
                 $taskTemplate->save();
             }
 
-            $this->itemWriter->create($taskTemplate, $data->items, $actor);
+            // Stages BEFORE items (spec 0146, D-2): the item writer resolves
+            // each row's `stage_key` against the ids this call just minted.
+            $stageIdsByKey = $this->stageWriter->create($taskTemplate, $data->stages);
+            $this->itemWriter->create($taskTemplate, $data->items, $actor, $stageIdsByKey);
 
             return $this->loadDetail($taskTemplate);
         });
@@ -67,10 +73,20 @@ class TaskTemplateService
             // (spec 0021) persists a custom-fields-only edit.
             $taskTemplate->save();
 
+            // Stages BEFORE items (spec 0146, D-2): the item writer resolves
+            // each row's `stage_key` against the ids this call just synced.
+            $stageIdsByKey = [];
+
+            if ($data->stagesSubmitted()) {
+                /** @var array<int, TaskTemplateStageData> $stages */
+                $stages = $data->stages;
+                $stageIdsByKey = $this->stageWriter->sync($taskTemplate, $stages);
+            }
+
             if ($data->itemsSubmitted()) {
                 /** @var array<int, TaskTemplateItemData> $items */
                 $items = $data->items;
-                $this->itemWriter->sync($taskTemplate, $items, $actor);
+                $this->itemWriter->sync($taskTemplate, $items, $actor, $stageIdsByKey);
             }
 
             return $this->loadDetail($taskTemplate->fresh());
@@ -137,7 +153,7 @@ class TaskTemplateService
      */
     private function loadDetail(TaskTemplate $taskTemplate): TaskTemplate
     {
-        return $taskTemplate->load(['items.taskStatus', 'items.attachments']);
+        return $taskTemplate->load(['stages', 'items.taskStatus', 'items.attachments']);
     }
 
     /**

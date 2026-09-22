@@ -52,8 +52,8 @@ vi.mock('@/features/attachments/documents-section', () => ({
   DocumentsSection: () => <div>documents-section</div>,
 }))
 
-vi.mock('@/features/work-orders/work-order-tasks-section', () => ({
-  WorkOrderTasksSection: () => <div>tasks-section</div>,
+vi.mock('@/features/work-orders/task-board/work-order-task-board', () => ({
+  WorkOrderTaskBoard: () => <div>task-board</div>,
 }))
 
 function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): WorkOrderDetailWithPermissions {
@@ -65,6 +65,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     status: { value: 'open', is_force_closed: false },
     is_force_closed: false,
     force_close_reason: null,
+    open_tasks_count: 0,
     callback_date: '2026-09-30',
     start_date: '2026-03-01',
     supervisors: [{ id: 21, name: 'Ada Alberti' }],

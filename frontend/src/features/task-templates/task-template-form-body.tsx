@@ -1,4 +1,4 @@
-import { FileStack, Info } from 'lucide-react'
+import { Info, Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FormSection } from '@/components/form-section'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
 import { Form, FormControl } from '@/components/ui/form'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
-import { TaskTemplateItemsEditor } from '@/features/task-templates/task-template-items-editor'
+import { TaskTemplateStagesEditor } from '@/features/task-templates/task-template-stages-editor'
 import { useTaskTemplateForm } from '@/features/task-templates/use-task-template-form'
 import type { TaskTemplateDetail, TaskTemplateFormMode } from '@/features/task-templates/types'
 
@@ -38,10 +38,17 @@ export function TaskTemplateFormBody({ mode, onSuccess, onCancel }: TaskTemplate
     addItemRow,
     removeItemRow,
     updateItemRow,
-    reorderItemRows,
+    moveItemRow,
     stagedFilesByRow,
     addStagedRowFiles,
     removeStagedRowFile,
+    stageRows,
+    stagesError,
+    stageErrors,
+    addStageRow,
+    renameStageRow,
+    removeStageRow,
+    reorderStageRows,
     onSubmit,
   } = useTaskTemplateForm({ mode, onSuccess })
 
@@ -100,18 +107,24 @@ export function TaskTemplateFormBody({ mode, onSuccess, onCancel }: TaskTemplate
 
           {itemsPermission.visible ? (
             <FormSection
-              icon={FileStack}
-              title={t('taskTemplates.form.sections.items.title')}
-              description={t('taskTemplates.form.sections.items.description')}
+              icon={Layers}
+              title={t('taskTemplates.form.sections.stages.title')}
+              description={t('taskTemplates.form.sections.stages.description')}
             >
-              <TaskTemplateItemsEditor
-                rows={itemRows}
-                errors={itemErrors}
+              <TaskTemplateStagesEditor
+                itemRows={itemRows}
+                stageRows={stageRows}
+                itemErrors={itemErrors}
+                stageErrors={stageErrors}
                 stagedFilesByRow={stagedFilesByRow}
-                onReorder={reorderItemRows}
-                onAdd={addItemRow}
-                onRemove={removeItemRow}
-                onUpdateRow={updateItemRow}
+                onAddStage={addStageRow}
+                onRenameStage={renameStageRow}
+                onRemoveStage={removeStageRow}
+                onReorderStages={reorderStageRows}
+                onAddItem={addItemRow}
+                onUpdateItem={updateItemRow}
+                onRemoveItem={removeItemRow}
+                onMoveItem={moveItemRow}
                 onAddStagedFiles={addStagedRowFiles}
                 onRemoveStagedFile={removeStagedRowFile}
                 disabled={!itemsPermission.editable || itemsPermission.disabled}
@@ -119,6 +132,11 @@ export function TaskTemplateFormBody({ mode, onSuccess, onCancel }: TaskTemplate
               {itemsError ? (
                 <p className="text-sm font-medium text-destructive" role="alert">
                   {itemsError}
+                </p>
+              ) : null}
+              {stagesError ? (
+                <p className="text-sm font-medium text-destructive" role="alert">
+                  {stagesError}
                 </p>
               ) : null}
             </FormSection>

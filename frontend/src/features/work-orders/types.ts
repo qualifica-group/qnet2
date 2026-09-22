@@ -134,6 +134,13 @@ export interface WorkOrderDetail {
   status: WorkOrderStatus
   is_force_closed: boolean
   force_close_reason: string | null
+  /**
+   * Spec 0146 D-8/AC-023: task of this commessa NOT closed, counted WITHOUT
+   * visibility (the actor may not see all of them) — the exact set the
+   * force-close side effect would flip to `ClosedNegative`. Drives the
+   * closure confirmation's warning (`WorkOrderClosureSection`, AC-032).
+   */
+  open_tasks_count: number
   /** `Y-m-d` (spec 0096): a commessa always has a start date. */
   start_date: string
   callback_date: string | null

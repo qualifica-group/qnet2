@@ -39,9 +39,6 @@ const DEFAULT_BLOCK_SIZE = 25
  * kind of plain value, sent as `quoteId` only when present — a no-op for
  * every domain but `work-orders`.
  *
- * `workOrderId` (spec 0133 D-1, the Commessa detail's Task tab) is the same
- * kind of plain value — a no-op for every domain but `tasks`.
- *
  * Domain-agnostic: the only domain-specific input is the `domain` key. The same
  * datasource powers every table.
  */
@@ -52,7 +49,6 @@ export function createSsrmDatasource(
   productCategoryId?: number,
   opportunityId?: number,
   quoteId?: number,
-  workOrderId?: number,
 ): IServerSideDatasource<TableRow> {
   return {
     async getRows(params: IServerSideGetRowsParams<TableRow>): Promise<void> {
@@ -91,7 +87,6 @@ export function createSsrmDatasource(
           ...(productCategoryId != null ? { productCategoryId } : {}),
           ...(opportunityId != null ? { opportunityId } : {}),
           ...(quoteId != null ? { quoteId } : {}),
-          ...(workOrderId != null ? { workOrderId } : {}),
         })
 
         params.success({

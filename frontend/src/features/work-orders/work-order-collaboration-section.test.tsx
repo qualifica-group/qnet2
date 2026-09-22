@@ -62,8 +62,8 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
   ),
 }))
 
-vi.mock('@/features/work-orders/work-order-tasks-section', () => ({
-  WorkOrderTasksSection: () => <div>tasks-section</div>,
+vi.mock('@/features/work-orders/task-board/work-order-task-board', () => ({
+  WorkOrderTaskBoard: () => <div>task-board</div>,
 }))
 
 const label = (key: string) => i18n.t(key)
@@ -77,6 +77,7 @@ function workOrder(actions: Record<string, boolean>): WorkOrderDetailWithPermiss
     status: { value: 'open', is_force_closed: false },
     is_force_closed: false,
     force_close_reason: null,
+    open_tasks_count: 0,
     callback_date: null,
     start_date: '2026-03-01',
     supervisors: [],
@@ -158,8 +159,8 @@ describe('WorkOrderDetailView — side column (spec 0134 D-3)', () => {
 
     expect(screen.getAllByText('activity-log-section:work-orders:4')).toHaveLength(1)
     expect(screen.getByRole('tab', { name: label('activityLog.title') })).toBeInTheDocument()
-    // The Task panel sits below the record, outside the collaboration card.
-    expect(screen.getByText('tasks-section')).toBeInTheDocument()
+    // The Task board sits below the record, outside the collaboration card.
+    expect(screen.getByText('task-board')).toBeInTheDocument()
   })
 
   it('renders no side card when no collaboration tab is authorized', () => {

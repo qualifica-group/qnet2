@@ -21,7 +21,6 @@ use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
-use App\Tables\Tasks\WorkOrderScopedTableDefinition;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -71,7 +70,6 @@ class TableController extends BaseApiController
             $this->scopeToProductCategory($definition, $request->productCategoryId());
             $this->scopeToOpportunity($definition, $request->opportunityId());
             $this->scopeToQuote($definition, $request->quoteId());
-            $this->scopeToWorkOrder($definition, $request->workOrderId());
 
             return $this->ok($this->resolvedConfig($definition, $actor));
         } catch (Throwable $exception) {
@@ -225,8 +223,6 @@ class TableController extends BaseApiController
             $this->scopeToOpportunity($definition, $opportunityId === null ? null : (int) $opportunityId);
             $quoteId = $payload['quoteId'] ?? null;
             $this->scopeToQuote($definition, $quoteId === null ? null : (int) $quoteId);
-            $workOrderId = $payload['workOrderId'] ?? null;
-            $this->scopeToWorkOrder($definition, $workOrderId === null ? null : (int) $workOrderId);
 
             $result = $this->service->rows($definition, $actor, $payload);
 
@@ -295,7 +291,6 @@ class TableController extends BaseApiController
             $this->scopeToProductCategory($definition, $payload['productCategoryId']);
             $this->scopeToOpportunity($definition, $payload['opportunityId']);
             $this->scopeToQuote($definition, $payload['quoteId']);
-            $this->scopeToWorkOrder($definition, $payload['workOrderId']);
 
             $result = $this->service->distinctValues(
                 $definition,
@@ -411,18 +406,6 @@ class TableController extends BaseApiController
     {
         if ($definition instanceof QuoteScopedTableDefinition) {
             $definition->scopeToQuote($quoteId);
-        }
-    }
-
-    /**
-     * Spec 0133: narrows a `WorkOrderScopedTableDefinition` (only `tasks`) to
-     * one Work Order's own tasks. A no-op for every other domain, mirroring
-     * `scopeToQuote()`.
-     */
-    private function scopeToWorkOrder(TableDefinition $definition, ?int $workOrderId): void
-    {
-        if ($definition instanceof WorkOrderScopedTableDefinition) {
-            $definition->scopeToWorkOrder($workOrderId);
         }
     }
 }

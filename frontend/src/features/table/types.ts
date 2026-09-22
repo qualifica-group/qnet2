@@ -348,12 +348,6 @@ export interface TableRowScope {
    * domain but `work-orders`.
    */
   quoteId?: number
-  /**
-   * Row-set scope to one Work Order (spec 0133 D-1, the Commessa detail's
-   * Task tab): `tasks.work_order_id` is a direct `where`. A no-op for every
-   * domain but `tasks`.
-   */
-  workOrderId?: number
 }
 
 /** SSRM rows request payload (AG Grid IServerSideGetRowsRequest subset). */
@@ -388,8 +382,6 @@ export interface TableRowsPayload {
   opportunityId?: number | null
   /** Row-set scope to one Contract's Offerta (spec 0095 D-8), same rule as above; a no-op for every domain but `work-orders`. */
   quoteId?: number | null
-  /** Row-set scope to one Work Order (spec 0133 D-1, the Commessa detail's Task tab), same rule as above; a no-op for every domain but `tasks`. */
-  workOrderId?: number | null
 }
 
 /** Pagination metadata from the `paginatedResponse()` envelope. */
@@ -429,8 +421,6 @@ export interface TableColumnValuesPayload {
   opportunityId?: number | null
   /** Row-set scope to one Contract's Offerta (spec 0095 D-8), same rule as above. */
   quoteId?: number | null
-  /** Row-set scope to one Work Order (spec 0133 D-1), same rule as above. */
-  workOrderId?: number | null
 }
 
 /** Response of POST /tables/{domain}/values (envelope `data`). */

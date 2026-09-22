@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next'
  * Zod schema for the task template create/edit form's HEADER fields only
  * (`name`/`description`/`is_active`), built as a factory so validation
  * messages are localized. `items` is local state driven by
- * `<TaskTemplateItemsEditor>` (a `<SortableList>`, not an RHF field array —
+ * `<TaskTemplateStagesEditor>` (a drag board, not an RHF field array —
  * mirrors `quote-workflow-schema`'s `statuses`), validated separately by
  * `validateTaskTemplateItemRows`.
  */

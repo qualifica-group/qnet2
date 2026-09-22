@@ -54,6 +54,18 @@ class TaskTemplate extends BaseModel
     }
 
     /**
+     * The ordered "Fasi" of this template (spec 0146, D-2), written through
+     * the same full-sync writer as `items()`. An item with no stage sits in
+     * "Senza fase" (`task_template_stage_id` null), not a row here.
+     *
+     * @return HasMany<TaskTemplateStage, $this>
+     */
+    public function stages(): HasMany
+    {
+        return $this->hasMany(TaskTemplateStage::class)->orderBy('sort_order');
+    }
+
+    /**
      * The Commesse generated from this template — the referenced-by set
      * `TaskTemplateService::delete()` guards against with a 409 (D-5,
      * AC-011). Not `restrictOnDelete` alone: the guard fires BEFORE the

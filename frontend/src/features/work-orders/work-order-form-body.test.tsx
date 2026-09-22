@@ -104,6 +104,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     status: { value: 'open', is_force_closed: false },
     is_force_closed: false,
     force_close_reason: null,
+    open_tasks_count: 0,
     callback_date: null,
     start_date: '2026-03-01',
     supervisors: [{ id: 21, name: 'Ada Alberti' }],

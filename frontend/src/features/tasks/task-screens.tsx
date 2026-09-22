@@ -105,9 +105,11 @@ export function TaskFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
     const parentTaskId = parseEntityId(String(mode.params?.parent_task_id ?? ''))
     // Spec 0133 D-4: "Nuovo task" from the Commessa detail's Task tab.
     const workOrderId = parseEntityId(String(mode.params?.work_order_id ?? ''))
+    // Spec 0146 AC-030: "+ Task" of a fase on the Task board.
+    const workOrderStageId = parseEntityId(String(mode.params?.work_order_stage_id ?? ''))
     return (
       <TaskForm
-        mode={{ type: 'create', parentTaskId, workOrderId }}
+        mode={{ type: 'create', parentTaskId, workOrderId, workOrderStageId }}
         onSuccess={handleSuccess}
         onCancel={onCancel}
       />

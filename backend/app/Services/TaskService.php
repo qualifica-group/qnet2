@@ -20,6 +20,7 @@ use App\Services\Tasks\TaskParentAccessGuard;
 use App\Services\Tasks\TaskParentDateRangeGuard;
 use App\Services\Tasks\TaskRecurrenceService;
 use App\Services\Tasks\TaskReferentRegistryGuard;
+use App\Services\Tasks\TaskStageGuard;
 use App\Services\Tasks\TaskValidationRequirementGuard;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Services\Tasks\TaskWatcherOverlapGuard;
@@ -105,6 +106,7 @@ class TaskService
         'referent',
         'opportunity',
         'workOrder',
+        'workOrderStage',
         'requester',
         'creator',
         'parentTask',
@@ -124,6 +126,7 @@ class TaskService
         private readonly TaskParentDateRangeGuard $parentDateRangeGuard,
         private readonly TaskRecurrenceService $recurrenceService,
         private readonly TaskReferentRegistryGuard $referentRegistryGuard,
+        private readonly TaskStageGuard $stageGuard,
         private readonly TaskValidationRequirementGuard $validationRequirementGuard,
         private readonly TaskWatcherOverlapGuard $watcherOverlapGuard,
     ) {}
@@ -161,6 +164,11 @@ class TaskService
             // Unconditional on create — there is no "submitted keys" partial
             // state to gate on, every attribute is already on the row.
             $this->parentDateRangeGuard->assertChildWithinParent($task);
+
+            // Step 2d: the task board "Fase" rule (spec 0146, D-3/AC-015) —
+            // prohibited on a sub-task, must belong to `work_order_id`, must
+            // not be closed, accoded at the end when valid.
+            $this->stageGuard->applyOnCreate($task);
 
             // Step 3: the initial status is DERIVED, never submitted (spec
             // 0118 D-3/D-4): a single assignee who is the creator or the
@@ -291,6 +299,12 @@ class TaskService
             }
 
             $this->parentDateRangeGuard->assertChildrenWithinRange($task);
+
+            // The task board "Fase" rule (spec 0146, D-3/AC-015/AC-016) —
+            // gated on the key actually submitted, so an untouched
+            // work_order_stage_id is judged as INHERITED (silently detached
+            // if no longer coherent) rather than as a fresh client choice.
+            $this->stageGuard->applyOnUpdate($task, $data->workOrderStageIdSubmitted);
 
             $this->referentRegistryGuard->assertBelongs($task->registry_id, $task->referent_id);
             $this->closureFeedbackGuard->assertSatisfied($task);

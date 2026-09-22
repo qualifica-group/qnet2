@@ -15,7 +15,7 @@ import { TaskPlanningSection } from '@/features/tasks/task-planning-section'
 import { TaskRecurrenceSection } from '@/features/tasks/task-recurrence-section'
 import { TaskRegistrySection } from '@/features/tasks/task-registry-section'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
-import type { TaskDetail, TaskFormMode, TaskNamedRef } from '@/features/tasks/types'
+import type { TaskDetail, TaskFormMode, TaskNamedRef, TaskWorkOrderStageRef } from '@/features/tasks/types'
 
 /** DOM id bridging the sticky header's and the footer's save actions to the RHF `<form>`. */
 const TASK_FORM_ID = 'task-form'
@@ -62,6 +62,11 @@ function workOrderRefOf(task: TaskDetail | null): RelationFieldRef | null {
   const title = workOrder.title.trim()
   const name = title === '' ? workOrder.code : `${workOrder.code}${WORK_ORDER_LABEL_SEPARATOR}${title}`
   return { id: workOrder.id, name }
+}
+
+/** The persisted fase (spec 0146 D-3), possibly closed — `useTaskWorkOrderStageOptions` keeps it selectable regardless. */
+function workOrderStageOf(task: TaskDetail | null): TaskWorkOrderStageRef | null {
+  return task?.work_order_stage ?? null
 }
 
 function peopleOf(refs: TaskNamedRef[] | undefined): RelationFieldRef[] {
@@ -121,6 +126,8 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
     serverError,
     onSubmit,
     handleRegistryChange,
+    handleWorkOrderChange,
+    handleParentChange,
     handleStatusItemChange,
     completionPercentage,
     currentUserRef,
@@ -166,6 +173,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
                 parentTask={parentRefOf(task)}
                 excludeTaskId={task?.id}
                 parentLocked={parentLocked}
+                onParentChange={handleParentChange}
               />
 
               <TaskClassificationSection
@@ -196,6 +204,8 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
                 control={form.control}
                 opportunity={task?.opportunity ?? parentPrefillRefs.opportunity}
                 workOrder={workOrderRefOf(task) ?? workOrderPrefillRef ?? parentPrefillRefs.workOrder}
+                workOrderStage={workOrderStageOf(task)}
+                onWorkOrderChange={handleWorkOrderChange}
               />
 
               <TaskRecurrenceSection control={form.control} />

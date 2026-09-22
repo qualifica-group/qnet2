@@ -24,6 +24,12 @@ use Illuminate\Support\Collection;
  * THAT row (a brand-new row needs its own id before an inline image can
  * become one of its attachments), so every write here goes through
  * TaskTemplateDescriptionWriter rather than the row's own attributes() map.
+ *
+ * `$stageIdsByKey` (spec 0146, D-2), on both create() and sync(), is the
+ * `key => id` map App\Services\TaskTemplates\TaskTemplateStageWriter just
+ * resolved this same request's `stages` into — TaskTemplateService always
+ * runs the stage writer first so this map is ready by the time this class
+ * runs.
  */
 final class TaskTemplateItemWriter
 {
@@ -34,11 +40,12 @@ final class TaskTemplateItemWriter
      * (`sort_order` = array index, D-1).
      *
      * @param  array<int, TaskTemplateItemData>  $items
+     * @param  array<string, int>  $stageIdsByKey
      */
-    public function create(TaskTemplate $taskTemplate, array $items, User $actor): void
+    public function create(TaskTemplate $taskTemplate, array $items, User $actor, array $stageIdsByKey = []): void
     {
         foreach ($items as $index => $item) {
-            $row = $taskTemplate->items()->create($item->attributes($index));
+            $row = $taskTemplate->items()->create($item->attributes($index, $stageIdsByKey));
             $this->applyNewDescription($row, $item, $index, $actor);
         }
     }
@@ -50,8 +57,9 @@ final class TaskTemplateItemWriter
      * UpdateTaskTemplateRequest before this runs.
      *
      * @param  array<int, TaskTemplateItemData>  $items
+     * @param  array<string, int>  $stageIdsByKey
      */
-    public function sync(TaskTemplate $taskTemplate, array $items, User $actor): void
+    public function sync(TaskTemplate $taskTemplate, array $items, User $actor, array $stageIdsByKey = []): void
     {
         /** @var Collection<int, TaskTemplateItem> $existing */
         $existing = $taskTemplate->items()->get()->keyBy('id');
@@ -59,7 +67,7 @@ final class TaskTemplateItemWriter
 
         foreach ($items as $index => $item) {
             if ($item->id === null) {
-                $row = $taskTemplate->items()->create($item->attributes($index));
+                $row = $taskTemplate->items()->create($item->attributes($index, $stageIdsByKey));
                 $this->applyNewDescription($row, $item, $index, $actor);
                 $keptIds[] = $row->id;
 
@@ -68,7 +76,7 @@ final class TaskTemplateItemWriter
 
             /** @var TaskTemplateItem $row */
             $row = $existing->get($item->id);
-            $row->fill($item->attributes($index));
+            $row->fill($item->attributes($index, $stageIdsByKey));
             $this->descriptionWriter->applyOnUpdate($row, $item->description, $actor, $this->field($index));
             $row->save();
             $keptIds[] = $row->id;

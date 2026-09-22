@@ -40,6 +40,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * object App\Services\Tasks\TaskRecurrenceService resolves into a row — the
  * FormRequests reject the raw key outright, and this model simply cannot
  * receive it by mass assignment either way.
+ *
+ * `work_order_stage_id` (spec 0146, D-3) IS fillable — genuine client input
+ * on a root Task's create/update, validated upstream (must belong to
+ * `work_order_id`, `prohibited` on a sub-task, 409 on a closed stage).
+ * `stage_position` is DELIBERATELY absent: the board's own move/bulk
+ * services assign it, the same category as `creator_id`.
  */
 #[Fillable([
     'title',
@@ -54,6 +60,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'task_category_id',
     'opportunity_id',
     'work_order_id',
+    'work_order_stage_id',
     'requester_id',
     'start_date',
     'end_date',
@@ -84,6 +91,7 @@ class Task extends BaseModel
             'is_blocked' => 'boolean',
             'requires_closure_feedback' => 'boolean',
             'requires_validation' => 'boolean',
+            'stage_position' => 'int',
         ];
     }
 
@@ -157,6 +165,17 @@ class Task extends BaseModel
     public function workOrder(): BelongsTo
     {
         return $this->belongsTo(WorkOrder::class);
+    }
+
+    /**
+     * The "Fase" this root Task sits in on its commessa's task board (spec
+     * 0146, D-2/D-3), null for "Senza fase" and always null on a sub-task.
+     *
+     * @return BelongsTo<WorkOrderStage, $this>
+     */
+    public function workOrderStage(): BelongsTo
+    {
+        return $this->belongsTo(WorkOrderStage::class);
     }
 
     /**
@@ -245,5 +264,18 @@ class Task extends BaseModel
     public function watchers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'task_watcher')->orderBy('users.name');
+    }
+
+    /**
+     * The segnatempo rows logged against this Task (spec 0122). Read by the
+     * task board (spec 0146) via `withSum('timeEntries', 'minutes')` for
+     * `actual_minutes` — never loaded whole, the board only ever needs the
+     * aggregate.
+     *
+     * @return HasMany<TimeEntry, $this>
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
     }
 }

@@ -39,6 +39,11 @@ function baseFields(t: TFunction) {
     task_category_id: z.number().nullable(),
     opportunity_id: z.number().nullable(),
     work_order_id: z.number().nullable(),
+    // Spec 0146 D-2/D-3: server-side requiredness (belongs to `work_order_id`,
+    // prohibited on a sub-task) is not client-replicable without the fetched
+    // fase list, so this stays a plain nullable id — `TaskLinksSection` hides
+    // the control outright rather than duplicating the rule here.
+    work_order_stage_id: z.number().nullable(),
     requester_id: z.number().nullable(),
     start_date: z.string().nullable(),
     end_date: z.string().nullable(),

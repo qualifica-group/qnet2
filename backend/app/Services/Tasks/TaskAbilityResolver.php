@@ -26,11 +26,12 @@ use App\Models\User;
 final class TaskAbilityResolver
 {
     /**
-     * The 19 fields that define the Task's MANDATE (who answers, by when,
+     * The 20 fields that define the Task's MANDATE (who answers, by when,
      * about what) rather than its execution (D-5; spec 0121 D-1 added
-     * `requires_validation` as the 18th, spec 0120 D-12 adds `recurrence` as
-     * the 19th — an assignee who may otherwise edit the Task still may not
-     * touch its series). Read by
+     * `requires_validation` as the 18th, spec 0120 D-12 added `recurrence` as
+     * the 19th, spec 0146 D-3 adds `work_order_stage_id` as the 20th — an
+     * assignee who may otherwise edit the Task still may not touch its
+     * series, or move it to a different "Fase" of its commessa). Read by
      * `App\Authorization\TasksAuthorization::fieldPermissionCeiling()` to
      * lower the ceiling for anyone who is not creator/requester/manager.
      *
@@ -47,6 +48,7 @@ final class TaskAbilityResolver
         'task_category_id',
         'opportunity_id',
         'work_order_id',
+        'work_order_stage_id',
         'requester_id',
         'start_date',
         'end_date',

@@ -12,6 +12,10 @@ import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/type
  * "Details | Tasks" strip inside the record card but a full-width panel below
  * the record, like the Offerte panel of the Opportunita' record. With
  * `tasks.viewAny` the panel mounts next to the sections; without, it is absent.
+ *
+ * Spec 0146 D-10, REQUIREMENT CHANGED: the panel is now the Task board
+ * (`WorkOrderTaskBoard`), not the old `TableView domain="tasks"` grid
+ * (`WorkOrderTasksSection`, removed) — same gate, same mount point (AC-024).
  */
 function render(ui: ReactElement) {
   return rtlRender(ui, { wrapper: MemoryRouter })
@@ -38,8 +42,8 @@ vi.mock('@/features/attachments/documents-section', () => ({
   DocumentsSection: () => <div>documents-section</div>,
 }))
 
-vi.mock('@/features/work-orders/work-order-tasks-section', () => ({
-  WorkOrderTasksSection: ({ workOrderId }: { workOrderId: number }) => <div>tasks-section-{workOrderId}</div>,
+vi.mock('@/features/work-orders/task-board/work-order-task-board', () => ({
+  WorkOrderTaskBoard: ({ workOrderId }: { workOrderId: number }) => <div>task-board-{workOrderId}</div>,
 }))
 
 function workOrder(): WorkOrderDetailWithPermissions {
@@ -51,6 +55,7 @@ function workOrder(): WorkOrderDetailWithPermissions {
     status: { value: 'open', is_force_closed: false },
     is_force_closed: false,
     force_close_reason: null,
+    open_tasks_count: 0,
     callback_date: null,
     start_date: '2026-03-01',
     supervisors: [],
@@ -88,7 +93,7 @@ describe('WorkOrderDetailView — task panel (spec 0133)', () => {
   it('AC-009: mounts the task panel below the record, with the sections always visible', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
-    expect(screen.getByText('tasks-section-4')).toBeInTheDocument()
+    expect(screen.getByText('task-board-4')).toBeInTheDocument()
     expect(screen.getByText('Descrizione libera')).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Details' })).not.toBeInTheDocument()
     expect(screen.getByText('notes-section')).toBeInTheDocument()
@@ -98,7 +103,7 @@ describe('WorkOrderDetailView — task panel (spec 0133)', () => {
     canMock.mockImplementation((permission) => permission !== 'tasks.viewAny')
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
-    expect(screen.queryByText('tasks-section-4')).not.toBeInTheDocument()
+    expect(screen.queryByText('task-board-4')).not.toBeInTheDocument()
     expect(screen.getByText('Descrizione libera')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Activity log' })).toBeInTheDocument()
   })

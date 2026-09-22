@@ -23,6 +23,7 @@ class TaskTemplateResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'is_active' => $this->is_active,
+            'stages' => TaskTemplateStageResource::collection($this->whenLoaded('stages')),
             'items_count' => $this->items->count(),
             'items' => TaskTemplateItemResource::collection($this->items),
             'created_at' => $this->created_at,

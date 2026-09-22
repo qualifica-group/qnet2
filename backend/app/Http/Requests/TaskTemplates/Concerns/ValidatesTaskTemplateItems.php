@@ -14,6 +14,11 @@ use Illuminate\Foundation\Http\FormRequest;
  * QuoteWorkflows\Concerns\ValidatesWorkflowCriteria's own statusesRules()
  * split (`$required`/`$allowIds`).
  *
+ * `items.*.stage_key` (spec 0146, D-2) is validated for SHAPE only here
+ * (optional, nullable string) — whether it actually resolves to a
+ * `stages.*.key` of the same request is a cross-field check, see
+ * ValidatesTaskTemplateStages::assertItemStageKeysResolve().
+ *
  * @phpstan-require-extends FormRequest
  */
 trait ValidatesTaskTemplateItems
@@ -25,6 +30,8 @@ trait ValidatesTaskTemplateItems
     private const int DUE_OFFSET_DAYS_MAX = 3650;
 
     private const int ITEMS_MAX = 100;
+
+    private const int ITEM_STAGE_KEY_MAX = 191;
 
     /**
      * @param  bool  $allowIds  update passes true (`items.*.id` identifies an
@@ -45,6 +52,7 @@ trait ValidatesTaskTemplateItems
             'items.*.estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:'.self::ESTIMATED_MINUTES_MAX],
             'items.*.task_status_id' => ['sometimes', 'nullable', 'integer', new TaskTemplateItemStatus],
             'items.*.due_offset_days' => ['required', 'integer', 'min:0', 'max:'.self::DUE_OFFSET_DAYS_MAX],
+            'items.*.stage_key' => ['sometimes', 'nullable', 'string', 'max:'.self::ITEM_STAGE_KEY_MAX],
         ];
     }
 }

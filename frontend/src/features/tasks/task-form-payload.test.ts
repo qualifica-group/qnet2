@@ -20,6 +20,12 @@ describe('buildCreatePayload', () => {
     expect(payload.estimated_minutes).toBe(90)
   })
 
+  /** Spec 0146 D-2: sent on create like any other scalar, `null` when unpicked. */
+  it('sends work_order_stage_id', () => {
+    expect(buildCreatePayload(values()).work_order_stage_id).toBeNull()
+    expect(buildCreatePayload(values({ work_order_stage_id: 7 })).work_order_stage_id).toBe(7)
+  })
+
   it('AC-011: never carries creator_id nor completion_percentage', () => {
     const payload = buildCreatePayload(values())
 
@@ -165,6 +171,22 @@ describe('buildUpdatePayload', () => {
     const payload = buildUpdatePayload(values({ referent_id: null }), task())
 
     expect(payload).toHaveProperty('referent_id', null)
+  })
+
+  /** Spec 0146 D-2/AC-015/AC-016: same "changed only" wire contract as any scalar. */
+  it('sends work_order_stage_id only when it actually changed', () => {
+    expect(buildUpdatePayload(values({ work_order_stage_id: null }), task())).not.toHaveProperty(
+      'work_order_stage_id',
+    )
+
+    const payload = buildUpdatePayload(values({ work_order_stage_id: 7 }), task())
+    expect(payload.work_order_stage_id).toBe(7)
+  })
+
+  it('clears the fase by sending an explicit null when it was previously set', () => {
+    const payload = buildUpdatePayload(values({ work_order_stage_id: null }), task({ work_order_stage_id: 7 }))
+
+    expect(payload).toHaveProperty('work_order_stage_id', null)
   })
 
   it('AC-011/AC-084: never carries creator_id nor completion_percentage, whatever changed', () => {

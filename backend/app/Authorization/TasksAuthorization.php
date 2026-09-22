@@ -38,9 +38,10 @@ use Illuminate\Database\Eloquent\Model;
  * scope for this spec.
  *
  * Every field's ceiling is the plain visible+editable-when-may-write /
- * visible+readonly default, EXCEPT the 19 fields in
+ * visible+readonly default, EXCEPT the 20 fields in
  * `TaskAbilityResolver::PROTECTED_FIELDS` (spec 0116, D-5; spec 0121, D-1
- * adds `requires_validation`; spec 0120, D-12 adds `recurrence`): those
+ * adds `requires_validation`; spec 0120, D-12 adds `recurrence`; spec 0146,
+ * D-3 adds `work_order_stage_id`): those
  * additionally require the actor to own the Task's MANDATE
  * (`TaskAbilityResolver::canUpdateProtectedFields()`) once a record exists.
  * `recurrence` is additionally gated by `UpdateTaskRequest::authorize()`
@@ -90,6 +91,12 @@ class TasksAuthorization extends AbstractResourceAuthorization
         'task_category_id' => 'select',
         'opportunity_id' => 'select',
         'work_order_id' => 'select',
+        // Spec 0146, D-3: the task board "Fase" — same treatment as
+        // `work_order_id` right above it (also in
+        // `TaskAbilityResolver::PROTECTED_FIELDS`), so the generic form
+        // engine's `permissions.fields.work_order_stage_id` gates it the
+        // same way.
+        'work_order_stage_id' => 'select',
         'requester_id' => 'select',
         'start_date' => 'date',
         'end_date' => 'date',

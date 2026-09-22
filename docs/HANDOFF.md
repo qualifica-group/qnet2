@@ -3,6 +3,91 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSE: TASK BOARD CON FASI — NON COMMITTATO (2026-09-22)
+
+Spec 0146 (`docs/specs/0146-work-order-task-stages.xml`, implemented). Verifier: VERDE.
+- Pest: suite completa 8036 test, l'unico rosso (`TaskAbilityResolverTest`) e' stato corretto e rieseguito.
+- Vitest: 746 file / 5664 test.
+- `tsc -b --force` EXIT 0; eslint pulito sui file toccati; Pint pulito.
+
+**Naming.** La "fase" si chiama `stage` negli identificatori, perche' "phase" e' gia' il `group` di `TaskStatus`; in UI resta "Fase".
+
+**DB**
+- `task_template_stages`.
+- `task_template_items.task_template_stage_id` (nullOnDelete).
+- `work_order_stages` (`closed_at`, `closed_by_id` scritti solo dal service).
+- `tasks.work_order_stage_id` (nullOnDelete) + `tasks.stage_position` (NON fillable).
+- `QuoteWorkflowMigrationTest` porta il conteggio a 90 passi.
+
+**Regole**
+- Solo i task radice hanno fase e posizione; su un sottotask la fase da' 422.
+- La fase deve appartenere alla commessa del task. Se cambia la commessa o il task diventa sottotask, la fase si azzera (`TaskStageGuard`).
+- Una fase si chiude solo senza task aperti (radici + sottotask), altrimenti 409 con `data.open_tasks_count`. `BaseApiController::fail()` ha ora un 4° parametro opzionale `$data`.
+- Su una fase chiusa: create/move/update danno 409.
+- Commessa chiusa: board in sola lettura, mutazioni 409.
+- Chiusura forzata della commessa (D-8, `WorkOrderTaskForceCloser`): i task non chiusi passano a ClosedNegative.
+  - Nella stessa transazione, senza visibilita', senza notifiche ne' segnatempo.
+  - `closure_feedback` = motivo, se il task non ne aveva gia' uno.
+  - Riaprire la commessa non riapre i task.
+- `WorkOrderResource.open_tasks_count`.
+
+**API**
+- Route in `routes/api/work-order-task-board.php`, richiesto da `routes/api/work-orders.php` perche' `api.php` e' a 499 righe.
+- Endpoint:
+  - `GET work-orders/{id}/task-board`;
+  - `GET|POST stages`, `POST stages/reorder`, `PATCH|DELETE stages/{stage}`, `POST stages/{stage}/close|reopen` (con `scopeBindings`);
+  - `POST task-board/move`, `POST task-board/bulk` (assign/complete/uncomplete/block/priority/dates; esito per singolo task, max 200 id).
+- Template:
+  - `stages[{id?,key,name}]` + `items.*.stage_key`, SEMPRE nella stessa richiesta (422 altrimenti);
+  - `WorkOrderTaskGenerator` copia le fasi.
+- `work_order_stage_id` e' nel catalogo `TasksAuthorization` e in `TaskAbilityResolver::PROTECTED_FIELDS`.
+
+**Frontend**
+- `features/work-orders/task-board/`:
+  - vista Lista raggruppata + Board kanban (`@dnd-kit`);
+  - KPI, filtri client-side (predefinito "Aperti"), barra azioni massive;
+  - menu "..." nell'header con "Nuova fase" (dialog con il nome).
+- Drag: `position` e' calcolata sui gruppi NON filtrati (`allGroups`), mai su quelli renderizzati.
+- Campo "Fase" nel form task (solo con commessa e senza padre, solo fasi aperte), prefill da `ModuleCreateParams.work_order_stage_id`.
+- Editor delle fasi nel Modello di Task: multi-container drag, piu' un select "Fase" per riga come alternativa da tastiera.
+- Avviso inline `openTasksWarning` nella chiusura della commessa.
+
+**Rifiniture UI (richieste dell'utente, 2026-09-22)**
+- Filtri alla "Gestione richieste": barra `bg-surface` con ricerca, "Modifica filtri" e Lista/Board.
+  - Chip dei filtri applicati su una riga orizzontale (`task-board-applied-filters.tsx`).
+  - Pannello laterale con bozza applicata solo con "Applica" (`task-board-filters-sheet.tsx`, `task-board-segmented-field.tsx`).
+  - Rimosso `task-board-toolbar-filters-popover.tsx`.
+- Riga task con campi etichettati (`task-board-row-content.tsx`, `task-board-task-meta.tsx`).
+  - Persone via `UserProfileHoverCard` + `UserAvatar`.
+  - Completamento; ore lavorate/stimate con barra rossa oltre la stima.
+- Fase:
+  - pannello `bg-surface` (non piu' `bg-card` su card);
+  - completamento = MEDIA di `task_status.completion_percentage` dei task radice, stessa regola per il KPI globale;
+  - ore complessive (`TaskBoardStageSummary`);
+  - bottone "Task" con sola icona +.
+- Menu "..." nell'header del board con "Nuova fase" (dialog col nome). Le fasi senza task restano visibili.
+- Gerarchia visiva ("troppo piatto"):
+  - canvas `bg-surface` sotto l'header del board;
+  - toolbar e KPI come card bianche rialzate;
+  - fase = titolo sul canvas (pallino colore da `task-board-stage-accent.ts`, conteggio, riepilogo, menu in `task-board-stage-menu.tsx`) + UNA card bianca di task con striscia colore e righe `divide-y` (niente box per riga);
+  - sottotask con linea guida;
+  - kanban: colonne con intestazione sul canvas e corpo `bg-muted/40`.
+  - Rimossi `task-board-due-badge.tsx` e `task-board-avatar-stack.tsx`.
+- "Scadenza" rinominata "Data fine" (riga e filtro). `TaskBoardEndDate`: chip rosso + triangolo + tooltip "Scaduto" se passata, tooltip "Oggi" se odierna.
+- Contratto board esteso con `BoardTask.description_excerpt` (`RichTextPlainText::excerpt`, 160 caratteri, null se vuota), mostrata sotto il titolo; spec 0146 aggiornata.
+
+**D-10.** Rimosso lo scope `workOrderId` della griglia Task (spec 0133), sia BE (`WorkOrderScopedTableDefinition`) sia FE (`TableRowScope.workOrderId`); lo scope `quoteId` e' invariato. Eliminato `work-order-tasks-section.tsx`.
+
+**Manuale**
+- Guide in-app `task-templates` (nuova sezione `stages`) e `tasks` aggiornate IT+EN.
+- `work-orders` resta marcata "in fase di sviluppo".
+- Manuale Claude Docs NON aggiornato: il documento non e' accessibile da questa sessione. Vanno aggiornate le sezioni Modelli di Task (fasi), Task (campo Fase) e Commesse (task board, chiusura forzata dei task).
+
+**Prossimi passi / da verificare**
+- Test manuale in browser su `/work-orders/:id`: drag lista/kanban, menu fase, azioni massive, chiusura commessa.
+- Soft-limit >300 righe: `use-task-form.ts` (326), `task-board-stage-group.tsx` (311), `WorkOrderService.php` (338).
+- Questo file supera di molto i 50 KB: archiviare le voci vecchie in `docs/handoff-archive/`.
+
 ## OFFERTE: COMMISSIONI SUL MARGINE + MARGINE ATTESO NETTO — NON COMMITTATO (2026-09-22)
 
 Spec 0145 (`docs/specs/0145-quote-commissions-on-margin.xml`, implemented), sopra la 0144. Verifier: VERDE (Pest

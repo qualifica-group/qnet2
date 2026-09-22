@@ -267,7 +267,12 @@ export function WorkOrderFormBody({ mode, onSuccess, onCancel, initialCode }: Wo
             participants={selectedParticipants}
           />
 
-          <WorkOrderClosureSection control={form.control} onForceClosedChange={handleForceClosedChange} />
+          <WorkOrderClosureSection
+            control={form.control}
+            onForceClosedChange={handleForceClosedChange}
+            openTasksCount={mode.type === 'edit' ? mode.workOrder.open_tasks_count : 0}
+            wasAlreadyForceClosed={mode.type === 'edit' ? mode.workOrder.is_force_closed : false}
+          />
 
           <WorkOrderNotesSection control={form.control} />
 

@@ -8,6 +8,7 @@ import i18n from '@/i18n'
 import { createTaskTemplate, updateTaskTemplate } from '@/features/task-templates/api'
 import { uploadAttachment } from '@/features/attachments/api'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
+import { UNASSIGNED_STAGE_CONTAINER_ID } from '@/features/task-templates/task-template-item-stage-grouping'
 import { TASK_TEMPLATE_ITEM_ATTACHABLE_ALIAS } from '@/features/task-templates/types'
 import { useTaskTemplateForm } from '@/features/task-templates/use-task-template-form'
 import type { TaskTemplateDetail } from '@/features/task-templates/types'
@@ -42,6 +43,7 @@ function taskTemplate(overrides: Partial<TaskTemplateDetail> = {}): TaskTemplate
     description: null,
     is_active: true,
     items_count: 0,
+    stages: [],
     items: [],
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -79,7 +81,7 @@ describe('useTaskTemplateForm — row add/edit/remove/reorder (spec 0124 AC-024)
     expect(result.current.itemRows).toHaveLength(0)
   })
 
-  it('reorders rows by the ordered id list SortableList reports', () => {
+  it('reorders rows within "Senza fase" via moveItemRow (spec 0146 D-2)', () => {
     const { result } = renderHook(
       () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
       { wrapper: wrapper() },
@@ -95,7 +97,7 @@ describe('useTaskTemplateForm — row add/edit/remove/reorder (spec 0124 AC-024)
       result.current.updateItemRow(secondId, { title: 'Second' })
     })
 
-    act(() => result.current.reorderItemRows([secondId, firstId]))
+    act(() => result.current.moveItemRow(secondId, UNASSIGNED_STAGE_CONTAINER_ID, 0))
 
     expect(result.current.itemRows.map((row) => row.title)).toEqual(['Second', 'First'])
   })
@@ -115,6 +117,7 @@ describe('useTaskTemplateForm — row add/edit/remove/reorder (spec 0124 AC-024)
           task_status: null,
           due_offset_days: 0,
           sort_order: 0,
+          task_template_stage_id: null,
           attachments: [],
         },
         {
@@ -126,6 +129,7 @@ describe('useTaskTemplateForm — row add/edit/remove/reorder (spec 0124 AC-024)
           task_status: null,
           due_offset_days: 1,
           sort_order: 1,
+          task_template_stage_id: null,
           attachments: [],
         },
       ],
@@ -143,8 +147,8 @@ describe('useTaskTemplateForm — row add/edit/remove/reorder (spec 0124 AC-024)
       { wrapper: wrapper() },
     )
 
-    const [rowA, rowB] = result.current.itemRows
-    act(() => result.current.reorderItemRows([rowB.id, rowA.id]))
+    const [, rowB] = result.current.itemRows
+    act(() => result.current.moveItemRow(rowB.id, UNASSIGNED_STAGE_CONTAINER_ID, 0))
 
     await act(async () => {
       await result.current.form.handleSubmit(result.current.onSubmit)()
@@ -157,6 +161,85 @@ describe('useTaskTemplateForm — row add/edit/remove/reorder (spec 0124 AC-024)
           expect.objectContaining({ id: 11, title: 'B' }),
           expect.objectContaining({ id: 10, title: 'A' }),
         ],
+      }),
+    )
+  })
+})
+
+describe('useTaskTemplateForm — fasi add/rename/remove/reorder (spec 0146 D-2/AC-031)', () => {
+  it('adds a stage, renames it, moves an item into it, then removes it — the item falls back to "Senza fase"', () => {
+    const { result } = renderHook(
+      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => result.current.addStageRow())
+    expect(result.current.stageRows).toHaveLength(1)
+    const stageId = result.current.stageRows[0].id
+
+    act(() => result.current.renameStageRow(stageId, 'Analisi'))
+    expect(result.current.stageRows[0].name).toBe('Analisi')
+
+    act(() => result.current.addItemRow())
+    const rowId = result.current.itemRows[0].id
+    act(() => result.current.moveItemRow(rowId, stageId, 0))
+    expect(result.current.itemRows[0].stage_key).toBe(stageId)
+
+    act(() => result.current.removeStageRow(stageId))
+    expect(result.current.stageRows).toHaveLength(0)
+    expect(result.current.itemRows[0].stage_key).toBeNull()
+  })
+
+  it('reorders stage rows', () => {
+    const { result } = renderHook(
+      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.addStageRow()
+      result.current.addStageRow()
+    })
+    const [firstId, secondId] = result.current.stageRows.map((row) => row.id)
+    act(() => {
+      result.current.renameStageRow(firstId, 'Analisi')
+      result.current.renameStageRow(secondId, 'Sviluppo')
+    })
+
+    act(() => result.current.reorderStageRows([secondId, firstId]))
+
+    expect(result.current.stageRows.map((row) => row.name)).toEqual(['Sviluppo', 'Analisi'])
+  })
+
+  it('sends stages and each item stage_key on create (AC-001)', async () => {
+    vi.mocked(createTaskTemplate).mockResolvedValueOnce(taskTemplate())
+
+    const { result } = renderHook(
+      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    act(() => {
+      result.current.form.setValue('name', 'Standard onboarding')
+      result.current.addStageRow()
+    })
+    const stageId = result.current.stageRows[0].id
+    act(() => result.current.renameStageRow(stageId, 'Analisi'))
+    act(() => result.current.addItemRow())
+    const rowId = result.current.itemRows[0].id
+    act(() => {
+      result.current.updateItemRow(rowId, { title: 'Kickoff call' })
+      result.current.moveItemRow(rowId, stageId, 0)
+    })
+
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.onSubmit)()
+    })
+
+    expect(createTaskTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stages: [{ key: stageId, name: 'Analisi' }],
+        items: [expect.objectContaining({ title: 'Kickoff call', stage_key: stageId })],
       }),
     )
   })
@@ -176,6 +259,7 @@ describe('useTaskTemplateForm — staged attachments uploaded positionally after
           task_status: null,
           due_offset_days: 0,
           sort_order: 0,
+          task_template_stage_id: null,
           attachments: [],
         },
         {
@@ -187,6 +271,7 @@ describe('useTaskTemplateForm — staged attachments uploaded positionally after
           task_status: null,
           due_offset_days: 0,
           sort_order: 1,
+          task_template_stage_id: null,
           attachments: [],
         },
       ],
@@ -307,6 +392,7 @@ describe('useTaskTemplateForm — a 413 surfaces as the form error (spec 0128)',
           task_status: null,
           due_offset_days: 0,
           sort_order: 0,
+          task_template_stage_id: null,
           attachments: [],
         },
       ],

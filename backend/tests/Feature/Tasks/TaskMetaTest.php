@@ -101,16 +101,19 @@ it('AC-036/AC-053: the field catalogue is in the frozen order and omits completi
     // `requires_closure_feedback`. spec 0120: `recurrence` joins LAST, after
     // `watcher_ids` (AC-053's own frozen order is additive at the tail for a
     // brand-new field with no natural neighbour among the existing 24),
-    // bringing the frozen order to 25 fields.
+    // bringing the frozen order to 25 fields. spec 0146, D-3:
+    // `work_order_stage_id` joins right after `work_order_id` — unlike
+    // `recurrence` it HAS a natural neighbour (a "Fase" only ever exists
+    // under a `work_order_id`) — bringing the frozen order to 26 fields.
     expect($keys)->toBe([
         'title', 'task_status_id', 'description', 'registry_id', 'referent_id', 'parent_task_id',
         'task_type_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
-        'opportunity_id', 'work_order_id', 'requester_id',
+        'opportunity_id', 'work_order_id', 'work_order_stage_id', 'requester_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
         'requires_closure_feedback', 'requires_validation', 'closure_feedback', 'assignee_ids', 'watcher_ids',
         'recurrence',
     ])
-        ->and($keys)->toHaveCount(25)
+        ->and($keys)->toHaveCount(26)
         ->and($keys)->not->toContain('completion_percentage')
         ->and($keys)->not->toContain('creator_id')
         ->and($keys)->not->toContain('is_blocked');

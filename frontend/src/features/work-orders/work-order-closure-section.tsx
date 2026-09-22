@@ -13,6 +13,14 @@ interface WorkOrderClosureSectionProps {
   control: Control<WorkOrderFormValues>
   /** Applies the toggle AND, when it turns off, clears the reason (D-4) — owned by `useWorkOrderForm`. */
   onForceClosedChange: (checked: boolean) => void
+  /**
+   * Spec 0146 D-8/AC-032: the commessa's `open_tasks_count`, `0` on create
+   * (there is nothing persisted to close yet). Drives the warning below —
+   * never a gate on the switch itself, D-8's side effect is unconditional.
+   */
+  openTasksCount: number
+  /** The PERSISTED `is_force_closed` (edit mode), `false` on create — the warning is about a false→true TRANSITION, not an already-closed commessa reopened and reclosed. */
+  wasAlreadyForceClosed: boolean
 }
 
 /**
@@ -21,11 +29,26 @@ interface WorkOrderClosureSectionProps {
  * condition the backend's field-permission ceiling cannot express (it is not
  * about who may edit the field, but about when it applies at all), so it is
  * decided here rather than left to `MetaField`'s own `visible`.
+ *
+ * Spec 0146 D-8/AC-032: turning the switch ON (from an actually-open
+ * commessa) with `open_tasks_count > 0` shows an inline warning naming how
+ * many task will be force-closed with a negative outcome — a plain
+ * conditional `<p role="alert">` right below the switch, not a separate
+ * confirm dialog: the effect is already unconditional server-side (D-8), so
+ * this is purely informational, the simplest surface that fits an inline
+ * form section already built around conditional rows (mirrors the
+ * `force_close_reason` row just below it).
  */
-export function WorkOrderClosureSection({ control, onForceClosedChange }: WorkOrderClosureSectionProps) {
+export function WorkOrderClosureSection({
+  control,
+  onForceClosedChange,
+  openTasksCount,
+  wasAlreadyForceClosed,
+}: WorkOrderClosureSectionProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
   const isForceClosed = useWatch({ control, name: 'is_force_closed' })
+  const showOpenTasksWarning = isForceClosed && !wasAlreadyForceClosed && openTasksCount > 0
 
   if (!fieldPermission('is_force_closed').visible) {
     return null
@@ -50,6 +73,13 @@ export function WorkOrderClosureSection({ control, onForceClosedChange }: WorkOr
           </FormControl>
         )}
       </MetaField>
+
+      {showOpenTasksWarning ? (
+        <p role="alert" className="flex items-start gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+          <TriangleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+          <span>{t('workOrders.form.openTasksWarning', { count: openTasksCount })}</span>
+        </p>
+      ) : null}
 
       {isForceClosed && fieldPermission('force_close_reason').visible ? (
         <MetaField

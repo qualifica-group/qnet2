@@ -2,14 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\FormatsTaskBadgeRefs;
 use App\Models\Task;
 use App\Models\TaskRecurrence;
-use App\Models\User;
 use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
-use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -46,6 +44,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class TaskResource extends JsonResource
 {
+    use FormatsTaskBadgeRefs;
+
     /**
      * @return array<string, mixed>
      */
@@ -81,6 +81,11 @@ class TaskResource extends JsonResource
             'work_order' => $this->workOrder === null
                 ? null
                 : ['id' => $this->workOrder->id, 'code' => $this->workOrder->code, 'title' => $this->workOrder->title],
+            // Spec 0146, D-3: null for a task outside a commessa AND for
+            // every sub-task — never a stray FK a root Task's own commessa no
+            // longer owns.
+            'work_order_stage_id' => $this->work_order_stage_id,
+            'work_order_stage' => $this->nameRef($this->workOrderStage),
             'requester_id' => $this->requester_id,
             'requester' => $this->nameRef($this->requester),
             'creator' => $this->nameRef($this->creator),
@@ -135,32 +140,6 @@ class TaskResource extends JsonResource
     }
 
     /**
-     * The Task's own status, with the two attributes the badge needs plus the
-     * two the client drives behaviour off: the phase key (never the label)
-     * and the percentage the whole module derives from it.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function statusRef(): ?array
-    {
-        $status = $this->taskStatus;
-
-        if ($status === null) {
-            return null;
-        }
-
-        return [
-            'id' => $status->id,
-            'name' => $status->name,
-            'color' => $status->color,
-            'icon' => $status->icon,
-            'system_key' => $status->system_key?->value,
-            'group' => $status->group->value,
-            'completion_percentage' => $status->completion_percentage,
-        ];
-    }
-
-    /**
      * The lean sub-task rows the detail's "Sotto-task" section renders
      * (D-12). Already scoped by the eager load (AC-066).
      *
@@ -178,58 +157,6 @@ class TaskResource extends JsonResource
             'completion_percentage' => $resolver->completionPercentage($subtask),
             'assignees' => $this->summarizeUsers($subtask->assignees),
         ])->all();
-    }
-
-    /**
-     * @param  Collection<int, User>  $users
-     * @return array<int, array{id: int, name: string}>
-     */
-    private function summarizeUsers(Collection $users): array
-    {
-        return $users->map(static fn (User $user): array => [
-            'id' => $user->id,
-            'name' => $user->name,
-        ])->all();
-    }
-
-    /**
-     * @return array{id: int, name: string}|null
-     */
-    private function nameRef(?Model $related): ?array
-    {
-        return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
-    }
-
-    /**
-     * A lookup configurator row projected with its badge attributes, so the
-     * grid and the detail render the SAME configured colour/icon (AC-072).
-     *
-     * @return array{id: int, name: string, color: string|null, icon: string|null}|null
-     */
-    private function badgeRef(?Model $related): ?array
-    {
-        if ($related === null) {
-            return null;
-        }
-
-        return [
-            'id' => $related->id,
-            'name' => $related->name,
-            'color' => $related->color,
-            'icon' => $related->icon,
-        ];
-    }
-
-    /**
-     * `Y-m-d`, the shape the data_contract declares and the shape an
-     * `<input type="date">` accepts. The `date:Y-m-d` cast alone is not
-     * enough: it governs the MODEL's serialization, while a Resource hands
-     * the raw CarbonImmutable to json_encode, which renders a full ISO-8601
-     * timestamp (the bug spec 0096 found on WorkOrderResource).
-     */
-    private function formatDate(?CarbonInterface $date): ?string
-    {
-        return $date?->format('Y-m-d');
     }
 
     /**

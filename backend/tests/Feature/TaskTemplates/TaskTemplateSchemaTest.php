@@ -34,6 +34,8 @@ it('task_template_items carries every column of the data_contract', function () 
     $expected = [
         'id', 'task_template_id', 'title', 'description', 'estimated_minutes',
         'task_status_id', 'due_offset_days', 'sort_order', 'created_at', 'updated_at',
+        // spec 0146, D-2: the "Fase" this row sits in, null for "Senza fase".
+        'task_template_stage_id',
     ];
 
     expect(Schema::getColumnListing('task_template_items'))->toEqualCanonicalizing($expected);

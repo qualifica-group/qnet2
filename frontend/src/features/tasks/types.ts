@@ -70,6 +70,12 @@ export interface TaskWorkOrderRef {
   title: string
 }
 
+/** The linked "Fase" (spec 0146 D-2/D-3) projection: a plain `{id, name}`, no color/order of its own here. */
+export interface TaskWorkOrderStageRef {
+  id: number
+  name: string
+}
+
 /**
  * One child of the task, as exposed by `TaskResource.subtasks` (D-12): a lean
  * array already filtered by the visibility scope (AC-066). NO endpoint of its
@@ -111,6 +117,14 @@ export interface TaskDetail {
   opportunity: TaskNamedRef | null
   work_order_id: number | null
   work_order: TaskWorkOrderRef | null
+  /**
+   * The "Fase" of the linked commessa this ROOT task sits in (spec 0146
+   * D-2/D-3), `null` for "Senza fase" or when the task carries no commessa or
+   * has a parent — a sub-task's own `work_order_stage_id` is `prohibited`
+   * server-side (D-3), so this is meaningless on anything but a root task.
+   */
+  work_order_stage_id: number | null
+  work_order_stage: TaskWorkOrderStageRef | null
   requester_id: number | null
   requester: TaskNamedRef | null
   /** Server-side, immutable, never client-writable (D-10): no `creator_id` key exists here. */
@@ -282,6 +296,12 @@ export interface CreateTaskPayload {
   task_category_id?: number | null
   opportunity_id?: number | null
   work_order_id?: number | null
+  /**
+   * Spec 0146 D-2/D-3: must belong to the `work_order_id` sent or persisted,
+   * `prohibited` on a task carrying a `parent_task_id` (422 either way). The
+   * form only ever sends it on a ROOT task with a commessa selected.
+   */
+  work_order_stage_id?: number | null
   start_date?: string | null
   start_time?: string | null
   end_time?: string | null
@@ -338,5 +358,11 @@ export interface RequestTaskUpdatePayload {
  * present means the parent picker renders prefilled AND locked.
  */
 export type TaskFormMode =
-  | { type: 'create'; parentTaskId?: number | null; workOrderId?: number | null }
+  | {
+      type: 'create'
+      parentTaskId?: number | null
+      workOrderId?: number | null
+      /** Spec 0146 AC-030: prefill for the "Fase" select, from `ModuleCreateParams.work_order_stage_id` (the Task board's "+ Task"). */
+      workOrderStageId?: number | null
+    }
   | { type: 'edit'; task: TaskDetailWithPermissions }

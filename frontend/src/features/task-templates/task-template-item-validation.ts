@@ -27,7 +27,7 @@ export interface TaskTemplateItemsValidationResult {
  * `data_contract`). Rows are local state, not an RHF field array, so they are
  * validated here rather than through the Zod resolver (mirrors
  * `useQuoteWorkflowForm`'s `validateStatusRows`). Returns per-row field
- * errors, keyed by the row's local `id` for `<TaskTemplateItemsEditor>`'s
+ * errors, keyed by the row's local `id` for `<TaskTemplateStagesEditor>`'s
  * aria-describedby wiring (frontend.md §10).
  */
 export function validateTaskTemplateItemRows(

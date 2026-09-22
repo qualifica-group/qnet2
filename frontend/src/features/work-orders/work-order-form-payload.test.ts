@@ -33,6 +33,7 @@ function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     status: { value: 'open', is_force_closed: false },
     is_force_closed: false,
     force_close_reason: null,
+    open_tasks_count: 0,
     start_date: '2026-03-01',
     supervisors: [{ id: 21, name: 'Ada Alberti' }],
     participants: [{ id: 31, name: 'Bruno Bianchi', position: 1 }],

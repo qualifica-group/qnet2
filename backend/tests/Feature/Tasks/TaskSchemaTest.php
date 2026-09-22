@@ -36,7 +36,11 @@ it('AC-003: tasks carries every column of the data_contract', function () {
         'id', 'title', 'description',
         'registry_id', 'referent_id', 'parent_task_id', 'task_recurrence_id',
         'task_type_id', 'task_status_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
-        'opportunity_id', 'work_order_id', 'requester_id', 'creator_id',
+        'opportunity_id', 'work_order_id',
+        // Spec 0146, D-2/D-3: the task board's own "Fase" + its ordinal
+        // position, root Tasks only (a sub-task's own pair stays null).
+        'work_order_stage_id', 'stage_position',
+        'requester_id', 'creator_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
         'is_blocked', 'requires_closure_feedback', 'requires_validation', 'closure_feedback',
         'created_at', 'updated_at',

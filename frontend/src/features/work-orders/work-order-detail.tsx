@@ -12,7 +12,7 @@ import { useWorkOrderCollaborationGates } from '@/features/work-orders/use-work-
 import { WorkOrderCollaborationSection } from '@/features/work-orders/work-order-collaboration-section'
 import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
 import { WorkOrderDetailSections } from '@/features/work-orders/work-order-detail-sections'
-import { WorkOrderTasksSection } from '@/features/work-orders/work-order-tasks-section'
+import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 interface WorkOrderDetailViewProps {
@@ -25,9 +25,9 @@ interface WorkOrderDetailViewProps {
  * Read-only detail of a single work order (AC-075), laid out exactly like the
  * Opportunita' record: on the left ONE card carrying identity header, KPI strip
  * and titled sections; the collaboration card (notes, documents, activity log,
- * spec 0134 D-3) on the right; the work order's Task panel full width below
- * both, like the Opportunita' Offerte panel, only with `tasks.viewAny`; a
- * metadata footer last.
+ * spec 0134 D-3) on the right; the Task board (spec 0146, D-10: replaces the
+ * old `TableView domain="tasks"` panel) full width below both, only with
+ * `tasks.viewAny` (AC-024); a metadata footer last.
  */
 export function WorkOrderDetailView({ workOrder, onEdit }: WorkOrderDetailViewProps) {
   const { t } = useTranslation()
@@ -54,7 +54,7 @@ export function WorkOrderDetailView({ workOrder, onEdit }: WorkOrderDetailViewPr
         ) : null}
       </div>
 
-      {can('tasks.viewAny') ? <WorkOrderTasksSection workOrderId={workOrder.id} /> : null}
+      {can('tasks.viewAny') ? <WorkOrderTaskBoard workOrderId={workOrder.id} /> : null}
 
       <RecordMeta>
         {createdAt ? (

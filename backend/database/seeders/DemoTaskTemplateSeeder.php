@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\DataObjects\TaskTemplates\CreateTaskTemplateData;
 use App\DataObjects\TaskTemplates\TaskTemplateItemData;
+use App\DataObjects\TaskTemplates\TaskTemplateStageData;
 use App\Enums\TaskStatusGroup;
 use App\Models\TaskStatus;
 use App\Models\TaskTemplate;
@@ -36,7 +37,13 @@ use Illuminate\Database\Seeder;
  * WorkOrderTaskGenerator during seeding — is deleted (its rows too, through
  * Eloquent's own `::delete()`, mirroring TaskTemplateService::delete()) and
  * recreated, so a re-run reproduces the exact same dataset rather than
- * piling items on top of it.
+ * piling items on top of it. Its `task_template_stages` rows cascade off the
+ * plain `$template->delete()` at the DB level (spec 0146, D-2).
+ *
+ * Spec 0146, D-2: two of the three templates carry a couple of "Fasi" each,
+ * the third mixes a staged row with an unstaged one — so
+ * WorkOrderTaskGenerator::copyStages() and the "Senza fase" path both have a
+ * realistic fixture to generate a commessa from.
  */
 class DemoTaskTemplateSeeder extends Seeder
 {
@@ -54,7 +61,7 @@ class DemoTaskTemplateSeeder extends Seeder
         $openStatusId = TaskStatus::query()->where('group', TaskStatusGroup::Open)->where('is_active', true)->value('id');
         $pendingStatusId = TaskStatus::query()->where('group', TaskStatusGroup::Pending)->where('is_active', true)->value('id');
 
-        foreach ($this->catalogue($openStatusId, $pendingStatusId) as [$name, $description, $items]) {
+        foreach ($this->catalogue($openStatusId, $pendingStatusId) as [$name, $description, $stages, $items]) {
             $this->clearExisting($name);
 
             $service->create(new CreateTaskTemplateData(
@@ -62,12 +69,13 @@ class DemoTaskTemplateSeeder extends Seeder
                 description: $description,
                 isActive: true,
                 items: $items,
+                stages: $stages,
             ), $actor);
         }
     }
 
     /**
-     * @return array<int, array{0: string, 1: string, 2: array<int, TaskTemplateItemData>}>
+     * @return array<int, array{0: string, 1: string, 2: array<int, TaskTemplateStageData>, 3: array<int, TaskTemplateItemData>}>
      */
     private function catalogue(?int $openStatusId, ?int $pendingStatusId): array
     {
@@ -76,29 +84,42 @@ class DemoTaskTemplateSeeder extends Seeder
                 'Avvio commessa standard',
                 'Attivita di apertura comuni a ogni nuova commessa: kickoff interno, sopralluogo preliminare e raccolta della documentazione.',
                 [
-                    new TaskTemplateItemData(null, 'Kickoff interno', 'Allineamento tra i supervisori assegnati sugli obiettivi della commessa.', 30, $openStatusId, 1),
-                    new TaskTemplateItemData(null, 'Sopralluogo preliminare', 'Prima visita presso il cliente per verificare lo stato dei luoghi.', 120, null, 3),
-                    new TaskTemplateItemData(null, 'Raccolta documentazione cliente', 'Richiesta e raccolta dei documenti necessari allavvio dei lavori.', 60, $pendingStatusId, 5),
-                    new TaskTemplateItemData(null, 'Pianificazione risorse', 'Definizione del team e delle tempistiche operative.', 45, null, 7),
+                    new TaskTemplateStageData(null, 'preparazione', 'Preparazione'),
+                    new TaskTemplateStageData(null, 'organizzazione', 'Organizzazione'),
+                ],
+                [
+                    new TaskTemplateItemData(null, 'Kickoff interno', 'Allineamento tra i supervisori assegnati sugli obiettivi della commessa.', 30, $openStatusId, 1, 'preparazione'),
+                    new TaskTemplateItemData(null, 'Sopralluogo preliminare', 'Prima visita presso il cliente per verificare lo stato dei luoghi.', 120, null, 3, 'preparazione'),
+                    new TaskTemplateItemData(null, 'Raccolta documentazione cliente', 'Richiesta e raccolta dei documenti necessari allavvio dei lavori.', 60, $pendingStatusId, 5, 'organizzazione'),
+                    new TaskTemplateItemData(null, 'Pianificazione risorse', 'Definizione del team e delle tempistiche operative.', 45, null, 7, 'organizzazione'),
                 ],
             ],
             [
                 'Sopralluogo e progettazione',
                 'Percorso tecnico dal sopralluogo alla progettazione preliminare, fino allapprovazione del cliente.',
                 [
-                    new TaskTemplateItemData(null, 'Sopralluogo tecnico', 'Rilievo dello stato di fatto e delle criticita presenti.', 180, $openStatusId, 2),
-                    new TaskTemplateItemData(null, 'Rilievo misure', 'Misurazioni di dettaglio degli ambienti coinvolti.', 90, null, 3),
-                    new TaskTemplateItemData(null, 'Stesura progetto preliminare', 'Redazione della proposta tecnica preliminare.', 240, null, 10),
-                    new TaskTemplateItemData(null, 'Revisione interna progetto', 'Verifica tecnica del progetto prima dellinvio al cliente.', 60, $pendingStatusId, 12),
-                    new TaskTemplateItemData(null, 'Approvazione cliente', 'Presentazione del progetto e raccolta del via libera del cliente.', 30, null, 15),
+                    new TaskTemplateStageData(null, 'sopralluogo', 'Sopralluogo'),
+                    new TaskTemplateStageData(null, 'progettazione', 'Progettazione'),
+                ],
+                [
+                    new TaskTemplateItemData(null, 'Sopralluogo tecnico', 'Rilievo dello stato di fatto e delle criticita presenti.', 180, $openStatusId, 2, 'sopralluogo'),
+                    new TaskTemplateItemData(null, 'Rilievo misure', 'Misurazioni di dettaglio degli ambienti coinvolti.', 90, null, 3, 'sopralluogo'),
+                    new TaskTemplateItemData(null, 'Stesura progetto preliminare', 'Redazione della proposta tecnica preliminare.', 240, null, 10, 'progettazione'),
+                    new TaskTemplateItemData(null, 'Revisione interna progetto', 'Verifica tecnica del progetto prima dellinvio al cliente.', 60, $pendingStatusId, 12, 'progettazione'),
+                    new TaskTemplateItemData(null, 'Approvazione cliente', 'Presentazione del progetto e raccolta del via libera del cliente.', 30, null, 15, 'progettazione'),
                 ],
             ],
             [
                 'Chiusura e collaudo',
                 'Attivita di chiusura commessa: collaudo finale, verbale di consegna e follow-up post-consegna.',
                 [
-                    new TaskTemplateItemData(null, 'Collaudo finale', 'Verifica finale della conformita dei lavori eseguiti.', 90, $openStatusId, 1),
-                    new TaskTemplateItemData(null, 'Verbale di consegna', 'Redazione e firma del verbale di consegna con il cliente.', 30, null, 2),
+                    new TaskTemplateStageData(null, 'chiusura', 'Chiusura'),
+                ],
+                [
+                    new TaskTemplateItemData(null, 'Collaudo finale', 'Verifica finale della conformita dei lavori eseguiti.', 90, $openStatusId, 1, 'chiusura'),
+                    new TaskTemplateItemData(null, 'Verbale di consegna', 'Redazione e firma del verbale di consegna con il cliente.', 30, null, 2, 'chiusura'),
+                    // Deliberately left in "Senza fase" (no stage_key): the
+                    // seed exercises both the staged and the unstaged path.
                     new TaskTemplateItemData(null, 'Follow-up post-consegna', 'Contatto di cortesia a distanza di due settimane dalla consegna.', 20, $pendingStatusId, 14),
                 ],
             ],

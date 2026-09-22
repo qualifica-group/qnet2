@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * WorkOrder entity (spec 0093, D-1): "Commessa", numbered `COM-0001...`,
@@ -139,5 +140,29 @@ class WorkOrder extends BaseModel
     public function taskTemplate(): BelongsTo
     {
         return $this->belongsTo(TaskTemplate::class);
+    }
+
+    /**
+     * The ordered "Fasi" of this commessa's task board (spec 0146, D-2):
+     * copied from the `TaskTemplate` at generation time, then managed
+     * independently (create/rename/reorder/close/reopen/delete).
+     *
+     * @return HasMany<WorkOrderStage, $this>
+     */
+    public function stages(): HasMany
+    {
+        return $this->hasMany(WorkOrderStage::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Every Task linked to this commessa, root and sub-task alike (spec
+     * 0146) — the inverse of `Task::workOrder()`. The task board's own
+     * ordering (fase, `stage_position`) is applied by its query, not here.
+     *
+     * @return HasMany<Task, $this>
+     */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(Task::class);
     }
 }

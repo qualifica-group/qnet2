@@ -18,6 +18,7 @@ function row(overrides: Partial<TaskTemplateItemFormRow> = {}): TaskTemplateItem
     estimated_minutes: null,
     task_status_id: null,
     due_offset_days: 0,
+    stage_key: null,
     ...overrides,
   }
 }

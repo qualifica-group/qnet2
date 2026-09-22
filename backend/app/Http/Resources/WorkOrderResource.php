@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\WorkOrder;
 use App\RequestManagement\ApplicableAttribute;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
+use App\Services\WorkOrders\WorkOrderTaskForceCloser;
 use App\WorkOrders\WorkOrderAttributeResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -53,6 +54,10 @@ class WorkOrderResource extends JsonResource
             ],
             'is_force_closed' => $this->is_force_closed,
             'force_close_reason' => $this->force_close_reason,
+            // Spec 0146, D-8/AC-023: the tasks a force-close would touch
+            // right now, counted WITHOUT TaskVisibilityScope — the same
+            // query WorkOrderTaskForceCloser::closeOpenTasks() runs.
+            'open_tasks_count' => app(WorkOrderTaskForceCloser::class)->countOpenTasks($this->resource),
             'start_date' => $this->formatDate($this->start_date),
             'callback_date' => $this->formatDate($this->callback_date),
             'supervisors' => $this->summarizeUsers($this->supervisors),

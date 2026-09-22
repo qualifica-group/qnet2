@@ -167,7 +167,6 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     const productCategoryId = scope?.productCategoryId
     const opportunityId = rowScope?.opportunityId
     const quoteId = rowScope?.quoteId
-    const workOrderId = rowScope?.workOrderId
     const { data: config, isPending, isError, refetch } = useTableConfig(domain, scope)
 
     // Export is generic (spec 0014): TableView owns the grid api, so it gates,
@@ -268,9 +267,8 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           productCategoryId,
           opportunityId,
           quoteId,
-          workOrderId,
         ),
-      [domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId, opportunityId, quoteId, workOrderId],
+      [domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId, opportunityId, quoteId],
     )
 
     useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection }), [
@@ -380,7 +378,6 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           productCategoryId={productCategoryId}
           opportunityId={opportunityId}
           quoteId={quoteId}
-          workOrderId={workOrderId}
           columns={config.columns}
           datasource={datasource}
           blockSize={config.defaultPagination.limit}
@@ -490,7 +487,6 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
             search={toolbar.getSearchTerm()}
             opportunityId={opportunityId}
             quoteId={quoteId}
-            workOrderId={workOrderId}
           />
         ) : null}
       </>

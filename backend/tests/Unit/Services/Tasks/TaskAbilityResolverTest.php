@@ -36,17 +36,17 @@ if (! function_exists('grantManageAll')) {
 }
 
 // ---------------------------------------------------------------------------
-// PROTECTED_FIELDS — the 19 fields of D-5 (spec 0121 adds requires_validation,
-// spec 0120 D-12 adds recurrence)
+// PROTECTED_FIELDS — the 20 fields of D-5 (spec 0121 adds requires_validation,
+// spec 0120 D-12 adds recurrence, spec 0146 D-3 adds work_order_stage_id)
 // ---------------------------------------------------------------------------
 
-it('AC-015 (spec 0121, spec 0120 D-12): PROTECTED_FIELDS is exactly the 19 mandate fields, including requires_validation and recurrence', function () {
+it('AC-015 (spec 0121, spec 0120 D-12, spec 0146 D-3): PROTECTED_FIELDS is exactly the 20 mandate fields, including requires_validation, recurrence and work_order_stage_id', function () {
     expect(TaskAbilityResolver::PROTECTED_FIELDS)->toEqualCanonicalizing([
         'title', 'registry_id', 'referent_id', 'parent_task_id', 'task_type_id',
         'task_priority_id', 'task_importance_id', 'task_category_id', 'opportunity_id',
-        'work_order_id', 'requester_id', 'start_date', 'end_date', 'estimated_minutes',
+        'work_order_id', 'work_order_stage_id', 'requester_id', 'start_date', 'end_date', 'estimated_minutes',
         'requires_closure_feedback', 'requires_validation', 'assignee_ids', 'watcher_ids', 'recurrence',
-    ])->and(TaskAbilityResolver::PROTECTED_FIELDS)->toHaveCount(19)
+    ])->and(TaskAbilityResolver::PROTECTED_FIELDS)->toHaveCount(20)
         ->and(TaskAbilityResolver::PROTECTED_FIELDS)
         ->not->toContain('description', 'task_status_id', 'completion_date', 'start_time', 'end_time', 'closure_feedback');
 });

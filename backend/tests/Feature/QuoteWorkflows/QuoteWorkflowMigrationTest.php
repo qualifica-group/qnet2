@@ -141,9 +141,15 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_18_130000_add_usages_to_products_table` (85th), the product's
     // Offerta usages, and spec 0144's
     // `2026_09_22_100000_add_offer_line_id_to_quote_lines_table` (86th), the
-    // cost line's product-line allocation. Adding a migration means bumping
-    // this number.
-    Artisan::call('migrate:rollback', ['--step' => 86]);
+    // cost line's product-line allocation, and spec 0146's
+    // `2026_09_22_110000_create_task_template_stages_table` (87th),
+    // `2026_09_22_110100_add_task_template_stage_id_to_task_template_items_table`
+    // (88th), `2026_09_22_110200_create_work_order_stages_table` (89th) and
+    // `2026_09_22_110300_add_stage_columns_to_tasks_table` (90th), the task
+    // board's "Fase" tables on the template and on the commessa, plus their
+    // links onto `task_template_items` and `tasks`. Adding a migration means
+    // bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 90]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()
