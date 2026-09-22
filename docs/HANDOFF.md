@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX NOTIFICHE RICHIESTE DI MODIFICA IN ITALIANO — NON COMMITTATO (2026-09-22)
+
+Bug: la notifica "New change request" (e quella di esito) arrivava in inglese e mostrava la chiave i18n frontend
+`requestManagement.columns.source` al posto dell'etichetta del campo. Causa: stringhe assenti da `lang/it.json` e
+`config/field-change-requests.php` `label` e' una chiave del FRONTEND, passata grezza come `:field`.
+- Nuovo `lang/{en,it}/field-change-requests.php` (`fields.<field>` => etichetta). Nuovo campo protetto → aggiungere qui la voce.
+- `FieldChangeRequest::fieldLabel()` traduce nella locale CORRENTE (quella del destinatario, `HasLocalePreference`),
+  fallback al nome campo. Rimosso il parametro `$fieldLabel` dai costruttori di `FieldChangeRequestedNotification` e
+  `FieldChangeRequestResolvedNotification` (e dai caller Creator/ResolutionNotifier).
+- Esito: `__('approved')`/`__('rejected')` generici sostituiti da due frasi complete (`:handler approved|rejected your request
+  on :field of :subject`). Traduzioni IT aggiunte in `lang/it.json`.
+- Test: 2 nuovi in `tests/Feature/FieldChangeRequests/FieldChangeRequestNotificationTest.php`; suite backend completa verde
+  (7953 pass, sequenziale; `--parallel` da' falsi rossi per helper di test condivisi tra file).
+
 ## GUIDA IN-APP PER MODULO + REGOLA MANUALE — NON COMMITTATO (2026-09-22)
 
 Spec 0143 (`docs/specs/0143-in-app-module-help.xml`), solo frontend, nessuna modifica backend/dipendenze. Verifier: VERDE
