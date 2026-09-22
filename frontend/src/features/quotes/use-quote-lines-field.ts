@@ -17,6 +17,16 @@ export const EMPTY_LINE_ROW: QuoteLineFormValues = {
 }
 
 /**
+ * A freshly-added row with its own stable client-only identity (spec 0144
+ * D-7): never the SAME frozen `EMPTY_LINE_ROW` reference twice, or two blank
+ * rows would collide the moment both get a product and become real
+ * candidates for cost association.
+ */
+export function createEmptyLineRow(): QuoteLineFormValues {
+  return { ...EMPTY_LINE_ROW, client_key: crypto.randomUUID() }
+}
+
+/**
  * The quantity a row opens on as soon as it carries a product, wherever the
  * product lands on it: manual pick (`setProduct` below), deep-link seeding
  * (`quote-form-body.tsx`) and the mono-product autofill of Gestione Richieste
@@ -46,6 +56,14 @@ interface UseQuoteLinesFieldArgs {
    * without that summary.
    */
   rememberProductTypology?: (productId: number, typologyId: number) => void
+  /**
+   * Spec 0144: feeds the shared product -> name cache (`use-quote-form.ts`)
+   * so the Cost tab's "Associated product" options and the live per-product
+   * margin block can label a row whose product was picked IN this session
+   * (the row itself carries only `product_id`, never a name). Optional:
+   * Gestione Richieste mounts this editor without either of those.
+   */
+  rememberProductName?: (productId: number, name: string) => void
 }
 
 /**
@@ -94,8 +112,15 @@ export function simplifiedLineValuesFromProduct(
  * and the product-driven precompilation (AC-074) — mirrors
  * `useProductLinesField`'s "add empty row / edit in place" shape.
  */
-export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePercent, rememberProductTypology }: UseQuoteLinesFieldArgs) {
-  const addRow = () => onChange([...value, EMPTY_LINE_ROW])
+export function useQuoteLinesField({
+  value,
+  onChange,
+  variant,
+  rememberVatRatePercent,
+  rememberProductTypology,
+  rememberProductName,
+}: UseQuoteLinesFieldArgs) {
+  const addRow = () => onChange([...value, createEmptyLineRow()])
 
   const removeRow = (index: number) => onChange(value.filter((_, rowIndex) => rowIndex !== index))
 
@@ -132,6 +157,10 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
     if (item.meta.product_typology) {
       rememberProductTypology?.(item.id, item.meta.product_typology.id)
     }
+
+    // Spec 0144: the picked product's name, for the Cost tab's "Associated
+    // product" options and the live per-product margin block.
+    rememberProductName?.(item.id, item.label)
 
     onChange(
       value.map((row, rowIndex) =>

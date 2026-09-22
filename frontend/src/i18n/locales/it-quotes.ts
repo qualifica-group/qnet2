@@ -215,6 +215,13 @@ export const quotes = {
     },
     costsTab: {
       fieldLabel: 'Righe costo',
+      associatedProductHeader: 'Prodotto associato',
+      associatedProductLabel: 'Prodotto associato riga {{n}}',
+      associatedProductNone: 'Nessuno (costo generico)',
+      associatedProductOption: '{{product}} (riga {{n}})',
+      associatedProductGeneric: 'Costo generico',
+      associatedProductSearch: 'Cerca riga prodotto…',
+      associatedProductEmpty: 'Nessuna riga prodotto',
     },
     summary: {
       revenue: 'Ricavi attesi',
@@ -228,6 +235,10 @@ export const quotes = {
       productTypologies: 'Riepilogo per Tipologia Prodotto',
       noProductTypologies: 'Nessuna tipologia prodotto configurata.',
       roles: { commercial: 'Commerciale', reporter: 'Segnalatore', supervisor: 'Supervisore', supplier: 'Fornitore' },
+      productMargins: {
+        title: 'Margine per prodotto',
+        genericCosts: 'Costi generici',
+      },
     },
     lineProductHeader: 'Prodotto',
     lineCodeHeader: 'Codice',

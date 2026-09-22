@@ -61,6 +61,7 @@ const guide: HelpGuide = {
             'Scelto il prodotto, QNet precompila unità, prezzo e IVA: puoi modificarli.',
             '**Descrizione aggiuntiva** aggiunge un testo alla riga, stampabile nel preventivo.',
             'Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga.',
+            'Ogni riga di costo ha un **Prodotto associato**: scegli "Nessuno (costo generico)" oppure una riga del tab Prodotti, per imputare quel costo a quella vendita. Eliminando la riga prodotto associata, il costo torna automaticamente "Nessuno".',
             'Al massimo 200 righe per scheda.',
           ],
         },
@@ -70,7 +71,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Il riepilogo mostra **Ricavi attesi**, **Costi attesi** e **Margine atteso**, con **Imponibile**, **IVA** e **Totale**, più il **Riepilogo Commissioni** e il **Riepilogo per Tipologia Prodotto**.',
+          text: 'Il riepilogo mostra **Ricavi attesi**, **Costi attesi** e **Margine atteso**, con **Imponibile**, **IVA** e **Totale**, più il **Riepilogo Commissioni**, il **Riepilogo per Tipologia Prodotto** e il **Margine per prodotto** (ricavo, costo imputato e margine di ogni riga prodotto, più una riga "Costi generici" per i costi non associati).',
         },
         {
           type: 'warning',

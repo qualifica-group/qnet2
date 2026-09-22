@@ -101,3 +101,74 @@ describe('QuoteCostsTab (spec 0065 AC-073)', () => {
     )
   })
 })
+
+/** Spec 0144 AC-011/AC-012: the "Associated product" column of each cost row. */
+describe('QuoteCostsTab — Associated product (spec 0144)', () => {
+  function HarnessWithLines({ offerLines, costLines }: { offerLines: QuoteFormValues['offer_lines']; costLines: QuoteFormValues['cost_lines'] }) {
+    const form = useForm<QuoteFormValues>({ defaultValues: { ...EMPTY_VALUES, offer_lines: offerLines, cost_lines: costLines } })
+    return (
+      <Form {...form}>
+        <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+          <QuoteCostsTab
+            control={form.control}
+            knownLines={[]}
+            vatRatePercentFor={() => null}
+            rememberVatRatePercent={vi.fn()}
+            productNameFor={(id) => (id === 7 ? 'Widget Pro' : null)}
+          />
+        </ResourcePermissionsProvider>
+      </Form>
+    )
+  }
+
+  const OFFER_ROW = { id: 1, client_key: 'line-1', product_id: 7, quantity: 1, unit_price: 10, vat_rate_id: null }
+  const COST_ROW = { id: 2, client_key: 'line-2', product_id: 9, quantity: 1, unit_price: 2, vat_rate_id: null, offer_line_key: null }
+
+  it('shows "None" as placeholder and one entry per offer row carrying a product, named after it (AC-011)', () => {
+    render(<HarnessWithLines offerLines={[OFFER_ROW]} costLines={[COST_ROW]} />, { wrapper: wrapper() })
+
+    const trigger = screen.getByRole('combobox', { name: 'Row 1 associated product' })
+    expect(trigger).toHaveTextContent('None (generic cost)')
+
+    fireEvent.click(trigger)
+    expect(screen.getByPlaceholderText('Search product row…')).toBeInTheDocument()
+    expect(screen.getAllByRole('option')).toHaveLength(1)
+    expect(screen.getByRole('option', { name: 'Widget Pro (row 1)' })).toBeInTheDocument()
+  })
+
+  it('the clear button turns an associated cost back into a generic one', () => {
+    const associatedCost = { ...COST_ROW, offer_line_key: 'line-1' }
+    render(<HarnessWithLines offerLines={[OFFER_ROW]} costLines={[associatedCost]} />, { wrapper: wrapper() })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Widget Pro (row 1)' }))
+
+    expect(screen.getByRole('combobox', { name: 'Row 1 associated product' })).toHaveTextContent('None (generic cost)')
+  })
+
+  it('picking an offer row updates the field to its client_key', () => {
+    render(<HarnessWithLines offerLines={[OFFER_ROW]} costLines={[COST_ROW]} />, { wrapper: wrapper() })
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Row 1 associated product' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Widget Pro (row 1)' }))
+
+    expect(screen.getByRole('combobox', { name: 'Row 1 associated product' })).toHaveTextContent('Widget Pro (row 1)')
+  })
+
+  it('does not offer a pristine offer row with no product picked yet', () => {
+    const pristineOffer = { client_key: 'line-empty', product_id: null, quantity: null, unit_price: null, vat_rate_id: null }
+    render(<HarnessWithLines offerLines={[pristineOffer]} costLines={[COST_ROW]} />, { wrapper: wrapper() })
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Row 1 associated product' }))
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+    expect(screen.getByText('No product rows')).toBeInTheDocument()
+  })
+
+  it('renders "None" for a cost already pointing at a product row that was removed (AC-012)', () => {
+    const staleCost = { ...COST_ROW, offer_line_key: 'line-gone' }
+    render(<HarnessWithLines offerLines={[OFFER_ROW]} costLines={[staleCost]} />, { wrapper: wrapper() })
+
+    expect(screen.getByRole('combobox', { name: 'Row 1 associated product' })).toHaveTextContent(
+      'None (generic cost)',
+    )
+  })
+})

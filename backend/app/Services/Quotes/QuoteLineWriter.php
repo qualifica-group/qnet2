@@ -20,10 +20,15 @@ final class QuoteLineWriter
     public function __construct(
         private readonly QuoteTotalsCalculator $calculator,
         private readonly QuoteLineCommissionWriter $commissionWriter,
+        private readonly CostLineAllocationResolver $allocationResolver,
     ) {}
 
-    /** @param array<int, QuoteLineData> $lines */
-    public function sync(Quote $quote, QuoteLineType $type, array $lines): void
+    /**
+     * @param  array<int, QuoteLineData>  $lines
+     * @param  array<int, QuoteLine>|null  $revenueLines  spec 0144, D-4: the REVENUE rows just persisted in the SAME request, keyed by their own submitted index — only read when $type is COST; null means `offer_lines` was not submitted at all.
+     * @return array<int, QuoteLine> the saved rows, keyed by $lines' own payload index
+     */
+    public function sync(Quote $quote, QuoteLineType $type, array $lines, ?array $revenueLines = null): array
     {
         $existing = QuoteLine::query()
             ->where('quote_id', $quote->id)
@@ -48,6 +53,14 @@ final class QuoteLineWriter
 
         $rates = $this->resolveVatRates($lines);
         $units = $this->resolveProductUnits($lines);
+        // Spec 0144, D-2/D-4: only a COST row ever carries an allocation — a
+        // REVENUE row's own `offer_line_id` is always NULL, so resolving it
+        // for the other type would be dead work at best.
+        $allocations = $type === QuoteLineType::Cost
+            ? $this->allocationResolver->resolve($quote, $lines, $revenueLines)
+            : [];
+
+        $saved = [];
 
         foreach (array_values($lines) as $index => $data) {
             /** @var QuoteLine|null $line */
@@ -77,7 +90,14 @@ final class QuoteLineWriter
                 'vat_amount' => $amounts['vat'],
                 'total_amount' => $amounts['total'],
                 'sort_order' => $data->sortOrder ?? $index,
+                // Spec 0144, D-2/D-3: full-replace like every other column on
+                // this row — a COST row resubmitted without either key goes
+                // back to a generic cost, exactly like it would for quantity
+                // or unit_price. Never set on a REVENUE row.
+                'offer_line_id' => $allocations[$index] ?? null,
             ])->save();
+
+            $saved[$index] = $line;
 
             if ($type === QuoteLineType::Revenue) {
                 $this->commissionWriter->sync($line, $data->commissions, $productChanged);
@@ -88,6 +108,8 @@ final class QuoteLineWriter
 
         $existing->except($submittedIds)->each->delete();
         $quote->unsetRelations();
+
+        return $saved;
     }
 
     /**

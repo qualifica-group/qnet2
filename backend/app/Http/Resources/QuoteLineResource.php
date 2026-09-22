@@ -65,6 +65,9 @@ class QuoteLineResource extends JsonResource
             'vat_amount' => $this->vat_amount,
             'total_amount' => $this->total_amount,
             'sort_order' => $this->sort_order,
+            // Spec 0144, D-2: the REVENUE row this COST row is imputed to —
+            // always null on a REVENUE row, and on a generic cost.
+            'offer_line_id' => $this->offer_line_id,
             'commissions' => $this->when(
                 $permissions['commissions']->visible,
                 fn () => $this->commissions->map(

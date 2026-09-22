@@ -214,6 +214,13 @@ export const quotes = {
     },
     costsTab: {
       fieldLabel: 'Cost rows',
+      associatedProductHeader: 'Associated product',
+      associatedProductLabel: 'Row {{n}} associated product',
+      associatedProductNone: 'None (generic cost)',
+      associatedProductOption: '{{product}} (row {{n}})',
+      associatedProductGeneric: 'Generic cost',
+      associatedProductSearch: 'Search product row…',
+      associatedProductEmpty: 'No product rows',
     },
     summary: {
       revenue: 'Expected revenue',
@@ -227,6 +234,10 @@ export const quotes = {
       productTypologies: 'Product Typology Summary',
       noProductTypologies: 'No product typology configured.',
       roles: { commercial: 'Commercial', reporter: 'Reporter', supervisor: 'Supervisor', supplier: 'Supplier' },
+      productMargins: {
+        title: 'Margin per product',
+        genericCosts: 'Generic costs',
+      },
     },
     lineProductHeader: 'Product',
     lineCodeHeader: 'Code',

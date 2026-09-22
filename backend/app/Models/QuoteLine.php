@@ -27,6 +27,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * child collection of the Quote, which already logs its own changes — mirrors
  * OpportunityProductLine): it is written exclusively by the quote service's
  * full-replace (D-8), never directly by a client.
+ *
+ * `offer_line_id` (spec 0144, D-2): a self-reference to the REVENUE row (of
+ * the SAME quote) a COST row is imputed to — NULL means a generic cost.
+ * `nullOnDelete` (D-3): deleting the referenced product line, from any
+ * channel, leaves the cost row in place and simply clears the association.
+ * Resolved and written exclusively by `QuoteLineWriter::sync()`; always NULL
+ * on a REVENUE row.
  */
 #[Fillable([
     'quote_id',
@@ -41,6 +48,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'vat_amount',
     'total_amount',
     'sort_order',
+    'offer_line_id',
 ])]
 class QuoteLine extends BaseModel
 {
@@ -60,6 +68,7 @@ class QuoteLine extends BaseModel
             'vat_amount' => 'decimal:2',
             'total_amount' => 'decimal:2',
             'sort_order' => 'int',
+            'offer_line_id' => 'int',
         ];
     }
 
@@ -91,6 +100,24 @@ class QuoteLine extends BaseModel
     public function commissions(): HasMany
     {
         return $this->hasMany(QuoteLineCommission::class);
+    }
+
+    /**
+     * The REVENUE row this COST row is imputed to (spec 0144, D-2) — NULL on
+     * a generic cost or on any REVENUE row (which never sets this column).
+     */
+    public function offerLine(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'offer_line_id');
+    }
+
+    /**
+     * The inverse of offerLine(): the COST rows imputed to this REVENUE row.
+     * Only ever populated on a REVENUE row.
+     */
+    public function allocatedCostLines(): HasMany
+    {
+        return $this->hasMany(self::class, 'offer_line_id');
     }
 
     /**

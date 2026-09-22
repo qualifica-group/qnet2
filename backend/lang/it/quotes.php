@@ -12,4 +12,7 @@ return [
         'SALE' => 'Il prodotto selezionato non è vendibile.',
         'COST' => 'Il prodotto selezionato non è utilizzabile come costo.',
     ],
+    // Spec 0144, D-4/D-5: imputazione di una riga costo a una riga prodotto.
+    'cost_line_offer_line_id_invalid' => 'La riga prodotto selezionata non appartiene a questa offerta.',
+    'cost_line_offer_line_index_invalid' => 'La riga prodotto selezionata non è tra quelle inviate.',
 ];

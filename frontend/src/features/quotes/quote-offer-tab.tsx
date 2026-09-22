@@ -25,6 +25,8 @@ interface QuoteOfferTabProps {
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
   /** Spec 0099: feeds the live per-typology summary's bucket cache on pick (revenue rows only, D-6). */
   rememberProductTypology?: (productId: number, typologyId: number) => void
+  /** Spec 0144: feeds the shared product name cache the Cost tab's association select and the live per-product margin block read. */
+  rememberProductName?: (productId: number, name: string) => void
   quoteId?: number
 }
 
@@ -49,6 +51,7 @@ export function QuoteOfferTab({
   vatRatePercentFor,
   rememberVatRatePercent,
   rememberProductTypology,
+  rememberProductName,
   quoteId,
 }: QuoteOfferTabProps) {
   const { t } = useTranslation()
@@ -132,6 +135,7 @@ export function QuoteOfferTab({
               vatRatePercentFor={vatRatePercentFor}
               rememberVatRatePercent={rememberVatRatePercent}
               rememberProductTypology={rememberProductTypology}
+              rememberProductName={rememberProductName}
               commissionContext={{ quoteId, commercialId, reporterId, supervisorId }}
             />
 

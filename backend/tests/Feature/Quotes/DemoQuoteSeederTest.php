@@ -116,6 +116,38 @@ it('starts the offer unit price from the product price and the cost line from th
     }
 });
 
+it('spec 0144: some demo cost lines are imputed to their quote\'s offer line, idempotently', function (): void {
+    seedQuoteDependencies();
+
+    test()->seed(DemoQuoteSeeder::class);
+
+    $countAllocated = function (): int {
+        $allocated = 0;
+
+        foreach (Quote::query()->with(['offerLines', 'costLines'])->get() as $quote) {
+            $offerLineIds = $quote->offerLines->pluck('id')->all();
+
+            foreach ($quote->costLines as $line) {
+                if ($line->offer_line_id !== null) {
+                    expect($line->offer_line_id)->toBeIn($offerLineIds, $quote->code);
+                    $allocated++;
+                }
+            }
+        }
+
+        return $allocated;
+    };
+
+    $firstRunAllocated = $countAllocated();
+    expect($firstRunAllocated)->toBeGreaterThan(0);
+
+    // Re-running deletes and recreates every quote (fresh ids), but the SAME
+    // deterministic alternation (index % 2) must allocate the same COUNT.
+    test()->seed(DemoQuoteSeeder::class);
+
+    expect($countAllocated())->toBe($firstRunAllocated);
+});
+
 it('AC-061: every demo quote carries a quote_workflow_status_id belonging to its own resolved set', function (): void {
     seedQuoteDependencies();
 

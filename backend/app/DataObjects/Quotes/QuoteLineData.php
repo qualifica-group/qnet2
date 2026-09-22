@@ -15,6 +15,13 @@ namespace App\DataObjects\Quotes;
  * row that carries the key changes it, so a channel that never edits it (the
  * Gestione Richieste grid cell, request creation) cannot wipe it on its
  * full-replace resubmit.
+ *
+ * `offerLineId`/`offerLineIndex` (spec 0144, D-4): the two mutually exclusive
+ * ways a COST row references a REVENUE row of the same quote — an already
+ * persisted one by id, or one submitted alongside it in the SAME request by
+ * its 0-based position in `offer_lines`. Both null = generic cost. `prohibited`
+ * on every other channel (App\Quotes\QuoteLineRules), so they only ever carry
+ * a value here when the row came from `cost_lines`.
  */
 final readonly class QuoteLineData
 {
@@ -30,6 +37,8 @@ final readonly class QuoteLineData
         public ?string $additionalDescription = null,
         /** `false` = the key was absent: the writer keeps the stored value (see QuoteLineWriter::sync()). */
         public bool $hasAdditionalDescription = false,
+        public ?int $offerLineId = null,
+        public ?int $offerLineIndex = null,
     ) {}
 
     /**
@@ -52,6 +61,8 @@ final readonly class QuoteLineData
                 : null,
             additionalDescription: isset($row['additional_description']) ? (string) $row['additional_description'] : null,
             hasAdditionalDescription: array_key_exists('additional_description', $row),
+            offerLineId: isset($row['offer_line_id']) ? (int) $row['offer_line_id'] : null,
+            offerLineIndex: isset($row['offer_line_index']) ? (int) $row['offer_line_index'] : null,
         );
     }
 }

@@ -13,6 +13,12 @@ import {
   type QuoteLineForTotals,
   type QuoteTotalsSummary,
 } from '@/features/quotes/quote-totals'
+import {
+  computeProductMargins,
+  costLinesFromFormCostLines,
+  productLinesFromFormOfferLines,
+} from '@/features/quotes/quote-product-margins-calc'
+import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
 import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteSummary as QuoteSummaryData, QuoteTypologyTotal } from '@/features/quotes/types'
 import type { ForSelectItem } from '@/features/for-select/types'
@@ -247,10 +253,17 @@ interface QuoteLiveSummaryProps {
    * keystroke (AC-060). Empty renders the block's own empty state.
    */
   typologyOptions?: ForSelectItem[]
+  /**
+   * Spec 0144: resolves a picked product's name for the "Margine per
+   * prodotto" block — the row itself carries only `product_id` (D-5-like).
+   */
+  productNameFor?: (productId: number) => string | null
 }
 
 /** Hoisted: an inline `[]` default would be a new reference on every render. */
 const NO_TYPOLOGY_OPTIONS: ForSelectItem[] = []
+/** Hoisted: an inline function default would be a new reference on every render. */
+const NO_PRODUCT_NAME = (): string | null => null
 
 /**
  * Live client-side preview (AC-071): recomputes on every `offer_lines`/
@@ -265,6 +278,7 @@ export function QuoteLiveSummary({
   vatRatePercentFor,
   productTypologyIdFor,
   typologyOptions = NO_TYPOLOGY_OPTIONS,
+  productNameFor = NO_PRODUCT_NAME,
 }: QuoteLiveSummaryProps) {
   const offerLines = useWatch({ control, name: 'offer_lines' })
   const costLines = useWatch({ control, name: 'cost_lines' })
@@ -305,11 +319,25 @@ export function QuoteLiveSummary({
     }))
   }, [offerLines, productTypologyIdFor, typologyOptions])
 
+  // Spec 0144 D-6: SAME already-rounded row amounts as `totals` above, bucketed
+  // per product instead of aggregated — the two never disagree by construction.
+  const productMargins = useMemo(
+    () =>
+      computeProductMargins(
+        productLinesFromFormOfferLines(offerLines, productNameFor),
+        costLinesFromFormCostLines(costLines),
+      ),
+    [offerLines, costLines, productNameFor],
+  )
+
   return (
-    <QuoteSummary
-      totals={totals}
-      commissionTotals={commissionTotals}
-      typologyBuckets={typologyBuckets}
-    />
+    <div className="flex flex-col gap-3">
+      <QuoteSummary
+        totals={totals}
+        commissionTotals={commissionTotals}
+        typologyBuckets={typologyBuckets}
+      />
+      <QuoteProductMargins rows={productMargins.rows} genericCostNet={productMargins.genericCostNet} />
+    </div>
   )
 }

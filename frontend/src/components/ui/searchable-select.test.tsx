@@ -33,6 +33,27 @@ describe('SearchableSelect', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
+  it('renders a clear button only with onClear and a selection, and clearing never opens the popup', () => {
+    const onClear = vi.fn()
+    const { rerender } = render(
+      <SearchableSelect value={null} onChange={vi.fn()} onClear={onClear} options={options} labels={{ ...labels, clearLabel: 'Clear' }} />,
+    )
+    expect(screen.queryByRole('button', { name: /Clear/ })).not.toBeInTheDocument()
+
+    rerender(
+      <SearchableSelect value={2} onChange={vi.fn()} onClear={onClear} options={options} labels={{ ...labels, clearLabel: 'Clear' }} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Laptops' }))
+
+    expect(onClear).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('shows no clear button without onClear', () => {
+    renderSelect({ value: 2 })
+    expect(screen.queryByRole('button', { name: /Laptops/ })).not.toBeInTheDocument()
+  })
+
   it('forwards id to the trigger so an external <label htmlFor> associates with it', () => {
     renderSelect({ id: 'parent-category-field' })
     expect(screen.getByRole('combobox')).toHaveAttribute('id', 'parent-category-field')

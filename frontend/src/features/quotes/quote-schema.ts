@@ -99,6 +99,14 @@ export function quoteLineRowSchema(t: TFunction) {
   return z
     .object({
       id: z.number().optional(),
+      // Spec 0144 D-7: stable client-only identity for THIS row, so a cost
+      // row's association survives add/remove elsewhere in the array without
+      // depending on position. In edit it derives from the persisted id
+      // (`line-<id>`, quote-line-values.ts); a freshly added row gets one at
+      // creation time (`crypto.randomUUID()`, use-quote-lines-field.ts).
+      // Never sent to the server (`toLineInputs`/`originalLineInputs` never
+      // copy it).
+      client_key: z.string().optional(),
       product_id: z.number().nullable(),
       quantity: z.number().nullable(),
       // Read-only display value congelated on the persisted line (spec 0088,
@@ -112,6 +120,9 @@ export function quoteLineRowSchema(t: TFunction) {
       unit_price: z.number().nullable(),
       vat_rate_id: z.number().nullable(),
       additional_description: z.string().max(ADDITIONAL_DESCRIPTION_MAX_LENGTH).nullable().optional(),
+      // Spec 0144 D-1/D-4, COST rows only: the `client_key` of the associated
+      // OFFER row, or `null` for a generic cost. Ignored on OFFER rows.
+      offer_line_key: z.string().nullable().optional(),
       commissions: z.array(z.object({
         id: z.number().optional(),
         recipient_role: z.enum(COMMISSION_ROLES),

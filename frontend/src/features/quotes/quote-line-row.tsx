@@ -1,9 +1,10 @@
-import { useId, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { HandCoins, Trash2 } from 'lucide-react'
 import type { FieldError } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { cn } from '@/lib/utils'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
@@ -24,6 +25,16 @@ export interface QuoteLineRowErrors {
   quantity?: FieldError
   unit_price?: FieldError
 }
+
+/** One selectable OFFER row of the Cost tab's "Associated product" column (spec 0144 AC-011). */
+export interface QuoteCostOfferLineOption {
+  /** The OFFER row's own `client_key` — never the server id, so it also names not-yet-persisted rows. */
+  key: string
+  label: string
+}
+
+/** Hoisted: an inline `[]` default would be a new reference on every render. */
+const NO_OFFER_LINE_OPTIONS: QuoteCostOfferLineOption[] = []
 
 /**
  * The `meta.rate` block additive to `GET /vat-rates/for-select`: the decimal
@@ -71,6 +82,8 @@ interface QuoteLineRowProps {
    * module (D-3), so it defaults to `false` there too.
    */
   simplified?: boolean
+  /** Cost variant only (spec 0144 AC-011): the OFFER rows this cost may be attributed to. */
+  offerLineOptions?: QuoteCostOfferLineOption[]
   onChangeProduct: (
     productId: number | null,
     item: QuoteProductForSelectItem | null,
@@ -110,6 +123,7 @@ export function QuoteLineRow({
   commissionContext,
   withCommissions = true,
   simplified = false,
+  offerLineOptions = NO_OFFER_LINE_OPTIONS,
   onChangeProduct,
   onChangeField,
   onRemove,
@@ -127,6 +141,12 @@ export function QuoteLineRow({
 
   const vatPercent = row.vat_rate_id !== null ? vatRatePercentFor(row.vat_rate_id) : null
   const amounts = computeLineAmounts(row.quantity ?? 0, row.unit_price ?? 0, vatPercent)
+
+  const associatedProductOptions = useMemo(
+    () => offerLineOptions.map((option, optionIndex) => ({ id: optionIndex, name: option.label })),
+    [offerLineOptions],
+  )
+  const associatedOptionIndex = offerLineOptions.findIndex((option) => option.key === row.offer_line_key)
 
   const productItem: ForSelectItem | null = knownProduct
     ? { id: knownProduct.id, label: knownProduct.name, subtitle: knownProduct.category?.name ?? null }
@@ -250,6 +270,28 @@ export function QuoteLineRow({
           }}
         />
       )}
+
+      {variant === 'cost' && !simplified ? (
+        <SearchableSelect
+          // Options are addressed by their position in the offer rows: the
+          // shared control speaks numeric ids, the row keeps the stable key.
+          value={associatedOptionIndex >= 0 ? associatedOptionIndex : null}
+          onChange={(optionIndex) => onChangeField({ offer_line_key: offerLineOptions[optionIndex]?.key ?? null })}
+          onClear={() => onChangeField({ offer_line_key: null })}
+          options={associatedProductOptions}
+          disabled={disabled}
+          labels={{
+            placeholder: t('quotes.form.costsTab.associatedProductNone'),
+            searchPlaceholder: t('quotes.form.costsTab.associatedProductSearch'),
+            empty: t('quotes.form.costsTab.associatedProductEmpty'),
+            noMatch: t('quotes.form.costsTab.associatedProductEmpty'),
+            error: t('quotes.form.costsTab.associatedProductEmpty'),
+            retry: t('common.retry'),
+            triggerLabel: t('quotes.form.costsTab.associatedProductLabel', { n: index + 1 }),
+            clearLabel: t('common.clear'),
+          }}
+        />
+      ) : null}
 
       <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(amounts.net)}</span>
       <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(amounts.vat)}</span>

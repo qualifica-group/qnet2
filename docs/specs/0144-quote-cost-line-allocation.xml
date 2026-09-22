@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0144-quote-cost-line-allocation" status="implemented" owner="utente" date="2026-09-22">
+
+  <goal>
+    Nel form Offerta, tab Costi, ogni riga di costo puo' essere associata a una specifica riga del tab
+    Prodotti della stessa offerta. Un costo non associato e' un costo generico dell'offerta; un costo
+    associato e' imputato a quella riga. Il riepilogo mostra il margine per riga prodotto.
+  </goal>
+
+  <context>
+    - Righe offerta e righe costo condividono `quote_lines`, discriminate da `line_type`
+      (`App\Enums\QuoteLineType` REVENUE|COST, spec 0065 D-11). Payload `offer_lines` / `cost_lines`,
+      full-replace per tab (D-8); su update il FE invia un tab solo se il set di righe e' cambiato
+      (`buildUpdatePayload`, `quote-form-payload.ts`).
+    - Unico writer: `App\Services\Quotes\QuoteLineWriter::sync()`, chiamato da
+      `QuoteLineCoverageWriter::writeSubmitted()` prima per REVENUE poi per COST, dentro la
+      `DB::transaction` di `QuoteService::create()/update()`. Anche Gestione Richieste, inline-edit
+      griglia, conversione Lead e `QuoteWorkflowStatusWriter` passano da `sync()` (solo REVENUE).
+    - Regole per riga condivise: `App\Quotes\QuoteLineRules::fieldRules()` (usata da
+      `ValidatesQuoteLines`, Gestione Richieste e `CellValueValidator`). DTO riga:
+      `App\DataObjects\Quotes\QuoteLineData`. Output: `QuoteLineResource`.
+    - Totali header (`QuoteTotalsCalculator::aggregates()`: revenue/cost/margin_net) restano a livello
+      offerta e NON cambiano.
+    - FE: `quote-costs-tab.tsx` -> `QuoteLinesField` variant `cost`; riga `quote-line-row.tsx`, griglia
+      `quote-line-grid.ts`; schema riga `quoteLineRowSchema` (`quote-schema.ts`); wire shape
+      `toLineInputs` (`quote-line-values.ts`); riepilogo `quote-summary.tsx` (`QuoteSummary`,
+      `QuoteLiveSummary`, 315 righe: non si estende, si affianca un file nuovo); dettaglio
+      `quote-detail.tsx` con `QuoteLinesReadOnlyList`.
+    - Guide in-app: `frontend/src/features/help/content/{it,en}/quotes.ts`.
+  </context>
+
+  <decisions>
+    D-1  (utente) L'associazione punta alla RIGA del tab Prodotti (quote_line REVENUE), non al prodotto:
+         lo stesso prodotto su due righe resta distinguibile.
+    D-2  Colonna `quote_lines.offer_line_id` nullable, FK self-referenziale su `quote_lines.id`
+         `nullOnDelete`, indicizzata. Valorizzabile SOLO su righe COST; sulle REVENUE e' sempre NULL.
+         Migrazione nuova, reversibile; righe esistenti = NULL (costi generici).
+    D-3  (utente) Eliminazione della riga prodotto associata (da qualsiasi canale: Offerte, Gestione
+         Richieste, inline-edit) -> il costo resta e diventa generico (`nullOnDelete`). Il cambio di
+         prodotto su una riga esistente (stesso id) NON tocca l'associazione.
+    D-4  Riferimento nel payload `cost_lines.*`, due chiavi mutuamente esclusive:
+         `offer_line_id` = id di una riga REVENUE gia' persistita della stessa offerta;
+         `offer_line_index` = posizione (0-based) nell'array `offer_lines` inviato nella STESSA
+         richiesta (serve per le righe prodotto nuove, che non hanno ancora id). Assenza di entrambe
+         = costo generico. Risolto in `sync()` COST dopo la sync REVENUE (che restituisce le righe
+         salvate per indice).
+    D-5  Validazione server (422, nessuna scrittura parziale grazie alla transazione):
+         entrambe le chiavi presenti; `offer_line_index` senza `offer_lines` nella richiesta o fuori
+         range; `offer_line_id` che non e' una riga REVENUE di questa offerta dopo la sync REVENUE
+         (altra offerta, riga COST, riga rimossa nella stessa richiesta, create). Le due chiavi sono
+         `prohibited` su `offer_lines.*` e su ogni canale che scrive solo righe REVENUE.
+    D-6  (utente) Effetto dell'imputazione: visualizzazione dell'associazione + blocco "Margine per
+         prodotto" nel riepilogo. Il blocco e' calcolato lato client dalle righe (form: valori live;
+         dettaglio: `net_amount` congelati), nessun nuovo campo di summary lato server. Per riga
+         prodotto: ricavo netto, costi imputati netti, margine (puo' essere negativo); riga finale
+         "Costi generici". Somma dei margini - costi generici = margine atteso dell'offerta.
+    D-7  FE: le righe del form hanno una chiave client stabile (`client_key`, mai inviata) per tenere
+         l'associazione attraverso riordino/eliminazione/aggiunta; in edit la chiave deriva dall'id.
+         Eliminando una riga prodotto nel form, i costi associati tornano "Nessuno (costo generico)".
+         Il payload invia `offer_line_id` se la riga prodotto ha id, altrimenti `offer_line_index`
+         (indice tra le righe effettivamente inviate, dopo lo scarto delle righe pristine).
+    D-8  (utente) Gestione Richieste invariata: non espone costi ne' associazioni.
+    D-9  (utente, post-build) Il select "Prodotto associato" e' graficamente identico al select Aliquota IVA:
+         `SearchableSelect` (gemello a opzioni locali di `AsyncPaginatedSelect`) con placeholder
+         "Nessuno (costo generico)", ricerca e X di pulizia (nuove prop opzionali `onClear`/`clearLabel`).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione `offer_line_id` su `quote_lines` + model (fillable, relazioni `offerLine`/`allocatedCostLines`).</item>
+      <item>Regole di validazione `cost_lines.*.offer_line_id|offer_line_index` e divieto su `offer_lines.*`.</item>
+      <item>Risoluzione e verifica in `QuoteLineWriter::sync()` / `QuoteLineCoverageWriter`.</item>
+      <item>`QuoteLineResource.offer_line_id` su entrambe le collezioni.</item>
+      <item>FE: colonna "Prodotto associato" (select) nel tab Costi del form; label nel dettaglio read-only.</item>
+      <item>FE: blocco "Margine per prodotto" nel riepilogo, form (live) e dettaglio.</item>
+      <item>i18n IT/EN, guida in-app `quotes` IT/EN, segnalazione sezioni del manuale Claude Docs.</item>
+      <item>Seeder demo: se `Demo*` crea costi su offerte, una parte viene associata a righe prodotto.</item>
+    </in>
+    <out>
+      <item>Gestione Richieste (D-8), inline-edit griglia e conversione Lead: nessuna nuova UI o chiave.</item>
+      <item>Layout documento (PDF/DOCX): nessuna nuova colonna nella tabella costi.</item>
+      <item>Colonne/filtri nuovi nella griglia Offerte, statistiche, report, workflow criteria.</item>
+      <item>Modifica dei totali header (`revenue_*`, `cost_*`, `margin_net`) o nuovi campi persistiti di margine per riga.</item>
+      <item>Provvigioni: il calcolo resta invariato (non dipende dai costi).</item>
+      <item>Ripartizione di un costo su piu' righe prodotto (un costo -> al massimo una riga).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/quotes">
+      <request>
+        cost_lines[i] (shape esistente) +
+          offer_line_id?:    integer|null   id di una riga REVENUE persistita di QUESTA offerta (su create sempre invalido)
+          offer_line_index?: integer|null   >= 0, indice in offer_lines della stessa richiesta
+          (mutuamente esclusivi; assenti/null = costo generico)
+        offer_lines[i].offer_line_id / offer_line_index -> prohibited
+      </request>
+      <response status="201">
+        envelope invariato; data.offer_lines[i].offer_line_id: null;
+        data.cost_lines[i].offer_line_id: integer|null (id risolto della riga REVENUE)
+      </response>
+      <errors>
+        422 cost_lines.{i}.offer_line_id     entrambe le chiavi / riga non REVENUE di questa offerta
+        422 cost_lines.{i}.offer_line_index  offer_lines non inviato nella richiesta / indice fuori range
+        422 offer_lines.{i}.offer_line_id|offer_line_index  prohibited
+        403 invariato (field permission `cost_lines`)
+      </errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/quotes/{quote}">
+      <request>
+        come POST. cost_lines assente -> associazioni invariate (salvo D-3 se offer_lines elimina la riga).
+      </request>
+      <response status="200">come POST</response>
+      <errors>come POST</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/quotes/{quote}">
+      <response status="200">data.offer_lines[i].offer_line_id: null; data.cost_lines[i].offer_line_id: integer|null</response>
+    </endpoint>
+    <schema>
+      quote_lines.offer_line_id  BIGINT UNSIGNED NULL, FK quote_lines.id ON DELETE SET NULL, INDEX
+    </schema>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazione: righe esistenti hanno offer_line_id NULL; rollback rimuove FK e colonna.</criterion>
+    <criterion id="AC-002">Create con offer_lines [A,B] e cost_lines [{offer_line_index:1},{}] -> il primo costo ha offer_line_id = id di B, il secondo NULL; GET restituisce gli stessi valori.</criterion>
+    <criterion id="AC-003">Update con solo cost_lines [{id, offer_line_id: id riga REVENUE persistita}] -> associazione salvata; update senza cost_lines lascia le associazioni invariate.</criterion>
+    <criterion id="AC-004">Update con offer_lines (riga esistente + nuova) e cost_lines con offer_line_index sulla nuova -> associato alla nuova riga.</criterion>
+    <criterion id="AC-005">offer_line_id di una riga di altra offerta, di una riga COST, o di una riga REVENUE rimossa nella stessa richiesta -> 422 su cost_lines.{i}.offer_line_id; nulla persistito.</criterion>
+    <criterion id="AC-006">offer_line_index senza offer_lines nella richiesta o >= count(offer_lines) -> 422 su cost_lines.{i}.offer_line_index; entrambe le chiavi valorizzate -> 422 su cost_lines.{i}.offer_line_id.</criterion>
+    <criterion id="AC-007">offer_lines.{i}.offer_line_id o offer_line_index -> 422 prohibited (Offerte e Gestione Richieste).</criterion>
+    <criterion id="AC-008">Update con offer_lines che omette la riga associata (cost_lines non inviato) -> il costo resta con offer_line_id NULL; stesso esito eliminando la riga da Gestione Richieste.</criterion>
+    <criterion id="AC-009">Cambio prodotto su una riga REVENUE esistente (stesso id) -> i costi associati restano associati.</criterion>
+    <criterion id="AC-010">Totali header (cost_net, margin_net) identici prima e dopo l'associazione di un costo.</criterion>
+    <criterion id="AC-011">FE form, tab Costi: ogni riga ha il select "Prodotto associato" con opzione "Nessuno (costo generico)" e una voce per ogni riga del tab Prodotti con prodotto scelto (nome prodotto + n. riga); default "Nessuno".</criterion>
+    <criterion id="AC-012">FE form: eliminando la riga prodotto associata, il costo torna "Nessuno"; riordinando/aggiungendo righe prodotto l'associazione segue la riga.</criterion>
+    <criterion id="AC-013">FE payload: costo su riga prodotto persistita -> offer_line_id; su riga nuova -> offer_line_index (indice tra le righe inviate); nessun costo associato -> nessuna delle due chiavi; client_key mai inviato.</criterion>
+    <criterion id="AC-014">FE edit: le associazioni caricate dal GET sono preselezionate; offerta senza modifiche -> buildUpdatePayload non invia offer_lines/cost_lines.</criterion>
+    <criterion id="AC-015">FE riepilogo (form live e dettaglio): blocco "Margine per prodotto" con, per riga prodotto, ricavo netto, costi imputati, margine (negativo evidenziato) e riga "Costi generici"; margini per riga - costi generici = margine atteso. Nascosto se non ci sono righe prodotto.</criterion>
+    <criterion id="AC-016">FE dettaglio: la lista costi read-only mostra il prodotto associato o "Costo generico".</criterion>
+    <criterion id="AC-017">i18n: chiavi nuove presenti IT/EN (quotes-i18n.test); guida in-app quotes aggiornata IT/EN, help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Laravel 13 / Pest 4; React 19 / RHF+Zod / Vitest.
+    - Authz invariata: field permission `cost_lines` di `QuotesAuthorization` copre anche l'associazione.
+    - `QuoteLineRules` resta l'unica fonte delle regole per riga; le nuove chiavi solo per `cost_lines`.
+    - `quote-summary.tsx` (315) e `types.ts` (496) non vanno gonfiati: il blocco margini va in un file
+      nuovo (`quote-product-margins.tsx` + calcolo puro testabile); `types.ts` riceve solo il campo
+      `offer_line_id` su `QuoteLine` (se sfora 500, split del file).
+    - Griglia costi: la nuova colonna si aggiunge solo alla variante `cost` di `quote-line-grid.ts`;
+      layout compatto (ui-design §2), responsive con lo scroll orizzontale gia' presente.
+  </constraints>
+
+</spec>

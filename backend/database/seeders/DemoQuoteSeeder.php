@@ -185,7 +185,13 @@ class DemoQuoteSeeder extends Seeder
             supervisorIdSubmitted: false,
             internalNotes: $faker->optional(0.5)->sentence(10),
             offerLines: [$offerLine],
-            costLines: $costProductIds === [] ? [] : [$this->costLine($faker, $costProductIds, $index)],
+            // Spec 0144, D-2: HALF the seeded Offerte impute their cost line
+            // to the (sole) offer line above — `offer_line_index: 0`, the
+            // only position `$offerLines` ever carries here — so the demo
+            // dataset exercises both "Margine per prodotto" (imputed) and
+            // "Costi generici" (not) out of the box. Keyed on $index, same as
+            // every other alternation in this seeder, so a re-run is a no-op.
+            costLines: $costProductIds === [] ? [] : [$this->costLine($faker, $costProductIds, $index, allocate: $index % 2 === 0)],
             // Spec 0084 (AC-050): coherent with the REVENUE line's own
             // category — resolved from the SAME QUOTE-context effective set
             // QuoteAttributeValueWriter validates against post-insert, so a
@@ -261,9 +267,14 @@ class DemoQuoteSeeder extends Seeder
      * line never triggers opportunity coverage, so its product's category
      * does not need to resolve a business function.
      *
+     * Spec 0144, D-2/D-4: $allocate imputes it to the quote's sole offer line
+     * (`offer_line_index: 0` — the only position `offerLines` ever carries
+     * here) instead of leaving it a generic cost, so the demo dataset shows
+     * both states out of the box.
+     *
      * @param  array<int, int>  $costProductIds
      */
-    private function costLine(Generator $faker, array $costProductIds, int $index): QuoteLineData
+    private function costLine(Generator $faker, array $costProductIds, int $index, bool $allocate): QuoteLineData
     {
         $product = Product::query()->findOrFail($costProductIds[$index % count($costProductIds)]);
 
@@ -273,6 +284,7 @@ class DemoQuoteSeeder extends Seeder
             unitPrice: (float) $product->cost,
             vatRateId: $product->vat_rate_id,
             sortOrder: null,
+            offerLineIndex: $allocate ? 0 : null,
         );
     }
 }

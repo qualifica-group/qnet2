@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Popover as PopoverPrimitive } from 'radix-ui'
-import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
+import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -44,11 +44,18 @@ export interface SearchableSelectLabels {
    * `FormControl`/`<label>` already names the control.
    */
   triggerLabel?: string
+  /** Aria-label of the trigger's clear button (the selected name is appended). Required with `onClear`. */
+  clearLabel?: string
 }
 
 interface SearchableSelectProps {
   value: number | null
   onChange: (id: number) => void
+  /**
+   * Shows the same clear button as `AsyncPaginatedSelect` while an option is
+   * selected; omitted, the control cannot be emptied (the geo cascade).
+   */
+  onClear?: () => void
   options: SearchableSelectOption[]
   labels: SearchableSelectLabels
   disabled?: boolean
@@ -105,6 +112,7 @@ interface SearchableSelectProps {
 export function SearchableSelect({
   value,
   onChange,
+  onClear,
   options,
   labels,
   disabled,
@@ -224,8 +232,8 @@ export function SearchableSelect({
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
         className={cn(
-          'flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-field-border bg-field px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
-          action ? 'min-w-0 flex-1' : null,
+          'flex min-h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-field-border bg-field px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
+          action ? 'flex-1' : null,
           className,
         )}
       >
@@ -237,10 +245,33 @@ export function SearchableSelect({
         >
           {selected?.name ?? labels.placeholder}
         </span>
-        <ChevronsUpDown
-          className="size-4 shrink-0 opacity-50"
-          aria-hidden="true"
-        />
+        <span className="flex shrink-0 items-center gap-1">
+          {onClear && selected !== null ? (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`${labels.clearLabel ?? ''} ${selected.name}`.trim()}
+              className="rounded-sm p-0.5 outline-none hover:text-foreground focus-visible:ring-[2px] focus-visible:ring-ring/50"
+              onClick={(event) => {
+                event.stopPropagation()
+                onClear()
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onClear()
+                }
+              }}
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </span>
+          ) : null}
+          <ChevronsUpDown
+            className="size-4 shrink-0 opacity-50"
+            aria-hidden="true"
+          />
+        </span>
       </button>
     </PopoverPrimitive.Trigger>
   )

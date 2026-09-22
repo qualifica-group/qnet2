@@ -1,4 +1,4 @@
-import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
+import type { QuoteLine, QuoteWorkflowStatusRef } from '@/features/quotes/types'
 
 /**
  * The `open` row every resolved quote workflow set carries (spec 0083): the
@@ -26,4 +26,30 @@ export const WORKFLOW_STATUS_REQUIRES_NOTE: QuoteWorkflowStatusRef = {
   description: null,
   group: 'closed_won',
   requires_note: true,
+}
+
+/**
+ * A persisted `quote_lines` row (spec 0065), `offer_line_id: null` by default
+ * (spec 0144 D-2: NULL on every REVENUE row, and on a COST row with no
+ * association — a generic cost). Callers needing an association override it
+ * explicitly.
+ */
+export function quoteLineFixture(overrides: Partial<QuoteLine> = {}): QuoteLine {
+  return {
+    id: 1,
+    product_id: 1,
+    product: { id: 1, code: 'PRD-0001', name: 'Prodotto', category: null, product_typology: null, business_function: null },
+    quantity: '1.00',
+    unit_of_measure: null,
+    additional_description: null,
+    unit_price: '10.00',
+    vat_rate_id: null,
+    vat_rate: null,
+    net_amount: '10.00',
+    vat_amount: '0.00',
+    total_amount: '10.00',
+    sort_order: 0,
+    offer_line_id: null,
+    ...overrides,
+  }
 }

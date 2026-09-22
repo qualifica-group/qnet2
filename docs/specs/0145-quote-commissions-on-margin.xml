@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0145-quote-commissions-on-margin" status="draft" owner="utente" date="2026-09-22">
+
+  <goal>
+    Nell'Offerta le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto
+    meno costi imputati, spec 0144) e il Margine atteso e' al netto delle commissioni. Nel riepilogo
+    (form e dettaglio) il blocco Margine atteso segue il Riepilogo Commissioni.
+  </goal>
+
+  <context>
+    - Commissioni per riga REVENUE in `quote_line_commissions.calculated_amount`, calcolate da
+      `App\Services\Commissions\CommissionCalculator::calculate()` su `CommissionCalculationInput::lineNetAmount`
+      (PERCENTAGE = base * value / 100; FIXED_AMOUNT = value). Chiamato da `QuoteCommissionInitializer`
+      (default/regole) e `QuoteLineCommissionWriter` (override manuali, `recalculateAndInitializeMissing`).
+    - Scrittura righe: `QuoteLineCoverageWriter::writeSubmitted()` sincronizza REVENUE (commissioni incluse)
+      PRIMA delle COST; Gestione Richieste, inline-edit, conversione Lead passano solo da REVENUE.
+    - Imputazione costi: `quote_lines.offer_line_id` (spec 0144).
+    - Header: `QuoteTotalsCalculator::aggregates()` persiste `margin_net = revenue_net - cost_net`, letto da
+      griglia Offerte (`QuoteColumnCatalog`), `ContractResource`, variabili layout documento.
+    - Totali commissioni: `QuoteCommissionSummaryCalculator::totals()` (dettaglio, solo con permesso);
+      FE live `commission-calculator.ts` (`calculateCommissionTotals`, `calculateCommissionAmount`),
+      dialog `quote-commissions-dialog.tsx`; riepilogo `quote-summary.tsx`, blocco
+      `quote-product-margins.tsx`.
+  </context>
+
+  <decisions>
+    D-1  (utente) Base delle commissioni PERCENTAGE = margine della riga prodotto =
+         `net_amount` riga REVENUE - somma `net_amount` delle righe COST con `offer_line_id` = quella riga.
+         I costi generici (non imputati) NON riducono la base. FIXED_AMOUNT invariato.
+    D-2  (utente) Base negativa -> commissione percentuale 0,00 (mai negativa).
+    D-3  (utente) Margine atteso = ricavi netti - costi netti - totale commissioni (tutti i ruoli).
+    D-4  (utente) Il `margin_net` PERSISTITO segue D-3, cosi' griglia Offerte, Contratti e variabile
+         documento `margin_net` coincidono con il riepilogo.
+    D-5  (utente) Nessun ricalcolo retroattivo via migrazione: le offerte esistenti si aggiornano al primo
+         salvataggio successivo (commissioni e margin_net), come gia' avviene oggi per gli importi commissione.
+    D-6  Ricalcolo server: dopo la sync delle righe COST (o di una qualunque riga), gli importi delle
+         commissioni di TUTTE le righe REVENUE dell'offerta vengono ricalcolati sulla base D-1 senza
+         ri-risolvere le regole (snapshot tipo/valore invariato), poi `aggregates()`. Vale per tutti i canali.
+         Il payload API non cambia; `line_net_amount` dell'endpoint defaults resta il netto riga (anteprima):
+         l'importo autorevole e' quello ricalcolato al salvataggio.
+    D-7  (utente) Il Margine atteso netto e' visibile anche senza permesso di vedere le commissioni.
+    D-8  FE riepilogo: ordine blocchi Ricavi, Costi, Commissioni, Margine atteso, Tipologia; hint del
+         margine "Ricavi - Costi - Commissioni". Anteprima live nel form con la stessa base D-1/D-2
+         (costi imputati dal form). Dettaglio: valori persistiti.
+    D-9  Blocco "Margine per prodotto" (spec 0144): colonna Commissioni per riga; margine riga =
+         ricavo - costi imputati - commissioni riga; invariante: somma margini righe - costi generici =
+         Margine atteso. Dialog commissioni: importo percentuale calcolato sulla base D-1.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>BE: base commissioni = margine riga (D-1/D-2) in calcolatore/writer/initializer; ricalcolo post-sync (D-6).</item>
+      <item>BE: `margin_net` persistito al netto commissioni (D-3/D-4).</item>
+      <item>FE: anteprima live commissioni e margine sulla nuova base; ordine blocchi riepilogo (D-8); colonna Commissioni nel blocco Margine per prodotto (D-9); dialog commissioni.</item>
+      <item>Guide in-app `quotes` IT/EN + manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Backfill/migrazione dati delle offerte esistenti (D-5).</item>
+      <item>Ripartizione dei costi generici sulle righe.</item>
+      <item>Modifiche a configurazioni commissioni, regole, permessi, Gestione Richieste UI, report/statistiche.</item>
+      <item>Nuovi campi API: shape di request/response invariata.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    Nessun cambio di shape. Cambia la SEMANTICA di:
+      quote_lines[].commissions[].calculated_amount  -> PERCENTAGE su max(0, net riga - costi imputati)
+      quote.margin_net / summary.margin.net          -> revenue_net - cost_net - somma calculated_amount (tutti i ruoli)
+    Visibilita': summary.margin.net sempre presente (D-7); summary.commissions resta gated dal permesso.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Riga ricavo 1000 con costo imputato 400 e commissione 10% -> calculated_amount 60,00.</criterion>
+    <criterion id="AC-002">Costo generico (non imputato) 400 sulla stessa offerta -> commissione 10% su riga 1000 = 100,00.</criterion>
+    <criterion id="AC-003">Costi imputati > ricavo riga -> commissione percentuale 0,00; FIXED_AMOUNT invariata.</criterion>
+    <criterion id="AC-004">Update che invia solo cost_lines (nuovo costo imputato) -> commissioni della riga ricalcolate e margin_net aggiornato.</criterion>
+    <criterion id="AC-005">margin_net persistito = revenue_net - cost_net - totale commissioni; coincide in GET dettaglio, griglia e ContractResource.</criterion>
+    <criterion id="AC-006">Utente senza permesso commissioni: summary.margin.net e' il netto commissioni; summary.commissions assente.</criterion>
+    <criterion id="AC-007">Override manuale percentuale e regole di default usano la stessa base; eliminazione riga prodotto associata (costo torna generico) -> commissione torna sul netto riga.</criterion>
+    <criterion id="AC-008">Gestione Richieste / inline-edit: salvataggio riga REVENUE con costi imputati persistiti -> commissione sulla base D-1.</criterion>
+    <criterion id="AC-009">FE riepilogo: ordine Ricavi, Costi, Commissioni, Margine atteso, Tipologia (form e dettaglio); hint aggiornato.</criterion>
+    <criterion id="AC-010">FE form live: aggiungendo/imputando un costo, commissioni e Margine atteso si aggiornano senza chiamate di rete con la base D-1/D-2.</criterion>
+    <criterion id="AC-011">FE Margine per prodotto: colonna Commissioni; somma margini righe - costi generici = Margine atteso.</criterion>
+    <criterion id="AC-012">FE dialog commissioni: importo percentuale mostrato sulla base D-1.</criterion>
+    <criterion id="AC-013">Guide in-app IT/EN aggiornate (parity verde); quotes-i18n verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Arrotondamento half-up 2 decimali identico BE/FE.
+    - Logica base commissione in UN punto per lato (BE: un metodo/servizio riusato da initializer e writer;
+      FE: una funzione pura riusata da riepilogo, dialog e margini per prodotto).
+    - File entro 500 righe; `QuoteLineCommissionWriter` (205) non oltre ~300.
+  </constraints>
+
+</spec>

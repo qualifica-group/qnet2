@@ -72,3 +72,39 @@ describe('QuoteLinesReadOnlyList', () => {
     expect(screen.getByRole('button', { name: /commission/i })).toBeInTheDocument()
   })
 })
+
+/** Spec 0144 AC-016: the Cost variant's "Associated product" column. */
+describe('QuoteLinesReadOnlyList — Associated product (cost variant)', () => {
+  it('shows the associated offer row label resolved from offer_line_id', () => {
+    render(
+      <QuoteLinesReadOnlyList
+        lines={[lineFixture({ offer_line_id: 7 })]}
+        variant="cost"
+        offerLineLabelsById={{ 7: 'Widget Pro (row 1)' }}
+      />,
+    )
+    expect(screen.getByText('Widget Pro (row 1)')).toBeInTheDocument()
+  })
+
+  it('shows "Generic cost" for a cost with no association', () => {
+    render(<QuoteLinesReadOnlyList lines={[lineFixture({ offer_line_id: null })]} variant="cost" />)
+    expect(screen.getByText('Generic cost')).toBeInTheDocument()
+  })
+
+  it('falls back to "Generic cost" when the referenced offer row label is unavailable', () => {
+    render(
+      <QuoteLinesReadOnlyList lines={[lineFixture({ offer_line_id: 99 })]} variant="cost" offerLineLabelsById={{}} />,
+    )
+    expect(screen.getByText('Generic cost')).toBeInTheDocument()
+  })
+
+  it('never shows the Associated product column on the revenue variant', () => {
+    render(<QuoteLinesReadOnlyList lines={[lineFixture()]} />)
+    expect(screen.queryByText('Associated product')).not.toBeInTheDocument()
+  })
+
+  it('shows the Associated product column header on the cost variant', () => {
+    render(<QuoteLinesReadOnlyList lines={[lineFixture({ offer_line_id: null })]} variant="cost" />)
+    expect(screen.getByText('Associated product')).toBeInTheDocument()
+  })
+})

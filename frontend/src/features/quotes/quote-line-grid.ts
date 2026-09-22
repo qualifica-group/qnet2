@@ -19,7 +19,11 @@ export function quoteLineGridClass(
       ? 'grid grid-cols-[minmax(200px,1.4fr)_88px_64px_90px_90px_100px_36px_36px] gap-2'
       : 'grid grid-cols-[minmax(200px,1.4fr)_88px_64px_90px_90px_100px_36px] gap-2'
   }
-  return variant === 'revenue' && withCommissions
+  if (variant === 'cost') {
+    // Spec 0144 AC-011: the extra "Associated product" column, Cost tab only.
+    return 'grid grid-cols-[minmax(200px,1.4fr)_88px_112px_64px_128px_140px_160px_90px_90px_100px_36px] gap-2'
+  }
+  return withCommissions
     ? 'grid grid-cols-[minmax(200px,1.4fr)_88px_112px_64px_128px_140px_90px_90px_100px_36px_36px] gap-2'
     : 'grid grid-cols-[minmax(200px,1.4fr)_88px_112px_64px_128px_140px_90px_90px_100px_36px] gap-2'
 }
@@ -32,5 +36,8 @@ export function quoteLineMinWidthClass(
   if (simplified) {
     return variant === 'revenue' && withCommissions ? 'min-w-[664px]' : 'min-w-[614px]'
   }
-  return variant === 'revenue' && withCommissions ? 'min-w-[1044px]' : 'min-w-[994px]'
+  if (variant === 'cost') {
+    return 'min-w-[1162px]'
+  }
+  return withCommissions ? 'min-w-[1044px]' : 'min-w-[994px]'
 }

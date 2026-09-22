@@ -61,6 +61,7 @@ const guide: HelpGuide = {
             'Once a product is chosen, QNet prefills unit, price and VAT: you can edit them.',
             '**Additional description** adds text to the row, printable on the quote document.',
             "Each row's **Commissions** can only be opened and changed for that row.",
+            'Every cost row has an **Associated product**: pick "None (generic cost)" or a row from the Products tab to attribute that cost to that sale. Deleting the associated product row sends the cost back to "None" automatically.',
             'At most 200 rows per tab.',
           ],
         },
@@ -70,7 +71,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The summary shows **Expected revenue**, **Expected cost** and **Expected margin**, with **Net**, **VAT** and **Total**, plus the **Commission Summary** and the **Product Typology Summary**.',
+          text: 'The summary shows **Expected revenue**, **Expected cost** and **Expected margin**, with **Net**, **VAT** and **Total**, plus the **Commission Summary**, the **Product Typology Summary** and the **Margin per product** block (revenue, imputed cost and margin per product row, plus a "Generic costs" row for unattributed costs).',
         },
         {
           type: 'warning',

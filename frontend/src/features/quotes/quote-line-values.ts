@@ -2,6 +2,17 @@ import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteLine, QuoteLineInput } from '@/features/quotes/types'
 
 /**
+ * The deterministic client-only key a PERSISTED row hydrates onto (spec 0144
+ * D-7): derived from the id both when the row itself needs one
+ * (`linesToFormValues`) and when a COST row must point back at its
+ * associated OFFER row (`line.offer_line_id` resolves to the very same
+ * scheme), so no separate lookup table is needed to bridge the two.
+ */
+export function lineClientKey(id: number): string {
+  return `line-${id}`
+}
+
+/**
  * The three mappers every consumer of the shared row editor needs: persisted
  * rows -> form values, form values -> wire rows, and the comparison that
  * decides whether the collection travels at all. Extracted from
@@ -28,6 +39,9 @@ export function linesToFormValues(lines: QuoteLine[], withCommissions = true): Q
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((line) => ({
       id: line.id,
+      // Spec 0144 D-7: derived from the persisted id so a COST row's
+      // `offer_line_key` (below) can point at it with no separate lookup.
+      client_key: lineClientKey(line.id),
       product_id: line.product_id,
       quantity: Number(line.quantity),
       // Read-only display value (spec 0088, D-5): NOT part of `QuoteLineInput`,
@@ -35,6 +49,12 @@ export function linesToFormValues(lines: QuoteLine[], withCommissions = true): Q
       unit_of_measure: line.unit_of_measure,
       unit_price: Number(line.unit_price),
       vat_rate_id: line.vat_rate_id,
+      // Spec 0144 D-1/D-4: `null` on every REVENUE row (D-2) and on a COST
+      // row with no association; a real association derives the SAME
+      // `line-<id>` scheme from the referenced OFFER row's own id.
+      offer_line_key: line.offer_line_id !== null && line.offer_line_id !== undefined
+        ? lineClientKey(line.offer_line_id)
+        : null,
       ...(withCommissions
         ? {
             additional_description: line.additional_description ?? null,
@@ -82,8 +102,16 @@ export function isPristineLineRow(row: QuoteLineFormValues): boolean {
  * `commissions` travel only when the row carries them: Gestione Richieste
  * never fills that block in (the endpoint prohibits it), the Offerte form
  * always does.
+ *
+ * `resolveOfferLineReference` (spec 0144 D-4), COST rows only: resolves the
+ * row's client-only `offer_line_key` into the wire's `offer_line_id`/
+ * `offer_line_index` — see `offerLineReferenceResolver` below. Omitted for
+ * `offer_lines` itself, whose rows never carry either key (prohibited).
  */
-export function toLineInputs(rows: QuoteLineFormValues[]): QuoteLineInput[] {
+export function toLineInputs(
+  rows: QuoteLineFormValues[],
+  resolveOfferLineReference?: (row: QuoteLineFormValues) => Pick<QuoteLineInput, 'offer_line_id' | 'offer_line_index'>,
+): QuoteLineInput[] {
   return rows.filter((row) => !isPristineLineRow(row)).map((row, index) => ({
     ...(row.id ? { id: row.id } : {}),
     product_id: row.product_id as number,
@@ -94,6 +122,7 @@ export function toLineInputs(rows: QuoteLineFormValues[]): QuoteLineInput[] {
       ? { additional_description: row.additional_description?.trim() || null }
       : {}),
     sort_order: index,
+    ...(resolveOfferLineReference ? resolveOfferLineReference(row) : {}),
     ...(row.commissions
       ? { commissions: row.commissions.map((commission) => ({
           id: commission.id,
@@ -108,6 +137,58 @@ export function toLineInputs(rows: QuoteLineFormValues[]): QuoteLineInput[] {
         })) }
       : {}),
   }))
+}
+
+/**
+ * Resolves a COST row's client-only `offer_line_key` into the wire's
+ * `offer_line_id` (the referenced OFFER row already has a persisted id) or
+ * `offer_line_index` (a brand-new row, positioned among the OFFER rows this
+ * SAME request actually sends — pristine rows are dropped first, exactly
+ * like `toLineInputs` itself drops them, so the two indices never drift
+ * apart). A stale key (its target removed from the form) or the absence of
+ * one both resolve to a generic cost: no key travels (spec 0144 D-4/D-7).
+ */
+export function offerLineReferenceResolver(
+  offerLines: QuoteLineFormValues[],
+): (row: QuoteLineFormValues) => Pick<QuoteLineInput, 'offer_line_id' | 'offer_line_index'> {
+  const byClientKey = new Map<string, { id?: number; index: number }>()
+  offerLines
+    .filter((row) => !isPristineLineRow(row))
+    .forEach((row, index) => {
+      if (row.client_key) {
+        byClientKey.set(row.client_key, { id: row.id, index })
+      }
+    })
+
+  return (row) => {
+    if (!row.offer_line_key) {
+      return {}
+    }
+    const reference = byClientKey.get(row.offer_line_key)
+    if (!reference) {
+      return {}
+    }
+    return reference.id !== undefined ? { offer_line_id: reference.id } : { offer_line_index: reference.index }
+  }
+}
+
+/**
+ * Spec 0144 D-7/AC-012: a COST row's `offer_line_key` may point at a product
+ * row the user has since removed from the Offer tab. Rather than reaching
+ * into the RHF field to rewrite it proactively (an effect racing the row
+ * edit itself), the Cost tab renders this SANITIZED view: a stale key reads
+ * as "Nessuno" the moment its target disappears, and any further edit on
+ * that row persists the correction for real (`setField` spreads from this
+ * very array). The submit-time resolver above applies the same fallback
+ * independently, so the payload is correct even without this pass.
+ */
+export function sanitizeCostOfferLineKeys(
+  rows: QuoteLineFormValues[],
+  validOfferLineKeys: ReadonlySet<string>,
+): QuoteLineFormValues[] {
+  return rows.map((row) =>
+    row.offer_line_key && !validOfferLineKeys.has(row.offer_line_key) ? { ...row, offer_line_key: null } : row,
+  )
 }
 
 /**
@@ -132,6 +213,12 @@ export function originalLineInputs(lines: QuoteLine[], withCommissions = true): 
       vat_rate_id: line.vat_rate_id,
       ...(withCommissions ? { additional_description: line.additional_description ?? null } : {}),
       sort_order: index,
+      // Spec 0144 D-2/D-4: `null`/`undefined` on a REVENUE row and on a
+      // generic COST row alike — omitted here exactly like `toLineInputs`
+      // omits it for the same cases, so `sameLines` below compares like-for-like.
+      ...(line.offer_line_id !== null && line.offer_line_id !== undefined
+        ? { offer_line_id: line.offer_line_id }
+        : {}),
       ...(withCommissions && line.commissions
         ? {
             commissions: line.commissions.map((commission) => ({
@@ -162,7 +249,12 @@ export function sameLines(a: QuoteLineInput[], b: QuoteLineInput[]): boolean {
       line.quantity === other.quantity &&
       line.unit_price === other.unit_price &&
       (line.vat_rate_id ?? null) === (other.vat_rate_id ?? null) &&
-      (line.additional_description ?? null) === (other.additional_description ?? null)
+      (line.additional_description ?? null) === (other.additional_description ?? null) &&
+      // Spec 0144: the association travels as EITHER key, never both — a
+      // change from one to the other (e.g. a generic cost newly attributed
+      // via `offer_line_index`) must still be caught as a real diff.
+      (line.offer_line_id ?? null) === (other.offer_line_id ?? null) &&
+      (line.offer_line_index ?? null) === (other.offer_line_index ?? null)
       && JSON.stringify(line.commissions ?? []) === JSON.stringify(other.commissions ?? [])
     )
   })
@@ -197,6 +289,22 @@ export function productTypologyIdsFromLines(lines: QuoteLine[]): Record<number, 
     if (line.product?.product_typology) {
       entries[line.product_id] = line.product.product_typology.id
     }
+  }
+  return entries
+}
+
+/**
+ * The product -> name mapping the persisted OFFER rows already carry (spec
+ * 0144), seeding the cache the Cost tab's "Associated product" column and the
+ * live per-product margin block read: a row's own form value carries only
+ * `product_id` (never a name), so a freshly picked OFFER product needs
+ * somewhere to remember its label too (`use-quote-lines-field.ts`'s
+ * `rememberProductName`).
+ */
+export function productNamesFromLines(lines: QuoteLine[]): Record<number, string> {
+  const entries: Record<number, string> = {}
+  for (const line of lines) {
+    entries[line.product_id] = line.product.name
   }
   return entries
 }

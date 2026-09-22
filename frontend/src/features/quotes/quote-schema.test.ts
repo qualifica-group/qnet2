@@ -228,6 +228,19 @@ describe('buildCreateQuoteSchema', () => {
       const result = schema.safeParse(baseValues({ offer_lines: [validLine({ unit_price: 10.01 })] }))
       expect(result.success).toBe(true)
     })
+
+    // Spec 0144 D-7: the client-only keys are optional (never validated as
+    // required — the server never sees them) and never block a submit.
+    it('accepts a row carrying client_key/offer_line_key (spec 0144)', () => {
+      const schema = buildCreateQuoteSchema(i18n.t)
+      const result = schema.safeParse(
+        baseValues({
+          offer_lines: [validLine({ client_key: 'line-1' })],
+          cost_lines: [validLine({ client_key: 'line-2', offer_line_key: 'line-1' })],
+        }),
+      )
+      expect(result.success).toBe(true)
+    })
   })
 })
 

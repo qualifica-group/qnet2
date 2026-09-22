@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { History, MessagesSquare, Paperclip, TrendingDown, TrendingUp } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -17,6 +17,12 @@ import {
   totalsFromPersistedSummary,
   typologyBucketsFromPersistedSummary,
 } from '@/features/quotes/quote-summary'
+import {
+  computeProductMargins,
+  costLinesFromPersistedCostLines,
+  productLinesFromPersistedOfferLines,
+} from '@/features/quotes/quote-product-margins-calc'
+import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
@@ -130,6 +136,30 @@ function QuoteDetailLines({ quote }: { quote: QuoteDetailWithPermissions }) {
   const totals = totalsFromPersistedSummary(quote.summary)
   const showCommissions = quote.permissions.fields.commissions?.visible ?? true
 
+  // Spec 0144 AC-016: the cost list's own "Associated product" cell resolves
+  // an `offer_line_id` through this SAME offer's persisted revenue rows.
+  const offerLineLabelsById = useMemo(() => {
+    const labels: Record<number, string> = {}
+    quote.offer_lines.forEach((line, index) => {
+      labels[line.id] = t('quotes.form.costsTab.associatedProductOption', {
+        product: line.product.name,
+        n: index + 1,
+      })
+    })
+    return labels
+  }, [quote.offer_lines, t])
+
+  // Spec 0144 AC-015: the detail's own "Margine per prodotto" block reads the
+  // CONGEALED `net_amount`s (D-9), never recomputed client-side.
+  const productMargins = useMemo(
+    () =>
+      computeProductMargins(
+        productLinesFromPersistedOfferLines(quote.offer_lines),
+        costLinesFromPersistedCostLines(quote.cost_lines),
+      ),
+    [quote.offer_lines, quote.cost_lines],
+  )
+
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-0">
       {/* Strip, righe e riepilogo nella STESSA banda, senza filetti in mezzo
@@ -151,7 +181,11 @@ function QuoteDetailLines({ quote }: { quote: QuoteDetailWithPermissions }) {
           <QuoteLinesReadOnlyList lines={quote.offer_lines} showCommissions={showCommissions} />
         </TabsContent>
         <TabsContent value={COSTS_TAB}>
-          <QuoteLinesReadOnlyList lines={quote.cost_lines} />
+          <QuoteLinesReadOnlyList
+            lines={quote.cost_lines}
+            variant="cost"
+            offerLineLabelsById={offerLineLabelsById}
+          />
         </TabsContent>
         <QuoteSummary
           totals={totals}
@@ -163,6 +197,7 @@ function QuoteDetailLines({ quote }: { quote: QuoteDetailWithPermissions }) {
           }}
           typologyBuckets={typologyBucketsFromPersistedSummary(quote.summary)}
         />
+        <QuoteProductMargins rows={productMargins.rows} genericCostNet={productMargins.genericCostNet} />
       </div>
     </Tabs>
   )

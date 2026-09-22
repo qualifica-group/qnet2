@@ -1,6 +1,11 @@
 import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
-import { originalLineInputs, sameLines, toLineInputs } from '@/features/quotes/quote-line-values'
+import {
+  offerLineReferenceResolver,
+  originalLineInputs,
+  sameLines,
+  toLineInputs,
+} from '@/features/quotes/quote-line-values'
 import { managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { CreateQuotePayload, QuoteDetail, UpdateQuotePayload } from '@/features/quotes/types'
@@ -46,7 +51,10 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
     // persisted to clear, so sending `[]` would only be noise.
     ...(values.rewards.length > 0 ? { rewards: values.rewards } : {}),
     offer_lines: toLineInputs(values.offer_lines),
-    cost_lines: toLineInputs(values.cost_lines),
+    // Spec 0144 D-4: resolves each cost row's client-only `offer_line_key`
+    // against the offer rows THIS SAME request sends, so a cost pointing at
+    // a brand-new (not-yet-persisted) offer row lands on `offer_line_index`.
+    cost_lines: toLineInputs(values.cost_lines, offerLineReferenceResolver(values.offer_lines)),
   }
 }
 
@@ -148,7 +156,11 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   if (!sameLines(offerLines, originalLineInputs(original.offer_lines))) {
     payload.offer_lines = offerLines
   }
-  const costLines = toLineInputs(values.cost_lines)
+  // Spec 0144 D-4/D-7: resolved from the CURRENT `offer_lines` (whatever the
+  // user is submitting right now, not the original) — the only source that
+  // can tell a generic cost from one newly attributed to a brand-new offer
+  // row via `offer_line_index`.
+  const costLines = toLineInputs(values.cost_lines, offerLineReferenceResolver(values.offer_lines))
   if (!sameLines(costLines, originalLineInputs(original.cost_lines))) {
     payload.cost_lines = costLines
   }

@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useQuoteLinesField } from '@/features/quotes/use-quote-lines-field'
-import { QuoteLineRow, type QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import { QuoteLineRow, type QuoteCostOfferLineOption, type QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteCommissionContext, QuoteLine, QuoteLineProductRef, QuoteLineVatRateRef } from '@/features/quotes/types'
 import { fetchQuoteCommissionDefaults, fetchQuoteCommissionRecipients } from '@/features/quotes/api'
@@ -52,6 +52,14 @@ interface QuoteLinesFieldProps {
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
   /** Spec 0099: feeds the live per-typology summary's bucket cache on pick. */
   rememberProductTypology?: (productId: number, typologyId: number) => void
+  /** Spec 0144: feeds the shared product name cache the Cost tab's association select and the live per-product margin block read. */
+  rememberProductName?: (productId: number, name: string) => void
+  /**
+   * Cost tab only (spec 0144 AC-011): the OFFER rows an operator may
+   * associate a cost with, one per revenue row carrying a product. `[]` on
+   * the Offer tab, which never renders this column.
+   */
+  offerLineOptions?: QuoteCostOfferLineOption[]
   commissionContext?: QuoteCommissionContext
   /**
    * `false` mounts the editor WITHOUT the provvigioni column and without the
@@ -69,6 +77,9 @@ interface QuoteLinesFieldProps {
    */
   simplified?: boolean
 }
+
+/** Hoisted: an inline `[]` default would be a new reference on every render. */
+const NO_OFFER_LINE_OPTIONS: QuoteCostOfferLineOption[] = []
 
 /**
  * One tab's (`offer_lines`/`cost_lines`) repeatable row editor (D-11: both
@@ -89,6 +100,8 @@ export function QuoteLinesField({
   vatRatePercentFor,
   rememberVatRatePercent,
   rememberProductTypology,
+  rememberProductName,
+  offerLineOptions = NO_OFFER_LINE_OPTIONS,
   commissionContext,
   withCommissions = true,
   simplified = false,
@@ -102,6 +115,7 @@ export function QuoteLinesField({
     variant,
     rememberVatRatePercent,
     rememberProductTypology,
+    rememberProductName,
   })
 
   const productById = (id: number | null) => (id === null ? undefined : knownProducts.find((p) => p.id === id))
@@ -230,6 +244,9 @@ export function QuoteLinesField({
             <span>{t('quotes.form.lineUnitOfMeasureHeader')}</span>
             {simplified ? null : <span>{t('quotes.form.lineUnitPriceHeader')}</span>}
             {simplified ? null : <span>{t('quotes.form.lineVatRateHeader')}</span>}
+            {variant === 'cost' && !simplified ? (
+              <span>{t('quotes.form.costsTab.associatedProductHeader')}</span>
+            ) : null}
             <span className="text-right">{t('quotes.form.lineNetHeader')}</span>
             <span className="text-right">{t('quotes.form.lineVatHeader')}</span>
             <span className="text-right">{t('quotes.form.lineTotalHeader')}</span>
@@ -257,6 +274,7 @@ export function QuoteLinesField({
                 commissionContext={commissionContext}
                 withCommissions={withCommissions}
                 simplified={simplified}
+                offerLineOptions={offerLineOptions}
                 onChangeProduct={(productId, item) => changeRevenueProduct(index, productId, item)}
                 onChangeField={(patch) => setField(index, patch)}
                 onRemove={() => removeRow(index)}

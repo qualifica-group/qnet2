@@ -50,13 +50,19 @@ final class QuoteLineCoverageWriter
      */
     public function writeSubmitted(Quote $quote, ?Opportunity $opportunity, ?array $offerLines, ?array $costLines): void
     {
+        // Spec 0144, D-4: the REVENUE rows just persisted, so a COST row's
+        // `offer_line_index` can resolve to their real id — null when
+        // `offer_lines` was not submitted at all in this request (an
+        // `offer_line_index` still resolves to nothing then, AC-006).
+        $revenueLines = null;
+
         if ($offerLines !== null) {
             $this->coverOpportunity($opportunity, $offerLines);
-            $this->lineWriter->sync($quote, QuoteLineType::Revenue, $offerLines);
+            $revenueLines = $this->lineWriter->sync($quote, QuoteLineType::Revenue, $offerLines);
         }
 
         if ($costLines !== null) {
-            $this->lineWriter->sync($quote, QuoteLineType::Cost, $costLines);
+            $this->lineWriter->sync($quote, QuoteLineType::Cost, $costLines, $revenueLines);
         }
     }
 

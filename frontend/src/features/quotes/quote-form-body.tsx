@@ -31,7 +31,7 @@ import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-statu
 import { QuoteLayoutSection } from '@/features/quotes/quote-layout-section'
 import { QuoteLiveSummary } from '@/features/quotes/quote-summary'
 import { parseQuoteCreateProductIds } from '@/features/quotes/quote-create-params'
-import { DEFAULT_LINE_QUANTITY, EMPTY_LINE_ROW, lineValuesFromProduct } from '@/features/quotes/use-quote-lines-field'
+import { createEmptyLineRow, DEFAULT_LINE_QUANTITY, lineValuesFromProduct } from '@/features/quotes/use-quote-lines-field'
 import { useQuoteForm } from '@/features/quotes/use-quote-form'
 import { useAllProductTypologies } from '@/features/product-typologies/for-select-api'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
@@ -76,6 +76,8 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
     rememberVatRatePercent,
     productTypologyIdFor,
     rememberProductTypology,
+    productNameFor,
+    rememberProductName,
     attributeContext,
     attributesLoading,
     hasPickedProduct,
@@ -200,12 +202,16 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
         if (item.meta.product_typology) {
           rememberProductTypology(item.id, item.meta.product_typology.id)
         }
+        // Spec 0144: same treatment for the product name cache, so a
+        // deep-link-seeded row is immediately a valid Cost tab association
+        // target.
+        rememberProductName(item.id, item.label)
 
-        return { ...EMPTY_LINE_ROW, ...lineValuesFromProduct(item, 'revenue'), quantity: DEFAULT_LINE_QUANTITY }
+        return { ...createEmptyLineRow(), ...lineValuesFromProduct(item, 'revenue'), quantity: DEFAULT_LINE_QUANTITY }
       }),
       { shouldDirty: true },
     )
-  }, [seededProductIds, seededProductLabels, form, rememberVatRatePercent, rememberProductTypology])
+  }, [seededProductIds, seededProductLabels, form, rememberVatRatePercent, rememberProductTypology, rememberProductName])
 
   /** The inherited ref wins over the loaded quote's own, so the trigger relabels the moment it auto-fills; the forced Opportunity's own meta is the fallback source before any user pick. */
   const inheritedMeta = inheritedRoles ?? forcedOpportunityMeta
@@ -360,6 +366,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 vatRatePercentFor={vatRatePercentFor}
                 rememberVatRatePercent={rememberVatRatePercent}
                 rememberProductTypology={rememberProductTypology}
+                rememberProductName={rememberProductName}
                 quoteId={original?.id}
               />
             </TabsContent>
@@ -371,6 +378,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 knownLines={original?.cost_lines ?? []}
                 vatRatePercentFor={vatRatePercentFor}
                 rememberVatRatePercent={rememberVatRatePercent}
+                productNameFor={productNameFor}
               />
             </TabsContent>
 
@@ -398,6 +406,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
             vatRatePercentFor={vatRatePercentFor}
             productTypologyIdFor={productTypologyIdFor}
             typologyOptions={typologyOptions}
+            productNameFor={productNameFor}
           />
 
           {serverError && (

@@ -16,70 +16,30 @@ import type { ProductLine } from '@/features/product-lines/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
 import type { ModuleCreateParams } from '@/features/modules/types'
-
-export type QuoteCommissionOrigin =
-  | 'PRODUCT'
-  | 'PRODUCT_CATEGORY'
-  | 'RECIPIENT'
-  | 'MANUAL_OVERRIDE'
-
-export type QuoteCommissionRecipientType = 'referent' | 'user' | 'registry'
+import type { QuoteLine, QuoteLineInput, QuoteRelationRef } from '@/features/quotes/quote-line-types'
 
 /**
- * The ONE identity a commission role may be awarded to on a given quote line,
- * as resolved server-side by `POST /quotes/commission-recipients`: the quote's
- * commercial/reporter/supervisor for the three people roles, the line
- * product's supplier for the fourth. The recipient is never picked by the
- * user — the dialog only displays it locked.
+ * Line + line-commission types now live in `quote-line-types.ts` (engineering.md
+ * §6 size limit, spec 0144); re-exported here so every existing
+ * `from '@/features/quotes/types'` import keeps working unchanged.
  */
-export interface QuoteCommissionRecipient {
-  type: QuoteCommissionRecipientType
-  id: number
-  name: string
-}
-
-/** `null` for a role with no upstream selection: no commission may exist for it. */
-export type QuoteCommissionRecipientMap = Record<CommissionRole, QuoteCommissionRecipient | null>
-
-/**
- * The upstream selections a line's commissions resolve their locked recipients
- * against — the quote's own role fields, read live off the open form (they may
- * differ from what is persisted until it is saved).
- */
-export interface QuoteCommissionContext {
-  quoteId?: number
-  commercialId: number | null
-  reporterId: number | null
-  supervisorId: number | null
-}
-
-export interface QuoteLineCommission {
-  id?: number
-  recipient_role: CommissionRole
-  recipient_type: QuoteCommissionRecipientType
-  recipient_id: number
-  recipient?: QuoteRelationRef | null
-  commission_type: CommissionType
-  value: string
-  calculated_amount: string
-  internal_note: string | null
-  origin: QuoteCommissionOrigin
-  commission_configuration_id: number | null
-}
-
-export type QuoteLineCommissionInput = Omit<
+export type {
+  QuoteCommissionOrigin,
+  QuoteCommissionRecipientType,
+  QuoteCommissionRecipient,
+  QuoteCommissionRecipientMap,
+  QuoteCommissionContext,
+  QuoteRelationRef,
   QuoteLineCommission,
-  'calculated_amount' | 'recipient' | 'value'
-> & { value: number }
-  & { recipient?: QuoteRelationRef | null }
-
-/** A hydrated `{id, name}` relation projection (opportunity/commercial/reporter/supervisor/company/company_site). */
-export interface QuoteRelationRef {
-  id: number
-  name: string
-}
+  QuoteLineCommissionInput,
+  QuoteLineCategoryRef,
+  QuoteLineProductRef,
+  QuoteLineVatRateRef,
+  QuoteLineUnitOfMeasureRef,
+  QuoteLine,
+  QuoteLineInput,
+} from '@/features/quotes/quote-line-types'
 
 /**
  * The quotes table's `alert` column (spec 0102 D-4): calculated at read
@@ -123,84 +83,6 @@ export interface QuoteWorkflowStatusRef {
   description: string | null
   group: string
   requires_note: boolean
-}
-
-/** Minimal category/business-function projection hydrating a quote line's product (spec 0065 D-7). */
-export interface QuoteLineCategoryRef {
-  id: number
-  name: string
-}
-
-/**
- * The product a quote line points to, resolved LIVE (D-7): `name`/`code`/
- * `category`/`business_function` always reflect the product's current state,
- * never a snapshot — only the amounts on `QuoteLine` itself are frozen (D-10).
- */
-export interface QuoteLineProductRef {
-  id: number
-  code: string
-  name: string
-  category: QuoteLineCategoryRef | null
-  /**
-   * The product's typology, read LIVE through the product (spec 0099, D-5) —
-   * deliberately NOT frozen onto the line, unlike `unit_of_measure`. Seeds
-   * the live summary's per-typology bucket cache in edit mode.
-   */
-  product_typology: QuoteLineCategoryRef | null
-  business_function: QuoteLineCategoryRef | null
-}
-
-/** The VAT rate hydrated on a quote line, frozen at the percentage used when the row was saved (D-10). */
-export interface QuoteLineVatRateRef {
-  id: number
-  name: string
-  rate: string
-}
-
-/**
- * The unit of measure congelated on a quote line at write time (spec 0088,
- * D-5): a snapshot, unlike `product`/`vat_rate` which read live. `null` only
- * when the backend cannot resolve any unit (should not happen in practice —
- * every product carries one, D-4).
- */
-export interface QuoteLineUnitOfMeasureRef {
-  id: number
-  name: string
-  symbol: string
-}
-
-/**
- * A single revenue (`offer_lines`) or cost (`cost_lines`) row, as exposed by
- * `QuoteResource`. Both tabs share the exact same shape (D-11): the
- * discriminant (`line_type`) lives server-side only, never on the wire.
- */
-export interface QuoteLine {
-  id: number
-  product_id: number
-  product: QuoteLineProductRef
-  /** decimal(15,2) */
-  quantity: string
-  /**
-   * Congelated at write time from the product's own unit (spec 0088, D-5);
-   * a row saved before this field existed falls back server-side to the
-   * product's CURRENT unit (AC-053). Read-only: never part of the write
-   * payload (`QuoteLineInput`), the backend rejects it with 422 if sent.
-   */
-  unit_of_measure: QuoteLineUnitOfMeasureRef | null
-  /** Free text the operator adds to this line, printable in the quote document (`additional_description` column key). */
-  additional_description: string | null
-  /** decimal(15,2) */
-  unit_price: string
-  vat_rate_id: number | null
-  vat_rate: QuoteLineVatRateRef | null
-  /** `quantity * unit_price`, rounded half-up to 2 decimals (D-12). */
-  net_amount: string
-  /** `net_amount * rate / 100`, rounded half-up to 2 decimals; 0 when `vat_rate_id` is null. */
-  vat_amount: string
-  /** `net_amount + vat_amount`. */
-  total_amount: string
-  sort_order: number
-  commissions?: QuoteLineCommission[]
 }
 
 /** One side (`revenue`/`cost`) of the persisted economic summary (D-9). */
@@ -352,26 +234,6 @@ export interface QuoteDetail {
  */
 export interface QuoteDetailWithPermissions extends QuoteDetail {
   permissions: ResourcePermissions
-}
-
-/**
- * A revenue/cost row as sent to the server (create/update payload). Only the
- * inputs travel: `net_amount`/`vat_amount`/`total_amount` are `prohibited`
- * (AC-076/AC-033) — the server computes and freezes them (D-10/D-12).
- */
-export interface QuoteLineInput {
-  id?: number
-  product_id: number
-  /** > 0, max 999999.99, max 2 decimals. */
-  quantity: number
-  /** >= 0, max 99999999.99, max 2 decimals. */
-  unit_price: number
-  vat_rate_id?: number | null
-  /** Omitted = the server keeps the stored value; `null` clears it. */
-  additional_description?: string | null
-  /** Row position; when omitted the server uses the array index. */
-  sort_order?: number
-  commissions?: QuoteLineCommissionInput[]
 }
 
 /** One `rewards` row of the create/update payload (spec 0059 §4): only the type id travels — the beneficiary and the date are server-derived. */

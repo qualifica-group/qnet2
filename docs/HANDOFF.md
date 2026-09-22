@@ -3,6 +3,31 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## OFFERTE: COSTO IMPUTATO A RIGA PRODOTTO — NON COMMITTATO (2026-09-22)
+
+Spec 0144 (`docs/specs/0144-quote-cost-line-allocation.xml`, status implemented). Verifier: VERDE (Pest sequenziale
+7970 pass / 1 skip; Vitest 728 file / 5517 test; eslint pulito; `tsc -b --force` EXIT 0).
+- DB: `quote_lines.offer_line_id` nullable, FK self su `quote_lines.id` `nullOnDelete` (riga prodotto eliminata da
+  qualsiasi canale -> costo generico). Solo righe COST; REVENUE sempre NULL. Migrazione `2026_09_22_100000_*`
+  (`QuoteWorkflowMigrationTest` step 85 -> 86).
+- Contratto `cost_lines[i]`: `offer_line_id` (riga REVENUE persistita della stessa offerta) XOR `offer_line_index`
+  (indice in `offer_lines` della STESSA richiesta, per righe nuove); nessuna = generico. 422 su
+  `cost_lines.{i}.offer_line_id|offer_line_index`; le due chiavi sono `prohibited` su `offer_lines`/inline-edit
+  (`QuoteLineRules::fieldRules()` deriva dal `$field`). Resource: `offer_line_id` su ogni riga.
+- BE: `QuoteLineWriter::sync(..., ?array $revenueLines = null): array` restituisce le righe salvate per indice;
+  risoluzione in `App\Services\Quotes\CostLineAllocationResolver`; `QuoteLineCoverageWriter` passa le REVENUE
+  salvate (null se `offer_lines` non inviato). `DemoQuoteSeeder`: meta' delle offerte demo imputano il costo.
+- FE: righe form con `client_key` (client-only, `line-<id>` in edit) e `offer_line_key` sui costi; mapping nel payload
+  in `quote-line-values.ts` (indice calcolato DOPO lo scarto delle righe pristine). Select "Prodotto associato" =
+  `SearchableSelect` stile select IVA (nuove prop opzionali `onClear`/`labels.clearLabel`). Blocco "Margine per
+  prodotto" (`quote-product-margins-calc.ts` + `.tsx`), calcolato client-side, form live + dettaglio; totali header
+  invariati. Tipi riga spostati in `quote-line-types.ts` (split di `types.ts`, riesportati).
+- Manuale: guida in-app `quotes` IT/EN (sezione `offer-and-cost-lines`) + manuale Claude Docs aggiornati.
+- Fuori scope (non fare senza richiesta): Gestione Richieste, layout PDF/DOCX, griglia/statistiche, provvigioni.
+- Da verificare a mano: UI tab Costi a 375/768/1024px. Nota verifier (bassa): l'indice esplicito su `offer_line_id`
+  e' ridondante su MySQL (la FK lo crea) — lasciato per coerenza con `product_id` sulla stessa tabella.
+- Prossimo passo: commit su ordine esplicito dell'utente.
+
 ## FIX NOTIFICHE RICHIESTE DI MODIFICA IN ITALIANO — NON COMMITTATO (2026-09-22)
 
 Bug: la notifica "New change request" (e quella di esito) arrivava in inglese e mostrava la chiave i18n frontend

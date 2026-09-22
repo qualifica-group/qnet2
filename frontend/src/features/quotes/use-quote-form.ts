@@ -13,10 +13,11 @@ import { createQuote, quoteDetailQueryKey, updateQuote } from '@/features/quotes
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
 import {
   linesToFormValues,
+  productNamesFromLines,
   productTypologyIdsFromLines,
   vatRatePercentsFromLines,
 } from '@/features/quotes/quote-line-values'
-import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
+import { createEmptyLineRow } from '@/features/quotes/use-quote-lines-field'
 import {
   buildCreateQuoteSchema,
   buildUpdateQuoteSchema,
@@ -86,6 +87,19 @@ function initialProductTypologyIds(mode: QuoteFormMode): Record<number, number> 
     return {}
   }
   return productTypologyIdsFromLines(mode.quote.offer_lines)
+}
+
+/**
+ * Seeds the shared product -> name cache from the persisted OFFER rows (spec
+ * 0144): the Cost tab's "Associated product" select and the live per-product
+ * margin block need a label for a row loaded from an edit, which carries
+ * only `product_id` (never a name) on the form value itself.
+ */
+function initialProductNames(mode: QuoteFormMode): Record<number, string> {
+  if (mode.type !== 'edit') {
+    return {}
+  }
+  return productNamesFromLines(mode.quote.offer_lines)
 }
 
 /**
@@ -226,7 +240,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
       // of an empty grid — an offer without lines is the exception, so making
       // the user press "Aggiungi riga" first was pure friction. Costs stay
       // empty: those rows are genuinely optional.
-      offer_lines: [EMPTY_LINE_ROW],
+      offer_lines: [createEmptyLineRow()],
       cost_lines: [],
     }
   }, [mode, initialCode])
@@ -313,6 +327,23 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     [productTypologyIdByProductId],
   )
 
+  // Spec 0144: same shape as the two caches above — a row carries only
+  // `product_id` (never a name), so the Cost tab's "Associated product"
+  // options and the live per-product margin block resolve it through this
+  // map, seeded from the persisted OFFER rows and topped up on every pick.
+  const [productNameByProductId, setProductNameByProductId] = useState<Record<number, string>>(() =>
+    initialProductNames(mode),
+  )
+  const rememberProductName = useCallback((productId: number, name: string) => {
+    setProductNameByProductId((previous) =>
+      previous[productId] === name ? previous : { ...previous, [productId]: name },
+    )
+  }, [])
+  const productNameFor = useCallback(
+    (productId: number) => productNameByProductId[productId] ?? null,
+    [productNameByProductId],
+  )
+
   const confirm = useConfirm()
 
   /** One create/update attempt; `promoteManagers` rides the retry after the D-6 dialog is accepted. */
@@ -385,6 +416,8 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     rememberVatRatePercent,
     productTypologyIdFor,
     rememberProductTypology,
+    productNameFor,
+    rememberProductName,
     // Spec 0084 D-5: risolti QUI perche' lo schema ne dipende; il body li
     // consuma per rendere la sezione, senza risolverli una seconda volta.
     attributeContext,

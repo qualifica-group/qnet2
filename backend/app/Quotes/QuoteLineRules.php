@@ -34,6 +34,9 @@ final class QuoteLineRules
     /** Mirrored by the frontend's `ADDITIONAL_DESCRIPTION_MAX_LENGTH`. */
     public const int ADDITIONAL_DESCRIPTION_MAX_LENGTH = 5000;
 
+    /** The only field allowed to carry an `offer_line_id`/`offer_line_index` allocation (spec 0144, D-4/D-5). */
+    private const string ALLOCATABLE_FIELD = 'cost_lines';
+
     /**
      * @param  string  $field  the payload key the rows travel under (`offer_lines`, `cost_lines`, or `value` for a single inline cell)
      * @param  bool  $withCommissions  whether the row may carry the provvigioni block at all
@@ -41,6 +44,8 @@ final class QuoteLineRules
      */
     public static function fieldRules(string $field, bool $withCommissions): array
     {
+        $allocatable = $field === self::ALLOCATABLE_FIELD;
+
         return [
             $field => ['sometimes', 'array', 'max:'.self::MAX_ROWS],
             "{$field}.*.product_id" => ['required', 'integer', Rule::exists('products', 'id')],
@@ -54,6 +59,21 @@ final class QuoteLineRules
             "{$field}.*.vat_rate_id" => ['nullable', 'integer', Rule::exists('vat_rates', 'id')],
             "{$field}.*.sort_order" => ['nullable', 'integer', 'min:0'],
             "{$field}.*.additional_description" => ['sometimes', 'nullable', 'string', 'max:'.self::ADDITIONAL_DESCRIPTION_MAX_LENGTH],
+            // Spec 0144, D-4/D-5: mutually exclusive on `cost_lines` alone —
+            // the REAL check (the referenced/indexed row is a REVENUE row of
+            // THIS quote) happens in QuoteLineWriter::sync() after the
+            // REVENUE tab is synced, not here (no generic `exists` rule: an
+            // id valid elsewhere is still wrong on create, or once removed in
+            // the same request). `prohibits` reports the 422 on
+            // `offer_line_id` when both are sent (AC-006). Any other channel
+            // (`offer_lines`, the inline-edit `value`) never writes only
+            // REVENUE rows, so both keys are simply forbidden there (D-5).
+            "{$field}.*.offer_line_id" => $allocatable
+                ? ['nullable', 'integer', 'prohibits:'.$field.'.*.offer_line_index']
+                : ['prohibited'],
+            "{$field}.*.offer_line_index" => $allocatable
+                ? ['nullable', 'integer', 'min:0']
+                : ['prohibited'],
             "{$field}.*.net_amount" => ['prohibited'],
             "{$field}.*.vat_amount" => ['prohibited'],
             "{$field}.*.total_amount" => ['prohibited'],

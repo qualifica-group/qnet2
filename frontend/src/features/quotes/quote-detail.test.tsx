@@ -1,9 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
+import { quoteLineFixture, WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import axios from 'axios'
 import i18n from '@/i18n'
 import { QuoteDetailView } from '@/features/quotes/quote-detail'
@@ -276,5 +276,58 @@ describe('QuoteDetailView — related records', () => {
     expect(hrefOf('Qualifica Group')).toBe('/companies/4')
     expect(hrefOf('Sede Roma')).toBe('/company-sites/5')
     expect(hrefOf('Via Roma 1 - Milano')).toBe('/operational-sites/6')
+  })
+})
+
+/** Spec 0144 AC-015/AC-016: cost-to-product association, read-only. */
+describe('QuoteDetailView — Margine per prodotto', () => {
+  it('shows the margin per product block computed from the persisted net amounts', () => {
+    const quote = quoteFixture({
+      offer_lines: [quoteLineFixture({ id: 1, product_id: 7, net_amount: '100.00' })],
+      cost_lines: [quoteLineFixture({ id: 2, product_id: 9, offer_line_id: 1, net_amount: '30.00' })],
+    })
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    expect(screen.getByText('Margin per product')).toBeInTheDocument()
+    expect(screen.getByText('70.00')).toBeInTheDocument() // 100.00 - 30.00
+    expect(screen.getByText('Generic costs')).toBeInTheDocument()
+  })
+
+  it('hides the block when the offer has no product row', () => {
+    renderDetail(<QuoteDetailView quote={quoteFixture()} />)
+    expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()
+  })
+
+  it('shows the associated product in the read-only cost list', () => {
+    const quote = quoteFixture({
+      offer_lines: [
+        quoteLineFixture({
+          id: 1,
+          product_id: 7,
+          product: { id: 7, code: 'PRD-1', name: 'Widget Pro', category: null, product_typology: null, business_function: null },
+        }),
+      ],
+      cost_lines: [quoteLineFixture({ id: 2, product_id: 9, offer_line_id: 1 })],
+    })
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    // Radix Tabs selects on `onMouseDown`, not `onClick` (no
+    // `@testing-library/user-event` in this repo to simulate the full pointer
+    // sequence a real click implies).
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Costs' }))
+    // Scoped to the tabpanel: the ALWAYS-visible margins block below uses the
+    // SAME "{{product}} (row {{n}})" label for its own product row.
+    expect(within(screen.getByRole('tabpanel', { name: 'Costs' })).getByText('Widget Pro (row 1)')).toBeInTheDocument()
+  })
+
+  it('shows "Generic cost" for a cost with no association', () => {
+    const quote = quoteFixture({
+      offer_lines: [quoteLineFixture({ id: 1, product_id: 7 })],
+      cost_lines: [quoteLineFixture({ id: 2, product_id: 9, offer_line_id: null })],
+    })
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Costs' }))
+    expect(within(screen.getByRole('tabpanel', { name: 'Costs' })).getByText('Generic cost')).toBeInTheDocument()
   })
 })
