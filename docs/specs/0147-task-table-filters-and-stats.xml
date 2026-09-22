@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0147-task-table-filters-and-stats" status="implemented" owner="utente" date="2026-09-22">
+
+  <goal>
+    La tabella del modulo Task offre gli stessi filtri della board Task della commessa (spec 0146) e un
+    bottone Statistiche come gli altri moduli, con i calcoli della board commessa.
+  </goal>
+
+  <context>
+    - Filtri board (client-side): `frontend/src/features/work-orders/task-board/task-board-filters.ts`
+      (Stato, Scadenza, Assegnazione, Tipo, Priorita', Stato task, Importanza, Richiedente, Assegnatari, Osservatori).
+    - KPI board: `task-board-metrics.ts` (`isOverdue`, `isDueToday`, stimato, effettivo) sui soli task radice.
+    - Tabella Task: `TasksTableDefinition` + generic table; filtri avanzati spec 0032
+      (`advancedFilters()` + `applyAdvancedFilter()`), pannello FE generico.
+    - Statistiche: spec 0026, `config/stats.php` + `AbstractStatsDefinition`, pannello FE generico
+      (`ModuleStatsPanel`, `StatsToggleButton`).
+  </context>
+
+  <decisions>
+    D-1  (utente) Filtri come filtri avanzati del dominio `tasks` (nessun endpoint nuovo). La ricerca per titolo
+         resta la ricerca della toolbar.
+    D-2  (utente) Stato preimpostato "Aperti": filtro `status` `required` con `defaultValue: open`, opzioni
+         open/completed/blocked/all ("Tutti" = nessuna restrizione).
+    D-3  Semantica identica alla board, applicata a ogni riga (radici e sottotask, la tabella e' piatta):
+         open = fase open/pending/in_validation; completed = closed_positive/closed_negative; blocked = is_blocked;
+         scadenza su COALESCE(end_date, start_date): today = oggi, overdue = prima di oggi,
+         this_week = settimana ISO corrente; assigned_to_me / requested_by_me sull'utente corrente.
+    D-4  (utente) Statistiche: 4 KPI Scaduti, In scadenza oggi, Stimato, Effettivo; poi grafici: per stato,
+         per priorita', andamento mensile di creazione.
+    D-5  (utente) Statistiche sui soli task radice, sempre ristrette alla visibilita' dell'utente
+         (`TaskVisibilityScope`), indipendenti dai filtri della tabella (come gli altri moduli).
+    D-6  Stimato/Effettivo in minuti con nuovo formato stat `duration`, reso come `7h 30m`
+         (`formatMinutesLabel`). Effettivo = somma `time_entries.minutes` dei task radice.
+    D-7  Opzioni Stato/Scadenza/Assegnazione come enum pubblici in `config/config.php` (`form_enums`),
+         metadati di presentazione non sensibili.
+  </decisions>
+
+  <contract>
+    advancedFilters (dominio `tasks`), nome -> tipo:
+      status: enum (enumKey task_list_status, required, defaultValue "open")
+      due: enum (enumKey task_due_window)
+      assignment: enum (enumKey task_assignment_scope)
+      task_status, task_type, task_priority, task_importance: relation multiple
+        (for-select task-statuses, task-types, task-priorities, task-importances)
+      requester, assignees, watchers: relation multiple (for-select users)
+    GET /api/stats/tasks -> widgets: overdue, due_today, estimated_minutes, actual_minutes (stat),
+      by_status, by_priority (distribution), trend (trend). Autorizzazione: tasks.viewAny.
+  </contract>
+
+  <acceptance>
+    AC-001 Ogni filtro avanzato restringe le righe secondo D-3; un nome fuori catalogo -> 422, un valore enum sconosciuto non restringe.
+    AC-002 Senza `status` nella richiesta la tabella mostra solo task aperti; `status: all` li mostra tutti.
+    AC-003 GET /api/stats/tasks: 4 stat in testa con i valori di D-4/D-6 sui soli radice visibili; 403 senza tasks.viewAny.
+    AC-004 La pagina Task mostra il bottone Statistiche e il pannello; guida in-app IT/EN aggiornata.
+  </acceptance>
+
+</spec>

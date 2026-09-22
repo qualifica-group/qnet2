@@ -436,7 +436,7 @@ export const en = {
   contracts,
   workOrders,
   taskTemplates,
-  tasks,
+  tasks: { ...tasks, stats: moduleStats.tasks },
   taskStatuses,
   taskTypes,
   taskCategories,

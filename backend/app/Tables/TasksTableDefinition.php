@@ -10,6 +10,8 @@ use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskStatusResolver;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Services\TaskService;
+use App\Tables\Tasks\TaskAdvancedFilterApplier;
+use App\Tables\Tasks\TaskAdvancedFilterCatalog;
 use App\Tables\Tasks\TaskColumnCatalog;
 use App\Tables\Tasks\TaskRelationColumns;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,6 +47,7 @@ class TasksTableDefinition extends AbstractTableDefinition
         private readonly TaskService $service,
         private readonly TaskStatusResolver $statusResolver,
         private readonly TaskRelationColumns $relationColumns,
+        private readonly TaskAdvancedFilterApplier $advancedFilterApplier,
     ) {}
 
     public function domain(): string
@@ -111,6 +114,32 @@ class TasksTableDefinition extends AbstractTableDefinition
     public function filters(): array
     {
         return TaskColumnCatalog::filters();
+    }
+
+    /**
+     * The work-order Task board's filters (spec 0147).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function advancedFilters(): array
+    {
+        return TaskAdvancedFilterCatalog::advancedFilters();
+    }
+
+    /**
+     * `status`/`due`/`assignment` are derived (TaskAdvancedFilterApplier); the
+     * relation filters go through the generic whereHas-by-id.
+     *
+     * @param  Builder<Task>  $query
+     * @param  array<string, mixed>  $descriptor
+     */
+    public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
+    {
+        /** @var User|null $actor */
+        $actor = Auth::user();
+
+        return $this->advancedFilterApplier->apply($query, $name, $value, $actor)
+            || parent::applyAdvancedFilter($query, $name, $descriptor, $value);
     }
 
     /**

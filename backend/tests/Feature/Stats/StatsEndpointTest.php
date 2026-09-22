@@ -25,6 +25,9 @@ uses(RefreshDatabase::class);
  *
  * `opportunities` joined the panel with spec 0040, same registry pattern.
  *
+ * `tasks` joined with spec 0147 (requirement change, declared): scoped to the
+ * actor's visible root tasks, values verified in TasksStatsTest.
+ *
  * @return array<int, string>
  */
 function statsDomains(): array
@@ -44,6 +47,7 @@ function statsDomains(): array
         'users',
         'import-runs',
         'opportunities',
+        'tasks',
     ];
 }
 
@@ -142,6 +146,7 @@ it('emits exactly the i18n label keys the frontend translates (AC-001)', functio
     ['users', ['total', 'active', 'inactive', 'managers', 'byRole', 'byBusinessFunction', 'trend']],
     ['import-runs', ['total', 'completed', 'failed', 'rowsImported', 'byStatus', 'trend']],
     ['opportunities', ['total', 'estimatedValue', 'averageProbability', 'fromLead', 'byRegistry', 'trend']],
+    ['tasks', ['overdue', 'dueToday', 'estimatedMinutes', 'actualMinutes', 'byStatus', 'byPriority', 'trend']],
 ]);
 
 /**
@@ -173,6 +178,8 @@ it('only emits icons the frontend allow-list knows (AC-001)', function (string $
     $allowed = [
         'briefcase', 'building', 'check-circle', 'folder-tree', 'layers', 'map-pin', 'megaphone',
         'package', 'percent', 'target', 'trending-up', 'user-check', 'user-x', 'users', 'wallet',
+        // Spec 0147 (Task panel): the work-order Task board's own KPI icons.
+        'alert-triangle', 'calendar-clock', 'timer', 'clock',
     ];
 
     Sanctum::actingAs(statsUserWith([$domain]));

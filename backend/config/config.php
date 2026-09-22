@@ -12,6 +12,9 @@ use App\Enums\ProductUsage;
 use App\Enums\ReferentContactScopeEnum;
 use App\Enums\SiteTypeEnum;
 use App\Enums\SizeClassEnum;
+use App\Enums\TaskAssignmentScope;
+use App\Enums\TaskDueWindow;
+use App\Enums\TaskListStatus;
 use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
 
@@ -81,6 +84,12 @@ return [
         // registered so the work-orders grid's `status` badge, which
         // declares `enumKey: work_order_status`, has a catalogue to read.
         'work_order_status' => WorkOrderStatus::class,
+        // Task table advanced filters (spec 0147): the option lists of the
+        // `status`/`due`/`assignment` filters (fixed presentation buckets,
+        // NON-SENSITIVE — no task data).
+        'task_list_status' => TaskListStatus::class,
+        'task_due_window' => TaskDueWindow::class,
+        'task_assignment_scope' => TaskAssignmentScope::class,
     ],
 
 ];

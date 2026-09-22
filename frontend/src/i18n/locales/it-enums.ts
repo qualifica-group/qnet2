@@ -122,4 +122,20 @@ export const enums = {
     open: 'Aperta',
     closed: 'Chiusa',
   },
+  // Filtri avanzati della tabella Task (spec 0147), come nella board della commessa.
+  task_list_status: {
+    open: 'Aperti',
+    completed: 'Completati',
+    blocked: 'Bloccati',
+    all: 'Tutti',
+  },
+  task_due_window: {
+    today: 'Oggi',
+    overdue: 'Scadute',
+    this_week: 'Questa settimana',
+  },
+  task_assignment_scope: {
+    assigned_to_me: 'Assegnati a me',
+    requested_by_me: 'Richiesti da me',
+  },
 }

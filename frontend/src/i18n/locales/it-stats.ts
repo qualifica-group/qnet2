@@ -122,6 +122,15 @@ export const moduleStats = {
     byRegistry: 'Per anagrafica',
     trend: 'Nuove opportunità per mese',
   },
+  tasks: {
+    overdue: 'Scaduti',
+    dueToday: 'In scadenza oggi',
+    estimatedMinutes: 'Stimato',
+    actualMinutes: 'Effettivo',
+    byStatus: 'Per stato',
+    byPriority: 'Per priorità',
+    trend: 'Nuovi task per mese',
+  },
   importRuns: {
     total: 'Import',
     completed: 'Completati',

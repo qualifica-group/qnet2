@@ -38,6 +38,19 @@ export const tasks = {
     has_subtasks: 'Has sub-tasks',
     is_subtask: 'Is a sub-task',
   },
+  /** Table advanced filters (spec 0147): the same axes as the work order Task board. */
+  advancedFilters: {
+    status: 'Status',
+    due: 'Due',
+    assignment: 'Assignment',
+    taskStatus: 'Task status',
+    taskType: 'Type',
+    taskPriority: 'Priority',
+    taskImportance: 'Importance',
+    requester: 'Requester',
+    assignees: 'Assignees',
+    watchers: 'Watchers',
+  },
   detail: {
     title: 'Task details',
     subtitle: 'Read-only view of the selected task.',

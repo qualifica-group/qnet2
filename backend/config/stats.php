@@ -13,6 +13,7 @@ use App\Stats\Products\ProductsStatsDefinition;
 use App\Stats\Projects\ProjectsStatsDefinition;
 use App\Stats\Referents\ReferentsStatsDefinition;
 use App\Stats\Registries\RegistriesStatsDefinition;
+use App\Stats\Tasks\TasksStatsDefinition;
 use App\Stats\Users\UsersStatsDefinition;
 
 return [
@@ -56,6 +57,9 @@ return [
         'users' => UsersStatsDefinition::class,
         'import-runs' => LeadImportsStatsDefinition::class,
         'opportunities' => OpportunitiesStatsDefinition::class,
+        // Spec 0147: the work-order Task board's KPIs, scoped to the actor's
+        // visible root tasks.
+        'tasks' => TasksStatsDefinition::class,
     ],
 
 ];

@@ -14,4 +14,7 @@ enum StatFormat: string
     case Number = 'number';
     case Currency = 'currency';
     case Percent = 'percent';
+
+    /** Whole minutes, rendered as a duration (`7h 30m`, spec 0147). */
+    case Duration = 'duration';
 }

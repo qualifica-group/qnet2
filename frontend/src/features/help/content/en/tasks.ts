@@ -20,6 +20,33 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'filters-and-statistics',
+      title: 'Filters and statistics',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The table\'s **advanced filters** narrow the list with the same criteria as the work order\'s Task tab: Status, Due, Assignment, Task status, Type, Priority, Importance, Requester, Assignees and Watchers.',
+        },
+        {
+          type: 'table',
+          headers: ['Filter', 'What it shows'],
+          rows: [
+            ['Status', 'Open (preset), Completed, Blocked or All.'],
+            ['Due', 'Today, Overdue or This week, on the end date (or the start date when missing).'],
+            ['Assignment', 'The tasks assigned to you or requested by you.'],
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'The table opens on the **open** tasks only: pick **All** in the Status filter to see the closed ones too.',
+        },
+        {
+          type: 'paragraph',
+          text: 'The **Statistics** button opens the Overdue, Due today, Estimated and Actual tiles, with charts by status, by priority and of new tasks per month. Only main tasks (not sub-tasks) you can see are counted, regardless of the table filters.',
+        },
+      ],
+    },
+    {
       id: 'creating-a-task',
       title: 'Create a task',
       blocks: [

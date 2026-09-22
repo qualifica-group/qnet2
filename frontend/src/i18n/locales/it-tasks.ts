@@ -38,6 +38,19 @@ export const tasks = {
     has_subtasks: 'Ha sotto-task',
     is_subtask: 'È un sotto-task',
   },
+  /** Filtri avanzati della tabella (spec 0147): gli stessi assi della board Task della commessa. */
+  advancedFilters: {
+    status: 'Stato',
+    due: 'Scadenza',
+    assignment: 'Assegnazione',
+    taskStatus: 'Stato task',
+    taskType: 'Tipologia',
+    taskPriority: 'Priorità',
+    taskImportance: 'Importanza',
+    requester: 'Richiedente',
+    assignees: 'Assegnatari',
+    watchers: 'Osservatori',
+  },
   detail: {
     title: 'Dettaglio task',
     subtitle: 'Visualizzazione in sola lettura del task selezionato.',

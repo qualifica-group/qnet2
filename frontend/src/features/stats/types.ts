@@ -8,8 +8,11 @@
  * is rendered verbatim.
  */
 
-/** How a `stat` value must be rendered. `percent` is already 0..100 server-side. */
-export type StatValueFormat = 'number' | 'currency' | 'percent'
+/**
+ * How a `stat` value must be rendered. `percent` is already 0..100 server-side;
+ * `duration` is whole minutes (spec 0147).
+ */
+export type StatValueFormat = 'number' | 'currency' | 'percent' | 'duration'
 
 /** A trend never carries percentages: only absolute or monetary values. */
 export type TrendValueFormat = 'number' | 'currency'

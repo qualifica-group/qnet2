@@ -232,8 +232,12 @@ it('AC-023: renaming closed_positive leaves the percentage, the closure guard an
 
         // 3. the grid set filter still selects the same rows: it reads the
         //    status' CURRENT label, it does not carry a hardcoded one.
+        //    REQUIREMENT CHANGED (spec 0147, D-2): the grid now defaults to
+        //    the open tasks, so `status: all` lifts that default to reach the
+        //    closed row this point is about.
         $rows = $this->postJson('/api/tables/tasks/rows', [
             'startRow' => 0, 'endRow' => 25,
+            'advancedFilters' => ['status' => 'all'],
             'filterModel' => ['task_status' => ['filterType' => 'set', 'values' => [$closedPositive->fresh()->name]]],
         ])->assertOk()->json('items');
 

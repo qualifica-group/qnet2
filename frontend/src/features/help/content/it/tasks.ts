@@ -20,6 +20,33 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'filters-and-statistics',
+      title: 'Filtri e statistiche',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Con i **filtri avanzati** della tabella restringi l\'elenco con gli stessi criteri della scheda Task della commessa: Stato, Scadenza, Assegnazione, Stato task, Tipologia, Priorità, Importanza, Richiedente, Assegnatari e Osservatori.',
+        },
+        {
+          type: 'table',
+          headers: ['Filtro', 'Cosa mostra'],
+          rows: [
+            ['Stato', 'Aperti (preimpostato), Completati, Bloccati o Tutti.'],
+            ['Scadenza', 'Oggi, Scadute o Questa settimana, sulla data fine (o sulla data inizio se manca).'],
+            ['Assegnazione', 'I task assegnati a te o richiesti da te.'],
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'All\'apertura la tabella mostra solo i task **aperti**: scegli **Tutti** nel filtro Stato per vedere anche quelli chiusi.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Il pulsante **Statistiche** apre i riquadri Scaduti, In scadenza oggi, Stimato ed Effettivo, con i grafici per stato, per priorità e dei nuovi task per mese. Contano solo i task principali (non i sotto-task) tra quelli che puoi vedere, e non dipendono dai filtri della tabella.',
+        },
+      ],
+    },
+    {
       id: 'creating-a-task',
       title: 'Creare un task',
       blocks: [

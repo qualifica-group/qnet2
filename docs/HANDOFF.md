@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK: FILTRI DELLA BOARD + STATISTICHE NELLA TABELLA — NON COMMITTATO (2026-09-22)
+
+Spec 0147 (`docs/specs/0147-task-table-filters-and-stats.xml`).
+
+**Filtri** (filtri avanzati del dominio `tasks`, nessun endpoint nuovo)
+- Catalogo `App\Tables\Tasks\TaskAdvancedFilterCatalog`; derivati in `TaskAdvancedFilterApplier`
+  (`status`, `due`, `assignment`), il resto e' `relation` generico (whereHas per id).
+- `status` e' `required` con `defaultValue: open`: il FE non invia un valore uguale al default e il
+  motore applica il default. Quindi la tabella (ed export) parte sui soli task aperti; `status: all` = tutti.
+- Scadenza su `DATE(COALESCE(end_date, start_date))` (`DUE_REFERENCE_SQL`), come la board.
+- Enum pubblici nuovi in `config/config.php` `form_enums`: `task_list_status`, `task_due_window`,
+  `task_assignment_scope` (solo etichette, non sensibili; il file chiede review Security per ogni aggiunta).
+
+**Statistiche** (`GET /api/stats/tasks`, `TasksStatsDefinition`)
+- 4 stat: `overdue`, `due_today`, `estimated_minutes`, `actual_minutes`; poi `by_status`, `by_priority`, `trend`.
+- Solo task radice, sempre ristretti da `TaskVisibilityScope`, indipendenti dai filtri tabella.
+- Nuovo `StatFormat::Duration` (`duration`, minuti) reso con `formatMinutesLabel`; icone nuove
+  nell'allow-list: `alert-triangle`, `calendar-clock`, `timer`, `clock`.
+- FE: `StatsToggleButton` + `ModuleStatsPanel` in `task-table.tsx`; mutazione -> refresh griglia + invalidate stats.
+
+**Test cambiati per requisito (D-2):** `TaskCompletionPercentageTest` AC-023 ora invia `status: all`.
+`StatsEndpointTest` include `tasks`.
+
+**Da sapere:** `php artisan test --parallel` da' falsi rossi ("Call to undefined function" su helper
+di test definiti in altri file) e con Xdebug attivo il worker va in segfault: usare la suite seriale
+con `XDEBUG_MODE=off`.
+
 ## COMMESSE: TASK BOARD CON FASI — NON COMMITTATO (2026-09-22)
 
 Spec 0146 (`docs/specs/0146-work-order-task-stages.xml`, implemented). Verifier: VERDE.

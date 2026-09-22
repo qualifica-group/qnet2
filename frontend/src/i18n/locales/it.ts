@@ -422,7 +422,7 @@ export const it: TranslationResources = {
   contracts,
   workOrders,
   taskTemplates,
-  tasks,
+  tasks: { ...tasks, stats: moduleStats.tasks },
   taskStatuses,
   taskTypes,
   taskCategories,

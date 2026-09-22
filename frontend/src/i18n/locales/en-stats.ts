@@ -125,6 +125,15 @@ export const moduleStats = {
     byRegistry: 'By registry',
     trend: 'New opportunities per month',
   },
+  tasks: {
+    overdue: 'Overdue',
+    dueToday: 'Due today',
+    estimatedMinutes: 'Estimated',
+    actualMinutes: 'Actual',
+    byStatus: 'By status',
+    byPriority: 'By priority',
+    trend: 'New tasks per month',
+  },
   importRuns: {
     total: 'Import runs',
     completed: 'Completed',

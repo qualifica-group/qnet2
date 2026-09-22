@@ -1,3 +1,4 @@
+import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
 import type { StatValueFormat } from '@/features/stats/types'
 
 /** Single currency of the application; the backend always sends plain numbers. */
@@ -42,6 +43,8 @@ export function formatStatValue(
       return formatCurrency(value, locale)
     case 'percent':
       return formatPercent(value, locale)
+    case 'duration':
+      return formatMinutesLabel(value)
     default:
       return formatNumber(value, locale)
   }

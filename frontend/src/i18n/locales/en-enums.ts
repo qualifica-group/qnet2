@@ -123,4 +123,20 @@ export const enums = {
     open: 'Open',
     closed: 'Closed',
   },
+  // Task table advanced filters (spec 0147), as on the work order board.
+  task_list_status: {
+    open: 'Open',
+    completed: 'Completed',
+    blocked: 'Blocked',
+    all: 'All',
+  },
+  task_due_window: {
+    today: 'Today',
+    overdue: 'Overdue',
+    this_week: 'This week',
+  },
+  task_assignment_scope: {
+    assigned_to_me: 'Assigned to me',
+    requested_by_me: 'Requested by me',
+  },
 }
