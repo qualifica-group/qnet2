@@ -135,6 +135,7 @@ export const enums = {
     completed: 'Completati',
     blocked: 'Bloccati',
     all: 'Tutti',
+    in_validation: 'In validazione',
   },
   task_due_window: {
     today: 'Oggi',
@@ -144,5 +145,8 @@ export const enums = {
   task_assignment_scope: {
     assigned_to_me: 'Assegnati a me',
     requested_by_me: 'Richiesti da me',
+    assigned_by_me: 'Assegnati da me',
+    created_by_me: 'Creati da me',
+    observed_by_me: 'Osservati da me',
   },
 }

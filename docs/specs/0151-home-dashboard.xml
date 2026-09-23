@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0151 — DASHBOARD HOME (/dashboard)
+  Riferimento flusso + grafica: frontend React /Users/Repository/q-net
+  (src/app/pages/dashboard/dashboard-page.tsx) e il suo backend /Users/Repository/qnet
+  (routes/apiV2.php `dashboard/tasks`, DashboardController@tasks, TaskService::getDashboardCounters).
+  Stesso metodo del modulo segnatempo (spec 0122): grafica 1:1 q-net con componenti qnet-2.
+  Il grafico ad area `components/dashboard/chart-area-interactive.tsx` di q-net NON e' montato da
+  nessuna pagina (dati finti): non si porta.
+-->
+<spec id="0151-home-dashboard" status="implemented" owner="utente" date="2026-09-23">
+
+  <goal>
+    La pagina /dashboard, oggi un segnaposto, mostra a ogni utente il suo carico di lavoro:
+    i contatori dei Task aperti (come q-net, con clic che apre la lista Task gia' filtrata),
+    i pannelli del segnatempo, e le statistiche dei moduli Task, Opportunita', Offerte, Lead,
+    Anagrafiche e la dashboard di Gestione Richieste. Ogni blocco compare solo a chi ha il
+    permesso del modulo.
+  </goal>
+
+  <context>
+    <existing_names>
+      <item>Pagina: `frontend/src/pages/dashboard-page.tsx` (oggi `PagePlaceholder`), rotta `dashboard`
+        in `routes/router.tsx`, navigazione `backend/config/navigation/dashboard.php` (`permission: null`).</item>
+      <item>Task: `App\Models\Task` (`creator_id`, `requester_id`, `estimated_minutes`, `parent_id`),
+        pivot `task_assignee` (`assignees()`), `task_watcher` (`watchers()`); `TaskVisibilityScope::scopeToActor()`
+        (spec 0101 D-9 + 0148); fasi `TaskStatusGroup` (open, pending, in_validation, closed_positive, closed_negative).</item>
+      <item>Filtri lista Task (spec 0147): `TaskAdvancedFilterCatalog` (`status`, `due`, `assignment`, ...),
+        `TaskAdvancedFilterApplier`, enum `TaskListStatus` (open/completed/blocked/all, `groups()`),
+        `TaskAssignmentScope` (assigned_to_me, requested_by_me), esposti in `config/config.php` `form_enums`
+        (`task_list_status`, `task_assignment_scope`); etichette FE in `i18n/locales/{it,en}-enums.ts`.</item>
+      <item>Filtri tabella: persistiti per utente lato server (`features/table/api.ts` `saveTableFilters`,
+        `advanced-filters/use-advanced-filters.ts`). Oggi nessuna tabella legge filtri dall'URL.</item>
+      <item>Segnatempo (spec 0122): `features/time-entries/dashboard/time-entries-stats-panels.tsx`
+        (`TimeEntriesStatsPanels params enabled`), `time-entries-period-preset-control.tsx`,
+        `TimeEntriesFilterParams.period_preset`; permesso `time-entries.viewAny`.</item>
+      <item>Statistiche moduli (spec 0026): `GET /api/stats/{domain}`, `config/stats.php` `definitions`,
+        `App\Stats\AbstractStatsDefinition` (gate = Policy `viewAny` del model), FE `features/stats/module-stats-panel.tsx`
+        (`ModuleStatsPanel domain isOpen`), icone allow-list `stats-icons.tsx`, i18n `{it,en}-stats.ts`
+        con test di parita'. Definizioni esistenti: `tasks`, `opportunities`, `leads`, `registries` (e altre).
+        `quotes` NON ha una definizione.</item>
+      <item>Offerte: `App\Models\Quote` (`revenue_net`, `margin_net` decimal, `quote_workflow_status_id` ->
+        `QuoteWorkflowStatus` `name`/`color`/`group` `WorkflowStatusGroup` open/pending/validated/closed_won/closed_lost);
+        `QuotesTableDefinition` non restringe la visibilita' (come Opportunita').</item>
+      <item>Gestione Richieste (spec 0107/0130): `features/request-management/request-dashboard-panel.tsx`
+        (`RequestDashboardPanel isOpen`), contesto `RequestModuleProvider module={REQUEST_MODULE}`,
+        permesso `request-management.report` (`module.permission('report')`).</item>
+      <item>Envelope `BaseApiController::ok()` -> `{success, message, data}`. Permessi FE `features/auth/can.tsx`,
+        `use-abilities.ts`. Guida in-app `features/help/content/{it,en}/dashboard.ts` (oggi "non disponibile").</item>
+    </existing_names>
+    <reference_q_net>
+      Card q-net: `not_completed` (visibili all'utente, non completati), `assigned_to_me` (assegnatario),
+      `assigned_by_me` (richiedente ma non assegnatario) + chip `assigned_to_me_to_validate` (gli stessi in stato
+      "da validare"), `created_by_me` (creatore ma non richiedente), `observed_by_me` (osservatore). Ogni card:
+      conteggio + somma minuti stimati; clic -> lista task filtrata. Sezione "Time tracking": overview + polso
+      con preset Giorno/Settimana/Mese/Anno (default Giorno).
+    </reference_q_net>
+  </context>
+
+  <decisions>
+    D-1  (utente) Due sezioni q-net + statistiche di altri moduli nella stessa spec.
+    D-2  (utente) Clic su una card -> `/tasks?status=...&amp;assignment=...`: i parametri dell'URL applicano i
+         filtri solo per quella visita e NON sovrascrivono i filtri salvati dell'utente. Se l'utente preme
+         Applica/Reimposta nel pannello filtri, vale il comportamento normale (salvataggio) e i parametri
+         vengono tolti dall'URL.
+    D-3  (utente) Semantica q-net, esclusiva: Assegnati da me = richiedente = io E io non assegnatario;
+         Creati da me = creatore = io E richiedente diverso da me (o assente). Nuove voci del filtro
+         Assegnazione: `assigned_by_me`, `created_by_me`, `observed_by_me`; `requested_by_me` resta invariato.
+    D-4  (utente) Si contano tutti i task aperti, sottotask compresi (la lista Task e' piatta): numero card =
+         righe della lista aperta dal clic.
+    D-5  "Aperti" = `TaskListStatus::Open` (fasi open/pending/in_validation), sempre dentro `TaskVisibilityScope`.
+         "Da validare" = fase `in_validation`: nuova voce `in_validation` di `TaskListStatus` ("In validazione"),
+         cosi' il chip apre `/tasks?status=in_validation&amp;assignment=assigned_by_me`.
+    D-6  I conteggi riusano `TaskAdvancedFilterApplier` (stessa query della lista), non una seconda regola.
+    D-7  Moduli (utente): Statistiche Task, Opportunita', Offerte, Lead, Anagrafiche via `ModuleStatsPanel`
+         (sempre aperto in dashboard); Gestione Richieste via `RequestDashboardPanel` con i suoi filtri.
+         Gestione Iscritti NON inclusa (non richiesta).
+    D-8  Offerte: nuova `QuotesStatsDefinition` (dominio `quotes`) con 4 KPI + 2 grafici, globale come
+         Opportunita': `total` (numero offerte), `revenue_net` (somma ricavi netti, valuta), `margin_net`
+         (somma margine netto, valuta), `won` (offerte in fase closed_won); `by_status` (distribuzione per
+         stato workflow, colore dello stato), `trend` (creazione mensile).
+    D-9  Ordine pagina: Attivita' da completare, Segnatempo, poi un blocco per modulo nell'ordine Task,
+         Opportunita', Offerte, Lead, Anagrafiche, Gestione Richieste. Ogni blocco: intestazione icona + titolo
+         come la sezione q-net. Nessun blocco visibile -> stato vuoto "Nessun contenuto disponibile".
+    D-11 (utente, 2026-09-23, revisione) "Attivita' da completare" e Task sono un solo blocco: le statistiche
+         `tasks` stanno sotto le 5 card nella stessa sezione (niente blocco Task separato). Gestione Richieste
+         RIMOSSA dalla dashboard (supera D-7/D-9 per quella parte). Card con colori e icone di q-net
+         (slate/emerald/sky/violet/amber, sfumatura + accento; icone ListChecks/UserCheck/Plus/Pencil/Eye,
+         intestazioni ListChecks e Calendar): palette Tailwind come `status-badge-classes.ts`, con varianti dark
+         (eccezione esplicita dell'utente a D-10 per i colori).
+    D-10 Grafica 1:1 con q-net ma componenti/token qnet-2 (Card, Badge, Tooltip, Skeleton, lucide; niente
+         colori Tailwind grezzi: tinte via token/`BadgeTokens`, `ui-design.md §1-bis`), densita' compatta.
+         Nessuna nuova dipendenza.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Endpoint `GET /api/dashboard/tasks` (contatori Task).</item>
+      <item>Nuove voci enum: `TaskListStatus::InValidation`, `TaskAssignmentScope::{AssignedByMe, CreatedByMe, ObservedByMe}`
+        + applicazione in `TaskAdvancedFilterApplier` + etichette it/en.</item>
+      <item>`QuotesStatsDefinition` registrata in `config/stats.php` + i18n `moduleStats.quotes`.</item>
+      <item>Lista Task: lettura una-tantum di `status`/`assignment` dall'URL (D-2), meccanismo generico in `features/table`
+        (override dei filtri avanzati non persistito), usato solo da `/tasks`.</item>
+      <item>Pagina `/dashboard`: sezione card Task, sezione Segnatempo, blocchi statistiche moduli, pannello Gestione Richieste.</item>
+      <item>Guida in-app `dashboard` IT+EN riscritta; guida `tasks` IT+EN aggiornata per le nuove voci filtro.</item>
+    </in>
+    <out>
+      <item>Grafico ad area q-net (`chart-area-interactive`, dati finti).</item>
+      <item>Gestione Iscritti, Commesse, Contratti, altri moduli con statistiche non elencati in D-7.</item>
+      <item>Pulsante Statistiche nella lista Offerte (`/quotes`): la definizione esiste ma il toggle nella lista non si aggiunge.</item>
+      <item>Personalizzazione della dashboard (ordine/visibilita' dei blocchi per utente), refresh automatico.</item>
+      <item>Deep link da URL per tabelle diverse da Task e per filtri diversi da `status`/`assignment`.</item>
+      <item>Modifiche alla semantica di `requested_by_me` o alla visibilita' Task.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/dashboard/tasks">
+      <request>Nessun parametro. Utente autenticato (auth:sanctum).</request>
+      <response status="200">
+        { success: true, message: string, data: {
+            not_completed:   { count: int, total_minutes: int },
+            assigned_to_me:  { count: int, total_minutes: int },
+            assigned_by_me:  { count: int, total_minutes: int,
+                               to_validate: { count: int, total_minutes: int } },
+            created_by_me:   { count: int, total_minutes: int },
+            observed_by_me:  { count: int, total_minutes: int }
+        } }
+        Tutti i contatori: task (radici e sottotask) in `TaskVisibilityScope` dell'utente con
+        `status=open`, ristretti dalla voce `assignment` omonima (not_completed = nessuna restrizione);
+        `to_validate` = assigned_by_me con `status=in_validation`. `total_minutes` = somma
+        `estimated_minutes` (null = 0).
+      </response>
+      <errors>401 non autenticato; 403 senza `tasks.viewAny` (envelope `{success:false, message}`).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/stats/quotes">
+      <response status="200">Shape generica spec 0026. widgets: `total` (stat, number, icona in allow-list),
+        `revenue_net` (stat, currency), `margin_net` (stat, currency), `won` (stat, number),
+        `by_status` (distribution), `trend` (trend, number).</response>
+      <errors>403 senza `quotes.viewAny` (gate generico AbstractStatsDefinition).</errors>
+    </endpoint>
+
+    <advanced_filters domain="tasks">
+      `status` enum `task_list_status`: + `in_validation` (fase in_validation).
+      `assignment` enum `task_assignment_scope`: + `assigned_by_me`, `created_by_me`, `observed_by_me` (D-3).
+      Valori esistenti e default (`status=open`) invariati.
+    </advanced_filters>
+
+    <frontend_url path="/tasks">
+      Query string opzionale `status` e `assignment` (valori degli enum sopra). Valori sconosciuti ignorati.
+      Presenti -> filtri avanzati applicati = { status, assignment } (status mancante = default open) per la
+      sola visita, senza chiamare `saveTableFilters`. Applica/Reimposta -> flusso normale + rimozione dei parametri.
+    </frontend_url>
+
+    <frontend_links>
+      not_completed -> /tasks?status=open
+      assigned_to_me -> /tasks?status=open&amp;assignment=assigned_to_me
+      assigned_by_me -> /tasks?status=open&amp;assignment=assigned_by_me
+      to_validate (chip, solo se count > 0) -> /tasks?status=in_validation&amp;assignment=assigned_by_me
+      created_by_me -> /tasks?status=open&amp;assignment=created_by_me
+      observed_by_me -> /tasks?status=open&amp;assignment=observed_by_me
+    </frontend_links>
+
+    <frontend_gates>
+      Card Task: `tasks.viewAny`. Segnatempo: `time-entries.viewAny`. Statistiche: `{domain}.viewAny`
+      (tasks, opportunities, quotes, leads, registries). Gestione Richieste: `request-management.report`.
+    </frontend_gates>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con `tasks.viewAny` e task aperti di cui e' creatore/richiedente/assegnatario/osservatore
+      (piu' task chiusi e task non visibili), quando chiama GET /api/dashboard/tasks, allora ogni contatore e `total_minutes`
+      corrispondono a D-3/D-4/D-5 e i task chiusi o non visibili non sono contati. (Pest)</criterion>
+    <criterion id="AC-002">Dato un task in cui io sono richiedente E assegnatario, allora conta in assigned_to_me e NON in
+      assigned_by_me; un task creato da me con richiedente me conta NON in created_by_me. (Pest)</criterion>
+    <criterion id="AC-003">`to_validate` conta solo i task di assigned_by_me in fase in_validation. (Pest)</criterion>
+    <criterion id="AC-004">Senza `tasks.viewAny` -> 403; non autenticato -> 401. (Pest)</criterion>
+    <criterion id="AC-005">Per ogni chiave, `count` del contatore = numero di righe della tabella `tasks` con gli stessi
+      filtri `status`/`assignment` per lo stesso utente (parita' contatore/lista, sottotask compresi). (Pest)</criterion>
+    <criterion id="AC-006">I nuovi valori `in_validation`, `assigned_by_me`, `created_by_me`, `observed_by_me` restringono la
+      tabella tasks secondo D-3/D-5; i valori esistenti invariati (test 0147 verdi). (Pest)</criterion>
+    <criterion id="AC-007">GET /api/stats/quotes restituisce i 6 widget di D-8 con valori calcolati su offerte di test; 403
+      senza `quotes.viewAny`; lo `StatsEndpointTest` strutturale resta verde. (Pest)</criterion>
+    <criterion id="AC-008">Aprendo /tasks?status=open&amp;assignment=assigned_to_me la richiesta righe SSRM contiene quei filtri e
+      `saveTableFilters` NON viene chiamato; valore sconosciuto -> ignorato; Applica -> salvataggio e parametri rimossi. (Vitest)</criterion>
+    <criterion id="AC-009">In /dashboard, con `tasks.viewAny`, compaiono 5 card (etichetta, numero, badge minuti in formato
+      durata) con i link di `frontend_links`; il chip "da validare" compare solo con count > 0; skeleton in caricamento;
+      stato d'errore con messaggio. (Vitest)</criterion>
+    <criterion id="AC-010">Con `time-entries.viewAny` compare la sezione Segnatempo con preset default Giorno; cambiando preset i
+      pannelli richiedono `period_preset` corrispondente. (Vitest)</criterion>
+    <criterion id="AC-011">Ogni blocco (card Task, Segnatempo, 5 statistiche, Gestione Richieste) e' presente se e solo se l'utente
+      ha il permesso di `frontend_gates`; nessuna richiesta parte per i blocchi nascosti; nessun blocco -> stato vuoto. (Vitest)</criterion>
+    <criterion id="AC-012">Layout senza scroll orizzontale a 375/768/1024 (griglia card 1 -> 2 -> 3 -> 5 colonne), nessun colore
+      Tailwind grezzo. (revisione verifier + manuale)</criterion>
+    <criterion id="AC-013">Guida in-app `dashboard` e `tasks` aggiornate IT+EN con stessi id sezione; parity test verde; i18n
+      `moduleStats.quotes` e nuove chiavi con parita' it/en. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (q-net usa @tabler/icons-react: si usa lucide).</item>
+    <item>Authz server-side su ogni endpoint (`tasks.viewAny` via Policy; stats via gate generico).</item>
+    <item>Conteggi con query aggregate (COUNT/SUM), nessun caricamento di model in memoria; nessun N+1.</item>
+    <item>Nessun `throttle` (backend.md §2). Nessuna migrazione.</item>
+    <item>File sotto 300 righe: la pagina dashboard si compone da file separati in `features/dashboard/`.</item>
+    <item>Manuale: guida in-app IT/EN nella stessa modifica; manuale Claude Docs, sezione Dashboard e filtri Task.</item>
+  </constraints>
+
+  <plan>
+    MT-B1 backend  | enum TaskListStatus/TaskAssignmentScope + TaskAdvancedFilterApplier + lang | dip: - | lane A | AC-006
+    MT-B2 backend  | DashboardController (o TaskDashboardController) + DashboardTaskCountersService + routes/api/dashboard.php | dip: MT-B1 | seq dopo B1 | AC-001..005
+    MT-B3 backend  | App\Stats\Quotes\QuotesStatsDefinition + config/stats.php | dip: - | lane A (parallelo a B1) | AC-007
+    MT-F1 frontend | features/table: override filtri da URL non persistito + uso in pagina tasks + etichette it/en-enums | dip: contratto | lane B | AC-008
+    MT-F2 frontend | features/dashboard/* (api, query-keys, card task, sezione segnatempo, blocchi moduli) + pages/dashboard-page.tsx + i18n dashboard + moduleStats.quotes | dip: contratto | lane C (parallelo a F1, write surface disgiunta) | AC-009..012
+    MT-F3 frontend | guide in-app dashboard + tasks IT/EN | dip: F1, F2 | seq | AC-013
+    MT-V  verifier | Pest filtro Dashboard/Tasks/Stats, Vitest intera, tsc -b --force, ESLint, Pint | dip: tutti | gate | tutti gli AC
+  </plan>
+
+</spec>

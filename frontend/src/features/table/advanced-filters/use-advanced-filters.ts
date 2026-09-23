@@ -72,6 +72,16 @@ interface UseAdvancedFiltersArgs {
   applied: AdvancedFilterValues | null | undefined
   /** Invoked once after Apply/Reset persists, so the caller purge-reloads the grid exactly once. */
   onApplied: () => void
+  /**
+   * One-time values (e.g. a Tasks dashboard card's `?status=&assignment=`
+   * deep link, spec 0151 D-2) that win over `applied` for THIS visit only:
+   * they seed the draft/applied state and are read by `getApplied()`, but are
+   * never persisted through `saveTableFilters`. Cleared by the caller
+   * (`onOverrideCleared`) once the user exercises the normal Apply/Reset flow.
+   */
+  override?: AdvancedFilterValues | null
+  /** Invoked once Apply/Reset persists, so the caller drops the one-time deep link (e.g. from the URL). */
+  onOverrideCleared?: () => void
 }
 
 export interface UseAdvancedFiltersResult {
@@ -119,6 +129,8 @@ export function useAdvancedFilters({
   descriptors,
   applied: appliedFromServer,
   onApplied,
+  override,
+  onOverrideCleared,
 }: UseAdvancedFiltersArgs): UseAdvancedFiltersResult {
   const saveFilters = useSaveTableFilters(domain)
 
@@ -167,6 +179,32 @@ export function useAdvancedFilters({
     setApplied(initial)
     appliedRef.current = initial
   }, [initial])
+
+  // One-time deep-link override (spec 0151 D-2): declared AFTER the reseed
+  // effect above, so on a mount/config-load where both fire in the same pass
+  // it wins over the persisted `appliedFromServer` state (the reseed effect
+  // would otherwise leave `appliedRef` on the persisted state, since it only
+  // reacts to `appliedFromServer`). Guarded by comparing the merged override
+  // against the CURRENT `appliedRef.current` — not against the previous
+  // override, which would wrongly skip re-seeding right after the reseed
+  // effect's clobber merely because the override's own content did not
+  // change — so it is idempotent no matter how often `override` fires (a
+  // fresh-but-equal object literal every render is expected: only the
+  // caller's `useMemo` keeps it referentially stable, this hook does not
+  // assume that). Does nothing once `override` clears back to
+  // `null`/`undefined` — Apply/Reset already set draft/applied themselves.
+  useEffect(() => {
+    if (!override) {
+      return
+    }
+    const merged = { ...defaults, ...override }
+    if (JSON.stringify(merged) === JSON.stringify(appliedRef.current)) {
+      return
+    }
+    setDraft(merged)
+    setApplied(merged)
+    appliedRef.current = merged
+  }, [override, defaults])
 
   const setFieldValue = useCallback(
     (name: string, value: AdvancedFilterValue) => {
@@ -240,7 +278,11 @@ export function useAdvancedFilters({
     appliedRef.current = draft
     persist(computeActiveValues(descriptors, draft))
     onApplied()
-  }, [canApply, draft, descriptors, persist, onApplied])
+    // The normal flow always wins over a one-time deep-link override (spec
+    // 0151 D-2): drop it (e.g. the caller strips `status`/`assignment` from
+    // the URL) now that the user has explicitly applied filters.
+    onOverrideCleared?.()
+  }, [canApply, draft, descriptors, persist, onApplied, onOverrideCleared])
 
   const reset = useCallback(() => {
     setDraft(defaults)
@@ -249,7 +291,8 @@ export function useAdvancedFilters({
     // The active subset of `defaults` is always empty by construction.
     persist({})
     onApplied()
-  }, [defaults, persist, onApplied])
+    onOverrideCleared?.()
+  }, [defaults, persist, onApplied, onOverrideCleared])
 
   const applyValues = useCallback(
     (values: AdvancedFilterValues) => {

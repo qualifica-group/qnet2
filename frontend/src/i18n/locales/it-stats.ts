@@ -141,4 +141,12 @@ export const moduleStats = {
     byStatus: 'Per stato',
     trend: 'Import per mese',
   },
+  quotes: {
+    total: 'Offerte',
+    revenueNet: 'Ricavi netti',
+    marginNet: 'Margine netto',
+    won: 'Vinte',
+    byStatus: 'Per stato',
+    trend: 'Andamento mensile',
+  },
 }

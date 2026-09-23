@@ -144,4 +144,12 @@ export const moduleStats = {
     byStatus: 'By status',
     trend: 'Import runs per month',
   },
+  quotes: {
+    total: 'Quotes',
+    revenueNet: 'Net revenue',
+    marginNet: 'Net margin',
+    won: 'Won',
+    byStatus: 'By status',
+    trend: 'Monthly trend',
+  },
 }

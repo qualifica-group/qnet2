@@ -16,6 +16,10 @@ interface UseTableAdvancedFiltersArgs {
   applied: AdvancedFilterValues | null | undefined
   /** Invoked once after Apply/Reset persists, to purge-reload the grid exactly once. */
   onApplied: () => void
+  /** Forwarded verbatim to `useAdvancedFilters` (spec 0151 D-2). */
+  override?: AdvancedFilterValues | null
+  /** Forwarded verbatim to `useAdvancedFilters` (spec 0151 D-2). */
+  onOverrideCleared?: () => void
 }
 
 export interface TableAdvancedFiltersState {
@@ -35,6 +39,8 @@ export function useTableAdvancedFilters({
   descriptors,
   applied,
   onApplied,
+  override,
+  onOverrideCleared,
 }: UseTableAdvancedFiltersArgs): TableAdvancedFiltersState {
   const resolvedDescriptors = useMemo(() => descriptors ?? [], [descriptors])
   const filters = useAdvancedFilters({
@@ -42,6 +48,8 @@ export function useTableAdvancedFilters({
     descriptors: resolvedDescriptors,
     applied,
     onApplied,
+    override,
+    onOverrideCleared,
   })
 
   return { descriptors: resolvedDescriptors, filters }

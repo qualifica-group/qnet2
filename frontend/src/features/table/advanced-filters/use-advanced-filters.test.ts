@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useAdvancedFilters } from '@/features/table/advanced-filters/use-advanced-filters'
-import type { AdvancedFilterDescriptor } from '@/features/table/advanced-filters/types'
+import type { AdvancedFilterDescriptor, AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 
 const mutateMock = vi.fn()
 
@@ -236,5 +236,141 @@ describe('useAdvancedFilters', () => {
 
     expect(result.current.draft.status).toBe('won')
     expect(onApplied).toHaveBeenCalledTimes(1)
+  })
+
+  describe('override (spec 0151 D-2, AC-008)', () => {
+    it('wins over the persisted applied state for getApplied(), without persisting', () => {
+      const descriptors = [
+        descriptor({ name: 'status', type: 'enum', defaultValue: 'open', required: true }),
+        descriptor({ name: 'assignment', type: 'enum' }),
+      ]
+      const { result } = renderHook(() =>
+        useAdvancedFilters({
+          domain: 'tasks',
+          descriptors,
+          applied: { status: 'open' },
+          onApplied: vi.fn(),
+          override: { status: 'open', assignment: 'assigned_to_me' },
+        }),
+      )
+
+      // `status: open` equals its default, so it is not part of the "active"
+      // subset sent to the server — same rule as a normal Apply (spec 0151:
+      // the backend already defaults to open when the key is omitted).
+      expect(result.current.getApplied()).toEqual({ assignment: 'assigned_to_me' })
+      expect(mutateMock).not.toHaveBeenCalled()
+    })
+
+    it('a non-default override value is part of the active subset', () => {
+      const descriptors = [
+        descriptor({ name: 'status', type: 'enum', defaultValue: 'open', required: true }),
+        descriptor({ name: 'assignment', type: 'enum' }),
+      ]
+      const { result } = renderHook(() =>
+        useAdvancedFilters({
+          domain: 'tasks',
+          descriptors,
+          applied: null,
+          onApplied: vi.fn(),
+          override: { status: 'in_validation', assignment: 'assigned_by_me' },
+        }),
+      )
+
+      expect(result.current.getApplied()).toEqual({
+        status: 'in_validation',
+        assignment: 'assigned_by_me',
+      })
+    })
+
+    it('apply() persists the draft and clears the override', () => {
+      const descriptors = [
+        descriptor({ name: 'status', type: 'enum', defaultValue: 'open', required: true }),
+        descriptor({ name: 'assignment', type: 'enum' }),
+      ]
+      const onApplied = vi.fn()
+      const onOverrideCleared = vi.fn()
+      const { result } = renderHook(() =>
+        useAdvancedFilters({
+          domain: 'tasks',
+          descriptors,
+          applied: null,
+          onApplied,
+          override: { status: 'open', assignment: 'assigned_to_me' },
+          onOverrideCleared,
+        }),
+      )
+
+      act(() => result.current.apply())
+
+      expect(mutateMock).toHaveBeenCalledTimes(1)
+      expect(mutateMock).toHaveBeenCalledWith({
+        advancedFilters: { assignment: 'assigned_to_me' },
+      })
+      expect(onApplied).toHaveBeenCalledTimes(1)
+      expect(onOverrideCleared).toHaveBeenCalledTimes(1)
+    })
+
+    it('reset() persists an empty map and clears the override', () => {
+      const descriptors = [descriptor({ name: 'status', type: 'enum', defaultValue: 'open', required: true })]
+      const onOverrideCleared = vi.fn()
+      const { result } = renderHook(() =>
+        useAdvancedFilters({
+          domain: 'tasks',
+          descriptors,
+          applied: null,
+          onApplied: vi.fn(),
+          override: { status: 'in_validation' },
+          onOverrideCleared,
+        }),
+      )
+
+      act(() => result.current.reset())
+
+      expect(mutateMock).toHaveBeenCalledWith({ advancedFilters: {} })
+      expect(onOverrideCleared).toHaveBeenCalledTimes(1)
+    })
+
+    it('clearing the override back to null/undefined does not revert the just-applied state', () => {
+      const descriptors = [
+        descriptor({ name: 'status', type: 'enum', defaultValue: 'open', required: true }),
+        descriptor({ name: 'assignment', type: 'enum' }),
+      ]
+      const onApplied = vi.fn()
+      const { result, rerender } = renderHook(
+        ({ override, applied }: { override: AdvancedFilterValues | null; applied: AdvancedFilterValues | null }) =>
+          useAdvancedFilters({ domain: 'tasks', descriptors, applied, onApplied, override }),
+        {
+          initialProps: {
+            override: { status: 'open', assignment: 'assigned_to_me' } as AdvancedFilterValues | null,
+            applied: null as AdvancedFilterValues | null,
+          },
+        },
+      )
+
+      act(() => result.current.apply())
+      expect(result.current.getApplied()).toEqual({ assignment: 'assigned_to_me' })
+
+      // Simulate the caller stripping the URL params: `override` clears, but
+      // the config's persisted `applied` (still the stale pre-visit value)
+      // has not round-tripped back yet.
+      rerender({ override: null, applied: null })
+
+      expect(result.current.getApplied()).toEqual({ assignment: 'assigned_to_me' })
+    })
+
+    it('a value unknown to the caller is simply absent from the override, so it is ignored', () => {
+      const descriptors = [descriptor({ name: 'status', type: 'enum', defaultValue: 'open', required: true })]
+      const { result } = renderHook(() =>
+        useAdvancedFilters({
+          domain: 'tasks',
+          descriptors,
+          applied: null,
+          onApplied: vi.fn(),
+          override: { status: 'open' },
+        }),
+      )
+
+      expect(result.current.getApplied()).toEqual({})
+    })
   })
 })

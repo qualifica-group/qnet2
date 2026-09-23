@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-community'
+import type { GridApi, GridReadyEvent } from 'ag-grid-community'
 import { Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -25,19 +25,12 @@ import { useTableToolbarState } from '@/features/table/use-table-toolbar-state'
 import { AdvancedFilterPanel, ADVANCED_FILTER_PANEL_ANIMATION } from '@/features/table/advanced-filters/advanced-filter-panel'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { useTableAdvancedFilters } from '@/features/table/advanced-filters/use-table-advanced-filters'
-import { useBulkActionsSlot, type BulkAction, type TableSelection } from '@/features/table/use-bulk-actions-slot'
+import { useBulkActionsSlot } from '@/features/table/use-bulk-actions-slot'
 import { ExportDialog } from '@/features/exports/export-dialog'
-import {
-  createRowActionsRenderer,
-  INLINE_ACTION_LIMIT,
-  LABELED_ACTIONS_COLUMN_WIDTH,
-  type RowActionHandler,
-  type RowActionsOptions,
-} from '@/features/table/row-actions'
-import { useTableConfig, type TableConfigScope } from '@/features/table/use-table-config'
+import { createRowActionsRenderer, INLINE_ACTION_LIMIT, LABELED_ACTIONS_COLUMN_WIDTH } from '@/features/table/row-actions'
+import { useTableConfig } from '@/features/table/use-table-config'
 import { EMPTY_FILTER_MODEL, useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
-import type { TableRendererMap } from '@/features/table/renderer-registry'
-import type { TableRow, TableRowScope } from '@/features/table/types'
+import type { TableViewProps } from '@/features/table/table-view-props'
 
 /**
  * Page size assumed while the config is still loading, only to size the grid
@@ -52,78 +45,6 @@ export interface TableViewHandle {
   refresh: () => void
   /** Clears the current row selection (call after a bulk action succeeds). */
   clearSelection: () => void
-}
-
-interface TableViewProps extends RowActionsOptions {
-  /** Domain key selecting the server-side table definition (e.g. "users"). */
-  domain: string
-  /**
-   * Narrows the domain's config/rows/Set-Filter-values to one scope (spec
-   * 0064: request-management's Product Category tabs). Omitted ⇒ today's
-   * unscoped behavior for every other domain. The adapter is expected to key
-   * its own `<TableView>` element by the scope (e.g. by category id) so a
-   * scope change remounts the whole table and restarts every client-side
-   * state (search, filters, layout) from the fresh config's defaults (D-4) —
-   * this component does not react to a scope prop CHANGE on its own.
-   */
-  scope?: TableConfigScope
-  /**
-   * Narrows the domain's rows/values/export requests to one PARENT RECORD
-   * (spec 0067 D-1: the Opportunity detail's Quotes panel). Distinct from
-   * `scope` above: `scope` selects a config SHAPE and enters the config's
-   * query key; `rowScope` selects a ROW SET and never enters any query key,
-   * because the config is identical scoped or not (D-1). Read once as
-   * primitives, like `scope`. Omitted ⇒ today's unscoped behavior.
-   */
-  rowScope?: TableRowScope
-  /**
-   * Reports the grid's live total row count to the caller (spec 0067 D-9),
-   * e.g. so a panel header can show its own counter without a separate
-   * count query. Composes alongside the toolbar's own "N rows" counter — it
-   * does not replace it.
-   */
-  onRowCountChanged?: (count: number | null) => void
-  /** Per-domain custom cell renderers, keyed by column id. Optional. */
-  renderers?: TableRendererMap
-  /**
-   * Handler invoked when a row action fires. The generic table only renders the
-   * affordance (crossing `row.actions` with the catalog); the concrete behavior
-   * (open sheet, run delete, …) belongs to the domain adapter.
-   */
-  onAction: RowActionHandler
-  /**
-   * Import action, threaded through to the toolbar's `importSlot` (spec 0012).
-   * The adapter owns the permission gate (`<Can>`) and the dialog; TableView
-   * only forwards the node.
-   */
-  importSlot?: ReactNode
-  /**
-   * Optional per-row predicate gating which rows can be checked for bulk
-   * selection (spec 0048 AC-040, e.g. a Lead already assigned is not
-   * selectable). Forwarded verbatim to `DataTable`; omitted, every row stays
-   * selectable.
-   */
-  isRowSelectable?: (row: TableRow) => boolean
-  /**
-   * Extra bulk action(s) merged into the single "Actions" dropdown alongside
-   * the built-in "delete selected" whenever the selection is non-empty (spec
-   * 0048 AC-041). Receives the current selection (ids AND row data — AC-031
-   * needs the latter) and returns action descriptors; the domain adapter owns
-   * everything about each action (dialog, mutation, permission gate) —
-   * TableView only reserves the slot and enables the checkbox column when
-   * this is supplied.
-   */
-  getBulkActions?: (selection: TableSelection) => BulkAction[]
-  /**
-   * Enables AG Grid's Master/Detail (spec 0059 D-4), forwarded verbatim to
-   * `DataTable`. Additive opt-in: omitted, every other domain is unaffected.
-   * The pattern stays isolated to `rewarded-referents`, its one consumer.
-   */
-  masterDetail?: boolean
-  /** The detail panel's renderer, required (by the caller) whenever `masterDetail` is true. */
-  detailCellRenderer?: (params: ICellRendererParams<TableRow>) => ReactNode
-  /** Detail row grows to fit its content instead of a fixed pixel height. */
-  detailRowAutoHeight?: boolean
 }
 
 /**
@@ -159,6 +80,8 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       masterDetail,
       detailCellRenderer,
       detailRowAutoHeight,
+      advancedFiltersOverride,
+      onAdvancedFiltersOverrideCleared,
     },
     ref,
   ) {
@@ -255,6 +178,8 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         descriptors: config?.advancedFilters,
         applied: config?.appliedAdvancedFilters,
         onApplied: refreshGrid,
+        override: advancedFiltersOverride,
+        onOverrideCleared: onAdvancedFiltersOverrideCleared,
       })
 
     // One datasource instance per domain; stable across re-renders. The current

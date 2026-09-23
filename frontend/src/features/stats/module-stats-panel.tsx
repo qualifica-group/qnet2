@@ -56,6 +56,7 @@ function StatsPanelSkeleton() {
 
 interface ModuleStatsPanelBodyProps {
   domain: string
+  showCharts: boolean
 }
 
 /**
@@ -66,11 +67,12 @@ interface ModuleStatsPanelBodyProps {
  * exactly what makes a stats-invalidating mutation (create/update/delete)
  * refresh the KPIs the next time the user opens the panel.
  */
-function ModuleStatsPanelBody({ domain }: ModuleStatsPanelBodyProps) {
+function ModuleStatsPanelBody({ domain, showCharts }: ModuleStatsPanelBodyProps) {
   const { t } = useTranslation()
   const { data, isPending, isError, refetch } = useModuleStats(domain)
 
   const groups = data ? groupWidgets(data.widgets) : null
+  const charts = showCharts && groups ? groups.charts : []
 
   return (
     <div aria-busy={isPending} className="flex flex-col gap-3 pt-3">
@@ -87,7 +89,7 @@ function ModuleStatsPanelBody({ domain }: ModuleStatsPanelBodyProps) {
         </div>
       ) : null}
 
-      {groups && groups.tiles.length === 0 && groups.charts.length === 0 ? (
+      {groups && groups.tiles.length === 0 && charts.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('statsPanel.empty')}</p>
       ) : null}
 
@@ -99,9 +101,9 @@ function ModuleStatsPanelBody({ domain }: ModuleStatsPanelBodyProps) {
         </div>
       ) : null}
 
-      {groups && groups.charts.length > 0 ? (
+      {charts.length > 0 ? (
         <div className={CHART_GRID_CLASS}>
-          {groups.charts.map((widget) => (
+          {charts.map((widget) => (
             <StatsWidgetView key={widget.key} widget={widget} />
           ))}
         </div>
@@ -114,6 +116,8 @@ interface ModuleStatsPanelProps {
   /** Table domain of the module, e.g. `leads` (same key used by `<TableView>`). */
   domain: string
   isOpen: boolean
+  /** `false` keeps only the KPI tiles (dashboard Task block, spec 0151 D-11). */
+  showCharts?: boolean
 }
 
 /**
@@ -123,7 +127,7 @@ interface ModuleStatsPanelProps {
  * is only ever mounted while open (or animating shut), so a closed panel
  * issues no request (AC-007).
  */
-export function ModuleStatsPanel({ domain, isOpen }: ModuleStatsPanelProps) {
+export function ModuleStatsPanel({ domain, isOpen, showCharts = true }: ModuleStatsPanelProps) {
   const { t } = useTranslation()
 
   return (
@@ -134,7 +138,7 @@ export function ModuleStatsPanel({ domain, isOpen }: ModuleStatsPanelProps) {
         aria-label={t('statsPanel.regionLabel')}
         className={COLLAPSIBLE_CONTENT_CLASS}
       >
-        <ModuleStatsPanelBody domain={domain} />
+        <ModuleStatsPanelBody domain={domain} showCharts={showCharts} />
       </CollapsibleContent>
     </Collapsible>
   )

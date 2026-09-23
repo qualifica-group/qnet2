@@ -7,9 +7,10 @@ use App\Enums\Attributes\Label;
 use App\Enums\Concerns\HasMeta;
 
 /**
- * The "Stato" advanced filter of the Task table (spec 0147, D-2/D-3): the same
- * four options as the work-order Task board's status filter. `open` groups
- * every non-closing phase of App\Enums\TaskStatusGroup; `all` lifts the
+ * The "Stato" advanced filter of the Task table (spec 0147, D-2/D-3), plus
+ * `in_validation` (spec 0151, D-5): the dashboard's "to validate" chip
+ * narrows the same `status` filter to this one value. `open` groups every
+ * non-closing phase of App\Enums\TaskStatusGroup; `all` lifts the
  * restriction. Presentation labels are resolved by the frontend from
  * `enums.task_list_status`; the `#[Label]` strings are a server-side fallback.
  */
@@ -27,6 +28,9 @@ enum TaskListStatus: string
     #[Label('Blocked')]
     case Blocked = 'blocked';
 
+    #[Label('In validation')]
+    case InValidation = 'in_validation';
+
     #[Label('All')]
     case All = 'all';
 
@@ -41,6 +45,7 @@ enum TaskListStatus: string
         return match ($this) {
             self::Open => [TaskStatusGroup::Open->value, TaskStatusGroup::Pending->value, TaskStatusGroup::InValidation->value],
             self::Completed => [TaskStatusGroup::ClosedPositive->value, TaskStatusGroup::ClosedNegative->value],
+            self::InValidation => [TaskStatusGroup::InValidation->value],
             default => null,
         };
     }

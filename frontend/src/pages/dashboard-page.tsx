@@ -1,7 +1,5 @@
-import { useTranslation } from 'react-i18next'
-import { PagePlaceholder } from '@/components/page-placeholder'
+import { DashboardScreen } from '@/features/dashboard/dashboard-screen'
 
 export default function DashboardPage() {
-  const { t } = useTranslation()
-  return <PagePlaceholder title={t('navigation.dashboard')} />
+  return <DashboardScreen />
 }

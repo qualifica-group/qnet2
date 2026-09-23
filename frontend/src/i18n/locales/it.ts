@@ -49,6 +49,7 @@ import { rewardTypes } from './it-reward-types'
 import { rewardStatuses } from './it-reward-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
 import { documentLayouts } from './it-document-layouts'
+import { dashboard } from './it-dashboard'
 import { requestManagement } from './it-request-management'
 import { enrolleeManagement } from './it-enrollee-management'
 import { fieldChangeRequests } from './it-field-change-requests'
@@ -417,7 +418,7 @@ export const it: TranslationResources = {
   opportunities: { ...opportunities, stats: moduleStats.opportunities },
   productLines,
   quoteWorkflows,
-  quotes,
+  quotes: { ...quotes, stats: moduleStats.quotes },
   contractStatuses,
   contracts,
   workOrders,
@@ -451,5 +452,6 @@ export const it: TranslationResources = {
   attachments,
   impersonation,
   documentLayouts,
+  dashboard,
   help,
 }

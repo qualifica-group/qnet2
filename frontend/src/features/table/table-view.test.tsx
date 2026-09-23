@@ -8,7 +8,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { UiScaleContext } from '@/features/appearance/ui-scale-context'
 import { TableView } from '@/features/table/table-view'
-import { fetchTableConfig, fetchTableRows } from '@/features/table/api'
+import { fetchTableConfig, fetchTableRows, saveTableFilters } from '@/features/table/api'
 import type { TableConfig, TableRow } from '@/features/table/types'
 
 /**
@@ -55,11 +55,12 @@ vi.mock('@/features/auth/use-abilities', () => ({
 
 vi.mock('@/features/table/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/table/api')>()
-  return { ...actual, fetchTableConfig: vi.fn(), fetchTableRows: vi.fn() }
+  return { ...actual, fetchTableConfig: vi.fn(), fetchTableRows: vi.fn(), saveTableFilters: vi.fn() }
 })
 
 const fetchTableConfigMock = vi.mocked(fetchTableConfig)
 const fetchTableRowsMock = vi.mocked(fetchTableRows)
+const saveTableFiltersMock = vi.mocked(saveTableFilters)
 
 const CONFIG: TableConfig = {
   resource: 'quotes',
@@ -132,6 +133,7 @@ beforeEach(() => {
     export_link: null,
     pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
   })
+  saveTableFiltersMock.mockReset()
 })
 
 describe('TableView — rowScope (spec 0067 D-1)', () => {
@@ -235,5 +237,93 @@ describe('TableView — onRowCountChanged (spec 0067 D-9)', () => {
     })
 
     expect(await screen.findByText('3 rows')).toBeInTheDocument()
+  })
+})
+
+describe('TableView — advancedFiltersOverride (spec 0151 D-2, AC-008)', () => {
+  const CONFIG_WITH_TASK_FILTERS: TableConfig = {
+    ...CONFIG,
+    advancedFilters: [
+      {
+        name: 'status',
+        label: 'tasks.advancedFilters.status',
+        type: 'enum',
+        order: 1,
+        required: true,
+        visible: true,
+        width: 'md',
+        multiple: false,
+        enumKey: 'task_list_status',
+        defaultValue: 'open',
+      },
+      {
+        name: 'assignment',
+        label: 'tasks.advancedFilters.assignment',
+        type: 'enum',
+        order: 2,
+        required: false,
+        visible: true,
+        width: 'md',
+        multiple: false,
+        enumKey: 'task_assignment_scope',
+      },
+    ],
+    appliedAdvancedFilters: {},
+  }
+
+  it('reaches the SSRM rows request without persisting it', async () => {
+    fetchTableConfigMock.mockResolvedValue(CONFIG_WITH_TASK_FILTERS)
+    renderTableView({
+      advancedFiltersOverride: { status: 'open', assignment: 'assigned_to_me' },
+    })
+    await screen.findByRole('grid')
+
+    const dataTableProps = dataTablePropsSpy.mock.calls.at(-1)?.[0] as CapturedDataTableProps
+    await dataTableProps.datasource.getRows(stubParams())
+
+    // `status: open` equals its descriptor default, so — like a normal
+    // Apply — only the non-default `assignment` is part of the active
+    // subset sent to the backend (it already defaults `status` to open).
+    expect(fetchTableRowsMock).toHaveBeenCalledWith(
+      'quotes',
+      expect.objectContaining({ advancedFilters: { assignment: 'assigned_to_me' } }),
+    )
+    expect(saveTableFiltersMock).not.toHaveBeenCalled()
+  })
+
+  it('a non-default overridden status reaches the request too', async () => {
+    fetchTableConfigMock.mockResolvedValue(CONFIG_WITH_TASK_FILTERS)
+    renderTableView({
+      advancedFiltersOverride: { status: 'in_validation', assignment: 'assigned_by_me' },
+    })
+    await screen.findByRole('grid')
+
+    const dataTableProps = dataTablePropsSpy.mock.calls.at(-1)?.[0] as CapturedDataTableProps
+    await dataTableProps.datasource.getRows(stubParams())
+
+    expect(fetchTableRowsMock).toHaveBeenCalledWith(
+      'quotes',
+      expect.objectContaining({
+        advancedFilters: { status: 'in_validation', assignment: 'assigned_by_me' },
+      }),
+    )
+    expect(saveTableFiltersMock).not.toHaveBeenCalled()
+  })
+
+  it('omitted ⇒ the persisted appliedAdvancedFilters apply as usual (no regression)', async () => {
+    fetchTableConfigMock.mockResolvedValue({
+      ...CONFIG_WITH_TASK_FILTERS,
+      appliedAdvancedFilters: { assignment: 'requested_by_me' },
+    })
+    renderTableView()
+    await screen.findByRole('grid')
+
+    const dataTableProps = dataTablePropsSpy.mock.calls.at(-1)?.[0] as CapturedDataTableProps
+    await dataTableProps.datasource.getRows(stubParams())
+
+    expect(fetchTableRowsMock).toHaveBeenCalledWith(
+      'quotes',
+      expect.objectContaining({ advancedFilters: { assignment: 'requested_by_me' } }),
+    )
   })
 })

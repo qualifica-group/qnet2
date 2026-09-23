@@ -12,6 +12,7 @@ import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { TASKS_DOMAIN } from '@/features/tasks/api'
 import { taskColumnRenderers } from '@/features/tasks/task-column-renderers'
+import { useTaskListUrlFilters } from '@/features/tasks/use-task-list-url-filters'
 import { useTaskRowActions } from '@/features/tasks/use-task-row-actions'
 
 /**
@@ -28,6 +29,7 @@ export function TasksTable() {
   const tableRef = useRef<TableViewHandle>(null)
   const stats = useStatsPanel(TASKS_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(TASKS_DOMAIN)
+  const urlFilters = useTaskListUrlFilters()
   const handleMutated = useCallback(() => {
     tableRef.current?.refresh()
     invalidateStats()
@@ -61,6 +63,8 @@ export function TasksTable() {
         renderers={taskColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}
+        advancedFiltersOverride={urlFilters.override}
+        onAdvancedFiltersOverrideCleared={urlFilters.clear}
       />
 
       {sheet}

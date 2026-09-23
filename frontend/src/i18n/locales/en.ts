@@ -55,6 +55,7 @@ import { rewardStatuses } from './en-reward-statuses'
 import { rewardedReferents } from './en-rewarded-referents'
 import { fieldChangeRequests } from './en-field-change-requests'
 import { documentLayouts } from './en-document-layouts'
+import { dashboard } from './en-dashboard'
 import { navigation } from './en-navigation'
 import { settings } from './en-settings'
 import { requestManagement } from './en-request-management'
@@ -431,7 +432,7 @@ export const en = {
   opportunities: { ...opportunities, stats: moduleStats.opportunities },
   productLines,
   quoteWorkflows,
-  quotes,
+  quotes: { ...quotes, stats: moduleStats.quotes },
   contractStatuses,
   contracts,
   workOrders,
@@ -465,6 +466,7 @@ export const en = {
   attachments,
   impersonation,
   documentLayouts,
+  dashboard,
   help,
 }
 

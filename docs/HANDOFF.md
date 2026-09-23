@@ -3,6 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DASHBOARD HOME DA Q-NET (spec 0151) — VERDE, NON COMMITTATO (2026-09-23)
+
+- `/dashboard` non e' piu' un placeholder: card "Attivita' da completare" (5 contatori task come q-net + chip
+  "Da validare"), sezione Segnatempo (riusa `TimeEntriesStatsPanels` + preset, default day), blocchi
+  `ModuleStatsPanel` tasks/opportunities/quotes/leads/registries (vedi revisione sotto).
+  Ogni blocco gated (`{domain}.viewAny`, `time-entries.viewAny`, `request-management.report`) e NON montato se
+  nascosto. Grafico ad area q-net escluso (dati finti). Gestione Iscritti esclusa (non richiesta).
+- Backend: `GET /api/dashboard/tasks` (`routes/api/dashboard.php`, `Dashboard\DashboardTaskCountersController`,
+  `Services\Tasks\TaskDashboardCounters`) riusa `TaskVisibilityScope` + `TaskAdvancedFilterApplier` (parita'
+  contatore = righe lista, sottotask compresi). Nuovi enum: `TaskListStatus::InValidation`,
+  `TaskAssignmentScope::{AssignedByMe, CreatedByMe, ObservedByMe}` (semantica esclusiva q-net, D-3;
+  `requested_by_me` invariato). `Stats\Quotes\QuotesStatsDefinition` (total, revenue_net, margin_net, won,
+  by_status, trend) — il toggle Statistiche nella lista Offerte NON e' stato aggiunto (fuori scope).
+- Frontend: `features/dashboard/**`; `TableView` ha `advancedFiltersOverride` + `onAdvancedFiltersOverrideCleared`
+  (filtri dall'URL non persistiti, Applica/Reimposta li salvano e puliscono l'URL); `TableViewProps` estratto in
+  `table-view-props.ts`; `features/tasks/use-task-list-url-filters.ts` (`/tasks?status=&assignment=`).
+  i18n `{it,en}-dashboard.ts`, `moduleStats.quotes`, enum nuovi; guide in-app `dashboard` (riscritta) e `tasks`.
+- Verifica (verifier): Pest Unit 1077/1077, Feature 7078/7080 (1 skip + `QuoteWorkflowMigrationTest:154` rosso
+  PREESISTENTE, file non toccato), Vitest 5809/5809, `tsc -b --force` pulito, ESLint e Pint puliti.
+- Debito: `use-advanced-filters.ts` 324 righe (soft limit). AC-012: 5 colonne da `xl`, a 1024px sono 3.
+- REVISIONE UTENTE (stesso giorno, D-11): statistiche `tasks` DENTRO la sezione "Attivita' da completare"
+  (sotto le card, nessun blocco Task separato); Gestione Richieste TOLTA dalla dashboard
+  (`dashboard-request-management-section.tsx` eliminato, chiavi i18n `requestManagementSection` e
+  `moduleSections.tasks` rimosse); card con colori/icone q-net (`DASHBOARD_TASK_CARD_TONES` in
+  `dashboard-task-card-config.ts`, palette Tailwind con dark come `status-badge-classes.ts`). Vitest 5810/5810,
+  tsc -b --force e ESLint puliti. Guide in-app e manuale Claude Docs aggiornati.
+- Prossimi passi: commit su richiesta.
+
 ## DETTAGLI RECORD ALLINEATI ALLO STILE OPPORTUNITA' — NON COMMITTATO (2026-09-23)
 
 - Richiesta utente: tutte le viste dettaglio come Opportunita' — Modifica nell'header della card principale,

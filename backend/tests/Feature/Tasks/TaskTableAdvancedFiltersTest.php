@@ -145,6 +145,47 @@ it('assignment narrows to the tasks assigned to or requested by the actor (AC-00
         ->and(taskTitlesWithAdvancedFilters(['assignment' => 'requested_by_me']))->toBe(['requested']);
 });
 
+it('status in_validation keeps only tasks in that phase (spec 0151, AC-006)', function () {
+    Sanctum::actingAs(taskActorWith(['viewAny']));
+    filterableTaskInGroup('open', TaskStatusGroup::Open);
+    filterableTaskInGroup('validating', TaskStatusGroup::InValidation);
+    filterableTaskInGroup('won', TaskStatusGroup::ClosedPositive);
+
+    expect(taskTitlesWithAdvancedFilters(['status' => 'in_validation']))->toBe(['validating']);
+});
+
+it('assignment assigned_by_me is exclusive of assigned_to_me (spec 0151, D-3/AC-006)', function () {
+    $actor = taskActorWith(['viewAny']);
+    Sanctum::actingAs($actor);
+    filterableTaskInGroup('requested-only', TaskStatusGroup::Open, ['requester_id' => $actor->id]);
+    $requestedAndAssigned = filterableTaskInGroup('requested-and-assigned', TaskStatusGroup::Open, ['requester_id' => $actor->id]);
+    $requestedAndAssigned->assignees()->attach($actor->id);
+    filterableTaskInGroup('other', TaskStatusGroup::Open);
+
+    expect(taskTitlesWithAdvancedFilters(['assignment' => 'assigned_by_me']))->toBe(['requested-only']);
+});
+
+it('assignment created_by_me excludes tasks the actor also requested (spec 0151, D-3/AC-006)', function () {
+    $actor = taskActorWith(['viewAny']);
+    Sanctum::actingAs($actor);
+    filterableTaskInGroup('created-no-requester', TaskStatusGroup::Open, ['creator_id' => $actor->id, 'requester_id' => null]);
+    filterableTaskInGroup('created-other-requester', TaskStatusGroup::Open, ['creator_id' => $actor->id]);
+    filterableTaskInGroup('created-self-requested', TaskStatusGroup::Open, ['creator_id' => $actor->id, 'requester_id' => $actor->id]);
+    filterableTaskInGroup('other', TaskStatusGroup::Open);
+
+    expect(taskTitlesWithAdvancedFilters(['assignment' => 'created_by_me']))
+        ->toBe(['created-no-requester', 'created-other-requester']);
+});
+
+it('assignment observed_by_me keeps only tasks the actor watches (spec 0151, D-3/AC-006)', function () {
+    $actor = taskActorWith(['viewAny']);
+    Sanctum::actingAs($actor);
+    filterableTaskInGroup('watched', TaskStatusGroup::Open)->watchers()->attach($actor->id);
+    filterableTaskInGroup('other', TaskStatusGroup::Open);
+
+    expect(taskTitlesWithAdvancedFilters(['assignment' => 'observed_by_me']))->toBe(['watched']);
+});
+
 it('each configurator relation filter returns exactly the matching tasks (AC-001)', function (string $filter, string $foreignKey, string $modelClass) {
     Sanctum::actingAs(taskActorWith(['viewAny']));
     $wanted = $modelClass::factory()->create();

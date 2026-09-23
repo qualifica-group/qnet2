@@ -44,14 +44,14 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Filtro', 'Cosa mostra'],
           rows: [
-            ['Stato', 'Aperti (preimpostato), Completati, Bloccati o Tutti.'],
+            ['Stato', 'Aperti (preimpostato), Completati, Bloccati, In validazione o Tutti.'],
             ['Scadenza', 'Oggi, Scadute o Questa settimana, sulla data fine (o sulla data inizio se manca).'],
-            ['Assegnazione', 'I task assegnati a te o richiesti da te.'],
+            ['Assegnazione', 'I task assegnati a te, richiesti da te, assegnati da te (sei richiedente ma non assegnatario), creati da te (con un altro richiedente) oppure osservati da te.'],
           ],
         },
         {
           type: 'tip',
-          text: 'All\'apertura la tabella mostra solo i task **aperti**: scegli **Tutti** nel filtro Stato per vedere anche quelli chiusi.',
+          text: 'All\'apertura la tabella mostra solo i task **aperti**: scegli **Tutti** nel filtro Stato per vedere anche quelli chiusi. Se arrivi da un riquadro della **Dashboard**, la tabella si apre già filtrata solo per quella visita, senza cambiare i filtri salvati.',
         },
         {
           type: 'paragraph',

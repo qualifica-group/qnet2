@@ -11,6 +11,7 @@ use App\Stats\Opportunities\OpportunitiesStatsDefinition;
 use App\Stats\ProductCategories\ProductCategoriesStatsDefinition;
 use App\Stats\Products\ProductsStatsDefinition;
 use App\Stats\Projects\ProjectsStatsDefinition;
+use App\Stats\Quotes\QuotesStatsDefinition;
 use App\Stats\Referents\ReferentsStatsDefinition;
 use App\Stats\Registries\RegistriesStatsDefinition;
 use App\Stats\Tasks\TasksStatsDefinition;
@@ -60,6 +61,9 @@ return [
         // Spec 0147: the work-order Task board's KPIs, scoped to the actor's
         // visible root tasks.
         'tasks' => TasksStatsDefinition::class,
+        // Spec 0151 (dashboard, D-8): global quote KPIs, same visibility as
+        // QuotesTableDefinition (unrestricted).
+        'quotes' => QuotesStatsDefinition::class,
     ],
 
 ];

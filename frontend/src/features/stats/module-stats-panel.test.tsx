@@ -109,6 +109,16 @@ describe('ModuleStatsPanel', () => {
     expect(screen.getByRole('meter', { name: 'Web' })).toBeInTheDocument()
   })
 
+  it('keeps only the KPI tiles when charts are turned off (spec 0151 D-11)', async () => {
+    fetchModuleStatsMock.mockResolvedValue(LEADS_STATS)
+
+    renderPanel(<ModuleStatsPanel domain="leads" isOpen showCharts={false} />)
+
+    expect(await screen.findByText('128')).toBeInTheDocument()
+    expect(screen.getByText('96')).toBeInTheDocument()
+    expect(screen.queryByRole('meter', { name: 'Web' })).not.toBeInTheDocument()
+  })
+
   it('shows an empty state when the module exposes no widget (AC-009)', async () => {
     fetchModuleStatsMock.mockResolvedValue({ widgets: [] })
 

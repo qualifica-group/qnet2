@@ -20,6 +20,13 @@ use Illuminate\Support\Facades\DB;
  * `COALESCE(end_date, start_date)` due reference for `due`, the acting user
  * for `assignment`. An unknown enum value restricts nothing (the generic
  * validator only checks the value is scalar).
+ *
+ * Spec 0151 D-6 reuses this SAME class for the dashboard's Task counters
+ * (App\Services\Tasks\TaskDashboardCounters): `in_validation` on `status` and
+ * `assigned_by_me`/`created_by_me`/`observed_by_me` on `assignment` are the
+ * dashboard's own buckets (D-3/D-5), applied with the exclusive semantics
+ * documented on App\Enums\TaskAssignmentScope so the card counters and the
+ * list they link to can never disagree.
  */
 final class TaskAdvancedFilterApplier
 {
@@ -117,6 +124,15 @@ final class TaskAdvancedFilterApplier
         match ($scope) {
             TaskAssignmentScope::AssignedToMe => $query->whereHas('assignees', static fn (Builder $assignees) => $assignees->whereKey($actor->id)),
             TaskAssignmentScope::RequestedByMe => $query->where('tasks.requester_id', $actor->id),
+            TaskAssignmentScope::AssignedByMe => $query
+                ->where('tasks.requester_id', $actor->id)
+                ->whereDoesntHave('assignees', static fn (Builder $assignees) => $assignees->whereKey($actor->id)),
+            TaskAssignmentScope::CreatedByMe => $query
+                ->where('tasks.creator_id', $actor->id)
+                ->where(fn (Builder $requester) => $requester
+                    ->whereNull('tasks.requester_id')
+                    ->orWhere('tasks.requester_id', '!=', $actor->id)),
+            TaskAssignmentScope::ObservedByMe => $query->whereHas('watchers', static fn (Builder $watchers) => $watchers->whereKey($actor->id)),
         };
     }
 }

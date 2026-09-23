@@ -28,6 +28,9 @@ uses(RefreshDatabase::class);
  * `tasks` joined with spec 0147 (requirement change, declared): scoped to the
  * actor's visible root tasks, values verified in TasksStatsTest.
  *
+ * `quotes` joined with spec 0151 (dashboard, D-8, requirement change,
+ * declared): global counts, same registry pattern as `opportunities`.
+ *
  * @return array<int, string>
  */
 function statsDomains(): array
@@ -48,6 +51,7 @@ function statsDomains(): array
         'import-runs',
         'opportunities',
         'tasks',
+        'quotes',
     ];
 }
 
@@ -147,6 +151,7 @@ it('emits exactly the i18n label keys the frontend translates (AC-001)', functio
     ['import-runs', ['total', 'completed', 'failed', 'rowsImported', 'byStatus', 'trend']],
     ['opportunities', ['total', 'estimatedValue', 'averageProbability', 'fromLead', 'byRegistry', 'trend']],
     ['tasks', ['overdue', 'dueToday', 'estimatedMinutes', 'actualMinutes', 'byStatus', 'byPriority', 'trend']],
+    ['quotes', ['total', 'revenueNet', 'marginNet', 'won', 'byStatus', 'trend']],
 ]);
 
 /**

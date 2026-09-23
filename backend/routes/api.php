@@ -352,6 +352,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require __DIR__.'/api/work-orders.php'; // Work orders / "Commesse" CRUD (spec 0093)
     require __DIR__.'/api/tasks.php'; // Tasks CRUD + for-select (spec 0101)
     require __DIR__.'/api/time-entries.php'; // Segnatempo CRUD + day notes (spec 0122)
+    require __DIR__.'/api/dashboard.php'; // Home dashboard Task counters (spec 0151)
     require __DIR__.'/api/task-templates.php'; // "Modelli di Task" CRUD + for-select (spec 0124)
     require __DIR__.'/api/contracts.php'; // Contracts show/update + domain actions (spec 0072)
     require __DIR__.'/api/commission-configurations.php';

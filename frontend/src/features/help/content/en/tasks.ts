@@ -44,14 +44,14 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Filter', 'What it shows'],
           rows: [
-            ['Status', 'Open (preset), Completed, Blocked or All.'],
+            ['Status', 'Open (preset), Completed, Blocked, In validation or All.'],
             ['Due', 'Today, Overdue or This week, on the end date (or the start date when missing).'],
-            ['Assignment', 'The tasks assigned to you or requested by you.'],
+            ['Assignment', 'The tasks assigned to you, requested by you, assigned by you (you are the requester but not an assignee), created by you (with another requester) or observed by you.'],
           ],
         },
         {
           type: 'tip',
-          text: 'The table opens on the **open** tasks only: pick **All** in the Status filter to see the closed ones too.',
+          text: 'The table opens on the **open** tasks only: pick **All** in the Status filter to see the closed ones too. When you arrive from a **Dashboard** tile, the table opens already filtered for that visit only, without changing your saved filters.',
         },
         {
           type: 'paragraph',
