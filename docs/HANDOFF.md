@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX: MENZIONI NON CLICCABILI NEI DIALOG MODALI — NON COMMITTATO (2026-09-23)
+
+Stato: VERDE. Vitest `features/notes` 39/39, ESLint pulito, `tsc -b --force` EXIT 0. Manuale: nessun impatto.
+- Causa: il popup `@menzione` (`use-note-mention-extension.ts`) e' montato su `<body>`; un Dialog/Sheet
+  Radix modale (es. `NotesDialog` di Gestione richieste) mette `pointer-events: none` sul body, il popup
+  lo ereditava e i click lo attraversavano (e spostavano il focus fuori dall'editor).
+- Fix: `pointerEvents: 'auto'` sullo stile del popup. Radix lo considera comunque interno al dialog
+  perche' e' un portal React del sottoalbero dell'editor (nessuna chiusura del dialog al click).
+- Test: `note-composer.test.tsx` › "mention popup inside a modal dialog" (click + Invio).
+
 ## TASK: FILTRI DELLA BOARD + STATISTICHE NELLA TABELLA — NON COMMITTATO (2026-09-22)
 
 Spec 0147 (`docs/specs/0147-task-table-filters-and-stats.xml`, implemented). Stato: VERDE.

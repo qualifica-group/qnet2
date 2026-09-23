@@ -97,6 +97,11 @@ function createMentionPopupRenderer() {
       top: `${rect.bottom}px`,
       width: MENTION_POPUP_WIDTH,
       zIndex: '50',
+      // A modal Radix Dialog/Sheet sets `pointer-events: none` on <body> and the
+      // popup, appended to <body>, would inherit it: clicks would fall through
+      // to whatever lies beneath. Radix still treats the popup as inside the
+      // dialog because it is a React portal of the editor's subtree.
+      pointerEvents: 'auto',
     })
   }
 

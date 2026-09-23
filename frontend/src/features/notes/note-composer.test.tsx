@@ -4,6 +4,7 @@ import axios, { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { NoteComposer, type NoteComposerProps } from '@/features/notes/note-composer'
 import { RICH_TEXT_NOTE_TEXT_MAX } from '@/components/rich-text/rich-text-constants'
 import type { Note } from '@/features/notes/types'
@@ -172,6 +173,48 @@ describe('NoteComposer — create/reply payload (AC-021)', () => {
 
     await waitFor(() => expect(bodyEditor().textContent).toBe(''))
     expect(onDone).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('NoteComposer — mention popup inside a modal dialog', () => {
+  function renderInDialog() {
+    return render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Notes</DialogTitle>
+          <DialogDescription>Thread</DialogDescription>
+          <NoteComposer entityType="request-management" entityId={1} />
+        </DialogContent>
+      </Dialog>,
+      { wrapper: wrapper() },
+    )
+  }
+
+  it('keeps the popup clickable although the modal disables pointer events on the body', async () => {
+    fetchMentionableUsersMock.mockResolvedValue(mentionableUsersPage([{ id: 12, label: 'Alice Verdi' }]))
+    renderInDialog()
+
+    pasteText(bodyEditor(), '@an')
+    const option = await screen.findByRole('option', { name: /Alice Verdi/ })
+    const popup = option.closest('[role="listbox"]')?.parentElement
+
+    expect(document.body.style.pointerEvents).toBe('none')
+    expect(popup?.style.pointerEvents).toBe('auto')
+
+    fireEvent.mouseDown(option)
+    await waitFor(() => expect(bodyEditor().textContent).toContain('@Alice Verdi'))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('inserts the highlighted candidate on Enter', async () => {
+    fetchMentionableUsersMock.mockResolvedValue(mentionableUsersPage([{ id: 12, label: 'Alice Verdi' }]))
+    renderInDialog()
+
+    pasteText(bodyEditor(), '@an')
+    await screen.findByRole('option', { name: /Alice Verdi/ })
+    fireEvent.keyDown(bodyEditor(), { key: 'Enter' })
+
+    await waitFor(() => expect(bodyEditor().textContent).toContain('@Alice Verdi'))
   })
 })
 
