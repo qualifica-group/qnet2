@@ -55,9 +55,9 @@ export function RegistriesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteRegistry(row.id)
+        await deleteRegistry(Number(row.id))
         toast.success(t('registries.form.deleted'))
         refreshGrid()
         invalidateStats()

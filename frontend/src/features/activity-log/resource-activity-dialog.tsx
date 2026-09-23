@@ -33,7 +33,7 @@ export function ResourceActivityDialog({ resource, row, onOpenChange }: Resource
         </DialogHeader>
         {row ? (
           <div className="max-h-[70vh] overflow-y-auto">
-            <ActivityLogSection resource={resource} id={row.id} />
+            <ActivityLogSection resource={resource} id={Number(row.id)} />
           </div>
         ) : null}
       </DialogContent>

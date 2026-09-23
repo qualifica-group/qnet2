@@ -58,6 +58,7 @@ const TEST_ACTOR: User = {
   ui_scale: 40,
   date_format: 'dmy',
   time_format: '24h',
+  color_preset: 'default',
 }
 
 const NOT_CALLED = async () => {}

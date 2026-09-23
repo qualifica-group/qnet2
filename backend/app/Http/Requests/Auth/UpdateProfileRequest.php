@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Enums\ColorPresetEnum;
 use App\Enums\DateFormatEnum;
 use App\Enums\LocaleEnum;
 use App\Enums\TimeFormatEnum;
@@ -54,6 +55,10 @@ class UpdateProfileRequest extends FormRequest
             // the client formatter.
             'date_format' => ['sometimes', 'required', Rule::in(DateFormatEnum::values())],
             'time_format' => ['sometimes', 'required', Rule::in(TimeFormatEnum::values())],
+
+            // Per-user accent palette. The accepted set is owned by the enum,
+            // the colors by the client stylesheet.
+            'color_preset' => ['sometimes', 'required', Rule::in(ColorPresetEnum::values())],
 
             // Spec 0042 — per-user module open mode preference. `mode` is
             // required only when the object itself is submitted; override
@@ -138,6 +143,7 @@ class UpdateProfileRequest extends FormRequest
                 'ui_scale' => $validated['ui_scale'] ?? null,
                 'date_format' => $validated['date_format'] ?? null,
                 'time_format' => $validated['time_format'] ?? null,
+                'color_preset' => $validated['color_preset'] ?? null,
             ],
             static fn ($value): bool => $value !== null,
         );

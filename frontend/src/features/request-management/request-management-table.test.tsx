@@ -8,7 +8,7 @@ import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RequestManagementTable } from '@/features/request-management/request-management-table'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { BulkAction } from '@/features/table/use-bulk-actions-slot'
+import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import type { OpenMode } from '@/features/modules/types'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 
@@ -58,9 +58,7 @@ function action(key: string): TableActionDefinition {
 }
 
 let capturedOnAction: RowActionHandler | null = null
-let capturedBulkActions:
-  | ((selection: { ids: number[]; rows: TableRow[] }) => BulkAction[])
-  | null = null
+let capturedBulkActions: ((selection: TableSelection) => BulkAction[]) | null = null
 
 let capturedScope: { productCategoryId?: number } | undefined
 
@@ -71,7 +69,7 @@ vi.mock('@/features/table/table-view', () => ({
       domain: string
       scope?: { productCategoryId?: number }
       onAction: RowActionHandler
-      getBulkActions?: (selection: { ids: number[]; rows: TableRow[] }) => BulkAction[]
+      getBulkActions?: (selection: TableSelection) => BulkAction[]
     }
   >(function TableViewStub({ domain, scope, onAction, getBulkActions }, ref) {
       useImperativeHandle(ref, () => ({ refresh: () => {}, clearSelection: () => {} }))

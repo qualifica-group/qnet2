@@ -46,9 +46,9 @@ export function VatRatesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteVatRate(row.id)
+        await deleteVatRate(Number(row.id))
         toast.success(t('vatRates.form.deleted'))
         refreshGrid()
       } catch (error) {

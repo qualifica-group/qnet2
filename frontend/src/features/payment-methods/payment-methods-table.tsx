@@ -46,9 +46,9 @@ export function PaymentMethodsTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deletePaymentMethod(row.id)
+        await deletePaymentMethod(Number(row.id))
         toast.success(t('paymentMethods.form.deleted'))
         refreshGrid()
       } catch (error) {

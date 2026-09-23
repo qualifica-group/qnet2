@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0150-notifications-page" status="implemented" owner="utente" date="2026-09-23">
+
+  <goal>
+    Ogni utente autenticato ha una pagina "Notifiche" dedicata, costruita come gli altri moduli QNet
+    (tabella backend-driven SSRM): una riga per ciascuna delle PROPRIE notifiche, filtrabile, con il
+    collegamento alla pagina interessata (quando presente), lo stato letta/non letta e le azioni per
+    cambiarlo.
+  </goal>
+
+  <context>
+    Fatti verificati nel repo (2026-09-23):
+    - Tabella framework `notifications` (migrazione 2026_06_15_100000): `id` uuid PK, `type` string (FQCN),
+      `notifiable_type`/`notifiable_id` (morphs), `data` TEXT (JSON), `read_at` nullable, timestamps;
+      indice `notifications_notifiable_read_at_index` (notifiable_type, notifiable_id, read_at).
+    - `App\Models\Notification extends DatabaseNotification` (solo HasFactory) e' il model da usare.
+    - Payload normalizzato da `App\DataObjects\Notifications\NotificationData`:
+      `{title: ?string, message: ?string, level: info|success|warning|error, action_url: ?string}`;
+      `level` da `App\Enums\NotificationLevelEnum` (HasMeta: Label/Icon/Color).
+      `action_url` e' sempre un PERCORSO interno SPA o null (RecordLinkResolver), mai un URL assoluto.
+    - Endpoint esistenti (NotificationController + NotificationService, ADR-0005, docs/api/0004-notifications.md),
+      self-scoped su `$user->notifications()`, id altrui -> 404:
+      GET /api/notifications, GET /api/notifications/unread-count,
+      PATCH /api/notifications/{notification}/read, POST /api/notifications/read-all.
+    - Framework tabellare: `AbstractTableDefinition` + `config/tables.php` (`definitions`),
+      `authorizeViewAny()` di default = Policy `viewAny` del model (fail-closed). Scoping per attore in
+      `baseQuery()` tramite `Auth::user()` (precedenti: TasksTableDefinition/TaskVisibilityScope,
+      RequestManagementTableDefinition). Azioni senza `permission` = disponibili a ogni autenticato.
+      Colonne derivate: `applyDerivedFilter/applyDerivedSort/applyDerivedSearch/distinctValues`.
+    - Navigazione backend-driven: `config/navigation.php` -> `config/navigation/*.php`, `permission => null`
+      ammesso (es. dashboard). Icone FE in `frontend/src/features/navigation/icon-map.ts` (manca `bell`).
+    - FE: pagina tabellare = `pages/<x>-page.tsx` -> `features/<x>/<x>-table.tsx` -> `TableView domain=...`
+      (modello: `field-change-requests`). Azioni bulk via `getBulkActions` (`use-bulk-actions-slot.tsx`).
+      Campanella: `features/notifications/*`; `notification-item.tsx` all'apertura segna letta e naviga via
+      `safeInternalPath()`. i18n: `i18n/locales/{it,en}-notifications.ts`, `{it,en}-navigation.ts`.
+    - VINCOLO TECNICO: il framework FE tipizza `TableRow.id: number` e `TableSelection.ids: number[]`; le
+      notifiche hanno id uuid (string). Va ampliato il tipo (vedi D-6).
+  </context>
+
+  <decisions>
+    D-1 (utente) Accesso: ogni utente autenticato; nessun nuovo permesso Spatie. `NotificationPolicy`:
+        `viewAny` = true; `view`/`update` = la notifica appartiene all'attore. Le righe sono SEMPRE limitate
+        all'attore in `baseQuery()` (fail-closed senza attore: zero righe). Evoluzione di ADR-0005: la Policy
+        esiste solo perche' il framework tabellare la richiede; gli endpoint esistenti restano self-scoped.
+    D-2 (utente) Azioni: per riga "Segna come letta" (`mark-read`, solo se non letta) e "Segna come non letta"
+        (`mark-unread`, solo se letta); bulk "Segna selezionate come lette"; in testata "Segna tutte come lette".
+        Nessuna eliminazione, nessuna modifica inline, nessuna creazione.
+    D-3 (utente) Clic sul collegamento di una notifica non letta: la segna come letta e naviga (stesso
+        comportamento della campanella). Se gia' letta: naviga soltanto.
+    D-4 (utente, rivista 2026-09-23) Accesso UI: link fisso "Notifiche" nel FOOTER della sidebar
+        (`components/app-sidebar.tsx`), subito SOPRA "Impostazioni", con il contatore delle non lette
+        (`SidebarMenuBadge`, dati da `useUnreadSummary()` gia' in polling; nascosto a 0). NON e' una voce del menu
+        backend-driven (nessun `config/navigation/notifications.php`). Resta il link "Vedi tutte" nella campanella.
+    D-5 Colonne (id = chiave di contratto): `status` (derivata da read_at: read|unread, badge + set filter),
+        `title` (data.title), `message` (data.message), `level` (data.level, badge + set filter da
+        NotificationLevelEnum), `created_at` ("Ricevuta il", datetime, filtro data, sort default desc),
+        `read_at` ("Letta il", datetime, filtro data), `action_url` ("Collegamento", renderer FE "Apri",
+        vuoto se null). Ricerca globale su `title` e `message`. Filtri/sort su campi JSON via
+        `data->title`/`data->message`/`data->level` (query builder Laravel, parametrizzati; niente *Raw).
+    D-6 FE: nuovo tipo `TableRowId = number | string` in `features/table/types.ts`, usato da `TableRow.id` e
+        `TableSelection.ids`. Il bulk-delete generico resta `number[]` (le notifiche non lo usano). Nessun
+        cambiamento di comportamento per gli altri domini.
+    D-7 Dopo ogni mutazione dalla pagina: refresh della griglia + invalidazione `notificationKeys.all`
+        (campanella e titolo tab si allineano).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>BE: NotificationPolicy; NotificationsTableDefinition (+ catalogo colonne/azioni, row mapper) registrata come `notifications` in config/tables.php.</item>
+      <item>BE: PATCH /api/notifications/{notification}/unread; POST /api/notifications/bulk-read (Service + FormRequest + route + doc API 0004).</item>
+      <item>FE: ampliamento `TableRowId` nel framework tabellare (D-6).</item>
+      <item>FE: pagina `/notifications` (pages/notifications-page.tsx, route in routes/router.tsx, breadcrumb), `NotificationsTable` su TableView, renderer colonne (status, level, action_url), azioni riga/bulk/testata, link "Notifiche" + contatore non lette nel footer della sidebar sopra Impostazioni, link "Vedi tutte" nella campanella, chiavi i18n IT/EN.</item>
+      <item>Guida in-app IT/EN `notifications` + chiave in HELP_GUIDE_KEYS; manuale Claude Docs: nuova sezione "Notifiche".</item>
+      <item>Test Pest e Vitest per ogni AC.</item>
+    </in>
+    <out>
+      <item>Eliminazione/archiviazione notifiche; preferenze di notifica per utente; notifiche push/real-time.</item>
+      <item>Colonna/filtro "Tipo" (classe della notifica): possibile follow-up.</item>
+      <item>Modifiche ai producer di notifiche o al payload NotificationData.</item>
+      <item>Visione delle notifiche di altri utenti (anche per super-admin).</item>
+      <item>Export dedicato: non si aggiunge nulla; se il motore generico lo espone per ogni dominio resta com'e' (righe gia' limitate all'attore da baseQuery).</item>
+      <item>Refactor della campanella oltre al link "Vedi tutte".</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/tables/notifications/columns">
+      <request>nessuno (contratto generico, docs/api/0002-generic-tables.md)</request>
+      <response status="200">
+        Config generica. `resource: "notifications"`. Colonne (id, type): status:set(badge), title:text,
+        message:text, level:set(badge), created_at:datetime, read_at:datetime, action_url:link.
+        Solo created_at/read_at/title/level/status sortable; tutte filterable tranne action_url.
+        `actions`: [{key:"mark-read"}, {key:"mark-unread"}] (label/icon da catalogo, confirm:false, nessun permission).
+        defaultSort: [{columnId:"created_at", direction:"desc"}]; defaultPagination: {limit: 25}.
+      </response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/notifications/rows">
+      <request>payload SSRM generico (startRow, endRow, sortModel, filterModel, search).</request>
+      <response status="200">
+        { items: [ {
+            id: string (uuid),
+            status: "read" | "unread",
+            title: string | null,
+            message: string | null,
+            level: "info" | "success" | "warning" | "error",
+            created_at: string (ISO-8601),
+            read_at: string (ISO-8601) | null,
+            action_url: string | null,
+            actions: ["mark-read"] | ["mark-unread"],
+            editable: false
+          } ], export_link, pagination }
+        Solo notifiche con notifiable = attore autenticato.
+      </response>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/notifications/{notification}/unread">
+      <request>nessun body</request>
+      <response status="200">{ success: true, message, data: NotificationResource (read_at: null) } — idempotente.</response>
+      <errors>404 id sconosciuto o di altro utente; 401 non autenticato.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/notifications/bulk-read">
+      <request>{ ids: string[] } — required, array, min:1, max:500, ogni elemento uuid distinto.</request>
+      <response status="200">{ success: true, message, data: { marked: int } } — numero di notifiche DELL'ATTORE passate da non lette a lette; id altrui/sconosciuti ignorati (mai modificati).</response>
+      <errors>422 ids mancante/vuoto/oltre 500/non uuid; 401 non autenticato.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/notifications/{notification}/read">esistente, invariato.</endpoint>
+    <endpoint method="POST" path="/api/notifications/read-all">esistente, invariato.</endpoint>
+    <navigation>
+      Nessuna voce in `config/navigation`: link FE fisso `/notifications` nel footer della sidebar (D-4).
+      Contatore = `GET /api/notifications/unread-count` `data.count` (endpoint esistente, invariato).
+    </navigation>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente autenticato senza alcun permesso Spatie, quando chiama GET /api/tables/notifications/columns, allora riceve 200 con le colonne e le azioni di D-5/contratto. (Pest)</criterion>
+    <criterion id="AC-002">Dati utente A con 2 notifiche e utente B con 3, quando A chiama POST /api/tables/notifications/rows, allora riceve esattamente le sue 2 righe (pagination.total = 2) e nessuna di B. (Pest)</criterion>
+    <criterion id="AC-003">Data una notifica non letta, la riga ha status "unread", read_at null, actions ["mark-read"]; una letta ha status "read", read_at ISO, actions ["mark-unread"]; title/message/level/action_url valgono il payload normalizzato (level invalido -> "info"). (Pest)</criterion>
+    <criterion id="AC-004">Quando A filtra status=unread (set filter), allora riceve solo le proprie non lette; filtro level=warning solo le warning; filtro testo su title e ricerca globale su title/message restituiscono solo le righe corrispondenti. (Pest)</criterion>
+    <criterion id="AC-005">Senza sortModel le righe sono ordinate per created_at desc; con sort su title asc sono in ordine alfabetico del titolo. (Pest)</criterion>
+    <criterion id="AC-006">Quando A chiama PATCH /api/notifications/{id}/unread su una propria notifica letta, allora 200 e read_at torna null; ripetuto resta 200 (idempotente); su id di B -> 404 e la notifica di B e' invariata. (Pest)</criterion>
+    <criterion id="AC-007">Quando A chiama POST /api/notifications/bulk-read con 2 proprie non lette + 1 id di B, allora 200 con marked = 2, le due sono lette e quella di B resta non letta. ids vuoto, non uuid o oltre 500 -> 422 senza modifiche. (Pest)</criterion>
+    <criterion id="AC-008">[rivisto] La navigazione backend (GET navigazione) NON contiene una voce `notifications`. (Pest)</criterion>
+    <criterion id="AC-009">La pagina /notifications monta la tabella `notifications`; la colonna status mostra un badge testuale Letta/Non letta (non solo colore) e level un badge con etichetta. (Vitest)</criterion>
+    <criterion id="AC-010">Clic sull'azione riga "Segna come letta" chiama PATCH .../read, poi aggiorna la griglia e invalida notificationKeys.all; "Segna come non letta" chiama PATCH .../unread con lo stesso effetto. (Vitest)</criterion>
+    <criterion id="AC-011">Con 2 righe selezionate, l'azione bulk "Segna selezionate come lette" chiama POST /notifications/bulk-read con i 2 uuid e svuota la selezione; il pulsante di testata "Segna tutte come lette" chiama POST /notifications/read-all. Nessuna azione "Elimina" e' presente. (Vitest)</criterion>
+    <criterion id="AC-012">Colonna Collegamento: con action_url interno valido mostra "Apri"; il clic su una riga non letta chiama markAsRead e naviga al percorso; su una letta naviga soltanto; con action_url null o non sicuro (safeInternalPath -> null) non mostra alcun link. (Vitest)</criterion>
+    <criterion id="AC-013">Il pannello della campanella mostra il link "Vedi tutte" che porta a /notifications e chiude il pannello. (Vitest)</criterion>
+    <criterion id="AC-014">Il tipo TableRowId non altera gli altri domini: tsc -b --force pulito e suite Vitest `features/table` verde. (typecheck + Vitest)</criterion>
+    <criterion id="AC-016">Il footer della sidebar mostra il link "Notifiche" (verso /notifications) immediatamente prima di "Impostazioni"; con 7 non lette mostra il contatore "7" accessibile (aria-label con il numero), con 0 non mostra alcun contatore; oltre 99 mostra "99+". Link attivo su /notifications. (Vitest)</criterion>
+    <criterion id="AC-015">Guida in-app `notifications` presente in IT ed EN con gli stessi id di sezione, chiave in HELP_GUIDE_KEYS; help-content-parity.test.ts e help-guide-keys.test.ts verdi. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Solo framework tabellare generico: nessun endpoint rows ad-hoc.
+    - Authz server-side: scoping in baseQuery (fail-closed senza attore) + Policy; mai fidarsi dell'id dal client.
+    - Filtri/sort/ricerca sui campi JSON da allow-list di colonne, query parametrizzate, niente whereRaw/orderByRaw con input.
+    - Nessun throttle sui nuovi endpoint (backend.md §2).
+    - Identificatori in inglese; stringhe UI via i18next IT/EN.
+    - UI compatta (ui-design.md §2), responsive 375/768/1024, pulsanti non trasparenti sul body.
+    - File sotto 300 righe (500 hard). Pint, ESLint, tsc -b --force, Pest e Vitest eseguiti.
+    - Nessun commit/cambio branch senza ordine esplicito (CLAUDE.md §3.6).
+  </constraints>
+
+</spec>

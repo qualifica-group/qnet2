@@ -47,6 +47,21 @@ export const settings = {
       '12h': '12 ore (2:30 PM)',
     },
   },
+  colorPreset: {
+    title: 'Colore tema',
+    subtitle: "Scegli la palette di colori di pulsanti, evidenziazioni e menu laterale dell'app.",
+    saved: 'Colore tema aggiornato con successo.',
+    options: {
+      default: 'Blu classico',
+      forest: 'Verde foresta',
+      amber: 'Ambra calda',
+      rose: 'Rosa moderno',
+      ocean: 'Brezza oceano',
+      plum: 'Prugna notte',
+      graphite: 'Grafite',
+      terracotta: 'Terracotta',
+    },
+  },
   moduleOpenMode: {
     title: 'Modalità apertura moduli',
     subtitle:

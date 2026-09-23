@@ -3,6 +3,71 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## NOTIFICHE: PAGINA DEDICATA (spec 0150) — NON COMMITTATO (2026-09-23)
+
+Spec `docs/specs/0150-notifications-page.xml` (D-4 e AC-008 rivisti, AC-016 aggiunto su richiesta utente).
+- BE: `NotificationPolicy` (viewAny=true per ogni autenticato, view/update = proprietario; niente permesso Spatie).
+  `NotificationsTableDefinition` + `app/Tables/Notifications/{NotificationColumnCatalog,NotificationRowMapper,
+  NotificationDerivedColumns}` registrata come `notifications` in `config/tables.php`; `baseQuery()` limitata
+  all'attore (fail-closed senza attore); colonne status/title/message/level derivate dal JSON `data` (query builder,
+  niente *Raw); azioni `mark-read`/`mark-unread`; nessuna colonna editabile, niente delete.
+  Nuovi endpoint: `PATCH /api/notifications/{id}/unread`, `POST /api/notifications/bulk-read` {ids: uuid[] max 500}
+  (route in `routes/api/notifications.php`, doc `docs/api/0004-notifications.md`).
+  Fix generico: `TableController::updateRow(string $row)` + `TableCellUpdateService::update(int|string $rowId)`
+  (prima un id non intero dava 500 TypeError; ora 403/404 con envelope). `TableDefinitionContractTest` ha
+  l'allow-list `PERMISSIONLESS_VIEW_ANY_DOMAINS = ['notifications']`.
+- FE: `TableRowId = number | string` (`features/table/types.ts`); ~35 tabelle usano `Number(row.id)` dove l'id e'
+  numerico; bulk-delete resta number[]. Pagina `/notifications` (`pages/notifications-page.tsx`,
+  `features/notifications/{notifications-table,column-renderers,use-unread-badge}`), "Apri" via `safeInternalPath`
+  (segna letta se non letta). Link "Notifiche" + contatore non lette FISSO nel footer della sidebar sopra
+  Impostazioni (`components/app-sidebar.tsx`), NON e' una voce di `config/navigation`. "Vedi tutte" nella campanella.
+- Guida in-app IT/EN `notifications` + HELP_GUIDE_KEYS; manuale Claude Docs aggiornato (menu laterale, campanella,
+  sottosezione "Pagina Notifiche").
+- Verifica: Pest Notifications+Table+Tables+Navigation+Authorization+RoleMatrix 459/460 (unico rosso
+  `MetaEndpointTest` users.export = flaky preesistente sotto parallelo, isolato 7/7); Pint pulito; tsc -b verde;
+  Vitest intero 757 file / 5746 test verdi.
+- Aperti: (1) con sidebar collassata il badge e' nascosto (default `SidebarMenuBadge`), il numero resta nel tooltip;
+  (2) la guida `notifications` non compare nell'indice help ne' si apre da /notifications perche' l'help deriva
+  dalla navigazione backend (stesso limite di Impostazioni); (3) colonna `id` di default `type: number` su uuid,
+  nascosta e non filtrabile: follow-up opzionale.
+
+## IMPOSTAZIONI: COLORE TEMA (PRESET COLORI DA q-net) — NON COMMITTATO (2026-09-23)
+
+Richiesta utente: "ricopia da /Users/Repository/q-net l'impostazione di cambio colore del sistema". Portati gli 8 preset
+di q-net (`src/theme/palette.ts`: default, forest, amber, rose, ocean, plum, graphite, terracotta), adattati a qnet-2.
+- BE: colonna `users.color_preset` (string 16, nullable; migrazione `2026_09_23_120000`), `ColorPresetEnum` (fonte dei
+  valori), fillable su `User`, regola `sometimes|required|in` in `UpdateProfileRequest` + `accountAttributes()`,
+  `UserResource` serializza `'default'` se null. Nessun endpoint nuovo: `PATCH /auth/me`. Test `ColorPresetPreferenceTest`.
+- FE: colori SOLO in CSS (`src/color-presets.css`, importato da `index.css`), chiave `[data-color-preset]`; toccano solo
+  gli accenti (primary, ring, sidebar, sidebar-primary/accent/border/ring), mai la scala superfici. Il preset `default` e'
+  il token set di `index.css` (selettori `:root, [data-color-preset='default']` e `.dark, .dark [data-color-preset='default']`).
+  `ColorPresetProvider` (App.tsx, dentro UiScaleProvider) mette l'attributo su `<body>` (non `<html>`: batte i token
+  ereditati senza lotta di specificita'). `ColorPresetForm` in Impostazioni › Impostazioni sistema › Colore tema: card
+  radio con `data-color-preset` che mostrano i token reali del preset nella modalita' corrente. Id sincronizzati in 3 posti:
+  `COLOR_PRESETS` (`features/appearance/color-preset.ts`), `color-presets.css`, `ColorPresetEnum`.
+- Fixture `User` dei test FE: aggiunto `color_preset: 'default'` (12 file).
+- Guida in-app IT/EN `general`: riga tabella Impostazioni + paragrafo "Colore tema". Manuale Claude Docs NON aggiornato (doc non condiviso con la sessione):
+  da aggiungere in Impostazioni › Impostazioni sistema il paragrafo "Colore tema" (8 preset, anteprima, chiaro/scuro).
+- Verifica: Pest Auth+Users 316/316; Vitest appearance 25/25, help+i18n+pages 297/297, fixture toccate 71/71;
+  ESLint, Pint, `tsc -b --force` puliti. Contrasto primary-foreground su primary >= 5.2:1 in tutti i preset (light/dark).
+
+## ATTRIBUTI: AZIONE RIGA "DUPLICA" — NON COMMITTATO (2026-09-23)
+
+Richiesta utente: "tasto clona attributo in /attributes". Riusata l'azione generica `duplicate` (etichetta "Duplica",
+come categorie/progetti/campagne) e l'infrastruttura `useModuleOpener.openDuplicate` + rotta `/attributes/:id/duplicate`.
+- BE: `AttributeColumnCatalog::actions()` + `AttributesTableDefinition::actionsFor()` -> `duplicate` gated su `create`
+  Attribute. Nessun endpoint nuovo: la copia passa da `POST /attributes`.
+- FE: `AttributeFormMode` + `{ type: 'duplicate'; source }`; `useAttributeForm` precompila dal sorgente
+  (`code` + `_copy` troncato a `CODE_MAX_LENGTH`, ora esportata da `attribute-schema.ts`; `name` + `common.copySuffix`;
+  tipo/opzioni/config/custom fields); submit via create. Screen `AttributeLoadedFormScreen` (variant edit|duplicate).
+  Meta create per duplicate. Tabella: `openDuplicate`.
+- Test: dataset Pest in `AttributeTableTest.php`; Vitest `attribute-form.test.tsx` (3 casi duplicate) e
+  `attributes-table.test.tsx`. Guida in-app IT/EN: sezione `duplicate-attribute`. Manuale Claude Docs: paragrafo
+  "Duplicare un attributo" nella sezione Attributi.
+- Verifica: Pest Attributes+Table 267/267, Vitest attributes 69/69 + help 103/103, ESLint e Pint puliti.
+  `tsc -b --force` ROSSO per modifiche parallele non di questa sessione (`TableRowId = number | string` in
+  `table/types.ts`, `use-bulk-actions-slot.tsx`): nessun errore nelle righe toccate qui.
+
 ## CATEGORIE PRODOTTO: AZIONE RIGA "DUPLICA" (+ COPIA LAYOUT ATTRIBUTI) — NON COMMITTATO (2026-09-23)
 
 Decisioni utente: etichetta "Duplica" (chiave azione `duplicate`, come progetti/campagne); copia la categoria

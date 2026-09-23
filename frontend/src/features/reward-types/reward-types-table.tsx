@@ -45,9 +45,9 @@ export function RewardTypesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteRewardType(row.id)
+        await deleteRewardType(Number(row.id))
         toast.success(t('rewardTypes.form.deleted'))
         refreshGrid()
       } catch (error) {

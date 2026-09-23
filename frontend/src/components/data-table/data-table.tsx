@@ -35,7 +35,7 @@ import {
 import { buildDataTableTheme } from '@/components/data-table/data-table-theme'
 import { syncCacheBlockToPageSize } from '@/components/data-table/pagination-block-size'
 import { buildRowSelectionOptions } from '@/components/data-table/row-selection'
-import type { TableColumn, TableRow } from '@/features/table/types'
+import type { TableColumn, TableRow, TableRowId } from '@/features/table/types'
 import { MAX_COLUMN_WIDTH } from '@/features/table/use-table-preferences'
 import { useTableCellEdit } from '@/features/table/use-table-cell-edit'
 import { useUiScale } from '@/features/appearance/ui-scale-context'
@@ -148,7 +148,7 @@ interface DataTableProps {
    * the selection (e.g. the Lead's Sede) without a second fetch — omit it if
    * a caller only needs ids.
    */
-  onSelectionChanged?: (selection: { ids: number[]; rows: TableRow[] }) => void
+  onSelectionChanged?: (selection: { ids: TableRowId[]; rows: TableRow[] }) => void
   /**
    * Optional per-row predicate gating which rows can be checked for bulk
    * selection (e.g. spec 0048 AC-040: a Lead already assigned to an operator
@@ -308,7 +308,7 @@ export function DataTable({
   // the bulk-delete contract (delete by explicit id, current page only).
   const handleSelectionChanged = useCallback(
     (event: SelectionChangedEvent<TableRow>) => {
-      const ids: number[] = []
+      const ids: TableRowId[] = []
       const rows: TableRow[] = []
       event.api.forEachNode((node) => {
         if (node.isSelected() && node.data) {

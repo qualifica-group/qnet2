@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/features/auth/auth-provider'
 import { UiScaleProvider } from '@/features/appearance/ui-scale-provider'
 import { DateDisplayProvider } from '@/features/appearance/date-display-provider'
+import { ColorPresetProvider } from '@/features/appearance/color-preset-provider'
 import { FieldChangeRequestDialogProvider } from '@/features/field-change-requests/field-change-request-dialog'
 import { ConfigGate } from '@/features/config/config-gate'
 import { FullScreenLoader } from '@/components/full-screen-loader'
@@ -21,18 +22,20 @@ function App() {
         <ConfigGate>
           <AuthProvider>
             <UiScaleProvider>
-              <TooltipProvider>
-                <ConfirmDialogProvider>
-                  <FieldChangeRequestDialogProvider>
-                    <Suspense fallback={<FullScreenLoader />}>
-                      <DateDisplayProvider>
-                        <RouterProvider router={router} />
-                      </DateDisplayProvider>
-                    </Suspense>
-                  </FieldChangeRequestDialogProvider>
-                </ConfirmDialogProvider>
-                <Toaster />
-              </TooltipProvider>
+              <ColorPresetProvider>
+                <TooltipProvider>
+                  <ConfirmDialogProvider>
+                    <FieldChangeRequestDialogProvider>
+                      <Suspense fallback={<FullScreenLoader />}>
+                        <DateDisplayProvider>
+                          <RouterProvider router={router} />
+                        </DateDisplayProvider>
+                      </Suspense>
+                    </FieldChangeRequestDialogProvider>
+                  </ConfirmDialogProvider>
+                  <Toaster />
+                </TooltipProvider>
+              </ColorPresetProvider>
             </UiScaleProvider>
           </AuthProvider>
         </ConfigGate>

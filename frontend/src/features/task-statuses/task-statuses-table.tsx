@@ -44,9 +44,9 @@ export function TaskStatusesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteTaskStatus(row.id)
+        await deleteTaskStatus(Number(row.id))
         toast.success(t('taskStatuses.form.deleted'))
         refreshGrid()
       } catch (error) {

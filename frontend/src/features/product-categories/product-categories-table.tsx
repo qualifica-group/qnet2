@@ -87,7 +87,7 @@ export function ProductCategoriesTable() {
           label: t('productCategories.bulkMove.tableButton'),
           icon: FolderTree,
           onSelect: () => {
-            setMoveIds(selection.ids)
+            setMoveIds(selection.ids.map((id) => Number(id)))
             setMoveOpen(true)
           },
         },
@@ -109,9 +109,9 @@ export function ProductCategoriesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteProductCategory(row.id)
+        await deleteProductCategory(Number(row.id))
         toast.success(t('productCategories.form.deleted'))
         refreshGrid()
         invalidateStats()
@@ -150,7 +150,7 @@ export function ProductCategoriesTable() {
           setActivityRow(row)
           break
         case 'layout':
-          setLayoutCategoryId(row.id)
+          setLayoutCategoryId(Number(row.id))
           setLayoutCategoryName(typeof row.name === 'string' ? row.name : null)
           break
         default:

@@ -46,9 +46,9 @@ export function ContractStatusesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteContractStatus(row.id)
+        await deleteContractStatus(Number(row.id))
         toast.success(t('contractStatuses.form.deleted'))
         refreshGrid()
       } catch (error) {

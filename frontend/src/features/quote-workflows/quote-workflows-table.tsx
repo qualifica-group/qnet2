@@ -44,9 +44,9 @@ export function QuoteWorkflowsTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteQuoteWorkflow(row.id)
+        await deleteQuoteWorkflow(Number(row.id))
         toast.success(t('quoteWorkflows.form.deleted'))
         refreshGrid()
       } catch (error) {

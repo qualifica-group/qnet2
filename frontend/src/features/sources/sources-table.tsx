@@ -44,9 +44,9 @@ export function SourcesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteSource(row.id)
+        await deleteSource(Number(row.id))
         toast.success(t('sources.form.deleted'))
         refreshGrid()
       } catch (error) {

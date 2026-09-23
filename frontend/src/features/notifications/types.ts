@@ -1,3 +1,6 @@
+/** Domain key selecting the `notifications` generic-table definition (spec 0150). */
+export const NOTIFICATIONS_DOMAIN = 'notifications'
+
 /** Severity level carried by a notification payload, used for visual accents. */
 export type NotificationLevel = 'info' | 'success' | 'warning' | 'error'
 

@@ -91,9 +91,9 @@ export function OpportunitiesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteOpportunity(row.id)
+        await deleteOpportunity(Number(row.id))
         toast.success(t('opportunities.form.deleted'))
         refreshGrid()
         invalidateStats()
@@ -124,10 +124,10 @@ export function OpportunitiesTable() {
           setActivityRow(row)
           break
         case 'documents':
-          setDocumentsRowId(row.id)
+          setDocumentsRowId(Number(row.id))
           break
         case 'notes':
-          setNotesRowId(row.id)
+          setNotesRowId(Number(row.id))
           break
         default:
           break

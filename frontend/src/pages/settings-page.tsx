@@ -18,6 +18,7 @@ import { AvatarForm } from '@/features/auth/avatar-form'
 import { ModuleOpenModeForm } from '@/features/modules/module-open-mode-form'
 import { UiScaleForm } from '@/features/appearance/ui-scale-form'
 import { DateFormatForm } from '@/features/appearance/date-format-form'
+import { ColorPresetForm } from '@/features/appearance/color-preset-form'
 
 interface SubSectionMeta {
   id: string
@@ -58,6 +59,7 @@ const SECTIONS: readonly SectionMeta[] = [
       { id: 'module-open', titleKey: 'settings.moduleOpenMode.title' },
       { id: 'ui-scale', titleKey: 'settings.uiScale.title' },
       { id: 'date-format', titleKey: 'settings.dateFormat.title' },
+      { id: 'color-preset', titleKey: 'settings.colorPreset.title' },
     ],
   },
 ]
@@ -194,6 +196,8 @@ function renderSubSection(id: string): ReactNode {
       return <UiScaleForm />
     case 'date-format':
       return <DateFormatForm />
+    case 'color-preset':
+      return <ColorPresetForm />
     default:
       return null
   }

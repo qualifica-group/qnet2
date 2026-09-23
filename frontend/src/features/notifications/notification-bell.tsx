@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { Bell, CheckCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -173,6 +174,18 @@ export function NotificationBell() {
           onLoadMore={loadMore}
           onNavigate={closePanel}
         />
+        <Separator />
+        <div className="p-1">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="w-full justify-center"
+            onClick={closePanel}
+          >
+            <Link to="/notifications">{t('notifications.viewAll')}</Link>
+          </Button>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   )

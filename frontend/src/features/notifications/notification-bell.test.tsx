@@ -166,3 +166,32 @@ describe('NotificationBell', () => {
     await waitFor(() => expect(fetchNextPage).toHaveBeenCalledTimes(1))
   })
 })
+
+/**
+ * Spec 0150, AC-013: the panel's "Vedi tutte" link routes to `/notifications`
+ * and dismisses the (modal) panel, mirroring `NotificationItem`'s own
+ * navigate-then-dismiss behavior.
+ */
+describe('NotificationBell — "View all" link (spec 0150, AC-013)', () => {
+  it('links to /notifications', () => {
+    renderBell()
+
+    openPanel()
+
+    expect(screen.getByRole('link', { name: 'View all' })).toHaveAttribute(
+      'href',
+      '/notifications',
+    )
+  })
+
+  it('closes the panel when clicked', () => {
+    renderBell()
+
+    openPanel()
+    expect(screen.getByRole('link', { name: 'View all' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('link', { name: 'View all' }))
+
+    expect(screen.queryByRole('link', { name: 'View all' })).not.toBeInTheDocument()
+  })
+})

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Settings } from 'lucide-react'
+import { Bell, Settings } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -9,6 +9,7 @@ import {
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSkeleton,
@@ -17,8 +18,10 @@ import {
 import { NavMain, NAV_ITEM_CLASS } from '@/components/nav-main'
 import { useNavigation } from '@/features/navigation/use-navigation'
 import { useAuth } from '@/features/auth/use-auth'
+import { useUnreadBadge } from '@/features/notifications/use-unread-badge'
 import { env } from '@/config/env'
 
+const NOTIFICATIONS_ROUTE = '/notifications'
 const SETTINGS_ROUTE = '/settings'
 
 export function AppSidebar() {
@@ -26,6 +29,17 @@ export function AppSidebar() {
   const location = useLocation()
   const { logout } = useAuth()
   const navigation = useNavigation()
+  const unreadBadge = useUnreadBadge()
+
+  // The visible `SidebarMenuBadge` hides itself when the sidebar collapses to
+  // icons (design-system default, `group-data-[collapsible=icon]:hidden`) to
+  // avoid overlapping the icon — so the count is folded into the tooltip
+  // instead, which only renders while collapsed, keeping the badge "readable"
+  // through the one surface still showing text.
+  const notificationsTooltip =
+    unreadBadge.count > 0
+      ? `${t('navigation.notifications')} (${unreadBadge.count})`
+      : t('navigation.notifications')
 
   // Navigation is required to use the app. If it cannot be loaded the session
   // can no longer be trusted, so log out and return to /login (ProtectedRoute
@@ -68,6 +82,28 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
+          {/* Fixed FE-only link (spec 0150 D-4, revised 2026-09-23): NOT part
+              of the backend-driven navigation tree, unlike every entry in
+              <NavMain>. Positioned right above "Impostazioni" by design. */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              tooltip={notificationsTooltip}
+              size="sm"
+              isActive={location.pathname === NOTIFICATIONS_ROUTE}
+              className={NAV_ITEM_CLASS}
+            >
+              <NavLink to={NOTIFICATIONS_ROUTE}>
+                <Bell />
+                <span>{t('navigation.notifications')}</span>
+              </NavLink>
+            </SidebarMenuButton>
+            {unreadBadge.label ? (
+              <SidebarMenuBadge aria-label={unreadBadge.ariaLabel}>
+                {unreadBadge.label}
+              </SidebarMenuBadge>
+            ) : null}
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild

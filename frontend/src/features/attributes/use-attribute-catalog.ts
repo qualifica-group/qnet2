@@ -52,7 +52,7 @@ export function useAttributeCatalog(search = '') {
         ...(term === '' ? {} : { search: term }),
       })
       return response.items.map((item) => ({
-        id: item.id,
+        id: Number(item.id),
         code: String(item.code),
         name: String(item.name),
         type: item.type as CustomFieldType,

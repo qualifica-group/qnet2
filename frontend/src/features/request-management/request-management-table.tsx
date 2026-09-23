@@ -145,9 +145,9 @@ export function RequestManagementTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteRequest(module.apiBasePath, row.id)
+        await deleteRequest(module.apiBasePath, Number(row.id))
         toast.success(t('requestManagement.delete.success'))
         refreshGrid()
       } catch (error) {
@@ -187,7 +187,7 @@ export function RequestManagementTable() {
         case 'notes':
           // Il thread resta quello dell'Opportunita' (D-9), filtrato sulla
           // riga: `row.id` E' l'Offerta (spec 0086 D-1).
-          setNotesTarget({ opportunityId: row.opportunity_id as number, quoteId: row.id })
+          setNotesTarget({ opportunityId: row.opportunity_id as number, quoteId: Number(row.id) })
           break
         case 'delete':
           void runDelete(row)
@@ -264,7 +264,7 @@ export function RequestManagementTable() {
   )
 
   const openAssignDialog = useCallback((selection: TableSelection) => {
-    setAssignIds(selection.ids)
+    setAssignIds(selection.ids.map((id) => Number(id)))
     setAssignOpen(true)
   }, [])
 
@@ -299,7 +299,7 @@ export function RequestManagementTable() {
                   key: 'assign-manager-ga1',
                   label: t('requestManagement.assignManagerGa1.tableButton', { label: managerGa1.label }),
                   icon: GraduationCap,
-                  onSelect: () => managerGa1.openDialog(selection.ids),
+                  onSelect: () => managerGa1.openDialog(selection.ids.map((id) => Number(id))),
                 },
               ]
             : []),

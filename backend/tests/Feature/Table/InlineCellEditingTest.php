@@ -157,6 +157,23 @@ it('AC-004: a non-existent row id -> 404, no DB write, existence not confirmed',
     ])->assertNotFound();
 });
 
+// Regression (verifier-reported RED, spec 0150): {row} widened from `int` to
+// `string` (TableController::updateRow) so a uuid-keyed domain
+// (`notifications`) no longer 500s during route-argument binding. A
+// non-numeric id on an INT-keyed domain must still resolve to a clean 404 —
+// never a 500 — through the exact same `baseQuery()->findOrFail()` path.
+it('a non-numeric row id on an int-keyed domain -> 404 with the envelope, never a 500', function () {
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson('/api/tables/opportunities/rows/not-a-number', [
+        'column' => 'name',
+        'value' => 'Ghost',
+    ])
+        ->assertNotFound()
+        ->assertJsonPath('success', false);
+});
+
 // ---------------------------------------------------------------------------
 // AC-005 / AC-006 — column allow-list
 // ---------------------------------------------------------------------------

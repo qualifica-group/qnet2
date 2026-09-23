@@ -48,9 +48,9 @@ export function TaskImportancesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteTaskImportance(row.id)
+        await deleteTaskImportance(Number(row.id))
         toast.success(t('taskImportances.form.deleted'))
         refreshGrid()
       } catch (error) {

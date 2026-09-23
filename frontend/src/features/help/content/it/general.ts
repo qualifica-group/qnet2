@@ -98,10 +98,10 @@ const guide: HelpGuide = {
           rows: [
             ['**Profilo**', 'Caricare o togliere l’avatar, scegliere la **Lingua** (Italiano o Inglese), aggiornare i tuoi dati anagrafici.'],
             ['**Password**', 'Cambiare la password.'],
-            ['**Impostazioni sistema**', 'Scegliere **Modalità apertura moduli**, **Risoluzione interfaccia** e **Formato data**.'],
+            ['**Impostazioni sistema**', 'Scegliere **Modalità apertura moduli**, **Risoluzione interfaccia**, **Formato data** e **Colore tema**.'],
           ],
         },
-        { type: 'paragraph', text: '**Risoluzione interfaccia** ingrandisce o rimpicciolisce tutta l’applicazione (100% è la dimensione normale). **Formato data** decide come vedi date e orari, per esempio **Giorno/Mese/Anno** e **24 ore (14:30)**, con anteprima. Salva con **Salva modifiche**.' },
+        { type: 'paragraph', text: '**Risoluzione interfaccia** ingrandisce o rimpicciolisce tutta l’applicazione (100% è la dimensione normale). **Formato data** decide come vedi date e orari, per esempio **Giorno/Mese/Anno** e **24 ore (14:30)**, con anteprima. **Colore tema** cambia la palette di pulsanti, evidenziazioni e menu laterale: scegli una delle otto combinazioni (per esempio **Blu classico**, **Verde foresta**, **Grafite**), ognuna con l’anteprima dei suoi colori; vale sia col tema chiaro sia con quello scuro. Salva con **Salva modifiche**.' },
         { type: 'note', text: 'L’avatar accetta JPEG, PNG, GIF o WebP fino a 10 MB. L’email del profilo non si modifica da qui.' },
         { type: 'tip', text: 'Gli amministratori possono entrare in QNet come un altro utente con **Impersona**; è spiegato nella guida **Utenti**.' },
       ],

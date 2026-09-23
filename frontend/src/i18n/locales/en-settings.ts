@@ -47,6 +47,21 @@ export const settings = {
       '12h': '12 hours (2:30 PM)',
     },
   },
+  colorPreset: {
+    title: 'Theme color',
+    subtitle: 'Choose the color palette of buttons, highlights and the side menu across the app.',
+    saved: 'Theme color updated successfully.',
+    options: {
+      default: 'Classic blue',
+      forest: 'Forest green',
+      amber: 'Amber warm',
+      rose: 'Rose modern',
+      ocean: 'Ocean breeze',
+      plum: 'Plum night',
+      graphite: 'Graphite mono',
+      terracotta: 'Terracotta sun',
+    },
+  },
   moduleOpenMode: {
     title: 'Module open mode',
     subtitle: 'Choose how each module opens its create, edit and detail screens.',

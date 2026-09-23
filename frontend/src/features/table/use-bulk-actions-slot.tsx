@@ -11,11 +11,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useBulkDelete } from '@/features/table/use-bulk-delete'
-import type { TableActionDefinition, TableRow } from '@/features/table/types'
+import type { TableActionDefinition, TableRow, TableRowId } from '@/features/table/types'
 
 /** The current selection, ids alongside their full row data (spec 0048 AC-031). */
 export interface TableSelection {
-  ids: number[]
+  ids: TableRowId[]
   rows: TableRow[]
 }
 
@@ -54,7 +54,7 @@ interface UseBulkActionsSlotArgs {
 }
 
 interface UseBulkActionsSlotResult {
-  selectedIds: number[]
+  selectedIds: TableRowId[]
   onSelectionChanged: (selection: TableSelection) => void
   /** Empties the selection (call after any bulk action succeeds). */
   clearSelection: () => void
@@ -90,7 +90,11 @@ export function useBulkActionsSlot({
   const { runBulkDelete, isDeleting } = useBulkDelete({ domain, gridApi, refresh })
 
   const handleBulkDelete = useCallback(async () => {
-    const didDelete = await runBulkDelete(selectedIds)
+    // Bulk-delete stays number-only (D-6): notifications has no delete action,
+    // so filtering out non-numeric ids changes nothing for every domain that
+    // actually offers it.
+    const numericIds = selectedIds.filter((id): id is number => typeof id === 'number')
+    const didDelete = await runBulkDelete(numericIds)
     if (didDelete) {
       setSelection(EMPTY_SELECTION)
     }

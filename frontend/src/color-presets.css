@@ -1,0 +1,148 @@
+/* COLOR PRESETS (Settings > System > Theme color).
+   A preset re-tints only the ACCENT tokens — primary, ring and the sidebar —
+   never the surface scale in index.css, whose contrast ratios are binding.
+   ColorPresetProvider sets [data-color-preset] on <body>; the same attribute on
+   any element (the settings swatches) previews that preset for its subtree.
+   The 'default' preset is the base token set in index.css.
+   Keep the ids in step with COLOR_PRESETS (features/appearance/color-preset.ts)
+   and ColorPresetEnum on the backend. */
+
+[data-color-preset='forest'] {
+  --primary: hsl(160 58% 28%);
+  --ring: hsl(160 56% 40%);
+  --sidebar: hsl(165 42% 20%);
+  --sidebar-primary: hsl(160 52% 46%);
+  --sidebar-accent: hsl(163 24% 34%);
+  --sidebar-border: hsl(165 30% 30%);
+  --sidebar-ring: hsl(158 60% 66%);
+}
+
+.dark [data-color-preset='forest'] {
+  --primary: hsl(158 58% 58%);
+  --ring: hsl(158 60% 66%);
+  --sidebar: hsl(166 34% 16%);
+  --sidebar-primary: hsl(158 54% 58%);
+  --sidebar-accent: hsl(164 22% 30%);
+  --sidebar-border: hsl(166 28% 24%);
+  --sidebar-ring: hsl(158 60% 66%);
+}
+
+[data-color-preset='amber'] {
+  --primary: hsl(28 78% 34%);
+  --ring: hsl(30 88% 46%);
+  --sidebar: hsl(28 42% 22%);
+  --sidebar-primary: hsl(31 82% 52%);
+  --sidebar-accent: hsl(27 28% 38%);
+  --sidebar-border: hsl(28 30% 32%);
+  --sidebar-ring: hsl(35 95% 70%);
+}
+
+.dark [data-color-preset='amber'] {
+  --primary: hsl(34 92% 64%);
+  --ring: hsl(35 95% 70%);
+  --sidebar: hsl(28 34% 15%);
+  --sidebar-primary: hsl(34 92% 64%);
+  --sidebar-accent: hsl(29 24% 28%);
+  --sidebar-border: hsl(28 28% 24%);
+  --sidebar-ring: hsl(35 95% 70%);
+}
+
+[data-color-preset='rose'] {
+  --primary: hsl(343 59% 38%);
+  --ring: hsl(343 70% 54%);
+  --sidebar: hsl(336 34% 23%);
+  --sidebar-primary: hsl(343 68% 58%);
+  --sidebar-accent: hsl(339 24% 40%);
+  --sidebar-border: hsl(336 28% 33%);
+  --sidebar-ring: hsl(343 78% 72%);
+}
+
+.dark [data-color-preset='rose'] {
+  --primary: hsl(343 74% 66%);
+  --ring: hsl(343 78% 72%);
+  --sidebar: hsl(336 30% 15%);
+  --sidebar-primary: hsl(343 74% 66%);
+  --sidebar-accent: hsl(338 24% 30%);
+  --sidebar-border: hsl(336 26% 24%);
+  --sidebar-ring: hsl(343 78% 72%);
+}
+
+[data-color-preset='ocean'] {
+  --primary: hsl(198 78% 34%);
+  --ring: hsl(198 86% 46%);
+  --sidebar: hsl(204 46% 22%);
+  --sidebar-primary: hsl(197 82% 52%);
+  --sidebar-accent: hsl(201 30% 38%);
+  --sidebar-border: hsl(204 32% 32%);
+  --sidebar-ring: hsl(196 88% 72%);
+}
+
+.dark [data-color-preset='ocean'] {
+  --primary: hsl(196 84% 64%);
+  --ring: hsl(196 88% 72%);
+  --sidebar: hsl(205 40% 15%);
+  --sidebar-primary: hsl(196 84% 64%);
+  --sidebar-accent: hsl(202 28% 30%);
+  --sidebar-border: hsl(205 30% 24%);
+  --sidebar-ring: hsl(196 88% 72%);
+}
+
+[data-color-preset='plum'] {
+  --primary: hsl(272 46% 36%);
+  --ring: hsl(272 62% 50%);
+  --sidebar: hsl(270 34% 24%);
+  --sidebar-primary: hsl(272 66% 58%);
+  --sidebar-accent: hsl(271 24% 38%);
+  --sidebar-border: hsl(270 28% 34%);
+  --sidebar-ring: hsl(272 80% 76%);
+}
+
+.dark [data-color-preset='plum'] {
+  --primary: hsl(272 76% 70%);
+  --ring: hsl(272 80% 76%);
+  --sidebar: hsl(272 30% 16%);
+  --sidebar-primary: hsl(272 76% 70%);
+  --sidebar-accent: hsl(272 22% 30%);
+  --sidebar-border: hsl(272 24% 25%);
+  --sidebar-ring: hsl(272 80% 76%);
+}
+
+[data-color-preset='graphite'] {
+  --primary: hsl(220 10% 28%);
+  --ring: hsl(220 12% 42%);
+  --sidebar: hsl(220 14% 18%);
+  --sidebar-primary: hsl(220 8% 56%);
+  --sidebar-accent: hsl(220 10% 32%);
+  --sidebar-border: hsl(220 12% 28%);
+  --sidebar-ring: hsl(220 12% 78%);
+}
+
+.dark [data-color-preset='graphite'] {
+  --primary: hsl(220 10% 72%);
+  --ring: hsl(220 12% 78%);
+  --sidebar: hsl(220 14% 12%);
+  --sidebar-primary: hsl(220 10% 72%);
+  --sidebar-accent: hsl(220 10% 26%);
+  --sidebar-border: hsl(220 12% 22%);
+  --sidebar-ring: hsl(220 12% 78%);
+}
+
+[data-color-preset='terracotta'] {
+  --primary: hsl(12 62% 42%);
+  --ring: hsl(12 72% 54%);
+  --sidebar: hsl(16 36% 24%);
+  --sidebar-primary: hsl(12 68% 56%);
+  --sidebar-accent: hsl(15 24% 40%);
+  --sidebar-border: hsl(16 28% 34%);
+  --sidebar-ring: hsl(12 80% 72%);
+}
+
+.dark [data-color-preset='terracotta'] {
+  --primary: hsl(12 76% 66%);
+  --ring: hsl(12 80% 72%);
+  --sidebar: hsl(16 28% 16%);
+  --sidebar-primary: hsl(12 76% 66%);
+  --sidebar-accent: hsl(15 22% 30%);
+  --sidebar-border: hsl(16 24% 25%);
+  --sidebar-ring: hsl(12 80% 72%);
+}

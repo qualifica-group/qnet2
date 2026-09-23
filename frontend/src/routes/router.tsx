@@ -10,6 +10,7 @@ const LoginPage = lazyRoute(() => import('@/pages/login-page'))
 const ForgotPasswordPage = lazyRoute(() => import('@/pages/forgot-password-page'))
 const ResetPasswordPage = lazyRoute(() => import('@/pages/reset-password-page'))
 const DashboardPage = lazyRoute(() => import('@/pages/dashboard-page'))
+const NotificationsPage = lazyRoute(() => import('@/pages/notifications-page'))
 const UsersPage = lazyRoute(() => import('@/pages/users-page'))
 const RolesPage = lazyRoute(() => import('@/pages/roles-page'))
 const CompaniesPage = lazyRoute(() => import('@/pages/companies-page'))
@@ -96,6 +97,13 @@ export const router = createBrowserRouter([
           {
             path: 'dashboard',
             element: <DashboardPage />,
+          },
+          // No `<Can>` gate (spec 0150, D-1): every authenticated user browses
+          // their own notifications, no Spatie permission exists for this
+          // resource.
+          {
+            path: 'notifications',
+            element: <NotificationsPage />,
           },
           {
             path: 'users',

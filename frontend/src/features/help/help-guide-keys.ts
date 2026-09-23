@@ -9,6 +9,7 @@ export const GENERAL_HELP_KEY = 'general'
 export const HELP_GUIDE_KEYS: readonly string[] = [
   GENERAL_HELP_KEY,
   'dashboard',
+  'notifications',
   'projects',
   'campaigns',
   'leads',

@@ -20,7 +20,6 @@ use App\Http\Controllers\Migration\MassMigrationController;
 use App\Http\Controllers\Migration\MigrationController;
 use App\Http\Controllers\Migration\MigrationPlanController;
 use App\Http\Controllers\Navigation\NavigationController;
-use App\Http\Controllers\Notifications\NotificationController;
 use App\Http\Controllers\OperationalSites\OperationalSiteController;
 use App\Http\Controllers\OperationalSites\OperationalSiteForSelectController;
 use App\Http\Controllers\PersonalData\PersonalDataController;
@@ -436,15 +435,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::match(['put', 'patch'], 'company-sites/{companySite}', [CompanySiteController::class, 'update']);
     Route::delete('company-sites/{companySite}', [CompanySiteController::class, 'destroy']);
 
-    // In-app user notifications (Laravel native `database` channel). Every
-    // endpoint is self-scoped by construction to the authenticated user's own
-    // notifications (auth()->user()->notifications()), so a foreign/unknown id
-    // resolves to 404; authorization is ownership, not a Spatie permission or a
-    // Policy (see ADR-0005 / docs/api/0004-notifications.md).
-    Route::get('notifications', [NotificationController::class, 'index']);
-    Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
-    Route::patch('notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    // Notifications (spec 0150): browse table + read/unread endpoints
+    // (file-size split, engineering.md §6).
+    require __DIR__.'/api/notifications.php';
 
     // Polymorphic file attachments: list + upload + metadata + authenticated
     // download/inline view + delete. Any model can own attachments

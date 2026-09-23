@@ -46,9 +46,9 @@ export function DocumentLayoutsTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteDocumentLayout(row.id)
+        await deleteDocumentLayout(Number(row.id))
         toast.success(t('documentLayouts.form.deleted'))
         refreshGrid()
       } catch (error) {

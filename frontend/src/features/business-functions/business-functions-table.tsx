@@ -53,9 +53,9 @@ export function BusinessFunctionsTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteBusinessFunction(row.id)
+        await deleteBusinessFunction(Number(row.id))
         toast.success(t('businessFunctions.form.deleted'))
         refreshGrid()
         invalidateStats()

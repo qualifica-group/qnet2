@@ -49,9 +49,9 @@ export function CustomFieldsTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteCustomFieldDefinition(row.id)
+        await deleteCustomFieldDefinition(Number(row.id))
         toast.success(t('customFields.form.deleted'))
         refreshGrid()
       } catch (error) {

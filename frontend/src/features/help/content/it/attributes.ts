@@ -65,6 +65,27 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'duplicate-attribute',
+      title: 'Duplicare un attributo',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            "Nella riga dell'attributo da copiare scegli Duplica (serve il permesso di creare attributi).",
+            'Si apre il form di creazione con tutti i dati dell\'attributo: il Codice ha il suffisso "_copy", il Nome il suffisso " (copia)"; tipo, opzioni, configurazione e altri campi sono gli stessi.',
+            'Cambia ciò che serve (il Codice deve restare unico) e premi Salva.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'La copia è un attributo nuovo: non è assegnata ad alcuna categoria e non ha valori sui prodotti.',
+            "L'attributo originale non cambia.",
+          ],
+        },
+      ],
+    },
+    {
       id: 'constraints',
       title: 'Vincoli',
       blocks: [

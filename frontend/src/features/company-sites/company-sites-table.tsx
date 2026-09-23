@@ -55,9 +55,9 @@ export function CompanySitesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteCompanySite(row.id)
+        await deleteCompanySite(Number(row.id))
         toast.success(t('companySites.form.deleted'))
         refreshGrid()
         invalidateStats()

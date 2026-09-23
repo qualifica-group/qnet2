@@ -40,9 +40,9 @@ export function LeadImportsTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        const result = await bulkDeleteTableRows(IMPORT_RUNS_DOMAIN, [row.id])
+        const result = await bulkDeleteTableRows(IMPORT_RUNS_DOMAIN, [Number(row.id)])
         if (result.deleted > 0) {
           toast.success(t('leadImports.deleted'))
           tableRef.current?.refresh()

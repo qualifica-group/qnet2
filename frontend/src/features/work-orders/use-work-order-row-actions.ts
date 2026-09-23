@@ -53,9 +53,9 @@ export function useWorkOrderRowActions({
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteWorkOrder(row.id)
+        await deleteWorkOrder(Number(row.id))
         toast.success(t('workOrders.form.deleted'))
         onMutated()
       } catch (error) {

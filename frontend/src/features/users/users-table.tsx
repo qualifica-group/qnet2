@@ -60,9 +60,9 @@ export function UsersTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteUser(row.id)
+        await deleteUser(Number(row.id))
         toast.success(t('users.form.deleted'))
         refreshGrid()
         invalidateStats()
@@ -85,7 +85,7 @@ export function UsersTable() {
   const runImpersonate = useCallback(
     async (row: TableRow) => {
       try {
-        await impersonate(row.id)
+        await impersonate(Number(row.id))
         navigate('/dashboard')
       } catch {
         toast.error(t('impersonation.startError'))

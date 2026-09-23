@@ -84,7 +84,7 @@ export function ConvertLeadsDialog({
     setBlockers(null)
 
     try {
-      await convertMutation.mutateAsync({ lead_ids: rows.map((row) => row.id) })
+      await convertMutation.mutateAsync({ lead_ids: rows.map((row) => Number(row.id)) })
     } catch (error) {
       const blocked = conversionBlockers(error)
 
@@ -120,7 +120,7 @@ export function ConvertLeadsDialog({
             </p>
             <ul className="flex flex-col gap-1 text-muted-foreground">
               {alreadyConverted.map((row) => (
-                <li key={row.id}>{leadLabel(row, row.id)}</li>
+                <li key={row.id}>{leadLabel(row, Number(row.id))}</li>
               ))}
             </ul>
           </div>

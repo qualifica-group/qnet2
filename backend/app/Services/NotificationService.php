@@ -93,4 +93,34 @@ class NotificationService
 
         return $marked;
     }
+
+    /**
+     * Mark a single notification of the user as unread and return it (spec
+     * 0150). Resolved through the user relationship, so a foreign/unknown
+     * uuid throws ModelNotFoundException → 404. Idempotent: re-marking an
+     * already-unread notification leaves it unchanged.
+     */
+    public function markAsUnread(User $user, string $id): DatabaseNotification
+    {
+        /** @var DatabaseNotification $notification */
+        $notification = $user->notifications()->findOrFail($id);
+
+        $notification->markAsUnread();
+
+        return $notification;
+    }
+
+    /**
+     * Mark the given ids of the user's OWN unread notifications as read,
+     * returning how many were actually flipped (spec 0150). A single bound
+     * `whereIn` scoped to `unreadNotifications()`: an id belonging to
+     * another user, an unknown id, or an already-read id is simply excluded
+     * from the match — never touched, never fatal to the rest of the batch.
+     *
+     * @param  array<int, string>  $ids
+     */
+    public function markManyAsRead(User $user, array $ids): int
+    {
+        return $user->unreadNotifications()->whereIn('id', $ids)->update(['read_at' => now()]);
+    }
 }

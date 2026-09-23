@@ -7,6 +7,7 @@
 
 export const navigation = {
   dashboard: 'Dashboard',
+  notifications: 'Notifiche',
   users: 'Utenti',
   roles: 'Ruoli',
   companies: 'Società aziendali',

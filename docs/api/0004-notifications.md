@@ -9,18 +9,29 @@
 ## Overview
 
 Endpoints let the **authenticated user** manage **their own** notifications. All
-routes are behind `auth:sanctum` + `throttle:60,1` and are **self-scoped by
-construction**: they always operate on `auth()->user()->notifications()`. The
-client never supplies a user id, so there is no cross-user access path. A single
-notification is resolved through the relationship, so a foreign / unknown uuid
-returns **404**.
+routes are behind `auth:sanctum` and are **self-scoped by construction**: they
+always operate on `auth()->user()->notifications()`. The client never supplies
+a user id, so there is no cross-user access path. A single notification is
+resolved through the relationship, so a foreign / unknown uuid returns **404**.
+No `throttle` middleware applies (decision 2026-07-15: rate limiting is
+reserved for the auth-credential endpoints — login/reset/change-password).
 
 | Purpose | Method + Path | Body | Success |
 |---|---|---|---|
 | List | `GET /api/notifications` | — (query params) | `paginatedResponse()` |
 | Unread count | `GET /api/notifications/unread-count` | — | `ok()`, `data.count` + `data.latest` |
 | Mark one read | `PATCH /api/notifications/{notification}/read` | — | `ok()`, `data` = resource |
+| Mark one unread | `PATCH /api/notifications/{notification}/unread` | — | `ok()`, `data` = resource |
 | Mark all read | `POST /api/notifications/read-all` | — | `ok()`, `data.marked` |
+| Bulk mark read | `POST /api/notifications/bulk-read` | `{ ids: string[] }` | `ok()`, `data.marked` |
+
+Spec 0150 additionally exposes the SAME notifications through the generic,
+domain-driven Table framework (`docs/api/0002-generic-tables.md`) as the
+`notifications` domain — `GET /api/tables/notifications/columns` /
+`POST /api/tables/notifications/rows` — for the dedicated "Notifiche" browse
+page (filterable/sortable grid, row actions `mark-read`/`mark-unread`). Rows
+are scoped exactly like every endpoint below (the actor's own notifiable,
+fail-closed without one); see `App\Tables\NotificationsTableDefinition`.
 
 ### Notification resource shape
 
@@ -103,6 +114,29 @@ Marks every unread notification of the user as read.
 { "success": true, "message": "OK", "data": { "marked": 7 } }
 ```
 
+## 5. Mark one unread — `PATCH /api/notifications/{notification}/unread`
+
+`{notification}` is the notification uuid. Resolved via the user relationship;
+foreign/unknown uuid → **404**. Idempotent: marking an already-unread
+notification returns it unchanged. Returns the updated resource in `data`
+(`read_at: null`).
+
+## 6. Bulk mark read — `POST /api/notifications/bulk-read`
+
+```jsonc
+{ "ids": ["9b1f...-uuid", "a2c0...-uuid"] }
+```
+
+`ids`: required, array, `min:1`, `max:500`, each a distinct uuid (`422`
+otherwise). Marks the given ids of the user's OWN **unread** notifications as
+read; an id belonging to another user, unknown, or already read is silently
+**ignored** — never a 403/404 for the batch. Returns how many were actually
+flipped:
+
+```jsonc
+{ "success": true, "message": "OK", "data": { "marked": 2 } }
+```
+
 ---
 
 ## Error contract
@@ -112,7 +146,7 @@ Marks every unread notification of the user as read.
 | Unauthenticated | **401** |
 | `{notification}` not owned / unknown | **404** |
 | Invalid query param (`offset`/`limit`/`filter`) | **422** |
-| Rate limit exceeded | **429** |
+| Invalid `ids` payload (bulk-read: missing/empty/over 500/non-uuid) | **422** |
 | Unexpected server error | **500** (generic message) |
 
 ---

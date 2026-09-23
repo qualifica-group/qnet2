@@ -55,3 +55,25 @@ export async function markAllNotificationsAsRead(): Promise<number> {
   )
   return data.data.marked
 }
+
+/** Marks a single notification as unread (idempotent). Returns the updated notification. */
+export async function markNotificationAsUnread(id: string): Promise<Notification> {
+  const { data } = await apiClient.patch<ApiResponse<Notification>>(
+    `/notifications/${id}/unread`,
+  )
+  return data.data
+}
+
+/**
+ * Marks the given notifications as read in bulk (spec 0150). Ids belonging to
+ * another user, or unknown, are silently ignored server-side — the response
+ * only reports how many of the ACTOR's own notifications were actually
+ * flipped from unread to read.
+ */
+export async function markNotificationsAsRead(ids: string[]): Promise<{ marked: number }> {
+  const { data } = await apiClient.post<ApiResponse<{ marked: number }>>(
+    '/notifications/bulk-read',
+    { ids },
+  )
+  return data.data
+}

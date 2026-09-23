@@ -15,6 +15,15 @@ import type {
 export type ColumnType = 'text' | 'number' | 'datetime' | 'enum' | 'tags' | 'badge' | 'boolean'
 
 /**
+ * A row's identifier. Every domain but `notifications` uses a numeric,
+ * auto-increment id; `notifications` uses a uuid (spec 0150 D-6) — the type is
+ * widened here, at the single source of truth, rather than per-domain, so the
+ * generic table framework (selection, `getRowId`, row actions) stays agnostic
+ * of which shape a given domain picked.
+ */
+export type TableRowId = number | string
+
+/**
  * One entry of a backend-resolved option list for an `editor: 'select'` column
  * (spec 0055 D-2). `value` is what the PATCH submits (an id for a relation-like
  * column such as the working status), `label` what the operator reads, and
@@ -299,7 +308,7 @@ export interface TableConfig {
  * keys (computed server-side via the domain Policy).
  */
 export interface TableRow {
-  id: number
+  id: TableRowId
   /** Allowed action keys for THIS row. */
   actions: string[]
   /**

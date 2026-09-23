@@ -21,6 +21,7 @@ import type { NavigationItem } from '@/features/navigation/types'
  */
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: 'navigation.dashboard',
+  notifications: 'navigation.notifications',
   users: 'navigation.users',
   roles: 'navigation.roles',
   companies: 'navigation.companies',

@@ -14,6 +14,7 @@ use App\Tables\EnrolleeManagementTableDefinition;
 use App\Tables\FieldChangeRequestsTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
+use App\Tables\NotificationsTableDefinition;
 use App\Tables\OperationalSitesTableDefinition;
 use App\Tables\OpportunitiesTableDefinition;
 use App\Tables\PaymentMethodsTableDefinition;
@@ -124,6 +125,9 @@ return [
         'task-importances' => TaskImportancesTableDefinition::class,
         // spec 0124: il modulo Modelli di Task.
         'task-templates' => TaskTemplatesTableDefinition::class,
+        // spec 0150: la pagina "Notifiche", una riga per ciascuna delle
+        // notifiche dell'attore (scoped in baseQuery, mai globale).
+        'notifications' => NotificationsTableDefinition::class,
     ],
 
 ];

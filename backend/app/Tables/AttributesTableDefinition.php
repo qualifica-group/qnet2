@@ -170,6 +170,12 @@ class AttributesTableDefinition extends AbstractTableDefinition
             $allowed[] = 'delete';
         }
 
+        // Gated on the CREATE ability, not a per-row one: the copy is a new
+        // attribute, submitted through the create path.
+        if (Gate::forUser($actor)->allows('create', Attribute::class)) {
+            $allowed[] = 'duplicate';
+        }
+
         if (Gate::forUser($actor)->allows('viewActivity', $row)) {
             $allowed[] = 'activity';
         }

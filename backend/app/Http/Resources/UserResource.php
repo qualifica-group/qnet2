@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\ColorPresetEnum;
 use App\Enums\DateFormatEnum;
 use App\Enums\TimeFormatEnum;
 use App\Models\User;
@@ -35,6 +36,9 @@ class UserResource extends JsonResource
     private const string DATE_FORMAT_DEFAULT = DateFormatEnum::Dmy->value;
 
     private const string TIME_FORMAT_DEFAULT = TimeFormatEnum::H24->value;
+
+    /** Default accent palette when the column is null. Never null in the response. */
+    private const string COLOR_PRESET_DEFAULT = ColorPresetEnum::Default->value;
 
     /**
      * @return array<string, mixed>
@@ -81,6 +85,8 @@ class UserResource extends JsonResource
             // Per-user date/time display preferences, defaulted when unset.
             'date_format' => $this->date_format ?? self::DATE_FORMAT_DEFAULT,
             'time_format' => $this->time_format ?? self::TIME_FORMAT_DEFAULT,
+            // Per-user accent palette, defaulted when unset.
+            'color_preset' => $this->color_preset ?? self::COLOR_PRESET_DEFAULT,
         ];
     }
 }

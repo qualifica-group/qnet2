@@ -103,9 +103,9 @@ export function useQuoteRowActions({
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteQuote(row.id)
+        await deleteQuote(Number(row.id))
         toast.success(t('quotes.form.deleted'))
         onMutated()
       } catch (error) {
@@ -136,13 +136,13 @@ export function useQuoteRowActions({
           // aprire, quindi l'azione non fa nulla.
           const opportunityId = resolveOpportunityId(row)
           if (opportunityId !== null) {
-            setNotesTarget({ opportunityId, quoteId: row.id, code: resolveRowCode(row) })
+            setNotesTarget({ opportunityId, quoteId: Number(row.id), code: resolveRowCode(row) })
           }
           break
         }
         case 'generate_document':
           // Not a mutation (spec 0070 D-2): no refresh, the row is unchanged.
-          void generateDocument(row.id, resolveRowCode(row))
+          void generateDocument(Number(row.id), resolveRowCode(row))
           break
         default:
           break
@@ -152,7 +152,7 @@ export function useQuoteRowActions({
   )
 
   const isBusy = useCallback(
-    (row: TableRow) => row.id === deletingId || isGenerating(row.id),
+    (row: TableRow) => row.id === deletingId || isGenerating(Number(row.id)),
     [deletingId, isGenerating],
   )
 

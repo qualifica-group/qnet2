@@ -52,9 +52,9 @@ export function RolesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteRole(row.id)
+        await deleteRole(Number(row.id))
         toast.success(t('roles.form.deleted'))
         refreshGrid()
       } catch (error) {

@@ -2,6 +2,7 @@ import type { PersonalDataPayload } from '@/features/personal-data/drafts'
 import type { PersonalDataCard } from '@/features/personal-data/types'
 import type { ModuleOpenPreferences } from '@/features/modules/types'
 import type { DateFormat, TimeFormat } from '@/lib/formatting/date-display'
+import type { ColorPreset } from '@/features/appearance/color-preset'
 
 export interface User {
   id: number
@@ -41,6 +42,8 @@ export interface User {
   date_format: DateFormat
   /** Clock convention for the time next to a date. Never null on the wire (defaults to '24h'). */
   time_format: TimeFormat
+  /** Accent palette of the whole UI. Never null on the wire (defaults to 'default'). */
+  color_preset: ColorPreset
 }
 
 export interface LoginPayload {
@@ -61,6 +64,8 @@ export interface UpdateProfilePayload {
   date_format?: DateFormat
   /** Optional: updates the clock convention for times. */
   time_format?: TimeFormat
+  /** Optional: updates the accent palette of the whole UI. */
+  color_preset?: ColorPreset
 }
 
 export interface ChangePasswordPayload {

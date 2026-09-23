@@ -66,21 +66,35 @@ export function AttributeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScr
     return <AttributeForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
   }
 
-  return <AttributeEditScreen attributeId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
+  return (
+    <AttributeLoadedFormScreen
+      attributeId={mode.id}
+      variant={mode.type}
+      onSuccess={handleSuccess}
+      onCancel={onCancel}
+    />
+  )
 }
 
-interface AttributeEditScreenProps {
+interface AttributeLoadedFormScreenProps {
   attributeId: number
+  /** `edit` patches the loaded attribute; `duplicate` creates a copy pre-filled from it. */
+  variant: 'edit' | 'duplicate'
   onSuccess: (attribute: AttributeDetail) => void
   onCancel: () => void
 }
 
 /**
- * Fetches the fresh, re-authorized attribute detail before mounting the edit
- * form, so the partial PATCH starts from authoritative values rather than a
- * stale snapshot.
+ * Fetches the fresh, re-authorized attribute detail before mounting the form,
+ * so the partial PATCH (edit) or the copy (duplicate) starts from
+ * authoritative values rather than a stale snapshot.
  */
-function AttributeEditScreen({ attributeId, onSuccess, onCancel }: AttributeEditScreenProps) {
+function AttributeLoadedFormScreen({
+  attributeId,
+  variant,
+  onSuccess,
+  onCancel,
+}: AttributeLoadedFormScreenProps) {
   const { t } = useTranslation()
   const {
     data: attribute,
@@ -111,7 +125,11 @@ function AttributeEditScreen({ attributeId, onSuccess, onCancel }: AttributeEdit
   }
 
   return (
-    <AttributeForm mode={{ type: 'edit', attribute }} onSuccess={onSuccess} onCancel={onCancel} />
+    <AttributeForm
+      mode={variant === 'edit' ? { type: 'edit', attribute } : { type: 'duplicate', source: attribute }}
+      onSuccess={onSuccess}
+      onCancel={onCancel}
+    />
   )
 }
 

@@ -47,9 +47,9 @@ export function SectorsTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteSector(row.id)
+        await deleteSector(Number(row.id))
         toast.success(t('sectors.form.deleted'))
         refreshGrid()
         void queryClient.invalidateQueries({ queryKey: sectorKeys.tree })

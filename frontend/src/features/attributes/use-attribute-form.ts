@@ -11,6 +11,7 @@ import { buildCreatePayload, buildUpdatePayload } from '@/features/attributes/at
 import {
   buildCreateAttributeSchema,
   buildUpdateAttributeSchema,
+  CODE_MAX_LENGTH,
   type CreateAttributeFormValues,
 } from '@/features/attributes/attribute-schema'
 import type { AttributeDetail, AttributeFormMode } from '@/features/attributes/types'
@@ -37,7 +38,15 @@ const SERVER_ERROR_FIELDS = [
   'options',
 ] as const
 
+/** Appended to the source `code` on duplicate: `code` is unique and snake_case, so the i18n copy suffix cannot be reused. */
+const DUPLICATE_CODE_SUFFIX = '_copy'
+
 export type AttributeFormValues = CreateAttributeFormValues
+
+/** Suffixes the source `code`, trimming the source so the result stays within the backend limit. */
+function duplicateCode(code: string): string {
+  return code.slice(0, CODE_MAX_LENGTH - DUPLICATE_CODE_SUFFIX.length) + DUPLICATE_CODE_SUFFIX
+}
 
 interface UseAttributeFormArgs {
   mode: AttributeFormMode
@@ -59,11 +68,15 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
 
   // Custom fields (spec 0021): the single reusable integration — builds the
   // dynamic schema, defaults and 422 paths; `<CustomFieldsSection>` renders.
+  // Duplicate seeds its values from the source, exactly like edit, even
+  // though it submits through the create payload builder.
   const customFields = useCustomFieldsForm(
     'attributes',
     mode.type === 'edit'
       ? { type: 'edit', customFields: mode.attribute.custom_fields }
-      : { type: 'create' },
+      : mode.type === 'duplicate'
+        ? { type: 'edit', customFields: mode.source.custom_fields }
+        : { type: 'create' },
   )
 
   const schema = useMemo(
@@ -84,13 +97,22 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
         custom_fields: customFields.defaultValues,
       }
     }
+    if (mode.type === 'duplicate') {
+      const { source } = mode
+      return {
+        code: duplicateCode(source.code),
+        name: source.name + t('common.copySuffix'),
+        ...hydrateFieldDefinitionValues(source),
+        custom_fields: customFields.defaultValues,
+      }
+    }
     return {
       code: '',
       name: '',
       ...emptyFieldDefinitionValues(),
       custom_fields: customFields.defaultValues,
     }
-  }, [mode, customFields.defaultValues])
+  }, [mode, customFields.defaultValues, t])
 
   const form = useForm<AttributeFormValues>({
     resolver: zodResolver(schema),

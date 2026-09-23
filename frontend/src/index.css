@@ -1,9 +1,14 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import './color-presets.css';
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
+/* The 'default' color preset (Settings > System) is this token set itself:
+   restating it on [data-color-preset='default'] lets a preset swatch nested
+   under another active preset still render the brand navy. */
+:root,
+[data-color-preset='default'] {
   --radius: 0.625rem;
   /* SURFACE SCALE (single source of truth, mirrored in .dark below).
      Two distinct jobs, two distinct tokens — conflating them is what made a
@@ -112,7 +117,8 @@
   --sidebar-ring: hsl(214 60% 66%);
 }
 
-.dark {
+.dark,
+.dark [data-color-preset='default'] {
   /* Same scale as :root (see the comment there), inverted: here the raised
      surfaces are the lighter ones. Contrast compresses hard at the bottom of
      the luminance curve, so the steps are nominally much wider than in light

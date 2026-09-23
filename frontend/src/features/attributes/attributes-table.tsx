@@ -21,7 +21,7 @@ const ATTRIBUTES_DOMAIN = 'attributes'
  * Thin Attributes adapter over the generic table. It mounts `<TableView>`
  * with the `attributes` domain, its custom cell renderers and a row-action
  * handler, and delegates the open mode (modal Sheet vs dedicated page) of
- * view/edit/create to `useModuleOpener`, resolved from the user's preference
+ * view/edit/create/duplicate to `useModuleOpener`, resolved from the user's preference
  * (spec 0042). It still owns the delete flow (confirm + toast + grid refresh)
  * and refreshes the SSRM grid after every mutation. Permission gating is an
  * affordance only; the backend re-authorizes each call.
@@ -42,13 +42,13 @@ export function AttributesTable() {
     refreshGrid()
   }, [refreshGrid])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(ATTRIBUTES_DOMAIN, { onSaved })
+  const { openCreate, openView, openEdit, openDuplicate, sheet } = useModuleOpener(ATTRIBUTES_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteAttribute(row.id)
+        await deleteAttribute(Number(row.id))
         toast.success(t('attributes.form.deleted'))
         refreshGrid()
       } catch (error) {
@@ -76,6 +76,9 @@ export function AttributesTable() {
         case 'edit':
           openEdit(row)
           break
+        case 'duplicate':
+          openDuplicate(row)
+          break
         case 'delete':
           void runDelete(row)
           break
@@ -86,7 +89,7 @@ export function AttributesTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, openEdit, openDuplicate, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

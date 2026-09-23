@@ -48,9 +48,9 @@ export function TaskPrioritiesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteTaskPriority(row.id)
+        await deleteTaskPriority(Number(row.id))
         toast.success(t('taskPriorities.form.deleted'))
         refreshGrid()
       } catch (error) {

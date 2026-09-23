@@ -51,6 +51,11 @@ export const enums = {
     warning: 'Warning',
     error: 'Error',
   },
+  // Read/unread state (spec 0150), derived from `read_at`.
+  notification_status: {
+    unread: 'Unread',
+    read: 'Read',
+  },
   // User employment profile (spec 0015).
   relationship_type: {
     employee: 'Employee',

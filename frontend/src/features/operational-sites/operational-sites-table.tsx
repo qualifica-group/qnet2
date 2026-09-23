@@ -59,9 +59,9 @@ export function OperationalSitesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteOperationalSite(row.id)
+        await deleteOperationalSite(Number(row.id))
         toast.success(t('operationalSites.form.deleted'))
         refreshGrid()
         invalidateStats()

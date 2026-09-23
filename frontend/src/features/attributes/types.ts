@@ -92,8 +92,10 @@ export type UpdateAttributePayload = Partial<CreateAttributePayload>
 
 /**
  * Discriminated form mode shared by the form hook/meta-resolver and the
- * `AttributeForm` component (mirrors `ReferentTypeFormMode`).
+ * `AttributeForm` component (mirrors `ReferentTypeFormMode`). Duplicate (row
+ * action "duplicate") is a create pre-filled from `source`.
  */
 export type AttributeFormMode =
   | { type: 'create' }
   | { type: 'edit'; attribute: AttributeDetailWithPermissions }
+  | { type: 'duplicate'; source: AttributeDetailWithPermissions }

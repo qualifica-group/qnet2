@@ -86,7 +86,7 @@ export function useRequestTransferSelection(onTransferred: () => void) {
   )
 
   const open = useCallback((selection: TableSelection) => {
-    setIds(selection.ids)
+    setIds(selection.ids.map((id) => Number(id)))
     setDefaultSite(resolveSharedOperationalSite(selection.rows))
     setIsOpen(true)
   }, [])

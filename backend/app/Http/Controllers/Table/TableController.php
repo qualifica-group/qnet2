@@ -239,13 +239,18 @@ class TableController extends BaseApiController
 
     /**
      * PATCH /api/tables/{domain}/rows/{row} — inline cell edit (spec 0053).
-     * {row} is a plain int (never route-model-bound): the row is resolved
-     * from the definition's OWN baseQuery() by TableCellUpdateService (D-5),
-     * so a row outside the domain's scope 404s without ever reaching the
-     * model. Every other guard (column allow-list, per-field DB permission,
-     * value validation) lives in that service, against the REAL row.
+     * {row} is a plain STRING (never route-model-bound): a route segment is
+     * always a string, and some domains' primary key is not numeric (e.g.
+     * `notifications`, a uuid, spec 0150) — typing it `int` here made Laravel
+     * throw a TypeError while binding the route action's arguments, BEFORE
+     * this method's own try/catch ever ran (an uncaught 500, bypassing the
+     * envelope). The row is resolved from the domain's OWN baseQuery() by
+     * TableCellUpdateService (D-5), so a row outside the domain's scope 404s
+     * without ever reaching the model. Every other guard (column allow-list,
+     * per-field DB permission, value validation) lives in that service,
+     * against the REAL row.
      */
-    public function updateRow(UpdateTableCellRequest $request, string $domain, int $row): JsonResponse
+    public function updateRow(UpdateTableCellRequest $request, string $domain, string $row): JsonResponse
     {
         try {
             $definition = $this->registry->resolve($domain); // 404 if unknown

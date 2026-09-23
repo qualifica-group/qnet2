@@ -6,6 +6,7 @@
 
 export const navigation = {
   dashboard: 'Dashboard',
+  notifications: 'Notifications',
   users: 'Users',
   roles: 'Roles',
   companies: 'Companies',

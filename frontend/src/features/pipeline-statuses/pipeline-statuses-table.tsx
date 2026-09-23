@@ -46,9 +46,9 @@ export function PipelineStatusesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deletePipelineStatus(row.id)
+        await deletePipelineStatus(Number(row.id))
         toast.success(t('pipelineStatuses.form.deleted'))
         refreshGrid()
       } catch (error) {

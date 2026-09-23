@@ -108,6 +108,14 @@ final class AttributeColumnCatalog
                 'permission' => 'attributes.delete',
             ],
             [
+                'key' => 'duplicate',
+                'label' => 'actions.duplicate',
+                'icon' => 'copy',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'attributes.create',
+            ],
+            [
                 'key' => 'activity',
                 'label' => 'actions.activity',
                 'icon' => 'history',

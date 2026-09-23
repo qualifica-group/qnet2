@@ -69,13 +69,41 @@ it('never maps any model hidden field into a row, for every definition', functio
     }
 });
 
+/**
+ * Domains where `viewAny` is DELIBERATELY true for every authenticated actor
+ * (spec-approved, not an oversight): `notifications` (spec 0150, D-1) has no
+ * Spatie permission of its own by design — every user browses their OWN
+ * notifications, and the real fail-closed boundary is row-level, enforced
+ * unconditionally by NotificationsTableDefinition::baseQuery() (scoped to the
+ * actor's own notifiable; a null actor sees zero rows), not this gate.
+ *
+ * @var array<int, string>
+ */
+const PERMISSIONLESS_VIEW_ANY_DOMAINS = ['notifications'];
+
 it('denies viewAny for a permissionless actor, for every definition (not trivially true)', function () {
     foreach (allRegisteredDefinitions() as $domain => $definition) {
+        if (in_array($domain, PERMISSIONLESS_VIEW_ANY_DOMAINS, true)) {
+            continue;
+        }
+
         // Fresh user: no roles, no permissions. A fail-open definition that
         // returned a hardcoded true would fail this assertion.
         $actor = User::factory()->create();
 
         expect($definition->authorizeViewAny($actor))
             ->toBeFalse("[{$domain}] authorizeViewAny is fail-open for a permissionless actor");
+    }
+});
+
+it('scopes every row of a deliberately permissionless-viewAny domain to the actor, fail-closed (notifications, D-1)', function () {
+    foreach (PERMISSIONLESS_VIEW_ANY_DOMAINS as $domain) {
+        $definition = allRegisteredDefinitions()[$domain];
+
+        expect($definition->authorizeViewAny(User::factory()->create()))->toBeTrue();
+
+        // No authenticated actor at all (e.g. a queued export run without one):
+        // baseQuery() must resolve to a query that can never match a row.
+        expect($definition->baseQuery()->count())->toBe(0);
     }
 });

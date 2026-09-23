@@ -55,9 +55,9 @@ export function ReferentsTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteReferent(row.id)
+        await deleteReferent(Number(row.id))
         toast.success(t('referents.form.deleted'))
         refreshGrid()
         invalidateStats()

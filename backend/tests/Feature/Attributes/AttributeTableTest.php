@@ -83,6 +83,20 @@ it('rows expose id/code/name/type/options_count/created_at + per-row actions', f
         ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
 });
 
+it('exposes the duplicate row action only to actors who can create attributes', function (array $abilities, bool $expected) {
+    $actor = attributeUserWith($abilities);
+    Attribute::factory()->create(['code' => 'color']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/attributes/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+    $row = collect($response->json('items'))->firstWhere('code', 'color');
+
+    expect(in_array('duplicate', $row['actions'], true))->toBe($expected);
+})->with([
+    'with create' => [['viewAny', 'view', 'create'], true],
+    'without create' => [['viewAny', 'view', 'update'], false],
+]);
+
 it('resolves distinct type values via /values', function () {
     $actor = attributeUserWith(['viewAny']);
     Attribute::factory()->create(['type' => 'text']);

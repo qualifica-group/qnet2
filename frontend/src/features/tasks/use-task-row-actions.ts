@@ -50,9 +50,9 @@ export function useTaskRowActions({
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteTask(row.id)
+        await deleteTask(Number(row.id))
         toast.success(t('tasks.form.deleted'))
         onMutated()
       } catch (error) {

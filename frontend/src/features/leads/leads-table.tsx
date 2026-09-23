@@ -91,9 +91,9 @@ export function LeadsTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteLead(row.id)
+        await deleteLead(Number(row.id))
         toast.success(t('leads.form.deleted'))
         refreshGrid()
         invalidateStats()
@@ -127,7 +127,7 @@ export function LeadsTable() {
           setActivityRow(row)
           break
         case 'convert_to_opportunity':
-          startConversion(row.id)
+          startConversion(Number(row.id))
           break
         default:
           break
@@ -193,7 +193,7 @@ export function LeadsTable() {
   )
 
   const openAssignDialog = useCallback((selection: TableSelection) => {
-    setAssignIds(selection.ids)
+    setAssignIds(selection.ids.map((id) => Number(id)))
     setAssignOpen(true)
   }, [])
 

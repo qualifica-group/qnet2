@@ -215,3 +215,65 @@ describe('AttributeForm — type-conditional sub-forms (spec 0017/0021)', () => 
     ])
   })
 })
+
+describe('AttributeForm — duplicate mode (row action "duplicate")', () => {
+  it('pre-fills every field from the source with suffixed code and name', () => {
+    render(
+      <AttributeForm
+        mode={{ type: 'duplicate', source: attribute() }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    expect(screen.getByLabelText(/^Code/)).toHaveValue('color_copy')
+    expect(screen.getByLabelText(/^Name/)).toHaveValue('Color (copy)')
+    expect(screen.getAllByLabelText('Value').map((input) => (input as HTMLInputElement).value)).toEqual([
+      'red',
+      'blue',
+    ])
+  })
+
+  it('keeps the suffixed code within the backend 64-char limit', () => {
+    render(
+      <AttributeForm
+        mode={{ type: 'duplicate', source: attribute({ code: 'a'.repeat(64) }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    expect(screen.getByLabelText(/^Code/)).toHaveValue(`${'a'.repeat(59)}_copy`)
+  })
+
+  it('submits through the create path with the source options, never updating the source', async () => {
+    createAttributeMock.mockResolvedValue(attribute({ id: 4, code: 'color_copy' }))
+    const onSuccess = vi.fn()
+
+    render(
+      <AttributeForm
+        mode={{ type: 'duplicate', source: attribute() }}
+        onSuccess={onSuccess}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createAttributeMock).toHaveBeenCalledTimes(1))
+    expect(createAttributeMock.mock.calls[0][0]).toMatchObject({
+      code: 'color_copy',
+      name: 'Color (copy)',
+      type: 'enum',
+      options: [
+        { value: 'red', label: 'Red', is_default: false },
+        { value: 'blue', label: 'Blue', color: 'blue', is_default: true },
+      ],
+    })
+    expect(updateAttributeMock).not.toHaveBeenCalled()
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+  })
+})

@@ -50,6 +50,11 @@ export const enums = {
     warning: 'Avviso',
     error: 'Errore',
   },
+  // Stato letta/non letta (spec 0150), derivato da `read_at`.
+  notification_status: {
+    unread: 'Non letta',
+    read: 'Letta',
+  },
   // Profilo di impiego utente (spec 0015).
   relationship_type: {
     employee: 'Dipendente',

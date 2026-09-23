@@ -223,7 +223,10 @@ export function useTableCellEdit(domain: string, columns: TableColumn[]) {
         return
       }
 
-      const rowId = event.data.id
+      // Inline edit only ever gates on for numeric-id domains (every
+      // `editable: true` column belongs to one): `notifications`, the sole
+      // string-id domain, declares every column `editable: false`.
+      const rowId = Number(event.data.id)
       const columnId = event.column.getColId()
       const revertedData: TableRow = { ...event.data, [columnId]: event.oldValue }
       const patchValue = resolveCellPatchValue(event.newValue)
@@ -261,7 +264,7 @@ export function useTableCellEdit(domain: string, columns: TableColumn[]) {
       const { event, patchValue, revertedData } = pendingNote
       setPendingNote(null)
       runPatch(
-        { rowId: event.data.id, column: event.column.getColId(), value: patchValue, note },
+        { rowId: Number(event.data.id), column: event.column.getColId(), value: patchValue, note },
         event.node,
         revertedData,
       )

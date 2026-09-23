@@ -65,6 +65,27 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'duplicate-attribute',
+      title: 'Duplicating an attribute',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'On the row of the attribute to copy choose Duplicate (you need the permission to create attributes).',
+            'The create form opens pre-filled with the attribute\'s data: the Code gets the "_copy" suffix, the Name the " (copy)" suffix; type, options, configuration and other fields are the same.',
+            'Change what you need (the Code must stay unique) and press Save.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'The copy is a new attribute: it is not assigned to any category and has no values on products.',
+            'The original attribute does not change.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'constraints',
       title: 'Constraints',
       blocks: [

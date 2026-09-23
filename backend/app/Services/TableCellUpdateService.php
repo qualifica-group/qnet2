@@ -46,7 +46,7 @@ class TableCellUpdateService
      * @throws AuthorizationException actor lacks row-level update rights, or the field is DB-locked for them (403)
      * @throws ValidationException column not declared editable, or the value fails its derived rules (422)
      */
-    public function update(TableDefinition $definition, User $actor, int $rowId, string $columnId, mixed $value, ?string $note = null): array
+    public function update(TableDefinition $definition, User $actor, int|string $rowId, string $columnId, mixed $value, ?string $note = null): array
     {
         // Step 1: resolve the row from the domain's OWN scope (D-5) — never
         // Model::findOrFail(), so tenant/visibility scoping is never bypassed.

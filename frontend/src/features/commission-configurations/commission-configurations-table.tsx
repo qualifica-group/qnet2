@@ -22,9 +22,9 @@ export function CommissionConfigurationsTable() {
   const refresh = useCallback(() => tableRef.current?.refresh(), [])
   const { openCreate, openView, openEdit, sheet } = useModuleOpener('commission-configurations', { onSaved: refresh })
   const remove = useCallback(async (row: TableRow) => {
-    setDeletingId(row.id)
+    setDeletingId(Number(row.id))
     try {
-      await deleteCommissionConfiguration(row.id)
+      await deleteCommissionConfiguration(Number(row.id))
       toast.success(t('commissionConfigurations.form.deleted'))
       refresh()
     } catch (error) {

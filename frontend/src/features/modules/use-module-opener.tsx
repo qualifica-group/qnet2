@@ -215,7 +215,10 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
   // same treatment the `view` branch below gives its `DetailScreen`.
   const formHeaderClass = entry.formOwnsHeader ? 'sr-only' : undefined
   // Only an existing record has a detail page; create/duplicate have no id yet.
-  const detailPageId = sheetState.kind === 'view' || sheetState.kind === 'edit' ? sheetState.row.id : null
+  // Every registered module has a numeric id (notifications, the sole
+  // string-id domain, has no entry in the module registry).
+  const detailPageId =
+    sheetState.kind === 'view' || sheetState.kind === 'edit' ? Number(sheetState.row.id) : null
 
   const sheet =
     mode === OPEN_MODE_MODAL ? (
@@ -233,7 +236,7 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
                 <SheetDescription>{t(`${ns}.detail.subtitle`)}</SheetDescription>
               </SheetHeader>
               <DetailScreen
-                id={sheetState.row.id}
+                id={Number(sheetState.row.id)}
                 onEdit={() => setSheetState({ kind: 'edit', row: sheetState.row })}
               />
             </>
@@ -260,7 +263,7 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
                 <SheetDescription>{t(`${ns}.form.editSubtitle`)}</SheetDescription>
               </SheetHeader>
               <FormScreen
-                mode={{ type: 'edit', id: sheetState.row.id }}
+                mode={{ type: 'edit', id: Number(sheetState.row.id) }}
                 onSuccess={handleSaved}
                 onCancel={closeSheet}
               />
@@ -274,7 +277,7 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
                 <SheetDescription>{t(`${ns}.form.createSubtitle`)}</SheetDescription>
               </SheetHeader>
               <FormScreen
-                mode={{ type: 'duplicate', id: sheetState.row.id }}
+                mode={{ type: 'duplicate', id: Number(sheetState.row.id) }}
                 onSuccess={handleSaved}
                 onCancel={closeSheet}
               />

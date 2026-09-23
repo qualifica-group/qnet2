@@ -98,10 +98,10 @@ const guide: HelpGuide = {
           rows: [
             ['**Profile**', 'Upload or remove your avatar, choose the **Language** (Italian or English), update your personal details.'],
             ['**Password**', 'Change your password.'],
-            ['**System settings**', 'Choose **Module opening mode**, **Interface scale** and **Date format**.'],
+            ['**System settings**', 'Choose **Module opening mode**, **Interface scale**, **Date format** and **Theme color**.'],
           ],
         },
-        { type: 'paragraph', text: '**Interface scale** enlarges or shrinks the whole application (100% is the normal size). **Date format** decides how you see dates and times, for example **Day/Month/Year** and **24-hour (14:30)**, with a preview. Save with **Save changes**.' },
+        { type: 'paragraph', text: '**Interface scale** enlarges or shrinks the whole application (100% is the normal size). **Date format** decides how you see dates and times, for example **Day/Month/Year** and **24-hour (14:30)**, with a preview. **Theme color** changes the palette of buttons, highlights and the side menu: pick one of the eight combinations (for example **Classic blue**, **Forest green**, **Graphite mono**), each previewing its colors; it applies to both the light and the dark theme. Save with **Save changes**.' },
         { type: 'note', text: 'The avatar accepts JPEG, PNG, GIF or WebP up to 10 MB. The profile email cannot be changed from here.' },
         { type: 'tip', text: 'Administrators can sign into qnet as another user with **Impersonate**; it is explained in the **Users** guide.' },
       ],

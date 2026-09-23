@@ -43,9 +43,9 @@ export function ProductTypologiesTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteProductTypology(row.id)
+        await deleteProductTypology(Number(row.id))
         toast.success(t('productTypologies.form.deleted'))
         refreshGrid()
       } catch (error) {

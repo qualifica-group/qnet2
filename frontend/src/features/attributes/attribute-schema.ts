@@ -29,7 +29,7 @@ import {
  */
 
 /** Backend `code` column limit (`max:64`). */
-const CODE_MAX_LENGTH = 64
+export const CODE_MAX_LENGTH = 64
 /** Backend `name`/option `label`/`value` column limit (`max:191`). */
 const NAME_MAX_LENGTH = 191
 /** Backend `code` shape: snake_case identifier (spec engineering.md §1.2). */

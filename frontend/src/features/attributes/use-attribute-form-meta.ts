@@ -11,11 +11,12 @@ export type AttributeFormMetaState =
 /**
  * Resolves the `ResourcePermissions` backing the form (spec 0004). Edit mode
  * seeds it from the already-loaded instance detail
- * (`mode.attribute.permissions`, fetched by the `show` endpoint); create mode
- * fetches the create-context metadata (`GET /meta/attributes`) once.
+ * (`mode.attribute.permissions`, fetched by the `show` endpoint); create and
+ * duplicate (both submit a create) fetch the create-context metadata
+ * (`GET /meta/attributes`) once.
  */
 export function useAttributeFormMeta(mode: AttributeFormMode): AttributeFormMetaState {
-  const metaQuery = useResourceMeta('attributes', mode.type === 'create')
+  const metaQuery = useResourceMeta('attributes', mode.type !== 'edit')
 
   if (mode.type === 'edit') {
     return { status: 'ready', permissions: mode.attribute.permissions }

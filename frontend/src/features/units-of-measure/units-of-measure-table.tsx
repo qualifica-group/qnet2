@@ -43,9 +43,9 @@ export function UnitsOfMeasureTable() {
 
   const runDelete = useCallback(
     async (row: TableRow) => {
-      setDeletingId(row.id)
+      setDeletingId(Number(row.id))
       try {
-        await deleteUnitOfMeasure(row.id)
+        await deleteUnitOfMeasure(Number(row.id))
         toast.success(t('unitsOfMeasure.form.deleted'))
         refreshGrid()
       } catch (error) {
