@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Stats;
 
 use App\Models\User;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\DistributionItem;
 use App\Stats\Widgets\DistributionWidget;
 use App\Stats\Widgets\StatFormat;
 use App\Stats\Widgets\StatSubtitle;
 use App\Stats\Widgets\StatWidget;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\TrendPoint;
 use App\Stats\Widgets\TrendWidget;
 use App\Support\ConversionRate;
@@ -90,26 +92,38 @@ abstract class AbstractStatsDefinition implements StatsDefinition
     /**
      * @param  array<int, DistributionItem>  $items
      */
-    protected function distribution(string $key, array $items, int $total): DistributionWidget
-    {
+    protected function distribution(
+        string $key,
+        array $items,
+        int $total,
+        DistributionChart $chart = DistributionChart::Bars,
+    ): DistributionWidget {
         return new DistributionWidget(
             key: $key,
             label: $this->labelKey($key),
             items: $items,
             total: $total,
+            chart: $chart,
         );
     }
 
     /**
      * @param  array<int, TrendPoint>  $points
      */
-    protected function trend(string $key, array $points, StatFormat $format = StatFormat::Number): TrendWidget
-    {
+    protected function trend(
+        string $key,
+        array $points,
+        StatFormat $format = StatFormat::Number,
+        TrendChart $chart = TrendChart::Area,
+        int $tone = 1,
+    ): TrendWidget {
         return new TrendWidget(
             key: $key,
             label: $this->labelKey($key),
             points: $points,
             format: $format,
+            chart: $chart,
+            tone: $tone,
         );
     }
 

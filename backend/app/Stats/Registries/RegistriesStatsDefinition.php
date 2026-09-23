@@ -9,6 +9,8 @@ use App\Enums\SizeClassEnum;
 use App\Models\Registry;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 
 /**
@@ -59,15 +61,19 @@ class RegistriesStatsDefinition extends AbstractStatsDefinition
                 key: 'by_agreement_status',
                 items: Aggregates::byEnumColumn(self::TABLE, 'agreement_status', AgreementStatusEnum::class),
                 total: $total,
+                chart: DistributionChart::Donut,
             ),
             $this->distribution(
                 key: 'by_size_class',
                 items: Aggregates::byEnumColumn(self::TABLE, 'size_class', SizeClassEnum::class),
                 total: $total,
+                chart: DistributionChart::Columns,
             ),
             $this->trend(
                 key: 'trend',
                 points: Aggregates::monthlyTrend(self::TABLE, 'created_at', self::TREND_MONTHS),
+                chart: TrendChart::Line,
+                tone: 2,
             ),
         ];
     }

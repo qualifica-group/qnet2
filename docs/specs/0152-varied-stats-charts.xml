@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0152 — GRAFICI STATISTICHE DIFFERENZIATI
+  Richiesta utente 2026-09-23: "differenziare i chart di tutto il gestionale, sempre gli stessi sono un
+  colpo all'occhio; quelli in dashboard uguali a quelli dei vari moduli".
+-->
+<spec id="0152-varied-stats-charts" status="implemented" owner="utente" date="2026-09-23">
+
+  <goal>
+    I pannelli Statistiche dei moduli (e quindi la Dashboard, che li riusa) non mostrano piu' sempre le
+    stesse barre orizzontali + area dello stesso colore: ogni grafico usa la forma adatta ai suoi dati e
+    un colore diverso per modulo, scelti una volta dal backend.
+  </goal>
+
+  <context>
+    <item>Widget backend (spec 0026): `App\Stats\Widgets\{DistributionWidget, TrendWidget}` creati da
+      `AbstractStatsDefinition::distribution()/trend()`; 16 definizioni in `config/stats.php`.</item>
+    <item>FE: `features/stats/stats-widget.tsx` -> distribution = `components/ui/stat-bar-list.tsx`
+      (barre orizzontali), trend = `components/ui/stat-chart.tsx` (lazy `stat-chart-impl.tsx`, AreaChart
+      recharts, sempre `var(--chart-1)`). Colori item: `resolveDistributionColor` (token -> `--color-{token}-500`,
+      null = colore di default). Palette serie: `--chart-1..5` in `index.css` (light/dark).</item>
+    <item>Dashboard (spec 0151) monta `ModuleStatsPanel`: stessa resa dei moduli, nessun codice dedicato.</item>
+    <item>recharts ^3.9.2 gia' in package.json (Pie, Bar, Line disponibili). Nessuna nuova dipendenza.</item>
+  </context>
+
+  <decisions>
+    D-1 Il backend sceglie la forma: nuovo campo opzionale `chart` sui widget distribution e trend, e `tone`
+        (1..5 = `--chart-N`) sul trend. Campo assente o valore sconosciuto -> resa attuale (retro-compatibile).
+    D-2 Forme distribution: `bars` (barre orizzontali attuali, classifiche con etichette lunghe),
+        `columns` (colonne verticali, poche categorie con etichette brevi), `donut` (parte-del-tutto,
+        max 6 fette, legenda + totale al centro), `stacked` (una barra 100% impilata + legenda).
+        Oltre 6 voci in donut/stacked: le eccedenti confluiscono in "Altri" (grigio, `--muted-foreground`).
+    D-3 Forme trend: `area` (attuale), `columns` (colonne mensili), `line` (linea 2px con punti).
+    D-4 Colori: voci con token colore DB -> quel colore; voci senza -> `--chart-1..5` in ordine fisso
+        (mai ciclati; oltre 5 -> "Altri"); trend nel colore `--chart-{tone}`. Testo mai nel colore della serie.
+    D-5 Assegnazione (una volta, nelle definizioni):
+        tasks: by_status donut, by_priority stacked, trend columns tone 2
+        quotes: by_status donut, trend line tone 4
+        opportunities: by_registry bars, trend area tone 1
+        leads: by_source columns, by_operator bars, trend columns tone 3
+        registries: by_agreement_status donut, by_size_class columns, trend line tone 2
+        users: by_role donut, by_business_function bars, trend area tone 5
+        referents: by_type donut, trend columns tone 4
+        campaigns: by_pipeline_status stacked, trend line tone 3
+        projects: by_status donut, trend columns tone 5
+        operational-sites: by_region columns, trend area tone 2
+        companies: trend line tone 1
+        import-runs: by_status stacked, trend columns tone 1
+        products: by_type donut, by_category bars
+        company-sites: by_company bars; business-functions: by_users bars; product-categories: by_products bars
+  </decisions>
+
+  <scope>
+    <in><item>Campo `chart`/`tone` nei widget + assegnazioni D-5 + 3 nuove rese distribution + 2 nuove rese trend.</item></in>
+    <out>
+      <item>Grafici del segnatempo, report Gestione Richieste (`report-bar-chart`), altri grafici non-Statistiche.</item>
+      <item>Scelta del grafico da parte dell'utente finale; nuove metriche.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    GET /api/stats/{domain} — invariato salvo:
+      distribution widget: + `chart`: "bars" | "columns" | "donut" | "stacked"  (sempre presente dopo questa spec)
+      trend widget: + `chart`: "area" | "columns" | "line", + `tone`: 1..5         (sempre presenti)
+    Default backend se la definizione non specifica: distribution `bars`, trend `area` tone 1.
+    FE: campi opzionali nei tipi; assente/sconosciuto -> bars / area / tone 1.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">GET /api/stats/{domain} per ogni dominio registrato: ogni distribution ha `chart` in D-2, ogni trend ha `chart` in D-3 e `tone` 1..5, con i valori di D-5. (Pest, StatsEndpointTest)</criterion>
+    <criterion id="AC-002">`StatsWidgetView` rende la forma richiesta: bars/columns/donut/stacked e area/columns/line; assente o sconosciuto -> resa attuale. (Vitest)</criterion>
+    <criterion id="AC-003">Donut/stacked con 7+ voci: 5-6 fette + "Altri" con la somma; colori token DB rispettati, altrimenti --chart-N in ordine. (Vitest)</criterion>
+    <criterion id="AC-004">Ogni resa espone i dati come testo per screen reader (figcaption + lista), legenda visibile per donut/stacked, tooltip al passaggio, dark mode via variabili CSS. (Vitest + revisione)</criterion>
+    <criterion id="AC-005">La Dashboard mostra per ogni modulo la stessa resa del pannello del modulo (nessuna configurazione separata). (revisione codice: unico `ModuleStatsPanel`)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (solo recharts esistente); rese pesanti caricate lazy come `stat-chart-impl`.</item>
+    <item>Componenti in `components/ui/` (design system), file sotto 300 righe; niente colori hard-coded fuori da variabili CSS.</item>
+    <item>Guide in-app: nessun impatto testuale (i numeri non cambiano); verificare che non descrivano "barre" per grafici ora diversi.</item>
+  </constraints>
+
+</spec>

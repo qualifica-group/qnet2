@@ -250,3 +250,66 @@ it('returns 404 only for a genuinely unregistered domain, no longer for projects
 it('returns 401 without authentication (AC-004)', function () {
     $this->getJson('/api/stats/leads')->assertUnauthorized();
 });
+
+// ---------------------------------------------------------------------------
+// spec 0152, AC-001 — every distribution/trend widget carries a valid chart
+// (and, for trend, a tone 1..5), across every registered domain.
+// ---------------------------------------------------------------------------
+
+it('carries a valid chart on every distribution and a valid chart+tone on every trend (spec 0152 AC-001)', function (string $domain) {
+    Sanctum::actingAs(statsUserWith([$domain]));
+
+    $widgets = $this->getJson("/api/stats/{$domain}")->assertOk()->json('data.widgets');
+
+    foreach ($widgets as $widget) {
+        if ($widget['type'] === 'distribution') {
+            expect($widget['chart'])->toBeIn(['bars', 'columns', 'donut', 'stacked']);
+        }
+
+        if ($widget['type'] === 'trend') {
+            expect($widget['chart'])->toBeIn(['area', 'columns', 'line'])
+                ->and($widget['tone'])->toBeInt()->toBeGreaterThanOrEqual(1)->toBeLessThanOrEqual(5);
+        }
+    }
+})->with(statsDomains());
+
+/**
+ * Pins the exact D-5 assignment (spec 0152): the chart shape/tone each
+ * definition picked for its own distribution/trend widgets, one dataset row
+ * per domain. A future definition change that drifts from D-5 without
+ * updating the spec fails here first.
+ *
+ * @param  array<string, string>  $distributions  widget key => expected `chart`
+ * @param  array{chart: string, tone: int}|null  $trend  expected trend chart/tone, null when the domain has no trend widget
+ */
+it('matches the exact D-5 chart/tone assignment per domain (spec 0152 AC-001)', function (string $domain, array $distributions, ?array $trend) {
+    Sanctum::actingAs(statsUserWith([$domain]));
+
+    $widgets = collect($this->getJson("/api/stats/{$domain}")->assertOk()->json('data.widgets'))->keyBy('key');
+
+    foreach ($distributions as $key => $expectedChart) {
+        expect($widgets[$key]['chart'])->toBe($expectedChart, "domain [{$domain}], widget [{$key}]");
+    }
+
+    if ($trend !== null) {
+        expect($widgets['trend']['chart'])->toBe($trend['chart'], "domain [{$domain}] trend chart")
+            ->and($widgets['trend']['tone'])->toBe($trend['tone'], "domain [{$domain}] trend tone");
+    }
+})->with([
+    'tasks' => ['tasks', ['by_status' => 'donut', 'by_priority' => 'stacked'], ['chart' => 'columns', 'tone' => 2]],
+    'quotes' => ['quotes', ['by_status' => 'donut'], ['chart' => 'line', 'tone' => 4]],
+    'opportunities' => ['opportunities', ['by_registry' => 'bars'], ['chart' => 'area', 'tone' => 1]],
+    'leads' => ['leads', ['by_source' => 'columns', 'by_operator' => 'bars'], ['chart' => 'columns', 'tone' => 3]],
+    'registries' => ['registries', ['by_agreement_status' => 'donut', 'by_size_class' => 'columns'], ['chart' => 'line', 'tone' => 2]],
+    'users' => ['users', ['by_role' => 'donut', 'by_business_function' => 'bars'], ['chart' => 'area', 'tone' => 5]],
+    'referents' => ['referents', ['by_type' => 'donut'], ['chart' => 'columns', 'tone' => 4]],
+    'campaigns' => ['campaigns', ['by_pipeline_status' => 'stacked'], ['chart' => 'line', 'tone' => 3]],
+    'projects' => ['projects', ['by_status' => 'donut'], ['chart' => 'columns', 'tone' => 5]],
+    'operational-sites' => ['operational-sites', ['by_region' => 'columns'], ['chart' => 'area', 'tone' => 2]],
+    'companies' => ['companies', [], ['chart' => 'line', 'tone' => 1]],
+    'import-runs' => ['import-runs', ['by_status' => 'stacked'], ['chart' => 'columns', 'tone' => 1]],
+    'products' => ['products', ['by_type' => 'donut', 'by_category' => 'bars'], null],
+    'company-sites' => ['company-sites', ['by_company' => 'bars'], null],
+    'business-functions' => ['business-functions', ['by_users' => 'bars'], null],
+    'product-categories' => ['product-categories', ['by_products' => 'bars'], null],
+]);

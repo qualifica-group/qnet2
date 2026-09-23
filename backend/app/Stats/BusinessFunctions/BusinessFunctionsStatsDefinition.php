@@ -7,6 +7,7 @@ namespace App\Stats\BusinessFunctions;
 use App\Models\BusinessFunction;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
@@ -64,6 +65,7 @@ class BusinessFunctionsStatsDefinition extends AbstractStatsDefinition
                 // belong to several functions, so the shares are of the total
                 // membership.
                 total: DB::table(self::PIVOT_TABLE)->count(),
+                chart: DistributionChart::Bars,
             ),
         ];
     }

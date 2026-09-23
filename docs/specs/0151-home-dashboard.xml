@@ -88,6 +88,8 @@
          (slate/emerald/sky/violet/amber, sfumatura + accento; icone ListChecks/UserCheck/Plus/Pencil/Eye,
          intestazioni ListChecks e Calendar): palette Tailwind come `status-badge-classes.ts`, con varianti dark
          (eccezione esplicita dell'utente a D-10 per i colori).
+         Nel blocco Task della dashboard solo i 4 KPI: niente grafici by_status, by_priority, trend
+         (`ModuleStatsPanel showCharts={false}`); la lista Task li mantiene.
     D-10 Grafica 1:1 con q-net ma componenti/token qnet-2 (Card, Badge, Tooltip, Skeleton, lucide; niente
          colori Tailwind grezzi: tinte via token/`BadgeTokens`, `ui-design.md §1-bis`), densita' compatta.
          Nessuna nuova dipendenza.

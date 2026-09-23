@@ -32,7 +32,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'Nel riquadro **Assegnati da me** compare il contrassegno **Da validare** quando alcuni di quei task aspettano la tua validazione.' },
         { type: 'steps', items: ['Premi un riquadro: si apre la lista **Task** già filtrata con gli stessi criteri.', 'Premi il contrassegno **Da validare** per vedere solo i task in validazione assegnati da te.'] },
         { type: 'tip', text: 'Il filtro aperto dalla Dashboard vale solo per quella visita: i filtri che avevi salvato nella lista Task non cambiano, finché non premi **Applica** o **Reimposta**.' },
-        { type: 'paragraph', text: 'Sotto i riquadri, nello stesso blocco, trovi le statistiche dei Task: Scaduti, In scadenza oggi, Stimato, Effettivo e i grafici per stato, per priorità e dei nuovi task per mese.' },
+        { type: 'paragraph', text: 'Sotto i riquadri, nello stesso blocco, trovi i numeri dei Task: Scaduti, In scadenza oggi, Stimato ed Effettivo. I grafici per stato, per priorità e dei nuovi task per mese restano nel pannello **Statistiche** della lista Task.' },
       ],
     },
     {

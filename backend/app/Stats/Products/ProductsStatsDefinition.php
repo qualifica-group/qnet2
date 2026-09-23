@@ -8,6 +8,7 @@ use App\Enums\ProductType;
 use App\Models\Product;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\StatFormat;
 use App\Stats\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
@@ -66,6 +67,7 @@ class ProductsStatsDefinition extends AbstractStatsDefinition
                 key: 'by_type',
                 items: Aggregates::byEnumColumn(self::TABLE, 'product_type', ProductType::class),
                 total: $total,
+                chart: DistributionChart::Donut,
             ),
             $this->distribution(
                 key: 'by_category',
@@ -77,6 +79,7 @@ class ProductsStatsDefinition extends AbstractStatsDefinition
                     limit: self::TOP_LIMIT,
                 ),
                 total: $total,
+                chart: DistributionChart::Bars,
             ),
         ];
     }

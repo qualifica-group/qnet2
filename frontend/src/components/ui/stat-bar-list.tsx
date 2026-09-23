@@ -1,11 +1,11 @@
 import * as React from "react"
 
 import { Card, CardContent } from "@/components/ui/card"
+import { PERCENT_MAX, toPercentage } from "@/components/ui/stat-chart-tokens"
 import { cn } from "@/lib/utils"
 
 /** Theme token used when the backend does not provide a per-item color. */
 const DEFAULT_BAR_COLOR = "var(--chart-1)"
-const PERCENT_MAX = 100
 
 export interface StatBarItem {
   key: string
@@ -23,16 +23,6 @@ export interface StatBarListProps {
   /** Discreet placeholder shown when `items` is empty. Pass a translated string. */
   emptyLabel?: string
   className?: string
-}
-
-function toPercent(value: number, total: number): number {
-  if (total <= 0) {
-    return 0
-  }
-
-  const percent = (value / total) * PERCENT_MAX
-
-  return Math.min(Math.max(percent, 0), PERCENT_MAX)
 }
 
 function defaultFormatValue(value: number): string {
@@ -59,7 +49,7 @@ function StatBarList({
         ) : (
           <ul className="flex flex-col gap-2">
             {items.map((item) => {
-              const percent = toPercent(item.value, total)
+              const percent = toPercentage(item.value, total)
               const roundedPercent = Math.round(percent)
               const labelId = `${baseId}-${item.key}`
               const formattedValue = formatValue(item.value)

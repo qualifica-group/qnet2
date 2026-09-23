@@ -7,6 +7,8 @@ namespace App\Stats\OperationalSites;
 use App\Models\OperationalSite;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -92,10 +94,13 @@ class OperationalSitesStatsDefinition extends AbstractStatsDefinition
                     limit: self::TOP_LIMIT,
                 ),
                 total: $total,
+                chart: DistributionChart::Columns,
             ),
             $this->trend(
                 key: 'trend',
                 points: Aggregates::monthlyTrend(self::TABLE, 'created_at', self::TREND_MONTHS),
+                chart: TrendChart::Area,
+                tone: 2,
             ),
         ];
     }

@@ -7,6 +7,7 @@ namespace App\Stats\CompanySites;
 use App\Models\CompanySite;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
@@ -66,6 +67,7 @@ class CompanySitesStatsDefinition extends AbstractStatsDefinition
                     limit: self::TOP_LIMIT,
                 ),
                 total: $total,
+                chart: DistributionChart::Bars,
             ),
         ];
     }

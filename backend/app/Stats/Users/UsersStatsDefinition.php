@@ -7,6 +7,8 @@ namespace App\Stats\Users;
 use App\Models\User;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -75,6 +77,7 @@ class UsersStatsDefinition extends AbstractStatsDefinition
                 // Denominator: the role assignments — a user may hold several
                 // roles, so each bar is a share of the total assignments.
                 total: $this->roleAssignments()->count(),
+                chart: DistributionChart::Donut,
             ),
             $this->distribution(
                 key: 'by_business_function',
@@ -86,10 +89,13 @@ class UsersStatsDefinition extends AbstractStatsDefinition
                     limit: self::TOP_LIMIT,
                 ),
                 total: $total,
+                chart: DistributionChart::Bars,
             ),
             $this->trend(
                 key: 'trend',
                 points: Aggregates::monthlyTrend(self::EMPLOYMENT_TABLE, 'hired_at', self::TREND_MONTHS),
+                chart: TrendChart::Area,
+                tone: 5,
             ),
         ];
     }

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
@@ -72,6 +73,7 @@ class ProductCategoriesStatsDefinition extends AbstractStatsDefinition
                 // Denominator: the catalogue, not the categories — each bar is
                 // the share of products that sit in that category.
                 total: Product::query()->count(),
+                chart: DistributionChart::Bars,
             ),
         ];
     }

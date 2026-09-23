@@ -43,6 +43,12 @@ export interface DistributionItem {
   color: string | null
 }
 
+/**
+ * Shape a `distribution` widget renders as (spec 0152 D-2). Chosen once by the
+ * backend definition; absent or unrecognized -> `bars` (contract default).
+ */
+export type DistributionChartVariant = 'bars' | 'columns' | 'donut' | 'stacked'
+
 export interface DistributionWidget {
   type: 'distribution'
   key: string
@@ -50,6 +56,8 @@ export interface DistributionWidget {
   items: DistributionItem[]
   /** Denominator of the percentages (0 allowed). */
   total: number
+  /** Optional (spec 0152 D-1): absent/unknown -> `bars`. */
+  chart?: string
 }
 
 export interface TrendPoint {
@@ -57,12 +65,25 @@ export interface TrendPoint {
   value: number
 }
 
+/**
+ * Shape a `trend` widget renders as (spec 0152 D-3). Chosen once by the
+ * backend definition; absent or unrecognized -> `area` (contract default).
+ */
+export type TrendChartVariant = 'area' | 'columns' | 'line'
+
+/** `--chart-{tone}` theme slot (spec 0152 D-4). Absent/out of range -> `1`. */
+export type ChartTone = 1 | 2 | 3 | 4 | 5
+
 export interface TrendWidget {
   type: 'trend'
   key: string
   label: string
   points: TrendPoint[]
   format: TrendValueFormat
+  /** Optional (spec 0152 D-1): absent/unknown -> `area`. */
+  chart?: string
+  /** Optional (spec 0152 D-1): absent/out of range -> `1`. */
+  tone?: number
 }
 
 export type StatsWidget = StatWidget | DistributionWidget | TrendWidget

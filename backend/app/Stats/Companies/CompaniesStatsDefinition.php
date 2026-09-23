@@ -7,6 +7,7 @@ namespace App\Stats\Companies;
 use App\Models\Company;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
@@ -59,6 +60,8 @@ class CompaniesStatsDefinition extends AbstractStatsDefinition
             $this->trend(
                 key: 'trend',
                 points: Aggregates::monthlyTrend(self::TABLE, 'created_at', self::TREND_MONTHS),
+                chart: TrendChart::Line,
+                tone: 1,
             ),
         ];
     }

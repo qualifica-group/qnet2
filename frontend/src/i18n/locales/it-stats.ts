@@ -10,6 +10,7 @@ export const statsPanel = {
   empty: 'Non ci sono statistiche disponibili per questo modulo.',
   noData: 'Nessun dato',
   loadError: 'Impossibile caricare le statistiche. Riprova.',
+  others: 'Altri',
 }
 
 export const moduleStats = {

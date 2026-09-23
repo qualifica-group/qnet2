@@ -9,6 +9,10 @@ namespace App\Stats\Widgets;
  * denominator of the percentages the frontend draws — the FULL population,
  * which may exceed the sum of `items` when the list is capped (top N) or when
  * rows carry no value for the dimension. 0 is admitted (frontend shows 0%).
+ *
+ * `chart` is the shape the definition picked for this breakdown (spec 0152,
+ * D-2): always present, defaulting to `Bars` when a definition does not say
+ * otherwise.
  */
 final readonly class DistributionWidget implements Widget
 {
@@ -20,6 +24,7 @@ final readonly class DistributionWidget implements Widget
         public string $label,
         public array $items,
         public int $total,
+        public DistributionChart $chart = DistributionChart::Bars,
     ) {}
 
     /**
@@ -36,6 +41,7 @@ final readonly class DistributionWidget implements Widget
                 $this->items,
             ),
             'total' => $this->total,
+            'chart' => $this->chart->value,
         ];
     }
 

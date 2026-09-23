@@ -10,7 +10,9 @@ use App\Models\TimeEntry;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\StatFormat;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use App\Tables\Tasks\TaskAdvancedFilterApplier;
 use Illuminate\Database\Eloquent\Builder;
@@ -78,6 +80,7 @@ class TasksStatsDefinition extends AbstractStatsDefinition
                     colorColumn: 'color',
                 ),
                 total: $total,
+                chart: DistributionChart::Donut,
             ),
             $this->distribution(
                 key: 'by_priority',
@@ -90,6 +93,7 @@ class TasksStatsDefinition extends AbstractStatsDefinition
                     colorColumn: 'color',
                 ),
                 total: $total,
+                chart: DistributionChart::Stacked,
             ),
             $this->trend(
                 key: 'trend',
@@ -99,6 +103,8 @@ class TasksStatsDefinition extends AbstractStatsDefinition
                     self::TREND_MONTHS,
                     fn ($query) => $query->whereIn('tasks.id', $this->roots()->select('tasks.id')),
                 ),
+                chart: TrendChart::Columns,
+                tone: 2,
             ),
         ];
     }

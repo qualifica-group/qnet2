@@ -8,7 +8,10 @@ import type { DistributionWidget, StatWidget, StatsWidget } from '@/features/sta
 /**
  * Spec 0026 — the widget renderer maps each backend-described widget onto a
  * design-system component. It owns the only formatting rules of the panel
- * (AC-005/AC-012).
+ * (AC-005/AC-012). The spec 0152 `chart`/`tone` dispatch (AC-002/AC-003) is
+ * covered in `stats-widget-chart-dispatch.test.tsx`, which stubs the
+ * design-system renderings so it exercises only the selection/data-prep
+ * logic — this file keeps testing the real, default (`bars`/`area`) markup.
  */
 
 const LEADS_TOTAL: StatWidget = {

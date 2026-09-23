@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GRAFICI STATISTICHE DIFFERENZIATI (spec 0152) — VERDE, NON COMMITTATO (2026-09-23)
+
+- Widget stats: `distribution.chart` (bars|columns|donut|stacked) e `trend.chart` (area|columns|line) + `tone` 1..5,
+  enum `App\Stats\Widgets\{DistributionChart,TrendChart}`, parametri opzionali di `AbstractStatsDefinition::
+  distribution()/trend()`; mappa per modulo D-5 applicata nelle 16 definizioni e fissata in `StatsEndpointTest`.
+- FE: `normalize-chart-variant.ts` (assente/sconosciuto -> bars/area/1), `distribution-series.ts` (colori token o
+  `--chart-1..5` in ordine fisso, max 6 + "Altri" `statsPanel.others`), `components/ui/{stat-column-chart,
+  stat-donut-chart,stat-stacked-bar,stat-distribution-legend,stat-chart-tokens}`; `stat-chart` con `variant`/`tone`.
+  Recharts: le rese devono essere il FIGLIO DIRETTO di `ResponsiveContainer` (un wrapper component => 0x0).
+  Dashboard invariata: riusa `ModuleStatsPanel`, quindi stessi grafici dei moduli.
+- Verifica: Pest Stats/Dashboard/Unit 1244/1244, Pint pulito; Vitest 5868/5868, `tsc -b --force` e ESLint puliti.
+- APERTO: la palette `--chart-1..5` di `index.css` NON passa il validatore dataviz (light: chart-3 quasi grigio,
+  chart-4/chart-5 indistinguibili; dark: contrasto basso chart-1/chart-4). Non toccata: decisione utente.
+
 ## DASHBOARD HOME DA Q-NET (spec 0151) — VERDE, NON COMMITTATO (2026-09-23)
 
 - `/dashboard` non e' piu' un placeholder: card "Attivita' da completare" (5 contatori task come q-net + chip
@@ -28,7 +42,9 @@
   (`dashboard-request-management-section.tsx` eliminato, chiavi i18n `requestManagementSection` e
   `moduleSections.tasks` rimosse); card con colori/icone q-net (`DASHBOARD_TASK_CARD_TONES` in
   `dashboard-task-card-config.ts`, palette Tailwind con dark come `status-badge-classes.ts`). Vitest 5810/5810,
-  tsc -b --force e ESLint puliti. Guide in-app e manuale Claude Docs aggiornati.
+  tsc -b --force e ESLint puliti. Guide in-app e manuale Claude Docs aggiornati. Poi (utente): nel blocco
+  Task della dashboard solo i 4 KPI, niente grafici — nuova prop `ModuleStatsPanel showCharts` (default true,
+  la lista Task li mantiene).
 - Prossimi passi: commit su richiesta.
 
 ## DETTAGLI RECORD ALLINEATI ALLO STILE OPPORTUNITA' — NON COMMITTATO (2026-09-23)

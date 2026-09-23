@@ -7,7 +7,9 @@ namespace App\Stats\Opportunities;
 use App\Models\Opportunity;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\StatFormat;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
@@ -69,11 +71,14 @@ class OpportunitiesStatsDefinition extends AbstractStatsDefinition
                     limit: self::TOP_LIMIT,
                 ),
                 total: $total,
+                chart: DistributionChart::Bars,
             ),
             $this->trend(
                 key: 'trend',
                 points: Aggregates::monthlyTrend(self::TABLE, 'created_at', self::TREND_MONTHS),
                 format: StatFormat::Number,
+                chart: TrendChart::Area,
+                tone: 1,
             ),
         ];
     }

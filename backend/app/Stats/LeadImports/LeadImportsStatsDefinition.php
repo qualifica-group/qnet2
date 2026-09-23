@@ -8,7 +8,9 @@ use App\Enums\ImportStatus;
 use App\Models\ImportRun;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\StatFormat;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -75,6 +77,7 @@ class LeadImportsStatsDefinition extends AbstractStatsDefinition
                     constrain: $this->scopeToLeadsRuns(...),
                 ),
                 total: $total,
+                chart: DistributionChart::Stacked,
             ),
             $this->trend(
                 key: 'trend',
@@ -85,6 +88,8 @@ class LeadImportsStatsDefinition extends AbstractStatsDefinition
                     constrain: $this->scopeToLeadsRuns(...),
                 ),
                 format: StatFormat::Number,
+                chart: TrendChart::Columns,
+                tone: 1,
             ),
         ];
     }

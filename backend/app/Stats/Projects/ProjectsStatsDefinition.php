@@ -7,7 +7,9 @@ namespace App\Stats\Projects;
 use App\Models\Project;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\StatFormat;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -78,10 +80,13 @@ class ProjectsStatsDefinition extends AbstractStatsDefinition
                     colorColumn: 'color',
                 ),
                 total: $total,
+                chart: DistributionChart::Donut,
             ),
             $this->trend(
                 key: 'trend',
                 points: Aggregates::monthlyTrend(self::TABLE, 'created_at', self::TREND_MONTHS),
+                chart: TrendChart::Columns,
+                tone: 5,
             ),
         ];
     }

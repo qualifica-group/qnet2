@@ -9,6 +9,9 @@ export interface StatChartPoint {
   value: number
 }
 
+/** Trend rendering (spec 0152 D-3): `area` is the pre-existing look. */
+export type StatChartVariant = "area" | "columns" | "line"
+
 export interface StatChartProps {
   title: string
   points: StatChartPoint[]
@@ -16,6 +19,10 @@ export interface StatChartProps {
   /** Discreet placeholder shown when `points` is empty. Pass a translated string. */
   emptyLabel?: string
   className?: string
+  /** @default "area" */
+  variant?: StatChartVariant
+  /** `--chart-{tone}` theme slot (spec 0152 D-4). @default 1 */
+  tone?: 1 | 2 | 3 | 4 | 5
 }
 
 /**
@@ -24,8 +31,16 @@ export interface StatChartProps {
  */
 const StatChartImpl = React.lazy(() => import("@/components/ui/stat-chart-impl"))
 
-/** Compact trend widget (lazy area chart). Composes `Card`. */
-function StatChart({ title, points, formatValue, emptyLabel = "—", className }: StatChartProps) {
+/** Compact trend widget (lazy area/columns/line chart). Composes `Card`. */
+function StatChart({
+  title,
+  points,
+  formatValue,
+  emptyLabel = "—",
+  className,
+  variant = "area",
+  tone = 1,
+}: StatChartProps) {
   return (
     <Card className={cn("gap-2 py-3", className)}>
       <CardContent className="flex flex-col gap-2 px-3">
@@ -34,7 +49,13 @@ function StatChart({ title, points, formatValue, emptyLabel = "—", className }
           <p className="text-xs text-muted-foreground">{emptyLabel}</p>
         ) : (
           <React.Suspense fallback={<Skeleton className="h-40 w-full sm:h-48" />}>
-            <StatChartImpl title={title} points={points} formatValue={formatValue} />
+            <StatChartImpl
+              title={title}
+              points={points}
+              formatValue={formatValue}
+              variant={variant}
+              tone={tone}
+            />
           </React.Suspense>
         )}
       </CardContent>

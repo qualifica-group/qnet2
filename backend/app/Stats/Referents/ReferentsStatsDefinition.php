@@ -8,6 +8,8 @@ use App\Enums\ReferentContactScopeEnum;
 use App\Models\Referent;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
@@ -66,10 +68,13 @@ class ReferentsStatsDefinition extends AbstractStatsDefinition
                     limit: self::TOP_LIMIT,
                 ),
                 total: $total,
+                chart: DistributionChart::Donut,
             ),
             $this->trend(
                 key: 'trend',
                 points: Aggregates::monthlyTrend(self::TABLE, 'created_at', self::TREND_MONTHS),
+                chart: TrendChart::Columns,
+                tone: 4,
             ),
         ];
     }

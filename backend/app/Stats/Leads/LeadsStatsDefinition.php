@@ -7,7 +7,9 @@ namespace App\Stats\Leads;
 use App\Models\Lead;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\StatFormat;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
@@ -64,6 +66,7 @@ class LeadsStatsDefinition extends AbstractStatsDefinition
                     limit: self::TOP_LIMIT,
                 ),
                 total: $total,
+                chart: DistributionChart::Columns,
             ),
             $this->distribution(
                 key: 'by_operator',
@@ -75,11 +78,14 @@ class LeadsStatsDefinition extends AbstractStatsDefinition
                     limit: self::TOP_LIMIT,
                 ),
                 total: $total,
+                chart: DistributionChart::Bars,
             ),
             $this->trend(
                 key: 'trend',
                 points: Aggregates::monthlyTrend(self::TABLE, 'created_at', self::TREND_MONTHS),
                 format: StatFormat::Number,
+                chart: TrendChart::Columns,
+                tone: 3,
             ),
         ];
     }

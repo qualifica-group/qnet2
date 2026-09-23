@@ -8,7 +8,9 @@ use App\Models\Campaign;
 use App\Models\Lead;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
+use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\StatFormat;
+use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
@@ -74,10 +76,13 @@ class CampaignsStatsDefinition extends AbstractStatsDefinition
                     colorColumn: 'color',
                 ),
                 total: $total,
+                chart: DistributionChart::Stacked,
             ),
             $this->trend(
                 key: 'trend',
                 points: Aggregates::monthlyTrend(self::TABLE, 'created_at', self::TREND_MONTHS),
+                chart: TrendChart::Line,
+                tone: 3,
             ),
         ];
     }

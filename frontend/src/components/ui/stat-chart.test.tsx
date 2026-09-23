@@ -105,4 +105,28 @@ describe('StatChart', () => {
     expect(impl).toMatch(/className="h-40 w-full sm:h-48"/)
     expect(impl).not.toMatch(/h-\[\d+px\]/)
   })
+
+  it('renders a columns variant without crashing and keeps the accessible text list', async () => {
+    render(<StatChart title="New per month" points={POINTS} variant="columns" />)
+
+    const list = await screen.findByRole('list')
+
+    expect(within(list).getAllByRole('listitem')).toHaveLength(3)
+  })
+
+  it('renders a line variant without crashing and keeps the accessible text list', async () => {
+    render(<StatChart title="New per month" points={POINTS} variant="line" />)
+
+    const list = await screen.findByRole('list')
+
+    expect(within(list).getAllByRole('listitem')).toHaveLength(3)
+  })
+
+  it('defaults to tone 1 / area when no variant or tone is given (retro-compatible, spec 0152)', async () => {
+    const { container } = render(<StatChart title="New per month" points={POINTS} />)
+
+    await screen.findByRole('list')
+
+    expect(container.querySelector('path[fill^="url(#"]')).toBeInTheDocument()
+  })
 })

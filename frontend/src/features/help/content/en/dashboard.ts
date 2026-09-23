@@ -32,7 +32,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'The **Assigned by me** tile shows a **To validate** badge when some of those tasks are waiting for your validation.' },
         { type: 'steps', items: ['Press a tile: the **Tasks** list opens already filtered with the same criteria.', 'Press the **To validate** badge to see only the tasks in validation assigned by you.'] },
         { type: 'tip', text: 'The filter opened from the Dashboard applies to that visit only: the filters you saved on the Tasks list stay as they were until you press **Apply** or **Reset**.' },
-        { type: 'paragraph', text: 'Below the tiles, in the same block, you find the Task statistics: Overdue, Due today, Estimated, Actual and the charts by status, by priority and of new tasks per month.' },
+        { type: 'paragraph', text: 'Below the tiles, in the same block, you find the Task figures: Overdue, Due today, Estimated and Actual. The charts by status, by priority and of new tasks per month stay in the **Statistics** panel of the Tasks list.' },
       ],
     },
     {
