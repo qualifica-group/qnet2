@@ -4,7 +4,7 @@ import { I18nextProvider } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
-import { createRowActionsRenderer } from '@/features/table/row-actions'
+import { createRowActionsRenderer, type RowActionsOptions } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 // Assert against the English catalogue (the app default locale is Italian).
@@ -29,8 +29,9 @@ function renderActions(
   catalog: TableActionDefinition[],
   onAction = vi.fn(),
   rowOverrides: Partial<TableRow> = {},
+  options: RowActionsOptions = {},
 ) {
-  const Cell = createRowActionsRenderer(catalog, onAction)
+  const Cell = createRowActionsRenderer(catalog, onAction, options)
   const row: TableRow = { id: 1, actions: catalog.map((a) => a.key), ...rowOverrides }
   render(
     <I18nextProvider i18n={i18n}>
@@ -133,5 +134,22 @@ describe('RowActions count badge', () => {
 
     expect(screen.getByRole('button', { name: 'documents' })).toBeInTheDocument()
     expect(screen.queryByText('0')).not.toBeInTheDocument()
+  })
+})
+
+describe('RowActions labeledActions (spec 0150 D-8)', () => {
+  it('renders inline actions with a visible text label when opted in', () => {
+    const { onAction } = renderActions(catalogOf(2), vi.fn(), {}, { labeledActions: true })
+
+    const button = screen.getByRole('button', { name: 'a0' })
+    expect(button).toHaveTextContent('a0')
+    fireEvent.click(button)
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'a0' }), expect.objectContaining({ id: 1 }))
+  })
+
+  it('keeps icon-only buttons (no visible text) by default', () => {
+    renderActions(catalogOf(2))
+
+    expect(screen.getByRole('button', { name: 'a0' })).toHaveTextContent('')
   })
 })

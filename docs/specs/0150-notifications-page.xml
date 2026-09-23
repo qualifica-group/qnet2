@@ -45,8 +45,11 @@
     D-2 (utente) Azioni: per riga "Segna come letta" (`mark-read`, solo se non letta) e "Segna come non letta"
         (`mark-unread`, solo se letta); bulk "Segna selezionate come lette"; in testata "Segna tutte come lette".
         Nessuna eliminazione, nessuna modifica inline, nessuna creazione.
-    D-3 (utente) Clic sul collegamento di una notifica non letta: la segna come letta e naviga (stesso
-        comportamento della campanella). Se gia' letta: naviga soltanto.
+    D-3 (utente, rivista 2026-09-23) Clic su "Apri": se la notifica e' non letta la segna come letta; poi, se
+        `action_url` e' il percorso di un record di un modulo registrato (`findModuleRecordByPath`), lo apre in
+        MODALE (`useRecordModalLink`, la pagina notifiche resta sotto) e aggiorna la griglia senza purge; altrimenti
+        (es. `/imports/:id`, percorsi di elenco) naviga come prima. "Apri" e' un vero link: Ctrl/Cmd+clic apre il
+        percorso in una nuova scheda. La campanella resta invariata (naviga).
     D-4 (utente, rivista 2026-09-23) Accesso UI: link fisso "Notifiche" nel FOOTER della sidebar
         (`components/app-sidebar.tsx`), subito SOPRA "Impostazioni", con il contatore delle non lette
         (`SidebarMenuBadge`, dati da `useUnreadSummary()` gia' in polling; nascosto a 0). NON e' una voce del menu
@@ -62,6 +65,10 @@
         cambiamento di comportamento per gli altri domini.
     D-7 Dopo ogni mutazione dalla pagina: refresh della griglia + invalidazione `notificationKeys.all`
         (campanella e titolo tab si allineano).
+    D-8 (utente 2026-09-23) Le azioni riga letto/non letto sono pulsanti con ETICHETTA (icona + testo), non icone
+        sole: opzione generica opt-in `labeledActions` di `TableView`/`RowActionsOptions` (colonna Azioni allargata
+        a `LABELED_ACTIONS_COLUMN_WIDTH`); icone catalogo `mail-open` (Segna come letta) e `mail` (Segna come non
+        letta). Gli altri domini restano a icone.
   </decisions>
 
   <scope>
@@ -90,7 +97,7 @@
         Config generica. `resource: "notifications"`. Colonne (id, type): status:set(badge), title:text,
         message:text, level:set(badge), created_at:datetime, read_at:datetime, action_url:link.
         Solo created_at/read_at/title/level/status sortable; tutte filterable tranne action_url.
-        `actions`: [{key:"mark-read"}, {key:"mark-unread"}] (label/icon da catalogo, confirm:false, nessun permission).
+        `actions`: [{key:"mark-read", icon:"mail-open"}, {key:"mark-unread", icon:"mail"}] (label/icon da catalogo, confirm:false, nessun permission).
         defaultSort: [{columnId:"created_at", direction:"desc"}]; defaultPagination: {limit: 25}.
       </response>
     </endpoint>
@@ -142,7 +149,8 @@
     <criterion id="AC-009">La pagina /notifications monta la tabella `notifications`; la colonna status mostra un badge testuale Letta/Non letta (non solo colore) e level un badge con etichetta. (Vitest)</criterion>
     <criterion id="AC-010">Clic sull'azione riga "Segna come letta" chiama PATCH .../read, poi aggiorna la griglia e invalida notificationKeys.all; "Segna come non letta" chiama PATCH .../unread con lo stesso effetto. (Vitest)</criterion>
     <criterion id="AC-011">Con 2 righe selezionate, l'azione bulk "Segna selezionate come lette" chiama POST /notifications/bulk-read con i 2 uuid e svuota la selezione; il pulsante di testata "Segna tutte come lette" chiama POST /notifications/read-all. Nessuna azione "Elimina" e' presente. (Vitest)</criterion>
-    <criterion id="AC-012">Colonna Collegamento: con action_url interno valido mostra "Apri"; il clic su una riga non letta chiama markAsRead e naviga al percorso; su una letta naviga soltanto; con action_url null o non sicuro (safeInternalPath -> null) non mostra alcun link. (Vitest)</criterion>
+    <criterion id="AC-012">[rivisto 2026-09-23] Colonna Collegamento: con action_url interno valido mostra il link "Apri" (href = percorso). Percorso di un modulo registrato: il clic apre la modale del record senza navigare e, se la riga era non letta, chiama markAsRead. Percorso non di modulo: su non letta chiama markAsRead e naviga; su letta naviga soltanto. Con action_url null o non sicuro (safeInternalPath -> null) nessun link. (Vitest)</criterion>
+    <criterion id="AC-017">Con `labeledActions` le azioni riga inline mostrano icona + etichetta visibile ("Segna come letta"/"Segna come non letta") e la colonna Azioni usa LABELED_ACTIONS_COLUMN_WIDTH; senza l'opzione restano icone con tooltip (nessun cambiamento per gli altri domini). (Vitest)</criterion>
     <criterion id="AC-013">Il pannello della campanella mostra il link "Vedi tutte" che porta a /notifications e chiude il pannello. (Vitest)</criterion>
     <criterion id="AC-014">Il tipo TableRowId non altera gli altri domini: tsc -b --force pulito e suite Vitest `features/table` verde. (typecheck + Vitest)</criterion>
     <criterion id="AC-016">Il footer della sidebar mostra il link "Notifiche" (verso /notifications) immediatamente prima di "Impostazioni"; con 7 non lette mostra il contatore "7" accessibile (aria-label con il numero), con 0 non mostra alcun contatore; oltre 99 mostra "99+". Link attivo su /notifications. (Vitest)</criterion>

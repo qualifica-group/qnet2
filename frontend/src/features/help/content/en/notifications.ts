@@ -42,8 +42,8 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'On an unread row, the **Mark as read** action marks it as read.',
-            'On a read row, the **Mark as unread** action reverts it to unread.',
+            'On an unread row, the **Mark as read** button (open envelope icon) in the Actions column marks it as read.',
+            'On a read row, the **Mark as unread** button (closed envelope icon) reverts it to unread.',
             'Selecting several rows, **Mark selected as read** marks them all as read in one step.',
             'The header\'s **Mark all as read** button marks ALL your notifications as read, even ones not visible on the current page.',
           ],
@@ -60,11 +60,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'When a notification carries a link, the Link column shows **Open**. Clicking it: if the notification was unread, it is marked as read and you are taken to the affected page; if it was already read, you are taken straight to the page.',
+          text: 'When a notification carries a link, the Link column shows **Open**. Clicking it marks an unread notification as read; the affected record (e.g. a company, an opportunity) opens in a **side panel** over the notifications page, without leaving it. From the panel\'s top bar you can jump to the record\'s full page. Links that do not point to a single record (e.g. an import result) open the affected page instead.',
         },
         {
           type: 'note',
-          text: 'Not every notification has a link: in that case the column stays empty.',
+          text: 'Not every notification has a link: in that case the column stays empty. Ctrl/Cmd+click on **Open** opens the link in a new browser tab.',
         },
       ],
     },

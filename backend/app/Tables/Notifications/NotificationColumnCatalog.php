@@ -149,14 +149,14 @@ final class NotificationColumnCatalog
             [
                 'key' => 'mark-read',
                 'label' => 'notifications.actions.markRead',
-                'icon' => 'check-circle',
+                'icon' => 'mail-open',
                 'type' => 'link',
                 'confirm' => false,
             ],
             [
                 'key' => 'mark-unread',
                 'label' => 'notifications.actions.markUnread',
-                'icon' => 'circle',
+                'icon' => 'mail',
                 'type' => 'link',
                 'confirm' => false,
             ],

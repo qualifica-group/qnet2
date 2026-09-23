@@ -1,16 +1,11 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { BadgeCell } from '@/features/table/cell-renderers'
 import { notificationColumnRenderers } from '@/features/notifications/column-renderers'
 import type { EnumBadge } from '@/features/table/types'
-
-const navigateMock = vi.fn()
-vi.mock('react-router-dom', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-router-dom')>()
-  return { ...actual, useNavigate: () => navigateMock }
-})
 
 const markAsReadMutateMock = vi.fn()
 vi.mock('@/features/notifications/use-notification-actions', () => ({
@@ -19,49 +14,87 @@ vi.mock('@/features/notifications/use-notification-actions', () => ({
   }),
 }))
 
+// A stand-in registry: `/registries/:id` is a module record, anything else is not.
+vi.mock('@/features/modules/module-registry', () => ({
+  findModuleRecordByPath: (path: string) => {
+    const match = /^\/registries\/(\d+)$/.exec(path)
+    return match ? { domain: 'registries', id: Number(match[1]) } : null
+  },
+}))
+
+const modalOnClickMock = vi.fn((event: { preventDefault: () => void }) => event.preventDefault())
+const useRecordModalLinkMock = vi.fn<
+  (domain: string, id: number) => { onClick: typeof modalOnClickMock; sheet: null }
+>(() => ({ onClick: modalOnClickMock, sheet: null }))
+vi.mock('@/features/modules/use-record-modal-link', () => ({
+  useRecordModalLink: (domain: string, id: number) => useRecordModalLinkMock(domain, id),
+}))
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
-  navigateMock.mockReset()
   markAsReadMutateMock.mockReset()
+  modalOnClickMock.mockClear()
+  useRecordModalLinkMock.mockClear()
 })
 
 function renderActionUrl(data: Record<string, unknown> | undefined) {
   const params = { data } as unknown as ICellRendererParams
   const Renderer = notificationColumnRenderers.action_url
-  return render(<>{Renderer?.(params)}</>)
+  return render(
+    <MemoryRouter initialEntries={['/notifications']}>
+      <Routes>
+        <Route path="/notifications" element={<>{Renderer?.(params)}</>} />
+        <Route path="*" element={<p>navigated</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
 }
 
 /**
- * `action_url` cell (spec 0150 AC-012): the sole custom renderer this domain
- * needs — `status`/`level` fall through to the generic `BadgeCell` (verified
- * below, not re-implemented here).
+ * `action_url` cell (spec 0150 AC-012, revised 2026-09-23): the sole custom
+ * renderer this domain needs — `status`/`level` fall through to the generic
+ * `BadgeCell` (verified below, not re-implemented here).
  */
 describe('notifications action_url column — AC-012', () => {
-  it('shows "Open" and marks the row read, then navigates, for an unread row with a safe path', () => {
-    renderActionUrl({ id: 'n1', status: 'unread', action_url: '/field-change-requests/12' })
+  it('opens a module record in the modal, without navigating, and marks an unread row read', () => {
+    renderActionUrl({ id: 'n1', status: 'unread', action_url: '/registries/12' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    const link = screen.getByRole('link', { name: 'Open' })
+    expect(link).toHaveAttribute('href', '/registries/12')
+    fireEvent.click(link)
 
-    expect(markAsReadMutateMock).toHaveBeenCalledWith('n1')
-    expect(navigateMock).toHaveBeenCalledWith('/field-change-requests/12')
+    expect(useRecordModalLinkMock).toHaveBeenCalledWith('registries', 12)
+    expect(modalOnClickMock).toHaveBeenCalledTimes(1)
+    expect(markAsReadMutateMock).toHaveBeenCalledWith('n1', expect.any(Object))
+    expect(screen.queryByText('navigated')).not.toBeInTheDocument()
   })
 
-  it('only navigates, without marking as read, for an already-read row', () => {
+  it('opens the modal without marking as read for an already-read row', () => {
     renderActionUrl({ id: 'n2', status: 'read', action_url: '/registries/8' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Open' }))
 
+    expect(modalOnClickMock).toHaveBeenCalledTimes(1)
     expect(markAsReadMutateMock).not.toHaveBeenCalled()
-    expect(navigateMock).toHaveBeenCalledWith('/registries/8')
+  })
+
+  it('follows a non-module path as a plain link, marking an unread row read', () => {
+    renderActionUrl({ id: 'n5', status: 'unread', action_url: '/imports/3' })
+
+    fireEvent.click(screen.getByRole('link', { name: 'Open' }))
+
+    expect(useRecordModalLinkMock).not.toHaveBeenCalled()
+    expect(markAsReadMutateMock).toHaveBeenCalledWith('n5', expect.any(Object))
+    expect(screen.getByText('navigated')).toBeInTheDocument()
   })
 
   it('renders nothing when action_url is null', () => {
     renderActionUrl({ id: 'n3', status: 'unread', action_url: null })
 
-    expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open' })).not.toBeInTheDocument()
   })
 
   it.each([
@@ -71,7 +104,7 @@ describe('notifications action_url column — AC-012', () => {
   ])('renders nothing when action_url is unsafe (%s)', (_label, actionUrl) => {
     renderActionUrl({ id: 'n4', status: 'unread', action_url: actionUrl })
 
-    expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open' })).not.toBeInTheDocument()
   })
 })
 

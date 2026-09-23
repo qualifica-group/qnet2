@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## NOTIFICHE: AZIONI CON ETICHETTA + "APRI" IN MODALE (spec 0150 D-3 rivista, D-8) — NON COMMITTATO (2026-09-23)
+
+- Azioni riga letto/non letto = pulsanti con icona + testo (richiesta utente). Opzione generica OPT-IN
+  `labeledActions` su `TableView`/`RowActionsOptions` (`features/table/row-actions.tsx`, costante
+  `LABELED_ACTIONS_COLUMN_WIDTH = 190`); larghezza colonna Azioni via nuova prop `actionsColumnWidth`
+  (`DataTable` -> `buildColDefs`, vince sul default 100/120). Gli altri domini restano a icone.
+  Icone catalogo BE `mail-open` (mark-read) / `mail` (mark-unread) in `NotificationColumnCatalog`.
+- "Apri" (`features/notifications/column-renderers.tsx`) e' un vero `<Link>`: se `findModuleRecordByPath` risolve
+  un modulo registrato apre la MODALE (`useRecordModalLink`, Sheet nella cella), altrimenti naviga (es.
+  `/imports/:id`). Non letta -> markAsRead + `api.refreshServerSide({ purge: false })` (non-purge: la cella e la
+  modale sopravvivono, verificato in browser). La campanella resta invariata (naviga).
+- Test: `column-renderers.test.tsx` (AC-012 rivisto), `row-actions.test.tsx` (AC-017), nuovo
+  `components/data-table/column-def-builder.test.ts`, Pest `NotificationsTableTest` (icone). Vitest intero 5751 verdi,
+  Pest Table+Notifications verdi, tsc -b / ESLint / Pint puliti. Guide in-app IT/EN aggiornate.
+- Manuale Claude Docs NON aggiornato (documento non condiviso con la sessione): sezione Notifiche da allineare.
+- Dev DB: 4 notifiche "[TEST] ..." create per demo@app.com (verifica visiva), cancellabili.
+
 ## NOTIFICHE: PAGINA DEDICATA (spec 0150) — NON COMMITTATO (2026-09-23)
 
 Spec `docs/specs/0150-notifications-page.xml` (D-4 e AC-008 rivisti, AC-016 aggiunto su richiesta utente).

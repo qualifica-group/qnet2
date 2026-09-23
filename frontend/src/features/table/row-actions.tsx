@@ -33,6 +33,9 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
  */
 export const INLINE_ACTION_LIMIT = 3
 
+/** Actions-column width when inline actions show their label (`labeledActions`). */
+export const LABELED_ACTIONS_COLUMN_WIDTH = 190
+
 /** Fired when the user triggers an action on a row. */
 export type RowActionHandler = (
   action: TableActionDefinition,
@@ -50,6 +53,12 @@ export interface RowActionsOptions {
    * defaults. Lets a domain advertise new icons without touching generic code.
    */
   iconMap?: ActionIconMap
+  /**
+   * Inline actions render as compact icon + text buttons instead of bare
+   * icons (spec 0150 D-8): for a domain whose few actions are not
+   * self-explanatory as an icon. Opt-in; every other domain keeps icons.
+   */
+  labeledActions?: boolean
 }
 
 interface RowActionsProps extends RowActionsOptions {
@@ -107,6 +116,7 @@ function RowActions({
   isBusy,
   decorateRow,
   iconMap,
+  labeledActions,
 }: RowActionsProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
@@ -151,11 +161,27 @@ function RowActions({
   }
 
   // Always-visible actions render inline as compact icon buttons (label in
-  // tooltip); the overflow remainder, if any, folds into the three-dots menu.
+  // tooltip), or as labeled buttons when the domain opts in; the overflow
+  // remainder, if any, folds into the three-dots menu.
   return (
-    <div className="flex h-full items-center justify-end gap-0.5">
+    <div className={cn('flex h-full items-center gap-0.5', labeledActions ? 'justify-start' : 'justify-end')}>
       <TooltipProvider>
         {visible.map((action) => {
+          if (labeledActions) {
+            const Icon = resolveActionIcon(action.icon, iconMap)
+            return (
+              <Button
+                key={action.key}
+                variant="outline"
+                size="xs"
+                disabled={busy}
+                onClick={() => handleSelect(action)}
+              >
+                <Icon aria-hidden="true" />
+                {t(action.label)}
+              </Button>
+            )
+          }
           const Icon = resolveActionIcon(action.icon, iconMap)
           const label = t(action.label)
           const count = resolveActionCount(action, effectiveRow)
@@ -239,6 +265,7 @@ export function createRowActionsRenderer(
         isBusy={options.isBusy}
         decorateRow={options.decorateRow}
         iconMap={options.iconMap}
+        labeledActions={options.labeledActions}
       />
     )
   }

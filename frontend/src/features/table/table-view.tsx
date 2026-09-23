@@ -30,6 +30,7 @@ import { ExportDialog } from '@/features/exports/export-dialog'
 import {
   createRowActionsRenderer,
   INLINE_ACTION_LIMIT,
+  LABELED_ACTIONS_COLUMN_WIDTH,
   type RowActionHandler,
   type RowActionsOptions,
 } from '@/features/table/row-actions'
@@ -151,6 +152,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       isBusy,
       decorateRow,
       iconMap,
+      labeledActions,
       importSlot,
       isRowSelectable,
       getBulkActions,
@@ -329,8 +331,9 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         isBusy,
         decorateRow,
         iconMap,
+        labeledActions,
       })
-    }, [config, onAction, isBusy, decorateRow, iconMap])
+    }, [config, onAction, isBusy, decorateRow, iconMap, labeledActions])
 
     // Fit the grid to the screen instead of a fixed height: it takes what is
     // left of the viewport below this module's chrome, never taller than the
@@ -385,6 +388,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           renderRowActions={renderRowActions}
           actionsHeaderLabel="table.actionsHeader"
           actionsColumnHasOverflow={config.actions.length > INLINE_ACTION_LIMIT}
+          actionsColumnWidth={labeledActions ? LABELED_ACTIONS_COLUMN_WIDTH : undefined}
           onGridReady={handleGridReady}
           onColumnStateChanged={handleColumnStateChanged}
           initialFilterModel={initialFilterModel}

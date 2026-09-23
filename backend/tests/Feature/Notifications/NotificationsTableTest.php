@@ -37,6 +37,8 @@ it('GET /api/tables/notifications/columns: 200 for any authenticated user, no pe
     $actionKeys = collect($data['actions'])->pluck('key')->all();
     expect($actionKeys)->toBe(['mark-read', 'mark-unread']);
     expect(collect($data['actions'])->pluck('permission')->filter()->all())->toBe([]);
+    // D-8: envelope icons, rendered as labeled buttons on the page.
+    expect(collect($data['actions'])->pluck('icon')->all())->toBe(['mail-open', 'mail']);
 });
 
 // AC-002: rows are strictly scoped to the caller's own notifiable.

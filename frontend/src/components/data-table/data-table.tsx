@@ -104,6 +104,8 @@ interface DataTableProps {
    * narrow width.
    */
   actionsColumnHasOverflow?: boolean
+  /** Explicit actions-column width (labeled row actions); overrides `actionsColumnHasOverflow`. */
+  actionsColumnWidth?: number
   /**
    * Fired once the grid is ready. Exposes the AG Grid event so callers can keep
    * a reference to the grid API (e.g. to refresh SSRM blocks after a mutation).
@@ -191,6 +193,7 @@ export function DataTable({
   renderRowActions,
   actionsHeaderLabel,
   actionsColumnHasOverflow,
+  actionsColumnWidth,
   onGridReady,
   onColumnStateChanged,
   initialFilterModel,
@@ -236,6 +239,7 @@ export function DataTable({
         renderRowActions,
         actionsHeaderLabel,
         actionsColumnHasOverflow,
+        actionsColumnWidth,
         masterDetail,
         t,
       }),
@@ -249,6 +253,7 @@ export function DataTable({
       renderRowActions,
       actionsHeaderLabel,
       actionsColumnHasOverflow,
+      actionsColumnWidth,
       masterDetail,
       t,
     ],

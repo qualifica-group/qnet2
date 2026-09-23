@@ -66,14 +66,14 @@ vi.mock('@/features/table/table-view', () => ({
 const MARK_READ_ACTION: TableActionDefinition = {
   key: 'mark-read',
   label: 'notifications.actions.markRead',
-  icon: 'check-circle',
+  icon: 'mail-open',
   type: 'link',
   confirm: false,
 }
 const MARK_UNREAD_ACTION: TableActionDefinition = {
   key: 'mark-unread',
   label: 'notifications.actions.markUnread',
-  icon: 'circle',
+  icon: 'mail',
   type: 'link',
   confirm: false,
 }

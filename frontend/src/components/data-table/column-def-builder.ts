@@ -46,6 +46,8 @@ export interface BuildColDefsParams {
   renderRowActions?: (params: ICellRendererParams) => ReactNode
   actionsHeaderLabel?: string
   actionsColumnHasOverflow?: boolean
+  /** Explicit actions-column width (e.g. labeled row actions); wins over the overflow-based default. */
+  actionsColumnWidth?: number
   masterDetail?: boolean
   t: TFunction
 }
@@ -66,6 +68,7 @@ export function buildColDefs({
   renderRowActions,
   actionsHeaderLabel,
   actionsColumnHasOverflow,
+  actionsColumnWidth,
   masterDetail,
   t,
 }: BuildColDefsParams): ColDef[] {
@@ -123,9 +126,9 @@ export function buildColDefs({
   })
 
   if (renderRowActions) {
-    const actionsWidth = actionsColumnHasOverflow
-      ? ACTIONS_COLUMN_WIDTH_WITH_OVERFLOW
-      : ACTIONS_COLUMN_WIDTH
+    const actionsWidth =
+      actionsColumnWidth ??
+      (actionsColumnHasOverflow ? ACTIONS_COLUMN_WIDTH_WITH_OVERFLOW : ACTIONS_COLUMN_WIDTH)
     // Leading column: pinned left and placed before every data column so the
     // row actions stay reachable without scrolling to the end of a wide table.
     mapped.unshift({

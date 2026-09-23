@@ -42,8 +42,8 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Su una riga non letta, l\'azione **Segna come letta** la marca come letta.',
-            'Su una riga letta, l\'azione **Segna come non letta** la riporta a non letta.',
+            'Su una riga non letta, il pulsante **Segna come letta** (icona busta aperta) nella colonna Azioni la marca come letta.',
+            'Su una riga letta, il pulsante **Segna come non letta** (icona busta chiusa) la riporta a non letta.',
             'Selezionando più righe, **Segna selezionate come lette** le marca tutte come lette in un solo passaggio.',
             'Il pulsante **Segna tutte come lette** in testata marca come lette TUTTE le tue notifiche, anche quelle non visibili nella pagina corrente.',
           ],
@@ -60,11 +60,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Quando una notifica ha un collegamento, la colonna Collegamento mostra **Apri**. Cliccandolo: se la notifica era non letta, viene segnata come letta e si viene portati alla pagina interessata; se era già letta, si viene portati direttamente alla pagina.',
+          text: 'Quando una notifica ha un collegamento, la colonna Collegamento mostra **Apri**. Cliccandolo, se la notifica era non letta viene segnata come letta; il record interessato (es. un\'azienda, un\'opportunità) si apre in un **pannello laterale** sopra la pagina notifiche, senza lasciarla. Dalla barra in alto del pannello puoi passare alla pagina completa del record. I collegamenti che non puntano a un singolo record (es. l\'esito di un\'importazione) aprono invece la pagina interessata.',
         },
         {
           type: 'note',
-          text: 'Non tutte le notifiche hanno un collegamento: in quel caso la colonna resta vuota.',
+          text: 'Non tutte le notifiche hanno un collegamento: in quel caso la colonna resta vuota. Con Ctrl/Cmd+clic su **Apri** il collegamento si apre in una nuova scheda del browser.',
         },
       ],
     },

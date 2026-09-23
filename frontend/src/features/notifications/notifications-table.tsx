@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCheck, CheckCircle, Circle } from 'lucide-react'
+import { CheckCheck, Mail, MailOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
@@ -19,16 +19,16 @@ import { useNotificationActions } from '@/features/notifications/use-notificatio
  * into `TableView`'s internal `useMemo` dependency list.
  */
 const NOTIFICATIONS_ACTION_ICONS: ActionIconMap = {
-  'check-circle': CheckCircle,
-  circle: Circle,
+  'mail-open': MailOpen,
+  mail: Mail,
 }
 
 /**
  * Thin notifications adapter over the generic table (spec 0150): every
  * authenticated user's OWN notifications, no `<Can>` gate (D-1, no Spatie
  * permission for this resource). Row actions flip the read state one at a
- * time; the bulk action and the header button do it for a selection or for
- * everything. Every mutation refreshes the grid and, through
+ * time, as labeled buttons (D-8); the bulk action and the header button do it
+ * for a selection or for everything. Every mutation refreshes the grid and, through
  * `useNotificationActions`, invalidates `notificationKeys.all` (D-7) so the
  * bell badge and the tab title stay aligned.
  */
@@ -104,6 +104,7 @@ export function NotificationsTable() {
         renderers={notificationColumnRenderers}
         onAction={handleAction}
         iconMap={NOTIFICATIONS_ACTION_ICONS}
+        labeledActions
         getBulkActions={getBulkActions}
       />
     </div>
