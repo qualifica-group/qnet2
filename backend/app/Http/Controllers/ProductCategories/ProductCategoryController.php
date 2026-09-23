@@ -142,14 +142,22 @@ class ProductCategoryController extends BaseApiController
     }
 
     /**
-     * POST /api/product-categories — create a new category.
+     * POST /api/product-categories — create a new category; with
+     * `layout_source_id` (row action "duplicate") it also receives a copy of
+     * that category's own attribute layouts.
      */
     public function store(StoreProductCategoryRequest $request): JsonResponse
     {
         try {
             $this->authorize('create', ProductCategory::class);
 
-            $productCategory = $this->service->create($request->toData());
+            $layoutSource = $request->layoutSource();
+
+            if ($layoutSource !== null) {
+                $this->authorize('view', $layoutSource);
+            }
+
+            $productCategory = $this->service->create($request->toData(), $layoutSource);
 
             return $this->okWithPermissions(
                 $this->resourceWithInherited($productCategory),

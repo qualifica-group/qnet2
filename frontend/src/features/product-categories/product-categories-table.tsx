@@ -35,7 +35,7 @@ const PRODUCT_CATEGORIES_ACTION_ICONS: ActionIconMap = { 'layout-grid': LayoutGr
  * Thin Product Categories adapter over the generic table. It mounts
  * `<TableView>` with the `product-categories` domain, its custom cell
  * renderers and a row-action handler, and delegates the open mode (modal
- * Sheet vs dedicated page) of view/edit/create to `useModuleOpener`, resolved
+ * Sheet vs dedicated page) of view/edit/create/duplicate to `useModuleOpener`, resolved
  * from the user's preference (spec 0042). It still owns the delete flow
  * (confirm + toast + grid refresh, surfacing the backend's restrictive-delete
  * 409/422 when a category still has children or products) and refreshes the
@@ -103,7 +103,7 @@ export function ProductCategoriesTable() {
     invalidateStats()
   }, [refreshGrid, invalidateStats])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(PRODUCT_CATEGORIES_DOMAIN, {
+  const { openCreate, openView, openEdit, openDuplicate, sheet } = useModuleOpener(PRODUCT_CATEGORIES_DOMAIN, {
     onSaved,
   })
 
@@ -140,6 +140,9 @@ export function ProductCategoriesTable() {
         case 'edit':
           openEdit(row)
           break
+        case 'duplicate':
+          openDuplicate(row)
+          break
         case 'delete':
           void runDelete(row)
           break
@@ -154,7 +157,7 @@ export function ProductCategoriesTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, openEdit, openDuplicate, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

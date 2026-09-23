@@ -43,9 +43,12 @@ const fetchAttributeLayoutMock = vi.fn<
   (categoryId: number, context: string, formMode: string) => Promise<AttributeLayoutData>
 >()
 const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode[]>>()
+// Never settles: the duplicate test only asserts which source is fetched.
+const fetchProductCategoryMock = vi.fn<(id: number) => Promise<never>>(() => new Promise(() => {}))
 
 vi.mock('@/features/product-categories/api', () => ({
   fetchProductCategoryTree: () => fetchProductCategoryTreeMock(),
+  fetchProductCategory: (id: number) => fetchProductCategoryMock(id),
   bulkMoveProductCategories: vi.fn(),
   deleteProductCategory: vi.fn(),
   fetchAttributeLayout: (...args: [number, string, string]) => fetchAttributeLayoutMock(...args),
@@ -71,6 +74,9 @@ vi.mock('@/features/table/table-view', () => ({
       <div role="region" aria-label={`table-${domain}`}>
         <button type="button" onClick={() => onAction(action('layout'), LAYOUT_ROW)}>
           row-layout
+        </button>
+        <button type="button" onClick={() => onAction(action('duplicate'), LAYOUT_ROW)}>
+          row-duplicate
         </button>
       </div>
     )
@@ -137,5 +143,21 @@ describe('ProductCategoriesTable — "layout" row action (spec 0062 revision)', 
     expect(await screen.findByText('Attribute layout')).toBeInTheDocument()
     expect(screen.getByText('Widgets')).toBeInTheDocument()
     await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(9, 'product', 'all'))
+  })
+})
+
+describe('ProductCategoriesTable — "duplicate" row action', () => {
+  beforeEach(() => {
+    canMock.mockReturnValue(true)
+    fetchProductCategoryMock.mockClear()
+  })
+
+  it('opens the create sheet loading the clicked row as the source', async () => {
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'row-duplicate' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Create category' })).toBeInTheDocument()
+    await waitFor(() => expect(fetchProductCategoryMock).toHaveBeenCalledWith(9))
   })
 })

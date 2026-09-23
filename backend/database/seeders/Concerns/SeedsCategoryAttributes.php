@@ -23,7 +23,7 @@ use App\Models\ProductCategory;
 trait SeedsCategoryAttributes
 {
     /**
-     * @param  list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, relation_target?: array<string, mixed>}>  $specs
+     * @param  list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, relation_target?: array<string, mixed>, config?: array<string, mixed>}>  $specs
      */
     protected function seedCategoryAttributes(ProductCategory $category, array $specs, AttributeContext $context): void
     {
@@ -35,6 +35,8 @@ trait SeedsCategoryAttributes
                     'type' => $spec['type'],
                     // Required by, and only meaningful for, the `relation` type.
                     'relation_target' => $spec['relation_target'] ?? null,
+                    // e.g. an `enum` rendered as a multiselect.
+                    'config' => $spec['config'] ?? null,
                 ],
             );
 

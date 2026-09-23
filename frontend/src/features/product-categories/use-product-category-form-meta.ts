@@ -11,13 +11,14 @@ export type ProductCategoryFormMetaState =
 /**
  * Resolves the `ResourcePermissions` backing the form (spec 0004). Edit mode
  * seeds it from the already-loaded instance detail
- * (`mode.category.permissions`, fetched by the `show` endpoint); create mode
- * fetches the create-context metadata (`GET /meta/product-categories`) once.
+ * (`mode.category.permissions`, fetched by the `show` endpoint); create and
+ * duplicate (both submit a create) fetch the create-context metadata
+ * (`GET /meta/product-categories`) once.
  */
 export function useProductCategoryFormMeta(
   mode: ProductCategoryFormMode,
 ): ProductCategoryFormMetaState {
-  const metaQuery = useResourceMeta('product-categories', mode.type === 'create')
+  const metaQuery = useResourceMeta('product-categories', mode.type !== 'edit')
 
   if (mode.type === 'edit') {
     return { status: 'ready', permissions: mode.category.permissions }

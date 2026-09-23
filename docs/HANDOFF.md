@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATEGORIE PRODOTTO: AZIONE RIGA "DUPLICA" (+ COPIA LAYOUT ATTRIBUTI) — NON COMMITTATO (2026-09-23)
+
+Decisioni utente: etichetta "Duplica" (chiave azione `duplicate`, come progetti/campagne); copia la categoria
++ il suo layout attributi; NON copia sottocategorie, prodotti, storico.
+- BE: `ProductCategoryColumnCatalog::actions()` + `ProductCategoriesTableDefinition::actionsFor()` -> `duplicate`
+  gated su `create` ProductCategory. `POST /product-categories` accetta `layout_source_id` (nullable, exists);
+  il controller autorizza `view` sulla sorgente (403), `ProductCategoryService::create($data, ?$layoutSource)`
+  chiama `AttributeLayoutCopier::copy()` nella stessa transazione dopo il sync attributi: copia le righe
+  `attribute_layouts` PROPRIE della sorgente (ogni context/scope), potando gli item non piu' negli attributi
+  effettivi della copia (righe/sezioni vuote eliminate, layout vuoto non scritto), poi `AttributeLayoutService::upsert`.
+- FE: `ProductCategoryFormMode` + `{ type: 'duplicate'; source }`; `mapCategoryToFormValues` condiviso edit/duplicate
+  (nome + `common.copySuffix`); submit via create con `layout_source_id`. Screen `ProductCategoryLoadedFormScreen`
+  (variant edit|duplicate). Tabella: `openDuplicate`. `UpdateProductCategoryPayload` esclude `layout_source_id`.
+- Test: `ProductCategoryDuplicateTest.php` (Pest), `product-category-form-duplicate.test.tsx`, caso in
+  `product-categories-table.test.tsx`. Guida in-app IT/EN: sezione `duplicate-category` + riga azione.
+- Manuale Claude Docs aggiornato (riga "Duplica" nella tabella azioni + sottosezione "Duplicare una categoria").
+- Verifica: Pest ProductCategories+Products+Tables 495/495, Vitest product-categories/modules/help verdi,
+  Pint/ESLint puliti, `tsc -b --force` pulito.
+
+## AUTOFINANZIATO: "QUALIFICA PROFESSIONALE" (MULTISELECT) — NON COMMITTATO (2026-09-23)
+
+- `ContactProcessingAttributeCatalogue`: nuovo attributo `professional_qualification` ("Qualifica Professionale"),
+  `enum` + `config.display = multiselect`, stesse opzioni di `degree` ("Titolo di Studio", estratte in
+  `DEGREE_OPTIONS`), assegnato solo ad "Autofinanziato" (Offerta + Commessa). Riga layout propria sotto `degree`.
+- Convergenza installazioni gia' seedate: `PREVIOUS_OWN_ATTRIBUTES['Autofinanziato']` + nuova voce in
+  `QualificaQuoteLayoutSeeder::PREVIOUS_SECTIONS` (sezioni odierne). `SeedsCategoryAttributes` ora persiste `config`.
+- Test: `tests/Feature/Products/QualificaProfessionalQualificationTest.php`; Products + Seeding + SeederFlow verdi (325).
+- Manuale: nessun impatto (guide in-app e manuale Claude Docs non elencano i campi "Dati Lavorazione Contatto").
+
 ## MODALE FILTRI CONDIVISA + "AZZERA FILTRI" IN GESTIONE RICHIESTE — NON COMMITTATO (2026-09-23)
 
 - Nuovo `components/ui/filters-sheet.tsx`: `FiltersSheet` (Sheet + header band con icona) + `FiltersSheetFooter`

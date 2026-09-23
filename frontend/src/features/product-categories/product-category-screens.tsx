@@ -73,26 +73,34 @@ export function ProductCategoryFormScreen({ mode, onSuccess, onCancel }: ModuleF
   }
 
   return (
-    <ProductCategoryEditScreen categoryId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
+    <ProductCategoryLoadedFormScreen
+      categoryId={mode.id}
+      variant={mode.type}
+      onSuccess={handleSuccess}
+      onCancel={onCancel}
+    />
   )
 }
 
-interface ProductCategoryEditScreenProps {
+interface ProductCategoryLoadedFormScreenProps {
   categoryId: number
+  /** `edit` patches the loaded category; `duplicate` creates a copy pre-filled from it. */
+  variant: 'edit' | 'duplicate'
   onSuccess: (category: ProductCategoryDetail) => void
   onCancel: () => void
 }
 
 /**
- * Fetches the fresh, re-authorized category detail before mounting the edit
- * form, so the partial PATCH starts from authoritative values rather than a
- * stale snapshot.
+ * Fetches the fresh, re-authorized category detail before mounting the form,
+ * so the partial PATCH (edit) or the copy (duplicate) starts from
+ * authoritative values rather than a stale grid snapshot.
  */
-function ProductCategoryEditScreen({
+function ProductCategoryLoadedFormScreen({
   categoryId,
+  variant,
   onSuccess,
   onCancel,
-}: ProductCategoryEditScreenProps) {
+}: ProductCategoryLoadedFormScreenProps) {
   const { t } = useTranslation()
   const {
     data: category,
@@ -123,7 +131,11 @@ function ProductCategoryEditScreen({
   }
 
   return (
-    <ProductCategoryForm mode={{ type: 'edit', category }} onSuccess={onSuccess} onCancel={onCancel} />
+    <ProductCategoryForm
+      mode={variant === 'edit' ? { type: 'edit', category } : { type: 'duplicate', source: category }}
+      onSuccess={onSuccess}
+      onCancel={onCancel}
+    />
   )
 }
 

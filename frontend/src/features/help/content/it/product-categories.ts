@@ -79,6 +79,7 @@ const guide: HelpGuide = {
             ['Visualizza', 'Scheda in sola lettura, con regole, attributi, gestori account e anteprima del layout.'],
             ['Modifica', 'Apre il form.'],
             ['Layout attributi', "Apre l'editor del layout."],
+            ['Duplica', 'Apre il form di creazione già compilato con i dati della categoria (vedi Duplicare una categoria).'],
             ['Elimina', 'Elimina dopo conferma (vedi i vincoli più avanti).'],
             ['Attività', 'Storico delle modifiche.'],
           ],
@@ -165,6 +166,28 @@ const guide: HelpGuide = {
             'Le cinque regole del ramo si bloccano con il badge Ereditata da "Nome radice".',
             'La Funzione aziendale si blocca se un antenato ne ha una.',
             "Ogni blocco di attributi mostra Eredita dal padre e l'elenco Ereditati dalle categorie antenate.",
+          ],
+        },
+      ],
+    },
+    {
+      id: 'duplicate-category',
+      title: 'Duplicare una categoria',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Nella riga della categoria da copiare scegli Duplica (serve il permesso di creare categorie).',
+            'Si apre il form di creazione con tutti i dati della categoria: il Nome ha il suffisso " (copia)", padre, regole, attributi, gestori account e altri campi sono gli stessi.',
+            'Cambia ciò che serve (almeno il Nome) e clicca Salva.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'Anche il layout attributi della categoria viene copiato. Se nella copia togli un attributo, il campo sparisce dal layout copiato.',
+            "Non vengono copiati le sottocategorie, i prodotti e lo storico: la copia è una categoria nuova e vuota.",
+            "La categoria originale non cambia.",
           ],
         },
       ],

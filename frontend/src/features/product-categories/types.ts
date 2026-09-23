@@ -290,10 +290,12 @@ export interface CreateProductCategoryPayload {
   inherits_manager_labels?: boolean
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
+  /** Row action "duplicate": the source category whose own attribute layouts the server copies onto the new one. */
+  layout_source_id?: number
 }
 
 /** Payload for PATCH /product-categories/{id} (partial update). */
-export type UpdateProductCategoryPayload = Partial<CreateProductCategoryPayload>
+export type UpdateProductCategoryPayload = Partial<Omit<CreateProductCategoryPayload, 'layout_source_id'>>
 
 /**
  * Payload for POST /product-categories/bulk-move (spec 0063): move every
@@ -344,8 +346,11 @@ export interface ReportColumnOption {
 
 /**
  * Discriminated form mode. Create optionally pre-selects a parent (the tree's
- * "add subcategory" action on a given node).
+ * "add subcategory" action on a given node). Duplicate (row action
+ * "duplicate") is a create pre-filled from `source`, which also hands its own
+ * attribute layouts to the copy.
  */
 export type ProductCategoryFormMode =
   | { type: 'create'; parentId: number | null }
   | { type: 'edit'; category: ProductCategoryDetailWithPermissions }
+  | { type: 'duplicate'; source: ProductCategoryDetailWithPermissions }

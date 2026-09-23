@@ -68,6 +68,42 @@ function toManagerLabelsFormValue(labels: ManagerLabels): ManagerLabels {
 
 export type ProductCategoryFormValues = CreateProductCategoryFormValues
 
+/**
+ * Maps every form field shared by edit and duplicate (row action "duplicate")
+ * from a loaded category — `name` excluded, since duplicate appends the copy
+ * suffix — so the two `defaultValues` branches below never drift apart.
+ */
+function mapCategoryToFormValues(
+  category: ProductCategoryDetail,
+  customFieldsDefaultValues: ProductCategoryFormValues['custom_fields'],
+): Omit<ProductCategoryFormValues, 'name'> {
+  return {
+    parent_id: category.parent_id,
+    inherits_product_attributes: category.inherits_product_attributes,
+    inherits_quote_attributes: category.inherits_quote_attributes,
+    inherits_work_order_attributes: category.inherits_work_order_attributes,
+    description: category.description,
+    attributes: category.attributes.map((assignment) => ({
+      attribute_id: assignment.attribute_id,
+      context: assignment.context,
+      is_required: assignment.is_required,
+      sort_order: assignment.sort_order,
+    })),
+    business_function_id: category.business_function_id,
+    requires_quote: category.requires_quote,
+    is_selectable: category.is_selectable,
+    is_reportable: category.is_reportable,
+    report_columns: category.report_columns,
+    management_mode: category.management_mode,
+    single_quote_per_opportunity: category.single_quote_per_opportunity,
+    generates_contract: category.generates_contract,
+    simplified_offer_line: category.simplified_offer_line,
+    manager_labels: toManagerLabelsFormValue(category.manager_labels),
+    inherits_manager_labels: category.inherits_manager_labels,
+    custom_fields: customFieldsDefaultValues,
+  }
+}
+
 interface UseProductCategoryFormArgs {
   mode: ProductCategoryFormMode
   /** Called after a successful create/update so the caller can close + refresh. */
@@ -88,11 +124,15 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
 
   // Custom fields (spec 0021): the single reusable integration — builds the
   // dynamic schema, defaults and 422 paths; `<CustomFieldsSection>` renders.
+  // Duplicate seeds its values from the source, exactly like edit, even
+  // though it submits through the create payload builder.
   const customFields = useCustomFieldsForm(
     'product-categories',
     mode.type === 'edit'
       ? { type: 'edit', customFields: mode.category.custom_fields }
-      : { type: 'create' },
+      : mode.type === 'duplicate'
+        ? { type: 'edit', customFields: mode.source.custom_fields }
+        : { type: 'create' },
   )
 
   const schema = useMemo(
@@ -105,32 +145,15 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
 
   const defaultValues = useMemo<ProductCategoryFormValues>(() => {
     if (mode.type === 'edit') {
-      const { category } = mode
       return {
-        name: category.name,
-        parent_id: category.parent_id,
-        inherits_product_attributes: category.inherits_product_attributes,
-        inherits_quote_attributes: category.inherits_quote_attributes,
-        inherits_work_order_attributes: category.inherits_work_order_attributes,
-        description: category.description,
-        attributes: category.attributes.map((assignment) => ({
-          attribute_id: assignment.attribute_id,
-          context: assignment.context,
-          is_required: assignment.is_required,
-          sort_order: assignment.sort_order,
-        })),
-        business_function_id: category.business_function_id,
-        requires_quote: category.requires_quote,
-        is_selectable: category.is_selectable,
-        is_reportable: category.is_reportable,
-        report_columns: category.report_columns,
-        management_mode: category.management_mode,
-        single_quote_per_opportunity: category.single_quote_per_opportunity,
-        generates_contract: category.generates_contract,
-        simplified_offer_line: category.simplified_offer_line,
-        manager_labels: toManagerLabelsFormValue(category.manager_labels),
-        inherits_manager_labels: category.inherits_manager_labels,
-        custom_fields: customFields.defaultValues,
+        name: mode.category.name,
+        ...mapCategoryToFormValues(mode.category, customFields.defaultValues),
+      }
+    }
+    if (mode.type === 'duplicate') {
+      return {
+        name: mode.source.name + t('common.copySuffix'),
+        ...mapCategoryToFormValues(mode.source, customFields.defaultValues),
       }
     }
     return {
@@ -168,7 +191,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       inherits_manager_labels: true,
       custom_fields: customFields.defaultValues,
     }
-  }, [mode, customFields.defaultValues])
+  }, [mode, customFields.defaultValues, t])
 
   const form = useForm<ProductCategoryFormValues>({
     resolver: zodResolver(schema),
@@ -194,7 +217,11 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         return
       }
 
-      const created = await createProductCategory(buildCreatePayload(values))
+      const created = await createProductCategory({
+        ...buildCreatePayload(values),
+        // The server copies the source's own attribute layouts onto the copy.
+        ...(mode.type === 'duplicate' ? { layout_source_id: mode.source.id } : {}),
+      })
       queryClient.invalidateQueries({ queryKey: productCategoryKeys.tree })
       toast.success(t('productCategories.form.created'))
       onSuccess(created)

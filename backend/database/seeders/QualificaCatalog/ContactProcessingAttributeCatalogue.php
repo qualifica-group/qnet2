@@ -163,12 +163,34 @@ final class ContactProcessingAttributeCatalogue
     ]];
 
     /**
+     * The "Titolo di Studio" pick list, shared with "Qualifica Professionale":
+     * the self-funded offer clones it as a multiselect (user directive
+     * 2026-09-23), one list so the two cannot drift apart.
+     *
+     * @var list<array{value: string, label: string}>
+     */
+    private const array DEGREE_OPTIONS = [
+        ['value' => 'compulsory_education', 'label' => 'Assolvimento obbligo scolastico'],
+        ['value' => 'primary_school', 'label' => 'Licenza Elementare'],
+        ['value' => 'middle_school', 'label' => 'Licenza Media'],
+        ['value' => 'high_school', 'label' => 'Diploma'],
+        ['value' => 'degree', 'label' => 'Laurea'],
+    ];
+
+    /**
+     * "Qualifica Professionale" (user directive 2026-09-23): a multiselect
+     * over the degree list, confined to the "Autofinanziato" offer. Named here
+     * because the layout ROWS key on it.
+     */
+    public const string PROFESSIONAL_QUALIFICATION = 'professional_qualification';
+
+    /**
      * Category name => its own attribute specs, in the client's order.
      * `code` is the English identifier (natural key, `^[a-z0-9_]+$`) except
      * for the adopted legacy rows documented above; `name` is the user-facing
      * label, kept in its original language.
      *
-     * @var array<string, list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>}>>
+     * @var array<string, list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, config?: array<string, mixed>}>>
      */
     public const array ATTRIBUTES = [
         self::TRAINING_CATEGORY => [
@@ -199,13 +221,7 @@ final class ContactProcessingAttributeCatalogue
                 ['value' => 'translation', 'label' => 'Traduzione'],
                 ['value' => 'translation_declaration', 'label' => 'Traduzione + Dichiarazione'],
             ]],
-            ['code' => self::DEGREE_ATTRIBUTE, 'name' => 'Titolo di Studio', 'type' => 'enum', 'options' => [
-                ['value' => 'compulsory_education', 'label' => 'Assolvimento obbligo scolastico'],
-                ['value' => 'primary_school', 'label' => 'Licenza Elementare'],
-                ['value' => 'middle_school', 'label' => 'Licenza Media'],
-                ['value' => 'high_school', 'label' => 'Diploma'],
-                ['value' => 'degree', 'label' => 'Laurea'],
-            ]],
+            ['code' => self::DEGREE_ATTRIBUTE, 'name' => 'Titolo di Studio', 'type' => 'enum', 'options' => self::DEGREE_OPTIONS],
         ],
         self::SELF_FUNDED_CATEGORY => [
             ['code' => 'course_time_preference', 'name' => 'Preferenza Orario Corso', 'type' => 'enum', 'options' => [
@@ -213,6 +229,7 @@ final class ContactProcessingAttributeCatalogue
                 ['value' => 'afternoon', 'label' => 'Pomeriggio'],
             ]],
             ['code' => 'price', 'name' => 'Prezzo €', 'type' => 'decimal'],
+            ['code' => self::PROFESSIONAL_QUALIFICATION, 'name' => 'Qualifica Professionale', 'type' => 'enum', 'options' => self::DEGREE_OPTIONS, 'config' => ['display' => 'multiselect']],
         ],
         self::GOL_CATEGORY => [
             ['code' => 'ora_app_cpi', 'name' => 'Ora App. CPI', 'type' => 'text'],
@@ -256,6 +273,10 @@ final class ContactProcessingAttributeCatalogue
      * stood: RETIRED_ATTRIBUTES filters them out, like the retirement strips
      * them from the persisted blob.
      *
+     * "Autofinanziato" before "Qualifica Professionale" joined it (user
+     * directive 2026-09-23), its Offerta-only `delivery_mode` included: the
+     * Commessa rows never name it, so listing it there is inert.
+     *
      * @var array<string, list<string>>
      */
     public const array PREVIOUS_OWN_ATTRIBUTES = [
@@ -263,6 +284,7 @@ final class ContactProcessingAttributeCatalogue
             'chosen_course', 'data_scelta_cpi', 'data_app_apl',
             'dote_activation_date', 'dote_expiry_date', 'subsidy_type',
         ],
+        self::SELF_FUNDED_CATEGORY => ['course_time_preference', 'price', CourseDataAttributeCatalogue::DELIVERY_MODE],
     ];
 
     /**
@@ -311,6 +333,7 @@ final class ContactProcessingAttributeCatalogue
         ['psp', 'did'],
         ['identity_documents', 'digital_identity'],
         ['foreign_user_documents', self::DEGREE_ATTRIBUTE],
+        [self::PROFESSIONAL_QUALIFICATION],
     ];
 
     /**

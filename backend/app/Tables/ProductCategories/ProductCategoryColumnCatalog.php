@@ -308,6 +308,14 @@ final class ProductCategoryColumnCatalog
                 'permission' => 'product-categories.delete',
             ],
             [
+                'key' => 'duplicate',
+                'label' => 'actions.duplicate',
+                'icon' => 'copy',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'product-categories.create',
+            ],
+            [
                 'key' => 'activity',
                 'label' => 'actions.activity',
                 'icon' => 'history',

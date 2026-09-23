@@ -252,6 +252,12 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
             $allowed[] = 'delete';
         }
 
+        // Gated on the CREATE ability, not a per-row one: the copy is a new
+        // category, submitted through the create path.
+        if (Gate::forUser($actor)->allows('create', ProductCategory::class)) {
+            $allowed[] = 'duplicate';
+        }
+
         if (Gate::forUser($actor)->allows('viewActivity', $row)) {
             $allowed[] = 'activity';
         }

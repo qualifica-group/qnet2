@@ -91,10 +91,11 @@ export function ProductCategoryBusinessFunctionField({
       : null
 
   const ownItem: ForSelectItem | null = useMemo(() => {
-    if (mode.type !== 'edit' || !mode.category.business_function) {
+    const loaded = mode.type === 'edit' ? mode.category : mode.type === 'duplicate' ? mode.source : null
+    if (!loaded?.business_function) {
       return null
     }
-    return { id: mode.category.business_function.id, label: mode.category.business_function.name }
+    return { id: loaded.business_function.id, label: loaded.business_function.name }
   }, [mode])
 
   return (

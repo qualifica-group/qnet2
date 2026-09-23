@@ -89,6 +89,10 @@ class StoreProductCategoryRequest extends FormRequest
             'manager_labels' => ['sometimes', 'nullable', 'array'],
             'manager_labels.*' => ['nullable', 'string', 'max:'.ProductCategory::MANAGER_LABEL_MAX_LENGTH],
             'inherits_manager_labels' => ['sometimes', 'boolean'],
+            // Row action "duplicate": the category whose own attribute layouts
+            // are copied onto the new one. Viewing it is authorized in the
+            // controller; the layouts are re-validated against the copy.
+            'layout_source_id' => ['sometimes', 'nullable', 'integer', 'exists:product_categories,id'],
         ];
     }
 
@@ -109,6 +113,17 @@ class StoreProductCategoryRequest extends FormRequest
     protected function authorizationModel(): ?Model
     {
         return null;
+    }
+
+    /**
+     * The category the duplicate row action copies the attribute layouts
+     * from, or null on a plain create.
+     */
+    public function layoutSource(): ?ProductCategory
+    {
+        $sourceId = $this->validated('layout_source_id');
+
+        return $sourceId === null ? null : ProductCategory::query()->findOrFail((int) $sourceId);
     }
 
     /**

@@ -75,7 +75,10 @@ class QualificaQuoteLayoutSeeder extends Seeder
      * QualificaContactProcessingSeeder owned this context; then the three
      * sections led by the training pair, before the 2026-09-10 directive
      * reversed them; then today's order but with the contact-processing rows
-     * as they stood before "Sede corso" joined them.
+     * as they stood before "Sede corso" joined them; then today's sections as
+     * they stood before "Qualifica Professionale" joined them — the current
+     * ROWS, which a category composed against its previous effective set
+     * (effectiveCodeRevisions) resolves to exactly that blob.
      *
      * The first two entries use PREVIOUS_ROWS as well: they predate that field
      * too, so composing them from the CURRENT rows would look for a blob no
@@ -94,6 +97,11 @@ class QualificaQuoteLayoutSeeder extends Seeder
         ],
         [
             ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::PREVIOUS_ROWS],
+            ['course-data', CourseDataAttributeCatalogue::SECTION_TITLE, CourseDataAttributeCatalogue::ROWS],
+            ['classroom-data', ClassroomAttributeCatalogue::SECTION_TITLE, ClassroomAttributeCatalogue::ROWS],
+        ],
+        [
+            ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::ROWS],
             ['course-data', CourseDataAttributeCatalogue::SECTION_TITLE, CourseDataAttributeCatalogue::ROWS],
             ['classroom-data', ClassroomAttributeCatalogue::SECTION_TITLE, ClassroomAttributeCatalogue::ROWS],
         ],

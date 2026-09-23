@@ -6,6 +6,7 @@ use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\DataObjects\ProductCategories\UpdateProductCategoryData;
 use App\Enums\AttributeContext;
 use App\Models\ProductCategory;
+use App\Services\ProductCategories\AttributeLayoutCopier;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\ProductCategories\CategoryManagerLabelResolver;
 use App\Services\ProductCategories\CategoryTreeBuilder;
@@ -28,9 +29,14 @@ class ProductCategoryService
         private readonly CategoryTreeBuilder $treeBuilder,
         private readonly RootOwnedSettingsWriter $rootOwnedSettings,
         private readonly CategoryManagerLabelResolver $managerLabels,
+        private readonly AttributeLayoutCopier $layoutCopier,
     ) {}
 
-    public function create(CreateProductCategoryData $data): ProductCategory
+    /**
+     * $layoutSource (row action "duplicate") hands its own attribute layouts
+     * to the new category, inside the same transaction.
+     */
+    public function create(CreateProductCategoryData $data, ?ProductCategory $layoutSource = null): ProductCategory
     {
         if ($data->businessFunctionId !== null) {
             $this->assertNoInheritedBusinessFunction($data->parentId);
@@ -38,7 +44,7 @@ class ProductCategoryService
 
         $this->rootOwnedSettings->assertCreateNotOverridden($data);
 
-        return DB::transaction(function () use ($data): ProductCategory {
+        return DB::transaction(function () use ($data, $layoutSource): ProductCategory {
             /** @var ProductCategory $category */
             $category = ProductCategory::create([
                 'name' => $data->name,
@@ -61,6 +67,12 @@ class ProductCategoryService
 
             if ($data->hasAttributes()) {
                 $this->syncAttributes($category, $data->attributes);
+            }
+
+            // After the sync: the copied layouts are validated against the
+            // attributes the new category actually ends up with.
+            if ($layoutSource !== null) {
+                $this->layoutCopier->copy($layoutSource, $category);
             }
 
             // A freshly created category has no descendants yet, so no

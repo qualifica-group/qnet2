@@ -50,16 +50,18 @@ function toInheritedAttributes(
 }
 
 /**
- * The name/type the loaded category's own assignments already carry: the
- * editor labels its rows from here, so an attribute sitting outside the
- * picker's search window still shows its name instead of a bare `#id`.
+ * The name/type the loaded category's own assignments already carry (the
+ * edited one, or the duplicate's source): the editor labels its rows from
+ * here, so an attribute sitting outside the picker's search window still
+ * shows its name instead of a bare `#id`.
  */
 function toKnownAttributes(mode: ProductCategoryFormMode): AttributeCatalogEntry[] {
-  if (mode.type !== 'edit') {
+  const loaded = mode.type === 'edit' ? mode.category : mode.type === 'duplicate' ? mode.source : null
+  if (!loaded) {
     return EMPTY_KNOWN_ATTRIBUTES
   }
 
-  return mode.category.attributes.map((assignment) => ({
+  return loaded.attributes.map((assignment) => ({
     id: assignment.attribute_id,
     code: assignment.code,
     name: assignment.name,

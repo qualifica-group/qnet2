@@ -79,6 +79,7 @@ const guide: HelpGuide = {
             ['View', 'Read-only card, with rules, attributes, account managers and a layout preview.'],
             ['Edit', 'Opens the form.'],
             ['Attribute layout', 'Opens the layout editor.'],
+            ['Duplicate', "Opens the create form pre-filled with the category's data (see Duplicating a category)."],
             ['Delete', 'Deletes after confirmation (see the constraints further below).'],
             ['Activity', 'Change history.'],
           ],
@@ -165,6 +166,28 @@ const guide: HelpGuide = {
             'The branch\'s five rules lock with the Inherited from "Root name" badge.',
             'The Business function locks if an ancestor already has one.',
             'Each attribute block shows Inherit from parent and the Inherited from ancestor categories list.',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'duplicate-category',
+      title: 'Duplicating a category',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'On the row of the category to copy, choose Duplicate (you need the permission to create categories).',
+            'The create form opens with all the category\'s data: the Name gets the " (copy)" suffix, parent, rules, attributes, account managers and other fields are the same.',
+            'Change what you need (at least the Name) and click Save.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            "The category's attribute layout is copied too. If you remove an attribute from the copy, its field disappears from the copied layout.",
+            'Subcategories, products and history are not copied: the copy is a new, empty category.',
+            'The original category does not change.',
           ],
         },
       ],
