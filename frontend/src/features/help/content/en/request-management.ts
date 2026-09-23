@@ -205,7 +205,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Click **Filters** to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). The same filters apply to charts and file.',
+          text: 'Click **Filters** to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). **Reset filters** restores the initial values (current week, every category, site and operator, Everything mode): the change takes effect only after **Apply**. The same filters apply to charts and file.',
         },
         {
           type: 'table',

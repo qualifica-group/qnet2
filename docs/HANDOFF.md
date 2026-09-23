@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MODALE FILTRI CONDIVISA + "AZZERA FILTRI" IN GESTIONE RICHIESTE — NON COMMITTATO (2026-09-23)
+
+- Nuovo `components/ui/filters-sheet.tsx`: `FiltersSheet` (Sheet + header band con icona) + `FiltersSheetFooter`
+  (Azzera filtri / Annulla / Applica, `formId`, `labels`, `onReset`, `disabled`) + `FILTERS_SHEET_BODY_CLASS`.
+  Usato da `TaskBoardFiltersSheet` (commessa) e `RequestReportFiltersDialog` (Gestione Richieste).
+- Reset richieste: `form.reset(requestReportDefaultValues(tutte categorie/operatori/sedi), { keepDefaultValues: true })`
+  sulla BOZZA; si applica solo con "Applica". i18n `requestManagement.report.buttons.reset` (IT/EN).
+- Guida in-app `request-management` (IT/EN) aggiornata. Test: vitest request-management/work-orders/ui/help verdi, tsc -b pulito.
+
 ## COMMESSA: STATO CALCOLATO DAI TASK + BARRA COMPLETAMENTO — NON COMMITTATO (2026-09-23)
 
 Spec 0149 (`docs/specs/0149-work-order-computed-status.xml`). Manuale: guida in-app Commesse resta "in fase di

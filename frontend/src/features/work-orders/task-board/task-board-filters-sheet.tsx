@@ -1,6 +1,6 @@
 /**
  * The single place where the board's filters are edited (user directive
- * 2026-09-22, same surface as Gestione Richieste's `RequestReportFiltersDialog`):
+ * 2026-09-22, the shared `FiltersSheet` Gestione Richieste also uses):
  * the toolbar only shows what is applied, this sheet holds every control.
  * The edits live in a DRAFT until "Applica": `TaskBoardFiltersForm` is mounted
  * only while the sheet is open, so every open starts again from the applied
@@ -9,15 +9,13 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SlidersHorizontal } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { FILTERS_SHEET_BODY_CLASS, FiltersSheet, FiltersSheetFooter } from '@/components/ui/filters-sheet'
 import { Label } from '@/components/ui/label'
 import {
   SearchableMultiSelect,
   type SearchableMultiSelectLabels,
   type SearchableMultiSelectOption,
 } from '@/components/ui/searchable-multi-select'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { TaskBoardSegmentedField } from '@/features/work-orders/task-board/task-board-segmented-field'
 import {
   DEFAULT_TASK_BOARD_FILTERS,
@@ -32,11 +30,6 @@ import type {
 
 const FILTERS_SHEET_DEFAULT_WIDTH = 420
 
-/** Brand-tinted header strip with the icon chip, same band as the Gestione Richieste filter sheet. */
-const HEADER_BAND_CLASS =
-  'flex items-start gap-3 border-b bg-gradient-to-br from-card to-primary/[0.06] px-4 pt-4 pr-12 pb-3.5'
-const HEADER_ICON_CLASS =
-  'flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15'
 const FIELD_LABEL_CLASS = 'text-xs font-medium'
 
 const STATUS_OPTIONS: readonly TaskBoardStatusFilter[] = ['open', 'completed', 'blocked', 'all']
@@ -75,31 +68,26 @@ export function TaskBoardFiltersSheet({ open, onOpenChange, filters, options, on
   const { t } = useTranslation()
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="gap-0" defaultWidth={FILTERS_SHEET_DEFAULT_WIDTH} storageKey="sheet-width:task-board-filters">
-        <div className={HEADER_BAND_CLASS}>
-          <span aria-hidden="true" className={HEADER_ICON_CLASS}>
-            <SlidersHorizontal className="size-4.5" />
-          </span>
-          <SheetHeader className="flex-1 gap-1 p-0">
-            <SheetTitle className="text-sm">{t('workOrders.taskBoard.filters.sheetTitle')}</SheetTitle>
-            <SheetDescription className="text-xs">{t('workOrders.taskBoard.filters.sheetDescription')}</SheetDescription>
-          </SheetHeader>
-        </div>
-
-        {open ? (
-          <TaskBoardFiltersForm
-            initial={filters}
-            options={options}
-            onCancel={() => onOpenChange(false)}
-            onApply={(next) => {
-              onApply(next)
-              onOpenChange(false)
-            }}
-          />
-        ) : null}
-      </SheetContent>
-    </Sheet>
+    <FiltersSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t('workOrders.taskBoard.filters.sheetTitle')}
+      description={t('workOrders.taskBoard.filters.sheetDescription')}
+      defaultWidth={FILTERS_SHEET_DEFAULT_WIDTH}
+      storageKey="sheet-width:task-board-filters"
+    >
+      {open ? (
+        <TaskBoardFiltersForm
+          initial={filters}
+          options={options}
+          onCancel={() => onOpenChange(false)}
+          onApply={(next) => {
+            onApply(next)
+            onOpenChange(false)
+          }}
+        />
+      ) : null}
+    </FiltersSheet>
   )
 }
 
@@ -174,7 +162,7 @@ function TaskBoardFiltersForm({ initial, options, onCancel, onApply }: TaskBoard
     <>
       <form
         id="task-board-filters-form"
-        className="flex flex-1 flex-col gap-4 overflow-y-auto bg-surface p-4"
+        className={FILTERS_SHEET_BODY_CLASS}
         onSubmit={(event) => {
           event.preventDefault()
           onApply(draft)
@@ -219,23 +207,16 @@ function TaskBoardFiltersForm({ initial, options, onCancel, onApply }: TaskBoard
         ))}
       </form>
 
-      <div className="flex flex-wrap items-center gap-2 border-t bg-gradient-to-t from-primary/[0.05] to-transparent px-4 py-3">
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="mr-auto"
-          onClick={() => setDraft({ ...DEFAULT_TASK_BOARD_FILTERS, search: draft.search })}
-        >
-          {t('workOrders.taskBoard.filters.reset')}
-        </Button>
-        <Button type="button" size="sm" variant="outline" className="bg-card" onClick={onCancel}>
-          {t('common.cancel')}
-        </Button>
-        <Button type="submit" form="task-board-filters-form" size="sm" className="min-w-24 shadow-sm shadow-primary/20">
-          {t('workOrders.taskBoard.filters.apply')}
-        </Button>
-      </div>
+      <FiltersSheetFooter
+        formId="task-board-filters-form"
+        labels={{
+          reset: t('workOrders.taskBoard.filters.reset'),
+          cancel: t('common.cancel'),
+          apply: t('workOrders.taskBoard.filters.apply'),
+        }}
+        onReset={() => setDraft({ ...DEFAULT_TASK_BOARD_FILTERS, search: draft.search })}
+        onCancel={onCancel}
+      />
     </>
   )
 }

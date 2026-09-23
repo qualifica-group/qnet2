@@ -2,21 +2,14 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { SlidersHorizontal } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { FILTERS_SHEET_BODY_CLASS, FiltersSheet, FiltersSheetFooter } from '@/components/ui/filters-sheet'
 import { Form } from '@/components/ui/form'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
 import { RequestReportFilters } from '@/features/request-management/request-report-filters'
 import {
   buildRequestReportSchema,
   categoriesAreBlocked,
   isCategoriesEmpty,
+  requestReportDefaultValues,
   type RequestReportFormValues,
 } from '@/features/request-management/request-report-schema'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
@@ -25,12 +18,6 @@ import { useRequestReportSites } from '@/features/request-management/use-request
 
 /** Narrow form: the sheet opens at this width until the user resizes it (mirrors `ExportDialog`). */
 const REPORT_SHEET_DEFAULT_WIDTH = 440
-
-/** Brand-tinted header strip with the icon chip, same band as `AssignManagerGa1Dialog`. */
-const HEADER_BAND_CLASS =
-  'flex items-start gap-3 border-b bg-gradient-to-br from-card to-primary/[0.06] px-4 pt-4 pr-12 pb-3.5'
-const HEADER_ICON_CLASS =
-  'flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15'
 
 /**
  * The two date fields share one row; every later group (branch card,
@@ -112,63 +99,66 @@ export function RequestReportFiltersDialog({
     onOpenChange(false)
   }
 
+  // Same seeding as a first visit (current week, every branch/operator/site),
+  // kept in the DRAFT: nothing reaches the charts until "Applica".
+  // `keepDefaultValues` keeps `isDirty` measured against the applied filters,
+  // so the open-sync effect above cannot overwrite the reset.
+  const resetFilters = () => {
+    form.reset(
+      requestReportDefaultValues(
+        (categories ?? []).map((category) => category.key),
+        (operators ?? []).map((operator) => operator.key),
+        (sites ?? []).map((site) => site.key),
+      ),
+      { keepDefaultValues: true },
+    )
+  }
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        className="gap-0"
-        defaultWidth={REPORT_SHEET_DEFAULT_WIDTH}
-        storageKey="sheet-width:request-management-report"
-      >
-        <div className={HEADER_BAND_CLASS}>
-          <span aria-hidden="true" className={HEADER_ICON_CLASS}>
-            <SlidersHorizontal className="size-4.5" />
-          </span>
-          <SheetHeader className="flex-1 gap-1 p-0">
-            <SheetTitle className="text-sm">{t('requestManagement.report.title')}</SheetTitle>
-            <SheetDescription className="text-xs">{t('requestManagement.report.description')}</SheetDescription>
-          </SheetHeader>
-        </div>
+    <FiltersSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t('requestManagement.report.title')}
+      description={t('requestManagement.report.description')}
+      defaultWidth={REPORT_SHEET_DEFAULT_WIDTH}
+      storageKey="sheet-width:request-management-report"
+    >
+      <Form {...form}>
+        <form
+          id="request-report-form"
+          className={FILTERS_SHEET_BODY_CLASS}
+          onSubmit={(event) => void form.handleSubmit(applyFilters)(event)}
+        >
+          <div className={FILTERS_GRID_CLASS}>
+            <RequestReportFilters
+              control={form.control}
+              categories={categories}
+              categoriesLoading={categoriesQuery.isLoading}
+              categoriesError={categoriesQuery.isError}
+              categoriesEmpty={categoriesEmpty}
+              operators={operators}
+              operatorsLoading={operatorsQuery.isLoading}
+              operatorsError={operatorsQuery.isError}
+              sites={sites}
+              sitesLoading={sitesQuery.isLoading}
+              sitesError={sitesQuery.isError}
+              disabled={categoriesBlocked}
+            />
+          </div>
+        </form>
+      </Form>
 
-        <Form {...form}>
-          <form
-            id="request-report-form"
-            className="flex flex-1 flex-col gap-4 overflow-y-auto bg-surface p-4"
-            onSubmit={(event) => void form.handleSubmit(applyFilters)(event)}
-          >
-            <div className={FILTERS_GRID_CLASS}>
-              <RequestReportFilters
-                control={form.control}
-                categories={categories}
-                categoriesLoading={categoriesQuery.isLoading}
-                categoriesError={categoriesQuery.isError}
-                categoriesEmpty={categoriesEmpty}
-                operators={operators}
-                operatorsLoading={operatorsQuery.isLoading}
-                operatorsError={operatorsQuery.isError}
-                sites={sites}
-                sitesLoading={sitesQuery.isLoading}
-                sitesError={sitesQuery.isError}
-                disabled={categoriesBlocked}
-              />
-            </div>
-          </form>
-        </Form>
-
-        <div className="flex flex-wrap justify-end gap-2 border-t bg-gradient-to-t from-primary/[0.05] to-transparent px-4 py-3">
-          <Button type="button" size="sm" variant="outline" onClick={() => onOpenChange(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            type="submit"
-            form="request-report-form"
-            size="sm"
-            disabled={categoriesBlocked}
-            className="min-w-24 shadow-sm shadow-primary/20 transition-all hover:shadow-md hover:shadow-primary/25 motion-safe:active:translate-y-px"
-          >
-            {t('requestManagement.report.buttons.apply')}
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+      <FiltersSheetFooter
+        formId="request-report-form"
+        labels={{
+          reset: t('requestManagement.report.buttons.reset'),
+          cancel: t('common.cancel'),
+          apply: t('requestManagement.report.buttons.apply'),
+        }}
+        onReset={resetFilters}
+        onCancel={() => onOpenChange(false)}
+        disabled={categoriesBlocked}
+      />
+    </FiltersSheet>
   )
 }

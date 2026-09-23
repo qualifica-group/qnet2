@@ -205,7 +205,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Clicca **Filtri** per aprire il pannello **Filtri report e statistiche**: modifica i valori e premi **Applica** (o **Annulla**). Gli stessi filtri valgono per grafici e file.',
+          text: 'Clicca **Filtri** per aprire il pannello **Filtri report e statistiche**: modifica i valori e premi **Applica** (o **Annulla**). **Azzera filtri** riporta i valori iniziali (settimana corrente, tutte le categorie, sedi e operatori, modalità Tutto): la modifica vale solo dopo **Applica**. Gli stessi filtri valgono per grafici e file.',
         },
         {
           type: 'table',

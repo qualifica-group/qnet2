@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { RequestReportFiltersDialog } from '@/features/request-management/request-report-filters-dialog'
-import { requestReportDefaultValues } from '@/features/request-management/request-report-schema'
+import { currentWeekReportRange, requestReportDefaultValues } from '@/features/request-management/request-report-schema'
 import type { RequestReportCategory } from '@/features/request-management/report-api'
 
 /**
@@ -131,6 +131,41 @@ describe('RequestReportFiltersDialog', () => {
       }),
     )
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('resets the draft to the first-visit defaults, applying nothing until "Apply"', async () => {
+    const onOpenChange = vi.fn()
+    const { onApply } = renderDialog(onOpenChange, {
+      date_from: '2026-03-02',
+      date_to: '2026-03-06',
+      category_keys: ['consulenza'],
+      row_mode: 'total_only',
+      operator_keys: [],
+      site_keys: [],
+    })
+    await waitForCategories()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
+
+    const week = currentWeekReportRange()
+    await waitFor(() => expect(screen.getByLabelText(/^From/)).toHaveValue(week.date_from))
+    expect(screen.getByLabelText(/^To/)).toHaveValue(week.date_to)
+    expect(screen.getByRole('checkbox', { name: 'GOL' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Everything' })).toHaveAttribute('aria-checked', 'true')
+    expect(onApply).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+
+    await waitFor(() =>
+      expect(onApply).toHaveBeenCalledWith({
+        ...week,
+        category_keys: ['gol', 'consulenza'],
+        row_mode: 'all',
+        operator_keys: [],
+        site_keys: [],
+      }),
+    )
   })
 
   it('blocks apply and shows an accessible error when date_to precedes date_from (AC-043/AC-044)', async () => {

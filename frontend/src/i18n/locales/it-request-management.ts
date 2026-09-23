@@ -353,6 +353,8 @@ export const requestManagement = {
       processing: 'Generazione…',
       // Applica i filtri ai grafici e chiude la modale (direttiva utente 2026-09-08).
       apply: 'Applica',
+      // Riporta la bozza ai valori iniziali (settimana corrente, tutto selezionato); si applica con "Applica".
+      reset: 'Azzera filtri',
     },
     errors: {
       dateFromRequired: 'Seleziona la data di inizio.',

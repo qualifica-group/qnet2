@@ -349,6 +349,7 @@ export const requestManagement = {
       processing: 'Generating…',
       // Applies the filters to the charts and closes the sheet (user directive 2026-09-08).
       apply: 'Apply',
+      reset: 'Reset filters',
     },
     errors: {
       dateFromRequired: 'Select the start date.',
