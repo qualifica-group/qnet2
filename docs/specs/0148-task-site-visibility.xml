@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0148-task-site-visibility" status="implemented" owner="utente" date="2026-09-23">
+
+  <goal>
+    Tre livelli di visibilita' dei Task, assegnabili dal ruolo: tutti i task, i task della propria sede
+    (in base alle sedi degli assegnatari), solo i propri task. Default: solo i propri.
+  </goal>
+
+  <context>
+    - Regola unica: `App\Services\Tasks\TaskVisibilityScope` (spec 0101 D-9), forma query + forma record.
+    - Livello "tutti" gia' esistente: `tasks.viewAll`. Default gia' esistente: creatore, richiedente,
+      assegnatario, osservatore.
+    - Precedente del livello sede: `request-management.viewSite` (spec 0105, `RequestManagementScope`).
+    - Sedi utente: pivot `employment_profile_operational_site` (fisica + remote, spec 0103).
+  </context>
+
+  <decisions>
+    D-1  (utente) "Propri task" = la regola attuale (creatore, richiedente, assegnatario, osservatore).
+    D-2  Nuovo permesso `tasks.viewSite` (stesso nome del precedente di Gestione Richieste). Nessun ruolo lo
+         riceve di default: il default resta "solo i propri".
+    D-3  (utente) Sedi fisiche E remote, sia per chi guarda sia per gli assegnatari: basta una sede in comune
+         con almeno un assegnatario. Task senza assegnatari o utente senza sedi: il livello non si applica.
+    D-4  Il livello sede e' in UNIONE con i propri task, mai in sostituzione.
+    D-5  (utente) Solo lettura: la modifica resta alla matrice ruolo-sul-record (`TaskAbilityResolver`) e a
+         `tasks.manageAll`, come oggi per `viewAll`.
+    D-6  Le menzioni nelle note di un task includono i titolari di `viewSite` che condividono una sede con un
+         assegnatario (parita' lettura/menzione, spec 0101 D-5 di TaskNotable).
+  </decisions>
+
+  <contract>
+    Nessun endpoint nuovo. Permesso: `tasks.viewSite` (TaskPolicy::abilities, `permissions:sync`).
+    Tutti i consumatori di TaskVisibilityScope (tabella, export, show, statistiche, for-select, board commessa,
+    segnatempo, note) ereditano il livello senza modifiche.
+  </contract>
+
+  <acceptance>
+    AC-001 Con `viewSite` l'utente vede (griglia e dettaglio) i task con un assegnatario che condivide una sua sede.
+    AC-002 Sede fisica o remota, su entrambi i lati.
+    AC-003 Senza `viewSite` condividere la sede non concede nulla.
+    AC-004 Task di altre sedi o senza assegnatari: 403 / assenti; i propri task restano visibili.
+    AC-005 Solo lettura: update/delete negati.
+    AC-006 Forma in memoria e forma query concordano.
+    AC-007 Menzionabilita' coerente con la lettura.
+    Test: `backend/tests/Feature/Tasks/TaskSiteVisibilityTest.php`.
+  </acceptance>
+</spec>

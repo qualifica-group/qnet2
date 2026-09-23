@@ -3,7 +3,12 @@ import type { ReactNode } from 'react'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { useBulkBoardTaskAction, useMoveBoardTask } from '@/features/work-orders/task-board/use-task-board-mutations'
+import { workOrderDetailQueryKey } from '@/features/work-orders/api'
+import {
+  useBulkBoardTaskAction,
+  useInvalidateTaskBoard,
+  useMoveBoardTask,
+} from '@/features/work-orders/task-board/use-task-board-mutations'
 import { taskBoardKeys } from '@/features/work-orders/task-board/query-keys'
 import { boardTask, taskBoardPayload } from '@/features/work-orders/task-board/task-board-fixtures'
 
@@ -115,5 +120,31 @@ describe('useBulkBoardTaskAction', () => {
     result.current.mutate({ action: 'uncomplete', task_ids: [1] })
 
     await waitFor(() => expect(client.getQueryState(taskBoardKeys.board(9))?.isInvalidated).toBe(true))
+  })
+})
+
+/** Spec 0149 AC-017: a task change can move the commessa's computed status, so the detail refreshes with the board. */
+describe('useInvalidateTaskBoard', () => {
+  it('invalidates both the board and the work order detail', async () => {
+    const { client, Wrapper } = wrapper()
+    client.setQueryData(taskBoardKeys.board(9), taskBoardPayload())
+    client.setQueryData(workOrderDetailQueryKey(9), { id: 9 })
+
+    const { result } = renderHook(() => useInvalidateTaskBoard(9), { wrapper: Wrapper })
+    await result.current()
+
+    expect(client.getQueryState(taskBoardKeys.board(9))?.isInvalidated).toBe(true)
+    expect(client.getQueryState(workOrderDetailQueryKey(9))?.isInvalidated).toBe(true)
+  })
+
+  it('is what a bulk action runs on success', async () => {
+    bulkBoardTaskActionMock.mockResolvedValue({ results: [], succeeded: 0, failed: 0 })
+    const { client, Wrapper } = wrapper()
+    client.setQueryData(workOrderDetailQueryKey(9), { id: 9 })
+
+    const { result } = renderHook(() => useBulkBoardTaskAction(9), { wrapper: Wrapper })
+    result.current.mutate({ action: 'uncomplete', task_ids: [1] })
+
+    await waitFor(() => expect(client.getQueryState(workOrderDetailQueryKey(9))?.isInvalidated).toBe(true))
   })
 })

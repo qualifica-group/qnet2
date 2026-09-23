@@ -11,7 +11,20 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trovano in **Task › Task**. Vedi un task se lo hai creato o richiesto, se ne sei assegnatario o osservatore, oppure se hai il permesso di vedere tutti i task.',
+          text: 'Si trovano in **Task › Task**. Quali task vedi dipende dai permessi del tuo ruolo:',
+        },
+        {
+          type: 'table',
+          headers: ['Permesso', 'Cosa vedi'],
+          rows: [
+            ['Nessuno (predefinito)', 'Solo i tuoi task: quelli che hai creato o richiesto, o di cui sei assegnatario o osservatore.'],
+            ['**Visualizza per sede**', 'I tuoi task e quelli in cui almeno un assegnatario lavora in una delle tue sedi (fisica o remota).'],
+            ['**Visualizza tutti**', 'Tutti i task.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Vedere un task della tua sede non ti permette di modificarlo: per farlo devi averci un ruolo (creatore, richiedente, assegnatario) o il permesso **Gestisci tutto**.',
         },
         {
           type: 'tip',

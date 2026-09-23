@@ -66,11 +66,12 @@ if (! function_exists('taskActorWith')) {
 // AC-036 — the catalogue
 // ---------------------------------------------------------------------------
 
-it('AC-036: permissions:sync creates tasks.requestUpdate, and tasks.* is 15', function () {
+// tasks.* is 16 since spec 0148 added `viewSite`.
+it('AC-036: permissions:sync creates tasks.requestUpdate, and tasks.* is 16', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
 
     expect(Permission::query()->where('name', 'tasks.requestUpdate')->exists())->toBeTrue()
-        ->and(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(15);
+        ->and(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(16);
 });
 
 // ---------------------------------------------------------------------------

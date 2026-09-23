@@ -57,3 +57,16 @@ describe('workOrderColumnRenderers date columns', () => {
     expect(screen.queryByText('—')).not.toBeInTheDocument()
   })
 })
+
+describe('workOrderColumnRenderers.completion_percentage (spec 0149 AC-015)', () => {
+  it('renders the toned bar with its percentage', () => {
+    renderCell('completion_percentage', 75)
+    expect(screen.getByText('75%')).toHaveClass('text-primary')
+    expect(screen.getByRole('progressbar', { name: 'Completion' })).toBeInTheDocument()
+  })
+
+  it('renders a non-numeric value as an empty cell', () => {
+    renderCell('completion_percentage', null)
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
+})

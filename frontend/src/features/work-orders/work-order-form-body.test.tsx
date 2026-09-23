@@ -102,6 +102,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     title: 'Installazione impianto',
     type: 'processing',
     status: { value: 'open', is_force_closed: false },
+    completion_percentage: 0,
     is_force_closed: false,
     force_close_reason: null,
     open_tasks_count: 0,

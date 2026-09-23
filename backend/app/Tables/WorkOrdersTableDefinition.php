@@ -26,9 +26,10 @@ use Illuminate\Support\Facades\Gate;
  * generic engine. `contract_number`/`quote` are DERIVED through the `quote`
  * relation (D-2: `quotes.code`/`quotes.title`, never copied), `supervisors`
  * is a to-many derived through the `work_order_supervisor` pivot (spec 0096,
- * D-7) and `status` is the ONE computed column (D-3) — both delegated to WorkOrderDerivedColumns
- * (file-size split, engineering.md §6), so the `status` badge (mapRow) and
- * its `set` filter can never disagree (AC-034).
+ * D-7) and `status`/`completion_percentage` are COMPUTED from the root tasks
+ * (spec 0149) by WorkOrderStatusResolver — the `status` filter through
+ * WorkOrderDerivedColumns (file-size split, engineering.md §6), the
+ * completion sort directly — so badge, filter and sort can never disagree.
  *
  * baseQuery() is scoped by WorkOrderVisibilityScope (user directive
  * 2026-09-02): without `work-orders.viewAll` the actor lists only the
@@ -38,6 +39,9 @@ use Illuminate\Support\Facades\Gate;
  */
 class WorkOrdersTableDefinition extends AbstractTableDefinition
 {
+    /** Computed from the root tasks (spec 0149), sorted by WorkOrderStatusResolver. */
+    private const string COMPLETION_PERCENTAGE_COLUMN = 'completion_percentage';
+
     public function __construct(
         private readonly WorkOrderService $service,
         private readonly WorkOrderStatusResolver $statusResolver,
@@ -73,8 +77,10 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // WorkOrderVisibilityScope::isVisibleTo() answers actionsFor()'s
         // per-row Gate calls in memory instead of querying (user
         // directive 2026-09-02).
+        // The root-task aggregates feed `status`/`completion_percentage`
+        // (spec 0149, D-8) without one query per row.
         return WorkOrderVisibilityScope::scopeToActor(
-            WorkOrder::query()->with(['quote', 'supervisors.avatar', 'participants']),
+            $this->statusResolver->withProgress(WorkOrder::query()->with(['quote', 'supervisors.avatar', 'participants'])),
             Auth::user(),
         );
     }
@@ -162,6 +168,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     public function mapRow(User $actor, Model $row): array
     {
         /** @var WorkOrder $row */
+        $progress = $this->statusResolver->progress($row);
+
         return [
             'id' => $row->id,
             'code' => $row->code,
@@ -173,7 +181,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'supervisors' => $row->supervisors->map(fn (User $user): array => $this->userSummary($user))->all(),
             'callback_date' => $row->callback_date,
             'is_force_closed' => $row->is_force_closed,
-            'status' => $this->statusResolver->resolve($row)->value,
+            'status' => $progress->status->value,
+            'completion_percentage' => $progress->completionPercentage,
             'created_at' => $row->created_at,
             'updated_at' => $row->updated_at,
         ];
@@ -246,6 +255,12 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === self::COMPLETION_PERCENTAGE_COLUMN) {
+            $this->statusResolver->applyCompletionSort($query, $direction);
+
+            return true;
+        }
+
         return $this->derivedColumns->applySort($query, $columnId, $direction);
     }
 

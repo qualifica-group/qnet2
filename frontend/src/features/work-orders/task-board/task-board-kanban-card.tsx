@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
+import { openTaskOnCardClick } from '@/features/work-orders/task-board/task-board-card-click'
 import { TaskBoardEndDate } from '@/features/work-orders/task-board/task-board-end-date'
 import { isClosedTask } from '@/features/work-orders/task-board/task-board-metrics'
 import { TaskBoardCompletion, TaskBoardHours, TaskBoardPeople } from '@/features/work-orders/task-board/task-board-task-meta'
@@ -52,8 +53,9 @@ export function TaskBoardKanbanCard({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
+      onClick={(event) => openTaskOnCardClick(event, () => onOpenTask(task.id))}
       className={cn(
-        'flex flex-col gap-2 rounded-lg bg-card p-3 shadow-sm ring-1 ring-border/70 transition-shadow hover:shadow-md',
+        'flex cursor-pointer flex-col gap-2 rounded-lg bg-card p-3 shadow-sm ring-1 ring-border/70 transition-shadow hover:shadow-md',
         isDragging && 'z-10 rotate-2 opacity-90 shadow-md',
       )}
     >

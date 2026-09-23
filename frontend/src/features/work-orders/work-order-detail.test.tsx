@@ -63,6 +63,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     title: 'Installazione impianto',
     type: 'processing',
     status: { value: 'open', is_force_closed: false },
+    completion_percentage: 0,
     is_force_closed: false,
     force_close_reason: null,
     open_tasks_count: 0,
@@ -161,6 +162,24 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     expect(screen.getByText('Force close reason')).toBeInTheDocument()
     expect(screen.getByText('Cliente insolvente')).toBeInTheDocument()
     expect(screen.getAllByText('Closed').length).toBeGreaterThan(0)
+  })
+})
+
+describe('WorkOrderDetailView — computed status and completion (spec 0149 AC-014)', () => {
+  it.each([
+    ['in_progress', 'In progress'],
+    ['completed', 'Completed'],
+  ] as const)('badges the %s status with its localized label', (value, label) => {
+    render(<WorkOrderDetailView workOrder={workOrder({ status: { value, is_force_closed: false } })} />)
+
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0)
+  })
+
+  it('shows the completion bar with its percentage in the KPI strip', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ completion_percentage: 40 })} />)
+
+    expect(screen.getByRole('progressbar', { name: 'Completion' })).toBeInTheDocument()
+    expect(screen.getByText('40%')).toHaveClass('text-warning')
   })
 })
 

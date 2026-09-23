@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +14,7 @@ import {
   reopenWorkOrderStage,
   reorderWorkOrderStages,
 } from '@/features/work-orders/task-board/api'
+import { workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { taskBoardKeys } from '@/features/work-orders/task-board/query-keys'
 import { applyBoardMove } from '@/features/work-orders/task-board/task-board-move'
 import type {
@@ -24,14 +26,29 @@ import type {
   WorkOrderStage,
 } from '@/features/work-orders/task-board/types'
 
-/** Every fase write (rename/delete/reorder/close/reopen) refreshes both cached lists: the board's own `stages` slice and the standalone list the task form's "Fase" select reads. */
+/**
+ * Refreshes the board AND the commessa detail: a task change can move the
+ * commessa's computed status and completion (spec 0149 AC-017), which the
+ * detail header reads from its own cached query.
+ */
+export function useInvalidateTaskBoard(workOrderId: number) {
+  const queryClient = useQueryClient()
+  return useCallback(
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: taskBoardKeys.board(workOrderId) }),
+        queryClient.invalidateQueries({ queryKey: workOrderDetailQueryKey(workOrderId) }),
+      ]),
+    [queryClient, workOrderId],
+  )
+}
+
+/** Every fase write (rename/delete/reorder/close/reopen) refreshes the board (and the commessa detail) plus the standalone list the task form's "Fase" select reads. */
 function useInvalidateStages(workOrderId: number) {
   const queryClient = useQueryClient()
+  const invalidateBoard = useInvalidateTaskBoard(workOrderId)
   return () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: taskBoardKeys.board(workOrderId) }),
-      queryClient.invalidateQueries({ queryKey: taskBoardKeys.stages(workOrderId) }),
-    ])
+    Promise.all([invalidateBoard(), queryClient.invalidateQueries({ queryKey: taskBoardKeys.stages(workOrderId) })])
 }
 
 export function useCreateWorkOrderStage(workOrderId: number) {
@@ -149,9 +166,9 @@ export function useMoveBoardTask(workOrderId: number) {
  * the applied changes (status, assignees, dates...) come back on refetch.
  */
 export function useBulkBoardTaskAction(workOrderId: number) {
-  const queryClient = useQueryClient()
+  const invalidateBoard = useInvalidateTaskBoard(workOrderId)
   return useMutation<BulkTaskResult, AxiosError<ApiErrorResponse>, BulkTaskPayload>({
     mutationFn: (payload) => bulkBoardTaskAction(workOrderId, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: taskBoardKeys.board(workOrderId) }),
+    onSuccess: invalidateBoard,
   })
 }

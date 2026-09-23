@@ -11,7 +11,20 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'They live in **Task › Tasks**. You see a task if you created or requested it, if you are an assignee or a watcher, or if you have permission to see every task.',
+          text: 'They live in **Task › Tasks**. Which tasks you see depends on your role permissions:',
+        },
+        {
+          type: 'table',
+          headers: ['Permission', 'What you see'],
+          rows: [
+            ['None (default)', 'Only your own tasks: the ones you created or requested, or where you are an assignee or a watcher.'],
+            ['**View by site**', 'Your tasks plus those where at least one assignee works at one of your sites (physical or remote).'],
+            ['**View all**', 'Every task.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Seeing a task of your site does not let you edit it: for that you need a role on it (creator, requester, assignee) or the **Manage all** permission.',
         },
         {
           type: 'tip',

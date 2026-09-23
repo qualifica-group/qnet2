@@ -77,7 +77,8 @@ class TasksTableDefinition extends AbstractTableDefinition
         // of the derived percentage (TaskStatusResolver::EAGER_LOADS).
         // `assignees`/`watchers` carry the two to-many cells AND let
         // TaskVisibilityScope::isVisibleTo() answer actionsFor()'s per-row
-        // Gate calls in memory instead of querying. `withCount('subtasks')`
+        // Gate calls in memory instead of querying; the assignees' Sedi do
+        // the same for the `viewSite` tier (spec 0148). `withCount('subtasks')`
         // resolves the `has_subtasks` cell in the SAME query rather than one
         // EXISTS per row, and deliberately counts children the actor may not
         // see — the same unscoped fact the delete guard asserts on (D-8a).
@@ -93,7 +94,7 @@ class TasksTableDefinition extends AbstractTableDefinition
                 'workOrder',
                 'requester',
                 'creator',
-                'assignees',
+                'assignees.employment.operationalSites',
                 'watchers',
             ]),
             Auth::user(),

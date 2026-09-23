@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
+import { openTaskOnCardClick } from '@/features/work-orders/task-board/task-board-card-click'
 import { TaskBoardRowContent } from '@/features/work-orders/task-board/task-board-row-content'
 import type { BoardTaskNode } from '@/features/work-orders/task-board/task-board-filters'
 
@@ -25,7 +26,10 @@ export function TaskBoardSubtaskRow({ node, today, onOpenTask, depth }: TaskBoar
 
   return (
     <li className="flex flex-col" style={{ marginLeft: `${Math.min(depth - 1, 3) * 1.25}rem` }}>
-      <div className="flex items-start gap-2 rounded-md py-2 pr-2 transition-colors hover:bg-muted/30">
+      <div
+        onClick={(event) => openTaskOnCardClick(event, () => onOpenTask(task.id))}
+        className="flex cursor-pointer items-start gap-2 rounded-md py-2 pr-2 transition-colors hover:bg-muted/30"
+      >
         {children.length > 0 ? (
           <button
             type="button"

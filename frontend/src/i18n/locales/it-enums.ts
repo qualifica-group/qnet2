@@ -116,10 +116,12 @@ export const enums = {
     processing: 'Lavorazione',
     project: 'Progetto',
   },
-  // Stato commessa calcolato (spec 0093 D-3), colonna badge `status` della
-  // griglia Commesse — nessuna colonna DB, deriva da `is_force_closed`.
+  // Stato commessa calcolato (spec 0149) dai task radice e da `is_force_closed`,
+  // colonna badge `status` della griglia Commesse — nessuna colonna DB.
   work_order_status: {
     open: 'Aperta',
+    in_progress: 'In lavorazione',
+    completed: 'Terminata',
     closed: 'Chiusa',
   },
   // Filtri avanzati della tabella Task (spec 0147), come nella board della commessa.

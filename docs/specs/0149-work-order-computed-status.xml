@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0149-work-order-computed-status" status="draft" owner="utente" date="2026-09-23">
+
+  <goal>
+    Lo stato della commessa si calcola dall'avanzamento dei suoi task (Aperta, In lavorazione, Terminata),
+    con la chiusura forzata come quarto stato che prevale. Accanto allo stato compare una barra di completamento,
+    con la stessa metrica della board dei task, nell'header del dettaglio e nella tabella Commesse.
+  </goal>
+
+  <context>
+    - Stato gia' calcolato in lettura, mai una colonna: `App\Services\WorkOrders\WorkOrderStatusResolver` (spec 0093 D-3),
+      oggi `open`/`closed` derivato solo da `work_orders.is_force_closed`. Il docblock lo indica come punto di estensione
+      per la regola sull'avanzamento; `EAGER_LOADS` oggi e' vuoto.
+    - Enum `App\Enums\WorkOrderStatus` (HasMeta, `#[Label]`), registrato in `config('config.form_enums')` e usato da
+      `WorkOrdersTableDefinition::badgesFor()/enumKeyFor()` (`work_order_status`).
+    - Colonna griglia `status` in `App\Tables\WorkOrders\WorkOrderColumnCatalog` (badge, set, `sortable: false`);
+      filtro e valori distinti in `App\Tables\WorkOrders\WorkOrderDerivedColumns` (304 righe: oltre il limite soft).
+    - Dettaglio: `App\Http\Resources\WorkOrderResource` emette `status: { value, is_force_closed }` e `open_tasks_count`.
+    - Task: `tasks.work_order_id`, `tasks.parent_task_id` (radice = NULL), `tasks.task_status_id` -> `task_statuses`
+      con `group` (`App\Enums\TaskStatusGroup`: open, pending, in_validation, closed_positive, closed_negative) e
+      `completion_percentage` (int 0..100, configurabile). Nessun soft delete su `tasks`.
+    - La chiusura forzata (`WorkOrderTaskForceCloser`) porta i task aperti nello stato di sistema `ClosedNegative`.
+    - Frontend: barra KPI della board = `completionPercentage()` in
+      `frontend/src/features/work-orders/task-board/task-board-metrics.ts` (media su TUTTE le radici, sia globale sia per
+      fase), colore via `completionTone()` (`task-board-completion-tone.ts`). Header: `work-order-detail-header.tsx`
+      (`WorkOrderStatusBadge`, `WorkOrderDetailStats`). Renderer: `column-renderers.tsx`. Chiave del dettaglio:
+      `workOrderDetailQueryKey(id)` (`api.ts`). Punti di invalidazione della board: `use-task-board-mutations.ts`
+      (`useInvalidateStages`, `useBulkBoardTaskAction`) e `work-order-task-board.tsx` (`invalidateBoard`, `onSaved`).
+  </context>
+
+  <decisions>
+    D-1  (utente) Quattro stati: `open` (Aperta), `in_progress` (In lavorazione), `completed` (Terminata),
+         `closed` (Chiusa). Se `is_force_closed` e' vero lo stato e' `closed`, qualunque sia l'avanzamento.
+    D-2  (utente) Perimetro: solo i task radice (`parent_task_id IS NULL`) con `work_order_id` = la commessa, TUTTI,
+         senza `TaskVisibilityScope` (come `open_tasks_count`). I sotto-task non contano.
+    D-3  (utente) "Completato" = il suo stato ha `group = closed_positive`. Gli annullati (`closed_negative`) sono
+         ESCLUSI dal conteggio: non contano ne' come completati ne' come da completare.
+    D-4  Regola (task "contabili" = radici non annullate):
+           completati = 0                            -> open   (include: nessun task, tutti annullati - utente)
+           completati >= 1 e ne resta uno non chiuso -> in_progress
+           completati >= 1 e nessuno non chiuso      -> completed
+    D-5  (utente) Completamento = media arrotondata di `task_statuses.completion_percentage` sulle radici
+         NON annullate; 0 se non ce ne sono. La stessa esclusione si applica alla board (`completionPercentage()` in
+         `task-board-metrics.ts`, quindi KPI globale E barra per fase), cosi' commessa e board mostrano lo stesso numero.
+    D-6  Il completamento resta visibile anche su una commessa `closed` (e' un dato reale, non uno stato).
+    D-7  Unica fonte: `WorkOrderStatusResolver` calcola badge, filtro `status`, valore e ordinamento del completamento,
+         cosi' i quattro non possono divergere (stessa invariante di AC-034 spec 0093).
+    D-8  Niente N+1: la tabella carica i tre aggregati (completati, non chiusi, media) con subquery correlate aggiunte
+         alla `baseQuery()`; il Resource del dettaglio, se gli aggregati mancano sul model, li ricava con UNA query.
+    D-9  Colori badge (`#[Color]` sull'enum): open = blue, in_progress = amber, completed = green, closed = slate.
+    D-10 La colonna `completion_percentage` si ordina ma NON si filtra (`filterable: false`).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Enum `WorkOrderStatus` a 4 casi con `#[Label]` e `#[Color]`.</item>
+      <item>`WorkOrderStatusResolver`: nuova regola `resolve()`, `completionPercentage()`, filtro `set` sui 4 valori, ordinamento del completamento, aggregati per la tabella.</item>
+      <item>Tabella Commesse: badge `status` a 4 valori (filtro set + valori distinti), nuova colonna `completion_percentage` ordinabile, con barra colorata.</item>
+      <item>Dettaglio: `WorkOrderResource` espone `completion_percentage`; header con badge a 4 valori e barra "Completamento" nella strip KPI.</item>
+      <item>Board: `completionPercentage()` esclude gli annullati (KPI globale + per fase).</item>
+      <item>Refresh: ogni invalidazione della board invalida anche `workOrderDetailQueryKey(workOrderId)`.</item>
+      <item>i18n IT/EN (enum `work_order_status`, colonna, etichetta KPI); aggiornamento test esistenti che fissano i 2 valori/le colonne (cambio requisito dichiarato).</item>
+    </in>
+    <out>
+      <item>Nessuna colonna DB, nessuna migrazione: lo stato resta calcolato in lettura.</item>
+      <item>Nessuna transizione automatica (es. chiudere la commessa quando diventa Terminata) e nessuna notifica.</item>
+      <item>Nessun filtro sulla colonna `completion_percentage`.</item>
+      <item>Nessuna modifica a chiusura forzata/riapertura (`WorkOrderTaskForceCloser`, `is_force_closed`).</item>
+      <item>Nessun cambio alla percentuale del singolo task ne' alla tabella Task (`TaskStatusResolver`).</item>
+      <item>Stato commessa nelle altre viste (contratto, offerta, dashboard).</item>
+      <item>Guida in-app Commesse: il modulo resta "in fase di sviluppo" (§4-bis).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <enum name="work_order_status" source="App\Enums\WorkOrderStatus">
+      open | in_progress | completed | closed
+      (GET /api/config form_enums.work_order_status: 4 voci { value, label, color, ... } nell'ordine sopra)
+    </enum>
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}">
+      <response status="200">
+        data: {
+          ...invariato,
+          status: { value: "open" | "in_progress" | "completed" | "closed", is_force_closed: boolean },
+          completion_percentage: integer 0..100      // NUOVO, D-5
+        }
+        La stessa shape vale per le risposte di store/update/force-close gia' esistenti (stesso WorkOrderResource).
+      </response>
+      <errors>Invariati (403/404 come oggi).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/work-orders/columns">
+      <response status="200">
+        `status`: invariato (type badge, filterType set, sortable false, enumKey work_order_status), badges = 4 valori.
+        NUOVA colonna, subito dopo `status`:
+        { id: "completion_percentage", label: "workOrders.columns.completion_percentage", type: "number",
+          visible: true, sortable: true, filterable: false, hasFilterValues: false }
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/work-orders/rows">
+      <request>
+        filterModel.status = { filterType: "set", values: array of "open"|"in_progress"|"completed"|"closed" }
+        sortModel ammette { colId: "completion_percentage", sort: "asc"|"desc" }
+      </request>
+      <response status="200">
+        ogni riga: { ...invariato, status: "open"|"in_progress"|"completed"|"closed", completion_percentage: integer 0..100 }
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/work-orders/values">
+      <request>{ columnId: "status" }</request>
+      <response status="200">values = ["open","in_progress","completed","closed"] (set completo dichiarato)</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato una commessa senza task, quando si legge il dettaglio, allora status.value = "open" e completion_percentage = 0.</criterion>
+    <criterion id="AC-002">Dato una commessa con task radice tutti non chiusi, allora status.value = "open".</criterion>
+    <criterion id="AC-003">Dato almeno una radice in closed_positive e almeno una in open/pending/in_validation, allora status.value = "in_progress".</criterion>
+    <criterion id="AC-004">Dato tutte le radici in closed_positive, allora status.value = "completed".</criterion>
+    <criterion id="AC-005">Dato radici in closed_positive e le altre in closed_negative, allora status.value = "completed"; dato tutte le radici in closed_negative, allora "open".</criterion>
+    <criterion id="AC-006">Dato is_force_closed = true, allora status.value = "closed" a prescindere dai task; completion_percentage resta il valore calcolato.</criterion>
+    <criterion id="AC-007">Dato un sotto-task in closed_positive sotto una radice aperta (unica radice), allora status.value = "open": i sotto-task non contano.</criterion>
+    <criterion id="AC-008">Dato task che l'utente non vede (TaskVisibilityScope), allora stato e percentuale sono identici a quelli calcolati per un utente con tasks.viewAll.</criterion>
+    <criterion id="AC-009">completion_percentage = media arrotondata delle completion_percentage delle radici non annullate (es. 100, 50, annullato 0 -> 75).</criterion>
+    <criterion id="AC-010">Per ciascuno dei 4 valori, filtrare la tabella con status = [valore] restituisce ESATTAMENTE le commesse che il Resource marca con quel valore; valori multipli = unione.</criterion>
+    <criterion id="AC-011">GET columns dichiara `completion_percentage` (number, sortable true, filterable false) e `status` con badges = i 4 valori; /values su status restituisce i 4 valori.</criterion>
+    <criterion id="AC-012">Ordinare per completion_percentage asc/desc restituisce le righe nell'ordine della percentuale calcolata (commessa senza task = 0).</criterion>
+    <criterion id="AC-013">Il numero di query delle righe della tabella non cresce col numero di commesse (niente N+1).</criterion>
+    <criterion id="AC-014">(FE) L'header del dettaglio mostra il badge con l'etichetta localizzata dei 4 stati e una stat "Completamento" con barra e percentuale colorate da completionTone().</criterion>
+    <criterion id="AC-015">(FE) La colonna Completamento della tabella mostra barra + "N%" colorati da completionTone(); valore non numerico = cella vuota.</criterion>
+    <criterion id="AC-016">(FE) computeBoardMetrics/computeStageMetrics escludono le radici closed_negative dalla media; nessuna radice contabile -> 0.</criterion>
+    <criterion id="AC-017">(FE) Dopo il salvataggio di un task dalla board, un'azione bulk o una scrittura su una fase, viene invalidato anche workOrderDetailQueryKey(workOrderId).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Nessuna migrazione.
+    - SQL solo via Eloquent/Query Builder con valori legati: niente whereRaw/orderByRaw da input; i gruppi di stato
+      vengono da `TaskStatusGroup`, gli identificatori da costanti private (backend.md §8).
+    - Authz invariata: la tabella resta vincolata da WorkOrderVisibilityScope e dalla policy; il dettaglio dalla WorkOrderPolicy.
+    - `WorkOrderDerivedColumns` e' gia' a 304 righe: la nuova logica va nel resolver, non in questa classe (solo delega).
+    - Test esistenti che fissano `['open','closed']` o l'elenco colonne (WorkOrderTableTest AC-040/AC-034) si aggiornano
+      perche' il requisito cambia: va dichiarato.
+    - UI compatta (ui-design.md §2): `Progress size="xs"`, token di colore del tema, stato mai solo cromatico (etichetta + numero).
+  </constraints>
+
+</spec>

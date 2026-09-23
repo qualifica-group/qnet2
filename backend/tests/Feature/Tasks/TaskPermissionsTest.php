@@ -78,18 +78,19 @@ it('AC-037/AC-050/AC-036: permissions:sync creates 8 permissions per resource, p
     // `tasks.*` permission was created by the record-role matrix. Spec 0117
     // adds one more, `viewDocuments`, for the documents tab of the detail;
     // spec 0118 D-10 adds a seventh, `requestUpdate`, for "richiedi
-    // aggiornamento" (AC-036).
-    foreach (['viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $extra) {
+    // aggiornamento" (AC-036); spec 0148 adds `viewSite`, the per-Sede
+    // visibility tier.
+    foreach (['viewAll', 'viewSite', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $extra) {
         expect(Permission::query()->where('name', "tasks.{$extra}")->exists())
             ->toBeTrue("missing permission tasks.{$extra}");
     }
 
-    // 15 for `tasks` (8 standard + viewAll/manageAll/complete/validate/block
+    // 16 for `tasks` (8 standard + viewAll/manageAll/complete/validate/block
     // from spec 0116 + viewDocuments from spec 0117 + requestUpdate from
-    // spec 0118, AC-036), 8 for each configurator. `like 'tasks.%'` would
+    // spec 0118, AC-036 + viewSite from spec 0148), 8 for each configurator. `like 'tasks.%'` would
     // also match nothing else: the five configurators are `task-...` with a
     // hyphen.
-    expect(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(15);
+    expect(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(16);
 
     foreach (array_slice(TASK_MODULE_RESOURCES, 1) as $resource) {
         expect(Permission::query()->where('name', 'like', "{$resource}.%")->count())
@@ -208,7 +209,7 @@ it('AC-055: the six resources appear in the permission catalogue with their perm
             ->and($modules[$resource]['fields'])->not->toBeEmpty();
     }
 
-    expect($modules['tasks']['permissions'])->toHaveCount(15)
+    expect($modules['tasks']['permissions'])->toHaveCount(16)
         ->and($modules['task-statuses']['permissions'])->toHaveCount(8)
         ->and(collect($modules['tasks']['fields'])->pluck('key'))
         ->not->toContain('creator_id')

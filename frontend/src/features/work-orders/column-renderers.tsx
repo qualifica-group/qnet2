@@ -1,7 +1,8 @@
-import { DateTimeCell } from '@/features/table/cell-renderers'
 import { BooleanBadgeCell, CodeBadgeCell, DateCell } from '@/features/table/rich-cells'
 import { UserStackCell } from '@/features/table/user-cell'
+import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
+import { WorkOrderCompletionCell } from '@/features/work-orders/work-order-completion-bar'
 
 /**
  * Custom cell renderers keyed by the backend column `id` (spec 0093
@@ -21,13 +22,17 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * reuses the SAME `UserStackCell` the Offerta's and Opportunita's own
  * `managers` columns render with — no second avatar-stack cell.
  * `title`/`contract_number`/`quote` stay on the AG Grid default text cell.
+ * `completion_percentage` (spec 0149) renders the same toned bar as the
+ * detail header.
  */
+
 export const workOrderColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
   is_force_closed: (params) => <BooleanBadgeCell {...params} />,
   callback_date: (params) => <DateCell {...params} />,
   start_date: (params) => <DateCell {...params} />,
   supervisors: (params) => <UserStackCell {...params} />,
+  completion_percentage: (params) => <WorkOrderCompletionCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
   updated_at: (params) => <DateTimeCell {...params} />,
 }

@@ -9,7 +9,6 @@
 
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
 import { Layers, MoreHorizontal, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,7 +26,7 @@ import { TaskBoardListView } from '@/features/work-orders/task-board/task-board-
 import { TaskBoardStageCreateDialog } from '@/features/work-orders/task-board/task-board-stage-create-dialog'
 import { TaskBoardToolbar } from '@/features/work-orders/task-board/task-board-toolbar'
 import { DEFAULT_TASK_BOARD_FILTERS } from '@/features/work-orders/task-board/task-board-filters'
-import { taskBoardKeys } from '@/features/work-orders/task-board/query-keys'
+import { useInvalidateTaskBoard } from '@/features/work-orders/task-board/use-task-board-mutations'
 import { useTaskBoardState } from '@/features/work-orders/task-board/use-task-board-state'
 import { useTaskBoardViewMode } from '@/features/work-orders/task-board/use-task-board-view-mode'
 
@@ -38,12 +37,7 @@ interface WorkOrderTaskBoardProps {
 export function WorkOrderTaskBoard({ workOrderId }: WorkOrderTaskBoardProps) {
   const { t } = useTranslation()
   const { can } = useAbilities()
-  const queryClient = useQueryClient()
-
-  const invalidateBoard = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: taskBoardKeys.board(workOrderId) }),
-    [queryClient, workOrderId],
-  )
+  const invalidateBoard = useInvalidateTaskBoard(workOrderId)
 
   const { openCreateWith, openView, sheet } = useModuleOpener(TASKS_DOMAIN, {
     onSaved: invalidateBoard,

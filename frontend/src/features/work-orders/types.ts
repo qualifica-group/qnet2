@@ -12,8 +12,8 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 /** `App\Enums\WorkOrderType` (D-10): "Lavorazione" / "Progetto" live only in i18n. */
 export type WorkOrderType = 'processing' | 'project'
 
-/** `App\Enums\WorkOrderStatus` value, calculated in read (D-3), never persisted. */
-export type WorkOrderStatusValue = 'open' | 'closed'
+/** `App\Enums\WorkOrderStatus` value, calculated in read from the root tasks (spec 0149), never persisted. */
+export type WorkOrderStatusValue = 'open' | 'in_progress' | 'completed' | 'closed'
 
 /** The status badge shape: calculated `value` plus the one input driving it. */
 export interface WorkOrderStatus {
@@ -132,6 +132,8 @@ export interface WorkOrderDetail {
   title: string
   type: WorkOrderType
   status: WorkOrderStatus
+  /** Spec 0149 D-5: mean completion of the non-cancelled root tasks, 0..100, computed server-side. */
+  completion_percentage: number
   is_force_closed: boolean
   force_close_reason: string | null
   /**

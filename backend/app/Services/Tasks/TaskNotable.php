@@ -60,7 +60,9 @@ final class TaskNotable implements NotableEntity
     /**
      * D-5: active users who hold `tasks.view` AND reach this Task — they are
      * one of its four record roles (creatore, richiedente, assegnatario,
-     * osservatore) or they hold `tasks.viewAll` — plus super-admins. It is
+     * osservatore), they hold `tasks.viewAll`, or they hold `tasks.viewSite`
+     * and share a Sede with one of its assignees (spec 0148) — plus
+     * super-admins. It is
      * authorizeRead() read from the other end: there the actor is known and
      * the Task is queried, here the Task is known and the actors are. Any
      * gap between the two would mean either mentioning someone who then gets
@@ -84,21 +86,32 @@ final class TaskNotable implements NotableEntity
     {
         /** @var Task $record */
         $memberIds = $this->memberIds($record);
+        $siteIds = $this->assigneeSiteIds($record);
         $viewExists = $this->permissionExists('tasks.view');
         $viewAllExists = $this->permissionExists(TaskVisibilityScope::VIEW_ALL_PERMISSION);
+        $viewSiteExists = $siteIds !== [] && $this->permissionExists(TaskVisibilityScope::VIEW_SITE_PERMISSION);
 
         return User::query()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($memberIds, $viewExists, $viewAllExists): void {
+            ->where(function (Builder $query) use ($memberIds, $siteIds, $viewExists, $viewAllExists, $viewSiteExists): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $viewAllExists): void {
-                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $viewAllExists): void {
+                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $siteIds, $viewAllExists, $viewSiteExists): void {
+                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $siteIds, $viewAllExists, $viewSiteExists): void {
                             $reader->permission('tasks.view')
-                                ->where(function (Builder $access) use ($memberIds, $viewAllExists): void {
+                                ->where(function (Builder $access) use ($memberIds, $siteIds, $viewAllExists, $viewSiteExists): void {
                                     $access->whereIn('id', $memberIds)
                                         ->when($viewAllExists, function (Builder $tiers): void {
                                             $tiers->orWhere(function (Builder $viewAll): void {
                                                 $viewAll->permission(TaskVisibilityScope::VIEW_ALL_PERMISSION);
+                                            });
+                                        })
+                                        ->when($viewSiteExists, function (Builder $tiers) use ($siteIds): void {
+                                            $tiers->orWhere(function (Builder $bySite) use ($siteIds): void {
+                                                $bySite->permission(TaskVisibilityScope::VIEW_SITE_PERMISSION)
+                                                    ->whereHas(
+                                                        'employment.operationalSites',
+                                                        fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds),
+                                                    );
                                             });
                                         });
                                 });
@@ -171,6 +184,23 @@ final class TaskNotable implements NotableEntity
         return array_values(array_unique(array_filter(
             array_map(static fn ($id): ?int => $id === null ? null : (int) $id, $ids),
         )));
+    }
+
+    /**
+     * Every Sede of the Task's assignees, physical or remote (spec 0148): the
+     * set a `viewSite` reader must share one of.
+     *
+     * @return array<int, int>
+     */
+    private function assigneeSiteIds(Task $task): array
+    {
+        return $task->assignees()
+            ->join('employment_profiles', 'employment_profiles.user_id', '=', 'users.id')
+            ->join('employment_profile_operational_site', 'employment_profile_operational_site.employment_profile_id', '=', 'employment_profiles.id')
+            ->distinct()
+            ->pluck('employment_profile_operational_site.operational_site_id')
+            ->map(static fn ($id): int => (int) $id)
+            ->all();
     }
 
     /**

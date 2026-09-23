@@ -16,8 +16,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * WorkOrderDetail shape (spec 0093 data_contract). `status` is ALWAYS
- * computed via WorkOrderStatusResolver (D-3), never read off a column.
+ * WorkOrderDetail shape (spec 0093 data_contract). `status` and
+ * `completion_percentage` are ALWAYS computed via WorkOrderStatusResolver
+ * (spec 0149), never read off a column.
  * `contract_number` is `quote.code`, derived and read-only (D-2) — never a
  * column of its own. `quote_lines` composes its label live from
  * `product.code`/`product.name` (D-8, spec 0065 D-7's own precedent).
@@ -41,7 +42,7 @@ class WorkOrderResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $status = app(WorkOrderStatusResolver::class)->resolve($this->resource);
+        $progress = app(WorkOrderStatusResolver::class)->progress($this->resource);
 
         return [
             'id' => $this->id,
@@ -49,9 +50,10 @@ class WorkOrderResource extends JsonResource
             'title' => $this->title,
             'type' => $this->type?->value,
             'status' => [
-                'value' => $status->value,
+                'value' => $progress->status->value,
                 'is_force_closed' => $this->is_force_closed,
             ],
+            'completion_percentage' => $progress->completionPercentage,
             'is_force_closed' => $this->is_force_closed,
             'force_close_reason' => $this->force_close_reason,
             // Spec 0146, D-8/AC-023: the tasks a force-close would touch

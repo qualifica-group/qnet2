@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
+import { openTaskOnCardClick } from '@/features/work-orders/task-board/task-board-card-click'
 import { TaskBoardRowContent } from '@/features/work-orders/task-board/task-board-row-content'
 import { TaskBoardSubtaskRow } from '@/features/work-orders/task-board/task-board-subtask-row'
 import type { BoardTaskNode } from '@/features/work-orders/task-board/task-board-filters'
@@ -50,8 +51,9 @@ export function TaskBoardTaskRow({
   return (
     <li ref={setNodeRef} style={style} className={cn('flex flex-col bg-card', isDragging && 'z-10 opacity-40')}>
       <div
+        onClick={(event) => openTaskOnCardClick(event, () => onOpenTask(task.id))}
         className={cn(
-          'flex items-start gap-2 px-3 py-3 transition-colors hover:bg-muted/30',
+          'flex cursor-pointer items-start gap-2 px-3 py-3 transition-colors hover:bg-muted/30',
           isSelected && 'bg-primary/5 hover:bg-primary/10',
         )}
       >

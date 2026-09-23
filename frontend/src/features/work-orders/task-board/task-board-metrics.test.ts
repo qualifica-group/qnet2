@@ -64,6 +64,18 @@ describe('computeBoardMetrics', () => {
   it('returns 0% completion for an empty set, without dividing by zero', () => {
     expect(computeBoardMetrics([], TODAY).completionPercentage).toBe(0)
   })
+
+  it('leaves cancelled (closed_negative) roots out of the completion mean (spec 0149 AC-016)', () => {
+    const cancelled = { ...CLOSED_NEGATIVE_STATUS, completion_percentage: 0 }
+    const roots = [
+      boardTask({ id: 1, task_status: CLOSED_POSITIVE_STATUS }),
+      boardTask({ id: 2, task_status: cancelled }),
+    ]
+
+    expect(computeBoardMetrics(roots, TODAY).completionPercentage).toBe(100)
+    expect(computeStageMetrics(roots).completionPercentage).toBe(100)
+    expect(computeBoardMetrics([boardTask({ task_status: cancelled })], TODAY).completionPercentage).toBe(0)
+  })
 })
 
 describe('computeStageMetrics', () => {

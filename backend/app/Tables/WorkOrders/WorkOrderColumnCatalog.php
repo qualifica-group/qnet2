@@ -15,9 +15,11 @@ namespace App\Tables\WorkOrders;
  * generic engine. `contract_number`/`quote` are DERIVED through the `quote`
  * relation (D-2, resolved by WorkOrdersTableDefinition) and declare
  * `hasFilterValues: false`: no real DB column on `work_orders` to
- * `SELECT DISTINCT` on. `status` is the ONE computed column (D-3, resolved
- * by WorkOrderStatusResolver): `sortable: false` (no single sort key for a
- * derived flag), `set`-filterable over its 2 possible values.
+ * `SELECT DISTINCT` on. `status` and `completion_percentage` are COMPUTED
+ * from the root tasks (spec 0149, resolved by WorkOrderStatusResolver):
+ * `status` is `sortable: false` (no single sort key for a derived state) and
+ * `set`-filterable over its 4 values; `completion_percentage` is sortable
+ * but not filterable (D-10).
  */
 final class WorkOrderColumnCatalog
 {
@@ -106,6 +108,16 @@ final class WorkOrderColumnCatalog
                 'sortable' => false,
                 'filterable' => true,
                 'filterType' => 'set',
+            ],
+            [
+                // Computed (spec 0149, D-5/D-10), never a real column.
+                'id' => 'completion_percentage',
+                'label' => 'workOrders.columns.completion_percentage',
+                'type' => 'number',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => false,
+                'hasFilterValues' => false,
             ],
             [
                 'id' => 'created_at',

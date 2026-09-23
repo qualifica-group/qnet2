@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Boxes, CalendarClock, CalendarDays, FileSignature, Hammer, Pencil } from 'lucide-react'
+import { CalendarClock, CalendarDays, CheckCircle2, FileSignature, Hammer, Pencil } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
-import type { WorkOrderDetailWithPermissions, WorkOrderType } from '@/features/work-orders/types'
+import { WorkOrderCompletionBar } from '@/features/work-orders/work-order-completion-bar'
+import type { WorkOrderDetailWithPermissions, WorkOrderStatusValue, WorkOrderType } from '@/features/work-orders/types'
 
 /**
  * Identity band and KPI strip of the work order record card, mirroring
@@ -15,19 +16,22 @@ import type { WorkOrderDetailWithPermissions, WorkOrderType } from '@/features/w
  * top-level fields and are always mounted together.
  */
 
-/** Colored status pill for the record header (D-3: calculated, sola lettura). */
-function WorkOrderStatusBadge({ isClosed }: { isClosed: boolean }) {
+/** Badge colour per computed status (spec 0149 D-9), the same tokens the grid's `#[Color]` badges use. */
+const STATUS_TONES: Record<WorkOrderStatusValue, { badge: string; dot: string }> = {
+  open: { badge: BADGE_COLOR_CLASSES.blue, dot: 'bg-blue-500' },
+  in_progress: { badge: BADGE_COLOR_CLASSES.amber, dot: 'bg-amber-500' },
+  completed: { badge: BADGE_COLOR_CLASSES.green, dot: 'bg-green-500' },
+  closed: { badge: BADGE_COLOR_CLASSES.slate, dot: 'bg-slate-500' },
+}
+
+/** Colored status pill for the record header (spec 0149: calculated from the tasks, read-only). */
+function WorkOrderStatusBadge({ status }: { status: WorkOrderStatusValue }) {
   const { t } = useTranslation()
+  const tone = STATUS_TONES[status]
   return (
-    <Badge
-      variant="secondary"
-      className={cn(BADGE_BASE, 'gap-1.5', isClosed ? BADGE_COLOR_CLASSES.slate : BADGE_COLOR_CLASSES.green)}
-    >
-      <span
-        className={cn('size-1.5 shrink-0 rounded-full', isClosed ? 'bg-slate-500' : 'bg-green-500')}
-        aria-hidden="true"
-      />
-      {t(isClosed ? 'workOrders.detail.statusClosed' : 'workOrders.detail.statusOpen')}
+    <Badge variant="secondary" className={cn(BADGE_BASE, 'gap-1.5', tone.badge)}>
+      <span className={cn('size-1.5 shrink-0 rounded-full', tone.dot)} aria-hidden="true" />
+      {t(`enums.work_order_status.${status}`)}
     </Badge>
   )
 }
@@ -62,7 +66,7 @@ export function WorkOrderDetailHeader({ workOrder, onEdit }: WorkOrderDetailHead
       subtitle={workOrder.code}
       badges={
         <>
-          <WorkOrderStatusBadge isClosed={workOrder.status.value === 'closed'} />
+          <WorkOrderStatusBadge status={workOrder.status.value} />
           <WorkOrderTypeBadge type={workOrder.type} />
         </>
       }
@@ -78,7 +82,7 @@ export function WorkOrderDetailHeader({ workOrder, onEdit }: WorkOrderDetailHead
   )
 }
 
-/** KPI strip: start date, callback date, contract number and how many product lines the work order covers. */
+/** KPI strip: completion, start date, callback date and contract number. */
 export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
   const { t } = useTranslation()
   const startDate = formatDate(workOrder.start_date)
@@ -86,6 +90,11 @@ export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetail
 
   return (
     <RecordStatStrip>
+      <RecordStat
+        label={t('workOrders.columns.completion_percentage')}
+        icon={<CheckCircle2 aria-hidden="true" />}
+        value={<WorkOrderCompletionBar value={workOrder.completion_percentage} />}
+      />
       <RecordStat
         label={t('workOrders.detail.startDate')}
         icon={<CalendarDays aria-hidden="true" />}
@@ -100,11 +109,6 @@ export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetail
         label={t('workOrders.detail.contractNumber')}
         icon={<FileSignature aria-hidden="true" />}
         value={workOrder.contract_number ?? <DetailEmpty />}
-      />
-      <RecordStat
-        label={t('workOrders.detail.lines')}
-        icon={<Boxes aria-hidden="true" />}
-        value={workOrder.quote_lines.length}
       />
     </RecordStatStrip>
   )

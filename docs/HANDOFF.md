@@ -3,6 +3,52 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSA: STATO CALCOLATO DAI TASK + BARRA COMPLETAMENTO — NON COMMITTATO (2026-09-23)
+
+Spec 0149 (`docs/specs/0149-work-order-computed-status.xml`). Manuale: guida in-app Commesse resta "in fase di
+sviluppo" (nessun impatto); manuale Claude Docs da aggiornare (Commesse: stati/barra; board: KPI senza annullati).
+- Stati `WorkOrderStatus`: `open` / `in_progress` / `completed` / `closed` (colori blue/amber/green/slate).
+  `is_force_closed` -> `closed`; altrimenti sui task RADICE della commessa, tutti (niente TaskVisibilityScope),
+  annullati (`closed_negative`) esclusi: 0 completati (`closed_positive`) -> open; completati + almeno uno non
+  chiuso -> in_progress; completati e nessuno non chiuso -> completed.
+- `completion_percentage` = media arrotondata di `task_statuses.completion_percentage` sulle radici non annullate
+  (0 se nessuna). Stessa esclusione in `task-board-metrics.ts` (KPI globale + per fase).
+- Unica fonte: `WorkOrderStatusResolver` — `withProgress()` (3 aggregati per subquery, in `baseQuery()`),
+  `progress()` -> `WorkOrderProgress{status, completionPercentage}` (fallback: 1 query se aggregati assenti),
+  `applyFilter()` (set sui 4 valori), `applyCompletionSort()`. Il vecchio `resolve()`/`EAGER_LOADS` non esiste piu'.
+- Contratto: dettaglio `completion_percentage` top-level; riga tabella `completion_percentage`; nuova colonna
+  `completion_percentage` (number, sortable, NON filtrabile) subito dopo `status`.
+- FE: `work-order-completion-bar.tsx` (`WorkOrderCompletionBar` + `WorkOrderCompletionCell`, tono `completionTone`),
+  badge a 4 stati nell'header (label da `enums.work_order_status.*`; chiavi `detail.statusOpen/statusClosed` rimosse),
+  `useInvalidateTaskBoard` invalida board + `workOrderDetailQueryKey` (usato da fasi, bulk, salvataggio task).
+  Rimossa (richiesta utente) la stat "Righe prodotto" dalla strip KPI dell'header; la chiave `detail.lines` resta
+  usata dalla sezione del dettaglio.
+- Test: `WorkOrderComputedStatusTest.php` (AC-001..013), `WorkOrderTableTest` aggiornato (4 valori, 13 colonne).
+
+## TASK: VISIBILITA' PER SEDE (`tasks.viewSite`) — NON COMMITTATO (2026-09-23)
+
+Spec 0148 (`docs/specs/0148-task-site-visibility.xml`). Manuale: guide in-app IT/EN `tasks` (sezione overview) +
+Claude Docs (Parte 3 › Task, "Chi vede un task") aggiornati.
+- Tre livelli: `tasks.viewAll` (tutti) · `tasks.viewSite` (propri + task con almeno un assegnatario che condivide
+  una sede, fisica o remota, con l'utente) · default (propri: creatore/richiedente/assegnatario/osservatore).
+  Nessun ruolo riceve `viewSite` di default.
+- Tutto in `TaskVisibilityScope` (query + record, in unione); `TasksTableDefinition` eager-load
+  `assignees.employment.operationalSites` per la forma in memoria. `TaskNotable` menziona i `viewSite` della sede.
+- Solo lettura: la modifica resta a `TaskAbilityResolver`/`manageAll`. Il PATCH di un non-membro risponde 422
+  (field ceiling prima della policy), come gia' per `viewAll`.
+- Test: `TaskSiteVisibilityTest.php`. Cambiati per requisito: conteggio `tasks.*` 15 -> 16 in
+  `TaskPermissionsTest` e `TaskRequestUpdateTest`. Dopo il deploy: `php artisan permissions:sync`.
+
+## BOARD COMMESSA: CARD/RIGA DEL TASK INTERAMENTE CLICCABILE — NON COMMITTATO (2026-09-23)
+
+Stato: VERDE. Vitest `features/work-orders` 28 file / 205 test, ESLint pulito, `tsc -b --force` EXIT 0. Manuale: nessun impatto.
+- Helper `task-board-card-click.ts` (`openTaskOnCardClick`): onClick sul contenitore di card kanban
+  (`task-board-kanban-card.tsx`), riga lista (`task-board-task-row.tsx`) e sotto-task (`task-board-subtask-row.tsx`).
+  Apre il task salvo click su un controllo (`button, a, input, [role=checkbox|button]`: drag handle, checkbox,
+  espandi, persone) e ignora i click che arrivano via portal React (`currentTarget.contains`).
+- Scartato lo stretched link CSS (`::after`): la Lista (vista di default) non ne beneficiava e copriva i tooltip.
+- Test: `task-board-card-click.test.tsx` (lista + kanban: click ovunque, titolo una sola volta, controlli esclusi).
+
 ## FIX: MENZIONI NON CLICCABILI NEI DIALOG MODALI — NON COMMITTATO (2026-09-23)
 
 Stato: VERDE. Vitest `features/notes` 39/39, ESLint pulito, `tsc -b --force` EXIT 0. Manuale: nessun impatto.

@@ -45,19 +45,22 @@ if (! function_exists('workOrderUserWith')) {
 // columns config — AC-040
 // ---------------------------------------------------------------------------
 
-it('GET /api/tables/work-orders/columns declares the 12 columns, status non-sortable + set filter (AC-040)', function () {
+it('GET /api/tables/work-orders/columns declares the 13 columns, status non-sortable + set filter (AC-040, spec 0149 AC-011)', function () {
     $actor = workOrderUserWith(['viewAny']);
     Sanctum::actingAs($actor);
 
     $data = $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data');
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'type', 'callback_date', 'is_force_closed', 'status', 'created_at', 'updated_at', 'start_date', 'supervisors']);
+    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['status']['sortable'])->toBeFalse()
         ->and($columns['status']['filterType'])->toBe('set')
         ->and($columns['status']['type'])->toBe('badge')
+        ->and($columns['completion_percentage']['type'])->toBe('number')
+        ->and($columns['completion_percentage']['sortable'])->toBeTrue()
+        ->and($columns['completion_percentage']['filterable'])->toBeFalse()
         ->and($columns['type']['filterType'])->toBe('set')
         ->and($columns['is_force_closed']['filterType'])->toBe('set')
         ->and($columns['contract_number']['filterType'])->toBe('text')
@@ -74,7 +77,7 @@ it('the `type`/`status` badge columns declare their enumKey + full badges catalo
     expect($columns['type']['enumKey'])->toBe('work_order_type')
         ->and(collect($columns['type']['badges'])->pluck('value')->all())->toEqualCanonicalizing(['processing', 'project'])
         ->and($columns['status']['enumKey'])->toBe('work_order_status')
-        ->and(collect($columns['status']['badges'])->pluck('value')->all())->toEqualCanonicalizing(['open', 'closed'])
+        ->and(collect($columns['status']['badges'])->pluck('value')->all())->toEqualCanonicalizing(['open', 'in_progress', 'completed', 'closed'])
         ->and($columns['is_force_closed'])->not->toHaveKey('enumKey');
 });
 
@@ -89,7 +92,7 @@ it('distinct-values for `type`/`status` returns the FULL declared set, not just 
 
     $statusValues = $this->postJson('/api/tables/work-orders/values', ['columnId' => 'status', 'limit' => 25])
         ->assertOk()->json('data.values');
-    expect($statusValues)->toEqualCanonicalizing(['open', 'closed']);
+    expect($statusValues)->toEqualCanonicalizing(['open', 'in_progress', 'completed', 'closed']);
 });
 
 it('403 without work-orders.viewAny', function () {
