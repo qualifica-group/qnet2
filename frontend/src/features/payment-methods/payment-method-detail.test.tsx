@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { PaymentMethodDetailView } from '@/features/payment-methods/payment-method-detail'
@@ -47,6 +47,35 @@ function paymentMethod(
     ...overrides,
   }
 }
+
+describe('PaymentMethodDetailView — edit action', () => {
+  it('shows the Edit button when update is granted and onEdit is wired', () => {
+    const onEdit = vi.fn()
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} onEdit={onEdit} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(onEdit).toHaveBeenCalled()
+  })
+
+  it('hides the Edit button when onEdit is absent', () => {
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('hides the Edit button when update is not granted, even with onEdit wired', () => {
+    render(
+      <PaymentMethodDetailView
+        paymentMethod={paymentMethod({
+          permissions: { ...paymentMethod().permissions, resource: { ...paymentMethod().permissions.resource, update: false } },
+        })}
+        onEdit={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+})
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')

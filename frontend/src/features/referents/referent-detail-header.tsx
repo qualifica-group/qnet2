@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { IdCard, Mail, MapPin, Pencil, Radar } from 'lucide-react'
+import { IdCard, Mail, MapPin, Radar } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { enumLabelOf } from '@/features/config/enum-label'
 import type { ReferentDetailWithPermissions } from '@/features/referents/types'
 
@@ -29,8 +29,7 @@ interface ReferentDetailHeaderProps {
  * "Linked user: Ada" says exactly what it is.
  */
 export function ReferentDetailHeader({ referent, onEdit }: ReferentDetailHeaderProps) {
-  const { t } = useTranslation()
-  const canEdit = Boolean(onEdit) && referent.permissions.resource.update
+  const canEdit = referent.permissions.resource.update
 
   return (
     <RecordCardHeader
@@ -43,14 +42,7 @@ export function ReferentDetailHeader({ referent, onEdit }: ReferentDetailHeaderP
           {enumLabelOf('referent_contact_scope', referent.contact_scope)}
         </Badge>
       }
-      actions={
-        canEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
-      }
+      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Building2, Hash, History, MapPinned, Power } from 'lucide-react'
+import { Building2, Hash, MapPinned, Power } from 'lucide-react'
 import {
   RecordCanvas,
   RecordCard,
@@ -9,14 +9,10 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RECORD_BODY_GRID_CLASS,
-  RECORD_BODY_WITH_SIDE_CLASS,
-  RECORD_COLUMN_CLASS,
-} from '@/components/detail/record-layout'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { DetailEmpty } from '@/components/detail/detail-panel'
-import { cn } from '@/lib/utils'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import {
   OperationalSiteDetailHeader,
   OperationalSiteDetailStats,
@@ -46,52 +42,44 @@ export function OperationalSiteDetailView({
 }: OperationalSiteDetailViewProps) {
   const { t } = useTranslation()
   const createdAt = formatDateTime(operationalSite.created_at)
-  const canViewActivity = operationalSite.permissions.actions.view_activity
+  const collaborationTabs = operationalSite.permissions.actions.view_activity
+    ? [activityLogTab('operational-sites', operationalSite.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
-      <div className={cn(RECORD_BODY_GRID_CLASS, canViewActivity && RECORD_BODY_WITH_SIDE_CLASS)}>
-        <div className={RECORD_COLUMN_CLASS}>
-          <RecordCard>
-            <OperationalSiteDetailHeader operationalSite={operationalSite} onEdit={onEdit} />
-            <OperationalSiteDetailStats operationalSite={operationalSite} />
+      <RecordBody
+        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+      >
+        <RecordCard>
+          <OperationalSiteDetailHeader operationalSite={operationalSite} onEdit={onEdit} />
+          <OperationalSiteDetailStats operationalSite={operationalSite} />
 
-            <RecordSectionsGrid>
-              <RecordSection
-                title={t('operationalSites.form.sections.address.title')}
-                icon={<MapPinned />}
-              >
-                <RecordFieldList>
-                  {/* Only when an alias headlines the card: without one the
-                      street IS the title, and repeating it here would say the
-                      same thing twice (the decision the previous card made). */}
-                  {operationalSite.alias ? (
-                    <RecordField label={t('operationalSites.detail.line1')} icon={<Building2 />}>
-                      {operationalSite.line1}
-                    </RecordField>
-                  ) : null}
-                  <RecordField label={t('operationalSites.detail.postal_code')} icon={<Hash />}>
-                    {operationalSite.postal_code || <DetailEmpty />}
+          <RecordSectionsGrid>
+            <RecordSection
+              title={t('operationalSites.form.sections.address.title')}
+              icon={<MapPinned />}
+            >
+              <RecordFieldList>
+                {/* Only when an alias headlines the card: without one the
+                    street IS the title, and repeating it here would say the
+                    same thing twice (the decision the previous card made). */}
+                {operationalSite.alias ? (
+                  <RecordField label={t('operationalSites.detail.line1')} icon={<Building2 />}>
+                    {operationalSite.line1}
                   </RecordField>
-                  <RecordField label={t('operationalSites.detail.is_active')} icon={<Power />}>
-                    {operationalSite.is_active ? t('common.yes') : t('common.no')}
-                  </RecordField>
-                </RecordFieldList>
-              </RecordSection>
-            </RecordSectionsGrid>
-          </RecordCard>
-        </div>
-
-        {canViewActivity ? (
-          <div className={RECORD_COLUMN_CLASS}>
-            <RecordCard className="p-4">
-              <RecordSection title={t('activityLog.title')} icon={<History />}>
-                <ActivityLogSection resource="operational-sites" id={operationalSite.id} />
-              </RecordSection>
-            </RecordCard>
-          </div>
-        ) : null}
-      </div>
+                ) : null}
+                <RecordField label={t('operationalSites.detail.postal_code')} icon={<Hash />}>
+                  {operationalSite.postal_code || <DetailEmpty />}
+                </RecordField>
+                <RecordField label={t('operationalSites.detail.is_active')} icon={<Power />}>
+                  {operationalSite.is_active ? t('common.yes') : t('common.no')}
+                </RecordField>
+              </RecordFieldList>
+            </RecordSection>
+          </RecordSectionsGrid>
+        </RecordCard>
+      </RecordBody>
 
       {createdAt ? (
         <RecordMeta>

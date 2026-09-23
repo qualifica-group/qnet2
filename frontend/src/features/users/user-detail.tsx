@@ -1,19 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { History } from 'lucide-react'
-import {
-  RecordCanvas,
-  RecordCard,
-  RecordMeta,
-  RecordSection,
-} from '@/components/detail/record-panel'
-import {
-  RECORD_BODY_GRID_CLASS,
-  RECORD_BODY_WITH_SIDE_CLASS,
-  RECORD_COLUMN_CLASS,
-} from '@/components/detail/record-layout'
+import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
-import { cn } from '@/lib/utils'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchUser } from '@/features/users/api'
 import { summarizeAssignment } from '@/features/users/user-assignment'
@@ -68,30 +58,22 @@ export function UserDetailView({ userId, onEdit }: UserDetailProps) {
   }
 
   const createdAt = formatDateTime(user.created_at)
-  const canViewActivity = user.permissions.actions.view_activity
   const assignment = summarizeAssignment(assignmentInput(user.employment))
+  const collaborationTabs = user.permissions.actions.view_activity
+    ? [activityLogTab('users', userId, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
-      <div className={cn(RECORD_BODY_GRID_CLASS, canViewActivity && RECORD_BODY_WITH_SIDE_CLASS)}>
-        <div className={RECORD_COLUMN_CLASS}>
-          <RecordCard>
-            <UserDetailHeader user={user} onEdit={onEdit} />
-            <UserDetailStats user={user} assignment={assignment} />
-            <UserDetailSections user={user} assignment={assignment} />
-          </RecordCard>
-        </div>
-
-        {canViewActivity ? (
-          <div className={RECORD_COLUMN_CLASS}>
-            <RecordCard className="p-4">
-              <RecordSection title={t('activityLog.title')} icon={<History />}>
-                <ActivityLogSection resource="users" id={userId} />
-              </RecordSection>
-            </RecordCard>
-          </div>
-        ) : null}
-      </div>
+      <RecordBody
+        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+      >
+        <RecordCard>
+          <UserDetailHeader user={user} onEdit={onEdit} />
+          <UserDetailStats user={user} assignment={assignment} />
+          <UserDetailSections user={user} assignment={assignment} />
+        </RecordCard>
+      </RecordBody>
 
       {createdAt ? (
         <RecordMeta>

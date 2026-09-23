@@ -1,9 +1,13 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { History, Paperclip } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Paperclip } from 'lucide-react'
 import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { RecordBody } from '@/components/detail/record-body'
+import {
+  RecordCollaborationCard,
+  type RecordCollaborationTab,
+} from '@/components/detail/record-collaboration-card'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
@@ -20,94 +24,60 @@ import { QuoteLinesReadOnlyList } from '@/features/quotes/quote-lines-read-only'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
 
-const CONTRACT_DOCUMENTS_TAB = 'contract-documents'
-const OPPORTUNITY_DOCUMENTS_TAB = 'opportunity-documents'
-const ACTIVITY_TAB = 'activity'
-
-/** Compact trigger sizing of the collaboration strip, the same the offer record uses. */
-const TRIGGER_CLASS = 'px-2.5 py-1 text-xs'
-
-/**
- * Two-column body, the same rule the Offerta and the Opportunita' records
- * follow. Each column is its OWN `@container` so the section/field grids inside
- * break on the COLUMN's width, not the canvas'.
- */
-const BODY_GRID_CLASS =
-  'grid grid-cols-1 items-start gap-4 @5xl:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]'
-const COLUMN_CLASS = '@container flex min-w-0 flex-col gap-4'
-
 interface ContractDetailViewProps {
   contract: ContractDetailWithPermissions
 }
 
 /**
- * The contract's collaboration card: Documenti contratto | Documenti
- * opportunità | Attività — the offer's card with the surfaces a contract
- * actually has (it owns no notes thread of its own).
+ * The contract's collaboration tabs: Documenti contratto | Documenti
+ * opportunità | Attività (Opportunita' reference layout) — the offer's tabs
+ * with the surfaces a contract actually has (it owns no notes thread of its
+ * own, so there is no Notes tab here).
  *
  * The contract's own documents honour the actor's attachment abilities; the
  * opportunity's are ALWAYS read-only (AC-047): they belong to another record,
- * this screen only shows them. Attività is gated on its own action flag.
+ * this screen only shows them. Attività is gated on its own action flag and
+ * absent entirely when unauthorized.
  */
-function ContractDetailCollaboration({ contract }: { contract: ContractDetailWithPermissions }) {
+function useCollaborationTabs(contract: ContractDetailWithPermissions): RecordCollaborationTab[] {
   const { t } = useTranslation()
   const { can } = useAbilities()
-  const canViewActivity = contract.permissions.actions.view_activity
+  const tabs: RecordCollaborationTab[] = [
+    {
+      value: 'contract-documents',
+      label: t('contracts.detail.tabs.contractDocuments'),
+      icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      content: (
+        <DocumentsSection
+          resource={CONTRACT_ATTACHABLE_ALIAS}
+          id={contract.id}
+          canUpload={can('attachments.create')}
+          canDelete={can('attachments.delete')}
+        />
+      ),
+    },
+    {
+      value: 'opportunity-documents',
+      label: t('contracts.detail.tabs.opportunityDocuments'),
+      icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      content: contract.opportunity ? (
+        <DocumentsSection
+          resource={OPPORTUNITY_ATTACHABLE_ALIAS}
+          id={contract.opportunity.id}
+          canUpload={false}
+          canDelete={false}
+        />
+      ) : (
+        <p className="text-xs text-muted-foreground">{t('contracts.detail.noOpportunity')}</p>
+      ),
+    },
+  ]
 
-  return (
-    <RecordCard>
-      <Tabs defaultValue={CONTRACT_DOCUMENTS_TAB} className="gap-0">
-        <div className="px-4 py-3">
-          <TabsList>
-            <TabsTrigger value={CONTRACT_DOCUMENTS_TAB} className={TRIGGER_CLASS}>
-              <Paperclip className="size-3.5" aria-hidden="true" />
-              {t('contracts.detail.tabs.contractDocuments')}
-            </TabsTrigger>
-            <TabsTrigger value={OPPORTUNITY_DOCUMENTS_TAB} className={TRIGGER_CLASS}>
-              <Paperclip className="size-3.5" aria-hidden="true" />
-              {t('contracts.detail.tabs.opportunityDocuments')}
-            </TabsTrigger>
-            {canViewActivity ? (
-              <TabsTrigger value={ACTIVITY_TAB} className={TRIGGER_CLASS}>
-                <History className="size-3.5" aria-hidden="true" />
-                {t('activityLog.title')}
-              </TabsTrigger>
-            ) : null}
-          </TabsList>
-        </div>
-        <div className="border-t" />
-        <div className="min-w-0 p-4">
-          <TabsContent value={CONTRACT_DOCUMENTS_TAB}>
-            <DocumentsSection
-              resource={CONTRACT_ATTACHABLE_ALIAS}
-              id={contract.id}
-              canUpload={can('attachments.create')}
-              canDelete={can('attachments.delete')}
-            />
-          </TabsContent>
+  if (contract.permissions.actions.view_activity) {
+    tabs.push(activityLogTab(CONTRACTS_DOMAIN, contract.id, t('activityLog.title')))
+  }
 
-          <TabsContent value={OPPORTUNITY_DOCUMENTS_TAB}>
-            {contract.opportunity ? (
-              <DocumentsSection
-                resource={OPPORTUNITY_ATTACHABLE_ALIAS}
-                id={contract.opportunity.id}
-                canUpload={false}
-                canDelete={false}
-              />
-            ) : (
-              <p className="text-xs text-muted-foreground">{t('contracts.detail.noOpportunity')}</p>
-            )}
-          </TabsContent>
-
-          {canViewActivity ? (
-            <TabsContent value={ACTIVITY_TAB}>
-              <ActivityLogSection resource={CONTRACTS_DOMAIN} id={contract.id} />
-            </TabsContent>
-          ) : null}
-        </div>
-      </Tabs>
-    </RecordCard>
-  )
+  return tabs
 }
 
 /**
@@ -126,6 +96,7 @@ function ContractDetailCollaboration({ contract }: { contract: ContractDetailWit
 export function ContractDetailView({ contract: initialContract }: ContractDetailViewProps) {
   const { t } = useTranslation()
   const [contract, setContract] = useState(initialContract)
+  const collaborationTabs = useCollaborationTabs(contract)
   const createdAt = formatDateTime(contract.created_at)
   const updatedAt = formatDateTime(contract.updated_at)
 
@@ -137,32 +108,28 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
   return (
     <ResourcePermissionsProvider permissions={contract.permissions}>
       <RecordCanvas>
-        <div className={BODY_GRID_CLASS}>
-          <div className={COLUMN_CLASS}>
-            <RecordCard>
-              <ContractDetailHeader contract={contract} />
-              <ContractActionsBar
-                contract={contract}
-                onChanged={setContract}
-                onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
-              />
-              <ContractDetailSections contract={contract} />
+        <RecordBody
+          side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        >
+          <RecordCard>
+            <ContractDetailHeader contract={contract} />
+            <ContractActionsBar
+              contract={contract}
+              onChanged={setContract}
+              onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
+            />
+            <ContractDetailSections contract={contract} />
 
-              {/* Banda di chiusura: le sole righe di ricavo del preventivo
-                  (BR-7), read-only. Nessuna strip (qui c'e' una sola collezione,
-                  non due come sull'Offerta) e nessun riepilogo economico —
-                  ricavi/costi/margine attesi sono usciti dalla scheda per
-                  direttiva utente 2026-08-31. */}
-              <div className="min-w-0 border-t p-4">
-                <QuoteLinesReadOnlyList lines={contract.offer_lines} />
-              </div>
-            </RecordCard>
-          </div>
-
-          <div className={COLUMN_CLASS}>
-            <ContractDetailCollaboration contract={contract} />
-          </div>
-        </div>
+            {/* Banda di chiusura: le sole righe di ricavo del preventivo
+                (BR-7), read-only. Nessuna strip (qui c'e' una sola collezione,
+                non due come sull'Offerta) e nessun riepilogo economico —
+                ricavi/costi/margine attesi sono usciti dalla scheda per
+                direttiva utente 2026-08-31. */}
+            <div className="min-w-0 border-t p-4">
+              <QuoteLinesReadOnlyList lines={contract.offer_lines} />
+            </div>
+          </RecordCard>
+        </RecordBody>
 
         {/*
           Tab "Commesse" (spec 0095 D-8/D-10): a piena larghezza sotto la

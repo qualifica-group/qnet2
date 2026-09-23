@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -15,12 +15,15 @@ import NotFoundPage from '@/pages/not-found-page'
  * Dedicated read-only page of a single registry (spec 0022, replaces the view
  * Sheet). Fetches the fresh, re-authorized detail on mount — same query key as
  * before — and renders the unchanged presentational `RegistryDetailView`. The
- * "Edit" action is gated by the `permissions` block of THIS response, not by a
- * static ability: the backend remains the authority.
+ * record card owns the single "Edit" affordance (the record kit's
+ * `detailOwnsEditAction` convention, Opportunità), gated by the `permissions`
+ * block of THIS response, not by a static ability: the backend remains the
+ * authority.
  */
 export default function RegistryDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams()
+  const navigate = useNavigate()
   const registryId = parseEntityId(id)
 
   const {
@@ -44,22 +47,12 @@ export default function RegistryDetailPage() {
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         actions={
-          <>
-            <Button variant="outline" asChild>
-              <Link to="/registries">
-                <ArrowLeft aria-hidden="true" />
-                {t('common.back')}
-              </Link>
-            </Button>
-            {registry?.permissions.resource.update ? (
-              <Button asChild>
-                <Link to={`/registries/${registryId}/edit`}>
-                  <Pencil aria-hidden="true" />
-                  {t('common.edit')}
-                </Link>
-              </Button>
-            ) : null}
-          </>
+          <Button variant="outline" asChild>
+            <Link to="/registries">
+              <ArrowLeft aria-hidden="true" />
+              {t('common.back')}
+            </Link>
+          </Button>
         }
       />
 
@@ -76,7 +69,10 @@ export default function RegistryDetailPage() {
         ) : isLoading || !registry ? (
           <DetailLoading />
         ) : (
-          <RegistryDetailView registry={registry} />
+          <RegistryDetailView
+            registry={registry}
+            onEdit={() => void navigate(`/registries/${registryId}/edit`)}
+          />
         )}
       </div>
     </div>

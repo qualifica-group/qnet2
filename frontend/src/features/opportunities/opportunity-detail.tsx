@@ -1,14 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { History, MessagesSquare, Paperclip } from 'lucide-react'
+import { MessagesSquare, Paperclip } from 'lucide-react'
 import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordBody } from '@/components/detail/record-body'
 import {
-  RECORD_BODY_GRID_CLASS,
-  RECORD_BODY_WITH_SIDE_CLASS,
-  RECORD_COLUMN_CLASS,
-} from '@/components/detail/record-layout'
-import { cn } from '@/lib/utils'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+  RecordCollaborationCard,
+  type RecordCollaborationTab,
+} from '@/components/detail/record-collaboration-card'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
@@ -25,10 +23,6 @@ import type { OpportunityDetailWithPermissions as OpportunityDetailData } from '
 
 const NOTES_TAB = 'notes'
 const DOCUMENTS_TAB = 'documents'
-const ACTIVITY_TAB = 'activity'
-
-/** Compact trigger sizing, mirrors `RequestWorkCollaboration`'s tab strip. */
-const TRIGGER_CLASS = 'px-2.5 py-1 text-xs'
 
 interface OpportunityDetailViewProps {
   opportunity: OpportunityDetailData
@@ -36,123 +30,60 @@ interface OpportunityDetailViewProps {
   onEdit?: () => void
 }
 
-interface OpportunityDetailCollaborationProps {
-  opportunity: OpportunityDetailData
-}
-
-interface CollaborationGates {
-  canViewNotes: boolean
-  canViewDocuments: boolean
-  canViewActivity: boolean
-  /** False = the whole card is absent, so the layout must not reserve a side column for it. */
-  hasAny: boolean
-}
-
 /**
- * Per-tab authorization of the collaboration card, each from its OWN source.
- * Read both by the card itself and by the layout above it, which cannot ask
- * the card whether it rendered.
+ * The record's collaboration tabs (Notes | Documents | Activity), each gated
+ * by its OWN authorization source and absent entirely when unauthorized.
  */
-function useCollaborationGates(opportunity: OpportunityDetailData): CollaborationGates {
-  const { can } = useAbilities()
-
-  const canViewNotes = can('request-management.view')
-  const canViewDocuments = opportunity.permissions.actions.view_documents
-  const canViewActivity = opportunity.permissions.actions.view_activity
-
-  return {
-    canViewNotes,
-    canViewDocuments,
-    canViewActivity,
-    hasAny: canViewNotes || canViewDocuments || canViewActivity,
-  }
-}
-
-/**
- * The record's collaboration surface, mirroring `RequestWorkCollaboration`
- * (the user explicitly wants the same treatment here): one card, a compact
- * tab strip of Notes | Documents | Activity, each tab gated by its OWN
- * authorization source and absent entirely when unauthorized. Absent as a
- * whole when no tab is authorized for the actor.
- */
-function OpportunityDetailCollaboration({ opportunity }: OpportunityDetailCollaborationProps) {
+function useCollaborationTabs(opportunity: OpportunityDetailData): RecordCollaborationTab[] {
   const { t } = useTranslation()
   const { can } = useAbilities()
-  const { canViewNotes, canViewDocuments, canViewActivity, hasAny } =
-    useCollaborationGates(opportunity)
+  const tabs: RecordCollaborationTab[] = []
 
-  if (!hasAny) {
-    return null
+  if (can('request-management.view')) {
+    tabs.push({
+      value: NOTES_TAB,
+      label: t('notes.section.title'),
+      icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      /*
+       * The notes hang off the Opportunity record itself
+       * (`RequestManagementNotable::modelClass()` resolves to `Opportunity`),
+       * so `opportunity.id` is the same thread the work panel reads. The
+       * server additionally requires `request-management.viewAll` OR being
+       * that opportunity's GA2 operator (`RequestManagementNotable::authorizeRead`),
+       * which the client cannot evaluate — `NotesSection` owns its own error
+       * state for that residual case, same exposure the work panel has.
+       */
+      content: (
+        <NotesSection
+          entityType={REQUEST_MANAGEMENT_DOMAIN}
+          entityId={opportunity.id}
+          showHeader={false}
+        />
+      ),
+    })
   }
 
-  const defaultTab = canViewNotes ? NOTES_TAB : canViewDocuments ? DOCUMENTS_TAB : ACTIVITY_TAB
+  if (opportunity.permissions.actions.view_documents) {
+    tabs.push({
+      value: DOCUMENTS_TAB,
+      label: t('attachments.title'),
+      icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      content: (
+        <DocumentsSection
+          resource={OPPORTUNITY_ATTACHABLE_ALIAS}
+          id={opportunity.id}
+          canUpload={can('attachments.create')}
+          canDelete={can('attachments.delete')}
+        />
+      ),
+    })
+  }
 
-  return (
-    <RecordCard>
-      <Tabs defaultValue={defaultTab} className="gap-0">
-        <div className="px-4 py-3">
-          <TabsList>
-            {canViewNotes ? (
-              <TabsTrigger value={NOTES_TAB} className={TRIGGER_CLASS}>
-                <MessagesSquare className="size-3.5" aria-hidden="true" />
-                {t('notes.section.title')}
-              </TabsTrigger>
-            ) : null}
-            {canViewDocuments ? (
-              <TabsTrigger value={DOCUMENTS_TAB} className={TRIGGER_CLASS}>
-                <Paperclip className="size-3.5" aria-hidden="true" />
-                {t('attachments.title')}
-              </TabsTrigger>
-            ) : null}
-            {canViewActivity ? (
-              <TabsTrigger value={ACTIVITY_TAB} className={TRIGGER_CLASS}>
-                <History className="size-3.5" aria-hidden="true" />
-                {t('activityLog.title')}
-              </TabsTrigger>
-            ) : null}
-          </TabsList>
-        </div>
-        <div className="border-t" />
-        <div className="min-w-0 p-4">
-          {canViewNotes ? (
-            <TabsContent value={NOTES_TAB}>
-              {/*
-               * The notes hang off the Opportunity record itself
-               * (`RequestManagementNotable::modelClass()` resolves to
-               * `Opportunity`), so `opportunity.id` is the same thread the
-               * work panel reads. The server additionally requires
-               * `request-management.viewAll` OR being that opportunity's GA2
-               * operator (`RequestManagementNotable::authorizeRead`), which
-               * the client cannot evaluate — `NotesSection` owns its own
-               * error state for that residual case, same exposure the work
-               * panel already has.
-               */}
-              <NotesSection
-                entityType={REQUEST_MANAGEMENT_DOMAIN}
-                entityId={opportunity.id}
-                showHeader={false}
-              />
-            </TabsContent>
-          ) : null}
-          {canViewDocuments ? (
-            <TabsContent value={DOCUMENTS_TAB}>
-              <DocumentsSection
-                resource={OPPORTUNITY_ATTACHABLE_ALIAS}
-                id={opportunity.id}
-                canUpload={can('attachments.create')}
-                canDelete={can('attachments.delete')}
-              />
-            </TabsContent>
-          ) : null}
-          {canViewActivity ? (
-            <TabsContent value={ACTIVITY_TAB}>
-              <ActivityLogSection resource="opportunities" id={opportunity.id} />
-            </TabsContent>
-          ) : null}
-        </div>
-      </Tabs>
-    </RecordCard>
-  )
+  if (opportunity.permissions.actions.view_activity) {
+    tabs.push(activityLogTab('opportunities', opportunity.id, t('activityLog.title')))
+  }
+
+  return tabs
 }
 
 /**
@@ -166,27 +97,21 @@ function OpportunityDetailCollaboration({ opportunity }: OpportunityDetailCollab
  */
 export function OpportunityDetailView({ opportunity, onEdit }: OpportunityDetailViewProps) {
   const { t } = useTranslation()
-  const { hasAny: hasCollaboration } = useCollaborationGates(opportunity)
+  const collaborationTabs = useCollaborationTabs(opportunity)
   const createdAt = formatDateTime(opportunity.created_at)
   const updatedAt = formatDateTime(opportunity.updated_at)
 
   return (
     <RecordCanvas>
-      <div className={cn(RECORD_BODY_GRID_CLASS, hasCollaboration && RECORD_BODY_WITH_SIDE_CLASS)}>
-        <div className={RECORD_COLUMN_CLASS}>
-          <RecordCard>
-            <OpportunityDetailHeader opportunity={opportunity} onEdit={onEdit} />
-            <OpportunityDetailStats opportunity={opportunity} />
-            <OpportunityDetailSections opportunity={opportunity} />
-          </RecordCard>
-        </div>
-
-        {hasCollaboration ? (
-          <div className={RECORD_COLUMN_CLASS}>
-            <OpportunityDetailCollaboration opportunity={opportunity} />
-          </div>
-        ) : null}
-      </div>
+      <RecordBody
+        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+      >
+        <RecordCard>
+          <OpportunityDetailHeader opportunity={opportunity} onEdit={onEdit} />
+          <OpportunityDetailStats opportunity={opportunity} />
+          <OpportunityDetailSections opportunity={opportunity} />
+        </RecordCard>
+      </RecordBody>
 
       {/*
        * Keyed by id (spec 0067 D-2): the detail route/Sheet does not remount

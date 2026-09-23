@@ -77,6 +77,7 @@ const guide: HelpGuide = {
       title: 'Aprire un record e creazione rapida',
       blocks: [
         { type: 'paragraph', text: 'Un record si apre in due modi: **Pagina singola** (occupa tutta l’area di lavoro) oppure **Modale** (si apre in un pannello laterale e l’elenco resta al suo posto).' },
+        { type: 'paragraph', text: 'Ogni scheda ha la stessa disposizione: a sinistra la parte principale con i dati del record e, in alto a destra, il pulsante **Modifica** (se hai il permesso); a destra una colonna con le schede **Note**, **Documenti** e **Cronologia attività**, dove previste per quel modulo. Su schermi stretti la colonna di destra scende sotto i dati.' },
         { type: 'paragraph', text: 'Nel pannello laterale l’icona **Apri pagina di dettaglio** porta il record a pagina intera. Un collegamento a un altro record si apre nel pannello; con **Ctrl+clic** (Mac **Cmd+clic**) si apre in una nuova scheda del browser.' },
         { type: 'paragraph', text: 'Per scegliere la modalità vai in **Impostazioni › Impostazioni sistema › Modalità apertura moduli**:' },
         { type: 'list', items: ['**Solo modale**: tutti i moduli nel pannello laterale.', '**Solo pagina singola**: tutti i moduli a pagina intera.', '**Personalizzata**: scegli **Modale** o **Pagina singola** modulo per modulo.'] },

@@ -27,7 +27,7 @@ function detailQueryKey(id: number) {
  * Reused as-is by the modal Sheet (`useModuleOpener`) and by the generic
  * dedicated pages (`ModuleDetailPage`/`ModuleFormPage`).
  */
-export function PaymentMethodDetailScreen({ id }: ModuleDetailScreenProps) {
+export function PaymentMethodDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: paymentMethod,
@@ -50,7 +50,7 @@ export function PaymentMethodDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <PaymentMethodDetailView paymentMethod={paymentMethod} />
+  return <PaymentMethodDetailView paymentMethod={paymentMethod} onEdit={onEdit} />
 }
 
 export function PaymentMethodFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -142,4 +142,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.paymentMethods',
   DetailScreen: PaymentMethodDetailScreen,
   FormScreen: PaymentMethodFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

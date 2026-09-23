@@ -15,7 +15,7 @@ import { CommissionConfigurationForm } from './commission-configuration-form'
 import { CommissionConfigurationDetailView } from './commission-configuration-detail'
 import type { CommissionConfigurationDetail } from './types'
 
-export function CommissionConfigurationDetailScreen({ id }: ModuleDetailScreenProps) {
+export function CommissionConfigurationDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const { data, isLoading, isError, refetch } = useEntityDetail(
     commissionConfigurationDetailKey(id),
@@ -23,7 +23,7 @@ export function CommissionConfigurationDetailScreen({ id }: ModuleDetailScreenPr
   )
   if (isError) return <DetailError message={t('commissionConfigurations.detail.loadError')} retryLabel={t('common.retry')} onRetry={() => refetch()} />
   if (isLoading || !data) return <DetailLoading />
-  return <CommissionConfigurationDetailView configuration={data} />
+  return <CommissionConfigurationDetailView configuration={data} onEdit={onEdit} />
 }
 
 function EditLoader({
@@ -63,4 +63,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.commissionConfigurations',
   DetailScreen: CommissionConfigurationDetailScreen,
   FormScreen: CommissionConfigurationFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

@@ -1,9 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Clock, History, MessagesSquare, Paperclip } from 'lucide-react'
-import { RecordCard } from '@/components/detail/record-panel'
+import { Clock, MessagesSquare, Paperclip } from 'lucide-react'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
@@ -13,151 +12,76 @@ import { TaskTimeEntriesSection } from '@/features/time-entries/task/task-time-e
 import { useTaskTimeEntries } from '@/features/time-entries/task/use-task-time-entries'
 import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
 
-const NOTES_TAB = 'notes'
-const DOCUMENTS_TAB = 'documents'
-const ACTIVITY_TAB = 'activity'
 const TIME_ENTRIES_TAB = 'time-entries'
 
-/** Compact trigger sizing, identical to the Opportunita'/Contratto tab strip. */
-const TRIGGER_CLASS = 'px-2.5 py-1 text-xs'
-
-interface TaskCollaborationSectionProps {
-  task: TaskDetailWithPermissions
-}
-
-interface CollaborationGates {
-  canViewNotes: boolean
-  canViewDocuments: boolean
-  canViewActivity: boolean
-  canViewTimeEntries: boolean
-  hasAny: boolean
-}
-
 /**
- * Per-tab authorization, each from its OWN source (spec 0117 D-11).
+ * The task's collaboration tabs (Note | Documenti | Attivita' | Segnatempo,
+ * spec 0117 D-11), each gated by its OWN authorization source and absent
+ * entirely when unauthorized — rendered by the caller in the shared
+ * `RecordCollaborationCard` (Opportunita' reference layout).
  *
- * Notes are gated on the resource permission alone because the second half
- * of the server's rule — the membership scope of `TaskVisibilityScope`,
- * applied by `TaskNotable::authorizeRead` — is not something the client can
- * evaluate. `NotesSection` owns its own error state for that residual case,
- * the same exposure the Opportunita' detail already has.
- */
-function useCollaborationGates(task: TaskDetailWithPermissions): CollaborationGates {
-  const { can } = useAbilities()
-
-  const canViewNotes = can('tasks.view')
-  const canViewDocuments = task.permissions.actions.view_documents
-  const canViewActivity = task.permissions.actions.view_activity
-  const canViewTimeEntries = can('time-entries.viewAny')
-
-  return {
-    canViewNotes,
-    canViewDocuments,
-    canViewActivity,
-    canViewTimeEntries,
-    hasAny: canViewNotes || canViewDocuments || canViewActivity || canViewTimeEntries,
-  }
-}
-
-/**
- * The task's collaboration surface: one card, a compact tab strip of Note |
- * Documenti | Attivita' | Segnatempo, each tab absent entirely when
- * unauthorized, the whole card absent when none of the four is.
+ * Notes are gated on the resource permission alone: the membership half of
+ * the server rule — the `TaskVisibilityScope` applied by
+ * `TaskNotable::authorizeRead` — is not evaluable client-side, and
+ * `NotesSection` owns its own error state for that residual case.
  *
- * The activity log lives HERE and nowhere else since spec 0117: it used to
- * be a section of its own at the bottom of the detail card, and keeping both
- * would have shown the same log twice. Segnatempo (spec 0122 MT-F6/D-9) is the
- * one tab whose data is fetched in THIS component rather than lazily inside
- * its own `TabsContent`: the trigger's total badge needs it even while the
- * tab itself is not the active one.
+ * Segnatempo (spec 0122 MT-F6/D-9) is the one tab whose data is fetched HERE
+ * rather than lazily inside its own tab content: the trigger's total-minutes
+ * badge needs it even while the tab itself is not the active one.
  */
-export function TaskCollaborationSection({ task }: TaskCollaborationSectionProps) {
+export function useTaskCollaborationTabs(task: TaskDetailWithPermissions): RecordCollaborationTab[] {
   const { t } = useTranslation()
   const { can } = useAbilities()
-  const { canViewNotes, canViewDocuments, canViewActivity, canViewTimeEntries, hasAny } =
-    useCollaborationGates(task)
-  // Fetched here (not inside the lazily-mounted `TabsContent`) so the trigger's
-  // total badge is available regardless of which tab is active; the section's
-  // own body reads the same cached query (same key, one request).
+  const canViewTimeEntries = can('time-entries.viewAny')
   const timeEntriesQuery = useTaskTimeEntries(task.id, canViewTimeEntries)
+  const tabs: RecordCollaborationTab[] = []
 
-  if (!hasAny) {
-    return null
+  if (can('tasks.view')) {
+    tabs.push({
+      value: 'notes',
+      label: t('notes.section.title'),
+      icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      content: <NotesSection entityType={TASKS_DOMAIN} entityId={task.id} showHeader={false} />,
+    })
   }
 
-  const defaultTab = canViewNotes
-    ? NOTES_TAB
-    : canViewDocuments
-      ? DOCUMENTS_TAB
-      : canViewActivity
-        ? ACTIVITY_TAB
-        : TIME_ENTRIES_TAB
+  if (task.permissions.actions.view_documents) {
+    tabs.push({
+      value: 'documents',
+      label: t('attachments.title'),
+      icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      content: (
+        <DocumentsSection
+          resource={TASK_ATTACHABLE_ALIAS}
+          id={task.id}
+          canUpload={can('attachments.create')}
+          canDelete={can('attachments.delete')}
+        />
+      ),
+    })
+  }
 
-  return (
-    <RecordCard>
-      <Tabs defaultValue={defaultTab} className="gap-0">
-        <div className="px-4 py-3">
-          <TabsList>
-            {canViewNotes ? (
-              <TabsTrigger value={NOTES_TAB} className={TRIGGER_CLASS}>
-                <MessagesSquare className="size-3.5" aria-hidden="true" />
-                {t('notes.section.title')}
-              </TabsTrigger>
-            ) : null}
-            {canViewDocuments ? (
-              <TabsTrigger value={DOCUMENTS_TAB} className={TRIGGER_CLASS}>
-                <Paperclip className="size-3.5" aria-hidden="true" />
-                {t('attachments.title')}
-              </TabsTrigger>
-            ) : null}
-            {canViewActivity ? (
-              <TabsTrigger value={ACTIVITY_TAB} className={TRIGGER_CLASS}>
-                <History className="size-3.5" aria-hidden="true" />
-                {t('activityLog.title')}
-              </TabsTrigger>
-            ) : null}
-            {canViewTimeEntries ? (
-              <TabsTrigger value={TIME_ENTRIES_TAB} className={TRIGGER_CLASS}>
-                <Clock className="size-3.5" aria-hidden="true" />
-                {t('timeEntries.task.sectionTitle')}
-                {timeEntriesQuery.data ? (
-                  <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                    {formatMinutesLabel(timeEntriesQuery.data.total_minutes)}
-                  </Badge>
-                ) : null}
-              </TabsTrigger>
-            ) : null}
-          </TabsList>
-        </div>
-        <div className="border-t" />
-        <div className="min-w-0 p-4">
-          {canViewNotes ? (
-            <TabsContent value={NOTES_TAB}>
-              <NotesSection entityType={TASKS_DOMAIN} entityId={task.id} showHeader={false} />
-            </TabsContent>
+  if (task.permissions.actions.view_activity) {
+    tabs.push(activityLogTab(TASKS_DOMAIN, task.id, t('activityLog.title')))
+  }
+
+  if (canViewTimeEntries) {
+    tabs.push({
+      value: TIME_ENTRIES_TAB,
+      label: (
+        <>
+          {t('timeEntries.task.sectionTitle')}
+          {timeEntriesQuery.data ? (
+            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+              {formatMinutesLabel(timeEntriesQuery.data.total_minutes)}
+            </Badge>
           ) : null}
-          {canViewDocuments ? (
-            <TabsContent value={DOCUMENTS_TAB}>
-              <DocumentsSection
-                resource={TASK_ATTACHABLE_ALIAS}
-                id={task.id}
-                canUpload={can('attachments.create')}
-                canDelete={can('attachments.delete')}
-              />
-            </TabsContent>
-          ) : null}
-          {canViewActivity ? (
-            <TabsContent value={ACTIVITY_TAB}>
-              <ActivityLogSection resource={TASKS_DOMAIN} id={task.id} />
-            </TabsContent>
-          ) : null}
-          {canViewTimeEntries ? (
-            <TabsContent value={TIME_ENTRIES_TAB}>
-              <TaskTimeEntriesSection taskId={task.id} />
-            </TabsContent>
-          ) : null}
-        </div>
-      </Tabs>
-    </RecordCard>
-  )
+        </>
+      ),
+      icon: <Clock className="size-3.5" aria-hidden="true" />,
+      content: <TaskTimeEntriesSection taskId={task.id} />,
+    })
+  }
+
+  return tabs
 }

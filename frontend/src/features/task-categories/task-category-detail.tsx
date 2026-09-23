@@ -1,85 +1,113 @@
 import { useTranslation } from 'react-i18next'
-import { Tags, History } from 'lucide-react'
+import { Tags } from 'lucide-react'
+import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordBody } from '@/components/detail/record-body'
 import {
-  DetailEmpty,
-  DetailField,
-  DetailGrid,
-  DetailHero,
-  DetailMeta,
-  DetailMonogram,
-  DetailPanel,
-  DetailSection,
-} from '@/components/detail/detail-panel'
-import { formatDateTime } from '@/features/table/cell-renderers'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
-import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
+  RecordCanvas,
+  RecordCard,
+  RecordCardHeader,
+  RecordField,
+  RecordFieldList,
+  RecordMeta,
+  RecordSection,
+  RecordSectionsGrid,
+} from '@/components/detail/record-panel'
+import {
+  RecordCollaborationCard,
+  type RecordCollaborationTab,
+} from '@/components/detail/record-collaboration-card'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
+import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
+import { formatDateTime } from '@/features/table/cell-renderers'
 import { cn } from '@/lib/utils'
 import type { TaskCategoryDetailWithPermissions } from '@/features/task-categories/types'
 
 interface TaskCategoryDetailViewProps {
   taskCategory: TaskCategoryDetailWithPermissions
+  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
+  onEdit?: () => void
 }
 
 /**
- * Read-only detail of a single task category. Purely presentational: the caller
- * (the table's "view" sheet) fetches the fresh detail and passes it down.
- * Composed from the shared detail kit for a consistent CRM look. `color` is
- * shown as its swatch + localized token name and `icon` as the resolved
+ * Read-only detail of a single task category, rendered as an enterprise-CRM
+ * record (Opportunita' reference kit): the identity/fields card on the left,
+ * the Attivita' tab on the right when authorized, a metadata footer. `color`
+ * is shown as its swatch + localized token name and `icon` as the resolved
  * glyph + its canonical name, both from the shared palette/catalogue.
  */
-export function TaskCategoryDetailView({ taskCategory }: TaskCategoryDetailViewProps) {
+export function TaskCategoryDetailView({ taskCategory, onEdit }: TaskCategoryDetailViewProps) {
   const { t } = useTranslation()
+  const canEdit = taskCategory.permissions.resource.update
   const createdAt = formatDateTime(taskCategory.created_at)
   const updatedAt = formatDateTime(taskCategory.updated_at)
   const swatch = swatchClassFor(taskCategory.color)
 
+  const tabs: RecordCollaborationTab[] = taskCategory.permissions.actions.view_activity
+    ? [activityLogTab('task-categories', taskCategory.id, t('activityLog.title'))]
+    : []
+
   return (
-    <DetailPanel>
-      <DetailHero
-        media={<DetailMonogram name={taskCategory.name} icon={<Tags />} />}
-        title={taskCategory.name}
-      />
+    <RecordCanvas>
+      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
+        <RecordCard>
+          <RecordCardHeader
+            media={<DetailMonogram name={taskCategory.name} icon={<Tags />} />}
+            title={taskCategory.name}
+            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+          />
+          <RecordSectionsGrid>
+            <RecordSection title={t('taskCategories.form.sections.identity.title')} full>
+              <RecordFieldList>
+                <RecordField label={t('taskCategories.detail.description')}>
+                  {taskCategory.description ? taskCategory.description : <DetailEmpty />}
+                </RecordField>
+                <RecordField label={t('taskCategories.detail.color')}>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
+                      aria-hidden="true"
+                    />
+                    {t(`customFields.colors.${taskCategory.color}`)}
+                  </span>
+                </RecordField>
+                <RecordField label={t('taskCategories.detail.icon')}>
+                  {taskCategory.icon ? (
+                    <span className="flex items-center gap-2">
+                      <DynamicIcon name={taskCategory.icon} className="size-3.5 text-muted-foreground" />
+                      {taskCategory.icon}
+                    </span>
+                  ) : (
+                    <DetailEmpty />
+                  )}
+                </RecordField>
+                <RecordField label={t('taskCategories.detail.sort_order')}>
+                  {taskCategory.sort_order}
+                </RecordField>
+                <RecordField label={t('taskCategories.detail.isActive')}>
+                  {taskCategory.is_active ? t('common.yes') : t('common.no')}
+                </RecordField>
+              </RecordFieldList>
+            </RecordSection>
+          </RecordSectionsGrid>
+        </RecordCard>
+      </RecordBody>
 
-      <DetailSection>
-        <DetailGrid>
-          <DetailField label={t('taskCategories.detail.description')} full>
-            {taskCategory.description ? taskCategory.description : <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('taskCategories.detail.color')}>
-            <span className="flex items-center gap-2">
-              <span
-                className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                aria-hidden="true"
-              />
-              {t(`customFields.colors.${taskCategory.color}`)}
-            </span>
-          </DetailField>
-          <DetailField label={t('taskCategories.detail.icon')}>
-            {taskCategory.icon ? (
-              <span className="flex items-center gap-2">
-                <DynamicIcon name={taskCategory.icon} className="size-3.5 text-muted-foreground" />
-                {taskCategory.icon}
-              </span>
-            ) : (
-              <DetailEmpty />
-            )}
-          </DetailField>
-          <DetailField label={t('taskCategories.detail.sort_order')}>{taskCategory.sort_order}</DetailField>
-          <DetailField label={t('taskCategories.detail.isActive')}>
-            {taskCategory.is_active ? t('common.yes') : t('common.no')}
-          </DetailField>
-        </DetailGrid>
-      </DetailSection>
-
-      {taskCategory.permissions.actions.view_activity ? (
-        <DetailSection title={t('activityLog.title')} icon={<History />}>
-          <ActivityLogSection resource="task-categories" id={taskCategory.id} />
-        </DetailSection>
-      ) : null}
-
-      {createdAt ? <DetailMeta label={t('taskCategories.detail.created_at')}>{createdAt}</DetailMeta> : null}
-      {updatedAt ? <DetailMeta label={t('taskCategories.detail.updated_at')}>{updatedAt}</DetailMeta> : null}
-    </DetailPanel>
+      <RecordMeta>
+        {createdAt ? (
+          <span>
+            <span className="font-medium">{t('taskCategories.detail.created_at')}</span>{' '}
+            <span aria-hidden="true">·</span> {createdAt}
+          </span>
+        ) : null}
+        {updatedAt ? (
+          <span>
+            <span className="font-medium">{t('taskCategories.detail.updated_at')}</span>{' '}
+            <span aria-hidden="true">·</span> {updatedAt}
+          </span>
+        ) : null}
+      </RecordMeta>
+    </RecordCanvas>
   )
 }

@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { CalendarClock, CalendarDays, CheckCircle2, FileSignature, Hammer, Pencil } from 'lucide-react'
+import { CalendarClock, CalendarDays, CheckCircle2, FileSignature, Hammer } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
@@ -54,8 +54,7 @@ interface WorkOrderDetailHeaderProps {
 
 /** Identity band: monogram, title, code subtitle, status/type pills, edit action. */
 export function WorkOrderDetailHeader({ workOrder, onEdit }: WorkOrderDetailHeaderProps) {
-  const { t } = useTranslation()
-  const canEdit = Boolean(onEdit) && workOrder.permissions.resource.update
+  const canEdit = workOrder.permissions.resource.update
 
   return (
     <RecordCardHeader
@@ -70,14 +69,7 @@ export function WorkOrderDetailHeader({ workOrder, onEdit }: WorkOrderDetailHead
           <WorkOrderTypeBadge type={workOrder.type} />
         </>
       }
-      actions={
-        canEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
-      }
+      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }

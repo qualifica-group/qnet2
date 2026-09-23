@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Boxes, MapPin, Pencil, Shield, Target, UserCog } from 'lucide-react'
+import { Boxes, MapPin, Shield, Target, UserCog } from 'lucide-react'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
 import type { AssignmentSummary } from '@/features/users/user-assignment'
 import type { UserDetail } from '@/features/users/types'
@@ -48,14 +48,7 @@ export function UserDetailHeader({ user, onEdit }: UserDetailHeaderProps) {
           ))}
         </>
       }
-      actions={
-        onEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
-      }
+      actions={onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }

@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { CalendarRange, Megaphone, Pencil, Target, Wallet } from 'lucide-react'
+import { CalendarRange, Megaphone, Target, Wallet } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
 import { geoScopePlaceName } from '@/features/geo/geo-scope'
@@ -68,14 +68,7 @@ export function CampaignDetailHeader({ campaign, onEdit }: CampaignDetailHeaderP
           ) : null}
         </>
       }
-      actions={
-        canEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
-      }
+      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }

@@ -28,7 +28,7 @@ function detailQueryKey(id: number) {
  * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
  * `CustomFieldsTable`'s inline loaders, which the rewire removed.
  */
-export function CustomFieldDetailScreen({ id }: ModuleDetailScreenProps) {
+export function CustomFieldDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: definition,
@@ -51,7 +51,7 @@ export function CustomFieldDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <CustomFieldDetailView definition={definition} />
+  return <CustomFieldDetailView definition={definition} onEdit={onEdit} />
 }
 
 export function CustomFieldFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -135,4 +135,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.customFields',
   DetailScreen: CustomFieldDetailScreen,
   FormScreen: CustomFieldFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

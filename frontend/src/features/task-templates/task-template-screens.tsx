@@ -28,7 +28,7 @@ function detailQueryKey(id: number) {
  * (`ModuleDetailPage`/`ModuleFormPage`). Mirrors `ProductTypologyDetailScreen`/
  * `ProductTypologyFormScreen`.
  */
-export function TaskTemplateDetailScreen({ id }: ModuleDetailScreenProps) {
+export function TaskTemplateDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: taskTemplate,
@@ -51,7 +51,7 @@ export function TaskTemplateDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <TaskTemplateDetailView taskTemplate={taskTemplate} />
+  return <TaskTemplateDetailView taskTemplate={taskTemplate} onEdit={onEdit} />
 }
 
 export function TaskTemplateFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -123,4 +123,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.taskTemplates',
   DetailScreen: TaskTemplateDetailScreen,
   FormScreen: TaskTemplateFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

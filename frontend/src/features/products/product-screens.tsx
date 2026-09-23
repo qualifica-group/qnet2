@@ -24,7 +24,7 @@ import type { ProductDetail } from '@/features/products/types'
  * generated routes (`generateRoutes: false`) — these screens only back the
  * 'modal' alternative a user can opt into (spec 0042).
  */
-export function ProductDetailScreen({ id }: ModuleDetailScreenProps) {
+export function ProductDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: product,
@@ -47,7 +47,7 @@ export function ProductDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <ProductDetailView product={product} />
+  return <ProductDetailView product={product} onEdit={onEdit} />
 }
 
 export function ProductFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -122,4 +122,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.products',
   DetailScreen: ProductDetailScreen,
   FormScreen: ProductFormScreen,
+  // The record card renders its own Edit action — same registration
+  // Opportunità/Anagrafiche carry — so the hosts must not stack a second
+  // button on top of it.
+  detailOwnsEditAction: true,
 }

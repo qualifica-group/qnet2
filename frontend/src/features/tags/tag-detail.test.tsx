@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
 import { TagDetailView } from '@/features/tags/tag-detail'
 import type { TagDetailWithPermissions } from '@/features/tags/types'
@@ -59,5 +59,42 @@ describe('TagDetailView — activity log section (AC-015)', () => {
 
     expect(screen.queryByText('Activity log')).not.toBeInTheDocument()
     expect(activityLogSectionMock).not.toHaveBeenCalled()
+  })
+})
+
+/** The Modifica action, gated by `onEdit` AND `permissions.resource.update`. */
+describe('TagDetailView — edit action', () => {
+  it('shows Modifica when onEdit is supplied and the actor can update', () => {
+    render(<TagDetailView tag={tag()} onEdit={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
+  it('hides Modifica when onEdit is absent', () => {
+    render(<TagDetailView tag={tag()} />)
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('hides Modifica when the actor cannot update the tag', () => {
+    render(
+      <TagDetailView
+        tag={tag({
+          permissions: { ...tag().permissions, resource: { ...tag().permissions.resource, update: false } },
+        })}
+        onEdit={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('calls onEdit when Modifica is clicked', () => {
+    const onEdit = vi.fn()
+    render(<TagDetailView tag={tag()} onEdit={onEdit} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+    expect(onEdit).toHaveBeenCalledOnce()
   })
 })

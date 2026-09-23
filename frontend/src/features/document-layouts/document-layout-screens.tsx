@@ -35,7 +35,7 @@ export function detailQueryKey(id: number) {
  * block/zone `config` is the visual editor's own surface (wave 2, a separate
  * owner), mounted elsewhere.
  */
-export function DocumentLayoutDetailScreen({ id }: ModuleDetailScreenProps) {
+export function DocumentLayoutDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: documentLayout,
@@ -58,7 +58,7 @@ export function DocumentLayoutDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <DocumentLayoutDetailView documentLayout={documentLayout} />
+  return <DocumentLayoutDetailView documentLayout={documentLayout} onEdit={onEdit} />
 }
 
 export function DocumentLayoutFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -150,4 +150,7 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.documentLayouts',
   DetailScreen: DocumentLayoutDetailScreen,
   FormScreen: DocumentLayoutFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button.
+  detailOwnsEditAction: true,
 }

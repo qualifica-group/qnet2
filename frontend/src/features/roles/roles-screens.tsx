@@ -22,8 +22,8 @@ import type { RoleDetail } from '@/features/roles/types'
  * chrome. `RoleDetailView` already owns its own fetch/loading/error, so this
  * screen only forwards the id.
  */
-export function RoleDetailScreen({ id }: ModuleDetailScreenProps) {
-  return <RoleDetailView roleId={id} />
+export function RoleDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+  return <RoleDetailView roleId={id} onEdit={onEdit} />
 }
 
 export function RoleFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -94,4 +94,7 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.roles',
   DetailScreen: RoleDetailScreen,
   FormScreen: RoleFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button.
+  detailOwnsEditAction: true,
 }

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -14,12 +14,14 @@ import NotFoundPage from '@/pages/not-found-page'
 /**
  * Dedicated read-only page of a single referent (spec 0022, replaces the view
  * Sheet). Mirrors `RegistryDetailPage`: fresh re-authorized fetch on mount,
- * unchanged presentational `ReferentDetailView`, "Edit" gated by the
- * `permissions` block of THIS response.
+ * unchanged presentational `ReferentDetailView`; the record card owns the
+ * single "Edit" affordance, gated by the `permissions` block of THIS
+ * response.
  */
 export default function ReferentDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams()
+  const navigate = useNavigate()
   const referentId = parseEntityId(id)
 
   const {
@@ -43,22 +45,12 @@ export default function ReferentDetailPage() {
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         actions={
-          <>
-            <Button variant="outline" asChild>
-              <Link to="/referents">
-                <ArrowLeft aria-hidden="true" />
-                {t('common.back')}
-              </Link>
-            </Button>
-            {referent?.permissions.resource.update ? (
-              <Button asChild>
-                <Link to={`/referents/${referentId}/edit`}>
-                  <Pencil aria-hidden="true" />
-                  {t('common.edit')}
-                </Link>
-              </Button>
-            ) : null}
-          </>
+          <Button variant="outline" asChild>
+            <Link to="/referents">
+              <ArrowLeft aria-hidden="true" />
+              {t('common.back')}
+            </Link>
+          </Button>
         }
       />
 
@@ -75,7 +67,10 @@ export default function ReferentDetailPage() {
         ) : isLoading || !referent ? (
           <DetailLoading />
         ) : (
-          <ReferentDetailView referent={referent} />
+          <ReferentDetailView
+            referent={referent}
+            onEdit={() => void navigate(`/referents/${referentId}/edit`)}
+          />
         )}
       </div>
     </div>

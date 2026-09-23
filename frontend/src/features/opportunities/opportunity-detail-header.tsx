@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Handshake, Pencil } from 'lucide-react'
+import { Handshake } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { Button } from '@/components/ui/button'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Progress } from '@/components/ui/progress'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { probabilityToneClass } from '@/features/opportunities/column-renderers'
@@ -27,8 +27,7 @@ interface OpportunityDetailHeaderProps {
  * badges, edit action.
  */
 export function OpportunityDetailHeader({ opportunity, onEdit }: OpportunityDetailHeaderProps) {
-  const { t } = useTranslation()
-  const canEdit = Boolean(onEdit) && opportunity.permissions.resource.update
+  const canEdit = opportunity.permissions.resource.update
 
   return (
     <RecordCardHeader
@@ -43,12 +42,7 @@ export function OpportunityDetailHeader({ opportunity, onEdit }: OpportunityDeta
       subtitle={opportunity.registry?.name}
       badges={<OpportunityStatusBadge summary={opportunity.status} />}
       actions={
-        canEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
+        canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null
       }
     />
   )

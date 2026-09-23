@@ -28,7 +28,7 @@ function detailQueryKey(id: number) {
  * dedicated pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
  * `PipelineStatusesTable`'s inline loaders, which the rewire removed.
  */
-export function PipelineStatusDetailScreen({ id }: ModuleDetailScreenProps) {
+export function PipelineStatusDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: pipelineStatus,
@@ -51,7 +51,7 @@ export function PipelineStatusDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <PipelineStatusDetailView pipelineStatus={pipelineStatus} />
+  return <PipelineStatusDetailView pipelineStatus={pipelineStatus} onEdit={onEdit} />
 }
 
 export function PipelineStatusFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -139,4 +139,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.pipelineStatuses',
   DetailScreen: PipelineStatusDetailScreen,
   FormScreen: PipelineStatusFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

@@ -3,6 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DETTAGLI RECORD ALLINEATI ALLO STILE OPPORTUNITA' — NON COMMITTATO (2026-09-23)
+
+- Richiesta utente: tutte le viste dettaglio come Opportunita' — Modifica nell'header della card principale,
+  Note/Documenti/Attivita' (+ extra) nella colonna laterale destra.
+- Kit condiviso nuovo (usarlo per ogni nuovo dettaglio): `components/detail/record-body.tsx` (`RecordBody side`),
+  `record-collaboration-card.tsx` (`RecordCollaborationCard tabs`, i tab li filtra il chiamante coi SUOI gate),
+  `record-edit-button.tsx` (`RecordEditButton`), `features/activity-log/activity-log-tab.tsx` (`activityLogTab`).
+  Rimossi `DetailHero`/`DetailMeta` da `detail-panel.tsx` (orfani); `DetailPanel/Section/Grid/Field` restano solo
+  per `imports/lead-import-detail.tsx`.
+- Migrati (6 agenti frontend): i 16 dettagli record + le ~26 anagrafiche lookup (ex `DetailPanel`, ora
+  `RecordCanvas` + Edit in header + `detailOwnsEditAction: true`: prima in modale non avevano alcun Modifica).
+  Work-orders: rimossi `work-order-collaboration-section.tsx` + gates hook (tab costruiti inline);
+  tasks: `task-collaboration-section.tsx` e' ora l'hook `useTaskCollaborationTabs`, card spostata di lato.
+  Pagine dedicate registries/referents/products: Edit tolto dal PageHeader (era doppio), ora `onEdit` alla View.
+- Eccezioni volute: contracts tiene Modifica nella `ContractActionsBar` (direttiva utente 2026-08-31);
+  field-change-requests ha Approva/Rifiuta nell'header e nessun lato (la resource non espone view_activity);
+  users mostra Edit senza gate `resource.update` (`UserDetail` non ha `permissions`, invariato);
+  request-management/enrollee (work panel) e lead-import detail non toccati. Note/documenti NON aggiunti a
+  moduli che non li hanno (servirebbe backend).
+- Verifica: Vitest intero 758 file / 5780 verdi, `tsc -b --force` pulito, ESLint pulito sui file toccati (2 errori
+  preesistenti in `quotes/column-renderers.tsx` e `registry-form-metadata.test.tsx`, non toccati).
+- Guide in-app: paragrafo sul layout comune in `general` (IT/EN, sezione `opening-records-and-quick-create`).
+- Fix post-review (`/task-statuses/1`): 7 lookup avevano `RecordSection` direttamente nella `RecordCard` (senza
+  `RecordSectionsGrid` = senza padding `p-4`); ora dentro la griglia con `full`. Tolto il cast `onEdit as () => void`
+  (17 file): gate `canEdit && onEdit`. Regola: una `RecordSection` sta SEMPRE in un `RecordSectionsGrid`.
+
 ## NOTIFICHE: AZIONI CON ETICHETTA + "APRI" IN MODALE (spec 0150 D-3 rivista, D-8) — NON COMMITTATO (2026-09-23)
 
 - Azioni riga letto/non letto = pulsanti con icona + testo (richiesta utente). Opzione generica OPT-IN

@@ -28,7 +28,7 @@ function detailQueryKey(id: number) {
  * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
  * `SourcesTable`'s inline loaders, which the rewire removed.
  */
-export function SourceDetailScreen({ id }: ModuleDetailScreenProps) {
+export function SourceDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: source,
@@ -51,7 +51,7 @@ export function SourceDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <SourceDetailView source={source} />
+  return <SourceDetailView source={source} onEdit={onEdit} />
 }
 
 export function SourceFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -121,4 +121,7 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.sources',
   DetailScreen: SourceDetailScreen,
   FormScreen: SourceFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button.
+  detailOwnsEditAction: true,
 }

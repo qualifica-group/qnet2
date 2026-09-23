@@ -1,76 +1,103 @@
 import { useTranslation } from 'react-i18next'
-import { Flag, History } from 'lucide-react'
+import { Flag } from 'lucide-react'
+import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
-  DetailEmpty,
-  DetailField,
-  DetailGrid,
-  DetailHero,
-  DetailMeta,
-  DetailMonogram,
-  DetailPanel,
-  DetailSection,
-} from '@/components/detail/detail-panel'
+  RecordCanvas,
+  RecordCard,
+  RecordCardHeader,
+  RecordField,
+  RecordFieldList,
+  RecordMeta,
+  RecordSection,
+  RecordSectionsGrid,
+} from '@/components/detail/record-panel'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { cn } from '@/lib/utils'
 import type { PipelineStatusDetailWithPermissions } from '@/features/pipeline-statuses/types'
 
 interface PipelineStatusDetailViewProps {
   pipelineStatus: PipelineStatusDetailWithPermissions
+  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
+  onEdit?: () => void
 }
 
 /**
- * Read-only detail of a single project status. Purely presentational: the
- * caller (the table's "view" sheet) fetches the fresh detail and passes it
- * down. Composed from the shared detail kit for a consistent CRM look
- * (mirrors `SourceDetailView`).
+ * Read-only detail of a single project status, rendered as an
+ * enterprise-CRM record (Opportunita' reference layout): the
+ * identity/fields card on the left, the activity card on the right, a
+ * metadata footer.
  */
-export function PipelineStatusDetailView({ pipelineStatus }: PipelineStatusDetailViewProps) {
+export function PipelineStatusDetailView({ pipelineStatus, onEdit }: PipelineStatusDetailViewProps) {
   const { t } = useTranslation()
+  const canEdit = pipelineStatus.permissions.resource.update
   const createdAt = formatDateTime(pipelineStatus.created_at)
   const swatch = swatchClassFor(pipelineStatus.color)
+  const canViewActivity = pipelineStatus.permissions.actions.view_activity
 
   return (
-    <DetailPanel>
-      <DetailHero
-        media={<DetailMonogram name={pipelineStatus.name} icon={<Flag />} />}
-        title={pipelineStatus.name}
-      />
-
-      <DetailSection>
-        <DetailGrid>
-          <DetailField label={t('pipelineStatuses.detail.color')}>
-            {pipelineStatus.color ? (
-              <span className="flex items-center gap-2">
-                <span
-                  className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                  aria-hidden="true"
-                />
-                {t(`customFields.colors.${pipelineStatus.color}`)}
-              </span>
-            ) : (
-              <DetailEmpty />
-            )}
-          </DetailField>
-          <DetailField label={t('pipelineStatuses.detail.sort_order')}>
-            {pipelineStatus.sort_order}
-          </DetailField>
-          <DetailField label={t('pipelineStatuses.detail.group')}>
-            {t(`pipelineStatuses.form.group.${pipelineStatus.group}`)}
-          </DetailField>
-        </DetailGrid>
-      </DetailSection>
-
-      {pipelineStatus.permissions.actions.view_activity ? (
-        <DetailSection title={t('activityLog.title')} icon={<History />}>
-          <ActivityLogSection resource="pipeline-statuses" id={pipelineStatus.id} />
-        </DetailSection>
-      ) : null}
+    <RecordCanvas>
+      <RecordBody
+        side={
+          canViewActivity ? (
+            <RecordCollaborationCard
+              tabs={[activityLogTab('pipeline-statuses', pipelineStatus.id, t('activityLog.title'))]}
+            />
+          ) : null
+        }
+      >
+        <RecordCard>
+          <RecordCardHeader
+            media={
+              <DetailMonogram
+                name={pipelineStatus.name}
+                icon={<Flag />}
+                className="size-10 text-base [&>svg]:size-5"
+              />
+            }
+            title={pipelineStatus.name}
+            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+          />
+          <RecordSectionsGrid>
+            <RecordSection title={t('pipelineStatuses.form.sections.identity.title')} full>
+              <RecordFieldList>
+                <RecordField label={t('pipelineStatuses.detail.color')}>
+                  {pipelineStatus.color ? (
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
+                        aria-hidden="true"
+                      />
+                      {t(`customFields.colors.${pipelineStatus.color}`)}
+                    </span>
+                  ) : (
+                    <DetailEmpty />
+                  )}
+                </RecordField>
+                <RecordField label={t('pipelineStatuses.detail.sort_order')}>
+                  {pipelineStatus.sort_order}
+                </RecordField>
+                <RecordField label={t('pipelineStatuses.detail.group')}>
+                  {t(`pipelineStatuses.form.group.${pipelineStatus.group}`)}
+                </RecordField>
+              </RecordFieldList>
+            </RecordSection>
+          </RecordSectionsGrid>
+        </RecordCard>
+      </RecordBody>
 
       {createdAt ? (
-        <DetailMeta label={t('pipelineStatuses.detail.created_at')}>{createdAt}</DetailMeta>
+        <RecordMeta>
+          <span>
+            <span className="font-medium">{t('pipelineStatuses.detail.created_at')}</span>{' '}
+            <span aria-hidden="true">·</span> {createdAt}
+          </span>
+        </RecordMeta>
       ) : null}
-    </DetailPanel>
+    </RecordCanvas>
   )
 }

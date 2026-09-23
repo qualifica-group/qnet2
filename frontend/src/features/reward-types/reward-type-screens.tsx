@@ -28,7 +28,7 @@ function detailQueryKey(id: number) {
  * (`useModuleOpener`) and by the generic dedicated pages
  * (`ModuleDetailPage`/`ModuleFormPage`).
  */
-export function RewardTypeDetailScreen({ id }: ModuleDetailScreenProps) {
+export function RewardTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: rewardType,
@@ -51,7 +51,7 @@ export function RewardTypeDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <RewardTypeDetailView rewardType={rewardType} />
+  return <RewardTypeDetailView rewardType={rewardType} onEdit={onEdit} />
 }
 
 export function RewardTypeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -125,4 +125,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.rewardTypes',
   DetailScreen: RewardTypeDetailScreen,
   FormScreen: RewardTypeFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

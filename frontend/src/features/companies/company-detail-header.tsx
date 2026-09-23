@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Building2, Globe, Map, MapPinned, Pencil, Receipt } from 'lucide-react'
+import { Building2, Globe, Map, MapPinned, Receipt } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { Button } from '@/components/ui/button'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import type { CompanyAddress, CompanyDetailWithPermissions } from '@/features/companies/types'
 
 /**
@@ -19,7 +19,6 @@ interface CompanyDetailHeaderProps {
 
 /** Identity band: monogram, denomination, a short "City, Country" subtitle, edit action. */
 export function CompanyDetailHeader({ company, onEdit }: CompanyDetailHeaderProps) {
-  const { t } = useTranslation()
   const canEdit = Boolean(onEdit) && company.permissions.resource.update
 
   return (
@@ -33,14 +32,7 @@ export function CompanyDetailHeader({ company, onEdit }: CompanyDetailHeaderProp
       }
       title={company.denomination}
       subtitle={locationSummary(company.address)}
-      actions={
-        canEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
-      }
+      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }

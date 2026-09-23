@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { Contact, MapPin, Package, Pencil, UserCheck } from 'lucide-react'
+import { Contact, MapPin, Package, UserCheck } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { BADGE_BASE, badgeColorClass } from '@/features/table/cell-renderers'
@@ -58,12 +58,7 @@ export function LeadDetailHeader({ lead, onEdit }: LeadDetailHeaderProps) {
       actions={
         <>
           <LeadConversionAction leadId={lead.id} opportunity={lead.opportunity} />
-          {canEdit ? (
-            <Button size="sm" onClick={onEdit}>
-              <Pencil aria-hidden="true" />
-              {t('common.edit')}
-            </Button>
-          ) : null}
+          {canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
         </>
       }
     />

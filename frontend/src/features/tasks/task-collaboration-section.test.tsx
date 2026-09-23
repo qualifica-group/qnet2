@@ -5,10 +5,23 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { ConfirmContext, type ConfirmFn } from '@/components/confirm-dialog-context'
-import { TaskCollaborationSection } from '@/features/tasks/task-collaboration-section'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
+import { useTaskCollaborationTabs } from '@/features/tasks/task-collaboration-section'
 import { TaskDetailView } from '@/features/tasks/task-detail'
 import { FULL_ACCESS_PERMISSIONS, taskDetailWithPermissions } from '@/features/tasks/task-fixtures'
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { TaskDetailWithPermissions } from '@/features/tasks/types'
+
+/**
+ * Renders exactly what `TaskDetailView` renders in its side column: the hook
+ * builds the tabs, the shared `RecordCollaborationCard` lays them out — this
+ * harness isolates that pairing from the rest of the record card so the
+ * gating/props assertions below stay focused on the Task's OWN wiring.
+ */
+function TaskCollaborationSection({ task }: { task: TaskDetailWithPermissions }) {
+  const tabs = useTaskCollaborationTabs(task)
+  return <RecordCollaborationCard tabs={tabs} />
+}
 
 /*
  * Collaboration card of the Task detail (spec 0117, D-11, AC-023..AC-027).

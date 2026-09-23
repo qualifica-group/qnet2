@@ -26,7 +26,7 @@ import type { SectorDetail } from '@/features/sectors/types'
  * pre-selected parent: the registry's generic form-mode contract carries no
  * `parentId`, so the "add sub-sector" tree affordance stays out of scope here.
  */
-export function SectorDetailScreen({ id }: ModuleDetailScreenProps) {
+export function SectorDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: sector,
@@ -49,7 +49,7 @@ export function SectorDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <SectorDetailView sector={sector} />
+  return <SectorDetailView sector={sector} onEdit={onEdit} />
 }
 
 export function SectorFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -126,4 +126,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.sectors',
   DetailScreen: SectorDetailScreen,
   FormScreen: SectorFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { Building2, Landmark, Pencil, Receipt, Star } from 'lucide-react'
+import { Building2, Landmark, Receipt, Star } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
@@ -63,12 +64,7 @@ export function CompanySiteDetailHeader({
                 : t('companySites.form.setDefault')}
             </Button>
           ) : null}
-          {canEdit ? (
-            <Button size="sm" onClick={onEdit}>
-              <Pencil aria-hidden="true" />
-              {t('common.edit')}
-            </Button>
-          ) : null}
+          {canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
         </>
       }
     />

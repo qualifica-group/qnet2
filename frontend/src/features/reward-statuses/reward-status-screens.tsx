@@ -27,7 +27,7 @@ function detailQueryKey(id: number) {
  * Reused as-is by the modal Sheet (`useModuleOpener`) and by the generic
  * dedicated pages (`ModuleDetailPage`/`ModuleFormPage`).
  */
-export function RewardStatusDetailScreen({ id }: ModuleDetailScreenProps) {
+export function RewardStatusDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: rewardStatus,
@@ -50,7 +50,7 @@ export function RewardStatusDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <RewardStatusDetailView rewardStatus={rewardStatus} />
+  return <RewardStatusDetailView rewardStatus={rewardStatus} onEdit={onEdit} />
 }
 
 export function RewardStatusFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -138,4 +138,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.rewardStatuses',
   DetailScreen: RewardStatusDetailScreen,
   FormScreen: RewardStatusFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

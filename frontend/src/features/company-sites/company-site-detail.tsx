@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { History, Landmark, MapPin, Phone } from 'lucide-react'
+import { Landmark, MapPin, Phone } from 'lucide-react'
 import { DetailEmpty, DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
@@ -11,18 +11,14 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RECORD_BODY_GRID_CLASS,
-  RECORD_BODY_WITH_SIDE_CLASS,
-  RECORD_COLUMN_CLASS,
-} from '@/components/detail/record-layout'
-import { cn } from '@/lib/utils'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import {
   CompanySiteDetailHeader,
   CompanySiteDetailStats,
 } from '@/features/company-sites/company-site-detail-header'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { AddressesManager } from '@/features/personal-data/addresses-manager'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { cardToDraft } from '@/features/personal-data/drafts'
@@ -116,78 +112,60 @@ export function CompanySiteDetailView({
 
   const createdAt = formatDateTime(site.created_at)
   const canSetDefault = !site.is_default && site.permissions.actions.set_default
-  const canViewActivity = site.permissions.actions.view_activity
   const card = site.personal_data
   const draft = card ? cardToDraft(card) : null
+  const collaborationTabs = site.permissions.actions.view_activity
+    ? [activityLogTab('company-sites', site.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
-      <div className={cn(RECORD_BODY_GRID_CLASS, canViewActivity && RECORD_BODY_WITH_SIDE_CLASS)}>
-        <div className={RECORD_COLUMN_CLASS}>
-          <RecordCard>
-            <CompanySiteDetailHeader
-              site={site}
-              onEdit={onEdit}
-              onSetDefault={canSetDefault ? () => void handleSetDefault() : undefined}
-              isSettingDefault={settingDefault}
-            />
-            <CompanySiteDetailStats site={site} />
+      <RecordBody
+        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+      >
+        <RecordCard>
+          <CompanySiteDetailHeader
+            site={site}
+            onEdit={onEdit}
+            onSetDefault={canSetDefault ? () => void handleSetDefault() : undefined}
+            isSettingDefault={settingDefault}
+          />
+          <CompanySiteDetailStats site={site} />
 
-            <RecordSectionsGrid>
-              <RecordSection
-                title={t('companySites.form.sections.contacts.title')}
-                icon={<Phone />}
-              >
-                {draft ? (
-                  <ContactsManager
-                    value={draft.contacts}
-                    onChange={noopChange}
-                    fieldPermission={READ_ONLY_FIELD_PERMISSION}
-                    showHeader={false}
-                  />
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordSection>
+          <RecordSectionsGrid>
+            <RecordSection title={t('companySites.form.sections.contacts.title')} icon={<Phone />}>
+              {draft ? (
+                <ContactsManager
+                  value={draft.contacts}
+                  onChange={noopChange}
+                  fieldPermission={READ_ONLY_FIELD_PERMISSION}
+                  showHeader={false}
+                />
+              ) : (
+                <DetailEmpty />
+              )}
+            </RecordSection>
 
-              <RecordSection
-                title={t('companySites.form.sections.address.title')}
-                icon={<MapPin />}
-              >
-                {draft ? (
-                  <AddressesManager
-                    value={draft.addresses}
-                    onChange={noopChange}
-                    fieldPermission={READ_ONLY_FIELD_PERMISSION}
-                    showHeader={false}
-                    showSiteType
-                  />
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordSection>
+            <RecordSection title={t('companySites.form.sections.address.title')} icon={<MapPin />}>
+              {draft ? (
+                <AddressesManager
+                  value={draft.addresses}
+                  onChange={noopChange}
+                  fieldPermission={READ_ONLY_FIELD_PERMISSION}
+                  showHeader={false}
+                  showSiteType
+                />
+              ) : (
+                <DetailEmpty />
+              )}
+            </RecordSection>
 
-              <RecordSection
-                title={t('companySites.form.sections.banks.title')}
-                icon={<Landmark />}
-                full
-              >
-                <BanksBlock banks={site.banks} />
-              </RecordSection>
-            </RecordSectionsGrid>
-          </RecordCard>
-        </div>
-
-        {canViewActivity ? (
-          <div className={RECORD_COLUMN_CLASS}>
-            <RecordCard className="p-4">
-              <RecordSection title={t('activityLog.title')} icon={<History />}>
-                <ActivityLogSection resource="company-sites" id={site.id} />
-              </RecordSection>
-            </RecordCard>
-          </div>
-        ) : null}
-      </div>
+            <RecordSection title={t('companySites.form.sections.banks.title')} icon={<Landmark />} full>
+              <BanksBlock banks={site.banks} />
+            </RecordSection>
+          </RecordSectionsGrid>
+        </RecordCard>
+      </RecordBody>
 
       {createdAt ? (
         <RecordMeta>

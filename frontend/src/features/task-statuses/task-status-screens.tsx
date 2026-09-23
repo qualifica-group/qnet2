@@ -27,7 +27,7 @@ function detailQueryKey(id: number) {
  * modal Sheet (`useModuleOpener`) and by the generic dedicated pages
  * (`ModuleDetailPage`/`ModuleFormPage`).
  */
-export function TaskStatusDetailScreen({ id }: ModuleDetailScreenProps) {
+export function TaskStatusDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: taskStatus,
@@ -50,7 +50,7 @@ export function TaskStatusDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <TaskStatusDetailView taskStatus={taskStatus} />
+  return <TaskStatusDetailView taskStatus={taskStatus} onEdit={onEdit} />
 }
 
 export function TaskStatusFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -124,4 +124,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.taskStatuses',
   DetailScreen: TaskStatusDetailScreen,
   FormScreen: TaskStatusFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

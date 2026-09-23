@@ -1,4 +1,4 @@
-import { render as rtlRender, screen } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -113,5 +113,32 @@ describe('BusinessFunctionDetailView', () => {
     )
     expect(screen.getByText(i18n.t('businessFunctions.detail.operationalSites'))).toBeInTheDocument()
     expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})
+
+describe('BusinessFunctionDetailView — edit action', () => {
+  const editLabel = i18n.t('common.edit')
+
+  it('shows the Edit button when update is granted and onEdit is wired', () => {
+    const onEdit = vi.fn()
+    render(<BusinessFunctionDetailView businessFunction={BASE} onEdit={onEdit} />)
+
+    fireEvent.click(screen.getByRole('button', { name: editLabel }))
+    expect(onEdit).toHaveBeenCalled()
+  })
+
+  it('hides the Edit button when onEdit is absent', () => {
+    render(<BusinessFunctionDetailView businessFunction={BASE} />)
+    expect(screen.queryByRole('button', { name: editLabel })).not.toBeInTheDocument()
+  })
+
+  it('hides the Edit button when update is not granted, even with onEdit wired', () => {
+    render(
+      <BusinessFunctionDetailView
+        businessFunction={{ ...BASE, permissions: { ...BASE.permissions, resource: { ...BASE.permissions.resource, update: false } } }}
+        onEdit={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: editLabel })).not.toBeInTheDocument()
   })
 })

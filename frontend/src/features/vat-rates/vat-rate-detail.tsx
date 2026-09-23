@@ -1,55 +1,82 @@
 import { useTranslation } from 'react-i18next'
-import { History, Percent } from 'lucide-react'
+import { Percent } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
 import {
-  DetailField,
-  DetailGrid,
-  DetailHero,
-  DetailMeta,
-  DetailMonogram,
-  DetailPanel,
-  DetailSection,
-} from '@/components/detail/detail-panel'
+  RecordCanvas,
+  RecordCard,
+  RecordCardHeader,
+  RecordField,
+  RecordFieldList,
+  RecordMeta,
+  RecordSection,
+  RecordSectionsGrid,
+} from '@/components/detail/record-panel'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { formatRate } from '@/features/vat-rates/column-renderers'
 import type { VatRateDetailWithPermissions } from '@/features/vat-rates/types'
 
 interface VatRateDetailViewProps {
   vatRate: VatRateDetailWithPermissions
+  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
+  onEdit?: () => void
 }
 
 /**
- * Read-only detail of a single VAT rate. Purely presentational: the caller
- * (the table's "view" sheet) fetches the fresh detail and passes it down.
- * Composed from the shared detail kit for a consistent CRM look (mirrors
- * `SourceDetailView`).
+ * Read-only detail of a single VAT rate, rendered as an enterprise-CRM
+ * record (Opportunita' reference layout): the identity/fields card on the
+ * left, the activity card on the right, a metadata footer.
  */
-export function VatRateDetailView({ vatRate }: VatRateDetailViewProps) {
+export function VatRateDetailView({ vatRate, onEdit }: VatRateDetailViewProps) {
   const { t } = useTranslation()
+  const canEdit = vatRate.permissions.resource.update
   const createdAt = formatDateTime(vatRate.created_at)
+  const canViewActivity = vatRate.permissions.actions.view_activity
 
   return (
-    <DetailPanel>
-      <DetailHero
-        media={<DetailMonogram name={vatRate.name} icon={<Percent />} />}
-        title={vatRate.name}
-      />
-
-      <DetailSection title={t('vatRates.detail.details')}>
-        <DetailGrid>
-          <DetailField label={t('vatRates.columns.rate')}>{formatRate(vatRate.rate)}%</DetailField>
-        </DetailGrid>
-      </DetailSection>
-
-      {vatRate.permissions.actions.view_activity ? (
-        <DetailSection title={t('activityLog.title')} icon={<History />}>
-          <ActivityLogSection resource="vat-rates" id={vatRate.id} />
-        </DetailSection>
-      ) : null}
+    <RecordCanvas>
+      <RecordBody
+        side={
+          canViewActivity ? (
+            <RecordCollaborationCard
+              tabs={[activityLogTab('vat-rates', vatRate.id, t('activityLog.title'))]}
+            />
+          ) : null
+        }
+      >
+        <RecordCard>
+          <RecordCardHeader
+            media={
+              <DetailMonogram
+                name={vatRate.name}
+                icon={<Percent />}
+                className="size-10 text-base [&>svg]:size-5"
+              />
+            }
+            title={vatRate.name}
+            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+          />
+          <RecordSectionsGrid>
+            <RecordSection title={t('vatRates.detail.details')} full>
+              <RecordFieldList>
+                <RecordField label={t('vatRates.columns.rate')}>{formatRate(vatRate.rate)}%</RecordField>
+              </RecordFieldList>
+            </RecordSection>
+          </RecordSectionsGrid>
+        </RecordCard>
+      </RecordBody>
 
       {createdAt ? (
-        <DetailMeta label={t('vatRates.detail.created_at')}>{createdAt}</DetailMeta>
+        <RecordMeta>
+          <span>
+            <span className="font-medium">{t('vatRates.detail.created_at')}</span>{' '}
+            <span aria-hidden="true">·</span> {createdAt}
+          </span>
+        </RecordMeta>
       ) : null}
-    </DetailPanel>
+    </RecordCanvas>
   )
 }

@@ -21,10 +21,13 @@ vi.mock('@/features/modules/use-module-open-mode', () => ({
   useModuleOpenMode: () => 'modal',
 }))
 
-// Related-record links render only for an actor who can view the target
-// module; these tests are not about abilities, so every ability is granted.
+// Related-record links and the collaboration card's Notes tab (`work-orders.view`)
+// both read the actor's client abilities. Defaults to every ability granted so the
+// existing field/link assertions stay unaffected; the collaboration describe block
+// below overrides it to exercise gating.
+const canMock = vi.fn<(permission: string) => boolean>()
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({ can: canMock, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
 /**
@@ -101,6 +104,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   activityLogSectionMock.mockReset()
+  canMock.mockReset()
+  canMock.mockImplementation((): boolean => true)
 })
 
 describe('WorkOrderDetailView — detail fields (AC-075)', () => {
@@ -222,30 +227,6 @@ describe('WorkOrderDetailView — additional information (spec 0098, AC-023)', (
   })
 })
 
-describe('WorkOrderDetailView — activity log section', () => {
-  // Spec 0134 D-3 (REQUIREMENT CHANGED): the log moved from the bottom of the
-  // record card into the side collaboration card's own "Activity" tab.
-  it('mounts the section when view_activity is granted', () => {
-    render(
-      <WorkOrderDetailView
-        workOrder={workOrder({
-          permissions: { ...workOrder().permissions, actions: { view_activity: true } },
-        })}
-      />,
-    )
-
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Activity log' }))
-
-    expect(activityLogSectionMock).toHaveBeenCalledWith({ resource: 'work-orders', id: 4 })
-  })
-
-  it('hides the section when view_activity is not granted', () => {
-    render(<WorkOrderDetailView workOrder={workOrder()} />)
-
-    expect(activityLogSectionMock).not.toHaveBeenCalled()
-  })
-})
-
 describe('WorkOrderDetailView — edit action on the card', () => {
   it('renders Edit in the record card and calls onEdit when the actor may update', () => {
     const onEdit = vi.fn()
@@ -279,5 +260,66 @@ describe('WorkOrderDetailView — related records', () => {
     expect(hrefOf('Onboarding cliente')).toBe('/task-templates/3')
     expect(hrefOf('Consulenza')).toBe('/products/1')
     expect(hrefOf('Installazione')).toBe('/products/2')
+  })
+})
+
+/**
+ * The collaboration card mirrors `OpportunityDetailView`'s: one card, a
+ * Notes | Documents | Activity tab strip, each tab gated by its own
+ * authorization source (spec 0134 D-3), absent as a whole when nothing is
+ * authorized.
+ */
+describe('WorkOrderDetailView — collaboration', () => {
+  it('renders no collaboration card when nothing is authorized', () => {
+    canMock.mockImplementation((): boolean => false)
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  })
+
+  it('shows the Notes tab, selected by default, when work-orders.view is granted', () => {
+    canMock.mockImplementation((permission: string) => permission === 'work-orders.view')
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    const notesTab = screen.getByRole('tab', { name: 'Notes' })
+    expect(notesTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tab', { name: 'Documents' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Activity log' })).not.toBeInTheDocument()
+  })
+
+  it("shows the Documents tab, reading the work order's own view_documents gate", () => {
+    canMock.mockImplementation((): boolean => false)
+    render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...workOrder().permissions, actions: { view_documents: true } } })} />)
+
+    expect(screen.getByRole('tab', { name: 'Documents' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument()
+  })
+
+  it('mounts the Activity log section only inside the collaboration card, reading its own view_activity gate', () => {
+    canMock.mockImplementation((): boolean => false)
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({ permissions: { ...workOrder().permissions, actions: { view_activity: true } } })}
+      />,
+    )
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Activity log' }))
+
+    expect(activityLogSectionMock).toHaveBeenCalledWith({ resource: 'work-orders', id: 4 })
+    // The Task board sits below the record, outside the collaboration card.
+  })
+
+  it('hides the Activity log tab when view_activity is not granted', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(screen.queryByRole('tab', { name: 'Activity log' })).not.toBeInTheDocument()
+    expect(activityLogSectionMock).not.toHaveBeenCalled()
+  })
+
+  it('renders the Task board below the record regardless of the collaboration card', () => {
+    canMock.mockImplementation((permission: string) => permission === 'tasks.viewAny')
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(screen.getByText('task-board')).toBeInTheDocument()
   })
 })

@@ -28,7 +28,7 @@ function detailQueryKey(id: number) {
  * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
  * `ReferentTypesTable`'s inline loaders, which the rewire removed.
  */
-export function ReferentTypeDetailScreen({ id }: ModuleDetailScreenProps) {
+export function ReferentTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: referentType,
@@ -51,7 +51,7 @@ export function ReferentTypeDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <ReferentTypeDetailView referentType={referentType} />
+  return <ReferentTypeDetailView referentType={referentType} onEdit={onEdit} />
 }
 
 export function ReferentTypeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -135,4 +135,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.referentTypes',
   DetailScreen: ReferentTypeDetailScreen,
   FormScreen: ReferentTypeFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

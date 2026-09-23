@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { FolderKanban, Megaphone, Pencil, Wallet } from 'lucide-react'
+import { FolderKanban, Megaphone, Wallet } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
@@ -29,7 +29,6 @@ interface ProjectDetailHeaderProps {
 
 /** Identity band: monogram, name, code subtitle, pipeline status and geographic scope. */
 export function ProjectDetailHeader({ project, onEdit }: ProjectDetailHeaderProps) {
-  const { t } = useTranslation()
   const canEdit = Boolean(onEdit) && project.permissions.resource.update
   const geoPlace = project.geo_scope
     ? geoScopePlaceName(project.geo_scope, {
@@ -64,14 +63,7 @@ export function ProjectDetailHeader({ project, onEdit }: ProjectDetailHeaderProp
           ) : null}
         </>
       }
-      actions={
-        canEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
-      }
+      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }

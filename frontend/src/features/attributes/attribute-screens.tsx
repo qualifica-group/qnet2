@@ -28,7 +28,7 @@ function detailQueryKey(id: number) {
  * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
  * `AttributesTable`'s inline loaders, which the rewire removed.
  */
-export function AttributeDetailScreen({ id }: ModuleDetailScreenProps) {
+export function AttributeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: attribute,
@@ -51,7 +51,7 @@ export function AttributeDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <AttributeDetailView attribute={attribute} />
+  return <AttributeDetailView attribute={attribute} onEdit={onEdit} />
 }
 
 export function AttributeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -141,4 +141,7 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.attributes',
   DetailScreen: AttributeDetailScreen,
   FormScreen: AttributeFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button.
+  detailOwnsEditAction: true,
 }

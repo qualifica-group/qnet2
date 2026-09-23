@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { Building2, Handshake, Pencil, Truck, Users } from 'lucide-react'
+import { Building2, Handshake, Truck, Users } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { enumLabelOf } from '@/features/config/enum-label'
 import type { RegistryDetailWithPermissions } from '@/features/registries/types'
 
@@ -30,7 +30,7 @@ interface RegistryDetailHeaderProps {
  */
 export function RegistryDetailHeader({ registry, onEdit }: RegistryDetailHeaderProps) {
   const { t } = useTranslation()
-  const canEdit = Boolean(onEdit) && registry.permissions.resource.update
+  const canEdit = registry.permissions.resource.update
   const cardKind = registry.personal_data
     ? enumLabelOf('personal_data_type', registry.personal_data.type)
     : null
@@ -61,14 +61,7 @@ export function RegistryDetailHeader({ registry, onEdit }: RegistryDetailHeaderP
           ) : null}
         </>
       }
-      actions={
-        canEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
-      }
+      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }

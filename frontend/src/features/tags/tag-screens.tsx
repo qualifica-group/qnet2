@@ -28,7 +28,7 @@ function detailQueryKey(id: number) {
  * (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from `TagsTable`'s
  * inline loaders, which the rewire removed.
  */
-export function TagDetailScreen({ id }: ModuleDetailScreenProps) {
+export function TagDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: tag,
@@ -51,7 +51,7 @@ export function TagDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <TagDetailView tag={tag} />
+  return <TagDetailView tag={tag} onEdit={onEdit} />
 }
 
 export function TagFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -121,4 +121,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.tags',
   DetailScreen: TagDetailScreen,
   FormScreen: TagFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

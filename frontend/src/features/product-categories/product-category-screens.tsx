@@ -27,7 +27,7 @@ import type { ProductCategoryDetail } from '@/features/product-categories/types'
  * "add subcategory" affordance that pre-selects one is out of scope of this
  * generic entry point.
  */
-export function ProductCategoryDetailScreen({ id }: ModuleDetailScreenProps) {
+export function ProductCategoryDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: category,
@@ -50,7 +50,7 @@ export function ProductCategoryDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <ProductCategoryDetailView category={category} />
+  return <ProductCategoryDetailView category={category} onEdit={onEdit} />
 }
 
 export function ProductCategoryFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -151,4 +151,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   formOwnsHeader: true,
   DetailScreen: ProductCategoryDetailScreen,
   FormScreen: ProductCategoryFormScreen,
+  // The record card renders its own Edit action — same registration
+  // Opportunità/Anagrafiche/Prodotti carry — so the generic dedicated page
+  // must not stack a second button on top of it.
+  detailOwnsEditAction: true,
 }

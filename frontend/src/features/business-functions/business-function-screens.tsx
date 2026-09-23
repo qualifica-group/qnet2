@@ -27,7 +27,7 @@ function detailQueryKey(id: number) {
  * as-is by the modal Sheet (`useModuleOpener`) and by the generic dedicated
  * pages. Moved verbatim from `BusinessFunctionsTable`'s inline loaders.
  */
-export function BusinessFunctionDetailScreen({ id }: ModuleDetailScreenProps) {
+export function BusinessFunctionDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: businessFunction,
@@ -50,7 +50,7 @@ export function BusinessFunctionDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <BusinessFunctionDetailView businessFunction={businessFunction} />
+  return <BusinessFunctionDetailView businessFunction={businessFunction} onEdit={onEdit} />
 }
 
 export function BusinessFunctionFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -144,4 +144,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.businessFunctions',
   DetailScreen: BusinessFunctionDetailScreen,
   FormScreen: BusinessFunctionFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

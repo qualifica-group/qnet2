@@ -1,10 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Hash, History, MapPin } from 'lucide-react'
-import {
-  DetailEmpty,
-  DetailError,
-  DetailLoading,
-} from '@/components/detail/detail-panel'
+import { Hash, MapPin } from 'lucide-react'
+import { DetailEmpty, DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
   RecordCard,
@@ -14,14 +10,10 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RECORD_BODY_GRID_CLASS,
-  RECORD_BODY_WITH_SIDE_CLASS,
-  RECORD_COLUMN_CLASS,
-} from '@/components/detail/record-layout'
-import { cn } from '@/lib/utils'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchCompany } from '@/features/companies/api'
 import {
@@ -70,38 +62,26 @@ export function CompanyDetailView({ companyId, onEdit }: CompanyDetailProps) {
   }
 
   const createdAt = formatDateTime(company.created_at)
-  const canViewActivity = company.permissions.actions.view_activity
+  const collaborationTabs = company.permissions.actions.view_activity
+    ? [activityLogTab('companies', company.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
-      <div className={cn(RECORD_BODY_GRID_CLASS, canViewActivity && RECORD_BODY_WITH_SIDE_CLASS)}>
-        <div className={RECORD_COLUMN_CLASS}>
-          <RecordCard>
-            <CompanyDetailHeader company={company} onEdit={onEdit} />
-            <CompanyDetailStats company={company} />
+      <RecordBody
+        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+      >
+        <RecordCard>
+          <CompanyDetailHeader company={company} onEdit={onEdit} />
+          <CompanyDetailStats company={company} />
 
-            <RecordSectionsGrid>
-              <RecordSection
-                title={t('companies.form.sections.address.title')}
-                icon={<MapPin />}
-                full
-              >
-                <AddressFields address={company.address} />
-              </RecordSection>
-            </RecordSectionsGrid>
-          </RecordCard>
-        </div>
-
-        {canViewActivity ? (
-          <div className={RECORD_COLUMN_CLASS}>
-            <RecordCard className="p-4">
-              <RecordSection title={t('activityLog.title')} icon={<History />}>
-                <ActivityLogSection resource="companies" id={company.id} />
-              </RecordSection>
-            </RecordCard>
-          </div>
-        ) : null}
-      </div>
+          <RecordSectionsGrid>
+            <RecordSection title={t('companies.form.sections.address.title')} icon={<MapPin />} full>
+              <AddressFields address={company.address} />
+            </RecordSection>
+          </RecordSectionsGrid>
+        </RecordCard>
+      </RecordBody>
 
       {createdAt ? (
         <RecordMeta>

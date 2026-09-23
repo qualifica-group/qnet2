@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Download, FileText, HandCoins, Pencil, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
+import { Download, FileText, HandCoins, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Button } from '@/components/ui/button'
 import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
@@ -34,7 +35,7 @@ export function QuoteDetailHeader({ quote, onEdit }: QuoteDetailHeaderProps) {
   const { t } = useTranslation()
   const { generate: generateDocument, isGenerating } = useQuoteDocument()
   const canGenerateDocument = quote.permissions.actions.generate_document
-  const canEdit = Boolean(onEdit) && quote.permissions.resource.update
+  const canEdit = quote.permissions.resource.update
   const generatingThisQuote = isGenerating(quote.id)
 
   return (
@@ -68,12 +69,7 @@ export function QuoteDetailHeader({ quote, onEdit }: QuoteDetailHeaderProps) {
               {generatingThisQuote ? t('quotes.detail.generatingDocument') : t('actions.generatePdf')}
             </Button>
           ) : null}
-          {canEdit ? (
-            <Button size="sm" onClick={onEdit}>
-              <Pencil aria-hidden="true" />
-              {t('common.edit')}
-            </Button>
-          ) : null}
+          {canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
         </>
       }
     />

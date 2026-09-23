@@ -27,7 +27,7 @@ function detailQueryKey(id: number) {
  * Reused as-is by the modal Sheet (`useModuleOpener`) and by the generic
  * dedicated pages (`ModuleDetailPage`/`ModuleFormPage`).
  */
-export function UnitOfMeasureDetailScreen({ id }: ModuleDetailScreenProps) {
+export function UnitOfMeasureDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: unitOfMeasure,
@@ -50,7 +50,7 @@ export function UnitOfMeasureDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <UnitOfMeasureDetailView unitOfMeasure={unitOfMeasure} />
+  return <UnitOfMeasureDetailView unitOfMeasure={unitOfMeasure} onEdit={onEdit} />
 }
 
 export function UnitOfMeasureFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -142,4 +142,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.unitsOfMeasure',
   DetailScreen: UnitOfMeasureDetailScreen,
   FormScreen: UnitOfMeasureFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

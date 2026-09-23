@@ -77,6 +77,7 @@ const guide: HelpGuide = {
       title: 'Opening a record and quick create',
       blocks: [
         { type: 'paragraph', text: 'A record opens in two ways: **Single page** (it takes up the whole work area) or **Modal** (it opens in a side panel and the list stays where it is).' },
+        { type: 'paragraph', text: 'Every record view has the same layout: on the left the main part with the record data and, at its top right, the **Edit** button (if you have permission); on the right a column with the **Notes**, **Documents** and **Activity log** tabs, where the module has them. On narrow screens the right column moves below the data.' },
         { type: 'paragraph', text: 'In the side panel, the **Open detail page** icon takes the record to a full page. A link to another record opens in the panel; **Ctrl+click** (Mac **Cmd+click**) opens it in a new browser tab.' },
         { type: 'paragraph', text: 'To choose the mode, go to **Settings › System settings › Module opening mode**:' },
         { type: 'list', items: ['**Modal only**: every module opens in the side panel.', '**Single page only**: every module opens as a full page.', '**Custom**: choose **Modal** or **Single page** module by module.'] },

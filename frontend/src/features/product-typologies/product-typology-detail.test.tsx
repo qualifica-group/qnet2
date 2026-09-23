@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { ProductTypologyDetailView } from '@/features/product-typologies/product-typology-detail'
@@ -87,5 +87,45 @@ describe('ProductTypologyDetailView — activity log section', () => {
 
     expect(screen.queryByText('Activity log')).not.toBeInTheDocument()
     expect(activityLogSectionMock).not.toHaveBeenCalled()
+  })
+})
+
+/** The Modifica action, gated by `onEdit` AND `permissions.resource.update`. */
+describe('ProductTypologyDetailView — edit action', () => {
+  it('shows Modifica when onEdit is supplied and the actor can update', () => {
+    render(<ProductTypologyDetailView productTypology={productTypology()} onEdit={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
+  it('hides Modifica when onEdit is absent', () => {
+    render(<ProductTypologyDetailView productTypology={productTypology()} />)
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('hides Modifica when the actor cannot update the product typology', () => {
+    render(
+      <ProductTypologyDetailView
+        productTypology={productTypology({
+          permissions: {
+            ...productTypology().permissions,
+            resource: { ...productTypology().permissions.resource, update: false },
+          },
+        })}
+        onEdit={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('calls onEdit when Modifica is clicked', () => {
+    const onEdit = vi.fn()
+    render(<ProductTypologyDetailView productTypology={productTypology()} onEdit={onEdit} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+    expect(onEdit).toHaveBeenCalledOnce()
   })
 })

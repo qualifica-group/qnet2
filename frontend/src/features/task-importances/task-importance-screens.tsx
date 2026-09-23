@@ -27,7 +27,7 @@ function detailQueryKey(id: number) {
  * modal Sheet (`useModuleOpener`) and by the generic dedicated pages
  * (`ModuleDetailPage`/`ModuleFormPage`).
  */
-export function TaskImportanceDetailScreen({ id }: ModuleDetailScreenProps) {
+export function TaskImportanceDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: taskImportance,
@@ -50,7 +50,7 @@ export function TaskImportanceDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <TaskImportanceDetailView taskImportance={taskImportance} />
+  return <TaskImportanceDetailView taskImportance={taskImportance} onEdit={onEdit} />
 }
 
 export function TaskImportanceFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -124,4 +124,7 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.taskImportances',
   DetailScreen: TaskImportanceDetailScreen,
   FormScreen: TaskImportanceFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button.
+  detailOwnsEditAction: true,
 }

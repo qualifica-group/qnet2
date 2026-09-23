@@ -35,48 +35,6 @@ export function DetailPanel({
   )
 }
 
-interface DetailHeroProps {
-  /** Leading visual: a `DetailMonogram` or an avatar. */
-  media: ReactNode
-  /** Primary identifier of the record. */
-  title: string
-  /** Secondary line under the title (location, email, code…). */
-  subtitle?: ReactNode
-  /** Status/category chips shown under the subtitle. */
-  badges?: ReactNode
-  className?: string
-}
-
-/** Header band of a detail sheet: media + title + subtitle + badges. */
-export function DetailHero({ media, title, subtitle, badges, className }: DetailHeroProps) {
-  return (
-    <header
-      className={cn(
-        'relative isolate shrink-0 overflow-hidden border-b px-6 pt-9 pb-5',
-        'bg-gradient-to-br from-primary/[0.08] via-primary/[0.03] to-transparent',
-        className,
-      )}
-    >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -top-16 -right-14 -z-10 size-48 rounded-full bg-primary/10 blur-3xl"
-      />
-      <div className="flex items-start gap-4 pr-8">
-        {media}
-        <div className="min-w-0 flex-1 pt-0.5">
-          <h2 className="truncate text-lg leading-tight font-semibold tracking-tight text-foreground">
-            {title}
-          </h2>
-          {subtitle ? (
-            <p className="mt-1 truncate text-sm text-muted-foreground">{subtitle}</p>
-          ) : null}
-          {badges ? <div className="mt-3 flex flex-wrap items-center gap-1.5">{badges}</div> : null}
-        </div>
-      </div>
-    </header>
-  )
-}
-
 interface DetailMonogramProps {
   /** Name driving the deterministic tint and the fallback initials. */
   name: string
@@ -180,17 +138,6 @@ export function DetailPerson({ name, avatarUrl, className }: DetailPersonProps) 
     <div className={cn('flex items-center gap-2', className)}>
       <UserAvatar name={name} src={avatarUrl} />
       <span className="truncate text-sm text-foreground">{name}</span>
-    </div>
-  )
-}
-
-/** Muted footer strip for record metadata (created date, id…). */
-export function DetailMeta({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex items-center gap-2 px-6 py-4 text-xs text-muted-foreground">
-      <span className="font-medium">{label}</span>
-      <span aria-hidden>·</span>
-      <span>{children}</span>
     </div>
   )
 }

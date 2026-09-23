@@ -1,46 +1,60 @@
 import { useTranslation } from 'react-i18next'
-import { History, Tag } from 'lucide-react'
-import {
-  DetailHero,
-  DetailMeta,
-  DetailMonogram,
-  DetailPanel,
-  DetailSection,
-} from '@/components/detail/detail-panel'
+import { Tag } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCanvas, RecordCard, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import type { ReferentTypeDetailWithPermissions } from '@/features/referent-types/types'
 
 interface ReferentTypeDetailViewProps {
   referentType: ReferentTypeDetailWithPermissions
+  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
+  onEdit?: () => void
 }
 
 /**
- * Read-only detail of a single referent type. Purely presentational: the
- * caller (the table's "view" sheet) fetches the fresh detail and passes it
- * down. Composed from the shared detail kit for a consistent CRM look
- * (mirrors `BusinessFunctionDetailView`).
+ * Read-only detail of a single referent type, rendered as an enterprise-CRM
+ * record on the same kit Opportunita' uses: the identity card on the left,
+ * the activity card on the right, a metadata footer. A referent type carries
+ * no field beyond its name, so the card has no sections grid.
  */
-export function ReferentTypeDetailView({ referentType }: ReferentTypeDetailViewProps) {
+export function ReferentTypeDetailView({ referentType, onEdit }: ReferentTypeDetailViewProps) {
   const { t } = useTranslation()
   const createdAt = formatDateTime(referentType.created_at)
+  const canEdit = referentType.permissions.resource.update
+  const canViewActivity = referentType.permissions.actions.view_activity
 
   return (
-    <DetailPanel>
-      <DetailHero
-        media={<DetailMonogram name={referentType.name} icon={<Tag />} />}
-        title={referentType.name}
-      />
-
-      {referentType.permissions.actions.view_activity ? (
-        <DetailSection title={t('activityLog.title')} icon={<History />}>
-          <ActivityLogSection resource="referent-types" id={referentType.id} />
-        </DetailSection>
-      ) : null}
+    <RecordCanvas>
+      <RecordBody
+        side={
+          canViewActivity ? (
+            <RecordCollaborationCard
+              tabs={[activityLogTab('referent-types', referentType.id, t('activityLog.title'))]}
+            />
+          ) : null
+        }
+      >
+        <RecordCard>
+          <RecordCardHeader
+            media={<DetailMonogram name={referentType.name} icon={<Tag />} />}
+            title={referentType.name}
+            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+          />
+        </RecordCard>
+      </RecordBody>
 
       {createdAt ? (
-        <DetailMeta label={t('referentTypes.detail.created_at')}>{createdAt}</DetailMeta>
+        <RecordMeta>
+          <span>
+            <span className="font-medium">{t('referentTypes.detail.created_at')}</span>{' '}
+            <span aria-hidden="true">·</span> {createdAt}
+          </span>
+        </RecordMeta>
       ) : null}
-    </DetailPanel>
+    </RecordCanvas>
   )
 }

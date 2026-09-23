@@ -1,18 +1,22 @@
 import { useTranslation } from 'react-i18next'
-import { History, ListChecks } from 'lucide-react'
+import { ListChecks } from 'lucide-react'
+import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
-  DetailEmpty,
-  DetailField,
-  DetailGrid,
-  DetailHero,
-  DetailMeta,
-  DetailMonogram,
-  DetailPanel,
-  DetailSection,
-} from '@/components/detail/detail-panel'
+  RecordCanvas,
+  RecordCard,
+  RecordCardHeader,
+  RecordField,
+  RecordFieldList,
+  RecordMeta,
+  RecordSection,
+  RecordSectionsGrid,
+} from '@/components/detail/record-panel'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { RichTextContent } from '@/components/rich-text/rich-text-content'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
 import { TASK_TEMPLATE_ITEM_ATTACHABLE_ALIAS } from '@/features/task-templates/types'
@@ -40,101 +44,126 @@ function groupItemsByStage(taskTemplate: TaskTemplateDetailWithPermissions): Tas
 
 interface TaskTemplateDetailViewProps {
   taskTemplate: TaskTemplateDetailWithPermissions
+  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
+  onEdit?: () => void
 }
 
 /**
  * Read-only detail of a single task template, including its ordered rows
- * (spec 0124). Purely presentational: the caller (the table's "view" sheet)
- * fetches the fresh detail and passes it down. Composed from the shared
- * detail kit for a consistent CRM look (mirrors `ProductTypologyDetailView`/
- * `QuoteWorkflowDetailView`). Each row's status reuses
+ * (spec 0124), rendered as an enterprise-CRM record on the same kit
+ * Opportunita' uses: the identity/fields card on the left, the activity card
+ * on the right, a metadata footer. Each row's status reuses
  * `WorkflowStatusBadge` (domain-type-free by design) rather than a new
  * task-templates-specific pill; each row's attachments mount their own
  * read-only `<DocumentsSection>` scoped to that item's id.
  */
-export function TaskTemplateDetailView({ taskTemplate }: TaskTemplateDetailViewProps) {
+export function TaskTemplateDetailView({ taskTemplate, onEdit }: TaskTemplateDetailViewProps) {
   const { t } = useTranslation()
   const createdAt = formatDateTime(taskTemplate.created_at)
   const updatedAt = formatDateTime(taskTemplate.updated_at)
+  const canEdit = taskTemplate.permissions.resource.update
+  const canViewActivity = taskTemplate.permissions.actions.view_activity
 
   return (
-    <DetailPanel>
-      <DetailHero
-        media={<DetailMonogram name={taskTemplate.name} icon={<ListChecks />} />}
-        title={taskTemplate.name}
-        subtitle={t('taskTemplates.detail.itemsCount', { count: taskTemplate.items_count })}
-      />
+    <RecordCanvas>
+      <RecordBody
+        side={
+          canViewActivity ? (
+            <RecordCollaborationCard
+              tabs={[activityLogTab('task-templates', taskTemplate.id, t('activityLog.title'))]}
+            />
+          ) : null
+        }
+      >
+        <RecordCard>
+          <RecordCardHeader
+            media={<DetailMonogram name={taskTemplate.name} icon={<ListChecks />} />}
+            title={taskTemplate.name}
+            subtitle={t('taskTemplates.detail.itemsCount', { count: taskTemplate.items_count })}
+            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+          />
+          <RecordSectionsGrid>
+            <RecordSection title={t('taskTemplates.form.sections.identity.title')}>
+              <RecordFieldList>
+                <RecordField label={t('taskTemplates.detail.description')}>
+                  {taskTemplate.description ? (
+                    <RichTextContent html={taskTemplate.description} />
+                  ) : (
+                    <DetailEmpty />
+                  )}
+                </RecordField>
+                <RecordField label={t('taskTemplates.detail.isActive')}>
+                  {taskTemplate.is_active ? t('common.yes') : t('common.no')}
+                </RecordField>
+              </RecordFieldList>
+            </RecordSection>
 
-      <DetailSection>
-        <DetailGrid>
-          <DetailField label={t('taskTemplates.detail.description')} full>
-            {taskTemplate.description ? (
-              <RichTextContent html={taskTemplate.description} />
-            ) : (
-              <DetailEmpty />
-            )}
-          </DetailField>
-          <DetailField label={t('taskTemplates.detail.isActive')}>
-            {taskTemplate.is_active ? t('common.yes') : t('common.no')}
-          </DetailField>
-        </DetailGrid>
-      </DetailSection>
-
-      <DetailSection title={t('taskTemplates.detail.items.title')} icon={<ListChecks />}>
-        {taskTemplate.items.length === 0 ? (
-          <DetailEmpty />
-        ) : (
-          <div className="flex flex-col gap-4">
-            {groupItemsByStage(taskTemplate).map((group) => (
-              <div key={group.stage?.id ?? 'no-stage'} className="flex flex-col gap-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  {group.stage?.name ?? t('taskTemplates.form.stages.noStage')}
-                </p>
-                <ul className="flex flex-col gap-3">
-                  {group.items.map((item) => (
-                    <li key={item.id} className="rounded-lg border bg-card p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-foreground">{item.title}</p>
-                        {item.task_status ? (
-                          <WorkflowStatusBadge name={item.task_status.name} color={item.task_status.color} />
-                        ) : null}
-                      </div>
-                      {item.description ? (
-                        <RichTextContent html={item.description} className="mt-1 text-xs text-muted-foreground" />
-                      ) : null}
-                      <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        <span>{t('taskTemplates.detail.items.dueOffsetDays', { count: item.due_offset_days })}</span>
-                        {item.estimated_minutes !== null ? (
-                          <span>
-                            {t('taskTemplates.detail.items.estimatedMinutes', { value: item.estimated_minutes })}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="mt-2">
-                        <DocumentsSection
-                          resource={TASK_TEMPLATE_ITEM_ATTACHABLE_ALIAS}
-                          id={item.id}
-                          canUpload={false}
-                          canDelete={false}
-                        />
-                      </div>
-                    </li>
+            <RecordSection title={t('taskTemplates.detail.items.title')} icon={<ListChecks />} full>
+              {taskTemplate.items.length === 0 ? (
+                <DetailEmpty />
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {groupItemsByStage(taskTemplate).map((group) => (
+                    <div key={group.stage?.id ?? 'no-stage'} className="flex flex-col gap-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {group.stage?.name ?? t('taskTemplates.form.stages.noStage')}
+                      </p>
+                      <ul className="flex flex-col gap-3">
+                        {group.items.map((item) => (
+                          <li key={item.id} className="rounded-lg border bg-card p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-medium text-foreground">{item.title}</p>
+                              {item.task_status ? (
+                                <WorkflowStatusBadge name={item.task_status.name} color={item.task_status.color} />
+                              ) : null}
+                            </div>
+                            {item.description ? (
+                              <RichTextContent html={item.description} className="mt-1 text-xs text-muted-foreground" />
+                            ) : null}
+                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                              <span>{t('taskTemplates.detail.items.dueOffsetDays', { count: item.due_offset_days })}</span>
+                              {item.estimated_minutes !== null ? (
+                                <span>
+                                  {t('taskTemplates.detail.items.estimatedMinutes', { value: item.estimated_minutes })}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="mt-2">
+                              <DocumentsSection
+                                resource={TASK_TEMPLATE_ITEM_ATTACHABLE_ALIAS}
+                                id={item.id}
+                                canUpload={false}
+                                canDelete={false}
+                              />
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        )}
-      </DetailSection>
+                </div>
+              )}
+            </RecordSection>
+          </RecordSectionsGrid>
+        </RecordCard>
+      </RecordBody>
 
-      {taskTemplate.permissions.actions.view_activity ? (
-        <DetailSection title={t('activityLog.title')} icon={<History />}>
-          <ActivityLogSection resource="task-templates" id={taskTemplate.id} />
-        </DetailSection>
+      {createdAt || updatedAt ? (
+        <RecordMeta>
+          {createdAt ? (
+            <span>
+              <span className="font-medium">{t('taskTemplates.detail.created_at')}</span>{' '}
+              <span aria-hidden="true">·</span> {createdAt}
+            </span>
+          ) : null}
+          {updatedAt ? (
+            <span>
+              <span className="font-medium">{t('taskTemplates.detail.updated_at')}</span>{' '}
+              <span aria-hidden="true">·</span> {updatedAt}
+            </span>
+          ) : null}
+        </RecordMeta>
       ) : null}
-
-      {createdAt ? <DetailMeta label={t('taskTemplates.detail.created_at')}>{createdAt}</DetailMeta> : null}
-      {updatedAt ? <DetailMeta label={t('taskTemplates.detail.updated_at')}>{updatedAt}</DetailMeta> : null}
-    </DetailPanel>
+    </RecordCanvas>
   )
 }

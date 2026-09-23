@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { ListChecks, Pencil, Repeat, ShieldAlert } from 'lucide-react'
+import { ListChecks, Repeat, ShieldAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/formatting/date-display'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { formatTaskRecurrenceRule } from '@/features/tasks/task-recurrence-format'
@@ -34,7 +34,7 @@ interface TaskDetailHeaderProps {
  */
 export function TaskDetailHeader({ task, onEdit }: TaskDetailHeaderProps) {
   const { t, i18n } = useTranslation()
-  const canEdit = Boolean(onEdit) && task.permissions.resource.update
+  const canEdit = task.permissions.resource.update
 
   return (
     <RecordCardHeader
@@ -64,14 +64,7 @@ export function TaskDetailHeader({ task, onEdit }: TaskDetailHeaderProps) {
           ) : null}
         </>
       }
-      actions={
-        canEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
-      }
+      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }

@@ -36,6 +36,7 @@ export const fieldChangeRequests = {
     loadError: 'Impossibile caricare le richieste di modifica. Riprova.',
   },
   detail: {
+    details: 'Dettagli',
     record: 'Record',
     field: 'Campo',
     currentValue: 'Valore attuale',

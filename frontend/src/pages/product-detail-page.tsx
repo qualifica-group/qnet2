@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -14,12 +14,15 @@ import NotFoundPage from '@/pages/not-found-page'
 /**
  * Dedicated read-only page of a single product (spec 0022, replaces the view
  * Sheet). Mirrors `RegistryDetailPage`: fresh re-authorized fetch on mount,
- * unchanged presentational `ProductDetailView`, "Edit" gated by the
- * `permissions` block of THIS response.
+ * unchanged presentational `ProductDetailView`; the record card owns the
+ * single "Edit" affordance (the record kit's `detailOwnsEditAction`
+ * convention, Opportunità/Anagrafiche), gated by the `permissions` block of
+ * THIS response.
  */
 export default function ProductDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams()
+  const navigate = useNavigate()
   const productId = parseEntityId(id)
 
   const {
@@ -43,22 +46,12 @@ export default function ProductDetailPage() {
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         actions={
-          <>
-            <Button variant="outline" asChild>
-              <Link to="/products">
-                <ArrowLeft aria-hidden="true" />
-                {t('common.back')}
-              </Link>
-            </Button>
-            {product?.permissions.resource.update ? (
-              <Button asChild>
-                <Link to={`/products/${productId}/edit`}>
-                  <Pencil aria-hidden="true" />
-                  {t('common.edit')}
-                </Link>
-              </Button>
-            ) : null}
-          </>
+          <Button variant="outline" asChild>
+            <Link to="/products">
+              <ArrowLeft aria-hidden="true" />
+              {t('common.back')}
+            </Link>
+          </Button>
         }
       />
 
@@ -72,7 +65,10 @@ export default function ProductDetailPage() {
         ) : isLoading || !product ? (
           <DetailLoading />
         ) : (
-          <ProductDetailView product={product} />
+          <ProductDetailView
+            product={product}
+            onEdit={() => void navigate(`/products/${productId}/edit`)}
+          />
         )}
       </div>
     </div>

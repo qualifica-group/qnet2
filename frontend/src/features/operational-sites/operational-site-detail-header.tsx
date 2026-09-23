@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Globe, Map, MapPin, MapPinned, Pencil } from 'lucide-react'
+import { Globe, Map, MapPin, MapPinned } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { Button } from '@/components/ui/button'
+import { RecordEditButton } from '@/components/detail/record-edit-button'
 import type { OperationalSiteDetailWithPermissions } from '@/features/operational-sites/types'
 
 /**
@@ -30,7 +30,6 @@ export function OperationalSiteDetailHeader({
   operationalSite,
   onEdit,
 }: OperationalSiteDetailHeaderProps) {
-  const { t } = useTranslation()
   const title = operationalSite.alias ?? operationalSite.line1
   const canEdit = Boolean(onEdit) && operationalSite.permissions.resource.update
 
@@ -44,14 +43,7 @@ export function OperationalSiteDetailHeader({
         />
       }
       title={title}
-      actions={
-        canEdit ? (
-          <Button size="sm" onClick={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t('common.edit')}
-          </Button>
-        ) : null
-      }
+      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }

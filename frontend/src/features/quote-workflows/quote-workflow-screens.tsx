@@ -27,7 +27,7 @@ function detailQueryKey(id: number) {
  * Reused as-is by the modal Sheet (`useModuleOpener`) and by the generic
  * dedicated pages (`ModuleDetailPage`/`ModuleFormPage`).
  */
-export function QuoteWorkflowDetailScreen({ id }: ModuleDetailScreenProps) {
+export function QuoteWorkflowDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: quoteWorkflow,
@@ -50,7 +50,7 @@ export function QuoteWorkflowDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <QuoteWorkflowDetailView quoteWorkflow={quoteWorkflow} />
+  return <QuoteWorkflowDetailView quoteWorkflow={quoteWorkflow} onEdit={onEdit} />
 }
 
 export function QuoteWorkflowFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -138,4 +138,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.quoteWorkflows',
   DetailScreen: QuoteWorkflowDetailScreen,
   FormScreen: QuoteWorkflowFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

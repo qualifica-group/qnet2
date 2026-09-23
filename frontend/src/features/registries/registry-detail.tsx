@@ -1,18 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { History } from 'lucide-react'
+import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordBody } from '@/components/detail/record-body'
 import {
-  RecordCanvas,
-  RecordCard,
-  RecordMeta,
-  RecordSection,
-} from '@/components/detail/record-panel'
-import {
-  RECORD_BODY_GRID_CLASS,
-  RECORD_BODY_WITH_SIDE_CLASS,
-  RECORD_COLUMN_CLASS,
-} from '@/components/detail/record-layout'
-import { cn } from '@/lib/utils'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+  RecordCollaborationCard,
+  type RecordCollaborationTab,
+} from '@/components/detail/record-collaboration-card'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { PersonalDataReadOnlyCards } from '@/features/personal-data/personal-data-read-only-cards'
 import { RegistryDetailHeader, RegistryDetailStats } from '@/features/registries/registry-detail-header'
 import { RegistryDetailSections } from '@/features/registries/registry-detail-sections'
@@ -42,35 +35,31 @@ interface RegistryDetailViewProps {
 export function RegistryDetailView({ registry, onEdit }: RegistryDetailViewProps) {
   const { t } = useTranslation()
   const createdAt = formatDateTime(registry.created_at)
+  const collaborationTabs: RecordCollaborationTab[] = registry.permissions.actions.view_activity
+    ? [activityLogTab('registries', registry.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
-      <div className={cn(RECORD_BODY_GRID_CLASS, RECORD_BODY_WITH_SIDE_CLASS)}>
-        <div className={RECORD_COLUMN_CLASS}>
-          <RecordCard>
-            <RegistryDetailHeader registry={registry} onEdit={onEdit} />
-            <RegistryDetailStats registry={registry} />
-            <RegistryDetailSections registry={registry} />
-          </RecordCard>
-        </div>
-
-        <div className={RECORD_COLUMN_CLASS}>
-          <PersonalDataReadOnlyCards
-            card={registry.personal_data}
-            contactsTitle={t('registries.form.sections.contacts.title')}
-            addressesTitle={t('registries.form.sections.addresses.title')}
-            showSiteType
-          />
-
-          {registry.permissions.actions.view_activity ? (
-            <RecordCard className="p-4">
-              <RecordSection title={t('activityLog.title')} icon={<History />}>
-                <ActivityLogSection resource="registries" id={registry.id} />
-              </RecordSection>
-            </RecordCard>
-          ) : null}
-        </div>
-      </div>
+      <RecordBody
+        side={
+          <>
+            <PersonalDataReadOnlyCards
+              card={registry.personal_data}
+              contactsTitle={t('registries.form.sections.contacts.title')}
+              addressesTitle={t('registries.form.sections.addresses.title')}
+              showSiteType
+            />
+            <RecordCollaborationCard tabs={collaborationTabs} />
+          </>
+        }
+      >
+        <RecordCard>
+          <RegistryDetailHeader registry={registry} onEdit={onEdit} />
+          <RegistryDetailStats registry={registry} />
+          <RegistryDetailSections registry={registry} />
+        </RecordCard>
+      </RecordBody>
 
       {createdAt ? (
         <RecordMeta>

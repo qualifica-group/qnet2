@@ -27,7 +27,7 @@ function detailQueryKey(id: number) {
  * Reused as-is by the modal Sheet (`useModuleOpener`) and by the generic
  * dedicated pages (`ModuleDetailPage`/`ModuleFormPage`).
  */
-export function ContractStatusDetailScreen({ id }: ModuleDetailScreenProps) {
+export function ContractStatusDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: contractStatus,
@@ -50,7 +50,7 @@ export function ContractStatusDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <ContractStatusDetailView contractStatus={contractStatus} />
+  return <ContractStatusDetailView contractStatus={contractStatus} onEdit={onEdit} />
 }
 
 export function ContractStatusFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
@@ -142,4 +142,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.contractStatuses',
   DetailScreen: ContractStatusDetailScreen,
   FormScreen: ContractStatusFormScreen,
+  // The record card renders its own Edit action, so the generic page header
+  // must not stack a second button — the same registration Opportunita',
+  // Utenti and Lead carry.
+  detailOwnsEditAction: true,
 }

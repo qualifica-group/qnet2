@@ -1,10 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { History, MessagesSquare, Paperclip, TrendingDown, TrendingUp } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { MessagesSquare, Paperclip, TrendingDown, TrendingUp } from 'lucide-react'
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
 import { FormTabStrip, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
 import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { RecordBody } from '@/components/detail/record-body'
+import {
+  RecordCollaborationCard,
+  type RecordCollaborationTab,
+} from '@/components/detail/record-collaboration-card'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
@@ -30,22 +35,6 @@ import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 
 const OFFER_TAB = 'offer'
 const COSTS_TAB = 'costs'
-const NOTES_TAB = 'notes'
-const OPPORTUNITY_DOCUMENTS_TAB = 'opportunity-documents'
-const ACTIVITY_TAB = 'activity'
-
-/** Compact trigger sizing of the collaboration strip, mirrors `OpportunityDetailView`'s. */
-const TRIGGER_CLASS = 'px-2.5 py-1 text-xs'
-
-/**
- * Two-column body, same rule the Opportunity record follows: the record itself
- * on the left, the collaboration surface on the right, stacked in that order
- * while narrow. Both columns are their OWN `@container` so the section/field
- * grids inside break on the COLUMN's width, not the canvas'.
- */
-const BODY_GRID_CLASS =
-  'grid grid-cols-1 items-start gap-4 @5xl:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]'
-const COLUMN_CLASS = '@container flex min-w-0 flex-col gap-4'
 
 interface QuoteDetailViewProps {
   quote: QuoteDetailWithPermissions
@@ -54,70 +43,57 @@ interface QuoteDetailViewProps {
 }
 
 /**
- * The offer's collaboration card: Note | Documenti opportunità | Attività.
+ * The offer's collaboration tabs: Note | Documenti opportunità | Attività
+ * (Opportunita' reference layout).
  *
  * The notes thread stays the parent Opportunity's (spec 0085 D-1) — the note is
  * SCOPED to this offer via `lockedQuoteId`, never moved onto another entity —
- * so no selector is offered here: the context is given.
+ * so no selector is offered here: the context is given. Unlike every other
+ * record's Notes tab, it is unconditional (not gated behind an ability): the
+ * offer detail has always shown it regardless of `request-management.view`.
  *
  * The documents are the parent Opportunity's, mounted READ-ONLY exactly as the
  * Contract detail mounts them (spec 0072 AC-047, user directive 2026-08-31
  * "quelli che trovo in contratti"): an offer never owns an attachment, so it
- * must not offer to add or remove one. The Attività tab is gated on its own
- * action flag and absent entirely when unauthorized.
+ * must not offer to add or remove one — also unconditional. Only Attività is
+ * gated on its own action flag and absent entirely when unauthorized.
  */
-function QuoteDetailCollaboration({ quote }: { quote: QuoteDetailWithPermissions }) {
+function useCollaborationTabs(quote: QuoteDetailWithPermissions): RecordCollaborationTab[] {
   const { t } = useTranslation()
-  const canViewActivity = quote.permissions.actions.view_activity
+  const tabs: RecordCollaborationTab[] = [
+    {
+      value: 'notes',
+      label: t('notes.section.title'),
+      icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      content: (
+        <NotesSection
+          entityType={REQUEST_MANAGEMENT_DOMAIN}
+          entityId={quote.opportunity_id}
+          showHeader={false}
+          lockedQuoteId={quote.id}
+        />
+      ),
+    },
+    {
+      value: 'opportunity-documents',
+      label: t('quotes.detail.tabs.opportunityDocuments'),
+      icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      content: (
+        <DocumentsSection
+          resource={OPPORTUNITY_ATTACHABLE_ALIAS}
+          id={quote.opportunity_id}
+          canUpload={false}
+          canDelete={false}
+        />
+      ),
+    },
+  ]
 
-  return (
-    <RecordCard>
-      <Tabs defaultValue={NOTES_TAB} className="gap-0">
-        <div className="px-4 py-3">
-          <TabsList>
-            <TabsTrigger value={NOTES_TAB} className={TRIGGER_CLASS}>
-              <MessagesSquare className="size-3.5" aria-hidden="true" />
-              {t('notes.section.title')}
-            </TabsTrigger>
-            <TabsTrigger value={OPPORTUNITY_DOCUMENTS_TAB} className={TRIGGER_CLASS}>
-              <Paperclip className="size-3.5" aria-hidden="true" />
-              {t('quotes.detail.tabs.opportunityDocuments')}
-            </TabsTrigger>
-            {canViewActivity ? (
-              <TabsTrigger value={ACTIVITY_TAB} className={TRIGGER_CLASS}>
-                <History className="size-3.5" aria-hidden="true" />
-                {t('activityLog.title')}
-              </TabsTrigger>
-            ) : null}
-          </TabsList>
-        </div>
-        <div className="border-t" />
-        <div className="min-w-0 p-4">
-          <TabsContent value={NOTES_TAB}>
-            <NotesSection
-              entityType={REQUEST_MANAGEMENT_DOMAIN}
-              entityId={quote.opportunity_id}
-              showHeader={false}
-              lockedQuoteId={quote.id}
-            />
-          </TabsContent>
-          <TabsContent value={OPPORTUNITY_DOCUMENTS_TAB}>
-            <DocumentsSection
-              resource={OPPORTUNITY_ATTACHABLE_ALIAS}
-              id={quote.opportunity_id}
-              canUpload={false}
-              canDelete={false}
-            />
-          </TabsContent>
-          {canViewActivity ? (
-            <TabsContent value={ACTIVITY_TAB}>
-              <ActivityLogSection resource="quotes" id={quote.id} />
-            </TabsContent>
-          ) : null}
-        </div>
-      </Tabs>
-    </RecordCard>
-  )
+  if (quote.permissions.actions.view_activity) {
+    tabs.push(activityLogTab('quotes', quote.id, t('activityLog.title')))
+  }
+
+  return tabs
 }
 
 /**
@@ -238,26 +214,23 @@ function QuoteDetailLines({ quote }: { quote: QuoteDetailWithPermissions }) {
  */
 export function QuoteDetailView({ quote, onEdit }: QuoteDetailViewProps) {
   const { t } = useTranslation()
+  const collaborationTabs = useCollaborationTabs(quote)
   const createdAt = formatDateTime(quote.created_at)
   const updatedAt = formatDateTime(quote.updated_at)
 
   return (
     <ResourcePermissionsProvider permissions={quote.permissions}>
       <RecordCanvas>
-        <div className={BODY_GRID_CLASS}>
-          <div className={COLUMN_CLASS}>
-            <RecordCard>
-              <QuoteDetailHeader quote={quote} onEdit={onEdit} />
-              <QuoteDetailStats quote={quote} />
-              <QuoteDetailSections quote={quote} />
-              <QuoteDetailLines quote={quote} />
-            </RecordCard>
-          </div>
-
-          <div className={COLUMN_CLASS}>
-            <QuoteDetailCollaboration quote={quote} />
-          </div>
-        </div>
+        <RecordBody
+          side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        >
+          <RecordCard>
+            <QuoteDetailHeader quote={quote} onEdit={onEdit} />
+            <QuoteDetailStats quote={quote} />
+            <QuoteDetailSections quote={quote} />
+            <QuoteDetailLines quote={quote} />
+          </RecordCard>
+        </RecordBody>
 
         <RecordMeta>
           {createdAt ? (

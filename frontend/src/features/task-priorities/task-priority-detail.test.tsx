@@ -99,3 +99,33 @@ describe('TaskPriorityDetailView — activity log section', () => {
     expect(activityLogSectionMock).not.toHaveBeenCalled()
   })
 })
+
+describe('TaskPriorityDetailView — edit action', () => {
+  it('shows the Edit button when update is allowed and onEdit is wired', () => {
+    render(<TaskPriorityDetailView taskPriority={taskPriority()} onEdit={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
+  it('omits the Edit button when onEdit is absent', () => {
+    render(<TaskPriorityDetailView taskPriority={taskPriority()} />)
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('omits the Edit button when update is not allowed', () => {
+    render(
+      <TaskPriorityDetailView
+        taskPriority={taskPriority({
+          permissions: {
+            ...taskPriority().permissions,
+            resource: { ...taskPriority().permissions.resource, update: false },
+          },
+        })}
+        onEdit={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+})

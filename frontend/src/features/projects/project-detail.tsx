@@ -1,18 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { History } from 'lucide-react'
-import {
-  RecordCanvas,
-  RecordCard,
-  RecordMeta,
-  RecordSection,
-} from '@/components/detail/record-panel'
-import {
-  RECORD_BODY_GRID_CLASS,
-  RECORD_BODY_WITH_SIDE_CLASS,
-  RECORD_COLUMN_CLASS,
-} from '@/components/detail/record-layout'
-import { cn } from '@/lib/utils'
-import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { ProjectDetailHeader, ProjectDetailStats } from '@/features/projects/project-detail-header'
 import { ProjectDetailSections } from '@/features/projects/project-detail-sections'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -35,29 +25,21 @@ interface ProjectDetailViewProps {
 export function ProjectDetailView({ project, onEdit }: ProjectDetailViewProps) {
   const { t } = useTranslation()
   const createdAt = formatDateTime(project.created_at)
-  const canViewActivity = project.permissions.actions.view_activity
+  const collaborationTabs = project.permissions.actions.view_activity
+    ? [activityLogTab('projects', project.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
-      <div className={cn(RECORD_BODY_GRID_CLASS, canViewActivity && RECORD_BODY_WITH_SIDE_CLASS)}>
-        <div className={RECORD_COLUMN_CLASS}>
-          <RecordCard>
-            <ProjectDetailHeader project={project} onEdit={onEdit} />
-            <ProjectDetailStats project={project} />
-            <ProjectDetailSections project={project} />
-          </RecordCard>
-        </div>
-
-        {canViewActivity ? (
-          <div className={RECORD_COLUMN_CLASS}>
-            <RecordCard className="p-4">
-              <RecordSection title={t('activityLog.title')} icon={<History />}>
-                <ActivityLogSection resource="projects" id={project.id} />
-              </RecordSection>
-            </RecordCard>
-          </div>
-        ) : null}
-      </div>
+      <RecordBody
+        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+      >
+        <RecordCard>
+          <ProjectDetailHeader project={project} onEdit={onEdit} />
+          <ProjectDetailStats project={project} />
+          <ProjectDetailSections project={project} />
+        </RecordCard>
+      </RecordBody>
 
       {createdAt ? (
         <RecordMeta>
