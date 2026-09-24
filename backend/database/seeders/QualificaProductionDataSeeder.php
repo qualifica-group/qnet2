@@ -45,6 +45,10 @@ use Illuminate\Database\Seeder;
  *                                    "Mansionario Operatori"), with their
  *                                    roles, Sedi and product-category
  *                                    competence.
+ *   8. QualificaStaffSeeder        — the rest of the client's staff, with the
+ *                                    base role (Task and Segnatempo only).
+ *                                    Create-only: an account that already
+ *                                    exists is never touched.
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's source catalogue by name instead of duplicating
@@ -55,7 +59,9 @@ use Illuminate\Database\Seeder;
  *     already ran it once at its own end (a no-op here, the import had not run
  *     yet), which is why it is repeated — not moved — after step 5;
  *   - step 7 needs the sites step 5 imports and the category functions step 6
- *     links: a competence row carries the category's EFFECTIVE function.
+ *     links: a competence row carries the category's EFFECTIVE function;
+ *   - step 8 runs last, so it finds the named accounts of steps 4 and 7
+ *     already there and leaves them alone.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Step 5 is a no-op with
@@ -77,5 +83,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaLegacyImportSeeder::class);
         $this->call(QualificaBusinessFunctionLinkSeeder::class);
         $this->call(QualificaOperatorSeeder::class);
+        $this->call(QualificaStaffSeeder::class);
     }
 }

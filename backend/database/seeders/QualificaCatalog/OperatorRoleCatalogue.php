@@ -26,6 +26,9 @@ final class OperatorRoleCatalogue
 
     public const string TEACHING_SUPERVISOR_ROLE = 'supervisore-didattica';
 
+    /** The default role of the staff outside the mansionario (StaffRoster). */
+    public const string BASE_ROLE = 'operatore-base';
+
     /**
      * The English role names the former TestUsersSeeder created, replaced by
      * the Italian ones above (user directive 2026-09-15). Deleted on every run
@@ -160,6 +163,12 @@ final class OperatorRoleCatalogue
         self::TEACHING_SUPERVISOR_ROLE => [
             'description' => 'Supervisore didattica',
             'blocks' => [self::OWN_REQUESTS, self::SITE_REQUESTS, self::ENROLLEES_READ, self::SITE_ENROLLEES],
+        ],
+        // User directive 2026-09-24: the staff sees only Task and Segnatempo,
+        // i.e. EVERY_ROLE_BLOCKS and nothing of its own.
+        self::BASE_ROLE => [
+            'description' => 'Operatore base (Task e Segnatempo)',
+            'blocks' => [],
         ],
     ];
 

@@ -6,6 +6,7 @@ use App\Models\Province;
 use App\Models\State;
 use App\Models\User;
 use App\Services\DocumentLayouts\Rendering\DocxToPdfConverter;
+use App\Services\NavigationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Spatie\Permission\Models\Permission;
@@ -172,4 +173,29 @@ function workOrderRequiredFields(): array
         'start_date' => '2026-09-10',
         'supervisor_ids' => [User::factory()->create()->id],
     ];
+}
+
+/**
+ * Every route the real navigation config would render for $user, flattened —
+ * the menu the frontend actually receives.
+ *
+ * @return array<int, string>
+ */
+function visibleRoutes(User $user): array
+{
+    $flatten = function (array $items) use (&$flatten): array {
+        $routes = [];
+
+        foreach ($items as $item) {
+            if (! empty($item['route'])) {
+                $routes[] = $item['route'];
+            }
+
+            $routes = array_merge($routes, $flatten($item['children'] ?? []));
+        }
+
+        return $routes;
+    };
+
+    return $flatten(app(NavigationService::class)->for($user));
 }

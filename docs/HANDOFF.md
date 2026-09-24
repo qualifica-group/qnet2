@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## STAFF NEL PRODUCTION SEED: RUOLO `operatore-base` — VERDE, COMMITTATO (2026-09-24)
+
+- Direttiva utente 2026-09-24: gli utenti di `utenti_nome_cognome.csv` (195) entrano nel production seed. I 68
+  gia' seminati (OperatorRoster + super-admin di TestUsersSeeder) sono esclusi dai dati; i 127 nuovi stanno in
+  `database/seeders/QualificaCatalog/StaffRoster.php` (CSV ISO-8859-1 ricodificato: Nicolò, Miccichè, ...).
+- Nuovo ruolo `OperatorRoleCatalogue::BASE_ROLE = 'operatore-base'` ("Operatore base (Task e Segnatempo)"),
+  `blocks: []` -> solo `EVERY_ROLE_BLOCKS` (task propri + segnatempo propri). Menu: dashboard, /tasks, /time-entries.
+- `QualificaStaffSeeder` = step 8 di `QualificaProductionDataSeeder`, ultimo. CREATE-ONLY: email gia' presente nel
+  DB -> saltata del tutto (ruolo, nome, password mai toccati). Stesso flusso account degli operatori (nome,
+  locale it, email verificata, `seeding.password`, anagrafica via `SyncsPersonName`); niente employment profile.
+- Test: `tests/Feature/Seeding/QualificaStaffSeederTest.php` (nuovo); i due test Task/Segnatempo "ogni ruolo"
+  spostati da `QualificaRoleMatrixTest` (oltre 500 righe) in `tests/Feature/Users/QualificaTaskGrantsTest.php`,
+  che ora semina anche lo staff (il ruolo base ha i suoi utenti li'); helper `visibleRoutes()` spostato in
+  `tests/Pest.php`. Manuale: nessun impatto (non elenca i ruoli predefiniti).
+
 ## SEED DI ESEMPIO: OFFERTE, CONTRATTI, COMMESSE — VERDE, NON COMMITTATO (2026-09-24)
 
 - Direttiva utente 2026-09-24: `qualifica:seed-sample` semina anche Offerte, Contratti e Commesse. Tre nuovi step in

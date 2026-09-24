@@ -12,6 +12,7 @@ use App\Models\Quote;
 use App\Models\Source;
 use App\Models\User;
 use App\Services\UserService;
+use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue;
 use Database\Seeders\QualificaProductionDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -45,7 +46,10 @@ it('composes structure, catalogue and operators in one run', function (): void {
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->count())->toBe(1)
         ->and(Product::query()->count())->toBe(294)
         ->and(User::query()->where('email', 'ciro.cacciapuoti@qualificagroup.com')->exists())->toBeTrue()
-        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->exists())->toBeTrue();
+        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->exists())->toBeTrue()
+        // Step 8 runs last: the staff lands, the roster keeps its mansione.
+        ->and(User::query()->where('email', 'nicola.eliseo@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::BASE_ROLE])
+        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::SUPERVISOR_ROLE]);
 });
 
 it('seeds the super-admin before the legacy import, so an actor always exists', function (): void {

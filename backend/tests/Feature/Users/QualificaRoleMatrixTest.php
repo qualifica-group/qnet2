@@ -2,10 +2,7 @@
 
 use App\Models\Opportunity;
 use App\Models\Quote;
-use App\Models\Task;
 use App\Models\User;
-use App\Services\NavigationService;
-use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue;
 use Database\Seeders\QualificaOperatorSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -13,31 +10,6 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
-
-/**
- * Every route the real navigation config would render for $user, flattened —
- * the menu the frontend actually receives.
- *
- * @return array<int, string>
- */
-function visibleRoutes(User $user): array
-{
-    $flatten = function (array $items) use (&$flatten): array {
-        $routes = [];
-
-        foreach ($items as $item) {
-            if (! empty($item['route'])) {
-                $routes[] = $item['route'];
-            }
-
-            $routes = array_merge($routes, $flatten($item['children'] ?? []));
-        }
-
-        return $routes;
-    };
-
-    return $flatten(app(NavigationService::class)->for($user));
-}
 
 /**
  * Creates an offer on $opportunity operated by $user (spec 0087, D-9) —
@@ -499,49 +471,4 @@ it('blocks the supervisor server-side on administration and configuration', func
     }
 
     $this->postJson('/api/roles', ['name' => 'nuovo-ruolo'])->assertForbidden();
-});
-
-// User directive 2026-09-24: every mansione works the Tasks it takes part in
-// and its own segnatempo — never everyone's.
-it('opens own tasks and own time entries to every role, never the wider scopes', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    foreach (OperatorRoleCatalogue::ROLES as $name => $role) {
-        $user = User::role($name)->firstOrFail();
-
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'complete', 'viewDocuments', 'requestUpdate'] as $ability) {
-            expect($user->can("tasks.{$ability}"))->toBeTrue("{$name} tasks.{$ability}");
-        }
-
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            expect($user->can("time-entries.{$ability}"))->toBeTrue("{$name} time-entries.{$ability}");
-        }
-
-        foreach (OperatorRoleCatalogue::OWN_TASKS_DENIED_ABILITIES as $ability) {
-            expect($user->can("tasks.{$ability}"))->toBeFalse("{$name} tasks.{$ability}");
-        }
-
-        foreach (OperatorRoleCatalogue::OWN_TIME_ENTRIES_DENIED_ABILITIES as $ability) {
-            expect($user->can("time-entries.{$ability}"))->toBeFalse("{$name} time-entries.{$ability}");
-        }
-
-        expect($user->can('notes.create'))->toBeTrue("{$name} notes.create")
-            ->and($user->can('attachments.create'))->toBeTrue("{$name} attachments.create")
-            ->and(visibleRoutes($user))->toContain('/tasks', '/time-entries')
-            // The five Task configurators stay closed.
-            ->and($user->can('task-statuses.view'))->toBeFalse("{$name} task-statuses.view");
-    }
-});
-
-it('lists a commercial only the tasks they take part in', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    $commercial = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
-    $own = Task::factory()->forCreator($commercial)->create();
-    $foreign = Task::factory()->create();
-
-    Sanctum::actingAs($commercial);
-
-    $this->getJson("/api/tasks/{$own->id}")->assertOk();
-    $this->getJson("/api/tasks/{$foreign->id}")->assertForbidden();
 });
