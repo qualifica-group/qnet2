@@ -27,9 +27,23 @@ const EMPTY_PEOPLE: RelationFieldRef[] = []
 /** Separator between a commessa's code and title, matching `WorkOrderForSelectResource::LABEL_SEPARATOR`. */
 const WORK_ORDER_LABEL_SEPARATOR = ' — '
 
-/** The persisted task in edit mode, `null` on create — the single source both hydration and locking read. */
+/** The persisted task in edit mode, `null` otherwise — the single source both hydration and locking read (edit-only components: header/summary/classification/parent). */
 function persistedTask(mode: TaskFormMode): TaskDetail | null {
   return mode.type === 'edit' ? mode.task : null
+}
+
+/**
+ * The "clona" source (spec 0156 D-4), `null` outside duplicate mode: feeds
+ * ONLY the relation-picker display hydration (registry, referent,
+ * opportunity, commessa/fase, lead, requester, assignees, watchers) —
+ * everything but the parent link (deliberately excluded, "il padre non si
+ * copia") and everything `persistedTask` alone drives (the header/summary's
+ * own "Modifica"/"Nuovo" framing, the classification section's edit-vs-create
+ * status rule), which must read as a bare create even though the fields
+ * start prefilled.
+ */
+function duplicateSource(mode: TaskFormMode): TaskDetail | null {
+  return mode.type === 'duplicate' ? mode.source : null
 }
 
 /** `{id, title}` projected onto the `{id, name}` shape every relation picker hydrates from. */
@@ -148,6 +162,9 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
   } = useTaskForm({ mode, onSuccess })
 
   const task = persistedTask(mode)
+  // Ref-display hydration only (see the function doc); falls back to `task`
+  // so edit mode keeps reading from the exact same source it always did.
+  const hydration = task ?? duplicateSource(mode)
   // AC-085: opened as "crea sotto-task", the parent arrives prefilled and locked.
   const parentLocked = mode.type === 'create' && (mode.parentTaskId ?? null) !== null
 
@@ -194,9 +211,9 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
 
               <TaskPeopleSection
                 control={form.control}
-                requester={requesterRefOf(task, currentUserRef)}
-                assignees={peopleOf(task?.assignees)}
-                watchers={peopleOf(task?.watchers)}
+                requester={requesterRefOf(hydration, currentUserRef)}
+                assignees={peopleOf(hydration?.assignees)}
+                watchers={peopleOf(hydration?.watchers)}
                 creatorId={creatorIdOf(task, currentUserRef)}
                 isCreate={!isEdit}
               />
@@ -205,17 +222,17 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
 
               <TaskRegistrySection
                 control={form.control}
-                registry={task?.registry ?? parentPrefillRefs.registry}
-                referent={task?.referent ?? parentPrefillRefs.referent}
+                registry={hydration?.registry ?? parentPrefillRefs.registry}
+                referent={hydration?.referent ?? parentPrefillRefs.referent}
                 onRegistryChange={handleRegistryChange}
               />
 
               <TaskLinksSection
                 control={form.control}
-                opportunity={task?.opportunity ?? parentPrefillRefs.opportunity}
-                workOrder={workOrderRefOf(task) ?? workOrderPrefillRef ?? parentPrefillRefs.workOrder}
-                lead={leadRefOf(task)}
-                workOrderStage={workOrderStageOf(task)}
+                opportunity={hydration?.opportunity ?? parentPrefillRefs.opportunity}
+                workOrder={workOrderRefOf(hydration) ?? workOrderPrefillRef ?? parentPrefillRefs.workOrder}
+                lead={leadRefOf(hydration)}
+                workOrderStage={workOrderStageOf(hydration)}
                 onWorkOrderChange={handleWorkOrderChange}
                 onWorkOrderItemChange={handleWorkOrderItemChange}
                 onOpportunityChange={handleOpportunityChange}
@@ -223,9 +240,9 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
 
               <TaskRecurrenceSection control={form.control} />
 
-              {mode.type === 'create' ? <TaskFormSubtasksSection control={form.control} /> : null}
+              {mode.type !== 'edit' ? <TaskFormSubtasksSection control={form.control} /> : null}
 
-              {mode.type === 'create' ? (
+              {mode.type !== 'edit' ? (
                 <TaskAttachmentStaging
                   files={stagedAttachments}
                   onAdd={addStagedAttachments}

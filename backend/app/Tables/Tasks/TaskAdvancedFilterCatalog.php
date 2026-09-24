@@ -51,6 +51,9 @@ final class TaskAdvancedFilterCatalog
             self::relationFilter('requester', 'requester', 8, 'users', 'requester'),
             self::relationFilter('assignees', 'assignees', 9, 'users', 'assignees'),
             self::relationFilter('watchers', 'watchers', 10, 'users', 'watchers'),
+            // Spec 0156, D-1.
+            self::relationFilter('registry', 'registry', 11, 'registries', 'registry'),
+            self::relationFilter('work_order', 'work_order', 12, 'work-orders', 'workOrder'),
         ];
     }
 

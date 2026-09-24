@@ -120,11 +120,14 @@ it('AC-070: the column config exposes the frozen filter catalogue', function () 
     $data = $this->getJson('/api/tables/tasks/columns')->assertOk()->json('data');
     $filterColumnIds = collect($data['filters'])->pluck('columnId')->all();
 
+    // Spec 0156, D-2: five new filterable columns (work_order_stage,
+    // updated_at, actual_minutes, is_recurring, parent_title).
     expect($filterColumnIds)->toEqualCanonicalizing([
         'title', 'registry', 'task_type', 'task_status', 'task_priority', 'task_importance',
         'task_category', 'start_date', 'end_date', 'completion_date', 'requester', 'creator',
-        'assignees', 'watchers', 'opportunity', 'work_order', 'completion_percentage',
+        'assignees', 'watchers', 'opportunity', 'work_order', 'work_order_stage', 'completion_percentage',
         'estimated_minutes', 'is_blocked', 'has_subtasks', 'is_subtask',
+        'updated_at', 'actual_minutes', 'is_recurring', 'parent_title',
     ]);
 });
 

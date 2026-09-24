@@ -124,6 +124,10 @@ export function TaskFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
     )
   }
 
+  if (mode.type === 'duplicate') {
+    return <TaskDuplicateScreen taskId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
+  }
+
   return <TaskEditScreen taskId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
 }
 
@@ -162,6 +166,43 @@ function TaskEditScreen({ taskId, onSuccess, onCancel }: TaskEditScreenProps) {
   }
 
   return <TaskForm mode={{ type: 'edit', task }} onSuccess={onSuccess} onCancel={onCancel} />
+}
+
+interface TaskDuplicateScreenProps {
+  taskId: number
+  onSuccess: (task: TaskDetail) => void
+  onCancel: () => void
+}
+
+/**
+ * Row action "duplicate" (spec 0156 D-4): fetches the fresh, re-authorized
+ * source task before mounting the create form pre-filled from it — the copy
+ * still submits via the create path (`TaskFormMode: 'duplicate'`).
+ */
+function TaskDuplicateScreen({ taskId, onSuccess, onCancel }: TaskDuplicateScreenProps) {
+  const { t } = useTranslation()
+  const { data: task, isLoading, isError, refetch } = useEntityDetail(taskDetailQueryKey(taskId), () =>
+    fetchTask(taskId),
+  )
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-start gap-3 p-4">
+        <p className="text-sm text-destructive" role="alert">
+          {t('tasks.detail.loadError')}
+        </p>
+        <Button variant="outline" size="sm" className="bg-card" onClick={() => refetch()}>
+          {t('common.retry')}
+        </Button>
+      </div>
+    )
+  }
+
+  if (isLoading || !task) {
+    return <RecordFormSkeleton />
+  }
+
+  return <TaskForm mode={{ type: 'duplicate', source: task }} onSuccess={onSuccess} onCancel={onCancel} />
 }
 
 /** Auto-registered in the module registry (spec 0042). */

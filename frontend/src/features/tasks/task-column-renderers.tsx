@@ -1,8 +1,10 @@
-import { Contact, Handshake, Hammer } from 'lucide-react'
+import { Contact, Handshake, Hammer, Milestone } from 'lucide-react'
 import { BooleanBadgeCell, DateCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
+import { DateTimeCell } from '@/features/table/cell-renderers'
 import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import i18n from '@/i18n'
 import { CompletionCell } from '@/features/table/completion-cell'
+import { ActualMinutesCell } from '@/features/tasks/task-actual-minutes-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /**
@@ -31,10 +33,10 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * need a renderer. `has_subtasks`/`is_subtask` are the derived hierarchy
  * booleans (D-12).
  *
- * There is deliberately NO `created_at`/`updated_at` entry: unlike most
- * modules, `TasksTableDefinition` declares no timestamp column, so such an
- * entry would be dead code. (`tasks.detail.created_at`/`updated_at` DO exist —
- * the detail shows them, the grid does not.)
+ * There is deliberately NO `created_at` entry: unlike most modules,
+ * `TasksTableDefinition` declares no such column, so an entry here would be
+ * dead code (`tasks.detail.created_at` DOES exist — the detail shows it, the
+ * grid does not). `updated_at` DOES have a grid column since spec 0156 D-2.
  */
 export const taskColumnRenderers: TableRendererMap = {
   task_status: (params) => <StatusBadgeCell {...params} />,
@@ -58,4 +60,15 @@ export const taskColumnRenderers: TableRendererMap = {
   completion_date: (params) => <DateCell {...params} />,
   has_subtasks: (params) => <BooleanBadgeCell {...params} />,
   is_subtask: (params) => <BooleanBadgeCell {...params} />,
+  /**
+   * Spec 0156 D-2: `actual_minutes` (segnatempo sum) on the shared minutes
+   * formatter, `updated_at` on the shared `DateTimeCell`, `is_recurring` on
+   * the shared boolean badge, `work_order_stage` (the "Fase" relation) on
+   * `RelationCell`. `parent_title` stays the AG Grid default text cell (it is
+   * a plain string column, not a relation).
+   */
+  actual_minutes: (params) => <ActualMinutesCell {...params} />,
+  updated_at: (params) => <DateTimeCell {...params} />,
+  is_recurring: (params) => <BooleanBadgeCell {...params} />,
+  work_order_stage: (params) => <RelationCell {...params} icon={Milestone} />,
 }

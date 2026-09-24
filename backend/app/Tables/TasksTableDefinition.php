@@ -4,23 +4,32 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
+use App\Authorization\TasksAuthorization;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\RoleAssignmentGuard;
+use App\Services\Table\FilterApplier;
 use App\Services\Tasks\TaskAbilityResolver;
+use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
 use App\Services\Tasks\TaskVisibilityScope;
+use App\Services\Tasks\TaskWriteLock;
 use App\Services\TaskService;
 use App\Tables\Tasks\TaskAdvancedFilterApplier;
 use App\Tables\Tasks\TaskAdvancedFilterCatalog;
+use App\Tables\Tasks\TaskAggregateColumns;
+use App\Tables\Tasks\TaskCellWriter;
 use App\Tables\Tasks\TaskColumnCatalog;
 use App\Tables\Tasks\TaskRelationColumns;
+use App\Tables\Tasks\TaskRowMapper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Table definition for the `tasks` domain (spec 0101).
+ * Table definition for the `tasks` domain (spec 0101, extended by spec 0156
+ * for q-net alignment).
  *
  * baseQuery() is scoped by TaskVisibilityScope (D-9): without
  * `tasks.viewAll` the actor lists only the Task they created, requested, are
@@ -33,21 +42,44 @@ use Illuminate\Support\Facades\Gate;
  * `completion_percentage` is the one column with no `tasks` column behind it
  * (D-6): its value, its ORDER BY and its WHERE all come from
  * TaskStatusResolver, so the badge and the grid can never disagree
- * (AC-020/AC-022). Every other derived column is delegated to
- * TaskRelationColumns (file-size split, engineering.md §6).
+ * (AC-020/AC-022). `actual_minutes`/`parent_title` (spec 0156, D-2) are the
+ * two AGGREGATE columns, delegated to TaskAggregateColumns; every other
+ * derived column is delegated to TaskRelationColumns (file-size split,
+ * engineering.md §6).
  *
  * deleteModel() routes the generic bulk-delete through TaskService::delete(),
- * so the sub-task guard cannot be side-stepped (AC-016).
+ * so the sub-task guard cannot be side-stepped (AC-016). updateCell() (spec
+ * 0156, D-8) routes the generic inline cell-edit through TaskCellWriter, so
+ * it too runs every guard `TaskService::update()` already enforces on a
+ * single-task PATCH.
  */
 class TasksTableDefinition extends AbstractTableDefinition
 {
     private const string COMPLETION_PERCENTAGE_COLUMN = 'completion_percentage';
+
+    private const string IS_RECURRING_COLUMN = 'is_recurring';
+
+    /**
+     * The seven domain-action flags of TasksAuthorization::actionPermissions()
+     * exposed as row actions (spec 0156, D-5): the action key IS the flag
+     * key for all seven, so a single loop maps them — never a second
+     * evaluation of the matrix TaskCompletionService/TaskActionService
+     * themselves re-assert.
+     *
+     * @var array<int, string>
+     */
+    private const array DOMAIN_ACTION_FLAGS = ['complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update'];
 
     public function __construct(
         private readonly TaskService $service,
         private readonly TaskStatusResolver $statusResolver,
         private readonly TaskRelationColumns $relationColumns,
         private readonly TaskAdvancedFilterApplier $advancedFilterApplier,
+        private readonly TaskAggregateColumns $aggregateColumns,
+        private readonly TaskCellWriter $cellWriter,
+        private readonly TasksAuthorization $authorization,
+        private readonly FilterApplier $filterApplier,
+        private readonly TaskRowMapper $rowMapper,
     ) {}
 
     public function domain(): string
@@ -82,8 +114,15 @@ class TasksTableDefinition extends AbstractTableDefinition
         // resolves the `has_subtasks` cell in the SAME query rather than one
         // EXISTS per row, and deliberately counts children the actor may not
         // see — the same unscoped fact the delete guard asserts on (D-8a).
-        return TaskVisibilityScope::scopeToActor(
-            Task::query()->withCount('subtasks')->with([
+        // `withCount('notes')` (spec 0156, D-5) backs the `notes` action's
+        // badge; `TaskActionAvailability::withOpenSubtasksCount()` (spec
+        // 0153) preloads the count the `complete`/`approve` row actions'
+        // guard needs, so actionsFor() never N+1s across the page.
+        // `addSelect($this->aggregateColumns->selects())` (spec 0156, D-2)
+        // resolves `actual_minutes`/`parent_title` in the SAME query too.
+        $query = Task::query()
+            ->withCount(['subtasks', 'notes'])
+            ->with([
                 ...TaskStatusResolver::EAGER_LOADS,
                 'taskType',
                 'taskPriority',
@@ -92,11 +131,16 @@ class TasksTableDefinition extends AbstractTableDefinition
                 'registry',
                 'opportunity',
                 'workOrder',
+                'workOrderStage',
                 'requester',
                 'creator',
                 'assignees.employment.operationalSites',
                 'watchers',
-            ]),
+            ])
+            ->addSelect($this->aggregateColumns->selects());
+
+        return TaskVisibilityScope::scopeToActor(
+            TaskActionAvailability::withOpenSubtasksCount($query),
             Auth::user(),
         );
     }
@@ -118,7 +162,8 @@ class TasksTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * The work-order Task board's filters (spec 0147).
+     * The work-order Task board's filters (spec 0147), extended by spec
+     * 0156 (`registry`/`work_order`, `due`'s `this_month`).
      *
      * @return array<int, array<string, mixed>>
      */
@@ -155,10 +200,7 @@ class TasksTableDefinition extends AbstractTableDefinition
 
     /**
      * Spec 0153, D-2: most-recently-updated first, `id desc` breaking ties
-     * (two rows touched in the same second). `updated_at` becomes a fully
-     * visible/filterable column in spec 0156; here it only needs to be
-     * SORTABLE for this ORDER BY to resolve (TaskColumnCatalog declares it
-     * hidden in the meantime, mirroring `completion_date`'s own precedent).
+     * (two rows touched in the same second).
      *
      * @return array<int, array{columnId: string, direction: string}>
      */
@@ -179,87 +221,25 @@ class TasksTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Map a Task to the row payload. `actions` is attached by the generic
-     * TableService via actionsFor().
+     * Map a Task to the row payload (App\Tables\Tasks\TaskRowMapper). `actions`
+     * is attached by the generic TableService via actionsFor().
      *
      * @return array<string, mixed>
      */
     public function mapRow(User $actor, Model $row): array
     {
         /** @var Task $row */
-        return [
-            'id' => $row->id,
-            'title' => $row->title,
-            'registry' => $this->nameRef($row->registry),
-            'task_type' => $this->badgeRef($row->taskType),
-            'task_status' => $this->badgeRef($row->taskStatus),
-            'task_priority' => $this->badgeRef($row->taskPriority),
-            'task_importance' => $this->badgeRef($row->taskImportance),
-            'task_category' => $this->badgeRef($row->taskCategory),
-            'start_date' => $row->start_date,
-            'end_date' => $row->end_date,
-            'completion_date' => $row->completion_date,
-            'requester' => $this->nameRef($row->requester),
-            'creator' => $this->nameRef($row->creator),
-            'assignees' => $this->summarizeUsers($row->assignees->all()),
-            'watchers' => $this->summarizeUsers($row->watchers->all()),
-            'completion_percentage' => $this->statusResolver->completionPercentage($row),
-            'estimated_minutes' => $row->estimated_minutes,
-            'is_blocked' => $row->is_blocked,
-            'opportunity' => $this->nameRef($row->opportunity),
-            'work_order' => $row->workOrder === null
-                ? null
-                : ['id' => $row->workOrder->id, 'name' => $row->workOrder->title],
-            'has_subtasks' => (int) $row->subtasks_count > 0,
-            'is_subtask' => $row->parent_task_id !== null,
-        ];
-    }
-
-    /**
-     * @return array{id: int, name: string}|null
-     */
-    private function nameRef(?Model $related): ?array
-    {
-        return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
-    }
-
-    /**
-     * A configurator row with its badge attributes, so the grid renders the
-     * CONFIGURED colour/icon and changing them needs no code change
-     * (AC-072).
-     *
-     * @return array{id: int, name: string, color: string|null, icon: string|null}|null
-     */
-    private function badgeRef(?Model $related): ?array
-    {
-        if ($related === null) {
-            return null;
-        }
-
-        return [
-            'id' => $related->id,
-            'name' => $related->name,
-            'color' => $related->color,
-            'icon' => $related->icon,
-        ];
-    }
-
-    /**
-     * @param  array<int, User>  $users
-     * @return array<int, array{id: int, name: string}>
-     */
-    private function summarizeUsers(array $users): array
-    {
-        return array_map(
-            static fn (User $user): array => ['id' => $user->id, 'name' => $user->name],
-            $users,
-        );
+        return $this->rowMapper->map($row);
     }
 
     /**
      * Allowed action keys for a single row, via TaskPolicy — which carries
      * the D-9 visibility scoping, answered in memory here because both
-     * membership relations are eager-loaded in baseQuery().
+     * membership relations are eager-loaded in baseQuery(). Spec 0156, D-5
+     * adds the seven domain actions (TasksAuthorization::actionPermissions(),
+     * the SAME matrix the detail's own buttons read) plus `duplicate`/
+     * `notes`, both riding on the `view`/`create` gates already resolved
+     * above rather than a second Policy call.
      *
      * @return array<int, string>
      */
@@ -284,6 +264,24 @@ class TasksTableDefinition extends AbstractTableDefinition
             $allowed[] = 'activity';
         }
 
+        $canView = in_array('view', $allowed, true);
+
+        if ($canView && $actor->can('tasks.create')) {
+            $allowed[] = 'duplicate';
+        }
+
+        if ($canView) {
+            $allowed[] = 'notes';
+        }
+
+        $permissions = $this->authorization->actionPermissions($actor, $row);
+
+        foreach (self::DOMAIN_ACTION_FLAGS as $flag) {
+            if ($permissions[$flag] ?? false) {
+                $allowed[] = $flag;
+            }
+        }
+
         return $allowed;
     }
 
@@ -301,7 +299,7 @@ class TasksTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Spec 0125 D-2: the Gate alone lets a super-admin assignee through, so
+     * Spec 0125, D-2: the Gate alone lets a super-admin assignee through, so
      * the delete row of the matrix is ANDed here too — the grid row-action
      * and the bulk-delete `forbidden` verdict then match the Service's 403.
      */
@@ -309,6 +307,61 @@ class TasksTableDefinition extends AbstractTableDefinition
     {
         /** @var Task $row */
         return Gate::forUser($actor)->allows('delete', $row) && TaskAbilityResolver::canDelete($actor, $row);
+    }
+
+    /**
+     * Spec 0156, contract: `editable` of a row = update allowed AND the Task
+     * is not closed/blocked for writing, a super-admin excluded from that
+     * second half — the same coarse row-level UI hint `editable` already is
+     * everywhere else in this engine (D-2 of spec 0053: "il config è un
+     * suggerimento, la catena di guardie del PATCH è la verità"), so this
+     * deliberately reads only $row's OWN `is_blocked`/status phase
+     * (TaskWriteLock::isLocked()), never the ancestor-chain cascade
+     * (TaskWriteLock::isLockedByAncestor()) — the per-field write TaskCellWriter
+     * -> TaskService::update() runs is the one place that walk is judged for
+     * real, and it stays a per-row query the grid's page cannot afford to
+     * repeat for every locked-by-ancestor sub-task.
+     */
+    public function authorizeUpdate(User $actor, Model $row): bool
+    {
+        /** @var Task $row */
+        if (! Gate::forUser($actor)->allows('update', $row)) {
+            return false;
+        }
+
+        if ($actor->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE)) {
+            return true;
+        }
+
+        return ! TaskWriteLock::isLocked($row);
+    }
+
+    /**
+     * Spec 0156, D-8: routes the inline cell edit through TaskCellWriter ->
+     * TaskService::update(), never a raw `$row->update()` — every structural
+     * guard a single-task PATCH already enforces (TaskWriteLock,
+     * TaskManualStatusGuard, the "Fase" guard, watcher overlap, the 0153
+     * D-13 notification map) runs here too.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var Task $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+
+        return $this->cellWriter->write($row, $columnId, $value, $actor);
+    }
+
+    /**
+     * Spec 0156, D-3: the sum of `estimated_minutes` over the WHOLE filtered
+     * set (never the page) — the footer total the frontend renders.
+     *
+     * @param  Builder<Task>  $query
+     * @return array{estimated_minutes_total: int}
+     */
+    public function aggregates(Builder $query): array
+    {
+        return ['estimated_minutes_total' => (int) $query->sum('tasks.estimated_minutes')];
     }
 
     /**
@@ -321,6 +374,16 @@ class TasksTableDefinition extends AbstractTableDefinition
         if ($columnId === self::COMPLETION_PERCENTAGE_COLUMN) {
             $this->statusResolver->applyFilter($query, $columnConfig, $filter);
 
+            return true;
+        }
+
+        if ($columnId === self::IS_RECURRING_COLUMN) {
+            $this->applyRecurringFilter($query, $filter);
+
+            return true;
+        }
+
+        if ($this->aggregateColumns->applyFilter($query, $columnId, $filter)) {
             return true;
         }
 
@@ -338,7 +401,39 @@ class TasksTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        if ($this->aggregateColumns->applySort($query, $columnId, $direction)) {
+            return true;
+        }
+
         return $this->relationColumns->applySort($query, $columnId, $direction);
+    }
+
+    /**
+     * Spec 0156, D-1: the quick search also matches an exact numeric id,
+     * OR-combined with the `title` LIKE the generic engine already applies
+     * to the other searchable column. `$pattern` arrives already
+     * `%…%`-wrapped and LIKE-escaped (TableQueryBuilder::applySearch()); the
+     * raw term is safely recovered by stripping the two wrapping `%` — safe
+     * because a purely-numeric term carries no character `escapeLike()`
+     * would ever have touched.
+     *
+     * @param  Builder<Task>  $query
+     */
+    public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
+    {
+        if ($columnId !== 'id') {
+            return false;
+        }
+
+        $term = substr($pattern, 1, -1);
+
+        if ($term === '' || ! ctype_digit($term)) {
+            return true; // handled: no numeric id to match, adds no clause.
+        }
+
+        $query->orWhere('tasks.id', '=', (int) $term);
+
+        return true;
     }
 
     /**
@@ -349,5 +444,28 @@ class TasksTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
+    }
+
+    /**
+     * `is_recurring` (spec 0156, D-2) is a predicate on `task_recurrence_id`,
+     * with no real boolean column to filter directly — mirrors
+     * TaskRelationColumns::applyHierarchyFilter()'s shape for `has_subtasks`/
+     * `is_subtask`, reusing FilterApplier::booleanFilterValues() (public for
+     * exactly this: a derived boolean column filtering itself).
+     *
+     * @param  Builder<Task>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyRecurringFilter(Builder $query, array $filter): void
+    {
+        $values = $this->filterApplier->booleanFilterValues($filter);
+
+        if ($values === null || count($values) !== 1) {
+            return; // absent, or both true/false selected: every row matches one or the other.
+        }
+
+        $values[0]
+            ? $query->whereNotNull('tasks.task_recurrence_id')
+            : $query->whereNull('tasks.task_recurrence_id');
     }
 }

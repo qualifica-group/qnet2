@@ -145,6 +145,26 @@ interface PendingNoteEdit {
 }
 
 /**
+ * A commit a domain adapter may want to intercept BEFORE it ever reaches the
+ * PATCH endpoint (spec 0156 D-8, e.g. Task's `task_status` column: picking a
+ * closing status opens the completion dialog instead of writing the id
+ * directly; picking back out of a closed one calls `uncomplete`). `newValue`/
+ * `oldValue` are the raw cell values (same shape `resolveCellPatchValue`
+ * consumes). Returning `true` means the domain now OWNS this edit: the cell is
+ * reverted to `oldValue` immediately and no PATCH fires — the domain's own
+ * flow (a dialog, a dedicated mutation) is responsible for the real change and
+ * for refreshing the grid afterwards. Returning `false` (or omitting the
+ * callback) keeps today's behavior for every column/domain unchanged.
+ */
+export interface CellCommitInterceptParams {
+  columnId: string
+  row: TableRow
+  oldValue: unknown
+  newValue: unknown
+}
+export type CellCommitInterceptor = (params: CellCommitInterceptParams) => boolean
+
+/**
  * A cell's own display label — the relation projection's `name` when the
  * value carries one, the scalar itself otherwise. Feeds a change-request
  * proposal's `currentLabel`/`requestedLabel` (spec 0078 E4), distinct from
@@ -174,8 +194,16 @@ function resolveCellDisplayLabel(value: unknown): string | null {
  * the newly-picked value `requires_note`; when it does, the PATCH is held
  * back until the returned `noteDialogSlot` collects one (confirm -> single
  * PATCH with `{column, value, note}`; cancel -> local revert, no request).
+ *
+ * `interceptCommit` (spec 0156 D-8) is an optional, per-domain escape hatch
+ * checked BEFORE the `change_request`/`requires_note` branches — see
+ * `CellCommitInterceptor`.
  */
-export function useTableCellEdit(domain: string, columns: TableColumn[]) {
+export function useTableCellEdit(
+  domain: string,
+  columns: TableColumn[],
+  interceptCommit?: CellCommitInterceptor,
+) {
   const { t } = useTranslation()
   const { requestFieldChange } = useRequestFieldChange()
   const [pendingNote, setPendingNote] = useState<PendingNoteEdit | null>(null)
@@ -232,6 +260,18 @@ export function useTableCellEdit(domain: string, columns: TableColumn[]) {
       const patchValue = resolveCellPatchValue(event.newValue)
       const column = columns.find((candidate) => candidate.id === columnId)
 
+      if (
+        interceptCommit?.({
+          columnId,
+          row: event.data,
+          oldValue: event.oldValue,
+          newValue: event.newValue,
+        })
+      ) {
+        event.node.setData(revertedData)
+        return
+      }
+
       if (column?.change_request) {
         event.node.setData(revertedData)
         requestFieldChange({
@@ -253,7 +293,7 @@ export function useTableCellEdit(domain: string, columns: TableColumn[]) {
 
       runPatch({ rowId, column: columnId, value: patchValue }, event.node, revertedData)
     },
-    [columns, requestFieldChange, runPatch],
+    [columns, requestFieldChange, runPatch, interceptCommit],
   )
 
   const handleConfirmNote = useCallback(

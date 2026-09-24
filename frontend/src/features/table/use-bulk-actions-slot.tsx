@@ -51,6 +51,16 @@ interface UseBulkActionsSlotArgs {
    * "delete selected".
    */
   getBulkActions?: (selection: TableSelection) => BulkAction[]
+  /**
+   * Suppresses the built-in "delete selected" even when the domain's own
+   * action catalog carries a `delete` key (spec 0156 D-6, tasks: its own
+   * `getBulkActions` already offers an all-or-nothing "Elimina" through
+   * `POST /api/tasks/bulk`, whose contract differs from the generic
+   * `POST /tables/{domain}/bulk-delete` this hook otherwise wires — the two
+   * must not both render). Omitted (`false`), every other domain keeps
+   * exactly today's behavior.
+   */
+  disableBuiltinDelete?: boolean
 }
 
 interface UseBulkActionsSlotResult {
@@ -78,14 +88,15 @@ export function useBulkActionsSlot({
   actions,
   refresh,
   getBulkActions,
+  disableBuiltinDelete,
 }: UseBulkActionsSlotArgs): UseBulkActionsSlotResult {
   const { t } = useTranslation()
   const [selection, setSelection] = useState<TableSelection>(EMPTY_SELECTION)
   const selectedIds = selection.ids
 
   const canBulkDelete = useMemo(
-    () => actions?.some((action) => action.key === 'delete') ?? false,
-    [actions],
+    () => !disableBuiltinDelete && (actions?.some((action) => action.key === 'delete') ?? false),
+    [actions, disableBuiltinDelete],
   )
   const { runBulkDelete, isDeleting } = useBulkDelete({ domain, gridApi, refresh })
 

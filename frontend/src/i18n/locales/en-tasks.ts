@@ -7,11 +7,14 @@
  * models are `Task`/`tasks`, `Registry`/`registries`, `WorkOrder`/
  * `work-orders` (spec §context, CLAUDE.md §2).
  *
- * `columns.*` mirrors `TaskColumnCatalog` exactly — it declares NO
- * `created_at`/`updated_at` column, so neither has a `columns` entry here;
- * `detail.created_at`/`detail.updated_at` do exist, because the detail footer
- * shows both.
+ * `columns.*` mirrors `TaskColumnCatalog` exactly. `created_at` is not a grid
+ * column (only `detail.created_at` exists, for the detail footer); `updated_at`
+ * is, since spec 0156 D-2.
+ *
+ * `bulk.*` (bulk actions, spec 0156 D-6) lives in `en-tasks-bulk.ts`, a
+ * sibling for the same size limit, merged in below.
  */
+import { tasksBulk } from '@/i18n/locales/en-tasks-bulk'
 
 export const tasks = {
   forbidden: "You don't have permission to view tasks.",
@@ -37,7 +40,28 @@ export const tasks = {
     work_order: 'Work order',
     has_subtasks: 'Has sub-tasks',
     is_subtask: 'Is a sub-task',
+    actual_minutes: 'Actual minutes',
+    updated_at: 'Updated at',
+    is_recurring: 'Recurring',
+    parent_title: 'Parent task',
+    work_order_stage: 'Phase',
   },
+  /** Grid footer (spec 0156 D-3). */
+  footer: {
+    estimatedMinutesTotal: 'Total estimated minutes: {{value}}',
+  },
+  /** Quick-create row at the bottom of the grid (spec 0156 D-7). */
+  quickCreate: {
+    formLabel: 'Quickly create a new task',
+    titlePlaceholder: 'New task…',
+    titleRequired: 'The title is required.',
+    endDateRequired: 'The due date is required.',
+    requesterRequired: 'The requester is required.',
+    assigneesRequired: 'Select at least one assignee.',
+    submit: 'Create the task',
+  },
+  /** List bulk actions (spec 0156 D-6), on `POST /api/tasks/bulk`. */
+  bulk: tasksBulk,
   /** Table advanced filters (spec 0147): the same axes as the work order Task board. */
   advancedFilters: {
     status: 'Status',
@@ -50,6 +74,9 @@ export const tasks = {
     requester: 'Requester',
     assignees: 'Assignees',
     watchers: 'Watchers',
+    /** Spec 0156 D-1. */
+    registry: 'Account',
+    workOrder: 'Work order',
   },
   detail: {
     title: 'Task details',
@@ -233,6 +260,8 @@ export const tasks = {
     workOrderStage: 'Phase',
     workOrderStagePlaceholder: 'Select a phase',
     workOrderStageNoStage: 'No phase',
+    /** Grid "Phase" cell (spec 0156 D-8): no work order on the row, nothing to pick. */
+    workOrderStageNoWorkOrder: 'No work order on this row',
     requiresClosureFeedback: 'Feedback required',
     requiresClosureFeedbackHint:
       'When on, closing the task requires a written feedback.',

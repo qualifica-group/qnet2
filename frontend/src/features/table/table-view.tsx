@@ -31,6 +31,7 @@ import { createRowActionsRenderer, INLINE_ACTION_LIMIT, LABELED_ACTIONS_COLUMN_W
 import { useTableConfig } from '@/features/table/use-table-config'
 import { EMPTY_FILTER_MODEL, useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
 import type { TableViewProps } from '@/features/table/table-view-props'
+import type { TableRowsAggregates } from '@/features/table/types'
 
 /**
  * Page size assumed while the config is still loading, only to size the grid
@@ -77,11 +78,15 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       importSlot,
       isRowSelectable,
       getBulkActions,
+      disableBuiltinDelete,
       masterDetail,
       detailCellRenderer,
       detailRowAutoHeight,
       advancedFiltersOverride,
       onAdvancedFiltersOverrideCleared,
+      renderFooter,
+      pinnedRowSlot,
+      interceptCellCommit,
     },
     ref,
   ) {
@@ -137,6 +142,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       actions: config?.actions,
       refresh: refreshGrid,
       getBulkActions,
+      disableBuiltinDelete,
     })
 
     // The domain's global quick-search allow-list (spec 0009); empty ⇒ no search
@@ -182,6 +188,13 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         onOverrideCleared: onAdvancedFiltersOverrideCleared,
       })
 
+    // The domain's own aggregate figures over the WHOLE filtered set (spec
+    // 0156 D-3), refreshed on every SSRM response; `undefined` for a domain
+    // with no `aggregates()` override. Only read when the caller supplies
+    // `renderFooter`, but always tracked — an unused `useState` here costs
+    // nothing and keeps the datasource memo below a single shape either way.
+    const [aggregates, setAggregates] = useState<TableRowsAggregates | undefined>(undefined)
+
     // One datasource instance per domain; stable across re-renders. The current
     // search term and applied advanced filters are read lazily via getters, so
     // typing/toggling never rebuilds it (the grid is purge-reloaded instead).
@@ -194,6 +207,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           productCategoryId,
           opportunityId,
           quoteId,
+          setAggregates,
         ),
       [domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId, opportunityId, quoteId],
     )
@@ -325,9 +339,12 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           masterDetail={masterDetail}
           detailCellRenderer={detailCellRenderer}
           detailRowAutoHeight={detailRowAutoHeight}
+          interceptCellCommit={interceptCellCommit}
         />
       )
     }
+
+    const footer = renderFooter ? renderFooter(aggregates) : null
 
     const savedViewsSlot = (
       <SavedViewsSlot
@@ -402,6 +419,9 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
             >
               {content}
             </div>
+
+            {pinnedRowSlot}
+            {footer ? <div className="border-t border-border px-3 py-1.5">{footer}</div> : null}
           </div>
         </div>
 

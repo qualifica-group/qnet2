@@ -141,6 +141,8 @@ export const enums = {
     today: 'Oggi',
     overdue: 'Scadute',
     this_week: 'Questa settimana',
+    /** Spec 0156 D-1. */
+    this_month: 'Questo mese',
   },
   task_assignment_scope: {
     assigned_to_me: 'Assegnati a me',

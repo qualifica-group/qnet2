@@ -427,6 +427,51 @@ describe('useTaskForm — parent prefill on create (spec 0123 D-10/D-7)', () => 
   })
 })
 
+/**
+ * Spec 0156 D-4: row action "duplicate" pre-fills the create form from the
+ * source task, except the parent link (never copied), the status (re-derived
+ * server-side) and the sub-tasks block (create-only, always starts empty).
+ */
+describe('useTaskForm — duplicate defaults (spec 0156 D-4)', () => {
+  it('copies every field but drops the parent, the status and the sub-tasks', () => {
+    const source = taskDetailWithPermissions({
+      title: 'Richiamare il cliente',
+      parent_task_id: 55,
+      parent_task: { id: 55, title: 'Task padre' },
+      task_status_id: 3,
+    })
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'duplicate', source }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    const values = result.current.form.getValues()
+    expect(values.title).toBe(`Richiamare il cliente${i18n.t('common.copySuffix')}`)
+    expect(values.parent_task_id).toBeNull()
+    expect(values.task_status_id).toBeNull()
+    expect(values.subtasks).toEqual([])
+    expect(values.is_completed).toBe(false)
+    expect(values.suppress_notifications).toBe(false)
+    // Everything else copies over.
+    expect(values.registry_id).toBe(source.registry_id)
+    expect(values.work_order_id).toBe(source.work_order_id)
+    expect(values.requester_id).toBe(source.requester_id)
+    expect(values.assignee_ids).toEqual(source.assignees.map((user) => user.id))
+    expect(values.watcher_ids).toEqual(source.watchers.map((user) => user.id))
+    expect(values.end_date).toBe(source.end_date)
+  })
+
+  it('submits through the create endpoint like a bare create (isEdit false)', () => {
+    const source = taskDetailWithPermissions()
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'duplicate', source }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    expect(result.current.isEdit).toBe(false)
+  })
+})
+
 /** Keeps the fixture honest: the status projection is what seeds the readout. */
 describe('taskStatus fixture', () => {
   it('carries the columns only task_statuses has (D-4), phase included', () => {

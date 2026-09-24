@@ -49,16 +49,22 @@ const guide: HelpGuide = {
           headers: ['Filter', 'What it shows'],
           rows: [
             ['Status', 'Open (preset), Completed, Blocked, In validation or All.'],
-            ['Due', 'Today, Overdue or This week, on the end date (or the start date when missing).'],
+            ['Due', 'Today, Overdue, This week or This month, on the end date (or the start date when missing).'],
             [
               'Assignment',
               'Pick **one or more** values together (preset: Assigned to me): assigned to you, requested by you, assigned by you (you are the requester but not an assignee), created by you (you created it but are neither the requester, nor an assignee, nor a watcher) or observed by you. **All** shows every task where you have any role at all (requester, assignee, watcher or creator), even if you hold the View all permission. If you hold View all or View site you also get **All visible**, which shows every task you may see, including your colleagues\u2019.',
             ],
+            ['Account', 'One or more Account records the task is linked to.'],
+            ['Work order', 'One or more work orders the task is linked to.'],
           ],
         },
         {
           type: 'tip',
           text: 'The table opens on the tasks **assigned to you and open** only, sorted by the most recently updated first. Pick other values in the Assignment and Status filters to widen the view. When you arrive from a **Dashboard** tile, the table opens already filtered for that visit only, without changing your saved filters.',
+        },
+        {
+          type: 'note',
+          text: 'Quick search also matches an exact ID: typing digits only also finds the task with that identifier, on top of the title match.',
         },
         {
           type: 'paragraph',
@@ -240,6 +246,44 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "Picking a **Task Template** when creating a Commessa (the **Schedule** action on the contract) creates the template's tasks and assigns them to the owners: you find them in the Commessa's Task section. Templates are configured in **Task › Task Templates**.",
+        },
+      ],
+    },
+    {
+      id: 'list-editing-and-bulk',
+      title: 'Quick edit and list actions',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The column picker lets you turn on five columns hidden by default: **Actual minutes** (the sum of everyone’s time entries), **Updated at**, **Recurring**, **Parent task** and **Phase**.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Clicking an editable cell (Title, Status, Type, Priority, Importance, Start date, Due date, Requester, Assignees, Watchers, Estimated time, Work order, Phase) edits it **directly in the list**, without opening the form: the cell disables itself on a completed, in-validation or blocked task (the super-admin is the exception). **Phase** can only be picked once the row already has a work order.',
+        },
+        {
+          type: 'note',
+          text: 'Changing **Status** to a closing one opens the same **Complete** dialog as the detail; cancelling it reverts the cell to its previous value. Changing a closed status to an open one reopens the task right away, same as the Reopen action.',
+        },
+        {
+          type: 'paragraph',
+          text: 'The row carries the same actions as the detail (Complete, Reopen, Approve, Reject, Block, Unblock, Request update), plus **Duplicate** (opens the create form pre-filled with the same data — except attachments, sub-tasks, status, completion date and time entries, and with no parent task) and **Notes** (opens the task’s notes panel, with the note count on the icon’s badge).',
+        },
+        {
+          type: 'paragraph',
+          text: 'Selecting one or more rows shows the **Actions** bar: Assign (replaces the assignees), Complete, Reopen, Block, Unblock, Priority, Start date, End date, Delete.',
+        },
+        {
+          type: 'warning',
+          text: 'A bulk action is **all or nothing**: if even one selected task is not eligible (e.g. blocked, or Complete requires validation), the action stops with a message listing which tasks and why, and none of the selected tasks is changed.',
+        },
+        {
+          type: 'paragraph',
+          text: 'With permission to create tasks, the bottom of the table shows a compact row to **quickly** create one: title, type, priority, importance, status, due date, requester, assignees and watchers. Type, priority and importance start already filled with the catalog’s default entry; the starting due date, requester and assignee are, respectively, today and yourself.',
+        },
+        {
+          type: 'note',
+          text: 'The table footer shows the **total estimated minutes** of the filtered set (not just the visible page).',
         },
       ],
     },

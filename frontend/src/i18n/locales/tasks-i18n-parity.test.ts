@@ -94,6 +94,12 @@ const BACKEND_COLUMN_IDS = [
   'work_order',
   'has_subtasks',
   'is_subtask',
+  // Spec 0156 D-2 (DETTAGLIO CONGELATO): five new columns.
+  'actual_minutes',
+  'updated_at',
+  'is_recurring',
+  'parent_title',
+  'work_order_stage',
 ] as const
 
 describe('tasks column labels cover TaskColumnCatalog', () => {

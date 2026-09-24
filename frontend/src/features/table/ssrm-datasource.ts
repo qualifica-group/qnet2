@@ -3,7 +3,7 @@ import type {
   IServerSideGetRowsParams,
 } from 'ag-grid-community'
 import { fetchTableRows } from '@/features/table/api'
-import type { SsrmSortModelItem, TableRow } from '@/features/table/types'
+import type { SsrmSortModelItem, TableRow, TableRowsAggregates } from '@/features/table/types'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 
 /** Page size fallback when the grid does not provide an explicit block range. */
@@ -41,6 +41,11 @@ const DEFAULT_BLOCK_SIZE = 25
  *
  * Domain-agnostic: the only domain-specific input is the `domain` key. The same
  * datasource powers every table.
+ *
+ * `onAggregates` (spec 0156 D-3) is called with every response's
+ * `meta.aggregates`, or `undefined` when the domain has none — the caller
+ * (`TableView`) feeds it into an optional footer slot. A no-op for every
+ * domain whose `TableDefinition::aggregates()` stays the default empty one.
  */
 export function createSsrmDatasource(
   domain: string,
@@ -49,6 +54,7 @@ export function createSsrmDatasource(
   productCategoryId?: number,
   opportunityId?: number,
   quoteId?: number,
+  onAggregates?: (aggregates: TableRowsAggregates | undefined) => void,
 ): IServerSideDatasource<TableRow> {
   return {
     async getRows(params: IServerSideGetRowsParams<TableRow>): Promise<void> {
@@ -89,6 +95,7 @@ export function createSsrmDatasource(
           ...(quoteId != null ? { quoteId } : {}),
         })
 
+        onAggregates?.(response.meta?.aggregates)
         params.success({
           rowData: response.items,
           rowCount: response.pagination.total,

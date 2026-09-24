@@ -74,6 +74,11 @@ class TableService
         $this->queryBuilder->applySearch($definition, $query, $payload['search'] ?? null);
 
         $total = (clone $query)->count();
+        // Spec 0156, D-3: computed over the SAME filtered-but-unsorted query
+        // as $total, never the paginated page — a footer total that agreed
+        // with the page instead of the filtered set would be the wrong
+        // number the moment a second page exists.
+        $aggregates = $definition->aggregates(clone $query);
 
         $this->queryBuilder->applySorting($definition, $query, $payload['sortModel'] ?? []);
 
@@ -90,6 +95,7 @@ class TableService
             total: $total,
             offset: $offset,
             limit: $limit,
+            aggregates: $aggregates,
         );
     }
 

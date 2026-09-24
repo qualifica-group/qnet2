@@ -108,9 +108,10 @@ it('exposes the board filters in the tasks config, status/assignment required (A
 
     $filters = collect($this->getJson('/api/tables/tasks/columns')->assertOk()->json('data.advancedFilters'))->keyBy('name');
 
+    // Spec 0156, D-1: `registry`/`work_order` are two new relation filters.
     expect($filters->keys()->all())->toBe([
         'status', 'due', 'assignment', 'task_status', 'task_type', 'task_priority', 'task_importance',
-        'requester', 'assignees', 'watchers',
+        'requester', 'assignees', 'watchers', 'registry', 'work_order',
     ])
         ->and($filters['status']['required'])->toBeTrue()
         ->and($filters['status']['defaultValue'])->toBe('open')

@@ -10,7 +10,12 @@ use App\Services\OperationalSiteService;
 use App\Services\ProductService;
 use App\Services\RegistryService;
 use App\Services\SourceService;
+use App\Services\TaskImportanceService;
+use App\Services\TaskPriorityService;
+use App\Services\TaskStatusService;
+use App\Services\TaskTypeService;
 use App\Services\UserService;
+use App\Services\WorkOrderService;
 
 /**
  * D-2 of spec 0054: a relation column's submitted id must be MORE than
@@ -42,6 +47,11 @@ final class RelationValueScopeChecker
         private readonly SourceService $sources,
         private readonly UserService $users,
         private readonly ProductService $products,
+        private readonly TaskStatusService $taskStatuses,
+        private readonly TaskTypeService $taskTypes,
+        private readonly TaskPriorityService $taskPriorities,
+        private readonly TaskImportanceService $taskImportances,
+        private readonly WorkOrderService $workOrders,
     ) {}
 
     /**
@@ -64,6 +74,12 @@ final class RelationValueScopeChecker
             // column checks every submitted id through this same gate, one id
             // at a time (CellValueValidator::validateIdListValue).
             'products' => $this->products->forSelect($query)->items,
+            // Spec 0156, D-8: the tasks grid's inline relation editors.
+            'task-statuses' => $this->taskStatuses->forSelect($query)->items,
+            'task-types' => $this->taskTypes->forSelect($query)->items,
+            'task-priorities' => $this->taskPriorities->forSelect($query)->items,
+            'task-importances' => $this->taskImportances->forSelect($query)->items,
+            'work-orders' => $this->workOrders->forSelect($query)->items,
             default => null,
         };
 

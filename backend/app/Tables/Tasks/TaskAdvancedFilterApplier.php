@@ -112,6 +112,11 @@ final class TaskAdvancedFilterApplier
                 $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
                 $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
             ]),
+            // Spec 0156, D-1.
+            TaskDueWindow::ThisMonth => $query->whereBetween($reference, [
+                $today->copy()->startOfMonth()->toDateString(),
+                $today->copy()->endOfMonth()->toDateString(),
+            ]),
         };
     }
 

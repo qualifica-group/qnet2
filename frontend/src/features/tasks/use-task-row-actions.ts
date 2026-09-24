@@ -20,6 +20,9 @@ export interface UseTaskRowActionsResult {
   isBusy: (row: TableRow) => boolean
   activityRow: TableRow | null
   closeActivity: (open: boolean) => void
+  /** The row currently showing its notes panel (spec 0156 D-5), `null` when none. */
+  notesRowId: number | null
+  closeNotes: (open: boolean) => void
   openCreate: () => void
   /** Opens the create form seeded with `params` (spec 0133 D-4: `work_order_id` from the Commessa detail). */
   openCreateWith: (params: ModuleCreateParams) => void
@@ -41,8 +44,9 @@ export function useTaskRowActions({
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+  const [notesRowId, setNotesRowId] = useState<number | null>(null)
 
-  const { openCreate, openCreateWith, openView, openEdit, sheet } = useModuleOpener(TASKS_DOMAIN, {
+  const { openCreate, openCreateWith, openView, openEdit, openDuplicate, sheet } = useModuleOpener(TASKS_DOMAIN, {
     onSaved: onMutated,
     forceMode,
     viewAfterCreate: true,
@@ -86,11 +90,17 @@ export function useTaskRowActions({
         case 'activity':
           setActivityRow(row)
           break
+        case 'duplicate':
+          openDuplicate(row)
+          break
+        case 'notes':
+          setNotesRowId(Number(row.id))
+          break
         default:
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, openEdit, openDuplicate, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
@@ -101,5 +111,21 @@ export function useTaskRowActions({
     }
   }, [])
 
-  return { handleAction, isBusy, activityRow, closeActivity, openCreate, openCreateWith, sheet }
+  const closeNotes = useCallback((open: boolean) => {
+    if (!open) {
+      setNotesRowId(null)
+    }
+  }, [])
+
+  return {
+    handleAction,
+    isBusy,
+    activityRow,
+    closeActivity,
+    notesRowId,
+    closeNotes,
+    openCreate,
+    openCreateWith,
+    sheet,
+  }
 }

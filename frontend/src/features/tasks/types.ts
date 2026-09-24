@@ -477,3 +477,12 @@ export type TaskFormMode =
       workOrderStageId?: number | null
     }
   | { type: 'edit'; task: TaskDetailWithPermissions }
+  /**
+   * Row action "duplicate" (spec 0156 D-4): the create form pre-filled from
+   * `source`, itself still a fresh, re-authorized fetch (mirrors
+   * `CampaignFormMode`'s own `duplicate` branch). Copies every field but
+   * attachments, sub-tasks, status (re-derived), `completion_date`, segnatempo
+   * and the parent link — `useTaskForm`'s `duplicateDefaults` is the single
+   * place enforcing exactly that list.
+   */
+  | { type: 'duplicate'; source: TaskDetailWithPermissions }

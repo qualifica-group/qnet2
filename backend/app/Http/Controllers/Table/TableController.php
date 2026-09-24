@@ -231,6 +231,7 @@ class TableController extends BaseApiController
                 total: $result->total,
                 offset: $result->offset,
                 limit: $result->limit,
+                meta: $result->aggregates === [] ? null : ['aggregates' => $result->aggregates],
             );
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

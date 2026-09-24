@@ -16,7 +16,11 @@ export type TaskFormMetaState =
  * metadata (`GET /meta/tasks`) once.
  */
 export function useTaskFormMeta(mode: TaskFormMode): TaskFormMetaState {
-  const metaQuery = useResourceMeta(TASKS_DOMAIN, mode.type === 'create')
+  // Duplicate submits through the CREATE endpoint (spec 0156 D-4), so it
+  // resolves the same create-context metadata as a bare create — never the
+  // source task's own `permissions` (the actor's CREATE mandate may differ
+  // from their UPDATE mandate on that source record).
+  const metaQuery = useResourceMeta(TASKS_DOMAIN, mode.type !== 'edit')
 
   if (mode.type === 'edit') {
     return { status: 'ready', permissions: mode.task.permissions }

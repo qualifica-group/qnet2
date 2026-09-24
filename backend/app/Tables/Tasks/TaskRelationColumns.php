@@ -80,6 +80,9 @@ final class TaskRelationColumns
         'creator' => ['relation' => 'creator', 'table' => self::USERS_TABLE, 'fk' => 'creator_id'],
         'opportunity' => ['relation' => 'opportunity', 'table' => 'opportunities', 'fk' => 'opportunity_id'],
         'work_order' => ['relation' => 'workOrder', 'table' => 'work_orders', 'fk' => 'work_order_id', 'label' => 'title'],
+        // Spec 0156, D-2/D-8: the task board "Fase" — same own-FK shape as
+        // every other relation column above.
+        'work_order_stage' => ['relation' => 'workOrderStage', 'table' => 'work_order_stages', 'fk' => 'work_order_stage_id'],
     ];
 
     /**

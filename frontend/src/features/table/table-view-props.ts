@@ -3,9 +3,10 @@ import type { ReactNode } from 'react'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import type { RowActionHandler, RowActionsOptions } from '@/features/table/row-actions'
+import type { CellCommitInterceptor } from '@/features/table/use-table-cell-edit'
 import type { TableConfigScope } from '@/features/table/use-table-config'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
-import type { TableRow, TableRowScope } from '@/features/table/types'
+import type { TableRow, TableRowsAggregates, TableRowScope } from '@/features/table/types'
 
 /**
  * Props of the generic `TableView` (extracted from `table-view.tsx` purely to
@@ -72,6 +73,8 @@ export interface TableViewProps extends RowActionsOptions {
    * this is supplied.
    */
   getBulkActions?: (selection: TableSelection) => BulkAction[]
+  /** Suppresses the generic built-in "delete selected" bulk action (spec 0156 D-6); see `useBulkActionsSlot`. */
+  disableBuiltinDelete?: boolean
   /**
    * Enables AG Grid's Master/Detail (spec 0059 D-4), forwarded verbatim to
    * `DataTable`. Additive opt-in: omitted, every other domain is unaffected.
@@ -96,4 +99,24 @@ export interface TableViewProps extends RowActionsOptions {
    * takes back over (spec 0151 D-2).
    */
   onAdvancedFiltersOverrideCleared?: () => void
+  /**
+   * Renders a footer slot below the grid from the domain's own
+   * `meta.aggregates` (spec 0156 D-3), e.g. a "totale minuti stimati" figure
+   * over the WHOLE filtered set (not just the current page). Called with
+   * `undefined` for a domain whose `TableDefinition::aggregates()` stays the
+   * default empty one — return `null` in that case. Omitted entirely, no
+   * footer renders and no domain sees any change.
+   */
+  renderFooter?: (aggregates: TableRowsAggregates | undefined) => ReactNode
+  /**
+   * A generic, opt-in slot rendered directly below the grid's rows (spec 0156
+   * D-7's quick-create bar): the adapter owns everything about it (fields,
+   * validation, submit) — `TableView` only reserves the space and refreshes
+   * nothing on its own; the adapter calls the imperative handle's `refresh()`
+   * itself once its own create succeeds. Omitted entirely, no domain sees any
+   * change.
+   */
+  pinnedRowSlot?: ReactNode
+  /** Per-domain cell-commit interception (spec 0156 D-8), forwarded verbatim to `DataTable`. */
+  interceptCellCommit?: CellCommitInterceptor
 }

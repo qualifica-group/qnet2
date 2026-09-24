@@ -4,18 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
-use App\DataObjects\Tasks\CompleteTaskData;
-use App\DataObjects\Tasks\UpdateTaskData;
 use App\DataObjects\WorkOrders\BulkTaskBoardData;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
-use App\Services\Tasks\TaskActionService;
-use App\Services\Tasks\TaskCompletionService;
-use App\Services\TaskService;
+use App\Services\Tasks\TaskBulkActionExecutor;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
@@ -23,12 +18,12 @@ use Throwable;
 /**
  * The six bulk actions of the task board (spec 0146, D-7): assign, complete,
  * uncomplete, block, priority, dates. Every task runs through the SAME
- * domain Service a single-task endpoint would use — `TaskService::update()`
- * for assign/priority/dates, `TaskCompletionService` for complete/uncomplete,
- * `TaskActionService::block()` — re-asserting its own ability (`Gate::
- * forUser($actor)->authorize()`, D-9) INSIDE its own transaction, so a
- * failure on one task never touches another (AC-017/AC-018: "nessuna
- * modifica parziale sul task che fallisce").
+ * domain Service a single-task endpoint would use, via the SHARED
+ * per-task write App\Services\Tasks\TaskBulkActionExecutor also gives
+ * App\Services\Tasks\TaskBulkService (spec 0156's generic `/api/tasks/bulk`)
+ * — re-asserting its own ability INSIDE its own transaction, so a failure on
+ * one task never touches another (AC-017/AC-018: "nessuna modifica parziale
+ * sul task che fallisce").
  *
  * A task that requires validation still fails `complete()` with an explicit
  * `validation_status_id` `ValidationException` (`TaskCompletionService`'s own
@@ -42,11 +37,7 @@ use Throwable;
  */
 final class TaskBulkActionService
 {
-    public function __construct(
-        private readonly TaskService $taskService,
-        private readonly TaskCompletionService $completionService,
-        private readonly TaskActionService $actionService,
-    ) {}
+    public function __construct(private readonly TaskBulkActionExecutor $executor) {}
 
     /**
      * @return array{results: array<int, array{task_id: int, ok: bool, message: string|null}>, succeeded: int, failed: int}
@@ -80,81 +71,15 @@ final class TaskBulkActionService
     private function applyAction(Task $task, BulkTaskBoardData $data, User $actor): void
     {
         match ($data->action) {
-            'assign' => $this->assign($task, $data, $actor),
-            'complete' => $this->complete($task, $data, $actor),
-            'uncomplete' => $this->uncomplete($task, $actor),
-            'block' => $this->block($task, $actor),
-            'priority' => $this->priority($task, $data, $actor),
-            'dates' => $this->dates($task, $data, $actor),
+            'assign' => $this->executor->assign($task, $data->assigneeIds ?? [], $actor),
+            // Never `for_all_assignees`/`validation_status_id`: the board
+            // keeps its own pre-0156 shape (docblock above).
+            'complete' => $this->executor->complete($task, $data->timeEntry ?? [], $data->closureFeedback, $data->closureFeedbackSubmitted, null, false, $actor),
+            'uncomplete' => $this->executor->uncomplete($task, $actor),
+            'block' => $this->executor->block($task, $actor),
+            'priority' => $this->executor->priority($task, (int) $data->taskPriorityId, $actor),
+            'dates' => $this->executor->dates($task, $data->startDate, $data->startDateSubmitted, $data->endDate, $data->endDateSubmitted, $actor),
         };
-    }
-
-    /** "canUpdate" (D-7): the same ability a single-task PATCH is gated on. */
-    private function assign(Task $task, BulkTaskBoardData $data, User $actor): void
-    {
-        Gate::forUser($actor)->authorize('update', $task);
-
-        $this->taskService->update($task, UpdateTaskData::fromValidated([
-            'assignee_ids' => $data->assigneeIds,
-        ]), $actor);
-    }
-
-    /** "canComplete" (D-7): TaskPolicy::complete covers both completion directions. */
-    private function complete(Task $task, BulkTaskBoardData $data, User $actor): void
-    {
-        Gate::forUser($actor)->authorize('complete', $task);
-
-        $payload = ['time_entry' => $data->timeEntry];
-
-        if ($data->closureFeedbackSubmitted) {
-            $payload['closure_feedback'] = $data->closureFeedback;
-        }
-
-        $this->completionService->complete($task, CompleteTaskData::fromValidated($payload, $task->id), $actor);
-    }
-
-    private function uncomplete(Task $task, User $actor): void
-    {
-        Gate::forUser($actor)->authorize('complete', $task);
-        $this->completionService->uncomplete($task, $actor);
-    }
-
-    /** "canBlock" (D-7). */
-    private function block(Task $task, User $actor): void
-    {
-        Gate::forUser($actor)->authorize('block', $task);
-        $this->actionService->block($task, $actor);
-    }
-
-    private function priority(Task $task, BulkTaskBoardData $data, User $actor): void
-    {
-        Gate::forUser($actor)->authorize('update', $task);
-
-        $this->taskService->update($task, UpdateTaskData::fromValidated([
-            'task_priority_id' => $data->taskPriorityId,
-        ]), $actor);
-    }
-
-    /**
-     * Only the submitted date key(s) are touched (data_contract: "almeno una
-     * delle due"), the same sparse-PATCH shape `UpdateTaskData` already
-     * gives a single-task update.
-     */
-    private function dates(Task $task, BulkTaskBoardData $data, User $actor): void
-    {
-        Gate::forUser($actor)->authorize('update', $task);
-
-        $payload = [];
-
-        if ($data->startDateSubmitted) {
-            $payload['start_date'] = $data->startDate;
-        }
-
-        if ($data->endDateSubmitted) {
-            $payload['end_date'] = $data->endDate;
-        }
-
-        $this->taskService->update($task, UpdateTaskData::fromValidated($payload), $actor);
     }
 
     /**

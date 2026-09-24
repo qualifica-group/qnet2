@@ -336,4 +336,21 @@ interface TableDefinition
      * observes the standard save/update lifecycle.
      */
     public function updateCell(Model $row, string $columnId, mixed $value): Model;
+
+    /**
+     * Aggregate values computed over the WHOLE filtered result set (spec
+     * 0156, D-3), not just the current page — e.g. a footer total. `$query`
+     * already carries every column filter, advanced filter and the quick
+     * search applied (TableService::rows()), but is NOT yet sorted or
+     * paginated, so a `sum()`/`count()` against it answers "the filtered
+     * set", never "this page". Default (AbstractTableDefinition): `[]` — no
+     * domain computes an aggregate unless it opts in, and
+     * TableController::rows() omits `meta.aggregates` entirely when this
+     * returns an empty array (contract: "meta assente per i domini senza
+     * aggregati").
+     *
+     * @param  Builder<Model>  $query
+     * @return array<string, int|float|string|null>
+     */
+    public function aggregates(Builder $query): array;
 }

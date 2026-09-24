@@ -76,6 +76,39 @@
       200: { success, message, data: { affected: int } }
       403 senza il permesso base dell'azione; 422 { errors: { task_ids: [...] }, incompatible_tasks: [{ id, reason }] }.
     PATCH /api/tables/tasks/rows/{id} { column, value } per le colonne di D-8 (contratto generico esistente).
+
+    DETTAGLIO CONGELATO (2026-09-24, prima dell'implementazione):
+    GET /api/tables/tasks/columns
+      Colonne nuove (tutte esportabili): completion_date (date, visibile), actual_minutes (number, visibile,
+      ordinabile, filtro number), updated_at (datetime, visibile, ordinabile, filtro date), is_recurring (boolean,
+      nascosta, filtro boolean, non ordinabile), parent_title (text, nascosta, ordinabile, filtro text),
+      work_order_stage (text relazione, nascosta, filtro set).
+      Colonne editabili (flag `editable` gia' generico): title (text); task_status (editor relation, resource
+      task-statuses, editableField task_status_id); task_type / task_priority / task_importance (editor relation,
+      resource task-types / task-priorities / task-importances, nullable); start_date (date, nullable); end_date
+      (date); requester (editor relation, resource users, editableField requester_id); assignees / watchers
+      (editor multiselect, resource users, editableField assignee_ids / watcher_ids); estimated_minutes (number,
+      nullable); work_order (editor relation, resource work-orders, nullable); work_order_stage (editor
+      `work_order_stage`, editableField work_order_stage_id, nullable: opzioni = fasi aperte della commessa della
+      riga, `useTaskWorkOrderStageOptions`).
+      Azioni di riga nuove (catalogo + `actions` per riga): complete, uncomplete, approve, reject, block, unblock,
+      request_update (flag omonimi di actionPermissions), duplicate (tasks.create + view), notes (view,
+      `count_field: notes_count`). Il FE, per complete/approve/reject/request_update, carica GET /api/tasks/{id}
+      e riusa i dialog del dettaglio (percorso validazione compreso).
+    POST /api/tables/tasks/rows
+      Ogni riga aggiunge: actual_minutes int, updated_at string, is_recurring bool, parent_title string|null,
+      notes_count int, work_order_stage {id,name}|null; task_status aggiunge `group` (TaskStatusGroup).
+      `editable` di riga = update ammesso E task non chiuso/bloccato in scrittura (super-admin escluso dal blocco).
+      Risposta: { items, export_link, pagination, meta: { aggregates: { estimated_minutes_total } } }; `meta`
+      assente per i domini senza aggregati.
+    POST /api/tasks/bulk (dettaglio)
+      date: Y-m-d, richiesta per start_date/end_date. time_entry + closure_feedback? come POST complete;
+      validation_status_id? opzionale: i task che richiedono validazione vanno in validazione con quello stato
+      (assente = primo stato attivo del gruppo in_validation per sort_order). for_all_assignees sempre true.
+      403 senza il permesso base: assign/priority/start_date/end_date tasks.update, complete/uncomplete
+      tasks.complete, block/unblock tasks.block, delete tasks.delete.
+      422 { success: false, message, errors: { task_ids: [message] }, incompatible_tasks: [{ id, reason }] }:
+      reason e' il motivo i18n; un id non visibile all'utente e' incompatibile.
   </contract>
 
   <acceptance>

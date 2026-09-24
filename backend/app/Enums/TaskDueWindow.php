@@ -22,4 +22,7 @@ enum TaskDueWindow: string
 
     #[Label('This week')]
     case ThisWeek = 'this_week';
+
+    #[Label('This month')]
+    case ThisMonth = 'this_month';
 }

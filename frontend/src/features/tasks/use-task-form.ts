@@ -103,6 +103,51 @@ function createDefaults(
   }
 }
 
+/**
+ * Default values of a "clona" create (spec 0156 D-4): every field copied from
+ * `source` EXCEPT the ones the decision explicitly excludes — attachments and
+ * segnatempo have no form field to begin with, `subtasks` stays the empty
+ * create-only block, the parent link is dropped (`parent_task_id: null`,
+ * "il padre non si copia"), `task_status_id` stays unset so the server
+ * RE-DERIVES it exactly like a bare create (D-4 "stato ricalcolato"), and
+ * `is_completed`/`suppress_notifications` — both per-submit instructions with
+ * no persisted counterpart — start unchecked like any other create.
+ */
+function duplicateDefaults(source: TaskDetail, copySuffix: string): TaskFormValues {
+  return {
+    title: `${source.title}${copySuffix}`,
+    task_status_id: null,
+    description: source.description,
+    is_private: source.is_private,
+    evidence: source.evidence,
+    registry_id: source.registry_id,
+    referent_id: source.referent_id,
+    parent_task_id: null,
+    task_type_id: source.task_type_id,
+    task_priority_id: source.task_priority_id,
+    task_importance_id: source.task_importance_id,
+    task_category_id: source.task_category_id,
+    opportunity_id: source.opportunity_id,
+    work_order_id: source.work_order_id,
+    work_order_stage_id: source.work_order_stage_id,
+    lead_id: source.lead_id,
+    requester_id: source.requester_id,
+    start_date: source.start_date,
+    end_date: source.end_date ?? todayIsoDate(),
+    start_time: source.start_time,
+    end_time: source.end_time,
+    estimated_minutes: source.estimated_minutes,
+    requires_closure_feedback: source.requires_closure_feedback,
+    requires_validation: source.requires_validation,
+    is_completed: false,
+    suppress_notifications: false,
+    assignee_ids: source.assignees.map((user) => user.id),
+    watcher_ids: source.watchers.map((user) => user.id),
+    recurrence: recurrenceDefaults(source.recurrence),
+    subtasks: EMPTY_SUBTASKS,
+  }
+}
+
 /** Default values hydrated from the persisted task (edit mode). */
 function editDefaults(task: TaskDetail): TaskFormValues {
   return {
@@ -182,18 +227,20 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   /** The connected actor projected onto the picker's hydration shape (D-1 requester prefill). */
   const currentUserRef: RelationFieldRef | null = user ? { id: user.id, name: user.name } : null
 
-  const defaultValues = useMemo<TaskFormValues>(
-    () =>
-      mode.type === 'edit'
-        ? editDefaults(mode.task)
-        : createDefaults(
-            mode.parentTaskId ?? null,
-            mode.workOrderId ?? null,
-            mode.workOrderStageId ?? null,
-            user?.id ?? null,
-          ),
-    [mode, user?.id],
-  )
+  const defaultValues = useMemo<TaskFormValues>(() => {
+    if (mode.type === 'edit') {
+      return editDefaults(mode.task)
+    }
+    if (mode.type === 'duplicate') {
+      return duplicateDefaults(mode.source, t('common.copySuffix'))
+    }
+    return createDefaults(
+      mode.parentTaskId ?? null,
+      mode.workOrderId ?? null,
+      mode.workOrderStageId ?? null,
+      user?.id ?? null,
+    )
+  }, [mode, user?.id, t])
 
   /**
    * The picked status' presentation bag. Client UI state, not server state:

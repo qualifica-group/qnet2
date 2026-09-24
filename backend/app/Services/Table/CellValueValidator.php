@@ -40,6 +40,17 @@ final class CellValueValidator
     /** The `editor` kind whose submitted value is a related row's id, not a value of the display `type`. */
     private const string SELECT_EDITOR = 'select';
 
+    /**
+     * The `editor` kind of the tasks `work_order_stage` column (spec 0156,
+     * D-8): its value is a related row's id too, but the membership rule
+     * ("must be an OPEN stage of the row's own commessa") is neither a
+     * for-select scope check nor generic enough to live here — it is
+     * App\Services\Tasks\TaskStageGuard's own job, re-run inside
+     * TaskService::update() the same way every other structural guard is.
+     * Takes the SAME "value is an id" path as SELECT_EDITOR.
+     */
+    private const string WORK_ORDER_STAGE_EDITOR = 'work_order_stage';
+
     /** The `editor` kind whose submitted value is a LIST of related row ids (user directive 2026-07-23). */
     private const string MULTISELECT_EDITOR = 'multiselect';
 
@@ -105,7 +116,7 @@ final class CellValueValidator
             return $this->validateRelationValue($column, $value);
         }
 
-        if (($column['editor'] ?? null) === self::SELECT_EDITOR) {
+        if (($column['editor'] ?? null) === self::SELECT_EDITOR || ($column['editor'] ?? null) === self::WORK_ORDER_STAGE_EDITOR) {
             return $this->validateIdValue($column, $value);
         }
 

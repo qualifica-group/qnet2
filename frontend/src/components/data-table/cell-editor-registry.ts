@@ -18,6 +18,7 @@ import { OfferLinesCellEditor } from '@/features/request-management/offer-lines-
 import { ProductLinesCellEditor } from '@/features/product-lines/product-lines-cell-editor'
 import { RelationCellEditor } from '@/components/data-table/relation-cell-editor'
 import { SelectCellEditor } from '@/components/data-table/select-cell-editor'
+import { TaskWorkOrderStageCellEditor } from '@/features/tasks/task-work-order-stage-cell-editor'
 import { scalarColumnOptions, selectColumnOptions } from '@/features/table/column-options'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { ColumnType, TableColumn, TableRow } from '@/features/table/types'
@@ -31,6 +32,7 @@ export type CellEditorKind =
   | 'date'
   | 'product_lines'
   | 'offer_lines'
+  | 'work_order_stage'
 
 /** cellEditor (a built-in name, or a custom React component) + optional per-column params, resolved once per colDef. */
 export interface CellEditorSpec {
@@ -144,6 +146,16 @@ export const CELL_EDITOR_REGISTRY: Record<CellEditorKind, CellEditorSpec> = {
   // the per-row gate identical to every other editable column.
   offer_lines: {
     cellEditor: OfferLinesCellEditor as ComponentType<CustomCellEditorProps>,
+  },
+  // Spec 0156 D-8: the Task list's "Fase" cell. Its own options are NOT a
+  // `/for-select` resource or a static catalog like every other editor here —
+  // they are the OPEN fasi of the edited row's OWN commessa
+  // (`useTaskWorkOrderStageOptions`, the same hook the create/edit form's
+  // picker already uses), so the component reads `props.data.work_order`
+  // itself instead of taking a `resource` param.
+  work_order_stage: {
+    cellEditor: TaskWorkOrderStageCellEditor as ComponentType<CustomCellEditorProps>,
+    cellEditorPopup: true,
   },
   relation: {
     // AG Grid itself types `ColDef.cellEditor` as `any` (the shape differs by

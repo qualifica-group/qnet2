@@ -393,4 +393,16 @@ abstract class AbstractTableDefinition implements TableDefinition
     // live in ResolvesEditableColumns; optionsFor()/badgesFor()/enumKeyFor()/
     // resolveColumn() live in ResolvesColumnConfig (file-size budget,
     // engineering.md §6).
+
+    /**
+     * Default: no aggregates (spec 0156, D-3). A domain opts in by
+     * overriding.
+     *
+     * @param  Builder<Model>  $query
+     * @return array<string, int|float|string|null>
+     */
+    public function aggregates(Builder $query): array
+    {
+        return [];
+    }
 }

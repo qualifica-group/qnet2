@@ -49,16 +49,22 @@ const guide: HelpGuide = {
           headers: ['Filtro', 'Cosa mostra'],
           rows: [
             ['Stato', 'Aperti (preimpostato), Completati, Bloccati, In validazione o Tutti.'],
-            ['Scadenza', 'Oggi, Scadute o Questa settimana, sulla data fine (o sulla data inizio se manca).'],
+            ['Scadenza', 'Oggi, Scadute, Questa settimana o Questo mese, sulla data fine (o sulla data inizio se manca).'],
             [
               'Assegnazione',
               'Scegli **uno o più** valori insieme (preimpostato: Assegnati a te): assegnati a te, richiesti da te, assegnati da te (sei richiedente ma non assegnatario), creati da te (li hai creati ma non sei né il richiedente, né un assegnatario, né un osservatore) oppure osservati da te. **Tutti** mostra ogni task in cui hai un qualsiasi ruolo (richiedente, assegnatario, osservatore o creatore), anche se hai il permesso Visualizza tutti. Se hai il permesso Visualizza tutti o Visualizza sede trovi anche **Tutti i visibili**, che mostra ogni task che puoi vedere, compresi quelli dei colleghi.',
             ],
+            ['Anagrafica', 'Uno o più record di Anagrafica a cui è collegato il task.'],
+            ['Commessa', 'Una o più Commesse a cui è collegato il task.'],
           ],
         },
         {
           type: 'tip',
           text: 'All\'apertura la tabella mostra solo i task **assegnati a te e aperti**, ordinati dall\'ultimo aggiornamento più recente. Scegli altri valori nei filtri Assegnazione e Stato per allargare la vista. Se arrivi da un riquadro della **Dashboard**, la tabella si apre già filtrata solo per quella visita, senza cambiare i filtri salvati.',
+        },
+        {
+          type: 'note',
+          text: 'La ricerca rapida trova anche per ID esatto: digitando solo numeri, oltre al titolo trova anche il task con quell\'identificativo.',
         },
         {
           type: 'paragraph',
@@ -240,6 +246,44 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Scegliendo un **Modello di Task** alla creazione di una commessa (azione **Programma** sul contratto), i task del modello vengono creati e assegnati ai responsabili: li trovi nella sezione Task della commessa. I modelli si configurano in **Task › Modelli di Task**.',
+        },
+      ],
+    },
+    {
+      id: 'list-editing-and-bulk',
+      title: 'Modifica rapida ed azioni sull\'elenco',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Dal selettore colonne puoi attivare cinque colonne nascoste di default: **Minuti effettivi** (somma del segnatempo di tutti), **Aggiornato il**, **Ricorrente**, **Task padre** e **Fase**.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Un clic su una cella modificabile (Titolo, Stato, Tipologia, Priorità, Importanza, Data inizio, Scadenza, Richiedente, Assegnatari, Osservatori, Tempo stimato, Commessa, Fase) la modifica **direttamente nell\'elenco**, senza aprire il modulo: la cella si disabilita da sola su un task completato, in validazione o bloccato (il super-amministratore fa eccezione). La **Fase** si può scegliere solo se la riga ha già una Commessa.',
+        },
+        {
+          type: 'note',
+          text: 'Cambiando lo **Stato** verso uno di chiusura si apre la finestra **Completa**, la stessa del dettaglio: annullandola, la cella torna al valore di prima. Cambiando uno stato chiuso a uno aperto, il task viene riaperto subito, come con l\'azione Riapri.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Sulla riga trovi le stesse azioni del dettaglio (Completa, Riapri, Approva, Rifiuta, Blocca, Sblocca, Richiedi aggiornamento), più **Duplica** (apre il modulo di creazione precompilato con gli stessi dati — tranne allegati, sotto-task, stato, data di completamento e segnatempo, e senza il task padre) e **Note** (apre il pannello note del task, con il numero di note nel badge sull\'icona).',
+        },
+        {
+          type: 'paragraph',
+          text: 'Selezionando una o più righe compare la barra **Azioni**: Assegna (sostituisce gli assegnatari), Completa, Riapri, Blocca, Sblocca, Priorità, Data inizio, Data fine, Elimina.',
+        },
+        {
+          type: 'warning',
+          text: 'Un\'azione massiva è **tutto o niente**: se anche un solo task selezionato non è ammesso (es. bloccato, o richiede validazione per Completa), l\'azione si ferma con un messaggio che elenca quali task e perché, e nessuno dei task selezionati viene modificato.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Se hai il permesso di creare task, in fondo alla tabella trovi una riga compatta per crearne uno **rapidamente**: titolo, tipologia, priorità, importanza, stato, scadenza, richiedente, assegnatari e osservatori. Tipologia, priorità e importanza partono già valorizzate con la voce predefinita del catalogo; scadenza, richiedente e assegnatario di partenza sono, rispettivamente, oggi e tu stesso.',
+        },
+        {
+          type: 'note',
+          text: 'Il piè di pagina della tabella mostra il **totale dei minuti stimati** dell\'insieme filtrato (non solo della pagina visibile).',
         },
       ],
     },

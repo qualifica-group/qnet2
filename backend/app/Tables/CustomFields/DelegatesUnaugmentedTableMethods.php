@@ -127,4 +127,18 @@ trait DelegatesUnaugmentedTableMethods
     {
         return $this->inner->applyAdvancedFilter($query, $name, $descriptor, $value);
     }
+
+    /**
+     * Aggregates (spec 0156, D-3): no domain computes one over a `custom.*`
+     * column, so this is pure passthrough — $query already carries the
+     * custom-field join `baseQuery()` adds, which changes nothing for a
+     * `sum()`/`count()` against the host table's own columns.
+     *
+     * @param  Builder<Model>  $query
+     * @return array<string, int|float|string|null>
+     */
+    public function aggregates(Builder $query): array
+    {
+        return $this->inner->aggregates($query);
+    }
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Tasks\TaskApproveController;
 use App\Http\Controllers\Tasks\TaskBlockController;
+use App\Http\Controllers\Tasks\TaskBulkController;
 use App\Http\Controllers\Tasks\TaskCompleteController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Tasks\TaskForSelectController;
@@ -38,6 +39,11 @@ use Illuminate\Support\Facades\Route;
 // gate is auth:sanctum (ADR 0011, amended 2026-07-31); the rows are still
 // restricted by TaskVisibilityScope.
 Route::get('tasks/for-select', TaskForSelectController::class);
+
+// Declared ABOVE tasks/{task} (spec 0156, D-6), same reasoning as
+// tasks/for-select above it: a literal segment must win over the
+// route-model-binding wildcard.
+Route::post('tasks/bulk', TaskBulkController::class);
 
 Route::get('tasks/{task}', [TaskController::class, 'show']);
 Route::post('tasks', [TaskController::class, 'store']);

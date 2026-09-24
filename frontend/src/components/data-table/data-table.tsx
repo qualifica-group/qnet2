@@ -39,6 +39,7 @@ import type { TableColumn, TableRow, TableRowId } from '@/features/table/types'
 import { MAX_COLUMN_WIDTH } from '@/features/table/use-table-preferences'
 import { useTableCellEdit } from '@/features/table/use-table-cell-edit'
 import { useUiScale } from '@/features/appearance/ui-scale-context'
+import type { CellCommitInterceptor } from '@/features/table/use-table-cell-edit'
 
 // Re-exported so existing domain renderer maps (`features/table/renderer-registry.ts`)
 // keep importing `CellRenderer` from this module; the type itself now lives in
@@ -171,6 +172,8 @@ interface DataTableProps {
   detailCellRenderer?: (params: ICellRendererParams<TableRow>) => ReactNode
   /** Detail row grows to fit its content instead of a fixed pixel height. */
   detailRowAutoHeight?: boolean
+  /** Per-domain cell-commit interception (spec 0156 D-8), forwarded verbatim to `useTableCellEdit`. */
+  interceptCellCommit?: CellCommitInterceptor
 }
 
 /**
@@ -205,6 +208,7 @@ export function DataTable({
   masterDetail,
   detailCellRenderer,
   detailRowAutoHeight,
+  interceptCellCommit,
 }: DataTableProps) {
   const { t, i18n } = useTranslation()
 
@@ -216,7 +220,7 @@ export function DataTable({
   // Owns the PATCH -> setData/revert cycle for inline cell edits (spec 0053),
   // including the note dialog for a `requires_note` value (spec 0054 D-5):
   // domain-agnostic, so it lives here rather than in a per-domain adapter.
-  const { handleCellValueChanged, noteDialogSlot } = useTableCellEdit(domain, columns)
+  const { handleCellValueChanged, noteDialogSlot } = useTableCellEdit(domain, columns, interceptCellCommit)
 
   // AG Grid's own UI strings (filter menus, set filter, column panel, context
   // menu, pagination, "Loading…"/"No Rows To Show") come from the official

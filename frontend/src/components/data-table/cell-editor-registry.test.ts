@@ -10,6 +10,7 @@ import { ProductLinesCellEditor } from '@/features/product-lines/product-lines-c
 import { MultiSelectCellEditor } from '@/components/data-table/multi-select-cell-editor'
 import { RelationCellEditor } from '@/components/data-table/relation-cell-editor'
 import { SelectCellEditor } from '@/components/data-table/select-cell-editor'
+import { TaskWorkOrderStageCellEditor } from '@/features/tasks/task-work-order-stage-cell-editor'
 import type { ColumnType, EnumBadge, SelectOption, TableColumn, TableRow } from '@/features/table/types'
 
 /** A `RichCellEditorValuesCallback` param stub: only `data` (the editing row) is read. */
@@ -75,6 +76,16 @@ describe('resolveCellEditorSpec', () => {
       columnId: 'workflow_status',
       options,
     })
+  })
+
+  // Spec 0156 D-8: the Task list's "Fase" cell — row-derived options
+  // (`useTaskWorkOrderStageOptions`), never a `/for-select` resource, so it
+  // needs no `cellEditorParams` at all (unlike `relation`/`select`).
+  it('maps work_order_stage to its own popup editor, with no cellEditorParams', () => {
+    const spec = resolveCellEditorSpec('work_order_stage')
+    expect(spec?.cellEditor).toBe(TaskWorkOrderStageCellEditor)
+    expect(spec?.cellEditorPopup).toBe(true)
+    expect(spec?.cellEditorParams).toBeUndefined()
   })
 
   // Spec 0064: the new `date` kind — a Product Category attribute of type

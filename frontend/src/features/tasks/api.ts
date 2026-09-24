@@ -1,6 +1,7 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { TaskBulkPayload, TaskBulkResult } from '@/features/tasks/task-bulk-types'
 import type {
   CompleteTaskPayload,
   CreateTaskPayload,
@@ -153,4 +154,14 @@ export async function requestTaskUpdate(
     payload,
   )
   return withPermissions(data)
+}
+
+/**
+ * Bulk action (spec 0156 D-6): all-or-nothing over up to 200 tasks in ONE
+ * transaction. 422 (with `incompatible_tasks`) means NOTHING changed — see
+ * `taskBulkIncompatibleTasks` for reading that list off the rejected promise.
+ */
+export async function bulkTaskAction(payload: TaskBulkPayload): Promise<TaskBulkResult> {
+  const { data } = await apiClient.post<ApiResponse<TaskBulkResult>>('/tasks/bulk', payload)
+  return data.data
 }

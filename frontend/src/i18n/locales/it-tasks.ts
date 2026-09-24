@@ -7,11 +7,14 @@
  * `Registry`/`registries`, `WorkOrder`/`work-orders` (spec §context,
  * CLAUDE.md §2).
  *
- * `columns.*` rispecchia esattamente `TaskColumnCatalog`, che NON dichiara
- * alcuna colonna `created_at`/`updated_at`: nessuna delle due ha quindi una
- * voce sotto `columns`, mentre `detail.created_at`/`detail.updated_at`
- * esistono, perché il piede del dettaglio le mostra.
+ * `columns.*` rispecchia esattamente `TaskColumnCatalog`; `created_at` non è
+ * una colonna della griglia (solo `detail.created_at` esiste, per il piede
+ * del dettaglio), `updated_at` invece sì da spec 0156 D-2.
+ *
+ * `bulk.*` (azioni massime, spec 0156 D-6) vive in `it-tasks-bulk.ts`, sibling
+ * per lo stesso limite dimensionale, e viene fuso qui sotto.
  */
+import { tasksBulk } from '@/i18n/locales/it-tasks-bulk'
 
 export const tasks = {
   forbidden: 'Non hai i permessi per visualizzare i task.',
@@ -37,7 +40,28 @@ export const tasks = {
     work_order: 'Commessa',
     has_subtasks: 'Ha sotto-task',
     is_subtask: 'È un sotto-task',
+    actual_minutes: 'Minuti effettivi',
+    updated_at: 'Aggiornato il',
+    is_recurring: 'Ricorrente',
+    parent_title: 'Task padre',
+    work_order_stage: 'Fase',
   },
+  /** Pie' di pagina della griglia (spec 0156 D-3). */
+  footer: {
+    estimatedMinutesTotal: 'Totale minuti stimati: {{value}}',
+  },
+  /** Riga di creazione rapida in fondo alla griglia (spec 0156 D-7). */
+  quickCreate: {
+    formLabel: 'Crea rapidamente un nuovo task',
+    titlePlaceholder: 'Nuovo task…',
+    titleRequired: 'Il titolo è obbligatorio.',
+    endDateRequired: 'La scadenza è obbligatoria.',
+    requesterRequired: 'Il richiedente è obbligatorio.',
+    assigneesRequired: 'Seleziona almeno un assegnatario.',
+    submit: 'Crea il task',
+  },
+  /** Azioni massive della lista (spec 0156 D-6), su `POST /api/tasks/bulk`. */
+  bulk: tasksBulk,
   /** Filtri avanzati della tabella (spec 0147): gli stessi assi della board Task della commessa. */
   advancedFilters: {
     status: 'Stato',
@@ -50,6 +74,9 @@ export const tasks = {
     requester: 'Richiedente',
     assignees: 'Assegnatari',
     watchers: 'Osservatori',
+    /** Spec 0156 D-1. */
+    registry: 'Anagrafica',
+    workOrder: 'Commessa',
   },
   detail: {
     title: 'Dettaglio task',
@@ -237,6 +264,8 @@ export const tasks = {
     workOrderStage: 'Fase',
     workOrderStagePlaceholder: 'Seleziona una fase',
     workOrderStageNoStage: 'Senza fase',
+    /** Cella "Fase" della griglia (spec 0156 D-8): nessuna commessa sulla riga, nulla da scegliere. */
+    workOrderStageNoWorkOrder: 'Nessuna commessa sulla riga',
     requiresClosureFeedback: 'Feedback obbligatorio',
     requiresClosureFeedbackHint:
       'Se attivo, chiudere il task richiede un feedback scritto.',

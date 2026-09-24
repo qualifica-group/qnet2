@@ -159,6 +159,44 @@ describe('TaskFormBody — the parent picker never offers the task itself (AC-08
   })
 })
 
+/**
+ * Spec 0156 D-4: duplicate hydrates the relation pickers from the source
+ * task (registry/commessa/etc.), like edit, but NEVER shows a parent — the
+ * link is explicitly dropped — and reads as a bare create everywhere else.
+ */
+describe('TaskFormBody — duplicate mode hydration (spec 0156 D-4)', () => {
+  it('never offers the source task as a parent, even though the source had one', async () => {
+    const source = taskDetailWithPermissions({
+      parent_task_id: 55,
+      parent_task: { id: 55, title: 'Task padre' },
+    })
+    renderForm({ type: 'duplicate', source })
+
+    expect(picker('tasks.form.parentTask')).not.toHaveTextContent('Task padre')
+
+    fireEvent.click(picker('tasks.form.parentTask'))
+    await waitFor(() => expect(fetchForSelectMock).toHaveBeenCalledWith('tasks', expect.anything()))
+    const [, params] = fetchForSelectMock.mock.calls.find(([resource]) => resource === 'tasks') ?? []
+    expect(params).toMatchObject({ params: undefined })
+  })
+
+  it('hydrates the commessa trigger label from the source, like edit mode', () => {
+    const source = taskDetailWithPermissions({
+      work_order: { id: 9, code: 'COM-0001', title: 'Rifacimento impianto' },
+    })
+    renderForm({ type: 'duplicate', source })
+
+    expect(picker('tasks.form.workOrder')).toHaveTextContent('COM-0001 — Rifacimento impianto')
+  })
+
+  it('leaves the parent picker enabled, unlike "crea sotto-task"', () => {
+    const source = taskDetailWithPermissions()
+    renderForm({ type: 'duplicate', source })
+
+    expect(picker('tasks.form.parentTask')).toBeEnabled()
+  })
+})
+
 describe('TaskFormBody — sub-task prefill locks the parent (AC-085)', () => {
   it('renders the parent picker disabled when opened as "crea sotto-task"', () => {
     renderForm({ type: 'create', parentTaskId: 90 })
