@@ -3,8 +3,6 @@
 namespace App\Http\Requests\Tasks;
 
 use App\DataObjects\Tasks\UpdateTaskData;
-use App\Enums\TaskRecurrenceEnd;
-use App\Enums\TaskRecurrenceFrequency;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\Task;
 use App\Models\User;
@@ -147,30 +145,7 @@ class UpdateTaskRequest extends FormRequest
             'evidence' => ['sometimes', 'nullable', 'string'],
             'lead_id' => ['sometimes', 'nullable', 'integer', Rule::exists('leads', 'id')],
             'notify_new_assigned_users' => ['sometimes', 'boolean'],
-            ...$this->recurrenceRules(),
-        ];
-    }
-
-    /**
-     * Identical shape to StoreTaskRequest's own (data_contract): the PATCH
-     * endpoint validates the SUBMITTED `recurrence` object the same way,
-     * regardless of what three-way instruction it ends up carrying —
-     * `null`/absent never reach these inner rules at all (`sometimes`).
-     *
-     * @return array<string, array<int, mixed>>
-     */
-    private function recurrenceRules(): array
-    {
-        return [
-            'recurrence' => ['sometimes', 'nullable', 'array'],
-            'recurrence.frequency' => ['required_with:recurrence', Rule::enum(TaskRecurrenceFrequency::class)],
-            'recurrence.interval' => ['required_with:recurrence', 'integer', 'min:1'],
-            'recurrence.weekdays' => ['required_if:recurrence.frequency,weekly', 'prohibited_unless:recurrence.frequency,weekly', 'array', 'min:1'],
-            'recurrence.weekdays.*' => ['integer', 'between:1,7', 'distinct'],
-            'recurrence.month_day' => ['required_if:recurrence.frequency,monthly', 'prohibited_unless:recurrence.frequency,monthly', 'integer', 'between:1,31'],
-            'recurrence.ends' => ['required_with:recurrence', Rule::enum(TaskRecurrenceEnd::class)],
-            'recurrence.ends_on' => ['required_if:recurrence.ends,on_date', 'prohibited_unless:recurrence.ends,on_date', 'date', 'after:end_date'],
-            'recurrence.occurrence_count' => ['required_if:recurrence.ends,after_count', 'prohibited_unless:recurrence.ends,after_count', 'integer', 'min:1'],
+            ...TaskRecurrenceRules::rules(),
         ];
     }
 

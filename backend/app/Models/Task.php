@@ -104,6 +104,7 @@ class Task extends BaseModel
             'requires_closure_feedback' => 'boolean',
             'requires_validation' => 'boolean',
             'stage_position' => 'int',
+            'subtask_position' => 'int',
             'is_private' => 'boolean',
         ];
     }
@@ -253,10 +254,32 @@ class Task extends BaseModel
     /**
      * The sub-tasks hanging off this one. Depth is NOT limited (D-12): no
      * limit was requested and inventing one would be a business rule.
+     * Ordered by `subtask_position` then `id` (spec 0155, D-4): the manual
+     * order the detail's panel lets the actor drag into place, with a stable
+     * tie-break for the rows a batch create wrote at the same position 0
+     * default before any reorder ever ran.
+     *
+     * `subtask_position` is DELIBERATELY absent from #[Fillable], the same
+     * category as `stage_position`: only `App\Services\Tasks\TaskSubtaskBatchCreator`
+     * (create) and `App\Services\Tasks\TaskSubtaskReorderService` (reorder)
+     * assign it, both by direct property assignment.
      *
      * @return HasMany<Task, $this>
      */
     public function subtasks(): HasMany
+    {
+        return $this->hasMany(Task::class, 'parent_task_id')->orderBy('subtask_position')->orderBy('id');
+    }
+
+    /**
+     * The same direct children as subtasks(), kept apart because callers load
+     * `subtasks` scoped to the viewer (TaskVisibilityScope) while the
+     * completion percentage (spec 0153, D-10) must average EVERY child: it is
+     * a property of the task, not of who looks at it.
+     *
+     * @return HasMany<Task, $this>
+     */
+    public function completionSubtasks(): HasMany
     {
         return $this->hasMany(Task::class, 'parent_task_id');
     }

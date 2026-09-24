@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskAbilityResolver;
+use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskActionOnlyStatusGuard;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
 use App\Services\Tasks\TaskCreationCompletion;
@@ -26,6 +27,8 @@ use App\Services\Tasks\TaskPivotDelta;
 use App\Services\Tasks\TaskRecordLinkCoherence;
 use App\Services\Tasks\TaskRecurrenceService;
 use App\Services\Tasks\TaskStageGuard;
+use App\Services\Tasks\TaskStatusResolver;
+use App\Services\Tasks\TaskSubtaskBatchCreator;
 use App\Services\Tasks\TaskValidationRequirementGuard;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Services\Tasks\TaskWatcherOverlapGuard;
@@ -82,7 +85,7 @@ class TaskService
      * @var array<int, string>
      */
     private const array DETAIL_RELATIONS = [
-        'taskStatus',
+        ...TaskStatusResolver::EAGER_LOADS,
         'taskType',
         'taskCategory',
         'taskPriority',
@@ -117,6 +120,7 @@ class TaskService
         private readonly TaskRecordLinkCoherence $recordLinkCoherence,
         private readonly TaskRecurrenceService $recurrenceService,
         private readonly TaskStageGuard $stageGuard,
+        private readonly TaskSubtaskBatchCreator $subtaskBatchCreator,
         private readonly TaskValidationRequirementGuard $validationRequirementGuard,
         private readonly TaskWatcherOverlapGuard $watcherOverlapGuard,
     ) {}
@@ -214,6 +218,12 @@ class TaskService
             // Step 6: assegnatari/osservatori (D-1), same transaction.
             $task->assignees()->sync($data->assigneeIds);
             $task->watchers()->sync($data->watcherIds);
+
+            // Step 6b: the sub-tasks submitted alongside this create (spec
+            // 0155, D-3), same transaction: an invalid row rolls the parent
+            // back too. Never notified on their own (D-3) regardless of
+            // `notifyAssignedUsers` below, which only ever governs $task.
+            $this->subtaskBatchCreator->createMany($task, $data->subtasks, $creator, $data->assigneeIds, $data->watcherIds);
 
             // Step 7: born already completed (spec 0154, D-6) overrides the
             // birth above with the closed_positive one, BEFORE the
@@ -443,8 +453,9 @@ class TaskService
 
         return [
             'subtasks' => static function (HasMany $subtasks) use ($actor): void {
-                TaskVisibilityScope::scopeToActor($subtasks->getQuery(), $actor)
-                    ->with(['taskStatus', 'assignees']);
+                TaskActionAvailability::withOpenSubtasksCount(
+                    TaskVisibilityScope::scopeToActor($subtasks->getQuery(), $actor)->with(['taskStatus', 'assignees', 'completionSubtasks.taskStatus']),
+                );
             },
         ];
     }

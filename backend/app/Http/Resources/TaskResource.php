@@ -7,7 +7,6 @@ use App\Models\Task;
 use App\Models\TaskRecurrence;
 use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,7 +20,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * `subtasks` lists only the children the actor may see: the relation is
  * eager-loaded already SCOPED by TaskService (AC-066), so this resource does
- * no filtering of its own and cannot drift from the query.
+ * no filtering of its own and cannot drift from the query. Ordered by
+ * `Task::subtasks()`'s own `subtask_position`/`id` (spec 0155, D-4). Each row
+ * is a `TaskSubtaskResource` (D-5): `position` plus a `permissions.actions`
+ * map computed for that CHILD, not copy-pasted from the parent's own.
+ *
+ * @see TaskSubtaskResource
  *
  * `open_subtasks_count` (spec 0123, D-6) is the OPPOSITE on purpose: it
  * counts every DIRECT child outside a closing phase, ignoring visibility
@@ -108,7 +112,7 @@ class TaskResource extends JsonResource
             'completion_percentage' => $resolver->completionPercentage($this->resource),
             'recurrence' => $this->recurrenceRef(),
             'open_subtasks_count' => app(TaskActionAvailability::class)->openSubtasksCount($this->resource),
-            'subtasks' => $this->summarizeSubtasks($resolver),
+            'subtasks' => TaskSubtaskResource::collection($this->subtasks)->resolve($request),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
@@ -137,6 +141,11 @@ class TaskResource extends JsonResource
             'interval' => $recurrence->interval,
             'weekdays' => $recurrence->weekdays,
             'month_day' => $recurrence->month_day,
+            'month_mode' => $recurrence->month_mode?->value,
+            'ordinal' => $recurrence->ordinal,
+            'ordinal_weekday' => $recurrence->ordinal_weekday,
+            'year_month' => $recurrence->year_month,
+            'workdays_only' => $recurrence->workdays_only,
             'ends' => $recurrence->ends->value,
             'ends_on' => $this->formatDate($recurrence->ends_on),
             'occurrence_count' => $recurrence->occurrence_count,
@@ -155,26 +164,6 @@ class TaskResource extends JsonResource
         $lead = $this->lead;
 
         return $lead === null ? null : ['id' => $lead->id, 'label' => $lead->registry?->name ?? ''];
-    }
-
-    /**
-     * The lean sub-task rows the detail's "Sotto-task" section renders
-     * (D-12). Already scoped by the eager load (AC-066).
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function summarizeSubtasks(TaskStatusResolver $resolver): array
-    {
-        /** @var Collection<int, Task> $subtasks */
-        $subtasks = $this->subtasks;
-
-        return $subtasks->map(fn (Task $subtask): array => [
-            'id' => $subtask->id,
-            'title' => $subtask->title,
-            'task_status' => $this->badgeRef($subtask->taskStatus),
-            'completion_percentage' => $resolver->completionPercentage($subtask),
-            'assignees' => $this->summarizeUsers($subtask->assignees),
-        ])->all();
     }
 
     /**

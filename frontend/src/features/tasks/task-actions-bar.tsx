@@ -194,6 +194,8 @@ export function TaskActionsBar({ task }: TaskActionsBarProps) {
         open={openDialog === 'complete'}
         onOpenChange={(open) => setOpenDialog(open ? 'complete' : 'none')}
         task={task}
+        // Spec 0155 D-6: the task detail always completes for every assignee.
+        forAllAssignees
       />
       <TaskValidationDialog
         open={openDialog === 'approve' || openDialog === 'reject'}

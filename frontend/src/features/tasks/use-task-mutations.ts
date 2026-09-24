@@ -6,6 +6,7 @@ import {
   blockTask,
   completeTask,
   rejectTask,
+  reorderTaskSubtasks,
   requestTaskUpdate,
   taskDetailQueryKey,
   uncompleteTask,
@@ -15,6 +16,7 @@ import type {
   CompleteTaskPayload,
   RequestTaskUpdatePayload,
   TaskDetailWithPermissions,
+  TaskSubtask,
 } from '@/features/tasks/types'
 import { timeEntryKeys } from '@/features/time-entries/query-keys'
 
@@ -104,6 +106,57 @@ export function useBlockTask(options: TaskMutationOptions) {
 
 export function useUnblockTask(options: TaskMutationOptions) {
   return useTaskActionMutation(options, unblockTask)
+}
+
+/** Reorders the cached `subtasks[]` to match `ids`, dropping any id the cache does not (yet) know about. */
+function reorderedSubtasks(current: TaskSubtask[], ids: number[]): TaskSubtask[] {
+  const byId = new Map(current.map((subtask) => [subtask.id, subtask]))
+  return ids
+    .map((id, index) => {
+      const subtask = byId.get(id)
+      return subtask ? { ...subtask, position: index } : null
+    })
+    .filter((subtask): subtask is TaskSubtask => subtask !== null)
+}
+
+interface ReorderTaskSubtasksContext {
+  previous: TaskDetailWithPermissions | undefined
+}
+
+/**
+ * "Riordino sotto-task" (spec 0155 D-4/AC-006/AC-007): optimistic — the panel
+ * reorders instantly, `onError` rolls the parent's cached detail back to its
+ * pre-drag snapshot, `onSuccess` reconciles with the server's own
+ * `position`/`permissions` (refreshed per row, unlike the optimistic guess).
+ */
+export function useReorderTaskSubtasks(taskId: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation<TaskSubtask[], AxiosError<ApiErrorResponse>, number[], ReorderTaskSubtasksContext>({
+    mutationFn: (ids) => reorderTaskSubtasks(taskId, ids),
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: taskDetailQueryKey(taskId) })
+      const previous = queryClient.getQueryData<TaskDetailWithPermissions>(taskDetailQueryKey(taskId))
+      if (previous) {
+        queryClient.setQueryData(taskDetailQueryKey(taskId), {
+          ...previous,
+          subtasks: reorderedSubtasks(previous.subtasks, ids),
+        })
+      }
+      return { previous }
+    },
+    onError: (_error, _ids, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(taskDetailQueryKey(taskId), context.previous)
+      }
+    },
+    onSuccess: (subtasks) => {
+      const current = queryClient.getQueryData<TaskDetailWithPermissions>(taskDetailQueryKey(taskId))
+      if (current) {
+        queryClient.setQueryData(taskDetailQueryKey(taskId), { ...current, subtasks })
+      }
+    },
+  })
 }
 
 /**

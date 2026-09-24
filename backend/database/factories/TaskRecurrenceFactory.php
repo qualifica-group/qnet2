@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\TaskRecurrenceEnd;
 use App\Enums\TaskRecurrenceFrequency;
+use App\Enums\TaskRecurrenceMonthMode;
 use App\Models\TaskRecurrence;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -27,6 +28,11 @@ class TaskRecurrenceFactory extends Factory
             'interval' => 1,
             'weekdays' => null,
             'month_day' => null,
+            'month_mode' => null,
+            'ordinal' => null,
+            'ordinal_weekday' => null,
+            'year_month' => null,
+            'workdays_only' => false,
             'ends' => TaskRecurrenceEnd::Never,
             'ends_on' => null,
             'occurrence_count' => null,
@@ -48,8 +54,59 @@ class TaskRecurrenceFactory extends Factory
         return $this->state(fn () => [
             'frequency' => TaskRecurrenceFrequency::Monthly,
             'interval' => $interval,
+            'month_mode' => TaskRecurrenceMonthMode::Fixed,
             'month_day' => $monthDay,
         ]);
+    }
+
+    /** Spec 0155, D-1: "the Nth <weekday> of the month", e.g. the 2nd Tuesday. */
+    public function monthlyOrdinal(int $ordinal, int $ordinalWeekday, int $interval = 1): static
+    {
+        return $this->state(fn () => [
+            'frequency' => TaskRecurrenceFrequency::Monthly,
+            'interval' => $interval,
+            'month_mode' => TaskRecurrenceMonthMode::Ordinal,
+            'ordinal' => $ordinal,
+            'ordinal_weekday' => $ordinalWeekday,
+        ]);
+    }
+
+    public function yearly(int $yearMonth, int $monthDay, int $interval = 1): static
+    {
+        return $this->state(fn () => [
+            'frequency' => TaskRecurrenceFrequency::Yearly,
+            'interval' => $interval,
+            'month_mode' => TaskRecurrenceMonthMode::Fixed,
+            'year_month' => $yearMonth,
+            'month_day' => $monthDay,
+        ]);
+    }
+
+    /** Spec 0155, D-1: "the Nth <weekday> of <month>", e.g. the 2nd Tuesday of March. */
+    public function yearlyOrdinal(int $yearMonth, int $ordinal, int $ordinalWeekday, int $interval = 1): static
+    {
+        return $this->state(fn () => [
+            'frequency' => TaskRecurrenceFrequency::Yearly,
+            'interval' => $interval,
+            'month_mode' => TaskRecurrenceMonthMode::Ordinal,
+            'year_month' => $yearMonth,
+            'ordinal' => $ordinal,
+            'ordinal_weekday' => $ordinalWeekday,
+        ]);
+    }
+
+    /** Spec 0155, D-1: "every N days", q-net's own alias for daily. */
+    public function custom(int $interval): static
+    {
+        return $this->state(fn () => [
+            'frequency' => TaskRecurrenceFrequency::Custom,
+            'interval' => $interval,
+        ]);
+    }
+
+    public function workdaysOnly(): static
+    {
+        return $this->state(fn () => ['workdays_only' => true]);
     }
 
     public function endingOn(string $date): static

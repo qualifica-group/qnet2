@@ -30,6 +30,13 @@ use Illuminate\Validation\Rule;
  * Authorization stays in the controller (TaskPolicy::complete); D-2
  * deliberately does NOT check `time-entries.create` here or anywhere else in
  * this class.
+ *
+ * `for_all_assignees` (spec 0155, D-6) defaults false: `TaskCompletionService::complete()`
+ * then logs the one submitted `time_entry` for the acting user alone, same as
+ * before this spec. `true` logs an IDENTICAL copy of it for every assignee
+ * (the actor themselves when there are none) — never a per-user choice, the
+ * caller decides which value to send (list/detail always send `true`,
+ * sub-task panel/kanban always `false`, q-net's own split).
  */
 class CompleteTaskRequest extends FormRequest
 {
@@ -55,6 +62,7 @@ class CompleteTaskRequest extends FormRequest
                     ),
                 ],
                 'time_entry' => ['required', 'array'],
+                'for_all_assignees' => ['sometimes', 'boolean'],
             ],
             TimeEntryValidationRules::rules('time_entry'),
         );

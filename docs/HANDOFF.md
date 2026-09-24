@@ -142,7 +142,45 @@
 - Vitest tasks/work-orders/components/table/help 1217/1217, `tsc -b --force` ed ESLint puliti.
   Manuale Claude Docs (sezione Attivita') da allineare sui colori del completamento.
 
-## ALLINEAMENTO TASK A Q-NET — SPEC 0153 REGOLE E NOTIFICHE — VERDE, NON COMMITTATO (2026-09-24)
+## ALLINEAMENTO TASK A Q-NET — SPEC 0155 CICLO DI VITA — VERDE, NON COMMITTATO (2026-09-24)
+
+- Migrazioni 2026_09_24_110000 (task_recurrences: month_mode, ordinal, ordinal_weekday, year_month,
+  workdays_only) e _110100 (tasks.subtask_position); `QuoteWorkflowMigrationTest` ora `--step=96`.
+- Ricorrenza: validazione unica in `app/Http/Requests/Tasks/TaskRecurrenceRules.php` (Store/Update la usano);
+  frequenze yearly/custom (custom = ogni N giorni), ordinale 1..5 (mese senza 5° -> saltato), workdays_only
+  (solo lun-ven, nessun calendario festivita'). `month_mode` FACOLTATIVO: null = fixed (compatibilita').
+  Ogni occorrenza copia i sottotask diretti (un livello); `isVirgin` ignora le copie intatte e il potatore le
+  elimina prima dell'occorrenza.
+- Sottotask: `subtasks[]` in POST /api/tasks (max 50, ereditarieta' D-3, transazione unica); riordino
+  POST /api/tasks/{task}/subtasks/reorder sui SOLI figli visibili all'attore (gli invisibili restano al loro
+  posto e non sono mai restituiti); `TaskSubtaskResource` con position + permissions.actions (incluso delete).
+- Percentuale: calcolata su `Task::completionSubtasks()` (tutti i figli, mai filtrati per visibilita'),
+  precaricata via `TaskStatusResolver::EAGER_LOADS` (2 livelli) in griglia e dettaglio. Il conteggio dei
+  sottotask aperti si precarica con `TaskActionAvailability::withOpenSubtasksCount()`. Test anti-N+1
+  (conteggio query 1 vs 5) in TaskSubtaskPermissionsTest e TaskCompletionPercentageTest.
+- Completamento `for_all_assignees` (FE: true da dettaglio, false dal pannello sottotask). 403 del dettaglio
+  con `errors.access_contacts` (richiedente + creatore), senza log/Teams.
+- Verifica: Pest completo 8389/8390 (1 skipped), Pint pulito; Vitest 5949/5949, tsc -b pulito.
+- DEBITO: `app/Services/TaskService.php` e' a 500 righe (limite): la prossima modifica richiede uno split.
+  `task-recurrence-section.tsx` 450, `task-schema.ts` 417, FE `types.ts` 478 righe.
+
+## ALLINEAMENTO TASK A Q-NET — SPEC 0154 FORM E CAMPI — VERDE, COMMITTATO dall'utente in 63fa14b2 (2026-09-24)
+
+- Migrazioni 2026_09_24_100000 (task_categories.parent_id, unique(parent_id,name)), _100100 (is_default su
+  task_types/priorities/importances), _100200 (tasks.is_private, evidence, lead_id). `QuoteWorkflowMigrationTest`
+  AC-004 usa `--step=94`: ogni nuova migrazione va aggiunta li' (numero + elenco nel commento).
+- Categorie annidate: for-select in ordine depth-first con `meta.parent_id`/`meta.depth`; DELETE con figli 409.
+  Lookup: `DefaultRowManager` (una sola riga predefinita, mai inattiva); for-select `meta.is_default`.
+- Task: `is_private` ristretto ai membri in `TaskVisibilityScope` (super-admin escluso dalla regola); `evidence`
+  sanificato da `TaskEvidenceWriter` (niente immagini incorporate); `lead_id` coerente con l'anagrafica
+  (`TaskLeadRegistryGuard`); commessa/opportunita' esclusive e anagrafica derivata dalla commessa
+  (`TaskWorkOrderOpportunityGuard`, `TaskRecordLinkCoherence`); `is_completed` in creazione chiude con segnatempo
+  dell'attore (min 1 minuto: le regole segnatempo rifiutano 0); `notify_assigned_users` / `notify_new_assigned_users`;
+  stato iniziale a mano ammesso solo nei gruppi di `TaskManualStatusGuard::MANUAL_GROUPS`.
+- Super-admin: lista che parte da "Assegnati a me" come per tutti (decisione utente: resta cosi').
+- Verifica: Pest 8344/8345 (1 skipped), Vitest 5915/5915, tsc -b e ESLint puliti. Prossima: spec 0155.
+
+## ALLINEAMENTO TASK A Q-NET — SPEC 0153 REGOLE E NOTIFICHE — VERDE, COMMITTATO dall'utente (2026-09-24)
 
 - Serie approvata 0153-0158 (`docs/specs/`), da eseguire in ordine; 0153 fatta, prossima 0154 (form e campi).
 - Lista: `assignment` e' `enum` multiplo richiesto, default `['assigned_to_me']`, OR; `all` = task dove ho un ruolo

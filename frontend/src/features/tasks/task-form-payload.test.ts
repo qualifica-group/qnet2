@@ -78,6 +78,25 @@ describe('buildCreatePayload', () => {
     )
     expect(buildCreatePayload(values({ suppress_notifications: true })).notify_assigned_users).toBe(false)
   })
+
+  /** Spec 0155 D-3: an empty block sends no key; a filled one maps title/end_date/assignee_ids only. */
+  it('sends subtasks only when the block has rows, each field omitted when left blank', () => {
+    expect(buildCreatePayload(values({ subtasks: [] }))).not.toHaveProperty('subtasks')
+
+    const payload = buildCreatePayload(
+      values({
+        subtasks: [
+          { title: '  Prepara il preventivo  ', end_date: '2026-09-10', assignee_ids: [31] },
+          { title: 'Invia la conferma', end_date: null, assignee_ids: [] },
+        ],
+      }),
+    )
+
+    expect(payload.subtasks).toEqual([
+      { title: 'Prepara il preventivo', end_date: '2026-09-10', assignee_ids: [31] },
+      { title: 'Invia la conferma' },
+    ])
+  })
 })
 
 /** Spec 0120 D-1/D-12/AC-032: only the pertinent fields for the picked frequency/ends travel. */
@@ -111,6 +130,10 @@ describe('buildCreatePayload — recurrence', () => {
       frequency: 'monthly',
       interval: 1,
       ends: 'on_date',
+      // Spec 0155 D-1: `month_mode` is a new required discriminator for
+      // monthly/yearly rules; a rule built without picking it (as this
+      // fixture does) defaults to `fixed`.
+      month_mode: 'fixed',
       month_day: 31,
       ends_on: '2027-03-31',
     })
@@ -133,6 +156,57 @@ describe('buildCreatePayload — recurrence', () => {
     )
 
     expect(payload).not.toHaveProperty('recurrence')
+  })
+
+  /** Spec 0155 D-1: yearly/custom, the ordinal branch and `workdays_only`. */
+  it('sends interval alone for a custom rule (every N days)', () => {
+    const payload = buildCreatePayload(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'custom', ends: 'never', interval: 3 }) }),
+    )
+
+    expect(payload.recurrence).toEqual({ frequency: 'custom', interval: 3, ends: 'never' })
+  })
+
+  it('sends month_mode/ordinal/ordinal_weekday/year_month for a yearly ordinal rule', () => {
+    const payload = buildCreatePayload(
+      values({
+        recurrence: recurrence({
+          enabled: true,
+          frequency: 'yearly',
+          ends: 'never',
+          month_mode: 'ordinal',
+          ordinal: 2,
+          ordinal_weekday: 2,
+          year_month: 3,
+        }),
+      }),
+    )
+
+    expect(payload.recurrence).toEqual({
+      frequency: 'yearly',
+      interval: 1,
+      ends: 'never',
+      month_mode: 'ordinal',
+      ordinal: 2,
+      ordinal_weekday: 2,
+      year_month: 3,
+    })
+  })
+
+  it('sends workdays_only only when true', () => {
+    expect(
+      buildCreatePayload(
+        values({ recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'never' }) }),
+      ).recurrence,
+    ).not.toHaveProperty('workdays_only')
+
+    expect(
+      buildCreatePayload(
+        values({
+          recurrence: recurrence({ enabled: true, frequency: 'daily', ends: 'never', workdays_only: true }),
+        }),
+      ).recurrence,
+    ).toHaveProperty('workdays_only', true)
   })
 })
 

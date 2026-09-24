@@ -11,6 +11,7 @@ import {
   taskDetailWithPermissions,
   taskRecurrenceDetail,
   taskStatus,
+  taskSubtask,
 } from '@/features/tasks/task-fixtures'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
@@ -239,15 +240,7 @@ describe('TaskDetailView — sub-tasks (AC-085)', () => {
   it('renders the children carried by the detail, with no extra request', () => {
     renderDetail(
       taskDetailWithPermissions({
-        subtasks: [
-          {
-            id: 101,
-            title: 'Preparare il preventivo',
-            task_status: { id: 2, name: 'Aperto', color: 'amber', icon: null },
-            completion_percentage: 0,
-            assignees: [],
-          },
-        ],
+        subtasks: [taskSubtask({ assignees: [] })],
       }),
     )
 

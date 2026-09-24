@@ -7,23 +7,26 @@ namespace App\Services\Tasks;
 use App\DataObjects\Tasks\TaskRecurrenceData;
 use App\Enums\TaskRecurrenceEnd;
 use App\Enums\TaskRecurrenceFrequency;
+use App\Enums\TaskRecurrenceMonthMode;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use InvalidArgumentException;
 
 /**
- * Pure calendar math for a recurrence rule (spec 0120, D-1/D-2/D-15): no
- * database, no implicit `now()` — every date the rule needs is a parameter,
- * which is what makes the calendar edge cases (D-2's month-end clamp, a leap
- * February) testable without a single fixture.
+ * Pure calendar math for a recurrence rule (spec 0120, D-1/D-2/D-15; spec
+ * 0155, D-1 adds `yearly`/`custom`, the ordinal month/year shape and
+ * `workdays_only`): no database, no implicit `now()` — every date the rule
+ * needs is a parameter, which is what makes the calendar edge cases (D-2's
+ * month-end clamp, a leap February, AC-001's missing 5th weekday) testable
+ * without a single fixture.
  *
  * `$from` doubles as BOTH the starting point of the returned dates AND the
- * alignment anchor for weekly/monthly interval math (which week/month
- * "counts" as zero). This is safe to call again and again with $from set to
- * the LAST date a previous call returned, because any date this class
- * produces is itself exactly `k * interval` weeks/months past whatever
- * anchor produced it — restarting the count from it lands on the same
- * absolute calendar as continuing from the original anchor would (the
+ * alignment anchor for weekly/monthly/yearly interval math (which week/
+ * month/year "counts" as zero). This is safe to call again and again with
+ * $from set to the LAST date a previous call returned, because any date this
+ * class produces is itself exactly `k * interval` weeks/months/years past
+ * whatever anchor produced it — restarting the count from it lands on the
+ * same absolute calendar as continuing from the original anchor would (the
  * pattern is self-similar from any of its own occurrences, not only the
  * first). App\Console\Commands\GenerateTaskRecurrences relies on exactly
  * this to resume from `generated_until` instead of recomputing a series'
@@ -35,7 +38,9 @@ final class TaskRecurrenceCalculator
      * Defensive circuit breaker only — interval >= 1 guarantees each
      * iteration moves strictly forward, so `ends: never` with no $horizon is
      * the only way to approach this, and only if $limit is set absurdly
-     * high by a caller bug.
+     * high by a caller bug. A skipped ordinal period (AC-001) or a
+     * `workdays_only` weekend (AC-002) also spends one iteration without
+     * producing a date, which is exactly what this breaker exists to bound.
      */
     private const int MAX_ITERATIONS = 100_000;
 
@@ -70,13 +75,33 @@ final class TaskRecurrenceCalculator
         $generatedCount = $alreadyGenerated;
 
         for ($i = 0; $i < self::MAX_ITERATIONS && count($dates) < $limit; $i++) {
-            $cursor = $this->nextCandidate($rule, $from, $cursor);
+            // Step 1: advance the cursor one period forward. For
+            // monthly/yearly $occurrence can be null (AC-001: the period has
+            // no such Nth weekday) while $cursor itself still moves to that
+            // period's start, so the NEXT call correctly targets the
+            // following one instead of retrying the same period forever.
+            [$cursor, $occurrence] = $this->nextCandidate($rule, $from, $cursor);
 
+            // Step 2: $cursor is always <= whatever $occurrence a period
+            // could produce (the period's own start, at the earliest), so
+            // checking it here is a safe, period-granular early exit even
+            // when this iteration itself yielded no date.
             if ($horizon !== null && $cursor->gt($horizon)) {
                 break;
             }
 
-            if ($rule->ends === TaskRecurrenceEnd::OnDate && $cursor->gt(CarbonImmutable::parse($rule->endsOn))) {
+            if ($occurrence === null) {
+                continue;
+            }
+
+            // Step 3: AC-002 — a `workdays_only` rule never lands on a
+            // Saturday/Sunday; that candidate is skipped outright (not
+            // moved to the nearest weekday, not counted), same as q-net.
+            if ($rule->workdaysOnly && $occurrence->isWeekend()) {
+                continue;
+            }
+
+            if ($rule->ends === TaskRecurrenceEnd::OnDate && $occurrence->gt(CarbonImmutable::parse($rule->endsOn))) {
                 break;
             }
 
@@ -84,19 +109,32 @@ final class TaskRecurrenceCalculator
                 break;
             }
 
-            $dates[] = $cursor;
+            $dates[] = $occurrence;
             $generatedCount++;
         }
 
         return $dates;
     }
 
-    private function nextCandidate(TaskRecurrenceData $rule, CarbonImmutable $anchor, CarbonImmutable $cursor): CarbonImmutable
+    /**
+     * @return array{0: CarbonImmutable, 1: ?CarbonImmutable} the new cursor
+     *                                                        position, and the occurrence it produced (null when the
+     *                                                        period has none — monthly/yearly ordinal only, AC-001)
+     */
+    private function nextCandidate(TaskRecurrenceData $rule, CarbonImmutable $anchor, CarbonImmutable $cursor): array
     {
         return match ($rule->frequency) {
-            TaskRecurrenceFrequency::Daily => $cursor->addDays($rule->interval),
-            TaskRecurrenceFrequency::Weekly => $this->nextWeeklyCandidate($rule, $anchor, $cursor),
+            // Spec 0155, D-1: `custom` is q-net's own "every N days" alias
+            // for `daily` — identical arithmetic, `interval` is the only
+            // field either one reads.
+            TaskRecurrenceFrequency::Daily, TaskRecurrenceFrequency::Custom => [
+                $next = $cursor->addDays($rule->interval), $next,
+            ],
+            TaskRecurrenceFrequency::Weekly => [
+                $next = $this->nextWeeklyCandidate($rule, $anchor, $cursor), $next,
+            ],
             TaskRecurrenceFrequency::Monthly => $this->nextMonthlyCandidate($rule, $anchor, $cursor),
+            TaskRecurrenceFrequency::Yearly => $this->nextYearlyCandidate($rule, $anchor, $cursor),
         };
     }
 
@@ -128,13 +166,14 @@ final class TaskRecurrenceCalculator
     }
 
     /**
-     * The next anchor-aligned month strictly after $cursor's own month (D-2):
-     * `month_day` clamped to the target month's own length, never carried
-     * over from a PREVIOUS clamp — 31/01 -> 28/02 -> 31/03 -> 30/04, never
-     * 28/02 -> 28/03. Month/year arithmetic only; the day-of-month is not
-     * involved in deciding WHICH month is next.
+     * The next anchor-aligned month strictly after $cursor's own month (D-2),
+     * as the period's own 1st-of-month (the new cursor position) paired with
+     * whatever that period resolves to (fixed day or ordinal weekday,
+     * possibly none — AC-001).
+     *
+     * @return array{0: CarbonImmutable, 1: ?CarbonImmutable}
      */
-    private function nextMonthlyCandidate(TaskRecurrenceData $rule, CarbonImmutable $anchor, CarbonImmutable $cursor): CarbonImmutable
+    private function nextMonthlyCandidate(TaskRecurrenceData $rule, CarbonImmutable $anchor, CarbonImmutable $cursor): array
     {
         $anchorMonthIndex = $anchor->year * 12 + ($anchor->month - 1);
         $cursorMonthIndex = $cursor->year * 12 + ($cursor->month - 1);
@@ -144,10 +183,70 @@ final class TaskRecurrenceCalculator
 
         $year = intdiv($nextMonthIndex, 12);
         $month = $nextMonthIndex % 12 + 1;
+        $periodStart = CarbonImmutable::create($year, $month, 1);
 
-        $firstOfMonth = CarbonImmutable::create($year, $month, 1);
+        return [$periodStart, $this->resolveMonthOccurrence($rule, $periodStart)];
+    }
+
+    /**
+     * The next anchor-aligned YEAR whose `year_month` falls strictly after
+     * $cursor (spec 0155, D-1), resolved on that month exactly like a
+     * monthly rule resolves its own (fixed day or ordinal weekday, one
+     * level up). Unlike months (finer-grained than the anchor itself, so
+     * "next month" is never the anchor's own), a year CAN still have its
+     * `year_month` occurrence ahead of the anchor within the SAME aligned
+     * year — an anchor of January targeting March lands in March of the
+     * anchor's own year, not a whole interval later — so the aligned year
+     * at $cursor's own step is tried FIRST, and only pushed one interval
+     * further when that year's target month turns out to be at or before
+     * $cursor (already produced, or before the anchor within its own year).
+     *
+     * @return array{0: CarbonImmutable, 1: ?CarbonImmutable}
+     */
+    private function nextYearlyCandidate(TaskRecurrenceData $rule, CarbonImmutable $anchor, CarbonImmutable $cursor): array
+    {
+        $stepsSoFar = intdiv($cursor->year - $anchor->year, $rule->interval);
+        $candidateYear = $anchor->year + $stepsSoFar * $rule->interval;
+        $periodStart = CarbonImmutable::create($candidateYear, (int) $rule->yearMonth, 1);
+
+        if (! $periodStart->gt($cursor)) {
+            $candidateYear += $rule->interval;
+            $periodStart = CarbonImmutable::create($candidateYear, (int) $rule->yearMonth, 1);
+        }
+
+        return [$periodStart, $this->resolveMonthOccurrence($rule, $periodStart)];
+    }
+
+    /**
+     * D-2's month-end clamp (`fixed`, never carried over from a PREVIOUS
+     * clamp — 31/01 -> 28/02 -> 31/03 -> 30/04, never 28/02 -> 28/03) OR
+     * AC-001's ordinal weekday, which is `null` — this period produces NO
+     * occurrence — when the month has no such Nth weekday at all (a "5th
+     * Monday" that does not exist that month).
+     */
+    private function resolveMonthOccurrence(TaskRecurrenceData $rule, CarbonImmutable $firstOfMonth): ?CarbonImmutable
+    {
+        if ($rule->monthMode === TaskRecurrenceMonthMode::Ordinal) {
+            return $this->nthWeekdayOfMonth($firstOfMonth, (int) $rule->ordinal, (int) $rule->ordinalWeekday);
+        }
+
         $day = min((int) $rule->monthDay, $firstOfMonth->daysInMonth);
 
         return $firstOfMonth->setDay($day);
+    }
+
+    /**
+     * The $ordinal-th occurrence (1..5) of ISO weekday $isoWeekday within
+     * $firstOfMonth's own month, or null when the month does not have one —
+     * a plain calendar computation (7 days per week, at most 5 possible
+     * occurrences of a given weekday in any month), never a search that
+     * could wander into a neighbouring month.
+     */
+    private function nthWeekdayOfMonth(CarbonImmutable $firstOfMonth, int $ordinal, int $isoWeekday): ?CarbonImmutable
+    {
+        $offsetToFirstMatch = ($isoWeekday - $firstOfMonth->dayOfWeekIso + 7) % 7;
+        $target = $firstOfMonth->addDays($offsetToFirstMatch)->addWeeks($ordinal - 1);
+
+        return $target->month === $firstOfMonth->month ? $target : null;
     }
 }

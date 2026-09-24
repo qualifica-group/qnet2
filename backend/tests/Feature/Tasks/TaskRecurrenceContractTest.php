@@ -110,6 +110,34 @@ it('D-3/D-4: POST with a recurrence object creates the series, links the Task, a
         ->and(TaskRecurrence::query()->find($task->task_recurrence_id))->not->toBeNull();
 });
 
+// Spec 0155, D-1: month_mode is optional — a monthly rule written the pre-0155
+// way (no month_mode) is still accepted and means "fixed day".
+it('D-1 (spec 0155): a monthly recurrence without month_mode is accepted as a fixed day', function () {
+    Sanctum::actingAs(taskActorWith(['create', 'view']));
+
+    $monthlyPayload = recurrencePayload(['frequency' => 'monthly', 'month_day' => 15]);
+    unset($monthlyPayload['weekdays']);
+
+    $response = $this->postJson('/api/tasks', taskPayload(['recurrence' => $monthlyPayload]))->assertCreated();
+
+    expect($response->json('data.recurrence.month_day'))->toBe(15)
+        ->and($response->json('data.recurrence.month_mode'))->toBeNull();
+});
+
+it('D-1 (spec 0155): month_day is refused with an ordinal month_mode and required without it', function () {
+    Sanctum::actingAs(taskActorWith(['create', 'view']));
+
+    $ordinal = recurrencePayload(['frequency' => 'monthly', 'month_mode' => 'ordinal', 'ordinal' => 2, 'ordinal_weekday' => 2, 'month_day' => 15]);
+    unset($ordinal['weekdays']);
+    $missingDay = recurrencePayload(['frequency' => 'monthly']);
+    unset($missingDay['weekdays']);
+
+    $this->postJson('/api/tasks', taskPayload(['recurrence' => $ordinal]))
+        ->assertUnprocessable()->assertJsonValidationErrors('recurrence.month_day');
+    $this->postJson('/api/tasks', taskPayload(['recurrence' => $missingDay]))
+        ->assertUnprocessable()->assertJsonValidationErrors('recurrence.month_day');
+});
+
 // ---------------------------------------------------------------------------
 // AC-022/AC-025 — D-10/D-11 regeneration on rule change
 // ---------------------------------------------------------------------------
@@ -130,7 +158,9 @@ it('AC-022: changing the rule removes and recalculates only the future VIRGIN oc
         ->create(['end_date' => now()->addDays(5)->toDateString(), 'task_recurrence_id' => $recurrence->id]);
     Note::factory()->create(['notable_type' => 'task', 'notable_id' => $futureWithNote->id]);
 
-    $monthlyPayload = recurrencePayload(['frequency' => 'monthly', 'interval' => 1, 'month_day' => 15]);
+    // REQUIREMENT CHANGED (spec 0155, D-1): a monthly rule now also needs
+    // `month_mode` (fixed here, the pre-existing behaviour).
+    $monthlyPayload = recurrencePayload(['frequency' => 'monthly', 'interval' => 1, 'month_mode' => 'fixed', 'month_day' => 15]);
     unset($monthlyPayload['weekdays']);
 
     $this->patchJson("/api/tasks/{$capostipite->id}", ['recurrence' => $monthlyPayload])
@@ -166,6 +196,64 @@ it('AC-025: a future blocked, or in-validation, or document-carrying occurrence 
     expect(Task::query()->find($blocked->id))->not->toBeNull()
         ->and(Task::query()->find($inValidation->id))->not->toBeNull()
         ->and(Task::query()->find($withDocument->id))->not->toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// AC-004 (spec 0155, D-2) — pruning ignores untouched copied sub-tasks
+// ---------------------------------------------------------------------------
+
+it('AC-004 (spec 0155): a future occurrence whose only sub-task is an untouched copy is still virgin and gets pruned', function () {
+    $creator = taskActorWith(['create', 'update', 'view']);
+    Sanctum::actingAs($creator);
+    $status = openTaskStatus0120();
+
+    $recurrence = TaskRecurrence::factory()->create();
+    $capostipite = Task::factory()->forCreator($creator)->inStatus($status)
+        ->create(['end_date' => now()->subDays(30)->toDateString(), 'task_recurrence_id' => $recurrence->id]);
+    $futureOccurrence = Task::factory()->inStatus($status)
+        ->create(['end_date' => now()->addDays(10)->toDateString(), 'task_recurrence_id' => $recurrence->id]);
+    Task::factory()->childOf($futureOccurrence)->inStatus($status)->create();
+
+    $this->patchJson("/api/tasks/{$capostipite->id}", ['recurrence' => recurrencePayload()])->assertOk();
+
+    expect(Task::query()->find($futureOccurrence->id))->toBeNull();
+});
+
+it('AC-004 (spec 0155): a future occurrence whose copied sub-task carries a note is NOT virgin and survives', function () {
+    $creator = taskActorWith(['create', 'update', 'view']);
+    Sanctum::actingAs($creator);
+    $status = openTaskStatus0120();
+
+    $recurrence = TaskRecurrence::factory()->create();
+    $capostipite = Task::factory()->forCreator($creator)->inStatus($status)
+        ->create(['end_date' => now()->subDays(30)->toDateString(), 'task_recurrence_id' => $recurrence->id]);
+    $futureOccurrence = Task::factory()->inStatus($status)
+        ->create(['end_date' => now()->addDays(10)->toDateString(), 'task_recurrence_id' => $recurrence->id]);
+    $copiedSubtask = Task::factory()->childOf($futureOccurrence)->inStatus($status)->create();
+    Note::factory()->create(['notable_type' => 'task', 'notable_id' => $copiedSubtask->id]);
+
+    $this->patchJson("/api/tasks/{$capostipite->id}", ['recurrence' => recurrencePayload()])->assertOk();
+
+    expect(Task::query()->find($futureOccurrence->id))->not->toBeNull();
+});
+
+it('AC-004 (spec 0155): a future occurrence whose copied sub-task was later completed is NOT virgin and survives', function () {
+    $creator = taskActorWith(['create', 'update', 'view']);
+    Sanctum::actingAs($creator);
+    $openStatus = openTaskStatus0120();
+    $closedStatus = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+
+    $recurrence = TaskRecurrence::factory()->create();
+    $capostipite = Task::factory()->forCreator($creator)->inStatus($openStatus)
+        ->create(['end_date' => now()->subDays(30)->toDateString(), 'task_recurrence_id' => $recurrence->id]);
+    $futureOccurrence = Task::factory()->inStatus($openStatus)
+        ->create(['end_date' => now()->addDays(10)->toDateString(), 'task_recurrence_id' => $recurrence->id]);
+    $copiedSubtask = Task::factory()->childOf($futureOccurrence)->inStatus($openStatus)->create();
+    $copiedSubtask->update(['task_status_id' => $closedStatus->id, 'completion_date' => now()->toDateString()]);
+
+    $this->patchJson("/api/tasks/{$capostipite->id}", ['recurrence' => recurrencePayload()])->assertOk();
+
+    expect(Task::query()->find($futureOccurrence->id))->not->toBeNull();
 });
 
 // ---------------------------------------------------------------------------
@@ -288,12 +376,20 @@ it('AC-031: GET exposes data.recurrence as a full object when set, null otherwis
 
     $response = $this->getJson("/api/tasks/{$task->id}")->assertOk();
 
+    // REQUIREMENT CHANGED (spec 0155, D-1): the contract grows five fields
+    // (month_mode/ordinal/ordinal_weekday/year_month/workdays_only), null/
+    // false on a plain weekly series like this one.
     expect($response->json('data.recurrence'))->toBe([
         'id' => $recurrence->id,
         'frequency' => 'weekly',
         'interval' => 2,
         'weekdays' => [1, 3],
         'month_day' => null,
+        'month_mode' => null,
+        'ordinal' => null,
+        'ordinal_weekday' => null,
+        'year_month' => null,
+        'workdays_only' => false,
         'ends' => 'never',
         'ends_on' => null,
         'occurrence_count' => null,

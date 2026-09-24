@@ -99,8 +99,9 @@ final class TaskCompletionService
             // D-1/D-2: the segnatempo is part of THIS write, atomic with the
             // status change (any guard above rolls both back together), and
             // needs no `time-entries.create` — completing the Task grants
-            // the insert.
-            $this->timeEntryService->create($data->timeEntry, $actor);
+            // the insert. D-6 (spec 0155): `for_all_assignees` logs the SAME
+            // entry once per assignee instead of once for the actor alone.
+            $this->logTimeEntries($task, $data, $actor);
 
             if ($requiresValidation) {
                 $this->notifier->validationRequested($task, $actor);
@@ -203,6 +204,30 @@ final class TaskCompletionService
         });
 
         return $this->taskService->loadDetail($task->fresh());
+    }
+
+    /**
+     * D-6 (spec 0155): `for_all_assignees` false logs `data->timeEntry` for
+     * $actor alone, unchanged from before this spec. `true` logs an
+     * IDENTICAL copy of the SAME (immutable) DTO for every assignee of
+     * $task, or for $actor when it has none — `TimeEntryService::create()`
+     * builds one fresh TimeEntry row per call, so reusing the readonly DTO
+     * across owners is safe.
+     */
+    private function logTimeEntries(Task $task, CompleteTaskData $data, User $actor): void
+    {
+        if (! $data->forAllAssignees) {
+            $this->timeEntryService->create($data->timeEntry, $actor);
+
+            return;
+        }
+
+        $assignees = $task->assignees()->get();
+        $owners = $assignees->isEmpty() ? [$actor] : $assignees->all();
+
+        foreach ($owners as $owner) {
+            $this->timeEntryService->create($data->timeEntry, $owner);
+        }
     }
 
     /**

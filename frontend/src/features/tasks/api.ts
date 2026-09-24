@@ -7,6 +7,7 @@ import type {
   RequestTaskUpdatePayload,
   TaskDetail,
   TaskDetailWithPermissions,
+  TaskSubtask,
   UpdateTaskPayload,
 } from '@/features/tasks/types'
 
@@ -122,6 +123,19 @@ export async function unblockTask(id: number): Promise<TaskDetailWithPermissions
     `/tasks/${id}/unblock`,
   )
   return withPermissions(data)
+}
+
+/**
+ * Reorders a task's direct sub-tasks (spec 0155 D-4): `ids` must carry ALL
+ * and ONLY the current children, in the new order — 422 on a mismatched set,
+ * 403 without `update` on the parent. Returns the fresh `subtasks[]`
+ * (position + permissions refreshed), NOT the parent detail.
+ */
+export async function reorderTaskSubtasks(taskId: number, ids: number[]): Promise<TaskSubtask[]> {
+  const { data } = await apiClient.post<ApiResponse<TaskSubtask[]>>(`/tasks/${taskId}/subtasks/reorder`, {
+    ids,
+  })
+  return data.data
 }
 
 /**

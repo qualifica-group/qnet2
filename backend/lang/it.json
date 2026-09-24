@@ -111,5 +111,6 @@
     "Change request rejected": "Richiesta di modifica rifiutata",
     ":handler approved your request on :field of :subject": ":handler ha approvato la tua richiesta su :field di :subject",
     ":handler rejected your request on :field of :subject": ":handler ha rifiutato la tua richiesta su :field di :subject",
-    "Note: :note": "Nota: :note"
+    "Note: :note": "Nota: :note",
+    "You do not have the permissions needed to view this task. To request access, contact one of the people responsible for it and ask to be added as a watcher.": "Non disponi dei permessi necessari per visualizzare questa attivita'. Per richiedere l'accesso, contatta uno dei responsabili dell'attivita' e chiedi di essere aggiunto come osservatore."
 }

@@ -30,6 +30,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'The **Completion** percentage is never entered by hand: it depends on the status chosen, or, when the task has sub-tasks, on the (rounded) average of their own percentages — capped at 99% while the task stays open, so only a truly completed task reaches 100%. The bar and the figure are coloured as in the work order: red up to 33%, amber up to 66%, blue above, green at 100%.',
         },
+        {
+          type: 'note',
+          text: 'Opening a task you have no access to shows an "Access denied" message with the contacts (requester and creator) you can write to: the page has no Retry button, since this is not a temporary error.',
+        },
       ],
     },
     {
@@ -96,6 +100,10 @@ const guide: HelpGuide = {
             ],
             ['Closure', 'Feedback required, Validation, Create already completed (create only).'],
             ['Recurrence', 'Frequency and end of the repetition.'],
+            [
+              'Sub-tasks',
+              'Optional rows with a title (required), a due date and assignees: they create child tasks right along with the parent, up to 50 at a time.',
+            ],
           ],
         },
         {
@@ -187,6 +195,10 @@ const guide: HelpGuide = {
           text: "With **Validation** on, an assignee's completion does not close the task: it goes to validation and the requester must approve or reject it. You cannot complete a task with open sub-tasks, nor act on a blocked task.",
         },
         {
+          type: 'note',
+          text: "Completing a task from the detail (or from the list) logs the time entry for **every assignee**, one identical entry each (yourself alone when the task has none). Completing a single sub-task from the Sub-tasks panel instead only logs it for you — this is not a choice you make, it depends on where you complete the task.",
+        },
+        {
           type: 'paragraph',
           text: 'The **Request update** action is reserved to the requester, the creator or whoever manages the task (not a plain watcher), and only on a task that is not completed, not in validation and not blocked. Pick one of the three recipient groups:',
         },
@@ -211,11 +223,19 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "From the detail, press **New sub-task** to create a child activity, with dates within the parent's range.",
+          text: "From the detail, press **New sub-task** to create a child activity, with dates within the parent's range. Alternatively, while creating the task you can add one or more rows right in the form's **Sub-tasks** section: a title is enough, plus an optional due date and assignees — everything else is inherited from the parent.",
         },
         {
           type: 'paragraph',
-          text: 'With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency (Daily, Weekly, Monthly), the interval in **Repeat every** and the end: On a date, After a number of occurrences or Never.',
+          text: "In the detail's **Sub-tasks** panel, drag a row (by its handle) to reorder it, and each row lets you complete, reopen or delete that single sub-task, whenever your permissions allow it.",
+        },
+        {
+          type: 'paragraph',
+          text: 'With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency — Daily, Weekly, Monthly, Yearly or Custom (every N days) — the interval in **Repeat every** and the end: On a date, After a number of occurrences or Never.',
+        },
+        {
+          type: 'paragraph',
+          text: "For a Monthly or Yearly recurrence, choose whether the day is **fixed** (e.g. the 31st of the month) or **ordinal** (e.g. the 2nd Tuesday) — Yearly also asks for the month. With **Workdays only** on, the generated dates always fall Monday through Friday (no holiday calendar).",
         },
         {
           type: 'note',

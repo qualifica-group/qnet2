@@ -1,10 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError, AxiosHeaders } from 'axios'
+import i18n from '@/i18n'
 import { TaskDetailScreen } from '@/features/tasks/task-screens'
 import { fetchTask, taskDetailQueryKey } from '@/features/tasks/api'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import { taskDetail } from '@/features/tasks/task-fixtures'
+
+const label = (key: string) => i18n.t(key)
+
+/** `GET /api/tasks/{task}` 403 shape (spec 0155 D-7). */
+function accessDeniedError(): AxiosError {
+  const error = new AxiosError('failed')
+  error.response = {
+    status: 403,
+    statusText: 'Forbidden',
+    data: {
+      success: false,
+      message: 'Non hai accesso a questo task.',
+      errors: {
+        access_contacts: [
+          { id: 21, name: 'Bruno Bianchi', email: 'bruno@example.com' },
+          { id: 1, name: 'Carla Conti', email: 'carla@example.com' },
+        ],
+      },
+    },
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  }
+  return error
+}
 
 /**
  * "Crea sotto-task" always opens the create form in a Sheet above the parent,
@@ -116,5 +142,40 @@ describe('TaskDetailScreen', () => {
 
     await waitFor(() => expect(screen.queryByRole('button', { name: 'create-subtask' })).not.toBeInTheDocument())
     expect(screen.getByText('subtask-sheet')).toBeInTheDocument()
+  })
+})
+
+/** Spec 0155 D-7/AC-009: 403 shows the server message and the access contacts, with no Riprova. */
+describe('TaskDetailScreen — 403 access denied (AC-009)', () => {
+  it('shows the message and the mailto contacts, and no Riprova button', async () => {
+    vi.mocked(fetchTask).mockRejectedValueOnce(accessDeniedError())
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <TaskDetailScreen id={TASK_ID} onEdit={vi.fn()} />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText('Non hai accesso a questo task.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Bruno Bianchi' })).toHaveAttribute(
+      'href',
+      'mailto:bruno@example.com',
+    )
+    expect(screen.getByRole('link', { name: 'Carla Conti' })).toHaveAttribute(
+      'href',
+      'mailto:carla@example.com',
+    )
+    expect(screen.queryByRole('button', { name: label('common.retry') })).not.toBeInTheDocument()
+  })
+
+  it('keeps the generic error + Riprova for any other failure', async () => {
+    vi.mocked(fetchTask).mockRejectedValueOnce(new Error('network down'))
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <TaskDetailScreen id={TASK_ID} onEdit={vi.fn()} />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText(label('tasks.detail.loadError'))).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: label('common.retry') })).toBeInTheDocument()
   })
 })

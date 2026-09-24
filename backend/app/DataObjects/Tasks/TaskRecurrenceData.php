@@ -6,6 +6,7 @@ namespace App\DataObjects\Tasks;
 
 use App\Enums\TaskRecurrenceEnd;
 use App\Enums\TaskRecurrenceFrequency;
+use App\Enums\TaskRecurrenceMonthMode;
 use App\Models\TaskRecurrence;
 
 /**
@@ -22,7 +23,10 @@ use App\Models\TaskRecurrence;
  * pairing (`required_if`/`prohibited_unless`), so a value reaching this DTO
  * from an HTTP request has already been shaped correctly — a value built by
  * fromModel() carries whatever the row itself holds, which the write path
- * guarantees is the same shape.
+ * guarantees is the same shape. Spec 0155, D-1 adds `monthMode`/`ordinal`/
+ * `ordinalWeekday`/`yearMonth`/`workdaysOnly` on the same terms: each is
+ * meaningful only for the `frequency`/`monthMode` combination TaskRecurrenceRules
+ * pairs it with, `null`/`false` otherwise.
  */
 final readonly class TaskRecurrenceData
 {
@@ -34,6 +38,11 @@ final readonly class TaskRecurrenceData
         public int $interval,
         public ?array $weekdays,
         public ?int $monthDay,
+        public ?TaskRecurrenceMonthMode $monthMode,
+        public ?int $ordinal,
+        public ?int $ordinalWeekday,
+        public ?int $yearMonth,
+        public bool $workdaysOnly,
         public TaskRecurrenceEnd $ends,
         public ?string $endsOn,
         public ?int $occurrenceCount,
@@ -49,6 +58,11 @@ final readonly class TaskRecurrenceData
             interval: (int) $data['interval'],
             weekdays: isset($data['weekdays']) ? array_values(array_map(intval(...), (array) $data['weekdays'])) : null,
             monthDay: isset($data['month_day']) ? (int) $data['month_day'] : null,
+            monthMode: isset($data['month_mode']) ? TaskRecurrenceMonthMode::from((string) $data['month_mode']) : null,
+            ordinal: isset($data['ordinal']) ? (int) $data['ordinal'] : null,
+            ordinalWeekday: isset($data['ordinal_weekday']) ? (int) $data['ordinal_weekday'] : null,
+            yearMonth: isset($data['year_month']) ? (int) $data['year_month'] : null,
+            workdaysOnly: (bool) ($data['workdays_only'] ?? false),
             ends: TaskRecurrenceEnd::from((string) $data['ends']),
             endsOn: isset($data['ends_on']) ? (string) $data['ends_on'] : null,
             occurrenceCount: isset($data['occurrence_count']) ? (int) $data['occurrence_count'] : null,
@@ -62,6 +76,11 @@ final readonly class TaskRecurrenceData
             interval: $recurrence->interval,
             weekdays: $recurrence->weekdays,
             monthDay: $recurrence->month_day,
+            monthMode: $recurrence->month_mode,
+            ordinal: $recurrence->ordinal,
+            ordinalWeekday: $recurrence->ordinal_weekday,
+            yearMonth: $recurrence->year_month,
+            workdaysOnly: $recurrence->workdays_only,
             ends: $recurrence->ends,
             endsOn: $recurrence->ends_on?->toDateString(),
             occurrenceCount: $recurrence->occurrence_count,
@@ -80,6 +99,11 @@ final readonly class TaskRecurrenceData
             'interval' => $this->interval,
             'weekdays' => $this->weekdays,
             'month_day' => $this->monthDay,
+            'month_mode' => $this->monthMode,
+            'ordinal' => $this->ordinal,
+            'ordinal_weekday' => $this->ordinalWeekday,
+            'year_month' => $this->yearMonth,
+            'workdays_only' => $this->workdaysOnly,
             'ends' => $this->ends,
             'ends_on' => $this->endsOn,
             'occurrence_count' => $this->occurrenceCount,

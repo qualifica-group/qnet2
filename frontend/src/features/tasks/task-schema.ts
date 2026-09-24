@@ -3,8 +3,10 @@ import type { TFunction } from 'i18next'
 import {
   TASK_RECURRENCE_END_MODES,
   TASK_RECURRENCE_FREQUENCIES,
+  TASK_RECURRENCE_MONTH_MODES,
   type TaskRecurrenceEndMode,
   type TaskRecurrenceFrequency,
+  type TaskRecurrenceMonthMode,
 } from '@/features/tasks/types'
 import { addParentDateRangeIssues, type ParentDateRange } from '@/features/tasks/task-parent-date-range'
 
@@ -92,13 +94,35 @@ function baseFields(t: TFunction) {
       frequency: z.enum(TASK_RECURRENCE_FREQUENCIES).nullable(),
       interval: z.number().int().nullable(),
       weekdays: z.array(z.number()),
+      // Spec 0155 D-1: monthly/yearly's own day-of-month discriminator, plus
+      // the fixed/ordinal picks it gates.
+      month_mode: z.enum(TASK_RECURRENCE_MONTH_MODES).nullable(),
       month_day: z.number().nullable(),
+      ordinal: z.number().nullable(),
+      ordinal_weekday: z.number().nullable(),
+      // Spec 0155 D-1: yearly's own calendar month (1..12).
+      year_month: z.number().nullable(),
+      // Spec 0155 D-1: not frequency-conditional, a plain switch.
+      workdays_only: z.boolean(),
       ends: z.enum(TASK_RECURRENCE_END_MODES).nullable(),
       ends_on: z.string().nullable(),
       occurrence_count: z.number().nullable(),
     }),
+    // Spec 0155 D-3: create-only bulk sub-tasks, one level, up to 50 rows.
+    // `assignee_ids` omitted (or empty) inherits the parent's own assignees
+    // server-side; the form never resends a wire field it left untouched.
+    subtasks: z.array(
+      z.object({
+        title: z.string(),
+        end_date: z.string().nullable(),
+        assignee_ids: z.array(z.number()),
+      }),
+    ),
   }
 }
+
+/** Spec 0155 D-3: the server's own cap on a single create's bulk sub-tasks. */
+export const MAX_TASK_FORM_SUBTASKS = 50
 
 /** Narrower mirror of the `recurrence` object, just what `addRecurrenceIssues` reads. */
 interface RefinedRecurrenceValues {
@@ -106,10 +130,19 @@ interface RefinedRecurrenceValues {
   frequency: TaskRecurrenceFrequency | null
   interval: number | null
   weekdays: number[]
+  month_mode: TaskRecurrenceMonthMode | null
   month_day: number | null
+  ordinal: number | null
+  ordinal_weekday: number | null
+  year_month: number | null
   ends: TaskRecurrenceEndMode | null
   ends_on: string | null
   occurrence_count: number | null
+}
+
+/** Narrower mirror of one `subtasks[]` row, just what `addSubtaskRowIssues` reads. */
+interface RefinedSubtaskRowValues {
+  title: string
 }
 
 /** Values the refinements below read; narrower than the whole form. */
@@ -124,6 +157,7 @@ interface RefinedValues {
   assignee_ids: number[]
   watcher_ids: number[]
   recurrence: RefinedRecurrenceValues
+  subtasks: RefinedSubtaskRowValues[]
 }
 
 /** `task_status_id` is NOT NULL server-side; on PATCH it is still required (D-3/D-6: create derives it). */
@@ -239,14 +273,51 @@ function addRecurrenceIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFu
     })
   }
 
+  // Spec 0155 D-1: monthly/yearly share the same fixed/ordinal day-of-month
+  // discriminator. A `month_mode` not yet picked defaults to `fixed` here —
+  // the section seeds it explicitly the moment the user picks either
+  // frequency, so this fallback only ever matters for a rule built without
+  // going through that picker (e.g. a fixture).
+  if (recurrence.frequency === 'monthly' || recurrence.frequency === 'yearly') {
+    const monthMode = recurrence.month_mode ?? 'fixed'
+    if (monthMode === 'fixed') {
+      if (recurrence.month_day === null || recurrence.month_day < 1 || recurrence.month_day > 31) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['recurrence', 'month_day'],
+          message: t('tasks.form.recurrence.monthDayInvalid'),
+        })
+      }
+    } else {
+      if (recurrence.ordinal === null || recurrence.ordinal < 1 || recurrence.ordinal > 5) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['recurrence', 'ordinal'],
+          message: t('tasks.form.recurrence.ordinalInvalid'),
+        })
+      }
+      if (
+        recurrence.ordinal_weekday === null ||
+        recurrence.ordinal_weekday < 1 ||
+        recurrence.ordinal_weekday > 7
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['recurrence', 'ordinal_weekday'],
+          message: t('tasks.form.recurrence.ordinalWeekdayInvalid'),
+        })
+      }
+    }
+  }
+
   if (
-    recurrence.frequency === 'monthly' &&
-    (recurrence.month_day === null || recurrence.month_day < 1 || recurrence.month_day > 31)
+    recurrence.frequency === 'yearly' &&
+    (recurrence.year_month === null || recurrence.year_month < 1 || recurrence.year_month > 12)
   ) {
     ctx.addIssue({
       code: 'custom',
-      path: ['recurrence', 'month_day'],
-      message: t('tasks.form.recurrence.monthDayInvalid'),
+      path: ['recurrence', 'year_month'],
+      message: t('tasks.form.recurrence.yearMonthInvalid'),
     })
   }
 
@@ -276,6 +347,24 @@ function addRecurrenceIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFu
       message: t('tasks.form.recurrence.occurrenceCountInvalid'),
     })
   }
+}
+
+/**
+ * Spec 0155 D-3: a row added to the "Sottotask" block needs at least a
+ * title — every other field is optional and inherits from the parent when
+ * left blank. `subtasks` stays empty on edit (the section only renders on
+ * create), so this is a no-op there.
+ */
+function addSubtaskRowIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
+  values.subtasks.forEach((row, index) => {
+    if (row.title.trim() === '') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['subtasks', index, 'title'],
+        message: t('tasks.form.subtasks.titleRequired'),
+      })
+    }
+  })
 }
 
 /**
@@ -320,6 +409,7 @@ export function buildTaskSchema(
     )
     addWatcherOverlapIssue(values, ctx, t)
     addRecurrenceIssues(values, ctx, t)
+    addSubtaskRowIssues(values, ctx, t)
     addParentDateRangeIssues(values, ctx, t, parentDateRange)
   })
 }

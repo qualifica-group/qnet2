@@ -30,6 +30,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'Il **Completamento** in percentuale non si inserisce a mano: dipende dallo stato scelto oppure, se il task ha dei sotto-task, dalla media (arrotondata) delle loro percentuali — che resta al massimo al 99% finché il task è aperto, per lasciare al 100% solo un task davvero completato. La barra e il numero sono colorati come nella commessa: rosso fino al 33%, ambra fino al 66%, blu oltre, verde al 100%.',
         },
+        {
+          type: 'note',
+          text: 'Se apri un task a cui non hai accesso, vedi un messaggio di "Accesso non consentito" con i contatti (richiedente e creatore) a cui puoi scrivere: la pagina non ha un pulsante Riprova, perché non si tratta di un errore temporaneo.',
+        },
       ],
     },
     {
@@ -96,6 +100,10 @@ const guide: HelpGuide = {
             ],
             ['Chiusura', 'Feedback obbligatorio, Validazione, Crea già completato (solo in creazione).'],
             ['Ricorrenza', 'Frequenza e fine della ripetizione.'],
+            [
+              'Sotto-task',
+              'Righe facoltative con titolo (obbligatorio), data fine e assegnatari: creano subito dei task figli insieme al padre, fino a 50 per volta.',
+            ],
           ],
         },
         {
@@ -187,6 +195,10 @@ const guide: HelpGuide = {
           text: 'Con **Validazione** attiva, il completamento di un assegnatario non chiude il task: passa in validazione e il richiedente deve approvarlo o rifiutarlo. Non puoi completare un task con sotto-task aperti, né agire su un task bloccato.',
         },
         {
+          type: 'note',
+          text: 'Completando un task dal dettaglio (o dall\'elenco) il segnatempo viene registrato per **tutti gli assegnatari**, uno identico per ciascuno (per te soltanto se il task non ne ha). Completando un singolo sotto-task dal pannello Sotto-task, invece, il segnatempo si registra solo per te: non è una scelta disponibile, dipende da dove completi il task.',
+        },
+        {
           type: 'paragraph',
           text: 'La **Richiesta di aggiornamento** è riservata al richiedente, al creatore o a chi gestisce il task (non al semplice osservatore), e solo su un task non completato, non in validazione e non bloccato. Scegli uno dei tre gruppi di destinatari:',
         },
@@ -211,11 +223,19 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal dettaglio premi **Nuovo sotto-task** per creare un\'attività figlia, con date comprese in quelle del padre.',
+          text: 'Dal dettaglio premi **Nuovo sotto-task** per creare un\'attività figlia, con date comprese in quelle del padre. In alternativa, mentre crei il task puoi aggiungere subito una o più righe nella sezione **Sotto-task** del modulo: bastano un titolo e, se vuoi, una data fine e degli assegnatari, il resto viene ereditato dal padre.',
         },
         {
           type: 'paragraph',
-          text: 'Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza (Giornaliera, Settimanale, Mensile), l\'intervallo in **Ripeti ogni** e la fine: A una data, Dopo un numero di occorrenze o Mai.',
+          text: 'Nel pannello **Sotto-task** del dettaglio trascini le righe (con l\'apposita maniglia) per riordinarle, e da ogni riga puoi completare, riaprire o eliminare il singolo sotto-task, quando i tuoi permessi lo consentono.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza — Giornaliera, Settimanale, Mensile, Annuale o Personalizzata (ogni N giorni) — l\'intervallo in **Ripeti ogni** e la fine: A una data, Dopo un numero di occorrenze o Mai.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Per una ricorrenza Mensile o Annuale scegli se il giorno è **fisso** (es. il 31 del mese) oppure **ordinale** (es. il 2° martedì): per l\'Annuale scegli anche il mese. Con **Solo giorni lavorativi** attivo, le date generate cadono sempre dal lunedì al venerdì (non tiene conto delle festività).',
         },
         {
           type: 'note',

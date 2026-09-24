@@ -61,9 +61,11 @@ export interface TaskLeadRef {
 export {
   TASK_RECURRENCE_END_MODES,
   TASK_RECURRENCE_FREQUENCIES,
+  TASK_RECURRENCE_MONTH_MODES,
   type TaskRecurrenceDetail,
   type TaskRecurrenceEndMode,
   type TaskRecurrenceFrequency,
+  type TaskRecurrenceMonthMode,
   type TaskRecurrencePayload,
 } from '@/features/tasks/task-recurrence-types'
 import type { TaskRecurrenceDetail, TaskRecurrencePayload } from '@/features/tasks/task-recurrence-types'
@@ -90,7 +92,16 @@ export interface TaskWorkOrderStageRef {
 /**
  * One child of the task, as exposed by `TaskResource.subtasks` (D-12): a lean
  * array already filtered by the visibility scope (AC-066). NO endpoint of its
- * own — the Sotto-task section reads this off the detail already loaded.
+ * own for LISTING — the Sotto-task section reads this off the detail already
+ * loaded; reordering, completing, reopening and deleting a child each reuse
+ * the task's own generic endpoints (`reorderTaskSubtasks`/`completeTask`/
+ * `uncompleteTask`/`deleteTask`) against the child's own `id`.
+ *
+ * Spec 0155 D-4/D-5 adds `position` (the `subtask_position` column, what the
+ * reorder endpoint writes) and `permissions.actions` — the SAME shape as the
+ * parent's own `TaskDetailWithPermissions.permissions.actions` (D-5): the
+ * panel gates complete/reopen per row from this, never from the parent's own
+ * flags.
  */
 export interface TaskSubtask {
   id: number
@@ -98,6 +109,9 @@ export interface TaskSubtask {
   task_status: TaskLookupRef
   completion_percentage: number
   assignees: TaskNamedRef[]
+  position: number
+  /** The child's own action matrix; `delete` is its own delete verdict (spec 0153 D-5). */
+  permissions: { actions: Record<TaskActionKey | 'delete', boolean> }
 }
 
 /**
@@ -282,11 +296,18 @@ export interface CompleteTaskTimeEntryPayload {
  * `time_entry` is REQUIRED on both paths (spec 0123 D-1): completing a task
  * without registering the time spent on it is no longer possible from this
  * dialog.
+ *
+ * `for_all_assignees` (spec 0155 D-6): omitted (server default `false`)
+ * completes for the acting user alone; `true` logs an identical time entry
+ * for every assignee (the actor alone when there is none). The dialog sends
+ * it from a `forAllAssignees` PROP, never a user-facing toggle (q-net has
+ * none): `true` from the task detail/list, `false` from the sub-task panel.
  */
 export interface CompleteTaskPayload {
   closure_feedback?: string | null
   validation_status_id?: number | null
   time_entry: CompleteTaskTimeEntryPayload
+  for_all_assignees?: boolean
 }
 
 /**
@@ -374,6 +395,36 @@ export interface CreateTaskPayload {
    * overlap — the requirement changed by user decision.
    */
   watcher_ids?: number[]
+  /**
+   * Spec 0155 D-3: create-only bulk sub-tasks, one level, max 50 rows, all
+   * created in the SAME transaction as the parent (one invalid row 422s as
+   * `subtasks.N.field` and rolls back the whole create). Every field but
+   * `title` inherits from the parent when omitted; never phase or
+   * recurrence — a sub-task carries neither. Omitted or empty, no key at all
+   * (`task-form-payload.ts`).
+   */
+  subtasks?: CreateTaskSubtaskPayload[]
+}
+
+/**
+ * One row of `CreateTaskPayload.subtasks` (spec 0155 D-3). The compact
+ * "Sottotask" block in the create form only ever populates `title`,
+ * `end_date` and `assignee_ids` (`task-form-subtasks-section.tsx`); the rest
+ * of this shape exists because the endpoint accepts it, not because the
+ * form does.
+ */
+export interface CreateTaskSubtaskPayload {
+  title: string
+  description?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  estimated_minutes?: number | null
+  assignee_ids?: number[]
+  watcher_ids?: number[]
+  task_type_id?: number | null
+  task_priority_id?: number | null
+  task_importance_id?: number | null
+  task_category_id?: number | null
 }
 
 /**

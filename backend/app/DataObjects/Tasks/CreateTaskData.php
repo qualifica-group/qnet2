@@ -48,12 +48,19 @@ namespace App\DataObjects\Tasks;
  * CONTROL flags with no column at all — the former tells
  * TaskService::create() to hand off to App\Services\Tasks\TaskCreationCompletion
  * (D-6), the latter gates whether create() notifies anyone at all (D-7).
+ *
+ * `subtasks` (spec 0155, D-3) is the one property with NO column of its own,
+ * the same category as `recurrence`: a non-empty array tells
+ * TaskService::create() to hand it, together with the just-persisted parent,
+ * to App\Services\Tasks\TaskSubtaskBatchCreator — INSIDE the same write
+ * transaction, so one invalid row rolls the whole batch back.
  */
 final readonly class CreateTaskData
 {
     /**
      * @param  array<int, int>  $assigneeIds
      * @param  array<int, int>  $watcherIds
+     * @param  array<int, CreateSubtaskData>  $subtasks
      */
     public function __construct(
         public string $title,
@@ -86,6 +93,7 @@ final readonly class CreateTaskData
         public bool $isCompleted = false,
         public bool $notifyAssignedUsers = true,
         public ?int $taskStatusId = null,
+        public array $subtasks = [],
     ) {}
 
     /**
@@ -126,6 +134,10 @@ final readonly class CreateTaskData
             isCompleted: (bool) ($data['is_completed'] ?? false),
             notifyAssignedUsers: (bool) ($data['notify_assigned_users'] ?? true),
             taskStatusId: self::nullableInt($data, 'task_status_id'),
+            subtasks: array_map(
+                static fn (array $row): CreateSubtaskData => CreateSubtaskData::fromValidated($row),
+                $data['subtasks'] ?? [],
+            ),
         );
     }
 

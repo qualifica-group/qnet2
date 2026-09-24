@@ -3,8 +3,6 @@
 namespace App\Http\Requests\Tasks;
 
 use App\DataObjects\Tasks\CreateTaskData;
-use App\Enums\TaskRecurrenceEnd;
-use App\Enums\TaskRecurrenceFrequency;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +47,21 @@ use Illuminate\Validation\Rule;
  * coherence (AC-014), the sub-task hierarchy (D-12) and the closing feedback
  * (D-7). All three are enforced by App\Services\TaskService inside the write
  * transaction.
+ *
+ * `subtasks` (spec 0155, D-3) is `sometimes|array|max:50`, one level: each
+ * row's own shape is deliberately SMALLER than the parent's — no
+ * `registry_id`/`referent_id`/`opportunity_id`/`work_order_id`/
+ * `work_order_stage_id`/`lead_id`/`is_private`/`requester_id`/`recurrence`
+ * key exists on a row at all, since App\Services\Tasks\TaskSubtaskBatchCreator
+ * always copies the first six off the parent, always nulls the seventh, and
+ * always derives the requester/status the same way a plain create does.
+ * `assignee_ids`/`watcher_ids`/`task_type_id`/`task_priority_id`/
+ * `task_importance_id`/`end_date` are `sometimes` on purpose: OMITTED means
+ * "inherit the parent's own resulting value" (the batch creator's job),
+ * never "clear it" — a row that submits the key, even empty, means exactly
+ * that value. Laravel's own `subtasks.*` wildcard naming already produces
+ * the `subtasks.N.field` error key the contract requires, with no
+ * remapping needed at this layer.
  *
  * `recurrence` (spec 0120, data_contract) is `sometimes|nullable|array`, with
  * every inner field conditioned on `frequency`/`ends` via
@@ -128,25 +141,31 @@ class StoreTaskRequest extends FormRequest
             'lead_id' => ['sometimes', 'nullable', 'integer', Rule::exists('leads', 'id')],
             'is_completed' => ['sometimes', 'boolean'],
             'notify_assigned_users' => ['sometimes', 'boolean'],
-            ...$this->recurrenceRules(),
+            ...TaskRecurrenceRules::rules(),
+            ...$this->subtaskRules(),
         ];
     }
 
     /**
      * @return array<string, array<int, mixed>>
      */
-    private function recurrenceRules(): array
+    private function subtaskRules(): array
     {
         return [
-            'recurrence' => ['sometimes', 'nullable', 'array'],
-            'recurrence.frequency' => ['required_with:recurrence', Rule::enum(TaskRecurrenceFrequency::class)],
-            'recurrence.interval' => ['required_with:recurrence', 'integer', 'min:1'],
-            'recurrence.weekdays' => ['required_if:recurrence.frequency,weekly', 'prohibited_unless:recurrence.frequency,weekly', 'array', 'min:1'],
-            'recurrence.weekdays.*' => ['integer', 'between:1,7', 'distinct'],
-            'recurrence.month_day' => ['required_if:recurrence.frequency,monthly', 'prohibited_unless:recurrence.frequency,monthly', 'integer', 'between:1,31'],
-            'recurrence.ends' => ['required_with:recurrence', Rule::enum(TaskRecurrenceEnd::class)],
-            'recurrence.ends_on' => ['required_if:recurrence.ends,on_date', 'prohibited_unless:recurrence.ends,on_date', 'date', 'after:end_date'],
-            'recurrence.occurrence_count' => ['required_if:recurrence.ends,after_count', 'prohibited_unless:recurrence.ends,after_count', 'integer', 'min:1'],
+            'subtasks' => ['sometimes', 'array', 'max:50'],
+            'subtasks.*.title' => ['required', 'string', 'max:'.self::TITLE_MAX],
+            'subtasks.*.description' => ['sometimes', 'nullable', 'string'],
+            'subtasks.*.start_date' => ['sometimes', 'nullable', 'date'],
+            'subtasks.*.end_date' => ['sometimes', 'nullable', 'date'],
+            'subtasks.*.estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'subtasks.*.assignee_ids' => ['sometimes', 'array'],
+            'subtasks.*.assignee_ids.*' => ['integer', Rule::exists('users', 'id')],
+            'subtasks.*.watcher_ids' => ['sometimes', 'array'],
+            'subtasks.*.watcher_ids.*' => ['integer', Rule::exists('users', 'id')],
+            'subtasks.*.task_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_types', 'id')],
+            'subtasks.*.task_priority_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_priorities', 'id')],
+            'subtasks.*.task_importance_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_importances', 'id')],
+            'subtasks.*.task_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_categories', 'id')],
         ];
     }
 

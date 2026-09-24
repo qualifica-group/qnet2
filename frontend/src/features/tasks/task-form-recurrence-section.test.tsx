@@ -168,6 +168,36 @@ describe('TaskFormBody — recurrence section (AC-032/AC-034)', () => {
     expect(screen.getByRole('checkbox', { name: label('tasks.form.recurrence.weekday.tue') })).not.toBeChecked()
   })
 
+  /** Spec 0155 D-1: month_mode defaults to "fixed" (plain day-of-month input), ordinal is the deliberate extra step. */
+  it('picking yearly shows the fixed day/month by default, and switches to the ordinal pickers', () => {
+    renderForm({ type: 'create' })
+    fireEvent.click(enableSwitch())
+
+    fireEvent.click(frequencyPicker())
+    fireEvent.click(screen.getByRole('option', { name: label('tasks.form.recurrence.frequencyOption.yearly') }))
+
+    expect(screen.getByRole('spinbutton', { name: label('tasks.form.recurrence.monthDay') })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: label('tasks.form.recurrence.yearMonth') })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: label('tasks.form.recurrence.ordinal') }),
+    ).not.toBeInTheDocument()
+
+    const monthModePicker = screen.getByRole('combobox', { name: label('tasks.form.recurrence.monthMode') })
+    fireEvent.click(monthModePicker)
+    fireEvent.click(screen.getByRole('option', { name: label('tasks.form.recurrence.monthModeOption.ordinal') }))
+
+    expect(screen.queryByRole('spinbutton', { name: label('tasks.form.recurrence.monthDay') })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: label('tasks.form.recurrence.ordinal') })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: label('tasks.form.recurrence.ordinalWeekday') })).toBeInTheDocument()
+  })
+
+  it('shows the workdays-only switch once recurrence is enabled', () => {
+    renderForm({ type: 'create' })
+    fireEvent.click(enableSwitch())
+
+    expect(screen.getByRole('switch', { name: label('tasks.form.recurrence.workdaysOnly') })).toBeInTheDocument()
+  })
+
   /** Spec 0120 D-12/AC-034: same mechanism `TaskFormBody — protected fields` already proves for other fields. */
   it('locks the whole section for an actor without the mandate (D-12)', () => {
     renderForm(

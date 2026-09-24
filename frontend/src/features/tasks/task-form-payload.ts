@@ -1,6 +1,7 @@
 import { sameIdSet } from '@/lib/utils'
 import type {
   CreateTaskPayload,
+  CreateTaskSubtaskPayload,
   TaskDetail,
   TaskRecurrenceDetail,
   TaskRecurrencePayload,
@@ -23,11 +24,22 @@ function normalizeRecurrenceValues(recurrence: TaskFormValues['recurrence']): Re
   if (!recurrence.enabled || recurrence.frequency === null || recurrence.ends === null) {
     return null
   }
+  const { frequency } = recurrence
+  const isMonthlyOrYearly = frequency === 'monthly' || frequency === 'yearly'
+  // Spec 0155 D-1: a `month_mode` not yet picked defaults to `fixed` — the
+  // section seeds it explicitly on frequency pick, this fallback only
+  // matters for a rule built without going through that picker.
+  const monthMode = isMonthlyOrYearly ? (recurrence.month_mode ?? 'fixed') : null
   return {
-    frequency: recurrence.frequency,
+    frequency,
     interval: recurrence.interval ?? 1,
-    weekdays: recurrence.frequency === 'weekly' ? recurrence.weekdays : null,
-    month_day: recurrence.frequency === 'monthly' ? recurrence.month_day : null,
+    weekdays: frequency === 'weekly' ? recurrence.weekdays : null,
+    month_mode: monthMode,
+    month_day: isMonthlyOrYearly && monthMode === 'fixed' ? recurrence.month_day : null,
+    ordinal: isMonthlyOrYearly && monthMode === 'ordinal' ? recurrence.ordinal : null,
+    ordinal_weekday: isMonthlyOrYearly && monthMode === 'ordinal' ? recurrence.ordinal_weekday : null,
+    year_month: frequency === 'yearly' ? recurrence.year_month : null,
+    workdays_only: recurrence.workdays_only,
     ends: recurrence.ends,
     ends_on: recurrence.ends === 'on_date' ? recurrence.ends_on : null,
     occurrence_count: recurrence.ends === 'after_count' ? recurrence.occurrence_count : null,
@@ -43,7 +55,12 @@ function normalizeRecurrenceDetail(detail: TaskRecurrenceDetail | null): Recurre
     frequency: detail.frequency,
     interval: detail.interval,
     weekdays: detail.weekdays,
+    month_mode: detail.month_mode,
     month_day: detail.month_day,
+    ordinal: detail.ordinal,
+    ordinal_weekday: detail.ordinal_weekday,
+    year_month: detail.year_month,
+    workdays_only: detail.workdays_only,
     ends: detail.ends,
     ends_on: detail.ends_on,
     occurrence_count: detail.occurrence_count,
@@ -57,7 +74,12 @@ function sameRecurrenceRule(a: RecurrenceRule | null, b: RecurrenceRule | null):
   return (
     a.frequency === b.frequency &&
     a.interval === b.interval &&
+    a.month_mode === b.month_mode &&
     a.month_day === b.month_day &&
+    a.ordinal === b.ordinal &&
+    a.ordinal_weekday === b.ordinal_weekday &&
+    a.year_month === b.year_month &&
+    a.workdays_only === b.workdays_only &&
     a.ends === b.ends &&
     a.ends_on === b.ends_on &&
     a.occurrence_count === b.occurrence_count &&
@@ -65,7 +87,12 @@ function sameRecurrenceRule(a: RecurrenceRule | null, b: RecurrenceRule | null):
   )
 }
 
-/** Projects a normalized rule onto the wire shape: pertinent fields only (D-1 `prohibited_unless`). */
+/**
+ * Projects a normalized rule onto the wire shape: pertinent fields only (D-1
+ * `prohibited_unless`). `normalizeRecurrenceValues` already nulled out every
+ * field not pertinent to the picked `frequency`/`month_mode`/`ends`, so this
+ * stays a flat "send what survived" projection (spec 0155 D-1).
+ */
 function recurrencePayloadOf(rule: RecurrenceRule): TaskRecurrencePayload {
   const payload: TaskRecurrencePayload = {
     frequency: rule.frequency,
@@ -75,14 +102,46 @@ function recurrencePayloadOf(rule: RecurrenceRule): TaskRecurrencePayload {
   if (rule.frequency === 'weekly') {
     payload.weekdays = rule.weekdays ?? []
   }
-  if (rule.frequency === 'monthly' && rule.month_day !== null) {
+  if (rule.month_mode !== null) {
+    payload.month_mode = rule.month_mode
+  }
+  if (rule.month_day !== null) {
     payload.month_day = rule.month_day
+  }
+  if (rule.ordinal !== null) {
+    payload.ordinal = rule.ordinal
+  }
+  if (rule.ordinal_weekday !== null) {
+    payload.ordinal_weekday = rule.ordinal_weekday
+  }
+  if (rule.year_month !== null) {
+    payload.year_month = rule.year_month
+  }
+  if (rule.workdays_only) {
+    payload.workdays_only = true
   }
   if (rule.ends === 'on_date' && rule.ends_on !== null) {
     payload.ends_on = rule.ends_on
   }
   if (rule.ends === 'after_count' && rule.occurrence_count !== null) {
     payload.occurrence_count = rule.occurrence_count
+  }
+  return payload
+}
+
+/**
+ * Spec 0155 D-3: one "Sottotask" row onto the wire shape — `title` is the
+ * only field the compact create-form block collects besides the optional
+ * due date and assignees; every other `CreateTaskSubtaskPayload` field is
+ * left for the server's own inheritance from the parent.
+ */
+function subtaskPayloadOf(row: TaskFormValues['subtasks'][number]): CreateTaskSubtaskPayload {
+  const payload: CreateTaskSubtaskPayload = { title: row.title.trim() }
+  if (row.end_date) {
+    payload.end_date = row.end_date
+  }
+  if (row.assignee_ids.length > 0) {
+    payload.assignee_ids = row.assignee_ids
   }
   return payload
 }
@@ -171,6 +230,11 @@ export function buildCreatePayload(
   if (canEditRecurrence) {
     const rule = normalizeRecurrenceValues(values.recurrence)
     payload.recurrence = rule ? recurrencePayloadOf(rule) : null
+  }
+  // Spec 0155 D-3: create-only bulk sub-tasks; an empty block sends no key
+  // at all rather than an empty array (mirrors every other opt-in list here).
+  if (values.subtasks.length > 0) {
+    payload.subtasks = values.subtasks.map(subtaskPayloadOf)
   }
   return payload
 }

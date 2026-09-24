@@ -183,3 +183,94 @@ describe('buildTaskSchema — recurrence (spec 0120 D-1/AC-033)', () => {
     expect(result.success).toBe(true)
   })
 })
+
+/** Spec 0155 D-1: the ordinal/yearly branches, and `custom` needing nothing beyond `interval`. */
+describe('buildTaskSchema — recurrence, spec 0155 D-1', () => {
+  it('accepts a custom rule with only interval/ends set', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({ recurrence: recurrence({ enabled: true, frequency: 'custom', ends: 'never', interval: 3 }) }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('treats a missing month_mode as fixed: a monthly rule with only month_day set is valid', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({
+        recurrence: recurrence({ enabled: true, frequency: 'monthly', ends: 'never', month_mode: null, month_day: 15 }),
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a monthly ordinal rule missing ordinal/ordinal_weekday', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({
+        recurrence: recurrence({ enabled: true, frequency: 'monthly', ends: 'never', month_mode: 'ordinal' }),
+      }),
+    )
+    expect(issuePaths(result)).toContain('recurrence.ordinal')
+    expect(issuePaths(result)).toContain('recurrence.ordinal_weekday')
+  })
+
+  it('accepts a monthly ordinal rule with ordinal/ordinal_weekday set', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({
+        recurrence: recurrence({
+          enabled: true,
+          frequency: 'monthly',
+          ends: 'never',
+          month_mode: 'ordinal',
+          ordinal: 2,
+          ordinal_weekday: 2,
+        }),
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a yearly rule with no year_month', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({
+        recurrence: recurrence({ enabled: true, frequency: 'yearly', ends: 'never', month_day: 5, year_month: null }),
+      }),
+    )
+    expect(issuePaths(result)).toContain('recurrence.year_month')
+  })
+
+  it('accepts a yearly rule with month_day and year_month set', () => {
+    const result = buildTaskSchema(i18n.t).safeParse(
+      values({
+        recurrence: recurrence({ enabled: true, frequency: 'yearly', ends: 'never', month_day: 5, year_month: 3 }),
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+})
+
+/** Spec 0155 D-3: the create-only "Sottotask" block, title required per row. */
+describe('buildTaskSchema — subtasks, spec 0155 D-3', () => {
+  it('accepts an empty subtasks list', () => {
+    expect(buildTaskSchema(i18n.t, true).safeParse(values({ subtasks: [] })).success).toBe(true)
+  })
+
+  it('rejects a row with a blank title, at its own index', () => {
+    const result = buildTaskSchema(i18n.t, true).safeParse(
+      values({
+        subtasks: [
+          { title: 'Prepara il preventivo', end_date: null, assignee_ids: [] },
+          { title: '  ', end_date: null, assignee_ids: [] },
+        ],
+      }),
+    )
+    expect(issuePaths(result)).toContain('subtasks.1.title')
+  })
+
+  it('accepts every row once every title is filled', () => {
+    const result = buildTaskSchema(i18n.t, true).safeParse(
+      values({
+        subtasks: [{ title: 'Prepara il preventivo', end_date: '2026-09-10', assignee_ids: [31] }],
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+})

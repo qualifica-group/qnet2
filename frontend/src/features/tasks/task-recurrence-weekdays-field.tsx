@@ -3,11 +3,8 @@ import type { Control } from 'react-hook-form'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { MetaField } from '@/features/authorization/MetaField'
+import { WEEKDAY_KEYS, WEEKDAY_ORDER } from '@/features/tasks/task-recurrence-weekdays'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
-
-/** ISO-8601 order (Monday=1..Sunday=7), shared with `task-recurrence-format.ts`. */
-const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 7] as const
-const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
 interface TaskRecurrenceWeekdaysFieldProps {
   control: Control<TaskFormValues>

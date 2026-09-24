@@ -248,6 +248,19 @@ it('AC-006: is_completed with requires_validation is 422', function () {
     $this->assertDatabaseMissing('tasks', ['title' => 'Attivita form q-net']);
 });
 
+it('AC-006: is_completed with requires_closure_feedback and no closure_feedback is 422, nothing saved', function () {
+    $actor = formActorWith(['create']);
+    TaskType::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/tasks', formTaskPayload([
+        'requires_closure_feedback' => true,
+        'is_completed' => true,
+    ]))->assertStatus(422);
+
+    $this->assertDatabaseMissing('tasks', ['title' => 'Attivita form q-net']);
+});
+
 it('AC-006/AC-007: is_completed with notify_assigned_users false sends neither the assignment nor the closure notification', function () {
     $actor = formActorWith(['create', 'view']);
     TaskType::factory()->default()->create();

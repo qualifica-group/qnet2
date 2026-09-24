@@ -8,6 +8,8 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { parseEntityId } from '@/routes/entity-id'
 import { fetchTask, TASKS_DOMAIN, taskDetailQueryKey } from '@/features/tasks/api'
+import { TaskAccessDenied } from '@/features/tasks/task-access-denied'
+import { taskAccessDeniedInfo } from '@/features/tasks/task-access-denied-info'
 import { TaskDetailView } from '@/features/tasks/task-detail'
 import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { TaskForm } from '@/features/tasks/task-form'
@@ -52,16 +54,22 @@ export function TaskDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     // The parent stays mounted underneath: refresh its `subtasks` list.
     onSaved: () => queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(id) }),
   })
-  const { data: task, isLoading, isError, refetch } = useEntityDetail(taskDetailQueryKey(id), () =>
+  const { data: task, isLoading, isError, error, refetch } = useEntityDetail(taskDetailQueryKey(id), () =>
     fetchTask(id),
   )
+  // Spec 0155 D-7: a 403 here is never transient (no log/Teams alert either,
+  // server-side) — the access-denied message and contacts replace the
+  // generic error state, with no Riprova.
+  const accessDenied = isError ? taskAccessDeniedInfo(error) : null
 
   // The sheets render OUTSIDE the loading branch: the subtask form reads the
   // parent through this same query key and refetches it on mount. Swapping
   // them for the skeleton during that refetch would remount the form, which
   // refetches again — an endless reload loop.
   let content: ReactNode
-  if (isError) {
+  if (accessDenied) {
+    content = <TaskAccessDenied message={accessDenied.message} contacts={accessDenied.contacts} />
+  } else if (isError) {
     content = (
       <DetailError
         message={t('tasks.detail.loadError')}

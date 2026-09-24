@@ -23,6 +23,11 @@ use App\DataObjects\TimeEntries\TimeEntryData;
  * `timeEntry` is mandatory on BOTH percorsi (D-1) and built via
  * `TimeEntryData::forTask()`, the same derivation the task-scoped segnatempo
  * POST uses — title and record links come from the Task, never the payload.
+ *
+ * `forAllAssignees` (spec 0155, D-6) defaults false: `TaskCompletionService`
+ * logs `timeEntry` for the acting user alone. `true` logs an identical copy
+ * of the SAME `timeEntry` for every assignee of the Task (the actor when
+ * there are none) — the flag decides the recipients, never the values.
  */
 final readonly class CompleteTaskData
 {
@@ -32,6 +37,7 @@ final readonly class CompleteTaskData
         public bool $closureFeedbackSubmitted = false,
         public ?int $validationStatusId = null,
         public bool $validationStatusIdSubmitted = false,
+        public bool $forAllAssignees = false,
     ) {}
 
     /**
@@ -49,6 +55,7 @@ final readonly class CompleteTaskData
                 ? (int) $data['validation_status_id']
                 : null,
             validationStatusIdSubmitted: array_key_exists('validation_status_id', $data) && $data['validation_status_id'] !== null,
+            forAllAssignees: (bool) ($data['for_all_assignees'] ?? false),
         );
     }
 }

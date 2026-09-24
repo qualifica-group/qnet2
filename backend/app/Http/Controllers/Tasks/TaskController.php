@@ -12,6 +12,7 @@ use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\TaskService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,10 +41,23 @@ class TaskController extends BaseApiController
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}
 
+    /** Spec 0155, D-7: the message shown alongside `errors.access_contacts`. */
+    private const string ACCESS_DENIED_MESSAGE = 'You do not have the permissions needed to view this task. To request access, contact one of the people responsible for it and ask to be added as a watcher.';
+
     /**
      * GET /api/tasks/{task} — single Task (view row-action). 403 both without
      * `tasks.view` and for a Task outside the actor's visibility scope
-     * (AC-060).
+     * (AC-060). A missing Task still 404s (route-model binding fails before
+     * this method ever runs, spec 0155 D-7).
+     *
+     * The 403 is handled HERE rather than falling through to
+     * handleControllerException() (spec 0155, D-7, REQUIREMENT CHANGED): it
+     * carries `errors.access_contacts` (richiedente + creatore, deduplicated)
+     * and is deliberately NOT an error-log / Teams-alert incident — an actor
+     * without membership on a Task is an expected, everyday outcome, not a
+     * backend fault. `AuthorizationException` is not `HttpExceptionInterface`,
+     * so BaseApiController's own skip-on-HttpException carve-out cannot reach
+     * it; this catch runs first instead of touching that shared class.
      */
     public function show(Request $request, Task $task): JsonResponse
     {
@@ -55,6 +69,12 @@ class TaskController extends BaseApiController
             return $this->okWithPermissions(
                 new TaskResource($task),
                 $this->buildPermissions($request->user(), $task),
+            );
+        } catch (AuthorizationException) {
+            return $this->fail(
+                __(self::ACCESS_DENIED_MESSAGE),
+                HttpStatusEnum::FORBIDDEN->value,
+                ['access_contacts' => $this->accessContacts($task)],
             );
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['task' => $task->id]);
@@ -135,5 +155,23 @@ class TaskController extends BaseApiController
     private function buildPermissions(User $actor, ?Task $model): array
     {
         return $this->permissionsBuilder->build($this->authorization->resolve('tasks'), $actor, $model);
+    }
+
+    /**
+     * $task's requester and creator, deduplicated, skipping a null requester
+     * (spec 0155, D-7) — who a denied actor may reach out to for access.
+     *
+     * @return array<int, array{id: int, name: string, email: string}>
+     */
+    private function accessContacts(Task $task): array
+    {
+        $task->loadMissing(['requester', 'creator']);
+
+        $contacts = collect([$task->requester, $task->creator])->filter()->unique('id');
+
+        return $contacts
+            ->map(static fn (User $user): array => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email])
+            ->values()
+            ->all();
     }
 }

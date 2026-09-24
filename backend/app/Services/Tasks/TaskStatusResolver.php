@@ -53,11 +53,17 @@ final class TaskStatusResolver
     /**
      * Relations a caller must eager-load for completionPercentage() to answer
      * without a query — TasksTableDefinition::baseQuery() and
-     * TaskService::DETAIL_RELATIONS both honour this.
+     * TaskService::DETAIL_RELATIONS both honour this. Two levels of
+     * `completionSubtasks` cover the common tree; a deeper node is fetched
+     * by resolveSubtasks() itself.
      *
      * @var array<int, string>
      */
-    public const array EAGER_LOADS = ['taskStatus'];
+    public const array EAGER_LOADS = [
+        'taskStatus',
+        'completionSubtasks.taskStatus',
+        'completionSubtasks.completionSubtasks.taskStatus',
+    ];
 
     private const string STATUS_TABLE = 'task_statuses';
 
@@ -115,20 +121,20 @@ final class TaskStatusResolver
     }
 
     /**
-     * The direct children, however they got here: already eager-loaded
-     * (TaskService's own scoped load, or a prior recursive step's `with()`
-     * below), or fetched here with their OWN status eager-loaded so the next
-     * recursive call never lazy-loads either.
+     * EVERY direct child (`completionSubtasks`, never the viewer-scoped
+     * `subtasks`), however it got here: eager-loaded via EAGER_LOADS, or
+     * fetched here with its OWN status so the next recursive call never
+     * lazy-loads either.
      *
      * @return Collection<int, Task>
      */
     private function resolveSubtasks(Task $task): Collection
     {
-        if ($task->relationLoaded('subtasks')) {
-            return $task->subtasks;
+        if ($task->relationLoaded('completionSubtasks')) {
+            return $task->completionSubtasks;
         }
 
-        return $task->subtasks()->with(self::STATUS_RELATION)->get();
+        return $task->completionSubtasks()->with(self::STATUS_RELATION)->get();
     }
 
     /**

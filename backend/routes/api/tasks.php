@@ -7,6 +7,7 @@ use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Tasks\TaskForSelectController;
 use App\Http\Controllers\Tasks\TaskRejectController;
 use App\Http\Controllers\Tasks\TaskRequestUpdateController;
+use App\Http\Controllers\Tasks\TaskSubtaskReorderController;
 use App\Http\Controllers\Tasks\TaskUnblockController;
 use App\Http\Controllers\Tasks\TaskUncompleteController;
 use App\Http\Controllers\TimeEntries\TaskTimeEntryController;
@@ -62,6 +63,12 @@ Route::post('tasks/{task}/reject', TaskRejectController::class);
 Route::post('tasks/{task}/block', TaskBlockController::class);
 Route::post('tasks/{task}/unblock', TaskUnblockController::class);
 Route::post('tasks/{task}/request-update', TaskRequestUpdateController::class);
+
+// Sub-task reorder (spec 0155, D-4/D-5): `update` on the PARENT (TaskPolicy),
+// never a per-child ability — dragging a row in the detail's panel is
+// editing the parent's own structure, the same row `create_subtask` already
+// reads off `TaskAbilityResolver::canCreateSubtask()`.
+Route::post('tasks/{task}/subtasks/reorder', TaskSubtaskReorderController::class);
 
 // Task-scoped segnatempo (spec 0122, D-9): the "Segnatempo" section of the
 // Task detail. Controller lives in App\Http\Controllers\TimeEntries next to

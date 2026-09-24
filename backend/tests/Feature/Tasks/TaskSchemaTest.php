@@ -34,7 +34,10 @@ uses(RefreshDatabase::class);
 it('AC-003: tasks carries every column of the data_contract', function () {
     $expected = [
         'id', 'title', 'description',
-        'registry_id', 'referent_id', 'parent_task_id', 'task_recurrence_id',
+        'registry_id', 'referent_id', 'parent_task_id',
+        // Spec 0155, D-4: the manual order of a task's own direct sub-tasks.
+        'subtask_position',
+        'task_recurrence_id',
         'task_type_id', 'task_status_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
         'opportunity_id', 'work_order_id',
         // Spec 0146, D-2/D-3: the task board's own "Fase" + its ordinal

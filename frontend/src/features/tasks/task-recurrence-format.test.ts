@@ -96,3 +96,95 @@ describe('formatTaskRecurrenceRule (spec 0120 AC-035)', () => {
     await i18n.changeLanguage('it')
   })
 })
+
+/** Spec 0155 D-1: yearly/custom frequencies, the monthly/yearly fixed/ordinal split and `workdays_only`. */
+describe('formatTaskRecurrenceRule — spec 0155 D-1', () => {
+  it('renders "custom" exactly like "daily" with its own interval', () => {
+    const rule = taskRecurrenceDetail({
+      frequency: 'custom',
+      interval: 3,
+      weekdays: null,
+      ends: 'never',
+      ends_on: null,
+    })
+
+    expect(formatTaskRecurrenceRule(rule, i18n.t, 'it')).toBe('Ogni 3 giorni')
+  })
+
+  it('renders a monthly ordinal rule ("2° martedì")', () => {
+    const rule = taskRecurrenceDetail({
+      frequency: 'monthly',
+      interval: 1,
+      weekdays: null,
+      month_mode: 'ordinal',
+      ordinal: 2,
+      ordinal_weekday: 2,
+      ends: 'never',
+      ends_on: null,
+    })
+
+    expect(formatTaskRecurrenceRule(rule, i18n.t, 'it')).toBe('Ogni mese il 2° martedì')
+  })
+
+  it('renders a yearly ordinal rule ("2° martedì di marzo")', () => {
+    const rule = taskRecurrenceDetail({
+      frequency: 'yearly',
+      interval: 1,
+      weekdays: null,
+      month_mode: 'ordinal',
+      ordinal: 2,
+      ordinal_weekday: 2,
+      year_month: 3,
+      ends: 'never',
+      ends_on: null,
+    })
+
+    expect(formatTaskRecurrenceRule(rule, i18n.t, 'it')).toBe('Ogni anno il 2° martedì di marzo')
+  })
+
+  it('renders a yearly fixed rule with the day and month name', () => {
+    const rule = taskRecurrenceDetail({
+      frequency: 'yearly',
+      interval: 1,
+      weekdays: null,
+      month_mode: 'fixed',
+      month_day: 5,
+      year_month: 3,
+      ends: 'never',
+      ends_on: null,
+    })
+
+    expect(formatTaskRecurrenceRule(rule, i18n.t, 'it')).toBe('Ogni anno il 5 marzo')
+  })
+
+  it('appends the workdays-only suffix', () => {
+    const rule = taskRecurrenceDetail({
+      frequency: 'daily',
+      interval: 1,
+      weekdays: null,
+      workdays_only: true,
+      ends: 'never',
+      ends_on: null,
+    })
+
+    expect(formatTaskRecurrenceRule(rule, i18n.t, 'it')).toBe('Ogni giorno, solo nei giorni lavorativi')
+  })
+
+  it('renders the yearly ordinal rule in en, with the correct ordinal suffix', async () => {
+    await i18n.changeLanguage('en')
+    const rule = taskRecurrenceDetail({
+      frequency: 'yearly',
+      interval: 1,
+      weekdays: null,
+      month_mode: 'ordinal',
+      ordinal: 2,
+      ordinal_weekday: 2,
+      year_month: 3,
+      ends: 'never',
+      ends_on: null,
+    })
+
+    expect(formatTaskRecurrenceRule(rule, i18n.t, 'en')).toBe('Every year on the 2nd Tuesday of March')
+    await i18n.changeLanguage('it')
+  })
+})

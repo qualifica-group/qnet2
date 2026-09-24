@@ -89,6 +89,13 @@ final class TaskRecurrenceService
      * untouched otherwise. $exceptTaskId is always the Task this very PATCH
      * is writing — it is mid-request, never a candidate for deletion by the
      * very rule change it is submitting, capostipite or not (D-4).
+     *
+     * Spec 0155, D-2: `Task::parentTask()`'s FK is `restrictOnDelete` — an
+     * occurrence carrying its copied sub-tasks cannot be deleted while they
+     * still exist, virgin or not. `isVirgin()` having ALREADY confirmed every
+     * one of them is untouched (isUntouchedCopiedSubtask()) makes deleting
+     * them first, right before the occurrence itself, safe: neither holds
+     * anything a real user has acted on.
      */
     private function pruneVirginFutureOccurrences(TaskRecurrence $recurrence, int $exceptTaskId): void
     {
@@ -100,6 +107,7 @@ final class TaskRecurrenceService
             ->get()
             ->each(function (Task $occurrence): void {
                 if ($this->isVirgin($occurrence)) {
+                    $occurrence->subtasks->each(fn (Task $subtask) => $subtask->delete());
                     $occurrence->delete();
                 }
             });
@@ -108,12 +116,19 @@ final class TaskRecurrenceService
     /**
      * D-11, verbatim: future (filtered by the caller already), phase
      * open/pending, not blocked, no completion_date, no closure_feedback,
-     * and no sub-tasks/notes/attachments — the first sign of life anywhere
-     * in that list makes the occurrence NOT virgin.
+     * and no notes/attachments of its own — the first sign of life anywhere
+     * in that list makes the occurrence NOT virgin. Spec 0155, D-2 changes
+     * the sub-task leg only: an occurrence's COPIED sub-tasks (D-2 of that
+     * spec) no longer disqualify it outright — only a copy that was itself
+     * TOUCHED does (isUntouchedCopiedSubtask() below), so a series whose
+     * template carries sub-tasks can still be pruned/regenerated normally.
      */
     private function isVirgin(Task $occurrence): bool
     {
-        $occurrence->loadMissing(['taskStatus', 'subtasks', 'notes', 'attachments']);
+        $occurrence->loadMissing([
+            'taskStatus', 'notes', 'attachments',
+            'subtasks.taskStatus', 'subtasks.timeEntries', 'subtasks.notes', 'subtasks.attachments',
+        ]);
 
         if ($occurrence->is_blocked) {
             return false;
@@ -127,7 +142,42 @@ final class TaskRecurrenceService
             return false;
         }
 
-        return $occurrence->subtasks->isEmpty() && $occurrence->notes->isEmpty() && $occurrence->attachments->isEmpty();
+        if (! $occurrence->subtasks->every(fn (Task $subtask): bool => $this->isUntouchedCopiedSubtask($subtask))) {
+            return false;
+        }
+
+        return $occurrence->notes->isEmpty() && $occurrence->attachments->isEmpty();
+    }
+
+    /**
+     * Spec 0155, D-2: a sub-task TaskOccurrenceFactory copied onto an
+     * occurrence counts as untouched — and so does not spoil that
+     * occurrence's own virginity — when NOTHING real has happened to it
+     * since: the exact same D-11 signal isVirgin() checks on the occurrence
+     * itself (blocked, phase, completion/closure_feedback, notes/
+     * attachments), plus its own segnatempo. Deliberately NOT a
+     * `updated_at == created_at` timestamp comparison: a copy created and
+     * then completed within the same wall-clock SECOND (routine in a test,
+     * not impossible in production either — these columns carry no
+     * microseconds) would round-trip to an identical value and hide a real
+     * completion; checking the fields a touch actually WRITES has no such
+     * blind spot.
+     */
+    private function isUntouchedCopiedSubtask(Task $subtask): bool
+    {
+        if ($subtask->is_blocked) {
+            return false;
+        }
+
+        if (! in_array($subtask->taskStatus?->group, [TaskStatusGroup::Open, TaskStatusGroup::Pending], true)) {
+            return false;
+        }
+
+        if ($subtask->completion_date !== null || trim((string) $subtask->closure_feedback) !== '') {
+            return false;
+        }
+
+        return $subtask->timeEntries->isEmpty() && $subtask->notes->isEmpty() && $subtask->attachments->isEmpty();
     }
 
     /**

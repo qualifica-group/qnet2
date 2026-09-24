@@ -161,3 +161,60 @@ it('D-14: the occurrence notifies its assignees and watchers with the system as 
     Notification::assertSentTo($assignee, TaskAssigned::class);
     Notification::assertSentTo($watcher, TaskObserver::class);
 });
+
+it('AC-004 (spec 0155, D-2): the occurrence copies the originator\'s direct sub-task, dates shifted by the same offset, position preserved, status re-derived', function () {
+    $originator = Task::factory()->create(['end_date' => '2026-03-15']);
+    $requester = User::factory()->create();
+    $assignee = User::factory()->create();
+    $watcher = User::factory()->create();
+
+    $subtask = Task::factory()->childOf($originator)->create([
+        'title' => 'Verifica documenti',
+        'requester_id' => $requester->id,
+        'start_date' => '2026-03-10',
+        'end_date' => '2026-03-12',
+        'subtask_position' => 3,
+    ]);
+    $subtask->assignees()->sync([$assignee->id]);
+    $subtask->watchers()->sync([$watcher->id]);
+
+    Notification::fake();
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
+
+    $copiedSubtask = $occurrence->subtasks()->sole();
+
+    expect($copiedSubtask->title)->toBe('Verifica documenti')
+        ->and($copiedSubtask->requester_id)->toBe($requester->id)
+        ->and($copiedSubtask->start_date->toDateString())->toBe('2026-04-10')
+        ->and($copiedSubtask->end_date->toDateString())->toBe('2026-04-12')
+        ->and($copiedSubtask->subtask_position)->toBe(3)
+        ->and($copiedSubtask->parent_task_id)->toBe($occurrence->id)
+        ->and($copiedSubtask->assignees->pluck('id')->all())->toBe([$assignee->id])
+        ->and($copiedSubtask->watchers->pluck('id')->all())->toBe([$watcher->id])
+        ->and($copiedSubtask->task_status_id)->toBe(systemTaskStatusId(TaskStatusSystemKey::Assigned));
+});
+
+it('AC-004 (spec 0155, D-2): a sub-task without dates of its own produces a copy with none either', function () {
+    $originator = Task::factory()->create(['end_date' => '2026-03-15']);
+    Task::factory()->childOf($originator)->create(['start_date' => null, 'end_date' => null]);
+
+    Notification::fake();
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
+
+    $copiedSubtask = $occurrence->subtasks()->sole();
+
+    expect($copiedSubtask->start_date)->toBeNull()
+        ->and($copiedSubtask->end_date)->toBeNull();
+});
+
+it('D-2 (spec 0155): a sub-task of a sub-task is never copied (one level only)', function () {
+    $originator = Task::factory()->create(['end_date' => '2026-03-15']);
+    $subtask = Task::factory()->childOf($originator)->create();
+    Task::factory()->childOf($subtask)->create();
+
+    Notification::fake();
+    $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
+
+    expect($occurrence->subtasks()->count())->toBe(1)
+        ->and($occurrence->subtasks()->sole()->subtasks()->exists())->toBeFalse();
+});

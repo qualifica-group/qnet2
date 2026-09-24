@@ -6,6 +6,7 @@ namespace App\Services\Tasks;
 
 use App\Enums\TaskStatusGroup;
 use App\Models\Task;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * WHEN a domain action makes sense, driven by the PHASE of the Task's
@@ -25,6 +26,9 @@ use App\Models\Task;
  */
 class TaskActionAvailability
 {
+    /** Attribute withOpenSubtasksCount() preloads. */
+    public const string OPEN_SUBTASKS_COUNT = 'open_subtasks_count';
+
     /** Not already in a closing phase and not already awaiting validation. */
     public function isCompletable(Task $task): bool
     {
@@ -79,12 +83,38 @@ class TaskActionAvailability
      */
     public function openSubtasksCount(Task $task): int
     {
+        // Preloaded for a whole collection by withOpenSubtasksCount(): one
+        // query for every sub-task row instead of one per row.
+        if (array_key_exists(self::OPEN_SUBTASKS_COUNT, $task->getAttributes())) {
+            return (int) $task->getAttribute(self::OPEN_SUBTASKS_COUNT);
+        }
+
         return $task->subtasks()
             ->whereHas('taskStatus', fn ($query) => $query->whereNotIn('group', [
                 TaskStatusGroup::ClosedPositive->value,
                 TaskStatusGroup::ClosedNegative->value,
             ]))
             ->count();
+    }
+
+    /**
+     * Preloads openSubtasksCount() for every Task the query returns, with the
+     * same unscoped predicate.
+     *
+     * @template TModel of Task
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public static function withOpenSubtasksCount(Builder $query): Builder
+    {
+        return $query->withCount(['subtasks as '.self::OPEN_SUBTASKS_COUNT => fn (Builder $subtasks) => $subtasks->whereHas(
+            'taskStatus',
+            fn (Builder $status) => $status->whereNotIn('group', [
+                TaskStatusGroup::ClosedPositive->value,
+                TaskStatusGroup::ClosedNegative->value,
+            ]),
+        )]);
     }
 
     private function isClosedOrInValidation(Task $task): bool

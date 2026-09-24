@@ -13,6 +13,8 @@ export interface EntityDetailResult<T> {
   isLoading: boolean
   /** The on-open fetch failed. Pair with `refetch` for a retry affordance. */
   isError: boolean
+  /** The raw error the fetch rejected with, e.g. for a caller that branches on the HTTP status (spec 0155 D-7). */
+  error: unknown
   /** Re-runs the fetch (used by the error retry action). */
   refetch: () => void
 }
@@ -44,6 +46,7 @@ export function useEntityDetail<T>(
   return {
     data: query.data,
     isError: query.isError,
+    error: query.error,
     refetch: () => void query.refetch(),
     // `isPending` covers the cold cache; `isFetching` keeps the skeleton up while
     // the on-open refetch replaces an existing (stale) snapshot. Guarded by

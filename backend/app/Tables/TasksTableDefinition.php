@@ -84,7 +84,7 @@ class TasksTableDefinition extends AbstractTableDefinition
         // see — the same unscoped fact the delete guard asserts on (D-8a).
         return TaskVisibilityScope::scopeToActor(
             Task::query()->withCount('subtasks')->with([
-                'taskStatus',
+                ...TaskStatusResolver::EAGER_LOADS,
                 'taskType',
                 'taskPriority',
                 'taskImportance',

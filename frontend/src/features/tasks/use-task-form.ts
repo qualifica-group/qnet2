@@ -21,6 +21,7 @@ import {
 } from '@/features/tasks/task-form-server-error-fields'
 import { emptyRecurrenceDefaults, recurrenceDefaults } from '@/features/tasks/task-recurrence-defaults'
 import { buildTaskSchema, type TaskFormValues } from '@/features/tasks/task-schema'
+import { applySubtaskServerErrors } from '@/features/tasks/task-subtask-rows'
 import { resolveWorkOrderStagePrefill, useTaskFormStageHandlers } from '@/features/tasks/use-task-form-stage-handlers'
 import { useTaskLookupDefaults } from '@/features/tasks/use-task-lookup-defaults'
 import { useTaskParentPrefill } from '@/features/tasks/use-task-parent-prefill'
@@ -32,6 +33,8 @@ import type { TaskDetail, TaskFormMode } from '@/features/tasks/types'
 
 /** Stable module-level default: a fresh `[]` per render would break dependency stability. */
 const EMPTY_IDS: number[] = []
+/** Spec 0155 D-3: the create-only "Sottotask" block starts empty; edit mode never touches this field. */
+const EMPTY_SUBTASKS: TaskFormValues['subtasks'] = []
 
 /** Today as `YYYY-MM-DD` in the ACTOR's own local calendar day (not UTC: a `Y-m-d` due date compares as a plain string). */
 function todayIsoDate(): string {
@@ -96,6 +99,7 @@ function createDefaults(
     assignee_ids: EMPTY_IDS,
     watcher_ids: EMPTY_IDS,
     recurrence: emptyRecurrenceDefaults(),
+    subtasks: EMPTY_SUBTASKS,
   }
 }
 
@@ -133,6 +137,7 @@ function editDefaults(task: TaskDetail): TaskFormValues {
     assignee_ids: task.assignees.map((user) => user.id),
     watcher_ids: task.watchers.map((user) => user.id),
     recurrence: recurrenceDefaults(task.recurrence),
+    subtasks: EMPTY_SUBTASKS,
   }
 }
 
@@ -380,6 +385,11 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
       ).find((message): message is string => message !== null)
       if (toastMessage) {
         toast.error(toastMessage)
+        return
+      }
+      // Spec 0155 D-3: `subtasks.N.field` 422s address a dynamic row index —
+      // handled separately from the fixed `errorFields` list below.
+      if (mode.type !== 'edit' && applySubtaskServerErrors(error, form.setError)) {
         return
       }
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {

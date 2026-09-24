@@ -6,12 +6,28 @@
 
 import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
 import type {
+  TaskActionKey,
   TaskDetail,
   TaskDetailWithPermissions,
   TaskRecurrenceDetail,
   TaskStatusRef,
+  TaskSubtask,
 } from '@/features/tasks/types'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
+
+/** Every `TaskActionKey` flag off, for a subtask fixture that offers no domain action. */
+export const NO_TASK_ACTIONS: Record<TaskActionKey, boolean> = {
+  complete: false,
+  uncomplete: false,
+  approve: false,
+  reject: false,
+  block: false,
+  unblock: false,
+  request_update: false,
+  close_via_status: false,
+  create_subtask: false,
+  change_status: false,
+}
 
 export const EDITABLE_FIELD: FieldPermission = {
   visible: true,
@@ -51,7 +67,12 @@ export function taskRecurrenceFormValues(
     frequency: null,
     interval: 1,
     weekdays: [],
+    month_mode: null,
     month_day: null,
+    ordinal: null,
+    ordinal_weekday: null,
+    year_month: null,
+    workdays_only: false,
     ends: null,
     ends_on: null,
     occurrence_count: null,
@@ -65,10 +86,34 @@ export function taskRecurrenceDetail(overrides: Partial<TaskRecurrenceDetail> = 
     frequency: 'weekly',
     interval: 2,
     weekdays: [1, 3],
+    month_mode: null,
     month_day: null,
+    ordinal: null,
+    ordinal_weekday: null,
+    year_month: null,
+    workdays_only: false,
     ends: 'on_date',
     ends_on: '2027-03-31',
     occurrence_count: null,
+    ...overrides,
+  }
+}
+
+/**
+ * `task_status` reuses `taskStatus()` rather than a literal `{name: ...}`:
+ * this fixture lives OUTSIDE any `.test.ts(x)` file, so a hard-coded status
+ * label here would trip the backend's own `TaskModuleHygieneTest` AC-024
+ * scan (no production file of the module may mention a status label).
+ */
+export function taskSubtask(overrides: Partial<TaskSubtask> = {}): TaskSubtask {
+  return {
+    id: 101,
+    title: 'Preparare il preventivo',
+    task_status: taskStatus({ id: 2, group: 'open' }),
+    completion_percentage: 0,
+    assignees: [{ id: 31, name: 'Dario Dini' }],
+    position: 0,
+    permissions: { actions: { ...NO_TASK_ACTIONS, complete: true, delete: false } },
     ...overrides,
   }
 }
@@ -104,6 +149,7 @@ export function taskFormValues(overrides: Partial<TaskFormValues> = {}): TaskFor
     assignee_ids: [31, 32],
     watcher_ids: [41],
     recurrence: taskRecurrenceFormValues(),
+    subtasks: [],
     ...overrides,
   }
 }

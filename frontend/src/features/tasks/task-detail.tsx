@@ -165,10 +165,12 @@ export function TaskDetailView({ task, onEdit, onOpenSubtask, onCreateSubtask }:
             ) : null}
 
             <TaskSubtasksSection
+              parentTaskId={task.id}
               subtasks={task.subtasks}
               onOpen={onOpenSubtask}
               onCreate={onCreateSubtask}
               canCreateSubtask={task.permissions.actions.create_subtask}
+              canReorder={task.permissions.resource.update}
             />
           </RecordSectionsGrid>
         </RecordCard>

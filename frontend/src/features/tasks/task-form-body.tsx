@@ -7,6 +7,7 @@ import { TaskAttachmentStaging } from '@/features/tasks/task-attachment-staging'
 import { TaskClassificationSection } from '@/features/tasks/task-classification-section'
 import { TaskClosureSection } from '@/features/tasks/task-closure-section'
 import { TaskFormHeader } from '@/features/tasks/task-form-header'
+import { TaskFormSubtasksSection } from '@/features/tasks/task-form-subtasks-section'
 import { TaskFormSummary } from '@/features/tasks/task-form-summary'
 import { TaskIdentitySection } from '@/features/tasks/task-identity-section'
 import { TaskLinksSection } from '@/features/tasks/task-links-section'
@@ -221,6 +222,8 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
               />
 
               <TaskRecurrenceSection control={form.control} />
+
+              {mode.type === 'create' ? <TaskFormSubtasksSection control={form.control} /> : null}
 
               {mode.type === 'create' ? (
                 <TaskAttachmentStaging

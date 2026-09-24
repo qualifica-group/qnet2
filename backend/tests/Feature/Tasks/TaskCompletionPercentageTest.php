@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -285,6 +286,24 @@ it('AC-013: an open parent with two 100% children caps the average at 99', funct
         ->assertJsonPath('data.completion_percentage', 99);
 });
 
+// The percentage is a property of the task, not of the viewer: a child the
+// actor cannot see still counts in the average.
+it('AC-013: the average counts every child, also those the actor cannot see', function () {
+    $actor = taskActorWith(['view'], withViewAll: false);
+    $openParent = TaskStatus::factory()->group(TaskStatusGroup::Open)->completion(0)->create();
+    $parent = Task::factory()->forCreator($actor)->inStatus($openParent)->create();
+    $closing = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+    $zero = TaskStatus::factory()->group(TaskStatusGroup::Open)->completion(0)->create();
+    Task::factory()->forCreator($actor)->inStatus($closing)->create(['parent_task_id' => $parent->id]);
+    Task::factory()->inStatus($zero)->create(['parent_task_id' => $parent->id]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$parent->id}")
+        ->assertOk()
+        ->assertJsonCount(1, 'data.subtasks')
+        ->assertJsonPath('data.completion_percentage', 50);
+});
+
 it('AC-013: an open parent with children at 50 and 100 shows the rounded average, 75', function () {
     $actor = taskActorWith(['view']);
     $openParent = TaskStatus::factory()->group(TaskStatusGroup::Open)->completion(0)->create();
@@ -331,4 +350,35 @@ it('AC-013: the average recurses through a grandchild level', function () {
     $this->getJson("/api/tasks/{$parent->id}")
         ->assertOk()
         ->assertJsonPath('data.completion_percentage', 99);
+});
+
+// The derived percentage must not cost one query per grid row.
+it('AC-013: the grid computes the percentage with the same number of queries for 1 or 5 rows', function () {
+    $actor = taskActorWith(['viewAny', 'view']);
+    Sanctum::actingAs($actor);
+    $closing = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+
+    $queriesFor = function (int $rows) use ($actor, $closing): int {
+        Task::query()->whereNotNull('parent_task_id')->delete();
+        Task::query()->delete();
+        foreach (range(1, $rows) as $index) {
+            $parent = Task::factory()->forCreator($actor)->create();
+            Task::factory()->inStatus($closing)->create(['parent_task_id' => $parent->id]);
+        }
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->postJson('/api/tables/tasks/rows', [
+            'startRow' => 0, 'endRow' => 25, 'advancedFilters' => ['assignment' => ['visible']],
+        ])->assertOk();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    // Warm-up: roles/permissions and catalogues are cached after the first call.
+    $queriesFor(1);
+
+    expect($queriesFor(5))->toBe($queriesFor(1));
 });

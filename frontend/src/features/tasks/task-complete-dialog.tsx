@@ -70,11 +70,14 @@ function completeTaskDefaultValues(): CompleteTaskFormValues {
  * Omits `closure_feedback` when blank; omits `validation_status_id` entirely
  * off the validation path (D-3); `time_entry` is always present (spec 0123
  * D-1), already validated by `useTaskCompleteTimeEntryForm.validate()`.
+ * `for_all_assignees` (spec 0155 D-6) is sent only when `true` — the server
+ * default (`false`) already covers the sub-task panel's own case.
  */
 function buildCompletePayload(
   values: CompleteTaskFormValues,
   toValidation: boolean,
   timeEntry: CompleteTaskTimeEntryPayload,
+  forAllAssignees: boolean,
 ): CompleteTaskPayload {
   const payload: CompleteTaskPayload = { time_entry: timeEntry }
   const feedback = values.closure_feedback.trim()
@@ -84,6 +87,9 @@ function buildCompletePayload(
   if (toValidation) {
     payload.validation_status_id = values.validation_status_id
   }
+  if (forAllAssignees) {
+    payload.for_all_assignees = true
+  }
   return payload
 }
 
@@ -91,6 +97,18 @@ interface TaskCompleteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   task: TaskDetailWithPermissions
+  /**
+   * Spec 0155 D-6: `true` from the task detail (and list); `false` from the
+   * sub-task panel and the kanban — q-net's own behaviour, no user-facing
+   * toggle. Required (no default) so every call site states its own intent.
+   */
+  forAllAssignees: boolean
+  /**
+   * Fires after a successful completion, in addition to closing the dialog.
+   * The sub-task panel uses it to refresh the PARENT's own cached detail —
+   * `useCompleteTask` only seeds this task's own query.
+   */
+  onCompleted?: () => void
 }
 
 /**
@@ -103,7 +121,13 @@ interface TaskCompleteDialogProps {
  * "Segnatempo" section below is a SEPARATE `useForm` (`use-task-complete-time-entry-form.ts`)
  * validated and submitted together with this one.
  */
-export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDialogProps) {
+export function TaskCompleteDialog({
+  open,
+  onOpenChange,
+  task,
+  forAllAssignees,
+  onCompleted,
+}: TaskCompleteDialogProps) {
   const { t } = useTranslation()
   const selectLabels = useTaskSelectLabels()
   const toValidation = task.permissions.actions.complete_to_validation
@@ -123,6 +147,7 @@ export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDia
       onOpenChange(false)
       form.reset(completeTaskDefaultValues())
       timeEntryForm.reset()
+      onCompleted?.()
     },
   })
 
@@ -134,7 +159,9 @@ export function TaskCompleteDialog({ open, onOpenChange, task }: TaskCompleteDia
       return
     }
     try {
-      await completeMutation.mutateAsync(buildCompletePayload(values, toValidation, timeEntryPayload))
+      await completeMutation.mutateAsync(
+        buildCompletePayload(values, toValidation, timeEntryPayload, forAllAssignees),
+      )
     } catch (error) {
       // 409 (Task bloccato, AC-044) has no field to attach to: a dedicated
       // toast. A 422 on a known field (feedback/validation status/time_entry.*)
