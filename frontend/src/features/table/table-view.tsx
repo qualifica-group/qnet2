@@ -414,6 +414,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
             columns={config.columns}
             actionsColumnId={ACTIONS_COLUMN_ID}
             search={toolbar.getSearchTerm()}
+            advancedFilters={advancedFilters.activeValues}
             opportunityId={opportunityId}
             quoteId={quoteId}
           />

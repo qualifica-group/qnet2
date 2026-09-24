@@ -37,7 +37,7 @@ class ExportService
     ) {}
 
     /**
-     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, opportunityId?: int|null, quoteId?: int|null}  $state
+     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, search?: string|null, opportunityId?: int|null, quoteId?: int|null}  $state
      */
     public function start(User $actor, TableDefinition $definition, array $state, ExportFormat $format): ExportRun
     {
@@ -81,7 +81,7 @@ class ExportService
         // The queue worker forgets the guards after every job.
         Auth::setUser($actor);
 
-        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, opportunityId?: int|null, quoteId?: int|null} $state */
+        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, search?: string|null, opportunityId?: int|null, quoteId?: int|null} $state */
         $state = $run->state;
         $columns = $state['columns'];
 

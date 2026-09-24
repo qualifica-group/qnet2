@@ -1,3 +1,5 @@
+import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
+
 /**
  * Generic per-table export types (spec 0014). The feature is parametrized on
  * a `domain` string (e.g. `companies`); every shape below matches the frozen
@@ -33,6 +35,8 @@ export interface CreateExportPayload {
   sortModel?: ExportSortModelItem[]
   filterModel?: Record<string, unknown>
   search?: string
+  /** Applied advanced filters (spec 0032), frozen and reapplied by the job. */
+  advancedFilters?: AdvancedFilterValues
   /**
    * Row-set scope to one parent record (spec 0067 D-5, e.g. an Opportunity's
    * Quotes panel export). Frozen into `ExportRun.state` and reapplied by the

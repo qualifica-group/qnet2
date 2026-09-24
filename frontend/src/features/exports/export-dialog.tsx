@@ -16,6 +16,7 @@ import { useExport } from '@/features/exports/use-export'
 import { ExportProgress } from '@/features/exports/export-progress'
 import type { ExportFormat } from '@/features/exports/types'
 import type { TableColumn, TableRow } from '@/features/table/types'
+import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 
 /** The two formats enabled by the backend (`config('exports.formats')`). */
 const FORMATS: readonly ExportFormat[] = ['csv', 'xlsx']
@@ -27,6 +28,8 @@ const FORMAT_ICON: Record<ExportFormat, typeof FileText> = {
 
 /** Narrow form: the sheet opens at this width until the user resizes it. */
 const EXPORT_SHEET_DEFAULT_WIDTH = 448
+
+const NO_ADVANCED_FILTERS: AdvancedFilterValues = {}
 
 export interface ExportDialogProps {
   /** Resource key that selects the backend `TableDefinition` (`/exports/{domain}`). */
@@ -41,6 +44,11 @@ export interface ExportDialogProps {
   actionsColumnId: string
   /** The applied global search term (may be empty). */
   search: string
+  /**
+   * The applied advanced filters (spec 0032), forwarded into the create
+   * payload so the file holds exactly the rows the grid shows.
+   */
+  advancedFilters?: AdvancedFilterValues
   /**
    * Row-set scope to one parent record (spec 0067 D-5, e.g. an Opportunity's
    * Quotes panel), forwarded verbatim into the create payload. Omitted/null
@@ -69,6 +77,7 @@ export function ExportDialog({
   columns,
   actionsColumnId,
   search,
+  advancedFilters = NO_ADVANCED_FILTERS,
   opportunityId,
   quoteId,
 }: ExportDialogProps) {
@@ -98,6 +107,7 @@ export function ExportDialog({
       filterModel:
         Object.keys(gridState.filterModel).length > 0 ? gridState.filterModel : undefined,
       search: gridState.search !== '' ? gridState.search : undefined,
+      ...(Object.keys(advancedFilters).length > 0 ? { advancedFilters } : {}),
       ...(opportunityId != null ? { opportunityId } : {}),
       ...(quoteId != null ? { quoteId } : {}),
     })
@@ -167,7 +177,10 @@ export function ExportDialog({
                   </div>
                   <div>
                     <dt className="text-muted-foreground">{t('exports.stateSummary.filters')}</dt>
-                    <dd className="font-medium">{Object.keys(gridState.filterModel).length}</dd>
+                    <dd className="font-medium">
+                      {Object.keys(gridState.filterModel).length +
+                        Object.keys(advancedFilters).length}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">{t('exports.stateSummary.sort')}</dt>

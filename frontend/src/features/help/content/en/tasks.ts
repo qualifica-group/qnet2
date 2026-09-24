@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'The **Completion** percentage depends on the status chosen and is never entered by hand.',
+          text: 'The **Completion** percentage depends on the status chosen and is never entered by hand. The bar and the figure are coloured as in the work order: red up to 33%, amber up to 66%, blue above, green at 100%.',
         },
       ],
     },

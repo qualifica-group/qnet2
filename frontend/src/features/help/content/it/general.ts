@@ -69,7 +69,7 @@ const guide: HelpGuide = {
         { type: 'warning', text: 'L’eliminazione multipla è definitiva e non si può annullare.' },
         { type: 'paragraph', text: 'Per esportare i dati che vedi nell’elenco:' },
         { type: 'steps', items: ['Imposta ricerca, filtri, ordinamento e colonne come ti servono.', 'Apri **Opzioni tabella** e scegli **Esporta**.', 'Nel pannello **Esporta dati** scegli **CSV** o **Excel (XLSX)**.', 'Controlla il riepilogo e premi **Esporta**.', 'A elaborazione completata premi **Scarica il file**.'] },
-        { type: 'note', text: 'Il file contiene esattamente quello che vedi nell’elenco.' },
+        { type: 'note', text: 'Il file contiene esattamente quello che vedi nell’elenco, compresi i filtri avanzati applicati. Il riepilogo li conta tra i filtri attivi.' },
       ],
     },
     {

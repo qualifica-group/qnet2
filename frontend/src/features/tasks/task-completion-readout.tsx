@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { FIELD_STACK_CLASS } from '@/components/record-form/layout'
+import { cn } from '@/lib/utils'
+import { completionTone } from '@/features/work-orders/task-board/task-board-completion-tone'
 
 interface TaskCompletionReadoutProps {
   /** Derived from the picked status (D-6); `null` while no status is picked. */
@@ -19,6 +21,8 @@ interface TaskCompletionReadoutProps {
 export function TaskCompletionReadout({ percentage }: TaskCompletionReadoutProps) {
   const { t } = useTranslation()
   const hasValue = percentage !== null
+  // No status picked -> neutral bar; otherwise the shared completion colour.
+  const tone = hasValue ? completionTone(percentage) : null
 
   return (
     <div className={FIELD_STACK_CLASS}>
@@ -27,10 +31,16 @@ export function TaskCompletionReadout({ percentage }: TaskCompletionReadoutProps
         <Progress
           value={hasValue ? percentage : 0}
           size="sm"
-          className="flex-1"
+          className={cn('flex-1', tone?.track)}
+          indicatorClassName={tone?.indicator}
           aria-label={t('tasks.form.completionPercentage')}
         />
-        <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+        <span
+          className={cn(
+            'w-10 shrink-0 text-right text-xs tabular-nums',
+            tone ? cn('font-semibold', tone.text) : 'text-muted-foreground',
+          )}
+        >
           {hasValue ? t('tasks.form.percentValue', { value: percentage }) : '—'}
         </span>
       </div>

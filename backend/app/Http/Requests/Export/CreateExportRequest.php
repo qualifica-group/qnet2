@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Export;
 
 use App\Http\Requests\Table\TableRowsRequest;
+use App\Services\Table\AdvancedFilterApplier;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -70,6 +71,11 @@ class CreateExportRequest extends FormRequest
             // the grid is filtered by, so the two must never diverge.
             'search' => ['sometimes', 'nullable', 'string', 'max:'.TableRowsRequest::SEARCH_MAX_LENGTH],
 
+            // Spec 0032: the grid's applied advanced filters, so the file
+            // holds the rows the grid shows. Names/values are checked against
+            // the definition's catalogue in withValidator() below.
+            'advancedFilters' => ['sometimes', 'nullable', 'array'],
+
             // Spec 0067, D-5: scopes a `quotes` export to one Opportunity's
             // Offerte — a no-op key for every other domain.
             'opportunityId' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
@@ -81,26 +87,36 @@ class CreateExportRequest extends FormRequest
     }
 
     /**
-     * Cross-field check Laravel rules can't express cleanly: every
-     * filterModel key must be within the filterable whitelist.
+     * Cross-field checks Laravel rules can't express cleanly: every
+     * filterModel key must be within the filterable whitelist, and every
+     * advancedFilters entry within the definition's catalogue.
      */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
             $filterModel = $this->input('filterModel');
 
-            if (! is_array($filterModel)) {
-                return;
+            if (is_array($filterModel)) {
+                $filterable = $this->definition()->filterableColumnIds();
+
+                foreach (array_keys($filterModel) as $columnId) {
+                    if (! in_array($columnId, $filterable, true)) {
+                        $validator->errors()->add(
+                            "filterModel.{$columnId}",
+                            "Filtering is not allowed on column [{$columnId}]."
+                        );
+                    }
+                }
             }
 
-            $filterable = $this->definition()->filterableColumnIds();
+            $advancedFilters = $this->input('advancedFilters');
 
-            foreach (array_keys($filterModel) as $columnId) {
-                if (! in_array($columnId, $filterable, true)) {
-                    $validator->errors()->add(
-                        "filterModel.{$columnId}",
-                        "Filtering is not allowed on column [{$columnId}]."
-                    );
+            if (is_array($advancedFilters)) {
+                $catalog = array_column($this->definition()->advancedFilters(), null, 'name');
+                $errors = app(AdvancedFilterApplier::class)->validate($catalog, $advancedFilters);
+
+                foreach ($errors as $name => $message) {
+                    $validator->errors()->add("advancedFilters.{$name}", $message);
                 }
             }
         });

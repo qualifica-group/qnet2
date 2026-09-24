@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMPLETAMENTO TASK COLORATO — VERDE, NON COMMITTATO (2026-09-24)
+
+- Colonna griglia `completion_percentage` dei task (`TaskPercentageCell`) e readout nel form (`TaskCompletionReadout`)
+  ora usano `completionTone` (`work-orders/task-board/task-board-completion-tone.ts`): stessi colori di board/commessa.
+  Readout senza stato scelto resta neutro. Guida in-app `tasks` IT/EN aggiornata. Vitest tasks/work-orders/help verdi,
+  `tsc -b --force` ed ESLint puliti. Manuale Claude Docs (sezione Attività) da allineare.
+
+## EXPORT CON FILTRI AVANZATI (confronto q-net, punto 1.1) — VERDE, NON COMMITTATO (2026-09-24)
+
+- Bug: l'export generico ignorava `advancedFilters` (spec 0032) e i loro default `required` (tasks: `status=open`),
+  quindi il file poteva contenere righe diverse dalla griglia. Ora `CreateExportRequest` accetta e valida
+  `advancedFilters` (stesso `AdvancedFilterApplier::validate` di `TableRowsRequest`), `ExportController` lo congela
+  nello state, `TableQueryBuilder::build()` chiama `applyAdvancedFilters`. FE: `ExportDialog` prop `advancedFilters`
+  (da `advancedFilters.activeValues` in `table-view.tsx`), inviato nel payload e contato nel riepilogo "Filtri attivi".
+- Test: `tests/Feature/Exports/ExportAdvancedFiltersTest.php` (4), `export-dialog.test.tsx` (+1). Pest Exports/Tasks/
+  export 519/519, Pint pulito; Vitest exports/table/help verdi, `tsc -b --force` ed ESLint puliti.
+- Guida in-app `general` IT/EN aggiornata (nota export). APERTO fuori scope: l'export non inoltra `productCategoryId`
+  (request-management, colonne `attr.*`).
+- Resto del PDF `confronto-task-qnet-qnet2-v2` (17 funzioni mancanti + 18 differenze): in attesa di decisioni utente.
+
 ## GRAFICI STATISTICHE DIFFERENZIATI (spec 0152) — VERDE, NON COMMITTATO (2026-09-23)
 
 - Widget stats: `distribution.chart` (bars|columns|donut|stacked) e `trend.chart` (area|columns|line) + `tone` 1..5,

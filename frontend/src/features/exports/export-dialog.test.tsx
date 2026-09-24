@@ -84,6 +84,7 @@ function renderDialog(
   gridApi: GridApi<TableRow> | null = stubGridApi([{ colId: 'name', hide: false } as ColumnState]),
   onOpenChange = vi.fn(),
   opportunityId?: number | null,
+  advancedFilters?: Record<string, string>,
 ) {
   render(
     <ExportDialog
@@ -94,6 +95,7 @@ function renderDialog(
       columns={COLUMNS}
       actionsColumnId={ACTIONS_COLUMN_ID}
       search=""
+      advancedFilters={advancedFilters}
       opportunityId={opportunityId}
     />,
     { wrapper: wrapper() },
@@ -196,6 +198,30 @@ describe('ExportDialog', () => {
       expect(createExportMock).toHaveBeenCalledWith(
         'companies',
         expect.objectContaining({ opportunityId: 7 }),
+      ),
+    )
+  })
+
+  // The file must hold the rows the grid shows: the applied advanced filters
+  // travel with the payload and count in the summary.
+  it('includes the applied advanced filters in the create payload and the summary', async () => {
+    createExportMock.mockResolvedValue(baseRun({ status: 'processing' }))
+
+    renderDialog(
+      stubGridApi([{ colId: 'name', hide: false } as ColumnState], { name: { type: 'contains' } }),
+      vi.fn(),
+      null,
+      { status: 'completed' },
+    )
+
+    expect(screen.getByText('Active filters').nextElementSibling).toHaveTextContent('2')
+
+    fireEvent.click(screen.getByRole('button', { name: /^export$/i }))
+
+    await waitFor(() =>
+      expect(createExportMock).toHaveBeenCalledWith(
+        'companies',
+        expect.objectContaining({ advancedFilters: { status: 'completed' } }),
       ),
     )
   })

@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'Il **Completamento** in percentuale dipende dallo stato scelto e non si inserisce a mano.',
+          text: 'Il **Completamento** in percentuale dipende dallo stato scelto e non si inserisce a mano. La barra e il numero sono colorati come nella commessa: rosso fino al 33%, ambra fino al 66%, blu oltre, verde al 100%.',
         },
       ],
     },

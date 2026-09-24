@@ -28,7 +28,7 @@ class TableQueryBuilder
      * definition's baseQuery(). This is the one-shot entry point ExportService
      * uses to stream the exact rows the grid would show.
      *
-     * @param  array{sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null}  $state
+     * @param  array{sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>}  $state
      * @return Builder<Model>
      */
     public function build(TableDefinition $definition, array $state): Builder
@@ -36,6 +36,7 @@ class TableQueryBuilder
         $query = $definition->baseQuery();
 
         $this->applyFilters($definition, $query, $state['filterModel'] ?? []);
+        $this->applyAdvancedFilters($definition, $query, $state['advancedFilters'] ?? []);
         $this->applySearch($definition, $query, $state['search'] ?? null);
         $this->applySorting($definition, $query, $state['sortModel'] ?? []);
 

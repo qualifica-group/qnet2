@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0153-task-qnet-behavior-alignment" status="draft" owner="utente" date="2026-09-24">
+
+  <goal>
+    Le regole del modulo Task (lista, permessi, stati, notifiche, richiesta di aggiornamento) si comportano come
+    in q-net, secondo la sez. 3 del confronto `confronto-task-qnet-qnet2-v2.pdf`.
+  </goal>
+
+  <context>
+    Serie di allineamento a q-net, decisione utente 2026-09-24 ("tutto quello che c'e' scritto e' da allineare").
+    Spec della serie: 0153 regole (questa), 0154 form e campi, 0155 ciclo di vita, 0156 lista, 0157 viste,
+    0158 filtri personalizzati. Il riferimento q-net e' il backend `/Users/Repository/qnet` (QB) e il frontend
+    `/Users/Repository/q-net` (QC).
+    Nomi qnet-2 verificati:
+    - Lista: `App\Tables\TasksTableDefinition::defaultSort()` (oggi id desc), `TaskAdvancedFilterCatalog`
+      (filtro `assignment` enum singolo, senza default), `TaskAdvancedFilterApplier::applyAssignment`,
+      enum `TaskAssignmentScope` (assigned_to_me, requested_by_me, assigned_by_me, created_by_me, observed_by_me).
+      I contatori della dashboard (spec 0151) riusano lo stesso applier.
+    - Stati: `TaskCompletionService::reject()` (oggi -> in_progress, feedback conservato);
+      `TaskActionAvailability::isBlockable`, `TaskWriteLock::assertNotBlocked` / `assertStructuralWriteAllowed`;
+      `TaskStatusSystemKey::Assigned`.
+    - Permessi: `TaskAbilityResolver::canDelete` (oggi solo mandato), `canRequestUpdate` (include osservatore),
+      `canManageTimeEntry` (usato da `TimeEntryPolicy`), super-admin = ruolo Spatie `super-admin`.
+      `TaskService::delete` risponde 409 se ci sono sottotask.
+    - Percentuale: `TaskStatusResolver::completionPercentage` (solo dallo stato).
+    - Notifiche: `TaskNotifier`, `TaskNotificationAudience::everyone()`, `TaskCompletionService::notifyClosure()`;
+      richiesta aggiornamento `RequestTaskUpdateRequest` (`recipient_ids`, messaggio facoltativo),
+      `TaskActionService::requestUpdate`, notifica `TaskUpdateRequested`; FE `task-request-update-dialog.tsx`.
+  </context>
+
+  <decisions>
+    D-1  (utente) Lista: filtro `assignment` diventa MULTIPLO in OR, con default `assigned_to_me`, e ha l'opzione
+         esplicita `all` = "task in cui ho un ruolo" (richiedente, assegnatario, osservatore, creatore), anche per
+         chi ha `tasks.viewAll`. `requested_by_me` resta (nessun equivalente q-net, non va perso).
+         Il filtro `status` resta con default `open`. I contatori dashboard (spec 0151) seguono la nuova semantica.
+    D-2  Ordinamento predefinito `updated_at desc`, poi `id desc`. Serve la colonna `updated_at` ordinabile
+         (aggiunta in 0156; qui solo il defaultSort con la colonna reale).
+    D-3  "Creati da me" = sono il creatore E non sono richiedente, assegnatario ne' osservatore (QB Task.php:211-229).
+    D-4  Stato iniziale "Da assegnare" (`open`) solo se l'UNICO assegnatario (dopo deduplica) e' il richiedente;
+         altrimenti `assigned`. Il creatore non conta piu'.
+    D-5  Eliminazione: puo' eliminare chi puo' modificare il task (`canUpdate`, include l'assegnatario), purche'
+         non completato, non in validazione, non bloccato. I sottotask si eliminano a cascata in transazione;
+         se un discendente non e' eliminabile, si annulla tutto (422 con l'id del discendente). Niente piu' 409.
+         Vale anche per l'eliminazione massiva generica (`bulk-delete`).
+    D-6  Rifiuto della validazione: il task torna allo stato di sistema `assigned`, `closure_feedback` azzerato.
+    D-7  Blocco: si puo' bloccare solo un task aperto (non completato, non in validazione). Completare, riaprire e
+         rifiutare la validazione tolgono il blocco. Il 409 "bloccato" resta su complete/approve.
+    D-8  Super-admin: su un task chiuso o in validazione puo' modificare i campi (update). Non puo' eliminare,
+         completare ne' gestire documenti oltre le regole normali.
+    D-9  Segnatempo del task: chi puo' modificare il task (`canUpdate`) gestisce qualsiasi voce del task.
+    D-10 Percentuale: 100 se completato; con sottotask = media arrotondata delle percentuali dei figli (ricorsiva),
+         max 99 finche' il task e' aperto; senza sottotask = percentuale dello stato. Nessun valore manuale
+         (q-net lo salva ma non lo usa). Ordinamento e filtro della colonna restano sulla percentuale dello stato
+         (limite dichiarato: q-net ha lo stesso disallineamento).
+    D-11 Notifica di chiusura (TaskClosed / TaskFeedbackInserted): richiedente + osservatori, + assegnatari solo se
+         piu' di uno; mai il creatore in quanto tale; esclusi l'attore e gli utenti disattivati.
+    D-12 Approvazione: gli assegnatari ricevono solo "Approvato"; la chiusura va a richiedente + osservatori.
+    D-13 Assegnazione (creazione e modifica): la notifica ai nuovi assegnatari esclude il creatore del task, non
+         l'attore; la notifica ai nuovi osservatori non esclude nessuno.
+    D-14 (utente, prevale su spec 0126 D-6) Richiesta di aggiornamento: ammessa a richiedente, creatore o gestore
+         (non all'osservatore) e solo su task non completato, non in validazione, NON bloccato.
+         Destinatari a gruppi fissi `target`: assignees = tutti gli assegnatari + osservatori in copia;
+         observers = tutti gli osservatori; all = assegnatari + osservatori. Messaggio obbligatorio 3-2000.
+         L'attore non e' escluso. La copia (CC) e' una notifica separata con `is_cc: true`.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>D-1..D-14 backend, con i test Pest esistenti aggiornati dove asseriscono il comportamento vecchio (requisito cambiato, dichiarato).</item>
+      <item>FE: finestra richiesta aggiornamento a 3 opzioni con conteggi e messaggio obbligatorio; selettore assegnazione multiplo; stato azioni blocco/elimina da `permissions.actions` (nessuna regola duplicata nel FE oltre `task-action-availability.ts`).</item>
+      <item>Guide in-app IT/EN `tasks` e `dashboard` aggiornate.</item>
+    </in>
+    <out>
+      <item>Nuove colonne della lista, azioni massive, viste: spec 0156/0157.</item>
+      <item>Flag "non inviare notifica di apertura": spec 0154.</item>
+      <item>Canale mail delle notifiche: invariato.</item>
+      <item>Migrazione dei task gia' chiusi e bloccati: restano come sono (il blocco si toglie alla prossima riapertura).</item>
+    </out>
+  </scope>
+
+  <contract>
+    POST /api/tables/tasks/rows, advancedFilters.assignment: string[] (valori di TaskAssignmentScope + `all`),
+      default ["assigned_to_me"] quando omesso; [] non ammesso (422, filtro required).
+    POST /api/tasks/{task}/request-update
+      request: { target: "assignees"|"observers"|"all", message: string (3..2000) }
+      200: { success, message, data: TaskResource } (invariato)
+      403 osservatore puro o senza tasks.requestUpdate; 422 task bloccato/chiuso/in validazione, target senza
+      destinatari, messaggio assente o fuori limiti.
+    Notifica database TaskUpdateRequested: data aggiunge `is_cc: boolean`.
+    DELETE /api/tasks/{task}: 200 con cascata; 403 senza diritto; 422 { errors: { task: [...] } } se un
+      discendente non e' eliminabile. Il 409 per sottotask presenti sparisce.
+    TaskResource.completion_percentage: secondo D-10.
+  </contract>
+
+  <acceptance>
+    AC-001 Senza `assignment` la lista mostra solo task assegnati all'utente; con ["assigned_to_me","observed_by_me"] l'unione; con ["all"] i task dove ha un ruolo, anche con tasks.viewAll.
+    AC-002 L'ordinamento predefinito delle righe e' updated_at desc.
+    AC-003 "Creati da me" esclude i task in cui l'utente e' anche richiedente, assegnatario o osservatore.
+    AC-004 I contatori dashboard (spec 0151) riflettono D-1/D-3.
+    AC-005 Stato iniziale: unico assegnatario = richiedente -> open; creatore unico assegnatario ma richiedente diverso -> assigned.
+    AC-006 Un assegnatario elimina un task aperto (200); su completato/in validazione/bloccato -> 403.
+    AC-007 L'eliminazione di un padre elimina i sottotask; se un sottotask non e' eliminabile, nessuna riga sparisce (422).
+    AC-008 bulk-delete applica le stesse regole di AC-006/AC-007 riga per riga.
+    AC-009 Reject porta allo stato `assigned` e azzera closure_feedback.
+    AC-010 Block su task completato o in validazione -> 422; complete/uncomplete/reject tolgono is_blocked; complete su bloccato -> 409.
+    AC-011 Il super-admin modifica un task chiuso (200); un gestore non super-admin -> 409/403 come oggi; il super-admin non puo' eliminarlo.
+    AC-012 Un assegnatario modifica ed elimina il segnatempo di un altro assegnatario sullo stesso task (200).
+    AC-013 Percentuale: padre aperto con due figli al 100% -> 99; con figli 50 e 100 -> 75; completato -> 100; senza figli -> percentuale dello stato.
+    AC-014 Chiusura: con un solo assegnatario non notifica l'assegnatario; con due li notifica; il creatore non richiedente/osservatore non e' notificato; attore e disattivati esclusi.
+    AC-015 Approvazione: assegnatari ricevono solo TaskValidationApproved; richiedente e osservatori ricevono la chiusura.
+    AC-016 Aggiunta assegnatari in modifica: l'attore aggiunto e' notificato se non e' il creatore; il creatore no. Nuovi osservatori: tutti notificati.
+    AC-017 Richiesta aggiornamento: osservatore puro 403; task bloccato 422; messaggio di 2 caratteri 422; target assignees notifica assegnatari e manda copia (is_cc) agli osservatori non assegnatari.
+    AC-018 FE: la finestra mostra le 3 opzioni con i conteggi, disabilita quelle senza destinatari, richiede il messaggio.
+    AC-019 FE: il filtro Assegnazione consente piu' valori e mostra "Tutti".
+    AC-020 Guide in-app IT/EN aggiornate; test di parita' verde.
+  </acceptance>
+
+  <constraints>
+    Nessuna nuova dipendenza. Autorizzazione solo server-side (TaskPolicy + TaskAbilityResolver); il FE legge
+    `permissions.actions`. Nessun throttle. Test esistenti modificati solo dove il requisito e' cambiato, elencati
+    nel riepilogo. File sotto 500 righe.
+  </constraints>
+
+</spec>

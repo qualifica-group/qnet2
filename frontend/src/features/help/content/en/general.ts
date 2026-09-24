@@ -69,7 +69,7 @@ const guide: HelpGuide = {
         { type: 'warning', text: 'Bulk deletion is final and cannot be undone.' },
         { type: 'paragraph', text: 'To export the data you see in the list:' },
         { type: 'steps', items: ['Set search, filters, sorting and columns the way you need them.', 'Open **Table options** and choose **Export**.', 'In the **Export data** panel choose **CSV** or **Excel (XLSX)**.', 'Check the summary and press **Export**.', 'When processing finishes, press **Download file**.'] },
-        { type: 'note', text: 'The file contains exactly what you see in the list.' },
+        { type: 'note', text: 'The file contains exactly what you see in the list, including the applied advanced filters. The summary counts them among the active filters.' },
       ],
     },
     {
