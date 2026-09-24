@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import {
   CheckCircle2,
   ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
   CircleAlert,
   FileDown,
   FileSpreadsheet,
@@ -89,6 +91,11 @@ export interface RequestDashboardFilterBarProps {
   /** False while the applied filters cannot drive a request (branch list not seeded yet). */
   filtersReady: boolean
   onEdit: () => void
+  /** Every collapsible block of the loaded dashboard is expanded: the button then collapses. */
+  allExpanded: boolean
+  /** False while no section is rendered (loading, error, empty): there is nothing to fold. */
+  canToggleExpanded: boolean
+  onToggleExpanded: () => void
 }
 
 /**
@@ -111,10 +118,17 @@ export function RequestDashboardFilterBar({
   operators,
   filtersReady,
   onEdit,
+  allExpanded,
+  canToggleExpanded,
+  onToggleExpanded,
 }: RequestDashboardFilterBarProps) {
   const { t } = useTranslation()
   const report = useRequestReport()
   const isBusy = !filtersReady || report.isCreating || report.isProcessing
+  const expandLabel = allExpanded
+    ? t('requestManagement.dashboard.collapseAll')
+    : t('requestManagement.dashboard.expandAll')
+  const ExpandIcon = allExpanded ? ChevronsDownUp : ChevronsUpDown
 
   return (
     <div className={BAR_CLASS}>
@@ -154,6 +168,19 @@ export function RequestDashboardFilterBar({
               </DropdownMenuContent>
             </DropdownMenu>
           </Can>
+
+          {/* Icon-only like Filters: the label names the action it will perform next. */}
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="outline"
+            onClick={onToggleExpanded}
+            disabled={!canToggleExpanded}
+            aria-label={expandLabel}
+            title={expandLabel}
+          >
+            <ExpandIcon aria-hidden="true" className="size-3.5" />
+          </Button>
 
           {/* Icon-only (user directive 2026-09-22): the label stays as the accessible name and hover hint. */}
           <Button

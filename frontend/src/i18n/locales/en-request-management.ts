@@ -376,6 +376,8 @@ export const requestManagement = {
   dashboard: {
     regionLabel: 'Request Management dashboard',
     editFilters: 'Filters',
+    expandAll: 'Expand all',
+    collapseAll: 'Collapse all',
     applied: {
       title: 'Applied filters',
       period: 'Period',

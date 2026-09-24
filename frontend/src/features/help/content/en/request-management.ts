@@ -182,7 +182,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Every section collapses and expands with the arrow next to its title.',
+          text: 'Every section collapses and expands with the arrow next to its title. The double-arrow button next to **Filters** opens everything at once (**Expand all**, charts included) or, when everything is already open, collapses every section (**Collapse all**).',
         },
         {
           type: 'table',

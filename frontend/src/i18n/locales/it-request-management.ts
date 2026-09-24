@@ -381,6 +381,8 @@ export const requestManagement = {
   dashboard: {
     regionLabel: 'Dashboard di Gestione Richieste',
     editFilters: 'Filtri',
+    expandAll: 'Espandi tutto',
+    collapseAll: 'Comprimi tutto',
     // Chip dei filtri applicati sopra i grafici (direttiva utente 2026-09-18).
     applied: {
       title: 'Filtri applicati',

@@ -23,7 +23,11 @@ import {
 } from '@/features/request-management/request-report-schema'
 import { useRequestModule } from '@/features/request-management/request-module'
 import { useRequestDashboard } from '@/features/request-management/use-request-dashboard'
-import { useRequestDashboardCollapse } from '@/features/request-management/use-request-dashboard-collapse'
+import {
+  dashboardCollapseTargets,
+  type RequestDashboardCollapse,
+  useRequestDashboardCollapse,
+} from '@/features/request-management/use-request-dashboard-collapse'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
 import { useRequestReportOperators } from '@/features/request-management/use-request-report-operators'
 import { useRequestReportSites } from '@/features/request-management/use-request-report-sites'
@@ -119,6 +123,7 @@ function DashboardSkeleton() {
 
 interface DashboardResultsProps {
   query: UseQueryResult<RequestDashboardData>
+  collapse: RequestDashboardCollapse
 }
 
 /**
@@ -129,14 +134,13 @@ interface DashboardResultsProps {
  * always rendered for every selected category: an empty week is an answer.
  *
  * Every section, and the two blocks inside it, fold independently; the state
- * is owned HERE (one hook for the whole panel) rather than per section, so it
- * survives a section unmounting on a refetch and is persisted in a single
- * storage entry (user directive 2026-09-08).
+ * is owned by the panel body (one hook for the whole panel) rather than per
+ * section, so it survives a section unmounting on a refetch and is persisted
+ * in a single storage entry (user directive 2026-09-08).
  */
-function DashboardResults({ query }: DashboardResultsProps) {
+function DashboardResults({ query, collapse }: DashboardResultsProps) {
   const { t } = useTranslation()
   const { data, error, isLoading, isError, refetch } = query
-  const collapse = useRequestDashboardCollapse()
 
   return (
     <div aria-busy={isLoading} className="flex flex-col gap-3">
@@ -235,6 +239,11 @@ function RequestDashboardPanelBody() {
   // different cache entry.
   const payload = toRequestReportFilterPayload(filters, operatorKeys, siteKeys)
   const dashboardQuery = useRequestDashboard(payload, filtersReady)
+  // Held here, not in `DashboardResults`, so the bar's expand/collapse-all
+  // button and the sections read and write the SAME state.
+  const collapse = useRequestDashboardCollapse()
+  const collapseTargets = dashboardCollapseTargets(dashboardQuery.data)
+  const allExpanded = collapse.areAllOpen(collapseTargets)
 
   return (
     <div className="flex flex-col gap-4">
@@ -247,6 +256,9 @@ function RequestDashboardPanelBody() {
         operators={operators ?? EMPTY_OPERATORS}
         filtersReady={filtersReady}
         onEdit={() => setFiltersOpen(true)}
+        allExpanded={allExpanded}
+        canToggleExpanded={collapseTargets.length > 0}
+        onToggleExpanded={() => collapse.setAllOpen(collapseTargets, !allExpanded)}
       />
 
       {categoriesQuery.isError ? (
@@ -258,7 +270,7 @@ function RequestDashboardPanelBody() {
       ) : categoriesEmpty ? (
         <DashboardNotice tone="info" message={t('requestManagement.dashboard.noCategories')} />
       ) : (
-        <DashboardResults query={dashboardQuery} />
+        <DashboardResults query={dashboardQuery} collapse={collapse} />
       )}
 
       <RequestReportFiltersDialog

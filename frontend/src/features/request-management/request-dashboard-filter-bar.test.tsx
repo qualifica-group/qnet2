@@ -115,8 +115,9 @@ function generate(format: 'CSV' | 'Excel (XLSX)') {
   fireEvent.click(screen.getByRole('menuitem', { name: format }))
 }
 
-function renderBar(filtersReady = true, filters = APPLIED_FILTERS) {
+function renderBar(filtersReady = true, filters = APPLIED_FILTERS, allExpanded = false, canToggleExpanded = true) {
   const onEdit = vi.fn()
+  const onToggleExpanded = vi.fn()
   render(
     <RequestDashboardFilterBar
       reportPermission="request-management.report"
@@ -127,10 +128,13 @@ function renderBar(filtersReady = true, filters = APPLIED_FILTERS) {
       operators={OPERATORS}
       filtersReady={filtersReady}
       onEdit={onEdit}
+      allExpanded={allExpanded}
+      canToggleExpanded={canToggleExpanded}
+      onToggleExpanded={onToggleExpanded}
     />,
     { wrapper: wrapper() },
   )
-  return { onEdit }
+  return { onEdit, onToggleExpanded }
 }
 
 describe('RequestDashboardFilterBar', () => {
@@ -152,6 +156,20 @@ describe('RequestDashboardFilterBar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     expect(onEdit).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers expand all while something is folded, collapse all once everything is open', () => {
+    const { onToggleExpanded } = renderBar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
+    expect(onToggleExpanded).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: 'Collapse all' })).not.toBeInTheDocument()
+  })
+
+  it('names the collapse action when everything is expanded, and disables it with nothing rendered', () => {
+    renderBar(true, APPLIED_FILTERS, true, false)
+
+    expect(screen.getByRole('button', { name: 'Collapse all' })).toBeDisabled()
   })
 
   it('names the narrowed dimensions, operators included when they follow the sites', () => {

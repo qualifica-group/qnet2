@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DASHBOARD GESTIONE RICHIESTE: "ESPANDI / COMPRIMI TUTTO" — VERDE, COMMITTATO (2026-09-24)
+
+- `use-request-dashboard-collapse.ts`: nuovi `areAllOpen(targets)` / `setAllOpen(targets, open)` + helper puro
+  `dashboardCollapseTargets(data)` (solo i blocchi realmente renderizzati: overall `section`; categoria `section` +
+  `tiles`/`charts` se non vuoti). Espandi = apre tutti i blocchi (grafici compresi); comprimi = chiude solo le `section`
+  (riaprendone una a mano si vede tutto). Stessa entry localStorage `${module}.dashboard-collapse`.
+- `request-dashboard-panel.tsx`: il hook di collasso e' sollevato in `RequestDashboardPanelBody` e passato a
+  `DashboardResults` (prop `collapse`), cosi' barra e sezioni condividono lo stato.
+- `request-dashboard-filter-bar.tsx`: nuove prop `allExpanded`, `canToggleExpanded`, `onToggleExpanded`; pulsante icona
+  (`ChevronsUpDown`/`ChevronsDownUp`) prima di Filtri, label `requestManagement.dashboard.expandAll|collapseAll`,
+  disabilitato senza sezioni. Vale anche per Gestione Iscritti (stesso pannello).
+- Test: filter-bar (+2), panel (+3: expand-all persistito, collapse-all, Gestione Iscritti con storage separato). request-management + stats 530/530, help parity
+  verde, ESLint e `tsc -b --force` puliti. `request-dashboard-panel.tsx` a 314 righe (soft limit superato di poco).
+- Manuale: guida in-app IT/EN `statistics-panel` aggiornata; manuale Claude Docs aggiornato (paragrafo sul pannello statistiche).
+
 ## SEED PRODUZIONE: TASK E SEGNATEMPO PROPRI A OGNI MANSIONE — VERDE, NON COMMITTATO (2026-09-24)
 
 - `OperatorRoleCatalogue`: nuovi blocchi `OWN_TASKS` (`tasks.*` meno `OWN_TASKS_DENIED_ABILITIES` = `viewAll`,

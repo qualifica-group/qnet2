@@ -7,6 +7,8 @@ import i18n from '@/i18n'
 import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
 import type { RequestReportCategory } from '@/features/request-management/report-api'
 import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
+import { ENROLLEE_MODULE, RequestModuleProvider } from '@/features/request-management/request-module'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 
 /**
  * Spec 0107 AC-041..AC-044, AC-048: the dashboard panel, driven entirely
@@ -405,5 +407,62 @@ describe('RequestDashboardPanel', () => {
       'aria-expanded',
       'false',
     )
+  })
+
+  it('expands every section and block at once, charts included, and persists it', async () => {
+    const { unmount } = renderPanel(true)
+
+    const gol = await screen.findByRole('region', { name: 'GOL' })
+    fireEvent.click(within(gol).getByRole('button', { name: 'GOL' })) // fold one section by hand
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
+
+    for (const name of ['Overall', 'GOL', 'Consulenza']) {
+      const section = screen.getByRole('region', { name })
+      for (const toggle of within(section).getAllByRole('button')) {
+        expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      }
+    }
+    expect(await within(gol).findByRole('heading', { name: 'Indicators' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Collapse all' })).toBeInTheDocument()
+    unmount()
+
+    renderPanel(true)
+
+    const restored = await screen.findByRole('region', { name: 'GOL' })
+    expect(within(restored).getByRole('button', { name: 'Charts (1)' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Collapse all' })).toBeInTheDocument()
+  })
+
+  it('offers the same expand-all in Gestione Iscritti, remembered apart from Gestione Richieste', async () => {
+    render(
+      <RequestModuleProvider module={ENROLLEE_MODULE}>
+        <RequestDashboardPanel isOpen />
+      </RequestModuleProvider>,
+      { wrapper: wrapper() },
+    )
+
+    const gol = await screen.findByRole('region', { name: 'GOL' })
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
+
+    expect(within(gol).getByRole('button', { name: 'Charts (1)' })).toHaveAttribute('aria-expanded', 'true')
+    expect(window.localStorage.getItem(`${ENROLLEE_MODULE.key}.dashboard-collapse`)).not.toBeNull()
+    expect(window.localStorage.getItem(`${REQUEST_MANAGEMENT_DOMAIN}.dashboard-collapse`)).toBeNull()
+  })
+
+  it('collapses every section once everything is open, and reopening one shows its content', async () => {
+    renderPanel(true)
+
+    await screen.findByRole('region', { name: 'GOL' })
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse all' }))
+
+    for (const name of ['Overall', 'GOL', 'Consulenza']) {
+      expect(screen.getByRole('button', { name })).toHaveAttribute('aria-expanded', 'false')
+    }
+    expect(screen.getByRole('button', { name: 'Expand all' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'GOL' }))
+    const gol = screen.getByRole('region', { name: 'GOL' })
+    expect(await within(gol).findByRole('button', { name: 'Charts (1)' })).toHaveAttribute('aria-expanded', 'true')
   })
 })

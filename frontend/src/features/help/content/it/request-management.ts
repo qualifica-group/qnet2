@@ -182,7 +182,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Ogni sezione si chiude e riapre con la freccia accanto al titolo.',
+          text: 'Ogni sezione si chiude e riapre con la freccia accanto al titolo. Il pulsante con la doppia freccia, accanto a **Filtri**, apre tutto in un colpo (**Espandi tutto**, grafici compresi) oppure, se è già tutto aperto, chiude tutte le sezioni (**Comprimi tutto**).',
         },
         {
           type: 'table',

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
 import { useRequestModule } from '@/features/request-management/request-module'
 
 /** The three independently collapsible parts of the dashboard (user directive 2026-09-08). */
@@ -52,9 +53,54 @@ function readStoredState(moduleKey: string): CollapseState {
   }
 }
 
+function writeStoredState(moduleKey: string, state: CollapseState): void {
+  try {
+    window.localStorage.setItem(storageKey(moduleKey), JSON.stringify(state))
+  } catch {
+    // Storage can be unavailable: the toggle still works for this session.
+  }
+}
+
+/** The blocks one rendered section actually has: an empty tiles/charts block renders no toggle. */
+export interface DashboardCollapseTarget {
+  sectionKey: string
+  blocks: DashboardCollapseBlock[]
+}
+
+/**
+ * Every collapsible block the loaded dashboard renders, mirroring the
+ * conditions of `DashboardOverallSection`/`DashboardCategorySection`, so
+ * "everything expanded" is never judged on a block the user cannot see.
+ */
+export function dashboardCollapseTargets(data: RequestDashboardData | undefined): DashboardCollapseTarget[] {
+  if (!data) {
+    return []
+  }
+
+  const overall: DashboardCollapseTarget[] =
+    data.summary.length > 0 ? [{ sectionKey: OVERALL_SECTION_KEY, blocks: ['section'] }] : []
+  const categories = data.categories.map((category) => ({
+    sectionKey: category.key,
+    blocks: [
+      'section' as const,
+      ...(category.summary.length > 0 ? (['tiles'] as const) : []),
+      ...(category.charts.length > 0 ? (['charts'] as const) : []),
+    ],
+  }))
+
+  return [...overall, ...categories]
+}
+
 export interface RequestDashboardCollapse {
   isOpen: (sectionKey: string, block: DashboardCollapseBlock) => boolean
   setOpen: (sectionKey: string, block: DashboardCollapseBlock, open: boolean) => void
+  /** True when every block of every target is expanded (false for no target). */
+  areAllOpen: (targets: DashboardCollapseTarget[]) => boolean
+  /**
+   * Expanding opens every block; collapsing folds only the sections, so a
+   * section reopened by hand afterwards still shows everything inside it.
+   */
+  setAllOpen: (targets: DashboardCollapseTarget[], open: boolean) => void
 }
 
 /**
@@ -79,11 +125,7 @@ export function useRequestDashboardCollapse(): RequestDashboardCollapse {
     (sectionKey: string, block: DashboardCollapseBlock, open: boolean): void => {
       setState((current) => {
         const next = { ...current, [entryKey(sectionKey, block)]: open }
-        try {
-          window.localStorage.setItem(storageKey(moduleKey), JSON.stringify(next))
-        } catch {
-          // Storage can be unavailable: the toggle still works for this session.
-        }
+        writeStoredState(moduleKey, next)
 
         return next
       })
@@ -91,5 +133,29 @@ export function useRequestDashboardCollapse(): RequestDashboardCollapse {
     [moduleKey],
   )
 
-  return useMemo(() => ({ isOpen, setOpen }), [isOpen, setOpen])
+  const areAllOpen = useCallback(
+    (targets: DashboardCollapseTarget[]): boolean =>
+      targets.length > 0 &&
+      targets.every((target) => target.blocks.every((block) => isOpen(target.sectionKey, block))),
+    [isOpen],
+  )
+
+  const setAllOpen = useCallback(
+    (targets: DashboardCollapseTarget[], open: boolean): void => {
+      setState((current) => {
+        const next = { ...current }
+        for (const target of targets) {
+          for (const block of open ? target.blocks : (['section'] as const)) {
+            next[entryKey(target.sectionKey, block)] = open
+          }
+        }
+        writeStoredState(moduleKey, next)
+
+        return next
+      })
+    },
+    [moduleKey],
+  )
+
+  return useMemo(() => ({ isOpen, setOpen, areAllOpen, setAllOpen }), [isOpen, setOpen, areAllOpen, setAllOpen])
 }
