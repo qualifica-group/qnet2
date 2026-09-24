@@ -116,8 +116,8 @@ it('declares the Operatore picker scope as {Sede of the offer, required categori
         ->and($column['editable'])->toBeTrue()
         ->and($column['editor'])->toBe('relation')
         ->and($column['relation']['resource'])->toBe('users')
-        ->and($column['sortable'])->toBeFalse()
-        ->and($column['filterable'])->toBeFalse();
+        ->and($column['sortable'])->toBeTrue()
+        ->and($column['filterable'])->toBeTrue();
 
     // `editableField`/`nullable` are not part of the emitted config (the
     // write path reads them off the raw declaration): asserted at the source.

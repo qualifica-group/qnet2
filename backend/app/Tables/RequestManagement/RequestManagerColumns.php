@@ -20,9 +20,11 @@ use InvalidArgumentException;
  *    `manager_labels` (spec 0080, extended to GA1) — POSITIONS below is the
  *    map RequestManagementScopedTableDefinition relabels through, so the
  *    "which position names which column" answer lives in ONE place;
- *  - it is neither sortable nor filterable (AC-011: this domain never ordered
- *    or filtered on the team, and the migrations that moved the underlying
- *    model deliberately left that behaviour untouched).
+ *  - its SORT and SET FILTER address the occupant's `users.name` (direttiva
+ *    utente 2026-09-24, superseding spec 0086 AC-011): the Operatore through
+ *    its denormalized `quotes.operator_id` (RequestRelationColumns'
+ *    QUOTE_RELATIONS), the GA1 through its `quote_user` position
+ *    (RequestManagerSlotColumn).
  *
  * Split out of RequestColumnCatalog, which had reached the file-size ceiling
  * (engineering.md §6), on that cohesion — the same reason the client
@@ -118,8 +120,9 @@ final class RequestManagerColumns
                 'label' => 'requestManagement.columns.operator',
                 'type' => 'text',
                 'visible' => true,
-                'sortable' => false,
-                'filterable' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
                 'editable' => true,
                 'editableField' => 'manager_slots',
                 'relation' => [
@@ -157,8 +160,9 @@ final class RequestManagerColumns
                 'label' => 'requestManagement.columns.managerGa1',
                 'type' => 'text',
                 'visible' => true,
-                'sortable' => false,
-                'filterable' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
                 'editable' => true,
                 'editableField' => 'manager_ga1_id',
                 'relation' => ['resource' => 'users'],

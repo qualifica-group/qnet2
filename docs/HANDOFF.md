@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE: OPERATORE E TUTOR ORDINABILI/FILTRABILI — VERDE, COMMITTATO (2026-09-24)
+
+- Direttiva utente 2026-09-24, supera spec 0086 AC-011. `RequestManagerColumns`: `operator_ga2` e `manager_ga1` ora
+  `sortable: true`, `filterable: true`, `filterType: set` (filtro sul `users.name` dell'occupante, "(Vuoti)" = slot vuoto).
+- Operatore (GA2): voce in `RequestRelationColumns::QUOTE_RELATIONS` (`operator` / `users` / `quotes.operator_id`).
+- Tutor (GA1): nuova `RequestManagerSlotColumn` (posizione `quote_user` = `ManagerPositions::GA1`; sort con subquery
+  correlata, filtro `whereHas('managers')` sulla posizione, valori distinti), delegata da `RequestRelationColumns` quando
+  la colonna non e' una sua relazione. Iscritti eredita la stessa definizione.
+- Test: nuovo `RequestManagementManagerColumnsSortFilterTest` (8); aggiornate le asserzioni `sortable/filterable` in
+  InlineEditors/OperatorPickerScope/ManagerGa1Column (requisito cambiato). RequestManagement + EnrolleeManagement +
+  Table + Exports: 1104/1104. Pint pulito. Frontend invariato (la griglia legge i flag dalla config).
+- Manuale: nessun impatto sulle guide in-app (non dichiaravano le colonne non ordinabili).
+
 ## DASHBOARD GESTIONE RICHIESTE: "ESPANDI / COMPRIMI TUTTO" — VERDE, COMMITTATO (2026-09-24)
 
 - `use-request-dashboard-collapse.ts`: nuovi `areAllOpen(targets)` / `setAllOpen(targets, open)` + helper puro

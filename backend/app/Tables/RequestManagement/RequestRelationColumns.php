@@ -42,12 +42,11 @@ use Illuminate\Support\Facades\DB;
  *    the user directive 2026-09-04 moved the column onto `quotes`, so the
  *    generic engine now sorts and filters it with no hop at all.
  *
- * `operator_ga2` (spec 0086, D-3: now `quote.supervisor`, a real FK on
- * `quotes` itself) is deliberately NOT handled here — corrected spec 0086
- * AC-011: the user directive behind this migration keeps filters/sort/
- * behaviour unchanged, only the underlying model moves; the column was never
- * sortable/filterable before and stays that way, only its source changed
- * (RequestRowMapper's `userSummary($row->supervisor)`). `operational_site`
+ * `operator_ga2` (the GA2 "Operatore", denormalized onto `quotes.operator_id`,
+ * spec 0087 D-9) sits in QUOTE_RELATIONS: sortable + set-filterable on the
+ * user's `name` since the direttiva utente 2026-09-24 (superseding spec 0086
+ * AC-011). `manager_ga1` has no column on `quotes` — it is a `quote_user`
+ * position — so it is delegated to RequestManagerSlotColumn. `operational_site`
  * (spec 0056) stays delegated to the shared App\Tables\Shared\OperationalSiteColumn:
  * a real FK on `quotes` itself (D-6), unchanged by this migration, with no
  * own `name` column.
@@ -82,6 +81,7 @@ final class RequestRelationColumns
      */
     private const array QUOTE_RELATIONS = [
         'quote_workflow_status' => ['relation' => 'quoteWorkflowStatus', 'table' => 'quote_workflow_statuses', 'fk' => 'quote_workflow_status_id'],
+        RequestManagerColumns::OPERATOR_COLUMN_ID => ['relation' => 'operator', 'table' => 'users', 'fk' => 'operator_id'],
     ];
 
     /**
@@ -96,7 +96,10 @@ final class RequestRelationColumns
      */
     private const array OPPORTUNITY_SCALAR_COLUMNS = ['general_notes'];
 
-    public function __construct(private readonly FilterApplier $filterApplier) {}
+    public function __construct(
+        private readonly FilterApplier $filterApplier,
+        private readonly RequestManagerSlotColumn $managerSlotColumn,
+    ) {}
 
     /**
      * @param  Builder<Model>  $query
@@ -119,7 +122,7 @@ final class RequestRelationColumns
             ?? null;
 
         if ($config === null) {
-            return false;
+            return $this->managerSlotColumn->applyFilter($query, $columnId, $filter);
         }
 
         $values = $this->filterValues($filter);
@@ -157,7 +160,7 @@ final class RequestRelationColumns
         $subquery = $this->subqueryFor($columnId);
 
         if ($subquery === null) {
-            return false;
+            return $this->managerSlotColumn->applySort($query, $columnId, $direction);
         }
 
         $query->orderBy($subquery, $direction);
@@ -262,7 +265,7 @@ final class RequestRelationColumns
             );
         }
 
-        return null;
+        return $this->managerSlotColumn->distinctValues($columnId, $search, $query, $limit);
     }
 
     /**

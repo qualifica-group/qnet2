@@ -123,12 +123,10 @@ it('AC-001: every activated column advertises its own editor', function () {
     expect($columns['next_callback_at']['editor'])->toBe('datetime')
         ->and($columns['operator_ga2']['editor'])->toBe('relation')
         ->and($columns['operator_ga2']['relation']['resource'])->toBe('users')
-        // AC-011 corrected in execution: the migration moves only the
-        // underlying model (pivot -> quote.operator_id, spec 0087 D-9),
-        // never the column's sort/filter behaviour — this was wrong in the
-        // spec's first draft.
-        ->and($columns['operator_ga2']['sortable'])->toBeFalse()
-        ->and($columns['operator_ga2']['filterable'])->toBeFalse();
+        // Direttiva utente 2026-09-24 (superseding spec 0086 AC-011): the
+        // Operatore is sortable and set-filterable on the user's name.
+        ->and($columns['operator_ga2']['sortable'])->toBeTrue()
+        ->and($columns['operator_ga2']['filterable'])->toBeTrue();
 
     foreach (['first_name', 'last_name', 'tax_code', 'phone'] as $id) {
         expect($columns[$id]['editable'])->toBeTrue()

@@ -84,8 +84,8 @@ it('declares manager_ga1 as an editable users relation, unscoped by the Sede unl
 
     expect($ga1['editable'])->toBeTrue()
         ->and($ga1['label'])->toBe('requestManagement.columns.managerGa1')
-        ->and($ga1['sortable'])->toBeFalse()
-        ->and($ga1['filterable'])->toBeFalse()
+        ->and($ga1['sortable'])->toBeTrue()
+        ->and($ga1['filterable'])->toBeTrue()
         ->and($ga1['relation']['resource'])->toBe('users')
         // Only the Operatore slot is bound to the Sede operativa, exactly as
         // the form scopes it (operatorSlotParams).

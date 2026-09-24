@@ -431,13 +431,12 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * `operational_site` (spec 0056/0086 D-6) is delegated to the shared
      * OperationalSiteColumn, correlated against `quotes` itself (the FK
      * moved there); the four client anagraphic columns to RequestClientColumns'
-     * own correlated subquery; `source`/`general_notes` fall through to
+     * own correlated subquery; `source`/`general_notes`/`operator_ga2`/
+     * `manager_ga1` fall through to
      * RequestRelationColumns. `next_callback_at` is a real `quotes` column
      * (user directive 2026-09-04) and never reaches this method at all.
-     * `product_categories`/
-     * `offer_lines`/`operator_ga2` are NOT sortable (the first two: no single
-     * related row to order by; `operator_ga2`: AC-011 corrected in execution
-     * — unchanged from before this migration).
+     * `product_categories`/`offer_lines` are NOT sortable (no single related
+     * row to order by).
      *
      * @param  Builder<Quote>  $query
      */
