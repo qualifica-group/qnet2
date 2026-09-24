@@ -316,7 +316,7 @@ it('promotes the imported "Titolo di Studio" to a pick list while it carries no 
     expect($degree->type)->toBe('enum')
         ->and($degree->options()->pluck('label')->all())->toBe([
             'Assolvimento obbligo scolastico', 'Licenza Elementare',
-            'Licenza Media', 'Diploma', 'Laurea',
+            'Licenza Media', 'Diploma', 'Laurea', 'Qualifica Professionale',
         ]);
 });
 

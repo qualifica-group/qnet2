@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0157-task-views-tree-kanban" status="draft" owner="utente" date="2026-09-24">
+
+  <goal>
+    La pagina /tasks offre tre modalita' come q-net: Analitica (griglia piatta, quella di oggi), Sintetica (albero
+    dei sottotask) e Kanban per stato o per scadenza (punti 1-2 della sez. 2).
+  </goal>
+
+  <context>
+    Serie 0153-0158. Nomi qnet-2 verificati:
+    - `data-table.tsx` solo SSRM; `ag-grid-enterprise` con `AllEnterpriseModule` registrato (tree data SSRM
+      disponibile); `ssrm-datasource.ts` ignora `request.groupKeys`; `TableRowsRequest` senza chiave padre;
+      scoping per riga gia' usato con `scopeToOpportunity`/`scopeToQuote`.
+    - Righe task con `has_subtasks`, `is_subtask`.
+    - Kanban board commessa: `features/work-orders/task-board/` (task-board-kanban-view/-column/-card,
+      use-task-board-dnd, task-board-end-date, meta completamento/ore/persone), tipizzati su WorkOrderStage.
+    - Aggiornamento parziale: PUT/PATCH /api/tasks/{task} (UpdateTaskRequest tutto `sometimes`).
+    - Apertura creazione: `useTaskRowActions().openCreate`.
+  </context>
+
+  <decisions>
+    D-1  (utente 2b) Sintetica = albero lato server: al livello radice solo task senza padre (con i filtri attivi);
+         aprendo un nodo si caricano i figli dal server (stessi filtri, stesso ordinamento). Un figlio che soddisfa i
+         filtri ma il cui padre no non compare in Sintetica (compare in Analitica).
+    D-2  Kanban per stato: una colonna per stato attivo (ordine sort_order) + "Senza stato" non esiste (lo stato e'
+         obbligatorio). Per scadenza: Scaduti (non trascinabile verso), Oggi, Domani, Questa settimana, Questo mese
+         (anche senza scadenza), Completati (non trascinabile ne' da ne' verso). Trascinare su una colonna di
+         scadenza imposta end_date a oggi / domani / domenica / ultimo del mese.
+    D-3  (utente 3b) Trascinare su uno stato di chiusura apre la finestra di completamento (segnatempo, feedback,
+         validazione); annullare riporta la card. Da uno stato chiuso a uno aperto chiama riapri. Tra stati aperti
+         e' un PATCH di task_status_id con le guardie esistenti.
+    D-4  Il kanban usa gli stessi filtri avanzati e la ricerca della lista; carica fino a 500 task (oltre, avviso
+         "restringi i filtri"). Il "+" di colonna apre il form di creazione con stato o scadenza precompilati.
+    D-5  La modalita' scelta si ricorda per utente (stato UI locale, come le altre preferenze di tabella).
+    D-6  I componenti colonna/card del kanban si generalizzano su un gruppo { key, label, color, tasks } e sono
+         riusati dalla board commessa (nessun cambio di comportamento li').
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Griglia generica: tree data SSRM opzionale (prop in TableView/DataTable, groupKeys nel datasource, parentId in TableRowsRequest con scoping lato definizione).</item>
+      <item>TasksTableDefinition: modalita' albero (radici / figli di parentId).</item>
+      <item>FE: selettore Analitica/Sintetica/Kanban, kanban /tasks (stato, scadenza), generalizzazione componenti board.</item>
+      <item>Guide in-app IT/EN `tasks`.</item>
+    </in>
+    <out>
+      <item>Tree data per altri domini (la prop e' generica, ma si attiva solo per tasks).</item>
+      <item>Paginazione infinita del kanban.</item>
+    </out>
+  </scope>
+
+  <contract>
+    POST /api/tables/tasks/rows aggiunge treeParentId?: int|null e tree?: bool.
+      tree=true e treeParentId assente -> solo radici; treeParentId=N -> figli diretti di N visibili all'utente.
+      403 se N non e' visibile; 422 se N non esiste.
+    Kanban: nessun endpoint nuovo; POST /rows con endRow 500; spostamento con PATCH /api/tasks/{id}
+      { task_status_id } o { end_date }, oppure POST complete/uncomplete.
+  </contract>
+
+  <acceptance>
+    AC-001 tree=true restituisce solo radici; treeParentId restituisce i figli; un padre non visibile -> 403.
+    AC-002 FE Sintetica: le righe con figli si espandono caricando i figli; Analitica resta invariata.
+    AC-003 Kanban per stato: trascinare tra stati aperti aggiorna lo stato; verso chiusura apre la finestra, annullare riporta la card.
+    AC-004 Kanban per scadenza: le card cadono nella colonna giusta; trascinare in Domani imposta end_date a domani; Completati non trascinabile.
+    AC-005 Il "+" di colonna apre il form con stato o scadenza precompilati.
+    AC-006 La board commessa funziona come prima (test esistenti verdi).
+    AC-007 Guide in-app IT/EN aggiornate; test di parita' verde.
+  </acceptance>
+
+  <constraints>
+    Nessuna nuova dipendenza (dnd-kit e ag-grid-enterprise gia' presenti). parentId validato e scoping con
+    TaskVisibilityScope. Nessun cambio di comportamento per gli altri domini della griglia.
+  </constraints>
+
+</spec>

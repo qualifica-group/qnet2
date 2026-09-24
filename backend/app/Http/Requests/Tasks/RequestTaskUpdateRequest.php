@@ -12,27 +12,28 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for POST /api/tasks/{task}/request-update (spec
- * 0118, D-10..D-12).
+ * 0153, D-14, superseding spec 0118 D-10..D-12/spec 0126 D-6).
  *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('requestUpdate', $task)).
  *
- * The D-11 membership rule on `recipient_ids` — every id must be an assignee
- * OR a watcher of THIS Task; creatore/richiedente are never candidates —
- * lives HERE rather than in App\Services\Tasks\TaskActionService, unlike
- * every other guard of this module (constraint: the Service re-asserts what
- * the flag suggests). The other guards all evaluate the RESULTING state of a
- * WRITE (TaskWatcherOverlapGuard, TaskHierarchyGuard, ...), which only the
- * Service can compute once submitted keys are reconciled with persisted
- * ones. This endpoint writes NOTHING to the Task at all, so there is no
- * "resulting record" for a Service-level guard to evaluate — it is plain
- * validation of the submitted payload against a record the FormRequest
- * already holds from the route (the same shape UpdateTaskRequest's
- * authorizationModel() reads), so a field-scoped 422 belongs here.
+ * `target` replaces the old `recipient_ids`: a fixed group
+ * (`assignees`/`observers`/`all`) rather than a caller-picked list, so the
+ * D-11-style "no automatic audience" guarantee moves from "every id must be
+ * a member" to "the group must resolve to at least one member" — asserted
+ * HERE against the Task's CURRENT pivots, the same reasoning
+ * RequestTaskUpdateRequest always used for a payload this endpoint writes
+ * nothing to (no "resulting record" for a Service-level guard to evaluate).
+ * `message` is now REQUIRED (3..2000, D-14) rather than optional.
  */
 class RequestTaskUpdateRequest extends FormRequest
 {
+    private const int MESSAGE_MIN = 3;
+
     private const int MESSAGE_MAX = 2000;
+
+    /** @var array<int, string> */
+    private const array TARGETS = ['assignees', 'observers', 'all'];
 
     public function authorize(): bool
     {
@@ -46,46 +47,52 @@ class RequestTaskUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'recipient_ids' => ['required', 'array', 'min:1'],
-            'recipient_ids.*' => ['integer', Rule::exists('users', 'id')],
-            'message' => ['sometimes', 'nullable', 'string', 'max:'.self::MESSAGE_MAX],
+            'target' => ['required', 'string', Rule::in(self::TARGETS)],
+            'message' => ['required', 'string', 'min:'.self::MESSAGE_MIN, 'max:'.self::MESSAGE_MAX],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $this->assertRecipientsAreMembers($validator);
+            $this->assertTargetHasRecipients($validator);
         });
     }
 
     /**
-     * D-11: the set of valid recipients is exactly the Task's assignees plus
-     * its watchers. A submitted id that is neither fails field-scoped on
-     * `recipient_ids`, whether or not it exists as a user (AC-050).
+     * D-14: a target that resolves to nobody (e.g. `observers` on a Task with
+     * no watchers) 422s on `target` rather than silently sending nothing.
      */
-    private function assertRecipientsAreMembers(Validator $validator): void
+    private function assertTargetHasRecipients(Validator $validator): void
     {
-        $recipientIds = $this->input('recipient_ids');
+        $target = $this->input('target');
 
-        if (! is_array($recipientIds) || $recipientIds === []) {
+        if (! is_string($target) || ! in_array($target, self::TARGETS, true)) {
             return;
         }
 
-        $task = $this->task();
-        $memberIds = [
-            ...$task->assignees()->pluck('users.id')->all(),
-            ...$task->watchers()->pluck('users.id')->all(),
-        ];
-
-        $strangers = array_diff(array_map('intval', $recipientIds), $memberIds);
-
-        if ($strangers !== []) {
+        if ($this->recipientIdsFor($target) === []) {
             $validator->errors()->add(
-                'recipient_ids',
-                __('Each recipient must be an assignee or a watcher of this task.'),
+                'target',
+                __('There is no recipient for this target.'),
             );
         }
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function recipientIdsFor(string $target): array
+    {
+        $task = $this->task();
+        $assigneeIds = $task->assignees()->pluck('users.id')->all();
+        $watcherIds = $task->watchers()->pluck('users.id')->all();
+
+        return match ($target) {
+            'observers' => $watcherIds,
+            'all' => array_values(array_unique([...$assigneeIds, ...$watcherIds])),
+            default => $assigneeIds, // 'assignees'
+        };
     }
 
     private function task(): Task

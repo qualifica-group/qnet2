@@ -81,13 +81,15 @@ describe('tasks api — the six domain actions return the refreshed permissions'
   })
 })
 
-/** Spec 0118 D-14: the seventh action's response is the same detail tree as every other one, despite writing nothing on the task. */
-describe('tasks api — request-update (D-10..D-14)', () => {
-  it('posts recipient_ids and message to /tasks/{id}/request-update and echoes permissions', async () => {
-    const result = await requestTaskUpdate(7, { recipient_ids: [31, 41], message: 'a che punto sei?' })
+// REQUIREMENT CHANGED (spec 0153 D-14, rectifies spec 0118): the payload is no
+// longer a free `recipient_ids` list — `target` selects one of the three
+// fixed groups, and `message` is mandatory rather than optional.
+describe('tasks api — request-update (spec 0153 D-14)', () => {
+  it('posts target and message to /tasks/{id}/request-update and echoes permissions', async () => {
+    const result = await requestTaskUpdate(7, { target: 'assignees', message: 'a che punto sei?' })
 
     expect(postMock).toHaveBeenCalledWith('/tasks/7/request-update', {
-      recipient_ids: [31, 41],
+      target: 'assignees',
       message: 'a che punto sei?',
     })
     expect(result.permissions).toEqual(PERMISSIONS)

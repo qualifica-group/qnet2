@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Tasks;
 
 use App\Models\Task;
-use App\Models\TimeEntry;
 use App\Models\User;
 
 /**
@@ -84,9 +83,17 @@ final class TaskAbilityResolver
         return self::ownsTheMandate($actor, $task);
     }
 
+    /**
+     * D-5 (spec 0153, REQUIREMENT CHANGED): the same row as canUpdate() — an
+     * assignee is now admitted, no longer reserved to creator/requester/
+     * manager alone — ANDed with $task's own state: not completed, not
+     * awaiting validation, not blocked. A descendant that fails this SAME
+     * rule aborts the whole cascade delete (TaskService::delete()), never a
+     * second implementation of it.
+     */
     public static function canDelete(User $actor, Task $task): bool
     {
-        return self::ownsTheMandate($actor, $task);
+        return self::canUpdate($actor, $task) && self::isInAnOpenUnblockedState($task);
     }
 
     /**
@@ -125,35 +132,25 @@ final class TaskAbilityResolver
     }
 
     /**
-     * "Richiedi aggiornamento" (spec 0118, D-10): the one row of the matrix
-     * with the watcher admitted — creatore/richiedente, watcher and manager,
-     * NOT the plain assignee. Deliberately NOT expressed as
-     * `ownsTheMandate()` OR `isWatcher()`: the mandate concept (creator/
-     * requester/manager) and this row happen to share two of its three
-     * terms, but folding the watcher into `ownsTheMandate()` itself would
-     * silently grant it to every OTHER mandate-gated action too.
+     * "Richiedi aggiornamento" (spec 0153, D-14, REQUIREMENT CHANGED): the
+     * watcher is no longer admitted — creatore/richiedente and manager only,
+     * the same row as `ownsTheMandate()`. A plain assignee is still refused.
      */
     public static function canRequestUpdate(User $actor, Task $task): bool
     {
-        return self::isCreatorOrRequester($actor, $task)
-            || TaskRecordRoles::isWatcher($actor, $task)
-            || TaskRecordRoles::isManager($actor, $task);
+        return self::ownsTheMandate($actor, $task);
     }
 
     /**
-     * Spec 0126, D-3: a segnatempo filed under $task follows the Task's OWN
-     * role matrix instead of `time-entries.manageAll` — an actor who manages
-     * every OTHER user's segnatempo across the app still may not touch one
-     * on a Task they hold no role on. True for whoever owns the MANDATE
-     * (creator/requester/manager) on ANY segnatempo of $task, or for the
-     * segnatempo's own owner when they may `canComplete()` $task (i.e. an
-     * assignee); false for the watcher, even on their own segnatempo — the
-     * one role `canComplete()` excludes.
+     * Spec 0153, D-9 (REQUIREMENT CHANGED): a segnatempo filed under $task
+     * follows the Task's OWN `canUpdate()` row — creator/requester,
+     * assignee or manager may manage ANY segnatempo of $task, including one
+     * filed by another assignee; the watcher, excluded from `canUpdate()`,
+     * may manage none, not even their own.
      */
-    public static function canManageTimeEntry(User $actor, Task $task, TimeEntry $entry): bool
+    public static function canManageTimeEntry(User $actor, Task $task): bool
     {
-        return self::ownsTheMandate($actor, $task)
-            || ($entry->user_id === $actor->id && self::canComplete($actor, $task));
+        return self::canUpdate($actor, $task);
     }
 
     private static function ownsTheMandate(User $actor, Task $task): bool
@@ -164,5 +161,15 @@ final class TaskAbilityResolver
     private static function isCreatorOrRequester(User $actor, Task $task): bool
     {
         return TaskRecordRoles::isCreator($actor, $task) || TaskRecordRoles::isRequester($actor, $task);
+    }
+
+    /**
+     * D-5 (spec 0153): not completed, not awaiting validation, not blocked —
+     * the same phase window `TaskActionAvailability::isCompletable()`
+     * already answers for `complete`, reused rather than re-derived.
+     */
+    private static function isInAnOpenUnblockedState(Task $task): bool
+    {
+        return ! $task->is_blocked && (new TaskActionAvailability)->isCompletable($task);
     }
 }

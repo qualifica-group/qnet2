@@ -14,6 +14,10 @@ export const notifications = {
   },
   empty: 'Non hai notifiche.',
   untitled: 'Notifica',
+  // Contrassegno su una notifica per conoscenza (spec 0153 D-14: gli
+  // osservatori ricevono una copia di una "richiesta di aggiornamento"
+  // inviata agli assegnatari).
+  cc: 'In copia',
   markAllAsRead: 'Segna tutte come lette',
   markAsRead: 'Segna come letta',
   unreadCount: '{{count}} notifiche non lette',

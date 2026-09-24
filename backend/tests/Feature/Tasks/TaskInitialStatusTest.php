@@ -162,16 +162,19 @@ it('AC-021: PATCH on the "assigned" row rejects a group change but accepts name/
 // D-4 — the initial-status derivation, at the resolver's own unit level
 // ---------------------------------------------------------------------------
 
-it('D-4: a single assignee who is the creator resolves to the open row', function () {
+// REQUIREMENT CHANGED (spec 0153, D-4): the creator no longer counts — a
+// single assignee who is ONLY the creator (not the requester too) now
+// resolves to the assigned row, the opposite of spec 0118's own rule.
+it('D-4 (spec 0153): a single assignee who is ONLY the creator now resolves to the assigned row', function () {
     $creator = User::factory()->create();
     $requester = User::factory()->create();
 
     $statusId = (new TaskInitialStatusResolver)->resolve([$creator->id], $creator->id, $requester->id);
 
-    expect($statusId)->toBe(systemStatusIdFor(TaskStatusSystemKey::Open));
+    expect($statusId)->toBe(systemStatusIdFor(TaskStatusSystemKey::Assigned));
 });
 
-it('D-4: a single assignee who is the requester resolves to the open row too — the rule reads "oppure"', function () {
+it('D-4: a single assignee who is the requester resolves to the open row', function () {
     $creator = User::factory()->create();
     $requester = User::factory()->create();
 
@@ -209,12 +212,15 @@ it('D-4: a single assignee who is neither the creator nor the requester resolves
     expect($statusId)->toBe(systemStatusIdFor(TaskStatusSystemKey::Assigned));
 });
 
-it('D-4: a null requester does not break the single-assignee-is-creator case', function () {
+// REQUIREMENT CHANGED (spec 0153, D-4): the creator no longer counts, so a
+// null requester now means NOTHING can match the sole assignee — even when
+// that assignee is the creator.
+it('D-4 (spec 0153): a null requester means the sole creator-assignee now resolves to the assigned row', function () {
     $creator = User::factory()->create();
 
     $statusId = (new TaskInitialStatusResolver)->resolve([$creator->id], $creator->id, null);
 
-    expect($statusId)->toBe(systemStatusIdFor(TaskStatusSystemKey::Open));
+    expect($statusId)->toBe(systemStatusIdFor(TaskStatusSystemKey::Assigned));
 });
 
 it('D-4: a null requester does not accidentally match a single unrelated assignee', function () {
@@ -224,6 +230,15 @@ it('D-4: a null requester does not accidentally match a single unrelated assigne
     $statusId = (new TaskInitialStatusResolver)->resolve([$other->id], $creator->id, null);
 
     expect($statusId)->toBe(systemStatusIdFor(TaskStatusSystemKey::Assigned));
+});
+
+it('D-4 (spec 0153): duplicate assignee ids collapse to one before the single-assignee check', function () {
+    $creator = User::factory()->create();
+    $requester = User::factory()->create();
+
+    $statusId = (new TaskInitialStatusResolver)->resolve([$requester->id, $requester->id], $creator->id, $requester->id);
+
+    expect($statusId)->toBe(systemStatusIdFor(TaskStatusSystemKey::Open));
 });
 
 // ---------------------------------------------------------------------------
@@ -244,7 +259,10 @@ if (! function_exists('grantTasksAbility')) {
     }
 }
 
-it('AC-010: POST with assignee_ids = [the creator] persists the open row', function () {
+// REQUIREMENT CHANGED (spec 0153, D-4): the creator no longer counts — a
+// single assignee who is only the creator (a different requester is set)
+// now persists the assigned row.
+it('AC-010 (spec 0153): POST with assignee_ids = [the creator] alone now persists the assigned row', function () {
     $creator = User::factory()->create();
     grantTasksAbility($creator, 'create');
     Sanctum::actingAs($creator);
@@ -256,7 +274,7 @@ it('AC-010: POST with assignee_ids = [the creator] persists the open row', funct
         'end_date' => '2026-12-31',
     ])->assertCreated();
 
-    expect($response->json('data.task_status_id'))->toBe(systemStatusIdFor(TaskStatusSystemKey::Open));
+    expect($response->json('data.task_status_id'))->toBe(systemStatusIdFor(TaskStatusSystemKey::Assigned));
 });
 
 it('AC-011: POST with requester_id = X and assignee_ids = [X] persists the open row', function () {

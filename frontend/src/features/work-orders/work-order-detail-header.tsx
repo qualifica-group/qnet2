@@ -4,10 +4,10 @@ import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
+import { CompletionBar } from '@/components/completion-bar'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
-import { WorkOrderCompletionBar } from '@/features/work-orders/work-order-completion-bar'
 import type { WorkOrderDetailWithPermissions, WorkOrderStatusValue, WorkOrderType } from '@/features/work-orders/types'
 
 /**
@@ -85,7 +85,12 @@ export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetail
       <RecordStat
         label={t('workOrders.columns.completion_percentage')}
         icon={<CheckCircle2 aria-hidden="true" />}
-        value={<WorkOrderCompletionBar value={workOrder.completion_percentage} />}
+        value={
+          <CompletionBar
+            value={workOrder.completion_percentage}
+            label={t('workOrders.columns.completion_percentage')}
+          />
+        }
       />
       <RecordStat
         label={t('workOrders.detail.startDate')}

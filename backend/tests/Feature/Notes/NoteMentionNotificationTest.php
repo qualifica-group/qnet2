@@ -154,7 +154,8 @@ it('the database payload matches NotificationData and surfaces via the existing 
     expect($row->type)->toBe(NoteMentionNotification::class);
 
     $payload = json_decode($row->data, true);
-    expect(array_keys($payload))->toEqualCanonicalizing(['title', 'message', 'level', 'action_url']);
+    // NotificationData gained is_cc (spec 0153, D-14).
+    expect(array_keys($payload))->toEqualCanonicalizing(['title', 'message', 'level', 'action_url', 'is_cc']);
     expect($payload['level'])->toBe('info');
     // The note carries no `quote_id` (general note) and this recipient holds
     // only `request-management.*`, so the module's own list is the landing

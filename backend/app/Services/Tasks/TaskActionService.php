@@ -30,8 +30,9 @@ use Illuminate\Support\Facades\Notification;
  *
  * Notifications (spec 0119, D-12) are one TaskNotifier call per write path,
  * inside the transaction (the send is deferred to `DB::afterCommit()`,
- * AC-028). requestUpdate() keeps its own spec 0118 notification, sent to the
- * caller-chosen recipients alone.
+ * AC-028). requestUpdate() keeps its own notification (spec 0153, D-14): sent
+ * to the fixed `target` group resolved off the Task's current pivots, never
+ * via TaskNotifier/TaskNotificationAudience.
  */
 final class TaskActionService
 {
@@ -82,26 +83,60 @@ final class TaskActionService
     }
 
     /**
-     * "Richiedi aggiornamento" (spec 0118, D-10..D-14): does NOT open a
-     * transaction — there is nothing to write to the Task and therefore
-     * nothing to roll back. Availability re-uses `isCompletable()`, the SAME
-     * rule complete() enforces (D-10 forbids a twin method). The notification
-     * goes ONLY to the recipients the actor named (D-11), and the response is
-     * the same detail read every other action returns (D-14).
-     *
-     * Spec 0126, D-6 (REQUIREMENT CHANGED): carries no `TaskWriteLock::
-     * assertNotBlocked()` of its own, unlike block/unblock's siblings in
-     * `TaskCompletionService` — a blocked Task now admits this one action.
+     * "Richiedi aggiornamento" (spec 0153, D-14, superseding spec 0118
+     * D-10..D-14 and spec 0126 D-6): does NOT open a transaction — there is
+     * nothing to write to the Task and therefore nothing to roll back.
+     * Availability re-uses `isCompletable()`, the SAME rule complete()
+     * enforces (D-10 forbids a twin method), PLUS its own "not blocked" 422
+     * (D-14 REVERSES spec 0126 D-6's exemption). Recipients are the fixed
+     * `target` group resolved off the Task's OWN current pivots, never the
+     * actor-picked list of the old contract; the actor is never excluded.
      */
     public function requestUpdate(Task $task, RequestTaskUpdateData $data, User $actor): Task
     {
         $this->assertMayRequestUpdate($actor, $task);
         $this->assertRequestUpdateAvailable($task);
 
-        $recipients = User::query()->whereIn('id', $data->recipientIds)->get();
-        Notification::send($recipients, new TaskUpdateRequested($task, $actor, $data->message));
+        $task->loadMissing(['assignees', 'watchers']);
+        [$recipientIds, $ccIds] = $this->resolveRequestUpdateRecipients($task, $data->target);
+
+        $this->sendRequestUpdate($task, $actor, $data->message, $recipientIds, isCc: false);
+        $this->sendRequestUpdate($task, $actor, $data->message, $ccIds, isCc: true);
 
         return $this->taskService->loadDetail($task->fresh());
+    }
+
+    /**
+     * D-14's three fixed groups: `assignees` carries every watcher NOT
+     * already an assignee in copy (`is_cc: true`, a SEPARATE notification);
+     * `observers` and `all` send no copy — `all` already reaches everyone in
+     * ONE direct list.
+     *
+     * @return array{0: array<int, int>, 1: array<int, int>}
+     */
+    private function resolveRequestUpdateRecipients(Task $task, string $target): array
+    {
+        $assigneeIds = $task->assignees->pluck('id')->map(intval(...))->all();
+        $watcherIds = $task->watchers->pluck('id')->map(intval(...))->all();
+
+        return match ($target) {
+            'observers' => [$watcherIds, []],
+            'all' => [array_values(array_unique([...$assigneeIds, ...$watcherIds])), []],
+            default => [$assigneeIds, array_values(array_diff($watcherIds, $assigneeIds))], // 'assignees'
+        };
+    }
+
+    /**
+     * @param  array<int, int>  $userIds
+     */
+    private function sendRequestUpdate(Task $task, User $actor, string $message, array $userIds, bool $isCc): void
+    {
+        if ($userIds === []) {
+            return;
+        }
+
+        $recipients = User::query()->whereIn('id', $userIds)->get();
+        Notification::send($recipients, new TaskUpdateRequested($task, $actor, $message, $isCc));
     }
 
     /**
@@ -131,11 +166,21 @@ final class TaskActionService
         );
     }
 
+    /**
+     * D-7 (spec 0153, REQUIREMENT CHANGED): isBlockable() now also refuses a
+     * closed/in-validation Task, not only an already-blocked one — the
+     * message distinguishes the two so a closed Task is never told it is
+     * "already blocked".
+     */
     private function assertBlockable(Task $task): void
     {
-        if (! $this->availability->isBlockable($task)) {
-            abort(422, 'This task is already blocked.');
+        if ($this->availability->isBlockable($task)) {
+            return;
         }
+
+        abort(422, $task->is_blocked
+            ? 'This task is already blocked.'
+            : 'This task is already closed or awaiting validation.');
     }
 
     private function assertUnblockable(Task $task): void
@@ -146,11 +191,19 @@ final class TaskActionService
     }
 
     /**
-     * D-10: the same availability window as complete() — `isCompletable()`,
-     * not a twin method — carrying its own message for this action.
+     * D-10 (spec 0118): the same availability window as complete() —
+     * `isCompletable()`, not a twin method — carrying its own message for
+     * this action. Spec 0153, D-14 REVERSES spec 0126 D-6's exemption: a
+     * blocked Task now 422s here too, re-asserted directly on the column
+     * (never `TaskWriteLock::assertNotBlocked()`, which answers 409 — this
+     * endpoint's own contract is 422 for every refusal but the 403 matrix).
      */
     private function assertRequestUpdateAvailable(Task $task): void
     {
+        if ($task->is_blocked) {
+            abort(422, 'This task is blocked.');
+        }
+
         if (! $this->availability->isCompletable($task)) {
             abort(422, 'This task is already closed or awaiting validation.');
         }

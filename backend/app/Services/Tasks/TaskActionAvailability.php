@@ -42,9 +42,14 @@ class TaskActionAvailability
         return $this->group($task) === TaskStatusGroup::InValidation;
     }
 
+    /**
+     * D-7 (spec 0153, REQUIREMENT CHANGED): not already blocked AND the Task
+     * is open (not completed, not awaiting validation) — `isCompletable()`
+     * answers the exact same phase window, reused rather than re-derived.
+     */
     public function isBlockable(Task $task): bool
     {
-        return $task->is_blocked === false;
+        return $task->is_blocked === false && $this->isCompletable($task);
     }
 
     public function isUnblockable(Task $task): bool

@@ -49,10 +49,16 @@ function exportedTaskCsv(array $payload): string
 
 beforeEach(function () {
     Storage::fake('local');
-    Sanctum::actingAs(exportTaskActor());
+    $actor = exportTaskActor();
+    Sanctum::actingAs($actor);
 
-    Task::factory()->inStatus(TaskStatus::factory()->group(TaskStatusGroup::Open)->create())->create(['title' => 'Aperto']);
-    Task::factory()->inStatus(TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create())->create(['title' => 'Chiuso']);
+    // Assigned to the actor, so the required `assignment` default
+    // (assigned_to_me, spec 0153 D-1) keeps both and only `status` decides.
+    Task::factory()->inStatus(TaskStatus::factory()->group(TaskStatusGroup::Open)->create())->create(['title' => 'Aperto'])
+        ->assignees()->attach($actor->id);
+    Task::factory()->inStatus(TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create())->create(['title' => 'Chiuso'])
+        ->assignees()->attach($actor->id);
+    Task::factory()->inStatus(TaskStatus::factory()->group(TaskStatusGroup::Open)->create())->create(['title' => 'Altrui']);
 });
 
 it('exports only the rows matching the applied advanced filters', function () {
@@ -61,10 +67,10 @@ it('exports only the rows matching the applied advanced filters', function () {
     expect($csv)->toContain('Chiuso')->not->toContain('Aperto');
 });
 
-it('applies the required advanced filter default when the request omits it, like the grid', function () {
+it('applies the required advanced filter defaults when the request omits them, like the grid', function () {
     $csv = exportedTaskCsv([]);
 
-    expect($csv)->toContain('Aperto')->not->toContain('Chiuso');
+    expect($csv)->toContain('Aperto')->not->toContain('Chiuso')->not->toContain('Altrui');
 });
 
 it('freezes the advanced filters into the run state', function () {

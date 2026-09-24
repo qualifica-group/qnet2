@@ -104,7 +104,7 @@ it('emits the four payload keys with a valid level (AC-002, D-11)', function () 
     foreach (taskNotificationCatalogue() as $class => $expectedLevel) {
         $payload = (new $class($task, $actor))->toArray($recipient);
 
-        expect(array_keys($payload))->toBe(['title', 'message', 'level', 'action_url'], $class)
+        expect(array_keys($payload))->toBe(['title', 'message', 'level', 'action_url', 'is_cc'], $class)
             ->and($payload['level'])->toBe($expectedLevel->value, $class)
             ->and($payload['title'])->not->toBeEmpty($class)
             ->and($payload['message'])->not->toBeEmpty($class);

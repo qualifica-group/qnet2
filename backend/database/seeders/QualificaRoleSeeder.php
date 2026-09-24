@@ -35,7 +35,8 @@ class QualificaRoleSeeder extends Seeder
 
         // Step 2: one role per mansione, with its permission matrix.
         foreach (Catalogue::ROLES as $name => $role) {
-            $synced = $this->syncRole($name, $role['description'], $this->permissionsOf($role['blocks'], $catalogue));
+            $blocks = [...$role['blocks'], ...Catalogue::EVERY_ROLE_BLOCKS];
+            $synced = $this->syncRole($name, $role['description'], $this->permissionsOf($blocks, $catalogue));
 
             // Step 3: the per-FIELD restrictions of the roles scoped to their
             // own requests (empty for every other role, so a re-run also
@@ -101,6 +102,11 @@ class QualificaRoleSeeder extends Seeder
             Catalogue::ENROLLEES_READ => $resource === Catalogue::ENROLLEE_MODULE
                 && in_array($ability, Catalogue::ENROLLEES_READ_ABILITIES, true),
             Catalogue::SITE_ENROLLEES => $permission === Catalogue::ENROLLEE_MODULE.'.viewSite',
+            Catalogue::OWN_TASKS => ($resource === Catalogue::TASK_MODULE
+                    && ! in_array($ability, Catalogue::OWN_TASKS_DENIED_ABILITIES, true))
+                || in_array($permission, Catalogue::COLLABORATION_PERMISSIONS, true),
+            Catalogue::OWN_TIME_ENTRIES => $resource === Catalogue::TIME_ENTRY_MODULE
+                && ! in_array($ability, Catalogue::OWN_TIME_ENTRIES_DENIED_ABILITIES, true),
         };
     }
 

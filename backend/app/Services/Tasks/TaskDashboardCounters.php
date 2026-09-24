@@ -24,6 +24,11 @@ use Illuminate\Support\Facades\DB;
  * the list the frontend opens on its click (AC-005). Root tasks and
  * sub-tasks both count (D-4): the grid itself is flat, so scopeToActor()
  * alone is the only restriction needed here.
+ *
+ * `created_by_me` inherits the D-3 tightening of spec 0153 (creator, and
+ * neither requester, assignee nor watcher) for free, since it goes through
+ * the very same TaskAdvancedFilterApplier::applyScope() the grid's `assignment`
+ * filter uses.
  */
 final class TaskDashboardCounters
 {

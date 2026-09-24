@@ -65,7 +65,10 @@ export function taskActionAvailability(task: TaskDetail): TaskActionAvailability
     uncomplete: terminal,
     approve: validating,
     reject: validating,
-    block: true,
+    // Spec 0153 D-7: blockable only on an open task (not completed, not in
+    // validation) — the SAME condition as `complete`, deliberately the same
+    // expression rather than a second rule that could drift from it.
+    block: !terminal,
     unblock: false,
     // Spec 0118 D-10: "solo su task aperti", which is the SAME condition as
     // complete — deliberately the same expression, not a second rule that

@@ -8,22 +8,19 @@ use App\Models\Task;
 use App\Models\User;
 
 /**
- * WHO receives a Task notification (spec 0119, D-3/D-4/D-5/D-6). Pure: it
- * holds four id sets and answers with the audience each event asks for. It
- * never queries — TaskNotifier resolves the sets once and loads the User rows
- * itself, in one query.
+ * WHO receives a Task notification (spec 0119, D-3/D-4/D-5/D-6; spec 0153,
+ * D-11/D-13). Pure: it holds four id sets and answers with the audience each
+ * event asks for. It never queries — TaskNotifier resolves the sets once and
+ * loads the User rows itself, in one query.
  *
- * Two rules apply to EVERY answer, which is the whole reason this class
- * exists instead of four inline array_merge():
- *
- *   D-3, the actor is always dropped. The product document never says so, but
- *   AssignmentNotifier already works this way ("nobody needs to be told what
- *   they just did") and it is the only precedent in the repo. Accepted
- *   consequence: the creator who blocks their own Task gets no TaskLocked.
- *
- *   D-6, ids are deduplicated. Record roles ACCUMULATE — one user may be
- *   creator, requester and assignee at once — so a per-role merge would send
- *   the same person three copies of one event.
+ * The general rule, applied by resolve(): drop nulls, drop ONE named id
+ * (D-3's actor, for most events), deduplicate (D-6 — record roles ACCUMULATE,
+ * one user may be creator, requester and assignee at once, so a per-role
+ * merge would send the same person three copies of one event). Two events
+ * deviate from "drop the actor" on purpose (spec 0153, D-13):
+ * `assigned()`/`restrictAssigned()` drop the CREATOR instead — a manager who
+ * both requests and assigns a Task to themselves still hears about it; and
+ * `watchers()`/`restrictWatchers()` drop NOBODY, not even the actor.
  */
 final readonly class TaskNotificationAudience
 {
@@ -56,9 +53,11 @@ final readonly class TaskNotificationAudience
 
     /**
      * Creator + requester + assignees + watchers: the audience of events
-     * 2, 3, 9, 10 and 11. Since D-4 resolved the document's own contradiction
-     * about who hears about a completion in favour of the UNION, the closing
-     * events share this set with the blocking ones.
+     * 9, 10 and 11. Since D-4 (spec 0119) resolved the document's own
+     * contradiction about who hears about a completion in favour of the
+     * UNION, `uncompleted()`/`locked()`/`unlocked()` still share this set —
+     * only the CLOSING events (2/3) narrowed away from it (spec 0153, D-11,
+     * see closure() below).
      *
      * @return array<int, int>
      */
@@ -66,28 +65,63 @@ final readonly class TaskNotificationAudience
     {
         return $this->resolve(
             [$this->creatorId, $this->requesterId, ...$this->assigneeIds, ...$this->watcherIds],
-            $actor,
+            $actor?->id,
         );
     }
 
     /**
-     * Events 4, 5 and 7.
+     * Events 4 and 5.
      *
      * @return array<int, int>
      */
     public function assignees(?User $actor): array
     {
-        return $this->resolve($this->assigneeIds, $actor);
+        return $this->resolve($this->assigneeIds, $actor?->id);
     }
 
     /**
-     * Event 8.
+     * Event 7's OWN audience (spec 0153, D-13): every current assignee,
+     * dropping the CREATOR rather than the actor.
      *
      * @return array<int, int>
      */
-    public function watchers(?User $actor): array
+    public function assigned(): array
     {
-        return $this->resolve($this->watcherIds, $actor);
+        return $this->resolve($this->assigneeIds, $this->creatorId);
+    }
+
+    /**
+     * Event 7's delta path (spec 0118 D-9's shape: an EXPLICIT set of
+     * newly-added ids on a PATCH), same creator-only exclusion as assigned().
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, int>
+     */
+    public function restrictAssigned(array $ids): array
+    {
+        return $this->resolve($ids, $this->creatorId);
+    }
+
+    /**
+     * Event 8 (spec 0153, D-13): every current watcher, excluding NOBODY —
+     * not even the actor.
+     *
+     * @return array<int, int>
+     */
+    public function watchers(): array
+    {
+        return $this->resolve($this->watcherIds, null);
+    }
+
+    /**
+     * Event 8's delta path: the same "exclude nobody" rule as watchers().
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, int>
+     */
+    public function restrictWatchers(array $ids): array
+    {
+        return $this->resolve($ids, null);
     }
 
     /**
@@ -101,7 +135,7 @@ final readonly class TaskNotificationAudience
      */
     public function requesterOrCreator(?User $actor): array
     {
-        return $this->resolve([$this->requesterId ?? $this->creatorId], $actor);
+        return $this->resolve([$this->requesterId ?? $this->creatorId], $actor?->id);
     }
 
     /**
@@ -112,36 +146,44 @@ final readonly class TaskNotificationAudience
      */
     public function requesterAndCreator(?User $actor): array
     {
-        return $this->resolve([$this->requesterId, $this->creatorId], $actor);
+        return $this->resolve([$this->requesterId, $this->creatorId], $actor?->id);
     }
 
     /**
-     * The same two rules applied to an EXPLICIT set of ids rather than to a
-     * role: what D-9 needs on a PATCH, where the audience is not "the
-     * assignees" but "the assignees that were just added".
+     * Events 2/3 (spec 0153, D-11): requester + watchers, plus every assignee
+     * only when `$includeAssignees` (a single-assignee Task never tells its
+     * lone assignee it is closing their own task). The creator is NEVER a
+     * member of this set as such — only ever through the requester/watcher/
+     * assignee role, exactly like every other audience. Inactive recipients
+     * are dropped by TaskNotifier::send() (`activeOnly`), not here — this
+     * class never queries.
      *
-     * @param  array<int, int>  $ids
      * @return array<int, int>
      */
-    public static function restrict(array $ids, ?User $actor): array
+    public function closure(?User $actor, bool $includeAssignees): array
     {
-        return (new self(0, null, [], []))->resolve($ids, $actor);
+        $ids = [$this->requesterId, ...$this->watcherIds];
+
+        if ($includeAssignees) {
+            $ids = [...$ids, ...$this->assigneeIds];
+        }
+
+        return $this->resolve($ids, $actor?->id);
     }
 
     /**
-     * The two rules, applied in one place: drop nulls, drop the actor (D-3),
-     * deduplicate (D-6), and reindex so the result is a list and not a map
-     * with holes.
+     * Drop nulls, drop `$excludeId` when present, deduplicate, and reindex so
+     * the result is a list and not a map with holes.
      *
      * @param  array<int, int|null>  $ids
      * @return array<int, int>
      */
-    private function resolve(array $ids, ?User $actor): array
+    private function resolve(array $ids, ?int $excludeId): array
     {
         $ids = array_filter($ids, static fn (?int $id): bool => $id !== null);
 
-        if ($actor !== null) {
-            $ids = array_filter($ids, static fn (int $id): bool => $id !== $actor->id);
+        if ($excludeId !== null) {
+            $ids = array_filter($ids, static fn (int $id): bool => $id !== $excludeId);
         }
 
         return array_values(array_unique($ids));

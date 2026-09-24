@@ -15,7 +15,8 @@ uses(RefreshDatabase::class);
 
 /*
 |--------------------------------------------------------------------------
-| Derived completion percentage (spec 0101, D-6, AC-020..AC-023)
+| Derived completion percentage (spec 0101, D-6, AC-020..AC-023; spec 0153,
+| D-10, AC-013)
 |--------------------------------------------------------------------------
 |
 | `tasks` has no `completion_percentage` column: the value is a PROJECTION of
@@ -26,6 +27,10 @@ uses(RefreshDatabase::class);
 |
 | AC-024 (no production file conditions on a status LABEL) is a repository
 | grep and lives with the other greps in TaskModuleHygieneTest.
+|
+| AC-013 (spec 0153, D-10): with sub-tasks the percentage is the rounded
+| average of the children's OWN percentages (recursive), capped at 99 while
+| the parent is open; a closed parent is always 100, subtasks or not.
 */
 
 if (! function_exists('taskActorWith')) {
@@ -167,8 +172,11 @@ it('AC-022: sorting the grid by completion_percentage matches sorting by the sta
     Task::factory()->forCreator($actor)->inStatus(TaskStatus::factory()->completion(45)->create())->create(['title' => 'Quarantacinque']);
     Sanctum::actingAs($actor);
 
+    // spec 0153, D-1: `assignment` is mandatory; `all` reaches these
+    // creator-only fixtures (the actor holds no OTHER role on them).
     $ascending = $this->postJson('/api/tables/tasks/rows', [
         'startRow' => 0, 'endRow' => 25,
+        'advancedFilters' => ['assignment' => ['all']],
         'sortModel' => [['colId' => 'completion_percentage', 'sort' => 'asc']],
     ])->assertOk()->json('items');
 
@@ -177,6 +185,7 @@ it('AC-022: sorting the grid by completion_percentage matches sorting by the sta
 
     $descending = $this->postJson('/api/tables/tasks/rows', [
         'startRow' => 0, 'endRow' => 25,
+        'advancedFilters' => ['assignment' => ['all']],
         'sortModel' => [['colId' => 'completion_percentage', 'sort' => 'desc']],
     ])->assertOk()->json('items');
 
@@ -191,6 +200,9 @@ it('AC-022: the export carries the derived column', function () {
 
     $response = $this->postJson('/api/exports/tasks', [
         'format' => 'csv',
+        // spec 0153, D-1: `assignment` is mandatory; `all` reaches this
+        // creator-only fixture (the actor holds no OTHER role on it).
+        'advancedFilters' => ['assignment' => ['all']],
         'columns' => [
             ['colId' => 'title', 'header' => 'Title'],
             ['colId' => 'completion_percentage', 'header' => 'Completion'],
@@ -235,9 +247,11 @@ it('AC-023: renaming closed_positive leaves the percentage, the closure guard an
         //    REQUIREMENT CHANGED (spec 0147, D-2): the grid now defaults to
         //    the open tasks, so `status: all` lifts that default to reach the
         //    closed row this point is about.
+        // spec 0153, D-1: `assignment` is mandatory too; `all` reaches both
+        // creator-only fixtures alongside the pre-existing `status: all`.
         $rows = $this->postJson('/api/tables/tasks/rows', [
             'startRow' => 0, 'endRow' => 25,
-            'advancedFilters' => ['status' => 'all'],
+            'advancedFilters' => ['status' => 'all', 'assignment' => ['all']],
             'filterModel' => ['task_status' => ['filterType' => 'set', 'values' => [$closedPositive->fresh()->name]]],
         ])->assertOk()->json('items');
 
@@ -251,4 +265,70 @@ it('AC-023: renaming closed_positive leaves the percentage, the closure guard an
     expect($closedPositive->fresh()->name)->toBe('Terminato');
 
     $assertRulesHold();
+});
+
+// ---------------------------------------------------------------------------
+// AC-013 (spec 0153, D-10) — recursive, capped average over sub-tasks
+// ---------------------------------------------------------------------------
+
+it('AC-013: an open parent with two 100% children caps the average at 99', function () {
+    $actor = taskActorWith(['view']);
+    $openParent = TaskStatus::factory()->group(TaskStatusGroup::Open)->completion(0)->create();
+    $parent = Task::factory()->forCreator($actor)->inStatus($openParent)->create();
+    $closing = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+    Task::factory()->inStatus($closing)->create(['parent_task_id' => $parent->id]);
+    Task::factory()->inStatus($closing)->create(['parent_task_id' => $parent->id]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$parent->id}")
+        ->assertOk()
+        ->assertJsonPath('data.completion_percentage', 99);
+});
+
+it('AC-013: an open parent with children at 50 and 100 shows the rounded average, 75', function () {
+    $actor = taskActorWith(['view']);
+    $openParent = TaskStatus::factory()->group(TaskStatusGroup::Open)->completion(0)->create();
+    $parent = Task::factory()->forCreator($actor)->inStatus($openParent)->create();
+    $half = TaskStatus::factory()->group(TaskStatusGroup::Open)->completion(50)->create();
+    $closing = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+    Task::factory()->inStatus($half)->create(['parent_task_id' => $parent->id]);
+    Task::factory()->inStatus($closing)->create(['parent_task_id' => $parent->id]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$parent->id}")
+        ->assertOk()
+        ->assertJsonPath('data.completion_percentage', 75);
+});
+
+it('AC-013: a CLOSED parent is 100 regardless of its own children', function () {
+    $actor = taskActorWith(['view']);
+    $closing = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+    $parent = Task::factory()->forCreator($actor)->inStatus($closing)->create();
+    $stillOpen = TaskStatus::factory()->group(TaskStatusGroup::Open)->completion(10)->create();
+    Task::factory()->inStatus($stillOpen)->create(['parent_task_id' => $parent->id]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$parent->id}")
+        ->assertOk()
+        ->assertJsonPath('data.completion_percentage', 100);
+});
+
+it('AC-013: the average recurses through a grandchild level', function () {
+    $actor = taskActorWith(['view']);
+    $openStatus = TaskStatus::factory()->group(TaskStatusGroup::Open)->completion(0)->create();
+    $closing = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+
+    $parent = Task::factory()->forCreator($actor)->inStatus($openStatus)->create();
+    // Child A: open itself, with two closed grandchildren -> min(avg(100,100), 99) = 99.
+    $childA = Task::factory()->inStatus($openStatus)->create(['parent_task_id' => $parent->id]);
+    Task::factory()->inStatus($closing)->create(['parent_task_id' => $childA->id]);
+    Task::factory()->inStatus($closing)->create(['parent_task_id' => $childA->id]);
+    // Child B: closed outright -> 100.
+    Task::factory()->inStatus($closing)->create(['parent_task_id' => $parent->id]);
+    Sanctum::actingAs($actor);
+
+    // Parent: avg(99, 100) = 99.5 -> round = 100 -> capped at 99 (still open).
+    $this->getJson("/api/tasks/{$parent->id}")
+        ->assertOk()
+        ->assertJsonPath('data.completion_percentage', 99);
 });

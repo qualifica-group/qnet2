@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -14,128 +15,116 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { cn } from '@/lib/utils'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { actionErrorMessage } from '@/features/tasks/task-action-error-message'
 import { useRequestTaskUpdate } from '@/features/tasks/use-task-mutations'
-import type { RequestTaskUpdatePayload, TaskDetailWithPermissions, TaskNamedRef } from '@/features/tasks/types'
+import type {
+  RequestTaskUpdatePayload,
+  TaskDetailWithPermissions,
+  TaskNamedRef,
+  TaskRequestUpdateTarget,
+} from '@/features/tasks/types'
 
-/** Backend `message` column limit (spec 0118 data_contract: `max:2000`). */
+/** Backend `message` column bounds (spec 0153 D-14, data_contract: `min:3|max:2000`). */
+const MESSAGE_MIN_LENGTH = 3
 const MESSAGE_MAX_LENGTH = 2000
 
 function buildRequestUpdateSchema(t: TFunction) {
   return z.object({
-    recipient_ids: z.array(z.number()).min(1, t('tasks.actions.requestUpdate.recipientsRequired')),
-    message: z.string(),
+    target: z.enum(['assignees', 'observers', 'all']),
+    message: z
+      .string()
+      .trim()
+      .min(MESSAGE_MIN_LENGTH, t('tasks.actions.requestUpdate.messageTooShort'))
+      .max(MESSAGE_MAX_LENGTH, t('tasks.actions.requestUpdate.messageTooLong')),
   })
 }
 
 type RequestUpdateFormValues = z.infer<ReturnType<typeof buildRequestUpdateSchema>>
 
-function requestUpdateDefaultValues(ids: number[]): RequestUpdateFormValues {
-  return { recipient_ids: ids, message: '' }
-}
+const REQUEST_UPDATE_DEFAULT_VALUES: RequestUpdateFormValues = { target: 'assignees', message: '' }
 
-/**
- * Omits `message` when blank (D-12): the server's own default copy takes
- * over. `recipient_ids` is deduped defensively (AC-014): the picker already
- * builds from unique candidates, so this only guards against a future bug.
- */
 function buildRequestUpdatePayload(values: RequestUpdateFormValues): RequestTaskUpdatePayload {
-  const message = values.message.trim()
-  return {
-    recipient_ids: Array.from(new Set(values.recipient_ids)),
-    ...(message !== '' ? { message } : {}),
-  }
+  return { target: values.target, message: values.message.trim() }
 }
 
-function toggleRecipient(current: number[], id: number, checked: boolean): number[] {
-  if (checked) {
-    return current.includes(id) ? current : [...current, id]
-  }
-  return current.filter((existing) => existing !== id)
+/** Count of distinct recipients across both lists (D-14 `all`), a user in both counted once. */
+function uniqueRecipientCount(assignees: TaskNamedRef[], watchers: TaskNamedRef[]): number {
+  const ids = new Set([...assignees, ...watchers].map((ref) => ref.id))
+  return ids.size
 }
 
-type RecipientRole = 'assignee' | 'watcher'
+interface RequestUpdateTargetOption {
+  value: TaskRequestUpdateTarget
+  label: string
+  count: number
+  /** Extra copy shown under the option (D-14: watchers are CC'd under `assignees`). */
+  hint?: string
+}
 
-interface RecipientCandidate extends TaskNamedRef {
-  roles: RecipientRole[]
+function buildTargetOptions(task: TaskDetailWithPermissions, t: TFunction): RequestUpdateTargetOption[] {
+  return [
+    {
+      value: 'assignees',
+      label: t('tasks.actions.requestUpdate.targetAssignees'),
+      count: task.assignees.length,
+      hint: task.watchers.length > 0 ? t('tasks.actions.requestUpdate.targetAssigneesHint') : undefined,
+    },
+    {
+      value: 'observers',
+      label: t('tasks.actions.requestUpdate.targetObservers'),
+      count: task.watchers.length,
+    },
+    {
+      value: 'all',
+      label: t('tasks.actions.requestUpdate.targetAll'),
+      count: uniqueRecipientCount(task.assignees, task.watchers),
+    },
+  ]
+}
+
+interface TargetOptionRowProps {
+  option: RequestUpdateTargetOption
+  name: string
+  checked: boolean
+  onSelect: () => void
 }
 
 /**
- * Merges assignees and watchers into one candidate per user (spec 0126 D-7):
- * a user who is both keeps a single row, carrying both role tags.
+ * One radio row of the target picker (module-level: never defined inside the
+ * dialog, frontend.md §10). Native `<input type="radio">`: no `radio-group`
+ * component exists in `components/ui/` (same documented tradeoff as the
+ * advanced-filters `RadioAdvancedFilterField`).
  */
-function mergeRecipientCandidates(assignees: TaskNamedRef[], watchers: TaskNamedRef[]): RecipientCandidate[] {
-  const byId = new Map<number, RecipientCandidate>()
-  assignees.forEach((candidate) => byId.set(candidate.id, { ...candidate, roles: ['assignee'] }))
-  watchers.forEach((candidate) => {
-    const existing = byId.get(candidate.id)
-    if (existing) {
-      existing.roles.push('watcher')
-    } else {
-      byId.set(candidate.id, { ...candidate, roles: ['watcher'] })
-    }
-  })
-  return Array.from(byId.values())
-}
-
-function candidateIds(candidates: RecipientCandidate[]): number[] {
-  return candidates.map((candidate) => candidate.id)
-}
-
-/** Tri-state of the "select all" header checkbox (mirrors `permission-selection.ts`'s `triState`). */
-function recipientsSelectionState(candidates: RecipientCandidate[], selected: number[]): boolean | 'indeterminate' {
-  if (candidates.length === 0) {
-    return false
-  }
-  const set = new Set(selected)
-  const selectedCount = candidates.filter((candidate) => set.has(candidate.id)).length
-  if (selectedCount === 0) {
-    return false
-  }
-  return selectedCount === candidates.length ? true : 'indeterminate'
-}
-
-function roleLabels(roles: RecipientRole[], t: TFunction): string {
-  return roles
-    .map((role) => (role === 'assignee' ? t('tasks.form.assignees') : t('tasks.form.watchers')))
-    .join(', ')
-}
-
-interface RecipientCheckboxProps {
-  candidate: RecipientCandidate
-  roleLabel: string
-  selected: number[]
-  onToggle: (id: number, checked: boolean) => void
-}
-
-/** One selectable row of the picker (module-level: never defined inside the dialog, frontend.md §10). */
-function RecipientCheckbox({ candidate, roleLabel, selected, onToggle }: RecipientCheckboxProps) {
-  const checked = selected.includes(candidate.id)
+function TargetOptionRow({ option, name, checked, onSelect }: TargetOptionRowProps) {
+  const disabled = option.count === 0
   return (
-    <label className="flex items-center gap-2 py-1 text-sm">
-      <Checkbox checked={checked} onCheckedChange={(next) => onToggle(candidate.id, next === true)} />
-      <span className="truncate">{candidate.name}</span>
-      <span className="text-xs text-muted-foreground">{roleLabel}</span>
-    </label>
-  )
-}
-
-interface SelectAllRecipientsCheckboxProps {
-  state: boolean | 'indeterminate'
-  label: string
-  onToggleAll: (checked: boolean) => void
-}
-
-/** Header row (D-7): selects/deselects every candidate, indeterminate on a partial selection. */
-function SelectAllRecipientsCheckbox({ state, label, onToggleAll }: SelectAllRecipientsCheckboxProps) {
-  return (
-    <label className="flex items-center gap-2 border-b border-field-border py-1 text-sm font-medium">
-      <Checkbox checked={state} onCheckedChange={(next) => onToggleAll(next === true)} aria-label={label} />
-      <span>{label}</span>
+    <label
+      className={cn(
+        'flex flex-col gap-0.5 rounded-md border border-field-border p-2 text-sm',
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+      )}
+    >
+      <span className="flex items-center gap-2">
+        <input
+          type="radio"
+          name={name}
+          checked={checked}
+          disabled={disabled}
+          onChange={onSelect}
+          // Explicit `aria-label` (rather than relying on the wrapping label's
+          // full text): "assignees" and "all" otherwise share the substring
+          // "Assignees", making them indistinguishable by accessible name.
+          aria-label={`${option.label} (${option.count})`}
+          className="size-3.5"
+        />
+        <span>{option.label}</span>
+        <span className="text-xs text-muted-foreground">({option.count})</span>
+      </span>
+      {option.hint ? <span className="pl-6 text-xs text-muted-foreground">{option.hint}</span> : null}
     </label>
   )
 }
@@ -147,21 +136,24 @@ interface TaskRequestUpdateDialogProps {
 }
 
 /**
- * "Richiedi aggiornamento" (spec 0118 D-10..D-14): the recipient picker is
- * built from THIS task's own `assignees`/`watchers`, already in the loaded
- * detail — no user-search endpoint exists for it, deliberately (D-11).
- * Creator/requester are never candidates unless they also happen to be an
- * assignee or a watcher.
+ * "Richiedi aggiornamento" (spec 0153 D-14, RECTIFIES spec 0118's free
+ * recipient picker): the destination is one of three FIXED groups computed
+ * from this task's own `assignees`/`watchers`, never an arbitrary id list —
+ * `assignees` also CCs every watcher server-side (`is_cc: true` on their
+ * notification), `observers` reaches only the watchers, `all` reaches both
+ * outright. A group with zero recipients is disabled. The message is always
+ * mandatory (3..2000 chars).
  */
 export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskRequestUpdateDialogProps) {
   const { t } = useTranslation()
+  const groupName = useId()
   const schema = buildRequestUpdateSchema(t)
-  const candidates = mergeRecipientCandidates(task.assignees, task.watchers)
-  const hasCandidates = candidates.length > 0
+  const options = buildTargetOptions(task, t)
+  const hasRecipients = options.some((option) => option.count > 0)
 
   const form = useForm<RequestUpdateFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: requestUpdateDefaultValues(candidateIds(candidates)),
+    defaultValues: REQUEST_UPDATE_DEFAULT_VALUES,
   })
 
   const requestUpdateMutation = useRequestTaskUpdate({
@@ -169,7 +161,7 @@ export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskReques
     onSuccess: () => {
       toast.success(t('tasks.actions.requestUpdate.success'))
       onOpenChange(false)
-      form.reset(requestUpdateDefaultValues(candidateIds(candidates)))
+      form.reset(REQUEST_UPDATE_DEFAULT_VALUES)
     },
   })
 
@@ -177,13 +169,13 @@ export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskReques
     try {
       await requestUpdateMutation.mutateAsync(buildRequestUpdatePayload(values))
     } catch (error) {
-      // A field-scoped 422 (unknown recipient AC-050, message too long
-      // AC-054) is wired inline; any other failure (409 bloccato, 422 fase
-      // sbagliata) falls back to the shared toast split (AC-064).
+      // A field-scoped 422 (target without recipients, message out of bounds)
+      // is wired inline; any other failure (403 observer/no ability, 422
+      // wrong phase, 409 bloccato) falls back to the shared toast split.
       if (axios.isAxiosError(error) && error.response?.status === 422) {
         const errors = error.response.data?.errors
-        if (errors?.recipient_ids || errors?.message) {
-          applyServerValidationErrors(error, form.setError, ['recipient_ids', 'message'])
+        if (errors?.target || errors?.message) {
+          applyServerValidationErrors(error, form.setError, ['target', 'message'])
           return
         }
       }
@@ -196,7 +188,7 @@ export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskReques
       open={open}
       onOpenChange={(next) => {
         if (!next) {
-          form.reset(requestUpdateDefaultValues(candidateIds(candidates)))
+          form.reset(REQUEST_UPDATE_DEFAULT_VALUES)
         }
         onOpenChange(next)
       }}
@@ -215,25 +207,20 @@ export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskReques
           >
             <FormField
               control={form.control}
-              name="recipient_ids"
+              name="target"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel required>{t('tasks.actions.requestUpdate.recipients')}</FormLabel>
-                  {hasCandidates ? (
+                  <FormLabel required>{t('tasks.actions.requestUpdate.target')}</FormLabel>
+                  {hasRecipients ? (
                     <FormControl>
-                      <div className="flex max-h-48 flex-col gap-1 overflow-auto rounded-md border border-field-border p-2">
-                        <SelectAllRecipientsCheckbox
-                          state={recipientsSelectionState(candidates, field.value)}
-                          label={t('tasks.actions.requestUpdate.selectAll')}
-                          onToggleAll={(checked) => field.onChange(checked ? candidateIds(candidates) : [])}
-                        />
-                        {candidates.map((candidate) => (
-                          <RecipientCheckbox
-                            key={`candidate-${candidate.id}`}
-                            candidate={candidate}
-                            roleLabel={roleLabels(candidate.roles, t)}
-                            selected={field.value}
-                            onToggle={(id, checked) => field.onChange(toggleRecipient(field.value, id, checked))}
+                      <div role="radiogroup" className="flex flex-col gap-2">
+                        {options.map((option) => (
+                          <TargetOptionRow
+                            key={option.value}
+                            option={option}
+                            name={groupName}
+                            checked={field.value === option.value}
+                            onSelect={() => field.onChange(option.value)}
                           />
                         ))}
                       </div>
@@ -253,7 +240,7 @@ export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskReques
               name="message"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('tasks.actions.requestUpdate.message')}</FormLabel>
+                  <FormLabel required>{t('tasks.actions.requestUpdate.message')}</FormLabel>
                   <FormControl>
                     <Textarea
                       rows={3}
@@ -280,7 +267,7 @@ export function TaskRequestUpdateDialog({ open, onOpenChange, task }: TaskReques
           <Button
             type="submit"
             form="task-request-update-form"
-            disabled={requestUpdateMutation.isPending || !hasCandidates}
+            disabled={requestUpdateMutation.isPending || !hasRecipients}
           >
             {t('tasks.actions.requestUpdate.submit')}
           </Button>

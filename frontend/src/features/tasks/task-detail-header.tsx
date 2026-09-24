@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { ListChecks, Repeat, ShieldAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+import { CompletionBar } from '@/components/completion-bar'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/formatting/date-display'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
@@ -87,17 +87,7 @@ export function TaskDetailStats({ task }: TaskDetailStatsProps) {
       <RecordStat
         label={t('tasks.detail.completionPercentage')}
         value={
-          <span className="flex items-center gap-2">
-            <Progress
-              value={task.completion_percentage}
-              size="xs"
-              className="w-16 shrink-0"
-              aria-label={t('tasks.detail.completionPercentage')}
-            />
-            <span className="tabular-nums">
-              {t('tasks.form.percentValue', { value: task.completion_percentage })}
-            </span>
-          </span>
+          <CompletionBar value={task.completion_percentage} label={t('tasks.detail.completionPercentage')} />
         }
       />
       <RecordStat label={t('tasks.detail.startDate')} value={startDate || <DetailEmpty />} />

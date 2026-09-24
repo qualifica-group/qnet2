@@ -1,7 +1,8 @@
 import { Contact, Handshake, Hammer } from 'lucide-react'
 import { BooleanBadgeCell, DateCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserCell, UserStackCell } from '@/features/table/user-cell'
-import { TaskPercentageCell } from '@/features/tasks/task-percentage-cell'
+import i18n from '@/i18n'
+import { CompletionCell } from '@/features/table/completion-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /**
@@ -20,7 +21,8 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * `BooleanBadgeCell`, the same one `work-orders`' `is_force_closed` uses — and
  * it is a column of its OWN, next to but distinct from the status.
  *
- * `completion_percentage` is the derived column (D-6/AC-022). `title` and
+ * `completion_percentage` is the derived column (D-6/AC-022), on the shared
+ * `CompletionCell`. `title` and
  * `estimated_minutes` stay on the AG Grid default cell.
  *
  * The last four entries cover columns `TaskColumnCatalog` declares
@@ -40,7 +42,9 @@ export const taskColumnRenderers: TableRendererMap = {
   task_priority: (params) => <StatusBadgeCell {...params} />,
   task_importance: (params) => <StatusBadgeCell {...params} />,
   task_category: (params) => <StatusBadgeCell {...params} />,
-  completion_percentage: (params) => <TaskPercentageCell {...params} />,
+  completion_percentage: (params) => (
+    <CompletionCell {...params} label={i18n.t('tasks.detail.completionPercentage')} />
+  ),
   is_blocked: (params) => <BooleanBadgeCell {...params} />,
   start_date: (params) => <DateCell {...params} />,
   end_date: (params) => <DateCell {...params} />,

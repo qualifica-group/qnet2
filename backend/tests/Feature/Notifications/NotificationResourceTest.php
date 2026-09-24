@@ -39,3 +39,17 @@ it('normalizes a partial/legacy payload: missing keys become null, unknown level
         // The four keys are always present even when the stored row was sparse.
         ->assertJsonStructure(['items' => [['data' => ['title', 'message', 'level', 'action_url']]]]);
 });
+
+// Spec 0153, D-14: the watchers copied on a task update request get a
+// separate notification flagged is_cc; every other row reads false.
+it('exposes is_cc, true for a stored copy and false when absent', function () {
+    $user = User::factory()->create();
+    NotificationFactory::new()->forUser($user)->state(['data' => ['title' => 'Copia', 'is_cc' => true]])->create();
+    NotificationFactory::new()->forUser($user)->state(['data' => ['title' => 'Diretta']])->create();
+    Sanctum::actingAs($user);
+
+    $items = collect($this->getJson('/api/notifications')->assertOk()->json('items'))->keyBy('data.title');
+
+    expect($items['Copia']['data']['is_cc'])->toBeTrue()
+        ->and($items['Diretta']['data']['is_cc'])->toBeFalse();
+});

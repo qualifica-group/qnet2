@@ -2,7 +2,8 @@ import { BooleanBadgeCell, CodeBadgeCell, DateCell } from '@/features/table/rich
 import { UserStackCell } from '@/features/table/user-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
-import { WorkOrderCompletionCell } from '@/features/work-orders/work-order-completion-bar'
+import i18n from '@/i18n'
+import { CompletionCell } from '@/features/table/completion-cell'
 
 /**
  * Custom cell renderers keyed by the backend column `id` (spec 0093
@@ -22,8 +23,7 @@ import { WorkOrderCompletionCell } from '@/features/work-orders/work-order-compl
  * reuses the SAME `UserStackCell` the Offerta's and Opportunita's own
  * `managers` columns render with — no second avatar-stack cell.
  * `title`/`contract_number`/`quote` stay on the AG Grid default text cell.
- * `completion_percentage` (spec 0149) renders the same toned bar as the
- * detail header.
+ * `completion_percentage` (spec 0149) renders the shared `CompletionCell`.
  */
 
 export const workOrderColumnRenderers: TableRendererMap = {
@@ -32,7 +32,9 @@ export const workOrderColumnRenderers: TableRendererMap = {
   callback_date: (params) => <DateCell {...params} />,
   start_date: (params) => <DateCell {...params} />,
   supervisors: (params) => <UserStackCell {...params} />,
-  completion_percentage: (params) => <WorkOrderCompletionCell {...params} />,
+  completion_percentage: (params) => (
+    <CompletionCell {...params} label={i18n.t('workOrders.columns.completion_percentage')} />
+  ),
   created_at: (params) => <DateTimeCell {...params} />,
   updated_at: (params) => <DateTimeCell {...params} />,
 }

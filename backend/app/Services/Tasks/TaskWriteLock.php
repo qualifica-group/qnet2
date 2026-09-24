@@ -6,6 +6,8 @@ namespace App\Services\Tasks;
 
 use App\Enums\TaskStatusGroup;
 use App\Models\Task;
+use App\Models\User;
+use App\Services\RoleAssignmentGuard;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -114,12 +116,16 @@ final class TaskWriteLock
 
     /**
      * @param  array<int, string>  $submittedKeys
+     * @param  User|null  $actor  D-8 (spec 0153): a super-admin bypasses
+     *                            $task's OWN frozen-GROUP veto (closed/in-validation) for this PATCH —
+     *                            `is_blocked` is not, and the ancestor cascade is not: both stay
+     *                            universal, whatever the actor's role.
      *
      * @throws ValidationException 422, one message per structural key
      */
-    public static function assertStructuralWriteAllowed(Task $task, array $submittedKeys): void
+    public static function assertStructuralWriteAllowed(Task $task, array $submittedKeys, ?User $actor = null): void
     {
-        if (! self::isLocked($task) && ! self::isLockedByAncestor($task)) {
+        if (! self::isLockedForUpdate($task, $actor) && ! self::isLockedByAncestor($task)) {
             return;
         }
 
@@ -178,5 +184,20 @@ final class TaskWriteLock
         $task->loadMissing('taskStatus');
 
         return $task->taskStatus?->group;
+    }
+
+    /**
+     * D-8 (spec 0153): the UPDATE-only twin of isLocked() — a privileged
+     * actor still freezes on `is_blocked`, but never on the frozen GROUP
+     * alone (closed/in-validation). Every other actor sees the full
+     * isLocked() rule, unchanged.
+     */
+    private static function isLockedForUpdate(Task $task, ?User $actor): bool
+    {
+        if ($actor !== null && $actor->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE)) {
+            return $task->is_blocked;
+        }
+
+        return self::isLocked($task);
     }
 }

@@ -5,7 +5,6 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\TaskType;
 use App\Models\User;
-use App\Notifications\TaskUpdateRequested;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
@@ -182,7 +181,11 @@ it('AC-010: a blocked task PATCHing only closure_feedback is still 200', functio
 // uncomplete/approve/reject stay 409 (invariato, spec 0116 D-8)
 // ---------------------------------------------------------------------------
 
-it('AC-011 (spec 0126, D-6): request-update on a blocked task is 200 and the notification is sent, request_update is true', function () {
+// REQUIREMENT CHANGED (spec 0153, D-14, "prevale su spec 0126 D-6"): a
+// blocked task no longer admits "Richiedi aggiornamento" — the exemption
+// this test used to pin is reversed, and the payload itself moved from
+// `recipient_ids` to the fixed `target`/`message` shape.
+it('AC-011 (spec 0153, D-14): request-update on a blocked task now answers 422, no notification sent', function () {
     Notification::fake();
     $creator = taskActorWith(['update', 'view', 'requestUpdate']);
     $assignee = User::factory()->create();
@@ -190,13 +193,12 @@ it('AC-011 (spec 0126, D-6): request-update on a blocked task is 200 and the not
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($creator);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
-        ->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/request-update", [
+        'target' => 'assignees',
+        'message' => 'Serve un aggiornamento.',
+    ])->assertStatus(422);
 
-    Notification::assertSentTo($assignee, TaskUpdateRequested::class);
-
-    $this->getJson("/api/tasks/{$task->id}")
-        ->assertOk()->assertJsonPath('permissions.actions.request_update', true);
+    Notification::assertNothingSent();
 });
 
 it('AC-011: complete, uncomplete, approve and reject stay 409 on a blocked task (invariato)', function () {
@@ -205,7 +207,10 @@ it('AC-011: complete, uncomplete, approve and reject stay 409 on a blocked task 
     Sanctum::actingAs($creator);
 
     $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertStatus(409);
-    $this->postJson("/api/tasks/{$task->id}/uncomplete")->assertStatus(409);
     $this->postJson("/api/tasks/{$task->id}/approve")->assertStatus(409);
-    $this->postJson("/api/tasks/{$task->id}/reject")->assertStatus(409);
+    // REQUIREMENT CHANGED (spec 0153, D-7): uncomplete/reject no longer veto a
+    // blocked task (they lift the block); on this OPEN task they fail on the
+    // phase check instead.
+    $this->postJson("/api/tasks/{$task->id}/uncomplete")->assertStatus(422);
+    $this->postJson("/api/tasks/{$task->id}/reject")->assertStatus(422);
 });

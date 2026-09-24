@@ -84,7 +84,29 @@ final class OperatorRoleCatalogue
      */
     public const string USERS_AND_ROLES = 'users-and-roles';
 
+    /**
+     * The Task module reduced to the Tasks the user takes part in: no
+     * `viewAll`/`viewSite` widening, no `manageAll` ("Gestore").
+     */
+    public const string OWN_TASKS = 'own-tasks';
+
+    /** The Segnatempo reduced to the user's own entries: no admin, no team view. */
+    public const string OWN_TIME_ENTRIES = 'own-time-entries';
+
+    /**
+     * The blocks every mansione holds on top of its own (user directive
+     * 2026-09-24: "tutti gli utenti abilitati a task e segnatempo, task
+     * propri non tutti i task").
+     *
+     * @var array<int, string>
+     */
+    public const array EVERY_ROLE_BLOCKS = [self::OWN_TASKS, self::OWN_TIME_ENTRIES];
+
     public const string REQUEST_MODULE = 'request-management';
+
+    public const string TASK_MODULE = 'tasks';
+
+    public const string TIME_ENTRY_MODULE = 'time-entries';
 
     public const string ENROLLEE_MODULE = 'enrollee-management';
 
@@ -256,22 +278,58 @@ final class OperatorRoleCatalogue
     ];
 
     /**
-     * Grants on OTHER modules a request-management work panel needs beyond
-     * their `viewAny` (user directive 2026-07-31):
-     *  - `referents.create`: the "Segnalatore" quick-create "+" (spec 0028);
+     * The collaboration tabs a request work panel and a Task detail share:
      *  - `notes.create`: the notes composer (spec 0052, D-6);
      *  - `attachments.*`: the Documents tab opened by `viewDocuments` is served
      *    by the polymorphic subsystem's own permissions.
      *
      * @var array<int, string>
      */
-    public const array REQUEST_EXTRA_PERMISSIONS = [
-        'referents.create',
+    public const array COLLABORATION_PERMISSIONS = [
         'notes.create',
         'attachments.viewAny',
         'attachments.view',
         'attachments.create',
         'attachments.delete',
+    ];
+
+    /**
+     * Grants on OTHER modules a request-management work panel needs beyond
+     * their `viewAny` (user directive 2026-07-31): the collaboration tabs,
+     * plus `referents.create` for the "Segnalatore" quick-create "+" (spec
+     * 0028).
+     *
+     * @var array<int, string>
+     */
+    public const array REQUEST_EXTRA_PERMISSIONS = [
+        'referents.create',
+        ...self::COLLABORATION_PERMISSIONS,
+    ];
+
+    /**
+     * OWN_TASKS: the abilities that would reach beyond the Tasks the user
+     * takes part in — the two visibility widenings (TaskVisibilityScope) and
+     * "Gestore" over every Task.
+     *
+     * @var array<int, string>
+     */
+    public const array OWN_TASKS_DENIED_ABILITIES = [
+        'viewAll',
+        'viewSite',
+        'manageAll',
+    ];
+
+    /**
+     * OWN_TIME_ENTRIES: the abilities over other users' segnatempo (spec
+     * 0122, D-8) — `manageAll` (admin), `viewAll` (whole-structure team view)
+     * and the monthly export ("Creatore NO, Admin SI'").
+     *
+     * @var array<int, string>
+     */
+    public const array OWN_TIME_ENTRIES_DENIED_ABILITIES = [
+        'manageAll',
+        'viewAll',
+        'exportMonthly',
     ];
 
     /**

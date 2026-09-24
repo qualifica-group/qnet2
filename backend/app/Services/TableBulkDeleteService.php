@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Tables\TableDefinition;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -100,9 +101,11 @@ class TableBulkDeleteService
 
     /**
      * Best-effort delete of a single, already authorized model. A
-     * domain guard rejecting THIS row (AuthorizationException, or an HTTP
-     * exception raised via `abort()`, e.g. the last-super-admin guard) is
-     * caught here and never propagates to abort the rest of the batch.
+     * domain guard rejecting THIS row (AuthorizationException, an HTTP
+     * exception raised via `abort()`, e.g. the last-super-admin guard, or a
+     * ValidationException — e.g. Tasks' cascade-delete guard, D-5 spec 0153,
+     * naming a non-deletable descendant) is caught here and never propagates
+     * to abort the rest of the batch.
      */
     private function tryDelete(TableDefinition $definition, Model $model): bool
     {
@@ -110,7 +113,7 @@ class TableBulkDeleteService
             $definition->deleteModel($model);
 
             return true;
-        } catch (AuthorizationException|HttpException) {
+        } catch (AuthorizationException|HttpException|ValidationException) {
             return false;
         }
     }

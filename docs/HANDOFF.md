@@ -3,6 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED PRODUZIONE: TASK E SEGNATEMPO PROPRI A OGNI MANSIONE — VERDE, NON COMMITTATO (2026-09-24)
+
+- `OperatorRoleCatalogue`: nuovi blocchi `OWN_TASKS` (`tasks.*` meno `OWN_TASKS_DENIED_ABILITIES` = `viewAll`,
+  `viewSite`, `manageAll`; + `COLLABORATION_PERMISSIONS` = `notes.create` + `attachments.*`) e `OWN_TIME_ENTRIES`
+  (`time-entries.*` meno `manageAll`, `viewAll`, `exportMonthly`). `EVERY_ROLE_BLOCKS` li aggiunge a tutti i ruoli in
+  `QualificaRoleSeeder::run()`. `REQUEST_EXTRA_PERMISSIONS` ora = `referents.create` + `COLLABORATION_PERMISSIONS`.
+- Configuratori task (stati/tipi/categorie/priorita'/importanze/modelli) restano chiusi; i for-select non hanno gate.
+- Test: `QualificaRoleMatrixTest` (menu marketing/commerciale con `/tasks` e `/time-entries`, supervisore non piu'
+  chiuso su `tasks`: requisito cambiato; nuovi test per tutti i ruoli + scoping task altrui 403). Users + RequestManagement
+  + Seeding + SeederFlow + Tasks + TimeEntries: 1646/1646. Pint pulito.
+- Manuale: guide in-app nessun impatto (non descrivono i permessi per mansione); manuale Claude Docs non accessibile,
+  da verificare se elenca i moduli visibili per mansione.
+
+## "TITOLO DI STUDIO" MULTISELECT, "QUALIFICA PROFESSIONALE" RITIRATA — VERDE, NON COMMITTATO (2026-09-24)
+
+- `ContactProcessingAttributeCatalogue`: `degree` ("Titolo di Studio") ora `config = DEGREE_CONFIG`
+  (`display: multiselect`) con nuova opzione `professional_qualification` / "Qualifica Professionale" in coda a
+  `DEGREE_OPTIONS`. L'attributo separato `professional_qualification` su "Autofinanziato" e' tolto da `ATTRIBUTES`/`ROWS`
+  e aggiunto a `RETIRED_ATTRIBUTES` (disassegnato + rimosso dai layout al re-seed; la riga attributo e gli eventuali
+  valori salvati restano, non letti). Rimossi `PROFESSIONAL_QUALIFICATION` e `PREVIOUS_OWN_ATTRIBUTES['Autofinanziato']`.
+- `QualificaContactProcessingSeeder::promoteDegree()`: su installazioni gia' seedate porta `degree` a enum multiselect e
+  avvolge in lista i valori scalari gia' salvati in `quotes`/`work_orders.attribute_values` (via `DB::table`, niente
+  activity log).
+- Test: `tests/Feature/Products/QualificaDegreeMultiselectTest.php` (sostituisce `QualificaProfessionalQualificationTest`),
+  opzioni aggiornate in `QualificaContactProcessingSeederTest`. Products + Seeding + SeederFlow: 319/326, i 7 rossi sono
+  `DemoTaskSeederTest` ("task already closed", lavoro Tasks non committato, estraneo). Pint pulito.
+- Manuale: nessun impatto (i campi "Dati Lavorazione Contatto" non sono elencati nelle guide).
+
 ## BADGE NOTIFICHE SIDEBAR ROSSO — VERDE, NON COMMITTATO (2026-09-24)
 
 - `app-sidebar.tsx`: il contatore non lette sul link **Notifiche** ora è un pallino rosso (`UNREAD_BADGE_CLASS`:
@@ -10,12 +38,40 @@
 - Guide in-app `notifications.ts` IT/EN aggiornate ("pallino rosso"/"red dot"). Manuale Claude Docs non accessibile
   dalla sessione: sezione Notifiche da allineare.
 
-## COMPLETAMENTO TASK COLORATO — VERDE, NON COMMITTATO (2026-09-24)
+## BARRA COMPLETAMENTO UNIFICATA — VERDE, NON COMMITTATO (2026-09-24)
 
-- Colonna griglia `completion_percentage` dei task (`TaskPercentageCell`) e readout nel form (`TaskCompletionReadout`)
-  ora usano `completionTone` (`work-orders/task-board/task-board-completion-tone.ts`): stessi colori di board/commessa.
-  Readout senza stato scelto resta neutro. Guida in-app `tasks` IT/EN aggiornata. Vitest tasks/work-orders/help verdi,
-  `tsc -b --force` ed ESLint puliti. Manuale Claude Docs (sezione Attività) da allineare.
+- Unico componente `components/completion-bar.tsx` (`CompletionBar`: `value|null`, `label`, `size`, `barClassName`,
+  `valueClassName`) colorato da `components/completion-tone.ts` (spostato da `work-orders/task-board/`, test incluso).
+  Cella griglia `features/table/completion-cell.tsx` (`CompletionCell`, prop `label`).
+- Usato in: griglia task e commesse, header dettaglio task e commessa, sotto-task, readout form task, board
+  (righe, kanban, riepilogo fase). KPI tile della board resta `completionTone` diretto (layout a tile).
+- Eliminati `task-percentage-cell.tsx`, `work-order-completion-bar.tsx`, `TaskBoardCompletion`.
+- Fuori scope (non completamento): barra probabilita' opportunita' e budget progetto hanno scala propria.
+- Vitest tasks/work-orders/components/table/help 1217/1217, `tsc -b --force` ed ESLint puliti.
+  Manuale Claude Docs (sezione Attivita') da allineare sui colori del completamento.
+
+## ALLINEAMENTO TASK A Q-NET — SPEC 0153 REGOLE E NOTIFICHE — VERDE, NON COMMITTATO (2026-09-24)
+
+- Serie approvata 0153-0158 (`docs/specs/`), da eseguire in ordine; 0153 fatta, prossima 0154 (form e campi).
+- Lista: `assignment` e' `enum` multiplo richiesto, default `['assigned_to_me']`, OR; `all` = task dove ho un ruolo
+  (anche con viewAll); `visible` = nessuna restrizione di ruolo (decisione utente: "Tutti i visibili"), nascosto via
+  descriptor `excludedValues` a chi non ha tasks.viewAll/viewSite. `AdvancedFilterApplier`: `enum` + `multiple`
+  accetta liste. Ordinamento predefinito updated_at desc (colonna nascosta ordinabile in `TaskColumnCatalog`).
+  Test di griglia/visibilita' passano `assignment: ['visible']`. Dashboard "Tutti" linka `assignment=visible`.
+- Stato iniziale open solo se unico assegnatario = richiedente. Eliminazione: `canUpdate` + task aperto non
+  bloccato, cascata in `TaskDeleteCascade` (422 se un discendente non e' eliminabile), DELETE resta 204.
+  Reject -> `assigned` + feedback azzerato. Blocco solo su task aperti; complete/uncomplete/reject lo tolgono.
+  Super-admin modifica task chiusi (`TaskWriteLock::assertStructuralWriteAllowed($actor)`). Segnatempo: chi puo'
+  modificare il task gestisce tutte le voci. Percentuale: closed_positive 100, closed_negative configurabile,
+  aperto con sottotask = media ricorsiva max 99.
+- Notifiche: `TaskNotifier::closed/feedbackInserted(task, actor, includeAssignees)`; assegnazione esclude il
+  creatore; richiesta aggiornamento `{ target: assignees|observers|all, message 3..2000 }`, osservatori in copia
+  con `is_cc` (ora in `NotificationData`, esposto dall'API). Blocked -> 422 (prevale su 0126 D-6).
+- Verifica: Pest completo 8236/8238 (1 fallimento preesistente `QuoteWorkflowMigrationTest` AC-004, presente
+  anche senza queste modifiche), Pint pulito; Vitest completo 5875/5875, `tsc -b --force` pulito, ESLint pulito
+  sui file toccati. Guide in-app IT/EN tasks e dashboard aggiornate.
+- APERTO: manuale Claude Docs non accessibile (doc non condiviso). Nel working tree ci sono modifiche NON di
+  questa serie (test `Qualifica*`, refactor `components/completion-bar.tsx`): non toccarle, fuori dai commit.
 
 ## EXPORT CON FILTRI AVANZATI (confronto q-net, punto 1.1) — VERDE, NON COMMITTATO (2026-09-24)
 

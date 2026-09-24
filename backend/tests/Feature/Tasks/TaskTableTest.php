@@ -72,6 +72,7 @@ if (! function_exists('taskGridTitles')) {
     {
         $items = test()->postJson('/api/tables/tasks/rows', [
             'startRow' => 0, 'endRow' => 50, 'filterModel' => $filterModel,
+            'advancedFilters' => ['assignment' => ['visible']],
         ])->assertOk()->json('items');
 
         return collect($items)->pluck('title')->sort()->values()->all();
@@ -91,20 +92,21 @@ it('AC-070: the grid searches, sorts and pages server-side with no dedicated end
 
     $searched = $this->postJson('/api/tables/tasks/rows', [
         'startRow' => 0, 'endRow' => 25, 'search' => 'contatto',
+        'advancedFilters' => ['assignment' => ['visible']],
     ])->assertOk();
 
     expect(collect($searched->json('items'))->pluck('title')->sort()->values()->all())
         ->toBe(['Alfa contatto', 'Beta contatto']);
 
     $sorted = $this->postJson('/api/tables/tasks/rows', [
-        'startRow' => 0, 'endRow' => 25, 'sortModel' => [['colId' => 'title', 'sort' => 'desc']],
+        'startRow' => 0, 'endRow' => 25, 'advancedFilters' => ['assignment' => ['visible']], 'sortModel' => [['colId' => 'title', 'sort' => 'desc']],
     ])->assertOk();
 
     expect(collect($sorted->json('items'))->pluck('title')->all())
         ->toBe(['Gamma altro', 'Beta contatto', 'Alfa contatto']);
 
     $paged = $this->postJson('/api/tables/tasks/rows', [
-        'startRow' => 0, 'endRow' => 2, 'sortModel' => [['colId' => 'title', 'sort' => 'asc']],
+        'startRow' => 0, 'endRow' => 2, 'advancedFilters' => ['assignment' => ['visible']], 'sortModel' => [['colId' => 'title', 'sort' => 'asc']],
     ])->assertOk();
 
     expect($paged->json('items'))->toHaveCount(2)
@@ -192,7 +194,7 @@ it('AC-072: the five configurator columns are rendered from the configured color
     $task = Task::factory()->forCreator($actor)->create([$foreignKey => $lookup->id]);
     Sanctum::actingAs($actor);
 
-    $row = collect($this->postJson('/api/tables/tasks/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items'))
+    $row = collect($this->postJson('/api/tables/tasks/rows', ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => ['assignment' => ['visible']]])->assertOk()->json('items'))
         ->firstWhere('id', $task->id);
 
     expect($row[$columnId])->toMatchArray(['id' => $lookup->id, 'name' => 'Etichetta', 'color' => 'teal', 'icon' => 'flag']);
@@ -201,7 +203,7 @@ it('AC-072: the five configurator columns are rendered from the configured color
     // grid with no code change (AC-072).
     $lookup->update(['color' => 'violet']);
 
-    $recoloured = collect($this->postJson('/api/tables/tasks/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items'))
+    $recoloured = collect($this->postJson('/api/tables/tasks/rows', ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => ['assignment' => ['visible']]])->assertOk()->json('items'))
         ->firstWhere('id', $task->id);
 
     expect($recoloured[$columnId]['color'])->toBe('violet');

@@ -18,6 +18,7 @@ import {
 } from '@/features/table/advanced-filters/option-utils'
 import type { AdvancedFilterFieldProps } from '@/features/table/advanced-filters/advanced-filter-field-props'
 
+const NO_EXCLUDED_VALUES: string[] = []
 /** `type: 'select'` -> a `Select` over the descriptor's static `options`. */
 export function SelectAdvancedFilterField({
   descriptor,
@@ -91,8 +92,8 @@ export function MultiSelectAdvancedFilterField({
   )
 }
 
-/** `type: 'enum'` -> a `Select` over `enums.<enumKey>` (app-wide domain enum, spec ADR 0008). */
-export function EnumAdvancedFilterField({
+/** `type: 'enum'`, single-value -> a `Select` over `enums.<enumKey>` (app-wide domain enum, spec ADR 0008). */
+function EnumSingleSelectField({
   descriptor,
   value,
   onChange,
@@ -126,6 +127,38 @@ export function EnumAdvancedFilterField({
       </SelectContent>
     </Select>
   )
+}
+
+/**
+ * `type: 'enum'`, `multiple: true` (spec 0153 D-1/AC-019, e.g. Task's
+ * `assignment` filter) -> `MultiSelect` over `enums.<enumKey>`, OR'd values.
+ * `MultiSelect` does not accept id/aria-describedby: same documented
+ * tradeoff as `MultiSelectAdvancedFilterField`.
+ */
+function EnumMultiSelectField({ descriptor, value, onChange, disabled }: AdvancedFilterFieldProps) {
+  const { t } = useTranslation()
+  const options = useEnumOptions(descriptor.enumKey ?? '')
+  const excluded = descriptor.excludedValues ?? NO_EXCLUDED_VALUES
+  const stringOptions = options
+    .filter((option) => !excluded.includes(option.value))
+    .map((option) => ({ value: option.value, label: option.label }))
+  const selected = toOptionValueArray(value).map(String)
+
+  return (
+    <MultiSelect
+      options={stringOptions}
+      value={selected}
+      onChange={onChange}
+      disabled={disabled}
+      placeholder={descriptor.placeholder ? t(descriptor.placeholder) : undefined}
+      aria-label={t(descriptor.label)}
+    />
+  )
+}
+
+/** `type: 'enum'` -> dispatches on `descriptor.multiple` (spec 0153 AC-019). */
+export function EnumAdvancedFilterField(props: AdvancedFilterFieldProps) {
+  return props.descriptor.multiple ? <EnumMultiSelectField {...props} /> : <EnumSingleSelectField {...props} />
 }
 
 /**

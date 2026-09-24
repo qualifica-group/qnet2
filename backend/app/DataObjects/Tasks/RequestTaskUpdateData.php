@@ -5,20 +5,19 @@ declare(strict_types=1);
 namespace App\DataObjects\Tasks;
 
 /**
- * Validated payload for POST /api/tasks/{task}/request-update (spec 0118,
- * D-10..D-12). `recipientIds` is normalized to unique ints, the same
- * convention CreateTaskData::normalizeIds() applies to `assignee_ids`/
- * `watcher_ids`. `message` is optional and nullable (D-12): the field may
- * stay empty, since TaskUpdateRequested always fills in a default body.
+ * Validated payload for POST /api/tasks/{task}/request-update (spec 0153,
+ * D-14, superseding spec 0118 D-10..D-12's `recipient_ids` shape). `target`
+ * is one of the fixed groups `assignees`/`observers`/`all`
+ * (RequestTaskUpdateRequest is the allow-list); `message` is now REQUIRED
+ * (3..2000 chars) — the actual recipient/CC ids are resolved at write time by
+ * App\Services\Tasks\TaskActionService::requestUpdate() off the Task's OWN
+ * current pivots, never carried in this DTO.
  */
 final readonly class RequestTaskUpdateData
 {
-    /**
-     * @param  array<int, int>  $recipientIds
-     */
     public function __construct(
-        public array $recipientIds,
-        public ?string $message = null,
+        public string $target,
+        public string $message,
     ) {}
 
     /**
@@ -27,11 +26,8 @@ final readonly class RequestTaskUpdateData
     public static function fromValidated(array $data): self
     {
         return new self(
-            recipientIds: array_values(array_unique(array_map(
-                static fn (mixed $id): int => (int) $id,
-                (array) $data['recipient_ids'],
-            ))),
-            message: isset($data['message']) ? (string) $data['message'] : null,
+            target: (string) $data['target'],
+            message: (string) $data['message'],
         );
     }
 }

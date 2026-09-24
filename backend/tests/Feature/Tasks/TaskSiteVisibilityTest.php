@@ -75,7 +75,7 @@ function siteTaskAssignedTo(string $title, User ...$assignees): Task
  */
 function siteTaskGridTitles(): array
 {
-    $items = test()->postJson('/api/tables/tasks/rows', ['startRow' => 0, 'endRow' => 50])
+    $items = test()->postJson('/api/tables/tasks/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['assignment' => ['visible']]])
         ->assertOk()->json('items');
 
     return collect($items)->pluck('title')->sort()->values()->all();

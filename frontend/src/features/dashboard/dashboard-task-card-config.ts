@@ -74,9 +74,14 @@ export const DASHBOARD_TASK_CARD_TONES: Record<DashboardTaskCounterKey, Dashboar
 export const DASHBOARD_TASK_TO_VALIDATE_CHIP_CLASS =
   'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
 
-/** `<frontend_links>` of spec 0151: one-time, non-persisted `/tasks` filters (D-2). */
+/**
+ * `<frontend_links>` of spec 0151: one-time, non-persisted `/tasks` filters
+ * (D-2). `not_completed` ("Tutti") sends `visible` (spec 0153 D-1): the
+ * counter counts every task the actor may see, and omitting the filter would
+ * fall back to the server default `["assigned_to_me"]`.
+ */
 export const DASHBOARD_TASK_CARD_HREFS: Record<DashboardTaskCounterKey, string> = {
-  not_completed: '/tasks?status=open',
+  not_completed: '/tasks?status=open&assignment=visible',
   assigned_to_me: '/tasks?status=open&assignment=assigned_to_me',
   assigned_by_me: '/tasks?status=open&assignment=assigned_by_me',
   created_by_me: '/tasks?status=open&assignment=created_by_me',

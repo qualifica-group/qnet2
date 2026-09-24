@@ -32,6 +32,9 @@
     D-1  (utente) Lista: filtro `assignment` diventa MULTIPLO in OR, con default `assigned_to_me`, e ha l'opzione
          esplicita `all` = "task in cui ho un ruolo" (richiedente, assegnatario, osservatore, creatore), anche per
          chi ha `tasks.viewAll`. `requested_by_me` resta (nessun equivalente q-net, non va perso).
+         (utente, 2026-09-24) Opzione in piu' `visible` = "Tutti i visibili": nessuna restrizione di ruolo, vale solo
+         TaskVisibilityScope (viewAll, viewSite). Per chi non ha quei permessi equivale ad `all`; il FE la mostra solo
+         a chi li ha. In OR con altri valori prevale `visible`.
          Il filtro `status` resta con default `open`. I contatori dashboard (spec 0151) seguono la nuova semantica.
     D-2  Ordinamento predefinito `updated_at desc`, poi `id desc`. Serve la colonna `updated_at` ordinabile
          (aggiunta in 0156; qui solo il defaultSort con la colonna reale).
@@ -87,7 +90,7 @@
       403 osservatore puro o senza tasks.requestUpdate; 422 task bloccato/chiuso/in validazione, target senza
       destinatari, messaggio assente o fuori limiti.
     Notifica database TaskUpdateRequested: data aggiunge `is_cc: boolean`.
-    DELETE /api/tasks/{task}: 200 con cascata; 403 senza diritto; 422 { errors: { task: [...] } } se un
+    DELETE /api/tasks/{task}: 204 (invariato) con cascata; 403 senza diritto; 422 { errors: { task: [...] } } se un
       discendente non e' eliminabile. Il 409 per sottotask presenti sparisce.
     TaskResource.completion_percentage: secondo D-10.
   </contract>

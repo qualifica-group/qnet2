@@ -30,6 +30,25 @@ function buildNotification(overrides: Partial<Notification> = {}): Notification 
   }
 }
 
+describe('NotificationItem — courtesy copy marker (spec 0153 D-14)', () => {
+  it('shows a "CC" badge when data.is_cc is true', () => {
+    render(
+      <NotificationItem
+        notification={buildNotification({ data: { title: 'Hello', message: null, level: 'info', action_url: null, is_cc: true } })}
+        onMarkAsRead={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('CC')).toBeInTheDocument()
+  })
+
+  it('shows no badge when data.is_cc is absent', () => {
+    render(<NotificationItem notification={buildNotification()} onMarkAsRead={vi.fn()} />)
+
+    expect(screen.queryByText('CC')).not.toBeInTheDocument()
+  })
+})
+
 describe('NotificationItem', () => {
   it('renders the title and message from the data payload', () => {
     render(

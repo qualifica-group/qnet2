@@ -149,5 +149,7 @@ export const enums = {
     assigned_by_me: 'Assigned by me',
     created_by_me: 'Created by me',
     observed_by_me: 'Observed by me',
+    all: 'All',
+    visible: 'All visible',
   },
 }

@@ -102,5 +102,7 @@ export interface AdvancedFilterDescriptor {
   options?: AdvancedFilterOption[]
   /** `enums.<enumKey>.<value>` i18n lookup, for enum/radio backed by a domain enum. */
   enumKey?: string
+  /** Enum values the server withholds from this actor (e.g. Task `assignment` `visible`, spec 0153 D-1). */
+  excludedValues?: string[]
   dependency?: AdvancedFilterDependency
 }

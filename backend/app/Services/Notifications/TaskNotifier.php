@@ -53,16 +53,21 @@ final class TaskNotifier
         $this->send($task, $this->audience($task)->requesterOrCreator($actor), TaskValidationRequested::class, $actor);
     }
 
-    /** Voce 2. Closed with no closing feedback. */
-    public function closed(Task $task, ?User $actor): void
+    /**
+     * Voce 2 (spec 0153, D-11). Closed with no closing feedback: requester +
+     * watchers, plus every assignee only when `$includeAssignees` (the
+     * caller's own call: assignee count > 1 on complete(), false on
+     * approve() — D-12). Inactive recipients are dropped.
+     */
+    public function closed(Task $task, ?User $actor, bool $includeAssignees): void
     {
-        $this->send($task, $this->audience($task)->everyone($actor), TaskClosed::class, $actor);
+        $this->send($task, $this->audience($task)->closure($actor, $includeAssignees), TaskClosed::class, $actor, activeOnly: true);
     }
 
-    /** Voce 3. Closed carrying a closing feedback. */
-    public function feedbackInserted(Task $task, ?User $actor): void
+    /** Voce 3 (spec 0153, D-11). Closed carrying a closing feedback — same audience as closed(). */
+    public function feedbackInserted(Task $task, ?User $actor, bool $includeAssignees): void
     {
-        $this->send($task, $this->audience($task)->everyone($actor), TaskFeedbackInserted::class, $actor);
+        $this->send($task, $this->audience($task)->closure($actor, $includeAssignees), TaskFeedbackInserted::class, $actor, activeOnly: true);
     }
 
     /** Voce 4, which doubles as the document's "email di conferma". */
@@ -84,34 +89,34 @@ final class TaskNotifier
     }
 
     /**
-     * Voce 7.
+     * Voce 7. Drops the CREATOR rather than the actor (spec 0153, D-13).
      *
      * @param  ?array<int, int>  $onlyUserIds  D-9: on a PATCH the audience is
      *                                         not "the assignees" but "the
      *                                         assignees just ADDED", which
      *                                         the caller computes from the
-     *                                         pivot delta. Null (a creation)
-     *                                         means every assignee.
+     *                                         pivot delta. Not null even on
+     *                                         create (TaskService passes the
+     *                                         full submitted set there too).
      */
     public function assigned(Task $task, ?User $actor, ?array $onlyUserIds = null): void
     {
-        $recipients = $onlyUserIds === null
-            ? $this->audience($task)->assignees($actor)
-            : TaskNotificationAudience::restrict($onlyUserIds, $actor);
+        $audience = $this->audience($task);
+        $recipients = $onlyUserIds === null ? $audience->assigned() : $audience->restrictAssigned($onlyUserIds);
 
         $this->send($task, $recipients, TaskAssigned::class, $actor);
     }
 
     /**
-     * Voce 8, the watcher twin of assigned().
+     * Voce 8, the watcher twin of assigned(). Excludes NOBODY (spec 0153,
+     * D-13) — not even the actor.
      *
      * @param  ?array<int, int>  $onlyUserIds  see assigned().
      */
     public function watching(Task $task, ?User $actor, ?array $onlyUserIds = null): void
     {
-        $recipients = $onlyUserIds === null
-            ? $this->audience($task)->watchers($actor)
-            : TaskNotificationAudience::restrict($onlyUserIds, $actor);
+        $audience = $this->audience($task);
+        $recipients = $onlyUserIds === null ? $audience->watchers() : $audience->restrictWatchers($onlyUserIds);
 
         $this->send($task, $recipients, TaskObserver::class, $actor);
     }
@@ -151,12 +156,14 @@ final class TaskNotifier
      * the normal outcome whenever the actor was the only member (D-3).
      * Step 2 defers to after the commit. Step 3 loads every recipient in ONE
      * query keyed by id, so a stale or deleted id resolves to null at send
-     * time instead of throwing (AC-011).
+     * time instead of throwing (AC-011); `$activeOnly` (spec 0153, D-11)
+     * additionally drops a disabled user's own row — closed()/
+     * feedbackInserted() are the only two callers that set it.
      *
      * @param  array<int, int>  $recipientIds
      * @param  class-string<TaskNotification>  $notification
      */
-    private function send(Task $task, array $recipientIds, string $notification, ?User $actor): void
+    private function send(Task $task, array $recipientIds, string $notification, ?User $actor, bool $activeOnly = false): void
     {
         // Step 1: nothing to do.
         if ($recipientIds === []) {
@@ -164,9 +171,15 @@ final class TaskNotifier
         }
 
         // Step 2: never from inside the transaction that is still open.
-        DB::afterCommit(function () use ($task, $recipientIds, $notification, $actor): void {
+        DB::afterCommit(function () use ($task, $recipientIds, $notification, $actor, $activeOnly): void {
             // Step 3: every recipient in one query.
-            $recipients = User::query()->whereIn('id', $recipientIds)->get();
+            $query = User::query()->whereIn('id', $recipientIds);
+
+            if ($activeOnly) {
+                $query->where('is_active', true);
+            }
+
+            $recipients = $query->get();
 
             if ($recipients->isEmpty()) {
                 return;

@@ -13,29 +13,18 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-// Same defense the sibling suites already draw (TaskActionsTest.php,
-// TaskRecordRoleMatrixTest.php): `taskActorWith()` is declared once per
-// process and PHP keeps whichever tests/Feature/Tasks/*.php copy loads
-// FIRST. Creating the permission directly here is idempotent and makes this
-// file correct regardless of load order.
-beforeEach(function () {
-    Permission::findOrCreate('tasks.requestUpdate');
-});
-
 /*
 |--------------------------------------------------------------------------
-| POST /api/tasks/{task}/request-update (spec 0118, D-10..D-14,
-| AC-036..AC-054, AC-058..AC-060)
+| POST /api/tasks/{task}/request-update (spec 0153, D-14, superseding spec
+| 0118 D-10..D-14 and spec 0126 D-6)
 |--------------------------------------------------------------------------
 |
-| The seventh domain action, served by TaskActionService::requestUpdate()
-| behind TaskPolicy::requestUpdate(). The notification class itself
-| (channels, deep link, default body) is TaskUpdateRequestedNotificationTest's
-| territory (AC-053, AC-055..AC-057); this suite exercises the endpoint: the
-| matrix row (AC-037..AC-044), availability (AC-045..AC-048), the recipient
-| membership rule (AC-049..AC-052, AC-054), the "zero notifications on
-| refusal" guarantee (AC-058) and the GET-detail flag/response shape
-| (AC-059/AC-060).
+| The notification class itself (channels, deep link, default body) is
+| TaskUpdateRequestedNotificationTest's territory; this suite exercises the
+| endpoint: the matrix row (a pure watcher is now REFUSED, D-14 drops the
+| observer), availability (closed/in_validation/BLOCKED all 422 now), the
+| `target` groups and their CC (AC-017), and the GET-detail flag/response
+| shape.
 */
 
 if (! function_exists('taskActorWith')) {
@@ -62,45 +51,48 @@ if (! function_exists('taskActorWith')) {
     }
 }
 
+/**
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function requestUpdatePayload(array $overrides = []): array
+{
+    return [
+        'target' => 'assignees',
+        'message' => 'Serve un aggiornamento entro venerdi.',
+        ...$overrides,
+    ];
+}
+
 // ---------------------------------------------------------------------------
-// AC-036 — the catalogue
+// The matrix row, over HTTP
 // ---------------------------------------------------------------------------
 
-// tasks.* is 16 since spec 0148 added `viewSite`.
-it('AC-036: permissions:sync creates tasks.requestUpdate, and tasks.* is 16', function () {
-    $this->artisan('permissions:sync')->assertSuccessful();
-
-    expect(Permission::query()->where('name', 'tasks.requestUpdate')->exists())->toBeTrue()
-        ->and(Permission::query()->where('name', 'like', 'tasks.%')->count())->toBe(16);
-});
-
-// ---------------------------------------------------------------------------
-// AC-037..AC-044 — the matrix row, over HTTP
-// ---------------------------------------------------------------------------
-
-it('AC-037: the creator gets 200', function () {
+it('the creator gets 200', function () {
     $actor = taskActorWith(['requestUpdate']);
     $assignee = User::factory()->create();
     $task = Task::factory()->forCreator($actor)->create();
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
-        ->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())->assertOk();
 });
 
-it('AC-038: the requester gets 200', function () {
+it('the requester gets 200', function () {
     $actor = taskActorWith(['requestUpdate']);
     $assignee = User::factory()->create();
     $task = Task::factory()->create(['requester_id' => $actor->id]);
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
-        ->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())->assertOk();
 });
 
-it('AC-039: a pure watcher gets 200 — the one action a watcher may perform', function () {
+// REQUIREMENT CHANGED (spec 0153, D-14): "ammessa a richiedente, creatore o
+// gestore (non all'osservatore)" — a pure watcher is now REFUSED, the
+// opposite of spec 0118's own D-10. (TaskAbilityResolver::canRequestUpdate()
+// drops the watcher case — a change owned alongside this test.)
+it('REQUIREMENT CHANGED (D-14): a pure watcher now gets 403, the observer is no longer admitted', function () {
     $actor = taskActorWith(['requestUpdate']);
     $assignee = User::factory()->create();
     $task = Task::factory()->create();
@@ -108,90 +100,71 @@ it('AC-039: a pure watcher gets 200 — the one action a watcher may perform', f
     $task->watchers()->attach($actor->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
-        ->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())
+        ->assertStatus(403);
 });
 
-it('AC-040: a pure assignee gets 403', function () {
+it('a pure assignee gets 403', function () {
     $actor = taskActorWith(['requestUpdate']);
     $otherAssignee = User::factory()->create();
     $task = Task::factory()->create();
     $task->assignees()->attach([$actor->id, $otherAssignee->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$otherAssignee->id]])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())
         ->assertStatus(403);
 });
 
-it('AC-041: a manager (tasks.manageAll) who is NOT an assignee gets 200', function () {
+it('a manager (tasks.manageAll) who is NOT an assignee gets 200', function () {
     $actor = taskActorWith(['requestUpdate', 'manageAll']);
     $assignee = User::factory()->create();
     $task = Task::factory()->create();
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
-        ->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())->assertOk();
 });
 
-it('AC-042: a manager who is ALSO an assignee of this task gets 403 (D-2 deroga of spec 0116)', function () {
+it('a manager who is ALSO an assignee of this task gets 403 (D-2 deroga of spec 0116)', function () {
     $actor = taskActorWith(['requestUpdate', 'manageAll']);
     $otherAssignee = User::factory()->create();
     $task = Task::factory()->create();
     $task->assignees()->attach([$actor->id, $otherAssignee->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$otherAssignee->id]])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())
         ->assertStatus(403);
 });
 
-// REQUIREMENT CHANGED (spec 0126, D-1): the super-admin no longer decays as
-// an assignee (see TaskSuperAdminAssigneeTest AC-001, where the same
-// scenario now expects 200). The "re-asserted past Gate::before" proof this
-// test carried stays true for an ORDINARY `tasks.manageAll` actor, so the
-// actor here is rewritten as one instead of a super-admin.
-it('AC-042 (manager, not super-admin): the deroga is re-asserted in the Service past Gate::before', function () {
-    $actor = taskActorWith(['requestUpdate', 'manageAll']);
-    $otherAssignee = User::factory()->create();
-    $task = Task::factory()->create();
-    $task->assignees()->attach([$actor->id, $otherAssignee->id]);
-    Sanctum::actingAs($actor);
-
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$otherAssignee->id]])
-        ->assertStatus(403);
-});
-
-it('AC-043: the creator WITHOUT tasks.requestUpdate gets 403', function () {
+it('the creator WITHOUT tasks.requestUpdate gets 403', function () {
     $actor = taskActorWith([]);
     $assignee = User::factory()->create();
     $task = Task::factory()->forCreator($actor)->create();
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())
         ->assertStatus(403);
 });
 
-it('AC-044: an actor outside the visibility scope gets 403', function () {
+it('an actor outside the visibility scope gets 403', function () {
     $actor = taskActorWith(['requestUpdate'], withViewAll: false);
     $assignee = User::factory()->create();
     $task = Task::factory()->create();
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())
         ->assertStatus(403);
 });
 
 // ---------------------------------------------------------------------------
-// AC-045..AC-048 — availability
+// Availability
 // ---------------------------------------------------------------------------
 
-// REQUIREMENT CHANGED (spec 0126, D-6): "Richiedi aggiornamento" is now
-// consented on a blocked task — `TaskActionService::requestUpdate()` no
-// longer calls `TaskWriteLock::assertNotBlocked()`, so the availability
-// window alone (isCompletable()) still governs this endpoint.
-it('AC-045 (spec 0126, D-6): a blocked task answers 200 and the notification is sent', function () {
+// REQUIREMENT CHANGED (spec 0153, D-14 REVERSES spec 0126, D-6): a blocked
+// task now 422s — "Richiedi aggiornamento" no longer admits a blocked task.
+it('REQUIREMENT CHANGED (D-14): a blocked task now answers 422, no notification sent', function () {
     Notification::fake();
     $actor = taskActorWith(['requestUpdate']);
     $assignee = User::factory()->create();
@@ -199,13 +172,13 @@ it('AC-045 (spec 0126, D-6): a blocked task answers 200 and the notification is 
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
-        ->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())
+        ->assertStatus(422);
 
-    Notification::assertSentTo($assignee, TaskUpdateRequested::class);
+    Notification::assertNothingSent();
 });
 
-it('AC-046: a closed_positive task answers 422', function () {
+it('a closed_positive task answers 422', function () {
     $actor = taskActorWith(['requestUpdate']);
     $closed = TaskStatus::query()->where('system_key', TaskStatusSystemKey::ClosedPositive->value)->firstOrFail();
     $assignee = User::factory()->create();
@@ -213,11 +186,11 @@ it('AC-046: a closed_positive task answers 422', function () {
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())
         ->assertStatus(422);
 });
 
-it('AC-047: a task in_validation answers 422', function () {
+it('a task in_validation answers 422', function () {
     $actor = taskActorWith(['requestUpdate']);
     $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
     $assignee = User::factory()->create();
@@ -225,11 +198,11 @@ it('AC-047: a task in_validation answers 422', function () {
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())
         ->assertStatus(422);
 });
 
-it('AC-048: a task in the pending phase answers 200 — isCompletable includes pending', function () {
+it('a task in the pending phase answers 200 — isCompletable includes pending', function () {
     $actor = taskActorWith(['requestUpdate']);
     $pending = TaskStatus::factory()->group(TaskStatusGroup::Pending)->create();
     $assignee = User::factory()->create();
@@ -237,104 +210,158 @@ it('AC-048: a task in the pending phase answers 200 — isCompletable includes p
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
-        ->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())->assertOk();
 });
 
 // ---------------------------------------------------------------------------
-// AC-049..AC-052, AC-054 — recipients and message
+// target / message (D-14)
 // ---------------------------------------------------------------------------
 
-it('AC-049: an empty recipient_ids answers 422 on recipient_ids', function () {
+it('an invalid target answers 422 on target', function () {
     $actor = taskActorWith(['requestUpdate']);
     $task = Task::factory()->forCreator($actor)->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => []])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload(['target' => 'everyone']))
         ->assertStatus(422)
-        ->assertJsonValidationErrors('recipient_ids');
+        ->assertJsonValidationErrors('target');
 });
 
-it('AC-050: a recipient who is neither assignee nor watcher answers 422, zero notifications sent', function () {
+it('a target with zero recipients answers 422 on target, zero notifications sent', function () {
     Notification::fake();
     $actor = taskActorWith(['requestUpdate']);
-    $stranger = User::factory()->create();
     $task = Task::factory()->forCreator($actor)->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$stranger->id]])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload(['target' => 'observers']))
         ->assertStatus(422)
-        ->assertJsonValidationErrors('recipient_ids');
+        ->assertJsonValidationErrors('target');
 
     Notification::assertNothingSent();
 });
 
-it('AC-051: an assignee and a watcher spunted together get exactly two notifications', function () {
+it('a missing message answers 422 on message', function () {
+    $actor = taskActorWith(['requestUpdate']);
+    $assignee = User::factory()->create();
+    $task = Task::factory()->forCreator($actor)->create();
+    $task->assignees()->attach($assignee->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/request-update", ['target' => 'assignees'])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('message');
+});
+
+it('a message shorter than 3 characters answers 422 on message', function () {
+    $actor = taskActorWith(['requestUpdate']);
+    $assignee = User::factory()->create();
+    $task = Task::factory()->forCreator($actor)->create();
+    $task->assignees()->attach($assignee->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload(['message' => 'hi']))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('message');
+});
+
+it('a message over 2000 characters answers 422 on message', function () {
+    $actor = taskActorWith(['requestUpdate']);
+    $assignee = User::factory()->create();
+    $task = Task::factory()->forCreator($actor)->create();
+    $task->assignees()->attach($assignee->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload(['message' => str_repeat('a', 2001)]))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('message');
+});
+
+// ---------------------------------------------------------------------------
+// AC-017 — target groups and CC
+// ---------------------------------------------------------------------------
+
+it('AC-017: target=assignees notifies every assignee and CCs the watchers who are not assignees', function () {
     Notification::fake();
     $actor = taskActorWith(['requestUpdate']);
     $assignee = User::factory()->create();
     $watcher = User::factory()->create();
+    $assigneeWatcher = User::factory()->create();
     $task = Task::factory()->forCreator($actor)->create();
-    $task->assignees()->attach($assignee->id);
+    $task->assignees()->attach([$assignee->id, $assigneeWatcher->id]);
+    $task->watchers()->attach([$watcher->id, $assigneeWatcher->id]);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload(['target' => 'assignees']))
+        ->assertOk();
+
+    Notification::assertSentTo(
+        [$assignee, $assigneeWatcher],
+        TaskUpdateRequested::class,
+        fn (TaskUpdateRequested $notification, array $channels, User $notifiable): bool => $notification->toArray($notifiable)['is_cc'] === false,
+    );
+    Notification::assertSentTo(
+        $watcher,
+        TaskUpdateRequested::class,
+        fn (TaskUpdateRequested $notification, array $channels, User $notifiable): bool => $notification->toArray($notifiable)['is_cc'] === true,
+    );
+    Notification::assertSentTimes(TaskUpdateRequested::class, 3);
+});
+
+it('target=observers notifies every watcher and sends no copy', function () {
+    Notification::fake();
+    $actor = taskActorWith(['requestUpdate']);
+    $watcher = User::factory()->create();
+    $assignee = User::factory()->create();
+    $task = Task::factory()->forCreator($actor)->create();
     $task->watchers()->attach($watcher->id);
-    Sanctum::actingAs($actor);
-
-    $this->postJson("/api/tasks/{$task->id}/request-update", [
-        'recipient_ids' => [$assignee->id, $watcher->id],
-    ])->assertOk();
-
-    Notification::assertSentTo([$assignee, $watcher], TaskUpdateRequested::class);
-    Notification::assertCount(2);
-});
-
-it('AC-052: an un-spunted second assignee receives nothing (no automatic audience, D-11)', function () {
-    Notification::fake();
-    $actor = taskActorWith(['requestUpdate']);
-    $chosenAssignee = User::factory()->create();
-    $otherAssignee = User::factory()->create();
-    $task = Task::factory()->forCreator($actor)->create();
-    $task->assignees()->attach([$chosenAssignee->id, $otherAssignee->id]);
-    Sanctum::actingAs($actor);
-
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$chosenAssignee->id]])
-        ->assertOk();
-
-    Notification::assertSentTo($chosenAssignee, TaskUpdateRequested::class);
-    Notification::assertNotSentTo($otherAssignee, TaskUpdateRequested::class);
-});
-
-it('AC-053 (endpoint): a request without a message still sends a full notification', function () {
-    Notification::fake();
-    $actor = taskActorWith(['requestUpdate']);
-    $assignee = User::factory()->create();
-    $task = Task::factory()->forCreator($actor)->create();
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload(['target' => 'observers']))
         ->assertOk();
 
-    Notification::assertSentTo($assignee, TaskUpdateRequested::class);
+    Notification::assertSentTo($watcher, TaskUpdateRequested::class);
+    Notification::assertNotSentTo($assignee, TaskUpdateRequested::class);
+    Notification::assertSentTimes(TaskUpdateRequested::class, 1);
 });
 
-it('AC-054: a message over 2000 characters answers 422 on message', function () {
+it('target=all notifies the union of assignees and watchers, deduplicated, with no copy', function () {
+    Notification::fake();
     $actor = taskActorWith(['requestUpdate']);
     $assignee = User::factory()->create();
+    $watcher = User::factory()->create();
+    $both = User::factory()->create();
     $task = Task::factory()->forCreator($actor)->create();
-    $task->assignees()->attach($assignee->id);
+    $task->assignees()->attach([$assignee->id, $both->id]);
+    $task->watchers()->attach([$watcher->id, $both->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", [
-        'recipient_ids' => [$assignee->id],
-        'message' => str_repeat('a', 2001),
-    ])->assertStatus(422)->assertJsonValidationErrors('message');
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload(['target' => 'all']))
+        ->assertOk();
+
+    Notification::assertSentTo([$assignee, $watcher, $both], TaskUpdateRequested::class);
+    Notification::assertSentTimes(TaskUpdateRequested::class, 3);
+});
+
+// D-14: "L'attore non e' escluso" — unlike every other Task notification.
+it('D-14: the actor is NOT excluded when they are also a recipient of the chosen target', function () {
+    Notification::fake();
+    $actor = taskActorWith(['requestUpdate', 'manageAll']);
+    $task = Task::factory()->create();
+    $task->watchers()->attach($actor->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload(['target' => 'observers']))
+        ->assertOk();
+
+    Notification::assertSentTo($actor, TaskUpdateRequested::class);
 });
 
 // ---------------------------------------------------------------------------
-// AC-058 — zero notifications on every refusal path
+// zero notifications on refusal
 // ---------------------------------------------------------------------------
 
-it('AC-058: a 403 refusal sends zero notifications', function () {
+it('a 403 refusal sends zero notifications', function () {
     Notification::fake();
     $actor = taskActorWith([]);
     $assignee = User::factory()->create();
@@ -342,24 +369,23 @@ it('AC-058: a 403 refusal sends zero notifications', function () {
     $task->assignees()->attach($assignee->id);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$assignee->id]])
+    $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())
         ->assertStatus(403);
 
     Notification::assertNothingSent();
 });
 
 // ---------------------------------------------------------------------------
-// AC-059/AC-060 — the GET flag and the response shape
+// the GET flag and the response shape
 // ---------------------------------------------------------------------------
 
-it('AC-059: permissions.actions.request_update is true for a pure watcher and false for a pure assignee', function () {
-    $watcherActor = taskActorWith(['view', 'requestUpdate']);
+it('permissions.actions.request_update is true for the creator and false for a pure assignee', function () {
+    $creatorActor = taskActorWith(['view', 'requestUpdate']);
     $assigneeActor = taskActorWith(['view', 'requestUpdate']);
-    $task = Task::factory()->create();
-    $task->watchers()->attach($watcherActor->id);
+    $task = Task::factory()->forCreator($creatorActor)->create();
     $task->assignees()->attach($assigneeActor->id);
 
-    Sanctum::actingAs($watcherActor);
+    Sanctum::actingAs($creatorActor);
     $this->getJson("/api/tasks/{$task->id}")
         ->assertOk()
         ->assertJsonPath('permissions.actions.request_update', true);
@@ -370,7 +396,7 @@ it('AC-059: permissions.actions.request_update is true for a pure watcher and fa
         ->assertJsonPath('permissions.actions.request_update', false);
 });
 
-it('AC-060: a successful request-update response has the same shape as GET /api/tasks/{id}', function () {
+it('a successful request-update response has the same shape as GET /api/tasks/{id}', function () {
     $actor = taskActorWith(['view', 'requestUpdate']);
     $assignee = User::factory()->create();
     $task = Task::factory()->forCreator($actor)->create();
@@ -378,9 +404,7 @@ it('AC-060: a successful request-update response has the same shape as GET /api/
     Sanctum::actingAs($actor);
 
     $getResponse = $this->getJson("/api/tasks/{$task->id}")->assertOk();
-    $actionResponse = $this->postJson("/api/tasks/{$task->id}/request-update", [
-        'recipient_ids' => [$assignee->id],
-    ])->assertOk();
+    $actionResponse = $this->postJson("/api/tasks/{$task->id}/request-update", requestUpdatePayload())->assertOk();
 
     expect(array_keys($actionResponse->json()))->toBe(array_keys($getResponse->json()))
         ->and(array_keys($actionResponse->json('data')))->toBe(array_keys($getResponse->json('data')));

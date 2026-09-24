@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0158-custom-filters-favorites-chips" status="draft" owner="utente" date="2026-09-24">
+
+  <goal>
+    Ogni tabella ha filtri personalizzati con regole E/O (privati o pubblici), preferiti e chip dei filtri attivi
+    rimovibili uno per uno, come q-net (punto 8 della sez. 2).
+  </goal>
+
+  <context>
+    Serie 0153-0158. Nomi qnet-2 verificati:
+    - Viste salvate: model `TableFilterView` (user_id, domain, name, filters, visibility private|shared,
+      advanced_filters), route in `routes/api.php:137-142`, `TableFilterViewRequest`, `TableFilterViewPolicy`
+      (solo il proprietario modifica), resource con owned/owner_name; FE `features/table/filter-views-control.tsx`,
+      `use-filter-views.ts`, `filter-views-api.ts`.
+    - Filtri avanzati: `advancedFilters()` per definizione, `AdvancedFilterApplier`; `TableQueryBuilder` li applica
+      in AND. Indicatore filtri: badge numerico in `table-toolbar.tsx`.
+    - q-net: filtri personalizzati generici `{ and_group, or_group }` = (tutte le AND) OR (una qualsiasi OR),
+      pubblici solo Admin, applicarne uno sostituisce gli altri filtri; preferiti = istantanee nominate con flag
+      globale; chip per filtro attivo (QB TableController.php:91-217, Traits/Filters.php:47-50;
+      QC task-table-filter-chips.ts).
+  </context>
+
+  <decisions>
+    D-1  (utente 4b) Generico per tutte le tabelle. Un filtro personalizzato e' una vista salvata con `rules`:
+         { and: Rule[], or: Rule[] }, semantica (tutte le and) OR (almeno una or); Rule = { field, operator, value }.
+         `field` e' una colonna filtrabile della definizione (allow-list); operatori per tipo di colonna:
+         testo contains/equals/not_equals/blank/not_blank; numero e data equals/lt/lte/gt/gte/between/blank/not_blank
+         (data anche today/this_week/this_month/last_n_days); set/relazione in/not_in; bool is.
+    D-2  Applicare un filtro personalizzato sostituisce filtri di colonna e filtri avanzati (come q-net); ricerca e
+         scoping restano.
+    D-3  Pubblico: visibility `shared` ammessa solo con il nuovo permesso `table-filter-views.publish` (per tutte le
+         tabelle); senza -> 403. Le viste shared esistenti restano.
+    D-4  Preferiti: ogni utente segna come preferite viste proprie o pubbliche (tabella pivot utente-vista); i
+         preferiti compaiono in cima al selettore.
+    D-5  Chip: sotto la toolbar una chip per ogni filtro attivo (colonna, avanzato, ricerca, filtro personalizzato)
+         "Campo: valori", con la x che rimuove solo quel filtro; "Azzera tutto" in coda. I filtri avanzati required
+         si riportano al default invece di sparire.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: table_filter_views.rules (json nullable); pivot table_filter_view_favorites.</item>
+      <item>Backend: validazione rules, applicazione in TableService/TableQueryBuilder (rows, export, distinct values), permesso publish, preferiti.</item>
+      <item>FE generico: costruttore regole E/O, preferiti nel selettore viste, chip dei filtri attivi.</item>
+      <item>Guida in-app IT/EN `general` e permesso nella guida ruoli.</item>
+    </in>
+    <out>
+      <item>Gruppi annidati oltre (AND) OR (OR).</item>
+      <item>Regole su campi non filtrabili.</item>
+    </out>
+  </scope>
+
+  <contract>
+    GET/POST/PUT /api/tables/{domain}/filter-views: il body aggiunge rules?: { and: Rule[], or: Rule[] } | null;
+      la risorsa aggiunge rules e is_favorite: bool.
+    POST /api/tables/{domain}/filter-views/{id}/favorite, DELETE stesso path -> 200 { data: FilterView }.
+    POST /api/tables/{domain}/rows e POST /api/exports/{domain}: aggiungono customFilterRules?: { and, or }
+      (validati come sopra), applicati in sostituzione di filterModel e advancedFilters.
+    Errori: 422 campo fuori allow-list / operatore non ammesso per il tipo / valore non valido;
+      403 visibility shared senza table-filter-views.publish.
+  </contract>
+
+  <acceptance>
+    AC-001 Regole and [stato in X, priorita' in Y] or [scadenza today] restituiscono (X e Y) oppure oggi.
+    AC-002 Un campo fuori allow-list -> 422; nessun SQL grezzo dall'input.
+    AC-003 Applicare un filtro personalizzato ignora filterModel e advancedFilters; l'export da' le stesse righe.
+    AC-004 shared senza permesso -> 403; con permesso -> 201 e visibile agli altri.
+    AC-005 Preferito: marcato compare in cima; rimosso torna al suo posto; un utente non vede i preferiti altrui.
+    AC-006 Chip: una per filtro attivo; la x rimuove solo quel filtro; un avanzato required torna al default.
+    AC-007 Guide in-app IT/EN aggiornate; test di parita' verde.
+  </acceptance>
+
+  <constraints>
+    Allow-list di colonne e operatori, binding dei valori, mai whereRaw con input. Nessuna nuova dipendenza.
+    Nessun cambio per chi non usa regole (viste esistenti invariate).
+  </constraints>
+
+</spec>

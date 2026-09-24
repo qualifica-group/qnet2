@@ -86,7 +86,10 @@ it('AC-012: the occurrence copies the D-6 scalar fields and pivots, with closure
         ->and($occurrence->watchers->pluck('id')->all())->toBe([$watcher->id]);
 });
 
-it('AC-013: a closed originator with a single assignee who is also its creator produces an occurrence in open', function () {
+// REQUIREMENT CHANGED (spec 0153, D-4): the creator no longer counts — a
+// single assignee who is ONLY the creator (no requester on this originator)
+// now resolves to the assigned row, not open.
+it('AC-013 (spec 0153): a closed originator with a single assignee who is only its creator now produces an occurrence in assigned', function () {
     $closedStatus = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
     $creator = User::factory()->create();
     $originator = Task::factory()->inStatus($closedStatus)->forCreator($creator)->create(['end_date' => '2026-03-15']);
@@ -95,7 +98,7 @@ it('AC-013: a closed originator with a single assignee who is also its creator p
     Notification::fake();
     $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
 
-    expect($occurrence->task_status_id)->toBe(systemTaskStatusId(TaskStatusSystemKey::Open));
+    expect($occurrence->task_status_id)->toBe(systemTaskStatusId(TaskStatusSystemKey::Assigned));
 });
 
 it('AC-013: the same originator with two assignees produces an occurrence in assigned', function () {

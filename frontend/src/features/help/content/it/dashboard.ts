@@ -22,10 +22,10 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Riquadro', 'Cosa conta'],
           rows: [
-            ['Tutti', 'Tutti i task aperti che puoi vedere.'],
+            ['Tutti', 'Tutti i task aperti che puoi vedere: i tuoi e, se hai il permesso Visualizza tutti o Visualizza sede, anche quelli dei colleghi. Il link apre l’elenco con **Tutti i visibili**.'],
             ['Assegnati a me', 'I task di cui sei assegnatario.'],
             ['Assegnati da me', 'I task di cui sei richiedente, se non sei anche assegnatario.'],
-            ['Creati da me', 'I task che hai creato, se il richiedente è un’altra persona.'],
+            ['Creati da me', 'I task che hai creato, quando non sei anche il richiedente, un assegnatario o un osservatore.'],
             ['Osservati da me', 'I task che segui come osservatore.'],
           ],
         },

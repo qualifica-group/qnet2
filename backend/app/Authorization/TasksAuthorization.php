@@ -211,11 +211,10 @@ class TasksAuthorization extends AbstractResourceAuthorization
      * at all — the first two are PATCH-reachability questions
      * (`TaskAbilityResolver`/`TaskManualStatusGuard` plus the closing-feedback
      * rule), the third a write-lock-cascade one (`TaskWriteLock`).
-     * `request_update` is the one domain action the `is_blocked` veto no
-     * longer reaches (spec 0126, D-6, REQUIREMENT CHANGED): `close_via_status`
-     * and `change_status`, by contrast, ARE now vetoed by `is_blocked` — the
-     * D-7 carve-out of spec 0116 that used to exempt a manual status change
-     * from the freeze is gone.
+     * `request_update`, `close_via_status` and `change_status` are all
+     * vetoed by `is_blocked` (spec 0153, D-14 restores the veto spec 0126,
+     * D-6 had lifted from `request_update`) — the D-7 carve-out of spec 0116
+     * that used to exempt a manual status change from the freeze stays gone.
      *
      * @return array<string, bool>
      */
@@ -269,11 +268,12 @@ class TasksAuthorization extends AbstractResourceAuthorization
             'unblock' => $task !== null && $this->actionAvailability->isUnblockable($task)
                 && $actor->can('tasks.block') && TaskAbilityResolver::canBlock($actor, $task),
             // spec 0118, D-10: same availability window as `complete`
-            // (`isCompletable()` — no twin method), plus the matrix row that
-            // additionally admits the watcher. Spec 0126, D-6 (REQUIREMENT
-            // CHANGED): no longer ANDed with `! $task->is_blocked` — a
-            // blocked Task now admits this one action.
-            'request_update' => $task !== null && $this->actionAvailability->isCompletable($task)
+            // (`isCompletable()` — no twin method). Spec 0153, D-14
+            // (REQUIREMENT CHANGED, overturns spec 0126 D-6): ANDed again
+            // with `! $task->is_blocked` — a blocked Task no longer admits
+            // this action — and the matrix row no longer admits the watcher
+            // (TaskAbilityResolver::canRequestUpdate()).
+            'request_update' => $task !== null && ! $task->is_blocked && $this->actionAvailability->isCompletable($task)
                 && $actor->can('tasks.requestUpdate') && TaskAbilityResolver::canRequestUpdate($actor, $task),
             // spec 0123, D-5: whether the actor may PATCH task_status_id
             // straight into a CLOSING phase (`close_negative` today, since

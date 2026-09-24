@@ -125,10 +125,10 @@ export async function unblockTask(id: number): Promise<TaskDetailWithPermissions
 }
 
 /**
- * "Richiedi aggiornamento" (spec 0118 D-10..D-14): notifies the given
- * recipients (a subset of this task's own assignees/watchers) by mail and
- * in-app notification. Writes nothing on the task — the response is the
- * same detail tree as every other action (D-14), never a shape of its own.
+ * "Richiedi aggiornamento" (spec 0153 D-14): notifies a fixed recipient
+ * group (`target`) by mail and in-app notification, with a mandatory
+ * message. Writes nothing on the task — the response is the same detail
+ * tree as every other action, never a shape of its own.
  */
 export async function requestTaskUpdate(
   id: number,

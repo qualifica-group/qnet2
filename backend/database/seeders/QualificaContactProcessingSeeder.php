@@ -14,6 +14,8 @@ use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The client's "Dati Lavorazione Contatto" set (spec 0061): what the operator
@@ -81,6 +83,16 @@ class QualificaContactProcessingSeeder extends Seeder
      */
     private const AttributeContext LAYOUT_CONTEXT = AttributeContext::WorkOrder;
 
+    /**
+     * The tables whose `attribute_values` can carry "Titolo di Studio": the
+     * Offerta and the Commessa, i.e. self::CONTEXTS.
+     *
+     * @var list<string>
+     */
+    private const array DEGREE_VALUE_TABLES = ['quotes', 'work_orders'];
+
+    private const int DEGREE_CHUNK_SIZE = 500;
+
     public function __construct(
         private readonly AttributeLayoutService $layouts,
         private readonly CategoryHierarchy $hierarchy,
@@ -88,9 +100,9 @@ class QualificaContactProcessingSeeder extends Seeder
 
     public function run(): void
     {
-        // Step 1: the legacy free-text pick list, BEFORE the catalogue below
-        // creates its options — a no-op on a clean database, where the same
-        // attribute is created as an enum outright.
+        // Step 1: "Titolo di Studio" promoted to a multiselect, BEFORE the
+        // catalogue below creates its options — a no-op on a clean database,
+        // where the same attribute is created as a multiselect outright.
         $this->promoteDegree();
 
         // Step 2: the attributes, each on the category the client scoped it to,
@@ -138,15 +150,14 @@ class QualificaContactProcessingSeeder extends Seeder
     }
 
     /**
-     * The q-crm import created "Titolo di Studio" as free text; the client's
-     * list wants a pick list. Promoting the type rewrites how every stored
-     * value is read.
+     * The q-crm import created "Titolo di Studio" as free text, and an earlier
+     * revision of this catalogue as a single pick; the client's list wants a
+     * multiselect (user directive 2026-09-24). firstOrCreate() never touches an
+     * existing row, so the type and the display are promoted here.
      *
-     * Spec 0084: this used to guard the promotion on NO Opportunity already
-     * carrying a value (`opportunities.attribute_values`, dropped without
-     * migration by D-2) — that value store is gone, so there is nothing left
-     * for a promotion to silently reinterpret, and the guard is removed
-     * along with it.
+     * A multiselect is stored as a JSON list, so every single value already
+     * saved on an Offerta or a Commessa is wrapped into a one-element list —
+     * left as a scalar, it would fail the `array` rule on the next save.
      */
     private function promoteDegree(): void
     {
@@ -154,11 +165,46 @@ class QualificaContactProcessingSeeder extends Seeder
             ->where('code', ContactProcessingAttributeCatalogue::DEGREE_ATTRIBUTE)
             ->first();
 
-        if ($degree === null || $degree->type === 'enum') {
+        $isPromoted = $degree?->type === 'enum'
+            && ($degree->config['display'] ?? null) === ContactProcessingAttributeCatalogue::DEGREE_CONFIG['display'];
+
+        if ($degree === null || $isPromoted) {
             return;
         }
 
-        $degree->update(['type' => 'enum']);
+        $degree->update([
+            'type' => 'enum',
+            'config' => [...($degree->config ?? []), ...ContactProcessingAttributeCatalogue::DEGREE_CONFIG],
+        ]);
+
+        foreach (self::DEGREE_VALUE_TABLES as $table) {
+            $this->wrapScalarDegreeValues($table);
+        }
+    }
+
+    /**
+     * Straight on the table, not through the model: a type conversion is not
+     * an edit of the record, and must not flood its activity log.
+     */
+    private function wrapScalarDegreeValues(string $table): void
+    {
+        $code = ContactProcessingAttributeCatalogue::DEGREE_ATTRIBUTE;
+
+        DB::table($table)
+            ->whereNotNull("attribute_values->{$code}")
+            ->select(['id', 'attribute_values'])
+            ->chunkById(self::DEGREE_CHUNK_SIZE, function (SupportCollection $rows) use ($table, $code): void {
+                foreach ($rows as $row) {
+                    $values = json_decode((string) $row->attribute_values, true);
+
+                    if (! is_array($values) || ! is_scalar($values[$code] ?? null)) {
+                        continue;
+                    }
+
+                    $values[$code] = [(string) $values[$code]];
+                    DB::table($table)->where('id', $row->id)->update(['attribute_values' => json_encode($values)]);
+                }
+            });
     }
 
     /**

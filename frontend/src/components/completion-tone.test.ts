@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { completionTone } from '@/features/work-orders/task-board/task-board-completion-tone'
+import { completionTone } from '@/components/completion-tone'
 
 describe('completionTone', () => {
   it('goes red, amber, blue, green as the percentage grows', () => {

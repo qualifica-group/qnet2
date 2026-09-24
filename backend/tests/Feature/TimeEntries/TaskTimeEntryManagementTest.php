@@ -14,6 +14,10 @@ uses(RefreshDatabase::class);
 |--------------------------------------------------------------------------
 | Task-linked segnatempo follow the Task role matrix (spec 0126, D-3, AC-006/AC-007)
 |--------------------------------------------------------------------------
+|
+| Spec 0153, D-9 (REQUIREMENT CHANGED): canManageTimeEntry() dropped the
+| ownership branch entirely — it is now `canUpdate($actor, $task)` alone, so
+| any assignee manages ANY segnatempo of the Task, not only their own.
 */
 
 if (! function_exists('taskTimeEntryManagementActor')) {
@@ -101,7 +105,11 @@ it('AC-006: the Task creator (mandate owner) may PUT and DELETE the assignee\'s 
     $this->assertDatabaseMissing('time_entries', ['id' => $entry->id]);
 });
 
-it('AC-006: a second assignee B (not the owner) gets 403 on PUT/DELETE', function () {
+// REQUIREMENT CHANGED (spec 0153, D-9): canManageTimeEntry() no longer
+// requires ownership of the entry — a second assignee B may now PUT/DELETE
+// assignee A's entry on the same Task, since canUpdate() admits any
+// assignee (AC-012 of spec 0153).
+it('AC-006 (spec 0153, D-9): a second assignee B (not the owner) may PUT and DELETE assignee A\'s entry', function () {
     $task = Task::factory()->create();
     $assigneeA = User::factory()->create();
     $task->assignees()->attach($assigneeA->id);
@@ -110,12 +118,12 @@ it('AC-006: a second assignee B (not the owner) gets 403 on PUT/DELETE', functio
     $entry = TimeEntry::factory()->forUser($assigneeA)->create(['task_id' => $task->id]);
     Sanctum::actingAs($assigneeB);
 
-    assertEntryPermissionsOnTaskList($this, $task, $entry, false, false);
+    assertEntryPermissionsOnTaskList($this, $task, $entry, true, true);
 
-    $this->putJson("/api/time-entries/{$entry->id}", ['date' => $entry->date->format('Y-m-d'), 'title' => 'X', 'task_type_id' => $entry->task_type_id, 'minutes' => 45])
-        ->assertForbidden();
-    $this->deleteJson("/api/time-entries/{$entry->id}")->assertForbidden();
-    $this->assertDatabaseHas('time_entries', ['id' => $entry->id]);
+    $this->putJson("/api/time-entries/{$entry->id}", ['date' => $entry->date->format('Y-m-d'), 'task_id' => $task->id, 'task_type_id' => $entry->task_type_id, 'minutes' => 45])
+        ->assertOk();
+    $this->deleteJson("/api/time-entries/{$entry->id}")->assertOk();
+    $this->assertDatabaseMissing('time_entries', ['id' => $entry->id]);
 });
 
 it('AC-006: a watcher, owner of their own entry on the Task, gets 403 on PUT/DELETE', function () {

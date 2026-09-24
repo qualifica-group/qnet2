@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'Il **Completamento** in percentuale dipende dallo stato scelto e non si inserisce a mano. La barra e il numero sono colorati come nella commessa: rosso fino al 33%, ambra fino al 66%, blu oltre, verde al 100%.',
+          text: 'Il **Completamento** in percentuale non si inserisce a mano: dipende dallo stato scelto oppure, se il task ha dei sotto-task, dalla media (arrotondata) delle loro percentuali — che resta al massimo al 99% finché il task è aperto, per lasciare al 100% solo un task davvero completato. La barra e il numero sono colorati come nella commessa: rosso fino al 33%, ambra fino al 66%, blu oltre, verde al 100%.',
         },
       ],
     },
@@ -46,12 +46,15 @@ const guide: HelpGuide = {
           rows: [
             ['Stato', 'Aperti (preimpostato), Completati, Bloccati, In validazione o Tutti.'],
             ['Scadenza', 'Oggi, Scadute o Questa settimana, sulla data fine (o sulla data inizio se manca).'],
-            ['Assegnazione', 'I task assegnati a te, richiesti da te, assegnati da te (sei richiedente ma non assegnatario), creati da te (con un altro richiedente) oppure osservati da te.'],
+            [
+              'Assegnazione',
+              'Scegli **uno o più** valori insieme (preimpostato: Assegnati a te): assegnati a te, richiesti da te, assegnati da te (sei richiedente ma non assegnatario), creati da te (li hai creati ma non sei né il richiedente, né un assegnatario, né un osservatore) oppure osservati da te. **Tutti** mostra ogni task in cui hai un qualsiasi ruolo (richiedente, assegnatario, osservatore o creatore), anche se hai il permesso Visualizza tutti. Se hai il permesso Visualizza tutti o Visualizza sede trovi anche **Tutti i visibili**, che mostra ogni task che puoi vedere, compresi quelli dei colleghi.',
+            ],
           ],
         },
         {
           type: 'tip',
-          text: 'All\'apertura la tabella mostra solo i task **aperti**: scegli **Tutti** nel filtro Stato per vedere anche quelli chiusi. Se arrivi da un riquadro della **Dashboard**, la tabella si apre già filtrata solo per quella visita, senza cambiare i filtri salvati.',
+          text: 'All\'apertura la tabella mostra solo i task **assegnati a te e aperti**, ordinati dall\'ultimo aggiornamento più recente. Scegli altri valori nei filtri Assegnazione e Stato per allargare la vista. Se arrivi da un riquadro della **Dashboard**, la tabella si apre già filtrata solo per quella visita, senza cambiare i filtri salvati.',
         },
         {
           type: 'paragraph',
@@ -108,7 +111,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Ogni stato appartiene a una fase: Aperto, In attesa, Da validare, Chiuso con esito positivo, Chiuso con esito negativo. Un task in validazione o chiuso non accetta modifiche ai dati principali.',
+          text: 'Ogni stato appartiene a una fase: Aperto, In attesa, Da validare, Chiuso con esito positivo, Chiuso con esito negativo. Un task in validazione o chiuso non accetta modifiche ai dati principali, a eccezione di un super-amministratore, che può comunque modificarne i campi (ma non eliminarlo né completarlo).',
+        },
+        {
+          type: 'note',
+          text: 'Puoi eliminare un task se puoi modificarlo (creatore, richiedente, assegnatario o chi ha il permesso Gestisci tutto), purché non sia completato, in validazione o bloccato. Eliminando un task si eliminano a cascata anche i suoi sotto-task: se anche uno solo di questi non fosse eliminabile, l\'intera eliminazione viene annullata.',
+        },
+        {
+          type: 'note',
+          text: 'Chi può modificare il task gestisce anche tutte le voci del suo **Segnatempo**, comprese quelle inserite da un altro assegnatario.',
         },
       ],
     },
@@ -125,11 +136,11 @@ const guide: HelpGuide = {
           headers: ['Azione', 'Cosa fa'],
           rows: [
             ['Completa', 'Chiude il task o lo invia in validazione.'],
-            ['Riapri', 'Riporta il task nello stato "In corso".'],
+            ['Riapri', 'Riporta il task nello stato "In corso" e toglie un eventuale blocco.'],
             ['Approva', 'Chiude definitivamente un task in validazione.'],
-            ['Rifiuta', 'Riporta un task in validazione a "In corso".'],
-            ['Blocca / Sblocca', 'Sospende o riattiva il task.'],
-            ['Richiedi aggiornamento', 'Invia mail e notifica ad assegnatari e osservatori scelti.'],
+            ['Rifiuta', 'Riporta un task in validazione allo stato "Assegnato", azzera il feedback di chiusura e toglie un eventuale blocco.'],
+            ['Blocca / Sblocca', 'Sospende o riattiva il task. Puoi bloccare solo un task aperto (non completato né in validazione); completarlo, riaprirlo o rifiutarne la validazione lo sblocca automaticamente.'],
+            ['Richiedi aggiornamento', 'Invia mail e notifica a un gruppo di destinatari, con un messaggio obbligatorio (vedi sotto).'],
           ],
         },
         {
@@ -145,6 +156,23 @@ const guide: HelpGuide = {
         {
           type: 'warning',
           text: 'Con **Validazione** attiva, il completamento di un assegnatario non chiude il task: passa in validazione e il richiedente deve approvarlo o rifiutarlo. Non puoi completare un task con sotto-task aperti, né agire su un task bloccato.',
+        },
+        {
+          type: 'paragraph',
+          text: 'La **Richiesta di aggiornamento** è riservata al richiedente, al creatore o a chi gestisce il task (non al semplice osservatore), e solo su un task non completato, non in validazione e non bloccato. Scegli uno dei tre gruppi di destinatari:',
+        },
+        {
+          type: 'table',
+          headers: ['Destinatari', 'Chi riceve la richiesta'],
+          rows: [
+            ['Assegnatari', 'Tutti gli assegnatari; gli osservatori ricevono comunque una copia, contrassegnata **In copia**.'],
+            ['Osservatori', 'Tutti gli osservatori del task.'],
+            ['Assegnatari e osservatori', 'Entrambi i gruppi, come destinatari diretti.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Il messaggio è **obbligatorio** (da 3 a 2000 caratteri): spiega cosa vuoi sapere, così i destinatari lo leggono direttamente nella notifica.',
         },
       ],
     },
@@ -177,15 +205,16 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'ti viene assegnato un task, come assegnatario o osservatore;',
-            'un task va in validazione, viene approvato o rifiutato;',
-            'un task viene chiuso, riaperto, bloccato o sbloccato;',
-            'qualcuno ti chiede un aggiornamento.',
+            'ti viene assegnato un task come nuovo assegnatario (a meno che tu ne sia anche il creatore) o come nuovo osservatore (sempre, anche se sei il creatore);',
+            'un task va in validazione, oppure la sua validazione viene approvata o rifiutata;',
+            'un task viene chiuso: la notifica arriva al richiedente e agli osservatori, e agli assegnatari solo se sono più di uno; se il task era in validazione, gli assegnatari ricevono comunque una notifica separata di approvazione;',
+            'un task viene riaperto, bloccato o sbloccato;',
+            'qualcuno ti chiede un aggiornamento: la ricevono i destinatari scelti, con una copia (**In copia**) agli osservatori quando la richiesta va agli assegnatari.',
           ],
         },
         {
           type: 'note',
-          text: "Chi esegue l'azione non riceve la notifica.",
+          text: "Chi esegue l'azione non la riceve, così come il creatore in quanto tale (a meno che sia anche richiedente, assegnatario o osservatore) e gli utenti disattivati.",
         },
       ],
     },

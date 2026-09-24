@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks;
 
+use App\Enums\TaskStatusGroup;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Services\Table\FilterApplier;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
@@ -30,9 +33,23 @@ use Illuminate\Support\Facades\DB;
  *
  * Nothing here reads a status LABEL (AC-024): the percentage lives on the
  * configurator row, so renaming a status changes nothing.
+ *
+ * Spec 0153, D-10: completionPercentage() is now RECURSIVE over sub-tasks —
+ * 100 once the Task itself is closed; the rounded average of the children's
+ * OWN percentages (recursively), capped at 99 while the Task is still open,
+ * when it has sub-tasks; the plain status percentage when it has none. The
+ * grid's own ORDER BY/WHERE (applySort()/applyFilter() below) deliberately
+ * stay on the status' own percentage — a correlated subquery cannot express
+ * a recursive aggregate, and q-net carries the identical sort/filter vs.
+ * display disagreement (spec 0153 D-10's declared limit).
  */
 final class TaskStatusResolver
 {
+    /** D-10: an open parent's percentage never rounds up to 100 on its own. */
+    private const int COMPLETED_PERCENTAGE = 100;
+
+    private const int MAX_OPEN_PERCENTAGE = 99;
+
     /**
      * Relations a caller must eager-load for completionPercentage() to answer
      * without a query — TasksTableDefinition::baseQuery() and
@@ -53,13 +70,65 @@ final class TaskStatusResolver
     public function __construct(private readonly FilterApplier $filterApplier) {}
 
     /**
-     * The Task's completion percentage, always read off its status row.
-     * Defensive 0 when the relation cannot be resolved: `task_status_id` is
-     * NOT NULL and restrictOnDelete, so this is unreachable in practice.
+     * The Task's completion percentage (D-10). Recurses into sub-tasks when
+     * there are any; falls back to the plain status percentage otherwise
+     * (defensive 0 when the status relation cannot be resolved —
+     * `task_status_id` is NOT NULL and restrictOnDelete, so that branch is
+     * unreachable in practice).
      */
     public function completionPercentage(Task $task): int
     {
-        return $task->taskStatus?->completion_percentage ?? 0;
+        $status = $this->resolveStatus($task);
+
+        // Completed (closed_positive) is always 100, as in q-net; a
+        // closed_negative task keeps its configurable status percentage
+        // (TaskConfig AC-044). The subtask average applies only while open.
+        if ($status?->group === TaskStatusGroup::ClosedPositive) {
+            return self::COMPLETED_PERCENTAGE;
+        }
+
+        if ($status?->isClosing() === true) {
+            return $status->completion_percentage ?? 0;
+        }
+
+        $children = $this->resolveSubtasks($task);
+
+        if ($children->isEmpty()) {
+            return $status?->completion_percentage ?? 0;
+        }
+
+        $average = (int) round($children->avg(fn (Task $child): int => $this->completionPercentage($child)));
+
+        return min($average, self::MAX_OPEN_PERCENTAGE);
+    }
+
+    /**
+     * Reads `taskStatus` off whatever is already loaded, an EXPLICIT query
+     * otherwise — never the magic `$task->taskStatus` getter on an
+     * unloaded relation, which `Model::preventLazyLoading()` (on outside
+     * production) would turn into a hard failure for every recursive step
+     * this class takes on its own, un-eager-loaded fetches.
+     */
+    private function resolveStatus(Task $task): ?TaskStatus
+    {
+        return $task->relationLoaded(self::STATUS_RELATION) ? $task->taskStatus : $task->taskStatus()->first();
+    }
+
+    /**
+     * The direct children, however they got here: already eager-loaded
+     * (TaskService's own scoped load, or a prior recursive step's `with()`
+     * below), or fetched here with their OWN status eager-loaded so the next
+     * recursive call never lazy-loads either.
+     *
+     * @return Collection<int, Task>
+     */
+    private function resolveSubtasks(Task $task): Collection
+    {
+        if ($task->relationLoaded('subtasks')) {
+            return $task->subtasks;
+        }
+
+        return $task->subtasks()->with(self::STATUS_RELATION)->get();
     }
 
     /**

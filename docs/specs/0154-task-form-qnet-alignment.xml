@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0154-task-form-qnet-alignment" status="draft" owner="utente" date="2026-09-24">
+
+  <goal>
+    Il form di creazione e modifica dei task ha i campi, i valori predefiniti e i comportamenti di q-net
+    (punti 11-13 della sez. 2 e le differenze di form della sez. 3).
+  </goal>
+
+  <context>
+    Serie 0153-0158 (vedi 0153). Nomi qnet-2 verificati:
+    - Model `Task` (fillable: title, description, registry_id, referent_id, parent_task_id, task_type_id,
+      task_status_id, task_priority_id, task_importance_id, task_category_id, opportunity_id, work_order_id,
+      work_order_stage_id, requester_id, start_date, end_date, completion_date, start_time, end_time,
+      estimated_minutes, is_blocked, requires_closure_feedback, requires_validation, closure_feedback).
+    - `StoreTaskRequest` (task_status_id e completion_date `prohibited`), `UpdateTaskRequest`, `CreateTaskData`,
+      `TaskService::create`, `TaskInitialStatusResolver`, `TaskDescriptionWriter` (sanifica HTML).
+    - Lookup: `TaskCategory` piatta (name unico), `TaskType`/`TaskPriority`/`TaskImportance` senza marcatore di default.
+    - `Lead` esiste (registry_id); la fase commessa esiste gia' come `work_order_stage_id` (`TaskStageGuard`).
+    - FE: `use-task-form.ts` (createDefaults a null, end_date null, handleRegistryChange azzera solo referent_id),
+      `task-schema.ts`, `task-form-payload.ts`, sezioni `task-classification-section.tsx`, `task-links-section.tsx`.
+    - Catena commessa -> cliente: WorkOrder -> Quote.opportunity -> Opportunity.registry_id.
+  </context>
+
+  <decisions>
+    D-1  Categoria annidata: `task_categories.parent_id` (FK su se stessa, nullable, restrictOnDelete), profondita'
+         libera, nessun ciclo (422). Selezionabili anche i padri, come q-net. Nome unico per padre. Il colore e
+         l'icona non si ereditano. Il for-select restituisce `meta.parent_id` e `meta.depth`; il FE mostra l'albero
+         indentato ("Padre / Figlio").
+    D-2  (utente 1b) Task privato `is_private` (bool, default false): se vero il task e' visibile solo a creatore,
+         richiedente, assegnatari e osservatori; non lo vedono `tasks.viewAll` ne' la visibilita' per sede.
+         Il super-admin (Gate::before) resta l'unica eccezione.
+    D-3  Evidenze `evidence` (testo ricco, nullable), sanificato come la descrizione.
+    D-4  Lead `lead_id` (FK nullable, nullOnDelete); se il task ha un'anagrafica, il lead deve appartenerle (422).
+    D-5  Milestone commessa: gia' presente come fase (`work_order_stage_id`); nessuna modifica.
+    D-6  Creazione di un task gia' completato: `is_completed: true` in creazione. Il task nasce nello stato di
+         chiusura positiva con completion_date = oggi e un segnatempo dell'attore con i minuti stimati (anche 0),
+         senza passare dalla validazione (come q-net). 422 se `requires_validation` o `requires_closure_feedback`
+         senza feedback (le guardie di chiusura restano).
+    D-7  `notify_assigned_users` (bool, default true, solo creazione): false sopprime le notifiche di assegnazione e
+         di osservazione alla creazione. In modifica `notify_new_assigned_users` (default true) fa lo stesso per i
+         nuovi assegnatari/osservatori.
+    D-8  (utente 6) Valori predefiniti: colonna `is_default` (bool) su task_types, task_priorities,
+         task_importances; al massimo una riga predefinita per tabella (impostarne una toglie le altre).
+         Seed: "Attivita'", "Media", "Media". Se in creazione tipo/priorita'/importanza mancano, il server usa la
+         riga predefinita; il FE le precompila. Nel form diventano obbligatori.
+    D-9  Scadenza (end_date) predefinita = oggi in creazione (non se precompilata da padre/commessa).
+    D-10 Stato iniziale scelto a mano: ammesso in creazione (`task_status_id` sometimes). Se e' open/assigned si
+         ricalcola con 0153 D-4; stati di chiusura, in validazione o "solo da azione" -> 422.
+    D-11 Cambio anagrafica: azzera referente e opportunita', mantiene la commessa solo se della stessa anagrafica.
+         Commessa e opportunita' si escludono (sceglierne una azzera l'altra, il server rifiuta entrambe con 422).
+         Scegliere una commessa imposta l'anagrafica della commessa. I for-select di opportunita' e commesse
+         sono filtrati per anagrafica.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: task_categories.parent_id; tasks.is_private, tasks.evidence, tasks.lead_id; is_default sulle tre lookup.</item>
+      <item>Request/DTO/service/resource Task; guardie nuove (lead-anagrafica, esclusivita' commessa-opportunita', stato iniziale manuale).</item>
+      <item>TaskVisibilityScope per is_private (lista, dettaglio, export, for-select, statistiche, dashboard).</item>
+      <item>Admin categorie (campo padre) e admin tipi/priorita'/importanze (flag predefinito).</item>
+      <item>Form FE: nuovi campi, default, checkbox "Non inviare notifica di apertura", "Crea gia' completato", regole anagrafica.</item>
+      <item>Guide in-app IT/EN `tasks`, `task-categories`, `task-types`, `task-priorities`, `task-importances`.</item>
+    </in>
+    <out>
+      <item>Sottotask creati insieme al padre: spec 0155.</item>
+      <item>Nuove colonne della lista per questi campi: spec 0156.</item>
+      <item>Collegamento del segnatempo alla fase commessa.</item>
+    </out>
+  </scope>
+
+  <contract>
+    POST /api/tasks (in aggiunta all'esistente): is_private?: bool, evidence?: string|null, lead_id?: int|null,
+      is_completed?: bool, notify_assigned_users?: bool, task_status_id?: int (vedi D-10);
+      task_type_id/task_priority_id/task_importance_id omessi -> righe predefinite.
+    PUT/PATCH /api/tasks/{id}: is_private, evidence, lead_id, notify_new_assigned_users?: bool.
+    TaskResource aggiunge: is_private, evidence, lead { id, label } | null.
+    GET /api/task-categories/for-select: meta aggiunge parent_id: int|null, depth: int.
+    Lookup tipi/priorita'/importanze: campo is_default nelle risorse e nei form admin.
+    Errori 422: lead di altra anagrafica, commessa+opportunita' insieme, ciclo di categorie, stato iniziale vietato,
+      creazione completata con validazione richiesta.
+  </contract>
+
+  <acceptance>
+    AC-001 Una categoria figlia si crea con parent_id; un ciclo -> 422; il for-select restituisce parent_id e depth.
+    AC-002 Il form mostra le categorie ad albero e permette di scegliere un padre.
+    AC-003 Un task privato non compare a un utente con tasks.viewAll che non ha ruoli sul task (lista, dettaglio 403, export).
+    AC-004 evidence si salva sanificata e torna nel TaskResource.
+    AC-005 lead_id di un'altra anagrafica -> 422; della stessa -> 201.
+    AC-006 Creazione con is_completed: stato chiusura positiva, un segnatempo dell'attore con estimated_minutes; con requires_validation -> 422.
+    AC-007 notify_assigned_users=false: nessuna TaskAssigned/TaskWatching alla creazione; default true le invia.
+    AC-008 Creazione senza tipo/priorita'/importanza usa le righe predefinite; una sola riga predefinita per tabella.
+    AC-009 Il form nuovo task ha scadenza oggi e tipo/priorita'/importanza predefiniti, obbligatori.
+    AC-010 Stato scelto a mano in creazione rispettato; chiuso -> 422.
+    AC-011 Cambio anagrafica azzera referente e opportunita'; commessa e opportunita' insieme -> 422; scegliere la commessa imposta l'anagrafica.
+    AC-012 Guide in-app IT/EN aggiornate; test di parita' verde.
+  </acceptance>
+
+  <constraints>
+    Nessuna nuova dipendenza. Migrazioni reversibili, nuove (mai modificare quelle esistenti). Nomi inglesi.
+    $fillable aggiornato. Nessun dato fake nel seed pulito (il flag is_default va nel seed di catalogo esistente).
+  </constraints>
+
+</spec>

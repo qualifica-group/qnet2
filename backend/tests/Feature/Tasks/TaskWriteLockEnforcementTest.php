@@ -168,19 +168,21 @@ it('AC-050: blocked via phase — a structural key is refused even when task_sta
 });
 
 // ---------------------------------------------------------------------------
-// AC-033 — DELETE gets no operative exception at all
+// AC-033 — DELETE on the task's OWN frozen state
 // ---------------------------------------------------------------------------
 
-it('AC-033: DELETE on a task in the in_validation phase is 409', function () {
+// REQUIREMENT CHANGED (spec 0153, D-5): canDelete() now folds $task's own
+// phase/blocked state into the RECORD-ROLE check itself, so a Task in
+// in_validation is refused 403 (past TaskPolicy/canDelete), never reaching
+// TaskWriteLock::assertDeletable()'s 409 — that 409 now fires ONLY for the
+// ancestor-lock cascade (see TaskWriteLockCascadeTest AC-032, unaffected).
+it('AC-033 (spec 0153, D-5): DELETE on a task in the in_validation phase is 403, task kept', function () {
     $actor = taskActorWith(['delete', 'view']);
     $status = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
     $task = Task::factory()->forCreator($actor)->inStatus($status)->create();
     Sanctum::actingAs($actor);
 
-    $this->deleteJson("/api/tasks/{$task->id}")
-        ->assertStatus(409)
-        ->assertJsonPath('success', false)
-        ->assertJsonPath('message', 'This task is frozen and cannot be deleted.');
+    $this->deleteJson("/api/tasks/{$task->id}")->assertStatus(403);
 
     $this->assertDatabaseHas('tasks', ['id' => $task->id]);
 });

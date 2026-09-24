@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { ListTree, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+import { CompletionBar } from '@/components/completion-bar'
 import { RecordSection } from '@/components/detail/record-panel'
 import { Can } from '@/features/auth/can'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
@@ -59,17 +59,13 @@ function TaskSubtaskRow({ subtask, onOpen }: TaskSubtaskRowProps) {
         <TaskLookupBadge value={subtask.task_status} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 @md:w-40">
-        <Progress
-          value={subtask.completion_percentage}
-          size="xs"
-          className="flex-1"
-          aria-label={t('tasks.detail.completionPercentage')}
-        />
-        <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-          {t('tasks.form.percentValue', { value: subtask.completion_percentage })}
-        </span>
-      </div>
+      <CompletionBar
+        value={subtask.completion_percentage}
+        label={t('tasks.detail.completionPercentage')}
+        barClassName="flex-1"
+        valueClassName="w-9 text-right"
+        className="shrink-0 @md:w-40"
+      />
 
       <p className="min-w-0 truncate text-xs text-muted-foreground @md:w-44">
         {assignees === '' ? t('tasks.detail.noAssignees') : assignees}

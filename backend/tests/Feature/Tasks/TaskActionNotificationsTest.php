@@ -205,7 +205,12 @@ it('AC-020: senza requester_id la richiesta di validazione ripiega sul creatore 
 // AC-021/AC-022 — complete, CASO 1: chiusura (voci 2 e 3)
 // ---------------------------------------------------------------------------
 
-it('AC-021: /complete senza validation_status_id ne feedback notifica TaskClosed a tutti, meno l attore', function () {
+// REQUIREMENT CHANGED (spec 0153, D-11): the closing events never notify the
+// creator as such, and only carry the assignees when there is more than one
+// (here the cast's own assignee PLUS the actor, who also attaches as an
+// assignee below, so includeAssignees is true and the actor is still
+// dropped as the actor).
+it('AC-021: /complete senza validation_status_id ne feedback notifica TaskClosed a chi resta, mai al creatore (D-11)', function () {
     Notification::fake();
     $actor = taskActionNotificationActor(['complete']);
     [$task, $people] = taskActionNotificationCast();
@@ -215,11 +220,11 @@ it('AC-021: /complete senza validation_status_id ne feedback notifica TaskClosed
     $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertOk();
 
     Notification::assertSentTo(
-        [$people['creator'], $people['requester'], $people['assignee'], $people['watcher']],
+        [$people['requester'], $people['assignee'], $people['watcher']],
         TaskClosed::class,
     );
-    Notification::assertNotSentTo($actor, TaskClosed::class);
-    Notification::assertSentTimes(TaskClosed::class, 4);
+    Notification::assertNotSentTo([$actor, $people['creator']], TaskClosed::class);
+    Notification::assertSentTimes(TaskClosed::class, 3);
     assertNoTaskNotificationsExcept([TaskClosed::class]);
 });
 
@@ -237,10 +242,11 @@ it('AC-022: /complete con closure_feedback notifica TaskFeedbackInserted agli st
         ->assertOk();
 
     Notification::assertSentTo(
-        [$people['creator'], $people['requester'], $people['assignee'], $people['watcher']],
+        [$people['requester'], $people['assignee'], $people['watcher']],
         TaskFeedbackInserted::class,
     );
-    Notification::assertSentTimes(TaskFeedbackInserted::class, 4);
+    Notification::assertNotSentTo([$actor, $people['creator']], TaskFeedbackInserted::class);
+    Notification::assertSentTimes(TaskFeedbackInserted::class, 3);
     assertNoTaskNotificationsExcept([TaskFeedbackInserted::class]);
 });
 
@@ -250,13 +256,15 @@ it('la chiusura guarda il feedback RISULTANTE, non il payload: un feedback gia s
     // la chiusura e' una voce 3, non una voce 2 (D-12, "Regola pratica").
     Notification::fake();
     $actor = taskActionNotificationActor(['complete']);
-    [$task] = taskActionNotificationCast(attributes: ['closure_feedback' => 'Motivazione gia in archivio.']);
+    [$task, $people] = taskActionNotificationCast(attributes: ['closure_feedback' => 'Motivazione gia in archivio.']);
     $task->assignees()->attach($actor->id);
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertOk();
 
-    Notification::assertSentTimes(TaskFeedbackInserted::class, 4);
+    // Spec 0153, D-11: the creator is dropped, so 3 recipients, not 4.
+    Notification::assertNotSentTo($people['creator'], TaskFeedbackInserted::class);
+    Notification::assertSentTimes(TaskFeedbackInserted::class, 3);
     assertNoTaskNotificationsExcept([TaskFeedbackInserted::class]);
 });
 
@@ -264,7 +272,12 @@ it('la chiusura guarda il feedback RISULTANTE, non il payload: un feedback gia s
 // AC-023/AC-024 — approve e reject (voci 4 e 5)
 // ---------------------------------------------------------------------------
 
-it('AC-023: /approve notifica TaskValidationApproved ai soli assegnatari, e chiude il task per tutti gli altri', function () {
+// REQUIREMENT CHANGED (spec 0153, D-12): approve() closes with
+// includeAssignees=false, so the assignees NEVER receive the closing
+// notification too — only "Approvato". The closure itself now reaches
+// requester + watchers alone (D-11), never the creator as such (here the
+// creator IS the actor, so it was already excluded either way).
+it('AC-023: /approve notifica TaskValidationApproved ai soli assegnatari, e chiude solo per richiedente+osservatori (D-12)', function () {
     Notification::fake();
     $actor = taskActionNotificationActor(['validate']);
     $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
@@ -281,8 +294,11 @@ it('AC-023: /approve notifica TaskValidationApproved ai soli assegnatari, e chiu
     );
 
     // La seconda notifica del data_contract: approve() CHIUDE il task, che e'
-    // il trigger delle voci 2 e 3. Nessun feedback sul record, quindi voce 2.
-    Notification::assertSentTimes(TaskClosed::class, 3);
+    // il trigger delle voci 2 e 3. Nessun feedback sul record, quindi voce 2;
+    // gli assegnatari non la ricevono (D-12).
+    Notification::assertSentTo([$people['requester'], $people['watcher']], TaskClosed::class);
+    Notification::assertNotSentTo([$people['assignee'], $actor], TaskClosed::class);
+    Notification::assertSentTimes(TaskClosed::class, 2);
     assertNoTaskNotificationsExcept([TaskValidationApproved::class, TaskClosed::class]);
 });
 
@@ -290,7 +306,7 @@ it('AC-023 (variante): /approve su un task con closure_feedback chiude con la vo
     Notification::fake();
     $actor = taskActionNotificationActor(['validate']);
     $inValidation = TaskStatus::factory()->group(TaskStatusGroup::InValidation)->create();
-    [$task] = taskActionNotificationCast($inValidation, [
+    [$task, $people] = taskActionNotificationCast($inValidation, [
         'creator_id' => $actor->id,
         'closure_feedback' => 'Verificato in sede.',
     ]);
@@ -298,7 +314,9 @@ it('AC-023 (variante): /approve su un task con closure_feedback chiude con la vo
 
     $this->postJson("/api/tasks/{$task->id}/approve")->assertOk();
 
-    Notification::assertSentTimes(TaskFeedbackInserted::class, 3);
+    Notification::assertSentTo([$people['requester'], $people['watcher']], TaskFeedbackInserted::class);
+    Notification::assertNotSentTo($people['assignee'], TaskFeedbackInserted::class);
+    Notification::assertSentTimes(TaskFeedbackInserted::class, 2);
     assertNoTaskNotificationsExcept([TaskValidationApproved::class, TaskFeedbackInserted::class]);
 });
 

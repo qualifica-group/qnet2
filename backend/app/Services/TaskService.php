@@ -12,6 +12,7 @@ use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskActionOnlyStatusGuard;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
+use App\Services\Tasks\TaskDeleteCascade;
 use App\Services\Tasks\TaskDescriptionWriter;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
@@ -249,7 +250,7 @@ class TaskService
     public function update(Task $task, UpdateTaskData $data, User $actor): Task
     {
         DB::transaction(function () use ($task, $data, $actor): void {
-            TaskWriteLock::assertStructuralWriteAllowed($task, $this->submittedKeys($data));
+            TaskWriteLock::assertStructuralWriteAllowed($task, $this->submittedKeys($data), $actor);
 
             // Spec 0126, D-4b/D-4c: whether task_status_id may change AT ALL,
             // read off the Task exactly as it stood pre-fill (current phase,
@@ -358,33 +359,42 @@ class TaskService
     }
 
     /**
-     * Delete the Task. D-8a: a Task with sub-tasks is refused with a 409 —
-     * and the child count deliberately IGNORES the visibility scope (AC-017),
-     * since the correctness of the constraint cannot depend on who is
-     * looking. `task_assignee`/`task_watcher` rows cascade away via their own
-     * FKs; `parent_task_id` is restrictOnDelete, so even a delete that
-     * side-stepped this Service would fail at the database.
+     * Delete the Task and its WHOLE sub-tree, in ONE transaction (D-5, spec
+     * 0153, REQUIREMENT CHANGED): TaskDeleteCascade collects every
+     * descendant and checks each is itself deletable by $actor, or nothing
+     * is deleted at all — a 422 naming the first offending descendant, never
+     * the old 409-for-sub-tasks.
      *
      * Spec 0125 D-1: the delete row of the matrix is re-asserted here, past
-     * Gate::before, so a super-admin who is an assignee is refused like any
-     * assignee. Checked BEFORE the sub-task guard so a refused actor never
-     * learns whether the Task has children.
+     * Gate::before (D-8, spec 0153: super-admin does NOT bypass delete). The
+     * write-lock ANCESTOR cascade (spec 0123, D-9) still applies unchanged:
+     * canDelete() already rules out $task's OWN frozen/blocked state, so
+     * assertDeletable() below only ever fires for a locked ancestor further
+     * up the chain (409).
      */
     public function delete(Task $task, User $actor): void
     {
         abort_unless(
             TaskAbilityResolver::canDelete($actor, $task),
             403,
-            'Only the creator, the requester or a manager may delete this task.',
+            'Only the creator, the requester, an assignee or a manager may delete this task, and only while it is open and unblocked.',
         );
-
-        if ($task->subtasks()->exists()) {
-            abort(409, 'This task has sub-tasks and cannot be deleted.');
-        }
 
         TaskWriteLock::assertDeletable($task);
 
-        $task->delete();
+        DB::transaction(function () use ($task, $actor): void {
+            $descendants = TaskDeleteCascade::collectDescendants($task);
+
+            foreach ($descendants as $descendant) {
+                TaskDeleteCascade::assertDescendantDeletable($descendant, $actor);
+            }
+
+            foreach (array_reverse($descendants) as $descendant) {
+                $descendant->delete();
+            }
+
+            $task->delete();
+        });
     }
 
     /**

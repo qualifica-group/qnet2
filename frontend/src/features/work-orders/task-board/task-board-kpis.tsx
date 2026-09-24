@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
-import { completionTone } from '@/features/work-orders/task-board/task-board-completion-tone'
+import { completionTone } from '@/components/completion-tone'
 import type { TaskBoardMetrics } from '@/features/work-orders/task-board/task-board-metrics'
 
 interface KpiTileProps {

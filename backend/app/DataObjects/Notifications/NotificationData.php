@@ -13,6 +13,8 @@ use App\Enums\NotificationLevelEnum;
  *
  * `title`/`message`/`action_url` are nullable (null when absent) so the client
  * can apply its own fallbacks; `level` always resolves to a valid enum value.
+ * `is_cc` marks a copy sent for information only (spec 0153, D-14: the
+ * watchers copied on a task update request); false when absent.
  */
 final readonly class NotificationData
 {
@@ -21,6 +23,7 @@ final readonly class NotificationData
         public ?string $message = null,
         public NotificationLevelEnum $level = NotificationLevelEnum::Info,
         public ?string $actionUrl = null,
+        public bool $isCc = false,
     ) {}
 
     /**
@@ -38,13 +41,14 @@ final readonly class NotificationData
                 isset($data['level']) ? (string) $data['level'] : null,
             ),
             actionUrl: isset($data['action_url']) ? (string) $data['action_url'] : null,
+            isCc: (bool) ($data['is_cc'] ?? false),
         );
     }
 
     /**
      * The serialized contract sent to the client (and persisted on write).
      *
-     * @return array{title: string|null, message: string|null, level: string, action_url: string|null}
+     * @return array{title: string|null, message: string|null, level: string, action_url: string|null, is_cc: bool}
      */
     public function toArray(): array
     {
@@ -53,6 +57,7 @@ final readonly class NotificationData
             'message' => $this->message,
             'level' => $this->level->value,
             'action_url' => $this->actionUrl,
+            'is_cc' => $this->isCc,
         ];
     }
 }

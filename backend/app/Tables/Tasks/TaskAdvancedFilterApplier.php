@@ -27,6 +27,12 @@ use Illuminate\Support\Facades\DB;
  * dashboard's own buckets (D-3/D-5), applied with the exclusive semantics
  * documented on App\Enums\TaskAssignmentScope so the card counters and the
  * list they link to can never disagree.
+ *
+ * `assignment` (spec 0153, D-1) accepts either a single scalar (the
+ * dashboard's own exclusive buckets, above) or an array of values, OR-combined
+ * in one grouped WHERE so it composes with every other AND-ed filter. `all` is
+ * the union of every role, applied even for an actor with `tasks.viewAll`
+ * (that permission only lifts TaskVisibilityScope's own restriction).
  */
 final class TaskAdvancedFilterApplier
 {
@@ -55,15 +61,18 @@ final class TaskAdvancedFilterApplier
             return false;
         }
 
-        $raw = is_scalar($value) ? (string) $value : '';
-
         match ($name) {
-            TaskAdvancedFilterCatalog::STATUS => $this->applyStatus($query, TaskListStatus::tryFrom($raw)),
-            TaskAdvancedFilterCatalog::DUE => $this->applyDue($query, TaskDueWindow::tryFrom($raw)),
-            default => $this->applyAssignment($query, TaskAssignmentScope::tryFrom($raw), $actor),
+            TaskAdvancedFilterCatalog::STATUS => $this->applyStatus($query, TaskListStatus::tryFrom($this->scalar($value))),
+            TaskAdvancedFilterCatalog::DUE => $this->applyDue($query, TaskDueWindow::tryFrom($this->scalar($value))),
+            default => $this->applyAssignment($query, $value, $actor),
         };
 
         return true;
+    }
+
+    private function scalar(mixed $value): string
+    {
+        return is_scalar($value) ? (string) $value : '';
     }
 
     /**
@@ -107,11 +116,23 @@ final class TaskAdvancedFilterApplier
     }
 
     /**
+     * `$value` is a single scalar (the dashboard's exclusive buckets) or an
+     * array of values (the grid's multi-select, spec 0153 D-1), OR-combined
+     * inside ONE grouped WHERE so the whole filter still AND-combines with
+     * every other active one. An unrecognised value restricts nothing, same
+     * as an empty resolved set — the required-with-default machinery
+     * (TableQueryBuilder::withRequiredDefaults) is what guarantees a REAL
+     * scope reaches here in practice.
+     *
      * @param  Builder<Task>  $query
      */
-    private function applyAssignment(Builder $query, ?TaskAssignmentScope $scope, ?User $actor): void
+    private function applyAssignment(Builder $query, mixed $value, ?User $actor): void
     {
-        if ($scope === null) {
+        $scopes = $this->resolveScopes($value);
+
+        // `visible` in the OR set makes the whole group a no-op: the row set
+        // is already TaskVisibilityScope's, which is exactly what it asks for.
+        if ($scopes === [] || in_array(TaskAssignmentScope::Visible, $scopes, true)) {
             return;
         }
 
@@ -121,18 +142,72 @@ final class TaskAdvancedFilterApplier
             return;
         }
 
+        $query->where(function (Builder $group) use ($scopes, $actor): void {
+            foreach ($scopes as $scope) {
+                $group->orWhere(fn (Builder $branch) => $this->applyScope($branch, $scope, $actor));
+            }
+        });
+    }
+
+    /**
+     * @return array<int, TaskAssignmentScope>
+     */
+    private function resolveScopes(mixed $value): array
+    {
+        $raw = is_array($value) ? $value : [$value];
+        $scopes = [];
+
+        foreach ($raw as $item) {
+            $scope = is_scalar($item) ? TaskAssignmentScope::tryFrom((string) $item) : null;
+
+            if ($scope !== null) {
+                $scopes[] = $scope;
+            }
+        }
+
+        return array_values(array_unique($scopes, SORT_REGULAR));
+    }
+
+    /**
+     * @param  Builder<Task>  $query
+     */
+    private function applyScope(Builder $query, TaskAssignmentScope $scope, User $actor): void
+    {
         match ($scope) {
             TaskAssignmentScope::AssignedToMe => $query->whereHas('assignees', static fn (Builder $assignees) => $assignees->whereKey($actor->id)),
             TaskAssignmentScope::RequestedByMe => $query->where('tasks.requester_id', $actor->id),
             TaskAssignmentScope::AssignedByMe => $query
                 ->where('tasks.requester_id', $actor->id)
                 ->whereDoesntHave('assignees', static fn (Builder $assignees) => $assignees->whereKey($actor->id)),
+            // Spec 0153, D-3: a creator who is ALSO the requester, an
+            // assignee or a watcher counts under that other role, never here
+            // too — hence the two extra whereDoesntHave() beyond the
+            // pre-existing requester exclusion.
             TaskAssignmentScope::CreatedByMe => $query
                 ->where('tasks.creator_id', $actor->id)
                 ->where(fn (Builder $requester) => $requester
                     ->whereNull('tasks.requester_id')
-                    ->orWhere('tasks.requester_id', '!=', $actor->id)),
+                    ->orWhere('tasks.requester_id', '!=', $actor->id))
+                ->whereDoesntHave('assignees', static fn (Builder $assignees) => $assignees->whereKey($actor->id))
+                ->whereDoesntHave('watchers', static fn (Builder $watchers) => $watchers->whereKey($actor->id)),
             TaskAssignmentScope::ObservedByMe => $query->whereHas('watchers', static fn (Builder $watchers) => $watchers->whereKey($actor->id)),
+            // Spec 0153, D-1: the union of every role — "task in cui ho un
+            // ruolo" — applied even for an actor with `tasks.viewAll`.
+            TaskAssignmentScope::All => $this->applyRoleUnion($query, $actor),
+            // Handled up front in applyAssignment(): never reaches a branch.
+            TaskAssignmentScope::Visible => null,
         };
+    }
+
+    /**
+     * @param  Builder<Task>  $query
+     */
+    private function applyRoleUnion(Builder $query, User $actor): void
+    {
+        $query
+            ->where('tasks.requester_id', $actor->id)
+            ->orWhere('tasks.creator_id', $actor->id)
+            ->orWhereHas('assignees', static fn (Builder $assignees) => $assignees->whereKey($actor->id))
+            ->orWhereHas('watchers', static fn (Builder $watchers) => $watchers->whereKey($actor->id));
     }
 }

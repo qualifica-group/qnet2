@@ -10,6 +10,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { CompletionBar } from '@/components/completion-bar'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
@@ -17,7 +18,7 @@ import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { openTaskOnCardClick } from '@/features/work-orders/task-board/task-board-card-click'
 import { TaskBoardEndDate } from '@/features/work-orders/task-board/task-board-end-date'
 import { isClosedTask } from '@/features/work-orders/task-board/task-board-metrics'
-import { TaskBoardCompletion, TaskBoardHours, TaskBoardPeople } from '@/features/work-orders/task-board/task-board-task-meta'
+import { TaskBoardHours, TaskBoardPeople } from '@/features/work-orders/task-board/task-board-task-meta'
 import type { BoardTaskNode } from '@/features/work-orders/task-board/task-board-filters'
 
 interface TaskBoardKanbanCardProps {
@@ -107,12 +108,12 @@ export function TaskBoardKanbanCard({
       </div>
 
       <div className="flex flex-col gap-1.5 border-t border-border/60 pt-2 text-xs">
-        <div className="flex items-center gap-1.5">
-          <TaskBoardCompletion
-            percentage={task.task_status.completion_percentage}
-            label={t('workOrders.taskBoard.task.columns.completion')}
-          />
-        </div>
+        <CompletionBar
+          value={task.task_status.completion_percentage}
+          label={t('workOrders.taskBoard.task.columns.completion')}
+          barClassName="w-14"
+          className="gap-1.5"
+        />
         <div className="flex items-center gap-1.5">
           <TaskBoardHours
             actualMinutes={task.actual_minutes}

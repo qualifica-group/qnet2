@@ -196,9 +196,9 @@ export interface TaskDetailWithPermissions extends TaskDetail {
  * recomputes it, only reads it (see `task-action-availability.ts` for the UX-only
  * mirror of the state half).
  *
- * `request_update` is the only one whose matrix row enables the OSSERVATORE and
- * disables the ASSEGNATARIO (spec 0118 D-10), which is why it can be true exactly
- * where the other six are false.
+ * `request_update` (RECTIFIED by spec 0153 D-14) is granted to the requester,
+ * the creator or a manager — never a pure OSSERVATORE — and only on a task that
+ * is neither completed, in validation, nor blocked.
  *
  * `complete_to_validation` (spec 0121 D-6) stays a SIBLING flag on the same
  * `permissions.actions` object, not a member of this union: it never gates a
@@ -340,16 +340,20 @@ export type UpdateTaskPayload = Partial<CreateTaskPayload> & {
   task_status_id?: number
 }
 
+/** The three fixed recipient groups for `RequestTaskUpdatePayload.target` (spec 0153 D-14). */
+export type TaskRequestUpdateTarget = 'assignees' | 'observers' | 'all'
+
 /**
- * Payload for POST /tasks/{id}/request-update (spec 0118 data_contract).
- * `recipient_ids` must be a non-empty subset of the task's own assignees and
- * watchers — validated server-side, never trusted from here (D-11). `message`
- * is optional (D-12): omitted, the notification still names the requester and
- * the task.
+ * Payload for POST /tasks/{id}/request-update (spec 0153 D-14, RECTIFIES
+ * spec 0118's free `recipient_ids` picker). `target` selects a fixed group —
+ * `assignees` notifies every assignee and CCs every watcher on a separate
+ * `is_cc: true` notification, `observers` notifies every watcher, `all`
+ * notifies both groups outright; never an arbitrary id list. `message` is
+ * now mandatory (3..2000 chars), validated the same client- and server-side.
  */
 export interface RequestTaskUpdatePayload {
-  recipient_ids: number[]
-  message?: string | null
+  target: TaskRequestUpdateTarget
+  message: string
 }
 
 /**

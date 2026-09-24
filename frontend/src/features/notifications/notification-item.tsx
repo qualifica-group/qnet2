@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { safeInternalPath } from '@/features/notifications/safe-internal-path'
@@ -41,6 +42,11 @@ interface NotificationItemProps {
  * `ui-design.md` §1-bis names for row hover; `--accent` is the outline
  * Button's. Unconditional: it reads the row under the cursor in a dense list,
  * while the pointer cursor stays the signal of what is actually clickable.
+ *
+ * `data.is_cc` (spec 0153 D-14) shows a "CC" badge next to the title: a
+ * watcher's courtesy copy of a "request update" notification sent to the
+ * task's assignees. Generic like every other `data` field — any future
+ * notification type carrying it gets the same marker for free.
  */
 export function NotificationItem({
   notification,
@@ -61,11 +67,12 @@ export function NotificationItem({
     <>
       <p
         className={cn(
-          'truncate text-sm',
+          'flex items-center gap-1.5 truncate text-sm',
           isUnread ? 'font-semibold' : 'font-normal',
         )}
       >
-        {title}
+        <span className="truncate">{title}</span>
+        {notification.data.is_cc ? <Badge variant="secondary">{t('notifications.cc')}</Badge> : null}
       </p>
       {message ? (
         <p className="mt-0.5 text-sm text-muted-foreground">{message}</p>

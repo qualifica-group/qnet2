@@ -43,6 +43,27 @@ function renderDialog(overrides: Partial<TaskDetailWithPermissions> = {}) {
   return { task, onOpenChange }
 }
 
+/**
+ * Fills and submits the mandatory message, then presses submit — the shared
+ * arrange step every submit test needs. Matched by role/regex, not exact
+ * label text: the label now carries a trailing required-marker glyph.
+ */
+function fillMessageAndSubmit(message = 'a che punto sei?') {
+  fireEvent.change(screen.getByRole('textbox', { name: /Message/ }), {
+    target: { value: message },
+  })
+  fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
+}
+
+/**
+ * The radio's accessible name is `${label} (${count})` (component's own
+ * `aria-label`, since "Assignees" and "Assignees and watchers" would
+ * otherwise collide as substrings of one another).
+ */
+function targetRadio(labelKey: string, count: number) {
+  return screen.getByRole('radio', { name: `${label(labelKey)} (${count})` })
+}
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -53,20 +74,38 @@ beforeEach(() => {
   vi.mocked(toast.error).mockReset()
 })
 
-describe('TaskRequestUpdateDialog — recipient picker (AC-062)', () => {
-  it('offers only this task\'s assignees and watchers', () => {
+describe('TaskRequestUpdateDialog — target options and recipient counts (spec 0153 D-14, AC-018)', () => {
+  it('shows the three target options with counts, "assignees" selected by default', () => {
     renderDialog()
 
-    expect(screen.getByRole('checkbox', { name: /Dario Dini/ })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: /Elsa Esposito/ })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: /Fabio Fini/ })).toBeInTheDocument()
+    const assignees = targetRadio('tasks.actions.requestUpdate.targetAssignees', 2)
+    const observers = targetRadio('tasks.actions.requestUpdate.targetObservers', 1)
+    const all = targetRadio('tasks.actions.requestUpdate.targetAll', 3)
+
+    expect(assignees).toBeChecked()
+    expect(observers).not.toBeChecked()
+    expect(all).not.toBeChecked()
   })
 
-  it('never offers the creator or the requester on their own', () => {
+  it('states that watchers get a copy under the "assignees" option', () => {
     renderDialog()
 
-    expect(screen.queryByRole('checkbox', { name: /Carla Conti/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('checkbox', { name: /Bruno Bianchi/ })).not.toBeInTheDocument()
+    expect(screen.getByText(label('tasks.actions.requestUpdate.targetAssigneesHint'))).toBeInTheDocument()
+  })
+
+  it('disables a target option with zero recipients', () => {
+    renderDialog({ watchers: [] })
+
+    expect(targetRadio('tasks.actions.requestUpdate.targetObservers', 0)).toBeDisabled()
+  })
+
+  it('counts "all" as the deduplicated union of assignees and watchers', () => {
+    renderDialog({
+      assignees: [{ id: 31, name: 'Dario Dini' }],
+      watchers: [{ id: 31, name: 'Dario Dini' }, { id: 41, name: 'Fabio Fini' }],
+    })
+
+    expect(targetRadio('tasks.actions.requestUpdate.targetAll', 2)).toBeInTheDocument()
   })
 
   it('shows the empty state and disables submit when the task has no assignees nor watchers', () => {
@@ -75,138 +114,94 @@ describe('TaskRequestUpdateDialog — recipient picker (AC-062)', () => {
     expect(screen.getByText(label('tasks.actions.requestUpdate.recipientsEmpty'))).toBeInTheDocument()
     expect(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') })).toBeDisabled()
   })
-})
 
-describe('TaskRequestUpdateDialog — dedupe and default selection (AC-014, spec 0126 D-7)', () => {
-  it('opens with every candidate selected by default', () => {
+  it('switches the selected target when another enabled option is picked', () => {
     renderDialog()
 
-    expect(screen.getByRole('checkbox', { name: /Dario Dini/ })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /Elsa Esposito/ })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /Fabio Fini/ })).toBeChecked()
-  })
+    fireEvent.click(targetRadio('tasks.actions.requestUpdate.targetObservers', 1))
 
-  it('shows a user who is both an assignee and a watcher only once, with both role labels', () => {
-    renderDialog({ watchers: [{ id: 41, name: 'Fabio Fini' }, { id: 31, name: 'Dario Dini' }] })
-
-    expect(screen.getAllByRole('checkbox', { name: /Dario Dini/ })).toHaveLength(1)
-    const dario = screen.getByRole('checkbox', { name: /Dario Dini/ })
-    expect(dario.getAttribute('aria-label') ?? dario.closest('label')?.textContent).toMatch(/Assignee/)
-    expect(dario.getAttribute('aria-label') ?? dario.closest('label')?.textContent).toMatch(/Watcher/)
-  })
-
-  it('sends unique recipient ids even when a candidate was merged from both lists', async () => {
-    vi.mocked(requestTaskUpdate).mockResolvedValueOnce(taskDetailWithPermissions())
-    const { task } = renderDialog({ watchers: [{ id: 41, name: 'Fabio Fini' }, { id: 31, name: 'Dario Dini' }] })
-
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
-
-    await screen.findByRole('button', { name: label('tasks.actions.requestUpdate.submit') })
-    expect(requestTaskUpdate).toHaveBeenCalledWith(task.id, { recipient_ids: [31, 32, 41] })
-  })
-
-  it('"Select all" deselects and reselects every candidate, and is indeterminate on a partial selection', () => {
-    renderDialog()
-    const selectAll = screen.getByRole('checkbox', { name: label('tasks.actions.requestUpdate.selectAll') })
-    expect(selectAll).toBeChecked()
-
-    fireEvent.click(selectAll)
-    expect(screen.getByRole('checkbox', { name: /Dario Dini/ })).not.toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /Elsa Esposito/ })).not.toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /Fabio Fini/ })).not.toBeChecked()
-    expect(selectAll).not.toBeChecked()
-
-    fireEvent.click(screen.getByRole('checkbox', { name: /Dario Dini/ }))
-    expect(selectAll).toHaveAttribute('aria-checked', 'mixed')
-
-    fireEvent.click(selectAll)
-    expect(screen.getByRole('checkbox', { name: /Dario Dini/ })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /Elsa Esposito/ })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /Fabio Fini/ })).toBeChecked()
+    expect(targetRadio('tasks.actions.requestUpdate.targetObservers', 1)).toBeChecked()
+    expect(targetRadio('tasks.actions.requestUpdate.targetAssignees', 2)).not.toBeChecked()
   })
 })
 
-describe('TaskRequestUpdateDialog — client-side validation (AC-063)', () => {
-  // REQUIREMENT CHANGED (spec 0126, D-7): candidates now start all selected, so
-  // the empty-selection case is reached by deselecting all via "Select all"
-  // rather than submitting an untouched (previously empty) form.
-  it('rejects the submit with zero recipients selected, with no network call', async () => {
+describe('TaskRequestUpdateDialog — mandatory message (spec 0153 D-14)', () => {
+  it('rejects the submit with a blank message, with no network call', async () => {
     renderDialog()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: label('tasks.actions.requestUpdate.selectAll') }))
     fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
 
-    await screen.findByText(label('tasks.actions.requestUpdate.recipientsRequired'))
+    await screen.findByText(label('tasks.actions.requestUpdate.messageTooShort'))
+    expect(requestTaskUpdate).not.toHaveBeenCalled()
+  })
+
+  it('rejects a message under 3 characters', async () => {
+    renderDialog()
+    fillMessageAndSubmit('hi')
+
+    await screen.findByText(label('tasks.actions.requestUpdate.messageTooShort'))
     expect(requestTaskUpdate).not.toHaveBeenCalled()
   })
 })
 
-describe('TaskRequestUpdateDialog — submit (D-11/D-12/D-14)', () => {
-  // REQUIREMENT CHANGED (spec 0126, D-7): recipients start all selected, so
-  // sending "only" one recipient now means deselecting the others first.
-  it('sends only the checked recipients, omitting the blank message', async () => {
+describe('TaskRequestUpdateDialog — submit (spec 0153 D-14)', () => {
+  it('sends the default target (assignees) with the trimmed message', async () => {
     vi.mocked(requestTaskUpdate).mockResolvedValueOnce(taskDetailWithPermissions())
     const { task, onOpenChange } = renderDialog()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Elsa Esposito/ }))
-    fireEvent.click(screen.getByRole('checkbox', { name: /Fabio Fini/ }))
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
+    fillMessageAndSubmit('  Fammi sapere a che punto sei  ')
 
     await screen.findByRole('button', { name: label('tasks.actions.requestUpdate.submit') })
-    expect(requestTaskUpdate).toHaveBeenCalledWith(task.id, { recipient_ids: [31] })
+    expect(requestTaskUpdate).toHaveBeenCalledWith(task.id, {
+      target: 'assignees',
+      message: 'Fammi sapere a che punto sei',
+    })
     expect(toast.success).toHaveBeenCalledWith(label('tasks.actions.requestUpdate.success'))
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('trims and includes a non-blank message', async () => {
+  it('sends the chosen target ("all")', async () => {
     vi.mocked(requestTaskUpdate).mockResolvedValueOnce(taskDetailWithPermissions())
     const { task } = renderDialog()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Dario Dini/ }))
-    fireEvent.click(screen.getByRole('checkbox', { name: /Elsa Esposito/ }))
-    fireEvent.change(screen.getByLabelText(label('tasks.actions.requestUpdate.message')), {
-      target: { value: '  Fammi sapere a che punto sei  ' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
+    fireEvent.click(targetRadio('tasks.actions.requestUpdate.targetAll', 3))
+    fillMessageAndSubmit()
 
     await screen.findByRole('button', { name: label('tasks.actions.requestUpdate.submit') })
-    expect(requestTaskUpdate).toHaveBeenCalledWith(task.id, {
-      recipient_ids: [41],
-      message: 'Fammi sapere a che punto sei',
-    })
+    expect(requestTaskUpdate).toHaveBeenCalledWith(task.id, { target: 'all', message: 'a che punto sei?' })
   })
 })
 
-describe('TaskRequestUpdateDialog — server error mapping (AC-064)', () => {
+describe('TaskRequestUpdateDialog — server error mapping (spec 0153 D-14)', () => {
   it('shows the "task bloccato" copy on a 409', async () => {
     vi.mocked(requestTaskUpdate).mockRejectedValueOnce(actionError(409))
     renderDialog()
 
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
+    fillMessageAndSubmit()
 
     await screen.findByRole('button', { name: label('tasks.actions.requestUpdate.submit') })
     expect(toast.error).toHaveBeenCalledWith(label('tasks.actions.errors.blocked'))
   })
 
-  it('shows the "fase sbagliata" copy on a plain 422 (isCompletable, no field errors)', async () => {
+  it('shows the "fase sbagliata" copy on a plain 422 (no field errors)', async () => {
     vi.mocked(requestTaskUpdate).mockRejectedValueOnce(actionError(422))
     renderDialog()
 
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
+    fillMessageAndSubmit()
 
     await screen.findByRole('button', { name: label('tasks.actions.requestUpdate.submit') })
     expect(toast.error).toHaveBeenCalledWith(label('tasks.actions.errors.wrongPhase'))
   })
 
-  it('wires a field-scoped 422 on recipient_ids inline, without the generic toast', async () => {
+  it('wires a field-scoped 422 on message inline, without the generic toast', async () => {
     vi.mocked(requestTaskUpdate).mockRejectedValueOnce(
-      actionError(422, { recipient_ids: ['Selected user is not an assignee or a watcher.'] }),
+      actionError(422, { message: ['The message must be at least 3 characters.'] }),
     )
     renderDialog()
 
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.requestUpdate.submit') }))
+    fillMessageAndSubmit()
 
-    await screen.findByText('Selected user is not an assignee or a watcher.')
+    await screen.findByText('The message must be at least 3 characters.')
     expect(toast.error).not.toHaveBeenCalled()
   })
 })

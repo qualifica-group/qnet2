@@ -14,6 +14,9 @@ export const notifications = {
   },
   empty: 'You have no notifications.',
   untitled: 'Notification',
+  // Marker shown on a courtesy-copy notification (spec 0153 D-14: watchers
+  // CC'd on a "request update" sent to the assignees).
+  cc: 'CC',
   markAllAsRead: 'Mark all as read',
   markAsRead: 'Mark as read',
   unreadCount: '{{count}} unread notifications',

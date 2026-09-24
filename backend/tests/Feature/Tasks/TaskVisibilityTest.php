@@ -64,7 +64,7 @@ if (! function_exists('taskActorWith')) {
  */
 function visibleTaskTitles(): array
 {
-    $items = test()->postJson('/api/tables/tasks/rows', ['startRow' => 0, 'endRow' => 50])
+    $items = test()->postJson('/api/tables/tasks/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['assignment' => ['visible']]])
         ->assertOk()->json('items');
 
     return collect($items)->pluck('title')->sort()->values()->all();
@@ -235,6 +235,7 @@ it('AC-065: the export contains only the tasks the requesting actor may see', fu
     $response = $this->postJson('/api/exports/tasks', [
         'format' => 'csv',
         'columns' => [['colId' => 'title', 'header' => 'Title']],
+        'advancedFilters' => ['assignment' => ['visible']],
     ])->assertCreated();
 
     $run = ExportRun::findOrFail($response->json('data.export_run.id'))->fresh();

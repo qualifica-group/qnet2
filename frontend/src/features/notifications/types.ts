@@ -15,6 +15,13 @@ export interface NotificationData {
   message: string | null
   level: NotificationLevel
   action_url: string | null
+  /**
+   * `true` on a `task_update_requested` notification sent as a courtesy copy
+   * to a watcher who is not a direct recipient of the request (spec 0153
+   * D-14: `target: 'assignees'` CCs every watcher). Absent/`false` on every
+   * other notification type.
+   */
+  is_cc?: boolean
 }
 
 /** A single notification as returned by the backend. */

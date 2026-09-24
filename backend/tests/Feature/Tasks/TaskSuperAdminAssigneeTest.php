@@ -139,8 +139,10 @@ it('AC-001: a super-admin assignee requests an update with valid recipients', fu
     $task->assignees()->attach([$actor->id, $recipient->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/request-update", ['recipient_ids' => [$recipient->id]])
-        ->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/request-update", [
+        'target' => 'assignees',
+        'message' => 'Serve un aggiornamento.',
+    ])->assertOk();
 });
 
 // ---------------------------------------------------------------------------
@@ -183,10 +185,16 @@ it('AC-003: a tasks.manageAll (non super-admin) assignee gets 403 on delete/appr
 
     $requestUpdateTask = Task::factory()->create();
     $requestUpdateTask->assignees()->attach([$actor->id, $otherAssignee->id]);
-    $this->postJson("/api/tasks/{$requestUpdateTask->id}/request-update", ['recipient_ids' => [$otherAssignee->id]])
-        ->assertStatus(403);
+    $this->postJson("/api/tasks/{$requestUpdateTask->id}/request-update", [
+        'target' => 'assignees',
+        'message' => 'Serve un aggiornamento.',
+    ])->assertStatus(403);
 
-    $deleteTask = Task::factory()->create();
+    // REQUIREMENT CHANGED (spec 0153, D-5): decaying to the assignee row no
+    // longer refuses delete on an OPEN task (an assignee may now delete
+    // one) — the closed state here is what still answers 403.
+    $closedPositive = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+    $deleteTask = Task::factory()->inStatus($closedPositive)->create();
     $deleteTask->assignees()->attach($actor->id);
     $this->deleteJson("/api/tasks/{$deleteTask->id}")->assertStatus(403);
     $this->assertDatabaseHas('tasks', ['id' => $deleteTask->id]);

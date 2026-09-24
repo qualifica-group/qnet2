@@ -64,6 +64,21 @@ it('AC-028: is blockable only while not already blocked, and unblockable only wh
         ->and($availability->isUnblockable($blocked))->toBeTrue();
 });
 
+// REQUIREMENT CHANGED (spec 0153, D-7): isBlockable() now also requires the
+// Task to be OPEN — completed and in-validation Tasks may no longer be
+// blocked, whatever `is_blocked` currently is.
+it('D-7: is blockable only while the task is open, regardless of is_blocked', function (TaskStatusGroup $group, bool $blockable) {
+    $availability = new TaskActionAvailability;
+
+    expect($availability->isBlockable(taskInGroup($group)))->toBe($blockable);
+})->with([
+    'open' => [TaskStatusGroup::Open, true],
+    'pending' => [TaskStatusGroup::Pending, true],
+    'in_validation' => [TaskStatusGroup::InValidation, false],
+    'closed_positive' => [TaskStatusGroup::ClosedPositive, false],
+    'closed_negative' => [TaskStatusGroup::ClosedNegative, false],
+]);
+
 it('is_blocked does not change completability or validatability by itself, that veto lives in the Service (D-8)', function () {
     $availability = new TaskActionAvailability;
     $blockedButOpen = taskInGroup(TaskStatusGroup::Open, blocked: true);

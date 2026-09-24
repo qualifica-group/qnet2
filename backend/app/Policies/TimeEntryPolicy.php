@@ -93,9 +93,11 @@ class TimeEntryPolicy extends BasePolicy
     }
 
     /**
-     * Spec 0126, D-3: a segnatempo filed under a Task follows the Task's OWN
-     * role matrix instead of the plain ownership/`manageAll` rule above —
-     * `time-entries.manageAll` does NOT reach into a Task's segnatempo. A
+     * Spec 0153, D-9 (REQUIREMENT CHANGED): a segnatempo filed under a Task
+     * follows the Task's OWN `canUpdate()` row instead of the plain
+     * ownership/`manageAll` rule above — `time-entries.manageAll` does NOT
+     * reach into a Task's segnatempo, and ownership of the entry no longer
+     * matters: whoever may update the Task manages ANY of its segnatempo. A
      * segnatempo with no Task keeps `isOwnedOrManaged()`, unchanged.
      */
     private function isAuthorizedToWrite(User $user, Model $model): bool
@@ -106,7 +108,7 @@ class TimeEntryPolicy extends BasePolicy
 
         $task = $this->loadTask($model);
 
-        return $task !== null && TaskAbilityResolver::canManageTimeEntry($user, $task, $model);
+        return $task !== null && TaskAbilityResolver::canManageTimeEntry($user, $task);
     }
 
     /**

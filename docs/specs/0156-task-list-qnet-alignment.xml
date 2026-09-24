@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0156-task-list-qnet-alignment" status="draft" owner="utente" date="2026-09-24">
+
+  <goal>
+    La lista /tasks ha le funzioni di q-net: filtri e colonne mancanti, totale stimato, clona, azioni di riga,
+    azioni massive, riga di creazione rapida e modifica diretta nelle celle (punti 3-7, 9, 10 della sez. 2).
+  </goal>
+
+  <context>
+    Serie 0153-0158. Nomi qnet-2 verificati:
+    - `TasksTableDefinition` (mapRow, actionsFor, authorizeDelete, deleteModel, defaultSort),
+      `TaskColumnCatalog` (nessuna colonna editabile; actions view/edit/delete/activity), `TaskRelationColumns`,
+      `TaskAdvancedFilterCatalog`/`Applier`, enum `TaskDueWindow` (today/overdue/this_week).
+    - Griglia generica: modifica celle `PATCH /api/tables/{domain}/rows/{row}` (`TableCellUpdateService`,
+      `ResolvesEditableColumns`, editor in `cell-editor-registry.ts`); `RowsResult` senza meta,
+      `BaseApiController::paginatedResponse` accetta meta; azioni massive FE `getBulkActions` in `TableView`
+      (`use-bulk-actions-slot.tsx`); `bulk-delete` generico; `data-table.tsx` SSRM (ag-grid-enterprise registrato).
+    - Azioni dominio: route `tasks/{task}/{complete,uncomplete,approve,reject,block,unblock,request-update}`,
+      `TasksAuthorization::actionPermissions`; dialog `task-complete-dialog.tsx`, `task-validation-dialog.tsx`,
+      `task-request-update-dialog.tsx`; mutation `use-task-mutations.ts`; `use-task-row-actions.ts`.
+    - Note: model polimorfico `Note`, `config/notes.php` 'tasks' => TaskNotable, FE `NotesSection`.
+      Storico: `activity` + `ResourceActivityDialog`.
+    - Servizio massivo esistente: `App\Services\WorkOrders\TaskBulkActionService` (solo dentro una commessa).
+    - Opener generico con modalita' `duplicate` (`features/modules/types.ts`).
+  </context>
+
+  <decisions>
+    D-1  Filtri avanzati nuovi: `registry` e `work_order` (relation multiple, for-select esistenti); `due` aggiunge
+         `this_month`. La ricerca rapida trova anche per ID esatto quando il termine e' numerico.
+    D-2  Colonne nuove: completion_date ("Completato il"), actual_minutes (somma segnatempo di tutti, ordinabile),
+         updated_at, is_recurring (bool), parent_title. Tutte esportabili.
+    D-3  Totale minuti stimati dell'insieme filtrato nel pie' di pagina: hook generico `aggregates()` su
+         TableDefinition (default vuoto) restituito in `meta.aggregates` di POST /rows.
+    D-4  Clona: azione di riga `duplicate` (richiede create) che apre il form di creazione precompilato dal task:
+         copia tutto tranne allegati, sottotask, stato (ricalcolato), completion_date, segnatempo; il padre non si
+         copia. Nessun endpoint nuovo.
+    D-5  Azioni di riga: complete, uncomplete, approve, reject, block, unblock, request_update, duplicate, notes,
+         activity (storico, gia' presente). Visibilita' da `TasksAuthorization::actionPermissions` (stesse regole del
+         dettaglio). "Note" apre un pannello con `NotesSection` del task; badge con il numero di note.
+    D-6  Azioni massive: assegna (sostituisce gli assegnatari), completa, riapri, blocca, sblocca, priorita', data
+         inizio, data fine, elimina. Endpoint `POST /api/tasks/bulk`. Tutto-o-niente come q-net: si verificano
+         tutte le righe prima; se una non e' ammessa -> 422 con l'elenco `incompatible_tasks` e nulla cambia;
+         altrimenti una transazione. Completa usa le regole di chiusura (puo' mandare in validazione) e
+         for_all_assignees true. Il servizio della board commessa riusa la stessa logica per riga.
+    D-7  Riga di creazione rapida in fondo alla griglia (pinned bottom row), solo con tasks.create: titolo, tipo,
+         priorita', importanza, stato, scadenza, richiedente, assegnatari, osservatori. Default: righe predefinite
+         (0154 D-8), scadenza oggi, richiedente e assegnatario = utente corrente. Invio con POST /api/tasks.
+    D-8  Modifica diretta nelle celle: titolo, stato, tipo, priorita', importanza, data inizio, scadenza,
+         richiedente, assegnatari, osservatori, minuti stimati, commessa, fase commessa. La scrittura passa da
+         `TaskService::update` (override di `updateCell` in TasksTableDefinition) con tutte le guardie. Lo stato
+         in cella: verso uno stato di chiusura apre la finestra di completamento (come 0157 D-3), da chiuso ad
+         aperto chiama riapri. Fase modificabile solo con commessa impostata.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: catalogo filtri/colonne, aggregates, POST /api/tasks/bulk, updateCell/authorizeUpdate dei task, actionsFor esteso, notes_count.</item>
+      <item>Griglia generica: meta.aggregates + slot pie' di pagina; pinnedBottomRow opzionale in TableView/DataTable.</item>
+      <item>FE task: azioni di riga, azioni massive con dialog, clona, riga rapida, editor di cella.</item>
+      <item>Guide in-app IT/EN `tasks` e `general` (pie' di pagina, riga rapida se generica).</item>
+    </in>
+    <out>
+      <item>Tipi di nota (chiamata/appuntamento).</item>
+      <item>Vista ad albero e kanban: spec 0157. Filtri personalizzati: spec 0158.</item>
+    </out>
+  </scope>
+
+  <contract>
+    POST /api/tables/tasks/rows -> data aggiunge meta: { aggregates: { estimated_minutes_total: int } }.
+    advancedFilters: registry: int[], work_order: int[], due: +this_month.
+    Righe tasks aggiungono: completion_date, actual_minutes, updated_at, is_recurring, parent_title, notes_count.
+    POST /api/tasks/bulk
+      request: { action: assign|complete|uncomplete|block|unblock|priority|start_date|end_date|delete,
+                 task_ids: int[] 1..200, assignee_ids?: int[], task_priority_id?: int, date?: Y-m-d,
+                 time_entry?: {...come complete} }
+      200: { success, message, data: { affected: int } }
+      403 senza il permesso base dell'azione; 422 { errors: { task_ids: [...] }, incompatible_tasks: [{ id, reason }] }.
+    PATCH /api/tables/tasks/rows/{id} { column, value } per le colonne di D-8 (contratto generico esistente).
+  </contract>
+
+  <acceptance>
+    AC-001 Filtri registry, work_order e due=this_month restringono le righe; ricerca "123" trova il task 123.
+    AC-002 Le nuove colonne mostrano i valori; actual_minutes e' ordinabile.
+    AC-003 meta.aggregates.estimated_minutes_total e' la somma dell'insieme filtrato, non della pagina; il FE la mostra nel pie' di pagina.
+    AC-004 Clona apre il form precompilato senza allegati, sottotask e stato.
+    AC-005 Ogni azione di riga compare solo quando actionPermissions la consente ed esegue l'endpoint del dettaglio.
+    AC-006 Note: il pannello mostra e aggiunge note; il badge conta le note.
+    AC-007 Bulk: con una riga non ammessa -> 422 e nessuna modifica; tutte ammesse -> tutte aggiornate; assign sostituisce gli assegnatari; delete applica 0153 D-5.
+    AC-008 Riga rapida: default applicati, invio crea il task e ricarica la griglia; nascosta senza tasks.create.
+    AC-009 Modifica cella: il titolo si salva; una cella di un task chiuso rifiuta (non super-admin); gli assegnatari si sincronizzano con le notifiche di 0153 D-13.
+    AC-010 Guide in-app IT/EN aggiornate; test di parita' verde.
+  </acceptance>
+
+  <constraints>
+    Filtri e ordinamenti solo da allow-list (mai input grezzo in SQL). Nessuna nuova dipendenza. La modifica
+    delle celle non usa `$row->update()` diretto. File sotto 500 righe (TasksTableDefinition va suddiviso se serve).
+  </constraints>
+
+</spec>

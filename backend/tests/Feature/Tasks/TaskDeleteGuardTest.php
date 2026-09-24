@@ -10,13 +10,15 @@ uses(RefreshDatabase::class);
 
 /*
 |--------------------------------------------------------------------------
-| The sub-task delete guard (spec 0101, D-8a, AC-015..AC-017)
+| The cascade delete guard (spec 0153, D-5, REQUIREMENT CHANGED)
 |--------------------------------------------------------------------------
 |
 | Split out of TaskCrudTest to keep both files under the 300-line soft limit
-| (engineering.md §6). One concern: a Task with children cannot be deleted,
-| through the single endpoint OR through the generic bulk-delete, and the
-| child count is a fact about the data rather than about who is looking.
+| (engineering.md §6). Was: a Task with children could not be deleted at all
+| (409). Now: deleting a Task deletes its WHOLE sub-tree in one transaction,
+| unless a descendant is itself not deletable by the actor (role or state),
+| in which case NOTHING is deleted (422, `errors.task` names the offending
+| descendant) — through the single endpoint OR the generic bulk-delete alike.
 */
 
 if (! function_exists('taskActorWith')) {
@@ -66,44 +68,64 @@ it('AC-015: DELETE of a task with no children returns 204 and removes the row', 
     $this->assertDatabaseMissing('tasks', ['id' => $task->id]);
 });
 
-it('AC-015: DELETE of a task with a sub-task is 409, and neither parent nor child is removed', function () {
+// REQUIREMENT CHANGED (spec 0153, D-5): a parent with a deletable sub-task
+// (same actor role, open/unblocked) now cascades — both rows are gone.
+it('AC-015 (spec 0153, D-5): DELETE of a task with a deletable sub-task removes both parent and child', function () {
     $actor = taskActorWith(['view', 'delete']);
     $parent = Task::factory()->forCreator($actor)->create();
     $child = Task::factory()->forCreator($actor)->childOf($parent)->create();
     Sanctum::actingAs($actor);
 
-    $this->deleteJson("/api/tasks/{$parent->id}")
-        ->assertStatus(409)
-        ->assertJsonPath('success', false)
-        ->assertJsonPath('message', 'This task has sub-tasks and cannot be deleted.');
+    $this->deleteJson("/api/tasks/{$parent->id}")->assertNoContent();
 
-    $this->assertDatabaseHas('tasks', ['id' => $parent->id])
-        ->assertDatabaseHas('tasks', ['id' => $child->id]);
+    $this->assertDatabaseMissing('tasks', ['id' => $parent->id])
+        ->assertDatabaseMissing('tasks', ['id' => $child->id]);
 });
 
-it('AC-016: the generic bulk-delete applies the same guard', function () {
+// REQUIREMENT CHANGED (spec 0153, D-5): a sub-task the actor may NOT delete
+// (no role of theirs on it) aborts the WHOLE cascade — 422 naming it,
+// neither row removed.
+it('AC-007 (spec 0153): DELETE of a task with a sub-task the actor cannot delete is 422, neither row removed', function () {
+    $actor = taskActorWith(['view', 'delete']);
+    $parent = Task::factory()->forCreator($actor)->create();
+    $foreignChild = Task::factory()->childOf($parent)->create();
+    Sanctum::actingAs($actor);
+
+    $this->deleteJson("/api/tasks/{$parent->id}")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('task');
+
+    $this->assertDatabaseHas('tasks', ['id' => $parent->id])
+        ->assertDatabaseHas('tasks', ['id' => $foreignChild->id]);
+});
+
+it('AC-016: the generic bulk-delete applies the same cascade', function () {
     $actor = taskActorWith(['viewAny', 'view', 'delete']);
     $withChild = Task::factory()->forCreator($actor)->create();
-    Task::factory()->forCreator($actor)->childOf($withChild)->create();
+    $child = Task::factory()->forCreator($actor)->childOf($withChild)->create();
     $free = Task::factory()->forCreator($actor)->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/tables/tasks/bulk-delete', ['ids' => [$withChild->id, $free->id]]);
 
-    $this->assertDatabaseHas('tasks', ['id' => $withChild->id])
+    $this->assertDatabaseMissing('tasks', ['id' => $withChild->id])
+        ->assertDatabaseMissing('tasks', ['id' => $child->id])
         ->assertDatabaseMissing('tasks', ['id' => $free->id]);
 });
 
-it('AC-017: the child count ignores the visibility scope: an invisible sub-task still blocks the delete', function () {
-    // No `viewAll`: the actor sees their own parent but NOT the sub-task,
-    // which belongs to somebody else entirely. The constraint is about the
-    // data, not about who is looking (D-8a).
+// REQUIREMENT CHANGED (spec 0153, D-5): the descendant CASCADE (not a mere
+// count) ignores the visibility scope: an invisible sub-task the actor holds
+// no role on still blocks the delete (422), never a silent 409/count-only
+// check — the constraint is about the data, not about who is looking.
+it('AC-017: the descendant cascade ignores the visibility scope: an invisible sub-task still blocks the delete', function () {
     $actor = taskActorWith(['view', 'delete'], withViewAll: false);
     $parent = Task::factory()->forCreator($actor)->create();
     $invisibleChild = Task::factory()->childOf($parent)->create();
     Sanctum::actingAs($actor);
 
-    $this->deleteJson("/api/tasks/{$parent->id}")->assertStatus(409);
+    $this->deleteJson("/api/tasks/{$parent->id}")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('task');
 
     $this->assertDatabaseHas('tasks', ['id' => $parent->id])
         ->assertDatabaseHas('tasks', ['id' => $invisibleChild->id]);

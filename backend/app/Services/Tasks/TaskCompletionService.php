@@ -26,8 +26,10 @@ use Illuminate\Validation\ValidationException;
  *
  * Every method re-asserts what App\Authorization\TasksAuthorization computes
  * for the UI flag: the flag is a suggestion, the Service is the control.
- *  - TaskWriteLock::assertNotBlocked() — D-8: an `is_blocked` Task admits
- *    only unblock() (409).
+ *  - TaskWriteLock::assertNotBlocked() — D-7 (spec 0153, REQUIREMENT
+ *    CHANGED): only complete()/approve() still carry it (409); uncomplete()
+ *    and reject() no longer do — they LIFT the block instead, setting
+ *    `is_blocked` back to false as part of their own write.
  *  - the record-role matrix (TaskAbilityResolver), re-asserted here because
  *    `Gate::before` for the privileged role bypasses the Policy entirely: a
  *    super-admin who is also an assignee must not validate their own Task
@@ -103,7 +105,10 @@ final class TaskCompletionService
             if ($requiresValidation) {
                 $this->notifier->validationRequested($task, $actor);
             } else {
-                $this->notifyClosure($task, $actor);
+                // D-11 (spec 0153): assignees are told the closure only when
+                // there is more than one — assertNotBlocked() above already
+                // guarantees `is_blocked` is false here (D-7).
+                $this->notifyClosure($task, $actor, $task->assignees()->count() > 1);
             }
         });
 
@@ -123,12 +128,15 @@ final class TaskCompletionService
         $wasInValidation = $this->availability->isValidatable($task);
 
         DB::transaction(function () use ($task, $actor, $wasInValidation): void {
-            TaskWriteLock::assertNotBlocked($task);
+            // D-7 (spec 0153, REQUIREMENT CHANGED): no `assertNotBlocked()`
+            // here — reopening is one of the three actions that LIFT the
+            // block, so a blocked Task is admitted, not refused with 409.
             $this->assertUncompletable($task);
 
             $task->task_status_id = $this->systemStatusId(TaskStatusSystemKey::InProgress);
             $task->closure_feedback = null;
             $task->completion_date = null;
+            $task->is_blocked = false;
             $task->save();
 
             if ($wasInValidation) {
@@ -159,29 +167,36 @@ final class TaskCompletionService
 
             // Two notifications, not one: voce 4 tells the assignees their
             // work passed, and approve() also CLOSES the Task, which is the
-            // trigger voci 2 and 3 describe.
+            // trigger voci 2 and 3 describe. D-12 (spec 0153): the assignees
+            // already got their own "Approvato" above, so the closure one
+            // never repeats it to them (includeAssignees: false) — closure
+            // goes to richiedente + osservatori alone.
             $this->notifier->validationApproved($task, $actor);
-            $this->notifyClosure($task, $actor);
+            $this->notifyClosure($task, $actor, includeAssignees: false);
         });
 
         return $this->taskService->loadDetail($task->fresh());
     }
 
     /**
-     * Rejects an in-validation Task back onto the resume status.
-     * `closure_feedback` is DELIBERATELY left untouched: it is the
-     * motivation the validator decided against, not the actor's own note —
-     * the one deliberate difference from uncomplete().
+     * Rejects an in-validation Task back onto the `assigned` system status
+     * (D-6, spec 0153, REQUIREMENT CHANGED — was `in_progress`, feedback
+     * kept), clearing `closure_feedback`: unlike the earlier behaviour, the
+     * validator's motivation is not carried forward onto the reopened Task.
+     * D-7 (spec 0153, REQUIREMENT CHANGED): no `assertNotBlocked()` — reject
+     * is one of the three actions that LIFT the block, admitted on a blocked
+     * Task rather than refused with 409.
      */
     public function reject(Task $task, User $actor): Task
     {
         DB::transaction(function () use ($task, $actor): void {
-            TaskWriteLock::assertNotBlocked($task);
             $this->assertOwnsMandateForValidation($actor, $task);
             $this->assertValidatable($task);
 
-            $task->task_status_id = $this->systemStatusId(TaskStatusSystemKey::InProgress);
+            $task->task_status_id = $this->systemStatusId(TaskStatusSystemKey::Assigned);
+            $task->closure_feedback = null;
             $task->completion_date = null;
+            $task->is_blocked = false;
             $task->save();
 
             $this->notifier->validationRejected($task, $actor);
@@ -195,17 +210,20 @@ final class TaskCompletionService
      * by the two paths that CLOSE a Task: complete()'s closure percorso and
      * approve(). It reads the feedback the Task CARRIES after the write —
      * which may come from this payload or may already have been on the
-     * record — never the submitted flag.
+     * record — never the submitted flag. $includeAssignees is the D-11/D-12
+     * caller-side decision (spec 0153): complete() passes "more than one
+     * assignee", approve() always passes false (its own assignees already
+     * got voce 4 above).
      */
-    private function notifyClosure(Task $task, User $actor): void
+    private function notifyClosure(Task $task, User $actor, bool $includeAssignees): void
     {
         if (filled($task->closure_feedback)) {
-            $this->notifier->feedbackInserted($task, $actor);
+            $this->notifier->feedbackInserted($task, $actor, $includeAssignees);
 
             return;
         }
 
-        $this->notifier->closed($task, $actor);
+        $this->notifier->closed($task, $actor, $includeAssignees);
     }
 
     /**
@@ -287,7 +305,8 @@ final class TaskCompletionService
     /**
      * The id of the PROTECTED row designated by $key (D-4): `open` and
      * `closed_negative` are never a domain-action destination, so only
-     * `in_progress`/`closed_positive` are ever asked for here.
+     * `in_progress`/`closed_positive`/`assigned` (D-6, spec 0153: reject's
+     * new landing status) are ever asked for here.
      */
     private function systemStatusId(TaskStatusSystemKey $key): int
     {

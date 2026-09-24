@@ -4,19 +4,19 @@
  * row's definition list; `TaskBoardPeople` shows each person as the app's
  * shared avatar + `UserProfileHoverCard` (the same affordance as the detail
  * pages: hover reveals the profile action, click opens the user Sheet);
- * `TaskBoardCompletion` and `TaskBoardHours` turn the completion percentage
- * and worked-vs-estimated minutes into a bar plus its number.
+ * `TaskBoardHours` turns worked-vs-estimated minutes into a bar plus its
+ * number; completion uses the shared `CompletionBar`.
  */
 
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
+import { CompletionBar } from '@/components/completion-bar'
 import { Progress } from '@/components/ui/progress'
 import { UserAvatar } from '@/components/user-avatar'
 import { UserProfileHoverCard } from '@/components/user-profile-hover-card'
 import type { TaskNamedRef } from '@/features/tasks/types'
 import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
-import { completionTone } from '@/features/work-orders/task-board/task-board-completion-tone'
 import type { TaskBoardStageMetrics } from '@/features/work-orders/task-board/task-board-metrics'
 import { cn } from '@/lib/utils'
 
@@ -65,23 +65,6 @@ export function TaskBoardPeople({ people }: { people: TaskNamedRef[] }) {
           +{hidden.length}
         </span>
       ) : null}
-    </>
-  )
-}
-
-export function TaskBoardCompletion({ percentage, label }: { percentage: number; label: string }) {
-  const tone = completionTone(percentage)
-
-  return (
-    <>
-      <Progress
-        value={percentage}
-        size="xs"
-        className={cn('w-14 shrink-0', tone.track)}
-        indicatorClassName={tone.indicator}
-        aria-label={label}
-      />
-      <span className={cn('font-medium tabular-nums', tone.text)}>{percentage}%</span>
     </>
   )
 }
@@ -144,7 +127,7 @@ export function TaskBoardStageSummary({ metrics }: { metrics: TaskBoardStageMetr
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
       <span className="flex items-center gap-1.5">
         <span className="text-muted-foreground">{completionLabel}</span>
-        <TaskBoardCompletion percentage={metrics.completionPercentage} label={completionLabel} />
+        <CompletionBar value={metrics.completionPercentage} label={completionLabel} barClassName="w-14" className="gap-1.5" />
       </span>
       <span className="flex items-center gap-1.5">
         <span className="text-muted-foreground">{hoursLabel}</span>

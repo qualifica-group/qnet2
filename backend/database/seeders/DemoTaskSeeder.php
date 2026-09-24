@@ -222,8 +222,9 @@ class DemoTaskSeeder extends Seeder
                 : $this->tasks->update($task, new UpdateTaskData(taskStatusId: $status->id), $creator);
         }
 
-        // Step 4: freeze every Nth one.
-        if ($index % self::BLOCKED_STRIDE === self::BLOCKED_STRIDE - 1) {
+        // Step 4: freeze every Nth one, open tasks only (spec 0153, D-7: a
+        // closed or in-validation task cannot be blocked).
+        if ($index % self::BLOCKED_STRIDE === self::BLOCKED_STRIDE - 1 && in_array($status->group, [TaskStatusGroup::Open, TaskStatusGroup::Pending], true)) {
             $task = $this->actions->block($task, $creator);
         }
 

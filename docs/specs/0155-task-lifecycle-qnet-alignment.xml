@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0155-task-lifecycle-qnet-alignment" status="draft" owner="utente" date="2026-09-24">
+
+  <goal>
+    Ricorrenza, sottotask, completamento per tutti gli assegnatari e messaggio di accesso negato funzionano
+    come in q-net (punti 14-17 della sez. 2).
+  </goal>
+
+  <context>
+    Serie 0153-0158. Nomi qnet-2 verificati:
+    - Ricorrenza: tabella `task_recurrences` (frequency, interval, weekdays, month_day, ends, ends_on,
+      occurrence_count, generated_until), enum `TaskRecurrenceFrequency` (daily/weekly/monthly),
+      `TaskRecurrenceCalculator::nextCandidate` (match senza default), `TaskOccurrenceFactory::copiedAttributes`
+      (non copia sottotask), `TaskRecurrenceService::isVirgin`; FE `task-recurrence-types.ts`,
+      `task-recurrence-section.tsx`, `task-recurrence-format.ts`.
+    - Sottotask: `TaskService::create` crea un solo task; `Task::subtasks()` senza ordinamento;
+      `stage_position` appartiene alla board commessa; FE `task-subtasks-section.tsx` in sola lettura.
+      Guardie: `TaskParentDateRangeGuard`, `TaskStageGuard` (fase vietata sui sottotask), `TaskHierarchyGuard`.
+    - Completamento: `CompleteTaskRequest` (time_entry obbligatorio), `TaskCompletionService::complete` crea un solo
+      segnatempo via `TimeEntryService::create`; FE `task-complete-dialog.tsx`.
+    - Accesso negato: `TaskController::show` -> 403 generico, loggato e segnalato su Teams; FE `task-screens.tsx`
+      mostra un errore generico con Riprova.
+    - q-net: ricorrenza QB `Jobs/TaskReminders.php`, copia sottotask `TaskService.php:1707-1789`; sottotask
+      `TaskService.php:1246-1375`; completamento `WorkActivityService.php:80-114`; 403 `TaskService.php:858-874`.
+  </context>
+
+  <decisions>
+    D-1  Ricorrenza: nuove frequenze `yearly` e `custom` (= ogni N giorni, come invia q-net). Mensile e annuale
+         hanno `month_mode` fixed|ordinal: ordinal usa `ordinal` 1..5 e `ordinal_weekday` 1..7; se il mese non ha
+         il 5° giorno richiesto l'occorrenza si salta (come q-net). Annuale usa `year_month` 1..12 (+ month_day o
+         ordinale). `workdays_only` (bool): le date cadono solo lunedi'-venerdi' (nessun calendario festivita',
+         come q-net).
+    D-2  Ogni occorrenza copia i sottotask diretti del modello (un livello, come q-net): stessi campi, stato iniziale
+         ricalcolato, date spostate dello stesso scarto del padre. `isVirgin` ignora i sottotask copiati se non sono
+         stati toccati (nessun segnatempo, nessuna modifica dopo la creazione).
+    D-3  Sottotask in blocco: `POST /api/tasks` accetta `subtasks[]` (un livello). Ereditano sempre dal padre
+         registry_id, referent_id, opportunity_id, work_order_id; ereditano se omessi assegnatari, osservatori,
+         tipo, priorita', importanza, richiedente, end_date. Mai fase, mai ricorrenza, nessuna notifica di apertura.
+         Tutto in una transazione: un sottotask non valido -> 422 `subtasks.N.campo`, niente salvato.
+    D-4  Ordine dei sottotask: nuova colonna `tasks.subtask_position`; riordino con endpoint dedicato; la relazione
+         `subtasks()` ordina per posizione poi id.
+    D-5  Pannello sottotask del dettaglio: riordino (drag&amp;drop), elimina, completa/riapri il singolo sottotask con le
+         sue regole (`permissions.actions` del figlio nella risorsa subtasks).
+    D-6  Completamento per tutti gli assegnatari: `for_all_assignees` (bool). Il FE lo invia true da lista e dettaglio,
+         false da pannello sottotask e kanban (come q-net, nessuna scelta per l'utente). Con true si crea un
+         segnatempo identico per ogni assegnatario (se non ce ne sono, per l'attore). Il segnatempo resta
+         obbligatorio (qnet-2 lo richiede gia'; nessun cambio).
+    D-7  Accesso negato al dettaglio: 403 con `errors.access_contacts` = richiedente e creatore (deduplicati),
+         forma { id, name, email }; nessun log di errore ne' avviso Teams per questo caso. Il FE mostra il messaggio
+         e i contatti, senza Riprova.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: colonne ricorrenza (month_mode, ordinal, ordinal_weekday, year_month, workdays_only); tasks.subtask_position.</item>
+      <item>Calculator, factory, service ricorrenza + validazione Store/Update; FE sezione ricorrenza e formato.</item>
+      <item>Creazione sottotask in blocco (FE: righe sottotask nel form di creazione), riordino, pannello con azioni.</item>
+      <item>for_all_assignees su complete; 403 con contatti.</item>
+      <item>Guide in-app IT/EN `tasks`.</item>
+    </in>
+    <out>
+      <item>Calendario festivita' nella ricorrenza.</item>
+      <item>Sottotask annidati su piu' livelli nella creazione in blocco e nella copia di ricorrenza.</item>
+      <item>Segnatempo facoltativo al completamento.</item>
+    </out>
+  </scope>
+
+  <contract>
+    POST/PUT /api/tasks, recurrence: { frequency: daily|weekly|monthly|yearly|custom, interval, weekdays?,
+      month_day?, month_mode?: fixed|ordinal, ordinal?: 1..5, ordinal_weekday?: 1..7, year_month?: 1..12,
+      workdays_only?: bool, ends, ends_on?, occurrence_count? }.
+    POST /api/tasks, subtasks?: [{ title (obbl.), description?, start_date?, end_date?, estimated_minutes?,
+      assignee_ids?, watcher_ids?, task_type_id?, task_priority_id?, task_importance_id?, task_category_id? }] max 50.
+    POST /api/tasks/{task}/subtasks/reorder { ids: int[] } (tutti e soli i figli diretti) -> 200 { data: subtasks[] };
+      403 senza update sul padre; 422 ids non corrispondenti.
+    TaskResource.subtasks[] aggiunge position e permissions.actions.
+    POST /api/tasks/{task}/complete aggiunge for_all_assignees?: bool (default false).
+    GET /api/tasks/{task} 403: { success:false, message, errors: { access_contacts: [{ id, name, email }] } }.
+  </contract>
+
+  <acceptance>
+    AC-001 Annuale ordinale "2° martedi' di marzo" genera la data giusta; ordinale 5 in un mese senza 5° si salta.
+    AC-002 workdays_only non genera mai sabato o domenica.
+    AC-003 custom con interval 3 genera ogni 3 giorni.
+    AC-004 Un'occorrenza copia i sottotask diretti con date spostate; il potatore la considera intatta se i figli copiati non sono stati toccati.
+    AC-005 POST /api/tasks con 2 sottotask crea padre e figli con i campi ereditati; un figlio senza titolo -> 422 e nessuna riga.
+    AC-006 Riordino: gli ids nell'ordine dato determinano position; ids estranei -> 422; senza update -> 403.
+    AC-007 Pannello FE: trascinare riordina, elimina e completa/riapri rispettano i permessi del figlio.
+    AC-008 complete con for_all_assignees crea un segnatempo per ogni assegnatario; senza, uno solo dell'attore.
+    AC-009 403 sul dettaglio restituisce access_contacts; nessun log/Teams; il FE mostra i contatti.
+    AC-010 Guide in-app IT/EN aggiornate; test di parita' verde.
+  </acceptance>
+
+  <constraints>
+    Nessuna nuova dipendenza (drag&amp;drop con @dnd-kit gia' presente). Migrazioni nuove e reversibili.
+    Il match del calculator deve coprire ogni caso dell'enum.
+  </constraints>
+
+</spec>

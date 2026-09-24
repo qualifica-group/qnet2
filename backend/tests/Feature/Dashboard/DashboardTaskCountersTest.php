@@ -46,7 +46,7 @@ function dashboardCounters(): array
 }
 
 /**
- * @param  array<string, string>  $advancedFilters
+ * @param  array<string, mixed>  $advancedFilters
  */
 function dashboardRowCount(array $advancedFilters): int
 {
@@ -144,10 +144,12 @@ it('every counter matches the tasks grid row count under the same filters (AC-00
 
     $data = dashboardCounters();
 
-    expect($data['not_completed']['count'])->toBe(dashboardRowCount(['status' => 'open']))
-        ->and($data['assigned_to_me']['count'])->toBe(dashboardRowCount(['status' => 'open', 'assignment' => 'assigned_to_me']))
-        ->and($data['assigned_by_me']['count'])->toBe(dashboardRowCount(['status' => 'open', 'assignment' => 'assigned_by_me']))
-        ->and($data['created_by_me']['count'])->toBe(dashboardRowCount(['status' => 'open', 'assignment' => 'created_by_me']))
-        ->and($data['observed_by_me']['count'])->toBe(dashboardRowCount(['status' => 'open', 'assignment' => 'observed_by_me']))
-        ->and($data['assigned_by_me']['to_validate']['count'])->toBe(dashboardRowCount(['status' => 'in_validation', 'assignment' => 'assigned_by_me']));
+    // spec 0153, D-1: `assignment` is now a multi-value filter — a single
+    // scope still travels as a one-element array.
+    expect($data['not_completed']['count'])->toBe(dashboardRowCount(['status' => 'open', 'assignment' => ['all']]))
+        ->and($data['assigned_to_me']['count'])->toBe(dashboardRowCount(['status' => 'open', 'assignment' => ['assigned_to_me']]))
+        ->and($data['assigned_by_me']['count'])->toBe(dashboardRowCount(['status' => 'open', 'assignment' => ['assigned_by_me']]))
+        ->and($data['created_by_me']['count'])->toBe(dashboardRowCount(['status' => 'open', 'assignment' => ['created_by_me']]))
+        ->and($data['observed_by_me']['count'])->toBe(dashboardRowCount(['status' => 'open', 'assignment' => ['observed_by_me']]))
+        ->and($data['assigned_by_me']['to_validate']['count'])->toBe(dashboardRowCount(['status' => 'in_validation', 'assignment' => ['assigned_by_me']]));
 });

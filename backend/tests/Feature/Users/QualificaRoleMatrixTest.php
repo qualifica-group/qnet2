@@ -2,8 +2,10 @@
 
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\NavigationService;
+use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue;
 use Database\Seeders\QualificaOperatorSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -58,8 +60,10 @@ it('closes administration and configuration to the supervisor, selects aside', f
     $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
 
     // `opportunities` left this list with the lead conversion grant (user
-    // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest.
-    foreach (['custom-fields', 'company-sites', 'tasks'] as $resource) {
+    // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest;
+    // `tasks` with the own-tasks grant of every role (user directive
+    // 2026-09-24), pinned below.
+    foreach (['custom-fields', 'company-sites'] as $resource) {
         foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
             expect($supervisor->can("{$resource}.{$ability}"))->toBeFalse("{$resource}.{$ability}");
         }
@@ -235,13 +239,14 @@ it('restricts the marketing role to the marketing-leads modules plus the selects
     }
 });
 
-it('leaves the marketing menu with the marketing-leads group only', function () {
+it('leaves the marketing menu with the marketing-leads group, tasks and time entries only', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
     $routes = visibleRoutes(User::query()->where('email', 'sabino.figurelli@qualificagroup.com')->firstOrFail());
 
     // `/dashboard` carries no permission: public to every authenticated user.
-    expect($routes)->toBe(['/dashboard', '/projects', '/campaigns', '/leads', '/imports', '/pipeline-statuses']);
+    // `/tasks` and `/time-entries` are every role's (user directive 2026-09-24).
+    expect($routes)->toBe(['/dashboard', '/projects', '/campaigns', '/leads', '/imports', '/pipeline-statuses', '/tasks', '/time-entries']);
 });
 
 it('blocks the marketing role server-side on the modules its menu hides', function () {
@@ -402,7 +407,7 @@ it('lets the supervisor and the commercial role list, upload and remove request 
     }
 });
 
-it('leaves the commercial menu with request-management and enrollee-management only', function () {
+it('leaves the commercial menu with request-management, enrollee-management, tasks and time entries only', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
     $routes = visibleRoutes(User::query()->where('email', 'biagio.fusco@qualificagroup.it')->firstOrFail());
@@ -414,8 +419,9 @@ it('leaves the commercial menu with request-management and enrollee-management o
     // `field-change-requests.view` — the very permission the navigation entry
     // is gated on (config/navigation/opportunities.php). The role keeps
     // `.create`, which carries no menu entry. `/enrollee-management` joined
-    // with the user directive 2026-09-18 (read-only, own enrollees only).
-    expect($routes)->toBe(['/dashboard', '/request-management', '/enrollee-management']);
+    // with the user directive 2026-09-18 (read-only, own enrollees only);
+    // `/tasks` and `/time-entries` with the user directive 2026-09-24.
+    expect($routes)->toBe(['/dashboard', '/request-management', '/enrollee-management', '/tasks', '/time-entries']);
 });
 
 it('blocks the commercial role server-side on the modules its menu hides', function () {
@@ -493,4 +499,49 @@ it('blocks the supervisor server-side on administration and configuration', func
     }
 
     $this->postJson('/api/roles', ['name' => 'nuovo-ruolo'])->assertForbidden();
+});
+
+// User directive 2026-09-24: every mansione works the Tasks it takes part in
+// and its own segnatempo — never everyone's.
+it('opens own tasks and own time entries to every role, never the wider scopes', function () {
+    $this->seed(QualificaOperatorSeeder::class);
+
+    foreach (OperatorRoleCatalogue::ROLES as $name => $role) {
+        $user = User::role($name)->firstOrFail();
+
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'complete', 'viewDocuments', 'requestUpdate'] as $ability) {
+            expect($user->can("tasks.{$ability}"))->toBeTrue("{$name} tasks.{$ability}");
+        }
+
+        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
+            expect($user->can("time-entries.{$ability}"))->toBeTrue("{$name} time-entries.{$ability}");
+        }
+
+        foreach (OperatorRoleCatalogue::OWN_TASKS_DENIED_ABILITIES as $ability) {
+            expect($user->can("tasks.{$ability}"))->toBeFalse("{$name} tasks.{$ability}");
+        }
+
+        foreach (OperatorRoleCatalogue::OWN_TIME_ENTRIES_DENIED_ABILITIES as $ability) {
+            expect($user->can("time-entries.{$ability}"))->toBeFalse("{$name} time-entries.{$ability}");
+        }
+
+        expect($user->can('notes.create'))->toBeTrue("{$name} notes.create")
+            ->and($user->can('attachments.create'))->toBeTrue("{$name} attachments.create")
+            ->and(visibleRoutes($user))->toContain('/tasks', '/time-entries')
+            // The five Task configurators stay closed.
+            ->and($user->can('task-statuses.view'))->toBeFalse("{$name} task-statuses.view");
+    }
+});
+
+it('lists a commercial only the tasks they take part in', function () {
+    $this->seed(QualificaOperatorSeeder::class);
+
+    $commercial = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
+    $own = Task::factory()->forCreator($commercial)->create();
+    $foreign = Task::factory()->create();
+
+    Sanctum::actingAs($commercial);
+
+    $this->getJson("/api/tasks/{$own->id}")->assertOk();
+    $this->getJson("/api/tasks/{$foreign->id}")->assertForbidden();
 });

@@ -86,7 +86,10 @@ class AdvancedFilterApplier
             AdvancedFilterType::NumberRange => $this->applyRange($query, $target, $value, static fn (mixed $bound): int|float|null => is_numeric($bound) ? $bound + 0 : null),
             AdvancedFilterType::Date, AdvancedFilterType::Datetime => $this->applyDate($query, $target, $value, $operator ?? 'equals'),
             AdvancedFilterType::DateRange => $this->applyRange($query, $target, $value, static fn (mixed $bound): ?string => is_string($bound) && $bound !== '' ? $bound : null),
-            AdvancedFilterType::Select, AdvancedFilterType::Enum, AdvancedFilterType::Radio, AdvancedFilterType::Autocomplete => $this->applyEquals($query, $target, $value),
+            AdvancedFilterType::Enum => ($descriptor['multiple'] ?? false) === true
+                ? $this->applyWhereIn($query, $target, $value)
+                : $this->applyEquals($query, $target, $value),
+            AdvancedFilterType::Select, AdvancedFilterType::Radio, AdvancedFilterType::Autocomplete => $this->applyEquals($query, $target, $value),
             AdvancedFilterType::Checkbox, AdvancedFilterType::Switch => $this->applyEquals($query, $target, (bool) $value),
             AdvancedFilterType::Multiselect, AdvancedFilterType::AutocompleteMulti => $this->applyWhereIn($query, $target, $value),
             AdvancedFilterType::Relation, AdvancedFilterType::AsyncSearch => $this->applyRelation($query, $target, $value, ($descriptor['multiple'] ?? false) === true),
@@ -106,7 +109,9 @@ class AdvancedFilterApplier
             AdvancedFilterType::NumberRange => $this->isValidRange($value, 'is_numeric'),
             AdvancedFilterType::Date, AdvancedFilterType::Datetime => is_string($value) && $value !== '',
             AdvancedFilterType::DateRange => $this->isValidRange($value, static fn (mixed $bound): bool => is_string($bound) && $bound !== ''),
-            AdvancedFilterType::Select, AdvancedFilterType::Enum, AdvancedFilterType::Radio, AdvancedFilterType::Autocomplete => is_scalar($value),
+            // An enum with `multiple` takes a list of its values (spec 0153, D-1), like a relation.
+            AdvancedFilterType::Enum => ($descriptor['multiple'] ?? false) === true ? $this->isValidScalarList($value) : is_scalar($value),
+            AdvancedFilterType::Select, AdvancedFilterType::Radio, AdvancedFilterType::Autocomplete => is_scalar($value),
             AdvancedFilterType::Checkbox, AdvancedFilterType::Switch => is_bool($value),
             AdvancedFilterType::Multiselect, AdvancedFilterType::AutocompleteMulti => $this->isValidScalarList($value),
             AdvancedFilterType::Relation, AdvancedFilterType::AsyncSearch => ($descriptor['multiple'] ?? false) === true ? $this->isValidScalarList($value) : is_scalar($value),

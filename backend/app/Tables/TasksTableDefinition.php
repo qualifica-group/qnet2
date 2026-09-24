@@ -124,7 +124,9 @@ class TasksTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return TaskAdvancedFilterCatalog::advancedFilters();
+        $actor = Auth::user();
+
+        return TaskAdvancedFilterCatalog::advancedFilters($actor instanceof User ? $actor : null);
     }
 
     /**
@@ -152,11 +154,18 @@ class TasksTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * Spec 0153, D-2: most-recently-updated first, `id desc` breaking ties
+     * (two rows touched in the same second). `updated_at` becomes a fully
+     * visible/filterable column in spec 0156; here it only needs to be
+     * SORTABLE for this ORDER BY to resolve (TaskColumnCatalog declares it
+     * hidden in the meantime, mirroring `completion_date`'s own precedent).
+     *
      * @return array<int, array{columnId: string, direction: string}>
      */
     public function defaultSort(): array
     {
         return [
+            ['columnId' => 'updated_at', 'direction' => 'desc'],
             ['columnId' => 'id', 'direction' => 'desc'],
         ];
     }

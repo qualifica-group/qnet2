@@ -10,7 +10,7 @@ uses(RefreshDatabase::class);
 /*
 |--------------------------------------------------------------------------
 | App\Services\Notifications\TaskNotificationAudience (spec 0119, D-3/D-4/
-| D-5/D-6, AC-007/AC-008)
+| D-5/D-6, AC-007/AC-008; spec 0153, D-11/D-13)
 |--------------------------------------------------------------------------
 |
 | WHO hears about a Task event. Pure by construction: every case below is
@@ -55,14 +55,38 @@ it('sends one notification to a user holding several roles at once (AC-007)', fu
         ->and(array_count_values($recipients)[7])->toBe(1);
 });
 
+// `watchers()` is DELIBERATELY absent here since spec 0153, D-13 — see its
+// own "excludes nobody" test below.
 it('drops the actor from every audience (AC-008, D-3)', function () {
     $audience = audience(creator: 1, requester: 2, assignees: [2, 3], watchers: [4]);
     $actor = actorWithId(2);
 
     expect($audience->everyone($actor))->toEqualCanonicalizing([1, 3, 4])
         ->and($audience->assignees($actor))->toEqualCanonicalizing([3])
-        ->and($audience->watchers($actor))->toEqualCanonicalizing([4])
         ->and($audience->requesterAndCreator($actor))->toEqualCanonicalizing([1]);
+});
+
+it('drops the creator, not the actor, from the "assigned" audience (spec 0153, D-13)', function () {
+    $audience = audience(creator: 1, requester: 2, assignees: [1, 3], watchers: []);
+
+    expect($audience->assigned())->toEqualCanonicalizing([3])
+        ->and($audience->restrictAssigned([1, 3]))->toEqualCanonicalizing([3]);
+});
+
+it('excludes nobody from the "watching" audience, not even the actor (spec 0153, D-13)', function () {
+    $audience = audience(creator: 1, requester: 2, assignees: [], watchers: [1, 2, 5]);
+
+    expect($audience->watchers())->toEqualCanonicalizing([1, 2, 5])
+        ->and($audience->restrictWatchers([1, 2, 5]))->toEqualCanonicalizing([1, 2, 5]);
+});
+
+it('closure() is requester + watchers, plus assignees only when told to, never the creator as such (spec 0153, D-11)', function () {
+    $audience = audience(creator: 1, requester: 2, assignees: [3, 4], watchers: [5]);
+    $actor = actorWithId(5);
+
+    expect($audience->closure(null, includeAssignees: false))->toEqualCanonicalizing([2, 5])
+        ->and($audience->closure(null, includeAssignees: true))->toEqualCanonicalizing([2, 3, 4, 5])
+        ->and($audience->closure($actor, includeAssignees: true))->toEqualCanonicalizing([2, 3, 4]);
 });
 
 it('leaves the audience whole when there is no actor, as for a system write', function () {
@@ -116,5 +140,5 @@ it('reads the two pivots off a loaded Task (of)', function () {
     expect($audience->everyone(null))->toEqualCanonicalizing([
         $creator->id, $requester->id, $assignee->id, $watcher->id,
     ])->and($audience->assignees(null))->toBe([$assignee->id])
-        ->and($audience->watchers(null))->toBe([$watcher->id]);
+        ->and($audience->watchers())->toBe([$watcher->id]);
 });

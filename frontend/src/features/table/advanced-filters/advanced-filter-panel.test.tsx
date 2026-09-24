@@ -19,6 +19,16 @@ vi.mock('@/features/for-select/use-for-select', async () => {
   }
 })
 
+/** Fixture enum used by the `enum`/`radio` field tests below. */
+const SCOPE_OPTIONS = [
+  { value: 'assigned_to_me', label: 'Assigned to me', color: null, icon: null, is_default: false, hidden_on_form: false },
+  { value: 'all', label: 'All', color: null, icon: null, is_default: false, hidden_on_form: false },
+]
+
+vi.mock('@/features/config/use-config', () => ({
+  useEnumOptions: () => SCOPE_OPTIONS,
+}))
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -158,6 +168,51 @@ describe('AdvancedFilterPanel', () => {
     })
 
     expect(setFieldValue).toHaveBeenCalledWith('status', 'won')
+  })
+
+  it('renders a multi-value enum filter as a multi-select, OR-ing the picked values (spec 0153 AC-019)', () => {
+    const descriptors = [
+      descriptor({
+        name: 'assignment',
+        type: 'enum',
+        label: 'Assignment',
+        enumKey: 'task_assignment_scope',
+        multiple: true,
+      }),
+    ]
+    const setFieldValue = vi.fn()
+
+    renderPanel(descriptors, fakeFilters({ setFieldValue, draft: { assignment: ['assigned_to_me'] } }))
+
+    const trigger = screen.getByRole('button', { name: 'Assignment' })
+    expect(trigger).toHaveTextContent('Assigned to me')
+
+    // Radix' DropdownMenu trigger opens on `pointerdown`, not `click` (mirrors
+    // `notification-bell.test.tsx`'s own `openPanel`).
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false })
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'All' }))
+
+    expect(setFieldValue).toHaveBeenCalledWith('assignment', ['assigned_to_me', 'all'])
+  })
+
+  it('hides the enum values the server lists in excludedValues (spec 0153 D-1)', () => {
+    const descriptors = [
+      descriptor({
+        name: 'assignment',
+        type: 'enum',
+        label: 'Assignment',
+        enumKey: 'task_assignment_scope',
+        multiple: true,
+        excludedValues: ['visible'],
+      }),
+    ]
+
+    renderPanel(descriptors, fakeFilters({ draft: { assignment: ['assigned_to_me'] } }))
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Assignment' }), { button: 0, ctrlKey: false })
+
+    expect(screen.getByRole('menuitemcheckbox', { name: 'All' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitemcheckbox', { name: 'All visible' })).not.toBeInTheDocument()
   })
 
   it('calls apply/reset from the footer', () => {

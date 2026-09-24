@@ -71,7 +71,9 @@ describe('DashboardTasksSection (AC-009)', () => {
     expect(await screen.findByText('All')).toBeInTheDocument()
     expect(screen.getByText('42')).toBeInTheDocument()
     expect(screen.getByText('10h 00m')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'All' })).toHaveAttribute('href', '/tasks?status=open')
+    // REQUIREMENT CHANGED (spec 0153 D-1): "All" sends the explicit `visible`
+    // assignment value (every visible task, like its counter).
+    expect(screen.getByRole('link', { name: 'All' })).toHaveAttribute('href', '/tasks?status=open&assignment=visible')
     expect(screen.getByRole('link', { name: 'Assigned to me' })).toHaveAttribute(
       'href',
       '/tasks?status=open&assignment=assigned_to_me',

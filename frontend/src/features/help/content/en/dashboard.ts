@@ -22,10 +22,10 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Tile', 'What it counts'],
           rows: [
-            ['All', 'Every open task you can see.'],
+            ['All', 'Every open task you may see: yours and, if you hold View all or View site, your colleagues\u2019 too. The link opens the list with **All visible**.'],
             ['Assigned to me', 'The tasks you are an assignee of.'],
             ['Assigned by me', 'The tasks you requested, unless you are also an assignee.'],
-            ['Created by me', 'The tasks you created, when the requester is someone else.'],
+            ['Created by me', 'The tasks you created, when you are neither the requester, an assignee, nor a watcher.'],
             ['Observed by me', 'The tasks you follow as a watcher.'],
           ],
         },

@@ -9,10 +9,10 @@
 
 import { useTranslation } from 'react-i18next'
 import { Lock } from 'lucide-react'
+import { CompletionBar } from '@/components/completion-bar'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { TaskBoardEndDate } from '@/features/work-orders/task-board/task-board-end-date'
 import {
-  TaskBoardCompletion,
   TaskBoardEmptyValue,
   TaskBoardHours,
   TaskBoardMetaField,
@@ -81,7 +81,12 @@ export function TaskBoardRowContent({ task, today, onOpen }: TaskBoardRowContent
           <TaskBoardPeople people={task.watchers} />
         </TaskBoardMetaField>
         <TaskBoardMetaField label={column('completion')}>
-          <TaskBoardCompletion percentage={task.task_status.completion_percentage} label={column('completion')} />
+          <CompletionBar
+            value={task.task_status.completion_percentage}
+            label={column('completion')}
+            barClassName="w-14"
+            className="gap-1.5"
+          />
         </TaskBoardMetaField>
         <TaskBoardMetaField label={column('hours')}>
           <TaskBoardHours actualMinutes={task.actual_minutes} estimatedMinutes={task.estimated_minutes} label={column('hours')} />

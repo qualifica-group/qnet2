@@ -8,15 +8,17 @@ use App\Enums\TaskStatusSystemKey;
 use App\Models\TaskStatus;
 
 /**
- * The creation-time status derivation (spec 0118, D-4), consumed by
- * App\Services\TaskService::create() and NOTHING else — D-6 excludes any
- * re-derivation on PATCH. Read literally, as the product document states it:
- * with EXACTLY ONE assignee who is the creator OR the requester, the Task
- * opens on the `open` row ("Da assegnare"); in EVERY other case — two or
- * more assignees, or a single one who is neither — it opens on the
- * `assigned` row ("Assegnato", spec 0118 D-5). The rule applies only to the
- * single-assignee case: two assignees who are both the creator and the
- * requester still land on `assigned`.
+ * The creation-time status derivation (spec 0118, D-4; spec 0153, D-4),
+ * consumed by App\Services\TaskService::create() and NOTHING else — D-6
+ * excludes any re-derivation on PATCH. Read literally, as q-net's own rule
+ * states it: with EXACTLY ONE assignee (after dedup) who is the REQUESTER,
+ * the Task opens on the `open` row ("Da assegnare"); in EVERY other case —
+ * two or more distinct assignees, or a single one who is not the requester —
+ * it opens on the `assigned` row ("Assegnato", spec 0118 D-5). The creator no
+ * longer counts (spec 0153, D-4 supersedes spec 0118 D-4's own creator
+ * carve-out): a creator who assigns solely to themselves, without also being
+ * the requester, now lands on `assigned` like any other single assignee who
+ * is not the requester.
  *
  * Resolves the destination row by `system_key`, never by label — the
  * convention every class in this namespace that reaches for a protected
@@ -33,27 +35,31 @@ use App\Models\TaskStatus;
 final class TaskInitialStatusResolver
 {
     /**
+     * `$creatorId` is kept in the signature for source compatibility with
+     * App\Services\TaskService::create()'s call site — it is UNUSED by the
+     * derivation itself since spec 0153, D-4 ("il creatore non conta piu'").
+     *
      * @param  array<int, int>  $assigneeIds
      */
     public function resolve(array $assigneeIds, int $creatorId, ?int $requesterId): int
     {
-        return $this->systemStatusId($this->resolveKey($assigneeIds, $creatorId, $requesterId));
+        return $this->systemStatusId($this->resolveKey($assigneeIds, $requesterId));
     }
 
     /**
      * @param  array<int, int>  $assigneeIds
      */
-    private function resolveKey(array $assigneeIds, int $creatorId, ?int $requesterId): TaskStatusSystemKey
+    private function resolveKey(array $assigneeIds, ?int $requesterId): TaskStatusSystemKey
     {
-        if (count($assigneeIds) !== 1) {
+        $uniqueAssignees = array_unique($assigneeIds);
+
+        if (count($uniqueAssignees) !== 1) {
             return TaskStatusSystemKey::Assigned;
         }
 
-        $onlyAssignee = reset($assigneeIds);
+        $onlyAssignee = reset($uniqueAssignees);
 
-        $isCreatorOrRequester = $onlyAssignee === $creatorId || $onlyAssignee === $requesterId;
-
-        return $isCreatorOrRequester ? TaskStatusSystemKey::Open : TaskStatusSystemKey::Assigned;
+        return $onlyAssignee === $requesterId ? TaskStatusSystemKey::Open : TaskStatusSystemKey::Assigned;
     }
 
     private function systemStatusId(TaskStatusSystemKey $key): int

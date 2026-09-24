@@ -3,6 +3,7 @@
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
+use App\Notifications\TaskClosed;
 use App\Notifications\TaskLocked;
 use App\Notifications\TaskObserver;
 use App\Notifications\TaskValidationApproved;
@@ -120,13 +121,40 @@ it('restricts the audience to the ids the caller names (D-9)', function () {
     Notification::assertNotSentTo($people['assignee'], TaskAssigned::class);
 });
 
-it('drops the actor even out of a restricted audience (D-3 + D-9)', function () {
+// REQUIREMENT CHANGED (spec 0153, D-13): assigned() now drops the CREATOR
+// rather than the actor — even out of a restricted (D-9) audience.
+it('drops the creator, not the actor, out of a restricted "assigned" audience (D-13)', function () {
+    Notification::fake();
+    [$task, $people] = notifierFixture();
+
+    app(TaskNotifier::class)->assigned($task, $people['actor'], [$people['creator']->id]);
+
+    Notification::assertNothingSent();
+});
+
+// REQUIREMENT CHANGED (spec 0153, D-13): watching() now excludes NOBODY, not
+// even the actor.
+it('never excludes the actor from a restricted "watching" audience (D-13)', function () {
     Notification::fake();
     [$task, $people] = notifierFixture();
 
     app(TaskNotifier::class)->watching($task, $people['actor'], [$people['actor']->id]);
 
-    Notification::assertNothingSent();
+    Notification::assertSentTo($people['actor'], TaskObserver::class);
+});
+
+it('drops the creator from a full "assigned" audience too, even when someone else is the actor (D-13)', function () {
+    Notification::fake();
+    $creator = User::factory()->create();
+    $requester = User::factory()->create();
+    $actor = User::factory()->create();
+    $task = Task::factory()->create(['creator_id' => $creator->id, 'requester_id' => $requester->id]);
+    $task->assignees()->attach([$creator->id, $requester->id]);
+
+    app(TaskNotifier::class)->assigned($task->fresh(), $actor);
+
+    Notification::assertSentTo($requester, TaskAssigned::class);
+    Notification::assertNotSentTo($creator, TaskAssigned::class);
 });
 
 it('sends nothing at all when the audience resolves to nobody', function () {
@@ -134,9 +162,46 @@ it('sends nothing at all when the audience resolves to nobody', function () {
     $solo = User::factory()->create();
     $task = Task::factory()->create(['creator_id' => $solo->id, 'requester_id' => null]);
 
-    app(TaskNotifier::class)->closed($task, $solo);
+    app(TaskNotifier::class)->closed($task, $solo, false);
 
     Notification::assertNothingSent();
+});
+
+// spec 0153, D-11: closed()/feedbackInserted() never notify the creator as
+// such, and only carry the assignees when $includeAssignees is true.
+it('closed() never notifies the creator and only carries the assignees when told to (D-11)', function () {
+    Notification::fake();
+    [$task, $people] = notifierFixture();
+
+    app(TaskNotifier::class)->closed($task, $people['actor'], true);
+
+    Notification::assertSentTo(
+        [$people['requester'], $people['assignee'], $people['watcher']],
+        TaskClosed::class,
+    );
+    Notification::assertNotSentTo([$people['creator'], $people['actor']], TaskClosed::class);
+    Notification::assertSentTimes(TaskClosed::class, 3);
+});
+
+it('closed() drops the assignees when includeAssignees is false (D-11/D-12)', function () {
+    Notification::fake();
+    [$task, $people] = notifierFixture();
+
+    app(TaskNotifier::class)->closed($task, $people['actor'], false);
+
+    Notification::assertSentTo([$people['requester'], $people['watcher']], TaskClosed::class);
+    Notification::assertNotSentTo([$people['creator'], $people['assignee'], $people['actor']], TaskClosed::class);
+    Notification::assertSentTimes(TaskClosed::class, 2);
+});
+
+it('closed() drops an inactive recipient (D-11)', function () {
+    Notification::fake();
+    [$task, $people] = notifierFixture();
+    $people['watcher']->update(['is_active' => false]);
+
+    app(TaskNotifier::class)->closed($task, $people['actor'], true);
+
+    Notification::assertNotSentTo($people['watcher'], TaskClosed::class);
 });
 
 it('loads every recipient in a single query (AC-009)', function () {
@@ -254,5 +319,5 @@ it('persists one row per recipient once the transaction commits (AC-010)', funct
         ->and($rows->pluck('notifiable_id')->all())->not->toContain($people['actor']->id);
 
     $payload = json_decode((string) $rows->first()->data, true, flags: JSON_THROW_ON_ERROR);
-    expect(array_keys($payload))->toBe(['title', 'message', 'level', 'action_url']);
+    expect(array_keys($payload))->toBe(['title', 'message', 'level', 'action_url', 'is_cc']);
 });

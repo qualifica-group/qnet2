@@ -127,6 +127,16 @@ final class TaskColumnCatalog
             ],
             self::hierarchyColumn('has_subtasks', 'tasks.columns.has_subtasks'),
             self::hierarchyColumn('is_subtask', 'tasks.columns.is_subtask'),
+            // Sortable-only for now (spec 0153, D-2 default sort): the
+            // visible/filterable column is spec 0156's own delta.
+            [
+                'id' => 'updated_at',
+                'label' => 'tasks.columns.updated_at',
+                'type' => 'datetime',
+                'visible' => false,
+                'sortable' => true,
+                'filterable' => false,
+            ],
         ];
     }
 

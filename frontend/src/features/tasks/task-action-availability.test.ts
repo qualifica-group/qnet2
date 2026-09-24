@@ -28,8 +28,10 @@ describe('taskActionAvailability — pending phase (still working, not terminal)
   })
 })
 
+// REQUIREMENT CHANGED (spec 0153 D-7): a task in validation is no longer
+// blockable — `block` now follows the SAME terminal check as `complete`.
 describe('taskActionAvailability — in_validation phase', () => {
-  it('offers approve/reject/uncomplete, not complete nor request_update (spec 0118 D-10)', () => {
+  it('offers approve/reject/uncomplete, not complete, block nor request_update (spec 0118 D-10, spec 0153 D-7)', () => {
     const task = taskDetail({ task_status: taskStatus({ group: 'in_validation' }), is_blocked: false })
 
     expect(taskActionAvailability(task)).toEqual({
@@ -37,17 +39,19 @@ describe('taskActionAvailability — in_validation phase', () => {
       uncomplete: true,
       approve: true,
       reject: true,
-      block: true,
+      block: false,
       unblock: false,
       request_update: false,
     })
   })
 })
 
+// REQUIREMENT CHANGED (spec 0153 D-7, rectifies the previous "both closures
+// stay blockable"): a completed task is no longer blockable either.
 describe.each(['closed_positive', 'closed_negative'] as const)(
-  'taskActionAvailability — closing phase "%s" (D-7 both closures are terminal)',
+  'taskActionAvailability — closing phase "%s" (spec 0153 D-7: closed tasks are no longer blockable)',
   (group) => {
-    it('offers only uncomplete/block, not request_update', () => {
+    it('offers only uncomplete, not block nor request_update', () => {
       const task = taskDetail({ task_status: taskStatus({ group }), is_blocked: false })
 
       expect(taskActionAvailability(task)).toEqual({
@@ -55,7 +59,7 @@ describe.each(['closed_positive', 'closed_negative'] as const)(
         uncomplete: true,
         approve: false,
         reject: false,
-        block: true,
+        block: false,
         unblock: false,
         request_update: false,
       })

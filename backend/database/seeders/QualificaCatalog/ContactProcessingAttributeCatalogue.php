@@ -21,8 +21,7 @@ namespace Database\Seeders\QualificaCatalog;
  * "Data App APL").
  *
  * `degree` is the one type conflict: the import created it as `text`, the list
- * wants a pick list. The seeder promotes it to `enum` ONLY while no request
- * carries a value for it — see QualificaContactProcessingSeeder::promoteDegree.
+ * wants a multiselect pick list — see QualificaContactProcessingSeeder::promoteDegree.
  */
 final class ContactProcessingAttributeCatalogue
 {
@@ -89,6 +88,10 @@ final class ContactProcessingAttributeCatalogue
      * `chosen_course` ("Corso Scelto") left the "DIL" set on user directive
      * 2026-09-16, replaced there by "ID Corso" and "Sede corso".
      *
+     * `professional_qualification` ("Qualifica Professionale", on
+     * "Autofinanziato") was folded into "Titolo di Studio" as one of its
+     * options (user directive 2026-09-24).
+     *
      * @var list<string>
      */
     public const array RETIRED_ATTRIBUTES = [
@@ -97,6 +100,7 @@ final class ContactProcessingAttributeCatalogue
         // installation already seeded would keep rendering all seven.
         'appointment_date', 'acceptance_date', 'company_name',
         'site_address', 'city', 'requested_service', 'company_referent',
+        'professional_qualification',
     ];
 
     /**
@@ -163,9 +167,8 @@ final class ContactProcessingAttributeCatalogue
     ]];
 
     /**
-     * The "Titolo di Studio" pick list, shared with "Qualifica Professionale":
-     * the self-funded offer clones it as a multiselect (user directive
-     * 2026-09-23), one list so the two cannot drift apart.
+     * The "Titolo di Studio" pick list, a multiselect since the user directive
+     * 2026-09-24 absorbed "Qualifica Professionale" as its last option.
      *
      * @var list<array{value: string, label: string}>
      */
@@ -175,14 +178,16 @@ final class ContactProcessingAttributeCatalogue
         ['value' => 'middle_school', 'label' => 'Licenza Media'],
         ['value' => 'high_school', 'label' => 'Diploma'],
         ['value' => 'degree', 'label' => 'Laurea'],
+        ['value' => 'professional_qualification', 'label' => 'Qualifica Professionale'],
     ];
 
     /**
-     * "Qualifica Professionale" (user directive 2026-09-23): a multiselect
-     * over the degree list, confined to the "Autofinanziato" offer. Named here
-     * because the layout ROWS key on it.
+     * How "Titolo di Studio" renders — also what QualificaContactProcessingSeeder
+     * applies to the row an earlier revision created as a single pick.
+     *
+     * @var array{display: string}
      */
-    public const string PROFESSIONAL_QUALIFICATION = 'professional_qualification';
+    public const array DEGREE_CONFIG = ['display' => 'multiselect'];
 
     /**
      * Category name => its own attribute specs, in the client's order.
@@ -221,7 +226,7 @@ final class ContactProcessingAttributeCatalogue
                 ['value' => 'translation', 'label' => 'Traduzione'],
                 ['value' => 'translation_declaration', 'label' => 'Traduzione + Dichiarazione'],
             ]],
-            ['code' => self::DEGREE_ATTRIBUTE, 'name' => 'Titolo di Studio', 'type' => 'enum', 'options' => self::DEGREE_OPTIONS],
+            ['code' => self::DEGREE_ATTRIBUTE, 'name' => 'Titolo di Studio', 'type' => 'enum', 'options' => self::DEGREE_OPTIONS, 'config' => self::DEGREE_CONFIG],
         ],
         self::SELF_FUNDED_CATEGORY => [
             ['code' => 'course_time_preference', 'name' => 'Preferenza Orario Corso', 'type' => 'enum', 'options' => [
@@ -229,7 +234,6 @@ final class ContactProcessingAttributeCatalogue
                 ['value' => 'afternoon', 'label' => 'Pomeriggio'],
             ]],
             ['code' => 'price', 'name' => 'Prezzo €', 'type' => 'decimal'],
-            ['code' => self::PROFESSIONAL_QUALIFICATION, 'name' => 'Qualifica Professionale', 'type' => 'enum', 'options' => self::DEGREE_OPTIONS, 'config' => ['display' => 'multiselect']],
         ],
         self::GOL_CATEGORY => [
             ['code' => 'ora_app_cpi', 'name' => 'Ora App. CPI', 'type' => 'text'],
@@ -273,10 +277,6 @@ final class ContactProcessingAttributeCatalogue
      * stood: RETIRED_ATTRIBUTES filters them out, like the retirement strips
      * them from the persisted blob.
      *
-     * "Autofinanziato" before "Qualifica Professionale" joined it (user
-     * directive 2026-09-23), its Offerta-only `delivery_mode` included: the
-     * Commessa rows never name it, so listing it there is inert.
-     *
      * @var array<string, list<string>>
      */
     public const array PREVIOUS_OWN_ATTRIBUTES = [
@@ -284,7 +284,6 @@ final class ContactProcessingAttributeCatalogue
             'chosen_course', 'data_scelta_cpi', 'data_app_apl',
             'dote_activation_date', 'dote_expiry_date', 'subsidy_type',
         ],
-        self::SELF_FUNDED_CATEGORY => ['course_time_preference', 'price', CourseDataAttributeCatalogue::DELIVERY_MODE],
     ];
 
     /**
@@ -333,7 +332,6 @@ final class ContactProcessingAttributeCatalogue
         ['psp', 'did'],
         ['identity_documents', 'digital_identity'],
         ['foreign_user_documents', self::DEGREE_ATTRIBUTE],
-        [self::PROFESSIONAL_QUALIFICATION],
     ];
 
     /**
