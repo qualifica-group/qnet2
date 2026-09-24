@@ -75,7 +75,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'Il link **Notifiche**, in fondo al menu laterale sopra **Impostazioni**, apre questa pagina; mostra un contatore con il numero delle notifiche non lette (oltre 99 mostra **99+**) e sparisce quando non ce ne sono.',
+            'Il link **Notifiche**, in fondo al menu laterale sopra **Impostazioni**, apre questa pagina; mostra un pallino rosso con il numero delle notifiche non lette (oltre 99 mostra **99+**) e sparisce quando non ce ne sono.',
             'Il link **Vedi tutte**, in fondo al pannello della campanella, porta alla stessa pagina e chiude il pannello.',
           ],
         },

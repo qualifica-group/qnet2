@@ -23,6 +23,10 @@ import { env } from '@/config/env'
 
 const NOTIFICATIONS_ROUTE = '/notifications'
 const SETTINGS_ROUTE = '/settings'
+// Red pill like the bell's destructive Badge. The peer-* overrides are needed
+// because the primitive recolors its text on hover/active of the menu button.
+const UNREAD_BADGE_CLASS =
+  'rounded-full bg-destructive text-white peer-hover/menu-button:text-white peer-data-[active=true]/menu-button:text-white'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -99,7 +103,10 @@ export function AppSidebar() {
               </NavLink>
             </SidebarMenuButton>
             {unreadBadge.label ? (
-              <SidebarMenuBadge aria-label={unreadBadge.ariaLabel}>
+              <SidebarMenuBadge
+                aria-label={unreadBadge.ariaLabel}
+                className={UNREAD_BADGE_CLASS}
+              >
                 {unreadBadge.label}
               </SidebarMenuBadge>
             ) : null}

@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## BADGE NOTIFICHE SIDEBAR ROSSO — VERDE, NON COMMITTATO (2026-09-24)
+
+- `app-sidebar.tsx`: il contatore non lette sul link **Notifiche** ora è un pallino rosso (`UNREAD_BADGE_CLASS`:
+  `rounded-full bg-destructive text-white`, con override `peer-*` per hover/active). Primitivo `SidebarMenuBadge` invariato.
+- Guide in-app `notifications.ts` IT/EN aggiornate ("pallino rosso"/"red dot"). Manuale Claude Docs non accessibile
+  dalla sessione: sezione Notifiche da allineare.
+
 ## COMPLETAMENTO TASK COLORATO — VERDE, NON COMMITTATO (2026-09-24)
 
 - Colonna griglia `completion_percentage` dei task (`TaskPercentageCell`) e readout nel form (`TaskCompletionReadout`)

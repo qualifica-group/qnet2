@@ -75,7 +75,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'The **Notifications** link, at the bottom of the side menu above **Settings**, opens this page; it shows a badge with the unread count (beyond 99 it reads **99+**) and disappears when there are none.',
+            'The **Notifications** link, at the bottom of the side menu above **Settings**, opens this page; it shows a red dot with the unread count (beyond 99 it reads **99+**) and disappears when there are none.',
             'The **View all** link, at the bottom of the bell panel, opens the same page and closes the panel.',
           ],
         },
