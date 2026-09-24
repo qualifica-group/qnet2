@@ -58,7 +58,8 @@ if (! function_exists('taskNotificationActor')) {
 if (! function_exists('taskNotificationPayload')) {
     /**
      * I quattro campi obbligatori alla creazione (spec 0118 D-1).
-     * `task_status_id` resta assente: e' `prohibited`, lo deriva il server.
+     * `task_status_id` resta assente: se omesso lo deriva il server (spec
+     * 0154 D-10 lo rende scegliebile a mano, ma questa suite non lo esercita).
      *
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>

@@ -5,8 +5,11 @@ import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { FIELD_GRID_CLASS } from '@/components/record-form/layout'
+import { FormControl } from '@/components/ui/form'
+import { Switch } from '@/components/ui/switch'
 import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
 import { RelationSelectField } from '@/components/form/relation-select-field'
+import { MetaField } from '@/features/authorization/MetaField'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { useTaskSelectLabels } from '@/features/tasks/task-select-labels'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
@@ -24,6 +27,8 @@ interface TaskPeopleSectionProps {
    * arrive as a prop. Feeds the watchers picker's exclusion set (D-9).
    */
   creatorId: number | null
+  /** Spec 0154 D-7: which label/hint the notification switch shows. */
+  isCreate: boolean
 }
 
 /**
@@ -51,6 +56,7 @@ export function TaskPeopleSection({
   assignees,
   watchers,
   creatorId,
+  isCreate,
 }: TaskPeopleSectionProps) {
   const { t } = useTranslation()
   const selectLabels = useTaskSelectLabels()
@@ -124,6 +130,46 @@ export function TaskPeopleSection({
         removeLabel={t('common.remove')}
         retryLabel={selectLabels.retryLabel}
       />
+
+      {/* Spec 0154 D-2: visibility is a people concern — only the creator, requester, assignees and watchers see a private task. */}
+      <MetaField
+        control={control}
+        name="is_private"
+        metaKey="is_private"
+        label={t('tasks.form.isPrivate')}
+        hint={t('tasks.form.isPrivateHint')}
+        layout="inline"
+      >
+        {({ field, disabled }) => (
+          <FormControl>
+            <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
+          </FormControl>
+        )}
+      </MetaField>
+
+      {/*
+       * Spec 0154 D-7: ONE form field (`suppress_notifications`) behind two
+       * wire keys — the label/hint swap by mode so the operator reads the
+       * instruction that actually matches what this submit will do.
+       */}
+      <MetaField
+        control={control}
+        name="suppress_notifications"
+        metaKey="suppress_notifications"
+        label={t(isCreate ? 'tasks.form.suppressNotificationsCreate' : 'tasks.form.suppressNotificationsEdit')}
+        hint={t(
+          isCreate
+            ? 'tasks.form.suppressNotificationsCreateHint'
+            : 'tasks.form.suppressNotificationsEditHint',
+        )}
+        layout="inline"
+      >
+        {({ field, disabled }) => (
+          <FormControl>
+            <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
+          </FormControl>
+        )}
+      </MetaField>
     </FormSection>
   )
 }

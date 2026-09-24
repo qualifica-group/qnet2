@@ -21,6 +21,12 @@ use Illuminate\Http\Request;
  * survives ForSelectResource::toArray()'s array_filter, which only strips
  * null OPTIONAL keys at the top level and never descends into `meta`.
  *
+ * `parent_id`/`depth` (spec 0154, D-1): the real FK column plus the position
+ * TaskCategoryService::forSelect() computed while flattening the tree
+ * depth-first — 0 for a root. `parent_id` legitimately rides as null (a
+ * root), which is why it is read straight off the model rather than through
+ * ForSelectResource's null-stripping (that only applies at the top level).
+ *
  * @mixin TaskCategory
  */
 class TaskCategoryForSelectResource extends ForSelectResource
@@ -37,6 +43,8 @@ class TaskCategoryForSelectResource extends ForSelectResource
                 'color' => $this->color,
                 'icon' => $this->icon,
                 'is_active' => $this->is_active,
+                'parent_id' => $this->parent_id,
+                'depth' => $this->depth ?? 0,
             ],
         ];
     }

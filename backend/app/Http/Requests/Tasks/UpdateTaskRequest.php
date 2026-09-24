@@ -44,7 +44,15 @@ use Illuminate\Validation\Rule;
  * weakened by a role's field-permission matrix: the privileged role bypasses
  * every ceiling, so the rule lives here, ahead of and independent from that
  * mechanism (AC-035). Spec 0127 D-1 adds `completion_date` on the same terms: it is
- * written only by TaskCompletionService.
+ * written only by TaskCompletionService. Spec 0154 adds `is_completed`/
+ * `notify_assigned_users` to the same unconditional list: both are
+ * create-only, PATCH keeps its own `notify_new_assigned_users` for D-7.
+ *
+ * `is_private`/`lead_id` follow the `sometimes` shape every other optional
+ * field here does; `evidence` follows `description`'s own convention
+ * instead (excluded from UpdateTaskData::submittedAttributes(), sanitized by
+ * App\Services\Tasks\TaskEvidenceWriter and set directly, gated on its own
+ * `evidenceSubmitted` flag).
  *
  * `assignee_ids`/`watcher_ids` are full-replaced by the Service ONLY when
  * their own key is present in the payload (AC-012), so a PATCH that touches
@@ -99,6 +107,11 @@ class UpdateTaskRequest extends FormRequest
             'is_blocked' => ['prohibited'],
             'task_recurrence_id' => ['prohibited'],
             'completion_date' => ['prohibited'],
+            // Spec 0154: both are create-only (D-6/D-7) — completion by PATCH
+            // still goes through POST /complete, and PATCH already has its
+            // own `notify_new_assigned_users` for the same D-7 idea.
+            'is_completed' => ['prohibited'],
+            'notify_assigned_users' => ['prohibited'],
             'title' => ['sometimes', 'required', 'string', 'max:'.self::TITLE_MAX],
             'task_status_id' => ['sometimes', 'required', 'integer', Rule::exists('task_statuses', 'id')],
             'description' => ['sometimes', 'nullable', 'string'],
@@ -129,6 +142,11 @@ class UpdateTaskRequest extends FormRequest
             'assignee_ids.*' => ['integer', Rule::exists('users', 'id')],
             'watcher_ids' => ['sometimes', 'array'],
             'watcher_ids.*' => ['integer', Rule::exists('users', 'id')],
+            // Spec 0154: D-2/D-3/D-4/D-7 fields.
+            'is_private' => ['sometimes', 'required', 'boolean'],
+            'evidence' => ['sometimes', 'nullable', 'string'],
+            'lead_id' => ['sometimes', 'nullable', 'integer', Rule::exists('leads', 'id')],
+            'notify_new_assigned_users' => ['sometimes', 'boolean'],
             ...$this->recurrenceRules(),
         ];
     }

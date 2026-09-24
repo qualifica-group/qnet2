@@ -24,6 +24,7 @@ final readonly class CreateTaskImportanceData
         public string $color,
         public ?string $icon,
         public bool $isActive,
+        public bool $isDefault,
     ) {}
 
     /**
@@ -39,6 +40,7 @@ final readonly class CreateTaskImportanceData
             color: (string) $data['color'],
             icon: array_key_exists('icon', $data) ? $data['icon'] : null,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+            isDefault: array_key_exists('is_default', $data) ? (bool) $data['is_default'] : false,
         );
     }
 
@@ -56,6 +58,7 @@ final readonly class CreateTaskImportanceData
             'color' => $this->color,
             'icon' => $this->icon,
             'is_active' => $this->isActive,
+            'is_default' => $this->isDefault,
         ];
     }
 }

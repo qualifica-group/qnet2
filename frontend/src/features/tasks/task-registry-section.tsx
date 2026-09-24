@@ -15,8 +15,13 @@ interface TaskRegistrySectionProps {
   /** Edit-mode hydration of the two persisted relations. */
   registry: RelationFieldRef | null
   referent: RelationFieldRef | null
-  /** Resets `referent_id` — owned by `useTaskForm`, invoked in this handler, never in an effect (AC-081). */
-  onRegistryChange: () => void
+  /**
+   * Resets referent/opportunity/lead and (conditionally) the commessa — owned
+   * by `useTaskForm`, invoked in this handler, never in an effect (AC-081,
+   * spec 0154 D-11). Receives the NEW registry id `RelationSelectField`
+   * already hands its `onValueChange`.
+   */
+  onRegistryChange: (nextRegistryId: number | null) => void
 }
 
 /**

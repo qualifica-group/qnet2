@@ -20,7 +20,7 @@ interface TaskImportanceFormBodyProps {
 }
 
 /** The metadata keys this form owns, in render order. */
-const FIELD_KEYS = ['name', 'description', 'color', 'icon', 'is_active'] as const
+const FIELD_KEYS = ['name', 'description', 'color', 'icon', 'is_active', 'is_default'] as const
 
 /**
  * The task importance create/edit form UI. Every field is wrapped in `MetaField`
@@ -119,6 +119,25 @@ export function TaskImportanceFormBody({ mode, onSuccess, onCancel }: TaskImport
                 name="is_active"
                 metaKey="is_active"
                 label={t('taskImportances.form.isActive')}
+                layout="inline"
+              >
+                {({ field, disabled }) => (
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={disabled}
+                    />
+                  </FormControl>
+                )}
+              </MetaField>
+
+              <MetaField
+                control={form.control}
+                name="is_default"
+                metaKey="is_default"
+                label={t('taskImportances.form.isDefault')}
+                hint={t('taskImportances.form.isDefaultHint')}
                 layout="inline"
               >
                 {({ field, disabled }) => (

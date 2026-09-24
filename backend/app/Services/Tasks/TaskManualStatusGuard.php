@@ -51,9 +51,14 @@ final class TaskManualStatusGuard
     private const string BLOCKED_MESSAGE = 'A blocked task cannot change status.';
 
     /**
+     * PUBLIC (spec 0154, D-10): App\Services\Tasks\TaskInitialStatusResolver
+     * reuses this exact set as the "manually selectable at creation" allow
+     * list, so the phases a PATCH may move `task_status_id` INTO and the
+     * ones a POST may CHOOSE it FROM can never drift apart.
+     *
      * @var array<int, TaskStatusGroup>
      */
-    private const array MANUAL_GROUPS = [TaskStatusGroup::Open, TaskStatusGroup::Pending];
+    public const array MANUAL_GROUPS = [TaskStatusGroup::Open, TaskStatusGroup::Pending];
 
     /**
      * @throws ValidationException 422 on `task_status_id`

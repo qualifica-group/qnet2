@@ -39,6 +39,7 @@ class TaskTypesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('color', 'color', mandatory: true),
             new FieldDefinition('icon', 'text'),
             new FieldDefinition('is_active', 'boolean'),
+            new FieldDefinition('is_default', 'boolean'),
         ];
     }
 
@@ -63,6 +64,7 @@ class TaskTypesAuthorization extends AbstractResourceAuthorization
             'color' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'icon' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'is_default' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

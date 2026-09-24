@@ -35,6 +35,7 @@ class TaskCategoriesAuthorization extends AbstractResourceAuthorization
     {
         return [
             new FieldDefinition('name', 'text', mandatory: true),
+            new FieldDefinition('parent_id', 'select'),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('color', 'color', mandatory: true),
             new FieldDefinition('icon', 'text'),
@@ -59,6 +60,7 @@ class TaskCategoriesAuthorization extends AbstractResourceAuthorization
 
         return [
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'parent_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'color' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'icon' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

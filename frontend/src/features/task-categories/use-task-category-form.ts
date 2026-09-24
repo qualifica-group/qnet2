@@ -26,6 +26,7 @@ const SERVER_ERROR_FIELDS = [
   'color',
   'icon',
   'is_active',
+  'parent_id',
 ] as const
 
 export type TaskCategoryFormValues = CreateTaskCategoryFormValues & UpdateTaskCategoryFormValues
@@ -61,6 +62,7 @@ export function useTaskCategoryForm({ mode, onSuccess }: UseTaskCategoryFormArgs
         color: mode.taskCategory.color,
         icon: mode.taskCategory.icon ?? '',
         is_active: mode.taskCategory.is_active,
+        parent_id: mode.taskCategory.parent_id,
       }
     }
     return {
@@ -69,6 +71,7 @@ export function useTaskCategoryForm({ mode, onSuccess }: UseTaskCategoryFormArgs
       color: '',
       icon: '',
       is_active: true,
+      parent_id: null,
     }
   }, [mode])
 

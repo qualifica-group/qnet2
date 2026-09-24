@@ -9,9 +9,11 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\TaskImportances\CreateTaskImportanceData;
 use App\DataObjects\TaskImportances\UpdateTaskImportanceData;
 use App\Models\TaskImportance;
+use App\Services\Lookups\DefaultRowManager;
 use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Business logic for the `task-importances` resource (spec 0101, D-4): one of the four
@@ -34,29 +36,53 @@ class TaskImportanceService
      *
      * @var array<int, string>
      */
-    private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active'];
+    private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active', 'is_default'];
 
-    public function __construct(private readonly LookupOrderManager $orderManager) {}
+    public function __construct(
+        private readonly LookupOrderManager $orderManager,
+        private readonly DefaultRowManager $defaultRow,
+    ) {}
 
     public function create(CreateTaskImportanceData $data): TaskImportance
     {
-        return TaskImportance::create([
-            ...$data->attributes(),
-            'sort_order' => $this->orderManager->placeNew(TaskImportance::class),
-        ]);
+        $this->defaultRow->assertSelectable($data->isDefault, $data->isActive);
+
+        return DB::transaction(function () use ($data): TaskImportance {
+            /** @var TaskImportance $taskImportance */
+            $taskImportance = TaskImportance::create([
+                ...$data->attributes(),
+                'sort_order' => $this->orderManager->placeNew(TaskImportance::class),
+            ]);
+
+            if ($data->isDefault) {
+                $this->defaultRow->clearOthers(TaskImportance::class, $taskImportance->id);
+            }
+
+            return $taskImportance;
+        });
     }
 
     public function update(TaskImportance $taskImportance, UpdateTaskImportanceData $data): TaskImportance
     {
-        $attributes = $data->submittedAttributes();
+        $isDefault = $data->isDefaultSubmitted ? $data->isDefault : $taskImportance->is_default;
+        $isActive = $data->isActiveSubmitted ? $data->isActive : $taskImportance->is_active;
+        $this->defaultRow->assertSelectable($isDefault, $isActive);
 
-        // Unconditional save: fires the model's saved event even when no
-        // native attribute changed, so the HasCustomFields write pipeline
-        // (spec 0021) persists a custom-fields-only edit. A clean save runs
-        // no UPDATE query.
-        $taskImportance->fill($attributes)->save();
+        return DB::transaction(function () use ($taskImportance, $data): TaskImportance {
+            $attributes = $data->submittedAttributes();
 
-        return $taskImportance->fresh();
+            // Unconditional save: fires the model's saved event even when no
+            // native attribute changed, so the HasCustomFields write pipeline
+            // (spec 0021) persists a custom-fields-only edit. A clean save runs
+            // no UPDATE query.
+            $taskImportance->fill($attributes)->save();
+
+            if ($data->isDefaultSubmitted && $data->isDefault) {
+                $this->defaultRow->clearOthers(TaskImportance::class, $taskImportance->id);
+            }
+
+            return $taskImportance->fresh();
+        });
     }
 
     /**

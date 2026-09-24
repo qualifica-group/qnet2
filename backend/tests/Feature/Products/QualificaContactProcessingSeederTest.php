@@ -350,7 +350,8 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
     $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
     expect($placed($service->resolveWithFallback($dil, AttributeContext::Quote, FormMode::Create)))->toBe([
         'data_scelta_cpi', 'data_app_apl',
-        'dote_activation_date', 'dote_expiry_date', 'subsidy_type',
+        'dote_activation_date', 'dote_expiry_date',
+        ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS, 'subsidy_type',
         'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
     ]);
 

@@ -77,6 +77,8 @@ class TaskResource extends JsonResource
             'task_category' => $this->badgeRef($this->taskCategory),
             'opportunity_id' => $this->opportunity_id,
             'opportunity' => $this->nameRef($this->opportunity),
+            'lead_id' => $this->lead_id,
+            'lead' => $this->leadRef(),
             'work_order_id' => $this->work_order_id,
             'work_order' => $this->workOrder === null
                 ? null
@@ -101,6 +103,8 @@ class TaskResource extends JsonResource
             'requires_closure_feedback' => $this->requires_closure_feedback,
             'requires_validation' => $this->requires_validation,
             'closure_feedback' => $this->closure_feedback,
+            'is_private' => $this->is_private,
+            'evidence' => $this->evidence,
             'completion_percentage' => $resolver->completionPercentage($this->resource),
             'recurrence' => $this->recurrenceRef(),
             'open_subtasks_count' => app(TaskActionAvailability::class)->openSubtasksCount($this->resource),
@@ -137,6 +141,20 @@ class TaskResource extends JsonResource
             'ends_on' => $this->formatDate($recurrence->ends_on),
             'occurrence_count' => $recurrence->occurrence_count,
         ];
+    }
+
+    /**
+     * The Lead this Task refers to (spec 0154, D-4): `{id, label}` mirroring
+     * LeadForSelectResource's own `label` (a Lead has no own name column —
+     * its registry's name stands in for it), or null.
+     *
+     * @return array{id: int, label: string}|null
+     */
+    private function leadRef(): ?array
+    {
+        $lead = $this->lead;
+
+        return $lead === null ? null : ['id' => $lead->id, 'label' => $lead->registry?->name ?? ''];
     }
 
     /**

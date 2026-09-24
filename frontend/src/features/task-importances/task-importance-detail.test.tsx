@@ -38,6 +38,7 @@ function taskImportance(
     icon: 'star',
     sort_order: 3,
     is_active: true,
+    is_default: false,
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
     permissions: {

@@ -78,6 +78,15 @@ final class TaskImportanceColumnCatalog
                 'filterType' => 'boolean',
             ],
             [
+                'id' => 'is_default',
+                'label' => 'taskImportances.columns.is_default',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 'id' => 'created_at',
                 'label' => 'taskImportances.columns.created_at',
                 'type' => 'datetime',
@@ -99,6 +108,7 @@ final class TaskImportanceColumnCatalog
             ['columnId' => 'description', 'type' => 'text'],
             ['columnId' => 'sort_order', 'type' => 'number'],
             ['columnId' => 'is_active', 'type' => 'boolean'],
+            ['columnId' => 'is_default', 'type' => 'boolean'],
             ['columnId' => 'created_at', 'type' => 'date'],
         ];
     }

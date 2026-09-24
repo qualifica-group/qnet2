@@ -9,9 +9,11 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\TaskPriorities\CreateTaskPriorityData;
 use App\DataObjects\TaskPriorities\UpdateTaskPriorityData;
 use App\Models\TaskPriority;
+use App\Services\Lookups\DefaultRowManager;
 use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Business logic for the `task-priorities` resource (spec 0101, D-4): one of the four
@@ -34,29 +36,53 @@ class TaskPriorityService
      *
      * @var array<int, string>
      */
-    private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active'];
+    private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active', 'is_default'];
 
-    public function __construct(private readonly LookupOrderManager $orderManager) {}
+    public function __construct(
+        private readonly LookupOrderManager $orderManager,
+        private readonly DefaultRowManager $defaultRow,
+    ) {}
 
     public function create(CreateTaskPriorityData $data): TaskPriority
     {
-        return TaskPriority::create([
-            ...$data->attributes(),
-            'sort_order' => $this->orderManager->placeNew(TaskPriority::class),
-        ]);
+        $this->defaultRow->assertSelectable($data->isDefault, $data->isActive);
+
+        return DB::transaction(function () use ($data): TaskPriority {
+            /** @var TaskPriority $taskPriority */
+            $taskPriority = TaskPriority::create([
+                ...$data->attributes(),
+                'sort_order' => $this->orderManager->placeNew(TaskPriority::class),
+            ]);
+
+            if ($data->isDefault) {
+                $this->defaultRow->clearOthers(TaskPriority::class, $taskPriority->id);
+            }
+
+            return $taskPriority;
+        });
     }
 
     public function update(TaskPriority $taskPriority, UpdateTaskPriorityData $data): TaskPriority
     {
-        $attributes = $data->submittedAttributes();
+        $isDefault = $data->isDefaultSubmitted ? $data->isDefault : $taskPriority->is_default;
+        $isActive = $data->isActiveSubmitted ? $data->isActive : $taskPriority->is_active;
+        $this->defaultRow->assertSelectable($isDefault, $isActive);
 
-        // Unconditional save: fires the model's saved event even when no
-        // native attribute changed, so the HasCustomFields write pipeline
-        // (spec 0021) persists a custom-fields-only edit. A clean save runs
-        // no UPDATE query.
-        $taskPriority->fill($attributes)->save();
+        return DB::transaction(function () use ($taskPriority, $data): TaskPriority {
+            $attributes = $data->submittedAttributes();
 
-        return $taskPriority->fresh();
+            // Unconditional save: fires the model's saved event even when no
+            // native attribute changed, so the HasCustomFields write pipeline
+            // (spec 0021) persists a custom-fields-only edit. A clean save runs
+            // no UPDATE query.
+            $taskPriority->fill($attributes)->save();
+
+            if ($data->isDefaultSubmitted && $data->isDefault) {
+                $this->defaultRow->clearOthers(TaskPriority::class, $taskPriority->id);
+            }
+
+            return $taskPriority->fresh();
+        });
     }
 
     /**

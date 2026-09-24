@@ -88,6 +88,9 @@ export function TaskCategoryDetailView({ taskCategory, onEdit }: TaskCategoryDet
                 <RecordField label={t('taskCategories.detail.isActive')}>
                   {taskCategory.is_active ? t('common.yes') : t('common.no')}
                 </RecordField>
+                <RecordField label={t('taskCategories.detail.parent')}>
+                  {taskCategory.parent ? taskCategory.parent.name : <DetailEmpty />}
+                </RecordField>
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>

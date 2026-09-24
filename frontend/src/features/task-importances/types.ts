@@ -24,6 +24,12 @@ export interface TaskImportanceDetail {
   icon: string | null
   sort_order: number
   is_active: boolean
+  /**
+   * Spec 0154 D-8: at most one row per catalog carries `true` — setting it on
+   * one clears it on every other row server-side. Precompiles the task
+   * form's own field when creation omits it; an inactive default 422s.
+   */
+  is_default: boolean
   created_at: string | null
   updated_at: string | null
 }
@@ -48,6 +54,8 @@ export interface CreateTaskImportancePayload {
   icon?: string | null
   description?: string | null
   is_active?: boolean
+  /** Spec 0154 D-8. */
+  is_default?: boolean
 }
 
 /**

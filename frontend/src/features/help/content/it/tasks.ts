@@ -79,15 +79,44 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Sezione', 'Campi principali'],
           rows: [
-            ['Task', 'Titolo (obbligatorio), Descrizione, Task padre.'],
-            ['Classificazione', 'Stato (obbligatorio), Tipologia, Categoria, Priorità, Importanza.'],
+            ['Task', 'Titolo (obbligatorio), Descrizione, Evidenze, Task padre.'],
+            [
+              'Classificazione',
+              'Stato (facoltativo in creazione: se non lo scegli, parte da quello predefinito), Tipologia, Priorità e Importanza (tutte e tre obbligatorie, precompilate con la voce predefinita del catalogo), Categoria (ad albero, indentata, puoi scegliere anche una categoria padre).',
+            ],
             ['Anagrafica e referente', 'Anagrafica, Referente (tra quelli dell\'anagrafica).'],
-            ['Persone', 'Richiedente (obbligatorio), Assegnatari (almeno uno), Osservatori.'],
-            ['Pianificazione', 'Data inizio, Data fine (obbligatoria), orari, Tempo stimato (minuti).'],
-            ['Record collegati', 'Opportunità o Commessa; con una Commessa, la Fase in cui mettere il task (solo fasi aperte, non per i sottotask).'],
-            ['Chiusura', 'Feedback obbligatorio, Validazione.'],
+            [
+              'Persone',
+              'Richiedente (obbligatorio), Assegnatari (almeno uno), Osservatori, Task privato, Non inviare notifica di apertura.',
+            ],
+            ['Pianificazione', 'Data inizio, Data fine (obbligatoria, precompilata a oggi), orari, Tempo stimato (minuti).'],
+            [
+              'Record collegati',
+              'Opportunità, Commessa o Lead (si escludono a vicenda tra Opportunità e Commessa; scegliere una Commessa imposta l\'anagrafica); con una Commessa, la Fase in cui mettere il task (solo fasi aperte, non per i sottotask).',
+            ],
+            ['Chiusura', 'Feedback obbligatorio, Validazione, Crea già completato (solo in creazione).'],
             ['Ricorrenza', 'Frequenza e fine della ripetizione.'],
           ],
+        },
+        {
+          type: 'note',
+          text: 'Lo **Stato** iniziale scelto a mano deve essere uno stato di lavorazione: gli stati di chiusura, quelli "da validare" e quelli raggiungibili solo da un\'azione (es. Completa) non sono selezionabili in creazione.',
+        },
+        {
+          type: 'note',
+          text: 'Un **Task privato** è visibile solo al creatore, al richiedente, agli assegnatari e agli osservatori: chi ha il permesso Visualizza tutti o Visualizza per sede non lo vede (il super-amministratore resta l\'unica eccezione).',
+        },
+        {
+          type: 'note',
+          text: 'Attivando **Crea già completato**, il task nasce già chiuso con esito positivo: viene registrato subito un segnatempo con i minuti stimati (anche 0), senza passare dalla validazione. Non è compatibile con Feedback obbligatorio o Validazione senza il relativo feedback.',
+        },
+        {
+          type: 'tip',
+          text: 'Per impostazione predefinita gli assegnatari e gli osservatori ricevono la notifica di assegnazione alla creazione: attiva **Non inviare notifica di apertura** per crearlo senza avvisarli. In modifica la stessa idea si chiama **Non notificare i nuovi assegnati** e riguarda solo chi aggiungi con quel salvataggio.',
+        },
+        {
+          type: 'note',
+          text: 'Cambiare l\'**Anagrafica** azzera Referente, Opportunità e Lead, e mantiene la Commessa solo se appartiene alla stessa anagrafica. Opportunità, Commessa e Lead mostrano solo i record dell\'anagrafica scelta, una volta che ne hai scelta una.',
         },
       ],
     },

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { isTaskStatusOptionDisabled } from '@/features/tasks/task-status-option-availability'
+import {
+  isTaskStatusOptionDisabled,
+  isTaskStatusOptionDisabledOnCreate,
+} from '@/features/tasks/task-status-option-availability'
 import type { TaskStatusForSelectItem } from '@/features/tasks/for-select-api'
 
 function statusOption(overrides: Partial<TaskStatusForSelectItem['meta']> = {}): TaskStatusForSelectItem {
@@ -44,5 +47,23 @@ describe('isTaskStatusOptionDisabled', () => {
 
   it('never disables an option carrying no meta (route not yet registered)', () => {
     expect(isTaskStatusOptionDisabled({ id: 9, label: 'Senza meta' }, false)).toBe(false)
+  })
+})
+
+/** Spec 0154 D-10: pure mirror of which Stato options a manual pick on CREATE could never reach. */
+describe('isTaskStatusOptionDisabledOnCreate', () => {
+  it('disables every closing/in-validation group, with no close_via_status exception', () => {
+    expect(isTaskStatusOptionDisabledOnCreate(statusOption({ group: 'in_validation' }))).toBe(true)
+    expect(isTaskStatusOptionDisabledOnCreate(statusOption({ group: 'closed_positive' }))).toBe(true)
+    expect(isTaskStatusOptionDisabledOnCreate(statusOption({ group: 'closed_negative' }))).toBe(true)
+  })
+
+  it('leaves open/pending selectable', () => {
+    expect(isTaskStatusOptionDisabledOnCreate(statusOption({ group: 'open' }))).toBe(false)
+    expect(isTaskStatusOptionDisabledOnCreate(statusOption({ group: 'pending' }))).toBe(false)
+  })
+
+  it('never disables an option carrying no meta (route not yet registered)', () => {
+    expect(isTaskStatusOptionDisabledOnCreate({ id: 9, label: 'Senza meta' })).toBe(false)
   })
 })

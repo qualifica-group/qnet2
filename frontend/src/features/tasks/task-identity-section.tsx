@@ -80,6 +80,20 @@ export function TaskIdentitySection({
         )}
       </MetaField>
 
+      {/* Spec 0154 D-3: free rich text, sanitized like `description` server-side; same editor, own field. */}
+      <MetaField control={control} name="evidence" metaKey="evidence" label={t('tasks.form.evidence')}>
+        {({ field, disabled }) => (
+          <FormControl>
+            <RichTextEditor
+              placeholder={t('tasks.form.evidencePlaceholder')}
+              disabled={disabled}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          </FormControl>
+        )}
+      </MetaField>
+
       <RelationSelectField
         control={control}
         name="parent_task_id"

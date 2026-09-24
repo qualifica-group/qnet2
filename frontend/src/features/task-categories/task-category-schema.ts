@@ -39,6 +39,9 @@ function baseFields(t: TFunction) {
       .string()
       .refine((name) => name === '' || isKnownIconName(name), t('taskCategories.form.iconInvalid')),
     is_active: z.boolean(),
+    // Spec 0154 D-1: nullable, no client-side cycle check beyond the picker's
+    // own `isItemDisabled` (UX only) — the server's guard is the real 422.
+    parent_id: z.number().nullable(),
   }
 }
 

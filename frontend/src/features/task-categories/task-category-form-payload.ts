@@ -18,6 +18,7 @@ export function buildCreatePayload(values: TaskCategoryFormValues): CreateTaskCa
     icon: iconValue(values.icon),
     description: values.description,
     is_active: values.is_active,
+    parent_id: values.parent_id,
   }
 }
 
@@ -46,6 +47,9 @@ export function buildUpdatePayload(
   }
   if (values.is_active !== original.is_active) {
     payload.is_active = values.is_active
+  }
+  if (values.parent_id !== original.parent_id) {
+    payload.parent_id = values.parent_id
   }
 
   return payload

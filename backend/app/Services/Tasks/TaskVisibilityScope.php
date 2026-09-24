@@ -6,6 +6,7 @@ namespace App\Services\Tasks;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Services\RoleAssignmentGuard;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -21,6 +22,17 @@ use Illuminate\Database\Eloquent\Builder;
  * membership tier, never a replacement, and a ROW gate only: what may be done
  * to the Task is still decided by TaskAbilityResolver's record-role matrix.
  * A Task with no assignee, or an actor with no Sede, never matches the tier.
+ *
+ * Spec 0154 D-2 adds `is_private`: a PRIVATE Task narrows BOTH wider tiers at
+ * once — `viewAll` and `viewSite` see it ONLY through the membership tier,
+ * never through the resource permission or the shared-Sede bypass — while
+ * leaving the membership tier itself untouched (creator/requester/assignee/
+ * watcher always see their own Task, private or not). The super-admin is the
+ * one deliberate exception (Gate::before bypasses every ability check, which
+ * is why this class cannot tell "true super-admin" from "holds `viewAll`"
+ * through `->can()` alone — `hasRole()` is the real, un-bypassed signal),
+ * checked FIRST and unconditionally, mirroring RoleAssignmentGuard's own
+ * convention for the same role name.
  *
  * The rule NARROWS, it never widens: being an assegnatario does not grant
  * `tasks.view` — the resource permission is still required (AC-062), exactly
@@ -54,7 +66,7 @@ final class TaskVisibilityScope
      */
     public static function scopeToActor(Builder $query, ?User $user): Builder
     {
-        if ($user?->can(self::VIEW_ALL_PERMISSION)) {
+        if ($user?->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE)) {
             return $query;
         }
 
@@ -62,18 +74,29 @@ final class TaskVisibilityScope
             return $query->whereNull('tasks.id');
         }
 
+        $hasViewAll = $user->can(self::VIEW_ALL_PERMISSION);
         $siteIds = self::actorSiteIds($user);
 
-        return $query->where(function (Builder $scoped) use ($user, $siteIds): void {
+        return $query->where(function (Builder $scoped) use ($user, $siteIds, $hasViewAll): void {
             $scoped
                 ->where('tasks.creator_id', $user->id)
                 ->orWhere('tasks.requester_id', $user->id)
                 ->orWhereHas('assignees', fn (Builder $assignees) => $assignees->whereKey($user->id))
-                ->orWhereHas('watchers', fn (Builder $watchers) => $watchers->whereKey($user->id))
-                ->when($siteIds !== [], fn (Builder $bySite) => $bySite->orWhereHas(
-                    'assignees.employment.operationalSites',
-                    fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds),
-                ));
+                ->orWhereHas('watchers', fn (Builder $watchers) => $watchers->whereKey($user->id));
+
+            // D-2 (spec 0154): both wider tiers below see a PRIVATE Task
+            // ONLY through the membership branch above — never through
+            // `viewAll` nor the shared-Sede bypass.
+            if ($hasViewAll) {
+                $scoped->orWhere('tasks.is_private', false);
+            } elseif ($siteIds !== []) {
+                $scoped->orWhere(function (Builder $bySite) use ($siteIds): void {
+                    $bySite->where('tasks.is_private', false)->whereHas(
+                        'assignees.employment.operationalSites',
+                        fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds),
+                    );
+                });
+            }
         });
     }
 
@@ -86,7 +109,7 @@ final class TaskVisibilityScope
      */
     public static function isVisibleTo(User $user, Task $task): bool
     {
-        if ($user->can(self::VIEW_ALL_PERMISSION)) {
+        if ($user->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE)) {
             return true;
         }
 
@@ -96,6 +119,16 @@ final class TaskVisibilityScope
 
         if ($task->relationLoaded('assignees') && $task->relationLoaded('watchers')) {
             if ($task->assignees->contains('id', $user->id) || $task->watchers->contains('id', $user->id)) {
+                return true;
+            }
+
+            // D-2 (spec 0154): neither wider tier below ever reaches a
+            // PRIVATE Task once membership above has already failed.
+            if ($task->is_private) {
+                return false;
+            }
+
+            if ($user->can(self::VIEW_ALL_PERMISSION)) {
                 return true;
             }
 

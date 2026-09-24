@@ -88,6 +88,9 @@ export function TaskImportanceDetailView({ taskImportance, onEdit }: TaskImporta
                 <RecordField label={t('taskImportances.detail.isActive')}>
                   {taskImportance.is_active ? t('common.yes') : t('common.no')}
                 </RecordField>
+                <RecordField label={t('taskImportances.detail.isDefault')}>
+                  {taskImportance.is_default ? t('common.yes') : t('common.no')}
+                </RecordField>
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>

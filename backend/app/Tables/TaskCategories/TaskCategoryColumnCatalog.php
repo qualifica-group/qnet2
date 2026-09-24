@@ -14,6 +14,11 @@ namespace App\Tables\TaskCategories;
  * are a swatch and a glyph name, not meaningful ordering/filter axes
  * (mirrors ContractStatusColumnCatalog's own choice for `color`).
  * `description` is filterable but not sortable (free text).
+ *
+ * `parent` (spec 0154, D-1) is DERIVED — no real `parent` DB column, only
+ * `parent_id` — the related parent's name, mirroring
+ * ProductCategoryColumnCatalog's own `parent` entry; its filter/sort/
+ * distinct-values resolution is delegated to TaskCategoriesTableDefinition.
  */
 final class TaskCategoryColumnCatalog
 {
@@ -33,6 +38,15 @@ final class TaskCategoryColumnCatalog
                 'filterType' => 'text',
                 // Global quick-search spans this real column (spec 0009).
                 'searchable' => true,
+            ],
+            [
+                'id' => 'parent',
+                'label' => 'taskCategories.columns.parent',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
             ],
             [
                 'id' => 'description',
@@ -96,6 +110,7 @@ final class TaskCategoryColumnCatalog
     {
         return [
             ['columnId' => 'name', 'type' => 'text'],
+            ['columnId' => 'parent', 'type' => 'set'],
             ['columnId' => 'description', 'type' => 'text'],
             ['columnId' => 'sort_order', 'type' => 'number'],
             ['columnId' => 'is_active', 'type' => 'boolean'],

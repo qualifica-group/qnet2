@@ -46,21 +46,24 @@ function dilEffectiveCodes(AttributeContext $context): array
 
 /**
  * Rewinds "DIL" to what the previous revision seeded: "Corso Scelto" assigned
- * in place of the two course fields, and each layout composed from the rows
- * as they stood then — "Corso Scelto" leading, ahead of today's rows.
+ * in place of the two course fields, "Residuo Ore" not yet there (it joined on
+ * 2026-09-24), and each layout composed from the rows as they stood then —
+ * "Corso Scelto" leading, ahead of today's rows.
  */
 function rewindDilToChosenCourse(): void
 {
     $dil = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::DIL_CATEGORY)->firstOrFail();
     $chosenCourse = Attribute::query()->create(['code' => 'chosen_course', 'name' => 'Corso Scelto', 'type' => 'text']);
-    $courseFieldIds = Attribute::query()->whereIn('code', ['id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE])->pluck('id');
+    $laterFieldIds = Attribute::query()
+        ->whereIn('code', ['id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE, ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS])
+        ->pluck('id');
     $service = app(AttributeLayoutService::class);
 
     foreach (DIL_LAYOUT_CONTEXTS as $context) {
         DB::table('attribute_category')
             ->where('category_id', $dil->id)
             ->where('context', $context->value)
-            ->whereIn('attribute_id', $courseFieldIds)
+            ->whereIn('attribute_id', $laterFieldIds)
             ->delete();
         $dil->attributes()->attach($chosenCourse->id, ['context' => $context->value, 'is_required' => false, 'sort_order' => 0]);
 
@@ -133,6 +136,7 @@ it('converges an installation seeded while "DIL" still carried "Corso Scelto"', 
     expect(array_merge(...dilContactRows(AttributeContext::Quote)))->toBe([
         'data_scelta_cpi', 'data_app_apl',
         'dote_activation_date', 'dote_expiry_date',
+        ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS,
         'subsidy_type',
         'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
     ]);

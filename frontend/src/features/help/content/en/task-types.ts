@@ -22,7 +22,12 @@ const guide: HelpGuide = {
             ['Color', 'Required.'],
             ['Icon', 'Optional.'],
             ['Active', 'When off, the entry disappears from the dropdowns.'],
+            ['Default', 'When on, prefills the Type field on new tasks when none is chosen.'],
           ],
+        },
+        {
+          type: 'note',
+          text: 'Only one type at a time can be the default: turning it on for one automatically turns it off for every other. A deactivated type cannot be the default.',
         },
       ],
     },

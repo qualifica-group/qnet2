@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Control } from 'react-hook-form'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
@@ -48,6 +49,12 @@ interface TaskLookupSelectFieldProps {
   forceDisabled?: boolean
   onItemChange?: (item: ForSelectItem | null) => void
   isItemDisabled?: (item: ForSelectItem) => boolean
+  /**
+   * Overrides the default plain badge (`renderLookupBadge`) — the category
+   * field (spec 0154 D-1) passes its own tree-indented renderer here instead
+   * of duplicating the whole field.
+   */
+  renderItem?: (item: ForSelectItem) => ReactNode
 }
 
 /**
@@ -56,7 +63,12 @@ interface TaskLookupSelectFieldProps {
  * text label. Pure presentation over `RelationSelectField`: authorization,
  * search, pagination and hydration stay those of the generic picker.
  */
-export function TaskLookupSelectField({ selected, name, ...props }: TaskLookupSelectFieldProps) {
+export function TaskLookupSelectField({
+  selected,
+  name,
+  renderItem = renderLookupBadge,
+  ...props
+}: TaskLookupSelectFieldProps) {
   const selectLabels = useTaskSelectLabels()
 
   return (
@@ -64,7 +76,7 @@ export function TaskLookupSelectField({ selected, name, ...props }: TaskLookupSe
       name={name}
       metaKey={name}
       selected={hydrationRefOf(selected)}
-      renderItem={renderLookupBadge}
+      renderItem={renderItem}
       {...selectLabels}
       {...props}
     />

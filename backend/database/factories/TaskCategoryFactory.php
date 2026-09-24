@@ -28,11 +28,20 @@ class TaskCategoryFactory extends Factory
     {
         return [
             'name' => fake()->unique()->words(2, true),
+            'parent_id' => null,
             'description' => null,
             'color' => fake()->randomElement(BadgeTokens::colors()),
             'icon' => null,
             'sort_order' => self::$nextSortOrder++,
             'is_active' => true,
         ];
+    }
+
+    /**
+     * A category nested under $parent (spec 0154, D-1).
+     */
+    public function childOf(TaskCategory $parent): static
+    {
+        return $this->state(fn (): array => ['parent_id' => $parent->id]);
     }
 }

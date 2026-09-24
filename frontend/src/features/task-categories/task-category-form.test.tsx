@@ -45,6 +45,7 @@ const ALL_EDITABLE: ResourcePermissions = {
     color: EDITABLE,
     icon: EDITABLE,
     is_active: EDITABLE,
+    parent_id: EDITABLE,
   },
   actions: {},
 }
@@ -82,6 +83,8 @@ function taskCategory(
     icon: 'star',
     sort_order: 3,
     is_active: true,
+    parent_id: null,
+    parent: null,
     created_at: null,
     updated_at: null,
     permissions: ALL_EDITABLE,
@@ -171,6 +174,7 @@ describe('TaskCategoryForm — create (spec 0101)', () => {
       icon: null,
       description: null,
       is_active: true,
+      parent_id: null,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(taskCategory()))
   })

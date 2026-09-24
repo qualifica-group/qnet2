@@ -79,15 +79,44 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Section', 'Main fields'],
           rows: [
-            ['Task', 'Title (required), Description, Parent task.'],
-            ['Classification', 'Status (required), Type, Category, Priority, Importance.'],
+            ['Task', 'Title (required), Description, Evidence, Parent task.'],
+            [
+              'Classification',
+              "Status (optional on create: when left unpicked, it starts from the default one), Type, Priority and Importance (all three required, prefilled from the catalog's default row), Category (a tree, indented — you can also pick a parent category).",
+            ],
             ['Account and contact', "Account, Contact (among the account's own)."],
-            ['People', 'Requested by (required), Assignees (at least one), Watchers.'],
-            ['Scheduling', 'Start date, Due date (required), times, Estimated time (minutes).'],
-            ['Linked records', 'Opportunity or Work order; with a Work order, the Phase to place the task in (open phases only, not for subtasks).'],
-            ['Closure', 'Feedback required, Validation.'],
+            [
+              'People',
+              'Requested by (required), Assignees (at least one), Watchers, Private task, Do not send the opening notification.',
+            ],
+            ['Scheduling', "Start date, Due date (required, prefilled to today), times, Estimated time (minutes)."],
+            [
+              'Linked records',
+              'Opportunity, Work order or Lead (Opportunity and Work order exclude each other; picking a Work order sets the account); with a Work order, the Phase to place the task in (open phases only, not for subtasks).',
+            ],
+            ['Closure', 'Feedback required, Validation, Create already completed (create only).'],
             ['Recurrence', 'Frequency and end of the repetition.'],
           ],
+        },
+        {
+          type: 'note',
+          text: "A manually picked initial **Status** must be a working one: closing statuses, \"to validate\" ones and statuses reachable only from an action (e.g. Complete) are not selectable on create.",
+        },
+        {
+          type: 'note',
+          text: 'A **Private task** is visible only to its creator, requester, assignees and watchers: the View all and View by site permissions do not show it (the super-admin stays the one exception).',
+        },
+        {
+          type: 'note',
+          text: 'Turning on **Create already completed** makes the task born already closed with a positive outcome: a time entry with the estimated minutes (even 0) is logged right away, without going through validation. It is not compatible with Feedback required or Validation without the matching feedback.',
+        },
+        {
+          type: 'tip',
+          text: 'By default assignees and watchers get the assignment notification on create: turn on **Do not send the opening notification** to create it without alerting them. On edit the same idea is called **Do not notify the newly assigned** and only covers whoever you add with that save.',
+        },
+        {
+          type: 'note',
+          text: 'Changing the **Account** clears Contact, Opportunity and Lead, and keeps the Work order only when it belongs to the same account. Opportunity, Work order and Lead only list the records of the chosen account once you picked one.',
         },
       ],
     },

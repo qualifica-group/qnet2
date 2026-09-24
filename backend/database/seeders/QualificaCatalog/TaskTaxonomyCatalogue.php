@@ -87,6 +87,17 @@ final class TaskTaxonomyCatalogue
     ];
 
     /**
+     * The client's chosen defaults (spec 0154, D-8): the row a new Task
+     * falls back to when the field is omitted. Names, not ids — matched the
+     * same way as every other row here, by the natural `name` key.
+     */
+    public const string DEFAULT_TYPE = 'Attività';
+
+    public const string DEFAULT_PRIORITY = 'Media';
+
+    public const string DEFAULT_IMPORTANCE = 'Media';
+
+    /**
      * The client's ORDINARY statuses, in the order they are worked through:
      * name, phase, color, icon, completion percentage. None of them carries
      * a `system_key` — they are renameable, reorderable and deletable from

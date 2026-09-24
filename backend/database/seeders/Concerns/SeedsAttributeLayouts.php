@@ -126,7 +126,7 @@ trait SeedsAttributeLayouts
 
     /**
      * The effective sets a layout of $category may have been composed
-     * against: today's, plus the one a previous revision resolved when the
+     * against: today's, plus the one each previous revision resolved when the
      * category's OWN assignments have changed since
      * (ContactProcessingAttributeCatalogue::PREVIOUS_OWN_ATTRIBUTES). Retired
      * codes are left out, as the retirement strips them from the blob.
@@ -140,16 +140,21 @@ trait SeedsAttributeLayouts
         AttributeContext $context,
         array $effective,
     ): array {
-        $previousOwn = ContactProcessingAttributeCatalogue::PREVIOUS_OWN_ATTRIBUTES[$category->name] ?? null;
+        $previousRevisions = ContactProcessingAttributeCatalogue::PREVIOUS_OWN_ATTRIBUTES[$category->name] ?? [];
 
-        if ($previousOwn === null) {
+        if ($previousRevisions === []) {
             return [$effective];
         }
 
         $inherited = $hierarchy->ancestorAttributes($category, $context)->pluck('code')->all();
-        $previous = array_diff([...$inherited, ...$previousOwn], ContactProcessingAttributeCatalogue::RETIRED_ATTRIBUTES);
+        $revisions = [$effective];
 
-        return [$effective, array_values(array_unique($previous))];
+        foreach ($previousRevisions as $previousOwn) {
+            $previous = array_diff([...$inherited, ...$previousOwn], ContactProcessingAttributeCatalogue::RETIRED_ATTRIBUTES);
+            $revisions[] = array_values(array_unique($previous));
+        }
+
+        return $revisions;
     }
 
     /**

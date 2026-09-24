@@ -15,6 +15,10 @@ namespace App\DataObjects\TaskCategories;
  * `color` is REQUIRED and is a palette TOKEN of App\Support\BadgeTokens,
  * never a hex value; `icon` is nullable and comes from the same curated
  * server-side allow-list (D-4).
+ *
+ * `parentId` (spec 0154, D-1): null = a root category. A cycle is
+ * structurally impossible on create (the category has no id yet), so no
+ * guard is needed here, unlike the update path.
  */
 final readonly class CreateTaskCategoryData
 {
@@ -24,6 +28,7 @@ final readonly class CreateTaskCategoryData
         public string $color,
         public ?string $icon,
         public bool $isActive,
+        public ?int $parentId,
     ) {}
 
     /**
@@ -39,6 +44,7 @@ final readonly class CreateTaskCategoryData
             color: (string) $data['color'],
             icon: array_key_exists('icon', $data) ? $data['icon'] : null,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+            parentId: isset($data['parent_id']) ? (int) $data['parent_id'] : null,
         );
     }
 
@@ -56,6 +62,7 @@ final readonly class CreateTaskCategoryData
             'color' => $this->color,
             'icon' => $this->icon,
             'is_active' => $this->isActive,
+            'parent_id' => $this->parentId,
         ];
     }
 }

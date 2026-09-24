@@ -7,10 +7,12 @@ import { FormControl } from '@/components/ui/form'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
+import { LEADS_FOR_SELECT_RESOURCE } from '@/features/leads/for-select-api'
 import { OPPORTUNITIES_FOR_SELECT_RESOURCE } from '@/features/opportunities/for-select-api'
 import { useTaskSelectLabels } from '@/features/tasks/task-select-labels'
 import { useTaskWorkOrderStageOptions } from '@/features/tasks/use-task-work-order-stage-options'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
+import type { ForSelectItem } from '@/features/for-select/types'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
 import type { TaskWorkOrderStageRef } from '@/features/tasks/types'
 
@@ -31,35 +33,53 @@ const NO_STAGE_VALUE = '__no_stage__'
 
 interface TaskLinksSectionProps {
   control: Control<TaskFormValues>
-  /** Edit-mode hydration of the two optional links. */
+  /** Edit-mode hydration of the three optional links. */
   opportunity: RelationFieldRef | null
   workOrder: RelationFieldRef | null
+  lead: RelationFieldRef | null
   /** Edit-mode hydration of the persisted fase, possibly closed (spec 0146 D-3, `useTaskWorkOrderStageOptions` keeps it selectable). */
   workOrderStage: TaskWorkOrderStageRef | null
   /** D-3: the fase belongs to the commessa, so a pick/clear here invalidates whatever fase was selected. */
   onWorkOrderChange: () => void
+  /** Spec 0154 D-11: picking a commessa clears the opportunita' and sets the registry from its own `meta.registry_id`. */
+  onWorkOrderItemChange: (item: ForSelectItem | null) => void
+  /** Spec 0154 D-11: picking an opportunita' clears the commessa (and its fase). */
+  onOpportunityChange: (nextOpportunityId: number | null) => void
 }
 
 /**
- * "Collegamenti": the optional Opportunita' and Commessa a task may hang off,
- * plus the Commessa's own "Fase" (spec 0146 D-3) — visible only once a
- * commessa is picked AND the task has no parent (a sub-task's fase is
- * `prohibited` server-side). The fase list is the commessa's OPEN fasi plus
- * the persisted one so an edit form never strands on a value it can no
- * longer resubmit (`useTaskWorkOrderStageOptions`).
+ * "Collegamenti": the optional Opportunita', Commessa and Lead (spec 0154
+ * D-4) a task may hang off, plus the Commessa's own "Fase" (spec 0146 D-3) —
+ * visible only once a commessa is picked AND the task has no parent (a
+ * sub-task's fase is `prohibited` server-side). The fase list is the
+ * commessa's OPEN fasi plus the persisted one so an edit form never strands
+ * on a value it can no longer resubmit (`useTaskWorkOrderStageOptions`).
+ *
+ * Spec 0154 D-11: Opportunita', Commessa and Lead are all scoped to the
+ * chosen Anagrafica once one is picked (`params.registry_id`) — unfiltered
+ * (every option) while none is, since picking a Commessa is itself how an
+ * Anagrafica-less task acquires one (`onWorkOrderItemChange`, wired in
+ * `useTaskForm`). Commessa and Opportunita' stay mutually exclusive:
+ * `onWorkOrderItemChange`/`onOpportunityChange` clear one another on an
+ * actual pick, the server 422s if both ever reach it regardless.
  */
 export function TaskLinksSection({
   control,
   opportunity,
   workOrder,
+  lead,
   workOrderStage,
   onWorkOrderChange,
+  onWorkOrderItemChange,
+  onOpportunityChange,
 }: TaskLinksSectionProps) {
   const { t } = useTranslation()
   const selectLabels = useTaskSelectLabels()
+  const registryId = useWatch({ control, name: 'registry_id' })
   const workOrderId = useWatch({ control, name: 'work_order_id' })
   const parentTaskId = useWatch({ control, name: 'parent_task_id' })
   const showStageField = workOrderId !== null && parentTaskId === null
+  const registryScopedParams = registryId !== null ? { registry_id: registryId } : undefined
   // D-3: a sub-task can never show this field, so there is nothing to fetch
   // options for either — `enabled: false` inside the hook, no wasted request.
   const { options: stageOptions, isLoading: stagesLoading } = useTaskWorkOrderStageOptions(
@@ -82,6 +102,8 @@ export function TaskLinksSection({
           resource={OPPORTUNITIES_FOR_SELECT_RESOURCE}
           searchPlaceholder={t('tasks.form.opportunitySearch')}
           selected={opportunity}
+          onValueChange={onOpportunityChange}
+          params={registryScopedParams}
           {...selectLabels}
         />
 
@@ -94,6 +116,8 @@ export function TaskLinksSection({
           searchPlaceholder={t('tasks.form.workOrderSearch')}
           selected={workOrder}
           onValueChange={onWorkOrderChange}
+          onItemChange={onWorkOrderItemChange}
+          params={registryScopedParams}
           // `work-orders/for-select` is narrowed by `WorkOrderVisibilityScope`
           // and `ids[]` deliberately does NOT bypass it, so the linked
           // commessa may be missing from the options. Pinning the persisted
@@ -102,6 +126,19 @@ export function TaskLinksSection({
           // (D-9 does not obscure linked-record labels): nothing new is
           // disclosed.
           pinned={workOrder}
+          {...selectLabels}
+        />
+
+        <RelationSelectField
+          control={control}
+          name="lead_id"
+          metaKey="lead_id"
+          label={t('tasks.form.lead')}
+          hint={t('tasks.form.hints.leadScoped')}
+          resource={LEADS_FOR_SELECT_RESOURCE}
+          searchPlaceholder={t('tasks.form.leadSearch')}
+          selected={lead}
+          params={registryScopedParams}
           {...selectLabels}
         />
 

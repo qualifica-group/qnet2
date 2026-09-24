@@ -28,6 +28,8 @@ final readonly class UpdateTaskImportanceData
         public bool $iconSubmitted = false,
         public ?bool $isActive = null,
         public bool $isActiveSubmitted = false,
+        public ?bool $isDefault = null,
+        public bool $isDefaultSubmitted = false,
     ) {}
 
     /**
@@ -46,6 +48,8 @@ final readonly class UpdateTaskImportanceData
             iconSubmitted: array_key_exists('icon', $data),
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
             isActiveSubmitted: array_key_exists('is_active', $data),
+            isDefault: array_key_exists('is_default', $data) ? (bool) $data['is_default'] : null,
+            isDefaultSubmitted: array_key_exists('is_default', $data),
         );
     }
 
@@ -77,6 +81,10 @@ final readonly class UpdateTaskImportanceData
 
         if ($this->isActiveSubmitted) {
             $attributes['is_active'] = $this->isActive;
+        }
+
+        if ($this->isDefaultSubmitted) {
+            $attributes['is_default'] = $this->isDefault;
         }
 
         return $attributes;

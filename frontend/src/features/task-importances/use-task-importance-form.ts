@@ -26,6 +26,7 @@ const SERVER_ERROR_FIELDS = [
   'color',
   'icon',
   'is_active',
+  'is_default',
 ] as const
 
 export type TaskImportanceFormValues = CreateTaskImportanceFormValues & UpdateTaskImportanceFormValues
@@ -61,6 +62,7 @@ export function useTaskImportanceForm({ mode, onSuccess }: UseTaskImportanceForm
         color: mode.taskImportance.color,
         icon: mode.taskImportance.icon ?? '',
         is_active: mode.taskImportance.is_active,
+        is_default: mode.taskImportance.is_default,
       }
     }
     return {
@@ -69,6 +71,7 @@ export function useTaskImportanceForm({ mode, onSuccess }: UseTaskImportanceForm
       color: '',
       icon: '',
       is_active: true,
+      is_default: false,
     }
   }, [mode])
 

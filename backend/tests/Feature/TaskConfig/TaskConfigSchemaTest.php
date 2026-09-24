@@ -53,9 +53,14 @@ it('AC-001: each pure lookup has the declared columns, name unique, color NOT NU
 
     DB::table($table)->insert(['name' => 'Primo', 'color' => 'blue', 'created_at' => now(), 'updated_at' => now()]);
 
-    // name is UNIQUE...
-    expect(fn () => DB::table($table)->insert(['name' => 'Primo', 'color' => 'red', 'created_at' => now(), 'updated_at' => now()]))
-        ->toThrow(QueryException::class);
+    // name is UNIQUE (task_categories excepted — spec 0154, D-1 turns this
+    // into a composite (parent_id, name) index, asserted separately below,
+    // since a plain `name` duplicate with the SAME NULL parent_id is not
+    // rejected by this bare unique-on-name assertion)...
+    if ($table !== 'task_categories') {
+        expect(fn () => DB::table($table)->insert(['name' => 'Primo', 'color' => 'red', 'created_at' => now(), 'updated_at' => now()]))
+            ->toThrow(QueryException::class);
+    }
 
     // ...color is NOT NULL...
     expect(fn () => DB::table($table)->insert(['name' => 'Secondo', 'color' => null, 'created_at' => now(), 'updated_at' => now()]))
@@ -68,6 +73,38 @@ it('AC-001: each pure lookup has the declared columns, name unique, color NOT NU
         ->and((int) $row->sort_order)->toBe(0)
         ->and((bool) $row->is_active)->toBeTrue();
 })->with('pureTaskLookups');
+
+// ---------------------------------------------------------------------------
+// AC-001 (D-1) — task_categories' own `parent_id` + composite unique index
+// ---------------------------------------------------------------------------
+
+it('AC-001 (D-1): task_categories has parent_id, restrictOnDelete, and name unique PER PARENT rather than globally', function (): void {
+    expect(Schema::hasColumn('task_categories', 'parent_id'))->toBeTrue();
+
+    $parent = DB::table('task_categories')->insertGetId(['name' => 'Padre', 'color' => 'blue', 'created_at' => now(), 'updated_at' => now()]);
+
+    DB::table('task_categories')->insert(['name' => 'Figlia', 'parent_id' => $parent, 'color' => 'blue', 'created_at' => now(), 'updated_at' => now()]);
+
+    // Two rows with the SAME non-null parent_id and the same name collide on
+    // the composite (parent_id, name) index...
+    expect(fn () => DB::table('task_categories')->insert(['name' => 'Figlia', 'parent_id' => $parent, 'color' => 'red', 'created_at' => now(), 'updated_at' => now()]))
+        ->toThrow(QueryException::class);
+
+    // ...but a unique index treats every NULL parent_id as DISTINCT (ANSI
+    // SQL, not a SQLite/MySQL quirk): two ROOT rows sharing a name are NOT
+    // rejected at the schema layer — root-level uniqueness is enforced by
+    // StoreTaskCategoryRequest/UpdateTaskCategoryRequest instead (D-1), which
+    // is exactly why the migration's own docblock calls this out.
+    DB::table('task_categories')->insert(['name' => 'Radice', 'color' => 'blue', 'created_at' => now(), 'updated_at' => now()]);
+
+    expect(fn () => DB::table('task_categories')->insert(['name' => 'Radice', 'color' => 'red', 'created_at' => now(), 'updated_at' => now()]))
+        ->not->toThrow(QueryException::class);
+
+    // A parent still parenting a row cannot be deleted at the schema layer
+    // either (restrictOnDelete), defense in depth alongside the Service guard.
+    expect(fn () => DB::table('task_categories')->where('id', $parent)->delete())
+        ->toThrow(QueryException::class);
+});
 
 it('AC-001: down() drops the pure lookup, up() recreates it empty', function (string $table, string $migrationFile) {
     $migration = require database_path("migrations/{$migrationFile}");

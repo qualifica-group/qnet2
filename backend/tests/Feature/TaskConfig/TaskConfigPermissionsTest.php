@@ -192,6 +192,17 @@ it('AC-051: the meta exposes the configurator fields, with completion_percentage
         $expected[] = 'group';
     }
 
+    // Spec 0154: D-1 adds the nested-category picker to task-categories;
+    // D-8 adds the default-row flag to the three configurators that carry
+    // `is_default` (task-categories does not — it nests instead).
+    if ($resource === 'task-categories') {
+        $expected[] = 'parent_id';
+    }
+
+    if (in_array($resource, ['task-types', 'task-priorities', 'task-importances'], true)) {
+        $expected[] = 'is_default';
+    }
+
     expect($keys)->toEqualCanonicalizing($expected)
         // sort_order and system_key are server-managed: never permissionable,
         // never submittable (AC-045).

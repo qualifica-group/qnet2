@@ -24,6 +24,9 @@ use Illuminate\Http\Request;
  * chain is incomplete. The segnatempo form's cascading select reads it to
  * set the Cliente the moment a Commessa is chosen, mirroring the `{id, name}`
  * shape OpportunityForSelectResource already uses for its own relation refs.
+ * `meta.registry_id` (spec 0154, D-11) is the SAME chain flattened to a bare
+ * id: the Task form picks a commessa and needs to filter/set its own
+ * `registry_id` field without unpacking the nested object.
  *
  * @mixin WorkOrder
  */
@@ -44,6 +47,7 @@ class WorkOrderForSelectResource extends ForSelectResource
             'label' => $title === '' ? (string) $this->code : $this->code.self::LABEL_SEPARATOR.$title,
             'meta' => [
                 'registry' => $this->registryRef($this->quote?->opportunity?->registry),
+                'registry_id' => $this->quote?->opportunity?->registry_id,
             ],
         ];
     }

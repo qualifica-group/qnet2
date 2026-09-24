@@ -16,6 +16,12 @@ namespace App\DataObjects\TaskCategories;
  * value always means "submitted" and they need no flag of their own.
  *
  * `sort_order` is GONE — server-managed (AC-045).
+ *
+ * `parentId` (spec 0154, D-1) is null on a legitimate "move to root", so it
+ * carries its own `*Submitted` flag like `description`/`icon`/`is_active`.
+ * The anti-cycle guard (parent_id cannot be the category itself nor one of
+ * its own descendants) is enforced by TaskCategoryService, not here — it
+ * needs to walk the tree.
  */
 final readonly class UpdateTaskCategoryData
 {
@@ -28,6 +34,8 @@ final readonly class UpdateTaskCategoryData
         public bool $iconSubmitted = false,
         public ?bool $isActive = null,
         public bool $isActiveSubmitted = false,
+        public ?int $parentId = null,
+        public bool $parentIdSubmitted = false,
     ) {}
 
     /**
@@ -46,6 +54,8 @@ final readonly class UpdateTaskCategoryData
             iconSubmitted: array_key_exists('icon', $data),
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
             isActiveSubmitted: array_key_exists('is_active', $data),
+            parentId: isset($data['parent_id']) ? (int) $data['parent_id'] : null,
+            parentIdSubmitted: array_key_exists('parent_id', $data),
         );
     }
 
@@ -77,6 +87,10 @@ final readonly class UpdateTaskCategoryData
 
         if ($this->isActiveSubmitted) {
             $attributes['is_active'] = $this->isActive;
+        }
+
+        if ($this->parentIdSubmitted) {
+            $attributes['parent_id'] = $this->parentId;
         }
 
         return $attributes;

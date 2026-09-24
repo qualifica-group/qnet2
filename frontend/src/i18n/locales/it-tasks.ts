@@ -137,6 +137,20 @@ export const tasks = {
     titleRequired: 'Il titolo è obbligatorio.',
     titleMax: 'Il titolo non può superare 191 caratteri.',
     description: 'Descrizione',
+    evidence: 'Evidenze',
+    evidencePlaceholder: 'Aggiungi le evidenze del lavoro svolto…',
+    isPrivate: 'Task privato',
+    isPrivateHint:
+      'Visibile solo a creatore, richiedente, assegnatari e osservatori: chi ha il permesso Visualizza tutti o Visualizza per sede non lo vede.',
+    isCompleted: 'Crea già completato',
+    isCompletedHint:
+      'Il task nasce chiuso con esito positivo: registra subito un segnatempo con i minuti stimati (anche 0), senza passare dalla validazione.',
+    suppressNotificationsCreate: 'Non inviare notifica di apertura',
+    suppressNotificationsCreateHint:
+      'Assegnatari e osservatori non ricevono la notifica di assegnazione alla creazione.',
+    suppressNotificationsEdit: 'Non notificare i nuovi assegnati',
+    suppressNotificationsEditHint:
+      'I nuovi assegnatari e i nuovi osservatori aggiunti con questo salvataggio non ricevono la notifica.',
     parentTask: 'Task padre',
     parentTaskSearch: 'Cerca un task per titolo…',
     status: 'Stato',
@@ -144,12 +158,17 @@ export const tasks = {
     statusRequired: 'Lo stato è obbligatorio.',
     type: 'Tipologia',
     typeSearch: 'Cerca una tipologia…',
+    typeRequired: 'La tipologia è obbligatoria.',
     category: 'Categoria',
     categorySearch: 'Cerca una categoria…',
     priority: 'Priorità',
     prioritySearch: 'Cerca una priorità…',
+    priorityRequired: 'La priorità è obbligatoria.',
     importance: 'Importanza',
     importanceSearch: 'Cerca un livello di importanza…',
+    importanceRequired: "Il livello di importanza è obbligatorio.",
+    lead: 'Lead',
+    leadSearch: 'Cerca un lead…',
     completionPercentage: 'Completamento',
     completionPercentageHint:
       'Deriva dallo stato selezionato e non viene mai salvata sul task.',
@@ -204,6 +223,7 @@ export const tasks = {
     selectError: 'Impossibile caricare le opzioni. Riprova.',
     hints: {
       referentScoped: "Sono elencati solo i referenti dell'anagrafica selezionata.",
+      leadScoped: "Se scegli un'anagrafica, sono elencati solo i lead di quell'anagrafica.",
       parentLocked: 'Impostato dal task padre da cui stai creando questo sotto-task.',
     },
     sections: {

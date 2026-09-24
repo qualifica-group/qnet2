@@ -37,6 +37,9 @@ class TaskTypeForSelectResource extends ForSelectResource
                 'color' => $this->color,
                 'icon' => $this->icon,
                 'is_active' => $this->is_active,
+                // Spec 0154, D-8: the Task form preselects this row when the
+                // field is omitted, reading the flag straight off the select.
+                'is_default' => $this->is_default,
             ],
         ];
     }

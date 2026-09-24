@@ -69,6 +69,11 @@ function workOrderStageOf(task: TaskDetail | null): TaskWorkOrderStageRef | null
   return task?.work_order_stage ?? null
 }
 
+/** `{id, label}` (spec 0154 D-4) projected onto the `{id, name}` shape every relation picker hydrates from. */
+function leadRefOf(task: TaskDetail | null): RelationFieldRef | null {
+  return task?.lead ? { id: task.lead.id, name: task.lead.label } : null
+}
+
 function peopleOf(refs: TaskNamedRef[] | undefined): RelationFieldRef[] {
   return refs && refs.length > 0 ? refs : EMPTY_PEOPLE
 }
@@ -123,10 +128,13 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
   const { t } = useTranslation()
   const {
     form,
+    isEdit,
     serverError,
     onSubmit,
     handleRegistryChange,
     handleWorkOrderChange,
+    handleWorkOrderItemChange,
+    handleOpportunityChange,
     handleParentChange,
     handleStatusItemChange,
     completionPercentage,
@@ -161,7 +169,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
         <div className={PANEL_GRID_CLASS}>
           <aside className={SIDE_COLUMN_CLASS}>
             <TaskFormSummary control={form.control} task={task} />
-            <TaskClosureSection control={form.control} />
+            <TaskClosureSection control={form.control} isCreate={!isEdit} />
           </aside>
 
           <div className={MAIN_COLUMN_CLASS}>
@@ -189,6 +197,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
                 assignees={peopleOf(task?.assignees)}
                 watchers={peopleOf(task?.watchers)}
                 creatorId={creatorIdOf(task, currentUserRef)}
+                isCreate={!isEdit}
               />
 
               <TaskPlanningSection control={form.control} />
@@ -204,8 +213,11 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
                 control={form.control}
                 opportunity={task?.opportunity ?? parentPrefillRefs.opportunity}
                 workOrder={workOrderRefOf(task) ?? workOrderPrefillRef ?? parentPrefillRefs.workOrder}
+                lead={leadRefOf(task)}
                 workOrderStage={workOrderStageOf(task)}
                 onWorkOrderChange={handleWorkOrderChange}
+                onWorkOrderItemChange={handleWorkOrderItemChange}
+                onOpportunityChange={handleOpportunityChange}
               />
 
               <TaskRecurrenceSection control={form.control} />

@@ -18,6 +18,8 @@ export interface TaskPriorityForSelectMeta {
   color: string
   /** Curated lucide name of `ICON_NAMES`, or null when unset. */
   icon: string | null
+  /** Spec 0154 D-8: at most one row per catalog. */
+  is_default: boolean
 }
 
 /** A single task priority option as returned by `GET /api/task-priorities/for-select`. */

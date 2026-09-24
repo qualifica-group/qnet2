@@ -30,15 +30,25 @@ function baseFields(t: TFunction) {
       .max(TITLE_MAX_LENGTH, t('tasks.form.titleMax')),
     task_status_id: z.number().nullable(),
     description: z.string().nullable(),
+    // Spec 0154 D-2/D-3: privacy flag and free rich text, sanitized like
+    // `description` server-side; no client-side format rule of their own.
+    is_private: z.boolean(),
+    evidence: z.string().nullable(),
     registry_id: z.number().nullable(),
     referent_id: z.number().nullable(),
     parent_task_id: z.number().nullable(),
+    // Spec 0154 D-8: required in BOTH modes now that the server precompiles a
+    // default row on create — an omitted value here would never reach the
+    // server as `null` (see `addMissingLookupIssue`).
     task_type_id: z.number().nullable(),
     task_priority_id: z.number().nullable(),
     task_importance_id: z.number().nullable(),
     task_category_id: z.number().nullable(),
     opportunity_id: z.number().nullable(),
     work_order_id: z.number().nullable(),
+    // Spec 0154 D-4: must belong to `registry_id` when one is set (422
+    // otherwise); cleared client-side on a registry change (`useTaskForm`).
+    lead_id: z.number().nullable(),
     // Spec 0146 D-2/D-3: server-side requiredness (belongs to `work_order_id`,
     // prohibited on a sub-task) is not client-replicable without the fetched
     // fase list, so this stays a plain nullable id — `TaskLinksSection` hides
@@ -60,6 +70,14 @@ function baseFields(t: TFunction) {
     // itself is NOT a field here any more (spec 0121 D-7): it is written only
     // from the completion pop-up now, never from this form.
     requires_validation: z.boolean(),
+    // Spec 0154 D-6: create-only UI toggle ("Crea gia' completato"); the
+    // payload builder never sends it on a PATCH (`buildUpdatePayload`).
+    is_completed: z.boolean(),
+    // Spec 0154 D-7: ONE UI toggle behind both wire fields — the payload
+    // builder maps it onto `notify_assigned_users` (create) or
+    // `notify_new_assigned_users` (edit), never both. Not a wire field of its
+    // own, hence the name does not match either.
+    suppress_notifications: z.boolean(),
     // Flat id arrays; since D-9 `watcher_ids` may not overlap `requester_id`/
     // `assignee_ids` (see `addWatcherOverlapIssue`).
     assignee_ids: z.array(z.number()),
@@ -98,6 +116,9 @@ interface RefinedRecurrenceValues {
 interface RefinedValues {
   task_status_id: number | null
   requester_id: number | null
+  task_type_id: number | null
+  task_priority_id: number | null
+  task_importance_id: number | null
   start_date: string | null
   end_date: string | null
   assignee_ids: number[]
@@ -124,6 +145,23 @@ function addMissingRequesterIssue(values: RefinedValues, ctx: z.RefinementCtx, t
       path: ['requester_id'],
       message: t('tasks.form.requesterRequired'),
     })
+  }
+}
+
+/**
+ * Spec 0154 D-8: the server precompiles a default row on create when one of
+ * these is omitted, so a "missing" value on the wire never happens any more
+ * — but the FORM still requires an explicit pick in both modes, mirroring
+ * the same requiredness the seed guarantees exactly one default row for.
+ */
+function addMissingLookupIssue(
+  value: number | null,
+  path: string,
+  message: string,
+  ctx: z.RefinementCtx,
+): void {
+  if (value === null) {
+    ctx.addIssue({ code: 'custom', path: [path], message })
   }
 }
 
@@ -272,6 +310,14 @@ export function buildTaskSchema(
     addMissingRequesterIssue(values, ctx, t)
     addMissingAssigneesIssue(values, ctx, t)
     addMissingEndDateIssue(values, ctx, t)
+    addMissingLookupIssue(values.task_type_id, 'task_type_id', t('tasks.form.typeRequired'), ctx)
+    addMissingLookupIssue(values.task_priority_id, 'task_priority_id', t('tasks.form.priorityRequired'), ctx)
+    addMissingLookupIssue(
+      values.task_importance_id,
+      'task_importance_id',
+      t('tasks.form.importanceRequired'),
+      ctx,
+    )
     addWatcherOverlapIssue(values, ctx, t)
     addRecurrenceIssues(values, ctx, t)
     addParentDateRangeIssues(values, ctx, t, parentDateRange)

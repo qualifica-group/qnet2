@@ -117,28 +117,67 @@ function lookupBundle({ singular, plural }: LookupCopy) {
   }
 }
 
+/**
+ * Spec 0154 D-8: shared copy for the "default" flag of the three lookups that
+ * carry it (NOT categories). `columns.is_default` mirrors the backend
+ * `ColumnCatalog` label key of each of the three catalogs.
+ */
+const IS_DEFAULT_COPY = {
+  columns: { is_default: 'Default' },
+  detail: { isDefault: 'Default' },
+  form: {
+    isDefault: 'Default',
+    isDefaultHint:
+      'Automatically prefilled on a new task when none is chosen. Only one row can be the default at a time: setting it here clears the flag from every other row.',
+  },
+}
+
 const types = lookupBundle({ singular: 'task type', plural: 'Task Types' })
 export const taskTypes = {
   ...types,
-  form: { ...types.form, newTaskType: 'New task type' },
+  columns: { ...types.columns, ...IS_DEFAULT_COPY.columns },
+  detail: { ...types.detail, ...IS_DEFAULT_COPY.detail },
+  form: { ...types.form, newTaskType: 'New task type', ...IS_DEFAULT_COPY.form },
 }
 
 const categories = lookupBundle({ singular: 'task category', plural: 'Task Categories' })
 export const taskCategories = {
   ...categories,
-  form: { ...categories.form, newTaskCategory: 'New task category' },
+  // Spec 0154 D-1: nested categories — `columns.parent` mirrors the backend
+  // `TaskCategoryColumnCatalog` label key; admin-only field (no equivalent on
+  // the other three lookups, which stay flat).
+  columns: { ...categories.columns, parent: 'Parent category' },
+  detail: { ...categories.detail, parent: 'Parent category' },
+  form: {
+    ...categories.form,
+    newTaskCategory: 'New task category',
+    parentId: 'Parent category',
+    parentIdHint: 'When set, this category becomes a sub-category of the one you pick.',
+    parentIdSearch: 'Search a category…',
+    parentIdPlaceholder: 'None (root category)',
+    parentIdEmpty: 'No result found.',
+    parentIdError: 'Could not load the options. Try again.',
+    // Spec 0154 D-1: the 409 now has TWO causes (used by a task, or has
+    // sub-categories) — `runDelete` always shows the backend's own message;
+    // this is the generic fallback for the (rare) case it is missing.
+    deleteInUse: 'This category cannot be deleted: check that it is not used by a task and has no sub-categories.',
+  },
 }
 
 const priorities = lookupBundle({ singular: 'task priority', plural: 'Task Priorities' })
 export const taskPriorities = {
   ...priorities,
-  form: { ...priorities.form, newTaskPriority: 'New task priority' },
+  columns: { ...priorities.columns, ...IS_DEFAULT_COPY.columns },
+  detail: { ...priorities.detail, ...IS_DEFAULT_COPY.detail },
+  form: { ...priorities.form, newTaskPriority: 'New task priority', ...IS_DEFAULT_COPY.form },
 }
 
 const importances = lookupBundle({ singular: 'task importance', plural: 'Task Importances' })
 export const taskImportances = {
   ...importances,
-  form: { ...importances.form, newTaskImportance: 'New task importance' },
+  columns: { ...importances.columns, ...IS_DEFAULT_COPY.columns },
+  detail: { ...importances.detail, ...IS_DEFAULT_COPY.detail },
+  form: { ...importances.form, newTaskImportance: 'New task importance', ...IS_DEFAULT_COPY.form },
 }
 
 export const taskStatuses = {

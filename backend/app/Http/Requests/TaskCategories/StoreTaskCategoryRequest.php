@@ -11,6 +11,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
 
 /**
  * Validates the payload for POST /api/task-categories (spec 0101, D-4).
@@ -27,6 +28,12 @@ use Illuminate\Validation\Rule;
  * `sort_order` and `system_key` carry an explicit `prohibited` rule rather than
  * simply being absent from rules(): AC-045 requires a 422, and a merely
  * absent key would be silently dropped by validated() instead.
+ *
+ * `parent_id` (spec 0154, D-1) is optional (null = a root category); a cycle
+ * is structurally impossible on create (the row has no id yet), so only
+ * `exists` is checked here. `name` is unique PER PARENT, including among
+ * roots (both NULL) — a plain `Rule::unique` treats NULLs as distinct, so
+ * the scope is applied explicitly via `where()`.
  */
 class StoreTaskCategoryRequest extends FormRequest
 {
@@ -48,7 +55,8 @@ class StoreTaskCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:'.self::NAME_MAX, Rule::unique('task_categories', 'name')],
+            'name' => ['required', 'string', 'max:'.self::NAME_MAX, $this->uniqueNamePerParent()],
+            'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:task_categories,id'],
             'description' => ['sometimes', 'nullable', 'string', 'max:'.self::DESCRIPTION_MAX],
             'color' => ['required', 'string', Rule::in(BadgeTokens::colors())],
             'icon' => ['sometimes', 'nullable', 'string', Rule::in(BadgeTokens::icons())],
@@ -56,6 +64,20 @@ class StoreTaskCategoryRequest extends FormRequest
             'sort_order' => ['prohibited'],
             'system_key' => ['prohibited'],
         ];
+    }
+
+    /**
+     * `name` unique among the siblings of the SUBMITTED `parent_id` (null
+     * included, via `whereNull`) — never globally, since D-1 allows the same
+     * name to reappear under a different parent.
+     */
+    private function uniqueNamePerParent(): Unique
+    {
+        $parentId = $this->input('parent_id');
+
+        return Rule::unique('task_categories', 'name')->where(
+            fn ($query) => $parentId === null ? $query->whereNull('parent_id') : $query->where('parent_id', $parentId),
+        );
     }
 
     public function withValidator(Validator $validator): void

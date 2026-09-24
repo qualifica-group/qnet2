@@ -5,6 +5,7 @@ namespace App\Http\Requests\Leads;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\Http\Controllers\Abstract\BaseApiController;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the query for GET /api/leads/for-select (amendment rev.1 A-1,
@@ -13,6 +14,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * Authorization is intentionally NOT handled here (it stays in the controller
  * via authorize('viewAny', Lead::class)). Pagination bounds mirror
  * BaseApiController::validateRequest (offset >= 0, 1 <= limit <= MAX_LIMIT).
+ *
+ * `registry_id` (spec 0154, D-4): ADDITIVE, optional client filter for the
+ * Task form's "Lead" picker, narrowed to the Task's own anagrafica — same
+ * retrocompatible pattern as `WorkOrderForSelectRequest`'s own `registry_id`.
  */
 class LeadForSelectRequest extends FormRequest
 {
@@ -35,6 +40,7 @@ class LeadForSelectRequest extends FormRequest
             'limit' => ['sometimes', 'integer', 'min:1', "max:{$maxLimit}"],
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
+            'registry_id' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
         ];
     }
 

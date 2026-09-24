@@ -39,6 +39,9 @@ function baseFields(t: TFunction) {
       .string()
       .refine((name) => name === '' || isKnownIconName(name), t('taskImportances.form.iconInvalid')),
     is_active: z.boolean(),
+    // Spec 0154 D-8: at most one default row per catalog; the server clears
+    // every other row when this one is set, no client-side mirror needed.
+    is_default: z.boolean(),
   }
 }
 

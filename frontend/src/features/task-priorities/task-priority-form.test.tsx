@@ -45,6 +45,7 @@ const ALL_EDITABLE: ResourcePermissions = {
     color: EDITABLE,
     icon: EDITABLE,
     is_active: EDITABLE,
+    is_default: EDITABLE,
   },
   actions: {},
 }
@@ -82,6 +83,7 @@ function taskPriority(
     icon: 'star',
     sort_order: 3,
     is_active: true,
+    is_default: false,
     created_at: null,
     updated_at: null,
     permissions: ALL_EDITABLE,
@@ -171,6 +173,7 @@ describe('TaskPriorityForm — create (spec 0101)', () => {
       icon: null,
       description: null,
       is_active: true,
+      is_default: false,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(taskPriority()))
   })

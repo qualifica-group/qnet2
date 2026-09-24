@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * name of `App\Support\BadgeTokens::icons()`, both validated server-side by
  * the FormRequest — never free text.
  */
-#[Fillable(['name', 'description', 'color', 'icon', 'sort_order', 'is_active'])]
+#[Fillable(['name', 'description', 'color', 'icon', 'sort_order', 'is_active', 'is_default'])]
 class TaskPriority extends BaseModel
 {
     /** @use HasFactory<TaskPriorityFactory> */
@@ -31,6 +31,7 @@ class TaskPriority extends BaseModel
         return [
             'sort_order' => 'int',
             'is_active' => 'bool',
+            'is_default' => 'bool',
         ];
     }
 

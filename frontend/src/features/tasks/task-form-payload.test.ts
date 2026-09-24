@@ -37,10 +37,14 @@ describe('buildCreatePayload', () => {
     expect(buildCreatePayload(values())).not.toHaveProperty('completion_date')
   })
 
-  it('AC-009: never carries task_status_id — the server derives it on create (D-3)', () => {
-    const payload = buildCreatePayload(values())
-
-    expect(payload).not.toHaveProperty('task_status_id')
+  /**
+   * Spec 0118 D-3 RECTIFIED by spec 0154 D-10: a manually picked initial
+   * status now travels on create; omitted only when the picker is left
+   * unpicked (`null`), in which case the server still derives it (0118 D-4).
+   */
+  it('spec 0154 D-10: carries task_status_id when picked, omits it when null', () => {
+    expect(buildCreatePayload(values()).task_status_id).toBe(3)
+    expect(buildCreatePayload(values({ task_status_id: null }))).not.toHaveProperty('task_status_id')
   })
 
   it('AC-017 (spec 0121): sends requires_validation alongside requires_closure_feedback', () => {
@@ -53,6 +57,26 @@ describe('buildCreatePayload', () => {
   /** Spec 0128 AC-023: an empty `RichTextEditor` emits `null`, sent as-is. */
   it('sends description null when the editor is empty', () => {
     expect(buildCreatePayload(values({ description: null })).description).toBeNull()
+  })
+
+  it('spec 0154 D-2/D-3/D-4: sends is_private, evidence and lead_id like any other scalar', () => {
+    const payload = buildCreatePayload(values({ is_private: true, evidence: '<p>Ok</p>', lead_id: 12 }))
+
+    expect(payload.is_private).toBe(true)
+    expect(payload.evidence).toBe('<p>Ok</p>')
+    expect(payload.lead_id).toBe(12)
+  })
+
+  it('spec 0154 D-6: sends is_completed only when checked', () => {
+    expect(buildCreatePayload(values({ is_completed: false }))).not.toHaveProperty('is_completed')
+    expect(buildCreatePayload(values({ is_completed: true })).is_completed).toBe(true)
+  })
+
+  it('spec 0154 D-7: maps suppress_notifications onto notify_assigned_users only when suppressed', () => {
+    expect(buildCreatePayload(values({ suppress_notifications: false }))).not.toHaveProperty(
+      'notify_assigned_users',
+    )
+    expect(buildCreatePayload(values({ suppress_notifications: true })).notify_assigned_users).toBe(false)
   })
 })
 
@@ -208,6 +232,38 @@ describe('buildUpdatePayload', () => {
     )
     expect(buildUpdatePayload(values({ requires_validation: true }), task()).requires_validation).toBe(
       true,
+    )
+  })
+
+  it('spec 0154 D-2/D-3/D-4: sends is_private, evidence and lead_id only when they actually changed', () => {
+    expect(buildUpdatePayload(values(), task())).not.toHaveProperty('is_private')
+    expect(buildUpdatePayload(values(), task())).not.toHaveProperty('evidence')
+    expect(buildUpdatePayload(values(), task())).not.toHaveProperty('lead_id')
+
+    const payload = buildUpdatePayload(
+      values({ is_private: true, evidence: '<p>Ok</p>', lead_id: 12 }),
+      task(),
+    )
+    expect(payload.is_private).toBe(true)
+    expect(payload.evidence).toBe('<p>Ok</p>')
+    expect(payload.lead_id).toBe(12)
+  })
+
+  it('spec 0154 D-6: is_completed never appears in a PATCH diff — it is create-only', () => {
+    const payload = buildUpdatePayload(values({ is_completed: true }), task())
+
+    expect(payload).not.toHaveProperty('is_completed')
+  })
+
+  it('spec 0154 D-7: maps suppress_notifications onto notify_new_assigned_users only when suppressed', () => {
+    expect(buildUpdatePayload(values({ suppress_notifications: false }), task())).not.toHaveProperty(
+      'notify_new_assigned_users',
+    )
+    expect(
+      buildUpdatePayload(values({ suppress_notifications: true }), task()).notify_new_assigned_users,
+    ).toBe(false)
+    expect(buildUpdatePayload(values({ suppress_notifications: true }), task())).not.toHaveProperty(
+      'notify_assigned_users',
     )
   })
 })

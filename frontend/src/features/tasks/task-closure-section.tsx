@@ -10,6 +10,8 @@ import type { TaskFormValues } from '@/features/tasks/task-schema'
 
 interface TaskClosureSectionProps {
   control: Control<TaskFormValues>
+  /** Spec 0154 D-6: "Crea gia' completato" renders on CREATE only. */
+  isCreate: boolean
 }
 
 /**
@@ -20,15 +22,19 @@ interface TaskClosureSectionProps {
  * here — it left the form entirely and is written only from the completion
  * pop-up (`TaskCompleteDialog`), so this section renders neither a textarea
  * nor any requiredness rule that used to depend on the picked status' phase.
+ *
+ * Spec 0154 D-6 adds a THIRD, create-only switch: "Crea gia' completato"
+ * closes the task outright at the estimated minutes, bypassing validation —
+ * unlike the two flags above, `is_completed` gates nothing else in the form.
  */
-export function TaskClosureSection({ control }: TaskClosureSectionProps) {
+export function TaskClosureSection({ control, isCreate }: TaskClosureSectionProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
 
   const feedbackVisible = fieldPermission('requires_closure_feedback').visible
   const validationVisible = fieldPermission('requires_validation').visible
 
-  if (!feedbackVisible && !validationVisible) {
+  if (!feedbackVisible && !validationVisible && !isCreate) {
     return null
   }
 
@@ -62,6 +68,23 @@ export function TaskClosureSection({ control }: TaskClosureSectionProps) {
           metaKey="requires_validation"
           label={t('tasks.form.requiresValidation')}
           hint={t('tasks.form.requiresValidationHint')}
+          layout="inline"
+        >
+          {({ field, disabled }) => (
+            <FormControl>
+              <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
+            </FormControl>
+          )}
+        </MetaField>
+      ) : null}
+
+      {isCreate ? (
+        <MetaField
+          control={control}
+          name="is_completed"
+          metaKey="is_completed"
+          label={t('tasks.form.isCompleted')}
+          hint={t('tasks.form.isCompletedHint')}
           layout="inline"
         >
           {({ field, disabled }) => (

@@ -17,6 +17,7 @@ const formValues: TaskCategoryFormValues = {
   color: 'blue',
   icon: 'star',
   is_active: true,
+  parent_id: null,
 }
 
 function original(overrides: Partial<TaskCategoryDetail> = {}): TaskCategoryDetail {
@@ -28,6 +29,8 @@ function original(overrides: Partial<TaskCategoryDetail> = {}): TaskCategoryDeta
     icon: 'star',
     sort_order: 3,
     is_active: true,
+    parent_id: null,
+    parent: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -42,6 +45,7 @@ describe('buildCreatePayload (spec 0101)', () => {
       icon: 'star',
       description: 'Follow-up on the client request',
       is_active: true,
+      parent_id: null,
     })
   })
 
@@ -82,5 +86,11 @@ describe('buildUpdatePayload (spec 0101)', () => {
       original(),
     )
     expect(payload).not.toHaveProperty('sort_order')
+  })
+
+  it('includes only the changed parent_id (spec 0154 D-1)', () => {
+    expect(buildUpdatePayload({ ...formValues, parent_id: 3 }, original())).toEqual({
+      parent_id: 3,
+    })
   })
 })

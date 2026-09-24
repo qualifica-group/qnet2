@@ -63,4 +63,10 @@ class TaskFactory extends Factory
     {
         return $this->state(fn () => ['requires_validation' => true]);
     }
+
+    /** Private (spec 0154, D-2): visible only to its own membership. */
+    public function private(): static
+    {
+        return $this->state(fn () => ['is_private' => true]);
+    }
 }

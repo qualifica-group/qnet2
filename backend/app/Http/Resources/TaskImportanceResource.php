@@ -26,6 +26,7 @@ class TaskImportanceResource extends JsonResource
             'icon' => $this->icon,
             'sort_order' => $this->sort_order,
             'is_active' => $this->is_active,
+            'is_default' => $this->is_default,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

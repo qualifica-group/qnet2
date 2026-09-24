@@ -25,12 +25,15 @@ use App\Models\User;
 final class TaskAbilityResolver
 {
     /**
-     * The 20 fields that define the Task's MANDATE (who answers, by when,
+     * The 21 fields that define the Task's MANDATE (who answers, by when,
      * about what) rather than its execution (D-5; spec 0121 D-1 added
      * `requires_validation` as the 18th, spec 0120 D-12 added `recurrence` as
-     * the 19th, spec 0146 D-3 adds `work_order_stage_id` as the 20th — an
+     * the 19th, spec 0146 D-3 added `work_order_stage_id` as the 20th, spec
+     * 0154 D-4 adds `lead_id` as the 21st — a record link exactly like
+     * `referent_id`/`registry_id`, so it follows the same mandate ceiling). An
      * assignee who may otherwise edit the Task still may not touch its
-     * series, or move it to a different "Fase" of its commessa). Read by
+     * series, move it to a different "Fase" of its commessa, or repoint its
+     * lead. Read by
      * `App\Authorization\TasksAuthorization::fieldPermissionCeiling()` to
      * lower the ceiling for anyone who is not creator/requester/manager.
      *
@@ -57,6 +60,7 @@ final class TaskAbilityResolver
         'assignee_ids',
         'watcher_ids',
         'recurrence',
+        'lead_id',
     ];
 
     /** Creator/requester, assignee and manager may update; the watcher alone may not. */

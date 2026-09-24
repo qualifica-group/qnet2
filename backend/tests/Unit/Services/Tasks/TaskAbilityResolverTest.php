@@ -41,19 +41,20 @@ if (! function_exists('grantManageAll')) {
 }
 
 // ---------------------------------------------------------------------------
-// PROTECTED_FIELDS — the 20 fields of D-5 (spec 0121 adds requires_validation,
-// spec 0120 D-12 adds recurrence, spec 0146 D-3 adds work_order_stage_id)
+// PROTECTED_FIELDS — the 21 fields of D-5 (spec 0121 adds requires_validation,
+// spec 0120 D-12 adds recurrence, spec 0146 D-3 adds work_order_stage_id,
+// spec 0154 D-4 adds lead_id) — REQUIREMENT CHANGED, count 20 -> 21
 // ---------------------------------------------------------------------------
 
-it('AC-015 (spec 0121, spec 0120 D-12, spec 0146 D-3): PROTECTED_FIELDS is exactly the 20 mandate fields, including requires_validation, recurrence and work_order_stage_id', function () {
+it('AC-015 (spec 0121, spec 0120 D-12, spec 0146 D-3, spec 0154 D-4): PROTECTED_FIELDS is exactly the 21 mandate fields, including requires_validation, recurrence, work_order_stage_id and lead_id', function () {
     expect(TaskAbilityResolver::PROTECTED_FIELDS)->toEqualCanonicalizing([
         'title', 'registry_id', 'referent_id', 'parent_task_id', 'task_type_id',
         'task_priority_id', 'task_importance_id', 'task_category_id', 'opportunity_id',
         'work_order_id', 'work_order_stage_id', 'requester_id', 'start_date', 'end_date', 'estimated_minutes',
-        'requires_closure_feedback', 'requires_validation', 'assignee_ids', 'watcher_ids', 'recurrence',
-    ])->and(TaskAbilityResolver::PROTECTED_FIELDS)->toHaveCount(20)
+        'requires_closure_feedback', 'requires_validation', 'assignee_ids', 'watcher_ids', 'recurrence', 'lead_id',
+    ])->and(TaskAbilityResolver::PROTECTED_FIELDS)->toHaveCount(21)
         ->and(TaskAbilityResolver::PROTECTED_FIELDS)
-        ->not->toContain('description', 'task_status_id', 'completion_date', 'start_time', 'end_time', 'closure_feedback');
+        ->not->toContain('description', 'evidence', 'is_private', 'task_status_id', 'completion_date', 'start_time', 'end_time', 'closure_feedback');
 });
 
 // ---------------------------------------------------------------------------

@@ -38,10 +38,10 @@ use Illuminate\Database\Eloquent\Model;
  * scope for this spec.
  *
  * Every field's ceiling is the plain visible+editable-when-may-write /
- * visible+readonly default, EXCEPT the 20 fields in
+ * visible+readonly default, EXCEPT the 21 fields in
  * `TaskAbilityResolver::PROTECTED_FIELDS` (spec 0116, D-5; spec 0121, D-1
  * adds `requires_validation`; spec 0120, D-12 adds `recurrence`; spec 0146,
- * D-3 adds `work_order_stage_id`): those
+ * D-3 adds `work_order_stage_id`; spec 0154, D-4 adds `lead_id`): those
  * additionally require the actor to own the Task's MANDATE
  * (`TaskAbilityResolver::canUpdateProtectedFields()`) once a record exists.
  * `recurrence` is additionally gated by `UpdateTaskRequest::authorize()`
@@ -109,6 +109,13 @@ class TasksAuthorization extends AbstractResourceAuthorization
         'closure_feedback' => 'textarea',
         'assignee_ids' => 'multiselect',
         'watcher_ids' => 'multiselect',
+        // Spec 0154, D-2/D-3/D-4: `is_private`/`evidence` follow `description`'s
+        // own ceiling (free for any actor who may write at all, never in
+        // PROTECTED_FIELDS); `lead_id` is a record link, protected like
+        // `referent_id`.
+        'is_private' => 'boolean',
+        'evidence' => 'richtext',
+        'lead_id' => 'select',
         // spec 0120: no existing form type fits an object with its own
         // internal shape (frequency/interval/weekdays/...), so the field
         // carries a dedicated `recurrence` type the frontend renders with its
@@ -152,14 +159,15 @@ class TasksAuthorization extends AbstractResourceAuthorization
 
     /**
      * `task_status_id` is the one field whose ceiling depends on CREATE vs
-     * EDIT (spec 0118 D-3, AC-016): on create it is neither required nor
-     * editable — it is not even submittable (`StoreTaskRequest` rejects it
-     * with `prohibited`), so permissioning it would offer a control the
-     * FormRequest immediately refuses. `FieldDefinition::$mandatory` has no
-     * such context (it is the same flat catalogue for every actor and every
-     * request), so the override lives here instead of in `MANDATORY_FIELDS`
-     * — which stays as-is precisely so the EDIT ceiling (today's behaviour,
-     * D-6) does not move.
+     * EDIT (spec 0118 D-3, AC-016; spec 0154, D-10, REQUIREMENT CHANGED): on
+     * create it is now OPTIONAL rather than not-even-submittable — a manual
+     * override `StoreTaskRequest` admits `sometimes` — so it is EDITABLE
+     * whenever the actor may write at all, but never `required` (unlike the
+     * EDIT ceiling, `sometimes|required` there): `FieldDefinition::$mandatory`
+     * has no such context (it is the same flat catalogue for every actor and
+     * every request), so the override lives here instead of in
+     * `MANDATORY_FIELDS` — which stays as-is precisely so the EDIT ceiling
+     * (today's behaviour, D-6) does not move.
      *
      * @return array<string, FieldPermission>
      */
@@ -172,8 +180,16 @@ class TasksAuthorization extends AbstractResourceAuthorization
         $ceiling = [];
 
         foreach (self::FIELD_TYPES as $key => $type) {
+            if ($key === 'task_status_id' && $model === null) {
+                $ceiling[$key] = $mayWrite
+                    ? FieldPermission::visibleEditable(required: false)
+                    : FieldPermission::visibleReadonly(required: false);
+
+                continue;
+            }
+
             // spec 0127 D-2: written only by TaskCompletionService, so never editable.
-            if (($key === 'task_status_id' && $model === null) || $key === 'completion_date') {
+            if ($key === 'completion_date') {
                 $ceiling[$key] = FieldPermission::visibleReadonly(required: false);
 
                 continue;

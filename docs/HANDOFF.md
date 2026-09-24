@@ -3,6 +3,55 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED DI ESEMPIO: OFFERTE, CONTRATTI, COMMESSE — VERDE, NON COMMITTATO (2026-09-24)
+
+- Direttiva utente 2026-09-24: `qualifica:seed-sample` semina anche Offerte, Contratti e Commesse. Tre nuovi step in
+  coda a `QualificaSampleDataSeeder` (flag `--quotes` 15, `--contracts` 8, `--work-orders` 4):
+  - `QualificaSampleQuoteSeeder`: un'Offerta per ogni opportunita' del batch SENZA offerta (rispetta
+    `single_quote_per_opportunity` per costruzione), righe REVENUE su prodotti SALE delle categorie gia' della card,
+    ramo `single` = 1 riga qty 1, riga COST imputata a meta' (se esistono prodotti COST), GA1+GA2 promossi.
+    Esito rotato sul set risolto: `open` / stato custom open-pending / `closed_lost`. Mai `closed_won`.
+  - `QualificaSampleContractSeeder`: chiude vinte (QuoteService::update) solo offerte aperte, con righe REVENUE e
+    `ContractEligibility::allowsContract` -> il contratto nasce da `ContractLifecycleManager`. Forme ruotate: meta'
+    Validato (closed_won), da validare, lavorazione in scadenza, disdetto, sospeso.
+  - `QualificaSampleWorkOrderSeeder`: "Programma" sui contratti `mayProgram()` = una commessa con tutte le righe
+    libere (D-4 spec 0095) via `CreateWorkOrderData::forContractGeneration` + `WorkOrderService::create`.
+- Confinamento: l'orchestratore prende il watermark `max(opportunities.id)` prima dello step 1 e lo passa come
+  `sinceOpportunityId` agli step 4-6 -> mai toccate offerte/contratti reali.
+- `Concerns/ResolvesSeedActor` (attore privilegiato, fallback primo utente).
+- Step 7-8 (stessa direttiva): `QualificaSampleTaskSeeder` (`--tasks` 30) e `QualificaSampleTimeEntrySeeder`
+  (`--time-entries` 60). Task su commessa XOR opportunita' (spec 0154 D-11), anagrafica del record, team = supervisore
+  commessa / GA opportunita'; esiti ruotati: stato derivato, pending/chiuso negativo via PATCH (creatore), completati
+  via `TaskCompletionService::complete()` dall'assegnatario -> segnatempo della chiusura (spec 0127). Mail silenziate
+  (`Concerns/SeedsWithoutNotifications`). Segnatempo: 2/3 su task aperti (owner = assegnatario, titolo/link dal task,
+  D-5 spec 0122), 1/3 su commessa o opportunita'; giorni feriali ultime 2 settimane.
+  DIPENDENZA: il Task seeder usa `CreateTaskData`/`TaskService` nello stato ATTUALE dell'albero, che include la spec
+  0154 non ancora committata (altra sessione). Usa solo argomenti gia' presenti prima della 0154.
+- Comando unico senza flag = tutto coi default: `php artisan qualifica:seed-sample`.
+- `--size=N` (direttiva utente 2026-09-24): N di ogni dominio in un colpo; lead = 3N (N convertiti + N anagrafiche
+  libere per le opportunita' + N per le richieste), convertiti = N. Un flag di dominio esplicito vince su `--size`.
+- LIMITE DA REGOLA sul catalogo reale: solo "APL" ha categorie vendibili che generano contratti (Formazione no,
+  Consulenza senza prodotti) -> pochi contratti/commesse; il seeder avvisa quando ne produce meno dei richiesti.
+- Test: nuovi `QualificaSampleDealFlowSeederTest` (8) e `QualificaSampleActivitySeederTest` (6); aggiornati i conteggi in `QualificaSampleDataSeederTest` e
+  `SeedSampleDataCommandTest` (requisito cambiato). Dry-run sul DB locale in transazione annullata: ok.
+- Manuale: nessun impatto (comando di sviluppo).
+
+## "RESIDUO ORE" SU DIL — VERDE, NON COMMITTATO (2026-09-24)
+
+- `ContactProcessingAttributeCatalogue`: nuovo attributo `remaining_hours` ("Residuo Ore", `integer`, costante
+  `DIL_REMAINING_HOURS`) nel set proprio di DIL (Offerta + Commessa), dopo le due date Dote. Codice nuovo e non
+  `dote_remaining_hours` ("Residuo Ore Dote" del ramo Formazione): una riga attributo = una sola etichetta.
+  In `ROWS` ha una riga tutta sua dopo `['dote_activation_date', 'dote_expiry_date']`.
+- `PREVIOUS_OWN_ATTRIBUTES` ora e' `array<string, list<list<string>>>` (una lista per revisione);
+  `SeedsAttributeLayouts::effectiveCodeRevisions()` le scorre tutte. DIL ha due revisioni (prima del 09-16 e prima di
+  "Residuo Ore"), cosi' i layout gia' seedati vengono ricomposti invece di lasciare il campo in "Altre informazioni".
+- Test: nuovo `QualificaDilRemainingHoursTest` (tipo/assegnazione, posizione, convergenza); liste DIL aggiornate in
+  `QualificaContactProcessingSeederTest`, `QualificaQuoteLayoutSeederTest`, `QualificaDilCourseFieldsTest` (il rewind
+  alla revisione "Corso Scelto" ora toglie anche `remaining_hours`, che quella revisione non aveva).
+  Products 219/219, ProductCategories 275/275, Unit/RequestManagement 22/22. Seeding 102/107: i 5 rossi sono
+  `QualificaSampleDataSeederTest`/`SeedSampleDataCommandTest` (lavoro Task/sample non committato, estraneo). Pint pulito.
+- Manuale: nessun impatto (guide in-app e manuale Claude Docs non elencano i campi di DIL).
+
 ## GESTIONE RICHIESTE: OPERATORE E TUTOR ORDINABILI/FILTRABILI — VERDE, COMMITTATO (2026-09-24)
 
 - Direttiva utente 2026-09-24, supera spec 0086 AC-011. `RequestManagerColumns`: `operator_ga2` e `manager_ga1` ora

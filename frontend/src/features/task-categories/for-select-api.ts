@@ -18,6 +18,10 @@ export interface TaskCategoryForSelectMeta {
   color: string
   /** Curated lucide name of `ICON_NAMES`, or null when unset. */
   icon: string | null
+  /** Spec 0154 D-1: `null` for a root category. */
+  parent_id: number | null
+  /** Spec 0154 D-1: nesting level, `0` for a root category. Items arrive in depth-first tree order. */
+  depth: number
 }
 
 /** A single task category option as returned by `GET /api/task-categories/for-select`. */

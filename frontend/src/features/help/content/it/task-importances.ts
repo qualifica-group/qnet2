@@ -22,7 +22,12 @@ const guide: HelpGuide = {
             ['Colore', 'Obbligatorio.'],
             ['Icona', 'Facoltativa.'],
             ['Attiva', 'Se la spegni, la voce sparisce dai menu a tendina.'],
+            ['Predefinita', "Se attiva, precompila il campo Importanza sui nuovi task quando non ne viene scelta una."],
           ],
+        },
+        {
+          type: 'note',
+          text: "Solo un livello di importanza alla volta può essere predefinito: attivarlo su uno lo disattiva automaticamente sugli altri. Un livello disattivato non può essere predefinito.",
         },
       ],
     },

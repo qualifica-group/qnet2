@@ -147,9 +147,13 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // (88th), `2026_09_22_110200_create_work_order_stages_table` (89th) and
     // `2026_09_22_110300_add_stage_columns_to_tasks_table` (90th), the task
     // board's "Fase" tables on the template and on the commessa, plus their
-    // links onto `task_template_items` and `tasks`. Adding a migration means
-    // bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 90]);
+    // links onto `task_template_items` and `tasks`, then
+    // `2026_09_23_120000_add_color_preset_to_users_table` (91st) and spec
+    // 0154's `2026_09_24_100000_add_parent_id_to_task_categories_table`
+    // (92nd), `2026_09_24_100100_add_is_default_to_task_lookup_tables` (93rd)
+    // and `2026_09_24_100200_add_privacy_evidence_and_lead_to_tasks_table`
+    // (94th). Adding a migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 94]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

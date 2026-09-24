@@ -245,15 +245,25 @@ final class ContactProcessingAttributeCatalogue
     ];
 
     /**
+     * "Residuo Ore", the one number of the "DIL" set — named because the
+     * layout ROWS key on it.
+     */
+    public const string DIL_REMAINING_HOURS = 'remaining_hours';
+
+    /**
      * The "DIL" offer's whole field set, in the client's order (user directive
-     * 2026-09-10). Five of the seven are codes the training set already
+     * 2026-09-10). Five of the eight are codes the training set already
      * declares: reused by `code`, so DIL resolves the SAME attribute row the
      * rest of the branch does — it just resolves it from its own assignment
      * rather than by inheritance, which the barrier cuts. The two DOTE dates
-     * are DIL's own.
+     * and "Residuo Ore" are DIL's own.
      *
      * "ID Corso" and "Sede corso" are the GOL fields, replacing the free-text
      * "Corso Scelto" (user directive 2026-09-16, see RETIRED_ATTRIBUTES).
+     *
+     * "Residuo Ore" (user directive 2026-09-24) is a new code rather than the
+     * training set's `dote_remaining_hours`: one attribute row carries one
+     * label, and the client names this one without "Dote".
      *
      * @var list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, relation_target?: array<string, mixed>}>
      */
@@ -262,27 +272,35 @@ final class ContactProcessingAttributeCatalogue
         self::APL_APPOINTMENT_DATE,
         ['code' => 'dote_activation_date', 'name' => 'Data Attivazione Dote', 'type' => 'date'],
         ['code' => 'dote_expiry_date', 'name' => 'Data Scadenza Dote', 'type' => 'date'],
+        ['code' => self::DIL_REMAINING_HOURS, 'name' => 'Residuo Ore', 'type' => 'integer'],
         self::SUBSIDY_TYPE,
         self::COURSE_ID_SPEC,
         self::COURSE_SITE_SPEC,
     ];
 
     /**
-     * A category's OWN codes as a previous revision assigned them — frozen
+     * A category's OWN codes as each previous revision assigned them — frozen
      * history, never edited to follow ATTRIBUTES. The layout seeders rebuild
-     * from it the effective set that revision composed against, or they
-     * could not recognise the layout it wrote once the set has changed.
+     * from it the effective sets those revisions composed against, or they
+     * could not recognise the layouts they wrote once the set has changed.
      *
-     * "DIL" before the 2026-09-16 directive. Retired codes are listed as they
-     * stood: RETIRED_ATTRIBUTES filters them out, like the retirement strips
-     * them from the persisted blob.
+     * "DIL" before the 2026-09-16 directive, then before "Residuo Ore" joined
+     * it (2026-09-24). Retired codes are listed as they stood:
+     * RETIRED_ATTRIBUTES filters them out, like the retirement strips them
+     * from the persisted blob.
      *
-     * @var array<string, list<string>>
+     * @var array<string, list<list<string>>>
      */
     public const array PREVIOUS_OWN_ATTRIBUTES = [
         self::DIL_CATEGORY => [
-            'chosen_course', 'data_scelta_cpi', 'data_app_apl',
-            'dote_activation_date', 'dote_expiry_date', 'subsidy_type',
+            [
+                'chosen_course', 'data_scelta_cpi', 'data_app_apl',
+                'dote_activation_date', 'dote_expiry_date', 'subsidy_type',
+            ],
+            [
+                'data_scelta_cpi', 'data_app_apl', 'dote_activation_date',
+                'dote_expiry_date', 'subsidy_type', 'id_corso', self::COURSE_SITE,
+            ],
         ],
     ];
 
@@ -313,9 +331,13 @@ final class ContactProcessingAttributeCatalogue
      * gets a coherent section: outside the GOL branch the times row drops
      * entirely, and in a region without the APL appointment it keeps the CPI
      * time alone, still under its own date. "DIL" is the extreme case — it
-     * resolves its own seven codes and nothing else, so what survives the
+     * resolves its own eight codes and nothing else, so what survives the
      * filter is exactly the client's own order: the two appointment dates, the
-     * two DOTE ones, the subsidy, the course references.
+     * two DOTE ones, the remaining hours, the subsidy, the course references.
+     *
+     * A row holding only a code no previous revision resolved composes to the
+     * same blob as before for every earlier effective set — which is why
+     * "Residuo Ore" joined as a row of its own without a PREVIOUS_ROWS entry.
      *
      * @var list<list<string>>
      */
@@ -323,6 +345,7 @@ final class ContactProcessingAttributeCatalogue
         ['data_scelta_cpi', 'data_app_apl'],
         ['ora_app_cpi', 'ora_app_apl'],
         ['dote_activation_date', 'dote_expiry_date'],
+        [self::DIL_REMAINING_HOURS],
         ['stato_assoc_cpi', 'dote_remaining_hours'],
         ['cpi', 'profilo_cpi'],
         ['subsidy_type'],

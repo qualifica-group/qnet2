@@ -35,7 +35,10 @@ use Illuminate\Database\Seeder;
  *
  * Idempotent on the natural `name` key (AC-005): a re-run adopts the
  * existing row and overwrites neither a rename nor a manual recolour or
- * reorder made from the module.
+ * reorder made from the module. The `is_default` marker (spec 0154, D-8) is
+ * idempotent the same way: it is only ever applied while NO row of that
+ * table carries it yet, so an admin's own default choice (from the module,
+ * or a previous run of this very seeder) always survives a re-run.
  */
 class QualificaTaskTaxonomySeeder extends Seeder
 {
@@ -57,6 +60,14 @@ class QualificaTaskTaxonomySeeder extends Seeder
         $this->reshapeProtectedStatuses();
         // Step 3: the client's own statuses, placed between head and tail.
         $this->seedStatuses();
+
+        // Step 4: the client's chosen defaults (spec 0154, D-8) — "Attivita'"
+        // type, "Media" priority, "Media" importance. task_categories has no
+        // `is_default` column at all (D-1 introduces nesting there, not a
+        // default marker), so it is deliberately absent from this step.
+        $this->markDefaultIfNoneSet(TaskType::class, TaskTaxonomyCatalogue::DEFAULT_TYPE);
+        $this->markDefaultIfNoneSet(TaskPriority::class, TaskTaxonomyCatalogue::DEFAULT_PRIORITY);
+        $this->markDefaultIfNoneSet(TaskImportance::class, TaskTaxonomyCatalogue::DEFAULT_IMPORTANCE);
     }
 
     /**
@@ -81,6 +92,25 @@ class QualificaTaskTaxonomySeeder extends Seeder
                 ],
             );
         }
+    }
+
+    /**
+     * Marks $name as the default row of $modelClass (spec 0154, D-8) — but
+     * ONLY while no row of that table carries the flag yet. That guard is
+     * what keeps a re-run idempotent without a dedicated "did we already do
+     * this" column: once an admin (or a prior run) has chosen a default,
+     * `is_default = true` exists somewhere on the table and this becomes a
+     * no-op, exactly like reshapeProtectedStatuses() leaves a rename alone.
+     *
+     * @param  class-string<TaskType>|class-string<TaskPriority>|class-string<TaskImportance>  $modelClass
+     */
+    private function markDefaultIfNoneSet(string $modelClass, string $name): void
+    {
+        if ($modelClass::query()->where('is_default', true)->exists()) {
+            return;
+        }
+
+        $modelClass::query()->where('name', $name)->update(['is_default' => true]);
     }
 
     /**

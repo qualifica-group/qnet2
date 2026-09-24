@@ -105,15 +105,18 @@ it('AC-036/AC-053: the field catalogue is in the frozen order and omits completi
     // `work_order_stage_id` joins right after `work_order_id` — unlike
     // `recurrence` it HAS a natural neighbour (a "Fase" only ever exists
     // under a `work_order_id`) — bringing the frozen order to 26 fields.
+    // spec 0154 (REQUIREMENT CHANGED, count 26 -> 29): `is_private`,
+    // `evidence` and `lead_id` join right before `recurrence`, the same
+    // "additive at the tail" precedent `recurrence` itself set.
     expect($keys)->toBe([
         'title', 'task_status_id', 'description', 'registry_id', 'referent_id', 'parent_task_id',
         'task_type_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
         'opportunity_id', 'work_order_id', 'work_order_stage_id', 'requester_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
         'requires_closure_feedback', 'requires_validation', 'closure_feedback', 'assignee_ids', 'watcher_ids',
-        'recurrence',
+        'is_private', 'evidence', 'lead_id', 'recurrence',
     ])
-        ->and($keys)->toHaveCount(26)
+        ->and($keys)->toHaveCount(29)
         ->and($keys)->not->toContain('completion_percentage')
         ->and($keys)->not->toContain('creator_id')
         ->and($keys)->not->toContain('is_blocked');
@@ -160,17 +163,18 @@ it('AC-003 (spec 0121): requires_validation is boolean, not mandatory, immediate
 });
 
 // ---------------------------------------------------------------------------
-// AC-016 (spec 0118) — the create-context ceiling: task_status_id locks,
-// the other three unlock
+// AC-016 (spec 0118, REQUIREMENT CHANGED by spec 0154 D-10) — the
+// create-context ceiling: task_status_id is now editable (a manual override
+// is admitted, D-10) but never required, while the other three unlock
 // ---------------------------------------------------------------------------
 
-it('AC-016: in create context, task_status_id is not editable while requester_id/assignee_ids/end_date are required', function () {
+it('AC-016 (spec 0154, D-10): in create context, task_status_id is editable but never required, while requester_id/assignee_ids/end_date are required', function () {
     $actor = taskActorWith(['viewAny', 'create']);
     Sanctum::actingAs($actor);
 
     $permissions = $this->getJson('/api/meta/tasks')->assertOk()->json('permissions.fields');
 
-    expect($permissions['task_status_id']['editable'])->toBeFalse()
+    expect($permissions['task_status_id']['editable'])->toBeTrue()
         ->and($permissions['task_status_id']['required'])->toBeFalse()
         ->and($permissions['requester_id']['required'])->toBeTrue()
         ->and($permissions['assignee_ids']['required'])->toBeTrue()

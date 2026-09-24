@@ -17,6 +17,7 @@ const formValues: TaskPriorityFormValues = {
   color: 'blue',
   icon: 'star',
   is_active: true,
+  is_default: false,
 }
 
 function original(overrides: Partial<TaskPriorityDetail> = {}): TaskPriorityDetail {
@@ -28,6 +29,7 @@ function original(overrides: Partial<TaskPriorityDetail> = {}): TaskPriorityDeta
     icon: 'star',
     sort_order: 3,
     is_active: true,
+    is_default: false,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -42,6 +44,7 @@ describe('buildCreatePayload (spec 0101)', () => {
       icon: 'star',
       description: 'Follow-up on the client request',
       is_active: true,
+      is_default: false,
     })
   })
 
@@ -82,5 +85,11 @@ describe('buildUpdatePayload (spec 0101)', () => {
       original(),
     )
     expect(payload).not.toHaveProperty('sort_order')
+  })
+
+  it('includes only the changed is_default (spec 0154 D-8)', () => {
+    expect(buildUpdatePayload({ ...formValues, is_default: true }, original())).toEqual({
+      is_default: true,
+    })
   })
 })

@@ -22,7 +22,12 @@ const guide: HelpGuide = {
             ['Color', 'Required.'],
             ['Icon', 'Optional.'],
             ['Active', 'When off, the entry disappears from the dropdowns.'],
+            ['Parent category', 'Optional: makes this category a sub-category of the one you pick.'],
           ],
+        },
+        {
+          type: 'note',
+          text: "Categories can nest across several levels: the task's menu shows them as a tree, indented under their own parent, and you can also pick a parent category, not only the leaves. Color and icon are not inherited from the parent: set them on every category. The name only needs to be unique among categories sharing the same parent.",
         },
       ],
     },
@@ -62,6 +67,10 @@ const guide: HelpGuide = {
         {
           type: 'warning',
           text: 'An entry used by a task cannot be deleted: deactivate it instead of deleting it.',
+        },
+        {
+          type: 'warning',
+          text: 'A category with sub-categories cannot be deleted until you delete or move its sub-categories — for the same reason, you cannot pick it as the parent of itself or of one of its own descendants.',
         },
       ],
     },

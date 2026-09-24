@@ -8,6 +8,8 @@ import i18n from '@/i18n'
 import { createTask, updateTask } from '@/features/tasks/api'
 import { useTaskForm } from '@/features/tasks/use-task-form'
 import { taskDetailWithPermissions } from '@/features/tasks/task-fixtures'
+import type { TaskFormValues } from '@/features/tasks/task-schema'
+import type { UseFormReturn } from 'react-hook-form'
 
 vi.mock('@/features/tasks/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/tasks/api')>('@/features/tasks/api')
@@ -46,6 +48,13 @@ function validationError(errors: Record<string, string[]>): AxiosError {
   return error
 }
 
+/** Spec 0154 D-8: the three lookups now required on every submit, not exercised by these 422-mapping tests. */
+function fillRequiredLookups(form: UseFormReturn<TaskFormValues>) {
+  form.setValue('task_type_id', 2)
+  form.setValue('task_priority_id', 4)
+  form.setValue('task_importance_id', 5)
+}
+
 /** A 413: the payload (description's inline `data:` images) exceeded the server's body limit. */
 function payloadTooLargeError(): AxiosError {
   const error = new AxiosError('Payload Too Large')
@@ -80,6 +89,7 @@ describe('useTaskForm — server refusals land on their field (D-7/D-12)', () =>
       result.current.form.setValue('task_status_id', 3)
       result.current.form.setValue('assignee_ids', [31])
       result.current.form.setValue('end_date', '2026-09-05')
+      fillRequiredLookups(result.current.form)
     })
     await act(async () => {
       await result.current.form.handleSubmit(result.current.onSubmit)()
@@ -105,6 +115,7 @@ describe('useTaskForm — server refusals land on their field (D-7/D-12)', () =>
       result.current.form.setValue('task_status_id', 3)
       result.current.form.setValue('assignee_ids', [31])
       result.current.form.setValue('end_date', '2026-09-05')
+      fillRequiredLookups(result.current.form)
     })
     await act(async () => {
       await result.current.form.handleSubmit(result.current.onSubmit)()
@@ -125,6 +136,7 @@ describe('useTaskForm — server refusals land on their field (D-7/D-12)', () =>
       result.current.form.setValue('task_status_id', 3)
       result.current.form.setValue('assignee_ids', [31])
       result.current.form.setValue('end_date', '2026-09-05')
+      fillRequiredLookups(result.current.form)
     })
     await act(async () => {
       await result.current.form.handleSubmit(result.current.onSubmit)()
@@ -153,6 +165,7 @@ describe('useTaskForm — a 413 lands on the description field (spec 0128)', () 
       result.current.form.setValue('task_status_id', 3)
       result.current.form.setValue('assignee_ids', [31])
       result.current.form.setValue('end_date', '2026-09-05')
+      fillRequiredLookups(result.current.form)
     })
     await act(async () => {
       await result.current.form.handleSubmit(result.current.onSubmit)()

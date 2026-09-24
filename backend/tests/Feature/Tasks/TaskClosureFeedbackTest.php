@@ -115,13 +115,14 @@ it('AC-031: 422 when the feedback is whitespace only: the check trims before dec
     $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $open->id]);
 })->with('closingTaskStatuses');
 
-// REQUIREMENT CHANGED (spec 0118 D-3): task_status_id is now `prohibited` on
-// POST — the server derives it (D-4) and the two derivable rows are both
-// `open` (D-6), so a Task can no longer be born already closed. The
-// data_contract states this scenario is deliberately "non raggiungibile in
-// creazione" now; submitting task_status_id on POST 422s for THAT reason
-// (spec 0118 AC-009), never for a missing closure_feedback, so the "same
-// rule applies on CREATE" case this test pinned no longer exists.
+// REQUIREMENT CHANGED (spec 0118 D-3, spec 0154 D-10): the server derives
+// task_status_id on POST when it is omitted, and a manually submitted one is
+// refused 422 outright when it names a closing/in_validation/action-only
+// status (spec 0154 D-10) — so a Task still cannot be born already closed
+// through this field. Submitting a closing task_status_id on POST 422s for
+// THAT reason (spec 0154 D-10), never for a missing closure_feedback, so the
+// "same rule applies on CREATE" case this test pinned still does not exist
+// (spec 0154 D-6 opens a SEPARATE door, `is_completed: true`, own suite).
 
 // ---------------------------------------------------------------------------
 // AC-032 / AC-033 / AC-034 — the three ways through the guard

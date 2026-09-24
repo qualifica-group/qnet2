@@ -6,6 +6,7 @@ namespace App\Services\Tasks;
 
 use App\Enums\TaskStatusSystemKey;
 use App\Models\TaskStatus;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The creation-time status derivation (spec 0118, D-4; spec 0153, D-4),
@@ -34,6 +35,43 @@ use App\Models\TaskStatus;
  */
 final class TaskInitialStatusResolver
 {
+    private const string MANUAL_STATUS_MESSAGE = 'This status cannot be chosen manually when creating a task.';
+
+    /**
+     * D-10 of spec 0154: the manual override on create — `task_status_id` is
+     * `sometimes` on StoreTaskRequest rather than unconditionally
+     * `prohibited` since that spec. A submitted status outside
+     * `TaskManualStatusGuard::MANUAL_GROUPS` (closing, in_validation, or
+     * reachable only through a domain action — TaskActionOnlyStatusGuard's
+     * own RESERVED_GROUPS is a subset of what this excludes) is refused 422;
+     * one INSIDE it whose `system_key` is `open`/`assigned` is RE-DERIVED
+     * exactly like the omitted case, since those two rows are the ones
+     * resolve() itself would ever choose — every OTHER open/pending row
+     * (a custom intermediate status) is honoured as chosen.
+     *
+     * @param  array<int, int>  $assigneeIds
+     *
+     * @throws ValidationException 422 on `task_status_id`
+     */
+    public function resolveForCreate(?int $submittedStatusId, array $assigneeIds, int $creatorId, ?int $requesterId): int
+    {
+        if ($submittedStatusId === null) {
+            return $this->resolve($assigneeIds, $creatorId, $requesterId);
+        }
+
+        $status = TaskStatus::query()->find($submittedStatusId);
+
+        if ($status === null || ! in_array($status->group, TaskManualStatusGuard::MANUAL_GROUPS, true)) {
+            throw ValidationException::withMessages(['task_status_id' => [self::MANUAL_STATUS_MESSAGE]]);
+        }
+
+        if (in_array($status->system_key, [TaskStatusSystemKey::Open, TaskStatusSystemKey::Assigned], true)) {
+            return $this->resolve($assigneeIds, $creatorId, $requesterId);
+        }
+
+        return $status->id;
+    }
+
     /**
      * `$creatorId` is kept in the signature for source compatibility with
      * App\Services\TaskService::create()'s call site — it is UNUSED by the

@@ -22,7 +22,12 @@ const guide: HelpGuide = {
             ['Colore', 'Obbligatorio.'],
             ['Icona', 'Facoltativa.'],
             ['Attiva', 'Se la spegni, la voce sparisce dai menu a tendina.'],
+            ['Predefinita', 'Se attiva, precompila il campo Priorità sui nuovi task quando non ne viene scelta una.'],
           ],
+        },
+        {
+          type: 'note',
+          text: 'Solo una priorità alla volta può essere predefinita: attivarla su una la disattiva automaticamente sulle altre. Una priorità disattivata non può essere predefinita.',
         },
       ],
     },

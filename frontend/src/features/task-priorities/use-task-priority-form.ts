@@ -26,6 +26,7 @@ const SERVER_ERROR_FIELDS = [
   'color',
   'icon',
   'is_active',
+  'is_default',
 ] as const
 
 export type TaskPriorityFormValues = CreateTaskPriorityFormValues & UpdateTaskPriorityFormValues
@@ -61,6 +62,7 @@ export function useTaskPriorityForm({ mode, onSuccess }: UseTaskPriorityFormArgs
         color: mode.taskPriority.color,
         icon: mode.taskPriority.icon ?? '',
         is_active: mode.taskPriority.is_active,
+        is_default: mode.taskPriority.is_default,
       }
     }
     return {
@@ -69,6 +71,7 @@ export function useTaskPriorityForm({ mode, onSuccess }: UseTaskPriorityFormArgs
       color: '',
       icon: '',
       is_active: true,
+      is_default: false,
     }
   }, [mode])
 

@@ -46,6 +46,17 @@ export interface TaskNamedRef {
   name: string
 }
 
+/**
+ * The linked Lead projection (spec 0154 D-4): a `{id, label}` shape, NOT
+ * `{id, name}` like `TaskNamedRef` — a Lead has no name of its own
+ * (`LeadResource`/`LEADS_FOR_SELECT_RESOURCE` already project `label`), so
+ * `TaskResource.lead` mirrors that exact shape rather than inventing a `name`.
+ */
+export interface TaskLeadRef {
+  id: number
+  label: string
+}
+
 /** The `recurrence` slice of the contract (spec 0120) lives in its own file; re-exported here so existing callers keep importing from `types.ts`. */
 export {
   TASK_RECURRENCE_END_MODES,
@@ -97,6 +108,15 @@ export interface TaskDetail {
   id: number
   title: string
   description: string | null
+  /**
+   * Spec 0154 D-2: when `true`, only the creator, requester, assignees and
+   * watchers see this task — `tasks.viewAll` and the by-site visibility do
+   * not (the super-admin `Gate::before` stays the one exception). Sanitized
+   * HTML, same treatment as `description`.
+   */
+  is_private: boolean
+  /** Spec 0154 D-3: free rich text, nullable, sanitized like `description`. */
+  evidence: string | null
   registry_id: number | null
   registry: TaskNamedRef | null
   referent_id: number | null
@@ -117,6 +137,9 @@ export interface TaskDetail {
   opportunity: TaskNamedRef | null
   work_order_id: number | null
   work_order: TaskWorkOrderRef | null
+  /** Spec 0154 D-4: must belong to `registry_id` when the task has one (422 otherwise). */
+  lead_id: number | null
+  lead: TaskLeadRef | null
   /**
    * The "Fase" of the linked commessa this ROOT task sits in (spec 0146
    * D-2/D-3), `null` for "Senza fase" or when the task carries no commessa or
@@ -273,10 +296,10 @@ export interface CompleteTaskPayload {
  * catalog entirely (spec 0116 D-6): it is written ONLY by `/block`/`/unblock`,
  * never by a PATCH, so it is not a key here either.
  *
- * `task_status_id` LEFT THIS TYPE in spec 0118 (D-3): the initial status is
- * derived server-side from the assignees (D-4), so it is `prohibited` on POST and
- * a create payload that carried it would be a 422. It is still writable by PATCH,
- * where `UpdateTaskPayload` adds it back explicitly.
+ * `task_status_id` LEFT THIS TYPE in spec 0118 (D-3) and RE-JOINED it in spec
+ * 0154 (D-10): a manually picked initial status is now allowed on create
+ * (`sometimes`), still derived server-side (D-4 of 0118) when omitted; a
+ * closing/in-validation/action-only status 422s either way.
  *
  * `requester_id`, `assignee_ids` and `end_date` are REQUIRED here, not optional
  * (spec 0118 D-1): the document's four mandatory creation fields, with `title`.
@@ -287,6 +310,10 @@ export interface CreateTaskPayload {
   assignee_ids: number[]
   end_date: string
   description?: string | null
+  /** Spec 0154 D-2. */
+  is_private?: boolean
+  /** Spec 0154 D-3. */
+  evidence?: string | null
   registry_id?: number | null
   referent_id?: number | null
   parent_task_id?: number | null
@@ -302,6 +329,8 @@ export interface CreateTaskPayload {
    * form only ever sends it on a ROOT task with a commessa selected.
    */
   work_order_stage_id?: number | null
+  /** Spec 0154 D-4: must belong to `registry_id` when set (422 otherwise). */
+  lead_id?: number | null
   start_date?: string | null
   start_time?: string | null
   end_time?: string | null
@@ -312,6 +341,26 @@ export interface CreateTaskPayload {
    * an actor without the mandate 422s on this field (see `UpdateTaskPayload`).
    */
   requires_validation?: boolean
+  /**
+   * Spec 0154 D-10: a manually picked initial status. `sometimes`: a
+   * closing/in-validation/action-only row 422s on this field; omitted, the
+   * server derives it as before (0118 D-4).
+   */
+  task_status_id?: number
+  /**
+   * Spec 0154 D-6: the task is born already closed positively, with a time
+   * entry logging the actor's `estimated_minutes` (even 0), bypassing
+   * validation. 422 when `requires_validation`/`requires_closure_feedback`
+   * would otherwise demand a feedback this path never collects.
+   */
+  is_completed?: boolean
+  /**
+   * Spec 0154 D-7: `false` suppresses the assignment/watch notifications this
+   * create would otherwise send. Create-only — PATCH uses
+   * `notify_new_assigned_users` instead (see `UpdateTaskPayload`). Omitted,
+   * the server default (`true`) applies.
+   */
+  notify_assigned_users?: boolean
   /**
    * Spec 0120 D-12: PROTECTED, same mandate as the flag above. `null` clears
    * the series (PATCH only, D-10); the key is entirely absent when the actor
@@ -335,9 +384,16 @@ export interface CreateTaskPayload {
  * `task_status_id` is added back on purpose (spec 0118 D-3): the status is
  * derived at creation and never re-derived afterwards (D-6), so PATCH — the
  * detail's own picker and nothing else — is the one place a client may write it.
+ *
+ * `is_completed` and `notify_assigned_users` are OMITTED from the base type
+ * here (spec 0154 D-6/D-7): both are create-only concepts with no persisted
+ * counterpart to re-send on a PATCH. `notify_new_assigned_users` is the
+ * edit-mode sibling of `notify_assigned_users`, added back explicitly.
  */
-export type UpdateTaskPayload = Partial<CreateTaskPayload> & {
+export type UpdateTaskPayload = Partial<Omit<CreateTaskPayload, 'is_completed' | 'notify_assigned_users'>> & {
   task_status_id?: number
+  /** Spec 0154 D-7: `false` suppresses notifications for the NEW assignees/watchers this PATCH adds. */
+  notify_new_assigned_users?: boolean
 }
 
 /** The three fixed recipient groups for `RequestTaskUpdatePayload.target` (spec 0153 D-14). */

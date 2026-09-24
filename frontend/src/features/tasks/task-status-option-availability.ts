@@ -14,6 +14,27 @@ import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 const ACTION_ONLY_GROUPS: TaskStatusGroupValue[] = ['in_validation', 'closed_positive']
 
 /**
+ * Spec 0154 D-10: on CREATE a manually picked initial status may be
+ * `open`/`pending` only — every closing phase (positive AND negative, unlike
+ * the PATCH rule above) plus `in_validation` 422s unconditionally, with no
+ * `close_via_status`-style exception: a brand-new task carries no action
+ * mandate yet to gate on.
+ */
+const CREATE_DISALLOWED_GROUPS: TaskStatusGroupValue[] = ['in_validation', 'closed_positive', 'closed_negative']
+
+/**
+ * Mirror of the D-10 create-time rule. An option with no `meta` at all is
+ * never disabled by this rule either, same tolerance as `taskStatusMetaOf`.
+ */
+export function isTaskStatusOptionDisabledOnCreate(item: ForSelectItem): boolean {
+  const meta = taskStatusMetaOf(item)
+  if (!meta) {
+    return false
+  }
+  return CREATE_DISALLOWED_GROUPS.includes(meta.group)
+}
+
+/**
  * `in_validation`/`closed_positive` are disabled unconditionally;
  * `closed_negative` is disabled exactly when the actor's own
  * `close_via_status` flag (`permissions.actions.close_via_status`, D-5) is

@@ -229,6 +229,7 @@ it('gives "DIL" an offer form of its own fields, in the client order', function 
         ->and(codesOfSection($layout, 'contact-processing'))->toBe([
             'data_scelta_cpi', 'data_app_apl',
             'dote_activation_date', 'dote_expiry_date',
+            ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS,
             'subsidy_type',
             'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
         ]);

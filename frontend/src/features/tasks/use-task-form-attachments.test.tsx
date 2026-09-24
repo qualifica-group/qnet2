@@ -42,11 +42,20 @@ function wrapper() {
   )
 }
 
-/** Fills in the fields the create schema actually requires (title/assignees/end_date, D-1); `requester_id` is already prefilled. */
+/**
+ * Fills in the fields the create schema actually requires (title/assignees/
+ * end_date, D-1, plus type/priority/importance, spec 0154 D-8); `requester_id`
+ * is already prefilled. The D-8 precompile effect is not exercised here — it
+ * has its own coverage in `use-task-form.test.tsx` — so these three are set
+ * directly rather than relying on a mocked for-select default row.
+ */
 function fillMinimalCreateValues(form: UseFormReturn<TaskFormValues>) {
   form.setValue('title', 'Richiamare il cliente')
   form.setValue('assignee_ids', [31])
   form.setValue('end_date', '2026-09-05')
+  form.setValue('task_type_id', 2)
+  form.setValue('task_priority_id', 4)
+  form.setValue('task_importance_id', 5)
 }
 
 beforeAll(async () => {

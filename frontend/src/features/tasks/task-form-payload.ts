@@ -99,6 +99,8 @@ function scalarsOf(values: TaskFormValues) {
   return {
     title: values.title,
     description: values.description,
+    is_private: values.is_private,
+    evidence: values.evidence,
     registry_id: values.registry_id,
     referent_id: values.referent_id,
     parent_task_id: values.parent_task_id,
@@ -109,6 +111,7 @@ function scalarsOf(values: TaskFormValues) {
     opportunity_id: values.opportunity_id,
     work_order_id: values.work_order_id,
     work_order_stage_id: values.work_order_stage_id,
+    lead_id: values.lead_id,
     requester_id: values.requester_id,
     start_date: values.start_date,
     end_date: values.end_date,
@@ -149,6 +152,22 @@ export function buildCreatePayload(
     assignee_ids: values.assignee_ids,
     watcher_ids: values.watcher_ids,
   }
+  // Spec 0154 D-10: a manually picked initial status; omitted, the server
+  // derives it as before (0118 D-4).
+  if (values.task_status_id !== null) {
+    payload.task_status_id = values.task_status_id
+  }
+  // Spec 0154 D-6: "Crea gia' completato" is a create-only instruction, sent
+  // only when checked — the server default (`false`) covers the common case.
+  if (values.is_completed) {
+    payload.is_completed = true
+  }
+  // Spec 0154 D-7: the ONE UI toggle maps onto `notify_assigned_users` on
+  // create; sent only when the actor actively suppresses the notification,
+  // the server default (`true`) covers the unchecked case.
+  if (values.suppress_notifications) {
+    payload.notify_assigned_users = false
+  }
   if (canEditRecurrence) {
     const rule = normalizeRecurrenceValues(values.recurrence)
     payload.recurrence = rule ? recurrencePayloadOf(rule) : null
@@ -178,6 +197,8 @@ export function buildUpdatePayload(
 
   if (scalars.title !== original.title) payload.title = scalars.title
   if (scalars.description !== original.description) payload.description = scalars.description
+  if (scalars.is_private !== original.is_private) payload.is_private = scalars.is_private
+  if (scalars.evidence !== original.evidence) payload.evidence = scalars.evidence
   if (scalars.registry_id !== original.registry_id) payload.registry_id = scalars.registry_id
   if (scalars.referent_id !== original.referent_id) payload.referent_id = scalars.referent_id
   if (scalars.parent_task_id !== original.parent_task_id) payload.parent_task_id = scalars.parent_task_id
@@ -192,6 +213,7 @@ export function buildUpdatePayload(
   if (scalars.work_order_stage_id !== original.work_order_stage_id) {
     payload.work_order_stage_id = scalars.work_order_stage_id
   }
+  if (scalars.lead_id !== original.lead_id) payload.lead_id = scalars.lead_id
   // D-2: `requester_id` and `end_date` are `sometimes|required` on PATCH — not
   // annullable. A null here would be a 422, so it is simply not sent: the guard
   // is the contract, not a convenience.
@@ -222,6 +244,12 @@ export function buildUpdatePayload(
   }
   if (!sameIdSet(values.watcher_ids, original.watchers.map((user) => user.id))) {
     payload.watcher_ids = values.watcher_ids
+  }
+
+  // Spec 0154 D-7: the edit-mode sibling of the create toggle — no persisted
+  // counterpart to diff against, so it is sent only while actively checked.
+  if (values.suppress_notifications) {
+    payload.notify_new_assigned_users = false
   }
 
   if (canEditRecurrence) {

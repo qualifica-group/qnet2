@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TaskStatusGroup;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Role;
@@ -213,9 +214,19 @@ it('AC-010: 422 when title is missing', function () {
         ->assertStatus(422)->assertJsonValidationErrors('title');
 });
 
-it('AC-009: POST with task_status_id among the payload is 422 (prohibited), no row created', function () {
+it('AC-009 (spec 0154, D-10, REQUIREMENT CHANGED): POST with task_status_id in the open/pending phase is honoured as chosen', function () {
+    $actor = taskActorWith(['create', 'view']);
+    $status = TaskStatus::factory()->group(TaskStatusGroup::Pending)->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tasks', taskPayload(['task_status_id' => $status->id]))->assertCreated();
+
+    expect($response->json('data.task_status.id'))->toBe($status->id);
+});
+
+it('AC-009b (spec 0154, D-10): POST with task_status_id in a closing phase is 422 (prohibited), no row created', function () {
     $actor = taskActorWith(['create']);
-    $status = TaskStatus::factory()->create();
+    $status = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/tasks', taskPayload(['task_status_id' => $status->id]))

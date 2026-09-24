@@ -4,6 +4,9 @@ import axios from 'axios'
 export const SERVER_ERROR_FIELDS = [
   'title',
   'description',
+  'is_private',
+  'evidence',
+  'is_completed',
   'registry_id',
   'referent_id',
   'parent_task_id',
@@ -14,6 +17,7 @@ export const SERVER_ERROR_FIELDS = [
   'opportunity_id',
   'work_order_id',
   'work_order_stage_id',
+  'lead_id',
   'requester_id',
   'start_date',
   'end_date',

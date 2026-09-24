@@ -88,6 +88,9 @@ export function TaskPriorityDetailView({ taskPriority, onEdit }: TaskPriorityDet
                 <RecordField label={t('taskPriorities.detail.isActive')}>
                   {taskPriority.is_active ? t('common.yes') : t('common.no')}
                 </RecordField>
+                <RecordField label={t('taskPriorities.detail.isDefault')}>
+                  {taskPriority.is_default ? t('common.yes') : t('common.no')}
+                </RecordField>
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>

@@ -11,6 +11,7 @@ use App\Support\BadgeTokens;
 use Database\Seeders\QualificaCatalog\TaskTaxonomyCatalogue;
 use Database\Seeders\QualificaTaskTaxonomySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 
 // The client's Task classification vocabulary (spec 0101): four pure lookups
 // plus the status pick-list, seeded as ordinary reference rows and idempotent
@@ -170,6 +171,47 @@ it('does not duplicate the statuses on a re-run', function (): void {
     test()->seed(QualificaTaskTaxonomySeeder::class);
 
     expect(TaskStatus::query()->count())->toBe($afterFirst);
+});
+
+// ---------------------------------------------------------------------------
+// The client-chosen defaults (spec 0154, D-8)
+// ---------------------------------------------------------------------------
+
+it('marks "Attivita\'" type, "Media" priority and "Media" importance as the defaults', function (): void {
+    test()->seed(QualificaTaskTaxonomySeeder::class);
+
+    expect(TaskType::query()->where('name', 'Attività')->value('is_default'))->toBeTrue()
+        ->and(TaskType::query()->where('is_default', true)->count())->toBe(1)
+        ->and(TaskPriority::query()->where('name', 'Media')->value('is_default'))->toBeTrue()
+        ->and(TaskPriority::query()->where('is_default', true)->count())->toBe(1)
+        ->and(TaskImportance::query()->where('name', 'Media')->value('is_default'))->toBeTrue()
+        ->and(TaskImportance::query()->where('is_default', true)->count())->toBe(1)
+        // task_categories has no `is_default` column at all (D-1 nests
+        // instead of defaulting).
+        ->and(Schema::hasColumn('task_categories', 'is_default'))->toBeFalse();
+});
+
+it('leaves an admin-chosen default alone on a re-run', function (): void {
+    test()->seed(QualificaTaskTaxonomySeeder::class);
+
+    $alta = TaskPriority::query()->where('name', 'Alta')->firstOrFail();
+    $alta->update(['is_default' => true]);
+    TaskPriority::query()->where('id', '!=', $alta->id)->update(['is_default' => false]);
+
+    test()->seed(QualificaTaskTaxonomySeeder::class);
+
+    expect($alta->fresh()->is_default)->toBeTrue()
+        ->and(TaskPriority::query()->where('name', 'Media')->value('is_default'))->toBeFalse()
+        ->and(TaskPriority::query()->where('is_default', true)->count())->toBe(1);
+});
+
+it('is idempotent: re-running twice never produces more than one default per table', function (): void {
+    test()->seed(QualificaTaskTaxonomySeeder::class);
+    test()->seed(QualificaTaskTaxonomySeeder::class);
+
+    expect(TaskType::query()->where('is_default', true)->count())->toBe(1)
+        ->and(TaskPriority::query()->where('is_default', true)->count())->toBe(1)
+        ->and(TaskImportance::query()->where('is_default', true)->count())->toBe(1);
 });
 
 it('seeds only badge tokens the grid can render on the statuses too', function (): void {

@@ -7,6 +7,12 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 
+/** The parent category's minimal identity, as exposed by `TaskCategoryResource.parent` (spec 0154 D-1). */
+export interface TaskCategoryParentRef {
+  id: number
+  name: string
+}
+
 /**
  * Single task category detail returned by GET/POST/PATCH /task-categories
  * (envelope `data`). `sort_order` is server-managed: read-only, never
@@ -22,6 +28,9 @@ export interface TaskCategoryDetail {
   color: string
   /** Curated lucide name of `ICON_NAMES`, or null when unset. */
   icon: string | null
+  /** Spec 0154 D-1: `null` for a root category. A cycle (including self) 422s on this field. */
+  parent_id: number | null
+  parent: TaskCategoryParentRef | null
   sort_order: number
   is_active: boolean
   created_at: string | null
@@ -48,6 +57,8 @@ export interface CreateTaskCategoryPayload {
   icon?: string | null
   description?: string | null
   is_active?: boolean
+  /** Spec 0154 D-1. */
+  parent_id?: number | null
 }
 
 /**

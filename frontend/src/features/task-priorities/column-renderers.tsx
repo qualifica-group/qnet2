@@ -14,5 +14,7 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
 export const taskPriorityColumnRenderers: TableRendererMap = {
   color: (params) => <ColorSwatchCell {...params} />,
   is_active: (params) => <BooleanBadgeCell {...params} />,
+  // Spec 0154 D-8: same boolean badge as is_active.
+  is_default: (params) => <BooleanBadgeCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

@@ -22,6 +22,7 @@ const VALID_VALUES = {
   color: 'blue',
   icon: 'star',
   is_active: true,
+  parent_id: null,
 }
 
 describe('buildCreateTaskCategorySchema (spec 0101)', () => {

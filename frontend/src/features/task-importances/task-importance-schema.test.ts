@@ -22,6 +22,7 @@ const VALID_VALUES = {
   color: 'blue',
   icon: 'star',
   is_active: true,
+  is_default: false,
 }
 
 describe('buildCreateTaskImportanceSchema (spec 0101)', () => {

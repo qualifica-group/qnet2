@@ -12,15 +12,19 @@ use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskActionOnlyStatusGuard;
 use App\Services\Tasks\TaskClosureFeedbackGuard;
+use App\Services\Tasks\TaskCreationCompletion;
+use App\Services\Tasks\TaskDefaultLookupResolver;
 use App\Services\Tasks\TaskDeleteCascade;
 use App\Services\Tasks\TaskDescriptionWriter;
+use App\Services\Tasks\TaskEvidenceWriter;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
 use App\Services\Tasks\TaskManualStatusGuard;
 use App\Services\Tasks\TaskParentAccessGuard;
 use App\Services\Tasks\TaskParentDateRangeGuard;
+use App\Services\Tasks\TaskPivotDelta;
+use App\Services\Tasks\TaskRecordLinkCoherence;
 use App\Services\Tasks\TaskRecurrenceService;
-use App\Services\Tasks\TaskReferentRegistryGuard;
 use App\Services\Tasks\TaskStageGuard;
 use App\Services\Tasks\TaskValidationRequirementGuard;
 use App\Services\Tasks\TaskVisibilityScope;
@@ -34,59 +38,39 @@ use Illuminate\Support\Facades\DB;
  * Business logic for the `tasks` resource (spec 0101).
  *
  * SIZE (engineering.md §6): the for-select read path lives in
- * App\Services\Tasks\TaskForSelectService and the referente/anagrafica rule
- * in App\Services\Tasks\TaskReferentRegistryGuard, so this class holds the
- * write paths alone. The guards stay CALLED from here, inside the SAME
- * transaction as the write they protect (AC-032): any further split goes by
- * WRITE PATH, never by moving a guard call out of its transaction.
- * TaskRecurrenceService carries its OWN logic (spec 0120 D-10/D-11); this
- * class only decides WHICH of set()/replace()/cancel() to call and WHEN.
+ * App\Services\Tasks\TaskForSelectService, the record-link coherence rules in
+ * App\Services\Tasks\TaskRecordLinkCoherence, the born-completed write in
+ * App\Services\Tasks\TaskCreationCompletion — this class holds the write
+ * PATHS alone, calling every guard inside the SAME transaction as the write
+ * it protects (AC-032): a further split goes by write path, never by moving
+ * a guard call out of its transaction.
  *
  * The controller stays thin; this Service is the single authority over the
- * write-time rules that a FormRequest structurally cannot enforce. Five of them are evaluated on
- * the RESULTING record rather than on the submitted payload: the sub-task
- * hierarchy (D-12), the referent/anagrafica coherence (AC-014), the closing
- * feedback (D-7), the watcher/creator/requester/assignee overlap (spec
- * 0118 D-9) and the validation-requirement bypass (spec 0121 D-5) — the
- * overlap one needs the two user pivots resolved to their RESULTING ids
- * (submitted, or persisted when the key was not part of this PATCH), which is
- * why TaskService computes them and TaskWatcherOverlapGuard receives plain
- * arrays rather than the DTO. A sixth, the structural write lock (spec 0116
- * D-7), is the mirror case: it is evaluated on the SUBMITTED keys against the
- * Task's CURRENT persisted state, ahead of fill() — a task_status_id sent in
- * the same PATCH that would move the Task out of a frozen phase must not
- * smuggle a structural field past the lock that was in force when the
- * request arrived. All six run INSIDE the write transaction, so a refusal
- * leaves the Task exactly as it was (AC-032).
+ * write-time rules a FormRequest structurally cannot enforce, ALL evaluated
+ * on the RESULTING record and ALL inside the write transaction, so a refusal
+ * leaves the Task exactly as it was (AC-032): the sub-task hierarchy (D-12),
+ * the record-link coherence (referent/registry AC-014, lead/registry spec
+ * 0154 D-4, commessa/opportunity exclusivity spec 0154 D-11), the closing
+ * feedback (D-7), the watcher/creator/requester/assignee overlap (spec 0118
+ * D-9), the validation-requirement bypass (spec 0121 D-5) and the parent
+ * date range (spec 0123 D-7/D-8). The structural write lock (spec 0116 D-7)
+ * is the mirror case: evaluated on the SUBMITTED keys against the Task's
+ * CURRENT persisted state, ahead of fill().
  *
- * TaskParentDateRangeGuard (spec 0123, D-7/D-8) adds two more, both on the
- * RESULTING state and both inside the same transaction: the CHILD side
- * (assertChildWithinParent) runs on every create with a parent, and on
- * update only when `parent_task_id`/`start_date`/`end_date` was submitted;
- * the PARENT side (assertChildrenWithinRange) runs on every update and is a
- * no-op unless `start_date`/`end_date` is actually dirty.
- *
- * TaskActionOnlyStatusGuard (spec 0123, D-4) runs FIRST among update()'s
- * resulting-state guards, right after fill(): a `task_status_id` dirty
- * toward `in_validation`/`closed_positive` is refused for every actor, no
- * exemption, so nothing downstream needs to special-case it.
- *
- * `creator_id` is set here from the authenticated actor and nowhere else
- * (D-10): it is absent from Task's #[Fillable], so no payload can reach it.
- * `task_status_id` is set here too on create ONLY (spec 0118 D-3/D-4/D-6):
- * `TaskInitialStatusResolver` derives it from the submitted assignees against
- * the creator/requester, inside the same transaction, before the
- * closing-feedback guard runs — update() never re-derives it, by design.
- *
- * TaskParentAccessGuard (spec 0125, D-4) runs on create with a parent and
- * on update only when `parent_task_id` actually changes: the actor must see
- * and be able to edit the parent. delete() re-asserts the delete matrix row
- * past Gate::before (spec 0125, D-1) ahead of its other guards.
+ * `creator_id` is set here from the actor and nowhere else (D-10): absent
+ * from Task's #[Fillable]. `task_status_id` is derived on create by
+ * `TaskInitialStatusResolver` (spec 0118 D-4, spec 0153 D-4, spec 0154 D-10
+ * for the manual override) — update() never re-derives it. `task_type_id`/
+ * `task_priority_id`/`task_importance_id` fall back to `is_default` rows
+ * when omitted (spec 0154, D-8), read-only through TaskDefaultLookupResolver.
+ * `is_completed: true` on create hands the just-built Task to
+ * TaskCreationCompletion (spec 0154, D-6) BEFORE assignees/watchers are
+ * notified, so its own D-7 gate can choose between the ordinary voce 7/8
+ * pair and the closure notification.
  *
  * delete() carries the sub-task guard (D-8a) and the structural write lock's
  * assertDeletable() (spec 0116 AC-033); TasksTableDefinition overrides
- * deleteModel() to route the generic bulk-delete through this same method,
- * so neither guard can be side-stepped (AC-016).
+ * deleteModel() to route the generic bulk-delete through this same method.
  */
 class TaskService
 {
@@ -114,19 +98,24 @@ class TaskService
         'assignees',
         'watchers',
         'recurrence',
+        'lead.registry',
     ];
 
     public function __construct(
         private readonly TaskActionOnlyStatusGuard $actionOnlyStatusGuard,
         private readonly TaskClosureFeedbackGuard $closureFeedbackGuard,
+        private readonly TaskCreationCompletion $creationCompletion,
+        private readonly TaskDefaultLookupResolver $defaultLookups,
         private readonly TaskDescriptionWriter $descriptionWriter,
+        private readonly TaskEvidenceWriter $evidenceWriter,
         private readonly TaskHierarchyGuard $hierarchyGuard,
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly TaskNotifier $notifier,
         private readonly TaskParentAccessGuard $parentAccessGuard,
         private readonly TaskParentDateRangeGuard $parentDateRangeGuard,
+        private readonly TaskPivotDelta $pivotDelta,
+        private readonly TaskRecordLinkCoherence $recordLinkCoherence,
         private readonly TaskRecurrenceService $recurrenceService,
-        private readonly TaskReferentRegistryGuard $referentRegistryGuard,
         private readonly TaskStageGuard $stageGuard,
         private readonly TaskValidationRequirementGuard $validationRequirementGuard,
         private readonly TaskWatcherOverlapGuard $watcherOverlapGuard,
@@ -145,13 +134,25 @@ class TaskService
     public function create(CreateTaskData $data, User $creator): Task
     {
         $task = DB::transaction(function () use ($data, $creator): Task {
-            // Step 1: the payload-level coherence rules (a brand-new row has
-            // no id yet, so no cycle is expressible here — D-12).
-            $this->referentRegistryGuard->assertBelongs($data->registryId, $data->referentId);
+            // Step 1: record-link coherence (a brand-new row has no id yet,
+            // so no cycle is expressible here — D-12), resolving `registry_id`
+            // from the commessa when it was left blank (spec 0154, D-11).
+            $registryId = $this->recordLinkCoherence->resolveRegistryId(
+                $data->registryId,
+                $data->referentId,
+                $data->leadId,
+                $data->workOrderId,
+                $data->opportunityId,
+            );
 
-            // Step 2: build the row, with the creator taken from the actor.
+            // Step 2: build the row, creator/registry from Step 1/the actor,
+            // the three lookups defaulted when omitted (spec 0154, D-8).
             $task = new Task($data->attributes());
+            $task->registry_id = $registryId;
             $task->creator_id = $creator->id;
+            $task->task_type_id ??= $this->defaultLookups->taskTypeId();
+            $task->task_priority_id ??= $this->defaultLookups->taskPriorityId();
+            $task->task_importance_id ??= $this->defaultLookups->taskImportanceId();
 
             // Step 2a: the actor must see and be able to edit the parent
             // (spec 0125, D-4), ahead of every guard that reads the parent.
@@ -162,19 +163,16 @@ class TaskService
             TaskWriteLock::assertParentChainUnlocked($task);
 
             // Step 2c: date-range coherence with the parent (spec 0123, D-7).
-            // Unconditional on create — there is no "submitted keys" partial
-            // state to gate on, every attribute is already on the row.
             $this->parentDateRangeGuard->assertChildWithinParent($task);
 
-            // Step 2d: the task board "Fase" rule (spec 0146, D-3/AC-015) —
-            // prohibited on a sub-task, must belong to `work_order_id`, must
-            // not be closed, accoded at the end when valid.
+            // Step 2d: the task board "Fase" rule (spec 0146, D-3/AC-015).
             $this->stageGuard->applyOnCreate($task);
 
-            // Step 3: the initial status is DERIVED, never submitted (spec
-            // 0118 D-3/D-4): a single assignee who is the creator or the
-            // requester opens on `open`, every other case on `assigned`.
-            $task->task_status_id = $this->initialStatusResolver->resolve(
+            // Step 3: the initial status — manually chosen and re-derived
+            // when it names `open`/`assigned` (spec 0154, D-10), otherwise
+            // fully derived (spec 0118 D-3/D-4, spec 0153 D-4).
+            $task->task_status_id = $this->initialStatusResolver->resolveForCreate(
+                $data->taskStatusId,
                 $data->assigneeIds,
                 $creator->id,
                 $data->requesterId,
@@ -201,13 +199,15 @@ class TaskService
 
             $task->save();
 
-            // Step 5c: rich text description (spec 0128, D-2/D-3) — only
-            // once the Task has an id, since an inline image becomes one of
-            // ITS OWN attachments. A second, small UPDATE only when the
-            // sanitized/processed HTML actually differs from the null default.
+            // Step 5c: rich text description/evidence (spec 0128 D-2/D-3;
+            // spec 0154 D-3) — only once the Task has an id, since an inline
+            // description image becomes one of ITS OWN attachments. A
+            // second, small UPDATE only when either sanitized value actually
+            // differs from the null default.
             $this->descriptionWriter->applyOnCreate($task, $data->description, $creator);
+            $this->evidenceWriter->apply($task, $data->evidence);
 
-            if ($task->isDirty('description')) {
+            if ($task->isDirty(['description', 'evidence'])) {
                 $task->save();
             }
 
@@ -215,13 +215,27 @@ class TaskService
             $task->assignees()->sync($data->assigneeIds);
             $task->watchers()->sync($data->watcherIds);
 
-            // Step 7: voci 7 and 8 of the notification map (spec 0119). The
-            // submitted ids are passed explicitly rather than re-read off the
-            // just-synced relation, and the send itself is deferred to
+            // Step 7: born already completed (spec 0154, D-6) overrides the
+            // birth above with the closed_positive one, BEFORE the
+            // notification decision right below reads it.
+            if ($data->isCompleted) {
+                $this->creationCompletion->apply($task, $creator);
+            }
+
+            // Step 8: voci 7/8 of the notification map (spec 0119) UNLESS the
+            // Task was born completed, which sends the closure notification
+            // instead (D-6) — never both. Gated on `notify_assigned_users`
+            // (spec 0154, D-7): false sends neither. Deferred to
             // DB::afterCommit() inside the notifier, so this rolls back with
             // the transaction (AC-012, AC-013).
-            $this->notifier->assigned($task, $creator, $data->assigneeIds);
-            $this->notifier->watching($task, $creator, $data->watcherIds);
+            if ($data->notifyAssignedUsers) {
+                if ($data->isCompleted) {
+                    $this->creationCompletion->notifyClosure($task, $creator);
+                } else {
+                    $this->notifier->assigned($task, $creator, $data->assigneeIds);
+                    $this->notifier->watching($task, $creator, $data->watcherIds);
+                }
+            }
 
             return $task;
         });
@@ -260,11 +274,15 @@ class TaskService
 
             $task->fill($data->submittedAttributes());
 
-            // Rich text description (spec 0128, D-2/D-3/D-4), only when the
-            // key was actually submitted — an untouched description is never
-            // re-sanitized/re-processed and its attachments are left alone.
+            // Rich text description/evidence (spec 0128 D-2/D-3/D-4; spec
+            // 0154 D-3), each only when its own key was actually submitted —
+            // an untouched one is never re-sanitized.
             if ($data->descriptionSubmitted) {
                 $this->descriptionWriter->applyOnUpdate($task, $data->description, $actor);
+            }
+
+            if ($data->evidenceSubmitted) {
+                $this->evidenceWriter->apply($task, $data->evidence);
             }
 
             // States reserved to the domain actions (spec 0123, D-4): checked
@@ -307,14 +325,25 @@ class TaskService
             // if no longer coherent) rather than as a fresh client choice.
             $this->stageGuard->applyOnUpdate($task, $data->workOrderStageIdSubmitted);
 
-            $this->referentRegistryGuard->assertBelongs($task->registry_id, $task->referent_id);
+            // Record-link coherence (referent/registry AC-014, lead/registry
+            // spec 0154 D-4, commessa/opportunity spec 0154 D-11), on the
+            // RESULTING state, unconditional — a pair that predates the rule
+            // self-heals rather than silently drifting.
+            $task->registry_id = $this->recordLinkCoherence->resolveRegistryId(
+                $task->registry_id,
+                $task->referent_id,
+                $task->lead_id,
+                $task->work_order_id,
+                $task->opportunity_id,
+            );
+
             $this->closureFeedbackGuard->assertSatisfied($task);
             $this->validationRequirementGuard->assertClosableBy($task, $actor);
             $this->watcherOverlapGuard->assertNoOverlap(
                 $task->creator_id,
                 $task->requester_id,
-                $data->hasAssigneeIds() ? ($data->assigneeIds ?? []) : $this->persistedPivotIds($task, 'assignees'),
-                $data->hasWatcherIds() ? ($data->watcherIds ?? []) : $this->persistedPivotIds($task, 'watchers'),
+                $data->hasAssigneeIds() ? ($data->assigneeIds ?? []) : $this->pivotDelta->persistedIds($task, 'assignees'),
+                $data->hasWatcherIds() ? ($data->watcherIds ?? []) : $this->pivotDelta->persistedIds($task, 'watchers'),
             );
 
             // Recurrence (spec 0120 D-10/D-12/D-13): three-way on the
@@ -333,8 +362,8 @@ class TaskService
             // Who this PATCH ADDS to each pivot, read BEFORE the sync: once
             // the sync has run the persisted pivot IS the submitted one and
             // every delta reads empty (spec 0119 D-9).
-            $addedAssigneeIds = $this->addedPivotIds($task, 'assignees', $data->assigneeIds);
-            $addedWatcherIds = $this->addedPivotIds($task, 'watchers', $data->watcherIds);
+            $addedAssigneeIds = $this->pivotDelta->addedIds($task, 'assignees', $data->assigneeIds);
+            $addedWatcherIds = $this->pivotDelta->addedIds($task, 'watchers', $data->watcherIds);
 
             // Full-replace only when the key was actually submitted
             // (AC-012): an untouched relation must not trigger a no-op sync.
@@ -350,9 +379,13 @@ class TaskService
 
             // Only the newcomers hear about it (D-9): an empty delta sends
             // nothing, so a PATCH that removes members or touches neither
-            // pivot stays silent (AC-015, AC-017).
-            $this->notifier->assigned($task, $actor, $addedAssigneeIds);
-            $this->notifier->watching($task, $actor, $addedWatcherIds);
+            // pivot stays silent (AC-015, AC-017). Gated on
+            // `notify_new_assigned_users` (spec 0154, D-7): false suppresses
+            // both for this PATCH.
+            if ($data->notifyNewAssignedUsers) {
+                $this->notifier->assigned($task, $actor, $addedAssigneeIds);
+                $this->notifier->watching($task, $actor, $addedWatcherIds);
+            }
         });
 
         return $this->loadDetail($task);
@@ -418,12 +451,12 @@ class TaskService
 
     /**
      * The column keys the client actually submitted on this PATCH, plus
-     * `description`/`assignee_ids`/`watcher_ids`/`recurrence` when their own
-     * key was present — none of the four travel through submittedAttributes(),
-     * which only carries plain mass-assignable `tasks` columns, yet all four
-     * are structural (D-5; spec 0120 D-13 for `recurrence`; spec 0128 for
-     * `description`, which TaskDescriptionWriter now sets directly rather
-     * than through fill()).
+     * `description`/`evidence`/`assignee_ids`/`watcher_ids`/`recurrence` when
+     * their own key was present — none of the five travel through
+     * submittedAttributes(), which only carries plain mass-assignable
+     * `tasks` columns, yet all five are structural (D-5; spec 0120 D-13 for
+     * `recurrence`; spec 0128/spec 0154 for `description`/`evidence`, which
+     * their own writer sets directly rather than through fill()).
      *
      * @return array<int, string>
      */
@@ -433,6 +466,10 @@ class TaskService
 
         if ($data->descriptionSubmitted) {
             $keys[] = 'description';
+        }
+
+        if ($data->evidenceSubmitted) {
+            $keys[] = 'evidence';
         }
 
         if ($data->hasAssigneeIds()) {
@@ -448,48 +485,5 @@ class TaskService
         }
 
         return $keys;
-    }
-
-    /**
-     * The ids currently on one of the Task's two user pivots
-     * (`assignees`/`watchers`), used only as a RESULTING-value fallback for
-     * TaskWatcherOverlapGuard (spec 0118 D-9, AC-033): read when the pivot's
-     * own key was not part of this PATCH, so the guard is judged on what the
-     * Task will actually hold once saved rather than on the submitted keys
-     * alone.
-     *
-     * @param  'assignees'|'watchers'  $relation
-     * @return array<int, int>
-     */
-    private function persistedPivotIds(Task $task, string $relation): array
-    {
-        $query = match ($relation) {
-            'assignees' => $task->assignees(),
-            'watchers' => $task->watchers(),
-        };
-
-        return $query->pluck('users.id')->all();
-    }
-
-    /**
-     * The ids this PATCH ADDS to one of the two user pivots (spec 0119 D-9):
-     * on an update only the newcomers are notified, never those already on
-     * the pivot and never those being removed — the removal carries no
-     * notification at all (spec 0119 scope/out).
-     *
-     * MUST be called BEFORE the sync. A key that was not submitted leaves the
-     * pivot untouched and therefore adds nobody.
-     *
-     * @param  'assignees'|'watchers'  $relation
-     * @param  array<int, int>|null  $submittedIds  null = key not submitted
-     * @return array<int, int>
-     */
-    private function addedPivotIds(Task $task, string $relation, ?array $submittedIds): array
-    {
-        if ($submittedIds === null) {
-            return [];
-        }
-
-        return array_values(array_diff($submittedIds, $this->persistedPivotIds($task, $relation)));
     }
 }

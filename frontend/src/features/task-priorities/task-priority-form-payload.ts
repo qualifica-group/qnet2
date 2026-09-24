@@ -18,6 +18,7 @@ export function buildCreatePayload(values: TaskPriorityFormValues): CreateTaskPr
     icon: iconValue(values.icon),
     description: values.description,
     is_active: values.is_active,
+    is_default: values.is_default,
   }
 }
 
@@ -46,6 +47,9 @@ export function buildUpdatePayload(
   }
   if (values.is_active !== original.is_active) {
     payload.is_active = values.is_active
+  }
+  if (values.is_default !== original.is_default) {
+    payload.is_default = values.is_default
   }
 
   return payload

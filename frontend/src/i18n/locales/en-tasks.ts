@@ -137,6 +137,20 @@ export const tasks = {
     titleRequired: 'The title is required.',
     titleMax: 'The title cannot exceed 191 characters.',
     description: 'Description',
+    evidence: 'Evidence',
+    evidencePlaceholder: 'Add the evidence of the work done…',
+    isPrivate: 'Private task',
+    isPrivateHint:
+      'Visible only to the creator, requester, assignees and watchers: the View all and View by site permissions do not show it.',
+    isCompleted: 'Create already completed',
+    isCompletedHint:
+      'The task is born closed with a positive outcome: it logs a time entry with the estimated minutes (even 0) right away, without going through validation.',
+    suppressNotificationsCreate: 'Do not send the opening notification',
+    suppressNotificationsCreateHint:
+      'Assignees and watchers do not receive the assignment notification on create.',
+    suppressNotificationsEdit: 'Do not notify the newly assigned',
+    suppressNotificationsEditHint:
+      'The new assignees and watchers added by this save do not receive the notification.',
     parentTask: 'Parent task',
     parentTaskSearch: 'Search a task by title…',
     status: 'Status',
@@ -144,12 +158,17 @@ export const tasks = {
     statusRequired: 'The status is required.',
     type: 'Type',
     typeSearch: 'Search a type…',
+    typeRequired: 'The type is required.',
     category: 'Category',
     categorySearch: 'Search a category…',
     priority: 'Priority',
     prioritySearch: 'Search a priority…',
+    priorityRequired: 'The priority is required.',
     importance: 'Importance',
     importanceSearch: 'Search an importance…',
+    importanceRequired: 'The importance is required.',
+    lead: 'Lead',
+    leadSearch: 'Search a lead…',
     completionPercentage: 'Completion',
     completionPercentageHint: 'Derived from the selected status; it is never saved on the task.',
     percentValue: '{{value}}%',
@@ -198,6 +217,7 @@ export const tasks = {
     selectError: 'Could not load the options. Try again.',
     hints: {
       referentScoped: 'Only the contacts of the selected account are listed.',
+      leadScoped: 'When you pick an account, only that account’s leads are listed.',
       parentLocked: 'Set from the parent task this sub-task is created under.',
     },
     sections: {

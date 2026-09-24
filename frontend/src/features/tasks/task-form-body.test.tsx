@@ -312,12 +312,16 @@ describe('TaskFormBody — watchers picker excludes overlapping people (spec 011
   })
 })
 
-/** Spec 0118 D-3: the server derives the initial status, so create never offers the picker. */
-describe('TaskFormBody — the status picker only exists in edit mode (spec 0118 D-3)', () => {
-  it('has no Stato control on create', () => {
+/**
+ * Spec 0118 D-3 RECTIFIED by spec 0154 D-10: a manually picked initial status
+ * is now allowed on create too (optional, the server still derives it when
+ * left unpicked) — the Stato control renders in BOTH modes.
+ */
+describe('TaskFormBody — the status picker (spec 0118 D-3, spec 0154 D-10)', () => {
+  it('renders the Stato control on create, optional', () => {
     renderForm({ type: 'create' })
 
-    expect(screen.queryByRole('combobox', { name: label('tasks.form.status') })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: label('tasks.form.status') })).toBeInTheDocument()
   })
 
   it('still renders the Stato control in edit mode', () => {

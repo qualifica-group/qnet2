@@ -86,6 +86,9 @@ export function TaskTypeDetailView({ taskType, onEdit }: TaskTypeDetailViewProps
                 <RecordField label={t('taskTypes.detail.isActive')}>
                   {taskType.is_active ? t('common.yes') : t('common.no')}
                 </RecordField>
+                <RecordField label={t('taskTypes.detail.isDefault')}>
+                  {taskType.is_default ? t('common.yes') : t('common.no')}
+                </RecordField>
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>

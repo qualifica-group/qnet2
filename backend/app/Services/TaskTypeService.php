@@ -9,9 +9,11 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\TaskTypes\CreateTaskTypeData;
 use App\DataObjects\TaskTypes\UpdateTaskTypeData;
 use App\Models\TaskType;
+use App\Services\Lookups\DefaultRowManager;
 use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Business logic for the `task-types` resource (spec 0101, D-4): one of the four
@@ -34,29 +36,53 @@ class TaskTypeService
      *
      * @var array<int, string>
      */
-    private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active'];
+    private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active', 'is_default'];
 
-    public function __construct(private readonly LookupOrderManager $orderManager) {}
+    public function __construct(
+        private readonly LookupOrderManager $orderManager,
+        private readonly DefaultRowManager $defaultRow,
+    ) {}
 
     public function create(CreateTaskTypeData $data): TaskType
     {
-        return TaskType::create([
-            ...$data->attributes(),
-            'sort_order' => $this->orderManager->placeNew(TaskType::class),
-        ]);
+        $this->defaultRow->assertSelectable($data->isDefault, $data->isActive);
+
+        return DB::transaction(function () use ($data): TaskType {
+            /** @var TaskType $taskType */
+            $taskType = TaskType::create([
+                ...$data->attributes(),
+                'sort_order' => $this->orderManager->placeNew(TaskType::class),
+            ]);
+
+            if ($data->isDefault) {
+                $this->defaultRow->clearOthers(TaskType::class, $taskType->id);
+            }
+
+            return $taskType;
+        });
     }
 
     public function update(TaskType $taskType, UpdateTaskTypeData $data): TaskType
     {
-        $attributes = $data->submittedAttributes();
+        $isDefault = $data->isDefaultSubmitted ? $data->isDefault : $taskType->is_default;
+        $isActive = $data->isActiveSubmitted ? $data->isActive : $taskType->is_active;
+        $this->defaultRow->assertSelectable($isDefault, $isActive);
 
-        // Unconditional save: fires the model's saved event even when no
-        // native attribute changed, so the HasCustomFields write pipeline
-        // (spec 0021) persists a custom-fields-only edit. A clean save runs
-        // no UPDATE query.
-        $taskType->fill($attributes)->save();
+        return DB::transaction(function () use ($taskType, $data): TaskType {
+            $attributes = $data->submittedAttributes();
 
-        return $taskType->fresh();
+            // Unconditional save: fires the model's saved event even when no
+            // native attribute changed, so the HasCustomFields write pipeline
+            // (spec 0021) persists a custom-fields-only edit. A clean save runs
+            // no UPDATE query.
+            $taskType->fill($attributes)->save();
+
+            if ($data->isDefaultSubmitted && $data->isDefault) {
+                $this->defaultRow->clearOthers(TaskType::class, $taskType->id);
+            }
+
+            return $taskType->fresh();
+        });
     }
 
     /**

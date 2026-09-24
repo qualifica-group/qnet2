@@ -38,6 +38,8 @@ function taskCategory(
     icon: 'star',
     sort_order: 3,
     is_active: true,
+    parent_id: null,
+    parent: null,
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
     permissions: {
@@ -71,10 +73,11 @@ describe('TaskCategoryDetailView — detail fields', () => {
     expect(screen.getByText(formatDateTime('2026-02-15T14:30:00Z'))).toBeInTheDocument()
   })
 
-  it('shows the em-dash placeholder for an empty description and an unset icon', () => {
+  it('shows the em-dash placeholder for an empty description, an unset icon and no parent', () => {
     render(<TaskCategoryDetailView taskCategory={taskCategory({ description: null, icon: null })} />)
 
-    expect(screen.getAllByText('—')).toHaveLength(2)
+    // Spec 0154 D-1: a root category (no parent) is a third empty placeholder.
+    expect(screen.getAllByText('—')).toHaveLength(3)
   })
 })
 

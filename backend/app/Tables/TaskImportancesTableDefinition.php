@@ -106,6 +106,7 @@ class TaskImportancesTableDefinition extends AbstractTableDefinition
             'icon' => $row->icon,
             'sort_order' => $row->sort_order,
             'is_active' => $row->is_active,
+            'is_default' => $row->is_default,
             'created_at' => $row->created_at,
         ];
     }

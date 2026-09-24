@@ -33,6 +33,17 @@ class TaskPriorityFactory extends Factory
             'icon' => null,
             'sort_order' => self::$nextSortOrder++,
             'is_active' => true,
+            'is_default' => false,
         ];
+    }
+
+    /**
+     * The row a new Task falls back to when the field is omitted (spec
+     * 0154, D-8). Also forces `is_active` true: an inactive row cannot be
+     * the default (a default must stay selectable).
+     */
+    public function default(): static
+    {
+        return $this->state(fn (): array => ['is_default' => true, 'is_active' => true]);
     }
 }

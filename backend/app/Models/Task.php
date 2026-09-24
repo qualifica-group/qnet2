@@ -46,6 +46,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `work_order_id`, `prohibited` on a sub-task, 409 on a closed stage).
  * `stage_position` is DELIBERATELY absent: the board's own move/bulk
  * services assign it, the same category as `creator_id`.
+ *
+ * Spec 0154 adds three q-net-aligned fields: `is_private` (D-2, narrows
+ * App\Services\Tasks\TaskVisibilityScope to the Task's own membership only),
+ * `evidence` (D-3, rich text, sanitized by
+ * App\Services\Tasks\TaskEvidenceWriter the same way `description` is by
+ * TaskDescriptionWriter — direct property assignment, never mass-assigned
+ * even though `evidence` sits in #[Fillable] for the same documentation
+ * reason `description` does) and `lead_id` (D-4, must belong to
+ * `registry_id` when the Task carries one).
  */
 #[Fillable([
     'title',
@@ -72,6 +81,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'requires_closure_feedback',
     'requires_validation',
     'closure_feedback',
+    'is_private',
+    'evidence',
+    'lead_id',
 ])]
 class Task extends BaseModel
 {
@@ -92,6 +104,7 @@ class Task extends BaseModel
             'requires_closure_feedback' => 'boolean',
             'requires_validation' => 'boolean',
             'stage_position' => 'int',
+            'is_private' => 'boolean',
         ];
     }
 
@@ -157,6 +170,19 @@ class Task extends BaseModel
     public function opportunity(): BelongsTo
     {
         return $this->belongsTo(Opportunity::class);
+    }
+
+    /**
+     * The lead this Task refers to, if any (spec 0154, D-4): must belong to
+     * `registry_id` when the Task also carries one
+     * (App\Services\Tasks\TaskLeadRegistryGuard) — `nullOnDelete` at the
+     * schema, deleting a Lead never deletes its Tasks.
+     *
+     * @return BelongsTo<Lead, $this>
+     */
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(Lead::class);
     }
 
     /**

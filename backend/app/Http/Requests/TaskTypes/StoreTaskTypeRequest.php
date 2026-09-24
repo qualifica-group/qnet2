@@ -53,6 +53,12 @@ class StoreTaskTypeRequest extends FormRequest
             'color' => ['required', 'string', Rule::in(BadgeTokens::colors())],
             'icon' => ['sometimes', 'nullable', 'string', Rule::in(BadgeTokens::icons())],
             'is_active' => ['sometimes', 'boolean'],
+            // Spec 0154, D-8: whether this is the row a new Task falls back to
+            // when the field is omitted. TaskTypeService/TaskPriorityService/
+            // TaskImportanceService enforce "at most one default" and "a
+            // default must be active" — never expressible as a validation rule
+            // alone, since it depends on the OTHER rows' state.
+            'is_default' => ['sometimes', 'boolean'],
             'sort_order' => ['prohibited'],
             'system_key' => ['prohibited'],
         ];

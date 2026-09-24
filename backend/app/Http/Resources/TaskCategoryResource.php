@@ -21,6 +21,8 @@ class TaskCategoryResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'parent_id' => $this->parent_id,
+            'parent' => $this->parent !== null ? ['id' => $this->parent->id, 'name' => $this->parent->name] : null,
             'description' => $this->description,
             'color' => $this->color,
             'icon' => $this->icon,

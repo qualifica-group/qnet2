@@ -26,6 +26,7 @@ const SERVER_ERROR_FIELDS = [
   'color',
   'icon',
   'is_active',
+  'is_default',
 ] as const
 
 export type TaskTypeFormValues = CreateTaskTypeFormValues & UpdateTaskTypeFormValues
@@ -61,6 +62,7 @@ export function useTaskTypeForm({ mode, onSuccess }: UseTaskTypeFormArgs) {
         color: mode.taskType.color,
         icon: mode.taskType.icon ?? '',
         is_active: mode.taskType.is_active,
+        is_default: mode.taskType.is_default,
       }
     }
     return {
@@ -69,6 +71,7 @@ export function useTaskTypeForm({ mode, onSuccess }: UseTaskTypeFormArgs) {
       color: '',
       icon: '',
       is_active: true,
+      is_default: false,
     }
   }, [mode])
 

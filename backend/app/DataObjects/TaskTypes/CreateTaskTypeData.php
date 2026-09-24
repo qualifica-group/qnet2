@@ -15,6 +15,9 @@ namespace App\DataObjects\TaskTypes;
  * `color` is REQUIRED and is a palette TOKEN of App\Support\BadgeTokens,
  * never a hex value; `icon` is nullable and comes from the same curated
  * server-side allow-list (D-4).
+ *
+ * `isDefault` (spec 0154, D-8): false unless submitted true. TaskTypeService
+ * enforces "at most one default row" and "a default must be active".
  */
 final readonly class CreateTaskTypeData
 {
@@ -24,6 +27,7 @@ final readonly class CreateTaskTypeData
         public string $color,
         public ?string $icon,
         public bool $isActive,
+        public bool $isDefault,
     ) {}
 
     /**
@@ -39,6 +43,7 @@ final readonly class CreateTaskTypeData
             color: (string) $data['color'],
             icon: array_key_exists('icon', $data) ? $data['icon'] : null,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+            isDefault: array_key_exists('is_default', $data) ? (bool) $data['is_default'] : false,
         );
     }
 
@@ -56,6 +61,7 @@ final readonly class CreateTaskTypeData
             'color' => $this->color,
             'icon' => $this->icon,
             'is_active' => $this->isActive,
+            'is_default' => $this->isDefault,
         ];
     }
 }

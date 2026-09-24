@@ -105,7 +105,7 @@ describe('useTaskForm — anagrafica drives referente (AC-081)', () => {
 
     act(() => {
       result.current.form.setValue('registry_id', 8)
-      result.current.handleRegistryChange()
+      result.current.handleRegistryChange(8)
     })
 
     expect(result.current.form.getValues('referent_id')).toBeNull()
@@ -122,7 +122,7 @@ describe('useTaskForm — anagrafica drives referente (AC-081)', () => {
       result.current.form.setValue('title', 'Richiamare il cliente')
       result.current.form.setValue('task_status_id', 3)
       result.current.form.setValue('referent_id', 11)
-      result.current.handleRegistryChange()
+      result.current.handleRegistryChange(null)
     })
 
     await act(async () => {

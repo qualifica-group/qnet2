@@ -159,11 +159,19 @@ class LeadService
      * (amendment rev.1 A-1, ADR 0011) — a Lead has no own name column, so
      * search/order both go through the registry's name (spec 0041 D-1;
      * mirrors OperationalSiteService::forSelect's primary-address subquery
-     * pattern). Feeds the Opportunity form's "Lead" select (spec 0040).
+     * pattern). Feeds the Opportunity form's "Lead" select (spec 0040) and
+     * the Task form's own "Lead" select (spec 0154, D-4), the latter via
+     * `registryId` — narrows to ONE anagrafica, null means no filter, the
+     * same retrocompatible `registryId` convention as
+     * `WorkOrderService::forSelect`.
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
         $base = Lead::query()->with(['registry', 'campaign']);
+
+        if ($query->registryId !== null) {
+            $base->where('registry_id', $query->registryId);
+        }
 
         if ($query->hasSearch()) {
             $term = '%'.$query->search.'%';

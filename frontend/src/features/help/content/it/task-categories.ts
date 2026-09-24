@@ -22,7 +22,12 @@ const guide: HelpGuide = {
             ['Colore', 'Obbligatorio.'],
             ['Icona', 'Facoltativa.'],
             ['Attiva', 'Se la spegni, la voce sparisce dai menu a tendina.'],
+            ['Categoria padre', 'Facoltativa: rende questa categoria una sotto-categoria di quella scelta.'],
           ],
+        },
+        {
+          type: 'note',
+          text: 'Le categorie possono annidarsi su più livelli: il menu del task le mostra ad albero, indentate sotto il rispettivo padre, e puoi scegliere anche una categoria padre, non solo le foglie. Colore e icona non si ereditano dal padre: vanno impostati su ogni categoria. Il nome deve essere unico solo tra le categorie con lo stesso padre.',
         },
       ],
     },
@@ -62,6 +67,10 @@ const guide: HelpGuide = {
         {
           type: 'warning',
           text: 'Una voce in uso su un task non si può eliminare: disattivala invece di eliminarla.',
+        },
+        {
+          type: 'warning',
+          text: 'Una categoria con sotto-categorie non si può eliminare finché non elimini o sposti le sotto-categorie: allo stesso modo non puoi sceglierla come padre di se stessa o di una delle sue discendenti.',
         },
       ],
     },
