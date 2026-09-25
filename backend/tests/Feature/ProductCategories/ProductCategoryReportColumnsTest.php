@@ -38,7 +38,7 @@ if (! function_exists('reportColumnsActorWith')) {
 // AC-001 — GET /product-categories/report-columns
 // ---------------------------------------------------------------------------
 
-it('AC-001: returns the catalog columns in order, with translated labels', function (): void {
+it('AC-001: returns the 11 catalog columns in order, with translated labels', function (): void {
     Sanctum::actingAs(reportColumnsActorWith(['product-categories.viewAny']));
     app()->setLocale('it'); // resolves $expected below; the HTTP request's own locale is set via the Accept-Language header.
 
@@ -225,15 +225,14 @@ it('AC-007: the migration backfills the D-7 snapshot by name (case-insensitive/t
 // AC-008 — QualificaCatalogSeeder backfill
 // ---------------------------------------------------------------------------
 
-// Spec 0159 D-7 supersedes the seeded map: range-free columns on, range-bound ones left unselected.
-it('AC-008: seeds the spec 0159 D-7 report columns on the production categories, never overwriting an existing selection, idempotently', function (): void {
+it('AC-008: seeds the D-7 report columns on the production categories, never overwriting an existing selection, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $columnsOf = static fn (string $name): ?array => ProductCategory::query()->where('name', $name)->value('report_columns');
 
-    expect($columnsOf('GOL'))->toBe(['aule_gestione', 'aule_partenza', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials'])
-        ->and($columnsOf('Consulenza'))->toBe(['presa_appuntamenti', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials'])
-        ->and($columnsOf('APL'))->toBe(['unhandled_callbacks', 'unhandled_new_contacts'])
+    expect($columnsOf('GOL'))->toBe(['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'])
+        ->and($columnsOf('Consulenza'))->toBe(['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aziende_inserite', 'presa_appuntamenti', 'trattative_concluse'])
+        ->and($columnsOf('APL'))->toBe(['telefonate', 'richiami', 'nuovi_contatti', 'invio_presa_in_carico'])
         ->and($columnsOf('Formazione'))->toBeNull(); // not in D-7, left unconfigured
 
     // An admin's own edit survives a re-seed.
@@ -242,5 +241,5 @@ it('AC-008: seeds the spec 0159 D-7 report columns on the production categories,
     test()->seed(QualificaCatalogSeeder::class);
 
     expect($columnsOf('GOL'))->toBe(['telefonate'])
-        ->and($columnsOf('Consulenza'))->toBe(['presa_appuntamenti', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials']);
+        ->and($columnsOf('Consulenza'))->toBe(['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aziende_inserite', 'presa_appuntamenti', 'trattative_concluse']);
 });

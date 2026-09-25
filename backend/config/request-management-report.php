@@ -10,7 +10,7 @@ return [
     | of spec 0107)
     |--------------------------------------------------------------------------
     |
-    | The indicator columns, in the CONTRACT order — the single neutral
+    | The eleven indicator columns, in the CONTRACT order — the single neutral
     | source both the CALCULATION layer (ReportBranchRowsBuilder, which fills
     | every one of them, 0 default per D-15) and every FORMATTING/consumer
     | layer (ReportCsvBuilder, RequestManagementDashboardBuilder) read from.
@@ -24,9 +24,6 @@ return [
         'telefonate', 'richiami', 'nuovi_contatti', 'potenziali',
         'aule_gestione', 'aule_partenza', 'associati', 'aziende_inserite',
         'presa_appuntamenti', 'trattative_concluse', 'invio_presa_in_carico',
-        // Spec 0159: the range-independent columns, appended so no existing
-        // report's column order shifts.
-        'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials',
     ],
 
     // The per-category column selection (formerly `category_columns`, keyed

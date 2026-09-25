@@ -17,21 +17,16 @@ use App\Services\RequestManagement\Report\ReportSiteFilter;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Requests still in the FIRST workflow state (`system_key = 'open'`) — one
- * already advanced past it is never counted (spec 0106 AC-013). Two columns
- * (spec 0159):
- *
- * - `nuovi_contatti` ($withinRange true, spec 0106): `quotes.created_at`
- *   inside the range.
- * - `unhandled_new_contacts` ($withinRange false, D-4): whatever the
- *   creation date.
+ * "N. Nuovi contatti non gestiti" (spec 0106): `quotes.created_at` inside
+ * the range AND the request is still in the FIRST workflow state
+ * (`system_key = 'open'`) — a request created in range but already advanced
+ * past the first state is not counted (AC-013).
  */
 final class UnhandledNewContactsIndicator implements ReportIndicator
 {
     public function __construct(
         private readonly ReportBranchQuery $branchQuery,
         private readonly QuoteCountAggregator $aggregator,
-        private readonly bool $withinRange,
     ) {}
 
     public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null, RequestModule $module = RequestModule::Requests): IndicatorResult
@@ -47,15 +42,10 @@ final class UnhandledNewContactsIndicator implements ReportIndicator
      */
     private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
     {
-        $query = $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
+        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
-            ->where('current_status.system_key', WorkflowStatusSystemKey::Open->value);
-
-        if (! $this->withinRange) {
-            return $query;
-        }
-
-        return $query->where('quotes.created_at', '>=', $range->start)
+            ->where('current_status.system_key', WorkflowStatusSystemKey::Open->value)
+            ->where('quotes.created_at', '>=', $range->start)
             ->where('quotes.created_at', '<', $range->endExclusive);
     }
 }

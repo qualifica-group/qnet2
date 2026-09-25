@@ -213,7 +213,7 @@ it('writes the header row translated in the run frozen locale, not config(app.lo
     $headers = reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path))[0];
 
     expect($headers[0])->toBe('Categoria')
-        ->and($headers[2])->toBe('N. Telefonate Effettuate (nel periodo)'); // spec 0159 D-6 suffix
+        ->and($headers[2])->toBe('N. Telefonate Effettuate');
 });
 
 // ---------------------------------------------------------------------------
@@ -280,5 +280,5 @@ it('writes a real xlsx, with the same translated header row, when the run format
     // Not a CSV renamed: openspout parsed the ZIP/XML and gave back the very
     // header row the CSV path produces.
     expect($headers[0])->toBe('Categoria')
-        ->and($headers[2])->toBe('N. Telefonate Effettuate (nel periodo)'); // spec 0159 D-6 suffix
+        ->and($headers[2])->toBe('N. Telefonate Effettuate');
 });

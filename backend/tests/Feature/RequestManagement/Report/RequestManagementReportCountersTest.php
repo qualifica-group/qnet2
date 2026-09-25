@@ -258,9 +258,7 @@ it('gives an unassigned request 0 phone calls while its Non assegnato row still 
 });
 
 // ---------------------------------------------------------------------------
-// AC-012 — "N. Richiami non gestiti": since spec 0159 D-2 this rule lives on
-// the range-free `unhandled_callbacks` column (CSV index 13); `richiami` is
-// now range-bound (RequestManagementReportRangeFreeColumnsTest).
+// AC-012 — "N. Richiami non gestiti"
 // ---------------------------------------------------------------------------
 
 it('counts callbacks due on or before today on every request that is not closed (directive 2026-09-18)', function () {
@@ -289,7 +287,7 @@ it('counts callbacks due on or before today on every request that is not closed 
 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'GOL');
 
-    expect($rows['TOTALE'][13])->toBe('4');
+    expect($rows['TOTALE'][3])->toBe('4');
 });
 
 // ---------------------------------------------------------------------------

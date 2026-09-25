@@ -3,23 +3,6 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## REPORT GESTIONE RICHIESTE — COLONNE SENZA PERIODO (SPEC 0159) — VERDE, NON COMMITTATO (2026-09-25)
-
-- Catalogo `indicator_columns` da 11 a 14 chiavi: in coda `unhandled_callbacks`, `unhandled_new_contacts`,
-  `current_potentials` (in coda per non spostare le colonne dei report esistenti; i test posizionali restano validi).
-- Regole: `unhandled_callbacks` = vecchia regola di `richiami` (non chiuse, richiamo <= oggi). `richiami` ora e'
-  legata al periodo (richiamo dentro [date_from, date_to], futuri inclusi). `unhandled_new_contacts` = stato `open`
-  a prescindere dalla creazione. `current_potentials` = stato ATTUALE nel gruppo pending/validated
-  (`Indicators/CurrentStatusGroupIndicator`). Callback/NewContacts parametrizzati con `withinRange`.
-- Label: suffisso " (nel periodo)" / " (in period)" sulle colonne legate al periodo; stub aule/presa invariate.
-- Seed produzione `ReportColumnsCatalogue`: solo nuove colonne + stub; colonne col periodo non selezionate. Solo
-  categorie con `report_columns` null (installazioni esistenti invariate, decisione utente D-8).
-- Test: nuovo `RequestManagementReportRangeFreeColumnsTest`; aggiornati per requisito cambiato Rows/JobTraps
-  (label), Counters AC-012 (ora su indice 13 = unhandled_callbacks), ProductCategoryReportColumns AC-008 (seed).
-- Guide IT/EN (request-management, product-categories, enrollee-management) e manuale Claude Docs aggiornati.
-- Aperto (non mio): `tsc -b` rosso su `frontend/src/features/table/custom-filters/rule-schema.ts:144` (lavoro non
-  tracciato spec 0158).
-
 ## REFERENTI CON BUONI — LINK DELLA CARD GATED SUI PERMESSI — VERDE, NON COMMITTATO (2026-09-25)
 
 - Decisione utente 2026-09-25: un record collegato (opportunita'/offerta) sulla card buono e' cliccabile solo se
