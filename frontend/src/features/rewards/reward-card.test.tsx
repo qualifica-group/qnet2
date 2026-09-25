@@ -130,6 +130,25 @@ describe('RewardCard', () => {
     expect(onOpenRecord).toHaveBeenCalledWith(FULL_REWARD.related[0])
   })
 
+  it('renders a record canOpenRecord rejects as plain text, never a button or link', () => {
+    const onOpenRecord = vi.fn()
+    render(
+      <MemoryRouter>
+        <RewardCard
+          reward={FULL_REWARD}
+          labels={LABELS}
+          onOpenRecord={onOpenRecord}
+          canOpenRecord={(record) => record.type === 'opportunity'}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('button', { name: /Big Deal/ })).toBeInTheDocument()
+    expect(screen.getByText('QUO-0007')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /QUO-0007/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /QUO-0007/ })).not.toBeInTheDocument()
+  })
+
   // User directive 2026-08-31: "il riferimento all'offerta e non solo in
   // opportunita'" — both records are on the card, each under its own caption.
   it('shows the origin AND its cross-reference, each captioned by its type', () => {

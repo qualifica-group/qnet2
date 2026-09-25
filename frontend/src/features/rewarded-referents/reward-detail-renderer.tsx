@@ -12,6 +12,7 @@ import { rewardedReferentsKeys } from '@/features/rewarded-referents/query-keys'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { useAbilities } from '@/features/auth/use-abilities'
 import type { TableRow } from '@/features/table/types'
+import type { RewardSourceRef } from '@/features/rewards/types'
 
 /**
  * The card's inline status edit is gated on the module's own update ability
@@ -22,14 +23,20 @@ import type { TableRow } from '@/features/table/types'
 const REWARDED_REFERENTS_UPDATE_PERMISSION = 'rewarded-referents.update'
 
 /**
- * The module each linked-record morph alias opens into (user directive
- * 2026-08-31: a buono can be born on an Offerta, and every card carries both
- * references). An alias absent from this map falls back to the card's own
- * router `Link`.
+ * Where each linked-record morph alias may open, in order of preference, and
+ * the view permission each target requires (user directive 2026-09-25: a
+ * record the user may not see is never clickable). A buono can be born on an
+ * Offerta and every card carries both references (user directive 2026-08-31).
+ * An Offerta falls back to Gestione Richieste, whose rows ARE quotes (spec
+ * 0086 D-1), so the same id opens there. An alias absent from this map, or
+ * with no permitted target, renders as plain text.
  */
-const SOURCE_DOMAINS: Record<string, string> = {
-  opportunity: 'opportunities',
-  quote: 'quotes',
+const RECORD_OPEN_TARGETS: Record<string, { domain: string; permission: string }[]> = {
+  opportunity: [{ domain: 'opportunities', permission: 'opportunities.view' }],
+  quote: [
+    { domain: 'quotes', permission: 'quotes.view' },
+    { domain: 'request-management', permission: 'request-management.view' },
+  ],
 }
 
 /** Skeleton placeholder mirroring the card grid's shape while the lazy fetch is in flight. */
@@ -86,13 +93,15 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
 
   // Opening a linked record honors ITS module's open mode (spec 0042): modal
   // mounts the Sheet returned here, page mode navigates. One opener per
-  // module, both mounted unconditionally (rules-of-hooks) — the early returns
-  // below come after.
-  const opportunityOpener = useModuleOpener(SOURCE_DOMAINS.opportunity)
-  const quoteOpener = useModuleOpener(SOURCE_DOMAINS.quote)
-  const openers: Record<string, (row: TableRow) => void> = {
-    opportunity: opportunityOpener.openView,
-    quote: quoteOpener.openView,
+  // target module, all mounted unconditionally (rules-of-hooks) — the early
+  // returns below come after.
+  const opportunityOpener = useModuleOpener('opportunities')
+  const quoteOpener = useModuleOpener('quotes')
+  const requestManagementOpener = useModuleOpener('request-management')
+  const openersByDomain: Record<string, (row: TableRow) => void> = {
+    opportunities: opportunityOpener.openView,
+    quotes: quoteOpener.openView,
+    'request-management': requestManagementOpener.openView,
   }
 
   const { data: rewards, isPending, isError, refetch } = useReferentRewards(referentId ?? 0, {
@@ -105,6 +114,11 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
   const queryClient = useQueryClient()
   const { can, isLoading: abilitiesLoading } = useAbilities()
   const canEditStatus = !abilitiesLoading && can(REWARDED_REFERENTS_UPDATE_PERMISSION)
+  // First target the user may view, null while abilities load (fail closed).
+  const resolveOpenDomain = (record: RewardSourceRef): string | null =>
+    abilitiesLoading
+      ? null
+      : (RECORD_OPEN_TARGETS[record.type]?.find((target) => can(target.permission))?.domain ?? null)
   const updateStatus = useUpdateRewardStatus({
     onSuccess: () => {
       if (referentId != null) {
@@ -206,7 +220,13 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
               key={reward.id}
               reward={reward}
               labels={labels}
-              onOpenRecord={(record) => openers[record.type]?.({ id: record.id } as TableRow)}
+              canOpenRecord={(record) => resolveOpenDomain(record) !== null}
+              onOpenRecord={(record) => {
+                const domain = resolveOpenDomain(record)
+                if (domain !== null) {
+                  openersByDomain[domain]({ id: record.id } as TableRow)
+                }
+              }}
               canEditStatus={canEditStatus}
               onStatusChange={(rewardStatusId) =>
                 updateStatus.mutate({ rewardId: reward.id, rewardStatusId })
@@ -218,6 +238,7 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
       </div>
       {opportunityOpener.sheet}
       {quoteOpener.sheet}
+      {requestManagementOpener.sheet}
     </div>
   )
 }

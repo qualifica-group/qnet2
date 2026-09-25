@@ -81,7 +81,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'Dalla scheda puoi aprire l\'opportunità o l\'offerta da cui nasce il buono. Se l\'origine è stata eliminata compare "Origine non più disponibile".',
+          text: 'Dalla scheda puoi aprire l\'opportunità o l\'offerta da cui nasce il buono, se hai il permesso di vederla: altrimenti il nome è solo testo. L\'offerta si apre in **Offerte**, oppure in **Gestione Richieste** se puoi vedere solo quel modulo. Se l\'origine è stata eliminata compare "Origine non più disponibile".',
         },
       ],
     },

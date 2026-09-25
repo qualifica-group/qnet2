@@ -81,7 +81,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'From the card you can open the opportunity or quote the reward comes from. If the origin was deleted, "Origin no longer available" appears.',
+          text: 'From the card you can open the opportunity or quote the reward comes from, if you are allowed to view it: otherwise the name is plain text. A quote opens in **Quotes**, or in **Request Management** if that is the only module you can view. If the origin was deleted, "Origin no longer available" appears.',
         },
       ],
     },

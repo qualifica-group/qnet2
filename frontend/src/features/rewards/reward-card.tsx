@@ -80,6 +80,12 @@ interface RewardCardProps {
    */
   onOpenRecord?: (record: RewardSourceRef) => void
   /**
+   * Whether the current user may open a given linked record (the caller
+   * checks the target module's view permission). A rejected record renders as
+   * plain text, never as a button or link. Omitted, every record is openable.
+   */
+  canOpenRecord?: (record: RewardSourceRef) => boolean
+  /**
    * Whether the current user may change the reward's own status inline
    * (spec 0060 D-1/D-8: `rewarded-referents.update` permission, checked by
    * the caller). Defaults to `false` (readonly badge) so an omitted prop
@@ -118,16 +124,18 @@ function StatusBadge({ name, color }: { name: string; color: string | null }) {
 }
 
 /**
- * One linked record: an action button when the caller knows how to open it,
- * a plain router `Link` when it only has a path, plain text when it has
- * neither (an alias with no module page).
+ * One linked record: plain text when the user may not open it or it has no
+ * module page, an action button when the caller knows how to open it, a plain
+ * router `Link` when it only has a path.
  */
 function RecordLink({
   record,
   onOpen,
+  canOpen,
 }: {
   record: RewardSourceRef
   onOpen?: (record: RewardSourceRef) => void
+  canOpen: boolean
 }) {
   const label = (
     <>
@@ -135,6 +143,12 @@ function RecordLink({
       <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" />
     </>
   )
+
+  const plainName = <span className="truncate text-sm font-medium">{record.name}</span>
+
+  if (!canOpen) {
+    return plainName
+  }
 
   if (onOpen) {
     return (
@@ -145,7 +159,7 @@ function RecordLink({
   }
 
   if (record.path === null) {
-    return <span className="truncate text-sm font-medium">{record.name}</span>
+    return plainName
   }
 
   return (
@@ -221,6 +235,7 @@ export function RewardCard({
   labels,
   className,
   onOpenRecord,
+  canOpenRecord,
   canEditStatus = false,
   onStatusChange,
   isStatusUpdating = false,
@@ -268,7 +283,11 @@ export function RewardCard({
                 key={`${record.type}:${record.id}`}
                 term={labels.sourceTypes[record.type] ?? record.type}
               >
-                <RecordLink record={record} onOpen={onOpenRecord} />
+                <RecordLink
+                  record={record}
+                  onOpen={onOpenRecord}
+                  canOpen={canOpenRecord?.(record) ?? true}
+                />
               </Field>
             ))}
           </div>

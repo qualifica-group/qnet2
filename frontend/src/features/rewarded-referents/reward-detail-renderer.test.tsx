@@ -109,6 +109,11 @@ const QUOTE_ORIGIN_REWARD: RewardDetailItem = {
 
 const ROW: TableRow = { id: 1, actions: [] }
 
+/** Grants exactly the given abilities; every other permission check fails. */
+function grantOnly(...permissions: string[]) {
+  canMock.mockImplementation((permission) => permissions.includes(permission))
+}
+
 function renderDetail(client: QueryClient, params?: Partial<ICellRendererParams<TableRow>>) {
   return render(
     <QueryClientProvider client={client}>
@@ -142,8 +147,18 @@ describe('RewardDetailRenderer — lazy load and caching (AC-026)', () => {
 
     expect(fetchReferentRewardsMock).toHaveBeenCalledTimes(1)
     expect(fetchReferentRewardsMock).toHaveBeenCalledWith(1)
+  })
 
-    // The origin opens via the module opener (open-mode aware), not a raw link.
+  it('opens the origin via the module opener (open-mode aware) when the user may view it', async () => {
+    fetchReferentRewardsMock.mockResolvedValue([REWARD])
+    grantOnly('opportunities.view')
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    renderDetail(client)
+
+    await waitFor(() => expect(screen.getByText('Amazon voucher')).toBeInTheDocument())
+
+    // Not a raw link: the module opener decides modal vs page.
     const sourceButton = screen.getByRole('button', { name: /Fornitura uffici/ })
     fireEvent.click(sourceButton)
     expect(openViewMock).toHaveBeenCalledWith('opportunities', { id: 42 })
@@ -322,10 +337,12 @@ describe('RewardDetailRenderer — Offerta origin', () => {
     fetchReferentRewardsMock.mockResolvedValue([QUOTE_ORIGIN_REWARD])
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
+    grantOnly('opportunities.view', 'quotes.view', 'request-management.view')
     renderDetail(client)
 
     await waitFor(() => expect(screen.getByText('QUO-0007')).toBeInTheDocument())
 
+    // Offerte wins over Gestione Richieste when the user may view both.
     fireEvent.click(screen.getByRole('button', { name: /QUO-0007/ }))
     expect(openViewMock).toHaveBeenCalledWith('quotes', { id: 7 })
 
@@ -336,5 +353,38 @@ describe('RewardDetailRenderer — Offerta origin', () => {
     expect(screen.queryByText('Commercial status')).not.toBeInTheDocument()
     // The offer's own working state keeps its label (spec 0083).
     expect(screen.getByText('Workflow status')).toBeInTheDocument()
+  })
+
+  it('opens an Offerta in Gestione Richieste when the user may view that module but not Offerte', async () => {
+    fetchReferentRewardsMock.mockResolvedValue([QUOTE_ORIGIN_REWARD])
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    grantOnly('request-management.view')
+    renderDetail(client)
+
+    await waitFor(() => expect(screen.getByText('QUO-0007')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /QUO-0007/ }))
+    expect(openViewMock).toHaveBeenCalledWith('request-management', { id: 7 })
+    // No opportunities.view: the opportunity reference is plain text.
+    expect(screen.queryByRole('button', { name: /Fornitura uffici/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Fornitura uffici')).toBeInTheDocument()
+  })
+})
+
+/** User directive 2026-09-25: a linked record the user may not view is never clickable. */
+describe('RewardDetailRenderer — linked record permissions', () => {
+  it('renders every linked record as plain text, neither button nor link, without any view permission', async () => {
+    fetchReferentRewardsMock.mockResolvedValue([QUOTE_ORIGIN_REWARD])
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    renderDetail(client)
+
+    await waitFor(() => expect(screen.getByText('QUO-0007')).toBeInTheDocument())
+
+    expect(screen.getByText('Fornitura uffici')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /QUO-0007|Fornitura uffici/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(openViewMock).not.toHaveBeenCalled()
   })
 })
