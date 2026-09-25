@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## RUOLI MANSIONARIO — CHI VEDE GLI UTENTI APRE TUTTO IL FORM UTENTE — VERDE, COMMITTATO (2026-09-25)
+
+- Bug: impersonando Rosa Falzarano (`supervisore-commerciale`), "Modifica utente" dava 403 su
+  `GET /api/personal-data?personable_type=user&personable_id=…`. Il ruolo aveva `users.*` ma nessun
+  `personal_data.*`/`contacts.*`/`addresses.*`; la matrice campi `users → personal_data.*` mostra le sezioni
+  anagrafiche ma NON apre le API (permesso di modulo separato).
+- Regola (direttiva utente): `QualificaRoleSeeder::permissionsOf` aggiunge a ogni ruolo che ha
+  `Catalogue::USER_FORM_GATE` (`users.view`) le abilities `USER_FORM_ABILITIES` (viewAny/view/create/update/delete)
+  su `USER_FORM_MODULES` (`personal_data`, `contacts`, `addresses`). Niente export/import/viewActivity.
+  Derivata dai permessi, non da un blocco: vale per qualunque blocco apra gli Utenti.
+- Test: `tests/Feature/Users/QualificaUserFormPermissionTest.php` (lettura scheda + CRUD contatti/indirizzi da
+  supervisore; nessun altro ruolo riceve lo stack).
+- Produzione: rieseguire `php artisan db:seed --class=QualificaRoleSeeder` (o `QualificaProductionDataSeeder`).
+- ROSSO PREESISTENTE, non causato da questa modifica (fallisce anche con la regola disattivata):
+  `QualificaRoleMatrixTest` "blocks the supervisor server-side…" → `POST /api/tables/users/rows` 500,
+  `UserEmploymentColumns::userSummary()` riceve una Collection da `$employment->reportsTo`: il lavoro in corso di
+  spec 0166 (non committato) ha reso `reportsTo` BelongsToMany e la colonna `reports_to` non e' ancora adeguata.
+- Manuale: nessun impatto (le guide non descrivono le matrici dei ruoli seedati).
+
 ## REPORT GESTIONE RICHIESTE — COLONNE SENZA PERIODO (SPEC 0159 rev-1) — VERDE, COMMITTATO (2026-09-25)
 
 - Prima versione (82884ffc) annullata con a7808c55; questa e' la rev-1 dal brief utente definitivo.

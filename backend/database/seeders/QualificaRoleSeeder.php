@@ -59,7 +59,8 @@ class QualificaRoleSeeder extends Seeder
 
     /**
      * The union of the role's building blocks, filtered against the real
-     * catalogue so a permission that does not exist is never invented.
+     * catalogue so a permission that does not exist is never invented, plus
+     * the user form stack when the union opens the Utenti section.
      *
      * @param  array<int, string>  $blocks
      * @param  Collection<int, string>  $catalogue
@@ -67,10 +68,24 @@ class QualificaRoleSeeder extends Seeder
      */
     private function permissionsOf(array $blocks, Collection $catalogue): Collection
     {
-        return $catalogue
+        $permissions = $catalogue
             ->filter(fn (string $permission): bool => collect($blocks)
                 ->contains(fn (string $block): bool => $this->blockGrants($block, $permission)))
             ->values();
+
+        return $permissions->contains(Catalogue::USER_FORM_GATE)
+            ? $permissions->merge($catalogue->filter($this->isUserFormGrant(...)))->unique()->values()
+            : $permissions;
+    }
+
+    /**
+     * Derived from the role's permissions rather than from a block: whichever
+     * block opens the Utenti section, the form must load in full.
+     */
+    private function isUserFormGrant(string $permission): bool
+    {
+        return in_array(Str::beforeLast($permission, '.'), Catalogue::USER_FORM_MODULES, true)
+            && in_array(Str::afterLast($permission, '.'), Catalogue::USER_FORM_ABILITIES, true);
     }
 
     private function blockGrants(string $block, string $permission): bool

@@ -267,6 +267,38 @@ final class OperatorRoleCatalogue
     ];
 
     /**
+     * "Chi vede gli utenti" (user directive 2026-09-25): a role holding this
+     * permission also receives everything the user form reads and writes on
+     * endpoints of its own, see USER_FORM_MODULES.
+     */
+    public const string USER_FORM_GATE = 'users.view';
+
+    /**
+     * The personal-data stack the user form loads and edits outside the
+     * `users` endpoints: the card read (`GET /personal-data` by owner) and the
+     * contacts/addresses of an existing card, written immediately. Its own
+     * `personal_data.*` field matrix on `users` does not open these.
+     *
+     * @var array<int, string>
+     */
+    public const array USER_FORM_MODULES = [
+        'personal_data',
+        'contacts',
+        'addresses',
+    ];
+
+    /**
+     * @var array<int, string>
+     */
+    public const array USER_FORM_ABILITIES = [
+        'viewAny',
+        'view',
+        'create',
+        'update',
+        'delete',
+    ];
+
+    /**
      * STATUS_CONFIGURATOR: "Configuratore Stati Offerta" in the navigation.
      *
      * @var array<int, string>
