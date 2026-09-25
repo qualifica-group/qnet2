@@ -23,6 +23,7 @@ const VALID_VALUES = {
   icon: 'star',
   is_active: true,
   is_default: false,
+  requires_time_entry: true,
 }
 
 describe('buildCreateTaskTypeSchema (spec 0101)', () => {

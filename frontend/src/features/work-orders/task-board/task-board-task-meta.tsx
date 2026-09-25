@@ -113,15 +113,28 @@ export function TaskBoardHours({ actualMinutes, estimatedMinutes, label }: TaskB
   )
 }
 
+interface TaskBoardStageSummaryProps {
+  metrics: TaskBoardStageMetrics
+  /**
+   * Sum of the fase's own `time_entries.minutes` (spec 0163 AC-007): the
+   * fase's `logged_minutes`, or the commessa's `unstaged_logged_minutes` for
+   * "Senza fase" — a DIFFERENT total than `metrics.actualMinutes` (task-based
+   * only), so it renders as its own labelled entry rather than folded in.
+   */
+  loggedMinutes: number
+}
+
 /**
  * A phase's own roll-up (user directive 2026-09-22): completion as the mean
  * of its tasks' completion, and the hours worked against the hours estimated
- * summed over its tasks. Shared by the list group header and the kanban column.
+ * summed over its tasks, plus the segnatempo total (spec 0163 D-4). Shared by
+ * the list group header and the kanban column.
  */
-export function TaskBoardStageSummary({ metrics }: { metrics: TaskBoardStageMetrics }) {
+export function TaskBoardStageSummary({ metrics, loggedMinutes }: TaskBoardStageSummaryProps) {
   const { t } = useTranslation()
   const completionLabel = t('workOrders.taskBoard.task.columns.completion')
   const hoursLabel = t('workOrders.taskBoard.task.columns.hours')
+  const loggedMinutesLabel = t('workOrders.taskBoard.task.columns.loggedMinutes')
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
@@ -132,6 +145,10 @@ export function TaskBoardStageSummary({ metrics }: { metrics: TaskBoardStageMetr
       <span className="flex items-center gap-1.5">
         <span className="text-muted-foreground">{hoursLabel}</span>
         <TaskBoardHours actualMinutes={metrics.actualMinutes} estimatedMinutes={metrics.estimatedMinutes} label={hoursLabel} />
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="text-muted-foreground">{loggedMinutesLabel}</span>
+        <span className="tabular-nums text-foreground">{formatMinutesLabel(loggedMinutes)}</span>
       </span>
     </div>
   )

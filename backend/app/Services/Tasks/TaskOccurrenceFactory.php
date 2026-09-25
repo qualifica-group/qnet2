@@ -11,11 +11,12 @@ use Carbon\CarbonImmutable;
 
 /**
  * Materializes ONE occurrence of a recurrence series off its capostipite
- * (spec 0120, D-5/D-6/D-7; spec 0155, D-2 adds the direct sub-tasks copy):
- * persists the new Task row, syncs the two user pivots and fires the same
- * two notification-map entries (voci 7/8, D-14) a client-submitted create
- * fires, with `?User $actor` null — the system, not a person, is the author
- * of a generated occurrence.
+ * (spec 0120, D-5/D-6/D-7; spec 0155, D-2 adds the direct sub-tasks copy;
+ * spec 0161, D-3 REQUIREMENT CHANGED that to the WHOLE sub-task tree, every
+ * level): persists the new Task row, syncs the two user pivots and fires the
+ * same two notification-map entries (voci 7/8, D-14) a client-submitted
+ * create fires, with `?User $actor` null — the system, not a person, is the
+ * author of a generated occurrence.
  *
  * Runs OUTSIDE any transaction of its own: App\Console\Commands\
  * GenerateTaskRecurrences wraps EACH call in its own DB::transaction()
@@ -32,7 +33,7 @@ final class TaskOccurrenceFactory
 
     public function materialize(Task $originator, CarbonImmutable $endDate): Task
     {
-        $originator->loadMissing(['assignees', 'watchers', 'creator', 'subtasks.assignees', 'subtasks.watchers']);
+        $originator->loadMissing(['assignees', 'watchers', 'creator']);
 
         $assigneeIds = $originator->assignees->pluck('id')->all();
         $watcherIds = $originator->watchers->pluck('id')->all();
@@ -77,38 +78,60 @@ final class TaskOccurrenceFactory
     }
 
     /**
-     * Spec 0155, D-2: one level down, verbatim — every DIRECT sub-task of
-     * the originator is copied onto the occurrence, never a sub-task's own
-     * children (D-2 says "un livello", the same depth limit D-3's bulk
-     * create draws). No opening notification fires for a copied sub-task,
-     * mirroring D-3's own "nessuna notifica di apertura" for a bulk-created
-     * one — a generated occurrence is not an event a sub-task's own
-     * assignees need paging for on its own.
+     * Spec 0161, D-3 (REQUIREMENT CHANGED from spec 0155, D-2's "un
+     * livello"): the originator's ENTIRE sub-task tree, every level, is
+     * copied onto the occurrence — each copy becomes the direct parent the
+     * next level's own copy attaches to, so the hierarchy is reproduced
+     * exactly, not flattened. TaskSubtaskTreeLoader loads the whole tree
+     * first (no fixed-depth `with()` chain: a manually nested sub-task can
+     * sit deeper than the bulk-create limit of 3, spec 0161 D-1, since
+     * TaskHierarchyGuard itself imposes none there). No opening notification
+     * fires for any copied sub-task at any depth, mirroring
+     * TaskSubtaskBatchCreator's own "nessuna notifica di apertura" for a
+     * bulk-created one — a generated occurrence is not an event a sub-task's
+     * own assignees need paging for on its own.
      */
     private function copySubtasks(Task $originator, Task $occurrence, CarbonImmutable $endDate): void
     {
+        TaskSubtaskTreeLoader::load($originator, ['assignees', 'watchers']);
+
         $shiftDays = $this->subtaskDateShiftDays($originator, $endDate);
 
-        foreach ($originator->subtasks as $subtask) {
+        $this->copySubtaskLevel($originator, $occurrence, $shiftDays, $originator->creator_id);
+    }
+
+    /**
+     * One level of the recursive copy: every DIRECT sub-task of
+     * $originatorParent is copied onto $occurrenceParent, then recursed into
+     * with the just-created copy as the new parent. $rootCreatorId is fixed
+     * for the whole tree — the capostipite's own creator, never an
+     * intermediate node's (materialize() carries no per-node actor either).
+     */
+    private function copySubtaskLevel(Task $originatorParent, Task $occurrenceParent, int $shiftDays, int $rootCreatorId): void
+    {
+        foreach ($originatorParent->subtasks as $subtask) {
             $assigneeIds = $subtask->assignees->pluck('id')->all();
             $watcherIds = $subtask->watchers->pluck('id')->all();
 
             $subtaskCopy = new Task($this->copiedSubtaskAttributes($subtask, $shiftDays));
-            $subtaskCopy->creator_id = $originator->creator_id;
-            $subtaskCopy->parent_task_id = $occurrence->id;
-            // D-4: the manual order survives the copy untouched — not
-            // mass-assignable (Task's own #[Fillable] excludes it, the same
-            // category as `stage_position`), so it is set directly here.
+            $subtaskCopy->creator_id = $rootCreatorId;
+            $subtaskCopy->parent_task_id = $occurrenceParent->id;
+            // D-4 of spec 0155: the manual order survives the copy
+            // untouched — not mass-assignable (Task's own #[Fillable]
+            // excludes it, the same category as `stage_position`), so it is
+            // set directly here.
             $subtaskCopy->subtask_position = $subtask->subtask_position;
             $subtaskCopy->task_status_id = $this->initialStatusResolver->resolve(
                 $assigneeIds,
-                $originator->creator_id,
+                $rootCreatorId,
                 $subtask->requester_id,
             );
             $subtaskCopy->save();
 
             $subtaskCopy->assignees()->sync($assigneeIds);
             $subtaskCopy->watchers()->sync($watcherIds);
+
+            $this->copySubtaskLevel($subtask, $subtaskCopy, $shiftDays, $rootCreatorId);
         }
     }
 

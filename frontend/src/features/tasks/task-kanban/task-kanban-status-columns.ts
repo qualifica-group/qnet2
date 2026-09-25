@@ -6,7 +6,7 @@
  */
 import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 import type { TaskStatusForSelectItem } from '@/features/tasks/for-select-api'
-import type { TaskKanbanGroup, TaskKanbanRow } from '@/features/tasks/task-kanban/task-kanban-types'
+import type { TaskKanbanGroup } from '@/features/tasks/task-kanban/task-kanban-types'
 
 /**
  * Mirrors the backend's `TaskManualStatusGuard::MANUAL_GROUPS`: the only two
@@ -27,32 +27,19 @@ const STATUS_COLUMN_DROPPABLE = true
 const STATUS_COLUMN_DRAGGABLE = true
 
 /**
- * Builds one column per status catalog entry, in catalog order, filling each
- * with the rows currently on that status. A status with no row still renders
- * an empty column, so the board always shows the full workflow.
+ * Builds one column per status catalog entry, in catalog order (spec 0164
+ * D-1: metadata only — each column loads its OWN rows via `kanbanGroup`, so
+ * a status with no matching task still renders an empty column with its own
+ * live count, keeping the full workflow visible).
  */
-export function buildTaskStatusKanbanGroups(
-  statuses: TaskStatusForSelectItem[],
-  rows: TaskKanbanRow[],
-): TaskKanbanGroup<string>[] {
-  const rowsByStatusId = new Map<number, TaskKanbanRow[]>()
-  for (const row of rows) {
-    const statusId = row.task_status?.id
-    if (statusId === undefined) {
-      continue
-    }
-    const bucket = rowsByStatusId.get(statusId) ?? []
-    bucket.push(row)
-    rowsByStatusId.set(statusId, bucket)
-  }
-
+export function buildTaskStatusKanbanGroups(statuses: TaskStatusForSelectItem[]): TaskKanbanGroup<string>[] {
   return statuses.map((status) => ({
     key: String(status.id),
     label: status.label,
     color: status.meta.color,
-    rows: rowsByStatusId.get(status.id) ?? [],
     droppable: STATUS_COLUMN_DROPPABLE,
     draggable: STATUS_COLUMN_DRAGGABLE,
+    kanbanGroup: { by: 'status', key: status.id },
   }))
 }
 

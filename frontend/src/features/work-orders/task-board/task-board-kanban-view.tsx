@@ -26,6 +26,8 @@ interface TaskBoardKanbanViewProps {
   onToggleSelection: (taskId: number) => void
   onOpenTask: (taskId: number) => void
   onAddTask: (stageId: number | null) => void
+  /** The commessa's `unstaged_logged_minutes` (spec 0163 AC-007), read only by the "Senza fase" column. */
+  unstagedLoggedMinutes: number
 }
 
 export function TaskBoardKanbanView({
@@ -38,6 +40,7 @@ export function TaskBoardKanbanView({
   onToggleSelection,
   onOpenTask,
   onAddTask,
+  unstagedLoggedMinutes,
 }: TaskBoardKanbanViewProps) {
   const stages = groups.filter((group) => group.stage !== null).map((group) => group.stage!)
   const visibleDndGroups = toDndGroups(groups)
@@ -74,6 +77,7 @@ export function TaskBoardKanbanView({
             onToggleSelection={onToggleSelection}
             onOpenTask={onOpenTask}
             onAddTask={onAddTask}
+            unstagedLoggedMinutes={group.stage === null ? unstagedLoggedMinutes : undefined}
           />
         ))}
       </div>

@@ -30,6 +30,12 @@ export interface TaskTypeDetail {
    * form's own field when creation omits it; an inactive default 422s.
    */
   is_default: boolean
+  /**
+   * Spec 0162 D-1: `true` (default) keeps `time_entry` mandatory on
+   * `/tasks/{task}/complete` for a task of this type; `false` makes it
+   * optional there — the "Completa" dialog's own switch.
+   */
+  requires_time_entry: boolean
   created_at: string | null
   updated_at: string | null
 }
@@ -56,6 +62,8 @@ export interface CreateTaskTypePayload {
   is_active?: boolean
   /** Spec 0154 D-8. */
   is_default?: boolean
+  /** Spec 0162 D-1. Defaults to `true` server-side when omitted on create. */
+  requires_time_entry?: boolean
 }
 
 /**

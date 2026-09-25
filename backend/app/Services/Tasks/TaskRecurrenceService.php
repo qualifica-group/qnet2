@@ -95,7 +95,10 @@ final class TaskRecurrenceService
      * still exist, virgin or not. `isVirgin()` having ALREADY confirmed every
      * one of them is untouched (isUntouchedCopiedSubtask()) makes deleting
      * them first, right before the occurrence itself, safe: neither holds
-     * anything a real user has acted on.
+     * anything a real user has acted on. Spec 0161, D-3 extends this to the
+     * WHOLE copied tree: deleteSubtaskTree() walks it deepest-first, so a
+     * grandchild is gone before the `restrictOnDelete` FK is asked to delete
+     * its own parent.
      */
     private function pruneVirginFutureOccurrences(TaskRecurrence $recurrence, int $exceptTaskId): void
     {
@@ -107,10 +110,26 @@ final class TaskRecurrenceService
             ->get()
             ->each(function (Task $occurrence): void {
                 if ($this->isVirgin($occurrence)) {
-                    $occurrence->subtasks->each(fn (Task $subtask) => $subtask->delete());
+                    $this->deleteSubtaskTree($occurrence);
                     $occurrence->delete();
                 }
             });
+    }
+
+    /**
+     * Deletes every DESCENDANT of $node (never $node itself), deepest node
+     * first: $node->subtasks is walked recursively before $node's own
+     * children are deleted, so a grandchild is always gone before its parent
+     * — the order `restrictOnDelete` requires. $node->subtasks is assumed
+     * already loaded (isVirgin()'s own TaskSubtaskTreeLoader call, right
+     * before this runs), so no lazy load fires here.
+     */
+    private function deleteSubtaskTree(Task $node): void
+    {
+        foreach ($node->subtasks as $subtask) {
+            $this->deleteSubtaskTree($subtask);
+            $subtask->delete();
+        }
     }
 
     /**
@@ -118,17 +137,16 @@ final class TaskRecurrenceService
      * open/pending, not blocked, no completion_date, no closure_feedback,
      * and no notes/attachments of its own — the first sign of life anywhere
      * in that list makes the occurrence NOT virgin. Spec 0155, D-2 changes
-     * the sub-task leg only: an occurrence's COPIED sub-tasks (D-2 of that
-     * spec) no longer disqualify it outright — only a copy that was itself
-     * TOUCHED does (isUntouchedCopiedSubtask() below), so a series whose
-     * template carries sub-tasks can still be pruned/regenerated normally.
+     * the sub-task leg only: an occurrence's COPIED sub-tasks no longer
+     * disqualify it outright — only a copy that was itself TOUCHED does
+     * (isUntouchedCopiedSubtask() below). Spec 0161, D-3 extends the check
+     * to the WHOLE copied tree via subtreeUntouched(): an occurrence is
+     * "intatta" only if EVERY node in it is, at any depth.
      */
     private function isVirgin(Task $occurrence): bool
     {
-        $occurrence->loadMissing([
-            'taskStatus', 'notes', 'attachments',
-            'subtasks.taskStatus', 'subtasks.timeEntries', 'subtasks.notes', 'subtasks.attachments',
-        ]);
+        TaskSubtaskTreeLoader::load($occurrence, ['taskStatus', 'timeEntries', 'notes', 'attachments']);
+        $occurrence->loadMissing(['taskStatus', 'notes', 'attachments']);
 
         if ($occurrence->is_blocked) {
             return false;
@@ -142,11 +160,23 @@ final class TaskRecurrenceService
             return false;
         }
 
-        if (! $occurrence->subtasks->every(fn (Task $subtask): bool => $this->isUntouchedCopiedSubtask($subtask))) {
+        if (! $this->subtreeUntouched($occurrence)) {
             return false;
         }
 
         return $occurrence->notes->isEmpty() && $occurrence->attachments->isEmpty();
+    }
+
+    /**
+     * Every DIRECT sub-task of $node is untouched (isUntouchedCopiedSubtask())
+     * AND its own sub-tree is too, recursively — so a touched node anywhere
+     * below $node, at any depth, makes this false (spec 0161, D-3).
+     */
+    private function subtreeUntouched(Task $node): bool
+    {
+        return $node->subtasks->every(
+            fn (Task $subtask): bool => $this->isUntouchedCopiedSubtask($subtask) && $this->subtreeUntouched($subtask),
+        );
     }
 
     /**

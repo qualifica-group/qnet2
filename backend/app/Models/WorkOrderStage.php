@@ -70,6 +70,19 @@ class WorkOrderStage extends BaseModel
     }
 
     /**
+     * The segnatempo voci snapshotted onto this stage (spec 0163, D-1/D-4).
+     * Read via `withSum('timeEntries as logged_minutes', 'minutes')` for the
+     * board's per-fase total — never loaded whole, the same idiom
+     * `Task::timeEntries()` already documents for `actual_minutes`.
+     *
+     * @return HasMany<TimeEntry, $this>
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
+    }
+
+    /**
      * Whether the stage is currently closed (D-4): a stage with an open Task
      * inside it can never reach this state, so this method is a plain
      * attribute check, not a query.

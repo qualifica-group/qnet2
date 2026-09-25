@@ -167,4 +167,22 @@ trait DelegatesUnaugmentedTableMethods
     {
         return $this->inner->maxRowsLimit();
     }
+
+    /**
+     * Kanban grouping support (spec 0164, D-2) is a `$inner` domain concern,
+     * not a custom-field one, so this is pure passthrough.
+     */
+    public function supportsKanbanGroups(): bool
+    {
+        return $this->inner->supportsKanbanGroups();
+    }
+
+    /**
+     * @param  Builder<Model>  $query
+     * @param  array{by: string, key: int|string}  $kanbanGroup
+     */
+    public function applyKanbanGroupScope(Builder $query, array $kanbanGroup): void
+    {
+        $this->inner->applyKanbanGroupScope($query, $kanbanGroup);
+    }
 }

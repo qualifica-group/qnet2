@@ -109,8 +109,8 @@ const guide: HelpGuide = {
           text: 'The **Overdue** column refuses an incoming drop; **Completed** cannot be dragged into or out of — use the Reopen action to reopen a completed task.',
         },
         {
-          type: 'warning',
-          text: 'Kanban loads at most 500 tasks among those matching the filters: with more, a warning invites you to narrow the filters (the Analytic/Tree list has no such limit).',
+          type: 'note',
+          text: "Each column loads its own tasks in blocks as you scroll to the bottom, with no maximum limit: the column's header always shows the total of tasks that belong to it.",
         },
         {
           type: 'paragraph',
@@ -154,7 +154,7 @@ const guide: HelpGuide = {
             ['Recurrence', 'Frequency and end of the repetition.'],
             [
               'Sub-tasks',
-              'Optional rows with a title (required), a due date and assignees: they create child tasks right along with the parent, up to 50 at a time.',
+              'Optional rows with a title (required), a due date and assignees: they create child tasks right along with the parent. Each row can carry its own nested rows down to the third level below the task (child, grandchild, great-grandchild), up to 50 sub-tasks across the whole tree.',
             ],
           ],
         },
@@ -251,6 +251,14 @@ const guide: HelpGuide = {
           text: "Completing a task from the detail (or from the list) logs the time entry for **every assignee**, one identical entry each (yourself alone when the task has none). Completing a single sub-task from the Sub-tasks panel instead only logs it for you — this is not a choice you make, it depends on where you complete the task.",
         },
         {
+          type: 'note',
+          text: "The time entry is mandatory on completion unless the task's **Type** makes it optional (the **Time entry required on completion** field turned off in Configuration › Task Types): in that case the Complete window shows the **Track time** switch (on by default) — turn it off to close the task without logging a time entry. A task with no type always requires it.",
+        },
+        {
+          type: 'note',
+          text: "When completing **several tasks at once** (bulk action), the **Track time** switch only shows up when none of the selected tasks requires the time entry. If even one does, the action is all or nothing: without a time entry it stops with an error and no task is completed.",
+        },
+        {
           type: 'paragraph',
           text: 'The **Request update** action is reserved to the requester, the creator or whoever manages the task (not a plain watcher), and only on a task that is not completed, not in validation and not blocked. Pick one of the three recipient groups:',
         },
@@ -275,7 +283,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "From the detail, press **New sub-task** to create a child activity, with dates within the parent's range. Alternatively, while creating the task you can add one or more rows right in the form's **Sub-tasks** section: a title is enough, plus an optional due date and assignees — everything else is inherited from the parent.",
+          text: "From the detail, press **New sub-task** to create a child activity, with dates within the parent's range. Alternatively, while creating the task you can add one or more rows right in the form's **Sub-tasks** section: a title is enough, plus an optional due date and assignees — everything else is inherited from the row's own direct parent.",
+        },
+        {
+          type: 'paragraph',
+          text: "On any row of the form's **Sub-tasks** section, press **Add sub-task** to nest another one under it: you can go down to the third level below the task (child, grandchild, great-grandchild), past which the button no longer appears. Removing a row also removes all of its nested rows; the whole tree never exceeds 50 sub-tasks in total.",
         },
         {
           type: 'paragraph',
@@ -283,11 +295,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency — Daily, Weekly, Monthly, Yearly or Custom (every N days) — the interval in **Repeat every** and the end: On a date, After a number of occurrences or Never.',
+          text: 'With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency — Daily, Weekly, Monthly, Yearly or Custom (every N days) — the interval in **Repeat every** and the end: On a date, After a number of occurrences or Never. "After a number of occurrences" counts the occurrences actually created, not the calculated candidates.',
         },
         {
           type: 'paragraph',
-          text: "For a Monthly or Yearly recurrence, choose whether the day is **fixed** (e.g. the 31st of the month) or **ordinal** (e.g. the 2nd Tuesday) — Yearly also asks for the month. With **Workdays only** on, the generated dates always fall Monday through Friday (no holiday calendar).",
+          text: "For a Monthly or Yearly recurrence, choose whether the day is **fixed** (e.g. the 31st of the month) or **ordinal** (e.g. the 2nd Tuesday) — Yearly also asks for the month. With **Workdays only** on, an occurrence that would fall on a Saturday, Sunday, a national holiday, Easter or Easter Monday is never skipped: it shifts to the first working day after it. When the shift makes it coincide with an occurrence already generated, only one remains.",
+        },
+        {
+          type: 'note',
+          text: "Every occurrence the recurrence generates copies the task's whole sub-task tree (every level), with the same shifted dates.",
         },
         {
           type: 'note',

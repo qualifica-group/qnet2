@@ -15,7 +15,7 @@ import type { WorkOrderStage } from '@/features/work-orders/task-board/types'
 vi.mock('@/features/work-orders/task-board/api', () => ({ fetchWorkOrderStages: vi.fn() }))
 
 function stage(overrides: Partial<WorkOrderStage> = {}): WorkOrderStage {
-  return { id: 1, name: 'Analisi', sort_order: 0, closed_at: null, closed_by: null, ...overrides }
+  return { id: 1, name: 'Analisi', sort_order: 0, closed_at: null, closed_by: null, logged_minutes: 0, ...overrides }
 }
 
 function wrapper() {

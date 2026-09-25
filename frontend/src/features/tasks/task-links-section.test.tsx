@@ -83,8 +83,8 @@ beforeEach(() => {
   )
   vi.mocked(fetchWorkOrderStages).mockReset()
   vi.mocked(fetchWorkOrderStages).mockResolvedValue([
-    { id: 1, name: 'Analisi', sort_order: 0, closed_at: null, closed_by: null },
-    { id: 2, name: 'Chiusa', sort_order: 1, closed_at: '2026-09-01T00:00:00Z', closed_by: null },
+    { id: 1, name: 'Analisi', sort_order: 0, closed_at: null, closed_by: null, logged_minutes: 0 },
+    { id: 2, name: 'Chiusa', sort_order: 1, closed_at: '2026-09-01T00:00:00Z', closed_by: null, logged_minutes: 0 },
   ])
 })
 

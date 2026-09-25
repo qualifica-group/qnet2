@@ -36,7 +36,7 @@ final class TimeEntryService
      *
      * @var array<int, string>
      */
-    public const array DETAIL_RELATIONS = ['user', 'taskType', 'registry', 'opportunity', 'workOrder', 'task'];
+    public const array DETAIL_RELATIONS = ['user', 'taskType', 'registry', 'opportunity', 'workOrder', 'task', 'workOrderStage'];
 
     public function __construct(
         private readonly TimeEntryLinkResolver $linkResolver,
@@ -77,8 +77,10 @@ final class TimeEntryService
     {
         $owner = User::query()->findOrFail($entry->user_id);
 
-        // Step 1: D-5 again, against the RESULTING payload.
-        $links = $this->linkResolver->resolve($data, $owner);
+        // Step 1: D-5 again, against the RESULTING payload. $entry's OWN
+        // (pre-write) stage feeds spec 0163 D-2's "unless it changes" waiver
+        // on the closed-stage check.
+        $links = $this->linkResolver->resolve($data, $owner, $entry->work_order_stage_id);
 
         // Step 2: apply.
         $entry->fill($data->attributes());
@@ -119,5 +121,6 @@ final class TimeEntryService
         $entry->opportunity_id = $links->opportunityId;
         $entry->work_order_id = $links->workOrderId;
         $entry->task_id = $links->taskId;
+        $entry->work_order_stage_id = $links->workOrderStageId;
     }
 }

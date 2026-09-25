@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\WorkOrders;
 
 use App\Models\Task;
+use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderStage;
 use App\Services\Tasks\TaskVisibilityScope;
 use Illuminate\Support\Collection;
 
@@ -48,6 +50,30 @@ final class TaskBoardQuery
         $query = TaskVisibilityScope::scopeToActor($query, $actor);
 
         return $this->orderedFlat($query->get(), $this->stageRanks($workOrder));
+    }
+
+    /**
+     * $workOrder's own "Fasi", each carrying its `logged_minutes` total
+     * (spec 0163, D-4/AC-007) via a single aggregated `withSum` query — never
+     * one query per stage.
+     *
+     * @return Collection<int, WorkOrderStage>
+     */
+    public function stages(WorkOrder $workOrder): Collection
+    {
+        return $workOrder->stages()->withSum('timeEntries as logged_minutes', 'minutes')->get();
+    }
+
+    /**
+     * The commessa-level "Senza fase" total (spec 0163, D-4/AC-007): the
+     * segnatempo voci of $workOrder carrying no stage at all.
+     */
+    public function unstagedLoggedMinutes(WorkOrder $workOrder): int
+    {
+        return (int) TimeEntry::query()
+            ->where('work_order_id', $workOrder->id)
+            ->whereNull('work_order_stage_id')
+            ->sum('minutes');
     }
 
     /**

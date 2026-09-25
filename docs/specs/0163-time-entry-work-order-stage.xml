@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0163-time-entry-work-order-stage" status="draft" owner="utente" date="2026-09-25">
+
+  <goal>
+    Ogni voce di segnatempo legata a una commessa puo' indicare la fase della commessa: la eredita dal task collegato
+    oppure si sceglie a mano; nella commessa si vede il totale dei minuti per fase.
+  </goal>
+
+  <context>
+    Serie 0160-0164. Nomi qnet-2 verificati:
+    - `time_entries` (migr. 2026_09_14_120000): user_id, date, title, task_type_id, start_time, end_time, minutes,
+      notes, registry_id, opportunity_id, work_order_id, task_id (tutti FK nullOnDelete), work_order_note_id.
+    - `work_order_stages` (migr. 2026_09_22_110200): work_order_id, name, sort_order, closed_at, closed_by_id.
+      `tasks.work_order_stage_id` + stage_position (migr. _110300); guardia `TaskStageGuard` (fase della stessa
+      commessa, aperta).
+    - Segnatempo: modulo `time-entries` (spec 0122), regole `TimeEntryValidationRules` (usate anche da complete/bulk),
+      servizi in `app/Services/TimeEntries/`, FE `features/time-entries/`. Commessa: scheda Task per fasi (spec 0146),
+      FE `features/work-orders/task-board/`.
+  </context>
+
+  <decisions>
+    D-1 (utente) Automatica + manuale. Voce con task che ha una fase -> la fase e' quella del task (lato server,
+        l'input viene ignorato). Voce senza task ma con commessa -> fase facoltativa scelta nel form, solo fasi APERTE
+        di quella commessa. Voce senza commessa -> fase vietata (422 se inviata).
+    D-2 La fase e' un'istantanea al momento della scrittura: se poi il task cambia fase, le voci gia' registrate non
+        cambiano. Modificando una voce senza cambiare fase, una fase nel frattempo chiusa resta ammessa.
+    D-3 Migrazione: `time_entries.work_order_stage_id` nullable FK nullOnDelete, indice; backfill delle voci esistenti
+        con task collegato dalla fase attuale del task (una tantum, nella migrazione, reversibile azzerando la colonna).
+    D-4 Commessa, scheda Task per fasi: accanto a ogni fase il totale "Minuti registrati" (somma delle voci con quella
+        fase), piu' "Senza fase" per le voci della commessa senza fase.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione + backfill; model/risorsa/validazione time entry (anche il time_entry di complete e bulk).</item>
+      <item>Form Segnatempo: campo Fase quando c'e' una commessa e nessun task; colonna Fase nell'elenco/export se il modulo ha tabella generica.</item>
+      <item>Totali per fase nella commessa; guide in-app IT/EN `time-entries` e `work-orders`.</item>
+    </in>
+    <out>
+      <item>Report/statistiche per fase oltre ai totali in commessa.</item>
+      <item>Riallineamento automatico delle voci quando il task cambia fase.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    POST/PUT time entries (endpoint esistenti del modulo, e `time_entry` dentro complete/bulk):
+      + `work_order_stage_id?: int|null`. Regole: con task_id la fase e' ricavata dal task (input ignorato); senza
+      work_order_id -> 422 se valorizzato; deve appartenere alla commessa e, in creazione o cambio, essere aperta -> 422.
+    Risorsa time entry: + `work_order_stage: { id, name } | null`.
+    Totali fase: la risposta che alimenta la scheda Task per fasi della commessa aggiunge, per fase, `logged_minutes:
+      int`, e `unstaged_logged_minutes: int` a livello commessa (endpoint esatto fissato in esecuzione sul contratto
+      reale di spec 0146, senza nuovo endpoint se quello esistente basta).
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Voce con task in fase X -> salvata con fase X anche se l'input indica un'altra fase.</criterion>
+    <criterion id="AC-002">Voce con commessa e senza task: fase aperta della commessa accettata; fase chiusa o di altra commessa -> 422.</criterion>
+    <criterion id="AC-003">Voce senza commessa con fase -> 422.</criterion>
+    <criterion id="AC-004">Il task cambia fase dopo la registrazione: la voce mantiene la fase originale.</criterion>
+    <criterion id="AC-005">Migrazione: voci esistenti con task in fase ricevono quella fase; rollback azzera la colonna.</criterion>
+    <criterion id="AC-006">Completare un task in fase crea la voce con quella fase.</criterion>
+    <criterion id="AC-007">Commessa: totale minuti per fase e "Senza fase" corretti.</criterion>
+    <criterion id="AC-008">FE: campo Fase nel form solo con commessa e senza task, con le sole fasi aperte; guide IT/EN aggiornate, parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza; autorizzazioni del segnatempo invariate; totali senza N+1 (aggregato in query);
+    TaskService.php non va toccato.
+  </constraints>
+
+</spec>

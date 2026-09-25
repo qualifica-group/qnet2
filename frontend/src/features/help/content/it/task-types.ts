@@ -23,6 +23,10 @@ const guide: HelpGuide = {
             ['Icona', 'Facoltativa.'],
             ['Attiva', 'Se la spegni, la voce sparisce dai menu a tendina.'],
             ['Predefinita', 'Se attiva, precompila il campo Tipologia sui nuovi task quando non ne viene scelta una.'],
+            [
+              'Segnatempo obbligatorio al completamento',
+              'Attivo di default. Disattivalo per rendere facoltativo il segnatempo quando si completa un task di questa tipologia: chi lo completa può scegliere se registrare il tempo.',
+            ],
           ],
         },
         {

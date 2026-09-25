@@ -18,6 +18,9 @@ namespace App\DataObjects\TaskTypes;
  *
  * `isDefault` (spec 0154, D-8): false unless submitted true. TaskTypeService
  * enforces "at most one default row" and "a default must be active".
+ *
+ * `requiresTimeEntry` (spec 0162, D-1): true unless submitted false — the
+ * segnatempo stays mandatory at completion for every type by default.
  */
 final readonly class CreateTaskTypeData
 {
@@ -28,6 +31,7 @@ final readonly class CreateTaskTypeData
         public ?string $icon,
         public bool $isActive,
         public bool $isDefault,
+        public bool $requiresTimeEntry,
     ) {}
 
     /**
@@ -44,6 +48,7 @@ final readonly class CreateTaskTypeData
             icon: array_key_exists('icon', $data) ? $data['icon'] : null,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
             isDefault: array_key_exists('is_default', $data) ? (bool) $data['is_default'] : false,
+            requiresTimeEntry: array_key_exists('requires_time_entry', $data) ? (bool) $data['requires_time_entry'] : true,
         );
     }
 
@@ -62,6 +67,7 @@ final readonly class CreateTaskTypeData
             'icon' => $this->icon,
             'is_active' => $this->isActive,
             'is_default' => $this->isDefault,
+            'requires_time_entry' => $this->requiresTimeEntry,
         ];
     }
 }

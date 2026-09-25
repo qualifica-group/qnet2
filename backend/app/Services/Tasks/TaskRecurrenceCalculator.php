@@ -8,6 +8,7 @@ use App\DataObjects\Tasks\TaskRecurrenceData;
 use App\Enums\TaskRecurrenceEnd;
 use App\Enums\TaskRecurrenceFrequency;
 use App\Enums\TaskRecurrenceMonthMode;
+use App\Services\TimeEntries\WorkCalendar;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use InvalidArgumentException;
@@ -31,9 +32,19 @@ use InvalidArgumentException;
  * first). App\Console\Commands\GenerateTaskRecurrences relies on exactly
  * this to resume from `generated_until` instead of recomputing a series'
  * whole history on every run.
+ *
+ * Spec 0160, D-1: a `workdaysOnly` candidate landing on a non-working day
+ * (weekend, national holiday, Pasqua/Pasquetta — WorkCalendar is the ONE
+ * source of truth, reused rather than duplicated) is no longer skipped
+ * outright (REQUIREMENT CHANGED from spec 0155) — it is SHIFTED forward to
+ * the first working day after it. D-2: a shift landing on a date some other
+ * candidate already produced collapses into that single occurrence, never
+ * double-counted. D-3: `ends: on_date` compares against the SHIFTED date.
  */
 final class TaskRecurrenceCalculator
 {
+    public function __construct(private readonly WorkCalendar $calendar) {}
+
     /**
      * Defensive circuit breaker only — interval >= 1 guarantees each
      * iteration moves strictly forward, so `ends: never` with no $horizon is
@@ -94,13 +105,29 @@ final class TaskRecurrenceCalculator
                 continue;
             }
 
-            // Step 3: AC-002 — a `workdays_only` rule never lands on a
-            // Saturday/Sunday; that candidate is skipped outright (not
-            // moved to the nearest weekday, not counted), same as q-net.
-            if ($rule->workdaysOnly && $occurrence->isWeekend()) {
+            // Step 3 (spec 0160, D-1): shift a `workdays_only` candidate
+            // off any non-working day onto the first working day after it.
+            if ($rule->workdaysOnly) {
+                $occurrence = $this->shiftToWorkday($occurrence);
+            }
+
+            // Step 3b: the shift only ever moves forward, so $occurrence can
+            // now sit past $horizon even though the pre-shift $cursor did
+            // not — the same period-granular early exit as Step 2, reapplied
+            // to the date actually produced.
+            if ($horizon !== null && $occurrence->gt($horizon)) {
+                break;
+            }
+
+            // Step 3c (D-2): a shift may land on the date the PREVIOUS
+            // candidate already produced (its own shift, or its own
+            // unshifted value) — one occurrence, never double-counted.
+            if ($rule->workdaysOnly && $dates !== [] && $occurrence->eq(end($dates))) {
                 continue;
             }
 
+            // Step 3d (D-3): the "ends on a date" ceiling compares against
+            // the SHIFTED date, never the pre-shift candidate.
             if ($rule->ends === TaskRecurrenceEnd::OnDate && $occurrence->gt(CarbonImmutable::parse($rule->endsOn))) {
                 break;
             }
@@ -248,5 +275,20 @@ final class TaskRecurrenceCalculator
         $target = $firstOfMonth->addDays($offsetToFirstMatch)->addWeeks($ordinal - 1);
 
         return $target->month === $firstOfMonth->month ? $target : null;
+    }
+
+    /**
+     * Spec 0160, D-1: the first working day AT OR strictly after $date —
+     * a no-op when $date is already one. Walked one day at a time: any run
+     * of consecutive non-working days (a weekend abutting a fixed holiday,
+     * or Pasqua/Pasquetta together) is short by construction.
+     */
+    private function shiftToWorkday(CarbonImmutable $date): CarbonImmutable
+    {
+        while ($this->calendar->isNonWorkingDay($date->toDateString())) {
+            $date = $date->addDay();
+        }
+
+        return $date;
     }
 }

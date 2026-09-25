@@ -16,8 +16,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (D-8). `color` is a token of `App\Support\BadgeTokens::colors()`, `icon` a
  * name of `App\Support\BadgeTokens::icons()`, both validated server-side by
  * the FormRequest — never free text.
+ *
+ * `requires_time_entry` (spec 0162, D-1) defaults true: whether completing a
+ * Task classified under this type demands a segnatempo. Read through
+ * `App\Services\Tasks\TaskTimeEntryRequirement::isRequired()`, the single
+ * point CompleteTaskRequest/TaskCompletionService/TaskResource/TaskRowMapper
+ * all consult, never re-derived.
  */
-#[Fillable(['name', 'description', 'color', 'icon', 'sort_order', 'is_active', 'is_default'])]
+#[Fillable(['name', 'description', 'color', 'icon', 'sort_order', 'is_active', 'is_default', 'requires_time_entry'])]
 class TaskType extends BaseModel
 {
     /** @use HasFactory<TaskTypeFactory> */
@@ -32,6 +38,7 @@ class TaskType extends BaseModel
             'sort_order' => 'int',
             'is_active' => 'bool',
             'is_default' => 'bool',
+            'requires_time_entry' => 'bool',
         ];
     }
 

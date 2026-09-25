@@ -84,6 +84,15 @@ export interface TableRowsPayload {
    * present and non-null. Omitted ⇒ today's behavior, unchanged.
    */
   customFilterRules?: FilterRules
+  /**
+   * Server-side Kanban column scope (spec 0164 D-2): restricts the rows to
+   * one column, applied AFTER filters/advanced filters/search, like `tree`.
+   * Allowed only for a domain that supports it (`supportsKanbanGroups()`,
+   * today only `tasks`) and never together with `tree`/`treeParentId` — the
+   * backend 422s both. Omitted ⇒ today's unscoped behavior, unchanged for
+   * every domain.
+   */
+  kanbanGroup?: { by: 'status'; key: number } | { by: 'due'; key: string }
 }
 
 /**

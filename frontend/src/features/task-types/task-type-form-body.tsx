@@ -20,7 +20,15 @@ interface TaskTypeFormBodyProps {
 }
 
 /** The metadata keys this form owns, in render order. */
-const FIELD_KEYS = ['name', 'description', 'color', 'icon', 'is_active', 'is_default'] as const
+const FIELD_KEYS = [
+  'name',
+  'description',
+  'color',
+  'icon',
+  'is_active',
+  'is_default',
+  'requires_time_entry',
+] as const
 
 /**
  * The task type create/edit form UI. Every field is wrapped in `MetaField`
@@ -138,6 +146,25 @@ export function TaskTypeFormBody({ mode, onSuccess, onCancel }: TaskTypeFormBody
                 metaKey="is_default"
                 label={t('taskTypes.form.isDefault')}
                 hint={t('taskTypes.form.isDefaultHint')}
+                layout="inline"
+              >
+                {({ field, disabled }) => (
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={disabled}
+                    />
+                  </FormControl>
+                )}
+              </MetaField>
+
+              <MetaField
+                control={form.control}
+                name="requires_time_entry"
+                metaKey="requires_time_entry"
+                label={t('taskTypes.form.requiresTimeEntry')}
+                hint={t('taskTypes.form.requiresTimeEntryHint')}
                 layout="inline"
               >
                 {({ field, disabled }) => (

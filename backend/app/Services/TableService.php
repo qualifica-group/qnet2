@@ -54,7 +54,7 @@ class TableService
     /**
      * Execute the SSRM query and return the rows + total for the envelope.
      *
-     * @param  array{startRow: int, endRow: int, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, tree?: bool, treeParentId?: int|null}  $payload
+     * @param  array{startRow: int, endRow: int, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, tree?: bool, treeParentId?: int|null, kanbanGroup?: array{by: string, key: int|string}|null}  $payload
      */
     public function rows(TableDefinition $definition, User $actor, array $payload): RowsResult
     {
@@ -88,6 +88,18 @@ class TableService
         // supportsTree(), so this is safe to apply unconditionally here.
         if (($payload['tree'] ?? false) === true || array_key_exists('treeParentId', $payload)) {
             $definition->applyTreeScope($query, $payload['treeParentId'] ?? null);
+        }
+
+        // Spec 0164, D-2: server-side Kanban column grouping, AFTER every
+        // filter/search/tree above so a column combines with the rest of
+        // the active query. Mutually exclusive with tree by construction
+        // (TableRowsRequest 422s the combination) and only ever reached for
+        // a domain that supportsKanbanGroups() (422 otherwise, before this
+        // runs).
+        $kanbanGroup = $payload['kanbanGroup'] ?? null;
+
+        if (is_array($kanbanGroup)) {
+            $definition->applyKanbanGroupScope($query, $kanbanGroup);
         }
 
         $total = (clone $query)->count();

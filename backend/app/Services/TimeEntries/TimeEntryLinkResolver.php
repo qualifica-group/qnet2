@@ -10,6 +10,7 @@ use App\Models\Opportunity;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderStage;
 use App\Services\Tasks\TaskVisibilityScope;
 use Illuminate\Validation\ValidationException;
 
@@ -27,14 +28,23 @@ use Illuminate\Validation\ValidationException;
  * a manageAll create-for-another-user that is the target `user_id`, not the
  * admin performing the request; on update() it is the entry's own (immutable)
  * owner.
+ *
+ * Spec 0163, D-1 extends the same split onto `work_order_stage_id`: with a
+ * Task it is imposed from `$task->work_order_stage_id` (whatever it
+ * currently is — the snapshot is taken AT THIS WRITE, D-2); without one it is
+ * an optional, explicit choice, valid only among the commessa's own OPEN
+ * stages. $currentStageId is the voce's stage BEFORE this write (null on
+ * create) — D-2's "modificando una voce senza cambiare fase, una fase nel
+ * frattempo chiusa resta ammessa" only waives the open-stage check when the
+ * submitted stage equals it.
  */
 final class TimeEntryLinkResolver
 {
-    public function resolve(TimeEntryData $data, User $owner): ResolvedTimeEntryLinks
+    public function resolve(TimeEntryData $data, User $owner, ?int $currentStageId = null): ResolvedTimeEntryLinks
     {
         return $data->taskId !== null
             ? $this->fromTask($data->taskId, $owner)
-            : $this->standalone($data);
+            : $this->standalone($data, $currentStageId);
     }
 
     /**
@@ -58,6 +68,7 @@ final class TimeEntryLinkResolver
             opportunityId: $task->opportunity_id,
             workOrderId: $task->work_order_id,
             taskId: $task->id,
+            workOrderStageId: $task->work_order_stage_id,
         );
     }
 
@@ -68,7 +79,7 @@ final class TimeEntryLinkResolver
      *                             contradicts the client derived from
      *                             either one.
      */
-    private function standalone(TimeEntryData $data): ResolvedTimeEntryLinks
+    private function standalone(TimeEntryData $data, ?int $currentStageId): ResolvedTimeEntryLinks
     {
         if ($data->opportunityId !== null && $data->workOrderId !== null) {
             throw ValidationException::withMessages([
@@ -77,6 +88,7 @@ final class TimeEntryLinkResolver
         }
 
         $registryId = $this->coherentRegistryId($data);
+        $workOrderStageId = $this->coherentWorkOrderStageId($data, $currentStageId);
 
         return new ResolvedTimeEntryLinks(
             title: (string) $data->title,
@@ -84,7 +96,47 @@ final class TimeEntryLinkResolver
             opportunityId: $data->opportunityId,
             workOrderId: $data->workOrderId,
             taskId: null,
+            workOrderStageId: $workOrderStageId,
         );
+    }
+
+    /**
+     * Spec 0163, D-1/AC-002/AC-003: a submitted stage without a commessa is
+     * always refused (there is nothing for it to belong to); with a commessa
+     * it must belong to THAT one and, unless it is the voce's own unchanged
+     * stage (D-2), be currently open.
+     *
+     * @throws ValidationException
+     */
+    private function coherentWorkOrderStageId(TimeEntryData $data, ?int $currentStageId): ?int
+    {
+        if ($data->workOrderStageId === null) {
+            return null;
+        }
+
+        if ($data->workOrderId === null) {
+            throw ValidationException::withMessages([
+                'work_order_stage_id' => [__('A work order stage requires a work order.')],
+            ]);
+        }
+
+        $stage = WorkOrderStage::query()->find($data->workOrderStageId);
+
+        if ($stage === null || $stage->work_order_id !== $data->workOrderId) {
+            throw ValidationException::withMessages([
+                'work_order_stage_id' => [__('The selected stage does not belong to the selected work order.')],
+            ]);
+        }
+
+        $stageChanged = $data->workOrderStageId !== $currentStageId;
+
+        if ($stageChanged && $stage->isClosed()) {
+            throw ValidationException::withMessages([
+                'work_order_stage_id' => [__('This stage is closed.')],
+            ]);
+        }
+
+        return $stage->id;
     }
 
     /**

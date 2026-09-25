@@ -18,6 +18,7 @@ const formValues: TaskTypeFormValues = {
   icon: 'star',
   is_active: true,
   is_default: false,
+  requires_time_entry: true,
 }
 
 function original(overrides: Partial<TaskTypeDetail> = {}): TaskTypeDetail {
@@ -30,6 +31,7 @@ function original(overrides: Partial<TaskTypeDetail> = {}): TaskTypeDetail {
     sort_order: 3,
     is_active: true,
     is_default: false,
+    requires_time_entry: true,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -45,6 +47,7 @@ describe('buildCreatePayload (spec 0101)', () => {
       description: 'Follow-up on the client request',
       is_active: true,
       is_default: false,
+      requires_time_entry: true,
     })
   })
 
@@ -90,6 +93,12 @@ describe('buildUpdatePayload (spec 0101)', () => {
   it('includes only the changed is_default (spec 0154 D-8)', () => {
     expect(buildUpdatePayload({ ...formValues, is_default: true }, original())).toEqual({
       is_default: true,
+    })
+  })
+
+  it('includes only the changed requires_time_entry (spec 0162 D-1)', () => {
+    expect(buildUpdatePayload({ ...formValues, requires_time_entry: false }, original())).toEqual({
+      requires_time_entry: false,
     })
   })
 })

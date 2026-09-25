@@ -34,6 +34,7 @@ class TaskTypeFactory extends Factory
             'sort_order' => self::$nextSortOrder++,
             'is_active' => true,
             'is_default' => false,
+            'requires_time_entry' => true,
         ];
     }
 
@@ -45,5 +46,14 @@ class TaskTypeFactory extends Factory
     public function default(): static
     {
         return $this->state(fn (): array => ['is_default' => true, 'is_active' => true]);
+    }
+
+    /**
+     * A type whose Tasks may be completed without a segnatempo (spec 0162,
+     * D-1/D-2).
+     */
+    public function optionalTimeEntry(): static
+    {
+        return $this->state(fn (): array => ['requires_time_entry' => false]);
     }
 }

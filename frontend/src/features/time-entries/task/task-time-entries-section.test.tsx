@@ -64,6 +64,7 @@ function buildEntry(overrides: Partial<TimeEntry> & { id: number }): TimeEntry {
     opportunity: null,
     work_order: null,
     task: { id: TASK_ID, title: 'Task Demo' },
+    work_order_stage: null,
     created_at: '2026-09-14T08:00:00Z',
     updated_at: '2026-09-14T08:00:00Z',
     permissions: { update: true, delete: true },

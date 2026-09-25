@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0162-task-completion-optional-time-entry" status="draft" owner="utente" date="2026-09-25">
+
+  <goal>
+    Il segnatempo al completamento resta obbligatorio per default, ma diventa facoltativo per i task delle tipologie
+    in cui l'amministratore lo disattiva.
+  </goal>
+
+  <context>
+    Serie 0160-0164. Nomi qnet-2 verificati:
+    - `app/Http/Requests/Tasks/CompleteTaskRequest.php`: `time_entry` `required|array` su entrambi i percorsi (spec 0123
+      D-1), regole da `TimeEntryValidationRules::rules('time_entry')`.
+    - `app/Http/Requests/Tasks/BulkTaskRequest.php` (righe ~85-90): per l'azione complete `time_entry` required,
+      altrimenti prohibited. Bulk tutto-o-niente con 422 `incompatible_tasks` (`TaskBulkService`).
+    - Completamento per tutti gli assegnatari (`for_all_assignees`, 0155), dialog FE di completamento condiviso da
+      dettaglio, riga, cella stato, kanban e bulk.
+    - Catalogo tipologie: tabella `task_types` (modulo Configurazione > Tipologie task, `TaskTypesTableDefinition`,
+      form FE `features/task-types/`); tasks.task_type_id nullable (obbligatorio nel form da 0154).
+  </context>
+
+  <decisions>
+    D-1 (utente) Nuovo flag per tipologia `requires_time_entry` (boolean, default true: comportamento attuale per tutte
+        le tipologie esistenti). Etichetta "Segnatempo obbligatorio al completamento".
+    D-2 Task con tipologia che richiede il segnatempo, o SENZA tipologia: `time_entry` obbligatorio (come oggi).
+        Tipologia con flag false: `time_entry` facoltativo; se inviato e' validato come oggi e registrato.
+    D-3 Il dialog di completamento, per un task con tempo facoltativo, mostra l'interruttore "Registra il tempo"
+        (acceso di default); spento, non invia `time_entry`. Per i task che lo richiedono il dialog e' invariato.
+    D-4 Bulk complete: `time_entry` facoltativo nella richiesta; se assente e almeno un task selezionato lo richiede ->
+        422 `incompatible_tasks` con quei task (tutto-o-niente), nessun task completato. Il dialog bulk mostra
+        l'interruttore solo se nessun task selezionato lo richiede.
+    D-5 La creazione "gia' completato" (0154) e l'approvazione di una validazione restano invariate.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione task_types.requires_time_entry (boolean default true, reversibile).</item>
+      <item>Form/risorsa/tabella Tipologie task con il flag; risorsa task espone il requisito per il dialog.</item>
+      <item>CompleteTaskRequest, BulkTaskRequest, servizi di completamento; dialog FE di completamento e bulk.</item>
+      <item>Guide in-app IT/EN `tasks` e `task-types`.</item>
+    </in>
+    <out>
+      <item>Obbligo per ruolo/permesso.</item>
+      <item>Segnatempo obbligatorio in altri momenti (approvazione, creazione gia' completata).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    task-types (CRUD esistente): body e risorsa + `requires_time_entry: boolean` (default true se omesso in creazione).
+    TaskResource (dettaglio) e riga di POST /tables/tasks/rows: + `requires_time_entry: boolean` (dalla tipologia; true
+      senza tipologia).
+    POST /api/tasks/{task}/complete: `time_entry` required se requires_time_entry, altrimenti sometimes|array (regole
+      invariate se presente). 422 `time_entry` se richiesto e assente.
+    POST /api/tasks/bulk action complete: `time_entry` sometimes|array; assente con almeno un task che lo richiede ->
+      422 { errors: { incompatible_tasks: [...] } } come oggi.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Tipologia esistente dopo la migrazione: requires_time_entry = true; completare senza time_entry -> 422 (invariato).</criterion>
+    <criterion id="AC-002">Tipologia con flag false: completare senza time_entry -> 200, task chiuso, nessuna voce di segnatempo creata.</criterion>
+    <criterion id="AC-003">Tipologia con flag false e time_entry inviato: voce creata come oggi (anche per tutti gli assegnatari).</criterion>
+    <criterion id="AC-004">Task senza tipologia: time_entry obbligatorio.</criterion>
+    <criterion id="AC-005">Bulk complete senza time_entry con un task che lo richiede -> 422 incompatible_tasks, nessun task modificato; tutti facoltativi -> tutti chiusi.</criterion>
+    <criterion id="AC-006">FE: dialog con interruttore solo per tempo facoltativo; spento non invia time_entry; bulk mostra l'interruttore solo se nessun task lo richiede.</criterion>
+    <criterion id="AC-007">Form Tipologie task: flag salvato e riletto; autorizzazioni invariate.</criterion>
+    <criterion id="AC-008">Guide in-app IT/EN aggiornate; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza; regola in un solo punto lato server (niente duplicazione tra singolo e bulk); il FE non
+    decide l'obbligo, lo legge dalla risorsa. TaskService.php (500 righe) non va toccato.
+  </constraints>
+
+</spec>

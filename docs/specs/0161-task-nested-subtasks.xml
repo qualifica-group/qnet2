@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0161-task-nested-subtasks" status="draft" owner="utente" date="2026-09-25">
+
+  <goal>
+    Creando un task si possono creare insieme sottotask annidati fino a 3 livelli sotto il task, e la ricorrenza copia
+    l'intero albero dei sottotask in ogni occorrenza.
+  </goal>
+
+  <context>
+    Serie 0160-0164. Nomi qnet-2 verificati:
+    - `StoreTaskRequest` (righe ~155-165): `subtasks` array max 50, campi title (obbligatorio), description,
+      start_date, end_date, estimated_minutes, assignee_ids, watcher_ids; ereditarieta' dal padre (spec 0155 D-3).
+    - `app/Services/Tasks/TaskSubtaskBatchCreator.php` (154 righe): crea i figli diretti nella stessa transazione.
+    - `app/Services/Tasks/TaskOccurrenceFactory.php` (221 righe): `copySubtasks()` copia SOLO i figli diretti
+      (commento "un livello"), `subtaskDateShiftDays()`, `copiedSubtaskAttributes()`; eager load `subtasks.assignees`,
+      `subtasks.watchers`. Potatura: `isVirgin` ignora le copie intatte, il potatore le elimina prima
+      dell'occorrenza (TaskRecurrenceService).
+    - Gerarchia: `parent_task_id`, `TaskHierarchyGuard` (solo anti-ciclo, nessun limite di profondita' generale).
+    - FE: sezione Sotto-task del form (`features/tasks/` form di creazione, `use-task-form.ts`, `task-schema.ts` 417
+      righe), tipi in `features/tasks/types.ts` (492 righe: vicino al limite, estrarre i tipi nuovi in un file dedicato).
+  </context>
+
+  <decisions>
+    D-1 (utente) Profondita' massima nella creazione in blocco: 3 livelli sotto il task creato (figlio, nipote,
+        pronipote). Limite complessivo invariato: 50 sottotask in tutto l'albero, contati a ogni livello.
+    D-2 Ogni riga eredita dal suo padre diretto con le stesse regole di 0155 D-3 (il padre diretto a sua volta ha
+        ereditato dal task); date comprese in quelle del padre diretto.
+    D-3 (utente) La ricorrenza copia l'intero albero dei sottotask (tutti i livelli), con lo stesso spostamento di date;
+        la potatura delle copie intatte vale per tutto l'albero (un'occorrenza e' "intatta" solo se lo e' ogni nodo).
+    D-4 Tutto in una transazione: un errore su un nodo annulla l'intera creazione.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>StoreTaskRequest: `subtasks.*.subtasks` ricorsivo fino a profondita' 3; validazione del totale 50.</item>
+      <item>TaskSubtaskBatchCreator ricorsivo; TaskOccurrenceFactory e potatura ricorsivi.</item>
+      <item>FE: righe annidate nella sezione Sotto-task (aggiungi figlio fino al 3 livello), guida IT/EN `tasks`.</item>
+    </in>
+    <out>
+      <item>Limite di profondita' per la gerarchia creata a mano (resta libera come oggi).</item>
+      <item>Riordino/spostamento tra livelli nel form di creazione.</item>
+      <item>Creazione annidata in modifica di un task esistente.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    POST /api/tasks: `subtasks?: SubtaskInput[]` dove SubtaskInput = { title, description?, start_date?, end_date?,
+      estimated_minutes?, assignee_ids?, watcher_ids?, subtasks?: SubtaskInput[] }. Profondita' massima 3
+      (subtasks.*.subtasks.*.subtasks.* ammesso, un quarto livello -> 422 sulla chiave del quarto livello).
+      Totale nodi al massimo 50 -> altrimenti 422 `subtasks` con messaggio sul limite.
+    Risposta invariata (TaskResource del task creato).
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST con albero a 3 livelli crea tutti i task con parent_task_id corretti in una transazione.</criterion>
+    <criterion id="AC-002">Un quarto livello -> 422 sulla chiave annidata; nessun task creato.</criterion>
+    <criterion id="AC-003">51 nodi distribuiti su piu' livelli -> 422; nessun task creato.</criterion>
+    <criterion id="AC-004">Un nipote senza assegnatari eredita dal figlio, che eredita dal task (0155 D-3).</criterion>
+    <criterion id="AC-005">Un nodo non valido a livello 3 annulla tutta la creazione (rollback).</criterion>
+    <criterion id="AC-006">La ricorrenza copia un albero a 3 livelli con date spostate; la potatura elimina un'occorrenza intatta con tutto l'albero e conserva quella in cui un nipote e' stato modificato.</criterion>
+    <criterion id="AC-007">FE: il form permette di aggiungere figli fino al 3 livello (nessun pulsante oltre) e invia l'albero nel payload.</criterion>
+    <criterion id="AC-008">Guida in-app IT/EN aggiornata; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza; eager loading ricorsivo senza N+1 (niente lazy loading); TaskService.php (500 righe) non
+    va gonfiato: la logica sta in TaskSubtaskBatchCreator/TaskOccurrenceFactory; nessun file oltre 500 righe.
+  </constraints>
+
+</spec>

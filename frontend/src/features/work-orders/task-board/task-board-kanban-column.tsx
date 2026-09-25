@@ -34,6 +34,8 @@ interface TaskBoardKanbanColumnProps {
   onToggleSelection: (taskId: number) => void
   onOpenTask: (taskId: number) => void
   onAddTask: (stageId: number | null) => void
+  /** The commessa's `unstaged_logged_minutes` (spec 0163 AC-007): read only when `group.stage === null`. */
+  unstagedLoggedMinutes?: number
 }
 
 export function TaskBoardKanbanColumn({
@@ -46,12 +48,14 @@ export function TaskBoardKanbanColumn({
   onToggleSelection,
   onOpenTask,
   onAddTask,
+  unstagedLoggedMinutes,
 }: TaskBoardKanbanColumnProps) {
   const { t } = useTranslation()
   const { stage, roots } = group
   const key = stage ? String(stage.id) : 'none'
   const { setNodeRef } = useDroppable({ id: groupDroppableId(key) })
   const metrics = computeStageMetrics(roots.map((node) => node.task))
+  const loggedMinutes = stage ? stage.logged_minutes : (unstagedLoggedMinutes ?? 0)
   const isClosed = stage?.closed_at != null
 
   return (
@@ -59,7 +63,7 @@ export function TaskBoardKanbanColumn({
       accentColor={accent.dot}
       label={stage ? stage.name : t('workOrders.taskBoard.noStage')}
       count={metrics.count}
-      headerExtra={<TaskBoardStageSummary metrics={metrics} />}
+      headerExtra={<TaskBoardStageSummary metrics={metrics} loggedMinutes={loggedMinutes} />}
       addSlot={
         !isReadOnly && !isClosed ? (
           <Button size="xs" variant="ghost" onClick={() => onAddTask(stage?.id ?? null)}>

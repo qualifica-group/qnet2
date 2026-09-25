@@ -27,6 +27,7 @@ const SERVER_ERROR_FIELDS = [
   'icon',
   'is_active',
   'is_default',
+  'requires_time_entry',
 ] as const
 
 export type TaskTypeFormValues = CreateTaskTypeFormValues & UpdateTaskTypeFormValues
@@ -63,6 +64,7 @@ export function useTaskTypeForm({ mode, onSuccess }: UseTaskTypeFormArgs) {
         icon: mode.taskType.icon ?? '',
         is_active: mode.taskType.is_active,
         is_default: mode.taskType.is_default,
+        requires_time_entry: mode.taskType.requires_time_entry,
       }
     }
     return {
@@ -72,6 +74,8 @@ export function useTaskTypeForm({ mode, onSuccess }: UseTaskTypeFormArgs) {
       icon: '',
       is_active: true,
       is_default: false,
+      // Spec 0162 D-1: matches the backend's own create default.
+      requires_time_entry: true,
     }
   }, [mode])
 

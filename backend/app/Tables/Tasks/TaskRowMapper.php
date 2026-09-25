@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
 use App\Services\Tasks\TaskStatusResolver;
+use App\Services\Tasks\TaskTimeEntryRequirement;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -62,6 +63,8 @@ final class TaskRowMapper
             'parent_title' => $row->getAttribute(TaskAggregateColumns::PARENT_TITLE),
             'is_recurring' => $row->task_recurrence_id !== null,
             'notes_count' => (int) $row->notes_count,
+            // Spec 0162, D-1/D-2: same derivation as TaskResource's own.
+            'requires_time_entry' => TaskTimeEntryRequirement::isRequired($row),
         ];
     }
 

@@ -6,8 +6,9 @@
  */
 
 import { useEffect } from 'react'
+import type { Control } from 'react-hook-form'
 import { Form } from '@/components/ui/form'
-import { TimeEntryEditor } from '@/features/time-entries/form/time-entry-editor'
+import { TimeEntryEditor, type TimeEntryEditorFieldValues } from '@/features/time-entries/form/time-entry-editor'
 import { TimeEntryFormActions } from '@/features/time-entries/form/time-entry-form-actions'
 import { workOrderRefOf } from '@/features/time-entries/form/time-entry-context-fields'
 import { useTimeEntryForm, type TimeEntryFormMode } from '@/features/time-entries/form/use-time-entry-form'
@@ -73,7 +74,11 @@ export function TimeEntryFormBody({
       <form onSubmit={onSubmit} className="flex flex-1 flex-col overflow-hidden" noValidate>
         <div className="flex-1 overflow-y-auto p-4">
           <TimeEntryEditor
-            control={form.control}
+            // This form always holds the FULL `TimeEntryFormValues` control;
+            // `TimeEntryEditor`'s own prop type is narrowed (task-embedded
+            // callers' shadow schema has no `work_order_stage_id`), so the
+            // one caller that actually needs it casts back in.
+            control={form.control as unknown as Control<TimeEntryEditorFieldValues>}
             disabled={isSubmitting}
             showTitle={showTitle}
             showContext={showContext}
@@ -85,6 +90,7 @@ export function TimeEntryFormBody({
             opportunity={refOf(entry?.opportunity)}
             workOrder={workOrderRefOf(entry?.work_order)}
             task={entry?.task ? { id: entry.task.id, name: entry.task.title } : null}
+            stage={entry?.work_order_stage ?? null}
             onRegistryChange={handleRegistryChange}
             onOpportunityItemChange={handleOpportunityItemChange}
             onWorkOrderItemChange={handleWorkOrderItemChange}

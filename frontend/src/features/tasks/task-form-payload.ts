@@ -1,13 +1,21 @@
 import { sameIdSet } from '@/lib/utils'
 import type {
   CreateTaskPayload,
-  CreateTaskSubtaskPayload,
   TaskDetail,
   TaskRecurrenceDetail,
   TaskRecurrencePayload,
   UpdateTaskPayload,
 } from '@/features/tasks/types'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
+import type {
+  CreateTaskSubtaskPayload,
+  SubtaskChildValues,
+  SubtaskGrandchildValues,
+  SubtaskGreatGrandchildValues,
+} from '@/features/tasks/task-subtask-types'
+
+/** Any of the 3 bounded row levels (spec 0161 D-1) — `subtaskPayloadOf` recurses across all three. */
+type SubtaskFormRow = SubtaskChildValues | SubtaskGrandchildValues | SubtaskGreatGrandchildValues
 
 /**
  * The form's `recurrence` slice, reduced to what the wire actually cares
@@ -130,18 +138,24 @@ function recurrencePayloadOf(rule: RecurrenceRule): TaskRecurrencePayload {
 }
 
 /**
- * Spec 0155 D-3: one "Sottotask" row onto the wire shape — `title` is the
- * only field the compact create-form block collects besides the optional
- * due date and assignees; every other `CreateTaskSubtaskPayload` field is
- * left for the server's own inheritance from the parent.
+ * Spec 0155 D-3, recursive since spec 0161 D-1: one "Sottotask" row onto the
+ * wire shape — `title` is the only field the compact create-form block
+ * collects besides the optional due date, assignees and nested children;
+ * every other `CreateTaskSubtaskPayload` field is left for the server's own
+ * inheritance from the parent (0155 D-3, unchanged). `'subtasks' in row`
+ * narrows the union: the level-3 (pronipote) arm carries no `subtasks` field
+ * at all, so recursion stops there on its own.
  */
-function subtaskPayloadOf(row: TaskFormValues['subtasks'][number]): CreateTaskSubtaskPayload {
+function subtaskPayloadOf(row: SubtaskFormRow): CreateTaskSubtaskPayload {
   const payload: CreateTaskSubtaskPayload = { title: row.title.trim() }
   if (row.end_date) {
     payload.end_date = row.end_date
   }
   if (row.assignee_ids.length > 0) {
     payload.assignee_ids = row.assignee_ids
+  }
+  if ('subtasks' in row && row.subtasks.length > 0) {
+    payload.subtasks = row.subtasks.map(subtaskPayloadOf)
   }
   return payload
 }

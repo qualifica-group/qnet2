@@ -112,8 +112,8 @@ const guide: HelpGuide = {
           text: 'La colonna **Scaduti** non accetta trascinamenti in ingresso; la colonna **Completati** non si può trascinare né in ingresso né in uscita — per riaprire un task completato usa l\'azione Riapri.',
         },
         {
-          type: 'warning',
-          text: 'Il Kanban carica al massimo 500 task tra quelli che rispettano i filtri: se sono di più, un avviso invita a restringere i filtri (l\'elenco Analitica/Sintetica non ha questo limite).',
+          type: 'note',
+          text: 'Ogni colonna carica i propri task a blocchi mentre scorri fino in fondo, senza alcun limite massimo: l\'intestazione della colonna mostra sempre il totale dei task che vi rientrano.',
         },
         {
           type: 'paragraph',
@@ -157,7 +157,7 @@ const guide: HelpGuide = {
             ['Ricorrenza', 'Frequenza e fine della ripetizione.'],
             [
               'Sotto-task',
-              'Righe facoltative con titolo (obbligatorio), data fine e assegnatari: creano subito dei task figli insieme al padre, fino a 50 per volta.',
+              'Righe facoltative con titolo (obbligatorio), data fine e assegnatari: creano subito dei task figli insieme al padre. Ogni riga può avere proprie righe annidate fino al terzo livello sotto il task (figlio, nipote, pronipote), fino a 50 sotto-task in tutto l\'albero.',
             ],
           ],
         },
@@ -254,6 +254,14 @@ const guide: HelpGuide = {
           text: 'Completando un task dal dettaglio (o dall\'elenco) il segnatempo viene registrato per **tutti gli assegnatari**, uno identico per ciascuno (per te soltanto se il task non ne ha). Completando un singolo sotto-task dal pannello Sotto-task, invece, il segnatempo si registra solo per te: non è una scelta disponibile, dipende da dove completi il task.',
         },
         {
+          type: 'note',
+          text: 'Il segnatempo è obbligatorio al completamento, salvo che la **Tipologia** del task lo renda facoltativo (campo **Segnatempo obbligatorio al completamento** disattivato in Configurazione › Tipologie Task): in quel caso la finestra Completa mostra l\'interruttore **Registra il tempo** (acceso di default) — spegnilo per chiudere il task senza registrare una voce di segnatempo. Un task senza tipologia richiede sempre il segnatempo.',
+        },
+        {
+          type: 'note',
+          text: 'Completando **più task insieme** (azione massiva), l\'interruttore **Registra il tempo** compare solo se nessuno dei task selezionati richiede il segnatempo. Se anche uno solo lo richiede, l\'azione è tutto o niente: senza segnatempo si ferma con un errore e nessun task viene completato.',
+        },
+        {
           type: 'paragraph',
           text: 'La **Richiesta di aggiornamento** è riservata al richiedente, al creatore o a chi gestisce il task (non al semplice osservatore), e solo su un task non completato, non in validazione e non bloccato. Scegli uno dei tre gruppi di destinatari:',
         },
@@ -278,7 +286,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal dettaglio premi **Nuovo sotto-task** per creare un\'attività figlia, con date comprese in quelle del padre. In alternativa, mentre crei il task puoi aggiungere subito una o più righe nella sezione **Sotto-task** del modulo: bastano un titolo e, se vuoi, una data fine e degli assegnatari, il resto viene ereditato dal padre.',
+          text: 'Dal dettaglio premi **Nuovo sotto-task** per creare un\'attività figlia, con date comprese in quelle del padre. In alternativa, mentre crei il task puoi aggiungere subito una o più righe nella sezione **Sotto-task** del modulo: bastano un titolo e, se vuoi, una data fine e degli assegnatari, il resto viene ereditato dal padre diretto della riga.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Su ogni riga della sezione **Sotto-task** del modulo, premi **Aggiungi sotto-task** per annidarne un\'altra sotto di essa: puoi scendere fino al terzo livello sotto il task (figlio, nipote, pronipote), oltre il quale il pulsante non compare più. Rimuovendo una riga rimuovi anche tutte le sue righe annidate; l\'intero albero non supera i 50 sotto-task in tutto.',
         },
         {
           type: 'paragraph',
@@ -286,11 +298,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza — Giornaliera, Settimanale, Mensile, Annuale o Personalizzata (ogni N giorni) — l\'intervallo in **Ripeti ogni** e la fine: A una data, Dopo un numero di occorrenze o Mai.',
+          text: 'Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza — Giornaliera, Settimanale, Mensile, Annuale o Personalizzata (ogni N giorni) — l\'intervallo in **Ripeti ogni** e la fine: A una data, Dopo un numero di occorrenze o Mai. "Dopo un numero di occorrenze" conta le occorrenze effettivamente create, non i candidati calcolati.',
         },
         {
           type: 'paragraph',
-          text: 'Per una ricorrenza Mensile o Annuale scegli se il giorno è **fisso** (es. il 31 del mese) oppure **ordinale** (es. il 2° martedì): per l\'Annuale scegli anche il mese. Con **Solo giorni lavorativi** attivo, le date generate cadono sempre dal lunedì al venerdì (non tiene conto delle festività).',
+          text: 'Per una ricorrenza Mensile o Annuale scegli se il giorno è **fisso** (es. il 31 del mese) oppure **ordinale** (es. il 2° martedì): per l\'Annuale scegli anche il mese. Con **Solo giorni lavorativi** attivo, un\'occorrenza che cadrebbe di sabato, domenica, in una festività nazionale, a Pasqua o a Pasquetta non viene saltata: si sposta al primo giorno lavorativo successivo. Se lo spostamento la fa coincidere con un\'occorrenza già generata, ne resta una sola.',
+        },
+        {
+          type: 'note',
+          text: 'Ogni occorrenza generata dalla ricorrenza copia l\'intero albero dei sotto-task del task (tutti i livelli), con le stesse date spostate.',
         },
         {
           type: 'note',

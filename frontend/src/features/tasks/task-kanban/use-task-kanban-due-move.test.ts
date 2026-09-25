@@ -29,24 +29,25 @@ function row(id: number): TaskKanbanRow {
 
 beforeEach(() => vi.mocked(updateTask).mockReset())
 
-describe('useTaskKanbanDueMove (spec 0157 D-2/D-4)', () => {
-  it('PATCHes end_date to the bucket own drop date', () => {
+describe('useTaskKanbanDueMove (spec 0157 D-2/D-4, spec 0164 D-3: onMutated travels per-call)', () => {
+  it('PATCHes end_date to the bucket own drop date, then calls onMutated', () => {
     vi.mocked(updateTask).mockResolvedValue({} as never)
     const onMutated = vi.fn()
-    const { result } = renderHook(() => useTaskKanbanDueMove({ today: TODAY, onMutated }))
+    const { result } = renderHook(() => useTaskKanbanDueMove({ today: TODAY }))
 
-    act(() => result.current.moveToBucket(row(1), 'tomorrow'))
+    act(() => result.current.moveToBucket(row(1), 'tomorrow', onMutated))
 
     expect(updateTask).toHaveBeenCalledWith(1, { end_date: '2026-09-25' })
   })
 
   it('does nothing for a bucket with no drop date (overdue/completed)', () => {
     const onMutated = vi.fn()
-    const { result } = renderHook(() => useTaskKanbanDueMove({ today: TODAY, onMutated }))
+    const { result } = renderHook(() => useTaskKanbanDueMove({ today: TODAY }))
 
-    act(() => result.current.moveToBucket(row(1), 'overdue'))
-    act(() => result.current.moveToBucket(row(1), 'completed'))
+    act(() => result.current.moveToBucket(row(1), 'overdue', onMutated))
+    act(() => result.current.moveToBucket(row(1), 'completed', onMutated))
 
     expect(updateTask).not.toHaveBeenCalled()
+    expect(onMutated).not.toHaveBeenCalled()
   })
 })

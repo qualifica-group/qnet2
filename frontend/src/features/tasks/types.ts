@@ -7,6 +7,9 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
+import type { CreateTaskSubtaskPayload } from '@/features/tasks/task-subtask-types'
+
+export type { CreateTaskSubtaskPayload } from '@/features/tasks/task-subtask-types'
 
 /**
  * `App\Enums\TaskStatusSystemKey` (D-5). The ONLY thing application logic may
@@ -190,6 +193,14 @@ export interface TaskDetail {
   is_blocked: boolean
   requires_closure_feedback: boolean
   /**
+   * Spec 0162 D-1/D-2: derived from `task_type.requires_time_entry` (`true`
+   * when the task carries no tipologia). Read-only, drives whether the
+   * "Completa" dialog's segnatempo section is mandatory or shows the
+   * "Registra il tempo" switch — the FE never decides the requirement
+   * itself, only relays this flag.
+   */
+  requires_time_entry: boolean
+  /**
    * Whether an assignee's completion goes to validation instead of closing
    * the task outright (spec 0121 D-1/D-2): the server alone decides SO from
    * this flag and the actor's mandate — see `permissions.actions.complete_to_validation`.
@@ -293,9 +304,9 @@ export interface CompleteTaskTimeEntryPayload {
  * mandatory on that path and forbidden on the other one (D-3) — the dialog
  * builds this payload accordingly, never from a client-side switch.
  *
- * `time_entry` is REQUIRED on both paths (spec 0123 D-1): completing a task
- * without registering the time spent on it is no longer possible from this
- * dialog.
+ * `time_entry` is REQUIRED on both paths (spec 0123 D-1) UNLESS the task's
+ * own `requires_time_entry` (spec 0162 D-2/D-3) is `false`: the dialog then
+ * shows a "Registra il tempo" switch and omits this key when it is off.
  *
  * `for_all_assignees` (spec 0155 D-6): omitted (server default `false`)
  * completes for the acting user alone; `true` logs an identical time entry
@@ -306,7 +317,7 @@ export interface CompleteTaskTimeEntryPayload {
 export interface CompleteTaskPayload {
   closure_feedback?: string | null
   validation_status_id?: number | null
-  time_entry: CompleteTaskTimeEntryPayload
+  time_entry?: CompleteTaskTimeEntryPayload
   for_all_assignees?: boolean
 }
 
@@ -404,27 +415,6 @@ export interface CreateTaskPayload {
    * (`task-form-payload.ts`).
    */
   subtasks?: CreateTaskSubtaskPayload[]
-}
-
-/**
- * One row of `CreateTaskPayload.subtasks` (spec 0155 D-3). The compact
- * "Sottotask" block in the create form only ever populates `title`,
- * `end_date` and `assignee_ids` (`task-form-subtasks-section.tsx`); the rest
- * of this shape exists because the endpoint accepts it, not because the
- * form does.
- */
-export interface CreateTaskSubtaskPayload {
-  title: string
-  description?: string | null
-  start_date?: string | null
-  end_date?: string | null
-  estimated_minutes?: number | null
-  assignee_ids?: number[]
-  watcher_ids?: number[]
-  task_type_id?: number | null
-  task_priority_id?: number | null
-  task_importance_id?: number | null
-  task_category_id?: number | null
 }
 
 /**

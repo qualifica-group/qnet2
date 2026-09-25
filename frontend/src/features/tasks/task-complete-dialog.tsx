@@ -20,7 +20,7 @@ import { RelationSelectField } from '@/components/form/relation-select-field'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { TASK_STATUSES_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
 import { IN_VALIDATION_GROUP_PARAMS } from '@/features/tasks/task-action-availability'
-import { TaskCompleteTimeEntrySection } from '@/features/tasks/task-complete-time-entry-section'
+import { TaskCompleteTimeEntryToggleSection } from '@/features/tasks/task-complete-time-entry-toggle'
 import { useTaskSelectLabels } from '@/features/tasks/task-select-labels'
 import { useCompleteTask } from '@/features/tasks/use-task-mutations'
 import { useTaskCompleteTimeEntryForm } from '@/features/tasks/use-task-complete-time-entry-form'
@@ -68,15 +68,18 @@ function completeTaskDefaultValues(): CompleteTaskFormValues {
 
 /**
  * Omits `closure_feedback` when blank; omits `validation_status_id` entirely
- * off the validation path (D-3); `time_entry` is always present (spec 0123
- * D-1), already validated by `useTaskCompleteTimeEntryForm.validate()`.
- * `for_all_assignees` (spec 0155 D-6) is sent only when `true` — the server
- * default (`false`) already covers the sub-task panel's own case.
+ * off the validation path (D-3). `time_entry` is present whenever
+ * `useTaskCompleteTimeEntryForm.validate()` returns a payload — always, on a
+ * task that requires it (spec 0123 D-1); `undefined` (so the key is dropped
+ * at the wire boundary) when the task's own segnatempo is optional and the
+ * "Registra il tempo" switch is off (spec 0162 D-3). `for_all_assignees`
+ * (spec 0155 D-6) is sent only when `true` — the server default (`false`)
+ * already covers the sub-task panel's own case.
  */
 function buildCompletePayload(
   values: CompleteTaskFormValues,
   toValidation: boolean,
-  timeEntry: CompleteTaskTimeEntryPayload,
+  timeEntry: CompleteTaskTimeEntryPayload | undefined,
   forAllAssignees: boolean,
 ): CompleteTaskPayload {
   const payload: CompleteTaskPayload = { time_entry: timeEntry }
@@ -138,7 +141,10 @@ export function TaskCompleteDialog({
     defaultValues: completeTaskDefaultValues(),
   })
   const closureFeedback = useWatch({ control: form.control, name: 'closure_feedback' })
-  const timeEntryForm = useTaskCompleteTimeEntryForm({ taskTypeId: task.task_type_id })
+  const timeEntryForm = useTaskCompleteTimeEntryForm({
+    taskTypeId: task.task_type_id,
+    requiresTimeEntry: task.requires_time_entry,
+  })
 
   const completeMutation = useCompleteTask({
     taskId: task.id,
@@ -257,14 +263,7 @@ export function TaskCompleteDialog({
                 </>
               ) : null}
 
-              <Form {...timeEntryForm.form}>
-                <TaskCompleteTimeEntrySection
-                  control={timeEntryForm.form.control}
-                  disabled={completeMutation.isPending}
-                  onStartTimeChange={timeEntryForm.handleStartTimeChange}
-                  onEndTimeChange={timeEntryForm.handleEndTimeChange}
-                />
-              </Form>
+              <TaskCompleteTimeEntryToggleSection timeEntryForm={timeEntryForm} disabled={completeMutation.isPending} />
             </form>
           </Form>
         </div>

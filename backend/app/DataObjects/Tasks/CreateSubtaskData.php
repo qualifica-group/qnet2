@@ -22,12 +22,19 @@ namespace App\DataObjects\Tasks;
  * "omitted" apart from "submitted empty", never `??`. `taskCategoryId` is the
  * one field in the per-row shape that is NEITHER always-inherited nor
  * inherited-when-omitted (D-3): a plain optional column, null when absent.
+ *
+ * `subtasks` (spec 0161, D-1) is this row's OWN nested children, recursively
+ * the same shape, up to StoreTaskRequest's own depth-3 cap — the row a
+ * `subtasks` key on a depth-3 row would describe is refused at the
+ * FormRequest layer (`prohibited`) before this DTO is ever built, so no
+ * depth counting happens here: an empty array is simply a leaf.
  */
 final readonly class CreateSubtaskData
 {
     /**
      * @param  array<int, int>|null  $assigneeIds
      * @param  array<int, int>|null  $watcherIds
+     * @param  array<int, CreateSubtaskData>  $subtasks
      */
     public function __construct(
         public string $title,
@@ -41,6 +48,7 @@ final readonly class CreateSubtaskData
         public ?int $taskPriorityId = null,
         public ?int $taskImportanceId = null,
         public ?int $taskCategoryId = null,
+        public array $subtasks = [],
     ) {}
 
     /**
@@ -60,6 +68,10 @@ final readonly class CreateSubtaskData
             taskPriorityId: self::nullableInt($data, 'task_priority_id'),
             taskImportanceId: self::nullableInt($data, 'task_importance_id'),
             taskCategoryId: self::nullableInt($data, 'task_category_id'),
+            subtasks: array_map(
+                static fn (array $row): self => self::fromValidated($row),
+                $data['subtasks'] ?? [],
+            ),
         );
     }
 

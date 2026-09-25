@@ -76,6 +76,7 @@ final class TaskCompletionService
             TaskWriteLock::assertNotBlocked($task);
             $this->assertCompletable($task);
             $this->assertNoOpenSubtasks($task);
+            $this->assertTimeEntryProvidedWhenRequired($task, $data);
 
             $requiresValidation = TaskAbilityResolver::completionRequiresValidation($actor, $task);
 
@@ -213,9 +214,18 @@ final class TaskCompletionService
      * $task, or for $actor when it has none — `TimeEntryService::create()`
      * builds one fresh TimeEntry row per call, so reusing the readonly DTO
      * across owners is safe.
+     *
+     * Spec 0162, D-2/D-3: a null `timeEntry` (only possible when $task's
+     * tipologia does not require one, guarded above) logs nothing at all,
+     * regardless of `for_all_assignees` — there is no value to duplicate
+     * per assignee.
      */
     private function logTimeEntries(Task $task, CompleteTaskData $data, User $actor): void
     {
+        if ($data->timeEntry === null) {
+            return;
+        }
+
         if (! $data->forAllAssignees) {
             $this->timeEntryService->create($data->timeEntry, $actor);
 
@@ -281,6 +291,26 @@ final class TaskCompletionService
     {
         if ($this->availability->hasOpenSubtasks($task)) {
             abort(422, self::OPEN_SUBTASKS_MESSAGE);
+        }
+    }
+
+    /**
+     * Spec 0162, D-1/D-2: re-asserted here (the SAME
+     * `TaskTimeEntryRequirement::isRequired()` CompleteTaskRequest already
+     * enforces for the single-task endpoint) because bulk complete
+     * (`TaskBulkActionExecutor::complete()`) has no FormRequest of its own
+     * per task — this is the ONE place both callers actually go through. A
+     * ValidationException here becomes a 422 on the single-task endpoint and
+     * an `incompatible_tasks` entry on the bulk one (TaskBulkService's own
+     * try/catch), never a second implementation of "does this task require
+     * a segnatempo".
+     */
+    private function assertTimeEntryProvidedWhenRequired(Task $task, CompleteTaskData $data): void
+    {
+        if ($data->timeEntry === null && TaskTimeEntryRequirement::isRequired($task)) {
+            throw ValidationException::withMessages([
+                'time_entry' => ['A time entry is required to complete this task.'],
+            ]);
         }
     }
 

@@ -65,6 +65,10 @@ function addTimeRangeIssue(values: RefinedValues, ctx: z.RefinementCtx, t: TFunc
  * `work_order_id`/`task_id` stay unconstrained, unused fields: `TimeEntryEditor`
  * never renders them here (`showTitle`/`showContext` both false), they exist
  * only so `form.control` structurally satisfies the shared component's props.
+ * `work_order_stage_id` is deliberately OMITTED (unlike the others): it is
+ * `?`-optional on `TimeEntryFormValues` precisely so a shadow schema may leave
+ * it out entirely and stay assignment-compatible — this one has no writable
+ * caller of its own (the task-scoped create endpoint has no such field either).
  */
 export function buildTaskTimeEntrySchema(t: TFunction) {
   return z

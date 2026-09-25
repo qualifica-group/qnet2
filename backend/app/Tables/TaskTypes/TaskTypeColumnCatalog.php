@@ -87,6 +87,15 @@ final class TaskTypeColumnCatalog
                 'filterType' => 'boolean',
             ],
             [
+                'id' => 'requires_time_entry',
+                'label' => 'taskTypes.columns.requires_time_entry',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 'id' => 'created_at',
                 'label' => 'taskTypes.columns.created_at',
                 'type' => 'datetime',
@@ -109,6 +118,7 @@ final class TaskTypeColumnCatalog
             ['columnId' => 'sort_order', 'type' => 'number'],
             ['columnId' => 'is_active', 'type' => 'boolean'],
             ['columnId' => 'is_default', 'type' => 'boolean'],
+            ['columnId' => 'requires_time_entry', 'type' => 'boolean'],
             ['columnId' => 'created_at', 'type' => 'date'],
         ];
     }

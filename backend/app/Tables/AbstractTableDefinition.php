@@ -435,4 +435,25 @@ abstract class AbstractTableDefinition implements TableDefinition
     {
         return BaseApiController::MAX_LIMIT;
     }
+
+    /**
+     * Default: no Kanban grouping support (spec 0164, D-2). A domain opts in
+     * by overriding (tasks).
+     */
+    public function supportsKanbanGroups(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Default: a no-op. Only ever reached for a domain that overrides
+     * supportsKanbanGroups() to true (spec 0164, D-2).
+     *
+     * @param  Builder<Model>  $query
+     * @param  array{by: string, key: int|string}  $kanbanGroup
+     */
+    public function applyKanbanGroupScope(Builder $query, array $kanbanGroup): void
+    {
+        // Intentionally empty: no domain groups its query by default.
+    }
 }

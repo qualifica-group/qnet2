@@ -138,11 +138,27 @@ const IS_DEFAULT_COPY = {
   },
 }
 
+/** Spec 0162 D-1: "Segnatempo obbligatorio al completamento" — task-types only. */
+const REQUIRES_TIME_ENTRY_COPY = {
+  columns: { requires_time_entry: 'Segnatempo obbligatorio' },
+  detail: { requiresTimeEntry: 'Segnatempo obbligatorio al completamento' },
+  form: {
+    requiresTimeEntry: 'Segnatempo obbligatorio al completamento',
+    requiresTimeEntryHint:
+      "Disattivala per rendere facoltativo il segnatempo quando si completa un task di questa tipologia: chi completa potra' scegliere se registrare il tempo.",
+  },
+}
+
 export const taskTypes = {
   ...types,
-  columns: { ...types.columns, ...IS_DEFAULT_COPY.columns },
-  detail: { ...types.detail, ...IS_DEFAULT_COPY.detail },
-  form: { ...types.form, newTaskType: 'Nuova tipologia', ...IS_DEFAULT_COPY.form },
+  columns: { ...types.columns, ...IS_DEFAULT_COPY.columns, ...REQUIRES_TIME_ENTRY_COPY.columns },
+  detail: { ...types.detail, ...IS_DEFAULT_COPY.detail, ...REQUIRES_TIME_ENTRY_COPY.detail },
+  form: {
+    ...types.form,
+    newTaskType: 'Nuova tipologia',
+    ...IS_DEFAULT_COPY.form,
+    ...REQUIRES_TIME_ENTRY_COPY.form,
+  },
 }
 
 const categories = lookupBundle({

@@ -5,6 +5,11 @@
  * lands ON matters, so this is a plain column-level drop, not a sortable
  * reorder. One `DndContext` per board; `onDrop` resolves what a landed move
  * actually does (PATCH, "Completa" dialog, uncomplete, …).
+ *
+ * Spec 0164 D-1: since a column no longer holds its rows client-side (each
+ * fetches its own block), the dragged row and its ORIGIN column key travel
+ * on the draggable's own `data` (set by `TaskKanbanCard`) instead of being
+ * looked up in a `groups[].rows` list — `groups` here is metadata only.
  */
 import { useState } from 'react'
 import {
@@ -23,10 +28,21 @@ export function taskKanbanColumnDroppableId(key: string): string {
   return `${COLUMN_DROPPABLE_PREFIX}${key}`
 }
 
+/** `data` a draggable card carries (spec 0164 D-1), read back on drag start/end. */
+export interface TaskKanbanDragData {
+  row: TaskKanbanRow
+  groupKey: string
+}
+
+function dragDataOf(item: { data: { current?: unknown } }): TaskKanbanDragData | null {
+  const data = item.data.current as Partial<TaskKanbanDragData> | undefined
+  return data?.row && data.groupKey !== undefined ? (data as TaskKanbanDragData) : null
+}
+
 interface UseTaskKanbanDndArgs<Key extends string> {
   groups: TaskKanbanGroup<Key>[]
   /** Called once a card is dropped on a DIFFERENT, droppable column whose origin allows dragging out. */
-  onDrop: (row: TaskKanbanRow, targetKey: Key, targetGroup: TaskKanbanGroup<Key>) => void
+  onDrop: (row: TaskKanbanRow, originKey: Key, targetKey: Key, targetGroup: TaskKanbanGroup<Key>) => void
 }
 
 /** Sensors + the single drag lifecycle every Kanban card/column shares. */
@@ -35,14 +51,10 @@ export function useTaskKanbanDnd<Key extends string>({ groups, onDrop }: UseTask
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor))
 
-  const rowsById = new Map(groups.flatMap((group) => group.rows.map((row) => [String(row.id), row] as const)))
-  const groupOfRow = new Map(
-    groups.flatMap((group) => group.rows.map((row) => [String(row.id), group] as const)),
-  )
   const groupsByKey = new Map(groups.map((group) => [String(group.key), group] as const))
 
   function handleDragStart(event: DragStartEvent) {
-    setActiveRow(rowsById.get(String(event.active.id)) ?? null)
+    setActiveRow(dragDataOf(event.active)?.row ?? null)
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -51,9 +63,12 @@ export function useTaskKanbanDnd<Key extends string>({ groups, onDrop }: UseTask
     if (!over) {
       return
     }
-    const row = rowsById.get(String(active.id))
-    const originGroup = groupOfRow.get(String(active.id))
-    if (!row || !originGroup || !originGroup.draggable) {
+    const data = dragDataOf(active)
+    if (!data) {
+      return
+    }
+    const originGroup = groupsByKey.get(data.groupKey)
+    if (!originGroup || !originGroup.draggable) {
       return
     }
     const targetKey = String(over.id).slice(COLUMN_DROPPABLE_PREFIX.length)
@@ -61,7 +76,7 @@ export function useTaskKanbanDnd<Key extends string>({ groups, onDrop }: UseTask
     if (!targetGroup || !targetGroup.droppable || targetGroup.key === originGroup.key) {
       return
     }
-    onDrop(row, targetGroup.key, targetGroup)
+    onDrop(data.row, originGroup.key, targetGroup.key, targetGroup)
   }
 
   return { sensors, activeRow, handleDragStart, handleDragEnd }

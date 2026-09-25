@@ -23,6 +23,13 @@ namespace App\DataObjects\TimeEntries;
  * makes `user_id` `prohibited`, so `fromValidated()` naturally leaves it
  * null there, and `forTask()` never sets it at all — the task-scoped POST
  * always writes for the authenticated actor (D-9).
+ *
+ * `workOrderStageId` (spec 0163, D-1) is likewise carried exactly as
+ * SUBMITTED: with `taskId` set it is IGNORED by the resolver, which imposes
+ * the linked Task's own stage instead — `forTask()` never even reads it from
+ * the payload, since the task-scoped POST/complete never solicit it in the
+ * first place (D-1: "input ignorato" means there is nothing to ignore, not
+ * that a submitted value would be accepted then discarded).
  */
 final readonly class TimeEntryData
 {
@@ -39,6 +46,7 @@ final readonly class TimeEntryData
         public ?int $workOrderId = null,
         public ?int $taskId = null,
         public ?int $userId = null,
+        public ?int $workOrderStageId = null,
     ) {}
 
     /**
@@ -59,6 +67,7 @@ final readonly class TimeEntryData
             workOrderId: self::nullableInt($data, 'work_order_id'),
             taskId: self::nullableInt($data, 'task_id'),
             userId: self::nullableInt($data, 'user_id'),
+            workOrderStageId: self::nullableInt($data, 'work_order_stage_id'),
         );
     }
 
@@ -82,10 +91,11 @@ final readonly class TimeEntryData
     }
 
     /**
-     * The mass-assignable column map, EXCLUDING `user_id` and the four D-5
-     * link columns (`title`, `registry_id`, `opportunity_id`,
-     * `work_order_id`, `task_id`) — those are written by TimeEntryService
-     * from TimeEntryLinkResolver's verdict, never straight off this DTO.
+     * The mass-assignable column map, EXCLUDING `user_id` and the five D-5/
+     * spec-0163 link columns (`title`, `registry_id`, `opportunity_id`,
+     * `work_order_id`, `task_id`, `work_order_stage_id`) — those are written
+     * by TimeEntryService from TimeEntryLinkResolver's verdict, never
+     * straight off this DTO.
      *
      * @return array<string, mixed>
      */

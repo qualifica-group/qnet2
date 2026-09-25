@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'opportunity_id',
     'work_order_id',
     'task_id',
+    'work_order_stage_id',
 ])]
 class TimeEntry extends BaseModel
 {
@@ -91,5 +92,19 @@ class TimeEntry extends BaseModel
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
+    }
+
+    /**
+     * The commessa "Fase" this voce is snapshotted onto (spec 0163, D-1/D-2):
+     * derived from the linked Task when there is one, otherwise an explicit
+     * choice among the commessa's own open stages. Never re-derived once
+     * written except by a fresh call to TimeEntryLinkResolver (D-2, no
+     * ongoing sync).
+     *
+     * @return BelongsTo<WorkOrderStage, $this>
+     */
+    public function workOrderStage(): BelongsTo
+    {
+        return $this->belongsTo(WorkOrderStage::class);
     }
 }

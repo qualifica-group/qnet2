@@ -154,6 +154,7 @@ export function WorkOrderTaskBoard({ workOrderId }: WorkOrderTaskBoardProps) {
                 onToggleSelection={state.toggleTaskSelection}
                 onOpenTask={openTask}
                 onAddTask={addTask}
+                unstagedLoggedMinutes={state.payload?.unstaged_logged_minutes ?? 0}
               />
             ) : (
               <TaskBoardListView
@@ -166,6 +167,7 @@ export function WorkOrderTaskBoard({ workOrderId }: WorkOrderTaskBoardProps) {
                 onToggleSelection={state.toggleTaskSelection}
                 onOpenTask={openTask}
                 onAddTask={addTask}
+                unstagedLoggedMinutes={state.payload?.unstaged_logged_minutes ?? 0}
               />
             )}
           </>

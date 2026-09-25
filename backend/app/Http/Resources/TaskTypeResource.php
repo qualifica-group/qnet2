@@ -27,6 +27,7 @@ class TaskTypeResource extends JsonResource
             'sort_order' => $this->sort_order,
             'is_active' => $this->is_active,
             'is_default' => $this->is_default,
+            'requires_time_entry' => $this->requires_time_entry,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

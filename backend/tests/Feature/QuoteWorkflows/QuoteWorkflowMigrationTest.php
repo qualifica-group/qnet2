@@ -163,9 +163,14 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // on date with the 97th, sorted after it alphabetically),
     // `2026_09_25_100100_move_employment_reports_to_to_pivot` (100th) and
     // `2026_09_25_100200_rename_employment_reports_to_field_permission`
-    // (101st), the employment reports-to pivot.
+    // (101st), the employment reports-to pivot, then spec 0162's
+    // `2026_09_25_110000_add_requires_time_entry_to_task_types_table` (102nd),
+    // the per-type segnatempo-optional flag, and spec 0163's
+    // `2026_09_25_120000_add_work_order_stage_id_to_time_entries_table`
+    // (103rd), the segnatempo "Fase" snapshot plus its backfill from linked
+    // Tasks.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 101]);
+    Artisan::call('migrate:rollback', ['--step' => 103]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { TaskBulkCompleteDialog } from '@/features/tasks/task-bulk-complete-dialog'
 import { bulkTaskAction } from '@/features/tasks/api'
+import type { TableRow } from '@/features/table/types'
 
 /** Spec 0156 D-6: bulk "Completa" — closure_feedback + mandatory segnatempo, and the 422 incompatible_tasks split. */
 
@@ -32,13 +33,18 @@ function fieldValidationError(status: number, data: unknown): AxiosError {
   return error
 }
 
-function renderDialog(taskIds = [5]) {
+/** A minimal `TaskRow`, `requires_time_entry` set the way the row's own grid projection sends it. */
+function taskRow(id: number, requiresTimeEntry: boolean): TableRow {
+  return { id, actions: [], requires_time_entry: requiresTimeEntry }
+}
+
+function renderDialog(taskIds = [5], rows: TableRow[] = [taskRow(5, true)]) {
   const onClose = vi.fn()
   const onSuccess = vi.fn()
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <TaskBulkCompleteDialog taskIds={taskIds} onClose={onClose} onSuccess={onSuccess} />
+      <TaskBulkCompleteDialog taskIds={taskIds} rows={rows} onClose={onClose} onSuccess={onSuccess} />
     </QueryClientProvider>,
   )
   return { onClose, onSuccess }
@@ -133,5 +139,33 @@ describe('TaskBulkCompleteDialog', () => {
     )
     expect(onClose).not.toHaveBeenCalled()
     expect(onSuccess).not.toHaveBeenCalled()
+  })
+
+  /** Spec 0162 D-4: the switch renders only when NONE of the selected rows requires the segnatempo. */
+  it('shows no switch when a selected task requires the segnatempo (AC-006)', () => {
+    renderDialog([5, 6], [taskRow(5, false), taskRow(6, true)])
+
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  })
+
+  it('shows the "Registra il tempo" switch, ON by default, when no selected task requires it (AC-006)', () => {
+    renderDialog([5, 6], [taskRow(5, false), taskRow(6, false)])
+
+    const toggle = screen.getByRole('switch', { name: label('tasks.actions.completeDialog.trackTime') })
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('with the switch off: submits without time_entry (AC-006)', async () => {
+    vi.mocked(bulkTaskAction).mockResolvedValueOnce({ affected: 2 })
+    renderDialog([5, 6], [taskRow(5, false), taskRow(6, false)])
+
+    fireEvent.click(screen.getByRole('switch', { name: label('tasks.actions.completeDialog.trackTime') }))
+    expect(screen.queryByLabelText(new RegExp(`^${label('timeEntries.form.minutes')}`))).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: label('tasks.bulk.completeDialog.confirm') }))
+
+    await waitFor(() => expect(bulkTaskAction).toHaveBeenCalled())
+    const [payload] = vi.mocked(bulkTaskAction).mock.calls[0]
+    expect(payload.time_entry).toBeUndefined()
   })
 })

@@ -7,6 +7,8 @@ namespace App\Http\Requests\Tasks;
 use App\DataObjects\Tasks\CompleteTaskData;
 use App\Enums\TaskStatusGroup;
 use App\Http\Requests\TimeEntries\TimeEntryValidationRules;
+use App\Models\Task;
+use App\Services\Tasks\TaskTimeEntryRequirement;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,10 +24,15 @@ use Illuminate\Validation\Rule;
  * `in_validation` group, in ONE combined rule — the same shape as
  * ValidateContractRequest's `contract_status_id`/closed_won pairing.
  *
- * `time_entry` is `required|array` on BOTH percorsi (D-1): the segnatempo is
- * mandatory whichever way completion goes. Its own `time_entry.*` rules come
- * from `TimeEntryValidationRules::rules('time_entry')` — the SAME source
- * `StoreTaskTimeEntryRequest` uses unprefixed (D-3, AC-009).
+ * `time_entry` is `required|array` on BOTH percorsi (D-1) UNLESS $task's
+ * tipologia opts out of it (spec 0162, D-1/D-2, `TaskTimeEntryRequirement`):
+ * then it drops to `sometimes|array`, and its `time_entry.*` sub-rules
+ * (`TimeEntryValidationRules::rules('time_entry')` — the SAME source
+ * `StoreTaskTimeEntryRequest` uses unprefixed, D-3/AC-009) only apply when
+ * the client actually submitted the key, so an optional-time-entry task
+ * completed without one raises no spurious nested error. A request with no
+ * route-bound Task (e.g. AC-009's direct `rules()` call) defaults to
+ * required, matching today's behaviour.
  *
  * Authorization stays in the controller (TaskPolicy::complete); D-2
  * deliberately does NOT check `time-entries.create` here or anywhere else in
@@ -50,22 +57,28 @@ class CompleteTaskRequest extends FormRequest
      */
     public function rules(): array
     {
-        return array_merge(
-            [
-                'closure_feedback' => ['sometimes', 'nullable', 'string'],
-                'validation_status_id' => [
-                    'sometimes',
-                    'nullable',
-                    'integer',
-                    Rule::exists('task_statuses', 'id')->where(
-                        fn ($query) => $query->where('is_active', true)->where('group', TaskStatusGroup::InValidation->value)
-                    ),
-                ],
-                'time_entry' => ['required', 'array'],
-                'for_all_assignees' => ['sometimes', 'boolean'],
+        $task = $this->route('task');
+        $required = ! $task instanceof Task || TaskTimeEntryRequirement::isRequired($task);
+
+        $rules = [
+            'closure_feedback' => ['sometimes', 'nullable', 'string'],
+            'validation_status_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                Rule::exists('task_statuses', 'id')->where(
+                    fn ($query) => $query->where('is_active', true)->where('group', TaskStatusGroup::InValidation->value)
+                ),
             ],
-            TimeEntryValidationRules::rules('time_entry'),
-        );
+            'time_entry' => $required ? ['required', 'array'] : ['sometimes', 'array'],
+            'for_all_assignees' => ['sometimes', 'boolean'],
+        ];
+
+        if (! $required && ! $this->has('time_entry')) {
+            return $rules;
+        }
+
+        return array_merge($rules, TimeEntryValidationRules::rules('time_entry'));
     }
 
     /**

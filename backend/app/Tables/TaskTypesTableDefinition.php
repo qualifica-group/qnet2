@@ -107,6 +107,7 @@ class TaskTypesTableDefinition extends AbstractTableDefinition
             'sort_order' => $row->sort_order,
             'is_active' => $row->is_active,
             'is_default' => $row->is_default,
+            'requires_time_entry' => $row->requires_time_entry,
             'created_at' => $row->created_at,
         ];
     }

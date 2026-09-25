@@ -46,6 +46,7 @@ const ALL_EDITABLE: ResourcePermissions = {
     icon: EDITABLE,
     is_active: EDITABLE,
     is_default: EDITABLE,
+    requires_time_entry: EDITABLE,
   },
   actions: {},
 }
@@ -84,6 +85,7 @@ function taskType(
     sort_order: 3,
     is_active: true,
     is_default: false,
+    requires_time_entry: true,
     created_at: null,
     updated_at: null,
     permissions: ALL_EDITABLE,
@@ -174,8 +176,17 @@ describe('TaskTypeForm — create (spec 0101)', () => {
       description: null,
       is_active: true,
       is_default: false,
+      requires_time_entry: true,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(taskType()))
+  })
+
+  it('renders the "Segnatempo obbligatorio" switch ON by default (spec 0162 D-1)', () => {
+    render(<TaskTypeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    expect(screen.getByRole('switch', { name: i18n.t('taskTypes.form.requiresTimeEntry') })).toBeChecked()
   })
 })
 
@@ -249,5 +260,28 @@ describe('TaskTypeForm — edit (spec 0101)', () => {
     fireEvent.click(screen.getByRole('button', { name: i18n.t('taskTypes.form.save') }))
 
     await waitFor(() => expect(screen.getByText('Name already taken.')).toBeInTheDocument())
+  })
+
+  /** Spec 0162 AC-007: the flag is read back from the loaded detail and re-saved on change. */
+  it('hydrates requires_time_entry from the detail and saves it when turned off', async () => {
+    updateTaskTypeMock.mockResolvedValue(taskType({ requires_time_entry: false }))
+
+    render(
+      <TaskTypeForm
+        mode={{ type: 'edit', taskType: taskType({ requires_time_entry: false }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    expect(screen.getByRole('switch', { name: i18n.t('taskTypes.form.requiresTimeEntry') })).not.toBeChecked()
+
+    fireEvent.click(screen.getByRole('switch', { name: i18n.t('taskTypes.form.requiresTimeEntry') }))
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskTypes.form.save') }))
+
+    await waitFor(() => expect(updateTaskTypeMock).toHaveBeenCalledTimes(1))
+    const [, payload] = updateTaskTypeMock.mock.calls[0]
+    expect(payload).toEqual({ requires_time_entry: true })
   })
 })

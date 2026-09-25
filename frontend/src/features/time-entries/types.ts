@@ -36,6 +36,12 @@ export interface TimeEntryTaskRef {
   title: string
 }
 
+/** The linked "Fase" (spec 0163 D-1/D-2) projection: a snapshot at write time, not live. */
+export interface TimeEntryWorkOrderStageRef {
+  id: number
+  name: string
+}
+
 /** Per-instance authorization the actor holds on a given time entry. */
 export interface TimeEntryPermissions {
   update: boolean
@@ -59,6 +65,8 @@ export interface TimeEntry {
   opportunity: TimeEntryNamedRef | null
   work_order: TimeEntryWorkOrderRef | null
   task: TimeEntryTaskRef | null
+  /** Snapshot at write time (spec 0163 D-2): a later task/fase change never updates it. */
+  work_order_stage: TimeEntryWorkOrderStageRef | null
   created_at: string
   updated_at: string
   permissions: TimeEntryPermissions
@@ -246,6 +254,8 @@ export interface CreateTimeEntryPayload {
   opportunity_id?: number | null
   work_order_id?: number | null
   task_id?: number | null
+  /** `prohibited` without `work_order_id`; ignored server-side once `task_id` is set (spec 0163 D-1). */
+  work_order_stage_id?: number | null
 }
 
 /** Body of `PUT /api/time-entries/{id}` — same as create, `user_id` prohibited. */

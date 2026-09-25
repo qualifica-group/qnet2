@@ -202,6 +202,7 @@ export function taskDetail(overrides: Partial<TaskDetail> = {}): TaskDetail {
     recurrence: null,
     is_blocked: false,
     requires_closure_feedback: false,
+    requires_time_entry: true,
     requires_validation: false,
     closure_feedback: null,
     completion_percentage: 25,

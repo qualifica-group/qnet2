@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0164-task-kanban-column-pagination" status="draft" owner="utente" date="2026-09-25">
+
+  <goal>
+    Il Kanban dei task non ha piu' il limite di 500: ogni colonna carica i propri task a blocchi mentre si scorre,
+    con il totale della colonna nell'intestazione.
+  </goal>
+
+  <context>
+    Serie 0160-0164. Nomi qnet-2 verificati:
+    - `frontend/src/features/tasks/task-kanban/use-task-kanban-rows.ts`: un'unica richiesta POST /tables/tasks/rows
+      con endRow `TASK_KANBAN_ROW_LIMIT = 500`, stessi advancedFilters (persistiti), filterModel (persistito,
+      sola lettura) e ricerca della lista; avviso `tasks.views.kanbanLimitExceeded` oltre 500.
+    - Colonne: per stato (`task-kanban-status-columns.ts`, stati attivi del catalogo) e per scadenza
+      (`task-kanban-due-buckets.ts`: overdue, today, tomorrow, this_week, this_month (+ senza scadenza), later,
+      completed; riferimento `end_date ?? start_date`, come `DUE_REFERENCE_SQL` lato server; chiusi sempre in
+      completed). Trascinamento: `use-task-kanban-status-move.ts`, `use-task-kanban-due-move.ts`.
+    - Backend: `TableRowsRequest` (tree/treeParentId solo per domini con `supportsTree()`), hook generici su
+      `TableDefinition` pass-through in `DelegatesUnaugmentedTableMethods`, `maxRowsLimit()` tasks 500.
+  </context>
+
+  <decisions>
+    D-1 (utente) Caricamento per colonna: ogni colonna fa la propria richiesta a blocchi di 50 (costante) e carica il
+        blocco successivo quando si scorre in fondo alla colonna; l'intestazione mostra il totale della colonna.
+    D-2 Il raggruppamento avviene lato server con un nuovo parametro `kanbanGroup` su POST /tables/{domain}/rows,
+        ammesso solo per i domini che lo supportano (hook `supportsKanbanGroups()`, oggi solo tasks), applicato DOPO
+        filtri, filtri avanzati e ricerca (come il tree). La classificazione per scadenza e' portata lato server con la
+        STESSA semantica di `task-kanban-due-buckets.ts` (date calcolate nel timezone dell'app); il FE smette di
+        classificare e usa la colonna restituita.
+    D-3 Dopo uno spostamento riuscito si ricaricano solo la colonna di origine e quella di destinazione.
+    D-4 Il limite 500 e l'avviso "restringi i filtri" vengono rimossi.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: `kanbanGroup` in TableRowsRequest/TableService, hook su TableDefinition (+ pass-through), scope per stato e per scadenza nei task.</item>
+      <item>FE: query infinita per colonna (TanStack `useInfiniteQuery`), sentinella di fine colonna, conteggi, invalidazione mirata.</item>
+      <item>Guida in-app IT/EN `tasks` (via l'avviso dei 500, caricamento progressivo).</item>
+    </in>
+    <out>
+      <item>Kanban di altri moduli (board commessa invariata).</item>
+      <item>Nuove colonne o raggruppamenti.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    POST /api/tables/{domain}/rows: + `kanbanGroup?: { by: 'status', key: int } | { by: 'due', key: 'overdue' |
+      'today' | 'tomorrow' | 'this_week' | 'this_month' | 'later' | 'completed' }`.
+      - Dominio senza supporto -> 422 `kanbanGroup`. `by`/`key` fuori elenco -> 422. `status` key = id di uno stato
+        esistente (exists) -> altrimenti 422.
+      - Si combina con filterModel, advancedFilters, search, customFilterRules, sortModel e paginazione esistenti;
+        non si combina con tree/treeParentId (entrambi -> 422).
+      - Risposta invariata (items + pagination.total = totale della colonna).
+    Blocco: endRow - startRow al massimo maxRowsLimit (invariato); il FE usa blocchi da 50.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">by status: restituisce solo i task di quello stato che rispettano filtri e ricerca; total = conteggio della colonna.</criterion>
+    <criterion id="AC-002">by due: per ognuna delle 7 chiavi la classificazione coincide con task-kanban-due-buckets.ts su un insieme di date di prova (oggi fissato), inclusi senza scadenza e chiusi.</criterion>
+    <criterion id="AC-003">kanbanGroup su un dominio non supportato, chiave sconosciuta, stato inesistente o insieme a tree -> 422.</criterion>
+    <criterion id="AC-004">Con 120 task in una colonna, la colonna mostra 50, poi 100, poi 120 scorrendo; l'intestazione mostra 120.</criterion>
+    <criterion id="AC-005">Spostamento riuscito: ricaricate solo colonna di origine e destinazione; spostamento annullato: nessun ricaricamento.</criterion>
+    <criterion id="AC-006">Oltre 500 task filtrati: nessun avviso, tutte le colonne caricabili.</criterion>
+    <criterion id="AC-007">Guida in-app IT/EN aggiornata; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza (TanStack Query gia' presente); nessun whereRaw con input (chiavi da allow-list, date
+    bound); nessun cambio di comportamento per gli altri domini e per la lista Analitica/Sintetica.
+  </constraints>
+
+</spec>

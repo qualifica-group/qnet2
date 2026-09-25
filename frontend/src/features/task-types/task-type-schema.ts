@@ -42,6 +42,8 @@ function baseFields(t: TFunction) {
     // Spec 0154 D-8: at most one default row per catalog; the server clears
     // every other row when this one is set, no client-side mirror needed.
     is_default: z.boolean(),
+    // Spec 0162 D-1: drives the "Completa" dialog's own segnatempo switch.
+    requires_time_entry: z.boolean(),
   }
 }
 

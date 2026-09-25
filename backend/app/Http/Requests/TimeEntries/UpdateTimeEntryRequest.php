@@ -56,6 +56,7 @@ class UpdateTimeEntryRequest extends FormRequest
             'opportunity_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
             'work_order_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_orders', 'id')],
             'task_id' => ['sometimes', 'nullable', 'integer', Rule::exists('tasks', 'id')],
+            'work_order_stage_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_order_stages', 'id')],
         ];
     }
 

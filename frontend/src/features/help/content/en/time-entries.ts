@@ -36,11 +36,16 @@ const guide: HelpGuide = {
             ['Time', 'Minutes, from 1 to 1440; calculated from the times, editable by hand.'],
             ['Notes', 'Optional.'],
             ['Customer, Opportunity, Work order, Task', 'Optional links.'],
+            ['Phase', 'Shown only with a Work order and no Task: one of the work order\'s open phases, or none.'],
           ],
         },
         {
           type: 'warning',
-          text: "If you link a task in the **Task** field, title, customer, opportunity and work order are taken from the task.",
+          text: "If you link a task in the **Task** field, title, customer, opportunity, work order and phase are taken from the task.",
+        },
+        {
+          type: 'note',
+          text: 'The phase stays as recorded: if the task later moves to another phase or the phase is closed, entries already saved do not change. In the work order\'s Tasks tab, next to each phase, you find the **Logged minutes** from time entries, plus the **No phase** total for entries without one.',
         },
       ],
     },

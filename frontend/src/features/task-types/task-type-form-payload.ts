@@ -19,6 +19,7 @@ export function buildCreatePayload(values: TaskTypeFormValues): CreateTaskTypePa
     description: values.description,
     is_active: values.is_active,
     is_default: values.is_default,
+    requires_time_entry: values.requires_time_entry,
   }
 }
 
@@ -50,6 +51,9 @@ export function buildUpdatePayload(
   }
   if (values.is_default !== original.is_default) {
     payload.is_default = values.is_default
+  }
+  if (values.requires_time_entry !== original.requires_time_entry) {
+    payload.requires_time_entry = values.requires_time_entry
   }
 
   return payload

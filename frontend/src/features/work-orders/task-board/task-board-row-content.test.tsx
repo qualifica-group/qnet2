@@ -70,12 +70,27 @@ describe('TaskBoardRowContent — labelled fields', () => {
 describe('TaskBoardStageSummary', () => {
   it('shows the phase completion and its total hours worked against the total estimate', () => {
     render(
-      <TaskBoardStageSummary metrics={{ count: 2, completionPercentage: 40, estimatedMinutes: 120, actualMinutes: 45 }} />,
+      <TaskBoardStageSummary
+        metrics={{ count: 2, completionPercentage: 40, estimatedMinutes: 120, actualMinutes: 45 }}
+        loggedMinutes={90}
+      />,
     )
 
     expect(screen.getByText('40%')).toBeInTheDocument()
     expect(screen.getByText(/45m \/ 2h/)).toBeInTheDocument()
     expect(screen.queryByRole('img', { name: 'Over the estimate' })).not.toBeInTheDocument()
+  })
+
+  it('shows the segnatempo total, separate from the task-based hours (spec 0163 AC-007)', () => {
+    render(
+      <TaskBoardStageSummary
+        metrics={{ count: 2, completionPercentage: 40, estimatedMinutes: 120, actualMinutes: 45 }}
+        loggedMinutes={90}
+      />,
+    )
+
+    const entry = screen.getByText('Logged minutes').parentElement as HTMLElement
+    expect(within(entry).getByText('1h 30m')).toBeInTheDocument()
   })
 })
 

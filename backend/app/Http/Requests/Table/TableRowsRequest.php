@@ -10,6 +10,7 @@ use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -37,6 +38,24 @@ class TableRowsRequest extends FormRequest
      * 422 surfaced in the grid as an opaque row of "ERR" cells.
      */
     public const int SEARCH_MAX_LENGTH = 255;
+
+    /**
+     * The two allowed `kanbanGroup.by` values (spec 0164, D-2) — hardcoded
+     * here like `treeParentId`'s `tasks` table below, since the contract
+     * itself (`data_contract`) freezes this literal shape regardless of
+     * which domain ever opts in.
+     *
+     * @var array<int, string>
+     */
+    private const array KANBAN_GROUP_BY = ['status', 'due'];
+
+    /**
+     * The seven fixed `kanbanGroup.key` values when `by` is `due` (spec
+     * 0164, D-2), mirroring `task-kanban-due-buckets.ts`'s `DUE_BUCKET_KEYS`.
+     *
+     * @var array<int, string>
+     */
+    private const array KANBAN_DUE_KEYS = ['overdue', 'today', 'tomorrow', 'this_week', 'this_month', 'later', 'completed'];
 
     private ?TableDefinition $resolvedDefinition = null;
 
@@ -108,6 +127,16 @@ class TableRowsRequest extends FormRequest
             // only ever meaningful for the one domain that opts in).
             'tree' => ['sometimes', 'boolean'],
             'treeParentId' => ['sometimes', 'nullable', 'integer', Rule::exists('tasks', 'id')],
+
+            // Spec 0164, D-2: server-side Kanban column grouping — a domain
+            // that does not override supportsKanbanGroups() 422s in
+            // withValidator() below (mirrors the tree gate above). The
+            // structural shape is checked here; `key`'s domain-specific
+            // validity (an existing status id / one of the seven due
+            // buckets) depends on `by` and is checked in withValidator().
+            'kanbanGroup' => ['sometimes', 'nullable', 'array'],
+            'kanbanGroup.by' => ['required_with:kanbanGroup', 'string', Rule::in(self::KANBAN_GROUP_BY)],
+            'kanbanGroup.key' => ['required_with:kanbanGroup'],
         ];
     }
 
@@ -180,7 +209,73 @@ class TableRowsRequest extends FormRequest
                     $validator->errors()->add($key === '' ? 'customFilterRules' : "customFilterRules.{$key}", $message);
                 }
             }
+
+            $kanbanGroup = $this->input('kanbanGroup');
+
+            if (is_array($kanbanGroup)) {
+                foreach ($this->kanbanGroupErrors($kanbanGroup, $treeRequested) as $errorKey => $message) {
+                    $validator->errors()->add($errorKey, $message);
+                }
+            }
         });
+    }
+
+    /**
+     * Structural + cross-field checks for `kanbanGroup` (spec 0164, D-2)
+     * that a static rule can't express: unsupported domain, combined with
+     * tree mode (both 422 regardless of `by`/`key`), `status`'s key must be
+     * an EXISTING task_statuses id, `due`'s key must be one of the seven
+     * fixed bucket keys. An invalid `by` itself is already reported by the
+     * `Rule::in` in rules() above.
+     *
+     * @param  array<string, mixed>  $kanbanGroup
+     * @return array<string, string>
+     */
+    private function kanbanGroupErrors(array $kanbanGroup, bool $treeRequested): array
+    {
+        if (! $this->definition()->supportsKanbanGroups()) {
+            return ['kanbanGroup' => 'Kanban grouping is not supported for this domain.'];
+        }
+
+        if ($treeRequested) {
+            return ['kanbanGroup' => 'kanbanGroup cannot be combined with tree mode.'];
+        }
+
+        $key = $kanbanGroup['key'] ?? null;
+
+        return match ($kanbanGroup['by'] ?? null) {
+            'status' => $this->statusKanbanKeyErrors($key),
+            'due' => $this->dueKanbanKeyErrors($key),
+            default => [],
+        };
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function statusKanbanKeyErrors(mixed $key): array
+    {
+        if (! is_int($key) && ! (is_string($key) && ctype_digit($key))) {
+            return ['kanbanGroup.key' => 'kanbanGroup.key must be an integer status id when kanbanGroup.by is "status".'];
+        }
+
+        if (! DB::table('task_statuses')->where('id', (int) $key)->exists()) {
+            return ['kanbanGroup.key' => 'The selected kanbanGroup.key is invalid.'];
+        }
+
+        return [];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function dueKanbanKeyErrors(mixed $key): array
+    {
+        if (! is_string($key) || ! in_array($key, self::KANBAN_DUE_KEYS, true)) {
+            return ['kanbanGroup.key' => 'kanbanGroup.key must be one of: '.implode(', ', self::KANBAN_DUE_KEYS).'.'];
+        }
+
+        return [];
     }
 
     private function intInput(string $key): int

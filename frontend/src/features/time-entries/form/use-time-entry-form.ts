@@ -51,6 +51,7 @@ const SERVER_ERROR_FIELDS: Path<TimeEntryFormValues>[] = [
   'opportunity_id',
   'work_order_id',
   'task_id',
+  'work_order_stage_id',
 ]
 
 /**
@@ -81,6 +82,7 @@ function createDefaults(defaultDate: string | undefined): TimeEntryFormValues {
     opportunity_id: null,
     work_order_id: null,
     task_id: null,
+    work_order_stage_id: null,
   }
 }
 
@@ -97,6 +99,7 @@ function editDefaults(entry: TimeEntry): TimeEntryFormValues {
     opportunity_id: entry.opportunity?.id ?? null,
     work_order_id: entry.work_order?.id ?? null,
     task_id: entry.task?.id ?? null,
+    work_order_stage_id: entry.work_order_stage?.id ?? null,
   }
 }
 
@@ -126,6 +129,7 @@ function buildPayload(values: TimeEntryFormValues): UpdateTimeEntryPayload {
     opportunity_id: isTaskLinked ? undefined : values.opportunity_id,
     work_order_id: isTaskLinked ? undefined : values.work_order_id,
     task_id: values.task_id,
+    work_order_stage_id: isTaskLinked ? undefined : values.work_order_stage_id,
   }
 }
 
@@ -178,24 +182,30 @@ export function useTimeEntryForm({ mode, onSuccess }: UseTimeEntryFormArgs) {
   }, [isTaskLinked, taskQuery.data, form])
 
   // D-5: choosing a Cliente clears both dependent links — it may no longer
-  // match either.
+  // match either. Losing the commessa also clears its fase (spec 0163 D-1).
   const handleRegistryChange = () => {
     form.setValue('opportunity_id', null, { shouldDirty: true })
     form.setValue('work_order_id', null, { shouldDirty: true })
+    form.setValue('work_order_stage_id', null, { shouldDirty: true })
   }
 
   // D-5: Opportunita' and Commessa are mutually exclusive — picking one clears
-  // the other. Clearing the picker (item === null) leaves the sibling alone.
+  // the other (and, with it, the fase, spec 0163 D-1). Clearing the picker
+  // (item === null) leaves the sibling alone.
   const handleOpportunityItemChange = (item: ForSelectItem | null) => {
     if (item) {
       form.setValue('work_order_id', null, { shouldDirty: true })
+      form.setValue('work_order_stage_id', null, { shouldDirty: true })
     }
   }
 
   // D-5/AC-031: picking a Commessa clears Opportunita' and adopts its own
   // Cliente (`WorkOrderForSelectResource::meta.registry`, resolved server-side
-  // via `quote.opportunity.registry`) when the chain resolves one.
+  // via `quote.opportunity.registry`) when the chain resolves one. Spec 0163
+  // D-1: the fase belongs to the PREVIOUS commessa, so any change here — pick,
+  // switch or clear — invalidates whatever was selected.
   const handleWorkOrderItemChange = (item: ForSelectItem | null) => {
+    form.setValue('work_order_stage_id', null, { shouldDirty: true })
     if (!item) {
       return
     }

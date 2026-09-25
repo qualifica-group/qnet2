@@ -41,8 +41,11 @@ export function TaskBoardBulkCompleteDialog({ workOrderId, taskIds, onClose, onS
 
   const onSubmit = async (values: CompleteFormValues) => {
     // AC-039 mirror: an invalid segnatempo blocks the submit before any request fires.
+    // The board's own bulk complete never passes `requiresTimeEntry: false` (spec
+    // 0162 D-3/D-4 is task-list/detail only), so `validate()` never actually
+    // resolves `undefined` here — the check still narrows the type for TS.
     const timeEntryPayload = await timeEntryForm.validate()
-    if (timeEntryPayload === null) {
+    if (timeEntryPayload === null || timeEntryPayload === undefined) {
       return
     }
     try {

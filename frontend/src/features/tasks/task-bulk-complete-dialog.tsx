@@ -5,6 +5,11 @@
  * `incompatible_tasks`, unlike the task board's own per-row bulk complete).
  * Reuses the Task detail's segnatempo section unchanged, `taskTypeId: null`
  * since a bulk selection has no single type to default from.
+ *
+ * Spec 0162 D-4: the "Registra il tempo" switch renders only when NONE of the
+ * selected rows requires the segnatempo — read off `rows` (the grid's own
+ * selection, `requires_time_entry` per row), never decided here. A row
+ * missing the flag is treated as requiring it (conservative fallback).
  */
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -13,10 +18,11 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { TaskCompleteTimeEntrySection } from '@/features/tasks/task-complete-time-entry-section'
+import { TaskCompleteTimeEntryToggleSection } from '@/features/tasks/task-complete-time-entry-toggle'
 import { taskBulkErrorDescription } from '@/features/tasks/task-bulk-error'
 import { useTaskCompleteTimeEntryForm } from '@/features/tasks/use-task-complete-time-entry-form'
 import { useTaskBulkMutation } from '@/features/tasks/use-task-bulk-mutation'
+import type { TableRow } from '@/features/table/types'
 
 interface CompleteFormValues {
   closure_feedback: string
@@ -24,14 +30,24 @@ interface CompleteFormValues {
 
 interface TaskBulkCompleteDialogProps {
   taskIds: number[]
+  /** The selected rows themselves (spec 0162 D-4), same order/length as `taskIds`. */
+  rows: TableRow[]
   onClose: () => void
   onSuccess: (affected: number) => void
 }
 
-export function TaskBulkCompleteDialog({ taskIds, onClose, onSuccess }: TaskBulkCompleteDialogProps) {
+/** Spec 0162 D-4: `false` only when EVERY selected row's own `requires_time_entry` is `false`. */
+function anySelectedTaskRequiresTimeEntry(rows: TableRow[]): boolean {
+  return rows.some((row) => row.requires_time_entry !== false)
+}
+
+export function TaskBulkCompleteDialog({ taskIds, rows, onClose, onSuccess }: TaskBulkCompleteDialogProps) {
   const { t } = useTranslation()
   const form = useForm<CompleteFormValues>({ defaultValues: { closure_feedback: '' } })
-  const timeEntryForm = useTaskCompleteTimeEntryForm({ taskTypeId: null })
+  const timeEntryForm = useTaskCompleteTimeEntryForm({
+    taskTypeId: null,
+    requiresTimeEntry: anySelectedTaskRequiresTimeEntry(rows),
+  })
   const mutation = useTaskBulkMutation()
 
   const onSubmit = async (values: CompleteFormValues) => {
@@ -96,14 +112,7 @@ export function TaskBulkCompleteDialog({ taskIds, onClose, onSuccess }: TaskBulk
                 )}
               />
 
-              <Form {...timeEntryForm.form}>
-                <TaskCompleteTimeEntrySection
-                  control={timeEntryForm.form.control}
-                  disabled={mutation.isPending}
-                  onStartTimeChange={timeEntryForm.handleStartTimeChange}
-                  onEndTimeChange={timeEntryForm.handleEndTimeChange}
-                />
-              </Form>
+              <TaskCompleteTimeEntryToggleSection timeEntryForm={timeEntryForm} disabled={mutation.isPending} />
             </form>
           </Form>
         </div>

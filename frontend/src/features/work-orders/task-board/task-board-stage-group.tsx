@@ -42,6 +42,8 @@ interface TaskBoardStageGroupProps {
   onToggleSelection: (taskId: number) => void
   onOpenTask: (taskId: number) => void
   onAddTask: (stageId: number | null) => void
+  /** The commessa's `unstaged_logged_minutes` (spec 0163 AC-007): read only when `group.stage === null`. */
+  unstagedLoggedMinutes?: number
   /** The header's own drag handle, wired by the sortable wrapper in `task-board-list-view.tsx`; `undefined` for "Senza fase" (never draggable). */
   dragHandle?: ReactNode
   /** dnd-kit `useSortable` wiring for the group's own `<li>`, applied by the same wrapper; absent for "Senza fase". */
@@ -61,6 +63,7 @@ export function TaskBoardStageGroup({
   onToggleSelection,
   onOpenTask,
   onAddTask,
+  unstagedLoggedMinutes,
   dragHandle,
   sortableRef,
   sortableStyle,
@@ -76,6 +79,7 @@ export function TaskBoardStageGroup({
 
   const { setNodeRef: setDroppableRef } = useDroppable({ id: groupDroppableId(key) })
   const metrics = computeStageMetrics(roots.map((node) => node.task))
+  const loggedMinutes = stage ? stage.logged_minutes : (unstagedLoggedMinutes ?? 0)
   const renameStage = useRenameWorkOrderStage(workOrderId)
   const isClosed = stage?.closed_at != null
 
@@ -150,7 +154,7 @@ export function TaskBoardStageGroup({
           </div>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <TaskBoardStageSummary metrics={metrics} />
+            <TaskBoardStageSummary metrics={metrics} loggedMinutes={loggedMinutes} />
             <div className="flex items-center gap-1">
               {!isReadOnly && !isClosed ? (
                 <Button size="xs" variant="ghost" className="shrink-0" onClick={() => onAddTask(stage?.id ?? null)}>

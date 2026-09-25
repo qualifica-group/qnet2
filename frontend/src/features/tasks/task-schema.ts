@@ -9,6 +9,12 @@ import {
   type TaskRecurrenceMonthMode,
 } from '@/features/tasks/types'
 import { addParentDateRangeIssues, type ParentDateRange } from '@/features/tasks/task-parent-date-range'
+import {
+  countSubtaskTreeNodes,
+  type SubtaskChildValues,
+  type SubtaskGrandchildValues,
+  type SubtaskGreatGrandchildValues,
+} from '@/features/tasks/task-subtask-types'
 
 export type { ParentDateRange } from '@/features/tasks/task-parent-date-range'
 
@@ -16,6 +22,38 @@ export type { ParentDateRange } from '@/features/tasks/task-parent-date-range'
 const TITLE_MAX_LENGTH = 191
 /** `estimated_minutes` is `unsignedInteger`: minutes, never a "2h30" string (D-11). */
 const MIN_ESTIMATED_MINUTES = 0
+
+/**
+ * Spec 0161 D-1: the "Sottotask" block's row schema, bounded to exactly 3
+ * concrete levels (figlio/nipote/pronipote) rather than a self-referencing
+ * `z.lazy()` — a genuinely recursive field type is a documented "excessively
+ * deep" trap for react-hook-form's `Path`/`FieldArrayPath` generics, and D-1
+ * itself never asks for more than 3 levels anyway. `satisfies` (not a `:
+ * z.ZodType<...>` annotation) checks each schema against the matching
+ * bounded interface in `task-subtask-types.ts` WITHOUT widening it to the
+ * abstract `ZodType` base — that widening was erasing the nested nested
+ * `subtasks` arrays down to `unknown[]` for `z.infer`, breaking every
+ * react-hook-form generic keyed off `TaskFormValues`.
+ */
+const subtaskGreatGrandchildRowSchema = z.object({
+  title: z.string(),
+  end_date: z.string().nullable(),
+  assignee_ids: z.array(z.number()),
+}) satisfies z.ZodType<SubtaskGreatGrandchildValues>
+
+const subtaskGrandchildRowSchema = z.object({
+  title: z.string(),
+  end_date: z.string().nullable(),
+  assignee_ids: z.array(z.number()),
+  subtasks: z.array(subtaskGreatGrandchildRowSchema),
+}) satisfies z.ZodType<SubtaskGrandchildValues>
+
+const subtaskChildRowSchema = z.object({
+  title: z.string(),
+  end_date: z.string().nullable(),
+  assignee_ids: z.array(z.number()),
+  subtasks: z.array(subtaskGrandchildRowSchema),
+}) satisfies z.ZodType<SubtaskChildValues>
 
 /**
  * Shared field shape. `completion_percentage`, `creator_id` and `is_blocked`
@@ -108,21 +146,19 @@ function baseFields(t: TFunction) {
       ends_on: z.string().nullable(),
       occurrence_count: z.number().nullable(),
     }),
-    // Spec 0155 D-3: create-only bulk sub-tasks, one level, up to 50 rows.
+    // Spec 0155 D-3, extended by spec 0161 D-1: create-only bulk sub-tasks,
+    // up to 3 levels deep, 50 nodes total across the whole tree.
     // `assignee_ids` omitted (or empty) inherits the parent's own assignees
     // server-side; the form never resends a wire field it left untouched.
-    subtasks: z.array(
-      z.object({
-        title: z.string(),
-        end_date: z.string().nullable(),
-        assignee_ids: z.array(z.number()),
-      }),
-    ),
+    subtasks: z.array(subtaskChildRowSchema),
   }
 }
 
-/** Spec 0155 D-3: the server's own cap on a single create's bulk sub-tasks. */
+/** Spec 0155 D-3, unchanged by spec 0161 D-1: the server's own cap on the WHOLE subtask tree, every level counted. */
 export const MAX_TASK_FORM_SUBTASKS = 50
+
+/** Spec 0161 D-1: figlio/nipote/pronipote — the deepest a row may go; the section shows no "add child" button at this depth. */
+export const MAX_SUBTASK_DEPTH = 3
 
 /** Narrower mirror of the `recurrence` object, just what `addRecurrenceIssues` reads. */
 interface RefinedRecurrenceValues {
@@ -140,9 +176,16 @@ interface RefinedRecurrenceValues {
   occurrence_count: number | null
 }
 
-/** Narrower mirror of one `subtasks[]` row, just what `addSubtaskRowIssues` reads. */
+/**
+ * Narrower mirror of one `subtasks[]` row, recursive like the schema itself —
+ * just what `addSubtaskRowIssues`/`countSubtaskTreeNodes` read. `subtasks` is
+ * OPTIONAL here (unlike the bounded `SubtaskChildValues`/`SubtaskGrandchildValues`
+ * it mirrors): the level-3 row has no such field at all, and this interface
+ * has to structurally accept every one of the 3 bounded levels alike.
+ */
 interface RefinedSubtaskRowValues {
   title: string
+  subtasks?: RefinedSubtaskRowValues[]
 }
 
 /** Values the refinements below read; narrower than the whole form. */
@@ -350,21 +393,46 @@ function addRecurrenceIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFu
 }
 
 /**
- * Spec 0155 D-3: a row added to the "Sottotask" block needs at least a
- * title — every other field is optional and inherits from the parent when
- * left blank. `subtasks` stays empty on edit (the section only renders on
- * create), so this is a no-op there.
+ * Spec 0155 D-3: every row of the "Sottotask" block needs at least a title —
+ * every other field is optional and inherits from the parent when left
+ * blank. Spec 0161 D-1: walks EVERY level of the tree, not just the root
+ * (`path` grows `subtasks`/index alternately as it descends), so a blank
+ * title at the 3rd level surfaces on that exact row, not the root's.
  */
-function addSubtaskRowIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
-  values.subtasks.forEach((row, index) => {
+function addSubtaskRowIssues(
+  rows: RefinedSubtaskRowValues[],
+  path: (string | number)[],
+  ctx: z.RefinementCtx,
+  t: TFunction,
+): void {
+  rows.forEach((row, index) => {
+    const rowPath = [...path, index]
     if (row.title.trim() === '') {
       ctx.addIssue({
         code: 'custom',
-        path: ['subtasks', index, 'title'],
+        path: [...rowPath, 'title'],
         message: t('tasks.form.subtasks.titleRequired'),
       })
     }
+    addSubtaskRowIssues(row.subtasks ?? [], [...rowPath, 'subtasks'], ctx, t)
   })
+}
+
+/**
+ * Spec 0161 D-1: the 50-node cap counted across the WHOLE tree (every
+ * level), not just the root array — `countSubtaskTreeNodes` is the single
+ * shared counter the section's own "add child" gating reuses, so the two can
+ * never disagree on what counts as a node.
+ */
+function addSubtaskTreeIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
+  addSubtaskRowIssues(values.subtasks, ['subtasks'], ctx, t)
+  if (countSubtaskTreeNodes(values.subtasks) > MAX_TASK_FORM_SUBTASKS) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['subtasks'],
+      message: t('tasks.form.subtasks.maxReached'),
+    })
+  }
 }
 
 /**
@@ -409,7 +477,7 @@ export function buildTaskSchema(
     )
     addWatcherOverlapIssue(values, ctx, t)
     addRecurrenceIssues(values, ctx, t)
-    addSubtaskRowIssues(values, ctx, t)
+    addSubtaskTreeIssues(values, ctx, t)
     addParentDateRangeIssues(values, ctx, t, parentDateRange)
   })
 }

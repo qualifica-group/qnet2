@@ -1,13 +1,16 @@
 /**
- * The /tasks Kanban (spec 0157 D-2..D-5): "per stato" or "per scadenza",
- * chosen by the caller (`TaskViewModeSelector`). Owns its own data slice
- * (`useTaskKanbanRows`) and drag engine (`useTaskKanbanDnd`); the two board
- * variants only differ in how their columns/moves are built.
+ * The /tasks Kanban (spec 0157 D-2..D-5, spec 0164 D-1..D-3): "per stato" or
+ * "per scadenza", chosen by the caller (`TaskViewModeSelector`). Owns the
+ * board's shared filter slice (`useTaskKanbanFilters`) and drag engine
+ * (`useTaskKanbanDnd`); each column loads its OWN rows
+ * (`TaskKanbanColumn`/`useTaskKanbanColumnRows`) — the two board variants
+ * only differ in how their column METADATA (`TaskKanbanGroup[]`, no rows) is
+ * built.
  */
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core'
-import { AlertTriangle } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { useAbilities } from '@/features/auth/use-abilities'
@@ -19,9 +22,10 @@ import { TaskKanbanToolbar } from '@/features/tasks/task-kanban/task-kanban-tool
 import { buildTaskDueKanbanGroups } from '@/features/tasks/task-kanban/task-kanban-due-columns'
 import { dueBucketDropDate } from '@/features/tasks/task-kanban/task-kanban-due-buckets'
 import { buildTaskStatusKanbanGroups, isManualStatusColumn } from '@/features/tasks/task-kanban/task-kanban-status-columns'
+import { taskKanbanColumnQueryKey } from '@/features/tasks/task-kanban/use-task-kanban-column-rows'
 import { useTaskKanbanDnd } from '@/features/tasks/task-kanban/use-task-kanban-dnd'
 import { useTaskKanbanDueMove } from '@/features/tasks/task-kanban/use-task-kanban-due-move'
-import { TASK_KANBAN_ROW_LIMIT, useTaskKanbanRows } from '@/features/tasks/task-kanban/use-task-kanban-rows'
+import { useTaskKanbanFilters } from '@/features/tasks/task-kanban/use-task-kanban-filters'
 import { useTaskKanbanStatuses } from '@/features/tasks/task-kanban/use-task-kanban-statuses'
 import { useTaskKanbanStatusMove } from '@/features/tasks/task-kanban/use-task-kanban-status-move'
 import type { DueBucketKey } from '@/features/tasks/task-kanban/task-kanban-due-buckets'
@@ -50,42 +54,57 @@ export function TaskKanbanView({ mode, onOpenTask, onCreateTask }: TaskKanbanVie
   const { can } = useAbilities()
   const canCreate = can('tasks.create')
   const today = useMemo(() => todayIsoDate(), [])
+  const queryClient = useQueryClient()
 
-  const data = useTaskKanbanRows()
+  const filters = useTaskKanbanFilters()
   const { statuses } = useTaskKanbanStatuses()
 
-  const statusMove = useTaskKanbanStatusMove({ onMutated: data.refresh })
-  const dueMove = useTaskKanbanDueMove({ today, onMutated: data.refresh })
+  const statusMove = useTaskKanbanStatusMove()
+  const dueMove = useTaskKanbanDueMove({ today })
 
-  const statusGroups = useMemo(
-    () => buildTaskStatusKanbanGroups(statuses, data.rows),
-    [statuses, data.rows],
-  )
-  const dueGroups = useMemo(
-    () => buildTaskDueKanbanGroups(data.rows, today, t),
-    [data.rows, today, t],
-  )
-  // Widened to `TaskKanbanGroup<string>[]`: `useTaskKanbanDnd` and `TaskKanbanColumn`
-  // treat the key as an opaque string either way, so the board's own
-  // (`string`/`DueBucketKey`) literal type is only load-bearing inside
-  // `task-kanban-status-columns.ts`/`task-kanban-due-columns.ts` themselves.
+  const statusGroups = useMemo(() => buildTaskStatusKanbanGroups(statuses), [statuses])
+  const dueGroups = useMemo(() => buildTaskDueKanbanGroups(t), [t])
+  // Widened to `TaskKanbanGroup<string>[]`: `useTaskKanbanDnd` and
+  // `TaskKanbanColumn` treat the key as an opaque string either way, so the
+  // board's own (`string`/`DueBucketKey`) literal type is only load-bearing
+  // inside `task-kanban-status-columns.ts`/`task-kanban-due-columns.ts`.
   const groups: TaskKanbanGroup<string>[] = mode === 'status' ? statusGroups : dueGroups
+
+  const groupsByKey = useMemo(
+    () => new Map(groups.map((group) => [String(group.key), group] as const)),
+    [groups],
+  )
+
+  // Spec 0164 D-3: a successful move reloads ONLY the origin/destination
+  // columns — never the other columns' own already-loaded blocks.
+  const invalidateColumns = useCallback(
+    (...keys: string[]) => {
+      for (const key of keys) {
+        const kanbanGroup = groupsByKey.get(key)?.kanbanGroup
+        if (kanbanGroup) {
+          void queryClient.invalidateQueries({ queryKey: taskKanbanColumnQueryKey(kanbanGroup) })
+        }
+      }
+    },
+    [groupsByKey, queryClient],
+  )
 
   const { sensors, activeRow, handleDragStart, handleDragEnd } = useTaskKanbanDnd({
     groups,
-    onDrop: (row, targetKey) => {
+    onDrop: (row, originKey, targetKey) => {
+      const onMutated = () => invalidateColumns(originKey, targetKey)
       if (mode === 'status') {
         const targetStatus = statuses.find((status) => String(status.id) === targetKey)
         if (targetStatus) {
-          statusMove.moveToStatus(row, targetStatus.id, targetStatus.meta.group)
+          statusMove.moveToStatus(row, targetStatus.id, targetStatus.meta.group, onMutated)
         }
         return
       }
-      dueMove.moveToBucket(row, targetKey as DueBucketKey)
+      dueMove.moveToBucket(row, targetKey as DueBucketKey, onMutated)
     },
   })
 
-  if (data.isPending) {
+  if (filters.isPending) {
     return (
       <div className="flex gap-3">
         {Array.from({ length: 4 }).map((_, index) => (
@@ -95,13 +114,13 @@ export function TaskKanbanView({ mode, onOpenTask, onCreateTask }: TaskKanbanVie
     )
   }
 
-  if (data.isError) {
+  if (filters.isError) {
     return (
       <div className="flex flex-col items-start gap-3 p-4">
         <p className="text-sm text-destructive" role="alert">
           {t('tasks.views.loadError')}
         </p>
-        <Button variant="outline" size="sm" onClick={() => void data.refetch()}>
+        <Button variant="outline" size="sm" onClick={() => void filters.refetch()}>
           {t('common.retry')}
         </Button>
       </div>
@@ -110,14 +129,7 @@ export function TaskKanbanView({ mode, onOpenTask, onCreateTask }: TaskKanbanVie
 
   return (
     <div className="flex flex-col gap-3">
-      <TaskKanbanToolbar data={data} />
-
-      {data.exceededLimit ? (
-        <p className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900">
-          <AlertTriangle aria-hidden="true" className="size-3.5 shrink-0" />
-          {t('tasks.views.kanbanLimitExceeded', { total: data.total, limit: TASK_KANBAN_ROW_LIMIT })}
-        </p>
-      ) : null}
+      <TaskKanbanToolbar data={filters} />
 
       <DndContext
         sensors={sensors}
@@ -130,6 +142,7 @@ export function TaskKanbanView({ mode, onOpenTask, onCreateTask }: TaskKanbanVie
             <TaskKanbanColumn
               key={group.key}
               group={group}
+              filters={filters}
               today={today}
               onOpenTask={onOpenTask}
               onAddTask={

@@ -132,12 +132,28 @@ const IS_DEFAULT_COPY = {
   },
 }
 
+/** Spec 0162 D-1: "Time entry required on completion" — task types only. */
+const REQUIRES_TIME_ENTRY_COPY = {
+  columns: { requires_time_entry: 'Time entry required' },
+  detail: { requiresTimeEntry: 'Time entry required on completion' },
+  form: {
+    requiresTimeEntry: 'Time entry required on completion',
+    requiresTimeEntryHint:
+      'Turn off to make the time entry optional when completing a task of this type: the person completing it can then choose whether to log the time.',
+  },
+}
+
 const types = lookupBundle({ singular: 'task type', plural: 'Task Types' })
 export const taskTypes = {
   ...types,
-  columns: { ...types.columns, ...IS_DEFAULT_COPY.columns },
-  detail: { ...types.detail, ...IS_DEFAULT_COPY.detail },
-  form: { ...types.form, newTaskType: 'New task type', ...IS_DEFAULT_COPY.form },
+  columns: { ...types.columns, ...IS_DEFAULT_COPY.columns, ...REQUIRES_TIME_ENTRY_COPY.columns },
+  detail: { ...types.detail, ...IS_DEFAULT_COPY.detail, ...REQUIRES_TIME_ENTRY_COPY.detail },
+  form: {
+    ...types.form,
+    newTaskType: 'New task type',
+    ...IS_DEFAULT_COPY.form,
+    ...REQUIRES_TIME_ENTRY_COPY.form,
+  },
 }
 
 const categories = lookupBundle({ singular: 'task category', plural: 'Task Categories' })

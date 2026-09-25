@@ -48,20 +48,28 @@ use Illuminate\Validation\Rule;
  * (D-7). All three are enforced by App\Services\TaskService inside the write
  * transaction.
  *
- * `subtasks` (spec 0155, D-3) is `sometimes|array|max:50`, one level: each
- * row's own shape is deliberately SMALLER than the parent's — no
- * `registry_id`/`referent_id`/`opportunity_id`/`work_order_id`/
- * `work_order_stage_id`/`lead_id`/`is_private`/`requester_id`/`recurrence`
- * key exists on a row at all, since App\Services\Tasks\TaskSubtaskBatchCreator
- * always copies the first six off the parent, always nulls the seventh, and
- * always derives the requester/status the same way a plain create does.
+ * `subtasks` (spec 0155, D-3; spec 0161, D-1 REQUIREMENT CHANGED "one level"
+ * to `subtasks.*.subtasks.*.subtasks.*`, three levels below the task —
+ * figlio/nipote/pronipote): each row's own shape at every depth is
+ * deliberately SMALLER than the parent's — no `registry_id`/`referent_id`/
+ * `opportunity_id`/`work_order_id`/`work_order_stage_id`/`lead_id`/
+ * `is_private`/`requester_id`/`recurrence` key exists on a row at all, since
+ * App\Services\Tasks\TaskSubtaskBatchCreator always copies the first six off
+ * the row's own DIRECT parent, always nulls the seventh, and always derives
+ * the requester/status the same way a plain create does.
  * `assignee_ids`/`watcher_ids`/`task_type_id`/`task_priority_id`/
  * `task_importance_id`/`end_date` are `sometimes` on purpose: OMITTED means
- * "inherit the parent's own resulting value" (the batch creator's job),
- * never "clear it" — a row that submits the key, even empty, means exactly
- * that value. Laravel's own `subtasks.*` wildcard naming already produces
- * the `subtasks.N.field` error key the contract requires, with no
- * remapping needed at this layer.
+ * "inherit the direct parent's own resulting value" (the batch creator's
+ * job, spec 0161 D-2), never "clear it" — a row that submits the key, even
+ * empty, means exactly that value. Laravel's own `subtasks.*` wildcard
+ * naming already produces the `subtasks.N.field`/`subtasks.N.subtasks.M.field`
+ * error key the contract requires, with no remapping needed at this layer.
+ * A FOURTH level (`subtasks.*.subtasks.*.subtasks.*.subtasks`) is
+ * `prohibited` outright (AC-002): 422 on that nested key, never silently
+ * dropped. The TOTAL node count across the whole tree — not any one level's
+ * own array size — is capped at `MAX_SUBTASK_NODES` in withValidator() below
+ * (AC-003): Laravel's per-field `max` rule has no way to sum across nested
+ * wildcard paths on its own.
  *
  * `recurrence` (spec 0120, data_contract) is `sometimes|nullable|array`, with
  * every inner field conditioned on `frequency`/`ends` via
@@ -83,6 +91,12 @@ class StoreTaskRequest extends FormRequest
     private const int TITLE_MAX = 191;
 
     private const string TIME_FORMAT = 'H:i';
+
+    /** Spec 0161, D-1: figlio/nipote/pronipote — 3 `subtasks` arrays deep. */
+    private const int MAX_SUBTASK_DEPTH = 3;
+
+    /** Spec 0161, D-1: total nodes across the WHOLE tree, every level summed. */
+    private const int MAX_SUBTASK_NODES = 50;
 
     public function authorize(): bool
     {
@@ -147,25 +161,49 @@ class StoreTaskRequest extends FormRequest
     }
 
     /**
+     * One rule set per depth (1..MAX_SUBTASK_DEPTH), each identical bar its
+     * own `subtasks.*` prefix — `subtasks`, then `subtasks.*.subtasks`, then
+     * `subtasks.*.subtasks.*.subtasks` (spec 0161, D-1). A 4th prefix is
+     * `prohibited` outright, so a client attempting a 4th level gets a 422 on
+     * that exact nested key (AC-002) instead of it being silently dropped.
+     *
      * @return array<string, array<int, mixed>>
      */
     private function subtaskRules(): array
     {
+        $rules = [];
+        $prefix = 'subtasks';
+
+        for ($depth = 1; $depth <= self::MAX_SUBTASK_DEPTH; $depth++) {
+            $rules += $this->subtaskRowRules($prefix);
+            $prefix .= '.*.subtasks';
+        }
+
+        $rules[$prefix] = ['prohibited'];
+
+        return $rules;
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function subtaskRowRules(string $prefix): array
+    {
         return [
-            'subtasks' => ['sometimes', 'array', 'max:50'],
-            'subtasks.*.title' => ['required', 'string', 'max:'.self::TITLE_MAX],
-            'subtasks.*.description' => ['sometimes', 'nullable', 'string'],
-            'subtasks.*.start_date' => ['sometimes', 'nullable', 'date'],
-            'subtasks.*.end_date' => ['sometimes', 'nullable', 'date'],
-            'subtasks.*.estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0'],
-            'subtasks.*.assignee_ids' => ['sometimes', 'array'],
-            'subtasks.*.assignee_ids.*' => ['integer', Rule::exists('users', 'id')],
-            'subtasks.*.watcher_ids' => ['sometimes', 'array'],
-            'subtasks.*.watcher_ids.*' => ['integer', Rule::exists('users', 'id')],
-            'subtasks.*.task_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_types', 'id')],
-            'subtasks.*.task_priority_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_priorities', 'id')],
-            'subtasks.*.task_importance_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_importances', 'id')],
-            'subtasks.*.task_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_categories', 'id')],
+            $prefix => ['sometimes', 'array', 'max:'.self::MAX_SUBTASK_NODES],
+            "{$prefix}.*.title" => ['required', 'string', 'max:'.self::TITLE_MAX],
+            "{$prefix}.*.description" => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.*.start_date" => ['sometimes', 'nullable', 'date'],
+            "{$prefix}.*.end_date" => ['sometimes', 'nullable', 'date'],
+            "{$prefix}.*.estimated_minutes" => ['sometimes', 'nullable', 'integer', 'min:0'],
+            "{$prefix}.*.assignee_ids" => ['sometimes', 'array'],
+            "{$prefix}.*.assignee_ids.*" => ['integer', Rule::exists('users', 'id')],
+            "{$prefix}.*.watcher_ids" => ['sometimes', 'array'],
+            "{$prefix}.*.watcher_ids.*" => ['integer', Rule::exists('users', 'id')],
+            "{$prefix}.*.task_type_id" => ['sometimes', 'nullable', 'integer', Rule::exists('task_types', 'id')],
+            "{$prefix}.*.task_priority_id" => ['sometimes', 'nullable', 'integer', Rule::exists('task_priorities', 'id')],
+            "{$prefix}.*.task_importance_id" => ['sometimes', 'nullable', 'integer', Rule::exists('task_importances', 'id')],
+            "{$prefix}.*.task_category_id" => ['sometimes', 'nullable', 'integer', Rule::exists('task_categories', 'id')],
         ];
     }
 
@@ -181,7 +219,37 @@ class StoreTaskRequest extends FormRequest
             if ($this->filled('recurrence') && ! $this->filled('end_date')) {
                 $validator->errors()->add('recurrence', 'A recurrence requires an end date.');
             }
+
+            // AC-003 (spec 0161): the TOTAL node count across the whole
+            // tree — every level summed, not any one array's own size.
+            $totalSubtaskNodes = $this->countSubtaskNodes((array) $this->input('subtasks', []));
+
+            if ($totalSubtaskNodes > self::MAX_SUBTASK_NODES) {
+                $validator->errors()->add(
+                    'subtasks',
+                    'No more than '.self::MAX_SUBTASK_NODES.' sub-tasks are allowed across the whole tree.',
+                );
+            }
         });
+    }
+
+    /**
+     * @param  array<int, mixed>  $rows
+     */
+    private function countSubtaskNodes(array $rows): int
+    {
+        $count = 0;
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $count++;
+            $count += $this->countSubtaskNodes(is_array($row['subtasks'] ?? null) ? $row['subtasks'] : []);
+        }
+
+        return $count;
     }
 
     protected function authorizationResource(): string

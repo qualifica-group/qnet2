@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0160-task-recurrence-holiday-shift" status="draft" owner="utente" date="2026-09-25">
+
+  <goal>
+    Una ricorrenza con "Solo giorni lavorativi" non crea mai un task in un giorno non lavorativo (sabato, domenica,
+    festivita' nazionali, Pasqua e Pasquetta): l'occorrenza si sposta al primo giorno lavorativo successivo.
+  </goal>
+
+  <context>
+    Serie punti rinviati Task: 0160 (questa), 0161 sottotask annidati, 0162 segnatempo facoltativo, 0163 segnatempo e
+    fase commessa, 0164 kanban per colonna. Tipi di nota: esclusi (decisione utente 2026-09-25, "le note restano cosi'").
+    Nomi qnet-2 verificati:
+    - `app/Services/Tasks/TaskRecurrenceCalculator.php` (Step 3: con `workdaysOnly` oggi SALTA sabato/domenica,
+      `$occurrence->isWeekend()`), `TaskRecurrenceService`, `TaskOccurrenceFactory::materialize()`,
+      `app/Http/Requests/Tasks/TaskRecurrenceRules.php`, model `TaskRecurrence`, DTO `TaskRecurrenceData`.
+    - Vincolo DB: unique(`task_recurrence_id`, `end_date`) su `tasks` (migrazione 2026_09_14_130100), chiave di
+      idempotenza della generazione.
+    - Calendario gia' esistente: `app/Services/TimeEntries/WorkCalendar.php` (spec 0122 D-7: weekend + 10 festivita'
+      fisse + Pasqua/Pasquetta, `isNonWorkingDay(Y-m-d)`), puro e senza DB.
+    - FE: `features/tasks/task-recurrence-section.tsx` (etichetta/descrizione "Solo giorni lavorativi"); guida
+      `features/help/content/{it,en}/tasks.ts` sezione `subtasks-and-recurrence`.
+  </context>
+
+  <decisions>
+    D-1 (utente) Occorrenza in giorno non lavorativo -> spostata al primo giorno lavorativo successivo (vale anche per
+        sabato/domenica: cambia il comportamento di oggi, che le salta). Calendario = `WorkCalendar` (unica fonte,
+        riusata, non duplicata).
+    D-2 Se la data spostata coincide con un'occorrenza gia' prodotta (es. giornaliera: sab e dom -> lun, e lun e' gia'
+        un'occorrenza) si genera UNA sola occorrenza; il conteggio "dopo N occorrenze" conta le occorrenze distinte
+        effettivamente create.
+    D-3 La fine "a una data" si confronta con la data SPOSTATA: se supera la data di fine, l'occorrenza non si crea.
+    D-4 La data inizio dell'occorrenza mantiene la stessa distanza dalla data fine che ha oggi (stesso spostamento).
+    D-5 Ricorrenze esistenti: il nuovo comportamento vale dalla prossima generazione; i task gia' creati non cambiano.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Calcolo delle occorrenze (TaskRecurrenceCalculator) con spostamento e deduplica.</item>
+      <item>Testo di aiuto del flag nel form e guida in-app IT/EN `tasks`.</item>
+    </in>
+    <out>
+      <item>Festivita' locali (santo patrono) o calendari configurabili.</item>
+      <item>Ricorrenze senza "Solo giorni lavorativi": invariate.</item>
+      <item>Modifica dei task gia' generati.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    Nessun cambio di API: payload e risorse della ricorrenza invariati (`workdays_only` resta boolean). Cambia solo
+    l'insieme di date generate.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Settimanale il sabato con workdays_only: l'occorrenza cade il lunedi' successivo.</criterion>
+    <criterion id="AC-002">Mensile il 25 aprile (festivo) con workdays_only: l'occorrenza cade il 26 aprile (o il primo lavorativo dopo).</criterion>
+    <criterion id="AC-003">Pasquetta: un'occorrenza nel lunedi' dell'Angelo si sposta al martedi'.</criterion>
+    <criterion id="AC-004">Giornaliera con workdays_only su una settimana: 5 occorrenze lun-ven, nessun duplicato, nessun errore di unicita'.</criterion>
+    <criterion id="AC-005">"Dopo 3 occorrenze" conta 3 occorrenze distinte anche quando due candidati collassano sulla stessa data.</criterion>
+    <criterion id="AC-006">Fine a una data: un'occorrenza spostata oltre la data di fine non viene creata.</criterion>
+    <criterion id="AC-007">Senza workdays_only le date restano quelle di oggi (sabato/domenica/festivi inclusi).</criterion>
+    <criterion id="AC-008">Guida in-app IT/EN aggiornata; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza; riuso di WorkCalendar (iniettato); calcolo puro e testabile senza DB; date `Y-m-d`
+    senza timezone. TaskService.php e' a 500 righe: non va toccato.
+  </constraints>
+
+</spec>

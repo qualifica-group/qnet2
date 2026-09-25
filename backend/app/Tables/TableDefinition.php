@@ -391,4 +391,32 @@ interface TableDefinition
      * unless it opts into a wider one.
      */
     public function maxRowsLimit(): int;
+
+    /**
+     * Whether this domain supports server-side Kanban column grouping (spec
+     * 0164, D-2) — the allow-list `TableRowsRequest` checks before accepting
+     * `kanbanGroup` in POST /tables/{domain}/rows: sent to a domain that
+     * returns false here is a 422 (contract: "nessun cambio di comportamento
+     * per gli altri domini"). Default (AbstractTableDefinition): false.
+     */
+    public function supportsKanbanGroups(): bool;
+
+    /**
+     * Narrow $query to one Kanban column (spec 0164, D-2): `{by: 'status',
+     * key: int}` narrows to one status id, `{by: 'due', key: string}` to one
+     * of the seven fixed due buckets (overdue/today/tomorrow/this_week/
+     * this_month/later/completed). Called by `TableService::rows()` AFTER
+     * every column/advanced filter and the quick search are already applied
+     * (like applyTreeScope()), so a column combines with the rest of the
+     * active query rather than replacing it. Only ever reached when
+     * `supportsKanbanGroups()` is true and `$kanbanGroup` has ALREADY been
+     * validated (`TableRowsRequest`): `by` is one of the two allowed values,
+     * `key` is an existing status id for `status` or one of the seven fixed
+     * bucket keys for `due`. Default (AbstractTableDefinition): a no-op,
+     * never reached for a domain that does not opt in.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array{by: string, key: int|string}  $kanbanGroup
+     */
+    public function applyKanbanGroupScope(Builder $query, array $kanbanGroup): void;
 }

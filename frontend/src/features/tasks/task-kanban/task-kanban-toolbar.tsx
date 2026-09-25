@@ -11,10 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { AdvancedFilterPanel, ADVANCED_FILTER_PANEL_ANIMATION } from '@/features/table/advanced-filters/advanced-filter-panel'
-import type { UseTaskKanbanRowsResult } from '@/features/tasks/task-kanban/use-task-kanban-rows'
+import type { UseTaskKanbanFiltersResult } from '@/features/tasks/task-kanban/use-task-kanban-filters'
 
 interface TaskKanbanToolbarProps {
-  data: Pick<UseTaskKanbanRowsResult, 'search' | 'setSearch' | 'descriptors' | 'advancedFilters'>
+  data: Pick<UseTaskKanbanFiltersResult, 'search' | 'setSearch' | 'descriptors' | 'advancedFilters'>
 }
 
 export function TaskKanbanToolbar({ data }: TaskKanbanToolbarProps) {

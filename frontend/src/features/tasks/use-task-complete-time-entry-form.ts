@@ -11,9 +11,15 @@
  * Task-embedded "Nuovo intervallo" editor, mirrored here for the type default
  * only (AC-039: the task's own type when still active, otherwise the first
  * option).
+ *
+ * Spec 0162 D-3/D-4: `requiresTimeEntry: false` additionally exposes
+ * `enabled`/`setEnabled` (the "Registra il tempo" switch's own state, ON by
+ * default) and makes `validate()` return `undefined` — a THIRD outcome next
+ * to the payload and `null` (invalid) — when the caller turned it off: no
+ * payload, no error, the section simply plays no part in the submit.
  */
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { Path, Resolver, UseFormSetError } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -103,12 +109,23 @@ export function applyTimeEntryServerErrors(
 interface UseTaskCompleteTimeEntryFormArgs {
   /** `task.task_type_id`; `null` when the task carries none (AC-039 then defaults to the first option). */
   taskTypeId: number | null
+  /**
+   * Spec 0162 D-2/D-3: the task's own `requires_time_entry` (single dialog)
+   * or "at least one selected task requires it" (bulk dialog, D-4). Defaults
+   * to `true` — today's always-mandatory behaviour — for callers that predate
+   * this flag.
+   */
+  requiresTimeEntry?: boolean
 }
 
-export function useTaskCompleteTimeEntryForm({ taskTypeId }: UseTaskCompleteTimeEntryFormArgs) {
+export function useTaskCompleteTimeEntryForm({
+  taskTypeId,
+  requiresTimeEntry = true,
+}: UseTaskCompleteTimeEntryFormArgs) {
   const { t } = useTranslation()
   const { options } = useTimeEntryTypeOptions()
   const defaultTaskTypeId = resolveDefaultTaskTypeId(taskTypeId, options)
+  const [enabled, setEnabled] = useState(true)
 
   const schema = useMemo(() => buildTaskTimeEntrySchema(t), [t])
   const resolverRef = useRef<Resolver<TaskTimeEntryFormValues>>(zodResolver(schema))
@@ -152,16 +169,31 @@ export function useTaskCompleteTimeEntryForm({ taskTypeId }: UseTaskCompleteTime
     recomputeMinutes(form.getValues('start_time'), nextEnd)
   }
 
-  /** AC-039: validates the section and returns the wire payload, or `null` while it stays invalid (submit blocked, no API call). */
-  const validate = async (): Promise<CompleteTaskTimeEntryPayload | null> => {
+  /**
+   * AC-039: validates the section and returns the wire payload, `null` while
+   * it stays invalid (submit blocked, no API call), or — spec 0162 D-3/D-4,
+   * `requiresTimeEntry: false` with the switch turned off — `undefined`: the
+   * section is skipped outright, no validation runs, no payload is sent.
+   */
+  const validate = async (): Promise<CompleteTaskTimeEntryPayload | null | undefined> => {
+    if (!requiresTimeEntry && !enabled) {
+      return undefined
+    }
     const isValid = await form.trigger()
     return isValid ? buildPayload(form.getValues()) : null
   }
 
-  const reset = () => form.reset(createDefaults(defaultTaskTypeId))
+  const reset = () => {
+    form.reset(createDefaults(defaultTaskTypeId))
+    setEnabled(true)
+  }
 
   return {
     form,
+    /** Spec 0162 D-3/D-4: `true` when the section is a MANDATORY part of the submit — the dialog renders no switch then. */
+    optional: !requiresTimeEntry,
+    enabled,
+    setEnabled,
     handleStartTimeChange,
     handleEndTimeChange,
     validate,

@@ -15,6 +15,7 @@ function baseValues(overrides: Partial<TimeEntryFormValues> = {}): TimeEntryForm
     opportunity_id: null,
     work_order_id: null,
     task_id: null,
+    work_order_stage_id: null,
     ...overrides,
   }
 }

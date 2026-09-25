@@ -19,6 +19,7 @@ use App\Tables\Tasks\TaskAdvancedFilterCatalog;
 use App\Tables\Tasks\TaskAggregateColumns;
 use App\Tables\Tasks\TaskCellWriter;
 use App\Tables\Tasks\TaskColumnCatalog;
+use App\Tables\Tasks\TaskKanbanGroupScope;
 use App\Tables\Tasks\TaskRelationColumns;
 use App\Tables\Tasks\TaskRowMapper;
 use App\Tables\Tasks\TaskTreeScope;
@@ -58,9 +59,10 @@ class TasksTableDefinition extends AbstractTableDefinition
     private const string COMPLETION_PERCENTAGE_COLUMN = 'completion_percentage';
 
     /**
-     * Spec 0157, D-4: the Kanban view loads up to 500 Task in a single SSRM
-     * block, five times the shared `BaseApiController::MAX_LIMIT` every
-     * other domain keeps.
+     * Per-block cap for `tasks`, five times the shared
+     * `BaseApiController::MAX_LIMIT`. Introduced by spec 0157 for the
+     * one-shot Kanban load; since spec 0164 the Kanban pages each column in
+     * blocks of 50, so this is only the ceiling a single request may ask for.
      */
     private const int MAX_ROWS_LIMIT = 500;
 
@@ -390,6 +392,25 @@ class TasksTableDefinition extends AbstractTableDefinition
     public function maxRowsLimit(): int
     {
         return self::MAX_ROWS_LIMIT;
+    }
+
+    /**
+     * Spec 0164, D-2: `tasks` is the one domain with server-side Kanban
+     * column grouping — the "per stato"/"per scadenza" boards load their
+     * columns via `kanbanGroup` instead of classifying rows client-side.
+     */
+    public function supportsKanbanGroups(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @param  Builder<Task>  $query
+     * @param  array{by: string, key: int|string}  $kanbanGroup
+     */
+    public function applyKanbanGroupScope(Builder $query, array $kanbanGroup): void
+    {
+        TaskKanbanGroupScope::apply($query, $kanbanGroup);
     }
 
     /**

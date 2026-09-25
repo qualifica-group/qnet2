@@ -17,20 +17,25 @@ import { KanbanCardShell } from '@/components/kanban/kanban-card-shell'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { TaskKanbanDueChip } from '@/features/tasks/task-kanban/task-kanban-due-chip'
 import { TaskBoardHours, TaskBoardPeople } from '@/features/work-orders/task-board/task-board-task-meta'
+import type { TaskKanbanDragData } from '@/features/tasks/task-kanban/use-task-kanban-dnd'
 import type { TaskKanbanRow } from '@/features/tasks/task-kanban/task-kanban-types'
 
 interface TaskKanbanCardProps {
   row: TaskKanbanRow
+  /** The column this card is currently rendered in — carried as drag `data` (spec 0164 D-1) so `useTaskKanbanDnd` reads the origin without a client-side `rows` lookup. */
+  groupKey: string
   today: string
   draggable: boolean
   onOpen: (id: number) => void
 }
 
-export function TaskKanbanCard({ row, today, draggable, onOpen }: TaskKanbanCardProps) {
+export function TaskKanbanCard({ row, groupKey, today, draggable, onOpen }: TaskKanbanCardProps) {
   const { t } = useTranslation()
   const canDrag = draggable && row.editable !== false
+  const dragData: TaskKanbanDragData = { row, groupKey }
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
     id: String(row.id),
+    data: dragData,
     disabled: !canDrag,
   })
 

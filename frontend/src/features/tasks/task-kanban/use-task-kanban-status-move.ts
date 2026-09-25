@@ -8,6 +8,12 @@
  * status calls `uncomplete`. Cancelling the dialog applies NOTHING, so the
  * card falls back to its current column on the next render for free — there
  * is no local "pending move" state to revert.
+ *
+ * Spec 0164 D-3: the caller decides WHICH columns a successful move
+ * invalidates (origin/destination only), so `moveToStatus` takes its own
+ * `onMutated` per call instead of a single one fixed at hook-mount time —
+ * the "Completa" dialog's own async completion retains it in `MoveState`
+ * until `handleCompleted`/`closeCompleteDialog` settles it.
  */
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,25 +28,20 @@ import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 type MoveState =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'complete'; task: TaskDetailWithPermissions }
+  | { kind: 'complete'; task: TaskDetailWithPermissions; onMutated: () => void }
 
-export interface UseTaskKanbanStatusMoveArgs {
-  /** Called after a successful PATCH/uncomplete/"Completa" so the caller refetches the board. */
-  onMutated: () => void
-}
-
-export function useTaskKanbanStatusMove({ onMutated }: UseTaskKanbanStatusMoveArgs) {
+export function useTaskKanbanStatusMove() {
   const { t } = useTranslation()
   const [state, setState] = useState<MoveState>({ kind: 'idle' })
 
   const moveToStatus = useCallback(
-    (row: TaskKanbanRow, targetStatusId: number, targetGroup: TaskStatusGroupValue) => {
+    (row: TaskKanbanRow, targetStatusId: number, targetGroup: TaskStatusGroupValue, onMutated: () => void) => {
       const decision = resolveTaskStatusInterceptDecision(row.task_status?.group, targetGroup)
 
       if (decision === 'open_complete') {
         setState({ kind: 'loading' })
         fetchTask(Number(row.id))
-          .then((task) => setState({ kind: 'complete', task }))
+          .then((task) => setState({ kind: 'complete', task, onMutated }))
           .catch((error: unknown) => {
             toast.error(actionErrorMessage(t, error))
             setState({ kind: 'idle' })
@@ -62,14 +63,18 @@ export function useTaskKanbanStatusMove({ onMutated }: UseTaskKanbanStatusMoveAr
         .then(onMutated)
         .catch((error: unknown) => toast.error(actionErrorMessage(t, error)))
     },
-    [t, onMutated],
+    [t],
   )
 
   const closeCompleteDialog = useCallback(() => setState({ kind: 'idle' }), [])
   const handleCompleted = useCallback(() => {
-    setState({ kind: 'idle' })
-    onMutated()
-  }, [onMutated])
+    setState((current) => {
+      if (current.kind === 'complete') {
+        current.onMutated()
+      }
+      return { kind: 'idle' }
+    })
+  }, [])
 
   return {
     moveToStatus,

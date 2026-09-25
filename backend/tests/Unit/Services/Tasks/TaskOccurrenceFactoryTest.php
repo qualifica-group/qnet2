@@ -207,14 +207,28 @@ it('AC-004 (spec 0155, D-2): a sub-task without dates of its own produces a copy
         ->and($copiedSubtask->end_date)->toBeNull();
 });
 
-it('D-2 (spec 0155): a sub-task of a sub-task is never copied (one level only)', function () {
+// REQUIREMENT CHANGED (spec 0161, D-3): the recurrence now copies the WHOLE
+// sub-task tree, every level — a sub-task of a sub-task is no longer
+// dropped, it is copied too, with the same date shift and its own copy as
+// the new direct parent.
+it('AC-006 (spec 0161): the occurrence copies a grandchild sub-task too, dates shifted, under its own copied parent', function () {
     $originator = Task::factory()->create(['end_date' => '2026-03-15']);
     $subtask = Task::factory()->childOf($originator)->create();
-    Task::factory()->childOf($subtask)->create();
+    $grandchild = Task::factory()->childOf($subtask)->create([
+        'title' => 'Nipote',
+        'start_date' => '2026-03-11',
+        'end_date' => '2026-03-13',
+    ]);
 
     Notification::fake();
     $occurrence = app(TaskOccurrenceFactory::class)->materialize($originator, CarbonImmutable::parse('2026-04-15'));
 
-    expect($occurrence->subtasks()->count())->toBe(1)
-        ->and($occurrence->subtasks()->sole()->subtasks()->exists())->toBeFalse();
+    $copiedSubtask = $occurrence->subtasks()->sole();
+    $copiedGrandchild = $copiedSubtask->subtasks()->sole();
+
+    expect($copiedGrandchild->title)->toBe('Nipote')
+        ->and($copiedGrandchild->parent_task_id)->toBe($copiedSubtask->id)
+        ->and($copiedGrandchild->start_date->toDateString())->toBe('2026-04-11')
+        ->and($copiedGrandchild->end_date->toDateString())->toBe('2026-04-13')
+        ->and($copiedGrandchild->id)->not->toBe($grandchild->id);
 });

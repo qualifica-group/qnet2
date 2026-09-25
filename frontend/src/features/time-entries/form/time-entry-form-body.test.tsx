@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { TimeEntryFormBody } from '@/features/time-entries/form/time-entry-form-body'
 import type { TimeEntryFormMode } from '@/features/time-entries/form/use-time-entry-form'
+import { fetchWorkOrderStages } from '@/features/work-orders/task-board/api'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 import type { TimeEntry } from '@/features/time-entries/types'
 
@@ -39,6 +40,8 @@ vi.mock('@/features/for-select/api', async () => {
   }
 })
 
+vi.mock('@/features/work-orders/task-board/api', () => ({ fetchWorkOrderStages: vi.fn() }))
+
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
@@ -70,6 +73,14 @@ const TASKS_PAGE = {
   pagination: { offset: 0, limit: 25, total: 1 },
   export_link: null,
 }
+const WORK_ORDER_PAGE = {
+  items: [
+    { id: 30, label: 'COM-0001', meta: {} },
+    { id: 31, label: 'COM-0002', meta: {} },
+  ],
+  pagination: { offset: 0, limit: 25, total: 2 },
+  export_link: null,
+}
 
 function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
   return {
@@ -86,6 +97,7 @@ function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
     opportunity: null,
     work_order: null,
     task: null,
+    work_order_stage: null,
     created_at: '2026-09-14T08:00:00Z',
     updated_at: '2026-09-14T08:00:00Z',
     permissions: { update: true, delete: true },
@@ -146,11 +158,16 @@ beforeEach(() => {
     if (resource === 'task-types') return TASK_TYPES_PAGE
     if (resource === 'registries') return REGISTRIES_PAGE
     if (resource === 'tasks') return TASKS_PAGE
+    if (resource === 'work-orders') return WORK_ORDER_PAGE
     return EMPTY_PAGE
   })
   createTimeEntryMock.mockReset()
   updateTimeEntryMock.mockReset()
   fetchTaskMock.mockReset()
+  vi.mocked(fetchWorkOrderStages).mockReset()
+  vi.mocked(fetchWorkOrderStages).mockResolvedValue([
+    { id: 1, name: 'Analisi', sort_order: 0, closed_at: null, closed_by: null, logged_minutes: 0 },
+  ])
 })
 
 describe('TimeEntryFormBody — minutes computed from the times (AC-029)', () => {
@@ -271,6 +288,89 @@ describe('TimeEntryFormBody — D-5 cascade (AC-031)', () => {
     const registryPicker = screen.getByRole('combobox', { name: label('timeEntries.form.registry') })
     expect(registryPicker).toBeDisabled()
     expect(registryPicker).toHaveTextContent('Cliente Task')
+  })
+})
+
+describe('TimeEntryFormBody — "Fase" (spec 0163 AC-008)', () => {
+  it('sends the picked fase in the create payload', async () => {
+    createTimeEntryMock.mockResolvedValue(buildEntry())
+    renderBody({ type: 'create' })
+
+    fireEvent.change(field('timeEntries.form.title'), { target: { value: 'Rientro cliente' } })
+    fireEvent.click(await screen.findByRole('radio', { name: 'Attività' }))
+    fireEvent.change(field('timeEntries.form.minutes'), { target: { value: '01:00' } })
+
+    fireEvent.click(screen.getByRole('combobox', { name: label('timeEntries.form.workOrder') }))
+    fireEvent.click(await screen.findByRole('option', { name: 'COM-0001' }))
+
+    const fasePicker = await screen.findByRole('combobox', { name: label('timeEntries.form.workOrderStage') })
+    await waitFor(() => expect(fasePicker).not.toBeDisabled())
+    fireEvent.click(fasePicker)
+    fireEvent.click(await screen.findByRole('option', { name: 'Analisi' }))
+
+    fireEvent.click(submitButton())
+
+    await waitFor(() => expect(createTimeEntryMock).toHaveBeenCalled())
+    const [payload] = createTimeEntryMock.mock.calls[0] as [Record<string, unknown>]
+    expect(payload.work_order_stage_id).toBe(1)
+  })
+
+  it('resets the fase when the commessa changes, without resubmitting the old one', async () => {
+    updateTimeEntryMock.mockResolvedValue(buildEntry())
+    renderBody({
+      type: 'edit',
+      entry: buildEntry({
+        work_order: { id: 30, code: 'COM-0001', title: '' },
+        work_order_stage: { id: 1, name: 'Analisi' },
+      }),
+    })
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: label('timeEntries.form.workOrder') })).toHaveTextContent('COM-0001'),
+    )
+    expect(await screen.findByRole('combobox', { name: label('timeEntries.form.workOrderStage') })).toHaveTextContent(
+      'Analisi',
+    )
+
+    fireEvent.click(screen.getByRole('combobox', { name: label('timeEntries.form.workOrder') }))
+    fireEvent.click(await screen.findByRole('option', { name: 'COM-0002' }))
+
+    fireEvent.click(submitButton('edit'))
+
+    await waitFor(() => expect(updateTimeEntryMock).toHaveBeenCalled())
+    const [, payload] = updateTimeEntryMock.mock.calls[0] as [number, Record<string, unknown>]
+    expect(payload.work_order_id).toBe(31)
+    expect(payload.work_order_stage_id).toBeNull()
+  })
+
+  it('does not show or send a fase once a task is linked', async () => {
+    createTimeEntryMock.mockResolvedValue(buildEntry())
+    fetchTaskMock.mockResolvedValue({
+      id: 40,
+      title: 'Task Demo',
+      registry_id: null,
+      registry: null,
+      opportunity_id: null,
+      opportunity: null,
+      work_order_id: 30,
+      work_order: { id: 30, code: 'COM-0001', title: '' },
+    } as unknown as TaskDetailWithPermissions)
+
+    renderBody({ type: 'create' })
+
+    fireEvent.click(screen.getByRole('combobox', { name: label('timeEntries.form.activity') }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Task Demo' }))
+
+    await waitFor(() => expect(fetchTaskMock).toHaveBeenCalledWith(40))
+    expect(screen.queryByRole('combobox', { name: label('timeEntries.form.workOrderStage') })).not.toBeInTheDocument()
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Attività' }))
+    fireEvent.change(field('timeEntries.form.minutes'), { target: { value: '01:00' } })
+    fireEvent.click(submitButton())
+
+    await waitFor(() => expect(createTimeEntryMock).toHaveBeenCalled())
+    const [payload] = createTimeEntryMock.mock.calls[0] as [Record<string, unknown>]
+    expect(payload.work_order_stage_id).toBeUndefined()
   })
 })
 

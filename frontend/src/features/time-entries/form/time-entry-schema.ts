@@ -39,6 +39,8 @@ function baseFields() {
     opportunity_id: z.number().nullable(),
     work_order_id: z.number().nullable(),
     task_id: z.number().nullable(),
+    /** `prohibited` without `work_order_id`, ignored with `task_id` (spec 0163 D-1) — server-checked, no client rule needed. */
+    work_order_stage_id: z.number().nullable(),
   }
 }
 

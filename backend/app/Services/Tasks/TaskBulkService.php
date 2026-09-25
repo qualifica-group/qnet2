@@ -80,9 +80,13 @@ final class TaskBulkService
             // segnatempo logged. validation_status_id falls back to the
             // first active in_validation status by sort_order when the Task
             // requires validation and the caller submitted none.
+            // `time_entry` is optional (spec 0162, D-4): a null value here
+            // means the caller submitted none, and TaskCompletionService's
+            // own guard is what turns that into an `incompatible` entry for
+            // a Task whose tipologia still requires one.
             'complete' => $this->executor->complete(
                 $task,
-                $data->timeEntry ?? [],
+                $data->timeEntry,
                 $data->closureFeedback,
                 $data->closureFeedbackSubmitted,
                 $data->validationStatusId ?? $this->defaultValidationStatusId($actor, $task),

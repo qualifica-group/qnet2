@@ -28,6 +28,8 @@ interface TaskBoardListViewProps {
   onToggleSelection: (taskId: number) => void
   onOpenTask: (taskId: number) => void
   onAddTask: (stageId: number | null) => void
+  /** The commessa's `unstaged_logged_minutes` (spec 0163 AC-007), read only by the "Senza fase" group. */
+  unstagedLoggedMinutes: number
 }
 
 export function TaskBoardListView({
@@ -40,6 +42,7 @@ export function TaskBoardListView({
   onToggleSelection,
   onOpenTask,
   onAddTask,
+  unstagedLoggedMinutes,
 }: TaskBoardListViewProps) {
   const stages = groups.filter((group) => group.stage !== null).map((group) => group.stage!)
   const visibleDndGroups = toDndGroups(groups)
@@ -94,6 +97,7 @@ export function TaskBoardListView({
                 onToggleSelection={onToggleSelection}
                 onOpenTask={onOpenTask}
                 onAddTask={onAddTask}
+                unstagedLoggedMinutes={unstagedLoggedMinutes}
               />
             ),
           )}

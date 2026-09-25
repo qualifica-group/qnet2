@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Models\TaskRecurrence;
 use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
+use App\Services\Tasks\TaskTimeEntryRequirement;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -106,6 +107,11 @@ class TaskResource extends JsonResource
             'is_blocked' => $this->is_blocked,
             'requires_closure_feedback' => $this->requires_closure_feedback,
             'requires_validation' => $this->requires_validation,
+            // Spec 0162, D-1/D-2: whether /complete demands a segnatempo —
+            // read from the SAME point CompleteTaskRequest/TaskCompletionService
+            // do, so the dialog's "Registra il tempo" switch never re-derives
+            // the rule.
+            'requires_time_entry' => TaskTimeEntryRequirement::isRequired($this->resource),
             'closure_feedback' => $this->closure_feedback,
             'is_private' => $this->is_private,
             'evidence' => $this->evidence,

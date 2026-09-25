@@ -39,6 +39,7 @@ function taskType(
     sort_order: 3,
     is_active: true,
     is_default: false,
+    requires_time_entry: true,
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
     permissions: {
@@ -67,7 +68,8 @@ describe('TaskTypeDetailView — detail fields', () => {
     expect(screen.getByText('Blue')).toBeInTheDocument()
     expect(screen.getByText('star')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
-    expect(screen.getByText('Yes')).toBeInTheDocument()
+    // `is_active` and `requires_time_entry` (spec 0162 D-1) both default to `true`.
+    expect(screen.getAllByText('Yes')).toHaveLength(2)
     expect(screen.getByText(formatDateTime('2026-01-01T09:00:00Z'))).toBeInTheDocument()
     expect(screen.getByText(formatDateTime('2026-02-15T14:30:00Z'))).toBeInTheDocument()
   })

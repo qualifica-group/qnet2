@@ -17,6 +17,8 @@ export interface WorkOrderStage {
   /** ISO datetime, set by `POST .../stages/{stage}/close`; `null` while open. */
   closed_at: string | null
   closed_by: { id: number; name: string } | null
+  /** Sum of `time_entries.minutes` carrying this `work_order_stage_id` (spec 0163 AC-007), NOT the task-based `actual_minutes` roll-up. */
+  logged_minutes: number
 }
 
 /**
@@ -65,6 +67,8 @@ export interface TaskBoardPayload {
   tasks: BoardTask[]
   /** Closed commessa, or the actor lacks `update` on it (D-9): no drag, no fase/bulk actions. */
   is_read_only: boolean
+  /** Sum of the commessa's own `time_entries.minutes` with no `work_order_stage_id` (spec 0163 AC-007/D-4). */
+  unstaged_logged_minutes: number
 }
 
 /**

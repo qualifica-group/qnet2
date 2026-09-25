@@ -171,6 +171,7 @@ export const workOrders = {
         type: 'Type',
         completion: 'Completion',
         hours: 'Hours worked / estimated',
+        loggedMinutes: 'Logged minutes',
       },
       nobody: 'Nobody',
       noEstimate: 'no estimate',

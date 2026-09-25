@@ -14,6 +14,7 @@ export function workOrderStage(overrides: Partial<WorkOrderStage> = {}): WorkOrd
     sort_order: 0,
     closed_at: null,
     closed_by: null,
+    logged_minutes: 0,
     ...overrides,
   }
 }
@@ -57,6 +58,7 @@ export function taskBoardPayload(overrides: Partial<TaskBoardPayload> = {}): Tas
     stages: [workOrderStage()],
     tasks: [boardTask()],
     is_read_only: false,
+    unstaged_logged_minutes: 0,
     ...overrides,
   }
 }

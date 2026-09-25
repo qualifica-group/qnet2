@@ -36,13 +36,13 @@ beforeEach(() => {
   vi.mocked(uncompleteTask).mockReset()
 })
 
-describe('useTaskKanbanStatusMove (spec 0157 D-3)', () => {
-  it('PATCHes task_status_id directly on an open<->open move', () => {
+describe('useTaskKanbanStatusMove (spec 0157 D-3, spec 0164 D-3: onMutated travels per-call)', () => {
+  it('PATCHes task_status_id directly on an open<->open move, then calls onMutated', () => {
     vi.mocked(updateTask).mockResolvedValue({} as never)
     const onMutated = vi.fn()
-    const { result } = renderHook(() => useTaskKanbanStatusMove({ onMutated }))
+    const { result } = renderHook(() => useTaskKanbanStatusMove())
 
-    act(() => result.current.moveToStatus(row(1, 'open'), 2, 'pending'))
+    act(() => result.current.moveToStatus(row(1, 'open'), 2, 'pending', onMutated))
 
     expect(updateTask).toHaveBeenCalledWith(1, { task_status_id: 2 })
     expect(fetchTask).not.toHaveBeenCalled()
@@ -53,21 +53,35 @@ describe('useTaskKanbanStatusMove (spec 0157 D-3)', () => {
     const task = { id: 1 } as TaskDetailWithPermissions
     vi.mocked(fetchTask).mockResolvedValue(task)
     const onMutated = vi.fn()
-    const { result } = renderHook(() => useTaskKanbanStatusMove({ onMutated }))
+    const { result } = renderHook(() => useTaskKanbanStatusMove())
 
-    act(() => result.current.moveToStatus(row(1, 'open'), 3, 'closed_positive'))
+    act(() => result.current.moveToStatus(row(1, 'open'), 3, 'closed_positive', onMutated))
 
     await waitFor(() => expect(result.current.completingTask).toBe(task))
     expect(updateTask).not.toHaveBeenCalled()
     expect(onMutated).not.toHaveBeenCalled()
   })
 
+  it('completing the dialog calls the onMutated retained from the original drop', async () => {
+    vi.mocked(fetchTask).mockResolvedValue({ id: 1 } as TaskDetailWithPermissions)
+    const onMutated = vi.fn()
+    const { result } = renderHook(() => useTaskKanbanStatusMove())
+
+    act(() => result.current.moveToStatus(row(1, 'open'), 3, 'closed_positive', onMutated))
+    await waitFor(() => expect(result.current.completingTask).not.toBeNull())
+
+    act(() => result.current.handleCompleted())
+
+    expect(onMutated).toHaveBeenCalledTimes(1)
+    expect(result.current.completingTask).toBeNull()
+  })
+
   it('cancelling the dialog applies nothing (the card falls back on its own, no mutation ever ran)', async () => {
     vi.mocked(fetchTask).mockResolvedValue({ id: 1 } as TaskDetailWithPermissions)
     const onMutated = vi.fn()
-    const { result } = renderHook(() => useTaskKanbanStatusMove({ onMutated }))
+    const { result } = renderHook(() => useTaskKanbanStatusMove())
 
-    act(() => result.current.moveToStatus(row(1, 'open'), 3, 'closed_positive'))
+    act(() => result.current.moveToStatus(row(1, 'open'), 3, 'closed_positive', onMutated))
     await waitFor(() => expect(result.current.completingTask).not.toBeNull())
 
     act(() => result.current.closeCompleteDialog())
@@ -80,9 +94,9 @@ describe('useTaskKanbanStatusMove (spec 0157 D-3)', () => {
   it('calls uncomplete on a move OUT of a closed status, never a direct PATCH', () => {
     vi.mocked(uncompleteTask).mockResolvedValue({} as never)
     const onMutated = vi.fn()
-    const { result } = renderHook(() => useTaskKanbanStatusMove({ onMutated }))
+    const { result } = renderHook(() => useTaskKanbanStatusMove())
 
-    act(() => result.current.moveToStatus(row(1, 'closed_positive'), 4, 'open'))
+    act(() => result.current.moveToStatus(row(1, 'closed_positive'), 4, 'open', onMutated))
 
     expect(uncompleteTask).toHaveBeenCalledWith(1)
     expect(updateTask).not.toHaveBeenCalled()

@@ -30,6 +30,8 @@ final readonly class UpdateTaskTypeData
         public bool $isActiveSubmitted = false,
         public ?bool $isDefault = null,
         public bool $isDefaultSubmitted = false,
+        public ?bool $requiresTimeEntry = null,
+        public bool $requiresTimeEntrySubmitted = false,
     ) {}
 
     /**
@@ -50,6 +52,8 @@ final readonly class UpdateTaskTypeData
             isActiveSubmitted: array_key_exists('is_active', $data),
             isDefault: array_key_exists('is_default', $data) ? (bool) $data['is_default'] : null,
             isDefaultSubmitted: array_key_exists('is_default', $data),
+            requiresTimeEntry: array_key_exists('requires_time_entry', $data) ? (bool) $data['requires_time_entry'] : null,
+            requiresTimeEntrySubmitted: array_key_exists('requires_time_entry', $data),
         );
     }
 
@@ -85,6 +89,10 @@ final readonly class UpdateTaskTypeData
 
         if ($this->isDefaultSubmitted) {
             $attributes['is_default'] = $this->isDefault;
+        }
+
+        if ($this->requiresTimeEntrySubmitted) {
+            $attributes['requires_time_entry'] = $this->requiresTimeEntry;
         }
 
         return $attributes;

@@ -3,6 +3,9 @@
  * bucket writes the bucket's own `end_date` (see `dueBucketDropDate`) via the
  * SAME `PATCH /api/tasks/{id}` the list's cell edit and the commessa board
  * already use.
+ *
+ * Spec 0164 D-3: the caller passes its own `onMutated` per call, so it can
+ * invalidate only the origin/destination columns for THIS move.
  */
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,15 +17,13 @@ import type { TaskKanbanRow } from '@/features/tasks/task-kanban/task-kanban-typ
 
 export interface UseTaskKanbanDueMoveArgs {
   today: string
-  /** Called after a successful PATCH so the caller refetches the board. */
-  onMutated: () => void
 }
 
-export function useTaskKanbanDueMove({ today, onMutated }: UseTaskKanbanDueMoveArgs) {
+export function useTaskKanbanDueMove({ today }: UseTaskKanbanDueMoveArgs) {
   const { t } = useTranslation()
 
   const moveToBucket = useCallback(
-    (row: TaskKanbanRow, targetKey: DueBucketKey) => {
+    (row: TaskKanbanRow, targetKey: DueBucketKey, onMutated: () => void) => {
       const endDate = dueBucketDropDate(targetKey, today)
       if (endDate === null) {
         return
@@ -31,7 +32,7 @@ export function useTaskKanbanDueMove({ today, onMutated }: UseTaskKanbanDueMoveA
         .then(onMutated)
         .catch((error: unknown) => toast.error(actionErrorMessage(t, error)))
     },
-    [today, t, onMutated],
+    [today, t],
   )
 
   return { moveToBucket }

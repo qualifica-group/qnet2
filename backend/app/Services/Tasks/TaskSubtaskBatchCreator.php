@@ -10,11 +10,14 @@ use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Creates the direct sub-tasks submitted alongside a new parent Task (spec
- * 0155, D-3), one level, INSIDE the SAME transaction
+ * Creates the sub-tasks submitted alongside a new parent Task (spec 0155,
+ * D-3; spec 0161, D-1 REQUIREMENT CHANGED "one level" to up to 3, figlio/
+ * nipote/pronipote — StoreTaskRequest already refuses a 4th, so this class
+ * never depth-counts), INSIDE the SAME transaction
  * `App\Services\TaskService::create()` already opened for the parent: a
- * refusal on row N leaves the parent AND every row before N unsaved too,
- * since the whole call sits inside that one transaction.
+ * refusal on ANY row, at any depth, leaves the parent AND every row created
+ * before it unsaved too, since the whole call sits inside that one
+ * transaction.
  *
  * Six record-link columns are ALWAYS copied off the just-persisted $parent,
  * never taken from the per-row payload — there is no such key in
@@ -28,18 +31,22 @@ use Illuminate\Validation\ValidationException;
  * "omitted", never for "submitted empty" — see that DTO): `assignee_ids`,
  * `watcher_ids`, `task_type_id`, `task_priority_id`, `task_importance_id`.
  * `end_date` follows the same omitted/submitted split. `recurrence` never
- * applies to a sub-task and carries no key here to omit.
+ * applies to a sub-task and carries no key here to omit. $parent is always
+ * the row's OWN DIRECT parent (spec 0161, D-2): for a nipote/pronipote that
+ * is the just-saved copy one level up, never the root Task, so every one of
+ * these falls through the chain naturally — a grandchild that overrides
+ * `task_type_id` makes its own children inherit THAT value, not the task's.
  *
- * The two guards a plain create runs that still make sense one level down
- * are re-asserted per row, exactly as `TaskService::create()` runs them for
- * the parent: `TaskParentDateRangeGuard::assertChildWithinParent()` (the
- * row's own dates against $parent's) and
+ * The two guards a plain create runs that still make sense below the root
+ * are re-asserted per row AT EVERY DEPTH, exactly as `TaskService::create()`
+ * runs them for the parent: `TaskParentDateRangeGuard::assertChildWithinParent()`
+ * (the row's own dates against its DIRECT parent's) and
  * `TaskWatcherOverlapGuard::assertNoOverlap()` (D-9 of spec 0118, on the
  * row's resulting sets). `TaskParentAccessGuard`/`TaskWriteLock` are not
- * re-run: $parent is the Task $creator just created inside this very
- * transaction, so `TaskAbilityResolver::canCreateSubtask()` and "not locked"
- * both hold structurally — there is no actor/state combination reaching this
- * class for which either could fail.
+ * re-run: every $parent in the recursion was itself just created inside this
+ * very transaction, so `TaskAbilityResolver::canCreateSubtask()` and "not
+ * locked" both hold structurally — there is no actor/state combination
+ * reaching this class for which either could fail.
  */
 final class TaskSubtaskBatchCreator
 {
@@ -132,6 +139,13 @@ final class TaskSubtaskBatchCreator
 
         $task->assignees()->sync($assigneeIds);
         $task->watchers()->sync($watcherIds);
+
+        // Spec 0161, D-1/D-2: recurse into this row's OWN nested `subtasks`
+        // (empty at the bulk-create depth cap, StoreTaskRequest's own job) —
+        // $task is now the DIRECT parent, and its own RESULTING assignee/
+        // watcher sets, never the root's, are what an omitted key one level
+        // further down falls back to.
+        $this->createMany($task, $data->subtasks, $creator, $assigneeIds, $watcherIds);
     }
 
     /**

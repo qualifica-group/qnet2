@@ -62,6 +62,8 @@ class UpdateTaskTypeRequest extends FormRequest
             // default must be active" — never expressible as a validation rule
             // alone, since it depends on the OTHER rows' state.
             'is_default' => ['sometimes', 'boolean'],
+            // Spec 0162, D-1: see StoreTaskTypeRequest's own docblock.
+            'requires_time_entry' => ['sometimes', 'boolean'],
             'sort_order' => ['prohibited'],
             'system_key' => ['prohibited'],
         ];

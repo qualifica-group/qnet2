@@ -203,6 +203,11 @@ it('AC-051: the meta exposes the configurator fields, with completion_percentage
         $expected[] = 'is_default';
     }
 
+    // Spec 0162, D-1: the per-type segnatempo-optional flag, task-types only.
+    if ($resource === 'task-types') {
+        $expected[] = 'requires_time_entry';
+    }
+
     expect($keys)->toEqualCanonicalizing($expected)
         // sort_order and system_key are server-managed: never permissionable,
         // never submittable (AC-045).

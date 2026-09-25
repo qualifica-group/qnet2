@@ -51,6 +51,7 @@ class TimeEntryResource extends JsonResource
             'opportunity' => $this->nameRef($entry->opportunity),
             'work_order' => $this->workOrderRef($entry->workOrder),
             'task' => $this->taskRef($entry->task),
+            'work_order_stage' => $this->nameRef($entry->workOrderStage),
             'created_at' => $entry->created_at?->toIso8601String(),
             'updated_at' => $entry->updated_at?->toIso8601String(),
             'permissions' => [

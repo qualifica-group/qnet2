@@ -6,19 +6,9 @@
  * are unit-testable without mounting dnd-kit.
  */
 import type { TaskKanbanRow } from '@/features/tasks/task-kanban/task-kanban-types'
+import { DUE_BUCKET_KEYS, type DueBucketKey } from '@/features/tasks/task-kanban/task-kanban-group-param'
 
-/** The seven fixed columns of the "per scadenza" board, in display order. */
-export const DUE_BUCKET_KEYS = [
-  'overdue',
-  'today',
-  'tomorrow',
-  'this_week',
-  'this_month',
-  'later',
-  'completed',
-] as const
-
-export type DueBucketKey = (typeof DUE_BUCKET_KEYS)[number]
+export { DUE_BUCKET_KEYS, type DueBucketKey }
 
 function isClosedTask(row: TaskKanbanRow): boolean {
   const group = row.task_status?.group

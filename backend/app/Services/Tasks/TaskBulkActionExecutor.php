@@ -46,11 +46,18 @@ final class TaskBulkActionExecutor
     }
 
     /**
-     * @param  array<string, mixed>  $timeEntry
+     * `$timeEntry` is null when the caller submitted none (spec 0162, D-2/D-4:
+     * `POST /api/tasks/bulk`'s `time_entry` is optional) — the payload then
+     * carries no `time_entry` key at all, so `CompleteTaskData::fromValidated()`
+     * reads it the SAME way a single-task request omitting the field would,
+     * and `TaskCompletionService::complete()` re-asserts whether that is
+     * actually allowed for $task.
+     *
+     * @param  array<string, mixed>|null  $timeEntry
      */
     public function complete(
         Task $task,
-        array $timeEntry,
+        ?array $timeEntry,
         ?string $closureFeedback,
         bool $closureFeedbackSubmitted,
         ?int $validationStatusId,
@@ -59,7 +66,11 @@ final class TaskBulkActionExecutor
     ): void {
         Gate::forUser($actor)->authorize('complete', $task);
 
-        $payload = ['time_entry' => $timeEntry, 'for_all_assignees' => $forAllAssignees];
+        $payload = ['for_all_assignees' => $forAllAssignees];
+
+        if ($timeEntry !== null) {
+            $payload['time_entry'] = $timeEntry;
+        }
 
         if ($closureFeedbackSubmitted) {
             $payload['closure_feedback'] = $closureFeedback;

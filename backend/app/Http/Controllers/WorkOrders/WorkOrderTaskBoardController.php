@@ -37,6 +37,13 @@ use Throwable;
  * D-9 visibility scope) — the one endpoint in this module whose 403 is
  * per-record rather than resource-level.
  *
+ * `show()` also carries the per-fase segnatempo totals (spec 0163, D-4/
+ * AC-007): each stage's own `logged_minutes` plus the commessa-level
+ * `unstaged_logged_minutes` — this endpoint is spec 0163's chosen home for
+ * them (data_contract: "l'endpoint esatto fissato in esecuzione ... senza
+ * nuovo endpoint se quello esistente basta"), reusing the SAME `stages` read
+ * this response already returns rather than adding a new one.
+ *
  * `bulk()` (spec 0146, D-7) authorizes only `view` on the commessa here: the
  * per-task ability (`canUpdate`/`canComplete`/`canBlock`) is re-asserted
  * PER ROW by `TaskBulkActionService`, which is also where a single task's
@@ -79,9 +86,10 @@ class WorkOrderTaskBoardController extends BaseApiController
                 ->values();
 
             return $this->ok([
-                'stages' => WorkOrderStageResource::collection($workOrder->stages()->get()),
+                'stages' => WorkOrderStageResource::collection($this->boardQuery->stages($workOrder)),
                 'tasks' => $tasks,
                 'is_read_only' => $workOrder->is_force_closed || ! $actor->can('update', $workOrder),
+                'unstaged_logged_minutes' => $this->boardQuery->unstagedLoggedMinutes($workOrder),
             ]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['workOrder' => $workOrder->id]);

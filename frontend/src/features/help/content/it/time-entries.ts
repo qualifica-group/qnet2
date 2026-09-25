@@ -36,11 +36,16 @@ const guide: HelpGuide = {
             ['Tempo', 'Minuti, da 1 a 1440; calcolato dagli orari, correggibile a mano.'],
             ['Note', 'Facoltative.'],
             ['Cliente, Opportunità, Commessa, Attività', 'Collegamenti facoltativi.'],
+            ['Fase', 'Compare solo con una Commessa e senza Attività: una delle fasi aperte della commessa, oppure nessuna.'],
           ],
         },
         {
           type: 'warning',
-          text: "Se colleghi un task nel campo **Attività**, titolo, cliente, opportunità e commessa vengono presi dal task.",
+          text: "Se colleghi un task nel campo **Attività**, titolo, cliente, opportunità, commessa e fase vengono presi dal task.",
+        },
+        {
+          type: 'note',
+          text: 'La fase resta quella registrata: se in seguito il task cambia fase o la fase viene chiusa, le voci già salvate non cambiano. Nella scheda Task della commessa, accanto a ogni fase, trovi i **Minuti registrati** sul segnatempo, più il totale delle voci **Senza fase**.',
         },
       ],
     },

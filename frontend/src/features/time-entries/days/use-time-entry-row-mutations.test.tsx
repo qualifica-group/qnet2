@@ -39,6 +39,7 @@ function entry(overrides: Partial<TimeEntry> = {}): TimeEntry {
     opportunity: null,
     work_order: { id: 9, code: 'WO-1', title: 'Commessa' },
     task: null,
+    work_order_stage: null,
     created_at: '',
     updated_at: '',
     permissions: { update: true, delete: true },

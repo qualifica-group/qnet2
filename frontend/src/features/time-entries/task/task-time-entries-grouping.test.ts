@@ -20,6 +20,7 @@ function buildEntry(overrides: Partial<TimeEntry> & { id: number; date: string; 
     opportunity: null,
     work_order: null,
     task: null,
+    work_order_stage: null,
     created_at: '2026-09-14T10:00:00Z',
     updated_at: '2026-09-14T10:00:00Z',
     permissions: { update: true, delete: true },

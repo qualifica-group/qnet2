@@ -242,4 +242,56 @@ describe('TaskCompleteDialog', () => {
 
     expect(await screen.findByText('I minuti devono essere tra 1 e 1440.')).toBeInTheDocument()
   })
+
+  /**
+   * Spec 0162 D-3/AC-006: `requires_time_entry: false` renders the "Registra
+   * il tempo" switch, ON by default so the section (and its validation) is
+   * unchanged unless the actor turns it off.
+   */
+  describe('with requires_time_entry false (spec 0162)', () => {
+    it('shows no switch when the task requires the segnatempo (default fixture)', async () => {
+      await openCompleteDialog({ requires_closure_feedback: false, requires_time_entry: true })
+
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    })
+
+    it('shows the switch ON by default, section still mandatory until turned off', async () => {
+      await openCompleteDialog({ requires_closure_feedback: false, requires_time_entry: false })
+
+      const toggle = screen.getByRole('switch', { name: label('tasks.actions.completeDialog.trackTime') })
+      expect(toggle).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByLabelText(new RegExp(`^${label('timeEntries.form.minutes')}`))).toBeInTheDocument()
+    })
+
+    it('switch off: hides the section and submits without time_entry', async () => {
+      vi.mocked(completeTask).mockResolvedValueOnce(taskDetailWithPermissions())
+      await openCompleteDialog({ requires_closure_feedback: false, requires_time_entry: false })
+
+      fireEvent.click(screen.getByRole('switch', { name: label('tasks.actions.completeDialog.trackTime') }))
+      expect(screen.queryByLabelText(new RegExp(`^${label('timeEntries.form.minutes')}`))).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.confirm') }))
+
+      await waitFor(() => expect(completeTask).toHaveBeenCalled())
+      const [, payload] = vi.mocked(completeTask).mock.calls[0]
+      expect(payload.time_entry).toBeUndefined()
+    })
+
+    it('switch left on: submits time_entry as usual', async () => {
+      vi.mocked(completeTask).mockResolvedValueOnce(taskDetailWithPermissions())
+      await openCompleteDialog({ requires_closure_feedback: false, requires_time_entry: false })
+
+      fireEvent.change(screen.getByLabelText(new RegExp(`^${label('timeEntries.form.minutes')}`)), {
+        target: { value: '01:00' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: label('tasks.actions.completeDialog.confirm') }))
+
+      await waitFor(() =>
+        expect(completeTask).toHaveBeenCalledWith(
+          90,
+          expect.objectContaining({ time_entry: expect.objectContaining({ minutes: 60 }) }),
+        ),
+      )
+    })
+  })
 })

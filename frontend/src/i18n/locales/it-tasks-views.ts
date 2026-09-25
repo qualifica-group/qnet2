@@ -10,7 +10,6 @@ export const tasksViews = {
   kanbanByStatus: 'Per stato',
   kanbanByDue: 'Per scadenza',
   loadError: 'Impossibile caricare i task. Riprova.',
-  kanbanLimitExceeded: 'Ci sono {{total}} task che rispettano i filtri: la board ne mostra solo i primi {{limit}}. Restringi i filtri per vederli tutti.',
   kanbanColumns: {
     completion: 'Completamento',
     hours: 'Ore',

@@ -377,7 +377,8 @@ export const tasks = {
       yearMonth: 'Mese',
       yearMonthInvalid: 'Scegli un mese.',
       workdaysOnly: 'Solo giorni lavorativi',
-      workdaysOnlyHint: 'Le date generate cadono solo dal lunedì al venerdì (nessun calendario festività).',
+      workdaysOnlyHint:
+        "Un'occorrenza che cadrebbe di sabato, domenica, in una festività nazionale, a Pasqua o a Pasquetta si sposta al primo giorno lavorativo successivo (non viene saltata).",
       ends: 'Fine',
       endsOption: {
         on_date: 'A una data',
@@ -463,6 +464,7 @@ export const tasks = {
       validationStatusRequired: 'Scegli lo stato di validazione.',
       timeEntryTitle: 'Segnatempo',
       timeEntryDescription: 'Registra il tempo dedicato per completare il task.',
+      trackTime: 'Registra il tempo',
       confirm: 'Completa',
       saving: 'Salvataggio…',
       success: 'Task completato.',

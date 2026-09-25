@@ -86,8 +86,8 @@ describe('buildCreatePayload', () => {
     const payload = buildCreatePayload(
       values({
         subtasks: [
-          { title: '  Prepara il preventivo  ', end_date: '2026-09-10', assignee_ids: [31] },
-          { title: 'Invia la conferma', end_date: null, assignee_ids: [] },
+          { title: '  Prepara il preventivo  ', end_date: '2026-09-10', assignee_ids: [31], subtasks: [] },
+          { title: 'Invia la conferma', end_date: null, assignee_ids: [], subtasks: [] },
         ],
       }),
     )
@@ -95,6 +95,41 @@ describe('buildCreatePayload', () => {
     expect(payload.subtasks).toEqual([
       { title: 'Prepara il preventivo', end_date: '2026-09-10', assignee_ids: [31] },
       { title: 'Invia la conferma' },
+    ])
+  })
+
+  /** Spec 0161 D-1: a 3-level tree (figlio/nipote/pronipote) maps onto nested `subtasks` at every level. */
+  it('sends a nested subtasks tree up to 3 levels', () => {
+    const payload = buildCreatePayload(
+      values({
+        subtasks: [
+          {
+            title: 'Figlio',
+            end_date: null,
+            assignee_ids: [],
+            subtasks: [
+              {
+                title: 'Nipote',
+                end_date: null,
+                assignee_ids: [],
+                subtasks: [{ title: 'Pronipote', end_date: '2026-09-11', assignee_ids: [32] }],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    expect(payload.subtasks).toEqual([
+      {
+        title: 'Figlio',
+        subtasks: [
+          {
+            title: 'Nipote',
+            subtasks: [{ title: 'Pronipote', end_date: '2026-09-11', assignee_ids: [32] }],
+          },
+        ],
+      },
     ])
   })
 })

@@ -59,6 +59,10 @@ class StoreTaskTypeRequest extends FormRequest
             // default must be active" — never expressible as a validation rule
             // alone, since it depends on the OTHER rows' state.
             'is_default' => ['sometimes', 'boolean'],
+            // Spec 0162, D-1: whether completing a Task classified under this
+            // type demands a segnatempo. Defaults to true (today's behaviour)
+            // when omitted — see CreateTaskTypeData::fromValidated().
+            'requires_time_entry' => ['sometimes', 'boolean'],
             'sort_order' => ['prohibited'],
             'system_key' => ['prohibited'],
         ];

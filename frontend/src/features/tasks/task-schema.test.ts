@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
-import { buildTaskSchema } from '@/features/tasks/task-schema'
+import { buildTaskSchema, MAX_TASK_FORM_SUBTASKS } from '@/features/tasks/task-schema'
 import { taskFormValues as values, taskRecurrenceFormValues as recurrence } from '@/features/tasks/task-fixtures'
 
 beforeAll(async () => {
@@ -257,8 +257,8 @@ describe('buildTaskSchema — subtasks, spec 0155 D-3', () => {
     const result = buildTaskSchema(i18n.t, true).safeParse(
       values({
         subtasks: [
-          { title: 'Prepara il preventivo', end_date: null, assignee_ids: [] },
-          { title: '  ', end_date: null, assignee_ids: [] },
+          { title: 'Prepara il preventivo', end_date: null, assignee_ids: [], subtasks: [] },
+          { title: '  ', end_date: null, assignee_ids: [], subtasks: [] },
         ],
       }),
     )
@@ -268,7 +268,90 @@ describe('buildTaskSchema — subtasks, spec 0155 D-3', () => {
   it('accepts every row once every title is filled', () => {
     const result = buildTaskSchema(i18n.t, true).safeParse(
       values({
-        subtasks: [{ title: 'Prepara il preventivo', end_date: '2026-09-10', assignee_ids: [31] }],
+        subtasks: [{ title: 'Prepara il preventivo', end_date: '2026-09-10', assignee_ids: [31], subtasks: [] }],
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+})
+
+/** Spec 0161 D-1: 3-level tree (figlio/nipote/pronipote), 50-node cap counted across the whole tree. */
+describe('buildTaskSchema — nested subtasks, spec 0161 D-1', () => {
+  it('accepts a 3-level tree', () => {
+    const result = buildTaskSchema(i18n.t, true).safeParse(
+      values({
+        subtasks: [
+          {
+            title: 'Figlio',
+            end_date: null,
+            assignee_ids: [],
+            subtasks: [
+              {
+                title: 'Nipote',
+                end_date: null,
+                assignee_ids: [],
+                subtasks: [{ title: 'Pronipote', end_date: null, assignee_ids: [] }],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a blank title at the 3rd level, at its own nested path', () => {
+    const result = buildTaskSchema(i18n.t, true).safeParse(
+      values({
+        subtasks: [
+          {
+            title: 'Figlio',
+            end_date: null,
+            assignee_ids: [],
+            subtasks: [
+              {
+                title: 'Nipote',
+                end_date: null,
+                assignee_ids: [],
+                subtasks: [{ title: '  ', end_date: null, assignee_ids: [] }],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+    expect(issuePaths(result)).toContain('subtasks.0.subtasks.0.subtasks.0.title')
+  })
+
+  it('rejects a tree of 51 nodes spread across levels, with a clear message', () => {
+    const grandchildren = Array.from({ length: MAX_TASK_FORM_SUBTASKS }, (_unused, index) => ({
+      title: `Nipote ${index}`,
+      end_date: null,
+      assignee_ids: [] as number[],
+      subtasks: [],
+    }))
+    const result = buildTaskSchema(i18n.t, true).safeParse(
+      values({
+        subtasks: [{ title: 'Figlio', end_date: null, assignee_ids: [], subtasks: grandchildren }],
+      }),
+    )
+    expect(result.success).toBe(false)
+    const issue = result.success
+      ? undefined
+      : result.error.issues.find((candidate) => candidate.path.join('.') === 'subtasks')
+    expect(issue?.message).toBeTruthy()
+  })
+
+  it('accepts exactly 50 nodes across the tree', () => {
+    const grandchildren = Array.from({ length: MAX_TASK_FORM_SUBTASKS - 1 }, (_unused, index) => ({
+      title: `Nipote ${index}`,
+      end_date: null,
+      assignee_ids: [] as number[],
+      subtasks: [],
+    }))
+    const result = buildTaskSchema(i18n.t, true).safeParse(
+      values({
+        subtasks: [{ title: 'Figlio', end_date: null, assignee_ids: [], subtasks: grandchildren }],
       }),
     )
     expect(result.success).toBe(true)

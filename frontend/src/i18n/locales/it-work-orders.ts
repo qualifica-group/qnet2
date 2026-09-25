@@ -171,6 +171,7 @@ export const workOrders = {
         type: 'Tipo',
         completion: 'Completamento',
         hours: 'Ore lavorate / stimate',
+        loggedMinutes: 'Minuti registrati',
       },
       nobody: 'Nessuno',
       noEstimate: 'senza stima',

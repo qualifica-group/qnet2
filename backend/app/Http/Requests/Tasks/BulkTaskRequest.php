@@ -23,9 +23,16 @@ use Illuminate\Validation\Rule;
  * (`incompatible_tasks`) — `App\Services\Tasks\TaskBulkService` answers both
  * uniformly, never a structural 422 that would leak which case applied.
  *
- * `time_entry.*` is the SAME source `CompleteTaskRequest`/
- * `BulkTaskBoardRequest` use (`TimeEntryValidationRules::rules()`), merged
- * only when `action=complete`.
+ * `time_entry` is `sometimes|array` on `action=complete` (spec 0162, D-4: the
+ * per-task requirement is enforced server-side, in ONE place,
+ * `App\Services\Tasks\TaskTimeEntryRequirement` via `TaskCompletionService`
+ * — absent with at least one selected task that requires it becomes an
+ * `incompatible_tasks` entry for that task, all-or-nothing like every other
+ * incompatibility). Its `time_entry.*` sub-rules are the SAME source
+ * `CompleteTaskRequest`/`BulkTaskBoardRequest` use
+ * (`TimeEntryValidationRules::rules()`), merged only when the client actually
+ * submitted the key — otherwise "absent" would 422 on `time_entry.date` etc.
+ * before ever reaching the per-task guard.
  *
  * Authorization is intentionally NOT handled here: the RESOURCE-level base
  * permission of the chosen action (contract: "403 senza il permesso base
@@ -82,7 +89,11 @@ class BulkTaskRequest extends FormRequest
         ];
 
         if ($this->input('action') === 'complete') {
-            $rules['time_entry'] = ['required', 'array'];
+            $rules['time_entry'] = ['sometimes', 'array'];
+
+            if (! $this->has('time_entry')) {
+                return $rules;
+            }
 
             return array_merge($rules, TimeEntryValidationRules::rules('time_entry'));
         }

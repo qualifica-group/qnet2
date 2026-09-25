@@ -370,7 +370,8 @@ export const tasks = {
       yearMonth: 'Month',
       yearMonthInvalid: 'Choose a month.',
       workdaysOnly: 'Workdays only',
-      workdaysOnlyHint: 'Generated dates fall only Monday through Friday (no holiday calendar).',
+      workdaysOnlyHint:
+        'An occurrence that would fall on a Saturday, Sunday, a national holiday, Easter or Easter Monday shifts to the first working day after it (it is never skipped).',
       ends: 'Ends',
       endsOption: {
         on_date: 'On a date',
@@ -456,6 +457,7 @@ export const tasks = {
       validationStatusRequired: 'Choose the validation status.',
       timeEntryTitle: 'Time entry',
       timeEntryDescription: 'Log the time spent to complete the task.',
+      trackTime: 'Track time',
       confirm: 'Complete',
       saving: 'Saving…',
       success: 'Task completed.',

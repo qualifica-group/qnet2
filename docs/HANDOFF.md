@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## PUNTI RINVIATI TASK — SPEC 0160-0164 — VERDE, COMMITTATO (2026-09-25)
+
+- Decisioni utente 2026-09-25: festivi spostati (non saltati), sottotask 3 livelli, segnatempo facoltativo per
+  tipologia, fase commessa automatica + manuale, kanban per colonna; tipi di nota ESCLUSI ("le note restano cosi'").
+- 0160: `TaskRecurrenceCalculator` usa `App\Services\TimeEntries\WorkCalendar` (unica fonte festivi): con
+  workdays_only il candidato in giorno non lavorativo si sposta al primo lavorativo, dedup se coincide, "dopo N"
+  conta le occorrenze create, fine a data confrontata con la data spostata.
+- 0161: `subtasks.*.subtasks` fino a profondita' 3 (4 livello prohibited), max 50 nodi sull'albero
+  (`StoreTaskRequest::MAX_SUBTASK_NODES`); `TaskSubtaskBatchCreator` ricorsivo, `TaskSubtaskTreeLoader` (eager BFS),
+  copia ricorsiva in `TaskOccurrenceFactory`, potatura `TaskRecurrenceService::subtreeUntouched()`. FE tipi in
+  `features/tasks/task-subtask-types.ts` (3 livelli concreti, niente z.lazy per non rompere Path di RHF).
+- 0162: `task_types.requires_time_entry` (default true), regola unica `TaskTimeEntryRequirement::isRequired()` (senza
+  tipologia = true) usata da complete, bulk, TaskResource, TaskRowMapper; bulk senza tempo con un task che lo
+  richiede -> 422 incompatible_tasks. FE interruttore "Registra il tempo" (`task-complete-time-entry-toggle.tsx`).
+- 0163: `time_entries.work_order_stage_id` (FK nullOnDelete, backfill dai task); `TimeEntryLinkResolver`: con task
+  fase = quella del task (input ignorato), senza task fase aperta della commessa (chiusa ammessa solo se invariata),
+  senza commessa 422. Totali: `GET /work-orders/{id}/task-board` -> `stages[].logged_minutes`,
+  `unstaged_logged_minutes` (withSum, niente N+1). FE: campo Fase nel form, "Minuti registrati" nella board.
+- 0164: `kanbanGroup` {by: status|due, key} su POST /tables/{domain}/rows (hook `supportsKanbanGroups()` /
+  `applyKanbanGroupScope()` + pass-through in DelegatesUnaugmentedTableMethods; `app/Tables/Tasks/TaskKanbanGroupScope`
+  con la semantica di `task-kanban-due-buckets.ts`). FE `useInfiniteQuery` per colonna a blocchi di 50, niente
+  limite 500. Nota: il filtro Stato di default "Aperti" lascia vuota la colonna Completati (come prima).
+- `QuoteWorkflowMigrationTest` a `--step=103` (include le 3 migrazioni employment della 0166).
+- Verifier: Pest 8557/8558 (1 skipped), Pint pulito; Vitest 6204/6204 (dopo fix del test AC-007 0163 che cercava un
+  `<dt>` inesistente), tsc -b EXIT 0, ESLint pulito. Guide IT/EN tasks, task-types, time-entries aggiornate
+  (work-orders resta "in fase di sviluppo"); manuale Claude Docs aggiornato.
+- Debito: `TasksTableDefinition.php` 491, `task-schema.ts` 485, `features/tasks/types.ts` 482,
+  `task-form-subtasks-section.tsx` 427, `table-view.tsx` 494: split al prossimo intervento. Test PHP con helper
+  globali `function_exists()` duplicati (TaskConfig, WorkOrders) falliscono se eseguiti in sottoinsiemi.
+
 ## UTENTE CON PIU' RESPONSABILI ("RISPONDE A" MULTIPLO) — SPEC 0166 — VERDE, NON COMMITTATO (2026-09-25)
 
 - `employment_profiles.reports_to_id` eliminata -> pivot `employment_profile_manager` (employment_profile_id,

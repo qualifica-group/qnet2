@@ -23,6 +23,10 @@ const guide: HelpGuide = {
             ['Icon', 'Optional.'],
             ['Active', 'When off, the entry disappears from the dropdowns.'],
             ['Default', 'When on, prefills the Type field on new tasks when none is chosen.'],
+            [
+              'Time entry required on completion',
+              'On by default. Turn it off to make the time entry optional when completing a task of this type: whoever completes it can then choose whether to log the time.',
+            ],
           ],
         },
         {

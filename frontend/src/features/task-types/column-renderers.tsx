@@ -16,5 +16,7 @@ export const taskTypeColumnRenderers: TableRendererMap = {
   is_active: (params) => <BooleanBadgeCell {...params} />,
   // Spec 0154 D-8: same boolean badge as is_active.
   is_default: (params) => <BooleanBadgeCell {...params} />,
+  // Spec 0162 D-1: same boolean badge, unused until the backend declares the column.
+  requires_time_entry: (params) => <BooleanBadgeCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

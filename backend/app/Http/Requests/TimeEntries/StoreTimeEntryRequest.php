@@ -22,13 +22,14 @@ use Illuminate\Validation\Rule;
  * would skip that check entirely on a key absent from the request (see the
  * DTO's own note on why this differs from the other optional fields below).
  *
- * `title`/`registry_id`/`opportunity_id`/`work_order_id`/`task_id` are
- * validated at face value — shape only. The D-5 semantics (task overrides
- * every one of them; opportunity+commessa exclusivity; client coherence)
- * are NOT expressible as a FormRequest rule, since they depend on the
- * RESOLVED record, not the raw payload: `TimeEntryLinkResolver` enforces
- * them inside the Service, same split as StoreTaskRequest/TaskService's own
- * referent-registry coherence rule.
+ * `title`/`registry_id`/`opportunity_id`/`work_order_id`/`task_id`/
+ * `work_order_stage_id` are validated at face value — shape only. The D-5
+ * semantics (task overrides every one of them; opportunity+commessa
+ * exclusivity; client coherence; spec 0163 D-1's stage-belongs-to-the-open-
+ * commessa rule) are NOT expressible as a FormRequest rule, since they
+ * depend on the RESOLVED record, not the raw payload: `TimeEntryLinkResolver`
+ * enforces them inside the Service, same split as StoreTaskRequest/
+ * TaskService's own referent-registry coherence rule.
  */
 class StoreTimeEntryRequest extends FormRequest
 {
@@ -68,6 +69,7 @@ class StoreTimeEntryRequest extends FormRequest
             'opportunity_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
             'work_order_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_orders', 'id')],
             'task_id' => ['sometimes', 'nullable', 'integer', Rule::exists('tasks', 'id')],
+            'work_order_stage_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_order_stages', 'id')],
         ];
     }
 

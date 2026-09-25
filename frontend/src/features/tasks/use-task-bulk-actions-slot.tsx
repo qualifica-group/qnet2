@@ -23,10 +23,13 @@ import { TaskBulkPriorityDialog } from '@/features/tasks/task-bulk-priority-dial
 import { useTaskBulkMutation } from '@/features/tasks/use-task-bulk-mutation'
 import type { TaskBulkAction } from '@/features/tasks/task-bulk-types'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
+import type { TableRow } from '@/features/table/types'
 
 type ActiveDialog =
   | { kind: 'none' }
-  | { kind: 'assign' | 'complete' | 'priority' | 'start_date' | 'end_date'; ids: number[] }
+  | { kind: 'assign' | 'priority' | 'start_date' | 'end_date'; ids: number[] }
+  /** Spec 0162 D-4: carries the selected `rows` too, `TaskBulkCompleteDialog` reads `requires_time_entry` off them. */
+  | { kind: 'complete'; ids: number[]; rows: TableRow[] }
 
 interface UseTaskBulkActionsSlotArgs {
   /** Purges and reloads the grid after any bulk action succeeds. */
@@ -99,7 +102,7 @@ export function useTaskBulkActionsSlot({
           key: 'complete',
           label: t('tasks.bulk.complete'),
           icon: CheckCircle2,
-          onSelect: () => setDialog({ kind: 'complete', ids }),
+          onSelect: () => setDialog({ kind: 'complete', ids, rows: selection.rows }),
         })
         items.push({
           key: 'uncomplete',
@@ -188,7 +191,7 @@ export function useTaskBulkActionsSlot({
     dialog.kind === 'assign' ? (
       <TaskBulkAssignDialog taskIds={dialog.ids} onClose={closeDialog} onSuccess={handleSuccess} />
     ) : dialog.kind === 'complete' ? (
-      <TaskBulkCompleteDialog taskIds={dialog.ids} onClose={closeDialog} onSuccess={handleSuccess} />
+      <TaskBulkCompleteDialog taskIds={dialog.ids} rows={dialog.rows} onClose={closeDialog} onSuccess={handleSuccess} />
     ) : dialog.kind === 'priority' ? (
       <TaskBulkPriorityDialog taskIds={dialog.ids} onClose={closeDialog} onSuccess={handleSuccess} />
     ) : dialog.kind === 'start_date' || dialog.kind === 'end_date' ? (
