@@ -33,6 +33,9 @@ export const permissions = {
     // Spec 0105: Request Management's third visibility tier — the requests of
     // the actor's own Sedi, with no need to manage them.
     viewSite: 'View by site',
+    // Spec 0165: Enrollee Management only — the enrollees of the actor's
+    // physical Sede (not the remote ones), on top of those they operate.
+    viewPrimarySite: 'View physical site',
     viewDocuments: 'View documents',
     // Beyond BasePolicy's CRUD: the supervisory act of assigning the GA2
     // Operator at creation (user directive 2026-07-29).

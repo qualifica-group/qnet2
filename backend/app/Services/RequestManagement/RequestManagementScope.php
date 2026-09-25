@@ -25,6 +25,11 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  *  3. `request-management.viewSite` (D-1) — the offer's Sede operativa
  *     (`quotes.operational_site_id`) is one of the actor's own memberships,
  *     physical or remote alike (spec 0103 D-1, D-4 here).
+ * Spec 0165 adds, for Gestione Iscritti only, tier 3-bis:
+ *  3b. `enrollee-management.viewPrimarySite` — the offer's Sede is the actor's
+ *      PHYSICAL one; remote memberships do not count (D-2).
+ * Tiers 3 and 3b resolve to ONE list of Sede ids (visibleSiteIds()), so the
+ * record, query and mention shapes cannot drift from each other.
  * Tiers 2 and 3 are a UNION, never a replacement (D-6): holding `viewSite`
  * never costs an actor the requests they operate in someone else's Sede — the
  * state spec 0079's "Trasferisci contatto" routinely produces.
@@ -97,10 +102,10 @@ final class RequestManagementScope
     }
 
     /**
-     * The tier-3 predicate (spec 0105): $user holds `viewSite` AND $quote's
-     * Sede operativa is one of their memberships. An offer with no Sede is
-     * out for everyone (D-3) — asserted here rather than left to the
-     * `in_array` so the intent survives a refactor of the id list.
+     * The tier-3/3b predicate (spec 0105, spec 0165): $quote's Sede operativa
+     * is one of visibleSiteIds(). An offer with no Sede is out for everyone
+     * (D-3) — asserted here rather than left to the `in_array` so the intent
+     * survives a refactor of the id list.
      *
      * Static like scopeToActor() and for the same reason (D-7): the per-row
      * note affordances of QuotesTableDefinition/OpportunitiesTableDefinition
@@ -112,11 +117,30 @@ final class RequestManagementScope
             return false;
         }
 
-        if (! $user->can($module->permission('viewSite'))) {
-            return false;
+        return in_array($quote->operational_site_id, self::visibleSiteIds($user, $module), true);
+    }
+
+    /**
+     * The Sede ids the site tiers open to $user: every membership with
+     * `viewSite` (spec 0105), else the PHYSICAL one alone with
+     * `viewPrimarySite` on a module that has it (spec 0165 D-2), else none.
+     * `viewSite` already covers the physical Sede, so it wins outright.
+     *
+     * @return array<int, int>
+     */
+    public static function visibleSiteIds(User $user, RequestModule $module = RequestModule::Requests): array
+    {
+        if ($user->can($module->permission('viewSite'))) {
+            return self::actorSiteIds($user);
         }
 
-        return in_array($quote->operational_site_id, self::actorSiteIds($user), true);
+        if (! $module->hasPrimarySiteTier() || ! $user->can($module->permission(RequestModule::PRIMARY_SITE_ABILITY))) {
+            return [];
+        }
+
+        $primaryId = $user->loadMissing('employment.operationalSites')->employment?->primary_operational_site_id;
+
+        return $primaryId === null ? [] : [$primaryId];
     }
 
     /**
@@ -203,7 +227,7 @@ final class RequestManagementScope
             return $query->whereNull('quotes.id');
         }
 
-        $siteIds = $user->can($module->permission('viewSite')) ? self::actorSiteIds($user) : [];
+        $siteIds = self::visibleSiteIds($user, $module);
 
         if ($siteIds === []) {
             return $query->where('quotes.operator_id', $user->id);

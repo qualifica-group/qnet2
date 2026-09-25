@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\User;
 use App\RequestManagement\RequestModule;
 
 /**
@@ -16,15 +17,26 @@ use App\RequestManagement\RequestModule;
  * `$user->can($this->permission($ability))` call late-binds `resource()` to
  * THIS class ('enrollee-management'), so no method body is copied.
  *
- * The only override is abilities(): D-4/D-8 drop `create` — Gestione
- * Iscritti has no creation surface at all (RequestModule::Enrollees), so
- * `permissions:sync` never mints `enrollee-management.create`.
+ * abilities() is overridden: D-4/D-8 drop `create` — Gestione Iscritti has
+ * no creation surface at all (RequestModule::Enrollees), so
+ * `permissions:sync` never mints `enrollee-management.create` — and spec
+ * 0165 adds `viewPrimarySite`, this module's own visibility tier.
  */
 class EnrolleeManagementPolicy extends RequestManagementPolicy
 {
     protected function resource(): string
     {
         return 'enrollee-management';
+    }
+
+    /**
+     * Spec 0165 D-2/D-3: widens the rows to the offers of the actor's
+     * PHYSICAL Sede, in union with the operator and viewSite tiers. A row
+     * gate only, like viewSite: every write still asks for its own ability.
+     */
+    public function viewPrimarySite(User $user): bool
+    {
+        return $user->can($this->permission(RequestModule::PRIMARY_SITE_ABILITY));
     }
 
     /**

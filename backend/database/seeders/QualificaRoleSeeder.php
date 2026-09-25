@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Role;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
@@ -117,6 +118,7 @@ class QualificaRoleSeeder extends Seeder
             Catalogue::ENROLLEES_READ => $resource === Catalogue::ENROLLEE_MODULE
                 && in_array($ability, Catalogue::ENROLLEES_READ_ABILITIES, true),
             Catalogue::SITE_ENROLLEES => $permission === Catalogue::ENROLLEE_MODULE.'.viewSite',
+            Catalogue::PRIMARY_SITE_ENROLLEES => $permission === Catalogue::ENROLLEE_MODULE.'.'.RequestModule::PRIMARY_SITE_ABILITY,
             Catalogue::OWN_TASKS => ($resource === Catalogue::TASK_MODULE
                     && ! in_array($ability, Catalogue::OWN_TASKS_DENIED_ABILITIES, true))
                 || in_array($permission, Catalogue::COLLABORATION_PERMISSIONS, true),

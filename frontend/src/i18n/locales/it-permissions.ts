@@ -33,6 +33,9 @@ export const permissions = {
     // Spec 0105: terzo livello di visibilità di Gestione Richieste — le
     // richieste delle sedi di appartenenza, anche senza esserne il gestore.
     viewSite: 'Visualizza per sede',
+    // Spec 0165: solo Gestione Iscritti — gli iscritti della propria sede
+    // fisica (non delle sedi remote), oltre a quelli di cui si è operatore.
+    viewPrimarySite: 'Visualizza sede fisica',
     viewDocuments: 'Visualizza documenti',
     // Oltre il CRUD di BasePolicy: l'atto da supervisore di assegnare
     // l'Operatore (GA2) in creazione (direttiva utente 2026-07-29).

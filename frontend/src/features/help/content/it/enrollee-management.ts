@@ -27,6 +27,10 @@ const guide: HelpGuide = {
               'Non ha il pulsante di creazione: una richiesta entra negli iscritti solo cambiando stato.',
             ],
             ['Permessi', 'Ha permessi propri, separati da quelli di Gestione Richieste.'],
+            [
+              'Chi vede cosa',
+              'Senza altri permessi vedi solo le richieste di cui sei operatore. **Visualizza sede fisica** aggiunge quelle della tua sede fisica (non delle sedi remote); **Visualizza per sede** quelle di tutte le tue sedi; **Visualizza tutti** tutte.',
+            ],
           ],
         },
         {

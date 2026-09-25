@@ -152,15 +152,18 @@ it('converges on a re-run: no duplicated memberships nor competence rows', funct
 });
 
 // User directive 2026-09-18: Gestione Iscritti is read-only for every
-// commercial role; the plain commercial reaches only the offers they operate,
-// the enrollee commercial the enrollees of their Sedi too.
-it('grants the commercial their own enrollees, the enrollee commercial those of their Sedi, and the teaching supervisor both modules by Sede', function (): void {
+// commercial role. Spec 0165 D-5: the commercial reaches the offers they
+// operate plus the enrollees of their PHYSICAL Sede, and the former
+// "commerciale-iscritti" (Marco Fedele) is merged into the commercial role.
+it('grants every commercial their own and physical-Sede enrollees, and the teaching supervisor both modules by Sede', function (): void {
     test()->seed(QualificaOperatorSeeder::class);
 
     $commercial = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
-    $enrollee = User::query()->where('email', 'marco.fedele@qualificagroup.com')->firstOrFail();
+    $formerEnrollee = User::query()->where('email', 'marco.fedele@qualificagroup.com')->firstOrFail();
 
-    foreach ([$commercial, $enrollee] as $user) {
+    expect($formerEnrollee->getRoleNames()->all())->toBe(['commerciale']);
+
+    foreach ([$commercial, $formerEnrollee] as $user) {
         foreach (['viewAny', 'view'] as $ability) {
             expect($user->can("enrollee-management.{$ability}"))->toBeTrue("{$user->email}: {$ability}");
         }
@@ -170,11 +173,10 @@ it('grants the commercial their own enrollees, the enrollee commercial those of 
         }
 
         expect($user->can('request-management.viewSite'))->toBeFalse()
-            ->and($user->can('request-management.report'))->toBeFalse();
+            ->and($user->can('request-management.report'))->toBeFalse()
+            ->and($user->can('enrollee-management.viewSite'))->toBeFalse("{$user->email}: viewSite")
+            ->and($user->can('enrollee-management.viewPrimarySite'))->toBeTrue("{$user->email}: viewPrimarySite");
     }
-
-    expect($commercial->can('enrollee-management.viewSite'))->toBeFalse()
-        ->and($enrollee->can('enrollee-management.viewSite'))->toBeTrue();
 
     $teaching = seededOperator('marlena.jaruga@qualificagroup.com');
 
@@ -184,14 +186,15 @@ it('grants the commercial their own enrollees, the enrollee commercial those of 
         ->and($teaching->can('enrollee-management.viewSite'))->toBeTrue();
 });
 
-it('lists in Gestione Iscritti the own rows of the commercial and the Sedi rows of the enrollee commercial', function (): void {
+it('lists in Gestione Iscritti the own and physical-Sede rows of the commercials, every Sede of the teaching supervisor', function (): void {
     $sites = standInSites(['FRATTAMAGGIORE 1 (HQ)', 'Frattamaggiore 2', 'Roma']);
     test()->seed(QualificaOperatorSeeder::class);
 
-    // Marco Baldi (commerciale) and Marco Fedele (commerciale-iscritti) share
-    // the Frattamaggiore Sede; Fedele and Marlena Jaruga share Roma.
+    // Marco Baldi and Marco Fedele (both commerciale since spec 0165) are
+    // physically in Frattamaggiore; Roma is only a REMOTE Sede for Fedele and
+    // the physical one of Marlena Jaruga (viewSite).
     $commercial = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
-    $enrollee = User::query()->where('email', 'marco.fedele@qualificagroup.com')->firstOrFail();
+    $formerEnrollee = User::query()->where('email', 'marco.fedele@qualificagroup.com')->firstOrFail();
     $teaching = User::query()->where('email', 'marlena.jaruga@qualificagroup.com')->firstOrFail();
     $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
 
@@ -212,8 +215,8 @@ it('lists in Gestione Iscritti the own rows of the commercial and the Sedi rows 
     };
     $sorted = fn (Quote ...$quotes): array => collect($quotes)->pluck('id')->sort()->values()->all();
 
-    expect($rowIds($commercial))->toBe($sorted($commercialOwn))
-        ->and($rowIds($enrollee))->toBe($sorted($frattamaggiore, $roma))
+    expect($rowIds($commercial))->toBe($sorted($commercialOwn, $frattamaggiore))
+        ->and($rowIds($formerEnrollee))->toBe($sorted($frattamaggiore))
         ->and($rowIds($teaching))->toBe($sorted($roma))
         ->and($rowIds($supervisor))->toBe($sorted($commercialOwn, $frattamaggiore, $roma, $elsewhere));
 });
@@ -230,16 +233,17 @@ it('gives the coordinator unrestricted requests without the field-change-request
         ->and($coordinator->can('field-change-requests.manage'))->toBeFalse();
 });
 
-it('deletes the retired English roles, detaching whoever still held them', function (): void {
+it('deletes the retired roles, detaching whoever still held them', function (): void {
     $retired = Role::findOrCreate('supervisor', 'web');
     Role::findOrCreate('commercial', 'web');
+    Role::findOrCreate('commerciale-iscritti', 'web'); // spec 0165 D-5, merged into commerciale
     $formerTester = User::factory()->create();
     $formerTester->assignRole($retired);
 
     test()->seed(QualificaOperatorSeeder::class);
     test()->seed(QualificaOperatorSeeder::class);
 
-    expect(Role::query()->whereIn('name', ['supervisor', 'commercial'])->exists())->toBeFalse()
+    expect(Role::query()->whereIn('name', ['supervisor', 'commercial', 'commerciale-iscritti'])->exists())->toBeFalse()
         ->and(Role::query()->where('name', 'marketing')->exists())->toBeTrue()
         ->and($formerTester->fresh()->getRoleNames()->all())->toBe([]);
 });

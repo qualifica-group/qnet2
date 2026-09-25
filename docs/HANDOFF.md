@@ -22,6 +22,20 @@
   spec 0166 (non committato) ha reso `reportsTo` BelongsToMany e la colonna `reports_to` non e' ancora adeguata.
 - Manuale: nessun impatto (le guide non descrivono le matrici dei ruoli seedati).
 
+## GESTIONE ISCRITTI — VISIBILITA' SEDE FISICA (SPEC 0165) — VERDE, COMMITTATO (2026-09-25)
+
+- Nuova ability `viewPrimarySite` SOLO su `enrollee-management` (`RequestModule::PRIMARY_SITE_ABILITY`,
+  `hasPrimarySiteTier()`); 17 ability iscritti. Label IT "Visualizza sede fisica", EN "View physical site".
+- `RequestManagementScope::visibleSiteIds()` e' l'unica fonte delle sedi aperte: viewSite = tutte le membership,
+  altrimenti viewPrimarySite = sola sede fisica (pivot `is_primary`), altrimenti nessuna. Usata da
+  `isInActorSites()` e `scopeToActor()`. `RequestManagementNotable` aggiunge il tier menzioni via
+  `employment.primaryOperationalSite` (helper `existingPermission()`).
+- Seed: blocco `PRIMARY_SITE_ENROLLEES` sul ruolo `commerciale`; `commerciale-iscritti` in RETIRED_ROLES, i suoi 9
+  utenti del roster passano a `commerciale` (vedono ora solo la sede fisica, non piu' tutte le sedi).
+  `supervisore-didattica` resta con viewSite.
+- Test: `EnrolleePrimarySiteVisibilityTest` (AC-001..005); aggiornati per requisito PermissionsSync (16->17) e
+  QualificaOperatorSeederTest (commerciali, ruolo ritirato). Guide IT/EN enrollee-management e manuale aggiornati.
+
 ## REPORT GESTIONE RICHIESTE — COLONNE SENZA PERIODO (SPEC 0159 rev-1) — VERDE, COMMITTATO (2026-09-25)
 
 - Prima versione (82884ffc) annullata con a7808c55; questa e' la rev-1 dal brief utente definitivo.

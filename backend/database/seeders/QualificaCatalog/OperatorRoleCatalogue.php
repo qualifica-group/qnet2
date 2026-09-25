@@ -22,24 +22,24 @@ final class OperatorRoleCatalogue
 
     public const string COMMERCIAL_ROLE = 'commerciale';
 
-    public const string ENROLLEE_COMMERCIAL_ROLE = 'commerciale-iscritti';
-
     public const string TEACHING_SUPERVISOR_ROLE = 'supervisore-didattica';
 
     /** The default role of the staff outside the mansionario (StaffRoster). */
     public const string BASE_ROLE = 'operatore-base';
 
     /**
-     * The English role names the former TestUsersSeeder created, replaced by
-     * the Italian ones above (user directive 2026-09-15). Deleted on every run
-     * so an already-seeded installation does not keep them as empty duplicates.
-     * `marketing` is absent: its name did not change.
+     * Roles deleted on every run so an already-seeded installation does not
+     * keep them as empty duplicates: the English names the former
+     * TestUsersSeeder created, replaced by the Italian ones above (user
+     * directive 2026-09-15; `marketing` is absent, its name did not change),
+     * and `commerciale-iscritti`, merged into `commerciale` (spec 0165 D-5).
      *
      * @var array<int, string>
      */
     public const array RETIRED_ROLES = [
         'supervisor',
         'commercial',
+        'commerciale-iscritti',
     ];
 
     /** "Marketing e Lead": its modules in full plus the selects they read. */
@@ -74,12 +74,16 @@ final class OperatorRoleCatalogue
 
     /**
      * "Gestione Iscritti" read-only, reach limited to the offers the user
-     * operates (user directive 2026-09-18). SITE_ENROLLEES widens it.
+     * operates (user directive 2026-09-18). PRIMARY_SITE_ENROLLEES and
+     * SITE_ENROLLEES widen it.
      */
     public const string ENROLLEES_READ = 'enrollees-read';
 
     /** Tier-3 visibility on Gestione Iscritti: the enrollees of the user's own Sedi. */
     public const string SITE_ENROLLEES = 'site-enrollees';
+
+    /** Spec 0165: the enrollees of the user's PHYSICAL Sede only (`viewPrimarySite`). */
+    public const string PRIMARY_SITE_ENROLLEES = 'primary-site-enrollees';
 
     /**
      * The "Utenti" and "Ruoli" administration sections, every ability but
@@ -149,13 +153,11 @@ final class OperatorRoleCatalogue
             'description' => 'Marketing',
             'blocks' => [self::MARKETING, self::LEAD_CONVERSION],
         ],
+        // Spec 0165 D-5: also the enrollees of the physical Sede; the former
+        // "Commerciale con Gestione Iscritti" is merged into this role.
         self::COMMERCIAL_ROLE => [
             'description' => 'Commerciale',
-            'blocks' => [self::OWN_REQUESTS, self::ENROLLEES_READ],
-        ],
-        self::ENROLLEE_COMMERCIAL_ROLE => [
-            'description' => 'Commerciale con Gestione Iscritti',
-            'blocks' => [self::OWN_REQUESTS, self::ENROLLEES_READ, self::SITE_ENROLLEES],
+            'blocks' => [self::OWN_REQUESTS, self::ENROLLEES_READ, self::PRIMARY_SITE_ENROLLEES],
         ],
         // "Abilitazione a visionare tutti i dati delle sedi Lazio sia per
         // Richieste che per Iscritti": the commercial matrix widened to the

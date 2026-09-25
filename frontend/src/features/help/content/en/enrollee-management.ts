@@ -27,6 +27,10 @@ const guide: HelpGuide = {
               'It has no creation button: a request enters the enrollees only by changing status.',
             ],
             ['Permissions', 'It has its own permissions, separate from Request Management.'],
+            [
+              'Who sees what',
+              'With no other permission you only see the requests you operate. **View physical site** adds those of your physical site (not your remote sites); **View by site** those of all your sites; **View all** every one.',
+            ],
           ],
         },
         {

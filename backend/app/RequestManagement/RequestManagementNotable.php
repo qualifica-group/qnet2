@@ -20,7 +20,8 @@ use Spatie\Permission\Models\Permission;
  * may attach to an Opportunity through THIS module's OWN authorization story
  * (spec 0049) — read access and the mentionable set both mirror the work
  * panel's own scope (RequestManagementScope::scopeToActor(), `request-management.
- * viewAll` and — spec 0105 — `request-management.viewSite`), just re-keyed on
+ * viewAll`, `request-management.viewSite` — spec 0105 — and, for Gestione
+ * Iscritti, `viewPrimarySite` — spec 0165), just re-keyed on
  * the Opportunity's Offerte since the predicate itself is a Quote one
  * (`quotes.operator_id`/`quotes.operational_site_id`); this class never
  * invents a separate rule.
@@ -108,7 +109,8 @@ class RequestManagementNotable implements NotableEntity
      * there the actor is known and the Offerte are queried, here the Offerte
      * are known and the actors are queried — the same rule read from the other
      * end. Without it a site-scoped colleague could read the thread and never
-     * be mentioned in it.
+     * be mentioned in it. Spec 0165 D-4 adds the physical-Sede twin of that
+     * tier, on the modules that have it.
      */
     public function mentionableUsersQuery(Model $record): Builder
     {
@@ -125,46 +127,59 @@ class RequestManagementNotable implements NotableEntity
             ->whereNotNull('operational_site_id')
             ->pluck('operational_site_id');
 
-        // The branch is added only once the permission row EXISTS: spatie's
-        // `permission()` scope goes through `Permission::findByName()` and
-        // THROWS `PermissionDoesNotExist` on a name no row carries — the same
-        // failure mode the super-admin `whereHas` above avoids for roles, and
-        // the same rule applies: this must never 500 the endpoint on an
+        // A site branch is added only once its permission row EXISTS:
+        // spatie's `permission()` scope goes through `Permission::findByName()`
+        // and THROWS `PermissionDoesNotExist` on a name no row carries — the
+        // same failure mode the super-admin `whereHas` above avoids for roles,
+        // and the same rule applies: this must never 500 the endpoint on an
         // environment where `permissions:sync` has not run yet.
-        //
-        // Probed on the name AND the guard the scope itself will resolve
-        // (`Guard::getDefaultName(User::class)`, exactly what
-        // `scopePermission` passes to `findByName`): the same name can carry
-        // one row per guard, and a hit on the wrong one would leave the
-        // branch matching nobody.
-        $viewSiteExists = Permission::query()
-            ->where('name', $module->permission('viewSite'))
-            ->where('guard_name', Guard::getDefaultName(User::class))
-            ->exists();
+        $siteTiers = array_filter([
+            // Spec 0105 D-9: any membership of the actor.
+            'employment.operationalSites' => $this->existingPermission($module->permission('viewSite')),
+            // Spec 0165 D-4: the actor's PHYSICAL Sede only.
+            'employment.primaryOperationalSite' => $module->hasPrimarySiteTier()
+                ? $this->existingPermission($module->permission(RequestModule::PRIMARY_SITE_ABILITY))
+                : null,
+        ]);
 
         return User::query()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($module, $operatorIds, $siteIds, $viewSiteExists): void {
+            ->where(function (Builder $query) use ($module, $operatorIds, $siteIds, $siteTiers): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->orWhere(function (Builder $canRead) use ($module, $operatorIds, $siteIds, $viewSiteExists): void {
+                    ->orWhere(function (Builder $canRead) use ($module, $operatorIds, $siteIds, $siteTiers): void {
                         $canRead->permission($module->permission('view'))
-                            ->where(function (Builder $access) use ($module, $operatorIds, $siteIds, $viewSiteExists): void {
+                            ->where(function (Builder $access) use ($module, $operatorIds, $siteIds, $siteTiers): void {
                                 $access->whereIn('id', $operatorIds)
                                     ->orWhere(function (Builder $viewAll) use ($module): void {
                                         $viewAll->permission($module->permission('viewAll'));
-                                    })
-                                    ->when($viewSiteExists, function (Builder $tiers) use ($module, $siteIds): void {
-                                        $tiers->orWhere(function (Builder $bySite) use ($module, $siteIds): void {
-                                            $bySite->permission($module->permission('viewSite'))
-                                                ->whereHas(
-                                                    'employment.operationalSites',
-                                                    fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds)
-                                                );
-                                        });
                                     });
+
+                                foreach ($siteTiers as $relation => $permission) {
+                                    $access->orWhere(function (Builder $bySite) use ($permission, $relation, $siteIds): void {
+                                        $bySite->permission($permission)
+                                            ->whereHas($relation, fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds));
+                                    });
+                                }
                             });
                     });
             });
+    }
+
+    /**
+     * $name when a permission row carries it on the guard the `permission()`
+     * scope will resolve (`Guard::getDefaultName(User::class)`, exactly what
+     * `scopePermission` passes to `findByName`), null otherwise: the same
+     * name can carry one row per guard, and a hit on the wrong one would
+     * leave the branch matching nobody.
+     */
+    private function existingPermission(string $name): ?string
+    {
+        $exists = Permission::query()
+            ->where('name', $name)
+            ->where('guard_name', Guard::getDefaultName(User::class))
+            ->exists();
+
+        return $exists ? $name : null;
     }
 
     /**

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0165-enrollee-primary-site-visibility" status="approved" owner="utente" date="2026-09-25">
+
+  <goal>
+    Gestione Iscritti: nuovo permesso che fa vedere gli iscritti della propria SEDE FISICA, oltre a quelli delle offerte
+    di cui l'utente e' operatore. Nel seed di produzione il permesso va agli utenti che oggi vedono solo i propri iscritti
+    (ruolo Commerciale), e il ruolo "Commerciale con Gestione Iscritti" viene unito a Commerciale.
+  </goal>
+
+  <context>
+    - Oggi (spec 0105/0130) il perimetro di Gestione Iscritti ha tre livelli: `enrollee-management.viewAll`, operatore
+      dell'offerta, `enrollee-management.viewSite` (TUTTE le sedi dell'utente, fisica + remote).
+    - RequestManagementScope e' l'unica implementazione del perimetro (endpoint, query, righe); RequestManagementNotable
+      ne e' lo specchio per i destinatari delle menzioni.
+    - Seed: OperatorRoleCatalogue + QualificaRoleSeeder (blocchi), OperatorRoster (utenti -> ruolo).
+  </context>
+
+  <decisions>
+    <decision id="D-1">Nuova ability `viewPrimarySite`, SOLO per Gestione Iscritti (RequestModule::Enrollees; nessun
+      `request-management.viewPrimarySite`). Scelta utente 2026-09-25: permesso nuovo, non riuso di `viewSite`.</decision>
+    <decision id="D-2">Semantica: l'offerta e' visibile se `quotes.operational_site_id` e' la sede FISICA dell'utente
+      (pivot `is_primary` = true). Le sedi remote non contano. Offerta senza sede: mai (come viewSite, spec 0105 D-3).
+      Nessuna sede fisica: il livello non aggiunge nulla (fail-closed).</decision>
+    <decision id="D-3">E' un livello di VISIBILITA' righe, in UNIONE con operatore e viewSite (come spec 0105 D-6); non
+      concede azioni. `viewSite` lo include (tutte le sedi comprendono la fisica); `viewAll` prevale su entrambi.</decision>
+    <decision id="D-4">Menzioni/destinatari (RequestManagementNotable): chi ha `viewPrimarySite` e ha come sede fisica
+      la sede di una delle offerte dell'opportunita' e' menzionabile, come per viewSite.</decision>
+    <decision id="D-5">Seed produzione (scelta utente 2026-09-25): nuovo blocco PRIMARY_SITE_ENROLLEES al ruolo
+      `commerciale`. Il ruolo `commerciale-iscritti` viene RITIRATO (RETIRED_ROLES) e i suoi 9 utenti passano a
+      `commerciale`: la loro visibilita' iscritti passa da tutte le sedi alla sola sede fisica. `supervisore-didattica`
+      mantiene `viewSite`.</decision>
+    <decision id="D-6">Label permesso: IT "Visualizza sede fisica", EN "View physical site".</decision>
+  </decisions>
+
+  <data_contract>
+    <permission name="enrollee-management.viewPrimarySite">Creato da `permissions:sync` (17 ability iscritti).</permission>
+    <endpoint method="POST" path="/api/tables/enrollee-management/rows (e ogni endpoint del modulo)">
+      <response status="200">Shape invariata; cambia solo il perimetro righe secondo D-2/D-3.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">permissions:sync crea `enrollee-management.viewPrimarySite` e NON `request-management.viewPrimarySite`.</criterion>
+    <criterion id="AC-002">Con viewAny + viewPrimarySite l'utente vede le proprie offerte + quelle della sua sede fisica;
+      non quelle di una sua sede remota, ne' di altre sedi, ne' senza sede.</criterion>
+    <criterion id="AC-003">assertInScope(Enrollees) consente un'offerta della sede fisica e nega una della sede remota.</criterion>
+    <criterion id="AC-004">Senza sede fisica, viewPrimarySite non allarga nulla.</criterion>
+    <criterion id="AC-005">Menzionabili: un utente con viewPrimarySite e sede fisica = sede di un'offerta dell'opportunita'
+      e' incluso; con la stessa sede solo remota no.</criterion>
+    <criterion id="AC-006">Seed: `commerciale` ha viewPrimarySite e non viewSite; `commerciale-iscritti` non esiste piu' e
+      i suoi utenti hanno `commerciale`; `supervisore-didattica` ha ancora viewSite.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Nessun `if ($module === ...)` fuori da RequestModule. Guide IT/EN e manuale aggiornati.
+    Test Pest/Vitest eseguiti; tsc -b --force pulito; Pint/ESLint puliti.
+  </constraints>
+</spec>

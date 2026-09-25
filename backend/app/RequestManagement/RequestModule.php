@@ -33,6 +33,12 @@ enum RequestModule: string
     public const string ROUTE_DEFAULT = 'requestModule';
 
     /**
+     * Spec 0165 D-1: the physical-Sede visibility tier, exposed by Enrollees
+     * only (see abilities() and hasPrimarySiteTier()).
+     */
+    public const string PRIMARY_SITE_ABILITY = 'viewPrimarySite';
+
+    /**
      * "{value}.{ability}" — the same concatenation BasePolicy::permission()
      * performs, exposed here so every scope/authorization caller reads the
      * SAME prefix instead of hardcoding `request-management.`/
@@ -47,7 +53,8 @@ enum RequestModule: string
      * The abilities this module's policy exposes (spec 0130 D-4/D-8):
      * Enrollees is RequestManagementPolicy's own list MINUS `create` — no
      * creation surface at all, so `permissions:sync` never mints
-     * `enrollee-management.create`.
+     * `enrollee-management.create` — PLUS the physical-Sede tier (spec 0165
+     * D-1), which Gestione Richieste does not have.
      *
      * @return array<int, string>
      */
@@ -55,8 +62,21 @@ enum RequestModule: string
     {
         return match ($this) {
             self::Requests => RequestManagementPolicy::abilities(),
-            self::Enrollees => array_values(array_diff(RequestManagementPolicy::abilities(), ['create'])),
+            self::Enrollees => [
+                ...array_values(array_diff(RequestManagementPolicy::abilities(), ['create'])),
+                self::PRIMARY_SITE_ABILITY,
+            ],
         };
+    }
+
+    /**
+     * Whether this module knows the physical-Sede tier (spec 0165 D-1): read
+     * off abilities() so the permission is never asked for on a module that
+     * never mints it.
+     */
+    public function hasPrimarySiteTier(): bool
+    {
+        return in_array(self::PRIMARY_SITE_ABILITY, $this->abilities(), true);
     }
 
     public function allowsCreate(): bool
