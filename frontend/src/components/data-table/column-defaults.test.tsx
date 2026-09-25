@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { EditableCallbackParams, ICellRendererParams } from 'ag-grid-community'
 import { describe, expect, it } from 'vitest'
 import appI18n from '@/i18n'
@@ -80,6 +81,25 @@ describe('resolveCellRenderer', () => {
   it('has no renderer for a custom text/relation column (plain label string, default AG Grid cell)', () => {
     const column = stubColumn({ id: 'custom.notes', type: 'text', source: 'custom' })
     expect(resolveCellRenderer(column, undefined)).toBeUndefined()
+  })
+
+  it('resolves an attribute relation column through the id-label cell, bound to its resource', () => {
+    const column = stubColumn({
+      id: 'attr.course_site',
+      type: 'text',
+      source: 'attribute',
+      editor: 'relation',
+      relation: { resource: 'operational-sites' },
+    })
+    const renderer = resolveCellRenderer(column, undefined)
+    if (!renderer) {
+      throw new Error('expected a renderer')
+    }
+    const params = { value: { id: 3, label: 'Sede Napoli' } } as unknown as ICellRendererParams
+    const { getByText } = render(
+      <QueryClientProvider client={new QueryClient()}>{renderer(params)}</QueryClientProvider>,
+    )
+    expect(getByText('Sede Napoli')).toBeInTheDocument()
   })
 
   it('has no renderer for a custom number column (formatted via valueFormatter instead)', () => {

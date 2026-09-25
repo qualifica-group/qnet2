@@ -13,6 +13,7 @@ import type { ColDef, EditableCallbackParams, ICellRendererParams } from 'ag-gri
 import appI18n from '@/i18n'
 import { resolveCellEditorSpec, type CellEditorKind } from '@/components/data-table/cell-editor-registry'
 import { formatBadgeFilterValue, formatBooleanFilterValue } from '@/components/data-table/column-filters'
+import { RelationIdCell } from '@/components/data-table/relation-id-cell'
 import { BadgeCell } from '@/features/table/cell-renderers'
 import { formatDateTimeOptionalTime } from '@/lib/formatting/date-display'
 import type { TableColumn, TableRow } from '@/features/table/types'
@@ -106,9 +107,19 @@ function isEnumBadgeColumn(column: TableColumn): boolean {
 }
 
 /**
+ * The `/for-select` resource of a dynamic single-relation column, whose row
+ * value is the bare stored id (spec 0064) and so needs its label resolved;
+ * `undefined` for every other column.
+ */
+function dynamicRelationResource(column: TableColumn): string | undefined {
+  return isDynamicColumn(column) && column.editor === 'relation' ? column.relation?.resource : undefined
+}
+
+/**
  * Picks the cell renderer for a column: an explicit per-id override from the
- * caller's map, else the generic enum-badge fallback, else `undefined` (AG
- * Grid's default text cell, optionally driven by `defaultValueFormatter`).
+ * caller's map, else the generic enum-badge fallback, else the id-label cell
+ * of a dynamic relation column, else `undefined` (AG Grid's default text
+ * cell, optionally driven by `defaultValueFormatter`).
  */
 export function resolveCellRenderer(
   column: TableColumn,
@@ -118,10 +129,14 @@ export function resolveCellRenderer(
   if (custom) {
     return custom
   }
-  return isEnumBadgeColumn(column)
-    ? (params: ICellRendererParams) => (
-        <BadgeCell {...params} badges={column.badges} enumKey={column.enumKey} />
-      )
+  if (isEnumBadgeColumn(column)) {
+    return (params: ICellRendererParams) => (
+      <BadgeCell {...params} badges={column.badges} enumKey={column.enumKey} />
+    )
+  }
+  const relationResource = dynamicRelationResource(column)
+  return relationResource
+    ? (params: ICellRendererParams) => <RelationIdCell {...params} resource={relationResource} />
     : undefined
 }
 

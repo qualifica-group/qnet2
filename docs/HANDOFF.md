@@ -3,7 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SEED RESPONSABILI ("RISPONDE A") DAL MANSIONARIO — VERDE, NON COMMITTATO (2026-09-25)
+## GESTIONE RICHIESTE — COLONNE `attr.*` MULTISELECT E RELAZIONE — VERDE, COMMITTATO (2026-09-25)
+
+- Bug utente: "Titolo di Studio" (enum multiselect) apriva un menu vuoto; "Sede corso" (relation one) mostrava l'ID.
+- Cause (solo FE, contratto spec 0064 invariato: `options` delle colonne attributo = oggetti `{value,label}`, valore
+  riga relation = id nudo): `scalarColumnOptions` scartava le opzioni oggetto -> rich select `tags` senza valori;
+  nessuna cella risolveva l'id della relation e `RelationCellEditor` leggeva solo `value.id`.
+- Fix: `features/table/column-options.ts` (opzioni oggetto ridotte a `value`); nuova
+  `components/data-table/relation-id-cell.tsx` (`RelationIdCell`, etichetta via `useForSelectLabels`), agganciata in
+  `column-defaults.tsx::resolveCellRenderer` per colonne dinamiche con `editor: 'relation'`; `RelationCellEditor`
+  accetta anche l'id nudo (`currentIdOf`). Copre anche "Docente" (`teacher`, relation -> referents).
+- Verifica su tutti i tipi attributo reali (probe con lo shape di `AttributeColumnBuilder::resolved()`): text, textarea,
+  integer, decimal, date, boolean, enum single/radio, multiselect, relation -> editor e visualizzazione corretti.
+- Aperti (segnalati, non implementati): textarea edita con editor a riga singola (a capo persi); set filter delle
+  colonne relation mostra gli id; `categorie_mepa` ha `config.multiple: true` ignorato ovunque (trattato come singolo).
+- Test: `relation-id-cell.test.tsx` (nuovo), casi aggiunti in `cell-editor-registry`, `column-defaults`,
+  `relation-cell-editor`. Manuale: nessun impatto (ripristina il comportamento gia' documentato).
+
+## SEED RESPONSABILI ("RISPONDE A") DAL MANSIONARIO — VERDE, COMMITTATO (2026-09-25)
 
 - Fonte: CSV "Mansionario Operatori_Abilitazioni 1 (Supervisione)" (direttiva utente 2026-09-25), trascritto in
   `database/seeders/QualificaCatalog/ReportsToRoster.php` (`MANAGERS`: email operatore => email responsabili).

@@ -30,7 +30,7 @@ function page(items: ForSelectItem[]): PaginatedResponse<ForSelectItem> {
   return { items, export_link: null, pagination: { total: items.length, offset: 0, limit: 25, total_pages: 1 } }
 }
 
-function renderEditor(props: Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>> = {}) {
+function renderEditor(props: Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const fullProps = {
     value: null,
@@ -38,7 +38,7 @@ function renderEditor(props: Partial<CustomCellEditorProps<TableRow, RelationCel
     stopEditing: vi.fn(),
     resource: 'users',
     ...props,
-  } as unknown as CustomCellEditorProps<TableRow, RelationCellValue | null> & { resource: string }
+  } as unknown as CustomCellEditorProps<TableRow, RelationCellValue | number | null> & { resource: string }
 
   render(
     (<QueryClientProvider client={client}>
@@ -77,7 +77,7 @@ describe('RelationCellEditor', () => {
 
   it('shows the initials avatar with `showAvatar`, even for an option the envelope sent without `avatar_url`', async () => {
     fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
-    renderEditor({ showAvatar: true } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+    renderEditor({ showAvatar: true } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
     expect(await screen.findByText('MR')).toBeInTheDocument()
   })
@@ -125,6 +125,19 @@ describe('RelationCellEditor', () => {
     expect(await screen.findByRole('option', { name: 'Mario Rossi' })).toHaveAttribute('aria-selected', 'true')
   })
 
+  // Bug 2026-09-25 ("Sede corso"): an `attr.<code>` relation cell holds the BARE
+  // stored id (spec 0064 contract), not the `{id, name}` projection.
+  it('treats a bare id value as the current selection', async () => {
+    fetchForSelectMock.mockResolvedValue(page([{ id: 5, label: 'Sede Napoli' }, { id: 6, label: 'Sede Roma' }]))
+    const props = renderEditor({ value: 5 })
+
+    await waitFor(() => expect(fetchForSelectMock).toHaveBeenCalledWith('users', expect.objectContaining({ ids: [5] })))
+    expect(await screen.findByRole('option', { name: 'Sede Napoli' })).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.click(screen.getByRole('option', { name: 'Sede Napoli' }))
+    expect(props.onValueChange).not.toHaveBeenCalled()
+  })
+
   it('does not commit when the CURRENT value is re-picked (no pointless PATCH)', async () => {
     fetchForSelectMock.mockResolvedValue(page([{ id: 5, label: 'Mario Rossi' }]))
     const props = renderEditor({ value: { id: 5, name: 'Mario Rossi' } })
@@ -145,7 +158,7 @@ describe('RelationCellEditor', () => {
       renderEditor({
         scope: SCOPE,
         data: { id: 7, actions: [], operational_site: { id: 42, label: 'Via Roma 1 - Milano' } },
-      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
       await waitFor(() =>
         expect(fetchForSelectMock).toHaveBeenCalledWith(
@@ -160,7 +173,7 @@ describe('RelationCellEditor', () => {
       renderEditor({
         scope: SCOPE,
         data: { id: 7, actions: [], operational_site: { id: 42, name: 'Via Roma 1 - Milano' } },
-      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
       await waitFor(() =>
         expect(fetchForSelectMock).toHaveBeenCalledWith(
@@ -175,7 +188,7 @@ describe('RelationCellEditor', () => {
       renderEditor({
         scope: SCOPE,
         data: { id: 7, actions: [], operational_site: 42 },
-      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
       await waitFor(() =>
         expect(fetchForSelectMock).toHaveBeenCalledWith(
@@ -190,7 +203,7 @@ describe('RelationCellEditor', () => {
       renderEditor({
         scope: SCOPE,
         data: { id: 7, actions: [], operational_site: null },
-      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
       await waitFor(() =>
         expect(fetchForSelectMock).toHaveBeenCalledWith('users', expect.objectContaining({ params: undefined })),
@@ -208,7 +221,7 @@ describe('RelationCellEditor', () => {
         renderEditor({
           scope: CATEGORIES_SCOPE,
           data: { id: 7, actions: [], assignment_category_ids: [3, 9] },
-        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
         await waitFor(() =>
           expect(fetchForSelectMock).toHaveBeenCalledWith(
@@ -223,7 +236,7 @@ describe('RelationCellEditor', () => {
         renderEditor({
           scope: CATEGORIES_SCOPE,
           data: { id: 7, actions: [], assignment_category_ids: [] },
-        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
         await waitFor(() =>
           expect(fetchForSelectMock).toHaveBeenCalledWith('users', expect.objectContaining({ params: undefined })),
@@ -235,7 +248,7 @@ describe('RelationCellEditor', () => {
         renderEditor({
           scope: CATEGORIES_SCOPE,
           data: { id: 7, actions: [], assignment_category_ids: [3, null, 'nine', { id: 9, label: 'Fotovoltaico' }] },
-        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
         await waitFor(() =>
           expect(fetchForSelectMock).toHaveBeenCalledWith(
@@ -250,7 +263,7 @@ describe('RelationCellEditor', () => {
         renderEditor({
           scope: CATEGORIES_SCOPE,
           data: { id: 7, actions: [], assignment_category_ids: [null, 'nine'] },
-        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
         await waitFor(() =>
           expect(fetchForSelectMock).toHaveBeenCalledWith('users', expect.objectContaining({ params: undefined })),
@@ -263,7 +276,7 @@ describe('RelationCellEditor', () => {
         renderEditor({
           scope: { operational_site_id: 'assignment_site_id', ...CATEGORIES_SCOPE },
           data: { id: 7, actions: [], assignment_site_id: 42, assignment_category_ids: [3, 9] },
-        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
         await waitFor(() =>
           expect(fetchForSelectMock).toHaveBeenCalledWith(
@@ -280,7 +293,7 @@ describe('RelationCellEditor', () => {
         renderEditor({
           scope: { operational_site_id: 'assignment_site_id', ...CATEGORIES_SCOPE },
           data: { id: 7, actions: [], assignment_site_id: 42, assignment_category_ids: [] },
-        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+        } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
         await waitFor(() =>
           expect(fetchForSelectMock).toHaveBeenCalledWith(
@@ -295,7 +308,7 @@ describe('RelationCellEditor', () => {
       fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
       renderEditor({
         data: { id: 7, actions: [], operational_site: { id: 42, label: 'Via Roma 1 - Milano' } },
-      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | null>>)
+      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
 
       await waitFor(() =>
         expect(fetchForSelectMock).toHaveBeenCalledWith('users', expect.objectContaining({ params: undefined })),

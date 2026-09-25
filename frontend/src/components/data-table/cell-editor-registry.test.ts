@@ -131,6 +131,31 @@ describe('resolveCellEditorSpec', () => {
     expect(params.multiSelect).toBe(true)
   })
 
+  // Bug 2026-09-25 ("Titolo di Studio" opened an empty dropdown): an `attr.<code>`
+  // multiselect enum ships its options as `{value, label}` objects (spec 0064
+  // contract), which the rich editor must still offer, by value.
+  it('offers the values of a tags column whose options arrive as {value, label} objects', () => {
+    const column = stubColumn({
+      id: 'attr.degree',
+      type: 'tags',
+      source: 'attribute',
+      options: [
+        { value: 'high_school', label: 'Diploma' },
+        { value: 'degree', label: 'Laurea' },
+      ],
+      badges: [
+        { value: 'high_school', label: 'Diploma', color: null, icon: null },
+        { value: 'degree', label: 'Laurea', color: null, icon: null },
+      ],
+    })
+    const params = resolveCellEditorSpec('tags')?.cellEditorParams?.(column) as {
+      values: (p: { data?: TableRow }) => string[]
+      formatValue: (value: unknown) => string
+    }
+    expect(params.values(valuesParams(undefined))).toEqual(['high_school', 'degree'])
+    expect(params.formatValue('degree')).toBe('Laurea')
+  })
+
   it('falls back to an empty option list when the column has none', () => {
     const column = stubColumn({ id: 'status', type: 'enum' })
     const params = resolveCellEditorSpec('enum')?.cellEditorParams?.(column) as {

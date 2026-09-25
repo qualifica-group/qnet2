@@ -117,11 +117,23 @@ function resolveScopeParams(
   return Object.keys(params).length > 0 ? params : undefined
 }
 
+/**
+ * The current selection's id. A native relation cell holds the `{id, name}`
+ * projection; an `attr.<code>` one holds the bare stored id (spec 0064).
+ */
+function currentIdOf(value: RelationCellValue | number | null | undefined): number | null {
+  if (typeof value === 'number') {
+    return value
+  }
+  return value?.id ?? null
+}
+
 export function RelationCellEditor(
-  props: CustomCellEditorProps<TableRow, RelationCellValue | null> & RelationCellEditorParams,
+  props: CustomCellEditorProps<TableRow, RelationCellValue | number | null> & RelationCellEditorParams,
 ) {
   const { t } = useTranslation()
   const { value, onValueChange, stopEditing, resource, showAvatar = false, scope, data } = props
+  const currentId = currentIdOf(value)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -143,7 +155,7 @@ export function RelationCellEditor(
   } = useForSelect({
     resource,
     search: debouncedSearch,
-    ids: value ? [value.id] : undefined,
+    ids: currentId !== null ? [currentId] : undefined,
     params: resolveScopeParams(scope, data),
   })
 
@@ -153,7 +165,7 @@ export function RelationCellEditor(
     // Re-picking the current value must not commit: the cell value is an
     // object, so a fresh `{id, name}` would never compare equal to the old one
     // and the hook's no-op guard would let a pointless PATCH through.
-    if ((item?.id ?? null) !== (value?.id ?? null)) {
+    if ((item?.id ?? null) !== currentId) {
       onValueChange(item ? { id: item.id, name: item.label } : null)
     }
     stopEditing()
@@ -192,7 +204,7 @@ export function RelationCellEditor(
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">{t('table.relationEditor.empty')}</p>
         ) : (
           <>
-            {value ? (
+            {currentId !== null ? (
               <button
                 type="button"
                 onClick={() => pick(null)}
@@ -203,7 +215,7 @@ export function RelationCellEditor(
               </button>
             ) : null}
             {options.map((item) => {
-              const selected = item.id === value?.id
+              const selected = item.id === currentId
               return (
                 <button
                   key={item.id}
