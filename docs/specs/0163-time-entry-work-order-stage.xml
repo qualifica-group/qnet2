@@ -24,6 +24,9 @@
         di quella commessa. Voce senza commessa -> fase vietata (422 se inviata).
     D-2 La fase e' un'istantanea al momento della scrittura: se poi il task cambia fase, le voci gia' registrate non
         cambiano. Modificando una voce senza cambiare fase, una fase nel frattempo chiusa resta ammessa.
+        RITIRATA in parte (decisione utente 2026-09-25, spec 0167): la parte "se poi il task cambia fase, le voci
+        gia' registrate non cambiano" e' sostituita dal riallineamento automatico (spec 0167, D-1/D-2). La parte
+        residua (una fase nel frattempo chiusa resta ammessa se non cambia) resta valida, invariata.
     D-3 Migrazione: `time_entries.work_order_stage_id` nullable FK nullOnDelete, indice; backfill delle voci esistenti
         con task collegato dalla fase attuale del task (una tantum, nella migrazione, reversibile azzerando la colonna).
     D-4 Commessa, scheda Task per fasi: accanto a ogni fase il totale "Minuti registrati" (somma delle voci con quella
@@ -38,7 +41,8 @@
     </in>
     <out>
       <item>Report/statistiche per fase oltre ai totali in commessa.</item>
-      <item>Riallineamento automatico delle voci quando il task cambia fase.</item>
+      <item>Riallineamento automatico delle voci quando il task cambia fase.
+        RITIRATO (decisione utente 2026-09-25): implementato da spec 0167 (fuori scope diventa in-scope li').</item>
     </out>
   </scope>
 
@@ -56,7 +60,9 @@
     <criterion id="AC-001">Voce con task in fase X -> salvata con fase X anche se l'input indica un'altra fase.</criterion>
     <criterion id="AC-002">Voce con commessa e senza task: fase aperta della commessa accettata; fase chiusa o di altra commessa -> 422.</criterion>
     <criterion id="AC-003">Voce senza commessa con fase -> 422.</criterion>
-    <criterion id="AC-004">Il task cambia fase dopo la registrazione: la voce mantiene la fase originale.</criterion>
+    <criterion id="AC-004">(RITIRATO 2026-09-25, D-2 in parte ritirata) Il task cambia fase dopo la registrazione: la voce mantiene la
+      fase originale. Sostituito dall'AC-001 di spec 0167 (comportamento opposto: la voce segue il task). Test
+      rimosso da TimeEntryWorkOrderStageTest.php.</criterion>
     <criterion id="AC-005">Migrazione: voci esistenti con task in fase ricevono quella fase; rollback azzera la colonna.</criterion>
     <criterion id="AC-006">Completare un task in fase crea la voce con quella fase.</criterion>
     <criterion id="AC-007">Commessa: totale minuti per fase e "Senza fase" corretti.</criterion>

@@ -89,6 +89,24 @@ describe('useMoveBoardTask', () => {
     expect(cached?.tasks[0]).toMatchObject({ work_order_stage_id: 2, stage_position: 3 })
   })
 
+  /** AC-011: spec 0167, le voci segnatempo seguono la fase del task, cosi' i totali per fase tornano aggiornati dal refetch. */
+  it('invalidates the board query on success, so the logged-minutes totals refetch', async () => {
+    const payload = taskBoardPayload({
+      tasks: [boardTask({ id: 1, work_order_stage_id: 1, stage_position: 0 })],
+    })
+    moveBoardTaskMock.mockResolvedValue({
+      tasks: [{ id: 1, work_order_stage_id: 2, stage_position: 3 }],
+    })
+
+    const { client, Wrapper } = wrapper()
+    client.setQueryData(taskBoardKeys.board(9), payload)
+
+    const { result } = renderHook(() => useMoveBoardTask(9), { wrapper: Wrapper })
+    result.current.mutate({ task_id: 1, work_order_stage_id: 2, position: 3 })
+
+    await waitFor(() => expect(client.getQueryState(taskBoardKeys.board(9))?.isInvalidated).toBe(true))
+  })
+
   it('rolls back to the pre-drag snapshot and shows a toast on failure', async () => {
     const payload = taskBoardPayload({
       tasks: [boardTask({ id: 1, work_order_stage_id: 1, stage_position: 0 })],

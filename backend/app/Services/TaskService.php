@@ -28,6 +28,7 @@ use App\Services\Tasks\TaskRecurrenceService;
 use App\Services\Tasks\TaskStageGuard;
 use App\Services\Tasks\TaskStatusResolver;
 use App\Services\Tasks\TaskSubtaskBatchCreator;
+use App\Services\Tasks\TaskTimeEntryStageRealigner;
 use App\Services\Tasks\TaskValidationRequirementGuard;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Services\Tasks\TaskWatcherOverlapGuard;
@@ -119,6 +120,7 @@ class TaskService
         private readonly TaskRecurrenceService $recurrenceService,
         private readonly TaskStageGuard $stageGuard,
         private readonly TaskSubtaskBatchCreator $subtaskBatchCreator,
+        private readonly TaskTimeEntryStageRealigner $stageRealigner,
         private readonly TaskValidationRequirementGuard $validationRequirementGuard,
         private readonly TaskWatcherOverlapGuard $watcherOverlapGuard,
     ) {}
@@ -360,6 +362,7 @@ class TaskService
             }
 
             $task->save();
+            $this->stageRealigner->realignIfMoved($task);
 
             // Who this PATCH ADDS to each pivot, read BEFORE the sync: once
             // the sync has run the persisted pivot IS the submitted one and

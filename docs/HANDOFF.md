@@ -3,6 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEGNATEMPO: LA FASE SEGUE IL TASK — SPEC 0167 — VERDE, COMMITTATO (2026-09-25)
+
+- Richiesta utente 2026-09-25. Ritira 0163 D-2 (fase = istantanea), il suo fuori scope e AC-004 (annotato in 0163).
+  Segnatempo obbligatorio al completamento: invariato (regola 0162).
+- Regola unica `App\Services\Tasks\TaskEffectiveStage::forTask()`: fase della RADICE dell'albero (risale
+  `parent_task_id`). Usata da `TimeEntryLinkResolver::fromTask()` (voci dei sottotask ora prendono la fase della radice)
+  e da `TaskTimeEntryStageRealigner` (`realignIfMoved()` = gate `wasChanged(work_order_stage_id|parent_task_id)` dopo il save; `realign()` incondizionato; sottoalbero BFS,
+  UN solo UPDATE query builder su `time_entries`, niente activity log per voce).
+- Cablato: `TaskService::update()` una riga `realignIfMoved()` dopo `save()` (file 491 righe, split sempre piu' urgente);
+  `TaskStagePositioner::move()` chiama `realign()` solo nel ramo cross-fase (scrive via query builder, niente save). Eliminazione fase: FK nullOnDelete, invariata. Nessun backfill.
+- FE: `useMoveBoardTask` invalida `taskBoardKeys.board` dopo il successo (totali "Minuti registrati" aggiornati).
+  Guide IT/EN `time-entries` aggiornate (nota fase).
+- Test: `tests/Feature/TimeEntries/TimeEntryStageFollowsTaskTest.php` (15, AC-001..010), test 0163 AC-004 rimosso
+  (requisito cambiato), `use-task-board-mutations.test.tsx` (+1). Verifier: Pest completo 8580/8581 (1 skipped),
+  dopo il fix TaskService rieseguiti TimeEntries/TaskStages/WorkOrders/Tasks 997/997, Pint pulito; Vitest 0167 verdi,
+  ESLint pulito. `tsc -b` e 8 test Vitest ROSSI in `features/leads/`, `request-management/request-report-*`,
+  `imports/wizard/review-grid` = lavoro di altre sessioni in corso, estraneo alla 0167.
+
 ## REPORT: PERIODO DAL/AL APERTO, DEFAULT OGGI — VERDE, COMMITTATO (2026-09-25)
 
 - Spec `0169-report-open-date-range.xml`. Default Dal = Al = oggi (`todayReportRange`, sostituisce

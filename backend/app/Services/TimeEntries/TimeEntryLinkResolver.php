@@ -11,6 +11,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderStage;
+use App\Services\Tasks\TaskEffectiveStage;
 use App\Services\Tasks\TaskVisibilityScope;
 use Illuminate\Validation\ValidationException;
 
@@ -30,13 +31,20 @@ use Illuminate\Validation\ValidationException;
  * owner.
  *
  * Spec 0163, D-1 extends the same split onto `work_order_stage_id`: with a
- * Task it is imposed from `$task->work_order_stage_id` (whatever it
- * currently is — the snapshot is taken AT THIS WRITE, D-2); without one it is
- * an optional, explicit choice, valid only among the commessa's own OPEN
- * stages. $currentStageId is the voce's stage BEFORE this write (null on
- * create) — D-2's "modificando una voce senza cambiare fase, una fase nel
- * frattempo chiusa resta ammessa" only waives the open-stage check when the
- * submitted stage equals it.
+ * Task it is imposed from `TaskEffectiveStage::forTask()` — the fase of the
+ * task's own ROOT (spec 0167, D-1: a sub-task never carries a fase of its
+ * own, `TaskStageGuard`), not necessarily the linked Task itself; without
+ * one it is an optional, explicit choice, valid only among the commessa's
+ * own OPEN stages. $currentStageId is the voce's stage BEFORE this write
+ * (null on create) — D-2's "modificando una voce senza cambiare fase, una
+ * fase nel frattempo chiusa resta ammessa" only waives the open-stage check
+ * when the submitted stage equals it.
+ *
+ * Spec 0163 D-2 ("istantanea, mai risincronizzata") is RETIRED by spec 0167,
+ * D-2: once written, the fase here IS realigned later, whenever the task's
+ * own effective fase changes — `App\Services\Tasks\
+ * TaskTimeEntryStageRealigner`, not this class, which only ever runs at
+ * WRITE time.
  */
 final class TimeEntryLinkResolver
 {
@@ -68,7 +76,7 @@ final class TimeEntryLinkResolver
             opportunityId: $task->opportunity_id,
             workOrderId: $task->work_order_id,
             taskId: $task->id,
-            workOrderStageId: $task->work_order_stage_id,
+            workOrderStageId: TaskEffectiveStage::forTask($task),
         );
     }
 

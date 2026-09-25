@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0167-time-entry-stage-follows-task" status="draft" owner="utente" date="2026-09-25">
+
+  <goal>
+    Le registrazioni tempo collegate a un task stanno sempre nella fase commessa in cui si trova il task (per i
+    sottotask: quella del task radice). Quando il task cambia fase, le sue voci lo seguono, cosi' i "Minuti registrati"
+    per fase nella commessa restano coerenti con la board.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-09-25: "Riallineamento delle registrazioni tempo (segnatempo) quando un task cambia fase".
+    Ritira spec 0163 D-2 (fase = istantanea alla scrittura) e il suo fuori scope "Riallineamento automatico delle voci
+    quando il task cambia fase"; 0163 AC-004 cambia requisito (il test va sostituito, dichiarato).
+    Segnatempo obbligatorio al completamento: nessuna modifica (utente 2026-09-25, "obbligatorio soltanto quando e'
+    selezionato ... e basta": resta la regola 0162, niente obblighi per ruolo o in altri momenti).
+    Nomi qnet-2 verificati:
+    - `time_entries.work_order_stage_id` (FK nullOnDelete, spec 0163); `TimeEntry` usa `LogsModelActivity`.
+    - `App\Services\TimeEntries\TimeEntryLinkResolver::fromTask()` impone oggi `$task->work_order_stage_id` del task
+      COLLEGATO: un sottotask non ha mai fase (`TaskStageGuard`: prohibited sui sottotask), quindi le voci dei
+      sottotask finiscono sempre in "Senza fase".
+    - La fase di un task cambia in tre punti: (1) `App\Services\TaskService::update()` (form, cella inline via
+      `TaskCellWriter`; include lo sgancio silenzioso di `TaskStageGuard::applyOnUpdate` quando cambia commessa o il
+      task diventa sottotask) — il file e' a 488 righe; (2) trascinamento sulla board,
+      `WorkOrderTaskBoardController` -> `App\Services\WorkOrders\TaskStagePositioner::move()` (update via query
+      builder, nessun evento Eloquent); (3) eliminazione della fase, `TaskStagePositioner::demoteToUnstaged()` + FK
+      nullOnDelete di `time_entries`, che gia' porta le voci a null (coerente, nessuna modifica).
+    - Sottoalbero: `App\Services\Tasks\TaskSubtaskTreeLoader` (BFS), `WorkOrderStageService::stageTaskIds()` (BFS sugli
+      id). La board conta gia' il sottoalbero dentro la fase della radice.
+    - Totali: `GET /work-orders/{id}/task-board` -> `stages[].logged_minutes`, `unstaged_logged_minutes`.
+      FE `features/work-orders/task-board/use-task-board-mutations.ts` `useMoveBoardTask`: in onSuccess riconcilia solo
+      `work_order_stage_id`/`stage_position` dei task, NON ricarica i totali.
+  </context>
+
+  <decisions>
+    D-1 Regola unica: la fase di una voce collegata a un task = fase del task RADICE del suo albero (risalendo
+        `parent_task_id`), null se la radice non ha fase. Vale sia alla scrittura della voce (resolver) sia al
+        riallineamento. Una sola implementazione condivisa.
+    D-2 (utente) Riallineamento: quando la fase effettiva di un task radice cambia (PATCH o board), TUTTE le voci del
+        suo sottoalbero (task + sottotask a qualsiasi livello) prendono la nuova fase, anche se la fase di partenza o di
+        arrivo e' chiusa. Lo stesso quando un task cambia albero (spostato sotto un altro padre o staccato): le voci del
+        suo sottoalbero prendono la fase della nuova radice.
+    D-3 (utente) Nessun riallineamento del pregresso: niente migrazione/backfill. Una voce oggi disallineata resta com'e'
+        finche' il suo task non cambia fase o albero.
+    D-4 Il riallineamento e' un effetto di sistema: avviene nella stessa transazione del cambio di fase, a prescindere
+        dai permessi dell'attore sulle voci altrui, e con un solo UPDATE in blocco (nessuna riga di activity log per
+        voce: la fase della voce e' un valore derivato dal task, il cui cambio e' gia' tracciato sul task).
+    D-5 Voci senza task (fase scelta a mano, 0163 D-1) e voci senza commessa: mai toccate.
+    D-6 Nessun cambio di contratto API. Solo il FE della board ricarica i totali dopo un trascinamento riuscito.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>BE: unita' condivisa "fase effettiva del task" (radice) usata da `TimeEntryLinkResolver::fromTask()`.</item>
+      <item>BE: riallineatore del sottoalbero, invocato da `TaskService::update()` (una sola chiamata, dopo il save,
+        se cambia `work_order_stage_id` o `parent_task_id`) e da `TaskStagePositioner::move()` sul ramo cross-fase.</item>
+      <item>FE: `useMoveBoardTask` invalida la query della board dopo il successo (totali aggiornati).</item>
+      <item>Guide in-app IT/EN `time-entries` (sezione fase: la voce segue il task) e `tasks` se cita la fase delle
+        voci; manuale Claude Docs, sezione Segnatempo.</item>
+      <item>Sostituzione del test di 0163 AC-004 (requisito cambiato) e annotazione in spec 0163.</item>
+    </in>
+    <out>
+      <item>Backfill delle voci esistenti (D-3).</item>
+      <item>Riallineamento di commessa/anagrafica/titolo della voce quando il task cambia commessa: solo la fase.</item>
+      <item>Modifiche all'obbligo di segnatempo al completamento (regola 0162 invariata).</item>
+      <item>Nuovi endpoint, nuove colonne, report per fase.</item>
+      <item>Split di `TaskService.php` (debito segnalato: la chiamata aggiunta deve restare di una riga).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    Nessun endpoint nuovo ne' shape modificata.
+    - POST/PUT time entries e `time_entry` di complete/bulk: con `task_id`, `work_order_stage_id` salvato = fase della
+      radice del task (input ignorato, come oggi per il task stesso).
+    - PATCH /api/tasks/{task}, PATCH cella tasks, POST /api/work-orders/{workOrder}/task-board/move: risposta invariata;
+      effetto collaterale D-2 sulle voci.
+    - GET /work-orders/{id}/task-board: shape invariata; `logged_minutes`/`unstaged_logged_minutes` riflettono il
+      riallineamento.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un task radice in fase A con voci di due utenti diversi, quando un PATCH lo porta in fase B, allora tutte le sue voci hanno fase B; le voci di altri task della commessa restano invariate.</criterion>
+    <criterion id="AC-002">Dato un task radice in fase A con voci, quando viene trascinato sulla board in fase B, allora le sue voci hanno fase B; un riordino nella stessa fase non modifica alcuna voce.</criterion>
+    <criterion id="AC-003">Dato un sottotask (livello 2 o 3) di una radice in fase A, quando si registra una voce sul sottotask (anche inviando un'altra fase), allora la voce e' salvata con fase A; radice senza fase -> null.</criterion>
+    <criterion id="AC-004">Dato un albero radice+sottotask con voci su ogni livello, quando la radice cambia fase, allora tutte le voci dell'albero prendono la nuova fase.</criterion>
+    <criterion id="AC-005">Quando la radice va in "Senza fase" (board o PATCH null) o cambia commessa (fase sganciata), allora le voci dell'albero hanno fase null.</criterion>
+    <criterion id="AC-006">Quando un sottotask viene spostato sotto una radice di un'altra fase, o staccato diventando radice senza fase, allora le voci del suo sottoalbero prendono la fase della nuova radice (o null); le voci del vecchio albero non spostate restano invariate.</criterion>
+    <criterion id="AC-007">Le voci seguono il task anche se la fase di partenza o di arrivo e' chiusa; le voci senza task (fase scelta a mano) non vengono mai modificate.</criterion>
+    <criterion id="AC-008">Data una voce gia' disallineata (fase diversa da quella del task), quando il task riceve un PATCH che non cambia fase ne' padre, allora la voce resta invariata (nessun backfill, D-3).</criterion>
+    <criterion id="AC-009">Se il cambio di fase fallisce (es. 409 fase chiusa, 422 guardia), nessuna voce viene modificata (stessa transazione).</criterion>
+    <criterion id="AC-010">Dopo un trascinamento, GET task-board restituisce `logged_minutes` per fase e `unstaged_logged_minutes` coerenti con lo spostamento dei minuti del task.</criterion>
+    <criterion id="AC-011">FE: dopo un move riuscito `useMoveBoardTask` invalida la query della board (i "Minuti registrati" si aggiornano); su errore resta il rollback attuale.</criterion>
+    <criterion id="AC-012">Guide in-app IT/EN aggiornate con la nuova regola, parity test verde; test di 0163 AC-004 sostituito da AC-001.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Nessun N+1: sottoalbero per id a livelli (come `stageTaskIds`) e un solo UPDATE in blocco
+    su `time_entries`. Regola della fase effettiva in UN solo punto (resolver e riallineatore la condividono).
+    `TaskService.php` cresce al massimo di 2 righe (resta sotto 500). Autorizzazioni invariate. Test Pest per ogni AC
+    backend, Vitest per AC-011; Pint, ESLint, `tsc -b --force` puliti.
+  </constraints>
+
+</spec>

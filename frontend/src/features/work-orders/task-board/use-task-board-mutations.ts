@@ -104,7 +104,10 @@ export function useReopenWorkOrderStage(workOrderId: number) {
  * board OPTIMISTICALLY (`applyBoardMove`) before the request lands, so the
  * drop renders instantly. A failure restores the pre-drag snapshot and shows
  * a toast; a success reconciles the two affected groups with the server's
- * own compact positions, in case a concurrent drag elsewhere raced this one.
+ * own compact positions, in case a concurrent drag elsewhere raced this one,
+ * then invalidates the board query so the "Minuti registrati" totals
+ * (spec 0167: le voci segnatempo seguono la fase del task) come back on
+ * refetch — the reconciliation above only fixes stage/position, not minutes.
  */
 export function useMoveBoardTask(workOrderId: number) {
   const queryClient = useQueryClient()
@@ -155,6 +158,8 @@ export function useMoveBoardTask(workOrderId: number) {
           }),
         }
       })
+      // Step 5: refetch the board so per-fase "Minuti registrati" reflect the time entries that followed the task
+      void queryClient.invalidateQueries({ queryKey: boardKey })
     },
   })
 }

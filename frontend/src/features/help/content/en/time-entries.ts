@@ -45,7 +45,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The phase stays as recorded: if the task later moves to another phase or the phase is closed, entries already saved do not change. In the work order\'s Tasks tab, next to each phase, you find the **Logged minutes** from time entries, plus the **No phase** total for entries without one.',
+          text: 'The phase follows the task: an entry linked to a task sits in that task\'s phase (for a sub-task, the main task\'s phase). If the task later moves to another phase, or is moved under a different task, all of its entries — including the sub-tasks\' — move to the new phase too. Entries with no task keep the phase chosen by hand. Entries logged before this change stay as they are until their task changes phase for the first time: from that point on they line up too. In the work order\'s Tasks tab, next to each phase, you find the **Logged minutes** from time entries, plus the **No phase** total for entries without one.',
         },
       ],
     },

@@ -45,7 +45,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'La fase resta quella registrata: se in seguito il task cambia fase o la fase viene chiusa, le voci già salvate non cambiano. Nella scheda Task della commessa, accanto a ogni fase, trovi i **Minuti registrati** sul segnatempo, più il totale delle voci **Senza fase**.',
+          text: 'La fase segue il task: una voce collegata a un task sta nella fase di quel task (per un sotto-task, la fase del task principale). Se in seguito il task cambia fase, oppure viene spostato sotto un altro task, tutte le sue voci — comprese quelle dei sotto-task — passano alla nuova fase. Le voci senza task mantengono la fase scelta a mano. Le voci registrate prima di questa modifica restano come sono finché il loro task non cambia fase per la prima volta: da quel momento si allineano anche loro. Nella scheda Task della commessa, accanto a ogni fase, trovi i **Minuti registrati** sul segnatempo, più il totale delle voci **Senza fase**.',
         },
       ],
     },

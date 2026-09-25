@@ -7,6 +7,7 @@ namespace App\Services\WorkOrders;
 use App\Models\Task;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderStage;
+use App\Services\Tasks\TaskTimeEntryStageRealigner;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -30,6 +31,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class TaskStagePositioner
 {
+    public function __construct(private readonly TaskTimeEntryStageRealigner $stageRealigner) {}
+
     /**
      * Places $task at the END of $stage's group (or "Senza fase" when
      * $stage is null) — spec 0146 D-2/D-3: every create, and every update
@@ -75,6 +78,14 @@ final class TaskStagePositioner
 
             $this->removeFromGroup($workOrder, $task, $originStageId);
             $this->insertIntoGroup($workOrder, $task, $destinationStageId, $position);
+
+            // Spec 0167, D-2/AC-002: a CROSS-fase move realigns $task's own
+            // segnatempo subtree onto the destination fase — insertIntoGroup()
+            // wrote the column via the query builder, so $task's in-memory
+            // copy is refreshed here first (it is the root, TaskEffectiveStage
+            // reads it directly, no extra query).
+            $task->work_order_stage_id = $destinationStageId;
+            $this->stageRealigner->realign($task);
 
             return $this->groupRows($workOrder, [$originStageId, $destinationStageId]);
         });

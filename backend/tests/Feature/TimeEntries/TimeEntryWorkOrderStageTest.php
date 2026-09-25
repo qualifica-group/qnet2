@@ -162,29 +162,12 @@ it('AC-003: work_order_stage_id without work_order_id is 422 on work_order_stage
 });
 
 // ---------------------------------------------------------------------------
-// AC-004 — snapshot: the task's later stage change never touches the voce
+// AC-004 — RETIRED by spec 0167, D-2: "istantanea, mai risincronizzata" is
+// no longer the rule. The task changing stage now DOES realign the voce —
+// that requirement is covered by AC-001 in
+// tests/Feature/TimeEntries/TimeEntryStageFollowsTaskTest.php, the opposite
+// assertion of the one this test used to make.
 // ---------------------------------------------------------------------------
-
-it('AC-004: the task changing stage after the voce was logged leaves the voce\'s own stage untouched', function () {
-    $actor = timeEntryActorWith(['create']);
-    $workOrder = WorkOrder::factory()->create();
-    $originalStage = WorkOrderStage::factory()->forWorkOrder($workOrder)->create();
-    $laterStage = WorkOrderStage::factory()->forWorkOrder($workOrder)->create();
-    $task = Task::factory()->forCreator($actor)->create([
-        'work_order_id' => $workOrder->id,
-        'work_order_stage_id' => $originalStage->id,
-    ]);
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/time-entries', timeEntryPayload(['task_id' => $task->id]))
-        ->assertCreated();
-    $entryId = $response->json('data.id');
-
-    $task->work_order_stage_id = $laterStage->id;
-    $task->save();
-
-    $this->assertDatabaseHas('time_entries', ['id' => $entryId, 'work_order_stage_id' => $originalStage->id]);
-});
 
 it('D-2: updating a standalone voce without changing its stage is accepted even after the stage closed meanwhile', function () {
     $actor = timeEntryActorWith(['create', 'view', 'update']);

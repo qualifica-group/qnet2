@@ -95,11 +95,13 @@ class TimeEntry extends BaseModel
     }
 
     /**
-     * The commessa "Fase" this voce is snapshotted onto (spec 0163, D-1/D-2):
-     * derived from the linked Task when there is one, otherwise an explicit
-     * choice among the commessa's own open stages. Never re-derived once
-     * written except by a fresh call to TimeEntryLinkResolver (D-2, no
-     * ongoing sync).
+     * The commessa "Fase" this voce follows (spec 0163 D-1, spec 0167 D-1):
+     * with a linked Task, the effective fase of that task's own ROOT
+     * (`App\Services\Tasks\TaskEffectiveStage`); otherwise an explicit
+     * choice among the commessa's own open stages. With a Task, this column
+     * is realigned whenever the task's own effective fase changes
+     * (`App\Services\Tasks\TaskTimeEntryStageRealigner`, spec 0167 D-2) —
+     * spec 0163's original "istantanea, mai risincronizzata" is retired.
      *
      * @return BelongsTo<WorkOrderStage, $this>
      */
