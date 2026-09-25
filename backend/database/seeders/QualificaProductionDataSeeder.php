@@ -49,6 +49,9 @@ use Illuminate\Database\Seeder;
  *                                    base role (Task and Segnatempo only).
  *                                    Create-only: an account that already
  *                                    exists is never touched.
+ *   9. QualificaReportsToSeeder    — who each operator reports to ("Risponde
+ *                                    a", spec 0166), from the mansionario's
+ *                                    supervision sheet.
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's source catalogue by name instead of duplicating
@@ -60,8 +63,10 @@ use Illuminate\Database\Seeder;
  *     yet), which is why it is repeated — not moved — after step 5;
  *   - step 7 needs the sites step 5 imports and the category functions step 6
  *     links: a competence row carries the category's EFFECTIVE function;
- *   - step 8 runs last, so it finds the named accounts of steps 4 and 7
- *     already there and leaves them alone.
+ *   - step 8 runs after step 7, so it finds the named accounts of steps 4
+ *     and 7 already there and leaves them alone;
+ *   - step 9 needs every account on both sides of a reports-to link: the
+ *     operators of step 7 and the staff of step 8.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Step 5 is a no-op with
@@ -84,5 +89,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaBusinessFunctionLinkSeeder::class);
         $this->call(QualificaOperatorSeeder::class);
         $this->call(QualificaStaffSeeder::class);
+        $this->call(QualificaReportsToSeeder::class);
     }
 }

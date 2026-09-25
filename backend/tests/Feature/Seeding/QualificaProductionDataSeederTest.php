@@ -47,9 +47,12 @@ it('composes structure, catalogue and operators in one run', function (): void {
         ->and(Product::query()->count())->toBe(294)
         ->and(User::query()->where('email', 'ciro.cacciapuoti@qualificagroup.com')->exists())->toBeTrue()
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->exists())->toBeTrue()
-        // Step 8 runs last: the staff lands, the roster keeps its mansione.
+        // Step 8 runs after step 7: the staff lands, the roster keeps its mansione.
         ->and(User::query()->where('email', 'nicola.eliseo@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::BASE_ROLE])
-        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::SUPERVISOR_ROLE]);
+        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::SUPERVISOR_ROLE])
+        // Step 9 runs last: a staff account reports to the operators of step 7.
+        ->and(User::query()->where('email', 'jessica.virgolini@qualificagroup.com')->with('employment.reportsTo')->sole()
+            ->employment->reportsTo->pluck('email')->all())->toBe(['fabrizio.aliberti@qualificagroup.com', 'rosa.falzarano@qualificagroup.com']);
 });
 
 it('seeds the super-admin before the legacy import, so an actor always exists', function (): void {

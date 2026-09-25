@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED RESPONSABILI ("RISPONDE A") DAL MANSIONARIO — VERDE, NON COMMITTATO (2026-09-25)
+
+- Fonte: CSV "Mansionario Operatori_Abilitazioni 1 (Supervisione)" (direttiva utente 2026-09-25), trascritto in
+  `database/seeders/QualificaCatalog/ReportsToRoster.php` (`MANAGERS`: email operatore => email responsabili).
+  Fabozzi nessuno; Falzarano/Aliberti/Santamaria -> Fabozzi; Chiacchio -> Falzarano+Aliberti+Santamaria;
+  Figurelli -> Santamaria; tutti gli altri (incluso lo staff Jessica Virgolini) -> Falzarano+Aliberti.
+- Esclusi: Del Giudice, Vitale, Finizio, Pascale (gia' fuori dal roster), Miriam Cantatore (in nessun roster).
+  "Jessica Faiettini" del CSV = `jessica.faettini@`.
+- `QualificaReportsToSeeder` = step 9 di `QualificaProductionDataSeeder` (dopo operatori e staff). Convergente:
+  `reportsTo()->sync()` per ogni account elencato; non tocca gli account non elencati; crea il profilo employment
+  se manca (staff); salta con warning account/responsabile mancante e profilo `is_manager` (spec 0166 D-5).
+- Test: `tests/Feature/Seeding/QualificaReportsToSeederTest.php` + asserzione step 9 in
+  `QualificaProductionDataSeederTest`. Produzione: `php artisan db:seed --class=QualificaReportsToSeeder`.
+- Manuale: nessun impatto (dati di seed, nessuna modifica a UI/regole).
+
 ## TASK — CAMPO "EVIDENZE" ELIMINATO — VERDE, COMMITTATO (2026-09-25)
 
 - Decisione utente 2026-09-25: eliminare il campo Evidenze dal task (ritira spec 0154 D-3 / AC-004, annotato in spec).
