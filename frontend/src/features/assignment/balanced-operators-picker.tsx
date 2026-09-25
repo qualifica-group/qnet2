@@ -116,7 +116,7 @@ function BalancedGroupRow({ group, selection, disabled }: BalancedGroupRowProps)
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-md border bg-background">
+      <div className="rounded-md border">
         <div className="flex items-center gap-2 px-2 py-1.5">
           <Checkbox
             checked={selection.groupState(group)}
