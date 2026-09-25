@@ -2,17 +2,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
 import {
   buildRequestReportSchema,
-  currentWeekReportRange,
   isRequestReportQueryReady,
+  todayReportRange,
   toRequestReportFilterPayload,
   type RequestReportFormValues,
 } from '@/features/request-management/request-report-schema'
 
 /**
- * Rev-2 AC-056/AC-057: the current week's Monday/Friday, computed from LOCAL
- * date components. `process.env.TZ` is set per test (Node honors it for
- * subsequently-constructed `Date` objects) so the east-of-UTC case is
- * genuine, not dependent on the machine running the suite.
+ * Spec 0169 D-1 (replacing rev-2 AC-056): today as both bounds, still built
+ * from LOCAL date components (AC-057). `process.env.TZ` is set per test (Node
+ * honors it for subsequently-constructed `Date` objects) so the east-of-UTC
+ * case is genuine, not dependent on the machine running the suite.
  */
 
 const ORIGINAL_TZ = process.env.TZ
@@ -25,40 +25,21 @@ afterEach(() => {
   process.env.TZ = ORIGINAL_TZ
 })
 
-describe('currentWeekReportRange', () => {
-  it('resolves the same week\'s Monday/Friday from a midweek Wednesday (AC-056)', () => {
-    // 2026-09-09 is a Wednesday.
-    expect(currentWeekReportRange(new Date(2026, 8, 9, 12, 0))).toEqual({
-      date_from: '2026-09-07',
-      date_to: '2026-09-11',
-    })
-  })
-
-  it('resolves the PRECEDING Monday from a Sunday, not the next one (AC-056)', () => {
-    // 2026-09-06 is a Sunday; `getDay() - 1` would wrongly jump six days
-    // forward instead of one day back — the offset must be `(getDay()+6)%7`.
-    expect(currentWeekReportRange(new Date(2026, 8, 6, 12, 0))).toEqual({
-      date_from: '2026-08-31',
-      date_to: '2026-09-04',
-    })
-  })
-
-  it('never crosses into the next week from a Saturday, even proposing a Friday in the past', () => {
-    // 2026-09-05 is a Saturday, still inside the week of Monday 2026-08-31.
-    expect(currentWeekReportRange(new Date(2026, 8, 5, 9, 0))).toEqual({
-      date_from: '2026-08-31',
-      date_to: '2026-09-04',
+describe('todayReportRange', () => {
+  it('proposes today as both From and To (spec 0169 D-1)', () => {
+    expect(todayReportRange(new Date(2026, 8, 9, 12, 0))).toEqual({
+      date_from: '2026-09-09',
+      date_to: '2026-09-09',
     })
   })
 
   it('uses LOCAL components, not toISOString(), just after midnight east of UTC (AC-057)', () => {
     process.env.TZ = 'Asia/Tokyo'
-    // 2026-09-07 00:30 Tokyo time (UTC+9) is genuinely Monday locally; its
-    // UTC equivalent is 2026-09-06 15:30 — `toISOString().slice(0,10)` would
-    // wrongly read Sunday and propose the wrong week entirely.
-    expect(currentWeekReportRange(new Date(2026, 8, 7, 0, 30))).toEqual({
+    // 2026-09-07 00:30 Tokyo time (UTC+9) is locally the 7th; its UTC
+    // equivalent is 2026-09-06 15:30 — `toISOString()` would read the 6th.
+    expect(todayReportRange(new Date(2026, 8, 7, 0, 30))).toEqual({
       date_from: '2026-09-07',
-      date_to: '2026-09-11',
+      date_to: '2026-09-07',
     })
   })
 })
@@ -150,5 +131,36 @@ describe('site selection rules (AC-020)', () => {
       true,
     )
     expect(isRequestReportQueryReady(values({ site_keys: ['3'] }), [], SITE_KEYS)).toBe(true)
+  })
+})
+
+/** Spec 0169 D-2/AC-002..005: either bound may be left empty, an open side. */
+describe('open date bounds (spec 0169)', () => {
+  const schema = () => buildRequestReportSchema(i18n.t, OPERATOR_KEYS, SITE_KEYS)
+
+  it.each([
+    ['only To', { date_from: '', date_to: '2026-09-25' }],
+    ['only From', { date_from: '2026-09-01', date_to: '' }],
+    ['neither', { date_from: '', date_to: '' }],
+  ])('accepts %s in the schema and as a ready query', (_case, dates) => {
+    expect(schema().safeParse(values(dates)).success).toBe(true)
+    expect(isRequestReportQueryReady(values(dates), OPERATOR_KEYS, SITE_KEYS)).toBe(true)
+  })
+
+  it('still rejects To before From when both are set (AC-005)', () => {
+    const dates = { date_from: '2026-09-30', date_to: '2026-09-01' }
+
+    expect(schema().safeParse(values(dates)).success).toBe(false)
+    expect(isRequestReportQueryReady(values(dates), OPERATOR_KEYS, SITE_KEYS)).toBe(false)
+  })
+
+  it('drops an empty bound from the wire and keeps the filled one (AC-006)', () => {
+    const onlyTo = toRequestReportFilterPayload(values({ date_from: '' }), OPERATOR_KEYS, SITE_KEYS)
+    const neither = toRequestReportFilterPayload(values({ date_from: '', date_to: '' }), OPERATOR_KEYS, SITE_KEYS)
+
+    expect(onlyTo).not.toHaveProperty('date_from')
+    expect(onlyTo.date_to).toBe('2026-09-11')
+    expect(neither).not.toHaveProperty('date_from')
+    expect(neither).not.toHaveProperty('date_to')
   })
 })

@@ -46,7 +46,8 @@ function narrowedSelection(
 
 /**
  * `YYYY-MM-DD`, the wire format `POST /request-management/report` expects
- * (spec 0106). `availableOperatorKeys` (spec 0109) and `availableSiteKeys`
+ * (spec 0106); either date may be left empty, an open bound (spec 0169).
+ * `availableOperatorKeys` (spec 0109) and `availableSiteKeys`
  * (spec 0112) are what the two pickers currently offer: passing them is what
  * turns "at least one operator"/"at least one site" into real rules, and
  * their default of `[]` keeps the schema usable (and the rules inert)
@@ -59,8 +60,8 @@ export function buildRequestReportSchema(
 ) {
   return z
     .object({
-      date_from: z.string().min(1, t('requestManagement.report.errors.dateFromRequired')),
-      date_to: z.string().min(1, t('requestManagement.report.errors.dateToRequired')),
+      date_from: z.string(),
+      date_to: z.string(),
       // rev-2 D-11: at least one branch, deselecting all is a client error,
       // never a request left for the server to 422 (AC-051).
       category_keys: z.array(z.string()).min(1, t('requestManagement.report.errors.categoriesRequired')),
@@ -68,7 +69,7 @@ export function buildRequestReportSchema(
       operator_keys: z.array(z.string()),
       site_keys: z.array(z.string()),
     })
-    .refine((value) => value.date_from === '' || value.date_to === '' || value.date_to >= value.date_from, {
+    .refine((value) => isDateRangeOrdered(value.date_from, value.date_to), {
       message: t('requestManagement.report.errors.dateToBeforeDateFrom'),
       path: ['date_to'],
     })
@@ -87,6 +88,11 @@ export function buildRequestReportSchema(
 
 export type RequestReportFormValues = z.infer<ReturnType<typeof buildRequestReportSchema>>
 
+/** "To" not before "From" — only checkable when both are set (spec 0169 AC-005). */
+function isDateRangeOrdered(dateFrom: string, dateTo: string): boolean {
+  return dateFrom === '' || dateTo === '' || dateTo >= dateFrom
+}
+
 /** Zero-pads a date component to two digits (`9` -> `"09"`). */
 function pad2(value: number): string {
   return String(value).padStart(2, '0')
@@ -103,34 +109,19 @@ function toLocalIsoDate(date: Date): string {
 }
 
 /**
- * Monday of `date`'s week (rev-2 AC-056). The week starts Monday: `getDay()`
- * returns `0` for Sunday, so the correct back-to-Monday offset is
- * `(getDay() + 6) % 7` — NOT `getDay() - 1`, which on a Sunday (`0 - 1 = -1`)
- * would land six days in the wrong direction instead of going back one day.
+ * Today as both bounds, local `YYYY-MM-DD` (spec 0169 D-1, replacing the
+ * current week of rev-2 AC-056).
  */
-function mondayOf(date: Date): Date {
-  const monday = new Date(date)
-  monday.setDate(date.getDate() - ((date.getDay() + 6) % 7))
-  return monday
-}
-
-/**
- * Current week's Monday/Friday as local `YYYY-MM-DD` strings (rev-2
- * AC-056/AC-057). On a Saturday/Sunday the proposed Friday falls in the
- * past — intentional, not a bug (the week already ended).
- */
-export function currentWeekReportRange(now: Date = new Date()): { date_from: string; date_to: string } {
-  const monday = mondayOf(now)
-  const friday = new Date(monday)
-  friday.setDate(monday.getDate() + 4)
-  return { date_from: toLocalIsoDate(monday), date_to: toLocalIsoDate(friday) }
+export function todayReportRange(now: Date = new Date()): { date_from: string; date_to: string } {
+  const today = toLocalIsoDate(now)
+  return { date_from: today, date_to: today }
 }
 
 /**
  * `categoryKeys` seeds the checkbox group: every branch selected by default
  * (rev-2 D-11, AC-050), an empty array before the branch list has loaded.
- * `date_from`/`date_to` default to the current week's Monday/Friday (rev-2
- * AC-056) — both stay freely editable, this is a default, not a constraint.
+ * `date_from`/`date_to` default to today (spec 0169 D-1) — both stay freely
+ * editable and may be emptied, this is a default, not a constraint.
  */
 export function requestReportDefaultValues(
   categoryKeys: string[] = [],
@@ -138,7 +129,7 @@ export function requestReportDefaultValues(
   siteKeys: string[] = [],
 ): RequestReportFormValues {
   return {
-    ...currentWeekReportRange(),
+    ...todayReportRange(),
     category_keys: categoryKeys,
     row_mode: 'all',
     operator_keys: operatorKeys,
@@ -186,9 +177,7 @@ export function isRequestReportQueryReady(
   availableSiteKeys: string[] = [],
 ): boolean {
   return (
-    values.date_from !== '' &&
-    values.date_to !== '' &&
-    values.date_to >= values.date_from &&
+    isDateRangeOrdered(values.date_from, values.date_to) &&
     values.category_keys.length > 0 &&
     (!selectionIsRequired(values.row_mode, availableOperatorKeys) || values.operator_keys.length > 0) &&
     (!selectionIsRequired(values.row_mode, availableSiteKeys) || values.site_keys.length > 0)
@@ -203,19 +192,22 @@ export function isRequestReportQueryReady(
  *
  * The two axes are INDEPENDENT (spec 0112 D-10): each is dropped or sent on
  * its own list alone, so a narrowed operator selection travels next to "every
- * site" without either one widening the other.
+ * site" without either one widening the other. An empty date is an open bound
+ * and is dropped too (spec 0169 D-2).
  */
 export function toRequestReportFilterPayload(
   values: RequestReportFormValues,
   availableOperatorKeys: string[],
   availableSiteKeys: string[],
 ): RequestReportFilterPayload {
-  const { operator_keys: operators, site_keys: sites, ...filters } = values
+  const { operator_keys: operators, site_keys: sites, date_from: dateFrom, date_to: dateTo, ...filters } = values
 
   const operatorKeys = narrowedSelection(values.row_mode, operators, availableOperatorKeys)
   const siteKeys = narrowedSelection(values.row_mode, sites, availableSiteKeys)
 
   return {
+    ...(dateFrom !== '' ? { date_from: dateFrom } : {}),
+    ...(dateTo !== '' ? { date_to: dateTo } : {}),
     ...filters,
     ...(operatorKeys ? { operator_keys: operatorKeys } : {}),
     ...(siteKeys ? { site_keys: siteKeys } : {}),

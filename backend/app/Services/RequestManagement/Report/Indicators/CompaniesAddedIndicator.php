@@ -49,14 +49,14 @@ final class CompaniesAddedIndicator implements ReportIndicator
      */
     private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
+        $query = $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
             ->join('registries', 'registries.id', '=', 'opportunities.registry_id')
             ->join('personal_data', function (JoinClause $join): void {
                 $join->on('personal_data.personable_id', '=', 'registries.id')
                     ->where('personal_data.personable_type', '=', 'registry')
                     ->where('personal_data.type', '=', PersonalDataTypeEnum::Company->value);
-            })
-            ->where('registries.created_at', '>=', $range->start)
-            ->where('registries.created_at', '<', $range->endExclusive);
+            });
+
+        return $range->constrain($query, 'registries.created_at');
     }
 }

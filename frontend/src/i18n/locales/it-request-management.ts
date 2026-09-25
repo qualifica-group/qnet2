@@ -310,6 +310,9 @@ export const requestManagement = {
     fields: {
       dateFrom: 'Dal',
       dateTo: 'Al',
+      // Spec 0169: un estremo vuoto non pone limiti su quel lato.
+      dateFromHint: 'Vuoto: dall\'inizio',
+      dateToHint: 'Vuoto: senza fine',
       // rev-2: selezione dei rami e delle righe da includere.
       categories: 'Categorie',
       // rev-2 AC-055: controllo tri-stato in testa al gruppo categorie.
@@ -353,12 +356,10 @@ export const requestManagement = {
       processing: 'Generazione…',
       // Applica i filtri ai grafici e chiude la modale (direttiva utente 2026-09-08).
       apply: 'Applica',
-      // Riporta la bozza ai valori iniziali (settimana corrente, tutto selezionato); si applica con "Applica".
+      // Riporta la bozza ai valori iniziali (oggi, tutto selezionato); si applica con "Applica".
       reset: 'Azzera filtri',
     },
     errors: {
-      dateFromRequired: 'Seleziona la data di inizio.',
-      dateToRequired: 'Seleziona la data di fine.',
       dateToBeforeDateFrom: 'La data di fine non può essere precedente alla data di inizio.',
       // rev-2 AC-051/AC-053: errori del gruppo categorie.
       categoriesRequired: 'Seleziona almeno una categoria.',
@@ -388,6 +389,10 @@ export const requestManagement = {
       title: 'Filtri applicati',
       period: 'Periodo',
       periodValue: '{{from}} – {{to}}',
+      // Spec 0169 D-5: estremi aperti.
+      periodFrom: 'dal {{from}}',
+      periodTo: 'fino al {{to}}',
+      periodAll: 'Tutto il periodo',
       categories: 'Categorie',
       sites: 'Sedi',
       operators: 'Operatori',

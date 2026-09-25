@@ -99,7 +99,7 @@ export function RequestReportFiltersDialog({
     onOpenChange(false)
   }
 
-  // Same seeding as a first visit (current week, every branch/operator/site),
+  // Same seeding as a first visit (today, every branch/operator/site),
   // kept in the DRAFT: nothing reaches the charts until "Applica".
   // `keepDefaultValues` keeps `isDirty` measured against the applied filters,
   // so the open-sync effect above cannot overwrite the reset.

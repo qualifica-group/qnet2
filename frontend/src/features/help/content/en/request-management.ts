@@ -205,13 +205,13 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Click **Filters** to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). **Reset filters** restores the initial values (current week, every category, site and operator, Everything mode): the change takes effect only after **Apply**. The same filters apply to charts and file.',
+          text: 'Click **Filters** to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). **Reset filters** restores the initial values (today, every category, site and operator, Everything mode): the change takes effect only after **Apply**. The same filters apply to charts and file.',
         },
         {
           type: 'table',
           headers: ['Filter', 'What it does', 'Default value'],
           rows: [
-            ['From / To', 'The period considered, full days included.', "Monday to Friday of the current week"],
+            ['From / To', 'The period considered, full days included. Either field, or both, can be left empty: only To = everything up to that date; only From = everything from that date on; both empty = no date limit.', 'Today (From and To)'],
             ['Categories', 'Which categories to include.', 'All'],
             ['Sites', 'Limits to the operators of those sites.', 'All'],
             ['Operators', 'Limits to certain GA2 operators.', 'All'],
@@ -220,7 +220,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'To cannot be earlier than From. The date used changes column by column (see the columns table). Unhandled Callbacks, Unhandled New Contacts and Potential Leads ignore the period and look at the situation today; their "(selected period)" versions use it.',
+          text: 'When both are filled in, To cannot be earlier than From. The date used changes column by column (see the columns table). Unhandled Callbacks, Unhandled New Contacts and Potential Leads ignore the period and look at the situation today; their "(selected period)" versions use it.',
         },
         {
           type: 'list',
@@ -358,7 +358,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'No separate notification arrives. The file is named, for example, request-management-report-2026-09-14_2026-09-18.xlsx (the From and To dates).',
+          text: 'No separate notification arrives. The file is named, for example, request-management-report-2026-09-14_2026-09-18.xlsx (the From and To dates). With only one bound it becomes ...-from-DATE or ...-to-DATE; with no dates, just request-management-report.xlsx.',
         },
         {
           type: 'warning',

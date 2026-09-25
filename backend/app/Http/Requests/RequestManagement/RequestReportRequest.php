@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\RequestManagement;
 
 use App\Enums\RequestManagementReportRowMode;
+use App\Http\Requests\RequestManagement\Concerns\ValidatesReportDateRange;
 use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
@@ -14,8 +15,8 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validates POST /api/request-management/report (spec 0106 data_contract;
- * rev-2 data_contract_delta): `date_from`/`date_to`, both required `Y-m-d`,
- * `date_to >= date_from`. `category_keys` (rev-2 D-11) and `row_mode`
+ * rev-2 data_contract_delta): `date_from`/`date_to`, both optional `Y-m-d`
+ * (spec 0169, ValidatesReportDateRange). `category_keys` (rev-2 D-11) and `row_mode`
  * (rev-2 D-13) are BOTH required — no server-side default, the client
  * always sends an explicit choice (AC-030/AC-031).
  *
@@ -40,6 +41,8 @@ use Illuminate\Validation\Rule;
  */
 class RequestReportRequest extends FormRequest
 {
+    use ValidatesReportDateRange;
+
     public function authorize(): bool
     {
         // Authorization handled in the controller (request-management.report).
@@ -52,8 +55,7 @@ class RequestReportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date_from' => ['required', 'date_format:Y-m-d'],
-            'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            ...$this->reportDateRangeRules(),
             'category_keys' => ['required', 'array', 'min:1'],
             'category_keys.*' => ['required', 'string', Rule::in(app(ReportBranchResolver::class)->keys())],
             'row_mode' => ['required', 'string', Rule::in(array_map(

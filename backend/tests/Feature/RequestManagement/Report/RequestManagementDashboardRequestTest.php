@@ -103,18 +103,23 @@ it('403s without request-management.report (AC-001)', function () {
 // AC-002
 // ---------------------------------------------------------------------------
 
-it('422s when date_from is missing (AC-002)', function () {
+// Spec 0169 D-2: an open bound is accepted and echoed back as null.
+it('accepts an open date bound and echoes it as null', function (array $drop, ?string $from, ?string $to) {
     dashboardCategoryTree();
     $actor = dashboardActorWith(['report']);
     Sanctum::actingAs($actor);
 
-    $query = dashboardQuery();
-    unset($query['date_from']);
+    $query = array_diff_key(dashboardQuery(), array_flip($drop));
 
     $this->getJson('/api/request-management/report/dashboard?'.http_build_query($query))
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('date_from');
-});
+        ->assertOk()
+        ->assertJsonPath('data.applied.date_from', $from)
+        ->assertJsonPath('data.applied.date_to', $to);
+})->with([
+    'only date_to' => [['date_from'], null, '2026-09-30'],
+    'only date_from' => [['date_to'], '2026-09-01', null],
+    'neither' => [['date_from', 'date_to'], null, null],
+]);
 
 it('422s when date_to is before date_from (AC-002)', function () {
     dashboardCategoryTree();

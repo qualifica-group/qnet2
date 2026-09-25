@@ -56,8 +56,7 @@ final class UnhandledCallbacksIndicator implements ReportIndicator
             ->whereNotIn('current_status.group', [WorkflowStatusGroup::ClosedWon->value, WorkflowStatusGroup::ClosedLost->value]);
 
         if ($this->withinRange) {
-            return $query->where('quotes.next_callback_at', '>=', $range->start)
-                ->where('quotes.next_callback_at', '<', $range->endExclusive);
+            return $range->constrain($query, 'quotes.next_callback_at');
         }
 
         return $query->where('quotes.next_callback_at', '<', CarbonImmutable::today()->addDay());

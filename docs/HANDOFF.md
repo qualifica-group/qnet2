@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## REPORT: PERIODO DAL/AL APERTO, DEFAULT OGGI — VERDE, COMMITTATO (2026-09-25)
+
+- Spec `0169-report-open-date-range.xml`. Default Dal = Al = oggi (`todayReportRange`, sostituisce
+  `currentWeekReportRange`, rimosso con `mondayOf`). I filtri gia' memorizzati in localStorage restano (D-1).
+- Contratto: `date_from`/`date_to` OPZIONALI su POST `/{module}/report` e GET `/report/dashboard`; il FE li omette
+  se vuoti (`toRequestReportFilterPayload`), `applied.date_*` = null se aperti. Regole condivise nel trait
+  `Http/Requests/RequestManagement/Concerns/ValidatesReportDateRange` (`dateFrom()`/`dateTo()`; `after_or_equal`
+  solo se entrambi presenti).
+- `ReportDateRange`: `start`/`endExclusive` nullable + `constrain($query, $column)`, unico punto usato dai 5
+  indicatori a periodo. Nome file: `-{dal}_{al}` / `-from-{dal}` / `-to-{al}` / nessun suffisso.
+- FE: niente asterisco su Dal/Al, hint "Vuoto: dall'inizio/senza fine", chip Periodo "dal X"/"fino al Y"/"Tutto il
+  periodo" (neutro solo senza date). Chiavi i18n `dateFromRequired`/`dateToRequired` rimosse.
+- Test: `RequestManagementReportOpenRangeTest` (nuovo), dataset open-bound in Create/DashboardRequest test (sostituiti
+  i due "422 se manca la data": requisito cambiato); Vitest schema/dialog/filter-bar aggiornati.
+- Guide in-app IT/EN aggiornate (request-management, enrollee-management). HANDOFF e' a ~250 KB: va archiviato.
+
 ## ETICHETTE GA SENZA PERMESSI SUL CATALOGO — VERDE, COMMITTATO (2026-09-25)
 
 - Bug (account reale Sara Armerini, ruolo `commerciale`, NON l'impersonificazione): `GET /api/product-categories/{id}/

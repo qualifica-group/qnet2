@@ -156,7 +156,7 @@ export function reconcileSiteKeys(
 /**
  * Persists the filters applied to the Gestione Richieste dashboard across
  * reloads (user directive 2026-09-08), so reopening the panel comes back to
- * the selection the operator was working on instead of the current week with
+ * the selection the operator was working on instead of today with
  * every branch. Mirrors `useRequestManagementCategoryPreference`'s hook shape.
  *
  * This hook only round-trips the raw preference: whether the stored branch

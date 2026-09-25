@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0169-report-open-date-range" status="approved" owner="utente" date="2026-09-25">
+
+  <goal>
+    Report e statistiche di Gestione Richieste / Iscritti: il filtro Dal/Al parte dalla giornata odierna (non piu' la
+    settimana corrente) e ognuno dei due estremi puo' restare vuoto. Solo Al = tutti i dati fino a quella data; solo
+    Dal = tutti i dati da quella data in poi; entrambi vuoti = nessun limite temporale.
+  </goal>
+
+  <context>
+    - Estende spec 0106 (rev-2 AC-056, default settimana corrente) e 0107 (dashboard): stessi filtri, stesso payload
+      condiviso (`toRequestReportFilterPayload`), stessa `ReportDateRange` lato server.
+    - Le colonne senza periodo (spec 0159) restano indipendenti dal filtro, invariate.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Default Dal = Al = oggi (data locale del browser). Sostituisce la settimana corrente di
+      0106 rev-2 AC-056. I filtri gia' memorizzati nel browser (directive 2026-09-08) restano come sono: il default
+      vale al primo accesso e dopo "Azzera filtri".</decision>
+    <decision id="D-2">Wire: `date_from`/`date_to` diventano OPZIONALI. Un estremo vuoto NON viaggia (il client lo
+      omette, il server accetta anche null/stringa vuota). `date_to >= date_from` si verifica solo se entrambi presenti.</decision>
+    <decision id="D-3">`ReportDateRange` ha `start`/`endExclusive` nullable; un estremo null non aggiunge il vincolo
+      corrispondente. Unico punto che applica il periodo alle query: `ReportDateRange::constrain()`.</decision>
+    <decision id="D-4">Nome file: `{resource}-{dal}_{al}` con entrambi; `{resource}-from-{dal}` solo Dal;
+      `{resource}-to-{al}` solo Al; `{resource}` senza limiti.</decision>
+    <decision id="D-5">Chip "Periodo" della dashboard: "dal X al Y" / "dal X" / "fino al Y" / "Tutto il periodo"
+      (neutro solo in quest'ultimo caso).</decision>
+  </decisions>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/{module}/report">
+      <request>`date_from`?: `Y-m-d` | null, `date_to`?: `Y-m-d` | null (`after_or_equal:date_from` solo se entrambi); resto invariato.</request>
+    </endpoint>
+    <endpoint method="GET" path="/api/{module}/report/dashboard">
+      <request>Stessi due campi opzionali in query string.</request>
+      <response status="200">`applied.date_from` / `applied.date_to`: stringa oppure null (= estremo aperto).</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Senza filtri memorizzati il pannello propone Dal = Al = oggi.</criterion>
+    <criterion id="AC-002">Solo Al: POST e dashboard accettano la richiesta e contano tutto fino ad Al incluso.</criterion>
+    <criterion id="AC-003">Solo Dal: contano tutto da Dal incluso in poi (anche date future).</criterion>
+    <criterion id="AC-004">Entrambi vuoti: nessun limite temporale.</criterion>
+    <criterion id="AC-005">Con entrambi presenti, Al prima di Dal resta un errore (client e 422 server).</criterion>
+    <criterion id="AC-006">Il client non invia gli estremi vuoti; il nome file segue D-4.</criterion>
+  </acceptance_criteria>
+</spec>

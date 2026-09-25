@@ -158,6 +158,17 @@ describe('RequestDashboardFilterBar', () => {
     expect(onEdit).toHaveBeenCalledTimes(1)
   })
 
+  it.each([
+    ['only From', { date_from: '2026-09-01', date_to: '' }, 'Periodfrom 01/09/2026'],
+    ['only To', { date_from: '', date_to: '2026-09-30' }, 'Periodup to 30/09/2026'],
+    ['neither', { date_from: '', date_to: '' }, 'PeriodAll time'],
+  ])('labels an open period bound in the Period chip: %s (spec 0169 D-5)', (_case, dates, expected) => {
+    renderBar(true, { ...APPLIED_FILTERS, ...dates })
+
+    const [period] = within(screen.getByRole('list', { name: 'Applied filters' })).getAllByRole('listitem')
+    expect(period.textContent).toBe(expected)
+  })
+
   it('offers expand all while something is folded, collapse all once everything is open', () => {
     const { onToggleExpanded } = renderBar()
 

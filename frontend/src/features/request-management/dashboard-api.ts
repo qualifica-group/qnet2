@@ -51,9 +51,12 @@ export interface RequestDashboardData {
    * Echo of the applied filters — compare against the current query to
    * discard an out-of-order response. `operator_keys` and `site_keys` are
    * `null` (not absent) when none was sent, i.e. "every operator" / "every
-   * site" (spec 0109 D-2/AC-009, spec 0112 D-4).
+   * site" (spec 0109 D-2/AC-009, spec 0112 D-4); the two dates are `null` for
+   * an open bound (spec 0169 D-2).
    */
-  applied: Omit<RequestDashboardQuery, 'operator_keys' | 'site_keys'> & {
+  applied: Omit<RequestDashboardQuery, 'date_from' | 'date_to' | 'operator_keys' | 'site_keys'> & {
+    date_from: string | null
+    date_to: string | null
     operator_keys: string[] | null
     site_keys: string[] | null
   }

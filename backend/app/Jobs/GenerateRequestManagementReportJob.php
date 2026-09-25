@@ -74,7 +74,7 @@ class GenerateRequestManagementReportJob implements ShouldQueue
      */
     private function freezeContext(ExportRun $run): User
     {
-        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>, module?: string} $state */
+        /** @var array{date_from?: string|null, date_to?: string|null, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>, module?: string} $state */
         $state = $run->state;
 
         /** @var User $actor */
@@ -92,7 +92,7 @@ class GenerateRequestManagementReportJob implements ShouldQueue
      */
     private function write(ExportRun $run, User $actor, RequestManagementReportGenerator $generator): void
     {
-        /** @var array{date_from: string, date_to: string, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>, module?: string} $state */
+        /** @var array{date_from?: string|null, date_to?: string|null, locale: string, category_keys: array<int, string>, row_mode: string, operator_keys?: array<int, string>, site_keys?: array<int, string>, module?: string} $state */
         $state = $run->state;
 
         $disk = Storage::disk((string) config('exports.disk'));
@@ -116,8 +116,8 @@ class GenerateRequestManagementReportJob implements ShouldQueue
         // has no such key, and its absence is RequestModule::Requests.
         $rowCount = $generator->generate(
             $actor,
-            $state['date_from'],
-            $state['date_to'],
+            $state['date_from'] ?? null,
+            $state['date_to'] ?? null,
             $state['category_keys'],
             RequestManagementReportRowMode::from($state['row_mode']),
             $run->format,

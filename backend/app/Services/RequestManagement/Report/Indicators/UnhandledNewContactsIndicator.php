@@ -55,7 +55,6 @@ final class UnhandledNewContactsIndicator implements ReportIndicator
             return $query;
         }
 
-        return $query->where('quotes.created_at', '>=', $range->start)
-            ->where('quotes.created_at', '<', $range->endExclusive);
+        return $range->constrain($query, 'quotes.created_at');
     }
 }

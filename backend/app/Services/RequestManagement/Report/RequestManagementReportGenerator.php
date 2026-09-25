@@ -53,8 +53,8 @@ final class RequestManagementReportGenerator
      */
     public function generate(
         User $actor,
-        string $dateFrom,
-        string $dateTo,
+        ?string $dateFrom,
+        ?string $dateTo,
         array $categoryKeys,
         RequestManagementReportRowMode $rowMode,
         ExportFormat $format,
@@ -102,8 +102,8 @@ final class RequestManagementReportGenerator
      */
     public function rows(
         User $actor,
-        string $dateFrom,
-        string $dateTo,
+        ?string $dateFrom,
+        ?string $dateTo,
         array $categoryKeys,
         RequestManagementReportRowMode $rowMode,
         ?ReportOperatorFilter $operators = null,

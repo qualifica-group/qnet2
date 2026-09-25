@@ -3,7 +3,7 @@ import { type Control, useFormContext, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { CircleAlert, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import type { SearchableMultiSelectLabels } from '@/components/ui/searchable-multi-select'
 import { KeySelectField, type PickerGroup } from '@/features/request-management/request-report-key-select-field'
 import {
@@ -158,12 +158,13 @@ export function RequestReportFilters({
         name="date_from"
         render={({ field }) => (
           <FormItem className="gap-1.5">
-            <FormLabel required className={FIELD_LABEL_CLASS}>
+            <FormLabel className={FIELD_LABEL_CLASS}>
               {t('requestManagement.report.fields.dateFrom')}
             </FormLabel>
             <FormControl>
               <Input type="date" disabled={disabled} {...field} />
             </FormControl>
+            <FormDescription className="text-xs">{t('requestManagement.report.fields.dateFromHint')}</FormDescription>
             <FormMessage className="text-xs" />
           </FormItem>
         )}
@@ -174,12 +175,13 @@ export function RequestReportFilters({
         name="date_to"
         render={({ field }) => (
           <FormItem className="gap-1.5">
-            <FormLabel required className={FIELD_LABEL_CLASS}>
+            <FormLabel className={FIELD_LABEL_CLASS}>
               {t('requestManagement.report.fields.dateTo')}
             </FormLabel>
             <FormControl>
               <Input type="date" disabled={disabled} {...field} />
             </FormControl>
+            <FormDescription className="text-xs">{t('requestManagement.report.fields.dateToHint')}</FormDescription>
             <FormMessage className="text-xs" />
           </FormItem>
         )}

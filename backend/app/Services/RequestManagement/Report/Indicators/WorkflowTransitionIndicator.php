@@ -105,9 +105,9 @@ final class WorkflowTransitionIndicator implements ReportIndicator
                                 $bothGlobal->whereNull('logged_status.quote_workflow_id')
                                     ->whereNull('current_status.quote_workflow_id');
                             });
-                    })
-                    ->where('a.created_at', '>=', $range->start)
-                    ->where('a.created_at', '<', $range->endExclusive);
+                    });
+
+                $range->constrain($sub, 'a.created_at');
             });
     }
 }

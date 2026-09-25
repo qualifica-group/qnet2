@@ -308,6 +308,9 @@ export const requestManagement = {
     fields: {
       dateFrom: 'From',
       dateTo: 'To',
+      // Spec 0169: an empty bound sets no limit on that side.
+      dateFromHint: 'Empty: from the beginning',
+      dateToHint: 'Empty: no end',
       // rev-2: branch and row selection.
       categories: 'Categories',
       // rev-2 AC-055: tri-state control at the top of the category group.
@@ -352,8 +355,6 @@ export const requestManagement = {
       reset: 'Reset filters',
     },
     errors: {
-      dateFromRequired: 'Select the start date.',
-      dateToRequired: 'Select the end date.',
       dateToBeforeDateFrom: 'The end date cannot be earlier than the start date.',
       // rev-2 AC-051/AC-053: category-group errors.
       categoriesRequired: 'Select at least one category.',
@@ -382,6 +383,10 @@ export const requestManagement = {
       title: 'Applied filters',
       period: 'Period',
       periodValue: '{{from}} – {{to}}',
+      // Spec 0169 D-5: open bounds.
+      periodFrom: 'from {{from}}',
+      periodTo: 'up to {{to}}',
+      periodAll: 'All time',
       categories: 'Categories',
       sites: 'Sites',
       operators: 'Operators',

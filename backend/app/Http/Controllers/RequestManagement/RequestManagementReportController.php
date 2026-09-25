@@ -124,8 +124,8 @@ class RequestManagementReportController extends BaseApiController
             $actor = $request->user();
             abort_unless($actor->can($module->permission('report')), 403);
 
-            $dateFrom = (string) $request->validated('date_from');
-            $dateTo = (string) $request->validated('date_to');
+            $dateFrom = $request->dateFrom();
+            $dateTo = $request->dateTo();
             /** @var array<int, string> $categoryKeys */
             $categoryKeys = (array) $request->validated('category_keys');
             $rowMode = (string) $request->validated('row_mode');
@@ -208,9 +208,20 @@ class RequestManagementReportController extends BaseApiController
         }
     }
 
-    private function fileName(RequestModule $module, string $dateFrom, string $dateTo, ExportFormat $format): string
+    /**
+     * `{resource}-{from}_{to}`, or the open-bound variants of spec 0169 D-4:
+     * `-from-{from}`, `-to-{to}`, and the bare resource when neither is set.
+     */
+    private function fileName(RequestModule $module, ?string $dateFrom, ?string $dateTo, ExportFormat $format): string
     {
-        return "{$this->resource($module)}-{$dateFrom}_{$dateTo}.{$format->extension()}";
+        $period = match (true) {
+            $dateFrom !== null && $dateTo !== null => "-{$dateFrom}_{$dateTo}",
+            $dateFrom !== null => "-from-{$dateFrom}",
+            $dateTo !== null => "-to-{$dateTo}",
+            default => '',
+        };
+
+        return "{$this->resource($module)}{$period}.{$format->extension()}";
     }
 
     /**

@@ -63,8 +63,8 @@ export const requestManagementKeys = {
   dashboard: (
     moduleKey: RequestModuleKey,
     query: {
-      date_from: string
-      date_to: string
+      date_from?: string
+      date_to?: string
       category_keys: string[]
       row_mode: string
       operator_keys?: string[]

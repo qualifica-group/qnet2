@@ -41,8 +41,8 @@ class RequestManagementDashboardController extends BaseApiController
             $actor = $request->user();
             abort_unless($actor->can($module->permission('report')), 403);
 
-            $dateFrom = (string) $request->validated('date_from');
-            $dateTo = (string) $request->validated('date_to');
+            $dateFrom = $request->dateFrom();
+            $dateTo = $request->dateTo();
             /** @var array<int, string> $categoryKeys */
             $categoryKeys = (array) $request->validated('category_keys');
             $rowMode = (string) $request->validated('row_mode');

@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { RequestReportFiltersDialog } from '@/features/request-management/request-report-filters-dialog'
-import { currentWeekReportRange, requestReportDefaultValues } from '@/features/request-management/request-report-schema'
+import { requestReportDefaultValues, todayReportRange } from '@/features/request-management/request-report-schema'
 import type { RequestReportCategory } from '@/features/request-management/report-api'
 
 /**
@@ -14,9 +14,9 @@ import type { RequestReportCategory } from '@/features/request-management/report
  * longer runs the report: generating the CSV moved next to the "Filters"
  * button, covered by `request-dashboard-filter-bar.test.tsx`. The branch
  * endpoint is mocked; every assertion queries by accessible role/label, never
- * `data-testid`. The current-week defaults belong to
+ * `data-testid`. The today defaults belong to
  * `requestReportDefaultValues` and are covered by
- * `request-report-schema.test.ts` (AC-056/AC-057).
+ * `request-report-schema.test.ts` (spec 0169 D-1, AC-057).
  */
 
 const fetchRequestManagementReportCategoriesMock = vi.fn()
@@ -147,9 +147,9 @@ describe('RequestReportFiltersDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
 
-    const week = currentWeekReportRange()
-    await waitFor(() => expect(screen.getByLabelText(/^From/)).toHaveValue(week.date_from))
-    expect(screen.getByLabelText(/^To/)).toHaveValue(week.date_to)
+    const today = todayReportRange()
+    await waitFor(() => expect(screen.getByLabelText(/^From/)).toHaveValue(today.date_from))
+    expect(screen.getByLabelText(/^To/)).toHaveValue(today.date_to)
     expect(screen.getByRole('checkbox', { name: 'GOL' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Everything' })).toHaveAttribute('aria-checked', 'true')
     expect(onApply).not.toHaveBeenCalled()
@@ -159,7 +159,7 @@ describe('RequestReportFiltersDialog', () => {
 
     await waitFor(() =>
       expect(onApply).toHaveBeenCalledWith({
-        ...week,
+        ...today,
         category_keys: ['gol', 'consulenza'],
         row_mode: 'all',
         operator_keys: [],

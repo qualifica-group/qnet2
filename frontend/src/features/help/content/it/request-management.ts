@@ -205,13 +205,13 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Clicca **Filtri** per aprire il pannello **Filtri report e statistiche**: modifica i valori e premi **Applica** (o **Annulla**). **Azzera filtri** riporta i valori iniziali (settimana corrente, tutte le categorie, sedi e operatori, modalità Tutto): la modifica vale solo dopo **Applica**. Gli stessi filtri valgono per grafici e file.',
+          text: 'Clicca **Filtri** per aprire il pannello **Filtri report e statistiche**: modifica i valori e premi **Applica** (o **Annulla**). **Azzera filtri** riporta i valori iniziali (oggi, tutte le categorie, sedi e operatori, modalità Tutto): la modifica vale solo dopo **Applica**. Gli stessi filtri valgono per grafici e file.',
         },
         {
           type: 'table',
           headers: ['Filtro', 'Cosa fa', 'Valore predefinito'],
           rows: [
-            ['Dal / Al', 'Periodo considerato, giorni inclusi per intero.', 'Da lunedì a venerdì della settimana corrente'],
+            ['Dal / Al', 'Periodo considerato, giorni inclusi per intero. Si può lasciare vuoto uno dei due campi o entrambi: solo Al = tutto fino a quella data; solo Dal = tutto da quella data in poi; entrambi vuoti = nessun limite di date.', 'Oggi (Dal e Al)'],
             ['Categorie', 'Quali categorie includere.', 'Tutte'],
             ['Sedi', 'Limita agli operatori di quelle sedi.', 'Tutte'],
             ['Operatori', 'Limita a certi operatori GA2.', 'Tutti'],
@@ -220,7 +220,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Al non può precedere Dal. La data usata cambia da colonna a colonna (vedi la tabella delle colonne). N. Richiami non gestiti, N. Nuovi contatti non gestiti e N. Potenziali associati ignorano il periodo e guardano alla situazione di oggi; le loro versioni "(nel periodo selezionato)" lo usano.',
+          text: 'Se sono compilati entrambi, Al non può precedere Dal. La data usata cambia da colonna a colonna (vedi la tabella delle colonne). N. Richiami non gestiti, N. Nuovi contatti non gestiti e N. Potenziali associati ignorano il periodo e guardano alla situazione di oggi; le loro versioni "(nel periodo selezionato)" lo usano.',
         },
         {
           type: 'list',
@@ -358,7 +358,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Non arriva una notifica separata. Il file si chiama, per esempio, request-management-report-2026-09-14_2026-09-18.xlsx (date Dal e Al).',
+          text: 'Non arriva una notifica separata. Il file si chiama, per esempio, request-management-report-2026-09-14_2026-09-18.xlsx (date Dal e Al). Con un solo estremo diventa ...-from-DATA o ...-to-DATA; senza date, solo request-management-report.xlsx.',
         },
         {
           type: 'warning',

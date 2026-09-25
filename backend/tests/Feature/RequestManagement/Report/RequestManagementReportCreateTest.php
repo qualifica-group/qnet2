@@ -136,29 +136,35 @@ it('never leaks an internal class/model name in the 403 envelope (AC-002)', func
 // AC-003
 // ---------------------------------------------------------------------------
 
-it('422s when date_from is missing (AC-003)', function () {
+// Spec 0169 D-2/D-4: either bound may be left open (absent, null or empty),
+// the run freezes the open side as null and the file name drops it.
+it('accepts an open date bound and names the file after the bounds it has', function (array $dates, ?string $from, ?string $to, string $fileName) {
+    reportCreateCategoryTree();
     $actor = reportActorWith(['report']);
     Sanctum::actingAs($actor);
+    Queue::fake();
 
-    $payload = reportPayload();
-    unset($payload['date_from']);
+    $payload = array_merge(reportPayload(), $dates);
+    foreach (['date_from', 'date_to'] as $field) {
+        if (! array_key_exists($field, $dates)) {
+            unset($payload[$field]);
+        }
+    }
 
-    $this->postJson('/api/request-management/report', $payload)
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('date_from');
-});
+    $response = $this->postJson('/api/request-management/report', $payload)->assertCreated();
 
-it('422s when date_to is missing (AC-003)', function () {
-    $actor = reportActorWith(['report']);
-    Sanctum::actingAs($actor);
+    $run = ExportRun::query()->findOrFail($response->json('data.export_run.id'));
 
-    $payload = reportPayload();
-    unset($payload['date_to']);
-
-    $this->postJson('/api/request-management/report', $payload)
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('date_to');
-});
+    expect($run->state['date_from'])->toBe($from)
+        ->and($run->state['date_to'])->toBe($to)
+        ->and($run->original_filename)->toBe($fileName);
+})->with([
+    'only date_to' => [['date_to' => '2026-09-25'], null, '2026-09-25', 'request-management-report-to-2026-09-25.csv'],
+    'only date_from' => [['date_from' => '2026-09-01'], '2026-09-01', null, 'request-management-report-from-2026-09-01.csv'],
+    'neither' => [[], null, null, 'request-management-report.csv'],
+    'both null' => [['date_from' => null, 'date_to' => null], null, null, 'request-management-report.csv'],
+    'both empty' => [['date_from' => '', 'date_to' => ''], null, null, 'request-management-report.csv'],
+]);
 
 it('422s on a malformed date format (AC-003)', function () {
     $actor = reportActorWith(['report']);

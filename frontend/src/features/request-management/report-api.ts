@@ -74,10 +74,10 @@ export type RequestReportRowMode = 'total_only' | 'operators_only' | 'all'
  * report and the dashboard, which is the point (spec 0107 D-4).
  */
 export interface RequestReportFilterPayload {
-  /** `YYYY-MM-DD`, inclusive lower bound. */
-  date_from: string
-  /** `YYYY-MM-DD`, inclusive upper bound. */
-  date_to: string
+  /** `YYYY-MM-DD`, inclusive lower bound; OMITTED = from the beginning (spec 0169 D-2). */
+  date_from?: string
+  /** `YYYY-MM-DD`, inclusive upper bound; OMITTED = with no end (spec 0169 D-2). */
+  date_to?: string
   /** Branch keys to include, min 1, each in the server's config allow-list. */
   category_keys: string[]
   row_mode: RequestReportRowMode

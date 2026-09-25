@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\RequestManagement;
 
 use App\Enums\RequestManagementReportRowMode;
+use App\Http\Requests\RequestManagement\Concerns\ValidatesReportDateRange;
 use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
@@ -29,6 +30,8 @@ use Illuminate\Validation\Rule;
  */
 class RequestDashboardRequest extends FormRequest
 {
+    use ValidatesReportDateRange;
+
     public function authorize(): bool
     {
         // Authorization handled in the controller (request-management.report).
@@ -41,8 +44,7 @@ class RequestDashboardRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date_from' => ['required', 'date_format:Y-m-d'],
-            'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            ...$this->reportDateRangeRules(),
             'category_keys' => ['required', 'array', 'min:1'],
             'category_keys.*' => ['required', 'string', Rule::in(app(ReportBranchResolver::class)->keys())],
             'row_mode' => ['required', 'string', Rule::in(array_map(

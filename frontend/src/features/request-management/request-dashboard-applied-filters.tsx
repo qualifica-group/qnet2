@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { Filter } from 'lucide-react'
 import type {
@@ -38,6 +39,26 @@ function AppliedChip({ label, value, title, active }: AppliedChipProps) {
 interface KeyedItem {
   key: string
   label: string
+}
+
+/**
+ * The Periodo chip's text for each open/closed combination of the two bounds
+ * (spec 0169 D-5): an empty date is an open side, never an invalid one.
+ */
+function periodLabel(t: TFunction, dateFrom: string, dateTo: string): string {
+  const from = formatDate(dateFrom)
+  const to = formatDate(dateTo)
+
+  if (dateFrom !== '' && dateTo !== '') {
+    return t('requestManagement.dashboard.applied.periodValue', { from, to })
+  }
+  if (dateFrom !== '') {
+    return t('requestManagement.dashboard.applied.periodFrom', { from })
+  }
+  if (dateTo !== '') {
+    return t('requestManagement.dashboard.applied.periodTo', { to })
+  }
+  return t('requestManagement.dashboard.applied.periodAll')
 }
 
 /** The picked entries in list order, and whether they cover everything on offer. */
@@ -104,11 +125,8 @@ export function RequestDashboardAppliedFilters({
       <ul aria-label={t('requestManagement.dashboard.applied.title')} className="flex min-w-0 flex-wrap gap-1.5">
         <AppliedChip
           label={t('requestManagement.dashboard.applied.period')}
-          value={t('requestManagement.dashboard.applied.periodValue', {
-            from: formatDate(filters.date_from),
-            to: formatDate(filters.date_to),
-          })}
-          active
+          value={periodLabel(t, filters.date_from, filters.date_to)}
+          active={filters.date_from !== '' || filters.date_to !== ''}
         />
         <AppliedChip
           label={t('requestManagement.dashboard.applied.categories')}

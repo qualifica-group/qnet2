@@ -64,8 +64,8 @@ final class RequestManagementDashboardBuilder
      */
     public function build(
         ?User $actor,
-        string $dateFrom,
-        string $dateTo,
+        ?string $dateFrom,
+        ?string $dateTo,
         array $categoryKeys,
         RequestManagementReportRowMode $rowMode,
         ?ReportOperatorFilter $operators = null,
@@ -211,7 +211,7 @@ final class RequestManagementDashboardBuilder
      * @param  array<int, string>  $categoryKeys
      * @return array<string, array<int, ReportRow>>
      */
-    private function operatorRowsByBranchKey(?User $actor, string $dateFrom, string $dateTo, array $categoryKeys, ReportOperatorFilter $operators, ReportSiteFilter $sites, RequestModule $module): array
+    private function operatorRowsByBranchKey(?User $actor, ?string $dateFrom, ?string $dateTo, array $categoryKeys, ReportOperatorFilter $operators, ReportSiteFilter $sites, RequestModule $module): array
     {
         $rowsByKey = [];
 

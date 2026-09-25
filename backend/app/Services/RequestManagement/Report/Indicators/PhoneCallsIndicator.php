@@ -55,7 +55,7 @@ final class PhoneCallsIndicator implements ReportIndicator
      */
     private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
+        $query = $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
             ->where(function (Builder $status): void {
                 $status->whereNull('current_status.system_key')
@@ -63,8 +63,8 @@ final class PhoneCallsIndicator implements ReportIndicator
             })
             ->join('notes', 'notes.quote_id', '=', 'quotes.id')
             ->whereNull('notes.deleted_at')
-            ->whereColumn('notes.user_id', 'quotes.operator_id')
-            ->where('notes.created_at', '>=', $range->start)
-            ->where('notes.created_at', '<', $range->endExclusive);
+            ->whereColumn('notes.user_id', 'quotes.operator_id');
+
+        return $range->constrain($query, 'notes.created_at');
     }
 }

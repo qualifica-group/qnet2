@@ -52,7 +52,7 @@ const guide: HelpGuide = {
           items: [
             'It only counts requests that are currently in a status from the **Validated** or **Closed (positive outcome)** group.',
             'It has its own **Generate report** permission and separately stored filters.',
-            'The generated file is named enrollee-management-report-FROM_TO.',
+            'The generated file is named enrollee-management-report-FROM_TO (or -from-FROM / -to-TO with a single bound, no date when the period is empty).',
             '**Unhandled New Contacts** (with or without the period) is always 0: no request here is in the Open status.',
             '**Unhandled Callbacks** (with or without the period) only counts the requests in Validated; **Potential Leads** without the period counts the requests currently in Validated.',
           ],
