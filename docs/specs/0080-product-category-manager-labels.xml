@@ -202,8 +202,11 @@
       ]]></response>
       <authz>Stessa autorizzazione permissiva di effectiveAttributes
         (ProductCategoryController::authorizeEffectiveAttributes():192-202):
-        product-categories.view OPPURE products.view|create|update. Serve al form per
-        l'anteprima "ereditate dal padre" prima del salvataggio.</authz>
+        product-categories.view OPPURE products.view|create|update, PIU' product-categories.viewAny
+        (rettifica 2026-09-25: i ruoli di Gestione Richieste/Opportunita'/Preventivi, es. commerciale,
+        hanno solo viewAny e ricevevano 403; le label sono stringhe di display e viewAny legge gia'
+        l'intero albero). Serve al form categoria per l'anteprima "ereditate dal padre" e alla
+        rietichettatura dei GA nei moduli consumatori.</authz>
       <errors>403 senza alcun permesso; 404 categoria inesistente.</errors>
     </endpoint>
 
@@ -306,7 +309,7 @@
     <criterion id="AC-011">Merge GRANULARE: padre {"1":"Commerciale","2":"Operatore"}, figlia {"2":"Consulente"} -> effettive {"1":"Commerciale","2":"Consulente"}.</criterion>
     <criterion id="AC-012">Figlia con inherits_manager_labels=false -> barriera: solo le proprie label, nessuna dal padre; e la risalita si ferma li' anche per i nipoti.</criterion>
     <criterion id="AC-013">Catena a 3 livelli senza barriere -> vince sempre il piu' specifico per singola posizione.</criterion>
-    <criterion id="AC-014">GET /product-categories/{id}/effective-manager-labels restituisce le label risolte; 403 senza alcun permesso ammesso.</criterion>
+    <criterion id="AC-014">GET /product-categories/{id}/effective-manager-labels restituisce le label risolte (ammesso anche con il solo product-categories.viewAny); 403 senza alcun permesso ammesso.</criterion>
 
     <!-- Risoluzione sull'Opportunita' -->
     <criterion id="AC-020">Opportunita' con UNA product line -> manager_labels = effettive di quella categoria.</criterion>

@@ -312,6 +312,16 @@ it('AC-014: effective-manager-labels — allowed via products.view even without 
         ->assertJsonPath('data.manager_labels', ['3' => 'Tutor']);
 });
 
+it('AC-014: effective-manager-labels — allowed via product-categories.viewAny alone (Gestione Richieste/Opportunita\'/Preventivi consumers)', function (): void {
+    $actor = managerLabelUserWith(['viewAny']);
+    $category = ProductCategory::factory()->create(['manager_labels' => ['2' => 'Operatore']]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/product-categories/{$category->id}/effective-manager-labels")
+        ->assertOk()
+        ->assertJsonPath('data.manager_labels', ['2' => 'Operatore']);
+});
+
 // ---------------------------------------------------------------------------
 // show — inherited_manager_labels (excludes own)
 // ---------------------------------------------------------------------------

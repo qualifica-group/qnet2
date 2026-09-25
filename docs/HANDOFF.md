@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ETICHETTE GA SENZA PERMESSI SUL CATALOGO — VERDE, COMMITTATO (2026-09-25)
+
+- Bug (account reale Sara Armerini, ruolo `commerciale`, NON l'impersonificazione): `GET /api/product-categories/{id}/
+  effective-manager-labels` dava 403 in Gestione Richieste/Opportunita'/Preventivi: la guardia richiedeva
+  `product-categories.view` o `products.view|create|update`, il commerciale ha solo `product-categories.viewAny`.
+- Fix (stessa linea del fix buoni: nessun cambio permessi/seeder): `ProductCategoryController::
+  authorizeEffectiveManagerLabels()` = `product-categories.viewAny` OPPURE la guardia di `effectiveAttributes`
+  (invariata). Spec 0080 endpoint authz + AC-014 rettificati. Test `ProductCategoryManagerLabelsTest` (viewAny -> 200).
+- Nota: `ProductCategoryController.php` e' a 338 righe (soft limit 300): valutare lo split in un task dedicato.
+- Manuale: nessun impatto.
+
 ## ABBINAMENTO BUONO SENZA PERMESSI SUL CATALOGO — VERDE, COMMITTATO (2026-09-25)
 
 - Bug: i commerciali (e ogni ruolo di Gestione Richieste senza il blocco REWARDS) ricevevano 403 scegliendo un buono:

@@ -109,14 +109,15 @@ class ProductCategoryController extends BaseApiController
     /**
      * GET /api/product-categories/{productCategory}/effective-manager-labels
      * — own + inherited "Gestore Account" labels (spec 0080), for the
-     * category form's read-only "ereditate dal padre" preview before saving.
-     * Same permissive authorization as effectiveAttributes(): a user who may
-     * only create/edit products still needs this to render the section.
+     * category form's read-only "ereditate dal padre" preview before saving,
+     * and for the G.A. relabelling in Gestione Richieste / Opportunita' /
+     * Preventivi, whose roles (e.g. commerciale) hold only
+     * `product-categories.viewAny`.
      */
     public function effectiveManagerLabels(Request $request, ProductCategory $productCategory): JsonResponse
     {
         try {
-            $this->authorizeEffectiveAttributes($request->user());
+            $this->authorizeEffectiveManagerLabels($request->user());
 
             return $this->ok(['manager_labels' => $this->service->effectiveManagerLabels($productCategory)]);
         } catch (Throwable $exception) {
@@ -251,6 +252,22 @@ class ProductCategoryController extends BaseApiController
         if (! $allowed) {
             throw new AuthorizationException;
         }
+    }
+
+    /**
+     * effectiveAttributes()'s abilities plus `product-categories.viewAny`:
+     * the labels are display strings only, and a viewAny holder already reads
+     * the whole category tree (tree()).
+     *
+     * @throws AuthorizationException
+     */
+    private function authorizeEffectiveManagerLabels(User $actor): void
+    {
+        if ($actor->can('product-categories.viewAny')) {
+            return;
+        }
+
+        $this->authorizeEffectiveAttributes($actor);
     }
 
     /**
