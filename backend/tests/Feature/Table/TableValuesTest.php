@@ -25,46 +25,12 @@ uses(RefreshDatabase::class);
  *
  * @param  array<int, string>  $abilities
  */
-if (! function_exists('userWithUserAbilities')) {
-    function userWithUserAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("users.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("users.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 /**
  * A non super-admin actor granted exactly the given `roles.*` abilities.
  * Mirror of the helper in RolesTableRowsTest (guarded for redeclare safety).
  *
  * @param  array<int, string>  $abilities
  */
-if (! function_exists('actorWithRoleAbilities')) {
-    function actorWithRoleAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("roles.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("roles.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 /**
  * Create a user owning a PersonalData card, optionally with a primary address
  * (geo names create the reference rows) and a primary contact. Mirror of the

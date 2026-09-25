@@ -5,36 +5,14 @@ use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\UnitOfMeasure;
-use App\Models\User;
 use App\Services\ProductService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 // Spec 0088, D-4: products.unit_of_measure_id delta. A dedicated file
 // (rather than extending ProductCrudTest.php) keeps this addition isolated
 // from the rest of the products test suite's own churn.
 uses(RefreshDatabase::class);
-
-if (! function_exists('productUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function productUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
-            Permission::findOrCreate("products.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("products.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // AC-040 — absent unit_of_measure_id falls back to the default unit

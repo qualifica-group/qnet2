@@ -8,7 +8,6 @@ use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -17,23 +16,6 @@ uses(RefreshDatabase::class);
  * 0103) and its competence rows (spec 0111). Split out of UserCrudTest.php to
  * keep that file under the 500-line hard limit (engineering.md §6).
  */
-if (! function_exists('userWithUserAbilities')) {
-    function userWithUserAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("users.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("users.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 /**
  * Spec 0111 AC-010: the competence rows carry the shape every other owner of
  * the collection emits, and the four keys they replaced are gone for good.

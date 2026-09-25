@@ -13,23 +13,6 @@ uses(RefreshDatabase::class);
  * Publish permission (spec 0158, D-3, AC-004) and per-user favorites
  * (spec 0158, D-4, AC-005) on saved filter views.
  */
-if (! function_exists('userWithUserAbilities')) {
-    function userWithUserAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("users.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("users.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 if (! function_exists('superAdminUser')) {
     /** Duplicated (guarded) across the suites that need it — see TableFilterViewsTest. */
     function superAdminUser(): User

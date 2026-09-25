@@ -8,7 +8,6 @@ use App\Models\TimeEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -28,46 +27,10 @@ uses(RefreshDatabase::class);
 | (App\Services\Tasks\TaskTimeEntryRequirement, AC-005).
 */
 
-if (! function_exists('taskCompletionActorWith')) {
-    /**
-     * @param  array<int, string>  $taskAbilities
-     */
-    function taskCompletionActorWith(array $taskAbilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-        $user->givePermissionTo('tasks.viewAll');
-
-        foreach ($taskAbilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 if (! function_exists('protectedTaskStatus')) {
     function protectedTaskStatus(TaskStatusSystemKey $key): TaskStatus
     {
         return TaskStatus::query()->where('system_key', $key->value)->firstOrFail();
-    }
-}
-
-if (! function_exists('validTimeEntryPayload')) {
-    /**
-     * @param  array<string, mixed>  $overrides
-     * @return array<string, mixed>
-     */
-    function validTimeEntryPayload(array $overrides = []): array
-    {
-        return array_merge([
-            'date' => '2026-09-25',
-            'task_type_id' => TaskType::factory()->create()->id,
-            'minutes' => 30,
-        ], $overrides);
     }
 }
 

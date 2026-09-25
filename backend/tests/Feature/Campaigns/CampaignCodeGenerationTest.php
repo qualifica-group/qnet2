@@ -1,10 +1,7 @@
 <?php
 
-use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\Country;
-use App\Models\PipelineStatus;
-use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -37,38 +34,6 @@ if (! function_exists('campaignUserWith')) {
         }
 
         return $user;
-    }
-}
-
-if (! function_exists('campaignCoherentProductLine')) {
-    /**
-     * Local copy mirroring CampaignCrudTest's.
-     *
-     * @return array{business_function_id: int, product_category_id: int}
-     */
-    function campaignCoherentProductLine(): array
-    {
-        $businessFunction = BusinessFunction::factory()->create();
-
-        return [
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
-        ];
-    }
-}
-
-if (! function_exists('standaloneClassificationFields')) {
-    /**
-     * Local copy mirroring CampaignCrudTest's.
-     *
-     * @return array<string, mixed>
-     */
-    function standaloneClassificationFields(): array
-    {
-        return [
-            'pipeline_status_id' => PipelineStatus::factory()->create()->id,
-            'product_lines' => [campaignCoherentProductLine()],
-        ];
     }
 }
 

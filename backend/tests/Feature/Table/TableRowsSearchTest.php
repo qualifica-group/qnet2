@@ -20,23 +20,6 @@ uses(RefreshDatabase::class);
  *
  * @param  array<int, string>  $abilities
  */
-if (! function_exists('userWithUserAbilities')) {
-    function userWithUserAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("users.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("users.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 if (! function_exists('rowsPayload')) {
     function rowsPayload(array $overrides = []): array
     {

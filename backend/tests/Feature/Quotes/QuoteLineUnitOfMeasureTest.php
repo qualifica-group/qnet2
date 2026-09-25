@@ -5,10 +5,8 @@ use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Http\Requests\Quotes\StoreQuoteRequest;
 use App\Http\Resources\QuoteLineResource;
-use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\Product;
-use App\Models\ProductCategory;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
@@ -72,25 +70,6 @@ if (! function_exists('createQuoteData')) {
         ];
 
         return new CreateQuoteData(...array_merge($defaults, $overrides));
-    }
-}
-
-if (! function_exists('revenueLineProduct')) {
-    /**
-     * A product whose category already resolves an EFFECTIVE business
-     * function (spec 0065, D-7), so a revenue line never trips
-     * OpportunityProductLineCoverage's 422 — same helper as QuoteTotalsTest.
-     */
-    function revenueLineProduct(?UnitOfMeasure $unitOfMeasure = null): Product
-    {
-        $category = ProductCategory::factory()->create([
-            'business_function_id' => BusinessFunction::factory()->create()->id,
-        ]);
-
-        return Product::factory()->create([
-            'category_id' => $category->id,
-            'unit_of_measure_id' => $unitOfMeasure?->id ?? UnitOfMeasure::factory()->create()->id,
-        ]);
     }
 }
 

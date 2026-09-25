@@ -4,7 +4,6 @@ use App\Models\PersonalData;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -25,23 +24,6 @@ uses(RefreshDatabase::class);
  *
  * @param  array<int, string>  $abilities
  */
-if (! function_exists('userWithUserAbilities')) {
-    function userWithUserAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("users.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("users.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 if (! function_exists('rowsPayload')) {
     function rowsPayload(array $overrides = []): array
     {
@@ -58,23 +40,6 @@ if (! function_exists('rowsPayload')) {
  *
  * @param  array<int, string>  $abilities
  */
-if (! function_exists('actorWithRoleAbilities')) {
-    function actorWithRoleAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("roles.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("roles.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 it('applies a FLAT condition on primary_address (contains) — conditions-only, no multi wrap', function () {
     $actor = userWithUserAbilities(['viewAny']);
     $needle = User::factory()->create();

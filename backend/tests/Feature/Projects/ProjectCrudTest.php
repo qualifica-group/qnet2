@@ -1,10 +1,8 @@
 <?php
 
-use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\Country;
 use App\Models\PipelineStatus;
-use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,47 +28,6 @@ if (! function_exists('projectUserWith')) {
         }
 
         return $user;
-    }
-}
-
-if (! function_exists('projectStoreExtras')) {
-    /**
-     * The create-only fields made required alongside name/pipeline_status/
-     * country: `product_lines` (spec 0094 — REPLACING the former
-     * business_function_id/product_category_id scalars, at least one row)
-     * and the start/end planning dates. Spread into a store payload to
-     * satisfy the required rules without repeating the fixture setup in
-     * every test.
-     *
-     * @return array<string, mixed>
-     */
-    function projectStoreExtras(): array
-    {
-        return [
-            'product_lines' => [projectCoherentProductLine()],
-            'start_date' => '2026-01-01',
-            'end_date' => '2026-12-31',
-        ];
-    }
-}
-
-if (! function_exists('projectCoherentProductLine')) {
-    /**
-     * One coherent {business_function_id, product_category_id} row (spec
-     * 0023 REV pairing rule): the category is created UNDER the business
-     * function, so its effective business function matches — the write-side
-     * coherence rule (ProductLineSetValidator) rejects a mismatched pair.
-     *
-     * @return array{business_function_id: int, product_category_id: int}
-     */
-    function projectCoherentProductLine(): array
-    {
-        $businessFunction = BusinessFunction::factory()->create();
-
-        return [
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
-        ];
     }
 }
 

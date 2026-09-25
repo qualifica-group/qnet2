@@ -1,10 +1,7 @@
 <?php
 
-use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\Country;
-use App\Models\PipelineStatus;
-use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\State;
 use App\Models\User;
@@ -36,30 +33,6 @@ if (! function_exists('campaignUserWith')) {
         }
 
         return $user;
-    }
-}
-
-if (! function_exists('standaloneClassificationFields')) {
-    /**
-     * `pipeline_status_id` plus `product_lines` (spec 0094), required for a
-     * standalone campaign (state_id LEFT this group — spec 0027, D-3). Local
-     * copy mirroring CampaignCrudTest's (each test file guards its own,
-     * since file load order across the suite is not guaranteed).
-     *
-     * @return array<string, mixed>
-     */
-    function standaloneClassificationFields(): array
-    {
-        // Coherent pair (spec 0023 REV): the category sits under the business function.
-        $businessFunction = BusinessFunction::factory()->create();
-
-        return [
-            'pipeline_status_id' => PipelineStatus::factory()->create()->id,
-            'product_lines' => [[
-                'business_function_id' => $businessFunction->id,
-                'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
-            ]],
-        ];
     }
 }
 

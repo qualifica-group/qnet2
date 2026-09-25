@@ -16,19 +16,6 @@ if (! function_exists('fakeMigrationsBaseUrl')) {
     }
 }
 
-if (! function_exists('seedMigrationsConfig')) {
-    function seedMigrationsConfig(): void
-    {
-        config([
-            'migrations.base_url' => fakeMigrationsBaseUrl(),
-            'migrations.token' => null,
-            'migrations.timeout' => 5,
-            'migrations.retry_times' => 1,
-            'migrations.retry_sleep_ms' => 1,
-        ]);
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Spec 0021/0013 — AbstractMigrationSource generically exposes + previews a
 // source's active custom fields (RolesSource's entity_type "roles" is used

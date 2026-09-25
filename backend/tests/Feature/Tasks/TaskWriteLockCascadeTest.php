@@ -3,7 +3,6 @@
 use App\Enums\TaskStatusGroup;
 use App\Models\Task;
 use App\Models\TaskStatus;
-use App\Models\TaskType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -46,21 +45,6 @@ if (! function_exists('taskActorWith')) {
         }
 
         return $user;
-    }
-}
-
-if (! function_exists('validTimeEntryPayload')) {
-    /**
-     * @param  array<string, mixed>  $overrides
-     * @return array<string, mixed>
-     */
-    function validTimeEntryPayload(array $overrides = []): array
-    {
-        return array_merge([
-            'date' => '2026-09-14',
-            'task_type_id' => TaskType::factory()->create()->id,
-            'minutes' => 60,
-        ], $overrides);
     }
 }
 

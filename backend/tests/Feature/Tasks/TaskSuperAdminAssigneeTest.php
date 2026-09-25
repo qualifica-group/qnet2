@@ -5,7 +5,6 @@ use App\Enums\TaskStatusSystemKey;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\TaskStatus;
-use App\Models\TaskType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -62,24 +61,6 @@ if (! function_exists('superAdminTaskActor')) {
         $actor->assignRole('super-admin');
 
         return $actor;
-    }
-}
-
-if (! function_exists('validTimeEntryPayload')) {
-    /**
-     * A valid `time_entry` (spec 0123, D-1: mandatory on every /complete
-     * call, regardless of what this suite exercises).
-     *
-     * @param  array<string, mixed>  $overrides
-     * @return array<string, mixed>
-     */
-    function validTimeEntryPayload(array $overrides = []): array
-    {
-        return array_merge([
-            'date' => '2026-09-14',
-            'task_type_id' => TaskType::factory()->create()->id,
-            'minutes' => 60,
-        ], $overrides);
     }
 }
 

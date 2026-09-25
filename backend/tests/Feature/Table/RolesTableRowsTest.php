@@ -4,7 +4,6 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -14,23 +13,6 @@ uses(RefreshDatabase::class);
  *
  * @param  array<int, string>  $abilities
  */
-if (! function_exists('actorWithRoleAbilities')) {
-    function actorWithRoleAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("roles.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("roles.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 it('exposes the users_count column and counts assigned users per role', function () {
     $actor = actorWithRoleAbilities(['viewAny']);
 

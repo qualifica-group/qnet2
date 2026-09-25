@@ -1,31 +1,9 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
-
-if (! function_exists('paymentMethodUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function paymentMethodUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
-            Permission::findOrCreate("payment-methods.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("payment-methods.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 it('403 without payment-methods.viewAny', function () {
     $actor = paymentMethodUserWith([]);

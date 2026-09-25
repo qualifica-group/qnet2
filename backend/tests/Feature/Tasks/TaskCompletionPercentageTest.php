@@ -67,30 +67,6 @@ if (! function_exists('taskActorWith')) {
     }
 }
 
-if (! function_exists('taskConfigActorWith')) {
-    /**
-     * An actor holding $abilities on ONE of the five task configurators.
-     * Duplicated (guarded) across the suites that need it, following the
-     * repo idiom for shared Pest helpers (see workOrderUserWith).
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskConfigActorWith(string $resource, array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
-            Permission::findOrCreate("{$resource}.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("{$resource}.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 it('AC-020: TaskResource.completion_percentage equals the status percentage', function () {
     $actor = taskActorWith(['view']);
     $status = TaskStatus::factory()->completion(35)->create();

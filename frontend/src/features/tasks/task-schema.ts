@@ -4,56 +4,18 @@ import {
   TASK_RECURRENCE_END_MODES,
   TASK_RECURRENCE_FREQUENCIES,
   TASK_RECURRENCE_MONTH_MODES,
-  type TaskRecurrenceEndMode,
-  type TaskRecurrenceFrequency,
-  type TaskRecurrenceMonthMode,
 } from '@/features/tasks/types'
 import { addParentDateRangeIssues, type ParentDateRange } from '@/features/tasks/task-parent-date-range'
-import {
-  countSubtaskTreeNodes,
-  type SubtaskChildValues,
-  type SubtaskGrandchildValues,
-  type SubtaskGreatGrandchildValues,
-} from '@/features/tasks/task-subtask-types'
+import { addRecurrenceIssues } from '@/features/tasks/task-schema-recurrence'
+import { addSubtaskTreeIssues, subtaskChildRowSchema } from '@/features/tasks/task-schema-subtasks'
 
 export type { ParentDateRange } from '@/features/tasks/task-parent-date-range'
+export { MAX_SUBTASK_DEPTH, MAX_TASK_FORM_SUBTASKS } from '@/features/tasks/task-schema-subtasks'
 
 /** Backend `title` column limit (`string(191)`). */
 const TITLE_MAX_LENGTH = 191
 /** `estimated_minutes` is `unsignedInteger`: minutes, never a "2h30" string (D-11). */
 const MIN_ESTIMATED_MINUTES = 0
-
-/**
- * Spec 0161 D-1: the "Sottotask" block's row schema, bounded to exactly 3
- * concrete levels (figlio/nipote/pronipote) rather than a self-referencing
- * `z.lazy()` — a genuinely recursive field type is a documented "excessively
- * deep" trap for react-hook-form's `Path`/`FieldArrayPath` generics, and D-1
- * itself never asks for more than 3 levels anyway. `satisfies` (not a `:
- * z.ZodType<...>` annotation) checks each schema against the matching
- * bounded interface in `task-subtask-types.ts` WITHOUT widening it to the
- * abstract `ZodType` base — that widening was erasing the nested nested
- * `subtasks` arrays down to `unknown[]` for `z.infer`, breaking every
- * react-hook-form generic keyed off `TaskFormValues`.
- */
-const subtaskGreatGrandchildRowSchema = z.object({
-  title: z.string(),
-  end_date: z.string().nullable(),
-  assignee_ids: z.array(z.number()),
-}) satisfies z.ZodType<SubtaskGreatGrandchildValues>
-
-const subtaskGrandchildRowSchema = z.object({
-  title: z.string(),
-  end_date: z.string().nullable(),
-  assignee_ids: z.array(z.number()),
-  subtasks: z.array(subtaskGreatGrandchildRowSchema),
-}) satisfies z.ZodType<SubtaskGrandchildValues>
-
-const subtaskChildRowSchema = z.object({
-  title: z.string(),
-  end_date: z.string().nullable(),
-  assignee_ids: z.array(z.number()),
-  subtasks: z.array(subtaskGrandchildRowSchema),
-}) satisfies z.ZodType<SubtaskChildValues>
 
 /**
  * Shared field shape. `completion_percentage`, `creator_id` and `is_blocked`
@@ -152,40 +114,6 @@ function baseFields(t: TFunction) {
   }
 }
 
-/** Spec 0155 D-3, unchanged by spec 0161 D-1: the server's own cap on the WHOLE subtask tree, every level counted. */
-export const MAX_TASK_FORM_SUBTASKS = 50
-
-/** Spec 0161 D-1: figlio/nipote/pronipote — the deepest a row may go; the section shows no "add child" button at this depth. */
-export const MAX_SUBTASK_DEPTH = 3
-
-/** Narrower mirror of the `recurrence` object, just what `addRecurrenceIssues` reads. */
-interface RefinedRecurrenceValues {
-  enabled: boolean
-  frequency: TaskRecurrenceFrequency | null
-  interval: number | null
-  weekdays: number[]
-  month_mode: TaskRecurrenceMonthMode | null
-  month_day: number | null
-  ordinal: number | null
-  ordinal_weekday: number | null
-  year_month: number | null
-  ends: TaskRecurrenceEndMode | null
-  ends_on: string | null
-  occurrence_count: number | null
-}
-
-/**
- * Narrower mirror of one `subtasks[]` row, recursive like the schema itself —
- * just what `addSubtaskRowIssues`/`countSubtaskTreeNodes` read. `subtasks` is
- * OPTIONAL here (unlike the bounded `SubtaskChildValues`/`SubtaskGrandchildValues`
- * it mirrors): the level-3 row has no such field at all, and this interface
- * has to structurally accept every one of the 3 bounded levels alike.
- */
-interface RefinedSubtaskRowValues {
-  title: string
-  subtasks?: RefinedSubtaskRowValues[]
-}
-
 /** Values the refinements below read; narrower than the whole form. */
 interface RefinedValues {
   task_status_id: number | null
@@ -197,8 +125,6 @@ interface RefinedValues {
   end_date: string | null
   assignee_ids: number[]
   watcher_ids: number[]
-  recurrence: RefinedRecurrenceValues
-  subtasks: RefinedSubtaskRowValues[]
 }
 
 /** `task_status_id` is NOT NULL server-side; on PATCH it is still required (D-3/D-6: create derives it). */
@@ -285,155 +211,6 @@ function addWatcherOverlapIssue(values: RefinedValues, ctx: z.RefinementCtx, t: 
 }
 
 /**
- * Spec 0120 D-1/AC-033: the write path's conditional rules, replicated so the
- * user sees the missing field inline instead of waiting for the server's
- * 422. Every check is SKIPPED while `enabled` is false — a disabled section
- * carries no rule to validate, and `end_date` itself is already covered
- * unconditionally by `addMissingEndDateIssue` above (D-1: a recurrence with
- * no scadenza is not calculable, but the form already requires one either way).
- */
-function addRecurrenceIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
-  const { recurrence } = values
-  if (!recurrence.enabled) {
-    return
-  }
-
-  if (recurrence.interval === null || recurrence.interval < 1) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['recurrence', 'interval'],
-      message: t('tasks.form.recurrence.intervalInvalid'),
-    })
-  }
-
-  if (recurrence.frequency === 'weekly' && recurrence.weekdays.length === 0) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['recurrence', 'weekdays'],
-      message: t('tasks.form.recurrence.weekdaysRequired'),
-    })
-  }
-
-  // Spec 0155 D-1: monthly/yearly share the same fixed/ordinal day-of-month
-  // discriminator. A `month_mode` not yet picked defaults to `fixed` here —
-  // the section seeds it explicitly the moment the user picks either
-  // frequency, so this fallback only ever matters for a rule built without
-  // going through that picker (e.g. a fixture).
-  if (recurrence.frequency === 'monthly' || recurrence.frequency === 'yearly') {
-    const monthMode = recurrence.month_mode ?? 'fixed'
-    if (monthMode === 'fixed') {
-      if (recurrence.month_day === null || recurrence.month_day < 1 || recurrence.month_day > 31) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['recurrence', 'month_day'],
-          message: t('tasks.form.recurrence.monthDayInvalid'),
-        })
-      }
-    } else {
-      if (recurrence.ordinal === null || recurrence.ordinal < 1 || recurrence.ordinal > 5) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['recurrence', 'ordinal'],
-          message: t('tasks.form.recurrence.ordinalInvalid'),
-        })
-      }
-      if (
-        recurrence.ordinal_weekday === null ||
-        recurrence.ordinal_weekday < 1 ||
-        recurrence.ordinal_weekday > 7
-      ) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['recurrence', 'ordinal_weekday'],
-          message: t('tasks.form.recurrence.ordinalWeekdayInvalid'),
-        })
-      }
-    }
-  }
-
-  if (
-    recurrence.frequency === 'yearly' &&
-    (recurrence.year_month === null || recurrence.year_month < 1 || recurrence.year_month > 12)
-  ) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['recurrence', 'year_month'],
-      message: t('tasks.form.recurrence.yearMonthInvalid'),
-    })
-  }
-
-  if (recurrence.ends === 'on_date') {
-    if (!recurrence.ends_on) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['recurrence', 'ends_on'],
-        message: t('tasks.form.recurrence.endsOnRequired'),
-      })
-    } else if (values.end_date && recurrence.ends_on <= values.end_date) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['recurrence', 'ends_on'],
-        message: t('tasks.form.recurrence.endsOnAfterEndDate'),
-      })
-    }
-  }
-
-  if (
-    recurrence.ends === 'after_count' &&
-    (recurrence.occurrence_count === null || recurrence.occurrence_count < 1)
-  ) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['recurrence', 'occurrence_count'],
-      message: t('tasks.form.recurrence.occurrenceCountInvalid'),
-    })
-  }
-}
-
-/**
- * Spec 0155 D-3: every row of the "Sottotask" block needs at least a title —
- * every other field is optional and inherits from the parent when left
- * blank. Spec 0161 D-1: walks EVERY level of the tree, not just the root
- * (`path` grows `subtasks`/index alternately as it descends), so a blank
- * title at the 3rd level surfaces on that exact row, not the root's.
- */
-function addSubtaskRowIssues(
-  rows: RefinedSubtaskRowValues[],
-  path: (string | number)[],
-  ctx: z.RefinementCtx,
-  t: TFunction,
-): void {
-  rows.forEach((row, index) => {
-    const rowPath = [...path, index]
-    if (row.title.trim() === '') {
-      ctx.addIssue({
-        code: 'custom',
-        path: [...rowPath, 'title'],
-        message: t('tasks.form.subtasks.titleRequired'),
-      })
-    }
-    addSubtaskRowIssues(row.subtasks ?? [], [...rowPath, 'subtasks'], ctx, t)
-  })
-}
-
-/**
- * Spec 0161 D-1: the 50-node cap counted across the WHOLE tree (every
- * level), not just the root array — `countSubtaskTreeNodes` is the single
- * shared counter the section's own "add child" gating reuses, so the two can
- * never disagree on what counts as a node.
- */
-function addSubtaskTreeIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TFunction): void {
-  addSubtaskRowIssues(values.subtasks, ['subtasks'], ctx, t)
-  if (countSubtaskTreeNodes(values.subtasks) > MAX_TASK_FORM_SUBTASKS) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['subtasks'],
-      message: t('tasks.form.subtasks.maxReached'),
-    })
-  }
-}
-
-/**
  * Builds the task form schema. One schema for create and edit — the partial
  * PATCH diff is computed by the payload builder, not by a second shape that
  * could drift.
@@ -452,6 +229,10 @@ function addSubtaskTreeIssues(values: RefinedValues, ctx: z.RefinementCtx, t: TF
  *
  * `parentDateRange` (spec 0123 D-7) is `null` outside "crea sotto-task"
  * (`use-task-parent-prefill.ts` only resolves it on create, see there).
+ *
+ * The recurrence (spec 0120/0155) and subtask-tree (spec 0155/0161) refine
+ * rules live in `task-schema-recurrence.ts`/`task-schema-subtasks.ts` —
+ * split out purely to keep this file under the engineering.md §6 size budget.
  */
 export function buildTaskSchema(
   t: TFunction,

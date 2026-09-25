@@ -6,33 +6,11 @@ use App\Models\CustomFieldDefinition;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Registry;
-use App\Models\User;
 use App\Models\VatRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
-
-if (! function_exists('productUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function productUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import'] as $ability) {
-            Permission::findOrCreate("products.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("products.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 if (! function_exists('productGenericFields')) {
     /**

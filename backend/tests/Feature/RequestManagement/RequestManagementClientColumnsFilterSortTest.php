@@ -6,7 +6,6 @@ use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -17,26 +16,6 @@ uses(RefreshDatabase::class);
  * its primary phone contact), so filter, sort and value list are all
  * resolved by RequestClientColumns — this file is that contract.
  */
-if (! function_exists('requestManagementUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function requestManagementUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("request-management.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 /**
  * A Quote (spec 0086, D-1: the grid row) whose Opportunity's client card
  * carries the given anagraphic values plus a primary phone contact — the

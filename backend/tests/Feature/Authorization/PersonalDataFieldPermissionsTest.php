@@ -10,26 +10,6 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-if (! function_exists('userWithUserAbilities')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function userWithUserAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import'] as $ability) {
-            Permission::findOrCreate("users.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("users.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 /**
  * A role with the given `users.*` abilities and an optional single
  * role_field_permissions row, assigned to a fresh actor.

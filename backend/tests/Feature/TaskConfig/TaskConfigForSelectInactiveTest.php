@@ -5,10 +5,8 @@ use App\Models\TaskImportance;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\TaskType;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -27,30 +25,6 @@ uses(RefreshDatabase::class);
 | the second half of this file does. Asserting only "the flag returns one
 | more item" would leave the actual defect uncovered.
 */
-
-if (! function_exists('taskConfigActorWith')) {
-    /**
-     * An actor holding $abilities on ONE of the five task configurators.
-     * Duplicated (guarded) across the suites that need it, following the
-     * repo idiom for shared Pest helpers (see workOrderUserWith).
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskConfigActorWith(string $resource, array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
-            Permission::findOrCreate("{$resource}.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("{$resource}.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 /**
  * All FIVE configurators: `include_inactive` exists on every for-select

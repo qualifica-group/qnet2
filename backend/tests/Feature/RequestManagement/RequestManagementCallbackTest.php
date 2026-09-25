@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Activitylog\Models\Activity;
-use Spatie\Permission\Models\Permission;
 
 // "Prossimo richiamo" (spec 0052, D-1..D-5): a plain nullable datetime
 // column, written only via PATCH /api/request-management/{quote}, with an
@@ -19,26 +18,6 @@ use Spatie\Permission\Models\Permission;
 // through the generic engine instead of the `opportunity` hop.
 
 uses(RefreshDatabase::class);
-
-if (! function_exists('requestManagementUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function requestManagementUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("request-management.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 if (! function_exists('managedQuote')) {
     /**

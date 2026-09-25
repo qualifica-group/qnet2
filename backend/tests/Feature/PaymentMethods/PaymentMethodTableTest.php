@@ -2,7 +2,6 @@
 
 use App\Jobs\GenerateExportJob;
 use App\Models\PaymentMethod;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
@@ -13,26 +12,6 @@ uses(RefreshDatabase::class);
 // AC-057 (guard preexisting) is proven generically, for EVERY domain in
 // config/tables.php, by tests/Feature/Table/InlineCellEditingGuardTest.php —
 // not duplicated here.
-
-if (! function_exists('paymentMethodUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function paymentMethodUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
-            Permission::findOrCreate("payment-methods.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("payment-methods.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // AC-050 — columns config, frozen order + flags

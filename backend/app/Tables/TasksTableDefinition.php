@@ -4,29 +4,28 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
-use App\Authorization\TasksAuthorization;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\RoleAssignmentGuard;
-use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
 use App\Services\Tasks\TaskVisibilityScope;
-use App\Services\Tasks\TaskWriteLock;
 use App\Services\TaskService;
 use App\Tables\Tasks\TaskAdvancedFilterApplier;
 use App\Tables\Tasks\TaskAdvancedFilterCatalog;
 use App\Tables\Tasks\TaskAggregateColumns;
 use App\Tables\Tasks\TaskCellWriter;
 use App\Tables\Tasks\TaskColumnCatalog;
+use App\Tables\Tasks\TaskDerivedColumnResolver;
+use App\Tables\Tasks\TaskIdSearchMatcher;
 use App\Tables\Tasks\TaskKanbanGroupScope;
 use App\Tables\Tasks\TaskRelationColumns;
+use App\Tables\Tasks\TaskRowActionResolver;
 use App\Tables\Tasks\TaskRowMapper;
+use App\Tables\Tasks\TaskTableConstants;
 use App\Tables\Tasks\TaskTreeScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Table definition for the `tasks` domain (spec 0101, extended by spec 0156
@@ -44,48 +43,28 @@ use Illuminate\Support\Facades\Gate;
  * (D-6): its value, its ORDER BY and its WHERE all come from
  * TaskStatusResolver, so the badge and the grid can never disagree
  * (AC-020/AC-022). `actual_minutes`/`parent_title` (spec 0156, D-2) are the
- * two AGGREGATE columns, delegated to TaskAggregateColumns; every other
- * derived column is delegated to TaskRelationColumns (file-size split,
- * engineering.md §6).
+ * two AGGREGATE columns; the whole filter/sort dispatch across it,
+ * TaskStatusResolver and every other derived column is delegated to
+ * TaskDerivedColumnResolver (file-size split, engineering.md §6).
  *
  * deleteModel() routes the generic bulk-delete through TaskService::delete(),
  * so the sub-task guard cannot be side-stepped (AC-016). updateCell() (spec
  * 0156, D-8) routes the generic inline cell-edit through TaskCellWriter, so
  * it too runs every guard `TaskService::update()` already enforces on a
- * single-task PATCH.
+ * single-task PATCH. actionsFor()/authorizeDelete()/authorizeUpdate() are
+ * delegated to TaskRowActionResolver, same reason.
  */
 class TasksTableDefinition extends AbstractTableDefinition
 {
-    private const string COMPLETION_PERCENTAGE_COLUMN = 'completion_percentage';
-
-    /**
-     * Per-block cap for `tasks`, five times the shared
-     * `BaseApiController::MAX_LIMIT`. Introduced by spec 0157 for the
-     * one-shot Kanban load; since spec 0164 the Kanban pages each column in
-     * blocks of 50, so this is only the ceiling a single request may ask for.
-     */
-    private const int MAX_ROWS_LIMIT = 500;
-
-    /**
-     * The seven domain-action flags of TasksAuthorization::actionPermissions()
-     * exposed as row actions (spec 0156, D-5): the action key IS the flag
-     * key for all seven, so a single loop maps them — never a second
-     * evaluation of the matrix TaskCompletionService/TaskActionService
-     * themselves re-assert.
-     *
-     * @var array<int, string>
-     */
-    private const array DOMAIN_ACTION_FLAGS = ['complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update'];
-
     public function __construct(
         private readonly TaskService $service,
-        private readonly TaskStatusResolver $statusResolver,
         private readonly TaskRelationColumns $relationColumns,
         private readonly TaskAdvancedFilterApplier $advancedFilterApplier,
         private readonly TaskAggregateColumns $aggregateColumns,
         private readonly TaskCellWriter $cellWriter,
-        private readonly TasksAuthorization $authorization,
+        private readonly TaskRowActionResolver $rowActionResolver,
         private readonly TaskRowMapper $rowMapper,
+        private readonly TaskDerivedColumnResolver $derivedColumnResolver,
     ) {}
 
     public function domain(): string
@@ -239,56 +218,12 @@ class TasksTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Allowed action keys for a single row, via TaskPolicy — which carries
-     * the D-9 visibility scoping, answered in memory here because both
-     * membership relations are eager-loaded in baseQuery(). Spec 0156, D-5
-     * adds the seven domain actions (TasksAuthorization::actionPermissions(),
-     * the SAME matrix the detail's own buttons read) plus `duplicate`/
-     * `notes`, both riding on the `view`/`create` gates already resolved
-     * above rather than a second Policy call.
-     *
      * @return array<int, string>
      */
     public function actionsFor(User $actor, Model $row): array
     {
         /** @var Task $row */
-        $allowed = [];
-
-        if (Gate::forUser($actor)->allows('view', $row)) {
-            $allowed[] = 'view';
-        }
-
-        if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
-        }
-
-        if ($this->authorizeDelete($actor, $row)) {
-            $allowed[] = 'delete';
-        }
-
-        if (Gate::forUser($actor)->allows('viewActivity', $row)) {
-            $allowed[] = 'activity';
-        }
-
-        $canView = in_array('view', $allowed, true);
-
-        if ($canView && $actor->can('tasks.create')) {
-            $allowed[] = 'duplicate';
-        }
-
-        if ($canView) {
-            $allowed[] = 'notes';
-        }
-
-        $permissions = $this->authorization->actionPermissions($actor, $row);
-
-        foreach (self::DOMAIN_ACTION_FLAGS as $flag) {
-            if ($permissions[$flag] ?? false) {
-                $allowed[] = $flag;
-            }
-        }
-
-        return $allowed;
+        return $this->rowActionResolver->actionsFor($actor, $row);
     }
 
     /**
@@ -304,42 +239,16 @@ class TasksTableDefinition extends AbstractTableDefinition
         $this->service->delete($model, $actor);
     }
 
-    /**
-     * Spec 0125, D-2: the Gate alone lets a super-admin assignee through, so
-     * the delete row of the matrix is ANDed here too — the grid row-action
-     * and the bulk-delete `forbidden` verdict then match the Service's 403.
-     */
     public function authorizeDelete(User $actor, Model $row): bool
     {
         /** @var Task $row */
-        return Gate::forUser($actor)->allows('delete', $row) && TaskAbilityResolver::canDelete($actor, $row);
+        return $this->rowActionResolver->authorizeDelete($actor, $row);
     }
 
-    /**
-     * Spec 0156, contract: `editable` of a row = update allowed AND the Task
-     * is not closed/blocked for writing, a super-admin excluded from that
-     * second half — the same coarse row-level UI hint `editable` already is
-     * everywhere else in this engine (D-2 of spec 0053: "il config è un
-     * suggerimento, la catena di guardie del PATCH è la verità"), so this
-     * deliberately reads only $row's OWN `is_blocked`/status phase
-     * (TaskWriteLock::isLocked()), never the ancestor-chain cascade
-     * (TaskWriteLock::isLockedByAncestor()) — the per-field write TaskCellWriter
-     * -> TaskService::update() runs is the one place that walk is judged for
-     * real, and it stays a per-row query the grid's page cannot afford to
-     * repeat for every locked-by-ancestor sub-task.
-     */
     public function authorizeUpdate(User $actor, Model $row): bool
     {
         /** @var Task $row */
-        if (! Gate::forUser($actor)->allows('update', $row)) {
-            return false;
-        }
-
-        if ($actor->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE)) {
-            return true;
-        }
-
-        return ! TaskWriteLock::isLocked($row);
+        return $this->rowActionResolver->authorizeUpdate($actor, $row);
     }
 
     /**
@@ -391,7 +300,7 @@ class TasksTableDefinition extends AbstractTableDefinition
 
     public function maxRowsLimit(): int
     {
-        return self::MAX_ROWS_LIMIT;
+        return TaskTableConstants::MAX_ROWS_LIMIT;
     }
 
     /**
@@ -420,17 +329,7 @@ class TasksTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
-        if ($columnId === self::COMPLETION_PERCENTAGE_COLUMN) {
-            $this->statusResolver->applyFilter($query, $columnConfig, $filter);
-
-            return true;
-        }
-
-        if ($this->aggregateColumns->applyFilter($query, $columnId, $filter)) {
-            return true;
-        }
-
-        return $this->relationColumns->applyFilter($query, $columnId, $filter);
+        return $this->derivedColumnResolver->applyFilter($query, $columnId, $columnConfig, $filter);
     }
 
     /**
@@ -438,27 +337,13 @@ class TasksTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
-        if ($columnId === self::COMPLETION_PERCENTAGE_COLUMN) {
-            $this->statusResolver->applySort($query, $direction);
-
-            return true;
-        }
-
-        if ($this->aggregateColumns->applySort($query, $columnId, $direction)) {
-            return true;
-        }
-
-        return $this->relationColumns->applySort($query, $columnId, $direction);
+        return $this->derivedColumnResolver->applySort($query, $columnId, $direction);
     }
 
     /**
      * Spec 0156, D-1: the quick search also matches an exact numeric id,
      * OR-combined with the `title` LIKE the generic engine already applies
-     * to the other searchable column. `$pattern` arrives already
-     * `%…%`-wrapped and LIKE-escaped (TableQueryBuilder::applySearch()); the
-     * raw term is safely recovered by stripping the two wrapping `%` — safe
-     * because a purely-numeric term carries no character `escapeLike()`
-     * would ever have touched.
+     * to the other searchable column (App\Tables\Tasks\TaskIdSearchMatcher).
      *
      * @param  Builder<Task>  $query
      */
@@ -468,13 +353,7 @@ class TasksTableDefinition extends AbstractTableDefinition
             return false;
         }
 
-        $term = substr($pattern, 1, -1);
-
-        if ($term === '' || ! ctype_digit($term)) {
-            return true; // handled: no numeric id to match, adds no clause.
-        }
-
-        $query->orWhere('tasks.id', '=', (int) $term);
+        TaskIdSearchMatcher::apply($query, $pattern);
 
         return true;
     }

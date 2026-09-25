@@ -9,26 +9,6 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-if (! function_exists('paymentMethodUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function paymentMethodUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
-            Permission::findOrCreate("payment-methods.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("payment-methods.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 // ---------------------------------------------------------------------------
 // AC-030 — 403 without the matching permission, on every endpoint
 // ---------------------------------------------------------------------------

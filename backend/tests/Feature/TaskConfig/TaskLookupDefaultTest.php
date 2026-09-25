@@ -3,10 +3,8 @@
 use App\Models\TaskImportance;
 use App\Models\TaskPriority;
 use App\Models\TaskType;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -19,26 +17,6 @@ uses(RefreshDatabase::class);
 | task-categories does NOT carry this column (it nests instead, D-1), so it
 | is deliberately excluded from `defaultLookups` below.
 */
-
-if (! function_exists('taskConfigActorWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function taskConfigActorWith(string $resource, array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("{$resource}.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("{$resource}.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 /**
  * @return array<string, array{0: string, 1: string, 2: string}>

@@ -1,56 +1,20 @@
-import {
-  forwardRef,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { forwardRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GridApi, GridReadyEvent } from 'ag-grid-community'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataTable } from '@/components/data-table/data-table'
-import { estimateGridHeight } from '@/components/data-table/data-table-theme'
-import { useAbilities } from '@/features/auth/use-abilities'
-import { useUiScale } from '@/features/appearance/ui-scale-context'
-import { useViewportTableHeight } from '@/features/table/use-viewport-table-height'
-import { createSsrmDatasource } from '@/features/table/ssrm-datasource'
+import { useTableConfig } from '@/features/table/use-table-config'
 import { TableToolbar } from '@/features/table/table-toolbar'
-import { useTableToolbarState } from '@/features/table/use-table-toolbar-state'
 import { AdvancedFilterPanel, ADVANCED_FILTER_PANEL_ANIMATION } from '@/features/table/advanced-filters/advanced-filter-panel'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
-import { useTableAdvancedFilters } from '@/features/table/advanced-filters/use-table-advanced-filters'
-import { useBulkActionsSlot } from '@/features/table/use-bulk-actions-slot'
-import { createRowActionsRenderer, INLINE_ACTION_LIMIT, LABELED_ACTIONS_COLUMN_WIDTH } from '@/features/table/row-actions'
-import { useTableConfig } from '@/features/table/use-table-config'
-import { EMPTY_FILTER_MODEL, useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
+import { INLINE_ACTION_LIMIT, LABELED_ACTIONS_COLUMN_WIDTH } from '@/features/table/row-actions'
 import { ActiveFilterChips } from '@/features/table/custom-filters/active-filter-chips'
-import { useCustomFilterState } from '@/features/table/custom-filters/use-custom-filter-state'
-import { useTableCustomFilters } from '@/features/table/custom-filters/use-table-custom-filters'
-import { useTableFilterChips } from '@/features/table/custom-filters/use-table-filter-chips'
 import { buildTableViewSlots } from '@/features/table/table-view-slots'
+import { useTableViewController, type TableViewHandle } from '@/features/table/use-table-view-controller'
 import type { TableViewProps } from '@/features/table/table-view-props'
-import type { TableColumn, TableRowsAggregates } from '@/features/table/types'
 
-/** Stable empty column list (hoisted per `frontend.md §10`: never `?? []` inline). */
-const EMPTY_COLUMNS: TableColumn[] = []
-
-/**
- * Page size assumed while the config is still loading, only to size the grid
- * container: it mirrors the limit every `TableDefinition::defaultPagination`
- * returns, so the skeleton block does not resize when the real config lands.
- */
-const FALLBACK_PAGE_SIZE = 25
-
-/** Imperative handle exposed by the generic table to its domain adapter. */
-export interface TableViewHandle {
-  /** Purges and reloads the SSRM cache (call after a CRUD mutation). */
-  refresh: () => void
-  /** Clears the current row selection (call after a bulk action succeeds). */
-  clearSelection: () => void
-}
+export type { TableViewHandle } from '@/features/table/use-table-view-controller'
 
 /**
  * Generic, domain-driven table. Given a `domain`, it loads the backend config,
@@ -61,7 +25,8 @@ export interface TableViewHandle {
  * refresh mechanism, and the toolbar's client state (search term, floating
  * filters, fullscreen), but holds NO domain logic: custom rendering and action
  * behavior arrive entirely via props (`renderers`, `onAction`, `isBusy`,
- * `decorateRow`).
+ * `decorateRow`). The state wiring itself lives in `useTableViewController`
+ * (engineering.md §6) — this component stays a thin render orchestrator.
  *
  * Adding a new domain requires no change here — only a new adapter that mounts
  * this component with its `domain`, renderer map and action handler.
@@ -96,260 +61,38 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     ref,
   ) {
     const { t } = useTranslation()
-    // Read once as a primitive: every downstream `useMemo` below keys on this
-    // value, not on the `scope`/`rowScope` object identity (a caller may pass
-    // a fresh object literal every render).
+    // Read once as a primitive: every downstream memo in the controller keys
+    // on this value, not on the `scope`/`rowScope` object identity (a caller
+    // may pass a fresh object literal every render).
     const productCategoryId = scope?.productCategoryId
     const opportunityId = rowScope?.opportunityId
     const quoteId = rowScope?.quoteId
     const { data: config, isPending, isError, refetch } = useTableConfig(domain, scope)
 
-    // Export is generic (spec 0014): TableView owns the grid api, so it gates,
-    // builds and mounts the export affordance itself — no per-module wiring.
-    const { can } = useAbilities()
-    const canExport = can(`${domain}.export`)
-    const [exportOpen, setExportOpen] = useState(false)
-    // Spec 0158 D-3: `shared` visibility on a filter view of ANY domain
-    // requires this one, domain-agnostic permission.
-    const canPublishFilterViews = can('table-filter-views.publish')
-
-    // The saved filterModel replayed into the grid on mount. Stable identity per
-    // config load so it can seed the persisted-baseline ref below.
-    const initialFilterModel = useMemo(
-      () => config?.filterState ?? EMPTY_FILTER_MODEL,
-      [config?.filterState],
-    )
-
-    // SSRM rows are not cached by TanStack Query, so they cannot be invalidated
-    // through the queryClient. We hold the grid API and purge its server-side
-    // cache directly. Stored in state (not a ref) so the imperative handle picks
-    // up the API once the grid is ready.
-    const [gridApi, setGridApi] = useState<GridApi | null>(null)
-    const handleGridReady = useCallback((event: GridReadyEvent) => {
-      setGridApi(event.api)
-    }, [])
-
-    // Purges and reloads the SSRM cache; shared by the imperative handle (used
-    // by domain adapters after their own CRUD mutations) and the generic
-    // bulk-delete flow below.
-    const refreshGrid = useCallback(() => {
-      gridApi?.refreshServerSide({ purge: true })
-    }, [gridApi])
-
-    // Bulk selection (current page only, per the SSRM select-all contract),
-    // the generic bulk-delete flow and any domain-supplied extra bulk action
-    // (spec 0048 AC-041) — see `use-bulk-actions-slot.ts`.
-    const {
-      onSelectionChanged: handleSelectionChanged,
-      clearSelection,
-      enableSelection,
-      bulkActionsSlot,
-    } = useBulkActionsSlot({
-      domain,
-      gridApi,
-      actions: config?.actions,
-      refresh: refreshGrid,
-      getBulkActions,
-      disableBuiltinDelete,
-    })
-
-    // The domain's global quick-search allow-list (spec 0009); empty ⇒ no search
-    // box. Drives both the search affordance and the placeholder labels.
-    const searchable = useMemo(
-      () => config?.searchable ?? [],
-      [config?.searchable],
-    )
-    const searchEnabled = searchable.length > 0
-
-    // Client-only toolbar state (search term + ⌘K, floating filters, fullscreen,
-    // live row count), owned by a dedicated hook so this component stays a thin
-    // orchestrator (engineering.md §6).
-    const toolbar = useTableToolbarState({ gridApi, searchEnabled })
-
-    // Feeds the toolbar's own "N rows" counter AND, additively, the caller's
-    // `onRowCountChanged` (spec 0067 D-9) — composed here so `DataTable` keeps
-    // wiring a single handler regardless of whether a caller supplies one.
-    // Bound to a local identifier first: the setState setter is referentially
-    // stable, but calling it as `toolbar.setRowCount(count)` (a member
-    // expression callee) makes exhaustive-deps ask for the whole `toolbar`
-    // object instead — a plain identifier call avoids that ambiguity.
-    const { setRowCount } = toolbar
-    const handleRowCountChanged = useCallback(
-      (count: number) => {
-        setRowCount(count)
-        onRowCountChanged?.(count)
-      },
-      [setRowCount, onRowCountChanged],
-    )
-
-    // The domain's active custom filter (spec 0158), in memory only. Built
-    // BEFORE `useTableAdvancedFilters` so its `notifyExternalChange` can be
-    // wired into the panel's `onApplied` below without a callback cycle
-    // between the two hooks (see `use-table-custom-filters.ts`).
-    const customFilterState = useCustomFilterState()
-
-    // The domain's advanced filter catalog (spec 0032); empty ⇒ the toolbar
-    // hides the toggle entirely and the panel never mounts. Draft/applied
-    // state, dependencies and persistence are owned by the dedicated hook;
-    // Apply/Reset purge-reload the grid exactly once via `refreshGrid` — and,
-    // since a normal Apply/Reset "wins" over an active custom filter (spec
-    // 0158 D-2), deactivate it first.
-    const { descriptors: advancedFilterDescriptors, filters: advancedFilters } =
-      useTableAdvancedFilters({
+    const view = useTableViewController(
+      {
         domain,
-        descriptors: config?.advancedFilters,
-        applied: config?.appliedAdvancedFilters,
-        onApplied: () => {
-          customFilterState.notifyExternalChange()
-          refreshGrid()
-        },
-        override: advancedFiltersOverride,
-        onOverrideCleared: onAdvancedFiltersOverrideCleared,
-      })
-
-    // The domain's own aggregate figures over the WHOLE filtered set (spec
-    // 0156 D-3), refreshed on every SSRM response; `undefined` for a domain
-    // with no `aggregates()` override. Only read when the caller supplies
-    // `renderFooter`, but always tracked — an unused `useState` here costs
-    // nothing and keeps the datasource memo below a single shape either way.
-    const [aggregates, setAggregates] = useState<TableRowsAggregates | undefined>(undefined)
-
-    // One datasource instance per domain; stable across re-renders. The current
-    // search term and applied advanced filters are read lazily via getters, so
-    // typing/toggling never rebuilds it (the grid is purge-reloaded instead).
-    const datasource = useMemo(
-      () =>
-        createSsrmDatasource(domain, {
-          getSearch: toolbar.getSearchTerm,
-          getAdvancedFilters: advancedFilters.getApplied,
-          getCustomFilterRules: customFilterState.getActive,
-          productCategoryId,
-          opportunityId,
-          quoteId,
-          onAggregates: setAggregates,
-          treeData,
-        }),
-      [
-        domain,
-        toolbar.getSearchTerm,
-        advancedFilters.getApplied,
-        customFilterState.getActive,
+        scope,
         productCategoryId,
         opportunityId,
         quoteId,
-        treeData,
-      ],
-    )
-
-    useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection }), [
-      refreshGrid,
-      clearSelection,
-    ])
-
-    // The domain's real column ids: mirrors the server's Rule::in allow-list, so
-    // synthetic grid columns (row-actions, selection) are dropped from the saved
-    // layout and a persist can never 422 on an unknown column id.
-    const knownColumnIds = useMemo(
-      () => new Set((config?.columns ?? []).map((column) => column.id)),
-      [config?.columns],
-    )
-
-    // Debounced column-layout/filter persistence and their "reset to default"
-    // flows (spec 0003/0009) — see `use-table-layout-persistence.ts`.
-    const {
-      layoutVersion,
-      isCustomized,
-      isFilterCustomized,
-      setFiltersCustomizedLocally,
-      filterModel,
-      handleColumnStateChanged,
-      handleFilterChanged,
-      handleResetLayout,
-      handleResetFilters,
-      resettingLayout,
-      resettingFilters,
-    } = useTableLayoutPersistence({
-      domain,
-      scope,
-      gridApi,
-      knownColumnIds,
-      initialFilterModel,
-      configCustomized: config?.customized ?? false,
-      configFiltersCustomized: config?.filtersCustomized ?? false,
-      refetchConfig: refetch,
-    })
-
-    // The custom filter builder's open/editing state and its `applyRules`
-    // activation flow (spec 0158) — see `use-table-custom-filters.ts`.
-    const customFilters = useTableCustomFilters({
-      active: customFilterState,
-      gridApi,
-      advancedFilters,
-      refreshGrid,
-      onFilterModelApplied: setFiltersCustomizedLocally,
-    })
-
-    // The removable chip row below the toolbar (spec 0158 D-5) — see
-    // `use-table-filter-chips.ts`.
-    const filterChips = useTableFilterChips({
-      gridApi,
-      columns: config?.columns ?? EMPTY_COLUMNS,
-      filterModel,
-      advancedDescriptors: advancedFilterDescriptors,
-      advancedFilters,
-      search: toolbar.searchInput,
-      onClearSearch: () => toolbar.setSearchInput(''),
-      customFilters,
-      refreshGrid,
-      resetColumnFilters: handleResetFilters,
-    })
-
-    // A column filter change "wins" over an active custom filter (spec 0158
-    // D-2); a no-op when nothing is active or the change is the custom
-    // filter's own programmatic reset (suppressed, see `use-custom-filter-state.ts`).
-    const handleGridFilterChanged = useCallback(() => {
-      customFilterState.notifyExternalChange()
-      handleFilterChanged()
-    }, [customFilterState, handleFilterChanged])
-
-    // Placeholder built from the searchable columns' localized labels, mirroring
-    // the backend allow-list (e.g. "Cerca nome/email…").
-    const searchPlaceholder = useMemo(() => {
-      if (!config || searchable.length === 0) {
-        return t('table.search')
-      }
-      const labels = searchable
-        .map((id) => config.columns.find((column) => column.id === id))
-        .filter((column): column is NonNullable<typeof column> => Boolean(column))
-        .map((column) => t(column.label))
-      return t('table.searchPlaceholder', { columns: labels.join('/') })
-    }, [config, searchable, t])
-
-    const renderRowActions = useMemo(() => {
-      if (!config) {
-        return undefined
-      }
-      return createRowActionsRenderer(config.actions, onAction, {
+        onRowCountChanged,
+        onAction,
         isBusy,
         decorateRow,
         iconMap,
         labeledActions,
-      })
-    }, [config, onAction, isBusy, decorateRow, iconMap, labeledActions])
-
-    // Fit the grid to the screen instead of a fixed height: it takes what is
-    // left of the viewport below this module's chrome, never taller than the
-    // page of rows needs (no empty grid under the last row on a large screen).
-    // Skipped in fullscreen, where the flex parent owns the height.
-    const { factor } = useUiScale()
-    const maxGridHeight = useMemo(
-      () => estimateGridHeight(config?.defaultPagination.limit ?? FALLBACK_PAGE_SIZE, factor),
-      [config?.defaultPagination.limit, factor],
+        getBulkActions,
+        disableBuiltinDelete,
+        advancedFiltersOverride,
+        onAdvancedFiltersOverrideCleared,
+        treeData,
+        config,
+        refetchConfig: refetch,
+        t,
+      },
+      ref,
     )
-    const { containerRef: gridContainerRef, height: gridHeight } = useViewportTableHeight({
-      enabled: !toolbar.fullscreen,
-      maxHeight: maxGridHeight,
-    })
 
     let content: ReactNode
     if (isPending) {
@@ -378,26 +121,26 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     } else {
       content = (
         <DataTable
-          key={layoutVersion}
+          key={view.layoutVersion}
           domain={domain}
           productCategoryId={productCategoryId}
           opportunityId={opportunityId}
           quoteId={quoteId}
           columns={config.columns}
-          datasource={datasource}
+          datasource={view.datasource}
           blockSize={config.defaultPagination.limit}
           cellRenderers={renderers}
-          renderRowActions={renderRowActions}
+          renderRowActions={view.renderRowActions}
           actionsHeaderLabel="table.actionsHeader"
           actionsColumnHasOverflow={config.actions.length > INLINE_ACTION_LIMIT}
           actionsColumnWidth={labeledActions ? LABELED_ACTIONS_COLUMN_WIDTH : undefined}
-          onGridReady={handleGridReady}
-          onColumnStateChanged={handleColumnStateChanged}
-          initialFilterModel={initialFilterModel}
-          onFilterChanged={handleGridFilterChanged}
-          onRowCountChanged={handleRowCountChanged}
-          enableSelection={enableSelection}
-          onSelectionChanged={handleSelectionChanged}
+          onGridReady={view.handleGridReady}
+          onColumnStateChanged={view.handleColumnStateChanged}
+          initialFilterModel={view.initialFilterModel}
+          onFilterChanged={view.handleGridFilterChanged}
+          onRowCountChanged={view.handleRowCountChanged}
+          enableSelection={view.enableSelection}
+          onSelectionChanged={view.handleSelectionChanged}
           isRowSelectable={isRowSelectable}
           masterDetail={masterDetail}
           detailCellRenderer={detailCellRenderer}
@@ -408,22 +151,22 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       )
     }
 
-    const footer = renderFooter ? renderFooter(aggregates) : null
+    const footer = renderFooter ? renderFooter(view.aggregates) : null
 
     const { savedViewsSlot, exportSlot, dialogs } = buildTableViewSlots({
       domain,
       t,
-      gridApi,
+      gridApi: view.gridApi,
       config,
-      advancedFilters,
-      setFiltersCustomizedLocally,
-      customFilters,
-      canPublishFilterViews,
-      canExport,
-      exportOpen,
-      onExportOpen: () => setExportOpen(true),
-      onExportOpenChange: setExportOpen,
-      getSearchTerm: toolbar.getSearchTerm,
+      advancedFilters: view.advancedFilters,
+      setFiltersCustomizedLocally: view.setFiltersCustomizedLocally,
+      customFilters: view.customFilters,
+      canPublishFilterViews: view.canPublishFilterViews,
+      canExport: view.canExport,
+      exportOpen: view.exportOpen,
+      onExportOpen: () => view.setExportOpen(true),
+      onExportOpenChange: view.setExportOpen,
+      getSearchTerm: view.toolbar.getSearchTerm,
       opportunityId,
       quoteId,
     })
@@ -433,51 +176,54 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         <div
           className={cn(
             'flex min-h-0 flex-col',
-            toolbar.fullscreen &&
+            view.toolbar.fullscreen &&
               'fixed inset-0 z-50 bg-background/80 p-3 backdrop-blur-sm sm:p-4',
           )}
         >
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <TableToolbar
-              searchEnabled={searchEnabled}
-              searchPlaceholder={searchPlaceholder}
-              searchInputRef={toolbar.searchInputRef}
-              searchValue={toolbar.searchInput}
-              onSearchChange={toolbar.setSearchInput}
-              searchShortcut={toolbar.searchShortcut}
-              rowCount={toolbar.rowCount}
-              bulkActionsSlot={bulkActionsSlot}
-              filtersActive={isFilterCustomized}
-              onResetFilters={() => void handleResetFilters()}
-              resettingFilters={resettingFilters}
-              layoutCustomized={isCustomized}
-              onResetLayout={() => void handleResetLayout()}
-              resettingLayout={resettingLayout}
-              fullscreen={toolbar.fullscreen}
-              onToggleFullscreen={toolbar.toggleFullscreen}
-              advancedFiltersEnabled={advancedFilterDescriptors.length > 0}
-              advancedFiltersOpen={toolbar.advancedFiltersOpen}
-              onToggleAdvancedFilters={toolbar.toggleAdvancedFilters}
-              advancedFiltersActiveCount={advancedFilters.activeCount}
+              searchEnabled={view.searchEnabled}
+              searchPlaceholder={view.searchPlaceholder}
+              searchInputRef={view.toolbar.searchInputRef}
+              searchValue={view.toolbar.searchInput}
+              onSearchChange={view.toolbar.setSearchInput}
+              searchShortcut={view.toolbar.searchShortcut}
+              rowCount={view.toolbar.rowCount}
+              bulkActionsSlot={view.bulkActionsSlot}
+              filtersActive={view.isFilterCustomized}
+              onResetFilters={() => void view.handleResetFilters()}
+              resettingFilters={view.resettingFilters}
+              layoutCustomized={view.isCustomized}
+              onResetLayout={() => void view.handleResetLayout()}
+              resettingLayout={view.resettingLayout}
+              fullscreen={view.toolbar.fullscreen}
+              onToggleFullscreen={view.toolbar.toggleFullscreen}
+              advancedFiltersEnabled={view.advancedFilterDescriptors.length > 0}
+              advancedFiltersOpen={view.toolbar.advancedFiltersOpen}
+              onToggleAdvancedFilters={view.toolbar.toggleAdvancedFilters}
+              advancedFiltersActiveCount={view.advancedFilters.activeCount}
               savedViewsSlot={savedViewsSlot}
               importSlot={importSlot}
               exportSlot={exportSlot}
             />
 
-            <ActiveFilterChips chips={filterChips.chips} onClearAll={filterChips.onClearAll} />
+            <ActiveFilterChips chips={view.filterChips.chips} onClearAll={view.filterChips.onClearAll} />
 
-            {advancedFilterDescriptors.length > 0 ? (
-              <Collapsible open={toolbar.advancedFiltersOpen}>
+            {view.advancedFilterDescriptors.length > 0 ? (
+              <Collapsible open={view.toolbar.advancedFiltersOpen}>
                 <CollapsibleContent className={ADVANCED_FILTER_PANEL_ANIMATION}>
-                  <AdvancedFilterPanel descriptors={advancedFilterDescriptors} filters={advancedFilters} />
+                  <AdvancedFilterPanel
+                    descriptors={view.advancedFilterDescriptors}
+                    filters={view.advancedFilters}
+                  />
                 </CollapsibleContent>
               </Collapsible>
             ) : null}
 
             <div
-              ref={gridContainerRef}
-              className={cn('min-h-0 w-full', toolbar.fullscreen && 'flex-1')}
-              style={gridHeight === null ? undefined : { height: gridHeight }}
+              ref={view.gridContainerRef}
+              className={cn('min-h-0 w-full', view.toolbar.fullscreen && 'flex-1')}
+              style={view.gridHeight === null ? undefined : { height: view.gridHeight }}
             >
               {content}
             </div>

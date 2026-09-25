@@ -1,9 +1,7 @@
 <?php
 
-use App\Models\BusinessFunction;
 use App\Models\Country;
 use App\Models\PipelineStatus;
-use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,39 +35,6 @@ if (! function_exists('projectUserWith')) {
         }
 
         return $user;
-    }
-}
-
-if (! function_exists('projectCoherentProductLine')) {
-    /**
-     * Local copy mirroring ProjectCrudTest's.
-     *
-     * @return array{business_function_id: int, product_category_id: int}
-     */
-    function projectCoherentProductLine(): array
-    {
-        $businessFunction = BusinessFunction::factory()->create();
-
-        return [
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
-        ];
-    }
-}
-
-if (! function_exists('projectStoreExtras')) {
-    /**
-     * Local copy mirroring ProjectCrudTest's.
-     *
-     * @return array<string, mixed>
-     */
-    function projectStoreExtras(): array
-    {
-        return [
-            'product_lines' => [projectCoherentProductLine()],
-            'start_date' => '2026-01-01',
-            'end_date' => '2026-12-31',
-        ];
     }
 }
 

@@ -16,26 +16,6 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-if (! function_exists('requestManagementUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function requestManagementUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'viewAll', 'transferContact'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("request-management.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 if (! function_exists('quoteWithContacts')) {
     /**
      * A fresh Quote linked to a Registry + Referent (through its Opportunity),

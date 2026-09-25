@@ -18,7 +18,7 @@ interface UseTableToolbarStateArgs {
   searchEnabled: boolean
 }
 
-interface TableToolbarState {
+export interface TableToolbarState {
   /** Fullscreen state + toggle (owns scroll-lock and Escape-to-exit). */
   fullscreen: boolean
   toggleFullscreen: () => void

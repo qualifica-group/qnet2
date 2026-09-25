@@ -20,23 +20,6 @@ uses(RefreshDatabase::class);
  *
  * @param  array<int, string>  $abilities  e.g. ['viewAny', 'view', 'update', 'delete']
  */
-if (! function_exists('userWithUserAbilities')) {
-    function userWithUserAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("users.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("users.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 it('requires authentication on the config endpoint', function () {
     $this->getJson('/api/tables/users/columns')->assertUnauthorized();
 });

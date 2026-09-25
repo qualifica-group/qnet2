@@ -3,34 +3,12 @@
 use App\Http\Resources\RoleResource;
 use App\Models\Role;
 use App\Models\RoleFieldPermission;
-use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
-
-if (! function_exists('actorWithRoleAbilities')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function actorWithRoleAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("roles.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("roles.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // AC 1 — migration + model: a role can have role_field_permissions rows;

@@ -1,10 +1,8 @@
 <?php
 
-use App\Models\BusinessFunction;
 use App\Models\Country;
 use App\Models\OperationalSite;
 use App\Models\PipelineStatus;
-use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,27 +36,6 @@ if (! function_exists('projectUserWith')) {
         }
 
         return $user;
-    }
-}
-
-if (! function_exists('projectStoreExtras')) {
-    /**
-     * Local copy mirroring ProjectCrudTest's create-only required fields.
-     *
-     * @return array<string, mixed>
-     */
-    function projectStoreExtras(): array
-    {
-        $businessFunction = BusinessFunction::factory()->create();
-
-        return [
-            'product_lines' => [[
-                'business_function_id' => $businessFunction->id,
-                'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
-            ]],
-            'start_date' => '2026-01-01',
-            'end_date' => '2026-12-31',
-        ];
     }
 }
 

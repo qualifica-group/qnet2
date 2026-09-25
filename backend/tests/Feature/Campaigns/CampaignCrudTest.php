@@ -44,36 +44,6 @@ if (! function_exists('campaignUserWith')) {
  *
  * @return array<string, mixed>
  */
-if (! function_exists('standaloneClassificationFields')) {
-    function standaloneClassificationFields(): array
-    {
-        return [
-            'pipeline_status_id' => PipelineStatus::factory()->create()->id,
-            'product_lines' => [campaignCoherentProductLine()],
-        ];
-    }
-}
-
-if (! function_exists('campaignCoherentProductLine')) {
-    /**
-     * One coherent {business_function_id, product_category_id} row (spec
-     * 0023 REV pairing rule): the category is created UNDER the business
-     * function, so its effective business function matches — the write-side
-     * coherence rule (ProductLineSetValidator) rejects a mismatched pair.
-     *
-     * @return array{business_function_id: int, product_category_id: int}
-     */
-    function campaignCoherentProductLine(): array
-    {
-        $businessFunction = BusinessFunction::factory()->create();
-
-        return [
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
-        ];
-    }
-}
-
 /**
  * The start/end planning dates, now required on every campaign (linked or
  * standalone — dates are the campaign's own, never inherited). Spread into a

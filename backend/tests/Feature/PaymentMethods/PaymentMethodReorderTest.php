@@ -1,10 +1,8 @@
 <?php
 
 use App\Models\PaymentMethod;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -17,26 +15,6 @@ uses(RefreshDatabase::class);
 | payment-methods has NO system-row concept: $orderedIds must be exactly the
 | FULL id set (PaymentMethodOrderManager, not StatusOrderManager).
 */
-
-if (! function_exists('paymentMethodUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function paymentMethodUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("payment-methods.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("payment-methods.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 it('reorder: a valid permutation resequences all rows to 10/20/30 (AC-080)', function () {
     $actor = paymentMethodUserWith(['update']);

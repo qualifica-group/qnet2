@@ -4,12 +4,10 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
-use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 /**
  * Product `code` (spec 0065, D-1/D-1b/D-1c): manual-on-create/read-only-on-update
@@ -18,26 +16,6 @@ use Spatie\Permission\Models\Permission;
  * (engineering.md §6 — the host file was at the 500-line hard limit).
  */
 uses(RefreshDatabase::class);
-
-if (! function_exists('productUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function productUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import'] as $ability) {
-            Permission::findOrCreate("products.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("products.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 if (! function_exists('productGenericFields')) {
     /**

@@ -4,7 +4,6 @@ use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
 use App\Models\Task;
 use App\Models\TaskStatus;
-use App\Models\TaskType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -76,24 +75,6 @@ if (! function_exists('protectedTaskStatus')) {
     function protectedTaskStatus(TaskStatusSystemKey $key): TaskStatus
     {
         return TaskStatus::query()->where('system_key', $key->value)->firstOrFail();
-    }
-}
-
-if (! function_exists('validTimeEntryPayload')) {
-    /**
-     * A valid `time_entry` (spec 0123, D-1: mandatory on every /complete
-     * call, regardless of what THIS suite is exercising).
-     *
-     * @param  array<string, mixed>  $overrides
-     * @return array<string, mixed>
-     */
-    function validTimeEntryPayload(array $overrides = []): array
-    {
-        return array_merge([
-            'date' => '2026-09-14',
-            'task_type_id' => TaskType::factory()->create()->id,
-            'minutes' => 60,
-        ], $overrides);
     }
 }
 

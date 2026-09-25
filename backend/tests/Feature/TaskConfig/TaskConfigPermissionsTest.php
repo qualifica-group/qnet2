@@ -5,7 +5,6 @@ use App\Models\TaskImportance;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\TaskType;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -22,50 +21,6 @@ uses(RefreshDatabase::class);
 | the two cross-resource criteria AC-050/AC-055, live in the sibling
 | tests/Feature/Tasks/TaskPermissionsTest.php.
 */
-
-if (! function_exists('taskConfigActorWith')) {
-    /**
-     * An actor holding $abilities on ONE of the five task configurators.
-     * Duplicated (guarded) across the suites that need it, following the
-     * repo idiom for shared Pest helpers (see workOrderUserWith).
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskConfigActorWith(string $resource, array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
-            Permission::findOrCreate("{$resource}.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("{$resource}.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
-if (! function_exists('taskConfigStorePayload')) {
-    /**
-     * The minimum valid store payload for $resource: `task-statuses` is the
-     * only one carrying `completion_percentage` (D-4).
-     *
-     * @param  array<string, mixed>  $overrides
-     * @return array<string, mixed>
-     */
-    function taskConfigStorePayload(string $resource, array $overrides = []): array
-    {
-        $payload = ['name' => 'Nuova voce', 'color' => 'blue'];
-
-        if ($resource === 'task-statuses') {
-            $payload['completion_percentage'] = 40;
-        }
-
-        return [...$payload, ...$overrides];
-    }
-}
 
 /**
  * @return array<string, array{0: string, 1: string, 2: string}>

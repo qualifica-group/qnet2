@@ -10,26 +10,6 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-if (! function_exists('productUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function productUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import'] as $ability) {
-            Permission::findOrCreate("products.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("products.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 // ---------------------------------------------------------------------------
 // AC-019 — a base-authz 403 takes precedence over a field-level 422
 // ---------------------------------------------------------------------------

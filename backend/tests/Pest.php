@@ -14,6 +14,31 @@ use Tests\TestCase;
 
 /*
 |--------------------------------------------------------------------------
+| Shared helpers (engineering.md §1.2)
+|--------------------------------------------------------------------------
+|
+| Canonical, single-definition versions of global helpers that used to be
+| declared behind a per-file `if (! function_exists(...))` guard in several
+| Feature test files with DIVERGENT bodies — whichever file's copy loaded
+| first silently decided the behaviour for every other file in the run.
+| Loaded once, here, before any test file: the guard in each of those files
+| now finds the function already defined and never redeclares it locally.
+|
+*/
+
+require_once __DIR__.'/Helpers/MigrationHelpers.php';
+require_once __DIR__.'/Helpers/TaskHelpers.php';
+require_once __DIR__.'/Helpers/TaskConfigHelpers.php';
+require_once __DIR__.'/Helpers/ProductHelpers.php';
+require_once __DIR__.'/Helpers/QuoteHelpers.php';
+require_once __DIR__.'/Helpers/ProjectHelpers.php';
+require_once __DIR__.'/Helpers/RoleAbilityHelpers.php';
+require_once __DIR__.'/Helpers/PaymentMethodHelpers.php';
+require_once __DIR__.'/Helpers/RequestManagementHelpers.php';
+require_once __DIR__.'/Helpers/CampaignHelpers.php';
+
+/*
+|--------------------------------------------------------------------------
 | Test Case
 |--------------------------------------------------------------------------
 |

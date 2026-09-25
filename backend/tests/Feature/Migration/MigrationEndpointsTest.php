@@ -32,19 +32,6 @@ if (! function_exists('migrationsSuperAdminActor')) {
     }
 }
 
-if (! function_exists('seedMigrationsConfig')) {
-    function seedMigrationsConfig(): void
-    {
-        config([
-            'migrations.base_url' => fakeMigrationsBaseUrl(),
-            'migrations.token' => null,
-            'migrations.timeout' => 5,
-            'migrations.retry_times' => 1,
-            'migrations.retry_sleep_ms' => 1,
-        ]);
-    }
-}
-
 // ---------------------------------------------------------------------------
 // AC-004 / AC-015 — GET /api/migrations
 // ---------------------------------------------------------------------------

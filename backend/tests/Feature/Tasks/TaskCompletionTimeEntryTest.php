@@ -9,10 +9,8 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\TaskType;
 use App\Models\TimeEntry;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -28,57 +26,10 @@ uses(RefreshDatabase::class);
 | the insert). `approve`/`reject`/`uncomplete` never touch `time_entries`.
 */
 
-if (! function_exists('taskCompletionActorWith')) {
-    /**
-     * An actor holding $taskAbilities on `tasks` (plus `viewAll`) and,
-     * optionally, $timeEntryAbilities on `time-entries` — AC-007 needs an
-     * actor with the former and deliberately WITHOUT the latter.
-     *
-     * @param  array<int, string>  $taskAbilities
-     * @param  array<int, string>  $timeEntryAbilities
-     */
-    function taskCompletionActorWith(array $taskAbilities, array $timeEntryAbilities = []): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'exportMonthly', 'manageAll', 'viewAll'] as $ability) {
-            Permission::findOrCreate("time-entries.{$ability}");
-        }
-
-        $user = User::factory()->create();
-        $user->givePermissionTo('tasks.viewAll');
-
-        foreach ($taskAbilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-        foreach ($timeEntryAbilities as $ability) {
-            $user->givePermissionTo("time-entries.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 if (! function_exists('protectedTaskStatus')) {
     function protectedTaskStatus(TaskStatusSystemKey $key): TaskStatus
     {
         return TaskStatus::query()->where('system_key', $key->value)->firstOrFail();
-    }
-}
-
-if (! function_exists('validTimeEntryPayload')) {
-    /**
-     * @param  array<string, mixed>  $overrides
-     * @return array<string, mixed>
-     */
-    function validTimeEntryPayload(array $overrides = []): array
-    {
-        return array_merge([
-            'date' => '2026-09-14',
-            'task_type_id' => TaskType::factory()->create()->id,
-            'minutes' => 60,
-        ], $overrides);
     }
 }
 

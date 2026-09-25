@@ -9,23 +9,6 @@ use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
-if (! function_exists('userWithUserAbilities')) {
-    function userWithUserAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("users.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("users.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 // ---------------------------------------------------------------------------
 // view — GET /api/users/{user}
 // ---------------------------------------------------------------------------

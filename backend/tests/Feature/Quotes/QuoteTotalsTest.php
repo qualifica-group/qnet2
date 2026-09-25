@@ -4,10 +4,8 @@ use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Http\Requests\Quotes\StoreQuoteRequest;
-use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\Product;
-use App\Models\ProductCategory;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Models\VatRate;
@@ -77,24 +75,6 @@ if (! function_exists('createQuoteData')) {
         ];
 
         return new CreateQuoteData(...array_merge($defaults, $overrides));
-    }
-}
-
-if (! function_exists('revenueLineProduct')) {
-    /**
-     * A product whose category already resolves an EFFECTIVE business
-     * function (spec 0065, D-7): every test in this file exercises the
-     * rounding/aggregate math, not the coverage rule (QuoteCoverageTest owns
-     * AC-050/051), so a REVENUE line here must never trip
-     * OpportunityProductLineCoverage's 422.
-     */
-    function revenueLineProduct(): Product
-    {
-        $category = ProductCategory::factory()->create([
-            'business_function_id' => BusinessFunction::factory()->create()->id,
-        ]);
-
-        return Product::factory()->create(['category_id' => $category->id]);
     }
 }
 
