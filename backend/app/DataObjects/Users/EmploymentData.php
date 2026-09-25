@@ -31,6 +31,12 @@ use App\Enums\RelationshipTypeEnum;
  * separate set of pivot rows that EmploymentWriter must be told whether to
  * touch at all (see EmploymentWriter::syncSiteMemberships()).
  *
+ * `reportsToIds` (spec 0166 D-2, replacing the single `reportsToId` column)
+ * carries the SAME per-field tri-state, for the same reason: it is now a set
+ * of pivot rows (`employment_profile_manager`), not a column, so
+ * EmploymentWriter must be told whether to touch it at all
+ * (`reportsToIdsProvided`) independently of every scalar field above.
+ *
  * `productLines` (spec 0111, the assignment competence) carries the SAME
  * per-field tri-state, for the same reason: it is a set of child rows
  * (`employment_product_lines`) pairing a business function with a product
@@ -49,6 +55,7 @@ use App\Enums\RelationshipTypeEnum;
 final readonly class EmploymentData
 {
     /**
+     * @param  array<int, int>  $reportsToIds
      * @param  array<int, int>  $remoteOperationalSiteIds
      * @param  array<int, array{business_function_id: int, product_category_id: int|null}>  $productLines
      */
@@ -57,7 +64,8 @@ final readonly class EmploymentData
         public bool $isManager = false,
         public bool $coversAllProductCategories = false,
         public ?string $jobDescription = null,
-        public ?int $reportsToId = null,
+        public bool $reportsToIdsProvided = false,
+        public array $reportsToIds = [],
         public ?RelationshipTypeEnum $relationshipType = null,
         public ?int $companyId = null,
         public bool $primaryOperationalSiteIdProvided = false,
@@ -84,10 +92,10 @@ final readonly class EmploymentData
     /**
      * The row attributes for a mass-assignment upsert (framework array
      * boundary). Never called when $delete is true. Deliberately excludes
-     * the site membership and the competence: those are child rows, not
-     * columns of this table (spec 0103 / 0111) — EmploymentWriter::
-     * syncSiteMemberships() and syncProductLines() apply them separately,
-     * after this upsert.
+     * the site membership, the competence and the reports-to managers: those
+     * are child/pivot rows, not columns of this table (spec 0103 / 0111 /
+     * 0166) — EmploymentWriter::syncSiteMemberships(), syncProductLines() and
+     * syncManagers() apply them separately, after this upsert.
      *
      * @return array<string, mixed>
      */
@@ -97,7 +105,6 @@ final readonly class EmploymentData
             'is_manager' => $this->isManager,
             'covers_all_product_categories' => $this->coversAllProductCategories,
             'job_description' => $this->jobDescription,
-            'reports_to_id' => $this->reportsToId,
             'relationship_type' => $this->relationshipType,
             'company_id' => $this->companyId,
             'qualification_type' => $this->qualificationType,

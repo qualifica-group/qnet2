@@ -63,7 +63,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Responsabile**', 'Attivalo se la persona è responsabile di altri dipendenti.'],
             ['**Mansione**', 'Descrizione del lavoro svolto (massimo 255 caratteri).'],
-            ['**Risponde a**', 'Il responsabile diretto, scelto tra gli utenti.'],
+            ['**Risponde a**', 'I responsabili diretti, scelti tra gli utenti: puoi indicarne più di uno. Il campo non compare se **Responsabile** è attivo.'],
             ['**Tipo di rapporto**', 'Il tipo di rapporto di lavoro.'],
             ['**Società**', 'La società di riferimento.'],
             ['**Qualifica**', 'La qualifica contrattuale.'],

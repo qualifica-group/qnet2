@@ -67,6 +67,39 @@ it('AC-016: a responsabile requesting a STRANGER user_id is 403 on list/overview
     $this->getJson("/api/time-entries/stats/pulse?user_id={$stranger->id}")->assertForbidden();
 });
 
+it('AC-011: a collaborator with TWO managers is readable by BOTH, and by neither a stranger', function () {
+    $managerA = timeEntryActorWith(['viewAny']);
+    $managerB = timeEntryActorWith(['viewAny']);
+    $stranger = timeEntryActorWith(['viewAny']);
+    $member = User::factory()->create();
+    EmploymentProfile::factory()->manager()->create(['user_id' => $managerA->id]);
+    EmploymentProfile::factory()->manager()->create(['user_id' => $managerB->id]);
+    EmploymentProfile::factory()->manager()->create(['user_id' => $stranger->id]);
+    EmploymentProfile::factory()->reportsTo($managerA, $managerB)->create(['user_id' => $member->id]);
+
+    foreach ([$managerA, $managerB] as $manager) {
+        Sanctum::actingAs($manager);
+        $this->getJson("/api/time-entries?user_id={$member->id}&date_from=2026-09-14&date_to=2026-09-14")->assertOk();
+    }
+
+    Sanctum::actingAs($stranger);
+    $this->getJson("/api/time-entries?user_id={$member->id}")->assertForbidden();
+});
+
+it('AC-011: a cycle across several managers does not hang the resolver', function () {
+    $manager = timeEntryActorWith(['viewAny']);
+    $a = User::factory()->create();
+    $b = User::factory()->create();
+    // manager -> a -> b -> manager, with `a` ALSO reporting to `manager` directly.
+    EmploymentProfile::factory()->reportsTo($b)->create(['user_id' => $manager->id]);
+    EmploymentProfile::factory()->reportsTo($manager)->create(['user_id' => $a->id]);
+    EmploymentProfile::factory()->reportsTo($a, $manager)->create(['user_id' => $b->id]);
+
+    Sanctum::actingAs($manager);
+    $this->getJson("/api/time-entries?user_id={$a->id}&date_from=2026-09-14&date_to=2026-09-14")->assertOk();
+    $this->getJson("/api/time-entries?user_id={$b->id}&date_from=2026-09-14&date_to=2026-09-14")->assertOk();
+});
+
 it('a manageAll holder reads any user\'s list/overview/pulse regardless of the reporting tree', function () {
     $admin = timeEntryActorWith(['viewAny', 'manageAll']);
     $stranger = User::factory()->create();

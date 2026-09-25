@@ -19,10 +19,15 @@ use Illuminate\Support\Collection;
 /**
  * Seed an employment profile for every deterministic development user (spec
  * 0015): a small responsible/subordinate hierarchy — the first 2 seeded
- * users become managers (is_manager=true, no reports_to), every other seeded
+ * users become managers (is_manager=true, no reports-to), every other seeded
  * user is a subordinate reporting to one of them, round-robin. Idempotent:
- * the profile is upserted by owner, its site membership and its competence
- * rows recomputed from the same reseeded Faker sequence.
+ * the profile is upserted by owner, its site membership, its reports-to
+ * managers and its competence rows recomputed from the same reseeded Faker
+ * sequence.
+ *
+ * Spec 0166: the FIRST subordinate additionally reports to BOTH managers
+ * (D-2, "at least one demo user with two responsible managers"), on top of
+ * its round-robin manager — demoing that a user may report to more than one.
  *
  * Spec 0129: the canonical demo account (`demo@app.com`) is the one profile
  * that demonstrates the wildcard flag (D-1) — carrying no competence rows,
@@ -83,7 +88,6 @@ class DemoEmploymentProfileSeeder extends Seeder
         $employment = $manager->employment()->updateOrCreate([], [
             'is_manager' => true,
             'covers_all_product_categories' => $coversAll,
-            'reports_to_id' => null,
             'relationship_type' => RelationshipTypeEnum::Employee->value,
             'qualification_type' => QualificationTypeEnum::Coordinator->value,
             'hired_at' => $faker->dateTimeBetween('-8 years', '-2 years')->format('Y-m-d'),
@@ -92,6 +96,10 @@ class DemoEmploymentProfileSeeder extends Seeder
             'company_id' => $this->maybePick($faker, $this->companyIds),
         ]);
 
+        // D-5: a Responsible reports to no one — sync([]) on every run keeps
+        // this true even if a manager was previously demoted from/promoted
+        // to the role across re-seeds.
+        $employment->reportsTo()->sync([]);
         $this->assignOperationalSites($faker, $employment);
         $this->assignProductLines($faker, $employment, coversAll: $coversAll);
     }
@@ -108,7 +116,6 @@ class DemoEmploymentProfileSeeder extends Seeder
         $employment = $user->employment()->updateOrCreate([], [
             'is_manager' => false,
             'covers_all_product_categories' => $coversAll,
-            'reports_to_id' => $manager->id,
             'relationship_type' => $faker->randomElement(RelationshipTypeEnum::values()),
             'qualification_type' => $faker->randomElement(QualificationTypeEnum::values()),
             'hired_at' => $faker->dateTimeBetween('-5 years', '-1 month')->format('Y-m-d'),
@@ -116,6 +123,13 @@ class DemoEmploymentProfileSeeder extends Seeder
             'break_daily_minutes' => 30,
             'company_id' => $this->maybePick($faker, $this->companyIds),
         ]);
+
+        // Spec 0166 D-2: reports to its round-robin manager; the FIRST
+        // subordinate reports to EVERY seeded manager, demoing that a user
+        // may report to more than one. sync() on every run, so a re-seed
+        // recomputes the identical set instead of stacking rows.
+        $managerIds = $index === 0 ? $managers->pluck('id')->all() : [$manager->id];
+        $employment->reportsTo()->sync($managerIds);
 
         $this->assignOperationalSites($faker, $employment);
         // Spec 0129 D-3: the FIRST subordinate also demonstrates a

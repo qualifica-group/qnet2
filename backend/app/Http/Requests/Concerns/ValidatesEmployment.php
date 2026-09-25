@@ -24,6 +24,10 @@ use Illuminate\Validation\Rule;
  * `remote_operational_site_ids` absent from the payload leaves that side of
  * the membership untouched; present with null/empty clears it. See
  * EmploymentData's docblock and EmploymentWriter::syncSiteMemberships().
+ * `reports_to_ids` (spec 0166 D-2, replacing the single `reports_to_id`)
+ * behaves identically, on its own pivot (`employment_profile_manager`) —
+ * except `is_manager: true` forces it empty server-side regardless of what
+ * the array carries (D-5), never trusting the payload's own emptiness.
  * `product_lines` (spec 0111, the assignment competence) behaves identically,
  * on its own child table — and, since D-1 dropped the single
  * `business_function_id` column, it is also the only place a user's business
@@ -58,9 +62,13 @@ trait ValidatesEmployment
             // Spec 0129 D-1: the wildcard flag, a plain scalar like is_manager.
             'employment.covers_all_product_categories' => ['sometimes', 'boolean'],
             'employment.job_description' => ['nullable', 'string', 'max:255'],
-            'employment.reports_to_id' => array_filter([
-                'nullable',
+            // Spec 0166 (D-2/D-8): a user may report to several managers, so
+            // the single `reports_to_id` becomes a tri-state array, same shape
+            // as `remote_operational_site_ids` below.
+            'employment.reports_to_ids' => ['sometimes', 'nullable', 'array'],
+            'employment.reports_to_ids.*' => array_filter([
                 'integer',
+                'distinct',
                 Rule::exists('users', 'id'),
                 // No self-reference: only meaningful on update, where the
                 // target user id is known (AC-006); never applies on create.
@@ -159,7 +167,8 @@ trait ValidatesEmployment
             isManager: (bool) $this->input('employment.is_manager', false),
             coversAllProductCategories: $this->boolean('employment.covers_all_product_categories'),
             jobDescription: $this->input('employment.job_description'),
-            reportsToId: $this->nullableInt('employment.reports_to_id'),
+            reportsToIdsProvided: $this->has('employment.reports_to_ids'),
+            reportsToIds: $this->submittedIds('employment.reports_to_ids'),
             relationshipType: RelationshipTypeEnum::tryFrom((string) $this->input('employment.relationship_type')),
             companyId: $this->nullableInt('employment.company_id'),
             primaryOperationalSiteIdProvided: $this->has('employment.primary_operational_site_id'),

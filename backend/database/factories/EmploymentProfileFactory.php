@@ -29,7 +29,6 @@ class EmploymentProfileFactory extends Factory
             'user_id' => User::factory(),
             'is_manager' => false,
             'job_description' => fake()->optional()->jobTitle(),
-            'reports_to_id' => null,
             'relationship_type' => fake()->randomElement(RelationshipTypeEnum::values()),
             'company_id' => null,
             'qualification_type' => fake()->randomElement(QualificationTypeEnum::values()),
@@ -47,19 +46,21 @@ class EmploymentProfileFactory extends Factory
     {
         return $this->state(fn (): array => [
             'is_manager' => true,
-            'reports_to_id' => null,
         ]);
     }
 
     /**
-     * A subordinate reporting to the given manager.
+     * A subordinate reporting to the given manager(s) — spec 0166 D-2, one or
+     * more. `afterCreating`, since the pivot needs the profile's id first;
+     * `syncWithoutDetaching` so combining this with another reportsTo() call
+     * (or with the seeder's own attach) never drops a prior manager.
      */
-    public function reportsTo(User $manager): static
+    public function reportsTo(User ...$managers): static
     {
-        return $this->state(fn (): array => [
-            'is_manager' => false,
-            'reports_to_id' => $manager->id,
-        ]);
+        return $this->state(fn (): array => ['is_manager' => false])
+            ->afterCreating(function (EmploymentProfile $profile) use ($managers): void {
+                $profile->reportsTo()->syncWithoutDetaching(collect($managers)->pluck('id')->all());
+            });
     }
 
     /**

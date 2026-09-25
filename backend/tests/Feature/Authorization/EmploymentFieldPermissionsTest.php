@@ -24,7 +24,7 @@ uses(RefreshDatabase::class);
  */
 const EMPLOYMENT_FIELD_KEYS = [
     'employment.is_manager', 'employment.covers_all_product_categories',
-    'employment.job_description', 'employment.reports_to_id',
+    'employment.job_description', 'employment.reports_to_ids',
     'employment.product_lines', 'employment.relationship_type', 'employment.company_id',
     'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
     'employment.qualification_type', 'employment.hired_at',
@@ -298,4 +298,81 @@ it('AC-015: a pre-existing row on one of the new keys does not break the split, 
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
     ]);
     expect((bool) $rows['employment.primary_operational_site_id']->editable)->toBeFalse();
+});
+
+// ---------------------------------------------------------------------------
+// Spec 0166 (D-8) AC-002 — the rename migration turns an
+// employment.reports_to_id row into employment.reports_to_ids, same flags,
+// and back.
+// ---------------------------------------------------------------------------
+
+it('0166 AC-002: the migration renames an employment.reports_to_id row to employment.reports_to_ids, same flags, and back', function () {
+    $role = Role::create(['name' => 'field-perm-reports-to-rename-'.uniqid()]);
+    $migration = require database_path('migrations/2026_09_25_100200_rename_employment_reports_to_field_permission.php');
+
+    DB::table('role_field_permissions')->insert([
+        'role_id' => $role->id, 'resource' => 'users', 'field' => 'employment.reports_to_id',
+        'visible' => true, 'editable' => false, 'required' => false,
+    ]);
+
+    $migration->up();
+
+    $row = DB::table('role_field_permissions')->where('role_id', $role->id)->sole();
+    expect($row->field)->toBe('employment.reports_to_ids')
+        ->and((bool) $row->visible)->toBeTrue()
+        ->and((bool) $row->editable)->toBeFalse()
+        ->and((bool) $row->required)->toBeFalse();
+
+    $migration->down();
+
+    $collapsed = DB::table('role_field_permissions')->where('role_id', $role->id)->sole();
+    expect($collapsed->field)->toBe('employment.reports_to_id');
+});
+
+it('0166 AC-002: a pre-existing row on employment.reports_to_ids does not break the rename, the configured one wins', function () {
+    $role = Role::create(['name' => 'field-perm-reports-to-rename-conflict-'.uniqid()]);
+    $migration = require database_path('migrations/2026_09_25_100200_rename_employment_reports_to_field_permission.php');
+
+    DB::table('role_field_permissions')->insert([
+        ['role_id' => $role->id, 'resource' => 'users', 'field' => 'employment.reports_to_id', 'visible' => true, 'editable' => false, 'required' => false],
+        ['role_id' => $role->id, 'resource' => 'users', 'field' => 'employment.reports_to_ids', 'visible' => true, 'editable' => true, 'required' => false],
+    ]);
+
+    $migration->up();
+
+    $row = DB::table('role_field_permissions')->where('role_id', $role->id)->sole();
+    expect($row->field)->toBe('employment.reports_to_ids')
+        ->and((bool) $row->editable)->toBeFalse();
+});
+
+// ---------------------------------------------------------------------------
+// Spec 0166 AC-008 — employment.reports_to_ids readonly: resubmitting the
+// SAME set in a DIFFERENT order is a no-op (200); a real set change 422s.
+// ---------------------------------------------------------------------------
+
+it('0166 AC-008: resubmitting the same reports_to_ids set in a different order on a readonly field is a no-op (200)', function () {
+    $managerA = User::factory()->create();
+    $managerB = User::factory()->create();
+    $actor = roleDenyingEmploymentField('employment.reports_to_ids');
+    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA, $managerB))->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/users/{$target->id}", [
+        // Reversed order versus creation: the comparison must be
+        // order-insensitive.
+        'employment' => ['reports_to_ids' => [$managerB->id, $managerA->id]],
+    ])->assertOk();
+});
+
+it('0166 AC-008: changing the reports_to_ids set on a readonly field 422s', function () {
+    $managerA = User::factory()->create();
+    $managerB = User::factory()->create();
+    $managerC = User::factory()->create();
+    $actor = roleDenyingEmploymentField('employment.reports_to_ids');
+    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA, $managerB))->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/users/{$target->id}", [
+        'employment' => ['reports_to_ids' => [$managerA->id, $managerC->id]],
+    ])->assertStatus(422)->assertJsonValidationErrors(['employment.reports_to_ids']);
 });

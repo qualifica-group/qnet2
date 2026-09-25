@@ -59,7 +59,7 @@ const TEST_PASSWORD = 'x'.repeat(12)
 const emptyEmployment: UserFormValues['employment'] = {
   is_manager: false,
   job_description: '',
-  reports_to_id: null,
+  reports_to_ids: [],
   relationship_type: null,
   company_id: null,
   primary_operational_site_id: null,
@@ -215,7 +215,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     expect(payload.employment).toEqual({
       is_manager: false,
       job_description: 'Backend engineer',
-      reports_to_id: null,
+      reports_to_ids: [],
       relationship_type: 'employee',
       company_id: 5,
       primary_operational_site_id: 8,
@@ -332,29 +332,29 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     expect(payload.employment.product_lines).toEqual([{ business_function_id: 4, product_category_id: null }])
   })
 
-  it('AC-015 — force-nulls reports_to_id client-side when is_manager is true', () => {
+  it('spec 0166 D-5 — force-empties reports_to_ids client-side when is_manager is true', () => {
     const payload = buildCreatePayload(
       {
         ...formValues,
-        employment: { ...emptyEmployment, is_manager: true, reports_to_id: 42 },
+        employment: { ...emptyEmployment, is_manager: true, reports_to_ids: [42] },
       },
       draft(),
     )
 
     expect(payload.employment.is_manager).toBe(true)
-    expect(payload.employment.reports_to_id).toBeNull()
+    expect(payload.employment.reports_to_ids).toEqual([])
   })
 
-  it('keeps reports_to_id when is_manager is false', () => {
+  it('keeps reports_to_ids when is_manager is false', () => {
     const payload = buildCreatePayload(
       {
         ...formValues,
-        employment: { ...emptyEmployment, is_manager: false, reports_to_id: 42 },
+        employment: { ...emptyEmployment, is_manager: false, reports_to_ids: [42, 43] },
       },
       draft(),
     )
 
-    expect(payload.employment.reports_to_id).toBe(42)
+    expect(payload.employment.reports_to_ids).toEqual([42, 43])
   })
 })
 
@@ -369,7 +369,7 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
     expect(payload.employment).toEqual({
       is_manager: false,
       job_description: null,
-      reports_to_id: null,
+      reports_to_ids: [],
       relationship_type: null,
       company_id: null,
       primary_operational_site_id: null,

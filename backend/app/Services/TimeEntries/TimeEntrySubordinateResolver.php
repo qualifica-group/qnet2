@@ -4,22 +4,26 @@ declare(strict_types=1);
 
 namespace App\Services\TimeEntries;
 
-use App\Models\EmploymentProfile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * THE single implementation of "who reports up to this manager, recursively"
- * (spec 0122, D-10): active users only, walking
- * `employment_profiles.reports_to_id` down from a manager. Shared by
- * `TimeEntryReadAuthorizer` (rule R: a responsabile reads a sottoposto's
- * dashboard, AC-016) and reused as-is by the team endpoint (MT-B4) — this is
- * the ONE place both may ever call to answer "is X a descendant of Y".
+ * (spec 0122, D-10; spec 0166 D-7): active users only, walking the
+ * `employment_profile_manager` pivot down from a manager — a member with
+ * SEVERAL managers is reachable through every one of them (D-7: each manager
+ * and its own upward chain sees the member as today), while the BFS `visited`
+ * set still returns each reachable id ONCE regardless of how many paths reach
+ * it. Shared by `TimeEntryReadAuthorizer` (rule R: a responsabile reads a
+ * sottoposto's dashboard, AC-016/AC-011) and reused as-is by the team
+ * endpoint (MT-B4) — this is the ONE place both may ever call to answer
+ * "is X a descendant of Y".
  *
  * In-memory BFS off a single grouped projection query, mirrors
  * `CategoryHierarchy::descendantIds()`. A `visited` set breaks any cycle in
- * the data (a corrupted `reports_to_id` chain looping back on itself) after
- * at most one pass per user — no depth cap needed, unlike the ancestor climbs
- * in `CategoryHierarchy`, which lack a visited set of their own.
+ * the data (a corrupted manager chain looping back on itself) after at most
+ * one pass per user — no depth cap needed, unlike the ancestor climbs in
+ * `CategoryHierarchy`, which lack a visited set of their own.
  */
 final class TimeEntrySubordinateResolver
 {
@@ -59,27 +63,29 @@ final class TimeEntrySubordinateResolver
     }
 
     /**
-     * One projection query, `reports_to_id` (manager) => direct reports'
-     * profiles — active users only (D-10).
+     * One projection query joining the `employment_profile_manager` pivot to
+     * `employment_profiles`/`users`: manager user_id => direct reports' rows
+     * — active users only (D-10), a subordinate profile counted once per
+     * manager it lists (D-7).
      *
-     * @return Collection<int|string, Collection<int, EmploymentProfile>>
+     * @return Collection<int|string, Collection<int, object{manager_id: int, subordinate_id: int}>>
      */
     private function activeReportsByManagerId(): Collection
     {
-        return EmploymentProfile::query()
-            ->select('user_id', 'reports_to_id')
-            ->whereNotNull('reports_to_id')
-            ->whereHas('user', fn ($query) => $query->where('is_active', true))
-            ->get()
-            ->groupBy('reports_to_id');
+        return DB::table('employment_profile_manager')
+            ->join('employment_profiles', 'employment_profiles.id', '=', 'employment_profile_manager.employment_profile_id')
+            ->join('users', 'users.id', '=', 'employment_profiles.user_id')
+            ->where('users.is_active', true)
+            ->get(['employment_profile_manager.user_id as manager_id', 'employment_profiles.user_id as subordinate_id'])
+            ->groupBy('manager_id');
     }
 
     /**
-     * @param  Collection<int|string, Collection<int, EmploymentProfile>>  $byManagerId
+     * @param  Collection<int|string, Collection<int, object{manager_id: int, subordinate_id: int}>>  $byManagerId
      * @return list<int>
      */
     private function subordinateIds(Collection $byManagerId, int $managerId): array
     {
-        return $byManagerId->get($managerId, collect())->pluck('user_id')->map(intval(...))->all();
+        return $byManagerId->get($managerId, collect())->pluck('subordinate_id')->map(intval(...))->all();
     }
 }

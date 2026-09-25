@@ -11,8 +11,8 @@ import { EmptyCell } from '@/features/table/cell-renderers'
 /**
  * The shape every "person" column emits: an `{id, name}` summary, optionally
  * with an inlined avatar (`avatar_url`). Single-user columns (leads operator,
- * opportunities supervisor, users reports_to, business-functions manager) carry
- * one; multi-user columns (business-functions members) carry an array.
+ * opportunities supervisor, business-functions manager) carry one; multi-user
+ * columns (business-functions members, users reports_to since spec 0166) carry an array.
  */
 export interface UserSummary {
   id: number

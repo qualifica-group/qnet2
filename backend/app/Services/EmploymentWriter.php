@@ -12,8 +12,9 @@ use App\Services\ProductLines\ProductLineWriter;
  * (spec 0015): a plain hasOne upsert/delete, with the server-side invariants
  * enforced here (not trusted from the request):
  *
- *  - a manager cannot also report to someone (`is_manager` forces
- *    `reports_to_id` to null);
+ *  - a manager cannot also report to someone (`is_manager` forces the
+ *    `reportsTo` pivot empty, spec 0166 D-5 — replacing the former
+ *    `reports_to_id` column invariant);
  *  - a user can never report to itself (defense in depth — the FormRequest
  *    already 422s this on update; a create can never self-reference since
  *    the user's own id does not exist yet at validation time);
@@ -22,13 +23,20 @@ use App\Services\ProductLines\ProductLineWriter;
  *    index for this, so it is enforced here, applying the two site fields'
  *    tri-state instead of trusting whatever shape the payload sends;
  *  - the assignment competence (spec 0111) is written on its own child
- *    table, with the same tri-state discipline (see syncProductLines()).
+ *    table, with the same tri-state discipline (see syncProductLines());
+ *  - the reports-to managers (spec 0166) are written on their own pivot
+ *    (`employment_profile_manager`), with the same tri-state discipline
+ *    (see syncManagers()) — a genuine set change is logged as ONE explicit
+ *    activity() entry on the profile (D-6), since the pivot is invisible to
+ *    the automatic logFillable() the model otherwise relies on.
  *
  * The caller (UserService::create/update) is responsible for the surrounding
  * transaction, mirroring ProfileWriter.
  */
 class EmploymentWriter
 {
+    private const string MANAGERS_ACTIVITY_DESCRIPTION = 'Employment reports-to update';
+
     public function __construct(private readonly ProductLineWriter $productLineWriter) {}
 
     /**
@@ -37,31 +45,37 @@ class EmploymentWriter
      * the request — leave the row untouched). Deletes the row when `$employment
      * ->delete` is true (an explicit `employment: null`); a delete on a user
      * with no row is itself a harmless no-op, so create and update share this
-     * single code path.
+     * single code path. $actor causes the explicit reports-to activity entry
+     * (D-6), when the managers set actually changes.
      */
-    public function write(User $user, ?EmploymentData $employment): void
+    public function write(User $user, ?EmploymentData $employment, User $actor): void
     {
         if ($employment === null) {
             return;
         }
 
         if ($employment->delete) {
-            // Cascades onto employment_profile_operational_site and
-            // employment_product_lines (FK cascadeOnDelete), so the site
-            // memberships and the competence go with the row.
+            // Cascades onto employment_profile_operational_site,
+            // employment_product_lines and employment_profile_manager (FK
+            // cascadeOnDelete), so the site memberships, the competence and
+            // the reports-to managers go with the row.
             $user->employment()->delete();
 
             return;
         }
 
         // Step 1: upsert the plain-column attributes onto the 1:1 row.
-        $profile = $user->employment()->updateOrCreate([], $this->guardedAttributes($user, $employment));
+        $profile = $user->employment()->updateOrCreate([], $employment->attributes());
 
         // Step 2: apply the site-membership tri-state onto the pivot.
         $this->syncSiteMemberships($profile, $employment);
 
         // Step 3: apply the competence tri-state onto its own child rows.
         $this->syncProductLines($profile, $employment);
+
+        // Step 4: apply the reports-to tri-state onto its own pivot,
+        // enforcing D-5 (a manager reports to no one) unconditionally.
+        $this->syncManagers($profile, $employment, $user, $actor);
     }
 
     /**
@@ -95,22 +109,6 @@ class EmploymentWriter
         }
 
         $this->productLineWriter->sync($profile, $employment->productLines);
-    }
-
-    /**
-     * The row attributes with the manager/self-report invariants applied.
-     *
-     * @return array<string, mixed>
-     */
-    private function guardedAttributes(User $user, EmploymentData $employment): array
-    {
-        $attributes = $employment->attributes();
-
-        if ($employment->isManager || $attributes['reports_to_id'] === $user->id) {
-            $attributes['reports_to_id'] = null;
-        }
-
-        return $attributes;
     }
 
     /**
@@ -184,5 +182,84 @@ class EmploymentWriter
         }
 
         return $target;
+    }
+
+    /**
+     * Apply the `reports_to_ids` tri-state (spec 0166 D-2/D-4) onto
+     * `employment_profile_manager`: absent leaves the pivot alone, any
+     * submitted array replaces it wholesale (an empty one clears it).
+     *
+     * D-5 takes precedence, exactly like the wildcard flag on the competence
+     * (syncProductLines() above): when the profile is a manager, the pivot is
+     * cleared REGARDLESS of what (or whether) `reports_to_ids` was
+     * submitted — a Responsible reports to no one. The self-reference guard
+     * (D-5 "defense in depth") discards the user's own id here too, even
+     * though the FormRequest already 422s it on update.
+     *
+     * A genuine set change is logged as ONE explicit activity() entry (D-6);
+     * resubmitting the same set — in any order — is a no-op, both on the
+     * pivot and on the log.
+     */
+    private function syncManagers(EmploymentProfile $profile, EmploymentData $employment, User $user, User $actor): void
+    {
+        if (! $employment->isManager && ! $employment->reportsToIdsProvided) {
+            return;
+        }
+
+        $targetIds = $employment->isManager ? [] : $this->managerIdsExcludingSelf($employment->reportsToIds, $user);
+
+        // The accessor below reads off this eager-loaded collection, so this
+        // is the only query the whole sync needs beyond the sync() itself.
+        $profile->load('reportsTo');
+        $currentIds = $profile->reportsToIds;
+
+        if ($this->sameIdSet($currentIds, $targetIds)) {
+            return;
+        }
+
+        $profile->reportsTo()->sync($targetIds);
+
+        $this->logManagersChange($profile, $actor, $currentIds, $targetIds);
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     * @return array<int, int>
+     */
+    private function managerIdsExcludingSelf(array $ids, User $user): array
+    {
+        return collect($ids)->reject(fn (int $id): bool => $id === $user->id)->unique()->values()->all();
+    }
+
+    /**
+     * Order-insensitive comparison of two id sets (spec 0166 AC-004/AC-007:
+     * resubmitting the same managers, in any order, is a no-op).
+     *
+     * @param  array<int, int>  $a
+     * @param  array<int, int>  $b
+     */
+    private function sameIdSet(array $a, array $b): bool
+    {
+        sort($a);
+        sort($b);
+
+        return $a === $b;
+    }
+
+    /**
+     * @param  array<int, int>  $before
+     * @param  array<int, int>  $after
+     */
+    private function logManagersChange(EmploymentProfile $profile, User $actor, array $before, array $after): void
+    {
+        sort($before);
+        sort($after);
+
+        activity($profile->getTable())
+            ->performedOn($profile)
+            ->causedBy($actor)
+            ->event('updated')
+            ->withProperties(['attributes' => ['reports_to_ids' => $after], 'old' => ['reports_to_ids' => $before]])
+            ->log(self::MANAGERS_ACTIVITY_DESCRIPTION);
     }
 }

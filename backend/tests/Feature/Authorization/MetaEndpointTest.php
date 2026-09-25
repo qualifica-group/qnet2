@@ -66,7 +66,8 @@ it('200: returns the field catalogue and the full permissions block (create-cont
     // Spec 0008: the users field catalogue now also carries the 11
     // personal_data.* keys (morph card + contacts/addresses sections).
     // Spec 0015 adds the employment.* keys; spec 0103 (D-9) split the single
-    // employment.operational_site_id into primary/remote.
+    // employment.operational_site_id into primary/remote; spec 0166 (D-8)
+    // renamed employment.reports_to_id to employment.reports_to_ids.
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
     expect($keys)->toEqualCanonicalizing([
         'email', 'locale', 'is_active', 'roles', 'password',
@@ -78,7 +79,7 @@ it('200: returns the field catalogue and the full permissions block (create-cont
         'employment.is_manager',
         // spec 0129 D-1 — the profile-wide wildcard flag.
         'employment.covers_all_product_categories',
-        'employment.job_description', 'employment.reports_to_id',
+        'employment.job_description', 'employment.reports_to_ids',
         // spec 0111 — the assignment competence as {function, category} rows.
         'employment.product_lines',
         'employment.relationship_type', 'employment.company_id',

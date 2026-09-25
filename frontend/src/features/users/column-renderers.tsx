@@ -10,7 +10,7 @@ import {
   TagsCountCell,
 } from '@/features/table/cell-renderers'
 import { DateCell } from '@/features/table/rich-cells'
-import { UserCell } from '@/features/table/user-cell'
+import { UserStackCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /** Renders the `is_manager` boolean column as a localized yes/no label. */
@@ -96,9 +96,10 @@ export const userColumnRenderers: TableRendererMap = {
   // fallback (no entry needed here).
   is_active: (params) => <ActiveBadgeCell {...params} />,
   is_manager: (params) => <BooleanCell {...params} />,
-  // `reports_to` is a person ({id, name}); the shared user cell renders it as an
-  // avatar + name chip that opens the user's detail Sheet on click.
-  reports_to: (params) => <UserCell {...params} />,
+  // `reports_to` is zero or more managers ([{id, name}], spec 0166): the
+  // shared stack cell renders an avatar per manager, each opening that
+  // user's detail Sheet on click.
+  reports_to: (params) => <UserStackCell {...params} />,
   hired_at: (params) => <DateCell {...params} />,
   terminated_at: (params) => <DateCell {...params} />,
 }

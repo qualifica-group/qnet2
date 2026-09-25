@@ -63,7 +63,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Manager**', 'Turn it on if the person is responsible for other employees.'],
             ['**Job title**', 'Description of the job (up to 255 characters).'],
-            ['**Reports to**', 'The direct manager, chosen among users.'],
+            ['**Reports to**', 'The direct managers, chosen among users: you can pick more than one. The field is hidden when **Manager** is on.'],
             ['**Employment type**', 'The type of employment relationship.'],
             ['**Company**', 'The reference company.'],
             ['**Qualification**', 'The contractual qualification.'],

@@ -153,7 +153,8 @@ export interface TeamPulseMember {
     email: string
     avatar_url: string | null
   }
-  manager_id: number | null
+  /** Ascending, `[]` if none (0166 D-7/AC-012): the member can have several managers. */
+  manager_ids: number[]
   job_description: string | null
   roles: string[]
   business_functions: Array<{ id: number; name: string; is_manager: boolean }>

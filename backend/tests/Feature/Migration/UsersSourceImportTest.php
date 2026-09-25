@@ -158,7 +158,7 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
 
     $employment = $ada->employment;
     expect($employment)->not->toBeNull()
-        ->and($employment->reports_to_id)->toBe($manager->id)
+        ->and($employment->reportsToIds)->toBe([$manager->id])
         ->and($employment->company_id)->toBe($company->id)
         ->and($employment->primary_operational_site_id)->toBe($operationalSite->id)
         ->and($employment->remote_operational_site_ids)->toBe([])
@@ -215,160 +215,12 @@ it('honors an inactive external user (is_active=false) instead of forcing active
         ->and($user->is_active)->toBeFalse();
 });
 
-it('back-fills employment relations on re-import once the parents are migrated (self-healing skip)', function () {
-    seedMigrationsConfig();
-
-    // Round 1: the user is imported BEFORE any parent exists -> relations null.
-    Http::fake([
-        fakeMigrationsBaseUrl().'/users*' => Http::response([
-            'items' => [[
-                'id' => 449,
-                'email' => 'nicola@example.test',
-                'password' => fakeBcryptHash('nicola-secret'),
-                'first_name' => 'Nicola',
-                'last_name' => 'Eliseo',
-                'job_description' => 'Senior Full Stack Engineer',
-                'is_manager' => false,
-                'reports_to_id' => 445,
-                'business_function_id' => 6,
-                'operational_site_id' => 15,
-                'standard_daily_minutes' => 480,
-                'break_daily_minutes' => 30,
-            ]],
-            'pagination' => ['total' => 1],
-        ]),
-    ]);
-
-    $actor = migrationsSuperAdminActor();
-    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'users']));
-
-    $user = User::query()->where('email', 'nicola@example.test')->first();
-    expect($user->employment)->not->toBeNull()
-        ->and($user->employment->reports_to_id)->toBeNull()
-        ->and($user->employment->primary_operational_site_id)->toBeNull();
-
-    // The parents are migrated afterwards (their own sources set old_id).
-    $manager = User::factory()->create(['old_id' => 445]);
-    $operationalSite = OperationalSite::factory()->create(['old_id' => 15]);
-
-    // Round 2: re-import the SAME user -> skipped, but relations back-filled.
-    $secondRun = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'users']);
-    runMigrationJobFor($secondRun);
-
-    $employment = $user->employment()->with('operationalSites')->first();
-    expect($employment->reports_to_id)->toBe($manager->id)
-        ->and($employment->primary_operational_site_id)->toBe($operationalSite->id)
-        ->and($employment->operationalSites()->wherePivot('is_primary', true)->count())->toBe(1);
-
-    $fresh = $secondRun->fresh();
-    expect($fresh->created_rows)->toBe(0)
-        ->and($fresh->skipped_rows)->toBe(1)
-        ->and(collect($fresh->report)->pluck('message')->implode(' | '))->toContain('Relinked');
-
-    // Idempotent once linked: a third run back-fills nothing.
-    $thirdRun = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'users']);
-    runMigrationJobFor($thirdRun);
-    expect(collect($thirdRun->fresh()->report ?? [])->pluck('message')->implode(' | '))->not->toContain('Relinked');
-});
-
 // ---------------------------------------------------------------------------
-// AC-031 — self-healing site backfill is idempotent and never overwrites a
-// physical site assigned by hand
+// Self-healing re-import backfill (parents/manager migrated late, out-of-order
+// same-run relink, manual assignment survives re-import) moved to
+// UsersSourceEmploymentBackfillTest.php (spec 0166 MT-B5, keeps this file
+// under the file-size budget).
 // ---------------------------------------------------------------------------
-
-it('does not overwrite a manually-assigned physical site on re-import self-healing', function () {
-    seedMigrationsConfig();
-
-    // Round 1: the external site is not migrated yet -> no physical site,
-    // non-fatal warning, import proceeds.
-    Http::fake([
-        fakeMigrationsBaseUrl().'/users*' => Http::response([
-            'items' => [[
-                'id' => 601,
-                'email' => 'grazia@example.test',
-                'password' => fakeBcryptHash('grazia-secret'),
-                'first_name' => 'Grazia',
-                'last_name' => 'Deledda',
-                'operational_site_id' => 70,
-            ]],
-            'pagination' => ['total' => 1],
-        ]),
-    ]);
-
-    $actor = migrationsSuperAdminActor();
-    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'users']));
-
-    $user = User::query()->where('email', 'grazia@example.test')->first();
-    expect($user->employment->primary_operational_site_id)->toBeNull();
-
-    // An administrator manually assigns a physical site by hand, out of band.
-    $manualSite = OperationalSite::factory()->create();
-    $user->employment->operationalSites()->attach($manualSite->id, ['is_primary' => true]);
-
-    // The external site is migrated afterwards, under the SAME external id.
-    $externalSite = OperationalSite::factory()->create(['old_id' => 70]);
-
-    // Round 2: re-import the SAME user -> skipped; self-healing does NOT
-    // touch a physical site that already exists (the manual one survives).
-    $secondRun = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'users']);
-    runMigrationJobFor($secondRun);
-
-    $employment = $user->employment()->with('operationalSites')->first();
-    expect($employment->primary_operational_site_id)->toBe($manualSite->id)
-        ->and($employment->primary_operational_site_id)->not->toBe($externalSite->id)
-        ->and($employment->operationalSites()->wherePivot('is_primary', true)->count())->toBe(1)
-        ->and($employment->operationalSites()->count())->toBe(1);
-
-    expect(collect($secondRun->fresh()->report ?? [])->pluck('message')->implode(' | '))->not->toContain('Relinked');
-});
-
-it('relinks reports_to_id in a SINGLE run when the manager is imported after the subordinate', function () {
-    seedMigrationsConfig();
-
-    // The subordinate (id 3) references a manager (id 500) that appears LATER
-    // in the SAME page -> null on the first pass, back-filled by the second.
-    Http::fake([
-        fakeMigrationsBaseUrl().'/users*' => Http::response([
-            'items' => [
-                [
-                    'id' => 3,
-                    'email' => 'subordinate@example.test',
-                    'password' => fakeBcryptHash('sub-secret'),
-                    'first_name' => 'Sub',
-                    'last_name' => 'Ordinate',
-                    'is_manager' => false,
-                    'reports_to_id' => 500,
-                ],
-                [
-                    'id' => 500,
-                    'email' => 'manager@example.test',
-                    'password' => fakeBcryptHash('mgr-secret'),
-                    'first_name' => 'Man',
-                    'last_name' => 'Ager',
-                    'is_manager' => true,
-                    'job_description' => 'Head of Engineering',
-                ],
-            ],
-            'pagination' => ['total' => 2],
-        ]),
-    ]);
-
-    $actor = migrationsSuperAdminActor();
-    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'users']);
-
-    runMigrationJobFor($run);
-
-    $manager = User::query()->where('email', 'manager@example.test')->first();
-    $subordinate = User::query()->where('email', 'subordinate@example.test')->first();
-
-    expect($subordinate->employment->reports_to_id)->toBe($manager->id);
-
-    $fresh = $run->fresh();
-    expect($fresh->status)->toBe(MigrationStatus::Completed)
-        ->and($fresh->created_rows)->toBe(2)
-        ->and($fresh->skipped_rows)->toBe(0)
-        ->and(collect($fresh->report)->pluck('message')->implode(' | '))->toContain('Relinked 1 employment reference(s) after import');
-});
 
 // ---------------------------------------------------------------------------
 // AC-009 — remap roles/employment relations via old_id + warning on unresolved
@@ -404,7 +256,7 @@ it('warns (non-fatally) on unresolved role and employment references', function 
 
     expect($grace)->not->toBeNull()
         ->and($grace->hasRole($migratedRole->name))->toBeTrue()
-        ->and($grace->employment?->reports_to_id)->toBeNull()
+        ->and($grace->employment?->reportsToIds)->toBe([])
         ->and($grace->employment?->relationship_type)->toBeNull()
         ->and($grace->employment?->primary_operational_site_id)->toBeNull();
 

@@ -13,7 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RelationSelectField } from '@/components/form/relation-select-field'
-import { toRelationFieldRef } from '@/components/form/relation-field-ref'
+import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
+import { toRelationFieldRef, toRelationFieldRefs } from '@/components/form/relation-field-ref'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { MetaField } from '@/features/authorization/MetaField'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
@@ -29,7 +30,7 @@ interface EmploymentTabProps {
 }
 
 interface ProfileTabContentProps extends EmploymentTabProps {
-  selectedReportsToItem: ForSelectItem | null
+  selectedReportsToItems: ForSelectItem[]
 }
 
 /**
@@ -38,10 +39,11 @@ interface ProfileTabContentProps extends EmploymentTabProps {
  *
  * The competence rows left this section (user directive 2026-09-11): they are
  * half of the assignment configuration, so they now live next to the Sedi in
- * `UserAssignmentSection`. `reports_to` is hidden and its value force-nulled
- * at the payload boundary whenever `is_manager` is true (AC-015).
+ * `UserAssignmentSection`. `reports_to` is a multi-select (spec 0166: a person
+ * may report to more than one manager), hidden and its value force-emptied
+ * at the payload boundary whenever `is_manager` is true (D-5).
  */
-export function ProfileTabContent({ control, selectedReportsToItem }: ProfileTabContentProps) {
+export function ProfileTabContent({ control, selectedReportsToItems }: ProfileTabContentProps) {
   const { t } = useTranslation()
   const isManager = useWatch({ control, name: 'employment.is_manager' })
 
@@ -79,19 +81,19 @@ export function ProfileTabContent({ control, selectedReportsToItem }: ProfileTab
       </MetaField>
 
       {isManager ? null : (
-        <RelationSelectField
+        <RelationMultiSelectField
           control={control}
-          name="employment.reports_to_id"
-          metaKey="employment.reports_to_id"
+          name="employment.reports_to_ids"
+          metaKey="employment.reports_to_ids"
           label={t('users.form.employment.reportsTo')}
           resource={USERS_FOR_SELECT_RESOURCE}
           searchPlaceholder={t('users.form.employment.reportsToSearch')}
-          selected={toRelationFieldRef(selectedReportsToItem)}
+          selected={toRelationFieldRefs(selectedReportsToItems)}
           showAvatar
           placeholder={t('users.form.employment.reportsToPlaceholder')}
           emptyLabel={t('users.form.employment.reportsToEmpty')}
           errorLabel={t('users.form.employment.reportsToError')}
-          clearLabel={t('common.clear')}
+          removeLabel={t('users.form.employment.reportsToRemove')}
           retryLabel={t('common.retry')}
         />
       )}

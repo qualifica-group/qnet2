@@ -81,10 +81,11 @@ class UserFactory extends Factory
     }
 
     /**
-     * A subordinate reporting to the given manager.
+     * A subordinate reporting to the given manager(s) — spec 0166 D-2, a
+     * user may report to more than one.
      */
-    public function reportsTo(User $manager): static
+    public function reportsTo(User ...$managers): static
     {
-        return $this->withEmployment(static fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->reportsTo($manager));
+        return $this->withEmployment(static fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->reportsTo(...$managers));
     }
 }

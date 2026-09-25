@@ -1,10 +1,15 @@
 /**
- * Pure tree/search/filter helpers for the team view (spec 0122 D-10/AC-038).
- * No React: `use-team-filters.ts` and `time-entries-team-pulse.tsx` compose
- * these over the `TeamPulse.items` fetched by `use-time-entries-team.ts`.
- * The tree is built client-side on `manager_id` (a single manager per member,
- * unlike q-net's multi-manager `managers[]`) — a member without a manager IN
- * THE LIST is a root, same rule `is_full_list` or not.
+ * Pure tree/search/filter helpers for the team view (spec 0122 D-10/AC-038,
+ * multi-manager 0166 D-7/AC-013). No React: `use-team-filters.ts` and
+ * `time-entries-team-pulse.tsx` compose these over the `TeamPulse.items`
+ * fetched by `use-time-entries-team.ts`. A member can have several managers
+ * (`manager_ids`): it is built as a child of EVERY manager present in the
+ * list and appears once per branch, so node `key` is a PATH (`parentKey/
+ * userId`, roots just `userId`) rather than the bare user id — the same user
+ * can occupy several nodes and each keeps its own independent expand/collapse
+ * state. A member is a root only if NONE of its `manager_ids` is in the list.
+ * Descending stops at a user already on the current path (ancestor guard)
+ * so a cycle in the data can never loop the traversal.
  */
 
 import { TIME_ENTRY_COVERAGE_MAX_PERCENTAGE } from '@/features/time-entries/time-entry-constants'
@@ -35,29 +40,45 @@ function byMemberName(a: TeamPulseMember, b: TeamPulseMember): number {
   return a.user.name.localeCompare(b.user.name)
 }
 
-/** Builds the manager/subordinate tree, each level sorted by name. */
+/**
+ * Builds the manager/subordinate tree, each level sorted by name. A member
+ * with several managers present in the list is attached under each of them
+ * (own branch, own path key); it is a root only if none of its managers is
+ * in the list. The ancestor `path` stops the walk from re-entering a user
+ * already visited on the current branch (cycle guard).
+ */
 export function buildTeamTree(members: TeamPulseMember[]): TeamTreeNode[] {
   const byId = new Map(members.map((member) => [member.user.id, member]))
   const childrenByManager = new Map<number, TeamPulseMember[]>()
-  const roots: TeamPulseMember[] = []
 
   members.forEach((member) => {
-    const managerId = member.manager_id
-    if (managerId != null && byId.has(managerId)) {
+    member.manager_ids.forEach((managerId) => {
+      if (!byId.has(managerId)) {
+        return
+      }
       const siblings = childrenByManager.get(managerId) ?? []
       siblings.push(member)
       childrenByManager.set(managerId, siblings)
-    } else {
-      roots.push(member)
-    }
+    })
   })
 
-  function toNode(member: TeamPulseMember): TeamTreeNode {
-    const children = (childrenByManager.get(member.user.id) ?? []).slice().sort(byMemberName)
-    return { key: String(member.user.id), member, children: children.map(toNode) }
+  const roots = members.filter((member) => !member.manager_ids.some((managerId) => byId.has(managerId)))
+
+  function toNode(member: TeamPulseMember, parentKey: string | null, path: ReadonlySet<number>): TeamTreeNode {
+    const key = parentKey ? `${parentKey}/${member.user.id}` : String(member.user.id)
+    const nextPath = new Set(path)
+    nextPath.add(member.user.id)
+    const children = (childrenByManager.get(member.user.id) ?? [])
+      .filter((child) => !nextPath.has(child.user.id))
+      .slice()
+      .sort(byMemberName)
+    return { key, member, children: children.map((child) => toNode(child, key, nextPath)) }
   }
 
-  return roots.slice().sort(byMemberName).map(toNode)
+  return roots
+    .slice()
+    .sort(byMemberName)
+    .map((member) => toNode(member, null, new Set()))
 }
 
 /** Keys of every node with at least one child — the expand/collapse-all universe. */
@@ -96,8 +117,10 @@ export function memberMatchesSearch(member: TeamPulseMember, search: string): bo
 
 /**
  * Filters `members` by name/role/email/etc, then adds back every ancestor
- * (so a matched descendant stays reachable in the tree) and every descendant
- * (so a matched manager still shows their whole branch) — AC-038.
+ * (walking ALL `manager_ids` chains, so a matched descendant stays reachable
+ * under every one of its managers) and every descendant (so a matched
+ * manager still shows their whole branch) — AC-038/AC-013. A `visited` guard
+ * on both walks keeps a data cycle from looping.
  */
 export function filterMembersKeepingAncestorsAndDescendants(
   members: TeamPulseMember[],
@@ -111,12 +134,11 @@ export function filterMembersKeepingAncestorsAndDescendants(
   const byId = new Map(members.map((member) => [member.user.id, member]))
   const childrenByManager = new Map<number, TeamPulseMember[]>()
   members.forEach((member) => {
-    if (member.manager_id == null) {
-      return
-    }
-    const siblings = childrenByManager.get(member.manager_id) ?? []
-    siblings.push(member)
-    childrenByManager.set(member.manager_id, siblings)
+    member.manager_ids.forEach((managerId) => {
+      const siblings = childrenByManager.get(managerId) ?? []
+      siblings.push(member)
+      childrenByManager.set(managerId, siblings)
+    })
   })
 
   const visible = new Set<number>()
@@ -135,18 +157,29 @@ export function filterMembersKeepingAncestorsAndDescendants(
     }
   }
 
+  function addAncestors(memberId: number): void {
+    const visited = new Set<number>([memberId])
+    const stack = [memberId]
+    while (stack.length > 0) {
+      const current = stack.pop() as number
+      for (const managerId of byId.get(current)?.manager_ids ?? []) {
+        if (visited.has(managerId)) {
+          continue
+        }
+        visited.add(managerId)
+        visible.add(managerId)
+        stack.push(managerId)
+      }
+    }
+  }
+
   members.forEach((member) => {
     if (!memberMatchesSearch(member, trimmed)) {
       return
     }
     visible.add(member.user.id)
     addDescendants(member.user.id)
-
-    let managerId = member.manager_id
-    while (managerId != null && !visible.has(managerId)) {
-      visible.add(managerId)
-      managerId = byId.get(managerId)?.manager_id ?? null
-    }
+    addAncestors(member.user.id)
   })
 
   return members.filter((member) => visible.has(member.user.id))

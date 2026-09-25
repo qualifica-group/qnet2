@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## UTENTE CON PIU' RESPONSABILI ("RISPONDE A" MULTIPLO) — SPEC 0166 — VERDE, NON COMMITTATO (2026-09-25)
+
+- `employment_profiles.reports_to_id` eliminata -> pivot `employment_profile_manager` (employment_profile_id,
+  user_id=responsabile). Migrazioni `2026_09_25_100000/100100/100200` (tabella, spostamento dati + drop con down()
+  lossy, rinomina permesso campo). `EmploymentProfile::reportsTo()` ora BelongsToMany ordinata per nome, accessor
+  `reportsToIds`.
+- Contratto: write `employment.reports_to_ids: int[]` (assente = invariato, [] = svuota; is_manager => svuota);
+  read `reports_to_ids` + `reports_to: [{id,label}]`; permesso campo `employment.reports_to_ids` (multiselect);
+  griglia utenti `reports_to: [{id,name}]` (`UserReportsToColumn`: filtro "almeno uno", sort MIN nome);
+  team pulse Ore `manager_ids` (ascendente) al posto di `manager_id`.
+- `EmploymentWriter::write($user, $employment, $actor)`: cambio dell'insieme => voce activity esplicita su
+  EmploymentProfile (`reports_to_ids` old/attributes); la scheda Storico non cambia (D-6).
+- Ore: `TimeEntrySubordinateResolver` segue tutti i responsabili; FE `team-tree.ts` chiavi nodo per PERCORSO
+  (`12/40/57`), un collaboratore compare sotto ogni responsabile in lista, guardia cicli.
+- Import legacy: sorgente esterna ancora a un solo `reports_to_id`; re-import aggancia solo se il profilo non ha
+  responsabili.
+- Guide IT/EN (users, time-entries) e manuale Claude Docs aggiornati; il PDF derivato va rigenerato.
+- Verifica: suite completa BE 8538/8541 e FE 6202/6203; i 3 rossi (QuoteWorkflowMigrationTest,
+  RequestManagementReportTransitionsTest, note-composer) passano rilanciati da soli, non toccano la 0166.
+  `tsc -b --force` rosso SOLO su file della spec 0163 in corso (work_order_stage), non della 0166.
+- Nota: i test PHP locali richiedono `XDEBUG_MODE=off` (segfault Xdebug).
+
 ## RUOLI MANSIONARIO — CHI VEDE GLI UTENTI APRE TUTTO IL FORM UTENTE — VERDE, COMMITTATO (2026-09-25)
 
 - Bug: impersonando Rosa Falzarano (`supervisore-commerciale`), "Modifica utente" dava 403 su

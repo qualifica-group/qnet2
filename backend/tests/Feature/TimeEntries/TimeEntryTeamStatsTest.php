@@ -40,7 +40,7 @@ if (! function_exists('timeEntryActorWith')) {
     }
 }
 
-it('AC-019: a responsabile sees items for a DIRECT and an INDIRECT subordinate, correct manager_id, coverage, self excluded', function () {
+it('AC-019: a responsabile sees items for a DIRECT and an INDIRECT subordinate, correct manager_ids, coverage, self excluded', function () {
     $manager = timeEntryActorWith(['viewAny']);
     $direct = User::factory()->create(['name' => 'Bob Direct']);
     $indirect = User::factory()->create(['name' => 'Carl Indirect']);
@@ -71,15 +71,33 @@ it('AC-019: a responsabile sees items for a DIRECT and an INDIRECT subordinate, 
     $directItem = $byId->get($direct->id);
     $indirectItem = $byId->get($indirect->id);
 
-    expect($directItem['manager_id'])->toBe($manager->id)
+    expect($directItem['manager_ids'])->toBe([$manager->id])
         ->and($directItem['job_description'])->toBe('Developer')
         ->and($directItem['business_functions'])->toBe([['id' => $function->id, 'name' => $function->name, 'is_manager' => true]])
         ->and($directItem['coverage'])->toBe(['percentage' => 50, 'working_days' => 1, 'tracked_days' => 1])
         ->and($directItem['primary_cluster']['task_type']['id'])->toBe($typeA->id)
         ->and($directItem['primary_cluster']['minutes'])->toBe(240)
-        ->and($indirectItem['manager_id'])->toBe($direct->id)
+        ->and($indirectItem['manager_ids'])->toBe([$direct->id])
         ->and($indirectItem['coverage'])->toBe(['percentage' => 0, 'working_days' => 1, 'tracked_days' => 0])
         ->and($indirectItem['primary_cluster'])->toBeNull();
+});
+
+it('AC-012: a member with two managers has manager_ids ascending, both managers see the item', function () {
+    $managerA = timeEntryActorWith(['viewAny']);
+    $managerB = timeEntryActorWith(['viewAny']);
+    $member = User::factory()->create();
+    EmploymentProfile::factory()->manager()->create(['user_id' => $managerA->id]);
+    EmploymentProfile::factory()->manager()->create(['user_id' => $managerB->id]);
+    EmploymentProfile::factory()->reportsTo($managerB, $managerA)->create(['user_id' => $member->id]);
+
+    [$lowId, $highId] = collect([$managerA->id, $managerB->id])->sort()->values()->all();
+
+    foreach ([$managerA, $managerB] as $manager) {
+        Sanctum::actingAs($manager);
+        $response = $this->getJson('/api/time-entries/stats/team?date_from=2026-09-14&date_to=2026-09-14')->assertOk();
+        $item = collect($response->json('data.items'))->firstWhere('user.id', $member->id);
+        expect($item['manager_ids'])->toBe([$lowId, $highId]);
+    }
 });
 
 it('AC-020: a viewAll holder sees every active user including themselves, is_full_list true', function () {

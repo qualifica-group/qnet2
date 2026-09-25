@@ -34,7 +34,9 @@ import {
 } from '@/features/users/user-form-defaults'
 import {
   collectProductLinesServerError,
+  collectReportsToServerError,
   PRODUCT_LINES_FIELD,
+  REPORTS_TO_IDS_FIELD,
   SERVER_ERROR_FIELDS,
 } from '@/features/users/user-form-server-errors'
 import {
@@ -242,6 +244,10 @@ export function useUserForm({ mode, onSuccess, onAvatarChange }: UseUserFormArgs
       const productLinesMessage = collectProductLinesServerError(error)
       if (productLinesMessage) {
         form.setError(PRODUCT_LINES_FIELD, { message: productLinesMessage })
+      }
+      const reportsToMessage = collectReportsToServerError(error)
+      if (reportsToMessage) {
+        form.setError(REPORTS_TO_IDS_FIELD, { message: reportsToMessage })
       }
     }
   }

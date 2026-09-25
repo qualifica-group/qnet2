@@ -31,7 +31,7 @@ class TimeEntryTeamMemberResource extends JsonResource
                 'email' => $item->user->email,
                 'avatar_url' => $item->user->avatarDataUri(),
             ],
-            'manager_id' => $item->managerId,
+            'manager_ids' => $item->managerIds,
             'job_description' => $item->jobDescription,
             'roles' => $item->user->roles->pluck('name')->values()->all(),
             'business_functions' => $item->businessFunctions,

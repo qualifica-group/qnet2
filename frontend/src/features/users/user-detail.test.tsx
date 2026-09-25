@@ -62,13 +62,13 @@ function employment(
     terminated_at: null,
     standard_daily_minutes: null,
     break_daily_minutes: null,
-    reports_to_id: null,
+    reports_to_ids: [],
     company_id: null,
     primary_operational_site_id: null,
     remote_operational_site_ids: [],
     covers_all_product_categories: coversAllProductCategories,
     product_lines: productLines,
-    reports_to: null,
+    reports_to: [],
     company: null,
     primary_operational_site: null,
     remote_operational_sites: [],
@@ -169,5 +169,34 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
     await waitFor(() => expect(screen.getByText('Competence')).toBeInTheDocument())
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
     expect(screen.getByText('Competence').closest('div')).toHaveTextContent('All categories')
+  })
+})
+
+describe('UserDetailView — reports_to (spec 0166 AC-015)', () => {
+  it('shows every manager the user reports to', async () => {
+    renderDetail(
+      user({
+        employment: {
+          ...employment([]),
+          reports_to_ids: [2, 3],
+          reports_to: [
+            { id: 2, label: 'Grace Hopper' },
+            { id: 3, label: 'Katherine Johnson' },
+          ],
+        },
+      }),
+    )
+
+    await waitFor(() => expect(screen.getByText('Reports to')).toBeInTheDocument())
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument()
+    expect(screen.getByText('Katherine Johnson')).toBeInTheDocument()
+  })
+
+  it('falls back to the empty marker for a user with no manager', async () => {
+    renderDetail(user({ employment: employment([]) }))
+
+    await waitFor(() => expect(screen.getByText('Reports to')).toBeInTheDocument())
+    const reportsToRow = screen.getByText('Reports to').closest('div') as HTMLElement
+    expect(reportsToRow).toHaveTextContent('—')
   })
 })

@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0166-user-multiple-reports-to" status="approved" owner="utente" date="2026-09-25">
+
+  <goal>
+    Un utente puo' rispondere a PIU' responsabili ("Risponde a", sezione Dati contrattuali della scheda utente) invece
+    che a uno solo. Ogni responsabile vede in Ore il collaboratore nel proprio team, come oggi con il responsabile unico.
+  </goal>
+
+  <context>
+    - Oggi il dato e' la FK singola `employment_profiles.reports_to_id` (nullable, nullOnDelete, migrazione
+      2026_07_04_110000), relazione `EmploymentProfile::reportsTo()` BelongsTo. Precedente identico: spec 0103 (sede
+      singola -> pivot `employment_profile_operational_site`, migrazioni 2026_09_07_100000/100100/100200).
+    - Scrittura: `ValidatesEmployment` (regola `employment.reports_to_id`, notIn self solo in update) -> `EmploymentData`
+      (`reportsToId`) -> `EmploymentWriter::guardedAttributes()` (is_manager o self => null).
+    - Lettura: `EmploymentResource` (`reports_to_id`, `reports_to` {id,label}); eager load `employment.reportsTo` in
+      `UserService` e `UsersTableDefinition`.
+    - Permessi campo: `UsersAuthorization` FieldDefinition `employment.reports_to_id` (select) + employmentFieldPermissions;
+      righe salvate in `role_field_permissions` (resource `users`).
+    - Griglia Utenti: colonna `reports_to` (UserColumnCatalog: text, set filter, sortable, hidden di default) gestita in
+      `UserEmploymentColumns` (RELATED_NAME_COLUMNS, 345 righe) -> riga `{id,name}`, FE `UserCell`.
+    - Ore (spec 0122): `TimeEntrySubordinateResolver` (BFS su reports_to_id, soli utenti attivi) usato da
+      `TimeEntryReadAuthorizer`, `TimeEntryListService`, `TimeEntryTeamPulseService`; il team pulse emette
+      `manager_id` (TimeEntryTeamMemberData/TimeEntryTeamMemberResource); FE `team/team-tree.ts` costruisce l'albero su
+      `manager_id` (chiave nodo = user id).
+    - Import legacy: `MapsExternalUserRecord` (UsersSource) mappa il singolo `reports_to_id` esterno e lo ribackfilla
+      "fill once" se NULL (`nullRelationBackfill`, solo non-manager).
+    - Storico: `config/activity-log.php` risorsa `users` NON include `employment`: oggi il cambio di reports_to_id finisce
+      solo nel log (LogsModelActivity su EmploymentProfile), non nella scheda Storico.
+    - FE form: `user-form-employment-tabs.tsx` ProfileTabContent usa `RelationSelectField` (nascosto se is_manager);
+      esiste gia' `components/form/relation-multi-select-field.tsx` (supporta `showAvatar`), gia' usato per
+      `employment.remote_operational_site_ids`.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Il campo reso multiplo e' "Risponde a" dei Dati contrattuali (scelta utente 2026-09-25).</decision>
+    <decision id="D-2">Nuova pivot `employment_profile_manager` (id, employment_profile_id, user_id, timestamps): FK
+      cascadeOnDelete su entrambi i lati (eliminare il profilo o il responsabile toglie la riga, equivalente del
+      nullOnDelete di oggi), unique (employment_profile_id, user_id), indice su user_id. La colonna
+      `employment_profiles.reports_to_id` viene migrata nella pivot e poi eliminata (stesso file, come 0103 M2).
+      down(): ricrea la colonna dopo `job_description` e la ripopola con il responsabile di id pivot piu' basso per
+      profilo; perde gli altri (lossy dichiarato, come 0103).</decision>
+    <decision id="D-3">La relazione mantiene il nome `reportsTo()` e diventa BelongsToMany ordinata per `users.name`.
+      Accessor pubblico `reportsToIds` (array di int, letto dalla collection caricata) per EnforcesFieldPermissions, come
+      `remoteOperationalSiteIds`.</decision>
+    <decision id="D-4">Tri-state sul wire, come i campi pivot della 0103: chiave `employment.reports_to_ids` assente =
+      responsabili invariati; array (anche vuoto) = sostituzione completa. Nessun limite al numero di responsabili.
+      </decision>
+    <decision id="D-5">La regola "un Responsabile non risponde a nessuno" resta (scelta utente 2026-09-25): con
+      `is_manager` true il writer svuota i responsabili qualunque cosa arrivi (come covers_all_product_categories svuota
+      le righe competenza). Anti self-reference: 422 in update (`notIn` sull'id utente) + difesa nel writer (l'id
+      dell'utente stesso viene scartato).</decision>
+    <decision id="D-6">Storico (scelta utente 2026-09-25): solo log interno, come oggi. Quando l'insieme cambia, il writer
+      registra una voce `activity()` esplicita su EmploymentProfile (event `updated`, properties
+      `attributes.reports_to_ids` / `old.reports_to_ids`, id ordinati). La scheda Storico non cambia.</decision>
+    <decision id="D-7">Ore, vista team (scelta utente 2026-09-25): un collaboratore con piu' responsabili compare sotto
+      CIASCUN responsabile presente nella lista; ogni responsabile (e la sua catena superiore) lo vede come oggi.
+      Il resolver segue tutti gli archi della pivot. Il FE usa chiavi nodo per PERCORSO (es. `12/40/57`) perche' lo stesso
+      utente puo' comparire in piu' rami, e interrompe un ramo che rientra su un antenato (difesa da cicli nei dati).
+      </decision>
+    <decision id="D-8">Permesso campo: la chiave `employment.reports_to_id` (select) diventa `employment.reports_to_ids`
+      (multiselect). Migrazione dati su `role_field_permissions`: rinomina con gli stessi flag, pulendo prima eventuali
+      conflitti (come 2026_09_02_230000); down() rinomina all'indietro.</decision>
+    <decision id="D-9">Griglia Utenti, colonna `reports_to` (id invariato): cella = pila di avatar (`UserStackCell`),
+      riga `[{id,name}]` ordinata per nome. Filtro set per nome: l'utente passa se ALMENO UNO dei responsabili e' tra i
+      valori; "(Vuoti)" = nessun responsabile. Ordinamento: per il nome del primo responsabile in ordine alfabetico
+      (MIN). Logica estratta in `UserReportsToColumn` (UserEmploymentColumns e' gia' a 345 righe), come
+      UserBusinessFunctionColumn.</decision>
+    <decision id="D-10">Import legacy: la sorgente esterna ha un solo `reports_to_id`; diventa `reportsToIds: [id]`.
+      Il ribackfill "fill once" diventa: se il profilo (non manager) non ha ALCUN responsabile, si aggancia quello
+      risolto; se ne ha gia' almeno uno non si tocca nulla (le assegnazioni manuali sopravvivono al re-import).</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: pivot, spostamento dati + drop colonna, rinomina chiave permesso campo.</item>
+      <item>Model/relazione/accessor, DTO, validazione, writer (invarianti + log esplicito), Resource.</item>
+      <item>UsersAuthorization (catalogo campi + permessi), UserService/UsersTableDefinition eager load.</item>
+      <item>Griglia Utenti: cella/filtro/ordinamento/valori distinti di `reports_to` (UserReportsToColumn).</item>
+      <item>Ore: TimeEntrySubordinateResolver sulla pivot; team pulse `manager_ids`; albero FE multi-ramo.</item>
+      <item>Import legacy (MapsExternalUserRecord) e factory/seeder demo (EmploymentProfileFactory, UserFactory,
+        DemoEmploymentProfileSeeder: almeno un utente demo con due responsabili).</item>
+      <item>FE utenti: schema Zod, default, payload, form (RelationMultiSelectField con avatar), dettaglio, errori server,
+        tipi; renderer colonna.</item>
+      <item>i18n IT/EN delle nuove etichette; guide in-app IT/EN `users` e `time-entries`; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Nessun cambio alla regola is_manager (D-5) ne' gerarchie multi-livello tra Responsabili.</item>
+      <item>Nessun "responsabile principale" o ordine di priorita' tra responsabili.</item>
+      <item>Nessuna voce dei Dati contrattuali nella scheda Storico (D-6).</item>
+      <item>Nessun cambio ai "Supervisore" di anagrafiche, opportunita', offerte, commesse (sono altri campi).</item>
+      <item>Nessun cambio a permessi Ore (viewAll/manageAll) ne' alle regole di copertura/stat del team.</item>
+      <item>Nessun cambio alla sorgente di import esterna (resta un solo id).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST|PUT" path="/api/users, /api/users/{user}">
+      <request>
+        `employment.reports_to_ids`: int[] | assente. Sostituisce `employment.reports_to_id` (rimosso: se inviato viene
+        ignorato). Regole: `sometimes|nullable|array`; `.*`: integer, distinct, exists:users,id, notIn:[{user}] in update.
+        Con `employment.is_manager` true l'array viene ignorato e i responsabili svuotati.
+      </request>
+      <response status="200">
+        `data.employment.reports_to_ids`: int[] (ordinati per nome del responsabile, [] se nessuno);
+        `data.employment.reports_to`: Array&lt;{id: int, label: string}&gt; (stesso ordine; emesso quando la relazione
+        e' caricata, sempre nel dettaglio). Rimossi `reports_to_id` e il `reports_to` oggetto singolo.
+      </response>
+      <errors>
+        422 `employment.reports_to_ids.N`: id inesistente, duplicato, o uguale all'utente in modifica.
+        422 `employment.reports_to_ids`: non array. 403 come oggi (permesso campo non editabile).
+      </errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/meta/users, /api/authorization/fields">
+      <response status="200">Campo `employment.reports_to_ids`, tipo `multiselect`, gruppo `employment`; nessun
+        `employment.reports_to_id`.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/users/rows">
+      <response status="200">Riga: `reports_to`: Array&lt;{id: int, name: string}&gt; ([] se nessuno), ordinato per
+        nome. Filtro set/valori distinti invariati nella forma (nomi stringa + null per "(Vuoti)").</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/time-entries/stats/team (team pulse)">
+      <response status="200">Ogni item: `manager_ids`: int[] (ordinati crescenti, [] se nessuno) al posto di
+        `manager_id`. Il resto invariato.</response>
+    </endpoint>
+    <activity_log subject="EmploymentProfile" event="updated">
+      properties: { attributes: { reports_to_ids: int[] }, old: { reports_to_ids: int[] } } — solo se l'insieme cambia.
+    </activity_log>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazione: un profilo con `reports_to_id` = X ha dopo `migrate` una riga pivot (profilo, X);
+      la colonna non esiste piu'; un profilo senza reports_to non ha righe. down() ripristina la colonna con X.</criterion>
+    <criterion id="AC-002">Migrazione permessi: una riga role_field_permissions `users`/`employment.reports_to_id` diventa
+      `employment.reports_to_ids` con gli stessi visible/editable/required; nessuna riga col vecchio nome resta.</criterion>
+    <criterion id="AC-003">PUT con `employment.reports_to_ids: [A, B]` su un non-manager salva entrambi; GET dettaglio
+      restituisce `reports_to_ids` [A,B] e `reports_to` con due {id,label} ordinati per nome.</criterion>
+    <criterion id="AC-004">PUT con `reports_to_ids: []` svuota; PUT con `employment` senza la chiave `reports_to_ids`
+      lascia invariati i responsabili.</criterion>
+    <criterion id="AC-005">PUT con is_manager true e `reports_to_ids: [A]` salva zero responsabili; un utente che diventa
+      manager perde i responsabili esistenti.</criterion>
+    <criterion id="AC-006">422 su id inesistente, id duplicato, id dell'utente stesso in update; nessuna riga pivot
+      scritta.</criterion>
+    <criterion id="AC-007">Cambio dell'insieme -> una voce activity su EmploymentProfile con old/attributes
+      `reports_to_ids`; stesso insieme reinviato -> nessuna voce.</criterion>
+    <criterion id="AC-008">Ruolo con `employment.reports_to_ids` in sola lettura: un PUT che cambia i responsabili e' 422
+      come per gli altri campi bloccati; reinviare lo stesso insieme (in qualunque ordine) non lo e'.</criterion>
+    <criterion id="AC-009">Catalogo campi: espone `employment.reports_to_ids` (multiselect) e non `reports_to_id`.</criterion>
+    <criterion id="AC-010">Griglia Utenti: riga `reports_to` = array ordinato; filtro set con nome di B restituisce un
+      utente con responsabili [A,B]; "(Vuoti)" restituisce chi non ne ha; valori distinti contengono A e B; ordinamento
+      per `reports_to` usa il primo nome alfabetico senza duplicare righe.</criterion>
+    <criterion id="AC-011">Ore: un collaboratore C con responsabili A e B e' discendente sia di A sia di B
+      (TimeEntrySubordinateResolver); A e B leggono la dashboard di C; un terzo responsabile no. Un ciclo nei dati non
+      blocca il resolver.</criterion>
+    <criterion id="AC-012">Team pulse: item di C ha `manager_ids` [A,B]; numero di query costante al crescere del team.</criterion>
+    <criterion id="AC-013">FE albero: con A e B nella lista, C compare sotto A e sotto B con chiavi nodo distinte;
+      espandi/comprimi un ramo non tocca l'altro; un responsabile non presente nella lista non crea un ramo (C resta
+      radice se nessuno dei suoi responsabili e' in lista); la ricerca che trova C mostra entrambi i rami; un ciclo nei
+      dati non manda in loop il rendering.</criterion>
+    <criterion id="AC-014">FE form: "Risponde a" e' una selezione multipla con avatar, nascosta se Responsabile attivo;
+      il payload invia `reports_to_ids` ([] se Responsabile); i default di modifica precompilano i selezionati;
+      errori 422 `employment.reports_to_ids.N` mostrati sul campo.</criterion>
+    <criterion id="AC-015">FE dettaglio utente mostra tutti i responsabili; griglia usa la pila di avatar.</criterion>
+    <criterion id="AC-016">Import legacy: nuovo utente con reports_to esterno risolto -> un responsabile; re-import su
+      profilo senza responsabili -> agganciato; re-import su profilo con responsabili gia' presenti -> invariato.</criterion>
+    <criterion id="AC-017">Guide in-app IT/EN `users` e `time-entries` aggiornate con gli stessi id sezione; parity test
+      verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Authz server-side invariata (policy utenti + permessi campo). Nessun N+1 (preventLazyLoading
+    attivo nei test): eager load `employment.reportsTo` ovunque si legga. Filtri/ordinamenti da allow-list, niente Raw
+    con input. File entro 300/500 righe. Pest, Vitest, Pint, ESLint, `tsc -b --force` eseguiti. Test esistenti cambiati
+    solo dove il contratto cambia (`reports_to_id` -> `reports_to_ids`, `manager_id` -> `manager_ids`), dichiarandolo.
+    Manuale Claude Docs aggiornato (sezioni Utenti > Profilo e rapporto contrattuale, Ore > Il mio team).
+  </constraints>
+
+</spec>

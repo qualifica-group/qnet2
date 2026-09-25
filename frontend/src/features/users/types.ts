@@ -76,7 +76,8 @@ export interface EmploymentDetail {
   terminated_at: string | null
   standard_daily_minutes: number | null
   break_daily_minutes: number | null
-  reports_to_id: number | null
+  /** Zero or more managers (spec 0166), ordered by name; [] when none. */
+  reports_to_ids: number[]
   company_id: number | null
   /** The user's single physical site (spec 0103 D-3), at most one, optional. */
   primary_operational_site_id: number | null
@@ -95,7 +96,8 @@ export interface EmploymentDetail {
    * editor without a hydration fetch.
    */
   product_lines?: EmploymentProductLine[]
-  reports_to: EmploymentRelationRef | null
+  /** Same order as `reports_to_ids`; emitted whenever the relation is loaded (always in the detail). */
+  reports_to: EmploymentRelationRef[]
   company: EmploymentRelationRef | null
   /** Present only when the relation is eager-loaded (whenLoaded), like `company`. */
   primary_operational_site?: EmploymentRelationRef | null
@@ -156,7 +158,8 @@ export interface UserDetailWithPermissions extends UserDetail {
 export interface EmploymentPayload {
   is_manager: boolean
   job_description: string | null
-  reports_to_id: number | null
+  /** Zero or more manager ids (spec 0166); [] when `is_manager` is true. */
+  reports_to_ids: number[]
   relationship_type: RelationshipType | null
   company_id: number | null
   /** At most one physical site (spec 0103 D-3); mirrors `EmploymentDetail`. */

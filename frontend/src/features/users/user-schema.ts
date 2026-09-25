@@ -31,7 +31,7 @@ function buildEmploymentSchema(t: TFunction) {
     .object({
       is_manager: z.boolean(),
       job_description: z.string().max(255, t('users.form.employment.jobDescriptionMax')),
-      reports_to_id: z.number().nullable(),
+      reports_to_ids: z.array(z.number()),
       relationship_type: z.enum(RELATIONSHIP_TYPES).nullable(),
       company_id: z.number().nullable(),
       // Site membership (spec 0103): at most one physical site, plus zero or

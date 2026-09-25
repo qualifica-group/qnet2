@@ -25,6 +25,9 @@ const DEFAULT_LOCALE: UserLocale = 'it'
  */
 const EMPTY_REMOTE_SITE_IDS: number[] = []
 
+/** Same stable-reference reasoning for the reports-to id array (spec 0166). */
+const EMPTY_REPORTS_TO_IDS: number[] = []
+
 /** Same stable-reference reasoning for the competence row field (spec 0111). */
 const EMPTY_PRODUCT_LINES: CompetenceLineRow[] = []
 
@@ -38,7 +41,7 @@ const EMPTY_KNOWN_LINES: KnownProductLine[] = []
 export const EMPTY_EMPLOYMENT: EmploymentFormValues = {
   is_manager: false,
   job_description: '',
-  reports_to_id: null,
+  reports_to_ids: EMPTY_REPORTS_TO_IDS,
   relationship_type: null,
   company_id: null,
   primary_operational_site_id: null,
@@ -104,7 +107,7 @@ export function useUserFormDefaults(
           ? {
               is_manager: employment.is_manager,
               job_description: employment.job_description ?? '',
-              reports_to_id: employment.reports_to_id,
+              reports_to_ids: employment.reports_to_ids,
               relationship_type: employment.relationship_type,
               company_id: employment.company_id,
               primary_operational_site_id: employment.primary_operational_site_id,
@@ -151,7 +154,7 @@ export function useUserFormHydration(mode: UserFormMode) {
       selectedPrimaryOperationalSiteItem: relationToForSelectItem(employment?.primary_operational_site),
       selectedRemoteOperationalSiteItems: relationsToForSelectItems(employment?.remote_operational_sites),
       knownProductLines: employment?.product_lines ?? EMPTY_KNOWN_LINES,
-      selectedReportsToItem: relationToForSelectItem(employment?.reports_to),
+      selectedReportsToItems: relationsToForSelectItems(employment?.reports_to),
     }),
     [mode, employment],
   )

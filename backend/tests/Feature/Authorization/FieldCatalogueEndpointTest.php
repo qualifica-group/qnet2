@@ -182,11 +182,12 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         'personal_data.birth_city_id', 'personal_data.residence_city_id', 'personal_data.gender',
         'personal_data.contacts', 'personal_data.addresses',
         // spec 0015 — the employment.* keys; spec 0103 (D-9) split the single
-        // employment.operational_site_id into primary/remote.
+        // employment.operational_site_id into primary/remote; spec 0166 (D-8)
+        // renamed employment.reports_to_id to employment.reports_to_ids.
         'employment.is_manager',
         // spec 0129 D-1 — the profile-wide wildcard flag.
         'employment.covers_all_product_categories',
-        'employment.job_description', 'employment.reports_to_id',
+        'employment.job_description', 'employment.reports_to_ids',
         // spec 0111 — the assignment competence as {function, category} rows,
         // replacing the former business_function_id/product_category_ids pair.
         'employment.product_lines',
@@ -204,6 +205,11 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         ->and($byKey)->not->toHaveKey('employment.business_function_id')
         ->and($byKey)->not->toHaveKey('employment.product_category_ids')
         ->and($byKey->get('employment.product_lines'))->toMatchArray(['type' => 'collection', 'group' => 'employment']);
+
+    // Spec 0166 (AC-009/D-8): the single-select employment.reports_to_id is
+    // gone, replaced by the multiselect employment.reports_to_ids.
+    expect($byKey)->not->toHaveKey('employment.reports_to_id')
+        ->and($byKey->get('employment.reports_to_ids'))->toMatchArray(['type' => 'multiselect', 'group' => 'employment']);
 
     $expectedTypes = [
         'personal_data.type' => 'select',

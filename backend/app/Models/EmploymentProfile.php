@@ -20,18 +20,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * qualification, dates) and Contractual data (daily minutes). One row per
  * user (hasOne on User via HasEmployment).
  *
- * Two of its sections are no longer columns on this table: the site
+ * Three of its sections are no longer columns on this table: the site
  * membership (spec 0103) lives on the
- * `employment_profile_operational_site` pivot (see operationalSites()), and
- * the business function (spec 0111 D-1) on the `employment_product_lines`
- * rows, paired with a product category (see productLines()).
+ * `employment_profile_operational_site` pivot (see operationalSites()), the
+ * business function (spec 0111 D-1) on the `employment_product_lines` rows,
+ * paired with a product category (see productLines()), and the reports-to
+ * relationship (spec 0166 D-2) on the `employment_profile_manager` pivot
+ * (see reportsTo()) — a user may now report to several managers, not just
+ * one.
  */
 #[Fillable([
     'user_id',
     'is_manager',
     'covers_all_product_categories',
     'job_description',
-    'reports_to_id',
     'relationship_type',
     'company_id',
     'qualification_type',
@@ -68,11 +70,16 @@ class EmploymentProfile extends BaseModel
     }
 
     /**
-     * The manager this employee reports to, if any (self-referencing on User).
+     * The zero-or-more managers this employee reports to (spec 0166 D-2/D-3,
+     * replacing the single `reports_to_id` FK), ordered by name so every
+     * consumer (EmploymentResource, the field-permission accessor below)
+     * reads them in a stable, user-facing order without sorting itself.
      */
-    public function reportsTo(): BelongsTo
+    public function reportsTo(): BelongsToMany
     {
-        return $this->belongsTo(User::class, 'reports_to_id');
+        return $this->belongsToMany(User::class, 'employment_profile_manager', 'employment_profile_id', 'user_id')
+            ->withTimestamps()
+            ->orderBy('users.name');
     }
 
     public function company(): BelongsTo
@@ -173,5 +180,28 @@ class EmploymentProfile extends BaseModel
                 ->pluck('id')
                 ->all()
         );
+    }
+
+    /**
+     * Read-only proxy onto the `reportsTo` pivot (spec 0166 D-3, replacing
+     * the former `reports_to_id` column): EnforcesFieldPermissions::
+     * readNestedPath() resolves `employment.reports_to_ids` down to this
+     * accessor via Model::getAttribute(), and needs a plain array back, not a
+     * Collection of Models — without it a resubmit of the SAME set on a
+     * locked field would always look "changed" and 422 spuriously (mirrors
+     * remoteOperationalSiteIds() above).
+     *
+     * PUBLIC, same reason as remoteOperationalSiteIds(): EnforcesFieldPermissions
+     * ::isRelation() calls the method directly to probe whether it is a
+     * Relation — a protected method would fatal on that external call.
+     *
+     * Reads off the already-loaded reportsTo collection rather than issuing
+     * its own query, so eager-loading `employment.reportsTo` covers this too.
+     *
+     * @return array<int, int>
+     */
+    public function reportsToIds(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->reportsTo->pluck('id')->all());
     }
 }

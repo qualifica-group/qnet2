@@ -26,7 +26,7 @@ uses(RefreshDatabase::class);
 // Seeder
 // ---------------------------------------------------------------------------
 
-it('seeds at least 2 managers and every other seeded user reports to one of them (no self-reference)', function () {
+it('seeds at least 2 managers and every other seeded user reports to one or more of them (no self-reference)', function () {
     $this->seed(RolePermissionSeeder::class);
     $this->seed(DemoRolesSeeder::class);
     $this->seed(DemoUsersSeeder::class);
@@ -37,7 +37,7 @@ it('seeds at least 2 managers and every other seeded user reports to one of them
     expect($managers->count())->toBeGreaterThanOrEqual(2);
 
     foreach ($managers as $manager) {
-        expect($manager->reports_to_id)->toBeNull();
+        expect($manager->reportsToIds)->toBe([]);
     }
 
     $managerUserIds = $managers->pluck('user_id')->all();
@@ -46,10 +46,17 @@ it('seeds at least 2 managers and every other seeded user reports to one of them
     expect($subordinates->count())->toBeGreaterThanOrEqual(1);
 
     foreach ($subordinates as $subordinate) {
-        expect($subordinate->reports_to_id)->not->toBeNull()
-            ->and($subordinate->reports_to_id)->toBeIn($managerUserIds)
-            ->and($subordinate->reports_to_id)->not->toBe($subordinate->user_id);
+        expect($subordinate->reportsToIds)->not->toBe([]);
+
+        foreach ($subordinate->reportsToIds as $managerId) {
+            expect($managerId)->toBeIn($managerUserIds)
+                ->and($managerId)->not->toBe($subordinate->user_id);
+        }
     }
+
+    // Spec 0166 D-2: at least one demo subordinate reports to more than one
+    // manager.
+    expect($subordinates->contains(fn (EmploymentProfile $profile): bool => count($profile->reportsToIds) > 1))->toBeTrue();
 });
 
 it('fills the company FK and the site membership pivot from the seeded lookups', function () {
@@ -210,20 +217,29 @@ it('0129 AC-019: re-seeding twice keeps the same row count and always yields a p
 // Factory states
 // ---------------------------------------------------------------------------
 
-it('EmploymentProfileFactory::manager() forces is_manager true and reports_to null', function () {
+it('EmploymentProfileFactory::manager() forces is_manager true and reports_to empty', function () {
     $employment = EmploymentProfile::factory()->manager()->create();
 
     expect($employment->is_manager)->toBeTrue()
-        ->and($employment->reports_to_id)->toBeNull();
+        ->and($employment->reportsToIds)->toBe([]);
 });
 
-it('EmploymentProfileFactory::reportsTo() points to the given manager', function () {
+it('EmploymentProfileFactory::reportsTo() points to the given manager(s)', function () {
     $manager = User::factory()->create();
 
     $employment = EmploymentProfile::factory()->reportsTo($manager)->create();
 
     expect($employment->is_manager)->toBeFalse()
-        ->and($employment->reports_to_id)->toBe($manager->id);
+        ->and($employment->reportsToIds)->toBe([$manager->id]);
+});
+
+it('0166: EmploymentProfileFactory::reportsTo() accepts several managers', function () {
+    $managerA = User::factory()->create();
+    $managerB = User::factory()->create();
+
+    $employment = EmploymentProfile::factory()->reportsTo($managerA, $managerB)->create();
+
+    expect($employment->reportsToIds)->toEqualCanonicalizing([$managerA->id, $managerB->id]);
 });
 
 it('UserFactory::withEmployment()/manager()/reportsTo() attach an employment profile', function () {
@@ -232,7 +248,7 @@ it('UserFactory::withEmployment()/manager()/reportsTo() attach an employment pro
         ->and($manager->employment->is_manager)->toBeTrue();
 
     $subordinate = User::factory()->reportsTo($manager)->create();
-    expect($subordinate->employment->reports_to_id)->toBe($manager->id);
+    expect($subordinate->employment->reportsToIds)->toBe([$manager->id]);
 
     $plain = User::factory()->withEmployment()->create();
     expect($plain->employment)->not->toBeNull();

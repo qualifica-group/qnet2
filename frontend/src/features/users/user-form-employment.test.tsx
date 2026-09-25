@@ -114,6 +114,36 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   ),
 }))
 
+/**
+ * Same stand-in, multi-select flavor (spec 0166: `reports_to_ids`): exposes
+ * `resource` and the hydrated `selectedItems` labels, and lets a test append
+ * one id via its `pick-*` button.
+ */
+vi.mock('@/components/ui/async-paginated-multi-select', () => ({
+  AsyncPaginatedMultiSelect: ({
+    resource,
+    value,
+    onChange,
+    selectedItems,
+    labels,
+  }: {
+    resource: string
+    value: number[]
+    onChange: (value: number[]) => void
+    selectedItems?: { id: number; label: string }[]
+    labels: { triggerLabel: string }
+  }) => (
+    <div>
+      <span data-testid={`resource-${labels.triggerLabel}`}>{resource}</span>
+      <span data-testid={`selected-label-${labels.triggerLabel}`}>
+        {(selectedItems ?? []).map((item) => item.label).join(', ')}
+      </span>
+      <button type="button" onClick={() => onChange([...value, 1])}>{`pick-${labels.triggerLabel}`}</button>
+      <button type="button" onClick={() => onChange([])}>{`clear-${labels.triggerLabel}`}</button>
+    </div>
+  ),
+}))
+
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -150,12 +180,12 @@ function userWithEmployment(): UserDetailWithPermissions {
       terminated_at: null,
       standard_daily_minutes: 480,
       break_daily_minutes: 30,
-      reports_to_id: 2,
+      reports_to_ids: [2],
       company_id: 5,
       primary_operational_site_id: 8,
       remote_operational_site_ids: [9, 10],
       covers_all_product_categories: false,
-      reports_to: { id: 2, label: 'Grace Hopper' },
+      reports_to: [{ id: 2, label: 'Grace Hopper' }],
       company: { id: 5, label: 'Acme Srl' },
       primary_operational_site: { id: 8, label: 'Via Roma 1' },
       remote_operational_sites: [
@@ -245,8 +275,8 @@ describe('UserForm — single-screen layout (user directive 2026-09-07)', () => 
   })
 })
 
-describe('UserForm — is_manager / reports_to (spec 0015 AC-015)', () => {
-  it('hides reports_to and force-nulls it in the payload once is_manager is enabled', async () => {
+describe('UserForm — is_manager / reports_to (spec 0015 AC-015, spec 0166 D-5)', () => {
+  it('hides reports_to and force-empties it in the payload once is_manager is enabled', async () => {
     render(<UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
@@ -266,10 +296,10 @@ describe('UserForm — is_manager / reports_to (spec 0015 AC-015)', () => {
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     const payload = createUserMock.mock.calls[0][0]
     expect(payload.employment.is_manager).toBe(true)
-    expect(payload.employment.reports_to_id).toBeNull()
+    expect(payload.employment.reports_to_ids).toEqual([])
   })
 
-  it('keeps reports_to visible and submits its value when is_manager is false', async () => {
+  it('keeps reports_to visible and submits its selected ids when is_manager is false', async () => {
     render(<UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
@@ -283,7 +313,7 @@ describe('UserForm — is_manager / reports_to (spec 0015 AC-015)', () => {
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     const payload = createUserMock.mock.calls[0][0]
     expect(payload.employment.is_manager).toBe(false)
-    expect(payload.employment.reports_to_id).toBe(1)
+    expect(payload.employment.reports_to_ids).toEqual([1])
   })
 })
 
@@ -317,7 +347,7 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
     expect(payload.employment).toEqual({
       is_manager: false,
       job_description: null,
-      reports_to_id: null,
+      reports_to_ids: [],
       relationship_type: null,
       company_id: null,
       primary_operational_site_id: null,
@@ -354,6 +384,33 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
 
     await waitFor(() =>
       expect(screen.getByText('The selected company is invalid.')).toBeInTheDocument(),
+    )
+    expect(updateUserMock).toHaveBeenCalledTimes(1)
+  })
+
+  /** Spec 0166 AC-014: the per-id 422 (duplicate/inexistent/self) is indexed, no RHF path matches it directly. */
+  it('surfaces an indexed employment.reports_to_ids.N 422 under the field', async () => {
+    personalDataData.mockReturnValue(validCard)
+    updateUserMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: {
+          success: false,
+          message: 'Validation failed',
+          errors: { 'employment.reports_to_ids.0': ['A user cannot report to themselves.'] },
+        },
+      } as never),
+    )
+
+    render(
+      <UserForm mode={{ type: 'edit', user: userWithEmployment() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('A user cannot report to themselves.')).toBeInTheDocument(),
     )
     expect(updateUserMock).toHaveBeenCalledTimes(1)
   })

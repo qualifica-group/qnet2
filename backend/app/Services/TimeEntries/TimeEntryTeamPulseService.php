@@ -102,11 +102,12 @@ final class TimeEntryTeamPulseService
     }
 
     /**
-     * `employment.primaryOperationalSite` nested eager load: the profile
-     * (target/manager_id/job_description) and its at-most-one physical site
-     * (D-3) in the same round trip as `roles`/`avatar`, so the whole member
-     * list costs exactly 5 queries (users, employment, primaryOperationalSite,
-     * roles, avatar) no matter how many members are in $memberIds.
+     * `employment.primaryOperationalSite`/`employment.reportsTo` nested eager
+     * loads: the profile (job_description) plus its at-most-one physical site
+     * (D-3) and its manager set (spec 0166 D-7) in the same round trip as
+     * `roles`/`avatar`, so the whole member list costs exactly 6 queries
+     * (users, employment, primaryOperationalSite, reportsTo, roles, avatar)
+     * no matter how many members are in $memberIds.
      *
      * @param  list<int>  $memberIds
      * @return Collection<int, User>
@@ -115,7 +116,7 @@ final class TimeEntryTeamPulseService
     {
         return User::query()
             ->whereIn('id', $memberIds)
-            ->with(['employment.primaryOperationalSite', 'roles', 'avatar'])
+            ->with(['employment.primaryOperationalSite', 'employment.reportsTo:id,name', 'roles', 'avatar'])
             ->orderBy('name')
             ->get();
     }
@@ -189,9 +190,12 @@ final class TimeEntryTeamPulseService
             ->unique()
             ->count();
 
+        $managerIds = $member->employment?->reports_to_ids ?? [];
+        sort($managerIds);
+
         return new TimeEntryTeamMemberData(
             user: $member,
-            managerId: $member->employment?->reports_to_id,
+            managerIds: $managerIds,
             jobDescription: $member->employment?->job_description,
             businessFunctions: $businessFunctions,
             operationalSite: $member->employment?->primaryOperationalSite->first(),

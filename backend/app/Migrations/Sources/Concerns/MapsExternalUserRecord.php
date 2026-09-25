@@ -132,6 +132,12 @@ trait MapsExternalUserRecord
      * unresolved, is the whole desired state of that side. The remote side is
      * left unprovided: the external system has no notion of it.
      *
+     * The external system likewise carries a SINGLE manager per user (spec
+     * 0166 context — the pivot's whole reason to keep a `reportsToIdsProvided`
+     * flag at all): `reportsToIdsProvided` is always true on a create too — the
+     * resolved id as a one-element array, or `[]` when absent/unresolved, is
+     * the whole desired state of the `reportsTo` pivot.
+     *
      * @param  array<string, mixed>  $record
      * @return array{0: ?EmploymentData, 1: array<int, string>}
      */
@@ -150,7 +156,8 @@ trait MapsExternalUserRecord
         $employment = new EmploymentData(
             isManager: (bool) ($record['is_manager'] ?? false),
             jobDescription: $this->blankToNull($record['job_description'] ?? null),
-            reportsToId: $reportsToId,
+            reportsToIdsProvided: true,
+            reportsToIds: $reportsToId === null ? [] : [$reportsToId],
             relationshipType: $this->resolveRelationshipType($record['relationship_type'] ?? null, $warnings),
             companyId: $companyId,
             primaryOperationalSiteIdProvided: true,
@@ -168,18 +175,19 @@ trait MapsExternalUserRecord
     /**
      * Self-healing re-import (spec 0013 idempotency, extended): a user whose
      * `old_id` already exists is not blindly skipped — any employment relation
-     * still NULL on the existing row is back-filled from the external record
+     * still unset on the existing row is back-filled from the external record
      * via `old_id`, without overwriting a value already set or duplicating
      * anything. This resolves the two cases a single create-time pass cannot:
-     * a user imported BEFORE its parents (company / site) were migrated, and
-     * the self-referential manager (`reports_to_id`) whose record is processed
+     * a user imported BEFORE its parents (company / site / manager) were
+     * migrated, and the self-referential manager whose record is processed
      * after the subordinate — both are fixed by simply running the users
      * import again once every parent exists.
      *
-     * The site membership (spec 0103) is no longer one of these NULL columns:
-     * its own "fill once, never overwrite" counterpart is
-     * backfillPhysicalSite() below, keyed off the pivot instead of a column —
-     * see resolveAndBackfillEmployment() for how the two combine.
+     * Neither the site membership (spec 0103) nor the reports-to manager
+     * (spec 0166) is a NULL column any more: their own "fill once, never
+     * overwrite" counterparts are backfillPhysicalSite() and
+     * backfillManager() below, each keyed off its own pivot instead of a
+     * column — see resolveAndBackfillEmployment() for how all three combine.
      *
      * @param  array<string, mixed>  $record
      * @return array<int, string>
@@ -216,10 +224,16 @@ trait MapsExternalUserRecord
      * Re-resolve the record's employment relations and back-fill any that are
      * still unset on the already-existing user: the plain columns via
      * nullRelationBackfill(), the site membership via backfillPhysicalSite()
-     * (spec 0103 — a pivot row, not a column, so it needs its own gate).
-     * Returns how many references were filled in total and the resolution
-     * warnings — shared by the re-import skip path and the end-of-import
-     * relinking pass, which surface them differently.
+     * (spec 0103) and the reports-to manager via backfillManager() (spec
+     * 0166) — the latter two are pivot rows, not columns, so each needs its
+     * own gate. Returns how many references were filled in total and the
+     * resolution warnings — shared by the re-import skip path and the
+     * end-of-import relinking pass, which surface them differently.
+     *
+     * Both `employment.operationalSites` and `employment.reportsTo` are
+     * eager-loaded here so that backfillPhysicalSite()/backfillManager() read
+     * their pivot state off the already-loaded collections, without a lazy
+     * load on the single row this method handles.
      *
      * @param  array<string, mixed>  $record
      * @return array{0: int, 1: array<int, string>}
@@ -231,7 +245,9 @@ trait MapsExternalUserRecord
         }
 
         /** @var User|null $user */
-        $user = User::query()->where('old_id', $externalId)->with('employment.operationalSites')->first();
+        $user = User::query()->where('old_id', $externalId)
+            ->with(['employment.operationalSites', 'employment.reportsTo'])
+            ->first();
 
         if ($user?->employment === null) {
             return [0, []];
@@ -254,16 +270,19 @@ trait MapsExternalUserRecord
             $filled++;
         }
 
+        if ($this->backfillManager($user->employment, $employment)) {
+            $filled++;
+        }
+
         return [$filled, $warnings];
     }
 
     /**
      * The plain employment relation columns still NULL on the existing row
-     * that now resolve to a qnet id — filled once, never overwriting. The
-     * site membership (spec 0103) is no longer one of these columns: its own
-     * counterpart is backfillPhysicalSite() below. A manager can never report
-     * to someone (the EmploymentWriter invariant), so `reports_to_id` is
-     * back-filled only for non-managers.
+     * that now resolve to a qnet id — filled once, never overwriting. Neither
+     * the site membership (spec 0103) nor the reports-to manager (spec 0166)
+     * is one of these columns any more: their own counterparts are
+     * backfillPhysicalSite() and backfillManager() below.
      *
      * @return array<string, int>
      */
@@ -272,10 +291,6 @@ trait MapsExternalUserRecord
         $candidates = [
             'company_id' => $desired->companyId,
         ];
-
-        if (! $desired->isManager) {
-            $candidates['reports_to_id'] = $desired->reportsToId;
-        }
 
         $fill = [];
 
@@ -313,6 +328,37 @@ trait MapsExternalUserRecord
         $existing->operationalSites()->syncWithoutDetaching([
             $desired->primaryOperationalSiteId => ['is_primary' => true],
         ]);
+
+        return true;
+    }
+
+    /**
+     * Self-healing counterpart of backfillPhysicalSite() for the reports-to
+     * manager (spec 0166 D-10, replacing the former "fill once" gate on the
+     * NULL `reports_to_id` column): a non-manager profile with NO manager AT
+     * ALL yet gets the resolved external manager attached to
+     * `employment_profile_manager` — the same "fill once, never overwrite"
+     * property translated from a NULL column to an absent/empty pivot. A
+     * profile that already has at least one manager (assigned by hand, or by
+     * an earlier import pass) is left untouched: this is what keeps a manual
+     * assignment surviving re-import, and what makes re-importing the same
+     * record idempotent. A manager can never report to someone (the
+     * EmploymentWriter invariant), so this never attaches when the desired
+     * state itself is a manager.
+     *
+     * Reads off the already-eager-loaded `reportsTo` collection
+     * (resolveAndBackfillEmployment()) rather than issuing its own query, so
+     * no lazy load is triggered.
+     */
+    private function backfillManager(EmploymentProfile $existing, EmploymentData $desired): bool
+    {
+        $managerId = $desired->reportsToIds[0] ?? null;
+
+        if ($desired->isManager || $managerId === null || $existing->reportsToIds !== []) {
+            return false;
+        }
+
+        $existing->reportsTo()->syncWithoutDetaching([$managerId]);
 
         return true;
     }

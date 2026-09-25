@@ -37,6 +37,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * `covers_all_product_categories` (spec 0129 D-1) is a plain scalar, emitted
  * unconditionally like `is_manager` — it needs no eager load.
+ *
+ * The reports-to managers (spec 0166 D-2, replacing the single
+ * `reports_to_id`/`reports_to` pair) follow the same `whenLoaded` discipline
+ * as every other relation here: `reports_to_ids` proxies the profile's own
+ * accessor (which reads off the `reportsTo` pivot collection, ordered by
+ * name), and `reports_to` is the SAME collection projected to `{id,label}`
+ * references, both emitted only when `reportsTo` was eager-loaded.
  */
 class EmploymentResource extends JsonResource
 {
@@ -57,7 +64,7 @@ class EmploymentResource extends JsonResource
             'standard_daily_minutes' => $this->standard_daily_minutes,
             'break_daily_minutes' => $this->break_daily_minutes,
 
-            'reports_to_id' => $this->reports_to_id,
+            'reports_to_ids' => $this->reports_to_ids,
             'company_id' => $this->company_id,
             'primary_operational_site_id' => $this->primary_operational_site_id,
             'remote_operational_site_ids' => $this->remote_operational_site_ids,
@@ -67,8 +74,11 @@ class EmploymentResource extends JsonResource
             ),
 
             'reports_to' => $this->when(
-                $this->relationLoaded('reportsTo') && $this->reportsTo !== null,
-                fn (): array => $this->reference($this->reportsTo, static fn (User $user): string => $user->name),
+                $this->relationLoaded('reportsTo'),
+                fn (): array => $this->reportsTo
+                    ->map(fn (User $manager): array => $this->reference($manager, static fn (User $user): string => $user->name))
+                    ->values()
+                    ->all(),
             ),
             'company' => $this->when(
                 $this->relationLoaded('company') && $this->company !== null,

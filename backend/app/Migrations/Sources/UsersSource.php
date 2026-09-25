@@ -215,8 +215,8 @@ class UsersSource extends AbstractMigrationSource
 
     /**
      * Second pass over every imported user: back-fill any employment relation
-     * (notably the self-referential `reports_to_id`) left null because the
-     * referenced user was processed later in the SAME run. Each relink is
+     * (notably the self-referential `reports_to_id`) still unresolved because
+     * the referenced user was processed later in the SAME run. Each relink is
      * isolated in its own transaction so a single failure never aborts the
      * pass; only successful relinks are appended to the run report.
      */

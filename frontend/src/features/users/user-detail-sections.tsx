@@ -98,6 +98,27 @@ export function UserDetailSections({ user, assignment }: UserDetailSectionsProps
   )
 }
 
+/**
+ * Zero or more managers as chips (spec 0166); the shared empty marker when
+ * there is none. Plain text, not a `RecordLink`: people are never linked that
+ * way (see `record-link.tsx`) — they open through `UserProfileHoverCard`
+ * instead, which this read-only field does not need.
+ */
+function ManagerBadges({ managers }: { managers: EmploymentRelationRef[] }) {
+  if (managers.length === 0) {
+    return <DetailEmpty />
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {managers.map((manager) => (
+        <Badge key={manager.id} variant="secondary" className="max-w-full">
+          {manager.label}
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
 /** Zero or more Sedi as chips; the shared empty marker when there is none. */
 function SiteBadges({ sites }: { sites: EmploymentRelationRef[] }) {
   if (sites.length === 0) {
@@ -130,7 +151,7 @@ function UserProfileSection({ employment }: { employment: EmploymentDetail }) {
           {employment.job_description || <DetailEmpty />}
         </RecordField>
         <RecordField label={t('users.detail.employment.reportsTo')}>
-          {employment.reports_to?.label ?? <DetailEmpty />}
+          <ManagerBadges managers={employment.reports_to} />
         </RecordField>
       </RecordFieldList>
     </RecordSection>

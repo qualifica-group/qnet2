@@ -14,13 +14,15 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The 9 employment-derived grid columns on the `users` table (spec 0015):
- * company/reports_to (related NAMES), relationship_type/qualification_type
- * (enums), is_manager (boolean), hired_at/terminated_at (dates),
- * business_function (AGGREGATED over the competence rows since spec 0111
- * D-1, delegated to UserBusinessFunctionColumn) and operational_site
- * (formatted address line, CONDITIONS-ONLY — mirrors `primary_address`,
- * spec 0005 UX decision; cell/filter/sort split physical-vs-remote per spec
- * 0103 D-7, delegated to UserOperationalSiteColumn).
+ * company (related NAME), relationship_type/qualification_type (enums),
+ * is_manager (boolean), hired_at/terminated_at (dates), business_function
+ * (AGGREGATED over the competence rows since spec 0111 D-1, delegated to
+ * UserBusinessFunctionColumn), operational_site (formatted address line,
+ * CONDITIONS-ONLY — mirrors `primary_address`, spec 0005 UX decision;
+ * cell/filter/sort split physical-vs-remote per spec 0103 D-7, delegated to
+ * UserOperationalSiteColumn) and reports_to (AGGREGATED over the
+ * `employment_profile_manager` pivot since spec 0166 D-2/D-9, delegated to
+ * UserReportsToColumn).
  *
  * None of these has a real column on `users`: every filter/sort/distinct-
  * values resolution goes through `employment` (a hasOne), matched via
@@ -49,7 +51,6 @@ class UserEmploymentColumns
      */
     private const array RELATED_NAME_COLUMNS = [
         'company' => ['table' => 'companies', 'nameColumn' => 'denomination', 'relation' => 'employment.company', 'fk' => 'company_id'],
-        'reports_to' => ['table' => 'users', 'nameColumn' => 'name', 'relation' => 'employment.reportsTo', 'fk' => 'reports_to_id'],
     ];
 
     private const array ENUM_COLUMNS = ['relationship_type', 'qualification_type'];
@@ -60,6 +61,7 @@ class UserEmploymentColumns
         private readonly FilterApplier $filterApplier,
         private readonly UserOperationalSiteColumn $operationalSiteColumn,
         private readonly UserBusinessFunctionColumn $businessFunctionColumn,
+        private readonly UserReportsToColumn $reportsToColumn,
     ) {}
 
     public function isEmploymentColumn(string $columnId): bool
@@ -69,7 +71,8 @@ class UserEmploymentColumns
             || in_array($columnId, self::DATE_COLUMNS, true)
             || $columnId === 'is_manager'
             || $columnId === 'business_function'
-            || $columnId === 'operational_site';
+            || $columnId === 'operational_site'
+            || $columnId === 'reports_to';
     }
 
     /**
@@ -86,26 +89,10 @@ class UserEmploymentColumns
             'relationship_type' => $employment?->relationship_type?->value,
             'qualification_type' => $employment?->qualification_type?->value,
             'is_manager' => $employment?->is_manager ?? false,
-            'reports_to' => $this->userSummary($employment?->reportsTo),
+            'reports_to' => $this->reportsToColumn->managers($employment),
             'hired_at' => $employment?->hired_at,
             'terminated_at' => $employment?->terminated_at,
         ];
-    }
-
-    /**
-     * `reports_to` as an `{id, name}` summary (not a bare name), so the grid can
-     * render it as a clickable user chip that opens the person's detail — the
-     * same row shape every other user column emits.
-     *
-     * @return array{id: int, name: string}|null
-     */
-    private function userSummary(?User $user): ?array
-    {
-        if ($user === null) {
-            return null;
-        }
-
-        return ['id' => $user->id, 'name' => $user->name];
     }
 
     /**
@@ -126,6 +113,12 @@ class UserEmploymentColumns
     {
         if ($columnId === 'business_function') {
             $this->businessFunctionColumn->applyFilter($query, $filter);
+
+            return;
+        }
+
+        if ($columnId === 'reports_to') {
+            $this->reportsToColumn->applyFilter($query, $filter);
 
             return;
         }
@@ -221,6 +214,10 @@ class UserEmploymentColumns
             return $this->businessFunctionColumn->sortSubquery();
         }
 
+        if ($columnId === 'reports_to') {
+            return $this->reportsToColumn->sortSubquery();
+        }
+
         if (array_key_exists($columnId, self::RELATED_NAME_COLUMNS)) {
             return $this->relatedNameSortSubquery($columnId);
         }
@@ -245,24 +242,20 @@ class UserEmploymentColumns
     private function relatedNameSortSubquery(string $columnId): Builder
     {
         $column = self::RELATED_NAME_COLUMNS[$columnId];
-        // `reports_to` self-joins `users` (the outer query's own table), so it
-        // needs an alias; the other two related tables never collide.
-        $joinTarget = $columnId === 'reports_to' ? "{$column['table']} as employment_reports_to" : $column['table'];
-        $joinAlias = $columnId === 'reports_to' ? 'employment_reports_to' : $column['table'];
 
         return EmploymentProfile::query()
-            ->select("{$joinAlias}.{$column['nameColumn']}")
-            ->join($joinTarget, "{$joinAlias}.id", '=', "employment_profiles.{$column['fk']}")
+            ->select("{$column['table']}.{$column['nameColumn']}")
+            ->join($column['table'], "{$column['table']}.id", '=', "employment_profiles.{$column['fk']}")
             ->whereColumn('employment_profiles.user_id', 'users.id')
             ->limit(1);
     }
 
     /**
      * Excel-like distinct values (spec 0004/0005) for the 6 columns that have
-     * one (business_function [aggregated]/company/reports_to/relationship_type/
-     * qualification_type/is_manager). `operational_site`/`hired_at`/
-     * `terminated_at` declare `hasFilterValues:false` (UserColumnCatalog), so
-     * TableService never calls this method for them.
+     * one (business_function [aggregated]/company/reports_to [aggregated]/
+     * relationship_type/qualification_type/is_manager). `operational_site`/
+     * `hired_at`/`terminated_at` declare `hasFilterValues:false`
+     * (UserColumnCatalog), so TableService never calls this method for them.
      *
      * @param  Builder<User>  $query
      * @return array<int, scalar>
@@ -271,6 +264,10 @@ class UserEmploymentColumns
     {
         if ($columnId === 'business_function') {
             return $this->businessFunctionColumn->distinctValues($query, $search, $limit);
+        }
+
+        if ($columnId === 'reports_to') {
+            return $this->reportsToColumn->distinctValues($query, $search, $limit);
         }
 
         if (array_key_exists($columnId, self::RELATED_NAME_COLUMNS)) {

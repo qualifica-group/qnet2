@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -18,7 +18,7 @@ function member(overrides: Partial<TeamPulseMember> & { id: number; name: string
   const { id, name, ...rest } = overrides
   return {
     user: { id, name, email: `${name}@example.test`, avatar_url: null },
-    manager_id: null,
+    manager_ids: [],
     job_description: null,
     roles: [],
     business_functions: [],
@@ -59,7 +59,7 @@ describe('TimeEntriesTeamPulse', () => {
   it('renders the manager and their subordinate once loaded', async () => {
     renderTeamPulse([
       member({ id: 1, name: 'Anna Ceo' }),
-      member({ id: 2, name: 'Bruno Manager', manager_id: 1 }),
+      member({ id: 2, name: 'Bruno Manager', manager_ids: [1] }),
     ])
 
     expect(await screen.findByText('Anna Ceo')).toBeInTheDocument()
@@ -69,7 +69,7 @@ describe('TimeEntriesTeamPulse', () => {
   it('does not call onSelectMember when clicking the current user own row', async () => {
     const { onSelectMember } = renderTeamPulse([
       member({ id: 1, name: 'Anna Ceo' }),
-      member({ id: 2, name: 'Bruno Manager', manager_id: 1 }),
+      member({ id: 2, name: 'Bruno Manager', manager_ids: [1] }),
     ])
 
     const ownRow = await screen.findByText('Anna Ceo')
@@ -79,13 +79,37 @@ describe('TimeEntriesTeamPulse', () => {
   })
 
   it('calls onSelectMember with the clicked member', async () => {
-    const target = member({ id: 2, name: 'Bruno Manager', manager_id: 1 })
+    const target = member({ id: 2, name: 'Bruno Manager', manager_ids: [1] })
     const { onSelectMember } = renderTeamPulse([member({ id: 1, name: 'Anna Ceo' }), target])
 
     const row = await screen.findByText('Bruno Manager')
     fireEvent.click(row.closest('button') as HTMLButtonElement)
 
     expect(onSelectMember).toHaveBeenCalledWith(target)
+  })
+
+  it('AC-013: collapsing one branch of a shared member leaves the other branch expanded', async () => {
+    const managerA = member({ id: 10, name: 'Aldo A' })
+    const managerB = member({ id: 11, name: 'Bice B' })
+    const shared = member({ id: 12, name: 'Carlo Shared', manager_ids: [10, 11] })
+    const grandchild = member({ id: 13, name: 'Dino Grandchild', manager_ids: [12] })
+
+    renderTeamPulse([managerA, managerB, shared, grandchild])
+
+    // Two distinct nodes for the same member (one per manager), each with its own toggle
+    // keyed by path (`10/12` and `11/12`) — collapsing one must not flip the other.
+    const carloNames = await screen.findAllByText('Carlo Shared')
+    const [toggleUnderA, toggleUnderB] = carloNames.map(
+      (name) => within(name.closest('div.relative') as HTMLElement).getByRole('button', { name: 'Collapse' }),
+    )
+    expect(toggleUnderA).toHaveAttribute('aria-expanded', 'true')
+    expect(toggleUnderB).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(toggleUnderA)
+
+    await waitFor(() => expect(toggleUnderA).toHaveAttribute('aria-expanded', 'false'))
+    expect(toggleUnderB).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getAllByText('Carlo Shared')).toHaveLength(2)
   })
 
   it('shows the empty-team message when the API returns no members', async () => {

@@ -31,6 +31,10 @@ class UserService
         // their names.
         'personalData.birthCity',
         'personalData.residenceCity',
+        // Spec 0166: zero-or-more managers on the employment_profile_manager
+        // pivot (was a single BelongsTo) — EmploymentResource emits every one
+        // of them, and EnforcesFieldPermissions' reportsToIds() accessor reads
+        // off this same eager-loaded collection.
         'employment.reportsTo',
         'employment.company',
         // The operational-site label is "line1[- city]" (EmploymentResource),
@@ -140,7 +144,7 @@ class UserService
             }
 
             $this->writeProfile($user, $profile);
-            $this->employmentWriter->write($user, $employment);
+            $this->employmentWriter->write($user, $employment, $actor);
 
             return $user;
         });
@@ -185,7 +189,7 @@ class UserService
             }
 
             $this->writeProfile($user, $profile);
-            $this->employmentWriter->write($user, $employment);
+            $this->employmentWriter->write($user, $employment, $actor);
 
             return $user;
         });

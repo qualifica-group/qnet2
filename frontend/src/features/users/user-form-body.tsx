@@ -100,7 +100,7 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
     selectedPrimaryOperationalSiteItem,
     selectedRemoteOperationalSiteItems,
     knownProductLines,
-    selectedReportsToItem,
+    selectedReportsToItems,
     onSubmit,
     setPendingAvatar,
     handleAvatarUpload,
@@ -134,7 +134,7 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
   const profileVisible =
     fieldPermission('employment.is_manager').visible ||
     fieldPermission('employment.job_description').visible ||
-    fieldPermission('employment.reports_to_id').visible
+    fieldPermission('employment.reports_to_ids').visible
   const contractVisible =
     fieldPermission('employment.relationship_type').visible ||
     fieldPermission('employment.company_id').visible
@@ -221,7 +221,7 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
               {profileVisible && (
                 <ProfileTabContent
                   control={form.control}
-                  selectedReportsToItem={selectedReportsToItem}
+                  selectedReportsToItems={selectedReportsToItems}
                 />
               )}
 

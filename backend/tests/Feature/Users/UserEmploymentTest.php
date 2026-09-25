@@ -67,7 +67,7 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
         'employment' => [
             'is_manager' => false,
             'job_description' => 'Backend engineer',
-            'reports_to_id' => $manager->id,
+            'reports_to_ids' => [$manager->id],
             // Spec 0111: the business function is written as a competence row,
             // not as a column of the profile.
             'product_lines' => [
@@ -87,8 +87,11 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
     $this->assertDatabaseHas('employment_profiles', [
         'user_id' => $created->id,
         'is_manager' => false,
-        'reports_to_id' => $manager->id,
         'company_id' => $company->id,
+    ]);
+    $this->assertDatabaseHas('employment_profile_manager', [
+        'employment_profile_id' => $created->employment->id,
+        'user_id' => $manager->id,
     ]);
     $this->assertDatabaseHas('employment_product_lines', [
         'employment_profile_id' => $created->employment->id,
@@ -101,8 +104,9 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
         'is_primary' => true,
     ]);
 
-    $response->assertJsonPath('data.employment.reports_to.id', $manager->id)
-        ->assertJsonPath('data.employment.reports_to.label', 'Manager One')
+    $response->assertJsonPath('data.employment.reports_to_ids', [$manager->id])
+        ->assertJsonPath('data.employment.reports_to.0.id', $manager->id)
+        ->assertJsonPath('data.employment.reports_to.0.label', 'Manager One')
         ->assertJsonPath('data.employment.product_lines.0.business_function', ['id' => $function->id, 'name' => 'Engineering'])
         ->assertJsonPath('data.employment.product_lines.0.product_category', ['id' => $category->id, 'name' => 'Fibra'])
         ->assertJsonPath('data.employment.company.id', $company->id)
@@ -135,7 +139,7 @@ it('0015 AC-002: create without employment persists no employment row', function
 // AC-003 — is_manager=true forces reports_to_id to null server-side.
 // ---------------------------------------------------------------------------
 
-it('0015 AC-003: is_manager=true forces employment.reports_to_id to null', function () {
+it('0166 AC-005: is_manager=true forces employment.reports_to_ids empty', function () {
     $actor = employmentTestActor(['create']);
     $wouldBeManager = User::factory()->create();
     Sanctum::actingAs($actor);
@@ -146,18 +150,19 @@ it('0015 AC-003: is_manager=true forces employment.reports_to_id to null', funct
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
-        'employment' => ['is_manager' => true, 'reports_to_id' => $wouldBeManager->id],
+        'employment' => ['is_manager' => true, 'reports_to_ids' => [$wouldBeManager->id]],
     ])->assertCreated();
 
     $response->assertJsonPath('data.employment.is_manager', true)
-        ->assertJsonMissingPath('data.employment.reports_to');
+        ->assertJsonPath('data.employment.reports_to_ids', [])
+        ->assertJsonPath('data.employment.reports_to', []);
 
     $created = User::where('email', 'manager@example.com')->first();
     $this->assertDatabaseHas('employment_profiles', [
         'user_id' => $created->id,
         'is_manager' => true,
-        'reports_to_id' => null,
     ]);
+    $this->assertDatabaseMissing('employment_profile_manager', ['employment_profile_id' => $created->employment->id]);
 });
 
 // ---------------------------------------------------------------------------
@@ -175,7 +180,7 @@ it('0015 AC-004: invalid employment fields reject with nested keys and roll back
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
         'employment' => [
-            'reports_to_id' => 999999,
+            'reports_to_ids' => [999999],
             'primary_operational_site_id' => 999999,
             'qualification_type' => 'not-a-real-type',
             'hired_at' => '2024-06-01',
@@ -183,7 +188,7 @@ it('0015 AC-004: invalid employment fields reject with nested keys and roll back
             'standard_daily_minutes' => 1500,
         ],
     ])->assertStatus(422)->assertJsonValidationErrors([
-        'employment.reports_to_id',
+        'employment.reports_to_ids.0',
         'employment.primary_operational_site_id',
         'employment.qualification_type',
         'employment.terminated_at',
@@ -247,14 +252,14 @@ it('0015 AC-005: update with an employment object upserts the row', function () 
 // AC-006 — no self-reference on update.
 // ---------------------------------------------------------------------------
 
-it('0015 AC-006: reports_to_id equal to the user being updated is rejected (422)', function () {
+it('0166 AC-006: reports_to_ids containing the user being updated is rejected (422)', function () {
     $actor = employmentTestActor(['update']);
     $target = User::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['reports_to_id' => $target->id],
-    ])->assertStatus(422)->assertJsonValidationErrors(['employment.reports_to_id']);
+        'employment' => ['reports_to_ids' => [$target->id]],
+    ])->assertStatus(422)->assertJsonValidationErrors(['employment.reports_to_ids.0']);
 
     $this->assertDatabaseMissing('employment_profiles', ['user_id' => $target->id]);
 });

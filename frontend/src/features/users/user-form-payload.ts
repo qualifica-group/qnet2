@@ -16,15 +16,15 @@ import type { UserFormValues } from '@/features/users/use-user-form'
 
 /**
  * Maps the employment form values to the nested wire payload (spec 0015).
- * Text/date `''` sentinels become `null`; `reports_to_id` is force-nulled
+ * Text/date `''` sentinels become `null`; `reports_to_ids` is force-emptied
  * client-side when `is_manager` is true, mirroring the server-side rule
- * (AC-003) as defense in depth.
+ * (spec 0166 D-5) as defense in depth.
  */
 function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload {
   return {
     is_manager: values.is_manager,
     job_description: values.job_description || null,
-    reports_to_id: values.is_manager ? null : values.reports_to_id,
+    reports_to_ids: values.is_manager ? [] : values.reports_to_ids,
     relationship_type: values.relationship_type,
     company_id: values.company_id,
     primary_operational_site_id: values.primary_operational_site_id,
