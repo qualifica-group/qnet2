@@ -47,10 +47,7 @@ use Illuminate\Validation\Rule;
  * create-only, PATCH keeps its own `notify_new_assigned_users` for D-7.
  *
  * `is_private`/`lead_id` follow the `sometimes` shape every other optional
- * field here does; `evidence` follows `description`'s own convention
- * instead (excluded from UpdateTaskData::submittedAttributes(), sanitized by
- * App\Services\Tasks\TaskEvidenceWriter and set directly, gated on its own
- * `evidenceSubmitted` flag).
+ * field here does.
  *
  * `assignee_ids`/`watcher_ids` are full-replaced by the Service ONLY when
  * their own key is present in the payload (AC-012), so a PATCH that touches
@@ -140,9 +137,8 @@ class UpdateTaskRequest extends FormRequest
             'assignee_ids.*' => ['integer', Rule::exists('users', 'id')],
             'watcher_ids' => ['sometimes', 'array'],
             'watcher_ids.*' => ['integer', Rule::exists('users', 'id')],
-            // Spec 0154: D-2/D-3/D-4/D-7 fields.
+            // Spec 0154: D-2/D-4/D-7 fields.
             'is_private' => ['sometimes', 'required', 'boolean'],
-            'evidence' => ['sometimes', 'nullable', 'string'],
             'lead_id' => ['sometimes', 'nullable', 'integer', Rule::exists('leads', 'id')],
             'notify_new_assigned_users' => ['sometimes', 'boolean'],
             ...TaskRecurrenceRules::rules(),

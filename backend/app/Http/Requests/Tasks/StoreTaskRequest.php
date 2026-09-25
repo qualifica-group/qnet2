@@ -149,9 +149,8 @@ class StoreTaskRequest extends FormRequest
             'assignee_ids.*' => ['integer', Rule::exists('users', 'id')],
             'watcher_ids' => ['sometimes', 'array'],
             'watcher_ids.*' => ['integer', Rule::exists('users', 'id')],
-            // Spec 0154: D-2/D-3/D-4/D-6/D-7 fields.
+            // Spec 0154: D-2/D-4/D-6/D-7 fields.
             'is_private' => ['sometimes', 'boolean'],
-            'evidence' => ['sometimes', 'nullable', 'string'],
             'lead_id' => ['sometimes', 'nullable', 'integer', Rule::exists('leads', 'id')],
             'is_completed' => ['sometimes', 'boolean'],
             'notify_assigned_users' => ['sometimes', 'boolean'],

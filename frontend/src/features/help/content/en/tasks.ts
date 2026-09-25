@@ -135,7 +135,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Section', 'Main fields'],
           rows: [
-            ['Task', 'Title (required), Description, Evidence, Parent task.'],
+            ['Task', 'Title (required), Description, Parent task.'],
             [
               'Classification',
               "Status (optional on create: when left unpicked, it starts from the default one), Type, Priority and Importance (all three required, prefilled from the catalog's default row), Category (a tree, indented — you can also pick a parent category).",

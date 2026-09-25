@@ -47,14 +47,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `stage_position` is DELIBERATELY absent: the board's own move/bulk
  * services assign it, the same category as `creator_id`.
  *
- * Spec 0154 adds three q-net-aligned fields: `is_private` (D-2, narrows
- * App\Services\Tasks\TaskVisibilityScope to the Task's own membership only),
- * `evidence` (D-3, rich text, sanitized by
- * App\Services\Tasks\TaskEvidenceWriter the same way `description` is by
- * TaskDescriptionWriter — direct property assignment, never mass-assigned
- * even though `evidence` sits in #[Fillable] for the same documentation
- * reason `description` does) and `lead_id` (D-4, must belong to
- * `registry_id` when the Task carries one).
+ * Spec 0154 adds two q-net-aligned fields: `is_private` (D-2, narrows
+ * App\Services\Tasks\TaskVisibilityScope to the Task's own membership only)
+ * and `lead_id` (D-4, must belong to `registry_id` when the Task carries
+ * one).
  */
 #[Fillable([
     'title',
@@ -82,7 +78,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'requires_validation',
     'closure_feedback',
     'is_private',
-    'evidence',
     'lead_id',
 ])]
 class Task extends BaseModel

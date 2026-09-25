@@ -30,6 +30,8 @@
          richiedente, assegnatari e osservatori; non lo vedono `tasks.viewAll` ne' la visibilita' per sede.
          Il super-admin (Gate::before) resta l'unica eccezione.
     D-3  Evidenze `evidence` (testo ricco, nullable), sanificato come la descrizione.
+         RITIRATA (decisione utente 2026-09-25): il campo e' eliminato, colonna rimossa da
+         `2026_09_25_130000_drop_evidence_from_tasks_table`; AC-004 e la voce `evidence` del contratto non valgono piu'.
     D-4  Lead `lead_id` (FK nullable, nullOnDelete); se il task ha un'anagrafica, il lead deve appartenerle (422).
     D-5  Milestone commessa: gia' presente come fase (`work_order_stage_id`); nessuna modifica.
     D-6  Creazione di un task gia' completato: `is_completed: true` in creazione. Il task nasce nello stato di
@@ -84,7 +86,7 @@
     AC-001 Una categoria figlia si crea con parent_id; un ciclo -> 422; il for-select restituisce parent_id e depth.
     AC-002 Il form mostra le categorie ad albero e permette di scegliere un padre.
     AC-003 Un task privato non compare a un utente con tasks.viewAll che non ha ruoli sul task (lista, dettaglio 403, export).
-    AC-004 evidence si salva sanificata e torna nel TaskResource.
+    AC-004 (RITIRATO 2026-09-25, D-3 eliminata) evidence si salva sanificata e torna nel TaskResource.
     AC-005 lead_id di un'altra anagrafica -> 422; della stessa -> 201.
     AC-006 Creazione con is_completed: stato chiusura positiva, un segnatempo dell'attore con estimated_minutes; con requires_validation -> 422.
     AC-007 notify_assigned_users=false: nessuna TaskAssigned/TaskWatching alla creazione; default true le invia.

@@ -109,12 +109,11 @@ class TasksAuthorization extends AbstractResourceAuthorization
         'closure_feedback' => 'textarea',
         'assignee_ids' => 'multiselect',
         'watcher_ids' => 'multiselect',
-        // Spec 0154, D-2/D-3/D-4: `is_private`/`evidence` follow `description`'s
-        // own ceiling (free for any actor who may write at all, never in
+        // Spec 0154, D-2/D-4: `is_private` follows `description`'s own
+        // ceiling (free for any actor who may write at all, never in
         // PROTECTED_FIELDS); `lead_id` is a record link, protected like
         // `referent_id`.
         'is_private' => 'boolean',
-        'evidence' => 'richtext',
         'lead_id' => 'select',
         // spec 0120: no existing form type fits an object with its own
         // internal shape (frequency/interval/weekdays/...), so the field

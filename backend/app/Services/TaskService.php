@@ -17,7 +17,6 @@ use App\Services\Tasks\TaskCreationCompletion;
 use App\Services\Tasks\TaskDefaultLookupResolver;
 use App\Services\Tasks\TaskDeleteCascade;
 use App\Services\Tasks\TaskDescriptionWriter;
-use App\Services\Tasks\TaskEvidenceWriter;
 use App\Services\Tasks\TaskHierarchyGuard;
 use App\Services\Tasks\TaskInitialStatusResolver;
 use App\Services\Tasks\TaskManualStatusGuard;
@@ -110,7 +109,6 @@ class TaskService
         private readonly TaskCreationCompletion $creationCompletion,
         private readonly TaskDefaultLookupResolver $defaultLookups,
         private readonly TaskDescriptionWriter $descriptionWriter,
-        private readonly TaskEvidenceWriter $evidenceWriter,
         private readonly TaskHierarchyGuard $hierarchyGuard,
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly TaskNotifier $notifier,
@@ -203,15 +201,13 @@ class TaskService
 
             $task->save();
 
-            // Step 5c: rich text description/evidence (spec 0128 D-2/D-3;
-            // spec 0154 D-3) — only once the Task has an id, since an inline
-            // description image becomes one of ITS OWN attachments. A
-            // second, small UPDATE only when either sanitized value actually
-            // differs from the null default.
+            // Step 5c: rich text description (spec 0128, D-2/D-3) — only
+            // once the Task has an id, since an inline image becomes one of
+            // ITS OWN attachments. A second, small UPDATE only when the
+            // sanitized/processed HTML actually differs from the null default.
             $this->descriptionWriter->applyOnCreate($task, $data->description, $creator);
-            $this->evidenceWriter->apply($task, $data->evidence);
 
-            if ($task->isDirty(['description', 'evidence'])) {
+            if ($task->isDirty('description')) {
                 $task->save();
             }
 
@@ -284,15 +280,11 @@ class TaskService
 
             $task->fill($data->submittedAttributes());
 
-            // Rich text description/evidence (spec 0128 D-2/D-3/D-4; spec
-            // 0154 D-3), each only when its own key was actually submitted —
-            // an untouched one is never re-sanitized.
+            // Rich text description (spec 0128, D-2/D-3/D-4), only when the
+            // key was actually submitted — an untouched description is never
+            // re-sanitized/re-processed and its attachments are left alone.
             if ($data->descriptionSubmitted) {
                 $this->descriptionWriter->applyOnUpdate($task, $data->description, $actor);
-            }
-
-            if ($data->evidenceSubmitted) {
-                $this->evidenceWriter->apply($task, $data->evidence);
             }
 
             // States reserved to the domain actions (spec 0123, D-4): checked
@@ -462,12 +454,12 @@ class TaskService
 
     /**
      * The column keys the client actually submitted on this PATCH, plus
-     * `description`/`evidence`/`assignee_ids`/`watcher_ids`/`recurrence` when
-     * their own key was present — none of the five travel through
-     * submittedAttributes(), which only carries plain mass-assignable
-     * `tasks` columns, yet all five are structural (D-5; spec 0120 D-13 for
-     * `recurrence`; spec 0128/spec 0154 for `description`/`evidence`, which
-     * their own writer sets directly rather than through fill()).
+     * `description`/`assignee_ids`/`watcher_ids`/`recurrence` when their own
+     * key was present — none of the four travel through submittedAttributes(),
+     * which only carries plain mass-assignable `tasks` columns, yet all four
+     * are structural (D-5; spec 0120 D-13 for `recurrence`; spec 0128 for
+     * `description`, which TaskDescriptionWriter sets directly rather than
+     * through fill()).
      *
      * @return array<int, string>
      */
@@ -477,10 +469,6 @@ class TaskService
 
         if ($data->descriptionSubmitted) {
             $keys[] = 'description';
-        }
-
-        if ($data->evidenceSubmitted) {
-            $keys[] = 'evidence';
         }
 
         if ($data->hasAssigneeIds()) {

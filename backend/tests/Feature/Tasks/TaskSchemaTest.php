@@ -46,8 +46,8 @@ it('AC-003: tasks carries every column of the data_contract', function () {
         'requester_id', 'creator_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
         'is_blocked', 'requires_closure_feedback', 'requires_validation', 'closure_feedback',
-        // Spec 0154: is_private (D-2), evidence (D-3), lead_id (D-4).
-        'is_private', 'evidence', 'lead_id',
+        // Spec 0154: is_private (D-2), lead_id (D-4).
+        'is_private', 'lead_id',
         'created_at', 'updated_at',
     ];
 

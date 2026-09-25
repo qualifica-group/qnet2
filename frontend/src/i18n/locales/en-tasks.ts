@@ -198,8 +198,6 @@ export const tasks = {
     titleRequired: 'The title is required.',
     titleMax: 'The title cannot exceed 191 characters.',
     description: 'Description',
-    evidence: 'Evidence',
-    evidencePlaceholder: 'Add the evidence of the work done…',
     isPrivate: 'Private task',
     isPrivateHint:
       'Visible only to the creator, requester, assignees and watchers: the View all and View by site permissions do not show it.',

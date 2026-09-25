@@ -5,7 +5,6 @@ export const SERVER_ERROR_FIELDS = [
   'title',
   'description',
   'is_private',
-  'evidence',
   'is_completed',
   'registry_id',
   'referent_id',

@@ -199,8 +199,6 @@ export const tasks = {
     titleRequired: 'Il titolo è obbligatorio.',
     titleMax: 'Il titolo non può superare 191 caratteri.',
     description: 'Descrizione',
-    evidence: 'Evidenze',
-    evidencePlaceholder: 'Aggiungi le evidenze del lavoro svolto…',
     isPrivate: 'Task privato',
     isPrivateHint:
       'Visibile solo a creatore, richiedente, assegnatari e osservatori: chi ha il permesso Visualizza tutti o Visualizza per sede non lo vede.',

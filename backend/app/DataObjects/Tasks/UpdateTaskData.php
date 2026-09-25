@@ -68,9 +68,6 @@ final readonly class UpdateTaskData
      * TaskDescriptionWriter, which sanitizes it, turns its inline images into
      * the Task's own attachments and sets the column directly, gated on
      * `descriptionSubmitted` below the same way every other flag here is.
-     * `evidence` (spec 0154, D-3) follows the SAME exclusion, sanitized by
-     * App\Services\Tasks\TaskEvidenceWriter instead, gated on its own
-     * `evidenceSubmitted` flag.
      *
      * @var array<string, array{string, string}>
      */
@@ -150,8 +147,6 @@ final readonly class UpdateTaskData
         public ?TaskRecurrenceData $recurrence = null,
         public bool $recurrenceSubmitted = false,
         public ?bool $isPrivate = null,
-        public ?string $evidence = null,
-        public bool $evidenceSubmitted = false,
         public ?int $leadId = null,
         public bool $leadIdSubmitted = false,
         public bool $notifyNewAssignedUsers = true,
@@ -210,8 +205,6 @@ final readonly class UpdateTaskData
             recurrence: isset($data['recurrence']) ? TaskRecurrenceData::fromValidated($data['recurrence']) : null,
             recurrenceSubmitted: array_key_exists('recurrence', $data),
             isPrivate: isset($data['is_private']) ? (bool) $data['is_private'] : null,
-            evidence: self::nullableString($data, 'evidence'),
-            evidenceSubmitted: array_key_exists('evidence', $data),
             leadId: self::nullableInt($data, 'lead_id'),
             leadIdSubmitted: array_key_exists('lead_id', $data),
             notifyNewAssignedUsers: (bool) ($data['notify_new_assigned_users'] ?? true),

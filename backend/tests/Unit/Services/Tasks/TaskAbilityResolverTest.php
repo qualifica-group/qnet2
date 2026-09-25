@@ -54,7 +54,7 @@ it('AC-015 (spec 0121, spec 0120 D-12, spec 0146 D-3, spec 0154 D-4): PROTECTED_
         'requires_closure_feedback', 'requires_validation', 'assignee_ids', 'watcher_ids', 'recurrence', 'lead_id',
     ])->and(TaskAbilityResolver::PROTECTED_FIELDS)->toHaveCount(21)
         ->and(TaskAbilityResolver::PROTECTED_FIELDS)
-        ->not->toContain('description', 'evidence', 'is_private', 'task_status_id', 'completion_date', 'start_time', 'end_time', 'closure_feedback');
+        ->not->toContain('description', 'is_private', 'task_status_id', 'completion_date', 'start_time', 'end_time', 'closure_feedback');
 });
 
 // ---------------------------------------------------------------------------

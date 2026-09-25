@@ -173,7 +173,6 @@ function scalarsOf(values: TaskFormValues) {
     title: values.title,
     description: values.description,
     is_private: values.is_private,
-    evidence: values.evidence,
     registry_id: values.registry_id,
     referent_id: values.referent_id,
     parent_task_id: values.parent_task_id,
@@ -276,7 +275,6 @@ export function buildUpdatePayload(
   if (scalars.title !== original.title) payload.title = scalars.title
   if (scalars.description !== original.description) payload.description = scalars.description
   if (scalars.is_private !== original.is_private) payload.is_private = scalars.is_private
-  if (scalars.evidence !== original.evidence) payload.evidence = scalars.evidence
   if (scalars.registry_id !== original.registry_id) payload.registry_id = scalars.registry_id
   if (scalars.referent_id !== original.referent_id) payload.referent_id = scalars.referent_id
   if (scalars.parent_task_id !== original.parent_task_id) payload.parent_task_id = scalars.parent_task_id

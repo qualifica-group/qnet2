@@ -168,9 +168,10 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // the per-type segnatempo-optional flag, and spec 0163's
     // `2026_09_25_120000_add_work_order_stage_id_to_time_entries_table`
     // (103rd), the segnatempo "Fase" snapshot plus its backfill from linked
-    // Tasks.
+    // Tasks, then `2026_09_25_130000_drop_evidence_from_tasks_table` (104th),
+    // the removal of the Task "Evidenze" field.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 103]);
+    Artisan::call('migrate:rollback', ['--step' => 104]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

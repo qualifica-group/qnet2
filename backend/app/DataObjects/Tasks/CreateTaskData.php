@@ -41,10 +41,8 @@ namespace App\DataObjects\Tasks;
  * `task_recurrences` row and links `task_recurrence_id` — hence it is absent
  * from attributes() below.
  *
- * Spec 0154 adds five more: `isPrivate`/`leadId` are plain mass-assignable
- * columns (attributes()); `evidence` follows `description`'s own exclusion —
- * raw HTML, sanitized by App\Services\Tasks\TaskEvidenceWriter once the row
- * exists, never mass-assigned; `isCompleted`/`notifyAssignedUsers` are pure
+ * Spec 0154 adds four more: `isPrivate`/`leadId` are plain mass-assignable
+ * columns (attributes()); `isCompleted`/`notifyAssignedUsers` are pure
  * CONTROL flags with no column at all — the former tells
  * TaskService::create() to hand off to App\Services\Tasks\TaskCreationCompletion
  * (D-6), the latter gates whether create() notifies anyone at all (D-7).
@@ -88,7 +86,6 @@ final readonly class CreateTaskData
         public array $watcherIds = [],
         public ?TaskRecurrenceData $recurrence = null,
         public bool $isPrivate = false,
-        public ?string $evidence = null,
         public ?int $leadId = null,
         public bool $isCompleted = false,
         public bool $notifyAssignedUsers = true,
@@ -129,7 +126,6 @@ final readonly class CreateTaskData
             watcherIds: self::normalizeIds($data['watcher_ids'] ?? []),
             recurrence: isset($data['recurrence']) ? TaskRecurrenceData::fromValidated($data['recurrence']) : null,
             isPrivate: (bool) ($data['is_private'] ?? false),
-            evidence: self::nullableString($data, 'evidence'),
             leadId: self::nullableInt($data, 'lead_id'),
             isCompleted: (bool) ($data['is_completed'] ?? false),
             notifyAssignedUsers: (bool) ($data['notify_assigned_users'] ?? true),

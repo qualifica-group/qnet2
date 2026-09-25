@@ -138,7 +138,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Sezione', 'Campi principali'],
           rows: [
-            ['Task', 'Titolo (obbligatorio), Descrizione, Evidenze, Task padre.'],
+            ['Task', 'Titolo (obbligatorio), Descrizione, Task padre.'],
             [
               'Classificazione',
               'Stato (facoltativo in creazione: se non lo scegli, parte da quello predefinito), Tipologia, Priorità e Importanza (tutte e tre obbligatorie, precompilate con la voce predefinita del catalogo), Categoria (ad albero, indentata, puoi scegliere anche una categoria padre).',

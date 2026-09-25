@@ -27,7 +27,7 @@ uses(RefreshDatabase::class);
 
 /*
 |--------------------------------------------------------------------------
-| q-net form alignment (spec 0154): is_private/evidence/lead_id, born
+| q-net form alignment (spec 0154): is_private/lead_id, born
 | completed (D-6), notify flags (D-7), lookup defaults (D-8), manual initial
 | status (D-10), commessa/opportunity/lead coherence (D-11).
 |--------------------------------------------------------------------------
@@ -137,33 +137,22 @@ it('AC-003: a private task stays visible to the super-admin', function () {
 });
 
 // ---------------------------------------------------------------------------
-// D-3 / AC-004 — evidence, sanitized and returned
+// D-3 (REQUIREMENT CHANGED, user directive 2026-09-25) — evidence removed
 // ---------------------------------------------------------------------------
 
-it('AC-004: evidence is sanitized on create and returned in the resource', function () {
-    $actor = formActorWith(['create', 'view']);
+it('D-3 removed: a stale evidence key is ignored and never returned', function () {
+    $actor = formActorWith(['create', 'view', 'update']);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tasks', formTaskPayload([
-        'evidence' => '<p>Consegnato</p><script>alert(1)</script>',
+        'evidence' => '<p>Consegnato</p>',
     ]))->assertCreated();
 
-    expect($response->json('data.evidence'))->toBe('<p>Consegnato</p>')
-        ->and($response->json('data.evidence'))->not->toContain('script');
+    expect($response->json('data'))->not->toHaveKey('evidence');
 
-    $this->assertDatabaseHas('tasks', ['id' => $response->json('data.id'), 'evidence' => '<p>Consegnato</p>']);
-});
-
-it('AC-004: evidence is sanitized on update', function () {
-    $actor = formActorWith(['view', 'update']);
-    $task = Task::factory()->forCreator($actor)->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->patchJson("/api/tasks/{$task->id}", ['evidence' => '<b>bold</b>not-allowed'])
-        ->assertOk();
-
-    expect($response->json('data.evidence'))->toContain('not-allowed')
-        ->and($response->json('data.evidence'))->not->toContain('<b>');
+    $this->patchJson("/api/tasks/{$response->json('data.id')}", ['evidence' => '<p>Ok</p>'])
+        ->assertOk()
+        ->assertJsonMissingPath('data.evidence');
 });
 
 // ---------------------------------------------------------------------------

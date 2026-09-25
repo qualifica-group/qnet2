@@ -132,8 +132,6 @@ export interface TaskDetail {
    * HTML, same treatment as `description`.
    */
   is_private: boolean
-  /** Spec 0154 D-3: free rich text, nullable, sanitized like `description`. */
-  evidence: string | null
   registry_id: number | null
   registry: TaskNamedRef | null
   referent_id: number | null
@@ -344,8 +342,6 @@ export interface CreateTaskPayload {
   description?: string | null
   /** Spec 0154 D-2. */
   is_private?: boolean
-  /** Spec 0154 D-3. */
-  evidence?: string | null
   registry_id?: number | null
   referent_id?: number | null
   parent_task_id?: number | null

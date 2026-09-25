@@ -59,11 +59,10 @@ describe('buildCreatePayload', () => {
     expect(buildCreatePayload(values({ description: null })).description).toBeNull()
   })
 
-  it('spec 0154 D-2/D-3/D-4: sends is_private, evidence and lead_id like any other scalar', () => {
-    const payload = buildCreatePayload(values({ is_private: true, evidence: '<p>Ok</p>', lead_id: 12 }))
+  it('spec 0154 D-2/D-4: sends is_private and lead_id like any other scalar', () => {
+    const payload = buildCreatePayload(values({ is_private: true, lead_id: 12 }))
 
     expect(payload.is_private).toBe(true)
-    expect(payload.evidence).toBe('<p>Ok</p>')
     expect(payload.lead_id).toBe(12)
   })
 
@@ -344,17 +343,12 @@ describe('buildUpdatePayload', () => {
     )
   })
 
-  it('spec 0154 D-2/D-3/D-4: sends is_private, evidence and lead_id only when they actually changed', () => {
+  it('spec 0154 D-2/D-4: sends is_private and lead_id only when they actually changed', () => {
     expect(buildUpdatePayload(values(), task())).not.toHaveProperty('is_private')
-    expect(buildUpdatePayload(values(), task())).not.toHaveProperty('evidence')
     expect(buildUpdatePayload(values(), task())).not.toHaveProperty('lead_id')
 
-    const payload = buildUpdatePayload(
-      values({ is_private: true, evidence: '<p>Ok</p>', lead_id: 12 }),
-      task(),
-    )
+    const payload = buildUpdatePayload(values({ is_private: true, lead_id: 12 }), task())
     expect(payload.is_private).toBe(true)
-    expect(payload.evidence).toBe('<p>Ok</p>')
     expect(payload.lead_id).toBe(12)
   })
 

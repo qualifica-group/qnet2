@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK — CAMPO "EVIDENZE" ELIMINATO — VERDE, COMMITTATO (2026-09-25)
+
+- Decisione utente 2026-09-25: eliminare il campo Evidenze dal task (ritira spec 0154 D-3 / AC-004, annotato in spec).
+- BE: migrazione `2026_09_25_130000_drop_evidence_from_tasks_table` (drop `tasks.evidence` + delete righe
+  `role_field_permissions` tasks.evidence; distruttiva, `down()` ripristina solo la struttura). Rimossi da Model
+  fillable, Store/UpdateTaskRequest, Create/UpdateTaskData, TaskService, TaskResource, TasksAuthorization; cancellato
+  `TaskEvidenceWriter`. Una chiave `evidence` inviata da client vecchi e' ignorata (non validata).
+- FE: rimossi campo dal form (`task-identity-section.tsx`), schema, tipi, payload, default `use-task-form`, fixtures,
+  errori server, i18n `tasks.form.evidence*`, guide in-app IT/EN (tasks.ts).
+- Test: `TaskMetaTest` 29 -> 28 campi, `QuoteWorkflowMigrationTest` rollback 104, AC-004 sostituito da test che la
+  chiave e' ignorata. Verificati: Pest Tasks+migrazioni 714 verdi, Vitest tasks+help 543 verdi, tsc -b, ESLint, Pint.
+- Manuale Claude Docs aggiornato (tabella campi form Task, rev 76). PDF derivato da rigenerare.
+
 ## PUNTI RINVIATI TASK — SPEC 0160-0164 — VERDE, COMMITTATO (2026-09-25)
 
 - Decisioni utente 2026-09-25: festivi spostati (non saltati), sottotask 3 livelli, segnatempo facoltativo per

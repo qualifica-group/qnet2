@@ -114,7 +114,6 @@ class TaskResource extends JsonResource
             'requires_time_entry' => TaskTimeEntryRequirement::isRequired($this->resource),
             'closure_feedback' => $this->closure_feedback,
             'is_private' => $this->is_private,
-            'evidence' => $this->evidence,
             'completion_percentage' => $resolver->completionPercentage($this->resource),
             'recurrence' => $this->recurrenceRef(),
             'open_subtasks_count' => app(TaskActionAvailability::class)->openSubtasksCount($this->resource),

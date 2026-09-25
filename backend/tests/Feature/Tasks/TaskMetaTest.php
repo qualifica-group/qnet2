@@ -107,16 +107,18 @@ it('AC-036/AC-053: the field catalogue is in the frozen order and omits completi
     // under a `work_order_id`) — bringing the frozen order to 26 fields.
     // spec 0154 (REQUIREMENT CHANGED, count 26 -> 29): `is_private`,
     // `evidence` and `lead_id` join right before `recurrence`, the same
-    // "additive at the tail" precedent `recurrence` itself set.
+    // "additive at the tail" precedent `recurrence` itself set. User
+    // directive 2026-09-25 (REQUIREMENT CHANGED, count 29 -> 28): `evidence`
+    // is removed.
     expect($keys)->toBe([
         'title', 'task_status_id', 'description', 'registry_id', 'referent_id', 'parent_task_id',
         'task_type_id', 'task_priority_id', 'task_importance_id', 'task_category_id',
         'opportunity_id', 'work_order_id', 'work_order_stage_id', 'requester_id',
         'start_date', 'end_date', 'completion_date', 'start_time', 'end_time', 'estimated_minutes',
         'requires_closure_feedback', 'requires_validation', 'closure_feedback', 'assignee_ids', 'watcher_ids',
-        'is_private', 'evidence', 'lead_id', 'recurrence',
+        'is_private', 'lead_id', 'recurrence',
     ])
-        ->and($keys)->toHaveCount(29)
+        ->and($keys)->toHaveCount(28)
         ->and($keys)->not->toContain('completion_percentage')
         ->and($keys)->not->toContain('creator_id')
         ->and($keys)->not->toContain('is_blocked');

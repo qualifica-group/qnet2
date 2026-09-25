@@ -70,10 +70,8 @@ function baseFields(t: TFunction) {
       .max(TITLE_MAX_LENGTH, t('tasks.form.titleMax')),
     task_status_id: z.number().nullable(),
     description: z.string().nullable(),
-    // Spec 0154 D-2/D-3: privacy flag and free rich text, sanitized like
-    // `description` server-side; no client-side format rule of their own.
+    // Spec 0154 D-2: privacy flag, no client-side format rule of its own.
     is_private: z.boolean(),
-    evidence: z.string().nullable(),
     registry_id: z.number().nullable(),
     referent_id: z.number().nullable(),
     parent_task_id: z.number().nullable(),
