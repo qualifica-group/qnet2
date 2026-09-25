@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0159-report-columns-without-range" status="approved" owner="utente" date="2026-09-25">
+
+  <goal>
+    Report di Gestione Richieste / Iscritti: N. Richiami non gestiti, N. Nuovi contatti non gestiti e N. Potenziali
+    associati esistono in due versioni. La versione senza periodo e' nuova e prende il nome attuale; la versione col
+    periodo aggiunge "(nel periodo selezionato)" al nome. Il seed di produzione sostituisce le tre colonne con le
+    versioni senza periodo e lascia quelle col periodo nel catalogo, non selezionate.
+    rev-1 (2026-09-25): la prima versione (annullata col commit a7808c55) marcava TUTTE le colonne legate al periodo
+    e toglieva dal seed Telefonate/Associati/ecc.; il brief utente definitivo limita entrambe le cose alle tre metriche.
+  </goal>
+
+  <context>
+    - Estende spec 0141: il catalogo resta `config('request-management-report.indicator_columns')`, la selezione per
+      categoria resta `product_categories.report_columns`, la regola di calcolo resta in `ReportIndicatorRegistry`.
+    - Tutti i consumer (validazione Store/Update categoria, endpoint catalogo, righe report, export, dashboard)
+      leggono il catalogo dalla config: nessuna modifica di contratto oltre alle nuove chiavi.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Tre nuove chiavi (catalogo a 14): `unhandled_callbacks`, `unhandled_new_contacts`,
+      `current_potentials`, subito dopo `telefonate` e prima delle gemelle col periodo, cosi' prendono il posto delle
+      colonne che sostituiscono nel seed. Ordine: telefonate, unhandled_callbacks, unhandled_new_contacts,
+      current_potentials, richiami, nuovi_contatti, potenziali, poi invariato.</decision>
+    <decision id="D-2">`unhandled_callbacks` = regola attuale di "richiami" (directive 2026-09-18): richieste non chiuse
+      (gruppo diverso da closed_won/closed_lost) con `next_callback_at` fino a oggi incluso, a prescindere dal periodo.</decision>
+    <decision id="D-3">`richiami` (scelta utente 2026-09-25) diventa legata al periodo: richieste non chiuse con
+      `next_callback_at` dentro il periodo [date_from, date_to] (giorni interi).</decision>
+    <decision id="D-4">`unhandled_new_contacts` = richieste ancora nel primo stato (`system_key = open`), qualunque sia
+      la data di creazione.</decision>
+    <decision id="D-5">`current_potentials` = richieste il cui stato ATTUALE appartiene al gruppo pending o validated,
+      senza guardare le date.</decision>
+    <decision id="D-6">Label: SOLO richiami, nuovi_contatti, potenziali prendono il suffisso
+      " (nel periodo selezionato)" / " (selected period)". Le nuove colonne prendono i nomi attuali. Tutte le altre
+      colonne restano invariate.</decision>
+    <decision id="D-7">Seed di produzione (ReportColumnsCatalogue, solo categorie con `report_columns` null, come
+      spec 0141 D-6): la mappa spec 0141 D-7 con richiami/nuovi_contatti/potenziali SOSTITUITE dalle versioni senza
+      periodo; tutte le altre colonne invariate; le tre col periodo restano nel catalogo, non selezionate. APL non
+      aveva potenziali e quindi non riceve current_potentials.</decision>
+    <decision id="D-8">Installazioni esistenti (scelta utente 2026-09-25): nessuna migrazione, le categorie gia'
+      configurate restano come sono; l'amministratore attiva le nuove colonne dal form categoria.</decision>
+  </decisions>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/product-categories/report-columns">
+      <response status="200">Invariato nella shape; `data` contiene 14 chiavi in ordine catalogo.</response>
+    </endpoint>
+    <file name="export CSV/XLSX">Invariato: header = Categoria, GA2 + unione colonne configurate in ordine catalogo.</file>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Il catalogo ha 14 chiavi nell'ordine D-1; le tre nuove sono accettate da Store/Update categoria.</criterion>
+    <criterion id="AC-002">unhandled_callbacks conta i richiami non chiusi scaduti fino a oggi, a prescindere dal periodo.</criterion>
+    <criterion id="AC-003">richiami conta solo i richiami non chiusi con data nel periodo (inclusi quelli futuri nel
+      periodo), escludendo quelli fuori periodo.</criterion>
+    <criterion id="AC-004">unhandled_new_contacts conta le richieste nel primo stato create anche fuori periodo.</criterion>
+    <criterion id="AC-005">current_potentials conta le richieste ora in pending/validated, senza richiedere un cambio
+      di stato nel periodo; esclude le altre.</criterion>
+    <criterion id="AC-006">Label IT/EN: solo le tre gemelle col periodo hanno il suffisso; nuove colonne con i nomi
+      originali; le altre invariate.</criterion>
+    <criterion id="AC-007">QualificaCatalogSeeder semina D-7 sulle categorie con report_columns null, non tocca quelle
+      configurate, idempotente.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Nessun riferimento a nomi di categoria nel codice applicativo. Guide in-app IT/EN e
+    manuale Claude Docs aggiornati. Test Pest/Vitest eseguiti; tsc -b --force pulito; Pint/ESLint puliti.
+  </constraints>
+</spec>

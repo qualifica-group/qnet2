@@ -227,9 +227,9 @@ it('dedups a company linked to two operators (total < sum) and skips a registry 
 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'Consulenza');
 
-    expect($rows['Operator A'][9])->toBe('1')
-        ->and($rows['Operator B'][9])->toBe('1')
-        ->and($rows['TOTALE'][9])->toBe('1'); // deduped, less than the sum of the GA2 rows (2)
+    expect($rows['Operator A'][12])->toBe('1')
+        ->and($rows['Operator B'][12])->toBe('1')
+        ->and($rows['TOTALE'][12])->toBe('1'); // deduped, less than the sum of the GA2 rows (2)
 });
 
 // ---------------------------------------------------------------------------
@@ -309,7 +309,7 @@ it('counts a transition to pending/validated only when logged inside the range (
 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'GOL');
 
-    expect($rows['TOTALE'][5])->toBe('1');
+    expect($rows['TOTALE'][8])->toBe('1');
 });
 
 it('counts a transition to closed_won only when logged inside the range, under Associati/Trattative Concluse (AC-019)', function () {
@@ -337,8 +337,8 @@ it('counts a transition to closed_won only when logged inside the range, under A
 
     $rows = reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path));
 
-    expect(reportRowsFor($rows, 'GOL')['TOTALE'][8])->toBe('1') // Associati
-        ->and(reportRowsFor($rows, 'Consulenza')['TOTALE'][11])->toBe('1'); // Trattative Concluse — same formula, same value
+    expect(reportRowsFor($rows, 'GOL')['TOTALE'][11])->toBe('1') // Associati
+        ->and(reportRowsFor($rows, 'Consulenza')['TOTALE'][14])->toBe('1'); // Trattative Concluse — same formula, same value
 });
 
 it('attributes a logged transition to the offer on the SAME workflow only (two offers, two workflows) (AC-020)', function () {
@@ -371,7 +371,7 @@ it('attributes a logged transition to the offer on the SAME workflow only (two o
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'Consulenza');
 
     // Exactly ONE request counted (the offer on workflow A), not two.
-    expect($rows['TOTALE'][11])->toBe('1');
+    expect($rows['TOTALE'][14])->toBe('1');
 });
 
 // ---------------------------------------------------------------------------

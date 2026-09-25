@@ -9,15 +9,19 @@ return [
         'unassigned' => 'Non assegnato',
     ],
 
-    // The 13 CSV header cells, in the contract's fixed order (data_contract,
+    // The CSV header cells, in the contract's fixed order (data_contract,
     // AC-004): translated server-side, in the run's frozen locale.
     'headers' => [
         'category' => 'Categoria',
         'ga2' => 'GA2',
         'telefonate' => 'N. Telefonate Effettuate',
-        'richiami' => 'N. Richiami non gestiti',
-        'nuovi_contatti' => 'N. Nuovi contatti non gestiti',
-        'potenziali' => 'N. Potenziali associati',
+        // Spec 0159: range-free columns; their range-bound twins below say so.
+        'unhandled_callbacks' => 'N. Richiami non gestiti',
+        'unhandled_new_contacts' => 'N. Nuovi contatti non gestiti',
+        'current_potentials' => 'N. Potenziali associati',
+        'richiami' => 'N. Richiami non gestiti (nel periodo selezionato)',
+        'nuovi_contatti' => 'N. Nuovi contatti non gestiti (nel periodo selezionato)',
+        'potenziali' => 'N. Potenziali associati (nel periodo selezionato)',
         'aule_gestione' => 'Aule in gestione',
         'aule_partenza' => 'Aule in partenza',
         'associati' => 'Associati',

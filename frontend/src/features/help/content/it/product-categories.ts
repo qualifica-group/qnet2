@@ -351,9 +351,8 @@ const guide: HelpGuide = {
           headers: ['Colonna', 'Nota'],
           rows: [
             ['N. Telefonate Effettuate', ''],
-            ['N. Richiami non gestiti', ''],
-            ['N. Nuovi contatti non gestiti', ''],
-            ['N. Potenziali associati', ''],
+            ['N. Richiami non gestiti, N. Nuovi contatti non gestiti, N. Potenziali associati', 'Ignorano il periodo e guardano alla situazione di oggi. Scelte di default nelle categorie predefinite.'],
+            ['N. Richiami non gestiti (nel periodo selezionato), N. Nuovi contatti non gestiti (nel periodo selezionato), N. Potenziali associati (nel periodo selezionato)', 'Stesso dato calcolato sul periodo scelto nel report. Non scelte di default: spuntale se ti servono.'],
             ['Aziende inserite', ''],
             ['Associati, Trattative Concluse, Invio Presa in carico', 'Contano le richieste passate nel periodo a uno stato chiuso con esito positivo (dettaglio in Gestione Richieste › Statistiche e report).'],
             ['Aule in gestione, Aule in partenza, Presa Appuntamenti', 'Oggi non hanno un calcolo e mostrano sempre 0.'],
@@ -363,7 +362,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Attiva Visibile nei report: compare il riquadro Colonne report.',
-            'Spunta le colonne che ti servono; il contatore mostra quante ne hai scelte (per esempio "7/11"). Tutte e Nessuna selezionano o svuotano.',
+            'Spunta le colonne che ti servono; il contatore mostra quante ne hai scelte (per esempio "7/14"). Tutte e Nessuna selezionano o svuotano.',
             'Clicca Salva.',
           ],
         },

@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## REPORT GESTIONE RICHIESTE — COLONNE SENZA PERIODO (SPEC 0159 rev-1) — VERDE, COMMITTATO (2026-09-25)
+
+- Prima versione (82884ffc) annullata con a7808c55; questa e' la rev-1 dal brief utente definitivo.
+- Catalogo `indicator_columns` a 14 chiavi: telefonate, `unhandled_callbacks`, `unhandled_new_contacts`,
+  `current_potentials`, richiami, nuovi_contatti, potenziali, poi invariato. Indici CSV con catalogo completo
+  (factory `reportable()`): +3 per tutto cio' che segue telefonate; i test posizionali sono stati rimappati.
+- Regole: `unhandled_callbacks` = vecchia regola di `richiami` (non chiuse, richiamo <= oggi). `richiami` ora e'
+  legata al periodo (richiamo dentro [date_from, date_to], futuri inclusi, scelta utente). `unhandled_new_contacts` =
+  stato `open` a prescindere dalla creazione. `current_potentials` = stato ATTUALE nel gruppo pending/validated
+  (`Indicators/CurrentStatusGroupIndicator`). Callback/NewContacts parametrizzati con `withinRange`.
+- Label: SOLO richiami/nuovi_contatti/potenziali con " (nel periodo selezionato)" / " (selected period)".
+- Seed produzione `ReportColumnsCatalogue`: mappa spec 0141 con le tre colonne SOSTITUITE dalle versioni senza
+  periodo, il resto invariato. Solo categorie con `report_columns` null (installazioni esistenti invariate, D-8).
+- Guide IT/EN (request-management, product-categories, enrollee-management) e manuale Claude Docs aggiornati.
+
 ## FILTRI PERSONALIZZATI E/O, PREFERITI, CHIP — SPEC 0158 — VERDE, COMMITTATO (2026-09-25)
 
 - Contratto: blocco "DETTAGLIO CONGELATO" nella spec (Rule {field, operator, value}, gruppi and/or, mappa

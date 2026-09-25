@@ -220,7 +220,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'To cannot be earlier than From. The date used changes column by column: one column ignores the period (see the columns table).',
+          text: 'To cannot be earlier than From. The date used changes column by column (see the columns table). Unhandled Callbacks, Unhandled New Contacts and Potential Leads ignore the period and look at the situation today; their "(selected period)" versions use it.',
         },
         {
           type: 'list',
@@ -292,12 +292,27 @@ const guide: HelpGuide = {
               "Ignores the period: it always looks at today's date.",
             ],
             [
+              'Unhandled Callbacks (selected period)',
+              'Requests not yet closed with a callback date within the period.',
+              'Callback date; future callbacks count too if they fall in the period.',
+            ],
+            [
               'Unhandled New Contacts',
+              'Requests still in the Open status.',
+              'Ignores the period: requests created earlier count too.',
+            ],
+            [
+              'Unhandled New Contacts (selected period)',
               'Requests created in the period and still in the Open status.',
               'Request creation date.',
             ],
             [
               'Potential Leads',
+              'Requests currently in a status of the Pending or Validated group.',
+              'Ignores the period: it looks at the current status.',
+            ],
+            [
+              'Potential Leads (selected period)',
               'Requests moved in the period to a status of the Pending or Validated group.',
               'Status change date; each request counts once.',
             ],
@@ -364,7 +379,7 @@ const guide: HelpGuide = {
             '**Why is "Unassigned" missing?** There are no requests without an operator contributing to the counts, or you filtered by site.',
             "**Why don't the parent's totals include a subcategory?** The subcategory has Visible in reports set to no, directly or by inheritance.",
             "**Why did an operator's numbers change after a transfer?** The counts look at the current operator: the previous operator's notes no longer count as calls.",
-            "**Why don't the callbacks change with the period?** Unhandled Callbacks always looks at today.",
+            "**Why don't some columns change with the period?** Unhandled Callbacks, Unhandled New Contacts and Potential Leads always look at the situation today. For the period figure use their \"(selected period)\" version, which you switch on in the category's Report columns.",
             '**Why is the Overall total lower than the sum of the categories?** A request present in several selected categories counts once in the overall total.',
           ],
         },

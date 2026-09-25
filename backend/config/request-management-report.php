@@ -10,7 +10,7 @@ return [
     | of spec 0107)
     |--------------------------------------------------------------------------
     |
-    | The eleven indicator columns, in the CONTRACT order — the single neutral
+    | The indicator columns, in the CONTRACT order — the single neutral
     | source both the CALCULATION layer (ReportBranchRowsBuilder, which fills
     | every one of them, 0 default per D-15) and every FORMATTING/consumer
     | layer (ReportCsvBuilder, RequestManagementDashboardBuilder) read from.
@@ -20,8 +20,12 @@ return [
     |
     */
 
+    // Spec 0159: the three range-free columns sit where their range-bound
+    // twins (richiami, nuovi_contatti, potenziali) used to, which they
+    // replace in the production seed; the twins follow them.
     'indicator_columns' => [
-        'telefonate', 'richiami', 'nuovi_contatti', 'potenziali',
+        'telefonate', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials',
+        'richiami', 'nuovi_contatti', 'potenziali',
         'aule_gestione', 'aule_partenza', 'associati', 'aziende_inserite',
         'presa_appuntamenti', 'trattative_concluse', 'invio_presa_in_carico',
     ],

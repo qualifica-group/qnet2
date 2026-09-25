@@ -173,7 +173,7 @@ beforeEach(function () {
 // AC-004/AC-005
 // ---------------------------------------------------------------------------
 
-it('writes the 13-column header + all six categories by name, an empty one as TOTALE-only zeros (AC-004/AC-005)', function () {
+it('writes the 16-column header + all six categories by name, an empty one as TOTALE-only zeros (AC-004/AC-005)', function () {
     reportCategoryTree();
     $actor = User::factory()->create();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
@@ -183,9 +183,12 @@ it('writes the 13-column header + all six categories by name, an empty one as TO
     $rows = reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path));
 
     expect($rows[0])->toBe([
+        // Spec 0159: the three range-free columns follow Telefonate, their range-bound twins carry the suffix.
         'Categoria', 'GA2', 'N. Telefonate Effettuate', 'N. Richiami non gestiti', 'N. Nuovi contatti non gestiti',
-        'N. Potenziali associati', 'Aule in gestione', 'Aule in partenza', 'Associati', 'Aziende inserite',
-        'Presa Appuntamenti', 'Trattative Concluse', 'Invio Presa in carico',
+        'N. Potenziali associati', 'N. Richiami non gestiti (nel periodo selezionato)',
+        'N. Nuovi contatti non gestiti (nel periodo selezionato)', 'N. Potenziali associati (nel periodo selezionato)',
+        'Aule in gestione', 'Aule in partenza', 'Associati', 'Aziende inserite', 'Presa Appuntamenti',
+        'Trattative Concluse', 'Invio Presa in carico',
     ]);
 
     $categories = array_column($rows, 0);
@@ -195,7 +198,7 @@ it('writes the 13-column header + all six categories by name, an empty one as TO
 
     $golTotal = reportRowsFor($rows, 'GOL')['TOTALE'];
     // D-15 (rev-2, overrides D-9): every numeric cell is '0', applicable or not.
-    expect(array_slice($golTotal, 2))->toBe(['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0']);
+    expect(array_slice($golTotal, 2))->toBe(array_fill(0, 14, '0')); // 14 indicator columns since spec 0159
 });
 
 // ---------------------------------------------------------------------------

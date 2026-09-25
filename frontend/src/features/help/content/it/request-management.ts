@@ -220,7 +220,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Al non può precedere Dal. La data usata cambia da colonna a colonna: una colonna ignora il periodo (vedi la tabella delle colonne).',
+          text: 'Al non può precedere Dal. La data usata cambia da colonna a colonna (vedi la tabella delle colonne). N. Richiami non gestiti, N. Nuovi contatti non gestiti e N. Potenziali associati ignorano il periodo e guardano alla situazione di oggi; le loro versioni "(nel periodo selezionato)" lo usano.',
         },
         {
           type: 'list',
@@ -292,12 +292,27 @@ const guide: HelpGuide = {
               'Ignora il periodo: guarda sempre alla data di oggi.',
             ],
             [
+              'N. Richiami non gestiti (nel periodo selezionato)',
+              'Le richieste non ancora chiuse con data di richiamo compresa nel periodo.',
+              'Data di richiamo; conta anche i richiami futuri se cadono nel periodo.',
+            ],
+            [
               'N. Nuovi contatti non gestiti',
+              'Le richieste ancora nello stato Aperto.',
+              'Ignora il periodo: conta anche le richieste create prima.',
+            ],
+            [
+              'N. Nuovi contatti non gestiti (nel periodo selezionato)',
               'Le richieste create nel periodo e ancora nello stato Aperto.',
               'Data di creazione della richiesta.',
             ],
             [
               'N. Potenziali associati',
+              'Le richieste che oggi si trovano in uno stato del gruppo In attesa o Validato.',
+              'Ignora il periodo: guarda lo stato attuale.',
+            ],
+            [
+              'N. Potenziali associati (nel periodo selezionato)',
               'Le richieste passate nel periodo a uno stato del gruppo In attesa o Validato.',
               'Data del cambio di stato; ogni richiesta conta una volta.',
             ],
@@ -364,7 +379,7 @@ const guide: HelpGuide = {
             '**Perché manca "Non assegnato"?** Non ci sono richieste senza operatore che contribuiscono ai conteggi, oppure hai filtrato per sede.',
             '**Perché i totali del padre non includono una sottocategoria?** La sottocategoria ha Visibile nei report a no, direttamente o per eredità.',
             "**Perché i numeri di un operatore sono cambiati dopo un trasferimento?** I conteggi guardano l'operatore attuale: le note del vecchio operatore non contano più come telefonate.",
-            '**Perché i richiami non cambiano con il periodo?** N. Richiami non gestiti guarda sempre a oggi.',
+            '**Perché alcune colonne non cambiano con il periodo?** N. Richiami non gestiti, N. Nuovi contatti non gestiti e N. Potenziali associati guardano sempre alla situazione di oggi. Per il dato del periodo usa la loro versione "(nel periodo selezionato)", da attivare in Colonne report della categoria.',
             '**Perché il Totale complessivo è più basso della somma delle categorie?** Una richiesta presente in più categorie selezionate conta una volta sola nel totale complessivo.',
           ],
         },

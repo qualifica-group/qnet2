@@ -14,7 +14,7 @@ namespace App\Services\RequestManagement\Report;
  * that particular row's branch renders empty (D-3); every other numeric cell
  * renders as-is, 0 included. `Categoria`/`GA2` stay the only text cells.
  *
- * The eleven indicator columns are NOT owned here (spec 0107 D-2-bis, point
+ * The indicator columns are NOT owned here (spec 0107 D-2-bis, point
  * 3): they live in `config('request-management-report.indicator_columns')`,
  * the same neutral source ReportBranchRowsBuilder reads — this class is
  * just one more reader, never the source of truth other layers depend on.

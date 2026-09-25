@@ -351,9 +351,8 @@ const guide: HelpGuide = {
           headers: ['Column', 'Note'],
           rows: [
             ['Calls made', ''],
-            ['Unhandled callbacks', ''],
-            ['Unhandled new contacts', ''],
-            ['Potential associates', ''],
+            ['Unhandled Callbacks, Unhandled New Contacts, Potential Leads', 'They ignore the period and look at the situation today. Selected by default in the predefined categories.'],
+            ['Unhandled Callbacks (selected period), Unhandled New Contacts (selected period), Potential Leads (selected period)', 'The same figure calculated on the period picked in the report. Not selected by default: tick them if you need them.'],
             ['Companies entered', ''],
             ['Associates, Deals closed, Handover sent', 'Count requests that moved in the period to a status closed with a positive outcome (details in Request Management › Statistics and reports).'],
             ['Classrooms in progress, Classrooms starting, Appointments taken', 'Today they have no calculation and always show 0.'],
@@ -363,7 +362,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Turn on Reportable: the Report columns panel appears.',
-            'Tick the columns you need; the counter shows how many you chose (for example "7/11"). All and None select or clear them.',
+            'Tick the columns you need; the counter shows how many you chose (for example "7/14"). All and None select or clear them.',
             'Click Save.',
           ],
         },

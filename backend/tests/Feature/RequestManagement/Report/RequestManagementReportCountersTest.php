@@ -252,13 +252,15 @@ it('gives an unassigned request 0 phone calls while its Non assegnato row still 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'GOL');
 
     expect($rows)->toHaveKey('Non assegnato')
-        ->and($rows['Non assegnato'][3])->toBe('1')  // richiami: the row is really there
+        ->and($rows['Non assegnato'][3])->toBe('1')  // unhandled_callbacks (spec 0159): the row is really there
         ->and($rows['Non assegnato'][2])->toBe('0')  // telefonate: never for an unassigned request
         ->and($rows['TOTALE'][2])->toBe('0');
 });
 
 // ---------------------------------------------------------------------------
-// AC-012 — "N. Richiami non gestiti"
+// AC-012 — "N. Richiami non gestiti": since spec 0159 D-2 this rule belongs to
+// the range-free `unhandled_callbacks` column (CSV index 3); `richiami` is now
+// range-bound (RequestManagementReportRangeFreeColumnsTest).
 // ---------------------------------------------------------------------------
 
 it('counts callbacks due on or before today on every request that is not closed (directive 2026-09-18)', function () {
@@ -313,5 +315,5 @@ it('counts requests created in range still in the first state (AC-013)', functio
 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'GOL');
 
-    expect($rows['TOTALE'][4])->toBe('1');
+    expect($rows['TOTALE'][7])->toBe('1'); // nuovi_contatti, range-bound (spec 0159 catalogue order)
 });

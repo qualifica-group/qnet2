@@ -6,11 +6,12 @@ use App\Models\ProductCategory;
 
 /**
  * The Gestione Richieste / Iscritti report column selection the Qualifica
- * catalogue declares (spec 0141 D-6/D-7/AC-008) — the SAME snapshot
- * migration `2026_09_18_110000_add_report_columns_to_product_categories_
- * table` freezes from the retired `config('request-management-report.
- * category_columns')` map, applied here too so an installation seeded AFTER
- * that migration ran (a fresh install) still gets the identical report.
+ * catalogue declares for a fresh install: the spec 0141 D-7 snapshot with
+ * richiami/nuovi_contatti/potenziali REPLACED by their range-free twins
+ * (spec 0159 D-7) — the range-bound twins stay in the catalogue, unselected,
+ * for the admin to switch on from the category form. Migration
+ * `2026_09_18_110000_add_report_columns_to_product_categories_table` keeps
+ * its own frozen copy of the original snapshot.
  *
  * Sibling of CategoryInheritanceRules: names are bound by identity to
  * QualificaCatalogSeeder::CATALOG, so a rename there breaks loudly here
@@ -21,7 +22,7 @@ use App\Models\ProductCategory;
  * NOT: an installation seeded before this map existed must still get it
  * backfilled on the next `db:seed` run. Idempotent either way: a category
  * already configured (an admin's own edit, or a previous run of apply()) is
- * left untouched.
+ * left untouched (spec 0159 D-8).
  */
 final class ReportColumnsCatalogue
 {
@@ -29,13 +30,13 @@ final class ReportColumnsCatalogue
      * @var array<string, list<string>>
      */
     private const array COLUMNS = [
-        'GOL' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
-        'Autoimpiego' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
-        'Yisu' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
-        'DIL' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_gestione', 'aule_partenza', 'associati'],
-        'Autofinanziato' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aule_partenza', 'associati'],
-        'Consulenza' => ['telefonate', 'richiami', 'nuovi_contatti', 'potenziali', 'aziende_inserite', 'presa_appuntamenti', 'trattative_concluse'],
-        'APL' => ['telefonate', 'richiami', 'nuovi_contatti', 'invio_presa_in_carico'],
+        'GOL' => ['telefonate', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials', 'aule_gestione', 'aule_partenza', 'associati'],
+        'Autoimpiego' => ['telefonate', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials', 'aule_gestione', 'aule_partenza', 'associati'],
+        'Yisu' => ['telefonate', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials', 'aule_gestione', 'aule_partenza', 'associati'],
+        'DIL' => ['telefonate', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials', 'aule_gestione', 'aule_partenza', 'associati'],
+        'Autofinanziato' => ['telefonate', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials', 'aule_partenza', 'associati'],
+        'Consulenza' => ['telefonate', 'unhandled_callbacks', 'unhandled_new_contacts', 'current_potentials', 'aziende_inserite', 'presa_appuntamenti', 'trattative_concluse'],
+        'APL' => ['telefonate', 'unhandled_callbacks', 'unhandled_new_contacts', 'invio_presa_in_carico'],
     ];
 
     public function apply(): void

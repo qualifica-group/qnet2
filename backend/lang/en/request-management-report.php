@@ -9,15 +9,19 @@ return [
         'unassigned' => 'Unassigned',
     ],
 
-    // The 13 CSV header cells, in the contract's fixed order (data_contract,
+    // The CSV header cells, in the contract's fixed order (data_contract,
     // AC-004): translated server-side, in the run's frozen locale.
     'headers' => [
         'category' => 'Category',
         'ga2' => 'GA2',
         'telefonate' => 'Calls Made',
-        'richiami' => 'Unhandled Callbacks',
-        'nuovi_contatti' => 'Unhandled New Contacts',
-        'potenziali' => 'Potential Leads',
+        // Spec 0159: range-free columns; their range-bound twins below say so.
+        'unhandled_callbacks' => 'Unhandled Callbacks',
+        'unhandled_new_contacts' => 'Unhandled New Contacts',
+        'current_potentials' => 'Potential Leads',
+        'richiami' => 'Unhandled Callbacks (selected period)',
+        'nuovi_contatti' => 'Unhandled New Contacts (selected period)',
+        'potenziali' => 'Potential Leads (selected period)',
         'aule_gestione' => 'Classes In Progress',
         'aule_partenza' => 'Classes Starting',
         'associati' => 'Enrolled',
