@@ -220,7 +220,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'To cannot be earlier than From. The date used changes column by column: one column ignores the period (see the columns table).',
+          text: 'To cannot be earlier than From. Columns with "(in period)" in their name use the period, each with its own date; columns without it ignore the period and look at the situation today (see the columns table).',
         },
         {
           type: 'list',
@@ -282,7 +282,7 @@ const guide: HelpGuide = {
           headers: ['Column', 'What it counts', 'Period and notes'],
           rows: [
             [
-              'Calls Made',
+              'Calls Made (in period)',
               "The notes linked to the request and written by its GA2: every note counts as one call.",
               'Note creation date. Excludes requests still Open, deleted notes, general notes and notes written by others; always 0 for Unassigned.',
             ],
@@ -292,24 +292,39 @@ const guide: HelpGuide = {
               "Ignores the period: it always looks at today's date.",
             ],
             [
+              'Unhandled Callbacks (in period)',
+              'Requests not yet closed with a callback date within the period.',
+              'Callback date; future callbacks count too if they fall in the period.',
+            ],
+            [
               'Unhandled New Contacts',
+              'Requests still in the Open status.',
+              'Ignores the period: requests created earlier count too.',
+            ],
+            [
+              'Unhandled New Contacts (in period)',
               'Requests created in the period and still in the Open status.',
               'Request creation date.',
             ],
             [
               'Potential Leads',
+              'Requests currently in a status of the Pending or Validated group.',
+              'Ignores the period: it looks at the current status.',
+            ],
+            [
+              'Potential Leads (in period)',
               'Requests moved in the period to a status of the Pending or Validated group.',
               'Status change date; each request counts once.',
             ],
             [
-              'Enrolled',
+              'Enrolled (in period)',
               'Requests moved in the period to a status of the Closed (positive outcome) group.',
               'Status change date; it still counts even if the request later moved back.',
             ],
-            ['Deals Closed', 'Same calculation as Enrolled.', 'Only the name changes, depending on which categories use it.'],
-            ['Handover Sent', 'Same calculation as Enrolled.', 'Only the name changes, depending on which categories use it.'],
+            ['Deals Closed (in period)', 'Same calculation as Enrolled.', 'Only the name changes, depending on which categories use it.'],
+            ['Handover Sent (in period)', 'Same calculation as Enrolled.', 'Only the name changes, depending on which categories use it.'],
             [
-              'Companies Added',
+              'Companies Added (in period)',
               'Company-type registries created in the period and linked as the client of a request.',
               'Registry creation date; in the TOTAL, each company counts once.',
             ],
@@ -364,7 +379,7 @@ const guide: HelpGuide = {
             '**Why is "Unassigned" missing?** There are no requests without an operator contributing to the counts, or you filtered by site.',
             "**Why don't the parent's totals include a subcategory?** The subcategory has Visible in reports set to no, directly or by inheritance.",
             "**Why did an operator's numbers change after a transfer?** The counts look at the current operator: the previous operator's notes no longer count as calls.",
-            "**Why don't the callbacks change with the period?** Unhandled Callbacks always looks at today.",
+            "**Why don't some columns change with the period?** Columns without \"(in period)\" in their name (Unhandled Callbacks, Unhandled New Contacts, Potential Leads) always look at the situation today. For the period figure use the twin column with \"(in period)\", which you switch on in the category's Report columns.",
             '**Why is the Overall total lower than the sum of the categories?** A request present in several selected categories counts once in the overall total.',
           ],
         },

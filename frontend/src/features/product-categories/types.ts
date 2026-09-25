@@ -336,7 +336,7 @@ export interface BulkMoveConflictError {
  * One selectable entry of the Gestione Richieste statistics-column catalogue
  * (spec 0141), as returned by `GET /product-categories/report-columns`:
  * `key` matches `config('request-management-report.indicator_columns')`,
- * `label` is already translated server-side. Catalog order (11 keys), never
+ * `label` is already translated server-side. Catalog order (14 keys), never
  * re-sorted client-side.
  */
 export interface ReportColumnOption {
