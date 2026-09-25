@@ -422,7 +422,7 @@ const guide: HelpGuide = {
             'Common attributes: in Offer Attributes add "Total hours" as Required: the whole branch inherits it.',
             '"GOL": parent "Training"; rules and function are already locked. Turn off Selectable, turn on Reportable and choose the useful Report columns.',
             'Regional: "GOL - Lombardy" and "GOL - Lazio", parent "GOL", selectable: they inherit reportability, columns and "Total hours". On "GOL - Lazio" turn off Reportable (Overridden appears).',
-            '"Self-funded": parent "Training", selectable, with the extra "Delivery mode" in Offer Attributes.',
+            '"Self-funded": parent "Training", not selectable, with the extra "Delivery mode" in Offer Attributes. Below it, one selectable child per region ("Autofinanziato - Campania", "Autofinanziato - Lazio", "Autofinanziato - Lombardia", "Autofinanziato - Sicilia") holding that region\'s courses.',
             '"DIL": if it has entirely its own fields, turn off Inherit from parent in the Offer Attributes block.',
             'Layout: on "Training" open Attribute layout, context Offer, All modes: a "Course data" section with 2 columns and "Total hours" at Half. Every subcategory will use it.',
             'Managers: on "Training" set A.M. 1 = "Tutor" and A.M. 2 = "Operator".',

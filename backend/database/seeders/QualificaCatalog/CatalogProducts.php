@@ -6,6 +6,7 @@ use App\DataObjects\Products\CreateProductData;
 use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\VatRate;
 use App\Services\ProductService;
 
 /**
@@ -19,8 +20,9 @@ use App\Services\ProductService;
  *   - the funded courses — GOL (TrainingCourseCatalogue) and DIL
  *     (DilCourseCatalogue): one per row, in its own `<Misura> - <Regione>`
  *     category, priced 0 — a funded course is not sold to the learner;
- *   - the self-funded courses (SelfFundedCourseCatalogue): one per row under
- *     the single "Autofinanziato" subcategory, with its list price;
+ *   - the self-funded courses (SelfFundedCourseCatalogue): one per row in its
+ *     own `Autofinanziato - <Regione>` category, with its list price and, when
+ *     quoted "+ iva", the 22% VAT rate;
  *   - the single-offer categories (SINGLE_OFFER_CATEGORIES): one product
  *     named after the category itself, filed directly on it.
  *
@@ -34,6 +36,9 @@ use App\Services\ProductService;
  *
  * Idempotent and non-destructive: the natural key is (name, category), and an
  * already-seeded product is left untouched so a manual edit survives a re-run.
+ * The one exception is a self-funded course an earlier revision filed on the
+ * "Autofinanziato" node itself, before the per-region split: it is MOVED onto
+ * its region, never duplicated there — see moveOffContainer().
  */
 final class CatalogProducts
 {
@@ -66,7 +71,7 @@ final class CatalogProducts
     {
         // Step 1: the funded courses (GOL and DIL), split per region.
         $this->seedTrainingCourses();
-        // Step 2: the self-funded ones, all on a single subcategory.
+        // Step 2: the self-funded ones, split per region.
         $this->seedSelfFundedCourses();
         // Step 3: the categories selling a single offer of their own.
         $this->seedSingleOfferProducts();
@@ -83,11 +88,55 @@ final class CatalogProducts
 
     private function seedSelfFundedCourses(): void
     {
-        $category = $this->category(SelfFundedCourseCatalogue::CATEGORY);
+        $container = $this->category(SelfFundedCourseCatalogue::CATEGORY);
+        $vatRateId = $this->plusVatRate()->id;
 
-        foreach (SelfFundedCourseCatalogue::COURSES as $course) {
-            $this->seedProduct($category, $course['name'], $course['price']);
+        foreach (SelfFundedCourseCatalogue::COURSES as $categoryName => $courses) {
+            $category = $this->category($categoryName);
+
+            foreach ($courses as $course) {
+                $courseVatRateId = $course['plus_vat'] ? $vatRateId : null;
+
+                $this->moveOffContainer($container, $category, $course['name'], $courseVatRateId);
+                $this->seedProduct($category, $course['name'], $course['price'], $courseVatRateId);
+            }
         }
+    }
+
+    /**
+     * The production seed creates no VAT catalogue of its own (the full one is
+     * DemoVatRateSeeder's), so the rate a "+ iva" price needs is adopted by
+     * percentage when an operator already has it, created otherwise.
+     */
+    private function plusVatRate(): VatRate
+    {
+        return VatRate::query()->firstOrCreate(
+            ['rate' => SelfFundedCourseCatalogue::VAT_RATE],
+            ['name' => SelfFundedCourseCatalogue::VAT_RATE_NAME],
+        );
+    }
+
+    /**
+     * Moves a course seeded on the "Autofinanziato" node itself — back when it
+     * was the single self-funded category — onto its regional leaf, so the
+     * split does not leave a stray copy on what is now a container. Its VAT
+     * rate is filled in only when still unset: a rate chosen by hand wins.
+     */
+    private function moveOffContainer(ProductCategory $container, ProductCategory $category, string $name, ?int $vatRateId): void
+    {
+        $product = Product::query()
+            ->where('name', $name)
+            ->where('category_id', $container->id)
+            ->first();
+
+        if ($product === null) {
+            return;
+        }
+
+        $product->update([
+            'category_id' => $category->id,
+            'vat_rate_id' => $product->vat_rate_id ?? $vatRateId,
+        ]);
     }
 
     private function seedSingleOfferProducts(): void
@@ -130,7 +179,7 @@ final class CatalogProducts
         );
     }
 
-    private function seedProduct(ProductCategory $category, string $name, float $price): void
+    private function seedProduct(ProductCategory $category, string $name, float $price, ?int $vatRateId = null): void
     {
         // Natural key (name, category) — scoped to the category because the
         // SAME course runs in several regions. An already-seeded product is
@@ -152,6 +201,7 @@ final class CatalogProducts
             price: $price,
             categoryId: $category->id,
             productType: ProductType::Service,
+            vatRateId: $vatRateId,
         ));
     }
 }

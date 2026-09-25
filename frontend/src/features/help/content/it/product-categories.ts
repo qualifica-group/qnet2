@@ -422,7 +422,7 @@ const guide: HelpGuide = {
             'Attributi comuni: in Attributi Offerta aggiungi "Ore complessive" come Obbligatorio: tutto il ramo lo eredita.',
             '"GOL": padre "Formazione"; regole e funzione sono già bloccate. Spegni Selezionabile, attiva Visibile nei report e scegli le Colonne report utili.',
             'Regionali: "GOL - Lombardia" e "GOL - Lazio", padre "GOL", selezionabili: ereditano report, colonne e "Ore complessive". Su "GOL - Lazio" spegni Visibile nei report (compare Forzato).',
-            '"Autofinanziato": padre "Formazione", selezionabile, con in più "Modalità di svolgimento" in Attributi Offerta.',
+            '"Autofinanziato": padre "Formazione", non selezionabile, con in più "Modalità di svolgimento" in Attributi Offerta. Sotto, una figlia selezionabile per regione ("Autofinanziato - Campania", "Autofinanziato - Lazio", "Autofinanziato - Lombardia", "Autofinanziato - Sicilia") con i corsi di quella regione.',
             '"DIL": se ha campi tutti suoi, spegni Eredita dal padre nel blocco Attributi Offerta.',
             'Layout: su "Formazione" apri Layout attributi, contesto Offerta, Tutte le modalità: sezione "Dati corso" a 2 colonne con "Ore complessive" a Metà. Tutte le sottocategorie lo useranno.',
             'Gestori: su "Formazione" imposta G.A. 1 = "Tutor" e G.A. 2 = "Operatore".',

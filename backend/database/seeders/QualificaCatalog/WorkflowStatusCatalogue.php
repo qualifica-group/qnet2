@@ -86,8 +86,10 @@ final class WorkflowStatusCatalogue
      * root (its offer sits on the "Orientamento Specialistico" child), so an
      * exact-category criterion would never match a single offer. "DIL" too,
      * since its courses moved onto "DIL - Lombardia" (user directive
-     * 2026-09-17). The three branches never overlap: two are roots, and no
-     * ancestor of "DIL" carries a branch workflow.
+     * 2026-09-17), and "Autofinanziato" since its courses moved onto the
+     * regional leaves (user directive 2026-09-25). The branches never overlap:
+     * two are roots, and no ancestor of "DIL" or "Autofinanziato" carries a
+     * branch workflow.
      */
     public const string BRANCH_CRITERION_FIELD = 'product_category_branch_id';
 
@@ -339,7 +341,9 @@ final class WorkflowStatusCatalogue
         ]],
         'Autoimpiego' => ['section' => self::SELF_EMPLOYMENT],
         'Yisu' => ['section' => self::SELF_EMPLOYMENT],
-        'Autofinanziato' => ['section' => self::SELF_FUNDED],
+        // Matched on the whole BRANCH (user directive 2026-09-25): a container
+        // now, its courses sit on the `Autofinanziato - <Regione>` leaves.
+        'Autofinanziato' => ['section' => self::SELF_FUNDED, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
         // Bound to the "Consulenza" ROOT, whose products sit two levels below
         // it: only the branch criterion reaches them (spec 0092).
         'Consulenza' => ['section' => self::CONSULTING, 'criterion_field' => self::BRANCH_CRITERION_FIELD],

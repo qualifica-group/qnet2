@@ -31,10 +31,10 @@ use Illuminate\Database\Seeder;
  *     false`, spec 0074): they group the tree and hand their attributes down,
  *     while products, opportunity lines, projects, campaigns and commission
  *     rules are classified on the third level, today the `GOL - <Regione>`
- *     rows and "DIL - Lombardia" — plus the subcategories that host their
- *     offer directly, "Autofinanziato", "Autoimpiego", "Yisu" and
- *     "Orientamento Specialistico" (see SELECTABLE_SUBCATEGORIES). The "Formazione" branch
- *     also carries its OFFERTA-context attributes (spec 0061/0084) — the
+ *     rows, the `Autofinanziato - <Regione>` rows and "DIL - Lombardia" —
+ *     plus the subcategories that host their offer directly, "Autoimpiego",
+ *     "Yisu" and "Orientamento Specialistico" (see SELECTABLE_SUBCATEGORIES).
+ *     The "Formazione" branch also carries its OFFERTA-context attributes (spec 0061/0084) — the
  *     "Dati corso" pair of QualificaCatalog\CourseDataAttributeCatalogue and
  *     the "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue,
  *     both moved off the PRODUCT by the user directive 2026-09-08 — assigned
@@ -46,8 +46,8 @@ use Illuminate\Database\Seeder;
  *     QualificaQuoteLayoutSeeder;
  *   - every product of the catalogue, delegated to
  *     QualificaCatalog\CatalogProducts once the tree exists: the GOL and DIL
- *     courses under their own region, the self-funded ones under
- *     "Autofinanziato" with their price and delivery mode, and the one
+ *     courses under their own region, the self-funded ones under their own
+ *     "Autofinanziato - <Regione>" with their price and VAT rate, and the one
  *     product each single-offer category sells ("Autoimpiego", "Yisu" and
  *     "Orientamento Specialistico"). No other product is seeded;
  *   - the ROOT-OWNED rules of the two roots that declare them (how many
@@ -151,7 +151,15 @@ class QualificaCatalogSeeder extends Seeder
             ],
             'Autoimpiego' => [],
             'Yisu' => [],
-            'Autofinanziato' => [],
+            // A container like GOL since the per-region course sheets arrived
+            // (user directive 2026-09-25): the courses sit on the regional
+            // leaf, keyed like SelfFundedCourseCatalogue::COURSES.
+            'Autofinanziato' => [
+                'Autofinanziato - Campania',
+                'Autofinanziato - Lazio',
+                'Autofinanziato - Lombardia',
+                'Autofinanziato - Sicilia',
+            ],
             // A container like GOL since its course catalogue arrived (user
             // directive 2026-09-17): the courses sit on the regional leaf.
             'DIL' => [
@@ -185,20 +193,17 @@ class QualificaCatalogSeeder extends Seeder
     /**
      * The second-level nodes that ARE classification targets, by exception to
      * the container rule above: a subcategory that hosts its own offer instead
-     * of grouping children. "Autofinanziato" is one — CatalogProducts files
-     * every self-funded course directly on it, so a container there would
-     * leave those products under a category nothing can be classified on (user
-     * directive 2026-08-03). CatalogProducts::SINGLE_OFFER_CATEGORIES are the
-     * others, for the same reason. Bound by identity to the catalogues that
-     * file the products, so a rename breaks loudly instead of silently
-     * demoting a node.
+     * of grouping children: CatalogProducts::SINGLE_OFFER_CATEGORIES, whose
+     * single product is filed directly on them, so a container there would
+     * leave it under a category nothing can be classified on (user directive
+     * 2026-08-03). "Autofinanziato" was one too until its courses were split
+     * per region (user directive 2026-09-25). Bound by identity to the
+     * catalogue that files the products, so a rename breaks loudly instead of
+     * silently demoting a node.
      *
      * @var list<string>
      */
-    private const array SELECTABLE_SUBCATEGORIES = [
-        SelfFundedCourseCatalogue::CATEGORY,
-        ...CatalogProducts::SINGLE_OFFER_CATEGORIES,
-    ];
+    private const array SELECTABLE_SUBCATEGORIES = CatalogProducts::SINGLE_OFFER_CATEGORIES;
 
     /**
      * OFFERTA-context attributes (spec 0061/0084): category name => list of
@@ -421,8 +426,8 @@ class QualificaCatalogSeeder extends Seeder
      * `parent_id` REALIGNED on every run, in both directions, not just written
      * at creation: an installation seeded before the flag existed must actually
      * see its mother categories stop being classification targets, one seeded
-     * while "Autofinanziato" was still filed as a container must see it become
-     * a target again, and one seeded while "APL" still hung under "Consulenza"
+     * while "Autofinanziato" still hosted its courses must see it become a
+     * container again once they move to the regions, and one seeded while "APL" still hung under "Consulenza"
      * must see it promoted to a root of its own. A plain `firstOrCreate` writes
      * `parent_id` on creation only, so it would silently skip all three.
      *

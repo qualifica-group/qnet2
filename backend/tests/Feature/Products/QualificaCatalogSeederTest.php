@@ -31,7 +31,7 @@ uses(RefreshDatabase::class);
  * Every product the catalogue seeds: the GOL and DIL courses, the self-funded
  * ones and one per CatalogProducts::SINGLE_OFFER_CATEGORIES.
  */
-const TOTAL_SEEDED_PRODUCTS = 294;
+const TOTAL_SEEDED_PRODUCTS = 303;
 
 it('provisions the client source catalogue, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
@@ -150,7 +150,10 @@ it('seeds the first two catalogue levels as containers, third level only selecta
     // leaves, plus the subcategories hosting their own offer.
     $selectable = ProductCategory::query()->where('is_selectable', true)->pluck('name')->sort()->values()->all();
     expect($selectable)->toBe([
-        'Autofinanziato',
+        // Its regional leaves: "Autofinanziato" itself is a container since
+        // the user directive 2026-09-25.
+        'Autofinanziato - Campania', 'Autofinanziato - Lazio',
+        'Autofinanziato - Lombardia', 'Autofinanziato - Sicilia',
         'Autoimpiego',
         // Its courses' leaf: "DIL" itself is a container again since the
         // user directive 2026-09-17.
@@ -161,17 +164,6 @@ it('seeds the first two catalogue levels as containers, third level only selecta
         'Orientamento Specialistico',
         'Yisu',
     ]);
-});
-
-it('seeds "Autofinanziato" as a classification target, it hosts the self-funded courses itself', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
-
-    expect($autofinanziato->is_selectable)->toBeTrue()
-        // The reason it must be one: its products are filed directly on it.
-        ->and(Product::query()->where('category_id', $autofinanziato->id)->count())
-        ->toBe(count(SelfFundedCourseCatalogue::COURSES));
 });
 
 it('seeds one product named after each single-offer category, idempotently', function (): void {
@@ -205,17 +197,6 @@ it('realigns a container category seeded as selectable before the flag existed',
 
     expect(ProductCategory::query()->where('name', 'Formazione')->value('is_selectable'))->toBeFalsy()
         ->and(ProductCategory::query()->where('name', 'GOL')->value('is_selectable'))->toBeFalsy();
-});
-
-it('realigns "Autofinanziato" back to selectable on an installation that seeded it as a container', function (): void {
-    // The state left by the previous version of this seeder, which classified
-    // every subcategory as a container.
-    $formazione = ProductCategory::factory()->create(['name' => 'Formazione', 'is_selectable' => false]);
-    ProductCategory::factory()->create(['name' => 'Autofinanziato', 'parent_id' => $formazione->id, 'is_selectable' => false]);
-
-    test()->seed(QualificaCatalogSeeder::class);
-
-    expect(ProductCategory::query()->where('name', 'Autofinanziato')->value('is_selectable'))->toBeTruthy();
 });
 
 it('never re-selects a third-level node an operator has deliberately turned into a container', function (): void {
@@ -376,7 +357,8 @@ it('seeds every GOL training course under its own region, idempotently', functio
     // one product of each single-offer category.
     expect(Product::query()->count())
         ->toBe(array_sum($expectedPerRegion) + count(DilCourseCatalogue::COURSES['DIL - Lombardia'])
-            + count(SelfFundedCourseCatalogue::COURSES) + count(CatalogProducts::SINGLE_OFFER_CATEGORIES));
+            + array_sum(array_map(count(...), SelfFundedCourseCatalogue::COURSES))
+            + count(CatalogProducts::SINGLE_OFFER_CATEGORIES));
 });
 
 it('files each course with no attribute value of its own', function (): void {
@@ -421,75 +403,6 @@ it('keeps the same course name in different regions as separate products', funct
 
     expect($courses->pluck('category.name')->sort()->values()->all())
         ->toBe(['GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise']);
-});
-
-it('assigns the "Modalità di svolgimento" enum to the Autofinanziato subcategory only', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicate attribute, option nor pivot row.
-
-    $attribute = Attribute::query()->where('code', 'delivery_mode')->get();
-
-    expect($attribute)->toHaveCount(1)
-        ->and($attribute->first()->name)->toBe('Modalità di svolgimento')
-        ->and($attribute->first()->type)->toBe('enum');
-
-    expect($attribute->first()->options()->get()->map->only(['value', 'label'])->all())
-        ->toBe([
-            ['value' => 'in_person', 'label' => 'In presenza'],
-            ['value' => 'online', 'label' => 'Online'],
-        ]);
-
-    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
-
-    // One single assignment, on the subcategory, in the OFFERTA context.
-    $pivot = DB::table('attribute_category')->where('attribute_id', $attribute->first()->id)->get();
-
-    expect($pivot)->toHaveCount(1)
-        ->and($pivot->first()->category_id)->toBe($autofinanziato->id)
-        ->and($pivot->first()->context)->toBe(AttributeContext::Quote->value);
-
-    // Confined to its own subtree: a sibling of Autofinanziato does not see it,
-    // while the branch attribute assigned higher up still reaches both.
-    $service = app(ProductCategoryService::class);
-
-    expect($service->effectiveAttributes($autofinanziato, AttributeContext::Quote)->pluck('code')->all())
-        ->toContain('delivery_mode')
-        ->toContain('total_hours');
-
-    $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
-
-    expect($service->effectiveAttributes($dil, AttributeContext::Quote)->pluck('code')->all())
-        ->not->toContain('delivery_mode');
-});
-
-it('seeds the self-funded courses with their list price, idempotently', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaCatalogSeeder::class); // re-run: natural key (name, category), no duplicates.
-
-    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
-
-    expect(Product::query()->where('category_id', $autofinanziato->id)->count())
-        ->toBe(count(SelfFundedCourseCatalogue::COURSES));
-
-    $oss = Product::query()
-        ->where('name', 'OSS - Operatore Socio Sanitario')
-        ->where('category_id', $autofinanziato->id)
-        ->firstOrFail();
-
-    expect($oss->product_type)->toBe(ProductType::Service)
-        ->and((float) $oss->price)->toBe(1900.0)
-        // Cost is filled in later through the CRUD modules.
-        ->and((float) $oss->cost)->toBe(0.0)
-        // Duration and delivery mode are the Offerta's now.
-        ->and($oss->attribute_values)->toBeEmpty();
-
-    $aggiornamento = Product::query()
-        ->where('name', 'Aggiornamento ASO')
-        ->where('category_id', $autofinanziato->id)
-        ->firstOrFail();
-
-    expect((float) $aggiornamento->price)->toBe(130.0)
-        ->and($aggiornamento->attribute_values)->toBeEmpty();
 });
 
 it('withdraws the moved codes from the product side of an installation seeded earlier', function (): void {

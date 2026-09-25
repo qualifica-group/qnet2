@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CORSI AUTOFINANZIATI PER REGIONE (SEED DI PRODUZIONE) — VERDE, COMMITTATO (2026-09-25)
+
+- Fonte: CSV "Repertorio Corsi_Autofinanziati" (fogli Campania/Lazio/Lombardia/Sicilia), direttiva utente 2026-09-25.
+  Trascritti in `QualificaCatalog/SelfFundedCourseCatalogue::COURSES` (leaf regionale => corsi `{name, price, plus_vat}`).
+- "Autofinanziato" ora e' un CONTENITORE (fuori da `SELECTABLE_SUBCATEGORIES`, realign automatico) con 4 foglie
+  selezionabili `Autofinanziato - Campania|Lazio|Lombardia|Sicilia`. Stesso corso ripetuto per sede = UN prodotto per
+  regione; prezzi diversi tra sedi -> il piu' basso (ASO Sicilia 1200, ASACOM Sicilia 1200 da "1.200/1.300").
+- "+ iva": prezzo netto + aliquota 22% (`VatRate::firstOrCreate(['rate' => 22], ['name' => 'IVA 22%'])`, riusa una 22%
+  esistente). EIPASS, PEKIT Expert, ABA Lazio. Gli altri senza aliquota.
+- `CatalogProducts::moveOffContainer()`: i corsi gia' seedati su "Autofinanziato" vengono SPOSTATI sulla regione (non
+  duplicati); IVA compilata solo se vuota. Workflow "Autofinanziato" -> `BRANCH_CRITERION_FIELD` (realign come DIL).
+- Test: nuovo `tests/Feature/Products/QualificaSelfFundedCatalogueTest.php` (test self-funded spostati li' da
+  `QualificaCatalogSeederTest`, che era 585 righe); totale prodotti 294 -> 303 (anche `QualificaProductionDataSeederTest`).
+  Suite completa parallela: 0 failed; 75 errori preesistenti "Call to undefined function <helper>()" (helper di test
+  definiti in altri file, non caricati in parallelo/isolamento) — da sistemare a parte.
+- Manuale: guida in-app `product-categories` IT/EN + manuale Claude Docs (schema categorie e passo "Autofinanziato").
+
 ## GESTIONE RICHIESTE — COLONNE `attr.*` MULTISELECT E RELAZIONE — VERDE, COMMITTATO (2026-09-25)
 
 - Bug utente: "Titolo di Studio" (enum multiselect) apriva un menu vuoto; "Sede corso" (relation one) mostrava l'ID.
