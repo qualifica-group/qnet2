@@ -2,6 +2,7 @@
 
 use App\Enums\TaskStatusSystemKey;
 use App\Models\TaskStatus;
+use App\Tables\Tasks\TaskAdvancedFilterCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -190,3 +191,27 @@ it('AC-091: no file of the module contains an emoji', function () {
 // recurrence is now IN scope, so a module file mentioning it is no longer a
 // violation — the opposite is now true (see TaskRecurrenceCalculatorTest and
 // friends). No replacement guard: recurrence's own tests cover it.
+
+// ---------------------------------------------------------------------------
+// Advanced filter labels resolve in both locales
+// ---------------------------------------------------------------------------
+
+it('every task advanced filter label is a key of tasks.advancedFilters in the IT and EN locales', function () {
+    $missing = [];
+
+    foreach (['it', 'en'] as $locale) {
+        $source = (string) file_get_contents(base_path("../frontend/src/i18n/locales/{$locale}-tasks.ts"));
+        preg_match('/\n  advancedFilters: \{(.*?)\n  \},/s', $source, $block);
+        preg_match_all('/^\s+(\w+):/m', $block[1] ?? '', $keys);
+
+        foreach (TaskAdvancedFilterCatalog::advancedFilters() as $filter) {
+            $key = str_replace('tasks.advancedFilters.', '', $filter['label']);
+
+            if (! in_array($key, $keys[1], true)) {
+                $missing[] = "{$locale}: {$filter['label']}";
+            }
+        }
+    }
+
+    expect($missing)->toBe([]);
+});
