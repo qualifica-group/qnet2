@@ -179,16 +179,9 @@ describe('RequestAttributionSection — reward assignment (AC-031)', () => {
     )
     updateRequestWorkMock.mockResolvedValue(panel({ reporter_id: 20, reporter: { id: 20, name: 'Mario Rossi' } }))
     fetchForSelectMock.mockResolvedValue({
-      items: [{ id: 5, label: 'Buono spesa' }],
+      items: [{ id: 5, label: 'Buono spesa', meta: { color: 'green' } }],
       pagination: { offset: 0, limit: 25, total: 1 },
       export_link: null,
-    })
-    fetchRewardTypeMock.mockResolvedValue({
-      id: 5,
-      name: 'Buono spesa',
-      color: 'green',
-      created_at: '2026-01-01T00:00:00Z',
-      updated_at: '2026-01-01T00:00:00Z',
     })
 
     renderPanel()
@@ -200,5 +193,7 @@ describe('RequestAttributionSection — reward assignment (AC-031)', () => {
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({ rewards: [{ reward_type_id: 5 }] })
+    // The pick never reaches the detail endpoint gated on `reward-types.view`.
+    expect(fetchRewardTypeMock).not.toHaveBeenCalled()
   })
 })

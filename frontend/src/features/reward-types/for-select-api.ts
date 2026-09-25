@@ -10,6 +10,15 @@ import type {
 export const REWARD_TYPES_FOR_SELECT_RESOURCE = 'reward-types'
 
 /**
+ * A reward type option as returned by `GET /api/reward-types/for-select`:
+ * `meta.color` is the palette token the reward chip renders, so a picked
+ * option needs no `GET /reward-types/{id}` (gated on `reward-types.view`).
+ */
+export interface RewardTypeForSelectItem extends ForSelectItem {
+  meta: { color: string }
+}
+
+/**
  * Fetches a page of reward type options from
  * `GET /api/reward-types/for-select`. Thin wrapper over the generic
  * for-select fetcher, bound to the `reward-types` resource. No relation

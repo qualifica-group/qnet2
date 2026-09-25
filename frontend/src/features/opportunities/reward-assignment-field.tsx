@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { flattenForSelectPages } from '@/features/for-select/use-for-select'
-import { fetchRewardType } from '@/features/reward-types/api'
-import { useRewardTypesForSelect } from '@/features/reward-types/for-select-api'
+import { useRewardTypesForSelect, type RewardTypeForSelectItem } from '@/features/reward-types/for-select-api'
 import { RewardChipList, type RewardChipListItem } from '@/features/rewards/reward-chip-list'
 import type { RewardAssignmentRef, RewardTypeRef } from '@/features/rewards/types'
 
@@ -23,8 +22,8 @@ interface RewardAssignmentFieldProps {
   /**
    * The record's persisted assignments (edit mode; `[]` on create), seeding
    * every already-hydrated chip's name/color without a fetch — a reward type
-   * newly picked THIS session is resolved once, at pick time, and cached the
-   * same way (see `handlePick`).
+   * newly picked THIS session is cached the same way from its for-select
+   * option (see `handlePick`).
    */
   initialAssignments: RewardAssignmentRef[]
   /** D-3: the beneficiary is always the current reporter, never chosen here; `null` disables the add control. */
@@ -77,7 +76,6 @@ export function RewardAssignmentField({
   )
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [pendingId, setPendingId] = useState<number | null>(null)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
   const debouncedSearch = useDebouncedValue(search.trim())
   const listboxId = useId()
@@ -87,7 +85,10 @@ export function RewardAssignmentField({
   const assignedIds = new Set(value.map((assignment) => assignment.reward_type_id))
 
   const query = useRewardTypesForSelect({ search: debouncedSearch, enabled: open })
-  const options = flattenForSelectPages(query.data?.pages).filter((item) => !assignedIds.has(item.id))
+  // The endpoint projects `meta.color` on every option (RewardTypeForSelectItem).
+  const options = (flattenForSelectPages(query.data?.pages) as RewardTypeForSelectItem[]).filter(
+    (item) => !assignedIds.has(item.id),
+  )
 
   // Portals the popup back into the enclosing Sheet/Dialog content (if any),
   // mirroring `AsyncPaginatedSelect`, so wheel/touch scrolling stays inside
@@ -108,16 +109,13 @@ export function RewardAssignmentField({
     }
   }
 
-  const handlePick = async (id: number) => {
-    setPendingId(id)
-    try {
-      const type = await fetchRewardType(id)
-      setResolved((previous) => new Map(previous).set(type.id, { id: type.id, name: type.name, color: type.color }))
-      onChange([...value, { reward_type_id: id }])
-      handleOpenChange(false)
-    } finally {
-      setPendingId(null)
-    }
+  // The option already carries name and color: no `GET /reward-types/{id}`,
+  // which needs `reward-types.view` — a grant the Gestione Richieste roles
+  // do not hold.
+  const handlePick = (item: RewardTypeForSelectItem) => {
+    setResolved((previous) => new Map(previous).set(item.id, { id: item.id, name: item.label, color: item.meta.color }))
+    onChange([...value, { reward_type_id: item.id }])
+    handleOpenChange(false)
   }
 
   const handleRemove = (id: number) => {
@@ -196,19 +194,16 @@ export function RewardAssignmentField({
                     role="option"
                     aria-selected={false}
                     tabIndex={0}
-                    onClick={() => void handlePick(item.id)}
+                    onClick={() => handlePick(item)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault()
-                        void handlePick(item.id)
+                        handlePick(item)
                       }
                     }}
                     className="flex cursor-pointer items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-xs outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-[2px] focus-visible:ring-ring/50"
                   >
                     <span className="truncate">{item.label}</span>
-                    {pendingId === item.id ? (
-                      <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                    ) : null}
                   </div>
                 ))}
                 {query.hasNextPage ? (

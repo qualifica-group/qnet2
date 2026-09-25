@@ -225,8 +225,11 @@
     <endpoint method="GET" path="/api/reward-types/for-select">
       <request>search?: string · offset?: int · limit?: int (max 100) · ids?: int[]</request>
       <response status="200">
-        paginatedResponse(): { items: [{ id: int, label: string }], export_link: string|null,
-        pagination: { total, offset, limit, total_pages } }. `label` = name. Ordinamento: name asc (BR-4).
+        paginatedResponse(): { items: [{ id: int, label: string, meta: { color: string } }], export_link: string|null,
+        pagination: { total, offset, limit, total_pages } }. `label` = name, `meta.color` = color (rettifica
+        2026-09-25: il controllo "abbinamento buono" costruisce il chip dall'opzione, senza
+        `GET /api/reward-types/{id}` gated su `reward-types.view`, permesso che i ruoli di Gestione Richieste non
+        hanno). Ordinamento: name asc (BR-4).
       </response>
       <errors>401 non autenticato · 403 senza `reward-types.viewAny` · 422 se limit &gt; 100</errors>
     </endpoint>
@@ -310,7 +313,7 @@
     <criterion id="AC-006">Dato un utente con `reward-types.delete`, quando fa DELETE, allora 204 e la riga sparisce dal DB.</criterion>
     <criterion id="AC-007">Dato un utente SENZA i permessi, allora ciascuno di GET show / POST / PATCH / DELETE / for-select / GET tables columns / export risponde 403 (un'asserzione per ability). Il 403 ha precedenza sul 422 (payload invalido + permesso mancante = 403).</criterion>
     <criterion id="AC-008">Dopo `php artisan permissions:sync` esistono gli 8 permessi `reward-types.{viewAny,view,create,update,delete,export,import,viewActivity}` — verificato eseguendo il comando, non per ispezione del codice.</criterion>
-    <criterion id="AC-009">GET /api/reward-types/for-select restituisce items { id, label } ordinati per name asc, rispetta `search`, idrata gli `ids` richiesti anche se fuori pagina (BR-4) e risponde 422 con limit &gt; 100.</criterion>
+    <criterion id="AC-009">GET /api/reward-types/for-select restituisce items { id, label, meta: { color } } ordinati per name asc, rispetta `search`, idrata gli `ids` richiesti anche se fuori pagina (BR-4) e risponde 422 con limit &gt; 100.</criterion>
     <criterion id="AC-010">GET /api/tables/reward-types/columns espone le 5 colonne del catalogo nell'ordine dichiarato con i flag sortable/filterable congelati nel contratto; GET rows applica ricerca su `name`, filtro su `name`, ordinamento asc/desc su `name` e su `created_at`, e la paginazione (limit 25 di default) restituisce il `total` corretto.</criterion>
     <criterion id="AC-011">Le row-action tornate da /rows contengono view/edit/delete/viewActivity solo per chi ha il permesso corrispondente, e l'azione `delete` porta il flag `confirm`.</criterion>
     <criterion id="AC-012">L'export del dominio `reward-types` produce un file senza alcun codice di export dedicato (registrazione in config/tables.php), e risponde 403 senza `reward-types.export`.</criterion>

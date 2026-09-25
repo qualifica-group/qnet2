@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ABBINAMENTO BUONO SENZA PERMESSI SUL CATALOGO — VERDE, COMMITTATO (2026-09-25)
+
+- Bug: i commerciali (e ogni ruolo di Gestione Richieste senza il blocco REWARDS) ricevevano 403 scegliendo un buono:
+  `RewardAssignmentField.handlePick` chiamava `GET /api/reward-types/{id}` (gated `reward-types.view`) solo per il colore.
+- Fix (decisione utente: NESSUN cambio permessi/seeder): `GET /api/reward-types/for-select` ora proietta
+  `meta: { color }` (`RewardTypeForSelectResource`; `RewardTypeService::FOR_SELECT_COLUMNS` include `color`), FE
+  `RewardTypeForSelectItem` in `features/reward-types/for-select-api.ts`; il chip si costruisce dall'opzione, niente
+  fetch del dettaglio (rimossi `pendingId`/spinner per-opzione). Spec 0058 AC-009 + endpoint rettificati.
+- Test: `RewardTypeForSelectTest` (shape con meta + attore senza permessi riceve il colore), FE
+  `reward-assignment-field.test.tsx` e `request-attribution-rewards.test.tsx` asseriscono `fetchRewardType` mai chiamato.
+- Manuale: nessun impatto (nessuna guida documentava il requisito di permesso).
+
 ## CORSI AUTOFINANZIATI PER REGIONE (SEED DI PRODUZIONE) — VERDE, COMMITTATO (2026-09-25)
 
 - Fonte: CSV "Repertorio Corsi_Autofinanziati" (fogli Campania/Lazio/Lombardia/Sicilia), direttiva utente 2026-09-25.

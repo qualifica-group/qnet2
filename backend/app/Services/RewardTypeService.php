@@ -19,6 +19,9 @@ use Illuminate\Support\Collection;
  */
 class RewardTypeService
 {
+    /** The columns RewardTypeForSelectResource projects: `color` feeds its `meta`. */
+    private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color'];
+
     /**
      * Shared by show (controller)/create/update — a hook point kept for
      * symmetry with other lookup services even though a `RewardType` has no
@@ -70,7 +73,7 @@ class RewardTypeService
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = RewardType::query()->select(['id', 'name']);
+        $base = RewardType::query()->select(self::FOR_SELECT_COLUMNS);
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');
@@ -118,7 +121,7 @@ class RewardTypeService
 
         /** @var Collection<int, RewardType> $hydrated */
         $hydrated = RewardType::query()
-            ->select(['id', 'name'])
+            ->select(self::FOR_SELECT_COLUMNS)
             ->whereIn('id', $missingIds)
             ->orderBy('name')
             ->orderBy('id')

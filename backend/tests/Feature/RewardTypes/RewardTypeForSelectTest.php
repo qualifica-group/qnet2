@@ -61,16 +61,27 @@ it('allows actors with reward-types.viewAny (200) and returns the paginated enve
 // AC-009 — item shape + name-asc ordering + search
 // ---------------------------------------------------------------------------
 
-it('maps a reward type to { id, label: name } (AC-009)', function () {
+it('maps a reward type to { id, label: name, meta: { color } } (AC-009)', function () {
     $actor = rewardTypeUserWith(['viewAny']);
-    $target = RewardType::factory()->create(['name' => 'Buono Amazon']);
+    $target = RewardType::factory()->create(['name' => 'Buono Amazon', 'color' => 'orange']);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/reward-types/for-select?search=Buono Amazon')->assertOk();
     $item = collect($response->json('items'))->firstWhere('id', $target->id);
 
-    expect($item)->toMatchArray(['id' => $target->id, 'label' => 'Buono Amazon'])
-        ->and(array_keys($item))->toEqualCanonicalizing(['id', 'label']);
+    expect($item)->toBe(['id' => $target->id, 'label' => 'Buono Amazon', 'meta' => ['color' => 'orange']]);
+});
+
+// The "abbinamento buono" chip reads its color from here, so an operator of
+// Gestione Richieste without any reward-types.* grant must receive it too.
+it('carries meta.color to an actor holding no reward-types permission', function () {
+    $actor = rewardTypeUserWith([]);
+    $target = RewardType::factory()->create(['name' => 'Buono Amazon', 'color' => 'orange']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson('/api/reward-types/for-select?search=Buono Amazon')->assertOk();
+
+    expect(collect($response->json('items'))->firstWhere('id', $target->id)['meta'])->toBe(['color' => 'orange']);
 });
 
 it('orders items by name asc (BR-4, AC-009)', function () {

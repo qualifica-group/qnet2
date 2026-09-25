@@ -22,6 +22,8 @@ vi.mock('@/features/for-select/api', async () => {
   }
 })
 
+// Guard, never resolved: a pick must not call the detail endpoint, gated on
+// `reward-types.view` that the Gestione Richieste roles do not hold.
 const fetchRewardTypeMock = vi.fn()
 vi.mock('@/features/reward-types/api', () => ({
   fetchRewardType: (id: number) => fetchRewardTypeMock(id),
@@ -117,18 +119,11 @@ describe('RewardAssignmentField — reporter gating (AC-030)', () => {
 })
 
 describe('RewardAssignmentField — add/remove (AC-029)', () => {
-  it('adds a picked reward type as a chip and excludes it from further picks', async () => {
+  it('adds a picked reward type as a chip from its for-select option, without the detail fetch', async () => {
     fetchForSelectMock.mockResolvedValue({
-      items: [{ id: 5, label: 'Buono spesa' }],
+      items: [{ id: 5, label: 'Buono spesa', meta: { color: 'green' } }],
       pagination: { offset: 0, limit: 25, total: 1 },
       export_link: null,
-    })
-    fetchRewardTypeMock.mockResolvedValue({
-      id: 5,
-      name: 'Buono spesa',
-      color: 'green',
-      created_at: '2026-01-01T00:00:00Z',
-      updated_at: '2026-01-01T00:00:00Z',
     })
 
     renderField({ reporterId: 1 })
@@ -136,9 +131,9 @@ describe('RewardAssignmentField — add/remove (AC-029)', () => {
 
     fireEvent.click(await screen.findByRole('option', { name: 'Buono spesa' }))
 
-    await waitFor(() => expect(fetchRewardTypeMock).toHaveBeenCalledWith(5))
-    expect(await screen.findByText('Buono spesa')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Remove Buono spesa' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Remove Buono spesa' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Buono spesa' })).not.toBeInTheDocument()
+    expect(fetchRewardTypeMock).not.toHaveBeenCalled()
   })
 
   it('removes a chip when its remove button is clicked', () => {
@@ -156,8 +151,8 @@ describe('RewardAssignmentField — add/remove (AC-029)', () => {
   it('excludes an already-assigned type from the option list', async () => {
     fetchForSelectMock.mockResolvedValue({
       items: [
-        { id: 3, label: 'Amazon 10€' },
-        { id: 5, label: 'Buono spesa' },
+        { id: 3, label: 'Amazon 10€', meta: { color: 'blue' } },
+        { id: 5, label: 'Buono spesa', meta: { color: 'green' } },
       ],
       pagination: { offset: 0, limit: 25, total: 2 },
       export_link: null,
