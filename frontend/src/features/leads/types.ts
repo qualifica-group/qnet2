@@ -6,6 +6,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { BalancedOperatorsBySiteEntry } from '@/features/assignment/types'
 import type { PrimaryContact } from '@/features/table/types'
 
 /** Hydrated `{id, name}` relation shared by registry/source/operator. */
@@ -167,6 +168,12 @@ export interface AssignOperatorsPayload {
   lead_ids: number[]
   mode: 'single' | 'balanced'
   operator_id?: number
+  /**
+   * "Smistamento equo" operator selection (spec 0168), sent only in `balanced`
+   * mode: one entry per Sede group with at least one operator left selected in
+   * the dialog, restricting that Sede's pool to those ids.
+   */
+  operators_by_site?: BalancedOperatorsBySiteEntry[]
 }
 
 /**

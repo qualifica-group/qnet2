@@ -65,18 +65,19 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Nella tabella **Lead** seleziona i lead.',
-            'Clicca **Assegna operatori** e scegli la **Sede**.',
+            'Clicca **Assegna operatori**.',
             'Scegli il **Tipo di assegnazione**: **Smistamento equo** (distribuisce bilanciando il carico) o **Assegna a operatore** (tutti allo stesso operatore).',
+            'Con **Smistamento equo** compare la lista degli operatori raggruppati per Sede: sono tutti selezionati, deseleziona chi non deve ricevere lead (per gruppo intero o singolo operatore).',
             'Clicca **Assegna**.',
           ],
         },
         {
           type: 'paragraph',
-          text: 'Compaiono solo gli operatori della sede competenti per i lead scelti; i lead senza operatore competente vengono indicati come esclusi.',
+          text: 'Compaiono solo gli operatori della sede competenti per i lead scelti, con il numero di lead già in carico a ciascuno; i lead senza operatore competente vengono indicati come esclusi.',
         },
         {
           type: 'warning',
-          text: 'Alcune modalità non sono disponibili se la selezione contiene lead di campagne diverse.',
+          text: 'Alcune modalità non sono disponibili se la selezione contiene lead di campagne diverse. Un gruppo lasciato senza operatori selezionati non riceve i suoi lead.',
         },
       ],
     },

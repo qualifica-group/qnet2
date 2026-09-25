@@ -16,6 +16,7 @@ use App\Models\User;
 use App\RequestManagement\RequestModule;
 use App\Services\Assignment\AssignmentCandidates;
 use App\Services\Assignment\AssignmentSiteResolver;
+use App\Services\Assignment\BalancedPoolGroups;
 use App\Services\Assignment\ImportRowCompetence;
 use App\Services\Assignment\ImportRunRowSelection;
 use App\Services\Assignment\LeadCompetence;
@@ -78,6 +79,7 @@ class SelectionScopeController extends BaseApiController
         private readonly QuoteCompetence $quoteCompetence,
         private readonly AssignmentSiteResolver $siteResolver,
         private readonly AssignmentCandidates $candidates,
+        private readonly BalancedPoolGroups $balancedPoolGroups,
     ) {}
 
     public function __invoke(SelectionScopeRequest $request): JsonResponse
@@ -132,16 +134,16 @@ class SelectionScopeController extends BaseApiController
 
         $rowIds = $rows->pluck('id')->map(intval(...))->all();
         $siteByRow = $this->siteResolver->forImportRows($rows, $globalConfig);
+        $categoriesByRow = $this->importRowCompetence->requiredByRow($rows, $globalConfig);
+        $balanced = $this->balancedPoolGroups->build($rowIds, $siteByRow, $categoriesByRow, loadFromQuotes: false);
 
         return [
             'product_category_ids' => $this->importRowCompetence->requiredUnion($rows, $globalConfig),
             'operational_site_id' => $this->sharedSite($rowIds, $siteByRow),
             'campaign_ids' => $this->ascendingIds($campaignIds),
-            'single_operator_available' => $this->singleOperatorAvailable(
-                $rowIds,
-                $siteByRow,
-                $this->importRowCompetence->requiredByRow($rows, $globalConfig),
-            ),
+            'single_operator_available' => $this->singleOperatorAvailable($rowIds, $siteByRow, $categoriesByRow),
+            'balanced_groups' => $balanced['groups'],
+            'balanced_unassignable_count' => $balanced['unassignable_count'],
         ];
     }
 
@@ -154,6 +156,8 @@ class SelectionScopeController extends BaseApiController
 
         $leadIds = $request->ids();
         $siteByLead = $this->siteResolver->forLeads($leadIds);
+        $categoriesByLead = $this->leadCompetence->requiredByLead($leadIds);
+        $balanced = $this->balancedPoolGroups->build($leadIds, $siteByLead, $categoriesByLead, loadFromQuotes: false);
 
         return [
             'product_category_ids' => $this->leadCompetence->requiredUnion($leadIds),
@@ -161,11 +165,9 @@ class SelectionScopeController extends BaseApiController
             'campaign_ids' => $this->ascendingIds(
                 Lead::query()->whereIn('id', $leadIds)->pluck('campaign_id')->all(),
             ),
-            'single_operator_available' => $this->singleOperatorAvailable(
-                $leadIds,
-                $siteByLead,
-                $this->leadCompetence->requiredByLead($leadIds),
-            ),
+            'single_operator_available' => $this->singleOperatorAvailable($leadIds, $siteByLead, $categoriesByLead),
+            'balanced_groups' => $balanced['groups'],
+            'balanced_unassignable_count' => $balanced['unassignable_count'],
         ];
     }
 
@@ -193,6 +195,8 @@ class SelectionScopeController extends BaseApiController
         )->pluck('quotes.id')->map(intval(...))->all();
 
         $siteByQuote = $this->siteResolver->forQuotes($inScopeIds);
+        $categoriesByQuote = $this->quoteCompetence->requiredByQuote($inScopeIds);
+        $balanced = $this->balancedPoolGroups->build($inScopeIds, $siteByQuote, $categoriesByQuote, loadFromQuotes: true);
 
         return [
             'product_category_ids' => $this->quoteCompetence->requiredUnion($inScopeIds),
@@ -200,11 +204,9 @@ class SelectionScopeController extends BaseApiController
             // An Opportunity carries no campaign (D-4): the chain does not
             // exist on this domain.
             'campaign_ids' => [],
-            'single_operator_available' => $this->singleOperatorAvailable(
-                $inScopeIds,
-                $siteByQuote,
-                $this->quoteCompetence->requiredByQuote($inScopeIds),
-            ),
+            'single_operator_available' => $this->singleOperatorAvailable($inScopeIds, $siteByQuote, $categoriesByQuote),
+            'balanced_groups' => $balanced['groups'],
+            'balanced_unassignable_count' => $balanced['unassignable_count'],
         ];
     }
 

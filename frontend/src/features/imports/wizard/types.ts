@@ -5,6 +5,8 @@
  * are untouched; this module is a parallel, wizard-only contract.
  */
 
+import type { BalancedOperatorsBySiteEntry } from '@/features/assignment/types'
+
 /** Lifecycle of a wizard import run, mirrored from the extended `App\Enums\ImportStatus`. */
 export type ImportRunStatus =
   | 'analyzing'
@@ -323,6 +325,12 @@ export interface ImportRunRowUpdateResult {
 export interface BulkAssignImportRowPayload {
   operator_id?: number
   mode?: 'single' | 'balanced'
+  /**
+   * "Smistamento equo" operator selection (spec 0168), sent only in `balanced`
+   * mode: one entry per Sede group with at least one operator left selected in
+   * the dialog, restricting that Sede's pool to those ids.
+   */
+  operators_by_site?: BalancedOperatorsBySiteEntry[]
   product_ids?: number[]
   select_all: boolean
   row_ids: number[]

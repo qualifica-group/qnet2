@@ -173,6 +173,22 @@ export const leads = {
       // (`leads-table.tsx`, direttiva utente 2026-09-10).
       disabledMixedCampaigns: 'Non disponibile: la selezione contiene record di campagne diverse.',
     },
+    // Lista operatori per Sede di "Smistamento equo" (spec 0168), condivisa
+    // dalle tre superfici (Lead, Gestione richieste/Iscritti, import): il
+    // dialog la traduce sempre nel namespace di default, a prescindere dallo
+    // spazio dei nomi del chiamante.
+    balanced: {
+      loading: 'Calcolo degli operatori disponibili…',
+      empty: 'Nessun operatore disponibile per i record selezionati.',
+      error: 'Impossibile caricare gli operatori. Chiudi e riapri la finestra per riprovare.',
+      selectGroup: 'Seleziona tutti',
+      selectionCount: '{{selected}}/{{total}}',
+      operatorAriaLabel: '{{operator}} — {{site}}',
+      recordCount: '{{count}} record',
+      load: '{{count}} in carico',
+      groupWarning: 'Nessun operatore selezionato: questi {{count}} record non verranno assegnati.',
+      globalWarning: '{{count}} record non hanno un operatore disponibile e non verranno assegnati.',
+    },
     actions: {
       balanced: 'Smistamento equo',
       balancedHint: 'Distribuisce i lead selezionati tra gli operatori della Sede, bilanciando il carico di lavoro.',

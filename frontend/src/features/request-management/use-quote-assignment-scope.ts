@@ -1,4 +1,5 @@
 import { useAssignmentScope } from '@/features/assignment/use-assignment-scope'
+import type { AssignmentScopeBalancedGroup } from '@/features/assignment/types'
 import { useRequestModule } from '@/features/request-management/request-module'
 
 /**
@@ -29,6 +30,12 @@ export interface QuoteAssignmentScope {
    * call site must not read as "no operator available".
    */
   singleOperatorAvailable: boolean | undefined
+  /** "Smistamento equo" picker groups (spec 0168), `undefined` while unresolved or on failure. */
+  balancedGroups: AssignmentScopeBalancedGroup[] | undefined
+  /** Offerte with no resolvable Sede or empty pool (spec 0168), `undefined` under the same conditions. */
+  balancedUnassignableCount: number | undefined
+  /** True when the selection-scope request failed (spec 0168): the balanced picker names the failure instead of reading an empty list. */
+  isError: boolean
 }
 
 /**
@@ -41,16 +48,26 @@ export interface QuoteAssignmentScope {
  */
 export function useQuoteAssignmentScope(ids: number[], isOpen: boolean): QuoteAssignmentScope {
   const { assignmentDomain } = useRequestModule()
-  const { competenceCategoryIds, operationalSiteId, singleOperatorAvailable, isResolving } =
-    useAssignmentScope({
-      selection: ids.length > 0 ? { domain: assignmentDomain, ids } : null,
-      enabled: isOpen,
-    })
+  const {
+    competenceCategoryIds,
+    operationalSiteId,
+    singleOperatorAvailable,
+    balancedGroups,
+    balancedUnassignableCount,
+    isResolving,
+    isError,
+  } = useAssignmentScope({
+    selection: ids.length > 0 ? { domain: assignmentDomain, ids } : null,
+    enabled: isOpen,
+  })
 
   return {
     competenceCategoryIds,
     isResolvingCompetence: isResolving,
     operatorSiteId: operationalSiteId,
     singleOperatorAvailable,
+    balancedGroups,
+    balancedUnassignableCount,
+    isError,
   }
 }

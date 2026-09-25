@@ -6,6 +6,7 @@
  * this one depends on the read model, never the other way round.
  */
 
+import type { BalancedOperatorsBySiteEntry } from '@/features/assignment/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { QuoteLineInput } from '@/features/quotes/types'
 import type { RequestClientIdentity } from '@/features/request-management/types'
@@ -226,6 +227,12 @@ export interface AssignRequestOperatorsPayload {
   request_ids: number[]
   mode: 'single' | 'balanced'
   operator_id?: number
+  /**
+   * "Smistamento equo" operator selection (spec 0168), sent only in `balanced`
+   * mode: one entry per Sede group with at least one operator left selected in
+   * the dialog, restricting that Sede's pool to those ids.
+   */
+  operators_by_site?: BalancedOperatorsBySiteEntry[]
 }
 
 /**

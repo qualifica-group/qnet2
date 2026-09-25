@@ -10,6 +10,7 @@ use App\Services\Assignment\AssignmentCandidates;
 use App\Services\Assignment\AssignmentSiteResolver;
 use App\Services\Assignment\ImportRowCompetence;
 use App\Services\Assignment\ImportRunRowSelection;
+use App\Services\Assignment\OperatorsBySitePoolRestriction;
 use App\Services\LeadOperatorDistributor;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -40,6 +41,7 @@ final class ImportBulkAssigner
         private readonly AssignmentSiteResolver $siteResolver,
         private readonly AssignmentCandidates $candidates,
         private readonly LeadOperatorDistributor $distributor,
+        private readonly OperatorsBySitePoolRestriction $poolRestriction,
     ) {}
 
     /**
@@ -58,8 +60,9 @@ final class ImportBulkAssigner
      *
      * @param  array<int, int>  $rowIds
      * @param  array<int, int>|null  $productIds
+     * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite  spec 0168, `balanced` only
      */
-    public function assign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $productIds = null): AssignmentOutcome
+    public function assign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $productIds = null, ?array $operatorsBySite = null): AssignmentOutcome
     {
         // Step 1: the targeted rows, read once with everything the Sede and
         // the requirement resolvers need (INV-1).
@@ -70,7 +73,7 @@ final class ImportBulkAssigner
         }
 
         return $mode === LeadAssignmentMode::Balanced
-            ? $this->assignBalanced($run, $rows, $productIds)
+            ? $this->assignBalanced($run, $rows, $productIds, $operatorsBySite)
             : $this->assignSingle($run, $rows, $operatorId, $productIds);
     }
 
@@ -118,8 +121,9 @@ final class ImportBulkAssigner
      *
      * @param  Collection<int, ImportRunRow>  $rows
      * @param  array<int, int>|null  $productIds
+     * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite  spec 0168
      */
-    private function assignBalanced(ImportRun $run, Collection $rows, ?array $productIds): AssignmentOutcome
+    private function assignBalanced(ImportRun $run, Collection $rows, ?array $productIds, ?array $operatorsBySite = null): AssignmentOutcome
     {
         $globalConfig = $run->global_config ?? [];
 
@@ -131,6 +135,10 @@ final class ImportBulkAssigner
             $siteByRow,
             $this->rowCompetence->requiredByRow($this->withAssignedProducts($rows, $productIds), $globalConfig),
         );
+
+        // Spec 0168: narrow every row's pool to the operators left selected
+        // for its own Sede. A no-op when $operatorsBySite is null.
+        $candidatesByRow = $this->poolRestriction->restrict($candidatesByRow, $siteByRow, $operatorsBySite);
 
         // Step 2: greedy distribution over one load map for the whole batch.
         $assignments = $this->distributor->distributeAmong(

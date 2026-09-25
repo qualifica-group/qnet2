@@ -1,21 +1,29 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Scale, UserCheck, Users } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { AssignOperatorsModePicker } from '@/features/leads/assign-operators-mode-picker'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import type {
+  AssignmentScopeBalancedGroup,
+  BalancedOperatorsBySiteEntry,
+} from '@/features/assignment/types'
+import { AssignOperatorsDialogBody } from '@/features/leads/assign-operators-dialog-body'
 import type { AssignmentMode } from '@/features/leads/assign-operators-mode-picker'
-import { AssignOperatorsPickers } from '@/features/leads/assign-operators-pickers'
 import type { AssignOperatorsDialogSite } from '@/features/leads/assign-operators-pickers'
 
 export type { AssignmentMode, AssignOperatorsDialogSite }
+
+/**
+ * The "Smistamento equo" picker's scope (spec 0168), resolved by the call
+ * site from its own `useAssignmentScope`/`useQuoteAssignmentScope` — the
+ * dialog stays domain-agnostic. Omitted entirely (the two `showSiteField`
+ * transfer dialogs, always `lockedMode="single"`) the dialog falls back to
+ * the pre-0168 behaviour: balanced confirms on the mode alone, no
+ * `operators_by_site` in the payload.
+ */
+export interface AssignOperatorsDialogBalancedScope {
+  groups: AssignmentScopeBalancedGroup[] | undefined
+  unassignableCount: number | undefined
+  isResolving: boolean
+  /** True when the selection-scope request failed; Confirm stays disabled and the picker names the failure. */
+  isError: boolean
+}
 
 /**
  * Copy that names the assigned entity ("… lead selezionati", "Distribuisce i
@@ -41,6 +49,12 @@ export interface AssignOperatorsDialogInput {
   operational_site_id?: number
   mode: AssignmentMode
   operator_id?: number
+  /**
+   * Sent SEMPRE in balanced mode when `balancedScope` is wired (spec 0168):
+   * one entry per Sede group with at least one operator left selected. Absent
+   * when `balancedScope` was not passed (the two transfer dialogs).
+   */
+  operators_by_site?: BalancedOperatorsBySiteEntry[]
 }
 
 export interface AssignOperatorsDialogProps {
@@ -100,6 +114,8 @@ export interface AssignOperatorsDialogProps {
    * filter is about to exclude (spec 0110 AC-043).
    */
   isResolvingCompetence?: boolean
+  /** See `AssignOperatorsDialogBalancedScope`. Irrelevant (and unused) while `mode !== 'balanced'`. */
+  balancedScope?: AssignOperatorsDialogBalancedScope
   /**
    * Wired by the consumer to its own endpoint (the Lead table via
    * `useAssignOperators`, the import review bar via its own PATCH). The
@@ -134,6 +150,7 @@ export function AssignOperatorsDialog({
   disabledModeHints,
   competenceCategoryIds,
   isResolvingCompetence = false,
+  balancedScope,
   onAssign,
 }: AssignOperatorsDialogProps) {
   return (
@@ -151,149 +168,11 @@ export function AssignOperatorsDialog({
           disabledModeHints={disabledModeHints}
           competenceCategoryIds={competenceCategoryIds}
           isResolvingCompetence={isResolvingCompetence}
+          balancedScope={balancedScope}
           onAssign={onAssign}
           onClose={() => onOpenChange(false)}
         />
       </DialogContent>
     </Dialog>
-  )
-}
-
-interface AssignOperatorsDialogBodyProps
-  extends Omit<AssignOperatorsDialogProps, 'open' | 'onOpenChange' | 'showSiteField' | 'isResolvingCompetence'> {
-  showSiteField: boolean
-  isResolvingCompetence: boolean
-  onClose: () => void
-}
-
-/**
- * Radix unmounts `DialogContent`'s subtree while closed, so keeping this
- * state in its own component (rather than in `AssignOperatorsDialog` itself,
- * which the consumer keeps mounted across opens) is what makes every open a
- * fresh selection instead of carrying over the previous one.
- */
-function AssignOperatorsDialogBody({
-  selectionCount,
-  showSiteField,
-  operatorSiteId,
-  defaultSiteId,
-  defaultSite,
-  copy,
-  lockedMode,
-  disabledModes,
-  disabledModeHints,
-  competenceCategoryIds,
-  isResolvingCompetence,
-  onAssign,
-  onClose,
-}: AssignOperatorsDialogBodyProps) {
-  const { t } = useTranslation()
-  const [mode, setMode] = useState<AssignmentMode | null>(lockedMode ?? null)
-  const [siteId, setSiteId] = useState<number | null>(defaultSiteId ?? defaultSite?.id ?? null)
-  const [operatorId, setOperatorId] = useState<number | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // A Sede change re-scopes the whole operator list: the previous pick can
-  // no longer be assumed to belong to it, so it is always cleared.
-  function handleSiteChange(nextSiteId: number | null) {
-    setSiteId(nextSiteId)
-    setOperatorId(null)
-  }
-
-  // The Sede only gates submission where the user picks it. Locked mode (spec
-  // 0079) always needs an Operatore; free mode keeps the per-mode gating:
-  // single needs the Operatore, balanced needs nothing else (spec 0113 AC-026).
-  const isSiteReady = !showSiteField || siteId !== null
-  const canSubmit = lockedMode
-    ? isSiteReady && operatorId !== null
-    : mode !== null && isSiteReady && (mode === 'balanced' || operatorId !== null)
-
-  const effectiveMode = lockedMode ?? mode
-  const ConfirmIcon = effectiveMode === 'single' ? UserCheck : Scale
-  // Locked mode always shows the Operatore field (spec 0079 AC-027); free
-  // mode keeps it gated behind the user's own `single` pick.
-  const showOperatorField = lockedMode !== undefined || mode === 'single'
-
-  function handleAssign() {
-    if (!canSubmit || effectiveMode === null) {
-      return
-    }
-    const needsOperator = lockedMode !== undefined || effectiveMode === 'single'
-    setIsSubmitting(true)
-    onAssign({
-      ...(showSiteField ? { operational_site_id: siteId as number } : {}),
-      mode: effectiveMode,
-      ...(needsOperator ? { operator_id: operatorId as number } : {}),
-    })
-      .then(() => onClose())
-      .catch(() => {
-        // Already surfaced via toast by the caller; keep the picks so the
-        // user can retry without reselecting.
-      })
-      .finally(() => setIsSubmitting(false))
-  }
-
-  return (
-    <>
-      {/* Header band: brand-tinted strip with an icon chip for identity. */}
-      <div className="flex items-start gap-3 rounded-t-lg border-b bg-gradient-to-br from-card to-primary/[0.06] px-4 pt-4 pb-3.5">
-        <span
-          aria-hidden="true"
-          className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15"
-        >
-          <Users className="size-4.5" />
-        </span>
-        <DialogHeader className="flex-1 gap-1">
-          <DialogTitle className="text-sm">{copy?.title ?? t('leads.assign.title')}</DialogTitle>
-          <DialogDescription className="text-xs">
-            {copy?.description ?? t('leads.assign.description', { count: selectionCount })}
-          </DialogDescription>
-        </DialogHeader>
-      </div>
-
-      <div className="space-y-4 px-4 py-4">
-        {/* Step 1: pick the assignment mode — skipped entirely when locked (spec 0079 AC-027). */}
-        {!lockedMode && (
-          <AssignOperatorsModePicker
-            value={mode}
-            onChange={setMode}
-            hints={copy?.modeHints}
-            disabledModes={disabledModes}
-            disabledModeHints={disabledModeHints}
-            isSubmitting={isSubmitting}
-          />
-        )}
-
-        {/* Step 2: the Sede (transfer only) and the Operatore (single, or locked). */}
-        {mode !== null && (showSiteField || showOperatorField) && (
-          <AssignOperatorsPickers
-            showSiteField={showSiteField}
-            showOperatorField={showOperatorField}
-            siteId={siteId}
-            onSiteChange={handleSiteChange}
-            defaultSite={defaultSite}
-            operatorSiteId={operatorSiteId}
-            operatorId={operatorId}
-            onOperatorChange={setOperatorId}
-            competenceCategoryIds={competenceCategoryIds}
-            isResolvingCompetence={isResolvingCompetence}
-            isSubmitting={isSubmitting}
-          />
-        )}
-      </div>
-
-      <DialogFooter className="rounded-b-lg border-t bg-gradient-to-t from-primary/[0.05] to-transparent px-4 py-3.5">
-        <Button
-          type="button"
-          size="sm"
-          className="w-full gap-1.5 sm:w-auto sm:min-w-44 shadow-sm shadow-primary/20 transition-all hover:shadow-md hover:shadow-primary/25 motion-safe:active:translate-y-px"
-          onClick={handleAssign}
-          disabled={!canSubmit || isSubmitting}
-        >
-          <ConfirmIcon className="size-3.5" aria-hidden="true" />
-          {isSubmitting ? t('leads.assign.actions.assigning') : t('leads.assign.actions.confirm')}
-        </Button>
-      </DialogFooter>
-    </>
   )
 }

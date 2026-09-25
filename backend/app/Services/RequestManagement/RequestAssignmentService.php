@@ -11,7 +11,9 @@ use App\Models\User;
 use App\RequestManagement\RequestModule;
 use App\Services\Assignment\AssignmentCandidates;
 use App\Services\Assignment\AssignmentSiteResolver;
+use App\Services\Assignment\OperatorsBySitePoolRestriction;
 use App\Services\Assignment\QuoteCompetence;
+use App\Services\Assignment\QuoteOperatorLoads;
 use App\Services\LeadOperatorDistributor;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Support\ManagerPositions;
@@ -60,6 +62,8 @@ final class RequestAssignmentService
         private readonly QuoteCompetence $quoteCompetence,
         private readonly AssignmentSiteResolver $siteResolver,
         private readonly AssignmentCandidates $candidates,
+        private readonly QuoteOperatorLoads $quoteLoads,
+        private readonly OperatorsBySitePoolRestriction $poolRestriction,
     ) {}
 
     /**
@@ -74,10 +78,11 @@ final class RequestAssignmentService
      * @param  RequestModule  $module  spec 0130: governs the D-3 row scope.
      *                                 Defaults to `Requests`, at parity for
      *                                 every pre-0130 caller.
+     * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite  spec 0168, `balanced` only
      */
-    public function assignOperators(array $requestIds, User $actor, LeadAssignmentMode $mode, ?int $operatorId, RequestModule $module = RequestModule::Requests): AssignmentOutcome
+    public function assignOperators(array $requestIds, User $actor, LeadAssignmentMode $mode, ?int $operatorId, RequestModule $module = RequestModule::Requests, ?array $operatorsBySite = null): AssignmentOutcome
     {
-        return DB::transaction(function () use ($requestIds, $actor, $mode, $operatorId, $module): AssignmentOutcome {
+        return DB::transaction(function () use ($requestIds, $actor, $mode, $operatorId, $module, $operatorsBySite): AssignmentOutcome {
             // Step 1: drop the ids the actor may not reach (D-3 scoping).
             $quotes = $this->inScopeQuotes($requestIds, $actor, $module);
 
@@ -92,7 +97,7 @@ final class RequestAssignmentService
             // had, which a null would instead have cleared.
             $operatorPerQuote = $mode === LeadAssignmentMode::Single
                 ? array_fill_keys($quotes->modelKeys(), $operatorId)
-                : $this->distributeBalanced($quotes->modelKeys());
+                : $this->distributeBalanced($quotes->modelKeys(), $operatorsBySite);
 
             // Step 3: write the GA2 Operatore (Quote column + `quote_user`
             // pivot slot sync, spec 0087 D-9) on each offer. Nothing else is
@@ -176,18 +181,25 @@ final class RequestAssignmentService
      * since 0113 replaces the batch-wide 422 the empty Sede used to raise.
      *
      * @param  array<int, int>  $quoteIds  ordered ascending
+     * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite  spec 0168
      * @return array<int, int> quoteId => operatorId
      */
-    private function distributeBalanced(array $quoteIds): array
+    private function distributeBalanced(array $quoteIds, ?array $operatorsBySite = null): array
     {
+        $siteByQuote = $this->siteResolver->forQuotes($quoteIds);
+
         $candidatesByQuote = $this->candidates->byRecord(
-            $this->siteResolver->forQuotes($quoteIds),
+            $siteByQuote,
             $this->quoteCompetence->requiredByQuote($quoteIds),
         );
 
+        // Spec 0168: narrow every offer's pool to the operators left
+        // selected for its own Sede. A no-op when $operatorsBySite is null.
+        $candidatesByQuote = $this->poolRestriction->restrict($candidatesByQuote, $siteByQuote, $operatorsBySite);
+
         return $this->distributor->distributeAmong(
             $candidatesByQuote,
-            $this->currentLoads($this->involvedOperatorIds($candidatesByQuote)),
+            $this->quoteLoads->currentLoads($this->involvedOperatorIds($candidatesByQuote)),
         );
     }
 
@@ -202,29 +214,6 @@ final class RequestAssignmentService
     private function involvedOperatorIds(array $candidatesByQuote): array
     {
         return array_values(array_unique(array_merge([], ...array_values($candidatesByQuote))));
-    }
-
-    /**
-     * Offers already operated per operator (AC-033: counts `quotes`, not
-     * the `quote_user` pivot). An operator with none is simply absent from
-     * the map (LeadOperatorDistributor defaults it to 0).
-     *
-     * @param  array<int, int>  $operatorIds
-     * @return array<int, int> operatorId => load
-     */
-    private function currentLoads(array $operatorIds): array
-    {
-        if ($operatorIds === []) {
-            return [];
-        }
-
-        return DB::table('quotes')
-            ->whereIn('operator_id', $operatorIds)
-            ->selectRaw('operator_id, COUNT(*) as aggregate')
-            ->groupBy('operator_id')
-            ->pluck('aggregate', 'operator_id')
-            ->map(static fn (mixed $count): int => (int) $count)
-            ->all();
     }
 
     /**

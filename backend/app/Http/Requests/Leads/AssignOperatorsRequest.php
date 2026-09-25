@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Leads;
 
 use App\Enums\LeadAssignmentMode;
+use App\Http\Requests\Concerns\HasOperatorsBySiteRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,12 +19,18 @@ use Illuminate\Validation\Rule;
  * the caller's to choose. Rejecting the key outright — rather than ignoring
  * it — keeps a stale client from believing it still steers the assignment.
  *
+ * `operators_by_site` (spec 0168): the "Smistamento equo" per-Sede operator
+ * selection, `mode=balanced` only — see HasOperatorsBySiteRules for the rule
+ * shared by the three bulk assignment endpoints.
+ *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller, per lead, via LeadPolicy — same convention as
  * StoreLeadRequest/UpdateLeadRequest).
  */
 class AssignOperatorsRequest extends FormRequest
 {
+    use HasOperatorsBySiteRules;
+
     public function authorize(): bool
     {
         // Authorization handled in the controller via LeadPolicy.
@@ -41,6 +48,7 @@ class AssignOperatorsRequest extends FormRequest
             'operational_site_id' => ['prohibited'],
             'mode' => ['required', Rule::enum(LeadAssignmentMode::class)],
             'operator_id' => ['required_if:mode,single', 'integer', Rule::exists('users', 'id')],
+            ...$this->operatorsBySiteRules(),
         ];
     }
 

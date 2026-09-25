@@ -312,6 +312,7 @@ class RequestManagementController extends BaseApiController
                 $request->mode(),
                 $request->operatorId(),
                 $module,
+                $request->operatorsBySite(),
             );
 
             return $this->ok(['assigned' => $outcome->assigned, 'skipped' => $outcome->skipped], 'Operators assigned');

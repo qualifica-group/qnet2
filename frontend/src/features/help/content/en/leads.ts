@@ -65,18 +65,19 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'In the **Leads** table, select the leads.',
-            'Click **Assign operators** and choose the **Site**.',
+            'Click **Assign operators**.',
             'Choose the **Assignment type**: **Balanced split** (distributes leads balancing the workload) or **Assign to operator** (all to the same operator).',
+            'With **Balanced split** the operator list appears, grouped by Site: everyone is selected, deselect whoever should not receive leads (a whole group or a single operator).',
             'Click **Assign**.',
           ],
         },
         {
           type: 'paragraph',
-          text: "Only the site's operators competent for the chosen leads are shown; leads with no competent operator are flagged as excluded.",
+          text: "Only the site's operators competent for the chosen leads are shown, with each operator's current workload; leads with no competent operator are flagged as excluded.",
         },
         {
           type: 'warning',
-          text: 'Some assignment types are unavailable if the selection contains leads from different campaigns.',
+          text: 'Some assignment types are unavailable if the selection contains leads from different campaigns. A group left with no operator selected does not receive its leads.',
         },
       ],
     },

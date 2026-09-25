@@ -165,8 +165,8 @@ const guide: HelpGuide = {
       title: 'Assegnazione agli operatori',
       blocks: [
         { type: 'paragraph', text: 'In **Lead** e **Gestione Richieste** puoi assegnare più record in un’unica operazione.' },
-        { type: 'steps', items: ['Seleziona le righe con le caselle a sinistra.', 'Apri **Azioni** e scegli **Assegna operatori**.', 'Se richiesto, scegli la **Sede**.', 'Scegli il **Tipo di assegnazione**: **Smistamento equo** (bilancia il carico tra gli operatori della sede) o **Assegna a operatore** (tutti allo stesso **Operatore**).', 'Premi **Assegna**.'] },
-        { type: 'note', text: 'QNet propone solo operatori competenti, cioè con la sede e la competenza sulla categoria impostate nella loro scheda utente. Se nessuno è adatto compare "Nessun operatore competente per i record selezionati." Al termine un messaggio indica quanti record sono stati assegnati e quanti sono rimasti senza operatore.' },
+        { type: 'steps', items: ['Seleziona le righe con le caselle a sinistra.', 'Apri **Azioni** e scegli **Assegna operatori**.', 'Se richiesto, scegli la **Sede**.', 'Scegli il **Tipo di assegnazione**: **Smistamento equo** (mostra gli operatori raggruppati per Sede, tutti selezionati — deseleziona un gruppo o un singolo operatore per escluderlo — e bilancia il carico tra chi resta selezionato) o **Assegna a operatore** (tutti allo stesso **Operatore**).', 'Premi **Assegna**.'] },
+        { type: 'note', text: 'QNet propone solo operatori competenti, cioè con la sede e la competenza sulla categoria impostate nella loro scheda utente. Se nessuno è adatto compare "Nessun operatore competente per i record selezionati." Un gruppo lasciato senza operatori selezionati non riceve i suoi record. Al termine un messaggio indica quanti record sono stati assegnati e quanti sono rimasti senza operatore.' },
       ],
     },
     {

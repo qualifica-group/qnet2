@@ -153,7 +153,15 @@ export function LeadsTable() {
   // resolved here rather than in the dialog, which stays domain-agnostic. The
   // Sede only narrows the picker — the server recomputes it per lead. Gated on
   // the popup being open so a selection alone never issues the request.
-  const { competenceCategoryIds, operationalSiteId, campaignIds, isResolving } = useAssignmentScope({
+  const {
+    competenceCategoryIds,
+    operationalSiteId,
+    campaignIds,
+    balancedGroups,
+    balancedUnassignableCount,
+    isResolving,
+    isError,
+  } = useAssignmentScope({
     selection: assignIds.length > 0 ? { domain: 'leads', ids: assignIds } : null,
     enabled: assignOpen,
   })
@@ -297,6 +305,12 @@ export function LeadsTable() {
         isResolvingCompetence={isResolving}
         disabledModes={hasMixedCampaigns ? MIXED_CAMPAIGNS_DISABLED_MODES : undefined}
         disabledModeHints={hasMixedCampaigns ? disabledModeHints : undefined}
+        balancedScope={{
+          groups: balancedGroups,
+          unassignableCount: balancedUnassignableCount,
+          isResolving,
+          isError,
+        }}
         onAssign={handleAssign}
       />
 

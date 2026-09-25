@@ -165,8 +165,8 @@ const guide: HelpGuide = {
       title: 'Assigning to operators',
       blocks: [
         { type: 'paragraph', text: 'In **Leads** and **Request Management** you can assign multiple records in a single operation.' },
-        { type: 'steps', items: ['Select the rows with the checkboxes on the left.', 'Open **Actions** and choose **Assign operators**.', 'If asked, choose the **Site**.', 'Choose the **Assignment type**: **Even distribution** (balances the load across the site operators) or **Assign to operator** (all to the same **Operator**).', 'Press **Assign**.'] },
-        { type: 'note', text: 'qnet only suggests competent operators, meaning those whose user record has the site and the competency on the category. If no one is suitable, "No competent operator for the selected records." appears. At the end, a message states how many records were assigned and how many were left without an operator.' },
+        { type: 'steps', items: ['Select the rows with the checkboxes on the left.', 'Open **Actions** and choose **Assign operators**.', 'If asked, choose the **Site**.', 'Choose the **Assignment type**: **Balanced split** (shows the operators grouped by Site, all selected by default — deselect a group or a single operator to exclude them — and balances the load across whoever stays selected) or **Assign to operator** (all to the same **Operator**).', 'Press **Assign**.'] },
+        { type: 'note', text: 'qnet only suggests competent operators, meaning those whose user record has the site and the competency on the category. If no one is suitable, "No competent operator for the selected records." appears. A group left with no operator selected does not receive its records. At the end, a message states how many records were assigned and how many were left without an operator.' },
       ],
     },
     {

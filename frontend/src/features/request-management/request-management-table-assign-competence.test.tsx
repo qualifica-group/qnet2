@@ -69,16 +69,34 @@ vi.mock('@/features/assignment/api', () => ({
  * transfer popup.
  */
 const RESOLVED_SITE_ID = 5
+/**
+ * `balanced_groups` defaults to one Sede with the same `OPERATOR_PICK_ID` the
+ * Operatore picker stub selects (spec 0168), so the balanced flow's default
+ * "everyone selected" always resolves to a non-empty `operators_by_site`.
+ */
 function scope(overrides: Partial<{
   product_category_ids: number[]
   operational_site_id: number | null
   campaign_ids: number[]
+  balanced_groups: ReturnType<typeof balancedGroup>[]
+  balanced_unassignable_count: number
 }> = {}) {
   return {
     product_category_ids: [],
     operational_site_id: RESOLVED_SITE_ID,
     campaign_ids: [],
+    balanced_groups: [balancedGroup()],
+    balanced_unassignable_count: 0,
     ...overrides,
+  }
+}
+
+function balancedGroup() {
+  return {
+    operational_site_id: RESOLVED_SITE_ID,
+    operational_site_label: 'Milano',
+    record_count: 2,
+    operators: [{ id: OPERATOR_PICK_ID, label: 'Mario Rossi', avatar_url: null, load: 0 }],
   }
 }
 
@@ -155,10 +173,15 @@ function openAssignPopup() {
   fireEvent.click(screen.getByRole('button', { name: 'Assign operators' }))
 }
 
-/** Balanced flow: open the popup, pick the mode, confirm — no Sede step left. */
-function assignBalanced() {
+/**
+ * Balanced flow: open the popup, pick the mode, confirm — no Sede step left.
+ * Confirm only enables once the scope (incl. `balanced_groups`, spec 0168)
+ * resolves and leaves at least one operator selected (the default).
+ */
+async function assignBalanced() {
   openAssignPopup()
   fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled())
   fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 }
 
@@ -201,13 +224,13 @@ describe('RequestManagementTable — scope-aware assignment (spec 0110/0113)', (
     )
   })
 
-  it('never renders the Sede field on the assignment popup (AC-026)', () => {
+  it('never renders the Sede field on the assignment popup (AC-026)', async () => {
     renderTable()
 
     openAssignPopup()
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
     expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled())
 
     fireEvent.click(screen.getByRole('radio', { name: 'Assign to operator' }))
     expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
@@ -216,7 +239,7 @@ describe('RequestManagementTable — scope-aware assignment (spec 0110/0113)', (
   it('sends no operational_site_id: the server derives it from each offer', async () => {
     renderTable()
 
-    assignBalanced()
+    await assignBalanced()
 
     // TanStack v5 hands the mutation context as a second argument, so the
     // payload itself is asserted rather than the whole call.
@@ -224,6 +247,7 @@ describe('RequestManagementTable — scope-aware assignment (spec 0110/0113)', (
     expect(assignRequestOperatorsMock.mock.calls[0][1]).toEqual({
       request_ids: [11, 22],
       mode: 'balanced',
+      operators_by_site: [{ operational_site_id: RESOLVED_SITE_ID, operator_ids: [OPERATOR_PICK_ID] }],
     })
   })
 
@@ -337,7 +361,7 @@ describe('RequestManagementTable — scope-aware assignment (spec 0110/0113)', (
     assignRequestOperatorsMock.mockResolvedValue({ assigned: 1, skipped: 1 })
     renderTable()
 
-    assignBalanced()
+    await assignBalanced()
 
     await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith(
@@ -349,7 +373,7 @@ describe('RequestManagementTable — scope-aware assignment (spec 0110/0113)', (
   it('keeps the plain feedback when nothing was skipped', async () => {
     renderTable()
 
-    assignBalanced()
+    await assignBalanced()
 
     await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith('Operators assigned to 2 request(s).'),

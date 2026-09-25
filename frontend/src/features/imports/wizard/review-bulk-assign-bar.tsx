@@ -120,7 +120,15 @@ export function ReviewBulkAssignBar({
   // Sede + competence + campaigns of the selection (spec 0113), resolved only
   // while the popup is open: a selection on its own — which changes on every
   // checkbox toggle — must not hit the endpoint.
-  const { competenceCategoryIds, operationalSiteId, campaignIds, isResolving } = useAssignmentScope({
+  const {
+    competenceCategoryIds,
+    operationalSiteId,
+    campaignIds,
+    balancedGroups,
+    balancedUnassignableCount,
+    isResolving,
+    isError,
+  } = useAssignmentScope({
     selection: buildAssignmentScopeSelection(selection, importRunId),
     enabled: operatorsOpen,
   })
@@ -171,6 +179,12 @@ export function ReviewBulkAssignBar({
         disabledModeHints={hasMixedCampaigns ? disabledModeHints : undefined}
         competenceCategoryIds={competenceCategoryIds}
         isResolvingCompetence={isResolving}
+        balancedScope={{
+          groups: balancedGroups,
+          unassignableCount: balancedUnassignableCount,
+          isResolving,
+          isError,
+        }}
         onAssign={onAssign}
       />
 

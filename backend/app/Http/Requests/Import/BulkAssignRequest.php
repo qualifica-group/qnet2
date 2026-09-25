@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Import;
 
 use App\Enums\LeadAssignmentMode;
+use App\Http\Requests\Concerns\HasOperatorsBySiteRules;
 use App\Imports\Leads\LeadImportProductCoherence;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
@@ -60,6 +61,8 @@ use Illuminate\Validation\Validator;
  */
 class BulkAssignRequest extends FormRequest
 {
+    use HasOperatorsBySiteRules;
+
     public function authorize(): bool
     {
         return true;
@@ -79,6 +82,7 @@ class BulkAssignRequest extends FormRequest
             'select_all' => ['nullable', 'boolean'],
             'row_ids' => ['array'],
             'row_ids.*' => ['integer'],
+            ...$this->operatorsBySiteRules(),
         ];
     }
 

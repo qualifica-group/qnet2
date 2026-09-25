@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchAssignmentScope } from '@/features/assignment/api'
 import { assignmentKeys } from '@/features/assignment/query-keys'
 import type {
+  AssignmentScopeBalancedGroup,
   AssignmentScopePayload,
   AssignmentScopeResult,
 } from '@/features/assignment/types'
@@ -19,6 +20,8 @@ const EMPTY_SCOPE: AssignmentScopeResult = {
   operational_site_id: null,
   campaign_ids: [],
   single_operator_available: true,
+  balanced_groups: [],
+  balanced_unassignable_count: 0,
 }
 
 interface UseAssignmentScopeOptions {
@@ -61,6 +64,14 @@ interface UseAssignmentScopeResult {
    * richieste, where a mixed Sede/product selection has no common operator.
    */
   singleOperatorAvailable: boolean | undefined
+  /**
+   * Groups of the "Smistamento equo" picker (spec 0168), `undefined` while
+   * unresolved or on failure — same convention as the fields above, never an
+   * empty array standing in for "not known yet".
+   */
+  balancedGroups: AssignmentScopeBalancedGroup[] | undefined
+  /** Records with no resolvable Sede or empty pool (spec 0168), `undefined` under the same conditions. */
+  balancedUnassignableCount: number | undefined
   /** True while the scope is being resolved: the picker must stay disabled. */
   isResolving: boolean
   /** True when the resolution failed; the caller decides how loudly to fail. */
@@ -91,6 +102,8 @@ export function useAssignmentScope({
     operationalSiteId: data?.operational_site_id,
     campaignIds: data?.campaign_ids,
     singleOperatorAvailable: data?.single_operator_available,
+    balancedGroups: data?.balanced_groups,
+    balancedUnassignableCount: data?.balanced_unassignable_count,
     isResolving: isLoading,
     isError,
   }

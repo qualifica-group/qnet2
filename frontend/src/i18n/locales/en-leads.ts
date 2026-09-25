@@ -173,6 +173,22 @@ export const leads = {
       // (`leads-table.tsx`, user directive 2026-09-10).
       disabledMixedCampaigns: 'Unavailable: the selection spans records from different campaigns.',
     },
+    // Per-Site operator list of "Balanced split" (spec 0168), shared by the
+    // three surfaces (Lead, Gestione richieste/Iscritti, import): the dialog
+    // always translates it through the default namespace, regardless of the
+    // caller's own namespace.
+    balanced: {
+      loading: 'Looking up the available operators…',
+      empty: 'No operator is available for the selected records.',
+      error: 'Could not load the operators. Close and reopen the dialog to retry.',
+      selectGroup: 'Select all',
+      selectionCount: '{{selected}}/{{total}}',
+      operatorAriaLabel: '{{operator}} — {{site}}',
+      recordCount: '{{count}} record(s)',
+      load: '{{count}} assigned',
+      groupWarning: 'No operator selected: these {{count}} record(s) will not be assigned.',
+      globalWarning: '{{count}} record(s) have no available operator and will not be assigned.',
+    },
     actions: {
       balanced: 'Balanced split',
       balancedHint: 'Distributes the selected leads across the Site operators, balancing their workload.',

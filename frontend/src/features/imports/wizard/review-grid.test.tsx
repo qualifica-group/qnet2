@@ -56,10 +56,17 @@ vi.mock('@/features/imports/wizard/use-review-rows', () => ({
   }),
   buildBulkAssignPayload: (
     selection: { selectAll: boolean; toggledNodes: string[] },
-    input: { mode: 'single' | 'balanced'; operator_id?: number },
+    input: {
+      mode: 'single' | 'balanced'
+      operator_id?: number
+      operators_by_site?: { operational_site_id: number; operator_ids: number[] }[]
+    },
   ) => ({
     mode: input.mode,
     ...(input.mode === 'single' ? { operator_id: input.operator_id } : {}),
+    ...(input.mode === 'balanced' && input.operators_by_site
+      ? { operators_by_site: input.operators_by_site }
+      : {}),
     select_all: selection.selectAll,
     row_ids: selection.toggledNodes.map(Number),
   }),
@@ -86,11 +93,25 @@ vi.mock('@/features/imports/wizard/use-review-products-scope', () => ({
 // 0110 AC-041, 0113): it is a TanStack Query hook, and this file mounts
 // `ReviewGrid` without a provider. Its own contract is covered by
 // `review-bulk-assign-bar.test.tsx` and `use-assignment-scope.test.tsx`.
+// `balancedGroups` defaults to one Sede with operator id 42 — the same id the
+// `AsyncPaginatedSelect` stub below picks (spec 0168's `OPERATOR_PICK_ID`,
+// inlined here: a `vi.mock` factory cannot reference an outer `const`) — so
+// the balanced flow's default "everyone selected" resolves to a non-empty
+// `operators_by_site` and Confirm is reachable.
 vi.mock('@/features/assignment/use-assignment-scope', () => ({
   useAssignmentScope: () => ({
     competenceCategoryIds: undefined,
     operationalSiteId: null,
     campaignIds: [1],
+    balancedGroups: [
+      {
+        operational_site_id: 3,
+        operational_site_label: 'Milano',
+        record_count: 1,
+        operators: [{ id: 42, label: 'Mario Rossi', avatar_url: null, load: 0 }],
+      },
+    ],
+    balancedUnassignableCount: 0,
     isResolving: false,
     isError: false,
   }),
@@ -195,11 +216,13 @@ describe('ReviewGrid — bulk assign via the shared popup', () => {
 
     openAssignPopup()
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() =>
       expect(handleBulkAssignMock).toHaveBeenCalledWith({
         mode: 'balanced',
+        operators_by_site: [{ operational_site_id: 3, operator_ids: [OPERATOR_PICK_ID] }],
         select_all: false,
         row_ids: [1, 2],
       }),
@@ -213,11 +236,13 @@ describe('ReviewGrid — bulk assign via the shared popup', () => {
 
     openAssignPopup()
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() =>
       expect(handleBulkAssignMock).toHaveBeenCalledWith({
         mode: 'balanced',
+        operators_by_site: [{ operational_site_id: 3, operator_ids: [OPERATOR_PICK_ID] }],
         select_all: true,
         row_ids: [5],
       }),
@@ -251,6 +276,7 @@ describe('ReviewGrid — bulk assign via the shared popup', () => {
 
     openAssignPopup()
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() =>

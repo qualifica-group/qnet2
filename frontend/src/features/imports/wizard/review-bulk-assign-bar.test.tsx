@@ -60,15 +60,38 @@ vi.mock('@/features/assignment/api', () => ({
   fetchAssignmentScope: (...args: unknown[]) => fetchAssignmentScopeMock(...args),
 }))
 
-/** Envelope `data` of `POST /assignment/selection-scope`, spelled once. */
+/**
+ * Envelope `data` of `POST /assignment/selection-scope`, spelled once.
+ * `balanced_groups` defaults to one Sede with the same `OPERATOR_PICK_ID` the
+ * Operatore picker stub selects (spec 0168), so the balanced flow's default
+ * "everyone selected" always resolves to a non-empty `operators_by_site`.
+ */
 function scope(
   overrides: Partial<{
     product_category_ids: number[]
     operational_site_id: number | null
     campaign_ids: number[]
+    balanced_groups: ReturnType<typeof balancedGroup>[]
+    balanced_unassignable_count: number
   }> = {},
 ) {
-  return { product_category_ids: [], operational_site_id: null, campaign_ids: [1], ...overrides }
+  return {
+    product_category_ids: [],
+    operational_site_id: null,
+    campaign_ids: [1],
+    balanced_groups: [balancedGroup()],
+    balanced_unassignable_count: 0,
+    ...overrides,
+  }
+}
+
+function balancedGroup() {
+  return {
+    operational_site_id: 3,
+    operational_site_label: 'Milano',
+    record_count: 1,
+    operators: [{ id: OPERATOR_PICK_ID, label: 'Mario Rossi', avatar_url: null, load: 0 }],
+  }
 }
 
 vi.mock('@/components/ui/async-paginated-multi-select', () => ({
@@ -194,7 +217,8 @@ describe('ReviewBulkAssignBar — "Assign operators" entry (unchanged behavior)'
   })
 
   // AC-026: the Sede is derived from each row server-side, so the popup has
-  // no Sede field at all and `balanced` confirms on the mode alone.
+  // no Sede field at all and `balanced` confirms on the mode alone (spec 0168:
+  // once the scope, incl. `balanced_groups`, resolves).
   it('renders no Sede field and confirms "balanced" without any further pick', async () => {
     const { onAssign } = renderBar({ selection: { selectAll: false, toggledNodes: ['1'] } })
     openAssignOperatorsDialog()
@@ -202,9 +226,15 @@ describe('ReviewBulkAssignBar — "Assign operators" entry (unchanged behavior)'
     expect(screen.queryByRole('button', { name: 'Site' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
-    await waitFor(() => expect(onAssign).toHaveBeenCalledWith({ mode: 'balanced' }))
+    await waitFor(() =>
+      expect(onAssign).toHaveBeenCalledWith({
+        mode: 'balanced',
+        operators_by_site: [{ operational_site_id: 3, operator_ids: [OPERATOR_PICK_ID] }],
+      }),
+    )
     await waitFor(() => expect(screen.queryByText('1 lead(s) selected.')).not.toBeInTheDocument())
   })
 
@@ -228,6 +258,7 @@ describe('ReviewBulkAssignBar — "Assign operators" entry (unchanged behavior)'
     renderBar({ selection: { selectAll: false, toggledNodes: ['1'] }, onAssign })
     openAssignOperatorsDialog()
     fireEvent.click(screen.getByRole('radio', { name: 'Balanced split' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
     await waitFor(() => expect(onAssign).toHaveBeenCalledTimes(1))
@@ -383,9 +414,15 @@ describe('ReviewBulkAssignBar — mixed campaigns (spec 0113)', () => {
     const balanced = screen.getByRole('radio', { name: 'Balanced split' })
     expect(balanced).not.toHaveAttribute('aria-disabled')
     fireEvent.click(balanced)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Assign' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
-    await waitFor(() => expect(onAssign).toHaveBeenCalledWith({ mode: 'balanced' }))
+    await waitFor(() =>
+      expect(onAssign).toHaveBeenCalledWith({
+        mode: 'balanced',
+        operators_by_site: [{ operational_site_id: 3, operator_ids: [OPERATOR_PICK_ID] }],
+      }),
+    )
   })
 
   // An unresolved (or failed) scope is not "mixed campaigns": announcing that

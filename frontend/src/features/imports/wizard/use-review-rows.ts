@@ -37,11 +37,12 @@ const DEFAULT_BLOCK_SIZE = 25
  * operatori" popup's input onto the combined bulk-assign payload (spec
  * 0048): `select_all = state.selectAll`, `row_ids = state.toggledNodes.map
  * (Number)`, `mode` always forwarded, `operator_id` only for `mode: 'single'`
- * (the backend requires it exactly then — see `BulkAssignRequest`). The Sede
- * is NOT part of the payload any more: the server derives it from each row's
- * campaign and answers 422 if it is sent (spec 0113). A pure function so the
- * two selection shapes (partial vs. select-all) stay unit-testable without
- * mounting the grid.
+ * (the backend requires it exactly then — see `BulkAssignRequest`), and
+ * `operators_by_site` only for `mode: 'balanced'` when the dialog sent one
+ * (spec 0168). The Sede is NOT part of the payload any more: the server
+ * derives it from each row's campaign and answers 422 if it is sent (spec
+ * 0113). A pure function so the two selection shapes (partial vs. select-all)
+ * stay unit-testable without mounting the grid.
  */
 export function buildBulkAssignPayload(
   selection: ReviewBulkSelectionState,
@@ -50,6 +51,9 @@ export function buildBulkAssignPayload(
   return {
     mode: input.mode,
     ...(input.mode === 'single' ? { operator_id: input.operator_id as number } : {}),
+    ...(input.mode === 'balanced' && input.operators_by_site
+      ? { operators_by_site: input.operators_by_site }
+      : {}),
     select_all: selection.selectAll,
     row_ids: selection.toggledNodes.map(Number),
   }

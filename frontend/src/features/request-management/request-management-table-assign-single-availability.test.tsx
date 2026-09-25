@@ -65,13 +65,21 @@ vi.mock('@/features/assignment/api', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-/** The `POST /assignment/selection-scope` envelope, availability included. */
+/**
+ * The `POST /assignment/selection-scope` envelope, availability included.
+ * `balanced_groups` defaults to one Sede with operator id 7 — the same id the
+ * Operatore picker stub below always picks (spec 0168) — so the balanced
+ * flow's default "everyone selected" always resolves to a non-empty
+ * `operators_by_site`.
+ */
 function scope(
   overrides: Partial<{
     product_category_ids: number[]
     operational_site_id: number | null
     campaign_ids: number[]
     single_operator_available: boolean
+    balanced_groups: ReturnType<typeof balancedGroup>[]
+    balanced_unassignable_count: number
   }> = {},
 ) {
   return {
@@ -79,7 +87,18 @@ function scope(
     operational_site_id: 5,
     campaign_ids: [],
     single_operator_available: true,
+    balanced_groups: [balancedGroup()],
+    balanced_unassignable_count: 0,
     ...overrides,
+  }
+}
+
+function balancedGroup() {
+  return {
+    operational_site_id: 5,
+    operational_site_label: 'Milano',
+    record_count: 2,
+    operators: [{ id: 7, label: 'Mario Rossi', avatar_url: null, load: 0 }],
   }
 }
 
@@ -208,6 +227,7 @@ describe('RequestManagementTable — single-operator availability on the assignm
     expect(assignRequestOperatorsMock.mock.calls[0][1]).toEqual({
       request_ids: [11, 22],
       mode: 'balanced',
+      operators_by_site: [{ operational_site_id: 5, operator_ids: [7] }],
     })
   })
 

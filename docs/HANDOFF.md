@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SMISTAMENTO EQUO — LISTA OPERATORI SELEZIONABILE PER SEDE (SPEC 0168) — VERDE, COMMITTATO (2026-09-25)
+
+- Decisioni utente: gruppi = Sede (D-1), selezione per gruppo (D-2), nessuna persistenza (D-3).
+- BE: `POST /api/assignment/selection-scope` restituisce anche `balanced_groups` [{operational_site_id,
+  operational_site_label, record_count, operators[{id,label,avatar_url,load}]}] + `balanced_unassignable_count`
+  (`Services/Assignment/BalancedPoolGroups`, carichi quotes in `QuoteOperatorLoads`, estratto da
+  `RequestAssignmentService`). I 3 endpoint di assegnazione accettano `operators_by_site` [{operational_site_id,
+  operator_ids}] solo con mode=balanced (regole in `Http/Requests/Concerns/HasOperatorsBySiteRules`, restrizione
+  in `Services/Assignment/OperatorsBySitePoolRestriction`): pool = candidati ∩ lista, Sede non elencata => skipped,
+  un operatore non candidato viene ignorato (mai 422). Senza il campo il comportamento e' invariato.
+- FE: `features/assignment/{balanced-operators-picker.tsx,balanced-operator-selection.ts,
+  use-balanced-operator-selection.ts}`; `AssignOperatorsDialog` diviso in `assign-operators-dialog-body.tsx`, prop
+  opzionale `balancedScope {groups, unassignableCount, isResolving, isError}` (i dialog di trasferimento non la
+  passano). Cablati: leads-table, request-management-table (solo bulk-assign), review-bulk-assign-bar.
+- Test: Pest 1514/1514 (35 nuovi, AC-001..010), Vitest 991/991 sulle cartelle toccate, ESLint, Pint, `tsc -b` puliti;
+  verifier indipendente VERDE. 3 fallimenti in `attribute-values-schema.test.ts` appartengono a un'altra sessione.
+- Da sapere: con i dati demo locali la lista e' spesso vuota, ed e' corretto. Import run 1: campagna senza Sede +
+  categoria "GOL - Molise" con una sola operatrice competente (Sede 31). Se la Sede non si risolve o nessuno e'
+  competente, il pool e' vuoto (regole 0110/0111/0113 invariate). Proposta aperta all'utente: fallback "tutti gli
+  operatori della Sede" quando nessuno e' competente (richiederebbe una nuova spec).
+- Manuale: guide in-app IT/EN (leads, request-management, general, imports) + manuale Claude Docs (rev 93).
+
 ## FIX: ATTRIBUTI ENUM MULTISELECT NON SALVABILI (es. "Titolo di Studio") — VERDE, COMMITTATO (2026-09-25)
 
 - Bug utente: modificare `degree` (enum `display: multiselect`) dava "Invalid input" sul form e

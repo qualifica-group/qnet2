@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0168-balanced-operator-selection" status="approved" owner="utente" date="2026-09-25">
+
+  <goal>
+    Nello "Smistamento equo" (mode=balanced) di tutte le superfici di assegnazione (Lead, Gestione richieste,
+    Gestione iscritti, revisione Import) l'utente vede, raggruppati per Sede, gli operatori tra cui i record
+    selezionati verranno distribuiti, e puo' selezionarli/deselezionarli. Il backend distribuisce solo tra gli
+    operatori lasciati selezionati, Sede per Sede.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-09-25. Decisioni utente (2026-09-25):
+    - D-1 Gruppi = Sede. Un gruppo per ogni Sede risolta dei record selezionati; contiene gli operatori della Sede
+      competenti per ALMENO UN record di quella Sede (unione dei pool per-record della Sede).
+    - D-2 Selezione PER GRUPPO: un operatore presente in due Sedi puo' essere incluso in una ed escluso nell'altra.
+    - D-3 Nessuna persistenza: ogni apertura del dialog parte con tutti gli operatori selezionati; la scelta viaggia
+      solo nella richiesta di assegnazione.
+
+    Nomi reali verificati (backend/):
+    - `App\Enums\LeadAssignmentMode` (single|balanced), invariato: niente terza modalita' (spec 0110 decisione 2).
+    - `App\Services\Assignment\AssignmentCandidates::byRecord(siteByRecord, categoriesByRecord)`: pool per record =
+      operatori della Sede del record ∩ competenti (0110/0111/0113). Sede null => pool vuoto.
+    - `App\Services\LeadOperatorDistributor::distributeAmong(candidatesByTarget, initialLoads)`: greedy least-loaded,
+      tie-break id minore, pool vuoto => record `skipped`. `currentLoads()` = COUNT leads per operator_id.
+    - `App\Services\RequestManagement\RequestAssignmentService::currentLoads` = COUNT quotes per operator_id.
+    - Superfici balanced: `LeadAssignmentService::assignBalanced`, `RequestAssignmentService::distributeBalanced`,
+      `Import\ImportBulkAssigner::assignBalanced`; FormRequest `Leads\AssignOperatorsRequest`,
+      `RequestManagement\AssignRequestOperatorsRequest`, `Import\BulkAssignRequest`.
+    - `POST /api/assignment/selection-scope` (`Assignment\SelectionScopeController`, `SelectionScopeRequest`):
+      gia' risolve per dominio siteByRecord + categoriesByRecord con l'authz di lettura del dominio (e lo scope D-3
+      per le offerte). Questa spec ne ESTENDE la risposta (campi additivi): nessun nuovo endpoint, nessuna
+      duplicazione della risoluzione della selezione o dell'authz.
+    - Etichette Sede: `operational_sites`; etichetta/avatar operatore: gli stessi di `GET /api/users/for-select`
+      (`UserService::forSelect`).
+
+    Frontend (frontend/src/):
+    - Dialog condiviso `features/leads/assign-operators-dialog.tsx` (`AssignOperatorsDialog`, 299 righe: la lista va
+      in un componente nuovo), `assign-operators-mode-picker.tsx`.
+    - Scope: `features/assignment/{api,types,use-assignment-scope}.ts` (`AssignmentScopeResult`),
+      `features/request-management/use-quote-assignment-scope.ts`.
+    - Chiamanti: `features/leads/leads-table.tsx`, `features/request-management/request-management-table.tsx`
+      (serve sia Richieste che Iscritti), `features/imports/wizard/review-bulk-assign-bar.tsx` +
+      `use-review-rows.ts::buildBulkAssignPayload`.
+    - Primitive: `components/ui/checkbox.tsx` (supporta `indeterminate`), `collapsible.tsx`, `badge.tsx`,
+      `avatar`. Pattern di riferimento: `features/roles/permission-explorer/area-tree.tsx` (gruppo Collapsible con
+      checkbox tri-state + badge selezionati/totale).
+  </context>
+
+  <scope>
+    <in>
+      <item>`selection-scope`: nuovi campi `balanced_groups` e `balanced_unassignable_count` per i 4 domini.</item>
+      <item>Tre endpoint di assegnazione: nuovo campo opzionale `operators_by_site` (solo con mode=balanced) che
+        restringe il pool di ogni record agli operatori scelti per la sua Sede.</item>
+      <item>Dialog: con "Smistamento equo" selezionato compare la lista operatori raggruppata per Sede, tutti
+        selezionati di default, con checkbox tri-state di gruppo, contatore selezionati/totale, carico attuale di
+        ogni operatore, avviso per i record che non verranno assegnati.</item>
+      <item>Le 3 superfici (Lead, Gestione richieste/Iscritti, revisione Import) inviano `operators_by_site`.</item>
+      <item>Guide in-app IT/EN (leads, request-management, general, imports) + manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Persistenza delle esclusioni (D-3): nessuna tabella, nessuna preferenza salvata.</item>
+      <item>Cambi all'algoritmo di distribuzione (least-loaded, tie-break, definizione di carico) o alla
+        composizione Sede ∩ competenza.</item>
+      <item>Modalita' `single`, trasferimento contatto, assegnazione Responsabile GA1: invariati.</item>
+      <item>Filtri su utenti inattivi/cessati nel pool (oggi assenti): segnalabile, non in questa spec.</item>
+      <item>Pesi/quote per operatore (distribuzione non uniforme).</item>
+      <item>Nuove dipendenze o nuovi componenti in `components/ui/`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/assignment/selection-scope">
+      <request>
+        Invariata (SelectionScopeRequest: `domain` + `import_run_id`/`select_all`/`row_ids` oppure `ids[]`).
+      </request>
+      <response status="200">
+        { success, message, data: {
+            product_category_ids: int[], operational_site_id: int|null, campaign_ids: int[],
+            single_operator_available: bool,                       // invariati
+            balanced_groups: [                                    // NUOVO
+              { operational_site_id: int,
+                operational_site_label: string,
+                record_count: int,        // record di questa Sede con pool NON vuoto
+                operators: [ { id: int, label: string, avatar_url: string|null, load: int } ] }
+            ],
+            balanced_unassignable_count: int                      // NUOVO: record con Sede null o pool vuoto
+        } }
+        Regole:
+        - Gruppo = Sede risolta (stessa risoluzione usata all'assegnazione). operators = unione dei pool per-record
+          (`AssignmentCandidates::byRecord`) dei record di quella Sede. Un gruppo senza operatori NON compare: i suoi
+          record contano in `balanced_unassignable_count`.
+        - `load` = stesso carico iniziale che la distribuzione usa per quel dominio (leads/import_rows: COUNT leads;
+          quotes/enrollees: COUNT quotes), 0 se nessun record.
+        - Ordinamento: gruppi per `operational_site_label` asc (poi id); operatori per `label` asc (poi id).
+        - Offerte fuori scope D-3 dell'attore: non contribuiscono (come oggi).
+        - record_count sommati + balanced_unassignable_count = numero di record in scope della selezione.
+      </response>
+      <errors>Invariati: 403 senza permesso di lettura del dominio, 404 run inesistente, 422 validazione.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/leads/assign-operators">
+      <request>
+        Campi esistenti invariati + `operators_by_site?: [{ operational_site_id: int, operator_ids: int[] }]`
+      </request>
+      <response status="200">Invariata: { success, message, data: { assigned, skipped } }</response>
+      <errors>422 se `operators_by_site` e' inviato con mode != balanced o viola le regole di validazione.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/request-management/assign-operators | /api/enrollee-management/assign-operators">
+      <request>Come sopra: + `operators_by_site?`</request>
+      <response status="200">Invariata: { assigned, skipped }</response>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/imports/{domain}/{importRun}/rows/assign">
+      <request>Come sopra: + `operators_by_site?`</request>
+      <response status="200">Invariata: { updated, skipped }</response>
+    </endpoint>
+
+    <rules name="operators_by_site">
+      - Validazione (identica sui 3 FormRequest, regole condivise): `prohibited` salvo mode=balanced; array;
+        `*.operational_site_id` required integer distinct exists:operational_sites,id; `*.operator_ids` required
+        array min:1; `*.operator_ids.*` integer distinct exists:users,id.
+      - Assente => comportamento attuale invariato (retrocompatibilita').
+      - Presente => pool(record) = byRecord(record) ∩ operator_ids della voce con operational_site_id = Sede del
+        record. Sede non elencata => pool vuoto => record `skipped` (non assegnato, non toccato come oggi).
+      - Un operatore inviato ma non candidato del record viene IGNORATO dall'intersezione (mai assegnato, mai 422):
+        la lista puo' solo restringere il pool calcolato dal server, mai allargarlo.
+      - Distribuzione e carico iniziale invariati (`distributeAmong` sui pool ristretti).
+      - Il frontend invia SEMPRE `operators_by_site` in modalita' balanced (una voce per ogni gruppo con almeno un
+        operatore selezionato): cosi' un operatore diventato candidato dopo l'apertura del dialog non riceve
+        record che l'utente non ha visto.
+    </rules>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dati lead di due campagne con Sedi diverse (Napoli, Roma), quando chiamo selection-scope
+      domain=leads, allora `balanced_groups` ha due gruppi ordinati per etichetta, ciascuno con i soli operatori
+      della Sede competenti per almeno un suo lead, con `record_count` corretto e `load` = COUNT leads.</criterion>
+    <criterion id="AC-002">Un operatore membro di Napoli e Roma compare in entrambi i gruppi.</criterion>
+    <criterion id="AC-003">Record senza Sede o con pool vuoto: non generano un gruppo e contano in
+      `balanced_unassignable_count`; somma record_count + unassignable = record in scope.</criterion>
+    <criterion id="AC-004">Domini quotes/enrollees: `load` = COUNT quotes; offerte fuori scope D-3 non contribuiscono
+      ai gruppi. Domini import_rows: gruppi coerenti con la Sede di campagna della riga.</criterion>
+    <criterion id="AC-005">Lead: mode=balanced con `operators_by_site` che esclude un operatore di Napoli => nessun
+      lead di Napoli gli viene assegnato; la distribuzione tra i rimanenti resta least-loaded.</criterion>
+    <criterion id="AC-006">D-2: operatore incluso per Roma ed escluso per Napoli => riceve solo lead di Roma.</criterion>
+    <criterion id="AC-007">Sede assente da `operators_by_site` => i suoi record sono `skipped` e restano invariati.</criterion>
+    <criterion id="AC-008">Operatore inviato ma non candidato (altra Sede o non competente) => non riceve nulla,
+      nessun 422.</criterion>
+    <criterion id="AC-009">`operators_by_site` con mode=single => 422; operator_ids vuoto, site duplicato, id
+      inesistenti => 422. Senza il campo il comportamento e' quello attuale (test esistenti verdi).</criterion>
+    <criterion id="AC-010">AC-005..AC-009 valgono anche su request-management, enrollee-management e import rows
+      (import: `updated` invece di `assigned`).</criterion>
+    <criterion id="AC-011">Dialog: scegliendo "Smistamento equo" compare la lista per Sede con tutti gli operatori
+      selezionati, contatore selezionati/totale per gruppo, carico di ogni operatore; con "Assegna a operatore"
+      la lista non compare.</criterion>
+    <criterion id="AC-012">Dialog: la checkbox di gruppo e' tri-state (tutti / alcuni = indeterminate / nessuno) e
+      seleziona/deseleziona l'intero gruppo; deselezionare un operatore in un gruppo non lo tocca negli altri.</criterion>
+    <criterion id="AC-013">Dialog: un gruppo con zero selezionati mostra l'avviso che i suoi N record non verranno
+      assegnati; `balanced_unassignable_count` &gt; 0 mostra l'avviso globale; con zero operatori selezionati in
+      tutto (o nessun gruppo) il pulsante Conferma e' disabilitato.</criterion>
+    <criterion id="AC-014">Conferma in balanced invia `operators_by_site` con una voce per ogni gruppo con almeno un
+      selezionato (solo gli id selezionati); in single non lo invia. Verificato su Lead, Gestione richieste e
+      revisione Import.</criterion>
+    <criterion id="AC-015">Mentre lo scope si risolve la lista mostra uno stato di caricamento e Conferma e'
+      disabilitato; riaprendo il dialog la selezione riparte da "tutti selezionati" (D-3).</criterion>
+    <criterion id="AC-016">Guide in-app IT/EN aggiornate con gli stessi id sezione; `help-content-parity.test.ts`
+      verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza; nessun nuovo componente in `components/ui/` (composizione di checkbox/collapsible/
+      badge/avatar esistenti).
+    - Authz server-side invariata: selection-scope resta gated dal permesso di lettura del dominio; gli endpoint di
+      assegnazione dai loro gate attuali. La lista del client non puo' mai allargare il pool (intersezione).
+    - Regole di validazione `operators_by_site` definite UNA volta e riusate dai 3 FormRequest.
+    - Restrizione del pool implementata UNA volta (unita' condivisa in `Services/Assignment/`), non ripetuta nei tre
+      service.
+    - `SelectionScopeController` e' a 302 righe: la costruzione dei gruppi va in una classe dedicata in
+      `Services/Assignment/`; il controller aggiunge solo la chiamata.
+    - Nessuna query N+1: gruppi, etichette e carichi calcolati con query aggregate per l'intera selezione.
+    - UI compatta (ui-design.md §2), lista in contenitore con `max-h` + `overflow-auto`, responsive 375/768/1024,
+      checkbox con label accessibili, stato non comunicato col solo colore; stringhe via i18next IT/EN.
+    - File entro 300/500 righe; test Pest + Vitest eseguiti; Pint, ESLint, `tsc -b --force` puliti.
+  </constraints>
+
+  <plan>
+    <task id="T1" owner="backend" lane="parallelo con T3" depends="-">
+      selection-scope: classe `Services/Assignment/BalancedPoolGroups` (gruppi + unassignable, etichette, carichi
+      per dominio); esposizione pubblica dei carichi quotes; wiring nel controller. Test AC-001..AC-004.
+    </task>
+    <task id="T2" owner="backend" lane="sequenziale dopo T1 (stesso owner)" depends="T1">
+      `operators_by_site`: regole condivise nei 3 FormRequest, restrizione pool condivisa in `Services/Assignment/`,
+      applicata in LeadAssignmentService / RequestAssignmentService / ImportBulkAssigner. Test AC-005..AC-010.
+    </task>
+    <task id="T3" owner="frontend" lane="parallelo con T1/T2 (contratto congelato)" depends="-">
+      Tipi scope + payload, componente `features/assignment/balanced-operators-picker.tsx` (+ hook di selezione),
+      integrazione in `AssignOperatorsDialog` e nei 3 chiamanti, i18n IT/EN, guide in-app IT/EN. Test AC-011..AC-016.
+    </task>
+    <task id="T4" owner="verifier" lane="gated" depends="T2,T3">
+      Pest (Assignment/Leads/RequestManagement/EnrolleeManagement/Imports), Vitest (leads/request-management/
+      imports/assignment/help), Pint, ESLint, tsc -b --force; AC uno per uno.
+    </task>
+    <task id="T5" owner="lead" lane="gated" depends="T4">Manuale Claude Docs + docs/HANDOFF.md.</task>
+  </plan>
+
+</spec>

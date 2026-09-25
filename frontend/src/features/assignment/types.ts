@@ -64,4 +64,49 @@ export interface AssignmentScopeResult {
    * selection (nothing to cover).
    */
   single_operator_available: boolean
+  /**
+   * The "Smistamento equo" picker's groups (spec 0168 D-1): one per Sede
+   * resolved from the selection, carrying the operators competent for at
+   * least one of that Sede's records (union of their per-record pools). A
+   * Sede whose union is empty produces no group — its records count in
+   * `balanced_unassignable_count` instead. Ordered by `operational_site_label`
+   * asc, operators by `label` asc (server-side).
+   */
+  balanced_groups: AssignmentScopeBalancedGroup[]
+  /** Records with no resolvable Sede or an empty operator pool (spec 0168 D-1/AC-003). */
+  balanced_unassignable_count: number
+}
+
+/** One operator option inside a `AssignmentScopeBalancedGroup` (spec 0168). */
+export interface AssignmentScopeBalancedOperator {
+  id: number
+  label: string
+  avatar_url: string | null
+  /**
+   * The same initial load the balanced distribution would start from for
+   * this operator (leads/import_rows: COUNT leads; quotes/enrollees: COUNT
+   * quotes), 0 when the operator has none.
+   */
+  load: number
+}
+
+/** One Sede group of the "Smistamento equo" picker (spec 0168 D-1). */
+export interface AssignmentScopeBalancedGroup {
+  operational_site_id: number
+  operational_site_label: string
+  /** Records of this Sede with a non-empty pool — the ones this group can receive. */
+  record_count: number
+  operators: AssignmentScopeBalancedOperator[]
+}
+
+/**
+ * One entry of `operators_by_site` (spec 0168 `data_contract`), the optional
+ * `mode: 'balanced'` field of the three assignment endpoints (leads,
+ * request-management/enrollee-management, import rows): restricts a Sede's
+ * pool to the operators the user left selected in that group. The frontend
+ * sends one entry per group with at least one operator still selected.
+ */
+export interface BalancedOperatorsBySiteEntry {
+  operational_site_id: number
+  operator_ids: number[]
 }

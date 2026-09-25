@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\RequestManagement;
 
 use App\Enums\LeadAssignmentMode;
+use App\Http\Requests\Concerns\HasOperatorsBySiteRules;
 use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
@@ -49,6 +50,8 @@ use Illuminate\Validation\Validator;
  */
 class AssignRequestOperatorsRequest extends FormRequest
 {
+    use HasOperatorsBySiteRules;
+
     public function authorize(): bool
     {
         // Authorization handled in the controller (permission + D-3 scope).
@@ -66,6 +69,7 @@ class AssignRequestOperatorsRequest extends FormRequest
             'operational_site_id' => ['prohibited'],
             'mode' => ['required', Rule::enum(LeadAssignmentMode::class)],
             'operator_id' => ['required_if:mode,single', 'integer', Rule::exists('users', 'id')],
+            ...$this->operatorsBySiteRules(),
         ];
     }
 

@@ -8,6 +8,7 @@ use App\Models\Lead;
 use App\Services\Assignment\AssignmentCandidates;
 use App\Services\Assignment\AssignmentSiteResolver;
 use App\Services\Assignment\LeadCompetence;
+use App\Services\Assignment\OperatorsBySitePoolRestriction;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -29,19 +30,22 @@ class LeadAssignmentService
         private readonly LeadCompetence $leadCompetence,
         private readonly AssignmentSiteResolver $siteResolver,
         private readonly AssignmentCandidates $candidates,
+        private readonly OperatorsBySitePoolRestriction $poolRestriction,
     ) {}
 
     /**
      * Every lead in $leadIds receives the Sede of its own campaign. In
      * `single` mode every lead also receives $operatorId; in `balanced` mode
      * operators are assigned per br-balanced, narrowed to the lead's own
-     * Sede and competence. Whole operation is one transaction.
+     * Sede and competence, further narrowed to $operatorsBySite when given
+     * (spec 0168). Whole operation is one transaction.
      *
      * @param  array<int, int>  $leadIds
+     * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite
      */
-    public function assignOperators(array $leadIds, LeadAssignmentMode $mode, ?int $operatorId): AssignmentOutcome
+    public function assignOperators(array $leadIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $operatorsBySite = null): AssignmentOutcome
     {
-        return DB::transaction(function () use ($leadIds, $mode, $operatorId): AssignmentOutcome {
+        return DB::transaction(function () use ($leadIds, $mode, $operatorId, $operatorsBySite): AssignmentOutcome {
             $orderedLeadIds = collect($leadIds)->unique()->sort()->values()->all();
 
             // Step 1: derive each lead's Sede from its campaign and persist it.
@@ -51,7 +55,7 @@ class LeadAssignmentService
             // Step 2: apply the operator(s) per mode.
             return $mode === LeadAssignmentMode::Single
                 ? $this->assignSingleOperator($orderedLeadIds, $operatorId)
-                : $this->assignBalanced($orderedLeadIds, $siteByLead);
+                : $this->assignBalanced($orderedLeadIds, $siteByLead, $operatorsBySite);
         });
     }
 
@@ -127,13 +131,18 @@ class LeadAssignmentService
      *
      * @param  array<int, int>  $orderedLeadIds
      * @param  array<int, int|null>  $siteByLead
+     * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite
      */
-    private function assignBalanced(array $orderedLeadIds, array $siteByLead): AssignmentOutcome
+    private function assignBalanced(array $orderedLeadIds, array $siteByLead, ?array $operatorsBySite): AssignmentOutcome
     {
         $candidatesByLead = $this->candidates->byRecord(
             $siteByLead,
             $this->leadCompetence->requiredByLead($orderedLeadIds),
         );
+
+        // Spec 0168: narrow every lead's pool to the operators left selected
+        // for its own Sede. A no-op when $operatorsBySite is null.
+        $candidatesByLead = $this->poolRestriction->restrict($candidatesByLead, $siteByLead, $operatorsBySite);
 
         // ONE load map over the union of every pool: two disjoint Sedi must
         // not rebalance in isolation (AC-011), tie-break stays lowest id.

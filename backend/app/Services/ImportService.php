@@ -228,10 +228,11 @@ class ImportService
      *
      * @param  array<int, int>  $rowIds
      * @param  array<int, int>|null  $productIds
+     * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite  spec 0168, `balanced` only
      */
-    public function bulkAssign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $productIds = null): AssignmentOutcome
+    public function bulkAssign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $productIds = null, ?array $operatorsBySite = null): AssignmentOutcome
     {
-        return $this->bulkAssigner->assign($run, $selectAll, $rowIds, $mode, $operatorId, $productIds);
+        return $this->bulkAssigner->assign($run, $selectAll, $rowIds, $mode, $operatorId, $productIds, $operatorsBySite);
     }
 
     /**

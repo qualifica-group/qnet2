@@ -257,6 +257,45 @@ describe('buildBulkAssignPayload', () => {
       row_ids: [9],
     })
   })
+
+  // Spec 0168 AC-014: forwarded only in balanced mode, and only when the
+  // dialog actually sent one (a `balancedScope`-less caller never does).
+  it('AC-014: mode "balanced" with operators_by_site forwards it verbatim', () => {
+    expect(
+      buildBulkAssignPayload(
+        { selectAll: false, toggledNodes: ['3', '7'] },
+        {
+          mode: 'balanced',
+          operators_by_site: [
+            { operational_site_id: 1, operator_ids: [11, 12] },
+            { operational_site_id: 2, operator_ids: [13] },
+          ],
+        },
+      ),
+    ).toEqual({
+      mode: 'balanced',
+      operators_by_site: [
+        { operational_site_id: 1, operator_ids: [11, 12] },
+        { operational_site_id: 2, operator_ids: [13] },
+      ],
+      select_all: false,
+      row_ids: [3, 7],
+    })
+  })
+
+  it('AC-014: mode "single" never forwards operators_by_site even if somehow present', () => {
+    expect(
+      buildBulkAssignPayload(
+        { selectAll: false, toggledNodes: ['3'] },
+        { mode: 'single', operator_id: 42, operators_by_site: [{ operational_site_id: 1, operator_ids: [11] }] },
+      ),
+    ).toEqual({
+      mode: 'single',
+      operator_id: 42,
+      select_all: false,
+      row_ids: [3],
+    })
+  })
 })
 
 describe('buildBulkAssignProductsPayload (spec 0094 bulk delta)', () => {

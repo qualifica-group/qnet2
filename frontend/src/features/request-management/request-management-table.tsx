@@ -428,6 +428,12 @@ export function RequestManagementTable() {
         isResolvingCompetence={assignScope.isResolvingCompetence}
         disabledModes={hasNoCommonOperator ? NO_COMMON_OPERATOR_DISABLED_MODES : undefined}
         disabledModeHints={hasNoCommonOperator ? disabledModeHints : undefined}
+        balancedScope={{
+          groups: assignScope.balancedGroups,
+          unassignableCount: assignScope.balancedUnassignableCount,
+          isResolving: assignScope.isResolvingCompetence,
+          isError: assignScope.isError,
+        }}
         onAssign={handleAssign}
       />
 

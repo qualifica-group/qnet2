@@ -98,7 +98,7 @@ const guide: HelpGuide = {
             'Fix values directly in the grid: every edit is saved immediately.',
             'For every row you can change the campaign, operator, site, products and location.',
             'For duplicates, choose the **Resolution**: **Skip**, **Create new** or **Update existing**.',
-            'On several selected rows, use **Assign operators** or **Assign products**.',
+            'On several selected rows, use **Assign operators** (with **Balanced split** the per-Site operator list appears, all selected: deselect whoever should not receive rows) or **Assign products**.',
           ],
         },
         {
