@@ -7,14 +7,16 @@ import {
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
+import { buildAttributeEnumSchema } from '@/features/request-management/attribute-values-schema'
 
 /**
  * Zod schema for the product create/edit form's GENERIC fields, built as a
  * factory so validation messages are localized via the i18n `t` function.
  * `attribute_values` (spec 0061) is additive: one entry per the selected
  * category's PRODUCT-context effective attribute, mirroring
- * `request-work-schema.ts`'s `buildAttributeValuesSchema` (kept independent
- * since that file must not be touched — the Opportunity path's invariant).
+ * `attribute-values-schema.ts`'s `buildAttributeValuesSchema` (kept independent
+ * over the product's own effective-attribute shape; the per-option `enum` rule
+ * is the shared `buildAttributeEnumSchema`).
  */
 
 /** Backend `name` column limit (`max:191`). */
@@ -79,17 +81,8 @@ function buildAttributeScalarSchema(attribute: EffectiveAttribute, t: TFunction)
       return z.number().nullable()
     case 'boolean':
       return z.boolean()
-    case 'enum': {
-      const values = new Set(attribute.options.map((option) => option.value))
-      return z
-        .string()
-        .nullable()
-        .superRefine((value, ctx) => {
-          if (value !== null && !values.has(value)) {
-            ctx.addIssue({ code: 'custom', message: t('customFields.validation.enumInvalid') })
-          }
-        })
-    }
+    case 'enum':
+      return buildAttributeEnumSchema(attribute, t('customFields.validation.enumInvalid'))
     case 'relation':
       return z.union([z.number(), z.array(z.number()), z.null()])
     // text/textarea + the string-backed scalars (date/datetime/time/email/url/color).

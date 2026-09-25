@@ -201,6 +201,30 @@ describe('useTableCellEdit', () => {
     await waitFor(() => expect(event.node.setData).toHaveBeenCalledWith(updatedRow))
   })
 
+  // A multiselect ENUM attribute (`tags` editor) holds option CODES, not ids:
+  // coercing them through Number() sent `[null, null]` and the server
+  // answered "contains an invalid value".
+  it('PATCHes a multiselect enum column with its option codes verbatim', async () => {
+    updateTableCellMock.mockResolvedValue(row({ 'attr.degree': ['high_school', 'degree'] }))
+
+    const { result } = renderHook(() => useTableCellEdit('request-management', []), { wrapper: wrapper() })
+    const event = cellValueChangedEvent({
+      colId: 'attr.degree',
+      data: row({ 'attr.degree': ['high_school'] }),
+      oldValue: ['high_school'],
+      newValue: ['high_school', 'degree'],
+    })
+
+    act(() => result.current.handleCellValueChanged(event))
+
+    await waitFor(() =>
+      expect(updateTableCellMock).toHaveBeenCalledWith('request-management', 7, {
+        column: 'attr.degree',
+        value: ['high_school', 'degree'],
+      }),
+    )
+  })
+
   it('does nothing for a multiselect whose selection is unchanged, despite a new array reference', () => {
     const { result } = renderHook(() => useTableCellEdit('opportunities', []), { wrapper: wrapper() })
     const event = cellValueChangedEvent({

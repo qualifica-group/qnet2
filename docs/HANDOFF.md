@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX: ATTRIBUTI ENUM MULTISELECT NON SALVABILI (es. "Titolo di Studio") — VERDE, COMMITTATO (2026-09-25)
+
+- Bug utente: modificare `degree` (enum `display: multiselect`) dava "Invalid input" sul form e
+  "attribute_values.degree contains an invalid value" in griglia. Colpiva OGNI attributo enum multiselect.
+- Causa form: gli schemi Zod degli attributi validavano ogni `enum` come `z.string()`. Ora c'e' un unico
+  `buildAttributeEnumSchema` (esportato da `features/request-management/attribute-values-schema.ts`): lista di
+  codici nullable per la multiselect (`seedAttributeValues` semina `null`), stringa per la singola; lo usa anche
+  `products/product-schema.ts` (copia prima duplicata).
+- Causa griglia: `resolveCellPatchValue` (`features/table/use-table-cell-edit.tsx`) faceva `Number(entry)` su ogni
+  elemento non-oggetto di un array, quindi i codici diventavano `[null, ...]`. Ora gli scalari passano invariati; il
+  tipo `value` di `CellPatchArgs`/`updateTableCell` ammette `string[]`. Backend invariato (gia' corretto).
+- Test: `attribute-values-schema.test.ts` (nuovo, 4), `product-schema.test.ts` (+1), `use-table-cell-edit.test.tsx`
+  (+1), rossi prima del fix. Vitest request-management/products/table/quotes/work-orders 1358/1358, `tsc -b --force`
+  pulito, ESLint pulito; Pest `QualificaDegreeMultiselectTest` + `RequestManagementAttributeColumnsTest` 31/31.
+  Manuale: nessun impatto.
+
 ## SEGNATEMPO: LA FASE SEGUE IL TASK — SPEC 0167 — VERDE, COMMITTATO (2026-09-25)
 
 - Richiesta utente 2026-09-25. Ritira 0163 D-2 (fase = istantanea), il suo fuori scope e AC-004 (annotato in 0163).

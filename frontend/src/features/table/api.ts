@@ -118,13 +118,14 @@ export interface UpdateTableCellPayload {
   column: string
   /**
    * A scalar, or — for a `multiselect` column — the whole id collection that
-   * replaces the current one, or — for a `product_lines` column (spec 0075) —
+   * replaces the current one, or — for a multiselect `enum` attribute — the
+   * whole list of option codes, or — for a `product_lines` column (spec 0075) —
    * the whole collection of id pairs, or — for an `offer_lines` column (user
    * directive 2026-09-07) — the whole collection of quote-line rows, whose
    * fields are numbers but not all ids (`quantity`, `unit_price`) and whose
    * `vat_rate_id`/`sort_order` may be null.
    */
-  value: string | number | boolean | null | number[] | Record<string, number>[] | Record<string, number | null>[]
+  value: string | number | boolean | null | number[] | string[] | Record<string, number>[] | Record<string, number | null>[]
   /** Only for columns whose picked value requires one (e.g. a workflow status); omitted otherwise. */
   note?: string
 }

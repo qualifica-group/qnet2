@@ -17,10 +17,11 @@ type CellPatchPair = Record<string, number>
 
 /**
  * A cell PATCH's value: a scalar, or — for a `multiselect` column — the whole
- * id collection, or — for a `product_lines` column (spec 0075) — the whole
- * collection of id pairs.
+ * id collection, or — for a multiselect `enum` attribute (`tags` editor) — the
+ * whole list of option codes, or — for a `product_lines` column (spec 0075) —
+ * the whole collection of id pairs.
  */
-type CellPatchValue = string | number | boolean | null | number[] | CellPatchPair[]
+type CellPatchValue = string | number | boolean | null | number[] | string[] | CellPatchPair[]
 
 /** Body of a single cell PATCH, already resolved to the wire shape (spec 0053/0054). */
 interface CellPatchArgs {
@@ -65,7 +66,9 @@ function resolvePairEntry(entry: Record<string, unknown>): CellPatchPair {
  * (spec 0054 D-3): unwrap it here, once, so every other column's plain
  * scalar value passes through untouched. A MULTISELECT column's value (user
  * directive 2026-07-23) is the ARRAY of those projections and unwraps the same
- * way, element by element, into the id collection the endpoint replaces. An
+ * way, element by element, into the id collection the endpoint replaces. A
+ * scalar entry (a multiselect `enum` attribute's option code) travels as it
+ * is: it is a code, not an id to coerce. An
  * entry with no `id` of its own is an ID PAIR (spec 0075): it keeps its shape,
  * reduced to {@link PRODUCT_LINE_PAIR_WIRE_KEY}.
  */
@@ -76,8 +79,8 @@ function resolveCellPatchValue(value: unknown): CellPatchValue {
     }
 
     return value.map((entry) =>
-      entry !== null && typeof entry === 'object' && 'id' in entry ? (entry as { id: number }).id : Number(entry),
-    )
+      entry !== null && typeof entry === 'object' && 'id' in entry ? (entry as { id: number }).id : (entry as number | string),
+    ) as number[] | string[]
   }
   if (value !== null && typeof value === 'object' && 'id' in value) {
     return (value as { id: number }).id
