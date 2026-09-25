@@ -64,14 +64,17 @@ function createDefaults(
   workOrderId: number | null,
   workOrderStageId: number | null,
   requesterId: number | null,
+  taskStatusId: number | null,
+  endDate: string | null,
 ): TaskFormValues {
-  // Spec 0154 D-9: today, UNLESS this create is opened as "crea sotto-task"
-  // or from a commessa's Task tab — both contexts may eventually prefill
-  // their own date range/end date, so this default steps aside for them.
-  const hasLinkContext = parentTaskId !== null || workOrderId !== null
+  // Spec 0154 D-9: today, UNLESS this create is opened as "crea sotto-task",
+  // from a commessa's Task tab, or with an explicit `endDate` prefill (spec
+  // 0157 D-4, the Kanban per-column "+") — all three contexts prefill their
+  // own date range/end date, so this default steps aside for them.
+  const hasLinkContext = parentTaskId !== null || workOrderId !== null || endDate !== null
   return {
     title: '',
-    task_status_id: null,
+    task_status_id: taskStatusId,
     description: null,
     is_private: false,
     evidence: null,
@@ -88,7 +91,7 @@ function createDefaults(
     lead_id: null,
     requester_id: requesterId,
     start_date: null,
-    end_date: hasLinkContext ? null : todayIsoDate(),
+    end_date: endDate ?? (hasLinkContext ? null : todayIsoDate()),
     start_time: null,
     end_time: null,
     estimated_minutes: null,
@@ -239,6 +242,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
       mode.workOrderId ?? null,
       mode.workOrderStageId ?? null,
       user?.id ?? null,
+      mode.taskStatusId ?? null,
+      mode.endDate ?? null,
     )
   }, [mode, user?.id, t])
 

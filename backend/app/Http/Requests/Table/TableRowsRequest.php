@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Table;
 
-use App\Http\Controllers\Abstract\BaseApiController;
 use App\Services\Table\AdvancedFilterApplier;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
@@ -51,8 +50,8 @@ class TableRowsRequest extends FormRequest
      */
     public function rules(): array
     {
-        $maxLimit = BaseApiController::MAX_LIMIT;
         $definition = $this->definition();
+        $maxLimit = $definition->maxRowsLimit();
         $sortable = $definition->sortableColumnIds();
 
         return [
@@ -92,13 +91,23 @@ class TableRowsRequest extends FormRequest
             // other domain, mirroring `opportunityId` (AC-053: OMITTED by
             // every existing caller, so their payload stays byte-identical).
             'quoteId' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
+
+            // Spec 0157, D-1: tree/hierarchical row scoping (Sintetica) — a
+            // domain that does not override supportsTree() 422s either key
+            // in withValidator() below. `treeParentId`'s existence is
+            // checked here, hardcoded to `tasks` like the three scope keys
+            // above are hardcoded to their own domain's table (the key is
+            // only ever meaningful for the one domain that opts in).
+            'tree' => ['sometimes', 'boolean'],
+            'treeParentId' => ['sometimes', 'nullable', 'integer', Rule::exists('tasks', 'id')],
         ];
     }
 
     /**
      * Cross-field / structural checks that Laravel rules can't express cleanly:
      *  - endRow strictly greater than startRow;
-     *  - block size (endRow - startRow) within MAX_LIMIT;
+     *  - block size (endRow - startRow) within the definition's maxRowsLimit();
+     *  - tree/treeParentId sent to a domain that does not support tree mode;
      *  - every filterModel key within the filterable whitelist.
      */
     public function withValidator(Validator $validator): void
@@ -106,16 +115,26 @@ class TableRowsRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $startRow = $this->intInput('startRow');
             $endRow = $this->intInput('endRow');
+            $maxLimit = $this->definition()->maxRowsLimit();
 
             if ($endRow <= $startRow) {
                 $validator->errors()->add('endRow', 'endRow must be greater than startRow.');
             }
 
-            if (($endRow - $startRow) > BaseApiController::MAX_LIMIT) {
+            if (($endRow - $startRow) > $maxLimit) {
                 $validator->errors()->add(
                     'endRow',
-                    'The requested block exceeds the maximum of '.BaseApiController::MAX_LIMIT.' rows.'
+                    'The requested block exceeds the maximum of '.$maxLimit.' rows.'
                 );
+            }
+
+            // Spec 0157, D-1: `treeParentId` alone (no `tree` flag) is also
+            // tree mode — a domain that does not opt in (supportsTree()
+            // false) 422s either key, never silently ignores it.
+            $treeRequested = $this->boolean('tree') || $this->has('treeParentId');
+
+            if ($treeRequested && ! $this->definition()->supportsTree()) {
+                $validator->errors()->add('tree', 'Tree mode is not supported for this domain.');
             }
 
             $filterModel = $this->input('filterModel');

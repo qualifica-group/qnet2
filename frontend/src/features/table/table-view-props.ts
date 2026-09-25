@@ -119,4 +119,10 @@ export interface TableViewProps extends RowActionsOptions {
   pinnedRowSlot?: ReactNode
   /** Per-domain cell-commit interception (spec 0156 D-8), forwarded verbatim to `DataTable`. */
   interceptCellCommit?: CellCommitInterceptor
+  /**
+   * Server-side tree data (spec 0157 D-1), forwarded verbatim to `DataTable`
+   * and to the SSRM datasource. Off by default; a no-op for every domain but
+   * `tasks`'s "Sintetica" view.
+   */
+  treeData?: boolean
 }

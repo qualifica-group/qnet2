@@ -26,3 +26,24 @@ describe('buildColDefs actions column width', () => {
     expect(actionsWidth({ actionsColumnWidth: 190, actionsColumnHasOverflow: true })).toBe(190)
   })
 })
+
+// Spec 0157 D-1: tree data forces the tree/expand column's own flat ColDef
+// hidden, so it never shows twice (once inside AG Grid's `autoGroupColumnDef`,
+// once as its own column).
+describe('buildColDefs tree data', () => {
+  const columns = [
+    { id: 'title', label: 'tasks.columns.title', type: 'text' as const, visible: true, width: null, order: 0, sortable: true, filterable: true },
+    { id: 'status', label: 'tasks.columns.status', type: 'text' as const, visible: true, width: null, order: 1, sortable: true, filterable: true },
+  ]
+
+  it('force-hides only the designated tree group column', () => {
+    const defs = buildColDefs({ domain: 'tasks', columns, treeGroupColumnId: 'title', t })
+    expect(defs.find((def) => def.colId === 'title')?.initialHide).toBe(true)
+    expect(defs.find((def) => def.colId === 'status')?.initialHide).toBe(false)
+  })
+
+  it('leaves every column visible as usual when no tree group column is given', () => {
+    const defs = buildColDefs({ domain: 'tasks', columns, t })
+    expect(defs.find((def) => def.colId === 'title')?.initialHide).toBe(false)
+  })
+})

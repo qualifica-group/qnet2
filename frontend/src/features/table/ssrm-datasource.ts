@@ -46,6 +46,14 @@ const DEFAULT_BLOCK_SIZE = 25
  * `meta.aggregates`, or `undefined` when the domain has none — the caller
  * (`TableView`) feeds it into an optional footer slot. A no-op for every
  * domain whose `TableDefinition::aggregates()` stays the default empty one.
+ *
+ * `treeData` (spec 0157 D-1) turns on AG Grid's server-side tree data: every
+ * request carries `tree: true`, and a request for a level BELOW the root
+ * (the grid expanding a node) additionally carries `treeParentId`, read off
+ * `request.groupKeys` — the chain of ids from root to the expanded node,
+ * whose LAST entry is the immediate parent (the only level this datasource
+ * ever needs, since a task's tree is never more than one level deep from any
+ * given expansion). Off by default; a no-op for every domain but `tasks`.
  */
 export function createSsrmDatasource(
   domain: string,
@@ -55,6 +63,7 @@ export function createSsrmDatasource(
   opportunityId?: number,
   quoteId?: number,
   onAggregates?: (aggregates: TableRowsAggregates | undefined) => void,
+  treeData?: boolean,
 ): IServerSideDatasource<TableRow> {
   return {
     async getRows(params: IServerSideGetRowsParams<TableRow>): Promise<void> {
@@ -82,6 +91,13 @@ export function createSsrmDatasource(
       // entirely when there is none applied.
       const advancedFilters = getAdvancedFilters?.() ?? {}
 
+      // `groupKeys` is empty at the root; its last entry is the immediate
+      // parent once the grid asks for a level below it.
+      const treeParentId =
+        treeData && request.groupKeys.length > 0
+          ? Number(request.groupKeys[request.groupKeys.length - 1])
+          : undefined
+
       try {
         const response = await fetchTableRows(domain, {
           startRow,
@@ -93,6 +109,8 @@ export function createSsrmDatasource(
           ...(productCategoryId != null ? { productCategoryId } : {}),
           ...(opportunityId != null ? { opportunityId } : {}),
           ...(quoteId != null ? { quoteId } : {}),
+          ...(treeData ? { tree: true } : {}),
+          ...(treeParentId != null ? { treeParentId } : {}),
         })
 
         onAggregates?.(response.meta?.aggregates)

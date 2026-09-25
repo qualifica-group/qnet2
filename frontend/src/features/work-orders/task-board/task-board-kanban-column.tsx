@@ -2,6 +2,12 @@
  * One kanban column: a fase, or "Senza fase" (D-5). Same accent stripe and
  * counters as the list view's group header, without the collapse/rename/
  * close menu (out of scope for the kanban surface, still available in Lista).
+ *
+ * Chrome (accent dot/label/count/"+") is the shared `KanbanColumnShell`
+ * (spec 0157 D-6); this component only owns what is board-specific: the fase
+ * metrics summary line, and the `SortableContext` in-column reorder the
+ * board's own `use-task-board-dnd.ts` needs (the `/tasks` Kanban has no
+ * position of its own, so its column has no `SortableContext`).
  */
 
 import { useDroppable } from '@dnd-kit/core'
@@ -9,6 +15,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { KanbanColumnShell } from '@/components/kanban/kanban-column-shell'
 import { cn } from '@/lib/utils'
 import type { BoardStageGroup } from '@/features/work-orders/task-board/task-board-filters'
 import { computeStageMetrics } from '@/features/work-orders/task-board/task-board-metrics'
@@ -48,20 +55,20 @@ export function TaskBoardKanbanColumn({
   const isClosed = stage?.closed_at != null
 
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-2">
-      <div className="flex flex-col gap-1.5 px-1">
-        <div className="flex items-center gap-2">
-          <span aria-hidden="true" className={cn('size-2.5 shrink-0 rounded-full', accent.dot)} />
-          <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-            {stage ? stage.name : t('workOrders.taskBoard.noStage')}
-          </h3>
-          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-            {metrics.count}
-          </span>
-        </div>
-        <TaskBoardStageSummary metrics={metrics} />
-      </div>
-
+    <KanbanColumnShell
+      accentColor={accent.dot}
+      label={stage ? stage.name : t('workOrders.taskBoard.noStage')}
+      count={metrics.count}
+      headerExtra={<TaskBoardStageSummary metrics={metrics} />}
+      addSlot={
+        !isReadOnly && !isClosed ? (
+          <Button size="xs" variant="ghost" onClick={() => onAddTask(stage?.id ?? null)}>
+            <Plus aria-hidden="true" />
+            {t('workOrders.taskBoard.stage.addTask')}
+          </Button>
+        ) : null
+      }
+    >
       <SortableContext items={roots.map((node) => String(node.task.id))} strategy={verticalListSortingStrategy}>
         <ul
           ref={setNodeRef}
@@ -83,13 +90,6 @@ export function TaskBoardKanbanColumn({
           ))}
         </ul>
       </SortableContext>
-
-      {!isReadOnly && !isClosed ? (
-        <Button size="xs" variant="ghost" onClick={() => onAddTask(stage?.id ?? null)}>
-          <Plus aria-hidden="true" />
-          {t('workOrders.taskBoard.stage.addTask')}
-        </Button>
-      ) : null}
-    </div>
+    </KanbanColumnShell>
   )
 }

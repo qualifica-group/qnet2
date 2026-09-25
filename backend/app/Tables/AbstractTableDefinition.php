@@ -3,6 +3,7 @@
 namespace App\Tables;
 
 use App\Enums\AdvancedFilterType;
+use App\Http\Controllers\Abstract\BaseApiController;
 use App\Models\User;
 use App\Services\Table\AdvancedFilterApplier;
 use App\Tables\Concerns\HandlesBlankSetFilter;
@@ -404,5 +405,34 @@ abstract class AbstractTableDefinition implements TableDefinition
     public function aggregates(Builder $query): array
     {
         return [];
+    }
+
+    /**
+     * Default: no tree/hierarchical support (spec 0157, D-1). A domain opts
+     * in by overriding.
+     */
+    public function supportsTree(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Default: a no-op. Only ever reached for a domain that overrides
+     * supportsTree() to true (spec 0157, D-1).
+     *
+     * @param  Builder<Model>  $query
+     */
+    public function applyTreeScope(Builder $query, ?int $parentId): void
+    {
+        // Intentionally empty: no domain narrows its query by default.
+    }
+
+    /**
+     * Default: the shared SSRM cap every domain used before spec 0157. A
+     * domain opts into a wider block by overriding (e.g. tasks' Kanban).
+     */
+    public function maxRowsLimit(): int
+    {
+        return BaseApiController::MAX_LIMIT;
     }
 }

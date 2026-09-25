@@ -15,9 +15,12 @@
  * sibling for the same size limit, merged in below.
  */
 import { tasksBulk } from '@/i18n/locales/en-tasks-bulk'
+import { tasksViews } from '@/i18n/locales/en-tasks-views'
 
 export const tasks = {
   forbidden: "You don't have permission to view tasks.",
+  /** Analytic/Tree/Kanban selector and board (spec 0157). */
+  views: tasksViews,
   columns: {
     title: 'Title',
     registry: 'Account',

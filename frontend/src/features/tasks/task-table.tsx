@@ -14,10 +14,14 @@ import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
 import { TASKS_DOMAIN } from '@/features/tasks/api'
 import { taskColumnRenderers } from '@/features/tasks/task-column-renderers'
+import { TaskKanbanView } from '@/features/tasks/task-kanban/task-kanban-view'
 import { TaskQuickCreateRow } from '@/features/tasks/task-quick-create-row'
+import { TaskViewModeSelector } from '@/features/tasks/task-view-mode-selector'
 import { useTaskBulkActionsSlot } from '@/features/tasks/use-task-bulk-actions-slot'
 import { useTaskDomainRowActions } from '@/features/tasks/use-task-domain-row-actions'
+import { useTaskKanbanMode } from '@/features/tasks/use-task-kanban-mode'
 import { useTaskListUrlFilters } from '@/features/tasks/use-task-list-url-filters'
+import { useTaskListViewMode } from '@/features/tasks/use-task-list-view-mode'
 import { useTaskRowActions } from '@/features/tasks/use-task-row-actions'
 import { useTaskStatusCellIntercept } from '@/features/tasks/use-task-status-cell-intercept'
 import type { RowActionHandler } from '@/features/table/row-actions'
@@ -54,8 +58,13 @@ export function TasksTable() {
     notesRowId,
     closeNotes,
     openCreate,
+    openCreateWith,
+    openView,
     sheet,
   } = useTaskRowActions({ onMutated: handleMutated })
+
+  const { viewMode, setViewMode } = useTaskListViewMode()
+  const { kanbanMode, setKanbanMode } = useTaskKanbanMode()
 
   const { handleAction: handleDomainAction, dialogSlot: domainDialogSlot } = useTaskDomainRowActions({
     onMutated: handleMutated,
@@ -111,20 +120,41 @@ export function TasksTable() {
 
       <ModuleStatsPanel domain={TASKS_DOMAIN} isOpen={stats.isOpen} />
 
-      <TableView
-        ref={tableRef}
-        domain={TASKS_DOMAIN}
-        renderers={taskColumnRenderers}
-        onAction={handleAction}
-        isBusy={isBusy}
-        advancedFiltersOverride={urlFilters.override}
-        onAdvancedFiltersOverrideCleared={urlFilters.clear}
-        getBulkActions={getBulkActions}
-        disableBuiltinDelete
-        renderFooter={renderFooter}
-        pinnedRowSlot={<TaskQuickCreateRow onCreated={handleMutated} />}
-        interceptCellCommit={interceptCommit}
+      <TaskViewModeSelector
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        kanbanMode={kanbanMode}
+        onKanbanModeChange={setKanbanMode}
       />
+
+      {viewMode === 'kanban' ? (
+        <TaskKanbanView
+          mode={kanbanMode}
+          onOpenTask={(id) => openView({ id, actions: [] })}
+          onCreateTask={openCreateWith}
+        />
+      ) : (
+        // Remounted on a mode switch (`key`): Sintetica's server-side tree
+        // shape (spec 0157 D-1) is a different SSRM request altogether, so it
+        // starts its own fresh grid/selection/toolbar state rather than
+        // reinterpreting Analitica's.
+        <TableView
+          key={viewMode}
+          ref={tableRef}
+          domain={TASKS_DOMAIN}
+          renderers={taskColumnRenderers}
+          onAction={handleAction}
+          isBusy={isBusy}
+          advancedFiltersOverride={urlFilters.override}
+          onAdvancedFiltersOverrideCleared={urlFilters.clear}
+          getBulkActions={getBulkActions}
+          disableBuiltinDelete
+          renderFooter={renderFooter}
+          pinnedRowSlot={<TaskQuickCreateRow onCreated={handleMutated} />}
+          interceptCellCommit={interceptCommit}
+          treeData={viewMode === 'synthetic'}
+        />
+      )}
 
       {sheet}
       {domainDialogSlot}

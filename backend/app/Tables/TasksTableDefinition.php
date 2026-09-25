@@ -8,7 +8,6 @@ use App\Authorization\TasksAuthorization;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\RoleAssignmentGuard;
-use App\Services\Table\FilterApplier;
 use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
@@ -22,6 +21,7 @@ use App\Tables\Tasks\TaskCellWriter;
 use App\Tables\Tasks\TaskColumnCatalog;
 use App\Tables\Tasks\TaskRelationColumns;
 use App\Tables\Tasks\TaskRowMapper;
+use App\Tables\Tasks\TaskTreeScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -57,7 +57,12 @@ class TasksTableDefinition extends AbstractTableDefinition
 {
     private const string COMPLETION_PERCENTAGE_COLUMN = 'completion_percentage';
 
-    private const string IS_RECURRING_COLUMN = 'is_recurring';
+    /**
+     * Spec 0157, D-4: the Kanban view loads up to 500 Task in a single SSRM
+     * block, five times the shared `BaseApiController::MAX_LIMIT` every
+     * other domain keeps.
+     */
+    private const int MAX_ROWS_LIMIT = 500;
 
     /**
      * The seven domain-action flags of TasksAuthorization::actionPermissions()
@@ -78,7 +83,6 @@ class TasksTableDefinition extends AbstractTableDefinition
         private readonly TaskAggregateColumns $aggregateColumns,
         private readonly TaskCellWriter $cellWriter,
         private readonly TasksAuthorization $authorization,
-        private readonly FilterApplier $filterApplier,
         private readonly TaskRowMapper $rowMapper,
     ) {}
 
@@ -365,6 +369,30 @@ class TasksTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * Spec 0157, D-1: `tasks` is the one domain with tree/hierarchical row
+     * scoping — Sintetica shows only root Task at the top level, expanding
+     * a node to fetch its direct children, both under the SAME filters,
+     * search and sort as Analitica.
+     */
+    public function supportsTree(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @param  Builder<Task>  $query
+     */
+    public function applyTreeScope(Builder $query, ?int $parentId): void
+    {
+        TaskTreeScope::apply($query, $parentId);
+    }
+
+    public function maxRowsLimit(): int
+    {
+        return self::MAX_ROWS_LIMIT;
+    }
+
+    /**
      * @param  Builder<Task>  $query
      * @param  array<string, mixed>  $columnConfig
      * @param  array<string, mixed>  $filter
@@ -373,12 +401,6 @@ class TasksTableDefinition extends AbstractTableDefinition
     {
         if ($columnId === self::COMPLETION_PERCENTAGE_COLUMN) {
             $this->statusResolver->applyFilter($query, $columnConfig, $filter);
-
-            return true;
-        }
-
-        if ($columnId === self::IS_RECURRING_COLUMN) {
-            $this->applyRecurringFilter($query, $filter);
 
             return true;
         }
@@ -444,28 +466,5 @@ class TasksTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
-    }
-
-    /**
-     * `is_recurring` (spec 0156, D-2) is a predicate on `task_recurrence_id`,
-     * with no real boolean column to filter directly — mirrors
-     * TaskRelationColumns::applyHierarchyFilter()'s shape for `has_subtasks`/
-     * `is_subtask`, reusing FilterApplier::booleanFilterValues() (public for
-     * exactly this: a derived boolean column filtering itself).
-     *
-     * @param  Builder<Task>  $query
-     * @param  array<string, mixed>  $filter
-     */
-    private function applyRecurringFilter(Builder $query, array $filter): void
-    {
-        $values = $this->filterApplier->booleanFilterValues($filter);
-
-        if ($values === null || count($values) !== 1) {
-            return; // absent, or both true/false selected: every row matches one or the other.
-        }
-
-        $values[0]
-            ? $query->whereNotNull('tasks.task_recurrence_id')
-            : $query->whereNull('tasks.task_recurrence_id');
     }
 }

@@ -115,9 +115,12 @@ export function TaskFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
     const workOrderId = parseEntityId(String(mode.params?.work_order_id ?? ''))
     // Spec 0146 AC-030: "+ Task" of a fase on the Task board.
     const workOrderStageId = parseEntityId(String(mode.params?.work_order_stage_id ?? ''))
+    // Spec 0157 D-4: the Kanban's per-column "+" (status OR due-date board).
+    const taskStatusId = parseEntityId(String(mode.params?.task_status_id ?? ''))
+    const endDate = mode.params?.end_date != null ? String(mode.params.end_date) : null
     return (
       <TaskForm
-        mode={{ type: 'create', parentTaskId, workOrderId, workOrderStageId }}
+        mode={{ type: 'create', parentTaskId, workOrderId, workOrderStageId, taskStatusId, endDate }}
         onSuccess={handleSuccess}
         onCancel={onCancel}
       />

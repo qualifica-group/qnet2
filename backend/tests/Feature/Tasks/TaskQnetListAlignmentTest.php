@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\TaskStatusGroup;
+use App\Models\Note;
 use App\Models\Task;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
@@ -10,6 +11,7 @@ use App\Models\WorkOrder;
 use App\Notifications\TaskAssigned;
 use App\Services\RoleAssignmentGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -348,4 +350,113 @@ it('AC-009: the assignees cell syncs and sends the 0153 D-13 notification to the
 
     expect($task->fresh()->assignees->pluck('id')->all())->toBe([$newcomer->id]);
     Notification::assertSentTo($newcomer, TaskAssigned::class);
+});
+
+// ---------------------------------------------------------------------------
+// AC-007 follow-up — a bulk rollback sends NO notification (TaskNotifier
+// defers every send to DB::afterCommit(); the outer transaction rolling
+// back must discard the deferred callback, not just the failed row's own
+// savepoint).
+// ---------------------------------------------------------------------------
+
+it('AC-007: an incompatible row rolls back the WHOLE bulk, so no notification reaches the newcomer of the compatible row', function () {
+    $actor = taskActorWith(['viewAny', 'view', 'update']);
+    $compatible = Task::factory()->forCreator($actor)->create();
+    $closedStatus = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+    $frozen = Task::factory()->forCreator($actor)->inStatus($closedStatus)->create();
+    $newcomer = User::factory()->create();
+    Sanctum::actingAs($actor);
+    Notification::fake();
+
+    $this->postJson('/api/tasks/bulk', [
+        'action' => 'assign', 'task_ids' => [$compatible->id, $frozen->id], 'assignee_ids' => [$newcomer->id],
+    ])->assertStatus(422);
+
+    expect($compatible->fresh()->assignees->pluck('id')->all())->toBe([]);
+    Notification::assertNothingSent();
+});
+
+it('AC-007: with every row admitted, the bulk assign notification DOES reach the newcomer', function () {
+    $actor = taskActorWith(['viewAny', 'view', 'update']);
+    $one = Task::factory()->forCreator($actor)->create();
+    $two = Task::factory()->forCreator($actor)->create();
+    $newcomer = User::factory()->create();
+    Sanctum::actingAs($actor);
+    Notification::fake();
+
+    $this->postJson('/api/tasks/bulk', [
+        'action' => 'assign', 'task_ids' => [$one->id, $two->id], 'assignee_ids' => [$newcomer->id],
+    ])->assertOk();
+
+    Notification::assertSentToTimes($newcomer, TaskAssigned::class, 2);
+});
+
+// ---------------------------------------------------------------------------
+// Anti-N+1 — POST /api/tables/tasks/rows stays at a constant query count as
+// rows grow (mirrors TaskSubtaskPermissionsTest's own "1 vs 5" shape).
+// ---------------------------------------------------------------------------
+
+it('the grid runs the same number of queries with 1 or 5 rows carrying assignees/watchers/subtasks/notes', function () {
+    $actor = taskActorWith(['viewAny', 'view', 'update', 'complete']);
+    Sanctum::actingAs($actor);
+
+    $makeRichTask = function () use ($actor): Task {
+        $task = Task::factory()->forCreator($actor)->create();
+        $task->assignees()->attach([$actor->id, User::factory()->create()->id]);
+        $task->watchers()->attach(User::factory()->create()->id);
+        $child = Task::factory()->forCreator($actor)->childOf($task)->create();
+        $child->assignees()->attach($actor->id);
+        Note::factory()->create(['notable_type' => 'task', 'notable_id' => $task->id]);
+
+        return $task;
+    };
+
+    $queriesFor = function (int $rootTasks) use ($makeRichTask): int {
+        foreach (range(1, $rootTasks) as $ignored) {
+            $makeRichTask();
+        }
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->postJson('/api/tables/tasks/rows', [
+            'startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['assignment' => ['visible']],
+        ])->assertOk();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    // Warm-up: the first request also loads the actor's roles/permissions,
+    // cached afterwards for both measured runs.
+    $queriesFor(1);
+
+    $baseline = $queriesFor(1);
+    expect($queriesFor(5))->toBe($baseline);
+});
+
+// ---------------------------------------------------------------------------
+// PATCH cell — a structural failure is 422, never a 500 (spec 0156, D-8)
+// ---------------------------------------------------------------------------
+
+it('PATCH task_status with a non-existent id is 422, not 500', function () {
+    $actor = taskActorWith(['viewAny', 'view', 'update']);
+    $task = Task::factory()->forCreator($actor)->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/tasks/rows/{$task->id}", ['column' => 'task_status', 'value' => 999999999])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['value']);
+});
+
+it('PATCH title with an empty string is 422, not 500 (required field)', function () {
+    $actor = taskActorWith(['viewAny', 'view', 'update']);
+    $task = Task::factory()->forCreator($actor)->create(['title' => 'Originale']);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/tasks/rows/{$task->id}", ['column' => 'title', 'value' => ''])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['value']);
+
+    expect($task->fresh()->title)->toBe('Originale');
 });

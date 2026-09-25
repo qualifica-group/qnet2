@@ -33,6 +33,7 @@ import {
   TableEmptyOverlay,
 } from '@/components/data-table/data-table-overlays'
 import { buildDataTableTheme } from '@/components/data-table/data-table-theme'
+import { buildTreeDataGridOptions } from '@/components/data-table/tree-data-grid-options'
 import { syncCacheBlockToPageSize } from '@/components/data-table/pagination-block-size'
 import { buildRowSelectionOptions } from '@/components/data-table/row-selection'
 import type { TableColumn, TableRow, TableRowId } from '@/features/table/types'
@@ -174,6 +175,17 @@ interface DataTableProps {
   detailRowAutoHeight?: boolean
   /** Per-domain cell-commit interception (spec 0156 D-8), forwarded verbatim to `useTableCellEdit`. */
   interceptCellCommit?: CellCommitInterceptor
+  /**
+   * Server-side tree data (spec 0157 D-1), opt-in and off by default: the
+   * FIRST column becomes the tree/expand column (rendered through AG Grid's
+   * own `autoGroupColumnDef`, its flat `ColDef` hidden so it never shows
+   * twice — see `treeGroupColumnId` in `column-def-builder.ts`).
+   * `isServerSideGroup`/`getServerSideGroupKey` read the row's own
+   * `has_subtasks`/`id` — a domain-agnostic pair the caller's datasource must
+   * itself send `tree`/`treeParentId` for (see `ssrm-datasource.ts`). Every
+   * domain but `tasks` leaves this `false`/omitted and sees no change.
+   */
+  treeData?: boolean
 }
 
 /**
@@ -209,6 +221,7 @@ export function DataTable({
   detailCellRenderer,
   detailRowAutoHeight,
   interceptCellCommit,
+  treeData,
 }: DataTableProps) {
   const { t, i18n } = useTranslation()
 
@@ -231,6 +244,10 @@ export function DataTable({
     [i18n.language],
   )
 
+  // The FIRST column is the tree/expand column (spec 0157 D-1): its own flat
+  // `ColDef` is hidden so `autoGroupColumnDef` below is the only place it renders.
+  const treeGroupColumnId = treeData ? columns[0]?.id : undefined
+
   const colDefs = useMemo<ColDef[]>(
     () =>
       buildColDefs({
@@ -245,6 +262,7 @@ export function DataTable({
         actionsColumnHasOverflow,
         actionsColumnWidth,
         masterDetail,
+        treeGroupColumnId,
         t,
       }),
     [
@@ -259,6 +277,7 @@ export function DataTable({
       actionsColumnHasOverflow,
       actionsColumnWidth,
       masterDetail,
+      treeGroupColumnId,
       t,
     ],
   )
@@ -420,6 +439,7 @@ export function DataTable({
         ? (params: ICellRendererParams<TableRow>) => detailCellRenderer(params)
         : undefined,
       detailRowAutoHeight,
+      ...buildTreeDataGridOptions(treeData, treeGroupColumnId, columns, t),
     }),
     [
       datasource,
@@ -430,6 +450,10 @@ export function DataTable({
       masterDetail,
       detailCellRenderer,
       detailRowAutoHeight,
+      treeData,
+      treeGroupColumnId,
+      columns,
+      t,
     ],
   )
 

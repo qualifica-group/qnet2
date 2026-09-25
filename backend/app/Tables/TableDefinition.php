@@ -353,4 +353,42 @@ interface TableDefinition
      * @return array<string, int|float|string|null>
      */
     public function aggregates(Builder $query): array;
+
+    /**
+     * Whether this domain supports tree/hierarchical row scoping (spec
+     * 0157, D-1) — the allow-list `TableRowsRequest` checks before
+     * accepting `tree`/`treeParentId` in POST /tables/{domain}/rows: either
+     * key sent to a domain that returns false here is a 422 (contract:
+     * "nessun cambio di comportamento per gli altri domini"). Default
+     * (AbstractTableDefinition): false.
+     */
+    public function supportsTree(): bool;
+
+    /**
+     * Narrow $query to root rows ($parentId === null) or the direct
+     * children of $parentId (spec 0157, D-1). Called by
+     * `TableService::rows()` AFTER every column/advanced filter and the
+     * quick search are already applied, so tree mode combines with the rest
+     * of the active query rather than replacing it (D-1: "con tutti i
+     * filtri attivi"). Only ever reached when `supportsTree()` is true and
+     * the request actually asked for tree mode; `$parentId`, when non-null,
+     * has ALREADY been validated to exist (`TableRowsRequest`) and to be
+     * visible to the actor (`TableController`, the 'view' Policy ability —
+     * 403 otherwise). Default (AbstractTableDefinition): a no-op, never
+     * reached for a domain that does not opt in.
+     *
+     * @param  Builder<Model>  $query
+     */
+    public function applyTreeScope(Builder $query, ?int $parentId): void;
+
+    /**
+     * Maximum rows returnable in a single SSRM block (`endRow - startRow`)
+     * for POST /tables/{domain}/rows — the per-definition cap
+     * `TableRowsRequest`/`TableService` enforce INSTEAD of the shared
+     * `BaseApiController::MAX_LIMIT` (spec 0157: the Kanban view loads up
+     * to 500 Task in one block). Default (AbstractTableDefinition):
+     * `BaseApiController::MAX_LIMIT` — every domain keeps today's cap
+     * unless it opts into a wider one.
+     */
+    public function maxRowsLimit(): int;
 }

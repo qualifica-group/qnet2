@@ -34,12 +34,6 @@ use Illuminate\Database\Eloquent\Model;
 class TableService
 {
     /**
-     * Maximum rows returnable in a single SSRM block. Mirrors
-     * BaseApiController::MAX_LIMIT and is also enforced by the FormRequest.
-     */
-    private const int MAX_LIMIT = 100;
-
-    /**
      * Fixed value list offered for a boolean column's Set Filter. Both options
      * are ALWAYS shown (as raw 1/0, localized to Sì/No on the frontend) rather
      * than only the values currently present in the data, so the user can always
@@ -58,12 +52,12 @@ class TableService
     /**
      * Execute the SSRM query and return the rows + total for the envelope.
      *
-     * @param  array{startRow: int, endRow: int, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>}  $payload
+     * @param  array{startRow: int, endRow: int, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>, tree?: bool, treeParentId?: int|null}  $payload
      */
     public function rows(TableDefinition $definition, User $actor, array $payload): RowsResult
     {
         $offset = max(0, (int) $payload['startRow']);
-        $limit = min(self::MAX_LIMIT, max(1, (int) $payload['endRow'] - $offset));
+        $limit = min($definition->maxRowsLimit(), max(1, (int) $payload['endRow'] - $offset));
 
         $query = $definition->baseQuery();
 
@@ -72,6 +66,17 @@ class TableService
         // with the column filters above and the quick-search below.
         $this->queryBuilder->applyAdvancedFilters($definition, $query, $payload['advancedFilters'] ?? []);
         $this->queryBuilder->applySearch($definition, $query, $payload['search'] ?? null);
+
+        // Spec 0157, D-1: tree/hierarchical row scoping (Sintetica), AFTER
+        // every filter/search above so it combines with the rest of the
+        // active query — `treeParentId` alone (no `tree` flag) is also tree
+        // mode (root rows when absent). TableController has ALREADY
+        // authorized a non-null `treeParentId` (403 boundary) and
+        // TableRowsRequest has already 422'd a domain that does not
+        // supportsTree(), so this is safe to apply unconditionally here.
+        if (($payload['tree'] ?? false) === true || array_key_exists('treeParentId', $payload)) {
+            $definition->applyTreeScope($query, $payload['treeParentId'] ?? null);
+        }
 
         $total = (clone $query)->count();
         // Spec 0156, D-3: computed over the SAME filtered-but-unsorted query

@@ -73,6 +73,52 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'views-and-kanban',
+      title: 'Views: Analytic, Tree, Kanban',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the top of the table, choose how to see the tasks: **Analytic** (the flat list, today's view), **Tree** (a hierarchy: tasks with no parent on top, expanding one reveals its sub-tasks) or **Kanban** (draggable columns). Tree and Kanban use the SAME filters and search as Analytic.",
+        },
+        {
+          type: 'note',
+          text: 'In Tree, a sub-task that matches the filters but whose parent does not is not shown: switch to Analytic to find it.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Kanban has two modes:',
+        },
+        {
+          type: 'table',
+          headers: ['Mode', 'Columns'],
+          rows: [
+            ['By status', 'One column per active status of the catalog, in its configured order.'],
+            ['By due date', 'Overdue, Today, Tomorrow, This week, This month (the current calendar month only, including tasks with no due date), Later (past the end of this month) and Completed.'],
+          ],
+        },
+        {
+          type: 'steps',
+          items: [
+            'Drag a card onto another column to move it.',
+            'By status: moving between two open statuses updates it right away; moving into a closing status opens the **Complete** window, just like the list — cancelling it puts the card back; moving from a closed status to an open one reopens the task.',
+            'By due date: dropping onto Today, Tomorrow, This week, This month or Later sets the end date accordingly (today, tomorrow, this week\'s Sunday, the last day of the month, the 1st of next month, respectively).',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'The **Overdue** column refuses an incoming drop; **Completed** cannot be dragged into or out of — use the Reopen action to reopen a completed task.',
+        },
+        {
+          type: 'warning',
+          text: 'Kanban loads at most 500 tasks among those matching the filters: with more, a warning invites you to narrow the filters (the Analytic/Tree list has no such limit).',
+        },
+        {
+          type: 'paragraph',
+          text: "The **+** button at the bottom of each column opens the create form pre-filled with that column's own status or due date. Your chosen view mode is remembered across visits.",
+        },
+      ],
+    },
+    {
       id: 'creating-a-task',
       title: 'Create a task',
       blocks: [

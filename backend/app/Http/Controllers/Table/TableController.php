@@ -23,8 +23,10 @@ use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -205,7 +207,10 @@ class TableController extends BaseApiController
      * ignores it. `opportunityId` (spec 0067) scopes
      * `quotes` to one Opportunity's Offerte, in AND with every other filter/search/advanced filter (D-6);
      * every other domain, and this one with no value, ignores it (AC-002,
-     * AC-011).
+     * AC-011). `tree`/`treeParentId` (spec 0157, D-1) scope `tasks` to root
+     * rows or one parent's direct children; `treeParentId` is 403 when the
+     * parent is not visible to the actor (authorizeTreeParent() below) — a
+     * no-op for every other domain (TableRowsRequest 422s the keys there).
      */
     public function rows(TableRowsRequest $request, string $domain): JsonResponse
     {
@@ -223,6 +228,7 @@ class TableController extends BaseApiController
             $this->scopeToOpportunity($definition, $opportunityId === null ? null : (int) $opportunityId);
             $quoteId = $payload['quoteId'] ?? null;
             $this->scopeToQuote($definition, $quoteId === null ? null : (int) $quoteId);
+            $this->authorizeTreeParent($definition, $actor, $payload['treeParentId'] ?? null);
 
             $result = $this->service->rows($definition, $actor, $payload);
 
@@ -412,6 +418,30 @@ class TableController extends BaseApiController
     {
         if ($definition instanceof QuoteScopedTableDefinition) {
             $definition->scopeToQuote($quoteId);
+        }
+    }
+
+    /**
+     * Spec 0157, D-1: 403 when `treeParentId` names a row the actor cannot
+     * see. Existence is already guaranteed by `TableRowsRequest`'s
+     * `Rule::exists` (422 otherwise, before this ever runs); this is the
+     * visibility boundary, the SAME 'view' Policy ability every domain's
+     * actionsFor() already checks per row. A no-op without `treeParentId`
+     * (AC-002: Analitica untouched) and for a domain without tree support
+     * (the key alone already 422s there, so this is never reached).
+     */
+    private function authorizeTreeParent(TableDefinition $definition, User $actor, ?int $parentId): void
+    {
+        if ($parentId === null) {
+            return;
+        }
+
+        $modelClass = $definition->modelClass();
+        /** @var Model|null $parent */
+        $parent = $modelClass::query()->find($parentId);
+
+        if ($parent !== null && ! Gate::forUser($actor)->allows('view', $parent)) {
+            throw new AuthorizationException;
         }
     }
 }

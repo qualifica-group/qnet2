@@ -141,4 +141,30 @@ trait DelegatesUnaugmentedTableMethods
     {
         return $this->inner->aggregates($query);
     }
+
+    /**
+     * Tree support (spec 0157, D-1) is a `$inner` domain concern, not a
+     * custom-field one, so this is pure passthrough.
+     */
+    public function supportsTree(): bool
+    {
+        return $this->inner->supportsTree();
+    }
+
+    /**
+     * @param  Builder<Model>  $query
+     */
+    public function applyTreeScope(Builder $query, ?int $parentId): void
+    {
+        $this->inner->applyTreeScope($query, $parentId);
+    }
+
+    /**
+     * The SSRM block cap (spec 0157) is a `$inner` domain concern, so this
+     * is pure passthrough.
+     */
+    public function maxRowsLimit(): int
+    {
+        return $this->inner->maxRowsLimit();
+    }
 }

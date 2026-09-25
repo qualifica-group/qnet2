@@ -73,6 +73,55 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'views-and-kanban',
+      title: 'Viste: Analitica, Sintetica, Kanban',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'In alto alla tabella scegli come vedere i task: **Analitica** (l\'elenco piatto, la vista di sempre), **Sintetica** (un albero: i task senza padre in cima, espandendo un task ne compaiono i sotto-task) o **Kanban** (colonne trascinabili). Sintetica e Kanban usano gli stessi filtri e la stessa ricerca dell\'Analitica.',
+        },
+        {
+          type: 'note',
+          text: 'In Sintetica un sotto-task che rispetta i filtri ma il cui padre no non compare: per vederlo passa all\'Analitica.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Il Kanban ha due modalità:',
+        },
+        {
+          type: 'table',
+          headers: ['Modalità', 'Colonne'],
+          rows: [
+            ['Per stato', 'Una colonna per ogni stato attivo del catalogo, nell\'ordine configurato.'],
+            [
+              'Per scadenza',
+              'Scaduti, Oggi, Domani, Questa settimana, Questo mese (solo il mese corrente, anche i task senza scadenza), Più avanti (oltre la fine del mese corrente) e Completati.',
+            ],
+          ],
+        },
+        {
+          type: 'steps',
+          items: [
+            'Trascina una card su un\'altra colonna per spostarla.',
+            'Per stato: tra due stati aperti lo stato cambia subito; verso uno stato di chiusura si apre la finestra **Completa**, come nell\'elenco — annullandola la card torna al suo posto; da uno stato chiuso a uno aperto il task viene riaperto.',
+            'Per scadenza: trascinare su Oggi, Domani, Questa settimana, Questo mese o Più avanti imposta la data fine di conseguenza (rispettivamente oggi, domani, la domenica di questa settimana, l\'ultimo giorno del mese, il primo giorno del mese successivo).',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'La colonna **Scaduti** non accetta trascinamenti in ingresso; la colonna **Completati** non si può trascinare né in ingresso né in uscita — per riaprire un task completato usa l\'azione Riapri.',
+        },
+        {
+          type: 'warning',
+          text: 'Il Kanban carica al massimo 500 task tra quelli che rispettano i filtri: se sono di più, un avviso invita a restringere i filtri (l\'elenco Analitica/Sintetica non ha questo limite).',
+        },
+        {
+          type: 'paragraph',
+          text: 'Il pulsante **+** in fondo a ogni colonna apre il modulo di creazione con lo stato o la scadenza già precompilati con quella colonna. La modalità di vista scelta si ricorda per te tra un accesso e l\'altro.',
+        },
+      ],
+    },
+    {
       id: 'creating-a-task',
       title: 'Creare un task',
       blocks: [

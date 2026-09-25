@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { taskBulkErrorDescription } from '@/features/tasks/task-bulk-error'
+import { taskBulkErrorDescription, taskBulkIncompatibleTasks } from '@/features/tasks/task-bulk-error'
 import { useTaskBulkMutation } from '@/features/tasks/use-task-bulk-mutation'
 
 function buildSchema(t: TFunction) {
@@ -47,9 +47,18 @@ export function TaskBulkDateDialog({ action, taskIds, onClose, onSuccess }: Task
       onClose()
       onSuccess(result.affected)
     } catch (error) {
-      const handled = applyServerValidationErrors(error, form.setError, ['date'])
-      if (handled) {
-        return
+      // `incompatible_tasks` (a rejected TASK, e.g. one outside the parent's
+      // date range) and a field-scoped `errors.date` (a malformed REQUEST,
+      // e.g. a bad date format) come from two disjoint response shapes
+      // (`TaskBulkIncompatibleException` vs `BulkTaskRequest::rules()`) —
+      // checked first, so `applyServerValidationErrors`'s "any 422 counts as
+      // handled" never swallows the incompatible-tasks toast (BUG found by
+      // `task-bulk-date-dialog.test.tsx`: it did, silently, before this check).
+      if (!taskBulkIncompatibleTasks(error)) {
+        const handled = applyServerValidationErrors(error, form.setError, ['date'])
+        if (handled) {
+          return
+        }
       }
       const { message, reasons } = taskBulkErrorDescription(t, error)
       toast.error(message, reasons.length > 0 ? { description: reasons.join(' ') } : undefined)

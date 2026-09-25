@@ -64,6 +64,19 @@ export interface TableRowsPayload {
   opportunityId?: number | null
   /** Row-set scope to one Contract's Offerta (spec 0095 D-8), same rule as above; a no-op for every domain but `work-orders`. */
   quoteId?: number | null
+  /**
+   * Server-side tree data (spec 0157 D-1): `true` requests the domain's tree
+   * shape instead of the flat one. Omitted/`false` ⇒ today's flat behavior,
+   * unchanged for every domain but `tasks`.
+   */
+  tree?: boolean
+  /**
+   * The expanded node's id, present only when `tree` is true AND the request
+   * is for a level BELOW the root (AG Grid's own `groupKeys`, reduced to its
+   * last entry — the immediate parent). Omitted at the root level, where
+   * `tree=true` alone selects "roots only".
+   */
+  treeParentId?: number | null
 }
 
 /** Pagination metadata from the `paginatedResponse()` envelope. */

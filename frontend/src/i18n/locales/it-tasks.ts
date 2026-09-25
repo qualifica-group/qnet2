@@ -15,9 +15,12 @@
  * per lo stesso limite dimensionale, e viene fuso qui sotto.
  */
 import { tasksBulk } from '@/i18n/locales/it-tasks-bulk'
+import { tasksViews } from '@/i18n/locales/it-tasks-views'
 
 export const tasks = {
   forbidden: 'Non hai i permessi per visualizzare i task.',
+  /** Selettore Analitica/Sintetica/Kanban e board (spec 0157). */
+  views: tasksViews,
   columns: {
     title: 'Titolo',
     registry: 'Anagrafica',

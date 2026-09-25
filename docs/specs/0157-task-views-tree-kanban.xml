@@ -26,6 +26,9 @@
          obbligatorio). Per scadenza: Scaduti (non trascinabile verso), Oggi, Domani, Questa settimana, Questo mese
          (anche senza scadenza), Completati (non trascinabile ne' da ne' verso). Trascinare su una colonna di
          scadenza imposta end_date a oggi / domani / domenica / ultimo del mese.
+         (utente 2026-09-24, integrazione) Colonna "Piu' avanti" tra Questo mese e Completati: task aperti con
+         scadenza dopo l'ultimo giorno del mese corrente; "Questo mese" resta mese corrente + senza scadenza.
+         Trascinare su "Piu' avanti" imposta end_date al primo giorno del mese successivo.
     D-3  (utente 3b) Trascinare su uno stato di chiusura apre la finestra di completamento (segnatempo, feedback,
          validazione); annullare riporta la card. Da uno stato chiuso a uno aperto chiama riapri. Tra stati aperti
          e' un PATCH di task_status_id con le guardie esistenti.

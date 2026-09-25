@@ -236,6 +236,52 @@ describe('createSsrmDatasource', () => {
     expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('opportunityId')
   })
 
+  // Spec 0157 D-1: server-side tree data (Task's "Sintetica" view).
+  it('sends tree:true with no treeParentId at the root (empty groupKeys)', async () => {
+    fetchRowsMock.mockResolvedValue({
+      items: [],
+      export_link: null,
+      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
+    })
+
+    await createSsrmDatasource('tasks', undefined, undefined, undefined, undefined, undefined, undefined, true).getRows(
+      stubParams({ groupKeys: [] }),
+    )
+
+    expect(fetchRowsMock).toHaveBeenCalledWith('tasks', expect.objectContaining({ tree: true }))
+    expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('treeParentId')
+  })
+
+  it('sends treeParentId from the LAST groupKeys entry when expanding a node', async () => {
+    fetchRowsMock.mockResolvedValue({
+      items: [],
+      export_link: null,
+      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
+    })
+
+    await createSsrmDatasource('tasks', undefined, undefined, undefined, undefined, undefined, undefined, true).getRows(
+      stubParams({ groupKeys: ['42'] }),
+    )
+
+    expect(fetchRowsMock).toHaveBeenCalledWith(
+      'tasks',
+      expect.objectContaining({ tree: true, treeParentId: 42 }),
+    )
+  })
+
+  it('omits tree/treeParentId entirely when treeData is off (every other domain)', async () => {
+    fetchRowsMock.mockResolvedValue({
+      items: [],
+      export_link: null,
+      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
+    })
+
+    await createSsrmDatasource('users').getRows(stubParams({ groupKeys: ['1'] }))
+
+    expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('tree')
+    expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('treeParentId')
+  })
+
   it('calls params.fail() when the request rejects', async () => {
     fetchRowsMock.mockRejectedValue(new Error('network error'))
     const params = stubParams({})

@@ -87,6 +87,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       renderFooter,
       pinnedRowSlot,
       interceptCellCommit,
+      treeData,
     },
     ref,
   ) {
@@ -208,8 +209,17 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           opportunityId,
           quoteId,
           setAggregates,
+          treeData,
         ),
-      [domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId, opportunityId, quoteId],
+      [
+        domain,
+        toolbar.getSearchTerm,
+        advancedFilters.getApplied,
+        productCategoryId,
+        opportunityId,
+        quoteId,
+        treeData,
+      ],
     )
 
     useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection }), [
@@ -340,6 +350,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           detailCellRenderer={detailCellRenderer}
           detailRowAutoHeight={detailRowAutoHeight}
           interceptCellCommit={interceptCellCommit}
+          treeData={treeData}
         />
       )
     }

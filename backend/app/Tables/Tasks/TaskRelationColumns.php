@@ -60,6 +60,10 @@ final class TaskRelationColumns
 
     private const string IS_SUBTASK_COLUMN = 'is_subtask';
 
+    private const string IS_RECURRING_COLUMN = 'is_recurring';
+
+    private const string RECURRENCE_FK = 'task_recurrence_id';
+
     /**
      * Own-FK relation columns: relation accessor, related table, owning FK
      * and — only where it is not `name` — the related row's label column.
@@ -103,6 +107,12 @@ final class TaskRelationColumns
     {
         if ($columnId === self::HAS_SUBTASKS_COLUMN || $columnId === self::IS_SUBTASK_COLUMN) {
             $this->applyHierarchyFilter($query, $columnId, $filter);
+
+            return true;
+        }
+
+        if ($columnId === self::IS_RECURRING_COLUMN) {
+            $this->applyRecurringFilter($query, $filter);
 
             return true;
         }
@@ -301,6 +311,29 @@ final class TaskRelationColumns
         $wanted
             ? $query->whereHas(self::SUBTASKS_RELATION)
             : $query->whereDoesntHave(self::SUBTASKS_RELATION);
+    }
+
+    /**
+     * `is_recurring` (spec 0156, D-2) is a predicate on `task_recurrence_id`,
+     * with no real boolean column to filter directly — same shape as the two
+     * hierarchy predicates above, moved here (spec 0157, file-size split,
+     * engineering.md §6) after TasksTableDefinition's own derived-filter
+     * dispatch grew a THIRD case.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyRecurringFilter(Builder $query, array $filter): void
+    {
+        $values = $this->booleanFilterValues($filter);
+
+        if (count($values) !== 1) {
+            return; // absent, or both true/false selected: every row matches one or the other.
+        }
+
+        $values[0]
+            ? $query->whereNotNull(self::TASKS_TABLE.'.'.self::RECURRENCE_FK)
+            : $query->whereNull(self::TASKS_TABLE.'.'.self::RECURRENCE_FK);
     }
 
     /**

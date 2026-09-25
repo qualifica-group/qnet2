@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { taskLookupOptionRenderer } from '@/features/tasks/task-lookup-option-renderer'
 import { TASK_PRIORITIES_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
-import { taskBulkErrorDescription } from '@/features/tasks/task-bulk-error'
+import { taskBulkErrorDescription, taskBulkIncompatibleTasks } from '@/features/tasks/task-bulk-error'
 import { useTaskSelectLabels } from '@/features/tasks/task-select-labels'
 import { useTaskBulkMutation } from '@/features/tasks/use-task-bulk-mutation'
 
@@ -60,9 +60,15 @@ export function TaskBulkPriorityDialog({ taskIds, onClose, onSuccess }: TaskBulk
       onClose()
       onSuccess(result.affected)
     } catch (error) {
-      const handled = applyServerValidationErrors(error, form.setError, ['task_priority_id'])
-      if (handled) {
-        return
+      // See `task-bulk-date-dialog.tsx`'s own comment: `incompatible_tasks`
+      // and a field-scoped `errors.task_priority_id` come from two disjoint
+      // response shapes, checked first so a rejected task's toast is never
+      // swallowed by `applyServerValidationErrors`'s "any 422 = handled".
+      if (!taskBulkIncompatibleTasks(error)) {
+        const handled = applyServerValidationErrors(error, form.setError, ['task_priority_id'])
+        if (handled) {
+          return
+        }
       }
       const { message, reasons } = taskBulkErrorDescription(t, error)
       toast.error(message, reasons.length > 0 ? { description: reasons.join(' ') } : undefined)

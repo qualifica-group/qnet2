@@ -3,6 +3,53 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ALLINEAMENTO TASK A Q-NET — SPEC 0157 SINTETICA + KANBAN (+ integrazioni 0156) — VERDE, NON COMMITTATO (2026-09-24)
+
+- Backend: POST /rows accetta `tree`/`treeParentId` (TableRowsRequest, exists -> 422; `authorizeTreeParent` in
+  TableController -> 403 via Gate view); hook generici `supportsTree()`/`applyTreeScope()`/`maxRowsLimit()` su
+  TableDefinition (pass-through in `DelegatesUnaugmentedTableMethods`), scope in `app/Tables/Tasks/TaskTreeScope.php`
+  applicato DOPO filtri/ricerca/avanzati (D-1). Limite righe: 100 di default, tasks 500 (`MAX_ROWS_LIMIT`).
+  Test `TaskTableTreeTest.php`, `TaskKanbanPatchTest.php`.
+- Frontend: `treeData` opt-in in TableView/DataTable (`components/data-table/tree-data-grid-options.ts`,
+  ssrm-datasource invia tree/treeParentId da groupKeys). /tasks: selettore Analitica/Sintetica/Kanban
+  (`use-task-list-view-mode.ts`, `use-task-kanban-mode.ts`, localStorage con try/catch). Kanban in
+  `features/tasks/task-kanban/` su shell condivise `components/kanban/{kanban-column-shell,kanban-card-shell}.tsx`,
+  riusate dalla board commessa (D-6, board invariata, suoi test non toccati). Stato: riusa
+  `task-status-intercept-decision.ts` della cella 0156.
+- Decisione utente 2026-09-24 (spec D-2 aggiornata): colonna "Piu' avanti" (scadenza dopo fine mese, drop = primo
+  del mese successivo); "Questo mese" = mese corrente + senza scadenza.
+- Integrazioni 0156 nello stesso working tree: 5 test backend (notifiche+rollback bulk, anti-N+1 griglia, 422 cella),
+  8 file di test FE, 2 fix FE (refresh griglia alla chiusura note; toast `incompatible_tasks` nei dialog bulk
+  data/priorita', prima ingoiato da `applyServerValidationErrors` che ritorna true per ogni 422).
+- Verifica (verifier): Pest 8424/8425 (1 skipped), Pint pulito; Vitest 6079/6079, tsc -b pulito, ESLint pulito.
+- Nota: `createSsrmDatasource()` ha 8 parametri posizionali: al prossimo parametro convertirlo in oggetto opts.
+- Manuale Claude Docs: sezione Task da aggiornare (selettore viste, Sintetica, Kanban per stato/scadenza con
+  "Piu' avanti", regole di trascinamento, limite 500, "+" di colonna). Prossima: spec 0158.
+
+## ALLINEAMENTO TASK A Q-NET — SPEC 0156 LISTA — VERDE, COMMITTATO dall'utente in 8a67e7ae (2026-09-24)
+
+- Contratto congelato nella spec (blocco "DETTAGLIO CONGELATO" in <contract>). Serie: prossima 0157, poi 0158.
+- Motore generico: hook `aggregates(Builder)` su `TableDefinition` (default `[]`, pass-through anche in
+  `CustomFields/DelegatesUnaugmentedTableMethods`: chi aggiunge un metodo all'interfaccia deve aggiungerlo li'),
+  esposto come `meta.aggregates` di POST /rows solo se non vuoto. `RelationValueScopeChecker` estesa a
+  task-statuses/types/priorities/importances e work-orders; `CellValueValidator` ha l'editor `work_order_stage`
+  (valore = id, appartenenza verificata da TaskStageGuard). FE: `TableView` ha `renderFooter`, `pinnedRowSlot`
+  (slot sotto la griglia, non vero pinned row AG Grid), `interceptCellCommit`, `disableBuiltinDelete`.
+- Task: `TaskRowMapper`, `TaskAggregateColumns` (actual_minutes/parent_title via subquery bound), `TaskCellWriter`
+  (cella -> `TaskService::update`, tutte le guardie), `editable` di riga = update E non `TaskWriteLock::isLocked`
+  (super-admin escluso; la cascata antenati resta verificata alla scrittura). Ricerca per ID esatto su termine numerico.
+- Bulk: POST /api/tasks/bulk (`TaskBulkService`, savepoint per task dentro una transazione esterna: un
+  incompatibile -> rollback totale + 422 `incompatible_tasks`; notifiche sicure perche' `DB::afterCommit`).
+  Per-riga condivisa con la board commessa in `TaskBulkActionExecutor` (board invariata).
+- FE: stato in cella verso chiusura apre sempre "Completa"; da chiuso ad aperto chiama uncomplete. Clona =
+  `TaskFormMode` `duplicate`. "Elimina" generico disattivato su tasks (c'e' il bulk delete tutto-o-niente).
+- Test backend: esegui con `php -d xdebug.mode=off vendor/bin/pest` (con `artisan test` xdebug sembra bloccare).
+- Verifica: Pest 8405/8406 (1 skipped), Pint pulito; Vitest 5975/5975, tsc -b pulito, ESLint pulito. Verifier: VERDE.
+- APERTO: test aggiuntivi (dialog bulk, riga rapida, note, anti-N+1, notifiche+rollback) in corso, non committati.
+  Manuale Claude Docs: sezione Task da aggiornare (filtri Anagrafica/Commessa/Questo mese/ricerca per ID, colonne
+  nuove, modifica in cella, azioni Duplica/Note, azioni massive tutto-o-niente, riga rapida, totale minuti).
+  Debito: `TasksTableDefinition` 471 e `TaskColumnCatalog` 464 righe.
+
 ## STAFF NEL PRODUCTION SEED: RUOLO `operatore-base` — VERDE, COMMITTATO (2026-09-24)
 
 - Direttiva utente 2026-09-24: gli utenti di `utenti_nome_cognome.csv` (195) entrano nel production seed. I 68

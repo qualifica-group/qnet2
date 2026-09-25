@@ -475,6 +475,10 @@ export type TaskFormMode =
       workOrderId?: number | null
       /** Spec 0146 AC-030: prefill for the "Fase" select, from `ModuleCreateParams.work_order_stage_id` (the Task board's "+ Task"). */
       workOrderStageId?: number | null
+      /** Spec 0157 D-4: prefill for the "Stato" select, from `ModuleCreateParams.task_status_id` (the Kanban per-column "+"). */
+      taskStatusId?: number | null
+      /** Spec 0157 D-4: prefill for the "Data fine" field, from `ModuleCreateParams.end_date` (the Kanban per-column "+"). */
+      endDate?: string | null
     }
   | { type: 'edit'; task: TaskDetailWithPermissions }
   /**

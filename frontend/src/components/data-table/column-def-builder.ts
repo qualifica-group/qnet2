@@ -49,6 +49,14 @@ export interface BuildColDefsParams {
   /** Explicit actions-column width (e.g. labeled row actions); wins over the overflow-based default. */
   actionsColumnWidth?: number
   masterDetail?: boolean
+  /**
+   * The column id AG Grid's tree data `autoGroupColumnDef` renders instead
+   * (spec 0157 D-1): its own flat `ColDef` is forced hidden here so the value
+   * shows exactly once (inside the tree/expand column), never twice. Sort and
+   * filter on that colId keep working — only its visibility changes. Absent
+   * ⇒ today's behavior, unchanged for every domain not in tree mode.
+   */
+  treeGroupColumnId?: string
   t: TFunction
 }
 
@@ -70,6 +78,7 @@ export function buildColDefs({
   actionsColumnHasOverflow,
   actionsColumnWidth,
   masterDetail,
+  treeGroupColumnId,
   t,
 }: BuildColDefsParams): ColDef[] {
   const mapped: ColDef[] = columns.map((column) => {
@@ -106,7 +115,7 @@ export function buildColDefs({
       // with `flex`/`width` the defaultColDef's `flex: 1` was pushed back onto
       // every column on the next React render, discarding a width the user had
       // just dragged. The `initial` keys are read only by `Column.initState()`.
-      initialHide: !column.visible,
+      initialHide: column.id === treeGroupColumnId ? true : !column.visible,
       initialWidth: hasWidth ? column.width! : undefined,
       // Let an intentionally-narrow backend width take effect: without this the
       // global DEFAULT_MIN_WIDTH would clamp it (e.g. the small avatar column).

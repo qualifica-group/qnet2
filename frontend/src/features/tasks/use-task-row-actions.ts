@@ -24,8 +24,10 @@ export interface UseTaskRowActionsResult {
   notesRowId: number | null
   closeNotes: (open: boolean) => void
   openCreate: () => void
-  /** Opens the create form seeded with `params` (spec 0133 D-4: `work_order_id` from the Commessa detail). */
+  /** Opens the create form seeded with `params` (spec 0133 D-4: `work_order_id` from the Commessa detail; spec 0157 D-4: `task_status_id`/`end_date` from the Kanban's "+"). */
   openCreateWith: (params: ModuleCreateParams) => void
+  /** Opens the view screen for `row` (spec 0157: the Kanban card click, mirroring the row action). */
+  openView: (row: TableRow) => void
   sheet: ReactNode
 }
 
@@ -111,11 +113,19 @@ export function useTaskRowActions({
     }
   }, [])
 
-  const closeNotes = useCallback((open: boolean) => {
-    if (!open) {
-      setNotesRowId(null)
-    }
-  }, [])
+  // Mirrors `OpportunitiesTable`'s own notes handling: the badge follows each
+  // write immediately (`NotesDialog`'s `onThreadChanged`, wired in `task-table.tsx`),
+  // and closing is the second, catch-all refresh for writes the dialog itself
+  // did not report (e.g. editing/deleting someone else's note).
+  const closeNotes = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setNotesRowId(null)
+        onMutated()
+      }
+    },
+    [onMutated],
+  )
 
   return {
     handleAction,
@@ -126,6 +136,7 @@ export function useTaskRowActions({
     closeNotes,
     openCreate,
     openCreateWith,
+    openView,
     sheet,
   }
 }
