@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Table;
 
 use App\Services\Table\AdvancedFilterApplier;
+use App\Services\Table\CustomFilterRuleValidator;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
@@ -75,6 +76,13 @@ class TableRowsRequest extends FormRequest
             // and value shapes are whitelisted against the definition's
             // advancedFilters() catalogue in withValidator() below.
             'advancedFilters' => ['sometimes', 'nullable', 'array'],
+
+            // Custom filter rules (spec 0158): {and: Rule[], or: Rule[]},
+            // validated in withValidator() below. When present (non-null) it
+            // REPLACES filterModel/advancedFilters at query time
+            // (TableService::rows()) — both may still be sent (the frontend
+            // may keep them for later reuse) but are simply not applied.
+            'customFilterRules' => ['sometimes', 'nullable', 'array'],
 
             // Spec 0064 (spec 0084 dropped its `attr.*`-column effect):
             // scopes `request-management`'s ROWS to one product category
@@ -160,6 +168,16 @@ class TableRowsRequest extends FormRequest
 
                 foreach ($errors as $name => $message) {
                     $validator->errors()->add("advancedFilters.{$name}", $message);
+                }
+            }
+
+            $customFilterRules = $this->input('customFilterRules');
+
+            if ($customFilterRules !== null) {
+                $errors = app(CustomFilterRuleValidator::class)->validate($this->definition(), $customFilterRules);
+
+                foreach ($errors as $key => $message) {
+                    $validator->errors()->add($key === '' ? 'customFilterRules' : "customFilterRules.{$key}", $message);
                 }
             }
         });

@@ -77,6 +77,36 @@ export interface TableRowsPayload {
    * `tree=true` alone selects "roots only".
    */
   treeParentId?: number | null
+  /**
+   * Custom filter rules (spec 0158), sent in place of `filterModel`/
+   * `advancedFilters` when a custom filter is the active one: the backend
+   * ignores both (including advanced-filter defaults) whenever this key is
+   * present and non-null. Omitted ⇒ today's behavior, unchanged.
+   */
+  customFilterRules?: FilterRules
+}
+
+/**
+ * One condition of a custom filter rule set (spec 0158 D-1): `field` is a
+ * filterable column id (server allow-list), `operator` one of the type-driven
+ * set in `custom-filters/rule-types.ts` (the SAME map the backend uses), and
+ * `value` shaped per operator (a scalar, a `[min, max]` pair, a string list,
+ * or omitted for `blank`/`not_blank`/`today`/`this_week`/`this_month`).
+ */
+export interface FilterRule {
+  field: string
+  operator: string
+  value?: unknown
+}
+
+/**
+ * A custom filter's rule set: `(all of and) OR (any of or)`. Either group may
+ * be empty; at least one rule must exist across both (enforced by the rule
+ * builder's Zod schema and, authoritatively, the backend).
+ */
+export interface FilterRules {
+  and: FilterRule[]
+  or: FilterRule[]
 }
 
 /** Pagination metadata from the `paginatedResponse()` envelope. */
@@ -185,6 +215,15 @@ export interface TableFilterView {
   visibility: FilterViewVisibility
   owned: boolean
   owner_name: string | null
+  /**
+   * Custom filter rules (spec 0158 D-1): present and non-null ⇒ this view IS
+   * a "custom filter" (`filters`/`advanced_filters` are then saved empty).
+   * The backend drops any rule whose field is no longer filterable/usable on
+   * read, and reports `null` once none remain.
+   */
+  rules: FilterRules | null
+  /** Whether the actor has starred this view (spec 0158 D-4). */
+  is_favorite: boolean
 }
 
 /** Body sent to create/update a saved filter view. */
@@ -194,4 +233,6 @@ export interface FilterViewInput {
   /** Advanced filters (spec 0032) applied at save time; omitted ⇒ none. */
   advancedFilters?: AdvancedFilterValues
   visibility: FilterViewVisibility
+  /** Custom filter rules (spec 0158 D-1); omitted/null ⇒ a plain saved view. */
+  rules?: FilterRules | null
 }

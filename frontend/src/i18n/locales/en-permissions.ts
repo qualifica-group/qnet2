@@ -58,6 +58,8 @@ export const permissions = {
     block: 'Block',
     // Spec 0126 D-2: lets an actor delete other users' notes (NotePolicy::abilities()).
     deleteAny: 'Delete others\' notes',
+    // Spec 0158 D-3: publish a filter view as shared (`table-filter-views.publish`).
+    publish: 'Publish shared filters',
   },
   resources: {
     users: 'Users',
@@ -114,6 +116,8 @@ export const permissions = {
     'task-importances': 'Task Importances',
     'task-templates': 'Task Templates',
     'vat-rates': 'VAT',
+    // Spec 0158: permission-only module, cross-cutting every table (custom filters/saved views).
+    'table-filter-views': 'Saved filters',
   },
   areas: {
     // Trailing area of the tree: permission-only modules that are assignable

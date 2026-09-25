@@ -75,6 +75,7 @@ function fakeFilters(
     activeCount: 0,
     apply: vi.fn(),
     reset: vi.fn(),
+    clearField: vi.fn(),
     applyValues: vi.fn(),
     isSaving: false,
     getApplied: () => ({}),

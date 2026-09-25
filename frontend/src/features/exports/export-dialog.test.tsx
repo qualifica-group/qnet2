@@ -7,7 +7,7 @@ import type { ColumnState, GridApi } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { ExportDialog } from '@/features/exports/export-dialog'
 import type { ExportRun } from '@/features/exports/types'
-import type { TableColumn, TableRow } from '@/features/table/types'
+import type { FilterRules, TableColumn, TableRow } from '@/features/table/types'
 
 /**
  * Spec 0014 AC-010: the generic export dialog, driven entirely through the
@@ -85,6 +85,7 @@ function renderDialog(
   onOpenChange = vi.fn(),
   opportunityId?: number | null,
   advancedFilters?: Record<string, string>,
+  customFilterRules?: FilterRules | null,
 ) {
   render(
     <ExportDialog
@@ -96,6 +97,7 @@ function renderDialog(
       actionsColumnId={ACTIONS_COLUMN_ID}
       search=""
       advancedFilters={advancedFilters}
+      customFilterRules={customFilterRules}
       opportunityId={opportunityId}
     />,
     { wrapper: wrapper() },
@@ -223,6 +225,36 @@ describe('ExportDialog', () => {
         'companies',
         expect.objectContaining({ advancedFilters: { status: 'completed' } }),
       ),
+    )
+  })
+
+  // Spec 0158 AC-003: the export matches the grid exactly when a custom
+  // filter is active, so the payload carries the rules too.
+  it('includes customFilterRules in the create payload when a custom filter is active', async () => {
+    createExportMock.mockResolvedValue(baseRun({ status: 'processing' }))
+    const rules = { and: [{ field: 'status', operator: 'equals', value: 'open' }], or: [] }
+
+    renderDialog(undefined, vi.fn(), null, undefined, rules)
+
+    fireEvent.click(screen.getByRole('button', { name: /^export$/i }))
+
+    await waitFor(() =>
+      expect(createExportMock).toHaveBeenCalledWith(
+        'companies',
+        expect.objectContaining({ customFilterRules: rules }),
+      ),
+    )
+  })
+
+  it('omits customFilterRules entirely when there is no active custom filter', async () => {
+    createExportMock.mockResolvedValue(baseRun({ status: 'processing' }))
+
+    renderDialog()
+
+    fireEvent.click(screen.getByRole('button', { name: /^export$/i }))
+
+    await waitFor(() =>
+      expect(createExportMock.mock.calls[0][1]).not.toHaveProperty('customFilterRules'),
     )
   })
 })

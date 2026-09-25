@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bookmark, BookmarkPlus, Check, Lock, Trash2, Users } from 'lucide-react'
+import { Bookmark, BookmarkPlus, ListFilter, Plus } from 'lucide-react'
 import axios from 'axios'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { Input } from '@/components/ui/input'
@@ -20,8 +19,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { useCreateFilterView, useDeleteFilterView, useFilterViews } from '@/features/table/use-filter-views'
-import type { FilterViewVisibility, TableFilterView } from '@/features/table/types'
+import { FilterViewRow } from '@/features/table/filter-view-row'
+import { FilterViewVisibilityPicker } from '@/features/table/filter-view-visibility-picker'
+import {
+  useCreateFilterView,
+  useDeleteFilterView,
+  useFilterViews,
+  useToggleFilterViewFavorite,
+} from '@/features/table/use-filter-views'
+import type { FilterRules, FilterViewVisibility, TableFilterView } from '@/features/table/types'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 
 /** Server-side max length for a saved filter view's name (spec 0007). */
@@ -42,6 +48,16 @@ interface FilterViewsControlProps {
    * `useAdvancedFilters` (the caller wires `setFilterModel`/`applyValues`).
    */
   onApply: (filters: Record<string, unknown>, advancedFilters: AdvancedFilterValues) => void
+  /** Activates a view's custom filter rules instead (spec 0158 D-2). */
+  onApplyRules: (rules: FilterRules, meta: { viewId?: number; name?: string }) => void
+  /** Opens the rule builder for a brand-new custom filter. */
+  onNewCustomFilter: () => void
+  /** Opens the rule builder pre-filled with an owned view's rules. */
+  onEditCustomFilter: (view: TableFilterView) => void
+  /** The view id of the currently-active custom filter, if any (highlights its row). */
+  activeCustomFilterViewId?: number
+  /** Spec 0158 D-3: gates the "Condivisa" visibility option. */
+  canPublish: boolean
 }
 
 /**
@@ -56,83 +72,12 @@ function sameFilters(a: Record<string, unknown>, b: Record<string, unknown>): bo
   return keys.every((key) => key in b && JSON.stringify(a[key]) === JSON.stringify(b[key]))
 }
 
-interface FilterViewRowProps {
-  view: TableFilterView
-  active: boolean
-  onApply: (view: TableFilterView) => void
-  onDelete: (view: TableFilterView) => void
-}
-
-/**
- * One saved view row: a leading lock/people glyph telegraphs private vs shared
- * at a glance, the name applies the view on click, an owner-only trash button
- * (revealed on hover/focus) deletes it. Apply and delete are two sibling
- * `DropdownMenuItem`s so each stays independently keyboard/AT operable.
- */
-function FilterViewRow({ view, active, onApply, onDelete }: FilterViewRowProps) {
-  const { t } = useTranslation()
-  const VisibilityIcon = view.visibility === 'shared' ? Users : Lock
-
-  return (
-    <div className="group/row flex items-center gap-1">
-      <DropdownMenuItem
-        className={cn('min-w-0 flex-1 gap-2', active && 'bg-accent/60')}
-        title={t('table.applyView')}
-        onSelect={() => onApply(view)}
-      >
-        <VisibilityIcon aria-hidden="true" className="text-muted-foreground" />
-        <span className="truncate">{view.name}</span>
-        <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          {active ? (
-            <Check aria-label={t('table.viewActive')} className="size-3.5 text-primary" />
-          ) : null}
-          {!view.owned && view.owner_name ? (
-            <span className="truncate text-xs text-muted-foreground">
-              {t('table.sharedBy', { name: view.owner_name })}
-            </span>
-          ) : null}
-        </span>
-      </DropdownMenuItem>
-      {view.owned ? (
-        <DropdownMenuItem
-          variant="destructive"
-          className="shrink-0 px-2 opacity-0 transition-opacity group-hover/row:opacity-100 focus:opacity-100"
-          aria-label={t('table.deleteView')}
-          onSelect={() => onDelete(view)}
-        >
-          <Trash2 aria-hidden="true" />
-        </DropdownMenuItem>
-      ) : null}
-    </div>
-  )
-}
-
-interface VisibilityOptionProps {
-  value: FilterViewVisibility
-  active: boolean
-  icon: typeof Lock
-  label: string
-  onSelect: (value: FilterViewVisibility) => void
-}
-
-/** One segment of the private/shared segmented control. */
-function VisibilityOption({ value, active, icon: Icon, label, onSelect }: VisibilityOptionProps) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={() => onSelect(value)}
-      className={cn(
-        'flex items-center justify-center gap-1.5 rounded-[5px] px-2 py-1 text-xs font-medium transition-colors',
-        active
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:text-foreground',
-      )}
-    >
-      <Icon aria-hidden="true" className="size-3.5" />
-      {label}
-    </button>
-  )
+/** Splits the server-ordered view list into favorites / owned / shared-by-others (spec 0158 D-4). */
+function partitionViews(views: TableFilterView[]) {
+  const favorites = views.filter((view) => view.is_favorite)
+  const owned = views.filter((view) => view.owned && !view.is_favorite)
+  const shared = views.filter((view) => !view.owned && !view.is_favorite)
+  return { favorites, owned, shared }
 }
 
 /**
@@ -140,27 +85,35 @@ function VisibilityOption({ value, active, icon: Icon, label, onSelect }: Visibi
  * shared, grouped) and SAVES the current filter set — all inline in one panel,
  * no modal. Applying/deleting are pure wiring (the grid mutation lives in the
  * caller via `onApply`); saving posts the caller-supplied `currentFilters`.
+ * Also the entry point for custom filters (spec 0158): "Nuovo filtro
+ * personalizzato", editing an owned custom-filter view, and starring
+ * favorites — the rule builder dialog itself is mounted by the caller.
  */
 export function FilterViewsControl({
   domain,
   currentFilters,
   currentAdvancedFilters,
   onApply,
+  onApplyRules,
+  onNewCustomFilter,
+  onEditCustomFilter,
+  activeCustomFilterViewId,
+  canPublish,
 }: FilterViewsControlProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const { data: views } = useFilterViews(domain)
   const createView = useCreateFilterView(domain)
   const deleteView = useDeleteFilterView(domain)
+  const toggleFavorite = useToggleFilterViewFavorite(domain)
 
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [visibility, setVisibility] = useState<FilterViewVisibility>('private')
 
-  const ownedViews = (views ?? []).filter((view) => view.owned)
-  const sharedViews = (views ?? []).filter((view) => !view.owned)
-  const hasViews = ownedViews.length > 0 || sharedViews.length > 0
-  const count = ownedViews.length + sharedViews.length
+  const { favorites, owned, shared } = partitionViews(views ?? [])
+  const hasViews = favorites.length + owned.length + shared.length > 0
+  const count = favorites.length + owned.length + shared.length
 
   // Either a column filter or an advanced filter is enough to offer saving a
   // view (spec 0032 AC-009: a view can be advanced-filters-only).
@@ -180,11 +133,18 @@ export function FilterViewsControl({
     }
   }
 
-  const handleApply = (view: TableFilterView) => onApply(view.filters, view.advanced_filters)
+  const handleApply = (view: TableFilterView) => {
+    if (view.rules) {
+      onApplyRules(view.rules, { viewId: view.id, name: view.name })
+      return
+    }
+    onApply(view.filters, view.advanced_filters)
+  }
 
   const isActiveView = (view: TableFilterView) =>
-    sameFilters(view.filters, currentFilters) &&
-    sameFilters(view.advanced_filters, currentAdvancedFilters)
+    view.rules
+      ? view.id === activeCustomFilterViewId
+      : sameFilters(view.filters, currentFilters) && sameFilters(view.advanced_filters, currentAdvancedFilters)
 
   const handleDelete = async (view: TableFilterView) => {
     const confirmed = await confirm({
@@ -200,6 +160,14 @@ export function FilterViewsControl({
       toast.success(t('table.viewDeleted'))
     } catch {
       toast.error(t('table.viewDeleteError'))
+    }
+  }
+
+  const handleToggleFavorite = async (view: TableFilterView) => {
+    try {
+      await toggleFavorite.mutateAsync({ id: view.id, isFavorite: view.is_favorite })
+    } catch {
+      toast.error(t('table.customFilters.favoriteError'))
     }
   }
 
@@ -222,9 +190,22 @@ export function FilterViewsControl({
         axios.isAxiosError(error) &&
         error.response?.status === 422 &&
         Boolean(error.response.data?.errors?.name)
-      toast.error(t(isDuplicateName ? 'table.duplicateViewName' : 'table.viewSaveError'))
+      const isForbidden = axios.isAxiosError(error) && error.response?.status === 403
+      toast.error(
+        t(isDuplicateName ? 'table.duplicateViewName' : isForbidden ? 'table.customFilters.publishForbidden' : 'table.viewSaveError'),
+      )
     }
   }
+
+  const rowProps = (view: TableFilterView) => ({
+    view,
+    active: isActiveView(view),
+    onApply: handleApply,
+    onDelete: (target: TableFilterView) => void handleDelete(target),
+    onEditRules: onEditCustomFilter,
+    onToggleFavorite: (target: TableFilterView) => void handleToggleFavorite(target),
+    favoritePending: toggleFavorite.isPending,
+  })
 
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange}>
@@ -262,6 +243,19 @@ export function FilterViewsControl({
           </div>
         </div>
 
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault()
+            setOpen(false)
+            onNewCustomFilter()
+          }}
+        >
+          <ListFilter aria-hidden="true" />
+          {t('table.customFilters.newCustomFilter')}
+          <Plus aria-hidden="true" className="ml-auto size-3.5" />
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+
         <div className="max-h-64 overflow-y-auto p-1">
           {hasViews ? null : (
             <div className="flex flex-col items-center gap-1 px-3 py-6 text-center">
@@ -270,37 +264,37 @@ export function FilterViewsControl({
             </div>
           )}
 
-          {ownedViews.length > 0 ? (
+          {favorites.length > 0 ? (
             <>
               <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                {t('table.myViews')}
+                {t('table.favoriteViews')}
               </DropdownMenuLabel>
-              {ownedViews.map((view) => (
-                <FilterViewRow
-                  key={view.id}
-                  view={view}
-                  active={isActiveView(view)}
-                  onApply={handleApply}
-                  onDelete={(target) => void handleDelete(target)}
-                />
+              {favorites.map((view) => (
+                <FilterViewRow key={view.id} {...rowProps(view)} />
               ))}
             </>
           ) : null}
 
-          {sharedViews.length > 0 ? (
+          {owned.length > 0 ? (
             <>
-              {ownedViews.length > 0 ? <DropdownMenuSeparator /> : null}
+              {favorites.length > 0 ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t('table.myViews')}
+              </DropdownMenuLabel>
+              {owned.map((view) => (
+                <FilterViewRow key={view.id} {...rowProps(view)} />
+              ))}
+            </>
+          ) : null}
+
+          {shared.length > 0 ? (
+            <>
+              {favorites.length + owned.length > 0 ? <DropdownMenuSeparator /> : null}
               <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {t('table.sharedViews')}
               </DropdownMenuLabel>
-              {sharedViews.map((view) => (
-                <FilterViewRow
-                  key={view.id}
-                  view={view}
-                  active={isActiveView(view)}
-                  onApply={handleApply}
-                  onDelete={(target) => void handleDelete(target)}
-                />
+              {shared.map((view) => (
+                <FilterViewRow key={view.id} {...rowProps(view)} />
               ))}
             </>
           ) : null}
@@ -342,26 +336,7 @@ export function FilterViewsControl({
                 className="h-8"
               />
 
-              <div
-                role="group"
-                aria-label={t('table.visibility')}
-                className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1"
-              >
-                <VisibilityOption
-                  value="private"
-                  active={visibility === 'private'}
-                  icon={Lock}
-                  label={t('table.visibilityPrivate')}
-                  onSelect={setVisibility}
-                />
-                <VisibilityOption
-                  value="shared"
-                  active={visibility === 'shared'}
-                  icon={Users}
-                  label={t('table.visibilityShared')}
-                  onSelect={setVisibility}
-                />
-              </div>
+              <FilterViewVisibilityPicker value={visibility} onChange={setVisibility} canPublish={canPublish} />
 
               <Button size="sm" className="w-full" disabled={!canSave} onClick={() => void handleSave()}>
                 <BookmarkPlus aria-hidden="true" />

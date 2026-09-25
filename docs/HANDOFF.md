@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FILTRI PERSONALIZZATI E/O, PREFERITI, CHIP — SPEC 0158 — VERDE, COMMITTATO (2026-09-25)
+
+- Contratto: blocco "DETTAGLIO CONGELATO" nella spec (Rule {field, operator, value}, gruppi and/or, mappa
+  tipo-regola e operatori identica BE/FE). Chiude la serie di allineamento Task a q-net 0153-0158.
+- Backend: `Services/Table/CustomFilterRuleValidator` (resolveType statico, validate, costanti 20/500/255/1..366) e
+  `CustomFilterRuleApplier` (ogni regola -> payload del filtro di colonna AG Grid via
+  `TableQueryBuilder::applyColumnFilter()`, date su colonna reale con whereDate, negativi includono i vuoti).
+  `customFilterRules` su POST rows ed export: se non null, filterModel e advancedFilters (anche required) ignorati.
+  /values NON riceve le regole (chiarimento nella spec). Viste: `rules` (con rules -> filters/advanced salvati {}),
+  `is_favorite`; preferiti POST/DELETE `tables/{domain}/filter-views/{id}/favorite` (404 altro dominio/privata
+  altrui); rotte viste estratte in `routes/api/filter-views.php` (api.php era oltre 500 righe).
+  `TableFilterViewPolicy` ora BasePolicy con `abilities(): ['publish']` -> permesso `table-filter-views.publish`
+  (permission-only resource, area "Trasversali"); 403 su POST/PUT shared senza permesso. Migrazioni
+  2026_09_25_100000/_100100 (QuoteWorkflowMigrationTest aggiornato).
+- Frontend: `features/table/custom-filters/` (rule-types, rule-schema, costruttore, stato filtro attivo, chip);
+  `createSsrmDatasource` ora prende un oggetto di opzioni; `advancedFilters.clearField()`; guide general/roles IT/EN.
+- Verifier: Pest 8458/8459 (1 skipped), Pint pulito; Vitest 6152/6152, tsc -b pulito, ESLint 0 errori. AC-001..007 PASS.
+- Manuale Claude Docs aggiornato (Filtri salvati/filtro personalizzato/chip, permesso in Ruoli; sezione Task
+  riscritta per 0153-0157).
+- Debito: `frontend/src/features/table/table-view.tsx` 494 righe (split obbligatorio al prossimo intervento),
+  `filter-views-control.tsx` 353. Ramo `filterType: 'multi'` dormiente e disallineato (BE `type date`, FE
+  `datetime`): nessuna colonna lo dichiara oggi, allinearlo se diventa reale.
+
 ## REFERENTI CON BUONI — LINK DELLA CARD GATED SUI PERMESSI — VERDE, NON COMMITTATO (2026-09-25)
 
 - Decisione utente 2026-09-25: un record collegato (opportunita'/offerta) sulla card buono e' cliccabile solo se

@@ -1,4 +1,5 @@
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
+import type { FilterRules } from '@/features/table/types'
 
 /**
  * Generic per-table export types (spec 0014). The feature is parametrized on
@@ -37,6 +38,13 @@ export interface CreateExportPayload {
   search?: string
   /** Applied advanced filters (spec 0032), frozen and reapplied by the job. */
   advancedFilters?: AdvancedFilterValues
+  /**
+   * Custom filter rules (spec 0158), sent in place of `filterModel`/
+   * `advancedFilters` when a custom filter is the active one — the backend
+   * ignores both (including advanced-filter defaults) whenever this key is
+   * present and non-null. Omitted/null ⇒ today's behavior, unchanged.
+   */
+  customFilterRules?: FilterRules | null
   /**
    * Row-set scope to one parent record (spec 0067 D-5, e.g. an Opportunity's
    * Quotes panel export). Frozen into `ExportRun.state` and reapplied by the

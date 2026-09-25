@@ -62,8 +62,14 @@ export interface EnumBadge {
   requires_note?: boolean
 }
 
-/** AG Grid filter type advertised per column in the config catalog. */
-export type FilterType = 'text' | 'number' | 'date' | 'set' | 'boolean'
+/**
+ * AG Grid filter type advertised per column in the config catalog. `'multi'`
+ * (spec 0158) marks a column filtered by the combined Set Filter + typed
+ * condition (`agMultiColumnFilter`, `hasFilterValues !== false`): the custom
+ * filter rule builder maps it to `number`/`date`/`text` via the column's own
+ * `type` (see `custom-filters/rule-types.ts`, the same map the backend uses).
+ */
+export type FilterType = 'text' | 'number' | 'date' | 'set' | 'boolean' | 'multi'
 
 /** How a row action should be rendered. */
 /**

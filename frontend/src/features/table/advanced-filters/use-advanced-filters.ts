@@ -106,6 +106,14 @@ export interface UseAdvancedFiltersResult {
   apply: () => void
   reset: () => void
   /**
+   * Clears ONE applied filter back to its default (spec 0158 D-5: the "x" of
+   * a single advanced-filter chip — a required field lands on its default
+   * instead of disappearing). Acts on `applied` directly (not the panel's
+   * `draft`), so it never commits an unrelated in-progress edit sitting in a
+   * closed panel.
+   */
+  clearField: (name: string) => void
+  /**
    * Restores an externally-supplied set of values (e.g. from a saved filter
    * view) as the new applied state: merges over the descriptor defaults,
    * persists, and refreshes once — bypassing the required-gating that guards
@@ -294,6 +302,18 @@ export function useAdvancedFilters({
     onOverrideCleared?.()
   }, [defaults, persist, onApplied, onOverrideCleared])
 
+  const clearField = useCallback(
+    (name: string) => {
+      const next = { ...appliedRef.current, [name]: defaults[name] ?? null }
+      setDraft((current) => ({ ...current, [name]: defaults[name] ?? null }))
+      setApplied(next)
+      appliedRef.current = next
+      persist(computeActiveValues(descriptors, next))
+      onApplied()
+    },
+    [defaults, descriptors, persist, onApplied],
+  )
+
   const applyValues = useCallback(
     (values: AdvancedFilterValues) => {
       const merged = { ...defaults, ...values }
@@ -317,6 +337,7 @@ export function useAdvancedFilters({
     activeCount,
     apply,
     reset,
+    clearField,
     applyValues,
     isSaving: saveFilters.isPending,
     getApplied,

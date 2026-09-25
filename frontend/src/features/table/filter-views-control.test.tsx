@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -11,12 +12,16 @@ import type { AdvancedFilterValues } from '@/features/table/advanced-filters/typ
 const listFilterViews = vi.fn()
 const createFilterView = vi.fn()
 const deleteFilterView = vi.fn()
+const favoriteFilterView = vi.fn()
+const unfavoriteFilterView = vi.fn()
 
 vi.mock('@/features/table/filter-views-api', () => ({
   listFilterViews: (...args: unknown[]) => listFilterViews(...args),
   createFilterView: (...args: unknown[]) => createFilterView(...args),
   updateFilterView: vi.fn(),
   deleteFilterView: (...args: unknown[]) => deleteFilterView(...args),
+  favoriteFilterView: (...args: unknown[]) => favoriteFilterView(...args),
+  unfavoriteFilterView: (...args: unknown[]) => unfavoriteFilterView(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -29,6 +34,8 @@ const OWNED_VIEW: TableFilterView = {
   visibility: 'private',
   owned: true,
   owner_name: null,
+  rules: null,
+  is_favorite: false,
 }
 
 const SHARED_VIEW: TableFilterView = {
@@ -39,6 +46,8 @@ const SHARED_VIEW: TableFilterView = {
   visibility: 'shared',
   owned: false,
   owner_name: 'Jane Doe',
+  rules: null,
+  is_favorite: false,
 }
 
 /** A saved view that also captured an advanced filter (spec 0032 AC-009). */
@@ -50,6 +59,21 @@ const VIEW_WITH_ADVANCED: TableFilterView = {
   visibility: 'private',
   owned: true,
   owner_name: null,
+  rules: null,
+  is_favorite: false,
+}
+
+/** A custom-filter view (spec 0158 D-1). */
+const CUSTOM_FILTER_VIEW: TableFilterView = {
+  id: 4,
+  name: 'Open & mine',
+  filters: {},
+  advanced_filters: {},
+  visibility: 'private',
+  owned: true,
+  owner_name: null,
+  rules: { and: [{ field: 'status', operator: 'equals', value: 'open' }], or: [] },
+  is_favorite: false,
 }
 
 const CURRENT_FILTERS = { email: { filterType: 'text' } }
@@ -68,27 +92,34 @@ function openMenu() {
 
 function renderControl(
   views: TableFilterView[],
-  currentFilters: Record<string, unknown> = CURRENT_FILTERS,
-  currentAdvancedFilters: AdvancedFilterValues = EMPTY_ADVANCED,
-  onApply = vi.fn(),
+  overrides: Partial<ComponentProps<typeof FilterViewsControl>> = {},
 ) {
   listFilterViews.mockResolvedValue(views)
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const onApply = vi.fn()
+  const onApplyRules = vi.fn()
+  const onNewCustomFilter = vi.fn()
+  const onEditCustomFilter = vi.fn()
   render(
     <QueryClientProvider client={client}>
       <TooltipProvider>
         <ConfirmDialogProvider>
           <FilterViewsControl
             domain="users"
-            currentFilters={currentFilters}
-            currentAdvancedFilters={currentAdvancedFilters}
+            currentFilters={CURRENT_FILTERS}
+            currentAdvancedFilters={EMPTY_ADVANCED}
             onApply={onApply}
+            onApplyRules={onApplyRules}
+            onNewCustomFilter={onNewCustomFilter}
+            onEditCustomFilter={onEditCustomFilter}
+            canPublish
+            {...overrides}
           />
         </ConfirmDialogProvider>
       </TooltipProvider>
     </QueryClientProvider>,
   )
-  return { onApply }
+  return { onApply, onApplyRules, onNewCustomFilter, onEditCustomFilter }
 }
 
 beforeAll(async () => {
@@ -99,6 +130,8 @@ beforeEach(() => {
   listFilterViews.mockReset()
   createFilterView.mockReset()
   deleteFilterView.mockReset()
+  favoriteFilterView.mockReset()
+  unfavoriteFilterView.mockReset()
 })
 
 describe('FilterViewsControl', () => {
@@ -192,7 +225,7 @@ describe('FilterViewsControl', () => {
   it('saves the current advanced filters alongside the column filterModel (spec 0032 AC-009)', async () => {
     createFilterView.mockResolvedValue(VIEW_WITH_ADVANCED)
     const currentAdvanced: AdvancedFilterValues = { status: 'won' }
-    renderControl([], {}, currentAdvanced)
+    renderControl([], { currentFilters: {}, currentAdvancedFilters: currentAdvanced })
 
     openMenu()
     fireEvent.change(screen.getByRole('textbox', { name: 'View name' }), {
@@ -211,7 +244,7 @@ describe('FilterViewsControl', () => {
   })
 
   it('offers a hint instead of the form when there are no filters to save', async () => {
-    renderControl([], {}, {})
+    renderControl([], { currentFilters: {}, currentAdvancedFilters: {} })
 
     openMenu()
 
@@ -222,10 +255,70 @@ describe('FilterViewsControl', () => {
   })
 
   it('offers the save form when only an advanced filter is active (no column filterModel)', async () => {
-    renderControl([], {}, { status: 'won' })
+    renderControl([], { currentFilters: {}, currentAdvancedFilters: { status: 'won' } })
 
     openMenu()
 
     expect(await screen.findByRole('button', { name: 'Save view' })).toBeInTheDocument()
+  })
+
+  it('hides the "Condivisa" visibility option when the actor lacks table-filter-views.publish', async () => {
+    renderControl([], { canPublish: false })
+
+    openMenu()
+
+    expect(screen.queryByRole('button', { name: 'Shared' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Private' })).not.toBeInTheDocument()
+  })
+
+  it('offers "New custom filter" and calls onNewCustomFilter, closing the menu', async () => {
+    const { onNewCustomFilter } = renderControl([])
+
+    openMenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: /New custom filter/ }))
+
+    expect(onNewCustomFilter).toHaveBeenCalledTimes(1)
+  })
+
+  it('applying a view with rules calls onApplyRules instead of onApply', async () => {
+    const { onApply, onApplyRules } = renderControl([CUSTOM_FILTER_VIEW])
+
+    openMenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Open & mine/ }))
+
+    expect(onApplyRules).toHaveBeenCalledWith(CUSTOM_FILTER_VIEW.rules, {
+      viewId: CUSTOM_FILTER_VIEW.id,
+      name: CUSTOM_FILTER_VIEW.name,
+    })
+    expect(onApply).not.toHaveBeenCalled()
+  })
+
+  it('an owned view with rules offers an edit action calling onEditCustomFilter', async () => {
+    const { onEditCustomFilter } = renderControl([CUSTOM_FILTER_VIEW])
+
+    openMenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit rules' }))
+
+    expect(onEditCustomFilter).toHaveBeenCalledWith(CUSTOM_FILTER_VIEW)
+  })
+
+  it('lists favorite views in their own group, ahead of My views/Shared', async () => {
+    const favorite = { ...SHARED_VIEW, id: 5, name: 'Pinned', is_favorite: true }
+    renderControl([favorite, OWNED_VIEW, SHARED_VIEW])
+
+    openMenu()
+
+    expect(await screen.findByText('Favorites')).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /Pinned/ })).toBeInTheDocument()
+  })
+
+  it('stars a view as favorite, then unstars it', async () => {
+    favoriteFilterView.mockResolvedValue({ ...OWNED_VIEW, is_favorite: true })
+    renderControl([OWNED_VIEW])
+
+    openMenu()
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark as favorite' }))
+
+    await waitFor(() => expect(favoriteFilterView).toHaveBeenCalledWith('users', 1))
   })
 })

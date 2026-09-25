@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\FilterViewVisibility;
 use App\Models\Abstracts\BaseModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * A user's named, saved AG Grid filter set for one table domain (spec 0007),
@@ -20,12 +21,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * (TableFilterViewService), so it is never a SQL sink and can never widen the
  * SSRM filter allow-list. `advanced_filters` (spec 0032) is its sibling for
  * the second-level, backend-driven advanced-filter panel, restricted to
- * advancedFilterableIds() the same way.
+ * advancedFilterableIds() the same way. `rules` (spec 0158) is the generic
+ * E/O custom-filter alternative: when present the view is a "custom filter"
+ * view and `filters`/`advanced_filters` are saved empty (see
+ * TableFilterViewService).
  */
 class TableFilterView extends BaseModel
 {
     /** @var list<string> */
-    protected $fillable = ['user_id', 'domain', 'name', 'filters', 'visibility', 'advanced_filters'];
+    protected $fillable = ['user_id', 'domain', 'name', 'filters', 'visibility', 'advanced_filters', 'rules'];
 
     /**
      * @return BelongsTo<User, $this>
@@ -33,6 +37,17 @@ class TableFilterView extends BaseModel
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The users who favorited this view (spec 0158, D-4) — independent of
+     * ownership, so a shared view may be favorited by many users at once.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function favoritedByUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'table_filter_view_favorites')->withTimestamps();
     }
 
     /**
@@ -44,6 +59,7 @@ class TableFilterView extends BaseModel
             'filters' => 'array',
             'visibility' => FilterViewVisibility::class,
             'advanced_filters' => 'array',
+            'rules' => 'array',
         ];
     }
 }

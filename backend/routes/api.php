@@ -31,7 +31,6 @@ use App\Http\Controllers\Roles\RoleController;
 use App\Http\Controllers\Roles\RoleForSelectController;
 use App\Http\Controllers\Stats\StatsController;
 use App\Http\Controllers\Table\TableController;
-use App\Http\Controllers\Table\TableFilterViewController;
 use App\Http\Controllers\Users\UserController;
 use App\Http\Controllers\Users\UserForSelectController;
 use Illuminate\Support\Facades\Route;
@@ -128,18 +127,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('tables/{domain}/filters', [TableController::class, 'saveFilters']);
     Route::delete('tables/{domain}/filters', [TableController::class, 'resetFilters']);
 
-    // Saved filter views (spec 0007): named, savable AG Grid filter sets per
-    // domain, private or shared. List/create are gated by the same
-    // definition viewAny; update/delete are gated by TableFilterViewPolicy
-    // (owner only — a shared view is a real cross-user access surface). A
-    // bound {filterView} whose domain does not match {domain} 404s (never
-    // 403), so views never leak across domains.
-    Route::get('tables/{domain}/filter-views', [TableFilterViewController::class, 'index']);
-    Route::post('tables/{domain}/filter-views', [TableFilterViewController::class, 'store']);
-    Route::put('tables/{domain}/filter-views/{filterView}', [TableFilterViewController::class, 'update'])
-        ->scopeBindings();
-    Route::delete('tables/{domain}/filter-views/{filterView}', [TableFilterViewController::class, 'destroy'])
-        ->scopeBindings();
+    // Saved filter views (spec 0007, extended by spec 0158 with custom
+    // filter rules + favorites): extracted to routes/api/filter-views.php
+    // (engineering.md §6, 500-line hard limit) — required from WITHIN this
+    // group so every route there still inherits `auth:sanctum`.
+    require __DIR__.'/api/filter-views.php';
 
     // Import domain routes (spec 0012/0033/0045): extracted to
     // routes/api/imports.php (engineering.md §6, 500-line hard limit) —

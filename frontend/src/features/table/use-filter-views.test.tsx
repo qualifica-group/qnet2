@@ -7,6 +7,7 @@ import {
   useCreateFilterView,
   useDeleteFilterView,
   useFilterViews,
+  useToggleFilterViewFavorite,
 } from '@/features/table/use-filter-views'
 import type { FilterViewInput, TableFilterView } from '@/features/table/types'
 
@@ -14,12 +15,16 @@ const listFilterViewsMock = vi.fn()
 const createFilterViewMock = vi.fn()
 const updateFilterViewMock = vi.fn()
 const deleteFilterViewMock = vi.fn()
+const favoriteFilterViewMock = vi.fn()
+const unfavoriteFilterViewMock = vi.fn()
 
 vi.mock('@/features/table/filter-views-api', () => ({
   listFilterViews: (...args: unknown[]) => listFilterViewsMock(...args),
   createFilterView: (...args: unknown[]) => createFilterViewMock(...args),
   updateFilterView: (...args: unknown[]) => updateFilterViewMock(...args),
   deleteFilterView: (...args: unknown[]) => deleteFilterViewMock(...args),
+  favoriteFilterView: (...args: unknown[]) => favoriteFilterViewMock(...args),
+  unfavoriteFilterView: (...args: unknown[]) => unfavoriteFilterViewMock(...args),
 }))
 
 const VIEW: TableFilterView = {
@@ -30,6 +35,8 @@ const VIEW: TableFilterView = {
   visibility: 'shared',
   owned: true,
   owner_name: null,
+  rules: null,
+  is_favorite: false,
 }
 
 function wrapper() {
@@ -47,6 +54,8 @@ beforeEach(() => {
   createFilterViewMock.mockReset()
   updateFilterViewMock.mockReset()
   deleteFilterViewMock.mockReset()
+  favoriteFilterViewMock.mockReset()
+  unfavoriteFilterViewMock.mockReset()
 })
 
 describe('filterViewKeys', () => {
@@ -101,5 +110,33 @@ describe('useDeleteFilterView', () => {
 
     expect(deleteFilterViewMock).toHaveBeenCalledWith('users', 1)
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: filterViewKeys.list('users') })
+  })
+})
+
+describe('useToggleFilterViewFavorite', () => {
+  it('favorites when not already favorite, and invalidates the list', async () => {
+    favoriteFilterViewMock.mockResolvedValue({ ...VIEW, is_favorite: true })
+    const { client, Wrapper } = wrapper()
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries')
+
+    const { result } = renderHook(() => useToggleFilterViewFavorite('users'), { wrapper: Wrapper })
+
+    await result.current.mutateAsync({ id: 1, isFavorite: false })
+
+    expect(favoriteFilterViewMock).toHaveBeenCalledWith('users', 1)
+    expect(unfavoriteFilterViewMock).not.toHaveBeenCalled()
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: filterViewKeys.list('users') })
+  })
+
+  it('unfavorites when already favorite', async () => {
+    unfavoriteFilterViewMock.mockResolvedValue({ ...VIEW, is_favorite: false })
+    const { Wrapper } = wrapper()
+
+    const { result } = renderHook(() => useToggleFilterViewFavorite('users'), { wrapper: Wrapper })
+
+    await result.current.mutateAsync({ id: 1, isFavorite: true })
+
+    expect(unfavoriteFilterViewMock).toHaveBeenCalledWith('users', 1)
+    expect(favoriteFilterViewMock).not.toHaveBeenCalled()
   })
 })

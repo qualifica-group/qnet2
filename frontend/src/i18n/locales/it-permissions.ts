@@ -61,6 +61,8 @@ export const permissions = {
     block: 'Blocca',
     // Spec 0126 D-2: consente di eliminare le note altrui (NotePolicy::abilities()).
     deleteAny: 'Elimina note altrui',
+    // Spec 0158 D-3: pubblicare una vista di filtri come condivisa (`table-filter-views.publish`).
+    publish: 'Pubblica filtri condivisi',
   },
   resources: {
     users: 'Utenti',
@@ -117,6 +119,8 @@ export const permissions = {
     'task-importances': 'Importanza Task',
     'task-templates': 'Modelli di Task',
     'vat-rates': 'IVA',
+    // Spec 0158: modulo permission-only, trasversale a tutte le tabelle (filtri personalizzati/viste salvate).
+    'table-filter-views': 'Filtri salvati',
   },
   areas: {
     // Area finale dell'albero: moduli permission-only assegnabili ma senza

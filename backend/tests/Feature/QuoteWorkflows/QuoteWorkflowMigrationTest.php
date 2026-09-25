@@ -154,9 +154,12 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // and `2026_09_24_100200_add_privacy_evidence_and_lead_to_tasks_table`
     // (94th), then spec 0155's
     // `2026_09_24_110000_add_extended_rules_to_task_recurrences_table` (95th)
-    // and `2026_09_24_110100_add_subtask_position_to_tasks_table` (96th).
+    // and `2026_09_24_110100_add_subtask_position_to_tasks_table` (96th), and
+    // spec 0158's `2026_09_25_100000_add_rules_to_table_filter_views_table`
+    // (97th) and `2026_09_25_100100_create_table_filter_view_favorites_table`
+    // (98th), the custom-filter-rules column and the per-user favorites pivot.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 96]);
+    Artisan::call('migrate:rollback', ['--step' => 98]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

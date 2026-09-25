@@ -4,6 +4,7 @@ namespace App\Http\Requests\Table;
 
 use App\Enums\FilterViewVisibility;
 use App\Services\Table\AdvancedFilterApplier;
+use App\Services\Table\CustomFilterRuleValidator;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -61,6 +62,12 @@ class TableFilterViewRequest extends FormRequest
             // a view saved/updated before this field existed; absent defaults to
             // `{}` (advancedFiltersInput()).
             'advancedFilters' => ['sometimes', 'nullable', 'array'],
+
+            // Custom filter rules (spec 0158): {and: Rule[], or: Rule[]} | null.
+            // When present (non-null) the saved view is a "custom filter" view:
+            // `filters`/`advancedFilters` are saved empty regardless of what is
+            // submitted (TableFilterViewService).
+            'rules' => ['sometimes', 'nullable', 'array'],
         ];
     }
 
@@ -98,6 +105,16 @@ class TableFilterViewRequest extends FormRequest
                     $validator->errors()->add("advancedFilters.{$name}", $message);
                 }
             }
+
+            $rules = $this->input('rules');
+
+            if ($rules !== null) {
+                $errors = app(CustomFilterRuleValidator::class)->validate($this->definition(), $rules);
+
+                foreach ($errors as $key => $message) {
+                    $validator->errors()->add($key === '' ? 'rules' : "rules.{$key}", $message);
+                }
+            }
         });
     }
 
@@ -131,6 +148,17 @@ class TableFilterViewRequest extends FormRequest
         $advancedFilters = $this->validated('advancedFilters');
 
         return $advancedFilters ?? [];
+    }
+
+    /**
+     * @return array{and?: array<int, mixed>, or?: array<int, mixed>}|null
+     */
+    public function rulesInput(): ?array
+    {
+        /** @var array<string, mixed>|null $rules */
+        $rules = $this->validated('rules');
+
+        return $rules;
     }
 
     /**

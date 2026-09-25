@@ -85,6 +85,19 @@ export function useTableLayoutPersistence({
   const [filtersCustomizedLocally, setFiltersCustomizedLocally] = useState(false)
   const isFilterCustomized = filtersCustomizedLocally || configFiltersCustomized
 
+  // The grid's live column filterModel (spec 0158 D-5): tracked as state, not
+  // just read lazily off the grid API, so the active-filter chip row re-renders
+  // whenever a column filter changes. Reset when `initialFilterModel` changes
+  // identity (a fresh config load) via the "adjust state during render"
+  // pattern (react.dev), not an effect — an effect's `setState` would cause an
+  // extra cascading render (react-hooks/set-state-in-effect).
+  const [filterModel, setFilterModel] = useState<Record<string, unknown>>(initialFilterModel)
+  const [seenInitialFilterModel, setSeenInitialFilterModel] = useState(initialFilterModel)
+  if (initialFilterModel !== seenInitialFilterModel) {
+    setSeenInitialFilterModel(initialFilterModel)
+    setFilterModel(initialFilterModel)
+  }
+
   // Payloads waiting out their debounce. They are captured when the change
   // happens, not when the timer fires: a save flushed on unmount runs after AG
   // Grid has already been destroyed, so the grid can no longer be read then.
@@ -140,6 +153,7 @@ export function useTableLayoutPersistence({
       return
     }
     const model = gridApi.getFilterModel()
+    setFilterModel(model)
     const serialized = JSON.stringify(model)
     // Skip echoes and no-op refires: only a real change is persisted.
     if (serialized === lastPersistedFilterRef.current) {
@@ -215,6 +229,7 @@ export function useTableLayoutPersistence({
       // then bump the key to rebuild it cleanly (SSRM re-queries unfiltered).
       await refetchConfig()
       lastPersistedFilterRef.current = JSON.stringify(EMPTY_FILTER_MODEL)
+      setFilterModel(EMPTY_FILTER_MODEL)
       setFiltersCustomizedLocally(false)
       setLayoutVersion((version) => version + 1)
       toast.success(t('table.filtersReset'))
@@ -228,6 +243,8 @@ export function useTableLayoutPersistence({
     isCustomized,
     isFilterCustomized,
     setFiltersCustomizedLocally,
+    /** The grid's live column filterModel (spec 0158 D-5), for the active-filter chip row. */
+    filterModel,
     handleColumnStateChanged,
     handleFilterChanged,
     handleResetLayout,

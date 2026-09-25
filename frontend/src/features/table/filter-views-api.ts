@@ -52,3 +52,22 @@ export async function updateFilterView(
 export async function deleteFilterView(domain: string, id: number): Promise<void> {
   await apiClient.delete(`/tables/${domain}/filter-views/${id}`)
 }
+
+/**
+ * Stars a view as favorite for the actor (spec 0158 D-4), idempotent. Works
+ * on any view visible to the actor (own or `shared`), not just owned ones.
+ */
+export async function favoriteFilterView(domain: string, id: number): Promise<TableFilterView> {
+  const { data } = await apiClient.post<ApiResponse<TableFilterView>>(
+    `/tables/${domain}/filter-views/${id}/favorite`,
+  )
+  return data.data
+}
+
+/** Unstars a view for the actor (spec 0158 D-4), idempotent. */
+export async function unfavoriteFilterView(domain: string, id: number): Promise<TableFilterView> {
+  const { data } = await apiClient.delete<ApiResponse<TableFilterView>>(
+    `/tables/${domain}/filter-views/${id}/favorite`,
+  )
+  return data.data
+}

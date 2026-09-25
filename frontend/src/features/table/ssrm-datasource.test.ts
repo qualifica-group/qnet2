@@ -32,17 +32,19 @@ function stubParams(
   } as unknown as IServerSideGetRowsParams<TableRow>
 }
 
+const EMPTY_RESPONSE = {
+  items: [],
+  export_link: null,
+  pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
+}
+
 describe('createSsrmDatasource', () => {
   beforeEach(() => {
     fetchRowsMock.mockReset()
   })
 
   it('forwards a combined filterModel (including the multi shape) intact to fetchTableRows', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
     const multiFilterModel = {
       email: {
         filterType: 'multi',
@@ -65,11 +67,7 @@ describe('createSsrmDatasource', () => {
   })
 
   it('normalizes a null filterModel to an empty object', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
     const params = stubParams({ filterModel: null })
 
     await createSsrmDatasource('users').getRows(params)
@@ -81,11 +79,7 @@ describe('createSsrmDatasource', () => {
   })
 
   it('excludes the Advanced Filter model (array shape) from the request', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
     // Defensive edge case: an array-shaped filterModel is never forwarded raw.
     const params = stubParams({
       filterModel: [{ filterType: 'join', type: 'AND', conditions: [] }] as never,
@@ -101,11 +95,7 @@ describe('createSsrmDatasource', () => {
 
   it('maps the paginatedResponse envelope to rowData/rowCount on success', async () => {
     const items = [{ id: 1, actions: [] }] as TableRow[]
-    fetchRowsMock.mockResolvedValue({
-      items,
-      export_link: null,
-      pagination: { total: 1, offset: 0, limit: 25, total_pages: 1 },
-    })
+    fetchRowsMock.mockResolvedValue({ ...EMPTY_RESPONSE, items, pagination: { total: 1, offset: 0, limit: 25, total_pages: 1 } })
     const params = stubParams({})
 
     await createSsrmDatasource('users').getRows(params)
@@ -114,14 +104,10 @@ describe('createSsrmDatasource', () => {
   })
 
   it('includes the trimmed search term from the getter when non-empty (spec 0009)', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
     const params = stubParams({})
 
-    await createSsrmDatasource('users', () => '  needle  ').getRows(params)
+    await createSsrmDatasource('users', { getSearch: () => '  needle  ' }).getRows(params)
 
     expect(fetchRowsMock).toHaveBeenCalledWith(
       'users',
@@ -130,13 +116,9 @@ describe('createSsrmDatasource', () => {
   })
 
   it('omits `search` entirely when the getter returns an empty/blank term', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 
-    await createSsrmDatasource('users', () => '   ').getRows(stubParams({}))
+    await createSsrmDatasource('users', { getSearch: () => '   ' }).getRows(stubParams({}))
     // No getter at all behaves the same.
     await createSsrmDatasource('users').getRows(stubParams({}))
 
@@ -146,14 +128,10 @@ describe('createSsrmDatasource', () => {
   })
 
   it('includes the applied advanced filters from the getter when non-empty (spec 0032)', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
     const params = stubParams({})
 
-    await createSsrmDatasource('users', undefined, () => ({ status: 'active' })).getRows(params)
+    await createSsrmDatasource('users', { getAdvancedFilters: () => ({ status: 'active' }) }).getRows(params)
 
     expect(fetchRowsMock).toHaveBeenCalledWith(
       'users',
@@ -162,13 +140,9 @@ describe('createSsrmDatasource', () => {
   })
 
   it('omits `advancedFilters` entirely when the getter returns an empty map', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 
-    await createSsrmDatasource('users', undefined, () => ({})).getRows(stubParams({}))
+    await createSsrmDatasource('users', { getAdvancedFilters: () => ({}) }).getRows(stubParams({}))
     // No getter at all behaves the same.
     await createSsrmDatasource('users').getRows(stubParams({}))
 
@@ -177,16 +151,36 @@ describe('createSsrmDatasource', () => {
     }
   })
 
+  // Spec 0158: the active custom filter rides alongside filterModel/search.
+  it('includes customFilterRules from the getter when it returns non-null', async () => {
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
+    const rules = { and: [{ field: 'status', operator: 'equals', value: 'open' }], or: [] }
+
+    await createSsrmDatasource('users', { getCustomFilterRules: () => rules }).getRows(stubParams({}))
+
+    expect(fetchRowsMock).toHaveBeenCalledWith(
+      'users',
+      expect.objectContaining({ customFilterRules: rules }),
+    )
+  })
+
+  it('omits customFilterRules entirely when the getter returns null or is absent', async () => {
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
+
+    await createSsrmDatasource('users', { getCustomFilterRules: () => null }).getRows(stubParams({}))
+    await createSsrmDatasource('users').getRows(stubParams({}))
+
+    for (const call of fetchRowsMock.mock.calls) {
+      expect(call[1]).not.toHaveProperty('customFilterRules')
+    }
+  })
+
   // Spec 0064 AC-020: the Gestione Richieste category tabs scope the rows
   // request.
   it('includes productCategoryId in the payload when given', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 
-    await createSsrmDatasource('request-management', undefined, undefined, 12).getRows(stubParams({}))
+    await createSsrmDatasource('request-management', { productCategoryId: 12 }).getRows(stubParams({}))
 
     expect(fetchRowsMock).toHaveBeenCalledWith(
       'request-management',
@@ -195,11 +189,7 @@ describe('createSsrmDatasource', () => {
   })
 
   it('omits productCategoryId entirely on the "Tutte" tab (no scope given)', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 
     await createSsrmDatasource('request-management').getRows(stubParams({}))
 
@@ -209,13 +199,9 @@ describe('createSsrmDatasource', () => {
   // Spec 0067 D-1/AC-030: the Opportunity detail's Quotes panel scopes the
   // rows request the same way productCategoryId does above.
   it('includes opportunityId in the payload when given', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 
-    await createSsrmDatasource('quotes', undefined, undefined, undefined, 7).getRows(stubParams({}))
+    await createSsrmDatasource('quotes', { opportunityId: 7 }).getRows(stubParams({}))
 
     expect(fetchRowsMock).toHaveBeenCalledWith(
       'quotes',
@@ -225,11 +211,7 @@ describe('createSsrmDatasource', () => {
 
   // AC-072: every existing caller (no rowScope) sends a byte-identical payload.
   it('omits opportunityId entirely when not given', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 
     await createSsrmDatasource('quotes').getRows(stubParams({}))
 
@@ -238,30 +220,18 @@ describe('createSsrmDatasource', () => {
 
   // Spec 0157 D-1: server-side tree data (Task's "Sintetica" view).
   it('sends tree:true with no treeParentId at the root (empty groupKeys)', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 
-    await createSsrmDatasource('tasks', undefined, undefined, undefined, undefined, undefined, undefined, true).getRows(
-      stubParams({ groupKeys: [] }),
-    )
+    await createSsrmDatasource('tasks', { treeData: true }).getRows(stubParams({ groupKeys: [] }))
 
     expect(fetchRowsMock).toHaveBeenCalledWith('tasks', expect.objectContaining({ tree: true }))
     expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('treeParentId')
   })
 
   it('sends treeParentId from the LAST groupKeys entry when expanding a node', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 
-    await createSsrmDatasource('tasks', undefined, undefined, undefined, undefined, undefined, undefined, true).getRows(
-      stubParams({ groupKeys: ['42'] }),
-    )
+    await createSsrmDatasource('tasks', { treeData: true }).getRows(stubParams({ groupKeys: ['42'] }))
 
     expect(fetchRowsMock).toHaveBeenCalledWith(
       'tasks',
@@ -270,11 +240,7 @@ describe('createSsrmDatasource', () => {
   })
 
   it('omits tree/treeParentId entirely when treeData is off (every other domain)', async () => {
-    fetchRowsMock.mockResolvedValue({
-      items: [],
-      export_link: null,
-      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
-    })
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 
     await createSsrmDatasource('users').getRows(stubParams({ groupKeys: ['1'] }))
 

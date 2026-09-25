@@ -45,6 +45,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'The other actions sit under **Advanced configuration**, in the **Additional actions** box: for example **Export**, **Import**, **View activity** and **Impersonate**. Some modules have their own actions, such as **Validate**, **Change status** or **View all**.' },
+        { type: 'paragraph', text: 'The **Cross-cutting** area also holds **Saved filters**, with the **Publish shared filters** permission: without it, a user can only save private views and custom filters, never shared with colleagues, on any module with a list.' },
         { type: 'list', items: ['**Search modules or permissions…** filters the tree.', '**Select area** turns on every permission of an area.', '**Select all** turns on every permission of a module.', '**Select all permissions** turns on the whole catalog.', 'Next to each area and module, a counter shows the permissions chosen out of the total.'] },
       ],
     },

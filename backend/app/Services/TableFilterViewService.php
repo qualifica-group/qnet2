@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Enums\FilterViewVisibility;
 use App\Models\TableFilterView;
 use App\Models\User;
+use App\Services\Table\CustomFilterRuleValidator;
 use App\Tables\TableDefinition;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -24,9 +26,12 @@ class TableFilterViewService
 {
     /**
      * The actor's own views (private + shared) plus other users' `shared`
-     * views for the domain. Order: owned first, then shared-by-others; each
-     * group by name asc — achieved with a stable sort over a name-ordered
-     * query (no raw SQL needed for the boolean "owned" grouping).
+     * views for the domain. Order (spec 0158 contract): the actor's
+     * favorites first (name asc), then their own remaining views (name asc),
+     * then other users' `shared` views (name asc) — a stable sort over a
+     * name-ordered query gives the "name asc" tiebreak within each group for
+     * free (no raw SQL needed). `is_favorite` is resolved for every row in
+     * ONE extra correlated-EXISTS query (withExists), never N+1.
      *
      * @return Collection<int, TableFilterView>
      */
@@ -34,6 +39,7 @@ class TableFilterViewService
     {
         $views = TableFilterView::query()
             ->with('user')
+            ->withExists(['favoritedByUsers as is_favorite' => fn (Builder $query) => $query->where('user_id', $actor->id)])
             ->where('domain', $definition->domain())
             ->where(function ($query) use ($actor): void {
                 $query->where('user_id', $actor->id)
@@ -42,17 +48,23 @@ class TableFilterViewService
             ->orderBy('name')
             ->get();
 
-        $sorted = $views->sortBy(fn (TableFilterView $view): int => $view->user_id === $actor->id ? 0 : 1)
-            ->values();
+        $sorted = $views->sortBy(fn (TableFilterView $view): int => match (true) {
+            (bool) $view->is_favorite => 0,
+            $view->user_id === $actor->id => 1,
+            default => 2,
+        })->values();
 
         return $sorted->each(fn (TableFilterView $view) => $this->reFilter($definition, $view));
     }
 
     /**
-     * Create a new view owned by $actor.
+     * Create a new view owned by $actor. `rules` present (non-null, spec
+     * 0158) makes it a "custom filter" view: `filters`/`advancedFilters` are
+     * saved empty regardless of what is submitted.
      *
      * @param  array<string, mixed>  $filters
      * @param  array<string, mixed>  $advancedFilters
+     * @param  array{and?: array<int, mixed>, or?: array<int, mixed>}|null  $rules
      */
     public function create(
         TableDefinition $definition,
@@ -61,14 +73,18 @@ class TableFilterViewService
         array $filters,
         FilterViewVisibility $visibility,
         array $advancedFilters = [],
+        ?array $rules = null,
     ): TableFilterView {
+        $normalizedRules = $this->reFilterRules($definition, $rules);
+
         $view = TableFilterView::query()->create([
             'user_id' => $actor->id,
             'domain' => $definition->domain(),
             'name' => $name,
-            'filters' => $this->allowlist($definition, $filters),
+            'filters' => $normalizedRules !== null ? [] : $this->allowlist($definition, $filters),
             'visibility' => $visibility,
-            'advanced_filters' => $this->allowlistAdvanced($definition, $advancedFilters),
+            'advanced_filters' => $normalizedRules !== null ? [] : $this->allowlistAdvanced($definition, $advancedFilters),
+            'rules' => $normalizedRules,
         ]);
 
         return $this->reFilter($definition, $view);
@@ -76,10 +92,11 @@ class TableFilterViewService
 
     /**
      * Update an existing view (full replace of name/filters/visibility/
-     * advanced filters).
+     * advanced filters/rules).
      *
      * @param  array<string, mixed>  $filters
      * @param  array<string, mixed>  $advancedFilters
+     * @param  array{and?: array<int, mixed>, or?: array<int, mixed>}|null  $rules
      */
     public function update(
         TableDefinition $definition,
@@ -88,12 +105,16 @@ class TableFilterViewService
         array $filters,
         FilterViewVisibility $visibility,
         array $advancedFilters = [],
+        ?array $rules = null,
     ): TableFilterView {
+        $normalizedRules = $this->reFilterRules($definition, $rules);
+
         $view->update([
             'name' => $name,
-            'filters' => $this->allowlist($definition, $filters),
+            'filters' => $normalizedRules !== null ? [] : $this->allowlist($definition, $filters),
             'visibility' => $visibility,
-            'advanced_filters' => $this->allowlistAdvanced($definition, $advancedFilters),
+            'advanced_filters' => $normalizedRules !== null ? [] : $this->allowlistAdvanced($definition, $advancedFilters),
+            'rules' => $normalizedRules,
         ]);
 
         return $this->reFilter($definition, $view->refresh());
@@ -105,16 +126,81 @@ class TableFilterViewService
     }
 
     /**
-     * Re-filter a fetched view's `filters` in place to the definition's
-     * current filterable allow-list, so a removed/renamed column never
-     * reaches the frontend even for a view saved before the change.
+     * Mark $view favorite for $actor (spec 0158, D-4). Idempotent:
+     * re-favoriting an already-favorited view is a no-op (syncWithoutDetaching
+     * never duplicates, and the pivot's own unique index backs it).
+     */
+    public function favorite(TableDefinition $definition, TableFilterView $view, User $actor): TableFilterView
+    {
+        $view->favoritedByUsers()->syncWithoutDetaching([$actor->id]);
+
+        return $this->reFilter($definition, $view->fresh());
+    }
+
+    /**
+     * Unmark $view favorite for $actor. Idempotent: detaching an
+     * already-absent pivot row is a no-op DELETE.
+     */
+    public function unfavorite(TableDefinition $definition, TableFilterView $view, User $actor): TableFilterView
+    {
+        $view->favoritedByUsers()->detach($actor->id);
+
+        return $this->reFilter($definition, $view->fresh());
+    }
+
+    /**
+     * Re-filter a fetched view's `filters`/`advanced_filters`/`rules` in
+     * place to the definition's current allow-lists, so a removed/renamed
+     * column never reaches the frontend even for a view saved before the
+     * change.
      */
     private function reFilter(TableDefinition $definition, TableFilterView $view): TableFilterView
     {
         $view->filters = $this->allowlist($definition, $view->filters ?? []);
         $view->advanced_filters = $this->allowlistAdvanced($definition, $view->advanced_filters ?? []);
+        $view->rules = $this->reFilterRules($definition, $view->rules);
 
         return $view;
+    }
+
+    /**
+     * Drop every rule whose `field` is no longer a filterable column, or no
+     * longer resolves to a usable rule type (spec 0158 contract: "regole con
+     * campo non più filtrabile/usabile vengono scartate"). `null` in, or
+     * both groups left empty, normalizes to `null` out — never `{and: [],
+     * or: []}` (spec: "se non ne resta nessuna, rules = null").
+     *
+     * @param  array{and?: array<int, mixed>, or?: array<int, mixed>}|null  $rules
+     * @return array{and: array<int, mixed>, or: array<int, mixed>}|null
+     */
+    private function reFilterRules(TableDefinition $definition, ?array $rules): ?array
+    {
+        if ($rules === null) {
+            return null;
+        }
+
+        $filterable = $definition->filterableColumnMap();
+
+        $filterGroup = function (mixed $group) use ($filterable): array {
+            if (! is_array($group)) {
+                return [];
+            }
+
+            return array_values(array_filter($group, static function ($rule) use ($filterable): bool {
+                if (! is_array($rule) || ! is_string($rule['field'] ?? null)) {
+                    return false;
+                }
+
+                $config = $filterable[$rule['field']] ?? null;
+
+                return $config !== null && CustomFilterRuleValidator::resolveType($config) !== null;
+            }));
+        };
+
+        $and = $filterGroup($rules['and'] ?? []);
+        $or = $filterGroup($rules['or'] ?? []);
+
+        return $and === [] && $or === [] ? null : ['and' => $and, 'or' => $or];
     }
 
     /**

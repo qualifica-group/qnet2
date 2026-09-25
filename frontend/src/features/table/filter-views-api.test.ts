@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createFilterView,
   deleteFilterView,
+  favoriteFilterView,
   listFilterViews,
+  unfavoriteFilterView,
   updateFilterView,
 } from '@/features/table/filter-views-api'
 import { apiClient } from '@/api/client'
@@ -32,6 +34,8 @@ const VIEW: TableFilterView = {
   visibility: 'shared',
   owned: true,
   owner_name: null,
+  rules: null,
+  is_favorite: false,
 }
 
 describe('listFilterViews', () => {
@@ -90,5 +94,28 @@ describe('deleteFilterView', () => {
     await deleteFilterView('users', 12)
 
     expect(deleteMock).toHaveBeenCalledWith('/tables/users/filter-views/12')
+  })
+})
+
+describe('favoriteFilterView', () => {
+  it('posts to the favorite sub-path and returns the updated view', async () => {
+    const favorited = { ...VIEW, is_favorite: true }
+    postMock.mockResolvedValue({ data: { success: true, message: 'ok', data: favorited } })
+
+    const result = await favoriteFilterView('users', 12)
+
+    expect(result).toEqual(favorited)
+    expect(postMock).toHaveBeenCalledWith('/tables/users/filter-views/12/favorite')
+  })
+})
+
+describe('unfavoriteFilterView', () => {
+  it('deletes the favorite sub-path and returns the updated view', async () => {
+    deleteMock.mockResolvedValue({ data: { success: true, message: 'ok', data: VIEW } })
+
+    const result = await unfavoriteFilterView('users', 12)
+
+    expect(result).toEqual(VIEW)
+    expect(deleteMock).toHaveBeenCalledWith('/tables/users/filter-views/12/favorite')
   })
 })

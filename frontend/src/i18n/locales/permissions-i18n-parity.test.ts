@@ -81,6 +81,8 @@ const ASSIGNABLE_RESOURCES = [
   'task-importances',
   'users',
   'vat-rates',
+  // Spec 0158: permission-only module, cross-cutting every table.
+  'table-filter-views',
 ]
 
 // Every ability exposed by a resource policy (`BasePolicy` CRUD/export/import/
@@ -117,6 +119,8 @@ const CATALOGUE_ABILITIES = [
   'block',
   // Spec 0126 D-2: `notes.deleteAny` (delete other users' notes).
   'deleteAny',
+  // Spec 0158 D-3: `table-filter-views.publish` (publish a shared filter view).
+  'publish',
 ]
 
 describe('permissions i18n parity (spec 0076 AC-020, AC-021)', () => {

@@ -33,15 +33,17 @@ if (! function_exists('userWithUserAbilities')) {
     }
 }
 
-/** A user assigned the privileged super-admin role (Gate::before bypass). */
-function superAdminUser(): User
-{
-    Role::query()->firstOrCreate(['name' => 'super-admin']);
+if (! function_exists('superAdminUser')) {
+    /** A user assigned the privileged super-admin role (Gate::before bypass). */
+    function superAdminUser(): User
+    {
+        Role::query()->firstOrCreate(['name' => 'super-admin']);
 
-    $user = User::factory()->create();
-    $user->assignRole('super-admin');
+        $user = User::factory()->create();
+        $user->assignRole('super-admin');
 
-    return $user;
+        return $user;
+    }
 }
 
 it('lists own views (private + shared) plus other users shared views, excluding others private', function () {
@@ -71,7 +73,13 @@ it('lists own views (private + shared) plus other users shared views, excluding 
 });
 
 it('creates a view owned by the actor and returns 201', function () {
+    // Spec 0158, D-3: `visibility: shared` now requires
+    // `table-filter-views.publish` — granted here so this test still asserts
+    // its original intent ("saving a shared view succeeds"), not the new
+    // permission gate (covered separately in TableFilterViewFavoritesTest).
+    Permission::findOrCreate('table-filter-views.publish');
     $actor = userWithUserAbilities(['viewAny']);
+    $actor->givePermissionTo('table-filter-views.publish');
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/users/filter-views', [
@@ -131,7 +139,11 @@ it('rejects a filters key outside the filterable allow-list with 422', function 
 });
 
 it('lets the owner update their view', function () {
+    // Spec 0158, D-3: the update below sets `visibility: shared`, so the
+    // actor needs `table-filter-views.publish` (see the store test above).
+    Permission::findOrCreate('table-filter-views.publish');
     $actor = userWithUserAbilities(['viewAny']);
+    $actor->givePermissionTo('table-filter-views.publish');
     Sanctum::actingAs($actor);
 
     $view = TableFilterView::factory()->create([

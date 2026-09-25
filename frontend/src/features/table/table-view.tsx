@@ -8,30 +8,34 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GridApi, GridReadyEvent } from 'ag-grid-community'
-import { Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
-import { ACTIONS_COLUMN_ID, DataTable } from '@/components/data-table/data-table'
+import { DataTable } from '@/components/data-table/data-table'
 import { estimateGridHeight } from '@/components/data-table/data-table-theme'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { useUiScale } from '@/features/appearance/ui-scale-context'
 import { useViewportTableHeight } from '@/features/table/use-viewport-table-height'
 import { createSsrmDatasource } from '@/features/table/ssrm-datasource'
-import { SavedViewsSlot } from '@/features/table/saved-views-slot'
 import { TableToolbar } from '@/features/table/table-toolbar'
 import { useTableToolbarState } from '@/features/table/use-table-toolbar-state'
 import { AdvancedFilterPanel, ADVANCED_FILTER_PANEL_ANIMATION } from '@/features/table/advanced-filters/advanced-filter-panel'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { useTableAdvancedFilters } from '@/features/table/advanced-filters/use-table-advanced-filters'
 import { useBulkActionsSlot } from '@/features/table/use-bulk-actions-slot'
-import { ExportDialog } from '@/features/exports/export-dialog'
 import { createRowActionsRenderer, INLINE_ACTION_LIMIT, LABELED_ACTIONS_COLUMN_WIDTH } from '@/features/table/row-actions'
 import { useTableConfig } from '@/features/table/use-table-config'
 import { EMPTY_FILTER_MODEL, useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
+import { ActiveFilterChips } from '@/features/table/custom-filters/active-filter-chips'
+import { useCustomFilterState } from '@/features/table/custom-filters/use-custom-filter-state'
+import { useTableCustomFilters } from '@/features/table/custom-filters/use-table-custom-filters'
+import { useTableFilterChips } from '@/features/table/custom-filters/use-table-filter-chips'
+import { buildTableViewSlots } from '@/features/table/table-view-slots'
 import type { TableViewProps } from '@/features/table/table-view-props'
-import type { TableRowsAggregates } from '@/features/table/types'
+import type { TableColumn, TableRowsAggregates } from '@/features/table/types'
+
+/** Stable empty column list (hoisted per `frontend.md §10`: never `?? []` inline). */
+const EMPTY_COLUMNS: TableColumn[] = []
 
 /**
  * Page size assumed while the config is still loading, only to size the grid
@@ -105,6 +109,9 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     const { can } = useAbilities()
     const canExport = can(`${domain}.export`)
     const [exportOpen, setExportOpen] = useState(false)
+    // Spec 0158 D-3: `shared` visibility on a filter view of ANY domain
+    // requires this one, domain-agnostic permission.
+    const canPublishFilterViews = can('table-filter-views.publish')
 
     // The saved filterModel replayed into the grid on mount. Stable identity per
     // config load so it can seed the persisted-baseline ref below.
@@ -175,16 +182,27 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       [setRowCount, onRowCountChanged],
     )
 
+    // The domain's active custom filter (spec 0158), in memory only. Built
+    // BEFORE `useTableAdvancedFilters` so its `notifyExternalChange` can be
+    // wired into the panel's `onApplied` below without a callback cycle
+    // between the two hooks (see `use-table-custom-filters.ts`).
+    const customFilterState = useCustomFilterState()
+
     // The domain's advanced filter catalog (spec 0032); empty ⇒ the toolbar
     // hides the toggle entirely and the panel never mounts. Draft/applied
     // state, dependencies and persistence are owned by the dedicated hook;
-    // Apply/Reset purge-reload the grid exactly once via `refreshGrid`.
+    // Apply/Reset purge-reload the grid exactly once via `refreshGrid` — and,
+    // since a normal Apply/Reset "wins" over an active custom filter (spec
+    // 0158 D-2), deactivate it first.
     const { descriptors: advancedFilterDescriptors, filters: advancedFilters } =
       useTableAdvancedFilters({
         domain,
         descriptors: config?.advancedFilters,
         applied: config?.appliedAdvancedFilters,
-        onApplied: refreshGrid,
+        onApplied: () => {
+          customFilterState.notifyExternalChange()
+          refreshGrid()
+        },
         override: advancedFiltersOverride,
         onOverrideCleared: onAdvancedFiltersOverrideCleared,
       })
@@ -201,20 +219,21 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     // typing/toggling never rebuilds it (the grid is purge-reloaded instead).
     const datasource = useMemo(
       () =>
-        createSsrmDatasource(
-          domain,
-          toolbar.getSearchTerm,
-          advancedFilters.getApplied,
+        createSsrmDatasource(domain, {
+          getSearch: toolbar.getSearchTerm,
+          getAdvancedFilters: advancedFilters.getApplied,
+          getCustomFilterRules: customFilterState.getActive,
           productCategoryId,
           opportunityId,
           quoteId,
-          setAggregates,
+          onAggregates: setAggregates,
           treeData,
-        ),
+        }),
       [
         domain,
         toolbar.getSearchTerm,
         advancedFilters.getApplied,
+        customFilterState.getActive,
         productCategoryId,
         opportunityId,
         quoteId,
@@ -242,6 +261,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       isCustomized,
       isFilterCustomized,
       setFiltersCustomizedLocally,
+      filterModel,
       handleColumnStateChanged,
       handleFilterChanged,
       handleResetLayout,
@@ -258,6 +278,39 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       configFiltersCustomized: config?.filtersCustomized ?? false,
       refetchConfig: refetch,
     })
+
+    // The custom filter builder's open/editing state and its `applyRules`
+    // activation flow (spec 0158) — see `use-table-custom-filters.ts`.
+    const customFilters = useTableCustomFilters({
+      active: customFilterState,
+      gridApi,
+      advancedFilters,
+      refreshGrid,
+      onFilterModelApplied: setFiltersCustomizedLocally,
+    })
+
+    // The removable chip row below the toolbar (spec 0158 D-5) — see
+    // `use-table-filter-chips.ts`.
+    const filterChips = useTableFilterChips({
+      gridApi,
+      columns: config?.columns ?? EMPTY_COLUMNS,
+      filterModel,
+      advancedDescriptors: advancedFilterDescriptors,
+      advancedFilters,
+      search: toolbar.searchInput,
+      onClearSearch: () => toolbar.setSearchInput(''),
+      customFilters,
+      refreshGrid,
+      resetColumnFilters: handleResetFilters,
+    })
+
+    // A column filter change "wins" over an active custom filter (spec 0158
+    // D-2); a no-op when nothing is active or the change is the custom
+    // filter's own programmatic reset (suppressed, see `use-custom-filter-state.ts`).
+    const handleGridFilterChanged = useCallback(() => {
+      customFilterState.notifyExternalChange()
+      handleFilterChanged()
+    }, [customFilterState, handleFilterChanged])
 
     // Placeholder built from the searchable columns' localized labels, mirroring
     // the backend allow-list (e.g. "Cerca nome/email…").
@@ -341,7 +394,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           onGridReady={handleGridReady}
           onColumnStateChanged={handleColumnStateChanged}
           initialFilterModel={initialFilterModel}
-          onFilterChanged={handleFilterChanged}
+          onFilterChanged={handleGridFilterChanged}
           onRowCountChanged={handleRowCountChanged}
           enableSelection={enableSelection}
           onSelectionChanged={handleSelectionChanged}
@@ -357,27 +410,23 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
 
     const footer = renderFooter ? renderFooter(aggregates) : null
 
-    const savedViewsSlot = (
-      <SavedViewsSlot
-        domain={domain}
-        gridApi={gridApi}
-        config={config}
-        advancedFilters={advancedFilters}
-        onFilterModelApplied={setFiltersCustomizedLocally}
-      />
-    )
-
-    const exportSlot = canExport ? (
-      <DropdownMenuItem
-        onSelect={(event) => {
-          event.preventDefault()
-          setExportOpen(true)
-        }}
-      >
-        <Download aria-hidden="true" />
-        {t('exports.action')}
-      </DropdownMenuItem>
-    ) : null
+    const { savedViewsSlot, exportSlot, dialogs } = buildTableViewSlots({
+      domain,
+      t,
+      gridApi,
+      config,
+      advancedFilters,
+      setFiltersCustomizedLocally,
+      customFilters,
+      canPublishFilterViews,
+      canExport,
+      exportOpen,
+      onExportOpen: () => setExportOpen(true),
+      onExportOpenChange: setExportOpen,
+      getSearchTerm: toolbar.getSearchTerm,
+      opportunityId,
+      quoteId,
+    })
 
     return (
       <>
@@ -415,6 +464,8 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
               exportSlot={exportSlot}
             />
 
+            <ActiveFilterChips chips={filterChips.chips} onClearAll={filterChips.onClearAll} />
+
             {advancedFilterDescriptors.length > 0 ? (
               <Collapsible open={toolbar.advancedFiltersOpen}>
                 <CollapsibleContent className={ADVANCED_FILTER_PANEL_ANIMATION}>
@@ -436,20 +487,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           </div>
         </div>
 
-        {canExport && config ? (
-          <ExportDialog
-            domain={domain}
-            open={exportOpen}
-            onOpenChange={setExportOpen}
-            gridApi={gridApi}
-            columns={config.columns}
-            actionsColumnId={ACTIONS_COLUMN_ID}
-            search={toolbar.getSearchTerm()}
-            advancedFilters={advancedFilters.activeValues}
-            opportunityId={opportunityId}
-            quoteId={quoteId}
-          />
-        ) : null}
+        {dialogs}
       </>
     )
   },

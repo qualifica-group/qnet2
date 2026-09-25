@@ -4,6 +4,7 @@ namespace App\Http\Requests\Export;
 
 use App\Http\Requests\Table\TableRowsRequest;
 use App\Services\Table\AdvancedFilterApplier;
+use App\Services\Table\CustomFilterRuleValidator;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -76,6 +77,12 @@ class CreateExportRequest extends FormRequest
             // the definition's catalogue in withValidator() below.
             'advancedFilters' => ['sometimes', 'nullable', 'array'],
 
+            // Spec 0158: the grid's applied custom filter rule set, so the
+            // export matches the grid exactly when one is active (it REPLACES
+            // filterModel/advancedFilters at generation time — see
+            // ExportService/TableQueryBuilder::build()).
+            'customFilterRules' => ['sometimes', 'nullable', 'array'],
+
             // Spec 0067, D-5: scopes a `quotes` export to one Opportunity's
             // Offerte — a no-op key for every other domain.
             'opportunityId' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
@@ -117,6 +124,16 @@ class CreateExportRequest extends FormRequest
 
                 foreach ($errors as $name => $message) {
                     $validator->errors()->add("advancedFilters.{$name}", $message);
+                }
+            }
+
+            $customFilterRules = $this->input('customFilterRules');
+
+            if ($customFilterRules !== null) {
+                $errors = app(CustomFilterRuleValidator::class)->validate($this->definition(), $customFilterRules);
+
+                foreach ($errors as $key => $message) {
+                    $validator->errors()->add($key === '' ? 'customFilterRules' : "customFilterRules.{$key}", $message);
                 }
             }
         });

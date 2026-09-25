@@ -58,6 +58,59 @@
       (validati come sopra), applicati in sostituzione di filterModel e advancedFilters.
     Errori: 422 campo fuori allow-list / operatore non ammesso per il tipo / valore non valido;
       403 visibility shared senza table-filter-views.publish.
+
+    DETTAGLIO CONGELATO (2026-09-25, prima dell'esecuzione)
+
+    Rule = { field: string, operator: string, value?: mixed }. Rules = { and: Rule[], or: Rule[] }.
+      Semantica: (tutte le and) OR (almeno una or). Solo and -> AND di tutte; solo or -> almeno una.
+      Almeno una regola in totale (altrimenti 422). Max 20 regole per gruppo (costante).
+    Tipo di regola, derivato dalla colonna filtrabile (BE e FE usano la STESSA mappa):
+      type == 'boolean' o filterType == 'boolean' -> boolean; filterType 'set' -> set; 'date' -> date;
+      'number' -> number; 'text' -> text; 'multi' -> per `type` (number -> number, date -> date, altro -> text);
+      qualsiasi altro filterType (null) -> colonna non usabile nelle regole (422).
+    Operatori e valore:
+      text:    contains | equals | not_equals (value: stringa 1..255), blank | not_blank (niente value).
+      number:  equals | lt | lte | gt | gte (value: numero), between (value: [min, max], min <= max), blank | not_blank.
+      date:    equals | lt | lte | gt | gte (value: 'Y-m-d'), between (value: ['Y-m-d','Y-m-d'], da <= a),
+               blank | not_blank, today | this_week | this_month (niente value), last_n_days (value: intero 1..366).
+               Confronto sul GIORNO (funziona su colonne date e datetime, SQLite e MySQL). Settimana lun-dom,
+               timezone dell'app; last_n_days n = da oggi-(n-1) a oggi inclusi; date calcolate al momento della query
+               (anche nell'export asincrono).
+      set:     in | not_in (value: lista non vuota di stringhe, max 500, gli stessi valori/etichette del
+               filtro a insieme della colonna, cioe' di POST /tables/{domain}/values).
+      boolean: is (value: true|false).
+      blank/not_blank ammessi solo se la colonna NON dichiara hasFilterValues=false (dove la griglia offre "(Vuoti)").
+      Operatori negativi (not_equals, not_in) INCLUDONO le righe vuote; i confronti positivi le escludono;
+      not_blank = NOT(blank).
+    Applicazione (BE): ogni regola diventa lo stesso payload che il filtro di colonna AG Grid invierebbe e passa per
+      lo stesso percorso di filterModel (applyDerivedFilter della definizione, poi FilterApplier), cosi' colonne
+      derivate/relazioni funzionano senza codice per dominio; negazioni con whereNot, valori sempre bound, mai
+      whereRaw con input. Con customFilterRules presente (non null) filterModel e advancedFilters (inclusi i default
+      required) NON si applicano; restano baseQuery (visibilita'), ricerca, scope di riga (productCategoryId,
+      opportunityId, quoteId), tree e ordinamento.
+    POST /tables/{domain}/values: NON riceve customFilterRules (chiarimento: nella UI cambiare un filtro di colonna
+      disattiva il filtro personalizzato, quindi i valori non vanno ristretti dalle regole).
+    Viste: `rules` presente e non null => la vista e' un "filtro personalizzato": filters e advanced_filters salvati
+      vuoti ({}). In lettura le regole con campo non piu' filtrabile/usabile vengono scartate; se non ne resta
+      nessuna, rules = null. Risorsa: + rules ({and, or} | null), + is_favorite (per l'attore).
+    Ordine di GET filter-views: preferiti dell'attore (nome asc), poi proprie, poi condivise da altri (nome asc).
+    Pubblicazione: 403 per ogni POST/PUT con visibility shared senza `table-filter-views.publish` (super-admin passa
+      via Gate::before). Permesso assegnabile dal form Ruoli (permission-only resource `table-filter-views`).
+    Preferiti: POST/DELETE /api/tables/{domain}/filter-views/{filterView}/favorite, idempotenti, 200 { data }.
+      Vista di altro dominio o non visibile all'attore (privata altrui) -> 404. Tabella
+      table_filter_view_favorites (user_id, table_filter_view_id, unique coppia, cascade su entrambi).
+    FE:
+      - Stato del filtro personalizzato attivo: in memoria (non persistito), { rules, viewId?, name? }; letto dal
+        datasource via getter (createSsrmDatasource passa a un oggetto di opzioni) e passato all'export.
+      - Attivarlo (vista con rules o "Applica" dal costruttore) azzera filtri di colonna e avanzati (avanzati
+        required al default); cambiare un filtro di colonna o avanzato lo disattiva (vince l'ultimo).
+      - Costruttore regole: finestra con sezione "Tutte queste condizioni (E)" e "Oppure una di queste (O)",
+        righe campo/operatore/valore per tipo; Applica; Salva come vista (nome, pubblica solo con il permesso);
+        dal selettore viste: "Nuovo filtro personalizzato" e modifica di una vista propria con rules.
+      - Selettore viste: stella per preferito su ogni vista, preferiti in cima; icona che distingue le viste con rules.
+      - Chip sotto la toolbar (D-5): colonna ("Etichetta: valori", set troncato a 3 + "+N"), avanzato (enum
+        localizzato; relazione = conteggio se le etichette non sono in memoria), ricerca, filtro personalizzato
+        (nome vista o "Filtro personalizzato"); x per chip, "Azzera tutto" in coda; nessuna chip -> nessuna riga.
   </contract>
 
   <acceptance>

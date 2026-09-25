@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DataObjects\Table\DistinctValuesResult;
 use App\DataObjects\Table\RowsResult;
 use App\Models\User;
+use App\Services\Table\CustomFilterRuleApplier;
 use App\Services\Table\FilterApplier;
 use App\Services\Table\TableQueryBuilder;
 use App\Tables\TableDefinition;
@@ -47,12 +48,13 @@ class TableService
     public function __construct(
         private readonly TableQueryBuilder $queryBuilder,
         private readonly FilterApplier $filterApplier,
+        private readonly CustomFilterRuleApplier $customFilterRuleApplier,
     ) {}
 
     /**
      * Execute the SSRM query and return the rows + total for the envelope.
      *
-     * @param  array{startRow: int, endRow: int, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>, tree?: bool, treeParentId?: int|null}  $payload
+     * @param  array{startRow: int, endRow: int, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, tree?: bool, treeParentId?: int|null}  $payload
      */
     public function rows(TableDefinition $definition, User $actor, array $payload): RowsResult
     {
@@ -61,10 +63,20 @@ class TableService
 
         $query = $definition->baseQuery();
 
-        $this->queryBuilder->applyFilters($definition, $query, $payload['filterModel'] ?? []);
-        // Second-level, backend-driven advanced filters (spec 0032) — AND-combined
-        // with the column filters above and the quick-search below.
-        $this->queryBuilder->applyAdvancedFilters($definition, $query, $payload['advancedFilters'] ?? []);
+        // Spec 0158: a custom filter rule set REPLACES filterModel/
+        // advancedFilters entirely (even required-default advanced filters)
+        // — search, scope and sort below still apply on top.
+        $customFilterRules = $payload['customFilterRules'] ?? null;
+
+        if ($customFilterRules !== null) {
+            $this->customFilterRuleApplier->apply($this->queryBuilder, $definition, $query, $customFilterRules);
+        } else {
+            $this->queryBuilder->applyFilters($definition, $query, $payload['filterModel'] ?? []);
+            // Second-level, backend-driven advanced filters (spec 0032) — AND-combined
+            // with the column filters above and the quick-search below.
+            $this->queryBuilder->applyAdvancedFilters($definition, $query, $payload['advancedFilters'] ?? []);
+        }
+
         $this->queryBuilder->applySearch($definition, $query, $payload['search'] ?? null);
 
         // Spec 0157, D-1: tree/hierarchical row scoping (Sintetica), AFTER

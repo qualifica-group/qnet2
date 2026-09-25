@@ -18,25 +18,43 @@ use Illuminate\Database\Eloquent\Model;
  * the generic export engine share exactly one implementation of "what rows
  * does the current grid state resolve to" — DRY, and a single security
  * review surface.
+ *
+ * `customFilterRules` (spec 0158) is the one addition to that state: when
+ * present (non-null) it REPLACES `filterModel`/`advancedFilters` entirely
+ * (including required-default advanced filters) — search, scope and sort
+ * still apply on top. `CustomFilterRuleApplier` is injected here (this class
+ * depends on it, never the reverse) and receives `$this` as a parameter when
+ * it needs to apply one column's filter, so the two share
+ * `applyColumnFilter()` with no circular constructor dependency.
  */
 class TableQueryBuilder
 {
-    public function __construct(private readonly FilterApplier $filterApplier) {}
+    public function __construct(
+        private readonly FilterApplier $filterApplier,
+        private readonly CustomFilterRuleApplier $customFilterRuleApplier,
+    ) {}
 
     /**
-     * Apply filterModel, global search, then sortModel (in that order) to the
-     * definition's baseQuery(). This is the one-shot entry point ExportService
-     * uses to stream the exact rows the grid would show.
+     * Apply filterModel/customFilterRules, global search, then sortModel (in
+     * that order) to the definition's baseQuery(). This is the one-shot entry
+     * point ExportService uses to stream the exact rows the grid would show.
      *
-     * @param  array{sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>}  $state
+     * @param  array{sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null}  $state
      * @return Builder<Model>
      */
     public function build(TableDefinition $definition, array $state): Builder
     {
         $query = $definition->baseQuery();
 
-        $this->applyFilters($definition, $query, $state['filterModel'] ?? []);
-        $this->applyAdvancedFilters($definition, $query, $state['advancedFilters'] ?? []);
+        $customFilterRules = $state['customFilterRules'] ?? null;
+
+        if ($customFilterRules !== null) {
+            $this->customFilterRuleApplier->apply($this, $definition, $query, $customFilterRules);
+        } else {
+            $this->applyFilters($definition, $query, $state['filterModel'] ?? []);
+            $this->applyAdvancedFilters($definition, $query, $state['advancedFilters'] ?? []);
+        }
+
         $this->applySearch($definition, $query, $state['search'] ?? null);
         $this->applySorting($definition, $query, $state['sortModel'] ?? []);
 
@@ -60,21 +78,33 @@ class TableQueryBuilder
         $filterable = $definition->filterableColumnMap();
 
         foreach ($filterModel as $columnId => $filter) {
-            if (! array_key_exists($columnId, $filterable)) {
+            if (! array_key_exists($columnId, $filterable) || ! is_array($filter)) {
                 continue; // not whitelisted — ignore defensively (FormRequest already 422s)
             }
 
-            if (! is_array($filter)) {
-                continue;
-            }
-
-            // Derived columns (no real DB column) are handled by the definition.
-            if ($definition->applyDerivedFilter($query, $columnId, $filterable[$columnId], $filter)) {
-                continue;
-            }
-
-            $this->filterApplier->apply($query, $columnId, $filterable[$columnId], $filter);
+            $this->applyColumnFilter($definition, $query, $columnId, $filterable[$columnId], $filter);
         }
+    }
+
+    /**
+     * Apply ONE column's already-whitelisted filter payload to the query:
+     * derived columns (no real DB column, e.g. `roles`) are delegated to the
+     * definition's applyDerivedFilter hook first; everything else goes
+     * through FilterApplier against the real column `$columnId`. Extracted so
+     * CustomFilterRuleApplier (spec 0158) reuses the exact same path a plain
+     * `filterModel` entry would take, for a rule-synthesized payload.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $columnConfig
+     * @param  array<string, mixed>  $filter
+     */
+    public function applyColumnFilter(TableDefinition $definition, Builder $query, string $columnId, array $columnConfig, array $filter): void
+    {
+        if ($definition->applyDerivedFilter($query, $columnId, $columnConfig, $filter)) {
+            return;
+        }
+
+        $this->filterApplier->apply($query, $columnId, $columnConfig, $filter);
     }
 
     /**

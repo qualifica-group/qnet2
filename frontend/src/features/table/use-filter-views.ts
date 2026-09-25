@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createFilterView,
   deleteFilterView,
+  favoriteFilterView,
   listFilterViews,
+  unfavoriteFilterView,
   updateFilterView,
 } from '@/features/table/filter-views-api'
 import type { FilterViewInput } from '@/features/table/types'
@@ -62,6 +64,23 @@ export function useDeleteFilterView(domain: string) {
 
   return useMutation({
     mutationFn: (id: number) => deleteFilterView(domain, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: filterViewKeys.list(domain) })
+    },
+  })
+}
+
+/**
+ * Toggles the actor's favorite flag on a view (spec 0158 D-4): stars when not
+ * already favorite, unstars otherwise. Invalidates the list so the reordered
+ * (favorites-first) response replaces it.
+ */
+export function useToggleFilterViewFavorite(domain: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, isFavorite }: { id: number; isFavorite: boolean }) =>
+      isFavorite ? unfavoriteFilterView(domain, id) : favoriteFilterView(domain, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: filterViewKeys.list(domain) })
     },

@@ -15,7 +15,7 @@ import { buildExportGridState } from '@/features/exports/build-export-grid-state
 import { useExport } from '@/features/exports/use-export'
 import { ExportProgress } from '@/features/exports/export-progress'
 import type { ExportFormat } from '@/features/exports/types'
-import type { TableColumn, TableRow } from '@/features/table/types'
+import type { FilterRules, TableColumn, TableRow } from '@/features/table/types'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 
 /** The two formats enabled by the backend (`config('exports.formats')`). */
@@ -50,6 +50,13 @@ export interface ExportDialogProps {
    */
   advancedFilters?: AdvancedFilterValues
   /**
+   * Active custom filter rules (spec 0158), forwarded verbatim into the
+   * create payload — the backend applies them INSTEAD of `filterModel`/
+   * `advancedFilters` so the export matches the grid exactly. Omitted/null ⇒
+   * today's behavior, unchanged.
+   */
+  customFilterRules?: FilterRules | null
+  /**
    * Row-set scope to one parent record (spec 0067 D-5, e.g. an Opportunity's
    * Quotes panel), forwarded verbatim into the create payload. Omitted/null
    * ⇒ today's unscoped export, unchanged.
@@ -78,6 +85,7 @@ export function ExportDialog({
   actionsColumnId,
   search,
   advancedFilters = NO_ADVANCED_FILTERS,
+  customFilterRules,
   opportunityId,
   quoteId,
 }: ExportDialogProps) {
@@ -108,6 +116,7 @@ export function ExportDialog({
         Object.keys(gridState.filterModel).length > 0 ? gridState.filterModel : undefined,
       search: gridState.search !== '' ? gridState.search : undefined,
       ...(Object.keys(advancedFilters).length > 0 ? { advancedFilters } : {}),
+      ...(customFilterRules ? { customFilterRules } : {}),
       ...(opportunityId != null ? { opportunityId } : {}),
       ...(quoteId != null ? { quoteId } : {}),
     })

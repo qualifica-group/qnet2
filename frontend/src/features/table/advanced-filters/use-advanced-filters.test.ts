@@ -373,4 +373,41 @@ describe('useAdvancedFilters', () => {
       expect(result.current.getApplied()).toEqual({})
     })
   })
+
+  // Spec 0158 D-5: the chip row's per-advanced-filter "x".
+  describe('clearField', () => {
+    it('resets one applied field to its default, persists, and refreshes — leaving others untouched', () => {
+      const descriptors = [
+        descriptor({ name: 'status', type: 'enum', defaultValue: 'open', required: true }),
+        descriptor({ name: 'priority', type: 'text' }),
+      ]
+      const onApplied = vi.fn()
+      const { result } = renderHook(() =>
+        useAdvancedFilters({
+          domain: 'tasks',
+          descriptors,
+          applied: { status: 'closed', priority: 'high' },
+          onApplied,
+        }),
+      )
+
+      act(() => result.current.clearField('status'))
+
+      expect(result.current.getApplied()).toEqual({ priority: 'high' })
+      expect(result.current.draft.status).toBe('open')
+      expect(mutateMock).toHaveBeenCalledWith({ advancedFilters: { priority: 'high' } })
+      expect(onApplied).toHaveBeenCalledTimes(1)
+    })
+
+    it('clears a non-required field to null (absent from the active subset)', () => {
+      const descriptors = [descriptor({ name: 'priority', type: 'text' })]
+      const { result } = renderHook(() =>
+        useAdvancedFilters({ domain: 'tasks', descriptors, applied: { priority: 'high' }, onApplied: vi.fn() }),
+      )
+
+      act(() => result.current.clearField('priority'))
+
+      expect(result.current.getApplied()).toEqual({})
+    })
+  })
 })
