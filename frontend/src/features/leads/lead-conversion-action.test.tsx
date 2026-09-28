@@ -168,6 +168,19 @@ describe('LeadConversionAction, in the lead record card', () => {
     expect(navigateMock).not.toHaveBeenCalled()
   })
 
+  it('hides "Go to opportunity" when the actor cannot view opportunities', async () => {
+    canMock.mockImplementation((permission) => permission !== 'opportunities.view')
+    fetchLeadMock.mockResolvedValue(
+      lead({ opportunity: { id: 42 } as LeadDetail['opportunity'] }),
+    )
+
+    renderActions()
+
+    // The lead card is on screen (its campaign renders), so the absence below is not a pre-render artifact.
+    await screen.findAllByText(/Spring push/)
+    expect(screen.queryByRole('link', { name: /go to opportunity/i })).not.toBeInTheDocument()
+  })
+
   it('AC-026: hides the "Create opportunity" action without the opportunities.create permission', async () => {
     canMock.mockReturnValue(false)
     fetchLeadMock.mockResolvedValue(lead({ opportunity: null }))

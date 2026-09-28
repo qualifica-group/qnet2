@@ -6,7 +6,7 @@ import {
   sameLines,
   toLineInputs,
 } from '@/features/quotes/quote-line-values'
-import { managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
+import { blankToNull, managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { CreateQuotePayload, QuoteDetail, UpdateQuotePayload } from '@/features/quotes/types'
 
@@ -21,9 +21,11 @@ import type { CreateQuotePayload, QuoteDetail, UpdateQuotePayload } from '@/feat
  */
 export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload {
   const code = values.code.trim()
+  // Spec 0171 rev.2: a blank title is omitted, the server derives it.
+  const title = blankToNull(values.title)
   return {
     ...(code ? { code } : {}),
-    title: values.title,
+    ...(title ? { title } : {}),
     opportunity_id: values.opportunity_id as number,
     quote_workflow_status_id: values.quote_workflow_status_id,
     // Spec 0084: la mappa viaggia sempre alla create — non c'e' nulla di
@@ -70,8 +72,10 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
 export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetail): UpdateQuotePayload {
   const payload: UpdateQuotePayload = {}
 
-  if (values.title !== original.title) {
-    payload.title = values.title
+  // Spec 0171 rev.2: a cleared title travels as `null` (back to the automatic one).
+  const title = blankToNull(values.title)
+  if (title !== original.title) {
+    payload.title = title
   }
   // Spec 0084: la mappa viaggia solo se un valore e' cambiato. Il server fa un
   // merge SPARSO, quindi mandarla identica sarebbe un no-op costoso; mandarla

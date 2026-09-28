@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ColumnState } from 'ag-grid-community'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -6,7 +6,7 @@ import {
   resetTablePreferences,
   saveTablePreferences,
 } from '@/features/table/api'
-import { tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
+import { invalidateDomainConfigs, tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
 import type { ColumnPreferenceInput } from '@/features/table/types'
 
 /**
@@ -109,9 +109,4 @@ export function useResetTablePreferences(domain: string) {
     mutationFn: () => resetTablePreferences(domain),
     onSuccess: () => invalidateDomainConfigs(queryClient, domain),
   })
-}
-
-/** Marks every scope's cached config of `domain` stale without refetching the inactive ones now. */
-function invalidateDomainConfigs(queryClient: QueryClient, domain: string): Promise<void> {
-  return queryClient.invalidateQueries({ queryKey: tableKeys.configs(domain), refetchType: 'none' })
 }

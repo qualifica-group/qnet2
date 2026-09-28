@@ -11,7 +11,13 @@ import type {
 } from '@/features/task-templates/types'
 import type { TaskTemplateFormValues } from '@/features/task-templates/use-task-template-form'
 
-/** Projects a row onto the wire shape every `items[]` entry shares, `id` aside. */
+/**
+ * Projects a row onto the wire shape every `items[]` entry shares, `id`
+ * aside: `key` is this row's own local `id`, `parent_key` the owning row's
+ * (spec 0172 D-1/D-2, mirrors `stage_key`'s own client-key pattern) — always
+ * sent, so a plain single-level template just carries `parent_key: null`
+ * throughout.
+ */
 function buildItemFields(row: TaskTemplateItemFormRow): CreateTaskTemplateItemPayload {
   return {
     title: row.title,
@@ -20,6 +26,8 @@ function buildItemFields(row: TaskTemplateItemFormRow): CreateTaskTemplateItemPa
     task_status_id: row.task_status_id,
     due_offset_days: row.due_offset_days,
     stage_key: row.stage_key,
+    key: row.id,
+    parent_key: row.parent_key,
   }
 }
 

@@ -34,8 +34,9 @@ namespace App\DataObjects\Opportunities;
  * Spec 0083, D-2: `workflowStatusId` is REMOVED — the Opportunity carries no working-state override any more,
  * the configurator having moved onto the Offerta (-> Quote).
  *
- * Spec 0057, D-5: `name` is REMOVED entirely — it is immutable server-side
- * (derived once at create as `OPP_{id}`), never part of a PATCH payload.
+ * Spec 0171: `name` follows the `*Submitted` convention, but is NOT in
+ * submittedAttributes(): OpportunityNameWriter owns the write (null = back to
+ * the automatic title).
  *
  * User directive 2026-07-27: `generalNotes` ("Note generali") follows the
  * same `*Submitted` convention as every other plain nullable scalar — the
@@ -86,6 +87,8 @@ final readonly class UpdateOpportunityData
         public ?array $rewards = null,
         public ?string $generalNotes = null,
         public bool $generalNotesSubmitted = false,
+        public ?string $name = null,
+        public bool $nameSubmitted = false,
     ) {}
 
     /**
@@ -126,6 +129,8 @@ final readonly class UpdateOpportunityData
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
             generalNotes: array_key_exists('general_notes', $data) ? $data['general_notes'] : null,
             generalNotesSubmitted: array_key_exists('general_notes', $data),
+            name: $data['name'] ?? null,
+            nameSubmitted: array_key_exists('name', $data),
         );
     }
 

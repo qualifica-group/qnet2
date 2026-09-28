@@ -17,6 +17,7 @@ use App\Migrations\Sources\RolesSource;
 use App\Migrations\Sources\SectorsSource;
 use App\Migrations\Sources\SourcesSource;
 use App\Migrations\Sources\TagsSource;
+use App\Migrations\Sources\TaskTemplatesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -55,6 +56,7 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'sources' => SourcesSource::class,
         'tags' => TagsSource::class,
         'sectors' => SectorsSource::class,
+        'task-templates' => TaskTemplatesSource::class,
         'vat-rates' => VatRatesSource::class,
         'payment-methods' => PaymentMethodsSource::class,
         'attributes' => AttributesSource::class,
@@ -67,11 +69,11 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(18)
+    expect($sources)->toHaveCount(19)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
-            'sources', 'tags', 'sectors', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
+            'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
             'product-category-attributes', 'products',
         ]);
 });

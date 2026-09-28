@@ -35,6 +35,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 /** A submittable create payload: the rule under test fires server-side, after the schema. */
 const VALUES = {
+  name: '',
   registry_id: 5,
   referent_id: null,
   commercial_id: null,

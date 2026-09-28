@@ -10,6 +10,8 @@ import type {
 
 interface UseTableAdvancedFiltersArgs {
   domain: string
+  /** Forwarded verbatim to `useAdvancedFilters` (spec 0064 category tab). */
+  productCategoryId?: number
   /** `TableConfig.advancedFilters`, undefined until the config loads. */
   descriptors: AdvancedFilterDescriptor[] | undefined
   /** `TableConfig.appliedAdvancedFilters`. */
@@ -36,6 +38,7 @@ export interface TableAdvancedFiltersState {
  */
 export function useTableAdvancedFilters({
   domain,
+  productCategoryId,
   descriptors,
   applied,
   onApplied,
@@ -45,6 +48,7 @@ export function useTableAdvancedFilters({
   const resolvedDescriptors = useMemo(() => descriptors ?? [], [descriptors])
   const filters = useAdvancedFilters({
     domain,
+    productCategoryId,
     descriptors: resolvedDescriptors,
     applied,
     onApplied,

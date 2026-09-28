@@ -32,6 +32,7 @@ export const table = {
   resetFilters: 'Azzera filtri',
   filtersReset: 'Filtri della tabella azzerati.',
   filtersError: 'Impossibile azzerare i filtri della tabella.',
+  filtersSaveError: 'Impossibile salvare i filtri della tabella.',
   filterValuesTruncated:
     'Vengono mostrati solo i primi valori corrispondenti. Usa una condizione di filtro per restringere ulteriormente.',
   textFilters: 'Filtri testo',

@@ -84,6 +84,7 @@ class Opportunity extends BaseModel
             'estimated_value' => 'decimal:2',
             'success_probability' => 'integer',
             'is_transferred' => 'boolean',
+            'name_is_manual' => 'boolean',
         ];
     }
 

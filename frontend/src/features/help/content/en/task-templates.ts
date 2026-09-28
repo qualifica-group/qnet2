@@ -48,6 +48,30 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'sub-tasks',
+      title: 'Sub-tasks',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Any row can have sub-tasks, up to 3 levels below a root row (child, grandchild, great-grandchild). Press **Add sub-task** on the row to create one: it appears indented right below it.',
+        },
+        {
+          type: 'list',
+          items: [
+            "A sub-task has no fase of its own: it always follows its root row's fase.",
+            "Its due date (days from Commessa start) cannot be later than its direct parent row's own.",
+            'Removing a row also removes all of its sub-tasks.',
+            '**Add sub-task** no longer appears on rows already at the 3rd level: you cannot go any deeper.',
+            'A template holds at most 500 rows, sub-tasks included.',
+          ],
+        },
+        {
+          type: 'note',
+          text: "When the Commessa is created, the template's sub-tasks generate sub-tasks of the corresponding tasks, with the same structure.",
+        },
+      ],
+    },
+    {
       id: 'stages',
       title: 'Phases',
       blocks: [

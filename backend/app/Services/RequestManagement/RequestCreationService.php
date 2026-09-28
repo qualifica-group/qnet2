@@ -162,7 +162,8 @@ final class RequestCreationService
 
             $quote = $this->quoteService->create(new CreateQuoteData(
                 code: null,
-                title: $opportunity->name,
+                // Spec 0171 rev.2: born with the automatic `<code> - <products>` title.
+                title: null,
                 opportunityId: $opportunity->id,
                 workflowStatusId: null,
                 note: null,

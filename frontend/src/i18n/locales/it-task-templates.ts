@@ -80,6 +80,7 @@ export const taskTemplates = {
     },
     items: {
       add: 'Aggiungi riga',
+      addSubtask: 'Aggiungi sotto-task',
       remove: 'Rimuovi riga',
       dragHandleLabel: 'Riordina riga',
       title: 'Titolo',
@@ -102,6 +103,8 @@ export const taskTemplates = {
       titleRequired: 'Il titolo è obbligatorio.',
       titleMax: 'Il titolo può contenere al massimo 191 caratteri.',
       dueOffsetInvalid: 'La scadenza deve essere un numero di giorni tra 0 e {{max}}.',
+      dueOffsetExceedsParent: 'La scadenza di un sotto-task non può superare quella della riga padre.',
+      tooDeep: 'Questa riga supera i 3 livelli di sotto-task consentiti sotto una riga radice.',
       estimatedMinutesInvalid: 'Il tempo stimato non è valido.',
       hasErrors: 'Correggi le righe evidenziate prima di salvare.',
     },

@@ -14,6 +14,7 @@ use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
 use App\Models\User;
 use App\Services\TaskTemplates\TaskTemplateDescriptionWriter;
+use App\Services\TaskTemplates\TaskTemplateItemTree;
 use App\Services\TaskTemplates\TaskTemplateItemWriter;
 use App\Services\TaskTemplates\TaskTemplateStageWriter;
 use Illuminate\Support\Collection;
@@ -100,7 +101,10 @@ class TaskTemplateService
      * removed through Eloquent's own `::delete()` (never a bulk/cascade
      * query), so HasAttachments' `deleting` hook fires and every row's files
      * are swept from disk too (AC-010) — the FK's own `cascadeOnDelete`
-     * would silently skip that cleanup.
+     * would silently skip that cleanup. Deepest sub-item first (spec 0172,
+     * D-6): deleting a root before its still-present children would let
+     * `parent_id`'s own `cascadeOnDelete` remove them at the DB level,
+     * bypassing this same hook for every level below it.
      */
     public function delete(TaskTemplate $taskTemplate): void
     {
@@ -109,7 +113,8 @@ class TaskTemplateService
         }
 
         DB::transaction(function () use ($taskTemplate): void {
-            $taskTemplate->items()->get()->each(static fn (TaskTemplateItem $item) => $item->delete());
+            TaskTemplateItemTree::deepestFirst($taskTemplate->items()->get())
+                ->each(static fn (TaskTemplateItem $item) => $item->delete());
             $taskTemplate->delete();
         });
     }

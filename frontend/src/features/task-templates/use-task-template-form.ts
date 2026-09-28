@@ -16,9 +16,11 @@ import {
 import {
   itemRowsFromDetail,
   newEmptyItemRow,
+  newEmptySubtaskItemRow,
   stageRowsFromDetail,
   uploadStagedRowAttachments,
 } from '@/features/task-templates/task-template-form-hydration'
+import { FORM_ROW_TREE_ACCESSORS, getSubtreeIds } from '@/features/task-templates/task-template-item-tree'
 import {
   buildCreateTaskTemplateSchema,
   buildUpdateTaskTemplateSchema,
@@ -130,13 +132,36 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
     setItemRows((rows) => [...rows, newRow])
   }
 
+  /**
+   * Appends a new sub-task under `parentId`, right after its current last
+   * descendant — keeping `itemRows` depth-first ordered (spec 0172 D-1/AC-018:
+   * `<TaskTemplateItemRowContent>` already hides the action once that would
+   * exceed the 3-level cap, so `parentId` is always still addable here).
+   */
+  const addSubtaskItemRow = (parentId: string) => {
+    nextRowId.current += 1
+    const newRowId = `new-${nextRowId.current}`
+    setItemRows((rows) => {
+      const parentRow = rows.find((row) => row.id === parentId)
+      if (!parentRow) {
+        return rows
+      }
+      const newRow = newEmptySubtaskItemRow(newRowId, parentRow)
+      const subtreeIds = getSubtreeIds(rows, FORM_ROW_TREE_ACCESSORS, parentId)
+      const insertAt = rows.findIndex((row) => row.id === subtreeIds[subtreeIds.length - 1]) + 1
+      return [...rows.slice(0, insertAt), newRow, ...rows.slice(insertAt)]
+    })
+  }
+
+  /** Removing a row removes its WHOLE subtree (spec 0172 AC-018/AC-008/AC-009), each row's own staged files and errors along with it. */
   const removeItemRow = (id: string) => {
-    setItemRows((rows) => rows.filter((row) => row.id !== id))
+    const idsToRemove = new Set(getSubtreeIds(itemRows, FORM_ROW_TREE_ACCESSORS, id))
+    setItemRows((rows) => rows.filter((row) => !idsToRemove.has(row.id)))
     setStagedFilesByRow((current) =>
-      id in current ? Object.fromEntries(Object.entries(current).filter(([rowId]) => rowId !== id)) : current,
+      Object.fromEntries(Object.entries(current).filter(([rowId]) => !idsToRemove.has(rowId))),
     )
     setItemErrors((current) =>
-      id in current ? Object.fromEntries(Object.entries(current).filter(([rowId]) => rowId !== id)) : current,
+      Object.fromEntries(Object.entries(current).filter(([rowId]) => !idsToRemove.has(rowId))),
     )
   }
 
@@ -249,6 +274,7 @@ export function useTaskTemplateForm({ mode, onSuccess }: UseTaskTemplateFormArgs
     itemErrors,
     itemRows,
     addItemRow,
+    addSubtaskItemRow,
     removeItemRow,
     updateItemRow,
     moveItemRow,

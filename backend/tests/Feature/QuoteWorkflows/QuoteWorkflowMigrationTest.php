@@ -171,9 +171,16 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // Tasks, then `2026_09_25_130000_drop_evidence_from_tasks_table` (104th),
     // the removal of the Task "Evidenze" field, then
     // `2026_09_25_140000_promote_legacy_multiple_enum_attributes` (105th), the
-    // q-crm `multiple` enums promoted to multiselect.
+    // q-crm `multiple` enums promoted to multiselect, then spec 0171's
+    // `2026_09_28_120000_add_name_is_manual_to_opportunities_table` (106th),
+    // the manual-title flag, and spec 0172's
+    // `2026_09_28_100000_add_parent_id_to_task_template_items_table` (107th)
+    // and `2026_09_28_100100_add_old_id_to_task_templates_table` (108th), the
+    // nested sub-item FK and the legacy-import anchor on task templates, then
+    // spec 0171 rev.2's `2026_09_28_130000_add_title_is_manual_to_quotes_table`
+    // (109th), the offer's manual-title flag.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 105]);
+    Artisan::call('migrate:rollback', ['--step' => 109]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

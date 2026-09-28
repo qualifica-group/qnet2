@@ -10,7 +10,9 @@ namespace App\DataObjects\Quotes;
  * (D-13, same pattern as CreateProjectData/CreateProductData): null means
  * "let QuoteService generate QUO-0001..."; it is deliberately absent from
  * attributes() since it is never in Quote's #[Fillable] — the service
- * assigns it directly.
+ * assigns it directly. `title` (spec 0171 rev.2) is optional: null = the
+ * automatic title; QuoteTitleWriter writes it once the lines exist, so it is
+ * absent from attributes() too.
  *
  * `commercialId`/`reporterId`/`supervisorId` are a SNAPSHOT (D-3): the
  * `*Submitted` flag distinguishes "the client omitted this field entirely"
@@ -75,7 +77,7 @@ final readonly class CreateQuoteData
      */
     public function __construct(
         public ?string $code,
-        public string $title,
+        public ?string $title,
         public int $opportunityId,
         public ?int $workflowStatusId,
         public ?string $note,
@@ -131,7 +133,7 @@ final readonly class CreateQuoteData
     {
         return new self(
             code: self::nullIfEmpty($data['code'] ?? null),
-            title: (string) $data['title'],
+            title: $data['title'] ?? null,
             opportunityId: (int) $data['opportunity_id'],
             workflowStatusId: isset($data['quote_workflow_status_id']) ? (int) $data['quote_workflow_status_id'] : null,
             note: $data['note'] ?? null,
@@ -235,7 +237,6 @@ final readonly class CreateQuoteData
     public function attributes(): array
     {
         return [
-            'title' => $this->title,
             'opportunity_id' => $this->opportunityId,
             'commercial_id' => $this->commercialId,
             'reporter_id' => $this->reporterId,

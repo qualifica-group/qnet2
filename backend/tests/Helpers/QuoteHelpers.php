@@ -2,11 +2,16 @@
 
 declare(strict_types=1);
 
+use App\DataObjects\Quotes\CreateQuoteData;
+use App\DataObjects\Quotes\QuoteLineData;
 use App\Models\BusinessFunction;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\QuoteWorkflowStatus;
+use App\Models\Registry;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
+use App\Services\QuoteService;
 use Spatie\Permission\Models\Permission;
 
 if (! function_exists('revenueLineProduct')) {
@@ -61,5 +66,99 @@ if (! function_exists('quoteHttpRevenueProduct')) {
         ]);
 
         return Product::factory()->create(['category_id' => $category->id]);
+    }
+}
+
+// Spec 0077 name derivation, shared with the spec 0171 editable-title tests.
+if (! function_exists('nameDerivationQuoteService')) {
+    function nameDerivationQuoteService(): QuoteService
+    {
+        return app(QuoteService::class);
+    }
+}
+
+if (! function_exists('nameDerivationNewQuoteWorkflowStatus')) {
+    function nameDerivationNewQuoteWorkflowStatus(): QuoteWorkflowStatus
+    {
+        return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
+    }
+}
+
+if (! function_exists('nameDerivationActor')) {
+    function nameDerivationActor(): User
+    {
+        return User::factory()->create();
+    }
+}
+
+if (! function_exists('nameDerivationRevenueProduct')) {
+    /**
+     * A product whose category resolves an EFFECTIVE business function, so a
+     * REVENUE line never trips OpportunityProductLineCoverage's 422 guard.
+     */
+    function nameDerivationRevenueProduct(string $name): Product
+    {
+        $category = ProductCategory::factory()->create([
+            'business_function_id' => BusinessFunction::factory()->create()->id,
+        ]);
+
+        return Product::factory()->create(['name' => $name, 'category_id' => $category->id]);
+    }
+}
+
+if (! function_exists('nameDerivationCreateQuoteData')) {
+    /**
+     * @param  array<int, QuoteLineData>|null  $offerLines
+     * @param  array<int, QuoteLineData>|null  $costLines
+     */
+    function nameDerivationCreateQuoteData(int $opportunityId, ?array $offerLines = null, ?array $costLines = null): CreateQuoteData
+    {
+        return new CreateQuoteData(
+            code: null,
+            title: null,
+            opportunityId: $opportunityId,
+            workflowStatusId: null,
+            note: null,
+            commercialId: null,
+            commercialIdSubmitted: false,
+            reporterId: null,
+            reporterIdSubmitted: false,
+            supervisorId: null,
+            supervisorIdSubmitted: false,
+            internalNotes: null,
+            offerLines: $offerLines,
+            costLines: $costLines,
+        );
+    }
+}
+
+if (! function_exists('nameDerivationRevenueLine')) {
+    function nameDerivationRevenueLine(Product $product): QuoteLineData
+    {
+        return new QuoteLineData(productId: $product->id, quantity: 1.0, unitPrice: 10.0, vatRateId: null, sortOrder: null);
+    }
+}
+
+if (! function_exists('nameDerivationOpportunityCreatePayload')) {
+    /**
+     * The mandatory POST /api/opportunities payload beyond `name` (which is
+     * never accepted from the client, AC-037): a fresh Registry/status/
+     * supervisor plus a valid one-row `product_lines` + `products_of_interest`.
+     *
+     * @return array<string, mixed>
+     */
+    function nameDerivationOpportunityCreatePayload(): array
+    {
+        $businessFunction = BusinessFunction::factory()->create();
+        $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
+
+        return [
+            'registry_id' => Registry::factory()->create()->id,
+            'supervisor_id' => User::factory()->create()->id,
+            'product_lines' => [
+                ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
+            ],
+            'products_of_interest' => [Product::factory()->create(['category_id' => $category->id])->id],
+        ];
     }
 }

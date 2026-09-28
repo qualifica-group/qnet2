@@ -25,7 +25,11 @@ uses(RefreshDatabase::class);
 // ---------------------------------------------------------------------------
 
 it('task_templates carries every column of the data_contract', function () {
-    $expected = ['id', 'name', 'description', 'is_active', 'created_at', 'updated_at'];
+    $expected = [
+        'id', 'name', 'description', 'is_active', 'created_at', 'updated_at',
+        // spec 0172, D-12: the legacy-import idempotence anchor.
+        'old_id',
+    ];
 
     expect(Schema::getColumnListing('task_templates'))->toEqualCanonicalizing($expected);
 });
@@ -36,6 +40,8 @@ it('task_template_items carries every column of the data_contract', function () 
         'task_status_id', 'due_offset_days', 'sort_order', 'created_at', 'updated_at',
         // spec 0146, D-2: the "Fase" this row sits in, null for "Senza fase".
         'task_template_stage_id',
+        // spec 0172, D-1/D-6: the parent row this sub-item sits under, null for a root row.
+        'parent_id',
     ];
 
     expect(Schema::getColumnListing('task_template_items'))->toEqualCanonicalizing($expected);

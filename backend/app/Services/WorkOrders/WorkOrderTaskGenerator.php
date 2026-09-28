@@ -37,9 +37,23 @@ use Throwable;
  *
  * Spec 0146, D-2: the template's own `stages` are copied onto the commessa
  * as `work_order_stages`, same order, BEFORE any Task is generated — each
- * row below then resolves straight to the copied stage's id and its own
+ * ROOT row below then resolves straight to the copied stage's id and its own
  * `stage_position`, progressive WITHIN that stage (or "Senza fase"), in the
  * order the template's items are read.
+ *
+ * Spec 0172, D-1/AC-010: `template->items` is flat and already ordered so a
+ * row's `parent_id` always names an EARLIER row (App\Http\Requests\
+ * TaskTemplates\Concerns\ValidatesTaskTemplateItemTree guarantees this at
+ * write time) — one forward pass builds each row's Task and keeps a
+ * `template item id => Task` map, so a sub-item resolves its own
+ * `parent_task_id` off a row already generated earlier in the SAME pass. A
+ * sub-item never carries its own `work_order_stage_id` (D-3, same rule as
+ * `App\Services\Tasks\TaskStageGuard` for a manually created sub-task): its
+ * `stage_position` stays at that guard's own neutral value (0) and is NEVER
+ * counted into its root's per-stage `stage_position` counter. Its
+ * `subtask_position` is 0..n among the rows sharing the same DIRECT parent,
+ * in item order — the same shape `App\Services\Tasks\TaskSubtaskBatchCreator`
+ * assigns for a manually created sub-task.
  */
 final class WorkOrderTaskGenerator
 {
@@ -48,6 +62,7 @@ final class WorkOrderTaskGenerator
         private readonly AttachmentService $attachments,
         private readonly TaskNotifier $notifier,
         private readonly RichTextAttachmentCopier $descriptionCopier,
+        private readonly GeneratedTaskPositioner $positioner,
     ) {}
 
     /**
@@ -60,8 +75,12 @@ final class WorkOrderTaskGenerator
         $supervisorIds = $workOrder->supervisors()->pluck('users.id')->all();
 
         $stageIdsByTemplateStageId = $this->copyStages($workOrder, $template);
-        /** @var array<int, int> $stagePositions keyed by copied work_order_stage_id, 0 for "Senza fase" */
+        /** @var array<int, int> $stagePositions keyed by copied work_order_stage_id, 0 for "Senza fase" — ROOT rows only (spec 0172, AC-010) */
         $stagePositions = [];
+        /** @var array<int, int> $subtaskPositions keyed by the parent Task's own id */
+        $subtaskPositions = [];
+        /** @var array<int, Task> $taskByTemplateItemId keyed by TaskTemplateItem id, resolves a sub-item's parent_task_id */
+        $taskByTemplateItemId = [];
 
         /** @var array<int, array{disk: string, path: string}> $copiedFiles */
         $copiedFiles = [];
@@ -74,7 +93,9 @@ final class WorkOrderTaskGenerator
             // copy and every copied path would be lost the moment the
             // closure returns — silently defeating the rollback below.
             foreach ($template->items as $item) {
-                $tasks[] = $this->materialize(
+                $parentTask = $item->parent_id === null ? null : $taskByTemplateItemId[$item->parent_id];
+
+                $task = $this->materialize(
                     $item,
                     $workOrder,
                     $actor,
@@ -82,7 +103,12 @@ final class WorkOrderTaskGenerator
                     $copiedFiles,
                     $stageIdsByTemplateStageId,
                     $stagePositions,
+                    $parentTask,
+                    $subtaskPositions,
                 );
+
+                $taskByTemplateItemId[$item->id] = $task;
+                $tasks[] = $task;
             }
         } catch (Throwable $exception) {
             $this->rollbackCopiedFiles($copiedFiles);
@@ -104,14 +130,23 @@ final class WorkOrderTaskGenerator
 
     /**
      * One generated Task from one template row: copy the snapshot fields
-     * (`generated_task` shape), resolve the status (D-4), the stage and its
-     * position (spec 0146, D-2), sync assignees (D-2) and copy the row's own
-     * attachments (D-6).
+     * (`generated_task` shape), resolve the status (D-4), the stage/sub-task
+     * position (spec 0146, D-2; spec 0172, D-1), sync assignees (D-2) and
+     * copy the row's own attachments (D-6).
+     *
+     * $parentTask is the Task already generated for $item's OWN direct
+     * parent row (spec 0172, D-1), null for a root row — determines every
+     * position field below: a root resolves its stage/`stage_position`
+     * exactly as before, a sub-item forces `work_order_stage_id` null and
+     * `stage_position` to `TaskStageGuard`'s own neutral value (0, never
+     * counted into $stagePositions) and instead takes a `subtask_position`
+     * among the rows sharing this same $parentTask.
      *
      * @param  array<int, int>  $supervisorIds
      * @param  array<int, array{disk: string, path: string}>  $copiedFiles
      * @param  array<int, int>  $stageIdsByTemplateStageId
      * @param  array<int, int>  $stagePositions
+     * @param  array<int, int>  $subtaskPositions
      */
     private function materialize(
         TaskTemplateItem $item,
@@ -121,6 +156,8 @@ final class WorkOrderTaskGenerator
         array &$copiedFiles,
         array $stageIdsByTemplateStageId,
         array &$stagePositions,
+        ?Task $parentTask,
+        array &$subtaskPositions,
     ): Task {
         // `start_date` casts to a MUTABLE Carbon (no immutable-date override
         // in this codebase): addDays() below must run on a copy, or the
@@ -129,20 +166,16 @@ final class WorkOrderTaskGenerator
         $startDate = $workOrder->start_date;
         $endDate = $startDate->copy()->addDays($item->due_offset_days);
 
-        $workOrderStageId = $item->task_template_stage_id === null
-            ? null
-            : $stageIdsByTemplateStageId[$item->task_template_stage_id];
-        // "Senza fase" (null) is its own group too — 0 is a safe sentinel
-        // key: real WorkOrderStage ids start at 1.
-        $positionGroup = $workOrderStageId ?? 0;
-        $stagePosition = $stagePositions[$positionGroup] ?? 0;
-        $stagePositions[$positionGroup] = $stagePosition + 1;
+        [$workOrderStageId, $stagePosition] = $parentTask === null
+            ? $this->positioner->rootStage($item, $stageIdsByTemplateStageId, $stagePositions)
+            : [null, 0];
 
         $task = new Task([
             'title' => $item->title,
             'estimated_minutes' => $item->estimated_minutes,
             'work_order_id' => $workOrder->id,
             'work_order_stage_id' => $workOrderStageId,
+            'parent_task_id' => $parentTask?->id,
             'registry_id' => $workOrder->quote->opportunity->registry_id,
             'opportunity_id' => $workOrder->quote->opportunity_id,
             'requester_id' => $actor->id,
@@ -153,6 +186,11 @@ final class WorkOrderTaskGenerator
         $task->creator_id = $actor->id;
         $task->task_status_id = $this->resolveInitialStatus($item, $supervisorIds, $actor);
         $task->stage_position = $stagePosition;
+
+        if ($parentTask !== null) {
+            $task->subtask_position = $this->positioner->nextSubtaskPosition($parentTask, $subtaskPositions);
+        }
+
         $task->save();
 
         $task->assignees()->sync($supervisorIds);

@@ -9,12 +9,15 @@ import {
   SheetTitle,
   SheetToolbar,
 } from '@/components/ui/sheet'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { SheetDetailPageLink } from '@/features/modules/sheet-detail-page-link'
 import { UserDetailSheetContext } from '@/features/users/user-detail-sheet-context'
 import { UserDetailView } from '@/features/users/user-detail'
 
 /** Domain key, kept in sync with the users module Sheet layout storage key. */
 const USERS_DOMAIN = 'users'
+
+const USERS_VIEW_PERMISSION = `${USERS_DOMAIN}.view`
 
 /**
  * Owns a single application-wide Sheet that shows a user's read-only detail
@@ -27,6 +30,8 @@ const USERS_DOMAIN = 'users'
 export function UserDetailSheetProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { can } = useAbilities()
+  const canOpenUserDetail = can(USERS_VIEW_PERMISSION)
   const [userId, setUserId] = useState<number | null>(null)
 
   const openUserDetail = useCallback((id: number) => setUserId(id), [])
@@ -50,7 +55,7 @@ export function UserDetailSheetProvider({ children }: { children: ReactNode }) {
     [closeUserDetail],
   )
 
-  const value = useMemo(() => ({ openUserDetail }), [openUserDetail])
+  const value = useMemo(() => ({ openUserDetail, canOpenUserDetail }), [openUserDetail, canOpenUserDetail])
 
   return (
     <UserDetailSheetContext.Provider value={value}>

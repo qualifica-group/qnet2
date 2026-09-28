@@ -81,10 +81,11 @@ describe('buildCreateQuoteSchema', () => {
     }
   })
 
-  it('rejects an empty title', () => {
+  // Spec 0171 rev.2 (requirement changed): blank = the automatic title.
+  it('accepts an empty title', () => {
     const schema = buildCreateQuoteSchema(i18n.t)
     const result = schema.safeParse(baseValues({ title: '' }))
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
   })
 
   it('rejects a title over 191 characters', () => {

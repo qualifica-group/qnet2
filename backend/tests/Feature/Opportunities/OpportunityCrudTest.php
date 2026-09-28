@@ -134,19 +134,20 @@ it('create: 201, response shape matches the frozen contract', function () {
     expect($opportunity->expected_close_date->format('Y-m-d'))->toBe('2026-06-01');
 });
 
-// Spec 0057, D-5: `name` is no longer a client input — it is always derived
-// as `OPP_{id}`, so a create payload carrying no `name` at all now succeeds
-// (requirement changed: this used to 422 on the missing field).
-it('create: name is derived as OPP_{id}, ignoring any submitted name', function () {
+// Spec 0171 (requirement changed, superseding spec 0057 D-5): a submitted
+// title is kept and marked manual (AC-002).
+it('create: a submitted name is kept as a manual title', function () {
     $actor = opportunityUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson('/api/opportunities', array_merge(['name' => 'Ignored'], mandatoryOpportunityFks()))
+    $response = $this->postJson('/api/opportunities', array_merge(['name' => 'Typed title'], mandatoryOpportunityFks()))
         ->assertCreated();
 
     $opportunity = Opportunity::sole();
-    expect($opportunity->name)->toBe('OPP_'.$opportunity->id);
-    expect($response->json('data.name'))->toBe('OPP_'.$opportunity->id);
+    expect($opportunity->name)->toBe('Typed title')
+        ->and($opportunity->name_is_manual)->toBeTrue()
+        ->and($response->json('data.name'))->toBe('Typed title')
+        ->and($response->json('data.name_is_manual'))->toBeTrue();
 });
 
 it('create: missing registry_id -> 422 on that field, no row created', function () {

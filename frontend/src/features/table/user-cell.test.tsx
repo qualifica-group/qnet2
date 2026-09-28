@@ -14,10 +14,10 @@ function params(value: unknown): ICellRendererParams {
 }
 
 /** Renders a cell with a spy opener so the "open detail" click is observable. */
-function renderWithOpener(node: React.ReactElement) {
+function renderWithOpener(node: React.ReactElement, canOpenUserDetail = true) {
   const openUserDetail = vi.fn()
   const view = render(
-    <UserDetailSheetContext.Provider value={{ openUserDetail }}>{node}</UserDetailSheetContext.Provider>,
+    <UserDetailSheetContext.Provider value={{ openUserDetail, canOpenUserDetail }}>{node}</UserDetailSheetContext.Provider>,
   )
   return { openUserDetail, view }
 }
@@ -35,6 +35,12 @@ describe('UserCell', () => {
     const { openUserDetail } = renderWithOpener(<UserCell {...params(ADA)} />)
     fireEvent.click(screen.getByRole('button', { name: "View Ada Lovelace's profile" }))
     expect(openUserDetail).toHaveBeenCalledWith(7)
+  })
+
+  it('shows the person without a profile link when the actor cannot view users', () => {
+    renderWithOpener(<UserCell {...params(ADA)} />, false)
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('renders an em dash when there is no user', () => {

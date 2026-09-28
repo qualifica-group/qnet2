@@ -21,15 +21,17 @@ vi.mock('@/features/modules/use-module-open-mode', () => ({
   useModuleOpenMode: () => 'page',
 }))
 
+const REGISTERED_DOMAINS = ['projects', 'quotes', 'request-management']
+
 vi.mock('@/features/modules/module-registry', () => ({
   getModuleRegistryEntry: (domain: string) =>
-    domain === 'projects'
+    REGISTERED_DOMAINS.includes(domain)
       ? {
-          domain: 'projects',
-          basePath: '/projects',
+          domain,
+          basePath: `/${domain}`,
           defaultMode: 'page',
-          labelKey: 'navigation.projects',
-          DetailScreen: ({ id }: { id: number }) => <div>{`detail-${id}`}</div>,
+          labelKey: `navigation.${domain}`,
+          DetailScreen: ({ id }: { id: number }) => <div>{`${domain}-detail-${id}`}</div>,
           FormScreen: () => null,
         }
       : undefined,
@@ -75,7 +77,7 @@ describe('RecordLink', () => {
     fireEvent.click(screen.getByRole('link', { name: /Project Alpha/ }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('detail-5')).toBeInTheDocument()
+    expect(screen.getByText('projects-detail-5')).toBeInTheDocument()
     expect(screen.getByTestId('location')).toHaveTextContent('/tasks/1')
   })
 
@@ -100,6 +102,31 @@ describe('RecordLink', () => {
   it('degrades to plain text when the actor cannot view the target record', () => {
     abilities.granted = new Set()
     renderLink('projects')
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.getByText('Project Alpha')).toBeInTheDocument()
+  })
+
+  it('links an Offerta to its own module when the actor may view Offerte', () => {
+    abilities.granted = new Set(['quotes.view', 'request-management.view'])
+    renderLink('quotes')
+
+    expect(screen.getByRole('link', { name: /Project Alpha/ })).toHaveAttribute('href', '/quotes/5')
+  })
+
+  it('links an Offerta to Gestione Richieste when that is the only module the actor may view', () => {
+    abilities.granted = new Set(['request-management.view'])
+    renderLink('quotes')
+
+    const link = screen.getByRole('link', { name: /Project Alpha/ })
+    expect(link).toHaveAttribute('href', '/request-management/5')
+    fireEvent.click(link)
+    expect(screen.getByText('request-management-detail-5')).toBeInTheDocument()
+  })
+
+  it('renders an Offerta as plain text when the actor may view neither module', () => {
+    abilities.granted = new Set(['projects.view'])
+    renderLink('quotes')
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.getByText('Project Alpha')).toBeInTheDocument()

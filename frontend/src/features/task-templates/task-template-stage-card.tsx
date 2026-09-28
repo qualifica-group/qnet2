@@ -9,6 +9,8 @@ import {
   TaskTemplateStageItemRow,
   type TaskTemplateStageMoveOption,
 } from '@/features/task-templates/task-template-stage-item-row'
+import { TaskTemplateSubItemRow } from '@/features/task-templates/task-template-sub-item-row'
+import { canAddSubtaskAtDepth } from '@/features/task-templates/task-template-item-tree'
 import type { TaskTemplateStageGroup } from '@/features/task-templates/task-template-item-stage-grouping'
 import { cn } from '@/lib/utils'
 import type {
@@ -26,6 +28,7 @@ interface TaskTemplateStageCardProps {
   onRemoveStage: (id: string) => void
   onUpdateRow: (id: string, patch: TaskTemplateItemRowPatch) => void
   onRemoveRow: (id: string) => void
+  onAddSubtaskRow: (id: string) => void
   onAddStagedFiles: (rowId: string, files: File[]) => void
   onRemoveStagedFile: (rowId: string, index: number) => void
   onMoveToStage: (rowId: string, targetContainerId: string) => void
@@ -68,6 +71,7 @@ export function TaskTemplateStageCard({
   onRemoveStage,
   onUpdateRow,
   onRemoveRow,
+  onAddSubtaskRow,
   onAddStagedFiles,
   onRemoveStagedFile,
   onMoveToStage,
@@ -152,27 +156,47 @@ export function TaskTemplateStageCard({
         )}
       </div>
 
-      <SortableContext items={group.rows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
-        {group.rows.length === 0 ? (
+      {/* Only ROOT rows are sortable (spec 0172: sub-items aren't draggable on their own, out of scope) — each carries its own subtree along when dragged, see `moveItemRowToStage`. */}
+      <SortableContext items={group.rootRows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
+        {group.entries.length === 0 ? (
           <EmptyDropZone containerId={group.containerId} label={t('taskTemplates.form.stages.empty')} />
         ) : (
           <ul className="flex flex-col gap-2">
-            {group.rows.map((row) => (
-              <TaskTemplateStageItemRow
-                key={row.id}
-                row={row}
-                containerId={group.containerId}
-                errors={errors[row.id] ?? {}}
-                stagedFiles={stagedFilesByRow[row.id] ?? []}
-                moveOptions={moveOptions}
-                onUpdateRow={onUpdateRow}
-                onRemove={onRemoveRow}
-                onAddStagedFiles={onAddStagedFiles}
-                onRemoveStagedFile={onRemoveStagedFile}
-                onMoveToStage={onMoveToStage}
-                disabled={disabled}
-              />
-            ))}
+            {group.entries.map(({ row, depth }) =>
+              depth === 0 ? (
+                <TaskTemplateStageItemRow
+                  key={row.id}
+                  row={row}
+                  containerId={group.containerId}
+                  errors={errors[row.id] ?? {}}
+                  stagedFiles={stagedFilesByRow[row.id] ?? []}
+                  canAddSubtask={canAddSubtaskAtDepth(depth)}
+                  moveOptions={moveOptions}
+                  onUpdateRow={onUpdateRow}
+                  onRemove={onRemoveRow}
+                  onAddSubtask={onAddSubtaskRow}
+                  onAddStagedFiles={onAddStagedFiles}
+                  onRemoveStagedFile={onRemoveStagedFile}
+                  onMoveToStage={onMoveToStage}
+                  disabled={disabled}
+                />
+              ) : (
+                <TaskTemplateSubItemRow
+                  key={row.id}
+                  row={row}
+                  depth={depth}
+                  errors={errors[row.id] ?? {}}
+                  stagedFiles={stagedFilesByRow[row.id] ?? []}
+                  canAddSubtask={canAddSubtaskAtDepth(depth)}
+                  onUpdateRow={onUpdateRow}
+                  onRemove={onRemoveRow}
+                  onAddSubtask={onAddSubtaskRow}
+                  onAddStagedFiles={onAddStagedFiles}
+                  onRemoveStagedFile={onRemoveStagedFile}
+                  disabled={disabled}
+                />
+              ),
+            )}
           </ul>
         )}
       </SortableContext>

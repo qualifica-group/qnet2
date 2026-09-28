@@ -266,10 +266,22 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 )}
               </MetaField>
 
-              <MetaField control={form.control} name="title" metaKey="title" label={t('quotes.form.title')}>
+              <MetaField
+                control={form.control}
+                name="title"
+                metaKey="title"
+                label={t('quotes.form.title')}
+                hint={t('quotes.form.titleHint')}
+              >
                 {({ field, disabled, readOnly }) => (
                   <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
+                    <Input
+                      autoComplete="off"
+                      placeholder={t('quotes.form.titlePlaceholder')}
+                      disabled={disabled}
+                      readOnly={readOnly}
+                      {...field}
+                    />
                   </FormControl>
                 )}
               </MetaField>

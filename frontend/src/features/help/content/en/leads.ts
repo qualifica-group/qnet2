@@ -89,7 +89,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "from the lead record, with **Create opportunity** (the button then becomes **Go to opportunity**);",
+            "from the lead record, with **Create opportunity** (the button then becomes **Go to opportunity**, shown if you are allowed to view opportunities);",
             'from the table, selecting several leads and clicking **Convert to opportunities**;',
             'at the end of an import, with the automatic conversion.',
           ],

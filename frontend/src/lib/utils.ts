@@ -111,3 +111,9 @@ export function padManagerSlots(slots: (number | null)[], size: number): (number
     ? slots
     : [...slots, ...Array.from({ length: size - slots.length }, () => null)]
 }
+
+/** A typed text as the server expects it: trimmed, blank = `null` (e.g. "back to the automatic title", spec 0171). */
+export function blankToNull(value: string): string | null {
+  const trimmed = value.trim()
+  return trimmed === '' ? null : trimmed
+}

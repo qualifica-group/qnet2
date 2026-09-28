@@ -47,8 +47,8 @@ use Illuminate\Validation\Rule;
  * lead's Operatore, which may be empty, so an opportunity created from a lead
  * without one carries no supervisor — the DB column has always been nullable.
  *
- * Spec 0057, D-5: `name` is REMOVED entirely — no longer a client input.
- * OpportunityService derives it as `OPP_{id}` after the insert.
+ * Spec 0171 (superseding spec 0057, D-5): `name` is the optional title typed
+ * in the form; absent or null = the automatic title (OpportunityNameWriter).
  */
 class StoreOpportunityRequest extends FormRequest
 {
@@ -56,6 +56,9 @@ class StoreOpportunityRequest extends FormRequest
     use ValidatesManagerSlots;
     use ValidatesProductLines;
     use ValidatesRewards;
+
+    /** `opportunities.name` is a string(191) column (spec 0171). */
+    public const int NAME_MAX_LENGTH = 191;
 
     private ?LeadOpportunityDefaults $leadDefaultsCache = null;
 
@@ -75,6 +78,7 @@ class StoreOpportunityRequest extends FormRequest
         $locked = $this->leadDefaults()?->lockedFields ?? [];
 
         return array_merge([
+            'name' => ['nullable', 'string', 'max:'.self::NAME_MAX_LENGTH],
             'registry_id' => $this->derivableRule($locked, 'registry_id', required: true, table: 'registries'),
             'referent_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],

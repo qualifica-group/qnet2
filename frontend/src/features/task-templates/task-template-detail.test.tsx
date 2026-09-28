@@ -71,6 +71,7 @@ describe('TaskTemplateDetailView — description via RichTextContent (AC-024)', 
               due_offset_days: 0,
               sort_order: 1,
               task_template_stage_id: null,
+              parent_id: null,
               attachments: [],
             },
           ],
@@ -103,6 +104,7 @@ describe('TaskTemplateDetailView — items grouped by fase (spec 0146 D-2)', () 
               due_offset_days: 0,
               sort_order: 0,
               task_template_stage_id: null,
+              parent_id: null,
               attachments: [],
             },
             {
@@ -115,6 +117,7 @@ describe('TaskTemplateDetailView — items grouped by fase (spec 0146 D-2)', () 
               due_offset_days: 0,
               sort_order: 1,
               task_template_stage_id: 2,
+              parent_id: null,
               attachments: [],
             },
           ],
@@ -126,5 +129,52 @@ describe('TaskTemplateDetailView — items grouped by fase (spec 0146 D-2)', () 
     expect(headings.map((heading) => heading.textContent)).toEqual(['Analisi', 'Sviluppo', 'No phase'])
     expect(screen.getByText('Task sviluppo')).toBeInTheDocument()
     expect(screen.getByText('Task senza fase')).toBeInTheDocument()
+  })
+})
+
+/** Spec 0172 AC-019: a sub-item is shown under its root, in the root's own fase — its OWN stage_id is always null (D-3). */
+describe('TaskTemplateDetailView — sub-items nest under their root (spec 0172 AC-019)', () => {
+  it('renders a sub-item under its root, inside the root own fase group', () => {
+    render(
+      <TaskTemplateDetailView
+        taskTemplate={taskTemplate({
+          items_count: 2,
+          stages: [{ id: 1, name: 'Analisi', sort_order: 0 }],
+          items: [
+            {
+              id: 30,
+              title: 'Root task',
+              description: null,
+              estimated_minutes: null,
+              task_status_id: null,
+              task_status: null,
+              due_offset_days: 0,
+              sort_order: 0,
+              task_template_stage_id: 1,
+              parent_id: null,
+              attachments: [],
+            },
+            {
+              id: 31,
+              title: 'Sub-task',
+              description: null,
+              estimated_minutes: null,
+              task_status_id: null,
+              task_status: null,
+              due_offset_days: 0,
+              sort_order: 1,
+              task_template_stage_id: null,
+              parent_id: 30,
+              attachments: [],
+            },
+          ],
+        })}
+      />,
+    )
+
+    // No "No phase" group at all: the sub-item's own null stage_id never spawns one — it follows Root task into "Analisi".
+    expect(screen.queryByText('No phase')).not.toBeInTheDocument()
+    expect(screen.getByText('Root task')).toBeInTheDocument()
+    expect(screen.getByText('Sub-task')).toBeInTheDocument()
   })
 })

@@ -3,6 +3,103 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## LINK DELLE SCHEDE DETTAGLIO FILTRATI PER PERMESSI (OFFERTE -> GESTIONE RICHIESTE) — VERDE, NON COMMITTATO (2026-09-28)
+
+- Richiesta utente: nelle schede dettaglio nessun link a un record che l'utente non puo' vedere; l'Offerta apre
+  in Offerte oppure in Gestione Richieste se l'utente vede solo quella (come gia' fatto sui buoni, commit 8ad06c43).
+- Nuovo `features/modules/use-viewable-domain.ts`: `resolveViewableDomain(domain, can)` + `useViewableDomain(domain)`.
+  Candidati = il dominio + `VIEW_FALLBACK_DOMAINS` (`quotes -> request-management`), primo registrato con
+  `<dominio>.view`, altrimenti `null` = testo semplice. Usato da `RecordLink` (tutti i campi-link delle schede),
+  `RelatedRecordLink` dei contratti (prop `permission` rimossa: derivata dal dominio) e `reward-detail-renderer`
+  (la sua mappa `RECORD_OPEN_TARGETS` sostituita da `RECORD_DOMAINS` alias -> dominio + resolver condiviso).
+- Lead: "Vai all'opportunita'" ora dentro `<Can permission="opportunities.view">` (prima senza controllo).
+- Persone: `UserDetailSheetContext` ha `canOpenUserDetail` (provider = `can('users.view')`; default `true` solo fuori
+  provider, dove l'apertura e' comunque no-op). `UserProfileHoverCard`/`UserProfileHoverAction` senza permesso =
+  avatar+nome non cliccabili (`title` col nome). Vale anche nelle celle persona delle tabelle (stesso componente).
+- Test: `use-viewable-domain.test.ts` (5), `record-link.test.tsx` (+3 fallback Offerte), `lead-conversion-action.test.tsx`
+  (+1), `user-cell.test.tsx` (+1); sanity-break verificato. Test adeguati al contratto: `canOpenUserDetail: true`
+  nei Provider di `work-order-detail-team`/`opportunity-detail-sections`/`user-cell`, mock abilities in
+  `user-detail-sheet.test.tsx`, `lead-detail.test.tsx` "exactly once" ora concede `opportunities.view` (requisito cambiato).
+- Verifica: Vitest suite completa 822/823 file, l'unico rosso (lead-detail sopra) corretto e leads 170/170 verdi;
+  `tsc -b --force` 0 errori, ESLint pulito. Guide in-app IT/EN `general` (paragrafo link) e `leads` aggiornate.
+- Manuale Claude Docs NON aggiornato: documento non accessibile da questa sessione (accesso negato). Da aggiornare:
+  sezione "Schede di dettaglio/Interfaccia generale" (link solo se permesso, persone con permesso utenti, Offerta
+  -> Gestione Richieste) e sezione Lead ("Vai all'opportunita'" visibile con permesso opportunita').
+- Limiti noti (segnalati, non fatti): il controllo e' per ability, non per singolo record (scope sede/visibilita'
+  di Gestione Richieste resta solo server-side); fuori dalle schede dettaglio restano link non filtrati:
+  notifiche ("Apri"), colonna task nei giorni di Consuntivazione, alert opportunita' esistente nel form, card
+  task della board Commessa (gate `tasks.viewAny`, non `tasks.view`). HANDOFF e' ~270 KB: va archiviato.
+
+## SPEC 0172 SOTTO-TASK NEI MODELLI DI TASK + MIGRAZIONE LEGACY — VERDE, NON COMMITTATO (2026-09-28)
+
+- Spec `docs/specs/0172-task-template-subtasks-and-legacy-migration.xml` (decisioni utente D-1/D-5/D-8/D-9/D-10).
+- Schema: `2026_09_28_100000_add_parent_id_to_task_template_items_table` (FK self, cascadeOnDelete come rete) e
+  `2026_09_28_100100_add_old_id_to_task_templates_table`. Il working tree contiene anche la spec 0171 (altra sessione):
+  `QuoteWorkflowMigrationTest` ora a 109 step (105 + 2 di 0172 + 2 di 0171).
+- Contratto `task-templates`: `items[]` piatto, `items.*.key`/`items.*.parent_key` (key di una riga PRECEDENTE),
+  max 3 livelli sotto la radice, sotto-item senza fase (`stage_key` vietato), `due_offset_days` <= padre,
+  `ITEMS_MAX` 500; risposta con `parent_id`. Validazione in `Concerns\ValidatesTaskTemplateItemTree`; cancellazione
+  sempre dal basso via `Services\TaskTemplates\TaskTemplateItemTree::deepestFirst()` (hook allegati per ogni riga).
+- Generatore: sotto-item -> sotto-task (`parent_task_id`, fase null, `stage_position` 0, `subtask_position` per
+  fratelli) in `WorkOrderTaskGenerator` + `WorkOrders\GeneratedTaskPositioner`.
+- Migrazione: sorgente `task-templates` (`Migrations\Sources\TaskTemplatesSource` + `Support\TaskTemplateTreeFlattener`,
+  345 righe, sopra soft limit), fase 1 di `MigrationOrder`, idempotenza su `task_templates.old_id`; duplicati
+  "<nome> (old_id N)", `is_active` false se il titolo contiene "non attivo", sotto-azioni anomale promosse a radice
+  con warning, descrizioni via `RichTextConverter::plainTextToHtml`.
+- Legacy (`/Users/Repository/qnet`, non committato): `Api/V2/TaskTemplateMigrationController` +
+  `GET /api/v2/migration/task-templates` (proiezione grezza, 39 modelli / 136 fasi / 1297 azioni sul DB locale).
+  `route:list` nel legacy fallisce per un errore preesistente (`App\Http\Controllers\email`).
+- FE: `features/task-templates/task-template-item-tree.ts` (logica albero pura), `task-template-sub-item-row.tsx`,
+  "Aggiungi sotto-task" fino al 3 livello; guide IT/EN `task-templates` (sezione `sub-tasks`) e `migrations`;
+  manuale Claude Docs aggiornato (Modelli di Task, Migrazioni).
+- Verifica (verifier): `composer test` 8571 passati + 1 skip, Pint pulito, Vitest 6296/6296, `tsc -b --force` e
+  ESLint puliti, AC-001..AC-021 PASS (AC-020 completato con il limite 500 nelle guide).
+- Prossimo passo: import reale da `/migrations` contro il legacy configurato (`EXTERNAL_MIGRATION_BASE_URL`), poi
+  revisione dei warning nel report.
+
+## SPEC 0171 TITOLO OPPORTUNITA' E OFFERTA MODIFICABILE — VERDE, NON COMMITTATO (2026-09-28)
+
+- Rev.2 (richiesta utente): titolo automatico = "codice - prodotti" (`OPP_12 - ISO 9001 + SOA`, `QUO-0042 - ...`,
+  solo codice senza righe di ricavo) e stesso flusso per l'OFFERTA. `OpportunityTitleBuilder` CANCELLATO, sostituito
+  da `Services/Quotes/RevenueProductTitleBuilder` (`forOpportunity`/`forQuote`); nuovo `Services/Quotes/QuoteTitleWriter`
+  (write/recalculate, chiamato da `QuoteService` create Step 5a e update dopo le righe). Migrazione
+  `2026_09_28_130000_add_title_is_manual_to_quotes_table`: regola mista (`OPP_<n>` = automatico, altri = manuali).
+  `title` offerta facoltativo (Store/Update, FieldDefinition non piu' mandatory), `CreateQuoteData::$title` nullable e
+  fuori da `attributes()`, `UpdateQuoteData` title fuori da `submittedAttributes()`; `LeadConversionOfferCreator` e
+  `RequestCreationService` passano `title: null`. Resource `title_is_manual`. Comando `php artisan titles:recalculate`
+  (ricalcola i titoli automatici esistenti: DA ESEGUIRE dopo il deploy, non eseguito sul DB di sviluppo).
+  Frontend: `blankToNull` in `lib/utils.ts` (usato dai payload opportunita' e offerta), titolo offerta facoltativo con
+  placeholder/hint, i18n `quotes.form.{titlePlaceholder,titleHint}` (rimosso `titleRequired`). Guide IT/EN quotes +
+  opportunities, manuale Claude Docs aggiornati. `QuoteWorkflowMigrationTest` step 109. Test: `QuoteEditableTitleTest`
+  (AC-010..013), aspettative "OPP_{id} - ..." in derivazione/titolo opportunita' (requisito cambiato); helper
+  `nameDerivationCreateQuoteData` ora `title: null`.
+- Verifica rev.2: backend suite completa 8571 passati / 0 falliti (1 skipped), Pint pulito; Vitest 197 file / 1690
+  verdi (quotes, opportunities, request-management, contracts, work-orders, help, lib, leads); `tsc -b --force` 0
+  errori fuori da `task-templates` (errori li' = lavoro in corso spec 0172 di altra sessione). ESLint: 1 errore
+  preesistente in `quotes/column-renderers.tsx` (non toccato). `QuoteService.php` 456 righe (gia' oltre soft limit).
+
+- Richiesta utente: campo Titolo nel form di creazione/modifica opportunita', precompilato. Titolo automatico SOLO
+  dai prodotti delle righe di ricavo delle offerte (`OpportunityTitleBuilder`, invariato), mai dai prodotti di
+  interesse; titolo scritto a mano = vince il manuale. Supera spec 0057 D-5/AC-008 e 0077 AC-037.
+- Backend: migrazione `2026_09_28_120000_add_name_is_manual_to_opportunities_table` (bool default false, fuori da
+  `$fillable`). Nuovo `Services/Opportunities/OpportunityNameWriter`: `write()` (null o uguale all'automatico =
+  automatico, altrimenti manuale) e `recalculate()` (salta se manuale), usato da `OpportunityService` create/update
+  (in update DOPO le letture `wasChanged()`) e da `QuoteService` (sostituisce il privato `recalculateOpportunityName`).
+  `name` in Store/Update request (`max:191`, `StoreOpportunityRequest::NAME_MAX_LENGTH`), DTO (`name`/`nameSubmitted`,
+  in coda), `FieldDefinition('name','text')`, resource `name_is_manual`. Griglia: `name` resta NON editabile inline.
+- Frontend: `opportunity-title-section.tsx` (prima card del form), `name` nello schema (`NAME_MAX_LENGTH`), default
+  edit = titolo attuale / create = '' (nessuna offerta ancora), payload: create invia `name` solo se scritto, update
+  invia il valore trimmato se cambiato, svuotato = `null`. i18n `opportunities.form.{name,namePlaceholder,nameHint,nameMax}`.
+  Guide in-app IT/EN `opportunities` aggiornate (riga Titolo + tip).
+- Test per requisito cambiato: `OpportunityCrudTest` (nome inviato ora tenuto), `OpportunityMetaTest` (16 campi),
+  `QuoteOpportunityNameDerivationTest` AC-037, `QuoteWorkflowMigrationTest` step; helper `nameDerivation*` spostati in
+  `tests/Helpers/QuoteHelpers.php` (riusati da `OpportunityEditableTitleTest`, AC-001..007 + 403).
+- Verifica: backend suite completa 8534/8537 + i 2 rossi (step rollback, `DemoOpportunitySeederTest` flaky noto) verdi
+  dopo fix/da soli; Pint pulito. Vitest mirato 167 file/1360 verdi; suite completa 15 timeout sotto carico in moduli
+  non toccati, 12 file rilanciati da soli 94/94 verdi. `tsc -b --force` 0 errori, ESLint 0 errori.
+- Manuale Claude Docs aggiornato (sezione Opportunita': riga Titolo in tabella + paragrafo). Prossimo passo: chiedere se committare
+  (per percorsi espliciti: il working tree contiene lavoro della spec 0172 e dei filtri tabella di altre sessioni).
+
 ## TABELLE — FILTRI MANTENUTI AL RELOAD (AVANZATI FIX 422 + RICERCA/PERSONALIZZATO IN BROWSER) — VERDE, COMMITTATO (2026-09-28)
 
 - Richiesta utente: tutte le tabelle AG Grid mantengono i filtri attivi dopo il reload. Filtri di colonna e avanzati
@@ -28,9 +125,15 @@
   (Fonte + Stato lead restano al reload) e Utenti (ricerca + Ruoli).
 - Da sapere: un filtro personalizzato salvato che referenzia una colonna non piu' filtrabile fa fallire la richiesta
   righe finche' l'utente non toglie la chip; il logout non svuota le chiavi (sono per utente).
-- APERTO (segnalato, non fatto): `use-advanced-filters.ts` salva con `useSaveTableFilters(domain)` senza scope: sulle
-  tab categoria di Gestione Richieste la cache della tab resta vecchia, e tornando alla tab senza reload riappaiono
-  i filtri avanzati precedenti. Il reload e' corretto.
+- Tab categoria di Gestione Richieste (VERDE, NON COMMITTATO): i filtri avanzati salvano con la tab
+  (`productCategoryId` fino a `useSaveTableFilters`); dopo un salvataggio/azzeramento filtri le config delle ALTRE
+  tab vengono RIMOSSE dalla cache (`removeOtherScopeConfigs` in `use-table-config.ts`), non solo invalidate: una
+  voce stale viene servita al mount e la griglia applica i filtri solo alla creazione, quindi interrogava con i
+  filtri vecchi mentre le chip mostravano quelli nuovi (visto in browser). Un salvataggio filtri rifiutato ora
+  mostra il toast `table.filtersSaveError`. `invalidateDomainConfigs` spostato in `use-table-config.ts`.
+  Test: `use-table-filters-cache.test.tsx`, `use-advanced-filters.test.ts` (sanity-break ok); table +
+  data-table + request-management 921/921, i18n+help 274/274, ESLint, `tsc -b` puliti. Verificato in browser:
+  Tutte -> GOL Molise, tolgo Referente, torno su Tutte: righe e chip senza Referente.
 
 ## TEMPI DEI TEST — SUITE BACKEND IN PARALLELO, VITEST NODE/JSDOM — VERDE, NON COMMITTATO (2026-09-28)
 

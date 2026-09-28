@@ -135,6 +135,7 @@ class Quote extends BaseModel
             'next_callback_at' => 'datetime',
             'next_callback_reminded_at' => 'datetime',
             'is_transferred' => 'boolean',
+            'title_is_manual' => 'boolean',
         ];
     }
 

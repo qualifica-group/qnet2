@@ -56,17 +56,20 @@ const ROW: TaskTemplateItemFormRow = {
   task_status_id: null,
   due_offset_days: 0,
   stage_key: null,
+  parent_key: null,
 }
 
-function renderRow(row: TaskTemplateItemFormRow, errors = {}) {
+function renderRow(row: TaskTemplateItemFormRow, errors = {}, options: { canAddSubtask?: boolean; onAddSubtask?: () => void } = {}) {
   const onUpdateRow = vi.fn()
   render(
     <TaskTemplateItemRowContent
       row={row}
       errors={errors}
       stagedFiles={[]}
+      canAddSubtask={options.canAddSubtask ?? true}
       onUpdateRow={onUpdateRow}
       onRemove={vi.fn()}
+      onAddSubtask={options.onAddSubtask ?? vi.fn()}
       onAddStagedFiles={vi.fn()}
       onRemoveStagedFile={vi.fn()}
       disabled={false}
@@ -174,5 +177,29 @@ describe('TaskTemplateItemRowContent — description uses RichTextEditor (AC-024
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: '' } })
 
     expect(onUpdateRow).toHaveBeenCalledWith('row-1', { description: null })
+  })
+})
+
+/** Spec 0172 AC-018: "Add sub-task" is present up to the cap and absent at the deepest allowed level. */
+describe('TaskTemplateItemRowContent — add sub-task action', () => {
+  it('fires onAddSubtask with the row id when clicked', () => {
+    const onAddSubtask = vi.fn()
+    renderRow(ROW, {}, { onAddSubtask })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add sub-task' }))
+
+    expect(onAddSubtask).toHaveBeenCalledWith('row-1')
+  })
+
+  it('is absent when canAddSubtask is false (the row is at the deepest allowed level)', () => {
+    renderRow(ROW, {}, { canAddSubtask: false })
+
+    expect(screen.queryByRole('button', { name: 'Add sub-task' })).not.toBeInTheDocument()
+  })
+
+  it('surfaces a parent_key error (e.g. a 422 on items.N.parent_key) as an alert', () => {
+    renderRow(ROW, { parent_key: 'Too deep.' })
+
+    expect(screen.getByText('Too deep.')).toHaveAttribute('role', 'alert')
   })
 })

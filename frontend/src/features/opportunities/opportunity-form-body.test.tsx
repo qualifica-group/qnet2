@@ -13,7 +13,8 @@ import type { OpportunityDetailWithPermissions } from '@/features/opportunities/
  * without a registry, scoped by `registry_id` once chosen and reset on registry
  * change; commercial/reporter are free and, per user directive 2026-07-17, are
  * never auto-filled from the anagrafica), AC-074 (field permissions: hidden vs
- * disabled). Spec 0057 (D-5): the name is no longer a form input.
+ * disabled). Spec 0171: the title is a form input again (superseding spec
+ * 0057 D-5), blank in create and prefilled in edit.
  *
  * The `?lead_id=N` deep-link create-from-lead mode (AC-075) and the in-form
  * "Lead" select (AC-086/087/088, spec 0044 supervisor prefill AC-025/034) are
@@ -264,13 +265,13 @@ beforeEach(() => {
 })
 
 describe('OpportunityFormBody — fields render (AC-071)', () => {
-  it('renders every relational select, with no name input (spec 0057 D-5)', async () => {
+  it('renders every relational select, and a blank title input (spec 0171)', async () => {
     render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
     await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('')
     // Spec 0082: the status is COMPUTED, never a form field — and since the
     // 2026-08-05 directive it is not repeated in the form body at all: the
     // identity bar carries it, merged the way the table merges it.
@@ -293,6 +294,19 @@ describe('OpportunityFormBody — fields render (AC-071)', () => {
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeInTheDocument()
     expect(screen.getByTestId('select-Parent category 1')).toBeInTheDocument()
     expect(screen.queryByTestId('select-Parent category 2')).not.toBeInTheDocument()
+  })
+
+  it('prefills the title with the current one in edit mode (spec 0171)', async () => {
+    render(
+      <OpportunityForm
+        mode={{ type: 'edit', opportunity: editOpportunity() }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    expect(await screen.findByRole('textbox', { name: 'Title' })).toHaveValue('Enterprise deal')
   })
 
   /** Directive 2026-07-21: supervisor is never required, in either mode (it derives from the linked Lead's Operatore, which may be empty). */

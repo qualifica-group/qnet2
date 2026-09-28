@@ -9,7 +9,8 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Administration › Migrations** and is restricted to the **super-admin** role. Each **Source** represents a type of data to import: Roles, Users, Business functions, Companies, Company sites, Operational sites, Referent types, Referents, Sources, Tags, Sectors, VAT rates, Attributes, Product categories and Products.' },
+        { type: 'paragraph', text: 'The module is found in **Administration › Migrations** and is restricted to the **super-admin** role. Each **Source** represents a type of data to import: Roles, Users, Business functions, Companies, Company sites, Operational sites, Referent types, Referents, Sources, Tags, Sectors, VAT rates, Attributes, Product categories, Products and Task templates.' },
+        { type: 'note', text: 'The **Task templates** source imports the template, its phases, activities and sub-activities. A template whose title contains "non attivo" arrives deactivated. A title already used by another template gets the "(old_id N)" suffix. A sub-activity with an issue (missing parent, parent in another template, a cycle) becomes a top-level activity instead, with a warning in the report.' },
       ],
     },
     {

@@ -12,6 +12,8 @@ import type { OpportunityFormValues } from '@/features/opportunities/use-opportu
 
 export function values(overrides: Partial<OpportunityFormValues> = {}): OpportunityFormValues {
   return {
+    // Mirrors `original().name`, so an untouched title diffs to nothing.
+    name: 'Enterprise deal',
     registry_id: 1,
     // Spec 0043 D-3: mandatory FK, mirrors registry_id.
     referent_id: null,
@@ -36,7 +38,8 @@ export function values(overrides: Partial<OpportunityFormValues> = {}): Opportun
 }
 
 export function createValues(overrides: Partial<OpportunityFormValues> = {}): OpportunityFormValues {
-  return values({ supervisor_id: 9, ...overrides })
+  // Spec 0171: a create form opens with a blank (automatic) title.
+  return values({ name: '', supervisor_id: 9, ...overrides })
 }
 
 export function original(overrides: Partial<OpportunityDetail> = {}): OpportunityDetail {

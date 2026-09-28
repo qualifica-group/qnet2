@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\LeadConversionOfferCreator;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
+use App\Services\Opportunities\OpportunityNameWriter;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\ProductCategoryCoherence;
@@ -98,6 +99,7 @@ class OpportunityService
         private readonly RegistryOpenOpportunityGuard $openOpportunityGuard,
         private readonly QuoteManagerSyncMode $syncMode,
         private readonly LeadConversionOfferCreator $conversionOfferCreator,
+        private readonly OpportunityNameWriter $nameWriter,
     ) {}
 
     public function loadDetail(Opportunity $opportunity): Opportunity
@@ -217,8 +219,9 @@ class OpportunityService
      * derivable attributes are overwritten with LeadOpportunityDefaultsResolver's
      * values (StoreOpportunityRequest already rejected a conflicting
      * submission as `prohibited`, so this only ever fills in fields the
-     * client left absent). `name` (spec 0057, D-5) is derived as `OPP_{id}`
-     * right after the insert — never a client input.
+     * client left absent). `name` is written right after the insert by
+     * OpportunityNameWriter (spec 0171): the submitted title, or the
+     * automatic one (`OPP_{id}` until a quote exists) when none was typed.
      */
     public function create(CreateOpportunityData $data, ?User $actor = null): Opportunity
     {
@@ -235,15 +238,15 @@ class OpportunityService
             // the whole create — bulk conversion included — rolls back.
             $this->openOpportunityGuard->assertNoOpenOpportunity((int) $attributes['registry_id']);
 
-            // `opportunities.name` is NOT NULL but the authoritative value
-            // (spec 0057, D-5: `OPP_{id}`) depends on the row's own id — seed
-            // only a non-null placeholder here to satisfy the constraint at
-            // INSERT, mirroring RegistryService::create's own placeholder.
+            // `opportunities.name` is NOT NULL but the automatic value
+            // (`OPP_{id}`) depends on the row's own id — seed only a non-null
+            // placeholder here to satisfy the constraint at INSERT, mirroring
+            // RegistryService::create's own placeholder.
             $attributes['name'] = '';
 
             $opportunity = Opportunity::create($attributes);
 
-            $opportunity->forceFill(['name' => 'OPP_'.$opportunity->id])->save();
+            $this->nameWriter->write($opportunity, $data->name);
 
             $attachedManagers = [];
 
@@ -272,8 +275,8 @@ class OpportunityService
                 $this->rewardAssignmentWriter->sync($opportunity, $data->rewards);
             }
 
-            // spec 0081: dispatched last, when `name` is already the derived
-            // `OPP_{id}` and the manager slots are final.
+            // spec 0081: dispatched last, when `name` is already written and
+            // the manager slots are final.
             $this->assignmentNotifier->notify(
                 $opportunity,
                 $actor,
@@ -321,6 +324,12 @@ class OpportunityService
             // THIS save(), for the same reason as $newSupervisorId above.
             if ($data->reporterIdSubmitted && $opportunity->wasChanged('reporter_id')) {
                 $this->rewardAssignmentWriter->retarget($opportunity);
+            }
+
+            // Spec 0171: after the two wasChanged() reads above — this save()
+            // would otherwise reset their diff.
+            if ($data->nameSubmitted) {
+                $this->nameWriter->write($opportunity, $data->name);
             }
 
             $attachedManagers = [];

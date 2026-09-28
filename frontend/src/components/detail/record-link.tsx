@@ -2,9 +2,9 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAbilities } from '@/features/auth/use-abilities'
 import { getModuleRegistryEntry } from '@/features/modules/module-registry'
 import { useRecordModalLink } from '@/features/modules/use-record-modal-link'
+import { useViewableDomain } from '@/features/modules/use-viewable-domain'
 
 /**
  * A cross-record link inside a detail/record surface. A plain click opens the
@@ -15,8 +15,9 @@ import { useRecordModalLink } from '@/features/modules/use-record-modal-link'
  * user Sheet).
  *
  * The path is resolved from the module registry rather than written by hand, so
- * a module that moves its `basePath` moves every link to it at once. An
- * unregistered domain, or an actor without `<domain>.view`, degrades to plain
+ * a module that moves its `basePath` moves every link to it at once. The target
+ * module is the first one the actor may view (`useViewableDomain`: an Offerta
+ * falls back to Gestione Richieste); with none, the value degrades to plain
  * text instead of a link to a record the server would refuse.
  */
 
@@ -29,15 +30,15 @@ interface RecordLinkProps {
 }
 
 export function RecordLink({ domain, id, children, className }: RecordLinkProps) {
-  const { can } = useAbilities()
-  const basePath = getModuleRegistryEntry(domain)?.basePath
+  const targetDomain = useViewableDomain(domain)
+  const basePath = targetDomain === null ? undefined : getModuleRegistryEntry(targetDomain)?.basePath
 
-  if (basePath === undefined || !can(`${domain}.view`)) {
+  if (targetDomain === null || basePath === undefined) {
     return <>{children}</>
   }
 
   return (
-    <ModalRecordLink domain={domain} id={id} path={`${basePath}/${id}`} className={className}>
+    <ModalRecordLink domain={targetDomain} id={id} path={`${basePath}/${id}`} className={className}>
       {children}
     </ModalRecordLink>
   )

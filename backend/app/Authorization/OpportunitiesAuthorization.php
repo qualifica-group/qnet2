@@ -15,9 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  * the actor may write (create/update), else visible+readonly, mirroring
  * LeadsAuthorization. `registry_id` is the mandatory scalar field (D-4);
  * `lead_id` is NOT permissionable (structural, immutable server-side
- * derivation — BR-1/BR-2) and carries no FieldDefinition here — `name`
- * (spec 0057, D-5) joins it: also structural/immutable (derived `OPP_{id}`),
- * so it carries no FieldDefinition either, not even a readonly one. Amendment
+ * derivation — BR-1/BR-2) and carries no FieldDefinition here. `name` (spec
+ * 0171, superseding spec 0057 D-5) is a plain editable text field. Amendment
  * rev.3: the former `business_function_id`/`product_category_id` scalars are
  * REPLACED by a single `product_lines` field (a to-many collection) — which,
  * per user directive 2026-07-17, is itself mandatory (at least one row to
@@ -59,6 +58,7 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
     public function fields(): array
     {
         return [
+            new FieldDefinition('name', 'text'),
             new FieldDefinition('registry_id', 'select', mandatory: true),
             new FieldDefinition('referent_id', 'select'),
             new FieldDefinition('commercial_id', 'select'),
@@ -96,6 +96,7 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
         $mayWrite = $this->actorMayWrite($actor, $model);
 
         return [
+            'name' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'registry_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'referent_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commercial_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

@@ -15,13 +15,14 @@ use App\Models\WorkOrder;
 use App\Services\Commissions\QuoteLineCommissionWriter;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Contracts\ContractLifecycleManager;
-use App\Services\Opportunities\OpportunityTitleBuilder;
+use App\Services\Opportunities\OpportunityNameWriter;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\Quotes\QuoteAttributeValueWriter;
 use App\Services\Quotes\QuoteLineCoverageWriter;
 use App\Services\Quotes\QuoteManagerInheritance;
 use App\Services\Quotes\QuoteManagerWriter;
 use App\Services\Quotes\QuoteStatusChangeLogger;
+use App\Services\Quotes\QuoteTitleWriter;
 use App\Services\Quotes\QuoteTotalsCalculator;
 use App\Services\Quotes\QuoteWorkflowStatusAssigner;
 use Illuminate\Support\Facades\DB;
@@ -116,7 +117,8 @@ class QuoteService
         private readonly QuoteTotalsCalculator $totalsCalculator,
         private readonly QuoteLineCommissionWriter $commissionWriter,
         private readonly ContractLifecycleManager $contractLifecycleManager,
-        private readonly OpportunityTitleBuilder $titleBuilder,
+        private readonly OpportunityNameWriter $nameWriter,
+        private readonly QuoteTitleWriter $titleWriter,
         private readonly QuoteWorkflowStatusAssigner $workflowStatusAssigner,
         private readonly QuoteStatusChangeLogger $statusChangeLogger,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
@@ -152,6 +154,9 @@ class QuoteService
             // roles (D-3) for every one of them the client did NOT submit.
             $opportunity = Opportunity::findOrFail($data->opportunityId);
             $attributes = $this->applySnapshotDefaults($data, $opportunity);
+            // `quotes.title` is NOT NULL but its automatic value needs the
+            // code and the lines: a placeholder until Step 5a writes it.
+            $attributes['title'] = '';
 
             // Step 2: resolve `layout_id` (D-3/D-8) — NOT an Opportunity
             // snapshot, a separate mechanism (see resolveLayoutId()).
@@ -206,12 +211,15 @@ class QuoteService
                 $this->rewardAssignmentWriter->sync($quote, $data->rewards);
             }
 
+            // Step 5a (spec 0171 rev.2): the title, now that code and lines exist.
+            $this->titleWriter->write($quote, $data->title);
+
             // Step 5: persist the recalculated aggregates (D-9).
             $this->persistAggregates($quote);
 
             // Step 5b: re-derive the opportunity's name from its quotes'
             // revenue lines (spec 0077, D-3/D-4).
-            $this->recalculateOpportunityName($opportunity->id);
+            $this->nameWriter->recalculate($opportunity->id);
 
             // Step 6 (spec 0083, AC-020/021/023-025): resolve the offer's
             // working status now that its criteria are final; an explicit
@@ -305,10 +313,18 @@ class QuoteService
 
             $this->persistAggregates($quote);
 
+            // Spec 0171 rev.2: after the lines, so the automatic title (and the
+            // "equal to automatic" check of a submitted one) sees them.
+            if ($data->titleSubmitted) {
+                $this->titleWriter->write($quote, $data->title);
+            } else {
+                $this->titleWriter->recalculate($quote);
+            }
+
             // Re-derive the opportunity's name (spec 0077, D-3/D-4) — always,
             // mirroring persistAggregates(): even a scalar-only PATCH must see
             // the current line set (a prior write may have changed it).
-            $this->recalculateOpportunityName($quote->opportunity_id);
+            $this->nameWriter->recalculate($quote->opportunity_id);
 
             // spec 0083 (AC-020..026): re-resolve the baseline against the
             // (possibly changed by a submitted `offer_lines`) criteria, then
@@ -352,7 +368,7 @@ class QuoteService
 
             $quote->delete();
 
-            $this->recalculateOpportunityName($opportunityId);
+            $this->nameWriter->recalculate($opportunityId);
         });
     }
 
@@ -436,20 +452,5 @@ class QuoteService
             'cost_vat' => $totals['cost_vat'],
             'margin_net' => $totals['margin_net'],
         ])->save();
-    }
-
-    /**
-     * Re-derives and persists `opportunities.name` (spec 0077, D-3/D-4) from
-     * a fresh read of the opportunity — never the caller's own (possibly
-     * stale, possibly relation-less) instance, so this stays correct whether
-     * called from create/update/delete. `name` is never a client input
-     * (AC-037): forceFill mirrors OpportunityService::create()'s own
-     * assignment of the same column.
-     */
-    private function recalculateOpportunityName(int $opportunityId): void
-    {
-        $opportunity = Opportunity::findOrFail($opportunityId);
-
-        $opportunity->forceFill(['name' => $this->titleBuilder->build($opportunity)])->save();
     }
 }

@@ -131,4 +131,14 @@ describe('buildCreatePayload', () => {
       expect(payload).not.toHaveProperty('lead_id')
     })
   })
+
+  describe('title (spec 0171)', () => {
+    it('omits a blank title, so the server derives the automatic one', () => {
+      expect(buildCreatePayload(createValues({ name: '   ' }))).not.toHaveProperty('name')
+    })
+
+    it('sends a typed title, trimmed', () => {
+      expect(buildCreatePayload(createValues({ name: '  Consulenza qualità ' })).name).toBe('Consulenza qualità')
+    })
+  })
 })

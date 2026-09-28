@@ -73,7 +73,8 @@ class UpdateQuoteRequest extends FormRequest
     {
         return array_merge([
             'opportunity_id' => ['prohibited'],
-            'title' => ['sometimes', 'required', 'string', 'max:191'],
+            // Spec 0171 rev.2: null goes back to the automatic title.
+            'title' => ['sometimes', 'nullable', 'string', 'max:191'],
             'quote_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
             'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],

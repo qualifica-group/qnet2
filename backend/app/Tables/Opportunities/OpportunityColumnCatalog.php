@@ -32,13 +32,9 @@ use App\Tables\Shared\ProductsOfInterestColumn;
  * filterable (set), but deliberately NOT declared `editable` (out of scope:
  * the field is edited from the form, never inline in the grid).
  *
- * Spec 0057, D-5: `name` is now DERIVED server-side (`OPP_{id}`), never a
- * client input anywhere — NOT declared `editable` here either (the row stays
- * sortable/filterable/searchable, matching "resta visibile in sola lettura in
- * tabella"), and carries no matching field key in OpportunitiesAuthorization
- * (InlineCellEditingGuardTest AC-012 requires every editable column to have
- * one; a structurally-immutable, non-editable column has none, like
- * `operational_site` above).
+ * `name` is NOT declared `editable` here: the title is edited from the form
+ * only (spec 0171), where OpportunityNameWriter decides automatic vs manual;
+ * the column stays sortable/filterable/searchable.
  */
 final class OpportunityColumnCatalog
 {
@@ -57,8 +53,7 @@ final class OpportunityColumnCatalog
                 'filterable' => true,
                 'filterType' => 'text',
                 'searchable' => true,
-                // Spec 0057, D-5: NOT editable — the value is derived
-                // server-side (`OPP_{id}`), never a client input.
+                // Spec 0171: edited from the form only, never inline.
                 'editable' => false,
             ],
             self::derivedColumn('registry', 'opportunities.columns.registry'),

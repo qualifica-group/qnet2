@@ -16,6 +16,7 @@ use App\Migrations\Sources\RolesSource;
 use App\Migrations\Sources\SectorsSource;
 use App\Migrations\Sources\SourcesSource;
 use App\Migrations\Sources\TagsSource;
+use App\Migrations\Sources\TaskTemplatesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
 
@@ -76,6 +77,7 @@ return [
         'sources' => SourcesSource::class,
         'tags' => TagsSource::class,
         'sectors' => SectorsSource::class,
+        'task-templates' => TaskTemplatesSource::class,
         'vat-rates' => VatRatesSource::class,
         'payment-methods' => PaymentMethodsSource::class,
         'attributes' => AttributesSource::class,

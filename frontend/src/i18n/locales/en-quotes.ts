@@ -90,7 +90,9 @@ export const quotes = {
     codeRequired: 'Code is required.',
     codeMax: 'Code must be at most 32 characters.',
     title: 'Title',
-    titleRequired: 'Title is required.',
+    titlePlaceholder: "Automatic: the offer's code and products",
+    titleHint:
+      "Suggested as the offer's code followed by the products on its revenue lines (e.g. QUO-0042 - ISO 9001 + SOA). Once edited it stays yours; clear the field to go back to the automatic title.",
     titleMax: 'Title must be at most 191 characters.',
     opportunity: 'Opportunity',
     opportunitySearch: 'Search opportunities…',

@@ -207,10 +207,8 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
       .trim()
       .min(1, t('quotes.form.codeRequired'))
       .max(CODE_MAX_LENGTH, t('quotes.form.codeMax')),
-    title: z
-      .string()
-      .min(1, t('quotes.form.titleRequired'))
-      .max(TITLE_MAX_LENGTH, t('quotes.form.titleMax')),
+    // Spec 0171 rev.2: optional — blank = the automatic `<code> - <products>` title.
+    title: z.string().max(TITLE_MAX_LENGTH, t('quotes.form.titleMax')),
     // Immutable after create (AC-025); still part of both schemas since the
     // form always displays it (read-only in edit) and the create form must
     // block submit until it is set.

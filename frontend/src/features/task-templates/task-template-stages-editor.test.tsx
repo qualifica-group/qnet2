@@ -44,6 +44,7 @@ function itemRow(overrides: Partial<TaskTemplateItemFormRow> = {}): TaskTemplate
     task_status_id: null,
     due_offset_days: 0,
     stage_key: null,
+    parent_key: null,
     ...overrides,
   }
 }
@@ -57,6 +58,7 @@ function renderEditor(props: Partial<ComponentProps<typeof TaskTemplateStagesEdi
     onAddItem: vi.fn(),
     onUpdateItem: vi.fn(),
     onRemoveItem: vi.fn(),
+    onAddSubtaskItem: vi.fn(),
     onMoveItem: vi.fn(),
     onAddStagedFiles: vi.fn(),
     onRemoveStagedFile: vi.fn(),
@@ -140,6 +142,44 @@ describe('TaskTemplateStagesEditor — moving an item between fasi via the acces
     fireEvent.click(screen.getByRole('option', { name: 'No phase' }))
 
     expect(handlers.onMoveItem).toHaveBeenCalledWith('row-1', UNASSIGNED_STAGE_CONTAINER_ID, 0)
+  })
+})
+
+describe('TaskTemplateStagesEditor — sub-tasks (spec 0172 D-1/AC-018)', () => {
+  it('fires onAddSubtaskItem with the row id when "Add sub-task" is clicked', () => {
+    const handlers = renderEditor({ itemRows: [itemRow({ id: 'root', title: 'Root' })] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add sub-task' }))
+
+    expect(handlers.onAddSubtaskItem).toHaveBeenCalledWith('root')
+  })
+
+  it('renders a sub-item indented under its root, with no "Fase" select of its own', () => {
+    renderEditor({
+      stageRows: [stageRow()],
+      itemRows: [
+        itemRow({ id: 'root', title: 'Root', stage_key: 'stage-1' }),
+        itemRow({ id: 'child', title: 'Child', parent_key: 'root' }),
+      ],
+    })
+
+    expect(screen.getAllByLabelText('Title')).toHaveLength(2)
+    // Only the ROOT gets a "Fase" move select — the sub-item follows it (D-3).
+    expect(screen.getAllByRole('combobox', { name: 'Phases' })).toHaveLength(1)
+  })
+
+  it('hides "Add sub-task" on a row already 3 levels below its root', () => {
+    renderEditor({
+      itemRows: [
+        itemRow({ id: 'root', title: 'Root' }),
+        itemRow({ id: 'child', title: 'Child', parent_key: 'root' }),
+        itemRow({ id: 'grandchild', title: 'Grandchild', parent_key: 'child' }),
+        itemRow({ id: 'great-grandchild', title: 'Great-grandchild', parent_key: 'grandchild' }),
+      ],
+    })
+
+    // root, child, grandchild may still gain a sub-task — the great-grandchild (depth 3) may not.
+    expect(screen.getAllByRole('button', { name: 'Add sub-task' })).toHaveLength(3)
   })
 })
 

@@ -1,4 +1,4 @@
-import { managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
+import { blankToNull, managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
 import type {
   CreateOpportunityPayload,
   OpportunityDetail,
@@ -24,8 +24,8 @@ export interface CreatePayloadFromLead {
  * in full (the server replaces the entire collection, AC-099). When creating
  * from a Lead (spec 0040 MT-6/A-1), every field named in
  * `fromLead.lockedFields` is OMITTED entirely (not merely repeated) and
- * `lead_id` is appended. Spec 0057 (D-5): `name` is never sent — it is
- * derived server-side as `OPP_{id}`.
+ * `lead_id` is appended. Spec 0171: `name` is sent only when typed — omitted,
+ * the server derives the automatic title.
  */
 export function buildCreatePayload(
   values: OpportunityFormValues,
@@ -51,6 +51,11 @@ export function buildCreatePayload(
     // "Note generali" (user directive 2026-07-27): prefilled from the lead
     // but never locked — always sent as-is.
     general_notes: values.general_notes,
+  }
+
+  const name = blankToNull(values.name)
+  if (name !== null) {
+    payload.name = name
   }
 
   if (!locked.has('registry_id')) {
@@ -92,6 +97,11 @@ export function buildUpdatePayload(
 ): UpdateOpportunityPayload {
   const payload: UpdateOpportunityPayload = {}
 
+  // Spec 0171: a cleared title travels as `null` (back to the automatic one).
+  const name = blankToNull(values.name)
+  if (name !== original.name) {
+    payload.name = name
+  }
   if (values.registry_id !== original.registry_id) {
     payload.registry_id = values.registry_id as number
   }

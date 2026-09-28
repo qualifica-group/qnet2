@@ -33,6 +33,9 @@ export const ESTIMATED_VALUE_MAX = 9999999999999.99
 export const SUCCESS_PROBABILITY_MIN = 0
 export const SUCCESS_PROBABILITY_MAX = 100
 
+/** Backend `opportunities.name` ceiling (`string(191)`, spec 0171). */
+export const NAME_MAX_LENGTH = 191
+
 /** Backend `general_notes` ceiling (`max:5000`), mirroring the lead `notes` it inherits from. */
 export const GENERAL_NOTES_MAX_LENGTH = 5000
 
@@ -53,8 +56,10 @@ function requiredRelationId(message: string) {
 /** Shared fields common to create and edit. */
 function baseFields(t: TFunction) {
   return {
-    // D-4/D-5 (spec 0057): registry_id is the required identity field — the
-    // name is no longer a form input, it is derived server-side as `OPP_{id}`.
+    // Spec 0171: the title is optional — blank means the automatic title the
+    // server derives from the quoted products.
+    name: z.string().max(NAME_MAX_LENGTH, t('opportunities.form.nameMax', { max: NAME_MAX_LENGTH })),
+    // D-4 (spec 0057): registry_id is the required identity field.
     registry_id: requiredRelationId(t('opportunities.form.registryRequired')),
     // Spec 0043 D-3: the opportunity status is a mandatory FK, mirrors registry_id.
     referent_id: z.number().nullable(),

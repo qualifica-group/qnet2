@@ -7,7 +7,7 @@ import type {
   TaskTemplateStageFormRow,
 } from '@/features/task-templates/types'
 
-/** A brand-new, still-untitled row appended by "Aggiungi riga" — lands in "Senza fase" until dragged into one. */
+/** A brand-new, still-untitled root row appended by "Aggiungi riga" — lands in "Senza fase" until dragged into one. */
 export function newEmptyItemRow(id: string): TaskTemplateItemFormRow {
   return {
     id,
@@ -17,7 +17,17 @@ export function newEmptyItemRow(id: string): TaskTemplateItemFormRow {
     task_status_id: null,
     due_offset_days: 0,
     stage_key: null,
+    parent_key: null,
   }
+}
+
+/**
+ * A brand-new, still-untitled sub-task appended by "Aggiungi sotto-task"
+ * under `parentRow` (spec 0172 D-1/D-3): never carries a `stage_key` of its
+ * own — it follows the fase of the root it nests under.
+ */
+export function newEmptySubtaskItemRow(id: string, parentRow: TaskTemplateItemFormRow): TaskTemplateItemFormRow {
+  return { ...newEmptyItemRow(id), parent_key: parentRow.id }
 }
 
 /** The client `stages.*.key` a persisted `task_template_stage_id` resolves to (spec 0146 D-2), `null` for "Senza fase". */
@@ -25,7 +35,12 @@ export function stageKeyOf(taskTemplateStageId: number | null): string | null {
   return taskTemplateStageId === null ? null : `stage-${taskTemplateStageId}`
 }
 
-/** Hydrates the editable rows from a persisted template (already ordered by `sort_order`). */
+/**
+ * Hydrates the editable rows from a persisted template (already ordered by
+ * `sort_order`, parent before its children). A persisted row's own `id` IS
+ * its local key (mirrors `stageKeyOf`), so a child's `parent_id` reconstructs
+ * straight into the owning row's local `parent_key` (spec 0172 D-1/AC-018).
+ */
 export function itemRowsFromDetail(taskTemplate: TaskTemplateDetail): TaskTemplateItemFormRow[] {
   return taskTemplate.items.map((item) => ({
     id: String(item.id),
@@ -36,6 +51,7 @@ export function itemRowsFromDetail(taskTemplate: TaskTemplateDetail): TaskTempla
     task_status_id: item.task_status_id,
     due_offset_days: item.due_offset_days,
     stage_key: stageKeyOf(item.task_template_stage_id),
+    parent_key: item.parent_id === null ? null : String(item.parent_id),
   }))
 }
 

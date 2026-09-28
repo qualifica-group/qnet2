@@ -7,6 +7,7 @@ namespace App\Http\Requests\TaskTemplates;
 use App\DataObjects\TaskTemplates\UpdateTaskTemplateData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateItems;
+use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateItemTree;
 use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateStages;
 use App\Models\TaskTemplate;
 use Illuminate\Contracts\Validation\Validator;
@@ -37,6 +38,7 @@ class UpdateTaskTemplateRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesTaskTemplateItems;
+    use ValidatesTaskTemplateItemTree;
     use ValidatesTaskTemplateStages;
 
     private const int NAME_MAX = 191;
@@ -71,6 +73,7 @@ class UpdateTaskTemplateRequest extends FormRequest
             $this->assertItemIdsBelongToTemplate($validator);
             $this->assertStageIdsBelongToTemplate($validator);
             $this->assertItemStageKeysResolve($validator);
+            $this->assertItemTreeIsValid($validator);
         });
     }
 

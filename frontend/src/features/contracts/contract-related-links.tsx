@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { useAbilities } from '@/features/auth/use-abilities'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
+import { useViewableDomain } from '@/features/modules/use-viewable-domain'
 import type { TableRow } from '@/features/table/types'
 
 /**
@@ -24,8 +24,6 @@ interface RelatedRecordLinkProps {
   id: number
   /** Visible text AND accessible name: the record's own denomination (WCAG 2.5.3). */
   label: string
-  /** Ability gating the affordance; without it the label renders as plain text. */
-  permission: string
 }
 
 /**
@@ -37,17 +35,24 @@ interface RelatedRecordLinkProps {
  * use case of `useModuleOpener`, spec 0067 D-3): the contract being read is
  * never abandoned. Not lifecycle-gated either — a closed contract keeps them.
  *
- * Without the ability the label is still shown, just not actionable: hiding the
- * name of the record this contract belongs to would remove information, not an
- * action.
+ * The record opens in the first module the actor may view (`useViewableDomain`:
+ * an Offerta falls back to Gestione Richieste). With none the label is still
+ * shown, just not actionable: hiding the name of the record this contract
+ * belongs to would remove information, not an action.
  */
-export function RelatedRecordLink({ domain, id, label, permission }: RelatedRecordLinkProps) {
-  const { can } = useAbilities()
-  const opener = useModuleOpener(domain, { forceMode: OPEN_MODE_MODAL })
+export function RelatedRecordLink({ domain, id, label }: RelatedRecordLinkProps) {
+  const targetDomain = useViewableDomain(domain)
 
-  if (!can(permission)) {
+  if (targetDomain === null) {
     return <>{label}</>
   }
+
+  return <RelatedRecordButton domain={targetDomain} id={id} label={label} />
+}
+
+/** Split out so the opener (which requires a registered domain) only mounts once one is resolved. */
+function RelatedRecordButton({ domain, id, label }: RelatedRecordLinkProps) {
+  const opener = useModuleOpener(domain, { forceMode: OPEN_MODE_MODAL })
 
   return (
     <>
@@ -61,12 +66,12 @@ export function RelatedRecordLink({ domain, id, label, permission }: RelatedReco
 
 /** The underlying Offerta, opened in a modal from its own field value. */
 export function ContractQuoteLink({ quoteId, title }: { quoteId: number; title: string }) {
-  return <RelatedRecordLink domain="quotes" id={quoteId} label={title} permission="quotes.view" />
+  return <RelatedRecordLink domain="quotes" id={quoteId} label={title} />
 }
 
 /** The linked Opportunità, opened in a modal from its own field value. */
 export function ContractOpportunityLink({ id, name }: { id: number; name: string }) {
-  return <RelatedRecordLink domain="opportunities" id={id} label={name} permission="opportunities.view" />
+  return <RelatedRecordLink domain="opportunities" id={id} label={name} />
 }
 
 /** Placeholder shown where a contract has no linked opportunity at all. */

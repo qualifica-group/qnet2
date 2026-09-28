@@ -21,6 +21,7 @@ function itemRow(overrides: Partial<TaskTemplateItemFormRow> = {}): TaskTemplate
     task_status_id: null,
     due_offset_days: 2,
     stage_key: null,
+    parent_key: null,
     ...overrides,
   }
 }
@@ -53,8 +54,8 @@ describe('buildCreatePayload (spec 0124/0146)', () => {
       description: 'Used for new clients',
       is_active: true,
       items: [
-        { title: 'First', description: null, estimated_minutes: 30, task_status_id: null, due_offset_days: 2, stage_key: null },
-        { title: 'Second', description: null, estimated_minutes: 30, task_status_id: null, due_offset_days: 2, stage_key: null },
+        { title: 'First', description: null, estimated_minutes: 30, task_status_id: null, due_offset_days: 2, stage_key: null, key: 'row-1', parent_key: null },
+        { title: 'Second', description: null, estimated_minutes: 30, task_status_id: null, due_offset_days: 2, stage_key: null, key: 'row-2', parent_key: null },
       ],
       stages: [],
     })
@@ -68,6 +69,19 @@ describe('buildCreatePayload (spec 0124/0146)', () => {
 
     expect(payload.stages).toEqual([{ key: 'new-stage-1', name: 'Analisi' }])
     expect(payload.items[0].stage_key).toBe('new-stage-1')
+  })
+
+  /** Spec 0172 D-1/D-2: a root's `key` is its own local id, a sub-item's `parent_key` is the root's own — root always first in the array. */
+  it('sends each row own key and its parent_key, root before its subtree', () => {
+    const rows = [
+      itemRow({ id: 'root', title: 'Root' }),
+      itemRow({ id: 'child', title: 'Child', parent_key: 'root' }),
+    ]
+
+    const payload = buildCreatePayload(formValues, rows, [])
+
+    expect(payload.items[0]).toMatchObject({ key: 'root', parent_key: null })
+    expect(payload.items[1]).toMatchObject({ key: 'child', parent_key: 'root' })
   })
 })
 
@@ -87,6 +101,8 @@ describe('buildUpdatePayload (spec 0124/0146, D-1/D-2)', () => {
         task_status_id: null,
         due_offset_days: 2,
         stage_key: null,
+        key: 'row-1',
+        parent_key: null,
       },
     ])
     expect(payload.stages).toEqual([])

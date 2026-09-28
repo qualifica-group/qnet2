@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import { FORM_ROW_TREE_ACCESSORS, MAX_ITEM_DEPTH, computeItemDepths } from '@/features/task-templates/task-template-item-tree'
 import type {
   TaskTemplateItemErrors,
   TaskTemplateItemFormRow,
@@ -13,8 +14,8 @@ export const ITEM_DUE_OFFSET_MAX_DAYS = 3650
 export const ITEM_ESTIMATED_MINUTES_MAX = 1_000_000
 /** Backend `items` array floor (`min:1`). */
 export const ITEMS_MIN_COUNT = 1
-/** Backend `items` array ceiling (`max:100`). */
-export const ITEMS_MAX_COUNT = 100
+/** Backend `items` array ceiling (spec 0172 D-5: 100 -> 500, sub-items included). */
+export const ITEMS_MAX_COUNT = 500
 
 export interface TaskTemplateItemsValidationResult {
   errors: TaskTemplateItemErrors
@@ -43,6 +44,9 @@ export function validateTaskTemplateItemRows(
     return { errors, formError: t('taskTemplates.form.items.tooMany', { max: ITEMS_MAX_COUNT }) }
   }
 
+  const rowById = new Map(rows.map((row) => [row.id, row]))
+  const depths = computeItemDepths(rows, FORM_ROW_TREE_ACCESSORS)
+
   for (const row of rows) {
     const rowErrors: TaskTemplateItemErrors[string] = {}
 
@@ -52,10 +56,16 @@ export function validateTaskTemplateItemRows(
       rowErrors.title = t('taskTemplates.form.items.titleMax')
     }
 
+    // Spec 0172 D-4/AC-006: a sub-item's offset can never push its generated
+    // sub-task's due date past its direct parent's own (checked ONLY once
+    // the row's own range is already valid — no point stacking two messages).
+    const parentRow = row.parent_key !== null ? rowById.get(row.parent_key) : undefined
     if (row.due_offset_days < 0 || row.due_offset_days > ITEM_DUE_OFFSET_MAX_DAYS) {
       rowErrors.due_offset_days = t('taskTemplates.form.items.dueOffsetInvalid', {
         max: ITEM_DUE_OFFSET_MAX_DAYS,
       })
+    } else if (parentRow && row.due_offset_days > parentRow.due_offset_days) {
+      rowErrors.due_offset_days = t('taskTemplates.form.items.dueOffsetExceedsParent')
     }
 
     if (
@@ -63,6 +73,14 @@ export function validateTaskTemplateItemRows(
       (row.estimated_minutes < 0 || row.estimated_minutes > ITEM_ESTIMATED_MINUTES_MAX)
     ) {
       rowErrors.estimated_minutes = t('taskTemplates.form.items.estimatedMinutesInvalid')
+    }
+
+    // Defensive: the "Aggiungi sotto-task" action already hides itself at the
+    // deepest level (AC-018), so this only fires if a row ever gets here some
+    // other way — mirrors the backend's own AC-003 check.
+    const depth = depths.get(row.id) ?? 0
+    if (depth > MAX_ITEM_DEPTH) {
+      rowErrors.parent_key = t('taskTemplates.form.items.tooDeep')
     }
 
     if (Object.keys(rowErrors).length > 0) {
@@ -101,7 +119,7 @@ export function extractItemServerErrors(
       continue
     }
     const index = Number(match[1])
-    const field = match[2] as keyof TaskTemplateItemRowPatch
+    const field = match[2] as keyof TaskTemplateItemRowPatch | 'parent_key'
     const rowId = orderedRowIds[index]
     if (!rowId) {
       continue

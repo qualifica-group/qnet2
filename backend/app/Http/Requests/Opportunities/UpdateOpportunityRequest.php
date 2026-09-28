@@ -50,8 +50,8 @@ use Illuminate\Validation\Rule;
  * `sometimes|nullable` FK, clearable to null like every other unlocked
  * scalar (AC-004).
  *
- * Spec 0057, D-5: `name` is REMOVED entirely — immutable once derived at
- * create (`OPP_{id}`), never part of a PATCH payload.
+ * Spec 0171 (superseding spec 0057, D-5): `name` may be PATCHed; null goes
+ * back to the automatic title (OpportunityNameWriter).
  */
 class UpdateOpportunityRequest extends FormRequest
 {
@@ -76,6 +76,7 @@ class UpdateOpportunityRequest extends FormRequest
         $locked = $this->currentLockedValues($opportunity);
 
         return array_merge([
+            'name' => ['sometimes', 'nullable', 'string', 'max:'.StoreOpportunityRequest::NAME_MAX_LENGTH],
             'registry_id' => $this->lockableRule($locked, 'registry_id', 'registries'),
             'referent_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],

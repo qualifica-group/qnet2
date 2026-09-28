@@ -195,6 +195,7 @@ export function useTableViewGridState(
   const { descriptors: advancedFilterDescriptors, filters: advancedFilters } =
     useTableAdvancedFilters({
       domain,
+      productCategoryId,
       descriptors: config?.advancedFilters,
       applied: config?.appliedAdvancedFilters,
       onApplied: () => {

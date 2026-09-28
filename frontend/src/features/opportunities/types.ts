@@ -226,6 +226,8 @@ export interface OpportunityDetailWithPermissions extends OpportunityDetail {
  * send a value for a field whose derivation is non-null (422 `prohibited`).
  */
 export interface CreateOpportunityPayload {
+  /** Spec 0171: the typed title; `null` (or omitted) = the automatic title derived from the quoted products. */
+  name?: string | null
   /**
    * Required for a manual create (D-4, enforced by the Zod schema); OMITTED
    * entirely (not merely repeated) when creating from a Lead and the value is

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0171-opportunity-editable-title" status="approved" owner="utente" date="2026-09-28">
+
+  <goal>
+    Il form di creazione e modifica dell'opportunita' mostra il campo "Titolo" (`name`), precompilato con il titolo
+    automatico. L'utente puo' sovrascriverlo; un titolo scritto a mano non viene piu' ricalcolato dalle offerte.
+    Rev.2 (2026-09-28): stesso flusso per il titolo dell'offerta; titolo automatico = "codice - prodotti".
+  </goal>
+
+  <context>
+    - Richiesta utente 2026-09-28: "quando si crea o edita un'opportunita' voglio che ci sia anche il titolo con
+      l'input precompilato". Risposte: precompilato "non piu' con prodotti di interesse ma con i prodotti
+      nell'offerta, slegare totalmente prodotti di interesse"; titolo manuale = vince il manuale.
+    - Supera spec 0057 D-5 / AC-008 ("il payload NON accetta piu' `name`") e spec 0077 AC-037 ("name is never a
+      client input") limitatamente al form opportunita'. Il formato del titolo automatico cambia con la rev.2 (D-7).
+    - Rev.2, richiesta utente: "il titolo automatico dell'opportunita' deve essere inizialmente con il codice e poi
+      nomi prodotti. stessa cosa offerta con il codice dell'offerta e i prodotti scelti dell'offerta". Formato
+      scelto: "OPP_12 - ISO 9001 + SOA" / "QUO-0042 - ISO 9001 + SOA"; senza prodotti solo il codice. Offerte
+      esistenti: regola mista.
+    - Fuori scope: modifica inline del titolo in griglia, form Gestione Richieste, conversione lead in blocco.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Nuova colonna `opportunities.name_is_manual` boolean NOT NULL default false. Le righe
+      esistenti restano automatiche.</decision>
+    <decision id="D-2">Il titolo automatico dipende solo dai prodotti delle righe di ricavo delle offerte, mai dai
+      prodotti di interesse.</decision>
+    <decision id="D-3">Scrittura del titolo (create e update, chiave `name` inviata): vuoto/null oppure uguale al
+      titolo automatico corrente = titolo automatico (`name_is_manual = false`); qualunque altro valore = titolo
+      manuale (`name_is_manual = true`). In create senza `name` = automatico.</decision>
+    <decision id="D-4">Il ricalcolo dopo create/update/delete di un'offerta non tocca un titolo manuale.</decision>
+    <decision id="D-5">Precompilazione: in modifica il titolo attuale; in creazione non esiste ancora un'offerta,
+      quindi il campo parte vuoto con un placeholder che spiega il titolo automatico.</decision>
+    <decision id="D-7">Titolo automatico = codice + " - " + nomi distinti dei prodotti delle righe di ricavo
+      (ordine riga, primo vince), separati da " + ", entro 191 caratteri (troncamento su nome intero + " …").
+      Opportunita': codice `OPP_{id}`, prodotti di tutte le sue offerte. Offerta: il suo `code`, prodotti delle sue
+      righe. Senza righe di ricavo: solo il codice. Unico builder condiviso (RevenueProductTitleBuilder).</decision>
+    <decision id="D-8">Offerta: `quotes.title_is_manual` boolean default false; `title` facoltativo in create/update
+      con la stessa regola D-3; ricalcolato dopo ogni create/update dell'offerta (righe gia' scritte) se automatico.
+      Le offerte create dal sistema (conversione lead, Gestione Richieste) nascono con titolo automatico.</decision>
+    <decision id="D-9">Offerte esistenti (regola mista): titolo `OPP_<numero>` (copia fatta dal sistema) =
+      automatico, ogni altro titolo = manuale. I titoli automatici esistenti (opportunita' e offerte) si ricalcolano
+      con `php artisan titles:recalculate` (le migrazioni non importano classi App\).</decision>
+    <decision id="D-6">`name` diventa un campo con permesso (FieldDefinition `name`, text), editabile per chi puo'
+      scrivere l'opportunita'.</decision>
+  </decisions>
+
+  <data_contract>
+    POST /api/opportunities: `name` nullable|string|max:191 (opzionale).
+    PATCH /api/opportunities/{id}: `name` sometimes|nullable|string|max:191.
+    OpportunityResource: invariato (`name` gia' esposto) + `name_is_manual: boolean`.
+    POST /api/quotes: `title` nullable|string|max:191 (prima required). PATCH /api/quotes/{id}: `title`
+    sometimes|nullable|string|max:191. QuoteResource: + `title_is_manual: boolean`.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST senza `name` o con `name` null: `name = OPP_{id}`, `name_is_manual = false`.</criterion>
+    <criterion id="AC-002">POST con `name` = "Titolo X": `name = "Titolo X"`, `name_is_manual = true`.</criterion>
+    <criterion id="AC-003">PATCH con `name` diverso dal titolo automatico: salvato, `name_is_manual = true`.</criterion>
+    <criterion id="AC-004">PATCH con `name` null: torna al titolo automatico calcolato dalle offerte,
+      `name_is_manual = false`.</criterion>
+    <criterion id="AC-005">PATCH con `name` uguale al titolo automatico: resta automatico.</criterion>
+    <criterion id="AC-006">Con titolo manuale, creare/modificare/eliminare un'offerta non cambia `name`; con titolo
+      automatico il ricalcolo della spec 0077 resta invariato.</criterion>
+    <criterion id="AC-007">`name` oltre 191 caratteri: 422.</criterion>
+    <criterion id="AC-008">Il form mostra il campo Titolo in creazione (vuoto, placeholder) e in modifica
+      (precompilato); in modifica il PATCH include `name` solo se cambiato, svuotato = null.</criterion>
+    <criterion id="AC-009">Titolo automatico opportunita': "OPP_{id}" senza offerte, "OPP_{id} - A + B" con righe di
+      ricavo A e B.</criterion>
+    <criterion id="AC-010">POST /api/quotes senza `title`: `title = code` (senza righe) o "code - A + B";
+      `title_is_manual = false`. Con `title` diverso dall'automatico: manuale.</criterion>
+    <criterion id="AC-011">Offerta con titolo automatico: cambiare le righe ricalcola il titolo; titolo manuale:
+      invariato. PATCH `title` null: torna automatico.</criterion>
+    <criterion id="AC-012">Migrazione: `title` "OPP_12" -> automatico; altro titolo -> manuale.</criterion>
+    <criterion id="AC-013">`titles:recalculate` ricalcola solo i titoli automatici di opportunita' e offerte.</criterion>
+  </acceptance_criteria>
+</spec>

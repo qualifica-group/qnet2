@@ -111,7 +111,7 @@ final readonly class UpdateQuoteData
     public static function fromValidated(array $data): self
     {
         return new self(
-            title: array_key_exists('title', $data) ? (string) $data['title'] : null,
+            title: $data['title'] ?? null,
             titleSubmitted: array_key_exists('title', $data),
             workflowStatusId: self::nullableInt($data, 'quote_workflow_status_id'),
             workflowStatusIdSubmitted: array_key_exists('quote_workflow_status_id', $data),
@@ -200,17 +200,14 @@ final readonly class UpdateQuoteData
 
     /**
      * Only the scalar attributes the client actually submitted, ready for a
-     * partial mass-assignment update.
+     * partial mass-assignment update. `title` is NOT here (spec 0171 rev.2):
+     * QuoteTitleWriter owns it (null = back to the automatic title).
      *
      * @return array<string, mixed>
      */
     public function submittedAttributes(): array
     {
         $attributes = [];
-
-        if ($this->titleSubmitted) {
-            $attributes['title'] = $this->title;
-        }
 
         if ($this->commercialIdSubmitted) {
             $attributes['commercial_id'] = $this->commercialId;

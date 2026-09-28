@@ -19,6 +19,14 @@ namespace App\DataObjects\TaskTemplates;
  * "Fase" this row sits in, null for "Senza fase" — validated to match a
  * `stages.*.key` of the SAME request by Http\Requests\TaskTemplates\
  * Concerns\ValidatesTaskTemplateStages before this DTO is trusted.
+ *
+ * `key`/`parentKey` (spec 0172, D-1/D-2): request-scoped identifiers for the
+ * nested sub-item tree carried inside this same flat `items` array — `key`
+ * names this row, `parentKey` is the `key` of a PRECEDING row of the same
+ * request. Both are validated (distinct keys, resolvable parent, depth cap,
+ * no stage on a sub-item, offset within the parent's) by Http\Requests\
+ * TaskTemplates\Concerns\ValidatesTaskTemplateItemTree before this DTO is
+ * trusted.
  */
 final readonly class TaskTemplateItemData
 {
@@ -30,6 +38,8 @@ final readonly class TaskTemplateItemData
         public ?int $taskStatusId,
         public int $dueOffsetDays,
         public ?string $stageKey = null,
+        public ?string $key = null,
+        public ?string $parentKey = null,
     ) {}
 
     /**
@@ -47,6 +57,8 @@ final readonly class TaskTemplateItemData
             taskStatusId: isset($row['task_status_id']) ? (int) $row['task_status_id'] : null,
             dueOffsetDays: (int) ($row['due_offset_days'] ?? 0),
             stageKey: isset($row['stage_key']) ? (string) $row['stage_key'] : null,
+            key: isset($row['key']) ? (string) $row['key'] : null,
+            parentKey: isset($row['parent_key']) ? (string) $row['parent_key'] : null,
         );
     }
 
@@ -64,10 +76,17 @@ final readonly class TaskTemplateItemData
      * same request's `stages` into — resolving `stageKey` against anything
      * else would defeat the FormRequest's own cross-check.
      *
+     * `$itemIdsByKey` (spec 0172, D-1) is the `key => id` map
+     * App\Services\TaskTemplates\TaskTemplateItemWriter is building up AS IT
+     * WRITES the rows of this same request, in submission order — the
+     * FormRequest already guarantees `parentKey` only ever names a PRECEDING
+     * row, so that row's id is always in this map by the time this one runs.
+     *
      * @param  array<string, int>  $stageIdsByKey
+     * @param  array<string, int>  $itemIdsByKey
      * @return array<string, mixed>
      */
-    public function attributes(int $sortOrder, array $stageIdsByKey = []): array
+    public function attributes(int $sortOrder, array $stageIdsByKey = [], array $itemIdsByKey = []): array
     {
         return [
             'title' => $this->title,
@@ -76,6 +95,7 @@ final readonly class TaskTemplateItemData
             'due_offset_days' => $this->dueOffsetDays,
             'sort_order' => $sortOrder,
             'task_template_stage_id' => $this->stageKey === null ? null : ($stageIdsByKey[$this->stageKey] ?? null),
+            'parent_id' => $this->parentKey === null ? null : ($itemIdsByKey[$this->parentKey] ?? null),
         ];
     }
 }

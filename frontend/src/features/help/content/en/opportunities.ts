@@ -26,6 +26,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Section', 'Fields'],
           rows: [
+            ['Title', '**Title** (optional)'],
             ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**'],
             ['Classification', '**Source**, **Operational site**'],
             ['Attribution', '**Reporter**, **Assigned rewards**'],
@@ -34,6 +35,10 @@ const guide: HelpGuide = {
             ['Planning', '**Start date**, **Expected close date**, **Estimated value**, **Success probability (%)**'],
             ['General notes', 'Free-form text'],
           ],
+        },
+        {
+          type: 'tip',
+          text: 'The **Title** is suggested automatically: the opportunity code followed by the products on the revenue lines of its quotes, not the products of interest (for example OPP_12 - ISO 9001 + SOA); with no products yet it is just the code. When editing, the field is prefilled: a title you type stays yours, even when the quotes change; clear the field to go back to the automatic title.',
         },
       ],
     },

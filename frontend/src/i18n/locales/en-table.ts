@@ -32,6 +32,7 @@ export const table = {
   resetFilters: 'Reset filters',
   filtersReset: 'Table filters cleared.',
   filtersError: 'Unable to reset the table filters.',
+  filtersSaveError: 'Unable to save the table filters.',
   filterValuesTruncated:
     'Showing only the first matching values. Use a filter condition to narrow further.',
   textFilters: 'Text Filters',

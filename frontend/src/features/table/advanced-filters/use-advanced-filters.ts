@@ -66,6 +66,8 @@ function computeActiveValues(
 
 interface UseAdvancedFiltersArgs {
   domain: string
+  /** The category tab the table is scoped to (spec 0064), so a save refreshes that tab's cached config. */
+  productCategoryId?: number
   /** The domain's advanced filter catalog (`TableConfig.advancedFilters`), ordered by `order`. */
   descriptors: AdvancedFilterDescriptor[]
   /** Persisted state replayed from `TableConfig.appliedAdvancedFilters`. */
@@ -134,13 +136,14 @@ export interface UseAdvancedFiltersResult {
  */
 export function useAdvancedFilters({
   domain,
+  productCategoryId,
   descriptors,
   applied: appliedFromServer,
   onApplied,
   override,
   onOverrideCleared,
 }: UseAdvancedFiltersArgs): UseAdvancedFiltersResult {
-  const saveFilters = useSaveTableFilters(domain)
+  const saveFilters = useSaveTableFilters(domain, { productCategoryId })
 
   const defaults = useMemo(() => buildDefaults(descriptors), [descriptors])
   const initial = useMemo(

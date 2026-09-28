@@ -22,9 +22,12 @@ export interface TaskTemplateStageItemRowProps {
   containerId: string
   errors: TaskTemplateItemErrors[string]
   stagedFiles: File[]
+  /** Spec 0172 AC-018: hidden once the row already sits 3 levels below a root. */
+  canAddSubtask: boolean
   moveOptions: TaskTemplateStageMoveOption[]
   onUpdateRow: (id: string, patch: TaskTemplateItemRowPatch) => void
   onRemove: (id: string) => void
+  onAddSubtask: (id: string) => void
   onAddStagedFiles: (rowId: string, files: File[]) => void
   onRemoveStagedFile: (rowId: string, index: number) => void
   /** Moves the row to the end of the target group — the keyboard-accessible equivalent of a cross-fase pointer drop (AC-031). */
@@ -47,9 +50,11 @@ export function TaskTemplateStageItemRow({
   containerId,
   errors,
   stagedFiles,
+  canAddSubtask,
   moveOptions,
   onUpdateRow,
   onRemove,
+  onAddSubtask,
   onAddStagedFiles,
   onRemoveStagedFile,
   onMoveToStage,
@@ -104,8 +109,10 @@ export function TaskTemplateStageItemRow({
         row={row}
         errors={errors}
         stagedFiles={stagedFiles}
+        canAddSubtask={canAddSubtask}
         onUpdateRow={onUpdateRow}
         onRemove={onRemove}
+        onAddSubtask={onAddSubtask}
         onAddStagedFiles={onAddStagedFiles}
         onRemoveStagedFile={onRemoveStagedFile}
         disabled={disabled}

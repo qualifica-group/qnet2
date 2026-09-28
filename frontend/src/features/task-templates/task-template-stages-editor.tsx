@@ -38,6 +38,7 @@ export interface TaskTemplateStagesEditorProps {
   onAddItem: () => void
   onUpdateItem: (id: string, patch: TaskTemplateItemRowPatch) => void
   onRemoveItem: (id: string) => void
+  onAddSubtaskItem: (parentId: string) => void
   /** `targetContainerId` is a stage row's own `id`, or the "Senza fase" sentinel. */
   onMoveItem: (rowId: string, targetContainerId: string, targetIndex: number) => void
   onAddStagedFiles: (rowId: string, files: File[]) => void
@@ -69,6 +70,7 @@ export function TaskTemplateStagesEditor({
   onAddItem,
   onUpdateItem,
   onRemoveItem,
+  onAddSubtaskItem,
   onMoveItem,
   onAddStagedFiles,
   onRemoveStagedFile,
@@ -92,7 +94,7 @@ export function TaskTemplateStagesEditor({
 
   const moveItemToEndOfContainer = (rowId: string, targetContainerId: string) => {
     const targetGroup = groups.find((group) => group.containerId === targetContainerId)
-    onMoveItem(rowId, targetContainerId, targetGroup ? targetGroup.rows.length : 0)
+    onMoveItem(rowId, targetContainerId, targetGroup ? targetGroup.rootRows.length : 0)
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -116,9 +118,11 @@ export function TaskTemplateStagesEditor({
       return
     }
 
-    // Step 2b: an item row dragged over another row, or over an empty
-    // container's drop zone, moves it there — within its own group (pure
-    // reorder) or across groups (retags `stage_key`, see `onMoveItem`).
+    // Step 2b: a ROOT row (only roots are draggable, spec 0172: sub-items are
+    // out of scope) dragged over another root, or over an empty container's
+    // drop zone, moves it — and its whole subtree — there: within its own
+    // group (pure reorder) or across groups (retags `stage_key`, see
+    // `onMoveItem`).
     if (active.data.current?.type === 'item') {
       const overData = over.data.current
       const targetContainerId = overData?.type === 'item' || overData?.type === 'container'
@@ -130,8 +134,8 @@ export function TaskTemplateStagesEditor({
       const targetGroup = groups.find((group) => group.containerId === targetContainerId)
       const targetIndex =
         overData?.type === 'item' && targetGroup
-          ? targetGroup.rows.findIndex((row) => row.id === String(over.id))
-          : (targetGroup?.rows.length ?? 0)
+          ? targetGroup.rootRows.findIndex((row) => row.id === String(over.id))
+          : (targetGroup?.rootRows.length ?? 0)
       onMoveItem(String(active.id), targetContainerId, targetIndex === -1 ? 0 : targetIndex)
     }
   }
@@ -153,6 +157,7 @@ export function TaskTemplateStagesEditor({
                 onRemoveStage={onRemoveStage}
                 onUpdateRow={onUpdateItem}
                 onRemoveRow={onRemoveItem}
+                onAddSubtaskRow={onAddSubtaskItem}
                 onAddStagedFiles={onAddStagedFiles}
                 onRemoveStagedFile={onRemoveStagedFile}
                 onMoveToStage={moveItemToEndOfContainer}

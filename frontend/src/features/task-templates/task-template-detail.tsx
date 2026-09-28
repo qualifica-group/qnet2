@@ -20,27 +20,54 @@ import { RichTextContent } from '@/components/rich-text/rich-text-content'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
 import { TASK_TEMPLATE_ITEM_ATTACHABLE_ALIAS } from '@/features/task-templates/types'
+import { cn } from '@/lib/utils'
 import type { TaskTemplateDetailWithPermissions, TaskTemplateItem } from '@/features/task-templates/types'
 
-/** One "Fase" group of the read-only detail (spec 0146 D-2), `stage: null` for "Senza fase" — mirrors the editor's own grouping, but off `task_template_stage_id` directly, no client key involved. */
+/** One item of the read-only detail's stage group, with its nesting `depth` (spec 0172 D-1: 0 = root). */
+interface TaskTemplateDetailEntry {
+  item: TaskTemplateItem
+  depth: number
+}
+
+/** One "Fase" group of the read-only detail (spec 0146 D-2), `stage: null` for "Senza fase" — mirrors the editor's own grouping, but off `task_template_stage_id`/`parent_id` directly, no client key involved. */
 interface TaskTemplateStageItemsGroup {
   stage: { id: number; name: string } | null
-  items: TaskTemplateItem[]
+  entries: TaskTemplateDetailEntry[]
 }
 
-/** Groups the (already `sort_order`-ordered) items by their stage, in stage order, "Senza fase" last. */
+/**
+ * Groups the (already `sort_order`-ordered, parent-before-child) items by
+ * their EFFECTIVE stage: a root item groups by its own
+ * `task_template_stage_id`, a sub-item (whose OWN stage is always `null`,
+ * spec 0172 D-3) follows the group of the root it currently sits under —
+ * mirrors the editor's `groupItemRowsByStage`.
+ */
 function groupItemsByStage(taskTemplate: TaskTemplateDetailWithPermissions): TaskTemplateStageItemsGroup[] {
-  const groups: TaskTemplateStageItemsGroup[] = taskTemplate.stages.map((stage) => ({ stage, items: [] }))
-  const unassigned: TaskTemplateStageItemsGroup = { stage: null, items: [] }
+  const groups: TaskTemplateStageItemsGroup[] = taskTemplate.stages.map((stage) => ({ stage, entries: [] }))
+  const unassigned: TaskTemplateStageItemsGroup = { stage: null, entries: [] }
   const byStageId = new Map(groups.map((group) => [group.stage?.id, group]))
 
+  let currentGroup = unassigned
+  const depthById = new Map<number, number>()
+
   for (const item of taskTemplate.items) {
-    const group = (item.task_template_stage_id !== null ? byStageId.get(item.task_template_stage_id) : null) ?? unassigned
-    group.items.push(item)
+    let depth: number
+    if (item.parent_id === null) {
+      currentGroup =
+        (item.task_template_stage_id !== null ? byStageId.get(item.task_template_stage_id) : null) ?? unassigned
+      depth = 0
+    } else {
+      depth = (depthById.get(item.parent_id) ?? 0) + 1
+    }
+    depthById.set(item.id, depth)
+    currentGroup.entries.push({ item, depth })
   }
 
-  return [...groups, unassigned].filter((group) => group.items.length > 0 || group.stage !== null)
+  return [...groups, unassigned].filter((group) => group.entries.length > 0 || group.stage !== null)
 }
+
+/** One Tailwind class per nesting `depth` (1..`MAX_ITEM_DEPTH`) — a literal lookup so Tailwind's static scan keeps finding them (mirrors `TaskTemplateSubItemRow`'s own). */
+const ITEM_INDENT_CLASS: Record<number, string> = { 1: 'ml-4', 2: 'ml-8', 3: 'ml-12' }
 
 interface TaskTemplateDetailViewProps {
   taskTemplate: TaskTemplateDetailWithPermissions
@@ -109,8 +136,11 @@ export function TaskTemplateDetailView({ taskTemplate, onEdit }: TaskTemplateDet
                         {group.stage?.name ?? t('taskTemplates.form.stages.noStage')}
                       </p>
                       <ul className="flex flex-col gap-3">
-                        {group.items.map((item) => (
-                          <li key={item.id} className="rounded-lg border bg-card p-3">
+                        {group.entries.map(({ item, depth }) => (
+                          <li
+                            key={item.id}
+                            className={cn('rounded-lg border bg-card p-3', ITEM_INDENT_CLASS[depth])}
+                          >
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <p className="text-sm font-medium text-foreground">{item.title}</p>
                               {item.task_status ? (

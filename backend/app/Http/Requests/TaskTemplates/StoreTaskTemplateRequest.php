@@ -7,6 +7,7 @@ namespace App\Http\Requests\TaskTemplates;
 use App\DataObjects\TaskTemplates\CreateTaskTemplateData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateItems;
+use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateItemTree;
 use App\Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateStages;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +30,7 @@ class StoreTaskTemplateRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesTaskTemplateItems;
+    use ValidatesTaskTemplateItemTree;
     use ValidatesTaskTemplateStages;
 
     private const int NAME_MAX = 191;
@@ -58,6 +60,7 @@ class StoreTaskTemplateRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
             $this->assertItemStageKeysResolve($validator);
+            $this->assertItemTreeIsValid($validator);
         });
     }
 

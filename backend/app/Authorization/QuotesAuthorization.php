@@ -56,7 +56,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
     {
         return [
             new FieldDefinition('code', 'text'),
-            new FieldDefinition('title', 'text', mandatory: true),
+            new FieldDefinition('title', 'text'),
             new FieldDefinition('opportunity_id', 'select', mandatory: true),
             new FieldDefinition('quote_workflow_status_id', 'select', mandatory: true),
             new FieldDefinition('commercial_id', 'select'),
@@ -103,7 +103,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             // Writable only on create (spec 0025/D-13): permanently readonly
             // once a $model exists, regardless of write ability.
             'code' => $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
-            'title' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'title' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Immutable once persisted (AC-025): readonly whenever a $model
             // already exists, regardless of write ability.
             'opportunity_id' => $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),

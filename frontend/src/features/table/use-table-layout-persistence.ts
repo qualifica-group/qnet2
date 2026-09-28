@@ -69,7 +69,7 @@ export function useTableLayoutPersistence({
   const savePreferences = useSaveTablePreferences(domain, scope)
   const resetPreferences = useResetTablePreferences(domain)
   const saveFilters = useSaveTableFilters(domain, scope)
-  const resetFilters = useResetTableFilters(domain)
+  const resetFilters = useResetTableFilters(domain, scope)
 
   const [layoutVersion, setLayoutVersion] = useState(0)
 

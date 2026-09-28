@@ -18,6 +18,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * null for "Senza fase" — a plain column, always present, no eager load
  * needed.
  *
+ * `parent_id` (spec 0172, D-1/D-2): the row this one sits directly under,
+ * null for a root row — a plain column, no eager load needed; the client
+ * rebuilds the tree from this flat, sort_order-ordered array.
+ *
  * `attachments` reuses AttachmentResource as-is: a superset of the
  * data_contract's `{id, original_name, mime_type, extension, size,
  * created_at}` shape, carrying `download_url`/`view_url` the row's own file
@@ -52,6 +56,7 @@ class TaskTemplateItemResource extends JsonResource
             'due_offset_days' => $this->due_offset_days,
             'sort_order' => $this->sort_order,
             'task_template_stage_id' => $this->task_template_stage_id,
+            'parent_id' => $this->parent_id,
             'attachments' => AttachmentResource::collection($this->whenLoaded(
                 'attachments',
                 fn () => $this->attachments->where('collection', '!=', RichText::ATTACHMENT_COLLECTION)->values(),

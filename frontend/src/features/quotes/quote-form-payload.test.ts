@@ -108,6 +108,10 @@ describe('buildCreatePayload', () => {
     expect(payload.code).toBeUndefined()
   })
 
+  it('omits a blank title, so the server derives the automatic one (spec 0171 rev.2)', () => {
+    expect(buildCreatePayload(formValues({ title: '  ' }))).not.toHaveProperty('title')
+  })
+
   it('sends opportunity_id on create', () => {
     const payload = buildCreatePayload(formValues({ opportunity_id: 42 }))
     expect(payload.opportunity_id).toBe(42)
@@ -202,6 +206,10 @@ describe('buildUpdatePayload', () => {
   it('includes only the field that changed', () => {
     const payload = buildUpdatePayload(formValues({ title: 'Titolo aggiornato' }), detail())
     expect(payload).toEqual({ title: 'Titolo aggiornato' })
+  })
+
+  it('sends null for a cleared title, back to the automatic one (spec 0171 rev.2)', () => {
+    expect(buildUpdatePayload(formValues({ title: '' }), detail())).toEqual({ title: null })
   })
 
   it('includes commercial_id only when it changed from the original', () => {

@@ -89,7 +89,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'dalla scheda del lead, con **Crea opportunità** (poi il pulsante diventa **Vai all\'opportunità**);',
+            'dalla scheda del lead, con **Crea opportunità** (poi il pulsante diventa **Vai all\'opportunità**, visibile se hai il permesso di vedere le opportunità);',
             'dalla tabella, selezionando più lead e cliccando **Converti in opportunità**;',
             'alla fine di un import, con la conversione automatica.',
           ],

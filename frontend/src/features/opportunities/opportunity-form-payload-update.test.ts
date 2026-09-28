@@ -299,4 +299,18 @@ describe('buildUpdatePayload', () => {
       expect(payload).toEqual({ manager_slots: [] })
     })
   })
+
+  describe('title (spec 0171)', () => {
+    it('sends a changed title, trimmed', () => {
+      expect(buildUpdatePayload(values({ name: ' New title ' }), original())).toEqual({ name: 'New title' })
+    })
+
+    it('sends null for a cleared title (back to the automatic one)', () => {
+      expect(buildUpdatePayload(values({ name: '' }), original())).toEqual({ name: null })
+    })
+
+    it('omits a title that only differs by surrounding spaces', () => {
+      expect(buildUpdatePayload(values({ name: 'Enterprise deal  ' }), original())).toEqual({})
+    })
+  })
 })

@@ -36,11 +36,10 @@ namespace App\DataObjects\Opportunities;
  * working-state override any more, the configurator having moved onto the
  * Offerta (-> Quote).
  *
- * Spec 0057, D-5: `name` is REMOVED entirely — it is no longer a client
- * input anywhere (form or request-management create). OpportunityService
- * derives it as `OPP_{id}` right after the insert, mirroring
- * RegistryService's own placeholder-then-derive pattern for `registries.name`.
- *
+ * Spec 0171: `name` is the optional title typed by the user (null = the
+ * automatic title), written post-insert by OpportunityNameWriter — never
+ * mass-assigned. Appended AT THE END for the same ArgumentCountError reason
+ * as `operationalSiteId`. *
  * User directive 2026-07-27: `generalNotes` ("Note generali") is a plain
  * nullable scalar, prefilled from the lead's own `notes` at conversion but
  * never BR-1-locked — appended AT THE END for the same ArgumentCountError
@@ -81,6 +80,7 @@ final readonly class CreateOpportunityData
         public ?int $operationalSiteId = null,
         public ?array $rewards = null,
         public ?string $generalNotes = null,
+        public ?string $name = null,
     ) {}
 
     /**
@@ -110,6 +110,7 @@ final readonly class CreateOpportunityData
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
             generalNotes: $data['general_notes'] ?? null,
+            name: $data['name'] ?? null,
         );
     }
 
@@ -173,8 +174,8 @@ final readonly class CreateOpportunityData
      * The opportunity's own scalar attributes for a mass-assignment create
      * (framework array boundary). `managerSlots`/`productLines` are NOT
      * included: they are to-many references synced separately by
-     * OpportunityService. `name` is NOT included either (spec 0057, D-5): it
-     * is derived post-insert by OpportunityService, never mass-assigned here.
+     * OpportunityService. `name` is NOT included either (spec 0171): it is
+     * written post-insert by OpportunityNameWriter, never mass-assigned here.
      *
      * @return array<string, mixed>
      */

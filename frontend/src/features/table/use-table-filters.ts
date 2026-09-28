@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import {
   resetTableFilters,
   saveTableFilters,
   type SaveTableFiltersPayload,
 } from '@/features/table/api'
-import { tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
+import { removeOtherScopeConfigs, tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
 import type { TableConfig } from '@/features/table/types'
 
 /**
@@ -20,25 +22,40 @@ import type { TableConfig } from '@/features/table/types'
  * is ALSO sent to the server, so the config written back into that per-tab
  * entry is the scoped shape — otherwise the response's unscoped column set
  * would drop the tab's `attr.*` columns out of the live grid.
+ *
+ * The filters are stored ONCE per domain, so every OTHER scope's cached config
+ * is now outdated too: they are dropped (see `removeOtherScopeConfigs`) so
+ * switching tab never shows, or queries with, the previous filters.
  */
 export function useSaveTableFilters(domain: string, scope?: TableConfigScope) {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: (payload: SaveTableFiltersPayload) =>
       saveTableFilters(domain, payload, scope?.productCategoryId),
     onSuccess: (config: TableConfig) => {
+      removeOtherScopeConfigs(queryClient, domain, scope)
       queryClient.setQueryData(tableKeys.config(domain, scope), config)
+    },
+    // A rejected save (e.g. a validation 422) must not pass silently: the
+    // filters would otherwise vanish on the next reload with no warning.
+    onError: () => {
+      toast.error(t('table.filtersSaveError'))
     },
   })
 }
 
 /**
- * Resets the user's saved filters for a domain. The caller refetches the config
- * and remounts the grid so the filters clear and the SSRM re-queries unfiltered.
+ * Resets the user's saved filters for a domain. The caller refetches the
+ * config of its own `scope` and remounts the grid so the filters clear and the
+ * SSRM re-queries unfiltered; every other scope's entry is dropped.
  */
-export function useResetTableFilters(domain: string) {
+export function useResetTableFilters(domain: string, scope?: TableConfigScope) {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: () => resetTableFilters(domain),
+    onSuccess: () => removeOtherScopeConfigs(queryClient, domain, scope),
   })
 }

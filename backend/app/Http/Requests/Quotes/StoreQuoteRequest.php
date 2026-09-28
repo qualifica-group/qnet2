@@ -77,7 +77,8 @@ class StoreQuoteRequest extends FormRequest
     {
         return array_merge([
             'code' => ['nullable', 'string', 'max:32', Rule::unique('quotes', 'code')],
-            'title' => ['required', 'string', 'max:191'],
+            // Spec 0171 rev.2: optional, null = the automatic `<code> - <products>` title.
+            'title' => ['nullable', 'string', 'max:191'],
             'opportunity_id' => ['required', 'integer', Rule::exists('opportunities', 'id')],
             'quote_workflow_status_id' => ['nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
             // Spec 0083, T-04, AC-023: the note a `requires_note` destination

@@ -36,6 +36,7 @@ export function TaskTemplateFormBody({ mode, onSuccess, onCancel }: TaskTemplate
     itemErrors,
     itemRows,
     addItemRow,
+    addSubtaskItemRow,
     removeItemRow,
     updateItemRow,
     moveItemRow,
@@ -124,6 +125,7 @@ export function TaskTemplateFormBody({ mode, onSuccess, onCancel }: TaskTemplate
                 onAddItem={addItemRow}
                 onUpdateItem={updateItemRow}
                 onRemoveItem={removeItemRow}
+                onAddSubtaskItem={addSubtaskItemRow}
                 onMoveItem={moveItemRow}
                 onAddStagedFiles={addStagedRowFiles}
                 onRemoveStagedFile={removeStagedRowFile}

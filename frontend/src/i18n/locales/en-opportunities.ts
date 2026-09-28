@@ -115,6 +115,11 @@ export const opportunities = {
         description: 'Free-form notes about the opportunity.',
       },
     },
+    name: 'Title',
+    namePlaceholder: 'Automatic: code and quoted products',
+    nameHint:
+      'Suggested as the opportunity code followed by the products on the revenue lines of its quotes, not the products of interest (e.g. OPP_12 - ISO 9001 + SOA). Once edited it stays yours; clear the field to go back to the automatic title.',
+    nameMax: 'The title must be at most {{max}} characters.',
     registry: 'Registry',
     registrySearch: 'Search registries…',
     registryRequired: 'Registry is required.',

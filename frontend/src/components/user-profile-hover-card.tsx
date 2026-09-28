@@ -13,19 +13,33 @@ export interface UserProfileSummary {
   avatar_url?: string | null
 }
 
+/** Avatar + name row shared by the clickable action and its read-only fallback. */
+const HOVER_ROW_CLASS = 'flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm'
+
 /**
  * The clickable row shown inside a user's hover card: avatar + name + chevron.
  * Clicking (mouse or keyboard) opens the shared read-only user detail Sheet.
+ * Without `users.view` it is the same row, not actionable.
  */
 export function UserProfileHoverAction({ user }: { user: UserProfileSummary }) {
   const { t } = useTranslation()
-  const { openUserDetail } = useUserDetailSheet()
+  const { openUserDetail, canOpenUserDetail } = useUserDetailSheet()
+
+  if (!canOpenUserDetail) {
+    return (
+      <div className={HOVER_ROW_CLASS}>
+        <UserAvatar name={user.name} src={user.avatar_url ?? null} size="sm" className="shrink-0" />
+        <span className="truncate font-medium">{user.name}</span>
+      </div>
+    )
+  }
+
   return (
     <button
       type="button"
       onClick={() => openUserDetail(user.id)}
       aria-label={t('common.viewProfile', { name: user.name })}
-      className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(HOVER_ROW_CLASS, 'outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring')}
     >
       <UserAvatar name={user.name} src={user.avatar_url ?? null} size="sm" className="shrink-0" />
       <span className="truncate font-medium">{user.name}</span>
@@ -42,7 +56,9 @@ export function UserProfileHoverAction({ user }: { user: UserProfileSummary }) {
  *
  * Shared by the table's person columns and by the notes mentions: both need the
  * same hover-to-open-profile affordance, so it lives here rather than inside
- * either feature.
+ * either feature. Without `users.view` the person is shown, not linked: no
+ * button, no hover card (user directive 2026-09-28); the name stays reachable
+ * as a tooltip for avatar-only triggers.
  */
 export function UserProfileHoverCard({
   user,
@@ -54,7 +70,16 @@ export function UserProfileHoverCard({
   children: ReactNode
 }) {
   const { t } = useTranslation()
-  const { openUserDetail } = useUserDetailSheet()
+  const { openUserDetail, canOpenUserDetail } = useUserDetailSheet()
+
+  if (!canOpenUserDetail) {
+    return (
+      <span title={user.name} className={cn('flex items-center gap-2 overflow-hidden', triggerClassName)}>
+        {children}
+      </span>
+    )
+  }
+
   return (
     <HoverCard>
       <HoverCardTrigger asChild>

@@ -115,6 +115,11 @@ export const opportunities = {
         description: "Annotazioni libere sull'opportunità.",
       },
     },
+    name: 'Titolo',
+    namePlaceholder: 'Automatico: codice e prodotti delle offerte',
+    nameHint:
+      "Proposto come codice dell'opportunità seguito dai prodotti delle righe di ricavo delle offerte, non dai prodotti di interesse (es. OPP_12 - ISO 9001 + SOA). Se lo modifichi resta il tuo; svuota il campo per tornare al titolo automatico.",
+    nameMax: 'Il titolo deve avere al massimo {{max}} caratteri.',
     registry: 'Anagrafica',
     registrySearch: 'Cerca anagrafiche…',
     registryRequired: "L'anagrafica è obbligatoria.",

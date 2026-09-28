@@ -26,6 +26,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Sezione', 'Campi'],
           rows: [
+            ['Titolo', '**Titolo** (facoltativo)'],
             ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**'],
             ['Classificazione', '**Fonte**, **Sede operativa**'],
             ['Attribuzione', '**Segnalatore**, **Buoni assegnati**'],
@@ -34,6 +35,10 @@ const guide: HelpGuide = {
             ['Pianificazione', '**Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
             ['Note generali', 'Testo libero'],
           ],
+        },
+        {
+          type: 'tip',
+          text: "Il **Titolo** è proposto in automatico: il codice dell'opportunità seguito dai prodotti delle righe di ricavo delle offerte, non dai prodotti di interesse (per esempio OPP_12 - ISO 9001 + SOA); finché non ci sono prodotti vale solo il codice. In modifica il campo è precompilato: se scrivi un titolo tuo resta quello, anche quando cambiano le offerte; svuota il campo per tornare al titolo automatico.",
         },
       ],
     },

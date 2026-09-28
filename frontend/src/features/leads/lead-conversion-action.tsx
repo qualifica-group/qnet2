@@ -28,7 +28,9 @@ interface LeadConversionActionProps {
  * No fetch of its own: the card already holds the lead, so the button reads the
  * relation it was handed. The click converts the lead directly (spec 0140, no
  * Opportunity form), then invalidates THIS lead's detail query, so the card
- * refetches and the button flips to "Vai all'opportunita'".
+ * refetches and the button flips to "Vai all'opportunita'", shown only to an
+ * actor who may view opportunities (user directive 2026-09-28: no link to a
+ * record the actor cannot open).
  *
  * `secondary`, not `outline`: the identity band IS `bg-card`, which is exactly
  * what `outline` fills itself with — the button would carry the surface it sits
@@ -44,7 +46,11 @@ export function LeadConversionAction({ leadId, opportunity }: LeadConversionActi
   })
 
   if (opportunity) {
-    return <GoToOpportunityAction opportunityId={opportunity.id} />
+    return (
+      <Can permission={`${OPPORTUNITIES_DOMAIN}.view`}>
+        <GoToOpportunityAction opportunityId={opportunity.id} />
+      </Can>
+    )
   }
 
   return (

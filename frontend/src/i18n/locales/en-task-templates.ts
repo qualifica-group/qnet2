@@ -79,6 +79,7 @@ export const taskTemplates = {
     },
     items: {
       add: 'Add row',
+      addSubtask: 'Add sub-task',
       remove: 'Remove row',
       dragHandleLabel: 'Reorder row',
       title: 'Title',
@@ -101,6 +102,8 @@ export const taskTemplates = {
       titleRequired: 'Title is required.',
       titleMax: 'Title may contain at most 191 characters.',
       dueOffsetInvalid: 'Due must be a number of days between 0 and {{max}}.',
+      dueOffsetExceedsParent: 'A sub-task’s due date cannot be later than its parent row’s own.',
+      tooDeep: 'This row exceeds the 3 sub-task levels allowed below a root row.',
       estimatedMinutesInvalid: 'The estimated time is not valid.',
       hasErrors: 'Fix the highlighted rows before saving.',
     },

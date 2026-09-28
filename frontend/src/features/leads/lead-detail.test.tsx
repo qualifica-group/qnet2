@@ -141,6 +141,8 @@ describe('LeadDetailView — linked records', () => {
    * duplication that made the old "links" group read as foreign here.
    */
   it('links the generated opportunity exactly once, from the identity band', () => {
+    // The CTA is a link only for an actor who may view opportunities (user directive 2026-09-28).
+    canMock.mockImplementation((permission) => permission === 'opportunities.view')
     renderDetail(lead({ opportunity: { id: 42, name: 'Deal Rossi' } }))
 
     const opportunityLinks = screen

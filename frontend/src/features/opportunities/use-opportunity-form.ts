@@ -36,6 +36,7 @@ import { managerSlotsFromRefs, padManagerSlots } from '@/lib/utils'
 
 /** Server-side field names mapped onto the form for 422 handling. `lead_id` is never an RHF field (spec 0040 MT-6 handles it separately). */
 const SERVER_ERROR_FIELDS = [
+  'name',
   'registry_id',
   'referent_id',
   'commercial_id',
@@ -158,6 +159,7 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
     if (mode.type === 'edit') {
       const { opportunity } = mode
       return {
+        name: opportunity.name,
         registry_id: opportunity.registry_id,
         referent_id: opportunity.referent_id,
         commercial_id: opportunity.commercial_id,
@@ -179,6 +181,9 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
       }
     }
     const empty: OpportunityFormValues = {
+      // Spec 0171, D-5: no quote exists yet, so there is no automatic title to
+      // prefill — blank lets the server derive it.
+      name: '',
       registry_id: null,
       referent_id: null,
       commercial_id: null,

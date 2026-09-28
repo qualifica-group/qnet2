@@ -19,6 +19,7 @@ function row(overrides: Partial<TaskTemplateItemFormRow> = {}): TaskTemplateItem
     task_status_id: null,
     due_offset_days: 0,
     stage_key: null,
+    parent_key: null,
     ...overrides,
   }
 }
@@ -59,6 +60,38 @@ describe('validateTaskTemplateItemRows (spec 0124)', () => {
   it('accepts a null estimated_minutes', () => {
     const result = validateTaskTemplateItemRows([row({ estimated_minutes: null })], i18n.t)
     expect(result.errors['new-1']).toBeUndefined()
+  })
+
+  /** Spec 0172 D-4/AC-006: a sub-item's due_offset_days can never exceed its direct parent's own. */
+  it('reports a per-row error when a sub-item exceeds its parent due_offset_days', () => {
+    const rows = [
+      row({ id: 'root', due_offset_days: 3 }),
+      row({ id: 'child', parent_key: 'root', due_offset_days: 4 }),
+    ]
+    const result = validateTaskTemplateItemRows(rows, i18n.t)
+    expect(result.errors.child.due_offset_days).toBeDefined()
+  })
+
+  it('accepts a sub-item whose due_offset_days equals its parent', () => {
+    const rows = [
+      row({ id: 'root', due_offset_days: 3 }),
+      row({ id: 'child', parent_key: 'root', due_offset_days: 3 }),
+    ]
+    const result = validateTaskTemplateItemRows(rows, i18n.t)
+    expect(result.errors.child).toBeUndefined()
+  })
+
+  /** Spec 0172 D-1/AC-003: a 4th level below a root is invalid (the UI already hides the action that would create it). */
+  it('reports a per-row parent_key error for a row past the 3rd level below a root', () => {
+    const rows = [
+      row({ id: 'root' }),
+      row({ id: 'child', parent_key: 'root' }),
+      row({ id: 'grandchild', parent_key: 'child' }),
+      row({ id: 'great-grandchild', parent_key: 'grandchild' }),
+      row({ id: 'too-deep', parent_key: 'great-grandchild' }),
+    ]
+    const result = validateTaskTemplateItemRows(rows, i18n.t)
+    expect(result.errors['too-deep'].parent_key).toBeDefined()
   })
 })
 

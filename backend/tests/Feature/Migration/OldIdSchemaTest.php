@@ -10,6 +10,7 @@ use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
 use App\Models\Tag;
+use App\Models\TaskTemplate;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\QueryException;
@@ -34,6 +35,7 @@ dataset('old_id_tables', [
     'sources' => ['sources'],
     'tags' => ['tags'],
     'sectors' => ['sectors'],
+    'task_templates' => ['task_templates'],
 ]);
 
 /**
@@ -54,6 +56,7 @@ function oldIdFactoryFor(string $table): Factory
         'sources' => Source::factory(),
         'tags' => Tag::factory(),
         'sectors' => Sector::factory(),
+        'task_templates' => TaskTemplate::factory(),
     };
 }
 

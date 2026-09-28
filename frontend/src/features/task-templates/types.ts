@@ -36,7 +36,7 @@ export interface TaskTemplateStage {
   sort_order: number
 }
 
-/** One row of a template, as returned by GET/POST/PUT/PATCH (ordered by `sort_order`). */
+/** One row of a template, as returned by GET/POST/PUT/PATCH (ordered by `sort_order`, parent always before its children). */
 export interface TaskTemplateItem {
   id: number
   title: string
@@ -46,8 +46,10 @@ export interface TaskTemplateItem {
   task_status: TaskTemplateItemStatusRef | null
   due_offset_days: number
   sort_order: number
-  /** The "Fase" this row sits in (spec 0146 D-2), `null` for "Senza fase". */
+  /** The "Fase" this row sits in (spec 0146 D-2), `null` for "Senza fase". A sub-item (spec 0172 D-3) always has `null` here — it follows its root's own fase. */
   task_template_stage_id: number | null
+  /** The parent row's own `id`, `null` for a root item (spec 0172 D-1, up to 3 levels below a root). */
+  parent_id: number | null
   attachments: TaskTemplateItemAttachment[]
 }
 
@@ -77,8 +79,12 @@ export interface CreateTaskTemplateItemPayload {
   estimated_minutes: number | null
   task_status_id: number | null
   due_offset_days: number
-  /** The owning `stages.*.key` of the SAME request, `null` for "Senza fase" (spec 0146 D-2/AC-003). */
+  /** The owning `stages.*.key` of the SAME request, `null` for "Senza fase" (spec 0146 D-2/AC-003). Always `null` on a sub-item (spec 0172 D-3). */
   stage_key: string | null
+  /** This row's own client key, another row's `parent_key` resolves against (spec 0172 D-2). */
+  key: string | null
+  /** The `key` of a PRECEDING row of the SAME request, `null` for a root item (spec 0172 D-1/D-2). */
+  parent_key: string | null
 }
 
 /**
@@ -158,9 +164,11 @@ export interface TaskTemplateItemFormRow {
   task_status_id: number | null
   due_offset_days: number
   stage_key: string | null
+  /** Another row's own `id` this row nests under, `null` for a root row (spec 0172 D-1, up to 3 levels below a root). */
+  parent_key: string | null
 }
 
-/** The row fields the editor may patch (everything but the row identity). */
+/** The row fields the editor may patch (everything but the row identity/nesting, which change only through the dedicated tree operations). */
 export type TaskTemplateItemRowPatch = Partial<
   Pick<
     TaskTemplateItemFormRow,
@@ -168,8 +176,8 @@ export type TaskTemplateItemRowPatch = Partial<
   >
 >
 
-/** Per-row validation errors, keyed by the row's local `id`, then by field name. */
-export type TaskTemplateItemErrors = Record<string, Partial<Record<keyof TaskTemplateItemRowPatch, string>>>
+/** Per-row validation errors, keyed by the row's local `id`, then by field name — `parent_key` covers the tree-shape errors a 422 may report (spec 0172 AC-003/AC-004), with no editable field of their own. */
+export type TaskTemplateItemErrors = Record<string, Partial<Record<keyof TaskTemplateItemRowPatch | 'parent_key', string>>>
 
 /**
  * One "Fase" row as edited locally by `<TaskTemplateStagesEditor>` (spec 0146

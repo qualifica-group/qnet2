@@ -12,6 +12,10 @@ vi.mock('@/features/users/user-detail', () => ({
   UserDetailView: ({ userId }: { userId: number }) => <div>{`user-${userId}`}</div>,
 }))
 
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, isLoading: false }),
+}))
+
 vi.mock('@/features/modules/module-registry', () => ({
   getModuleRegistryEntry: (domain: string) => (domain === 'users' ? { domain: 'users', basePath: '/users' } : undefined),
 }))

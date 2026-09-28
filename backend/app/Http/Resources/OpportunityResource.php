@@ -103,6 +103,8 @@ class OpportunityResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            // Spec 0171: true when the title was typed by the user.
+            'name_is_manual' => $this->name_is_manual,
             'registry_id' => $this->registry_id,
             'registry' => $this->summarizeByName($this->registry),
             'referent_id' => $this->referent_id,

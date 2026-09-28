@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0172-task-template-subtasks-and-legacy-migration" status="draft" owner="utente" date="2026-09-28">
+
+  <goal>
+    I Modelli di Task supportano sotto-task annidati (fino a 3 livelli sotto un item) che la generazione della commessa
+    trasforma in sotto-task dei Task generati; il modulo Migrazioni importa i modelli del QNet legacy (modello, fasi,
+    azioni e sotto-azioni) tramite un nuovo endpoint legacy e una nuova sorgente qnet-2.
+  </goal>
+
+  <context>
+    Nomi verificati il 2026-09-28.
+    qnet-2 (backend):
+    - Tabelle: `task_templates`(name unique 191, description, is_active) -> `task_template_stages`(task_template_id,
+      name, sort_order) -> `task_template_items`(task_template_id, task_template_stage_id nullable nullOnDelete,
+      title 191, description rich text, estimated_minutes, task_status_id, due_offset_days, sort_order). Nessun
+      `old_id`, nessun parent.
+    - Scrittura: `App\Services\TaskTemplateService` (create/update/delete, stage writer PRIMA dell'item writer),
+      `App\Services\TaskTemplates\{TaskTemplateItemWriter,TaskTemplateStageWriter,TaskTemplateDescriptionWriter}`,
+      DTO `App\DataObjects\TaskTemplates\TaskTemplateItemData` (`stageKey` risolto via mappa `key => id`).
+    - Validazione: `Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateItems` (`ITEMS_MAX = 100`,
+      TITLE_MAX 191, DUE_OFFSET_DAYS_MAX 3650) e `ValidatesTaskTemplateStages::assertItemStageKeysResolve()`
+      (pattern "chiave client risolta nella stessa request").
+    - Output: `TaskTemplateItemResource` (items piatti, ordinati per sort_order).
+    - Generatore: `App\Services\WorkOrders\WorkOrderTaskGenerator` (Task costruiti direttamente, fasi copiate prima,
+      `stage_position` progressiva per fase, assegnatari = supervisori della commessa, rollback dei file copiati).
+    - Task: `parent_task_id`, `subtask_position` (non fillable), `TaskStageGuard` D-3 (un sotto-task non ha mai fase),
+      `TaskParentDateRangeGuard` (date del figlio dentro quelle del padre).
+    - Engine migrazioni (spec 0013/0046): `App\Migrations\{AbstractMigrationSource,MigrationRegistry,MigrationOrder,
+      MigrationImportContext}`, sorgenti in `app/Migrations/Sources`, registrazione in `config/migrations.php`,
+      label delle sorgenti fornite dal backend (nessuna i18n FE per sorgente). `old_id` BIGINT UNSIGNED nullable
+      unique (`tests/Feature/Migration/OldIdSchemaTest.php`). Precedente di `old_id` aggiunto con migrazione
+      separata: `2026_08_04_120000_add_old_id_to_payment_methods_table`.
+    qnet-2 (frontend): `features/task-templates/` (righe del form in stato locale, `TaskTemplateItemFormRow.id` =
+      chiave locale; payload in `task-template-form-payload.ts`; board fasi `task-template-stages-editor.tsx`,
+      `task-template-stage-card.tsx`, `task-template-stage-item-row.tsx`; dettaglio `task-template-detail.tsx`;
+      `types.ts` 192 righe). Guide `features/help/content/{it,en}/task-templates.ts` e `migrations.ts`.
+    Legacy (`/Users/Repository/qnet`, repo separato, DB MySQL locale `qnet`):
+    - `templatebtypes`(id, title) 39 righe -> `templatebtypemilestones`(id, templatebtype_id, title, position) 136
+      -> `templatebtypemilestoneactions`(id, parent_id default 0, templatebtypemilestone_id, title, description
+      testo semplice, hours_estimed, minutes_estimed, prog, ...) 1298 righe.
+    - Dati: 581 azioni radice, 549 figli diretti, 155 con padre inesistente, 83 con padre in un altro modello,
+      13 in ciclo/auto-riferimento; massimo 463 azioni per modello e 12 fasi; 2 modelli senza azioni; 1 azione con
+      fase inesistente; 1 titolo modello duplicato (collation case-insensitive); titolo azione massimo 193 caratteri;
+      stime tutte NULL; `stato_consulenza` non mappabile.
+    - Endpoint migrazione: `routes/apiV2.php`, gruppo `Route::prefix('migration')` dentro
+      `middleware(['auth:api','v2.access'])`; controller `App\Http\Controllers\Api\V2\*MigrationController` che
+      estendono `Abstract\BaseApiController::paginatedResponse()` (`{items, export_link, pagination{total, offset,
+      limit, total_pages}}`), parametri `search/offset/limit` (limit max 100). Nessuna infrastruttura di test
+      utilizzabile (solo ExampleTest; lo schema reale ha colonne aggiunte fuori dalle migrazioni).
+      Il repo legacy ha modifiche locali NON nostre (`app/Providers/AppServiceProvider.php`, `config/database.php`):
+      non toccarle.
+  </context>
+
+  <decisions>
+    D-1 (utente) Sotto-task nei modelli fino a 3 livelli sotto un item radice (figlio, nipote, pronipote),
+        coerente con spec 0161.
+    D-2 Payload piatto: `items[]` resta un array piatto in ordine di visualizzazione (indice = sort_order); ogni riga
+        puo' avere `key` (chiave client) e `parent_key` (la `key` di una riga PRECEDENTE della stessa request),
+        stesso pattern di `stages.*.key`/`items.*.stage_key`. La risposta espone `parent_id`.
+    D-3 Un sotto-item non ha fase (`stage_key` vietato, `task_template_stage_id` null): segue la fase della sua radice,
+        come `TaskStageGuard` D-3 per i task.
+    D-4 `due_offset_days` di un sotto-item <= quello del padre diretto (le date del sotto-task generato restano dentro
+        quelle del padre, `TaskParentDateRangeGuard`).
+    D-5 (utente) `ITEMS_MAX` da 100 a 500, sotto-item inclusi.
+    D-6 `parent_id` con `cascadeOnDelete` come rete di sicurezza, ma ogni cancellazione applicativa (full-sync e
+        delete del modello) elimina le righe dalla piu' profonda alla radice via Eloquent, cosi' l'hook di
+        `HasAttachments` rimuove i file di ogni riga.
+    D-7 (utente) Endpoint legacy e sorgente qnet-2 nello stesso lavoro. Il legacy espone i dati grezzi (proiezione
+        senza regole); tutte le regole di pulizia stanno nella sorgente qnet-2.
+    D-8 (utente) Titolo modello duplicato: "<titolo> (old_id N)" + warning.
+    D-9 (utente) Sotto-azione anomala (padre inesistente, padre in un altro modello, ciclo, profondita' > 3):
+        promossa a item radice nella fase in cui sta nel legacy, con warning. Un figlio in una fase diversa dal padre
+        segue il padre (D-3), con warning.
+    D-10 (utente) `is_active` = false se il titolo contiene "non attivo" (senza distinzione di maiuscole), altrimenti
+        true. Il titolo resta invariato.
+    D-11 `stato_consulenza` ignorato (task_status_id null, vale il resolver dello stato iniziale). Stima =
+        ore*60 + minuti, null se entrambi null. `due_offset_days` = 0. Descrizione in testo semplice convertita in
+        HTML: testo con escape, righe vuote -> paragrafi `<p>`, a capo singolo -> `<br>`; vuota -> null.
+    D-12 Idempotenza a livello di modello: `task_templates.old_id`; un modello gia' migrato viene saltato per intero.
+        Nessun `old_id` su fasi e item (il rimappaggio dei padri avviene dentro il singolo record).
+    D-13 Sorgente nella fase 1 di `MigrationOrder` (non referenzia nessun'altra sorgente).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione `add_parent_id_to_task_template_items_table` e `add_old_id_to_task_templates_table`.</item>
+      <item>Validazione `items.*.key`/`items.*.parent_key`, profondita', fase vietata sui sotto-item, offset,
+        ITEMS_MAX 500; writer create/sync con padri e cancellazione dal basso; delete del modello dal basso;
+        `parent_id` nella risposta.</item>
+      <item>Generatore commessa: sotto-item -> sotto-task (`parent_task_id`, senza fase, `subtask_position`).</item>
+      <item>Sorgente `TaskTemplatesSource` (`task-templates`), registrazione, `MigrationOrder`, `sampleResponse()`
+        annidato.</item>
+      <item>Legacy: `TaskTemplateMigrationController` + route `GET /api/v2/migration/task-templates`.</item>
+      <item>FE: form (aggiungi sotto-task fino al 3 livello, righe indentate, niente fase sui sotto-item, validazione
+        offset), idratazione/payload, dettaglio ad albero.</item>
+      <item>Guide IT/EN `task-templates` (nuova sezione sotto-task, limite 500) e `migrations` (sorgente Modelli di
+        task); manuale Claude Docs, sezioni Modelli di Task e Migrazioni.</item>
+    </in>
+    <out>
+      <item>Allegati delle azioni legacy (`templatebtypemilestoneaction_documents`, 1 riga): i file non sono
+        raggiungibili via API.</item>
+      <item>`stato_consulenza`, `typetask`, `assigned_to`, `video`, `operation_description`, `unique_key`,
+        `typeservice` legacy.</item>
+      <item>Trascinamento dei sotto-item (tra fasi o per cambiare padre): i sotto-item seguono la radice quando
+        questa viene trascinata; l'ordine tra fratelli e' quello di inserimento.</item>
+      <item>Migrazione delle fasi/task delle commesse legacy (`ordermilestones`).</item>
+      <item>Test automatici nel repo legacy (nessuna infrastruttura): verifica read-only sul DB locale.</item>
+      <item>Commit in entrambi i repo (CLAUDE.md §3.6).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST|PUT|PATCH" path="/api/task-templates(/{task_template})">
+      <request>
+        Invariato salvo `items[]` (piatto, in ordine di visualizzazione, max 500):
+        items.*.key?: string|null (max 191, distinct tra le righe con key non nulla)
+        items.*.parent_key?: string|null  // key di una riga PRECEDENTE della stessa request
+        Regole (422 sulla chiave indicata, niente scritto):
+        - parent_key che non corrisponde a una key precedente -> `items.N.parent_key`
+        - profondita' > 3 sotto la radice -> `items.N.parent_key`
+        - sotto-item con stage_key non nullo -> `items.N.stage_key`
+        - sotto-item con due_offset_days > quello del padre -> `items.N.due_offset_days`
+        - piu' di 500 righe -> `items`
+        Le request senza key/parent_key restano valide (tutte le righe radice).
+      </request>
+      <response status="200|201">
+        TaskTemplateResource invariata; ogni `items[]` aggiunge `parent_id: number|null`. `items_count` conta anche
+        i sotto-item.
+      </response>
+      <errors>422 come sopra; 403/404/409 invariati.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="(legacy) /api/v2/migration/task-templates">
+      <request>search?: string (su title del modello), offset?: int >= 0 (default 0), limit?: int 1..100
+        (default 50). Autenticazione: gruppo esistente `auth:api` + `v2.access`.</request>
+      <response status="200">
+        { items: [ {
+            id: number, name: string,                     // templatebtypes.title
+            stages: [ {                                    // ordinate per position, id
+              id: number, name: string, position: number|null,
+              items: [ {                                   // TUTTE le azioni della fase, ordinate per prog, id
+                id: number,
+                parent_id: number|null,                    // 0 -> null; altrimenti grezzo, anche se anomalo
+                title: string, description: string|null,
+                estimated_hours: number|null,              // hours_estimed
+                estimated_minutes: number|null,            // minutes_estimed
+                position: number                           // prog
+              } ]
+            } ]
+          } ],
+          export_link: null,
+          pagination: { total, offset, limit, total_pages } }
+        Modelli ordinati per id. Un'azione con fase inesistente non compare (non appartiene a nessun modello).
+      </response>
+      <errors>401 senza token; 422 parametri non validi (validazione esistente dei controller migrazione).</errors>
+    </endpoint>
+
+    <migration_source key="task-templates" label="Task templates" endpoint="task-templates">
+      Colonne anteprima: id (number), name (string), stages_count (number), items_count (number),
+      sub_items_count (number, azioni con parent_id non nullo). `sampleResponse()` restituisce la shape annidata
+      qui sopra. Report: warning per D-8, D-9, titolo troncato a 191, modello senza azioni; errore per record
+      senza id o senza name.
+    </migration_source>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo le migrazioni `task_template_items.parent_id` e' FK nullable verso
+      `task_template_items` e `task_templates.old_id` e' BIGINT UNSIGNED nullable unique; il rollback le rimuove
+      (OldIdSchemaTest con `task_templates`, QuoteWorkflowMigrationTest con 2 step in piu').</criterion>
+    <criterion id="AC-002">POST con un albero a 3 livelli sotto una radice in fase crea tutte le righe con
+      `parent_id` corretti, fase solo sulla radice, e la risposta espone `parent_id` per ogni item.</criterion>
+    <criterion id="AC-003">Un quarto livello -> 422 su `items.N.parent_key`; nessuna riga creata.</criterion>
+    <criterion id="AC-004">parent_key sconosciuta, o che punta a una riga successiva -> 422 su
+      `items.N.parent_key`.</criterion>
+    <criterion id="AC-005">Sotto-item con stage_key -> 422 su `items.N.stage_key`.</criterion>
+    <criterion id="AC-006">Sotto-item con due_offset_days maggiore del padre -> 422 su `items.N.due_offset_days`;
+      uguale -> accettato.</criterion>
+    <criterion id="AC-007">500 righe accettate; 501 -> 422 su `items`.</criterion>
+    <criterion id="AC-008">PATCH che non reinvia un padre ne' i suoi figli elimina l'intero sottoalbero e i file
+      allegati di ogni riga; una PATCH senza key/parent_key (client esistente) resta valida.</criterion>
+    <criterion id="AC-009">DELETE di un modello non usato con sotto-item a 3 livelli elimina tutte le righe e i
+      file allegati di ogni livello.</criterion>
+    <criterion id="AC-010">Generare una commessa da un modello con sotto-item crea sotto-task con `parent_task_id`
+      del Task generato dal padre, `work_order_stage_id` null, `subtask_position` 0..n nell'ordine dei fratelli,
+      `end_date` = start + offset, assegnatari = supervisori; la `stage_position` delle radici non conta i
+      sotto-item.</criterion>
+    <criterion id="AC-011">`task-templates` compare tra le sorgenti; l'anteprima mappa un record annidato nelle
+      colonne con i conteggi; `sampleResponse()` ha la shape annidata del contratto.</criterion>
+    <criterion id="AC-012">Import (HTTP finto): fasi in ordine di position, item in profondita' per position,
+      figli con parent_id corretto e senza fase, `old_id` sul modello, stima ore*60+minuti, descrizione in testo
+      semplice convertita in HTML con escape (`&lt;` resta testo).</criterion>
+    <criterion id="AC-013">Un secondo import dello stesso modello lo conta come skipped e non crea righe.</criterion>
+    <criterion id="AC-014">Un modello con name gia' esistente (maiuscole diverse) viene creato come
+      "<name> (old_id N)" con warning.</criterion>
+    <criterion id="AC-015">Sotto-azione con padre inesistente, padre in un altro modello, ciclo o profondita' > 3:
+      diventa radice nella sua fase, con warning; un figlio in una fase diversa dal padre segue il padre, con
+      warning.</criterion>
+    <criterion id="AC-016">Titolo con "(NON Attivo)" -> is_active false; "(Attivo)" o senza indicazione ->
+      true.</criterion>
+    <criterion id="AC-017">Titolo azione di 193 caratteri -> troncato a 191 con warning; modello senza azioni ->
+      creato con warning; record senza id -> riga fallita, gli altri record vengono importati.</criterion>
+    <criterion id="AC-018">FE form: "Aggiungi sotto-task" su una riga crea una riga indentata sotto di essa; assente
+      al 3 livello; il sotto-item non mostra la fase; offset > padre mostra l'errore e blocca il salvataggio;
+      rimuovere una riga rimuove i suoi sotto-item; il payload ha key/parent_key con il padre prima dei figli;
+      l'idratazione ricostruisce l'albero da parent_id.</criterion>
+    <criterion id="AC-019">FE dettaglio: i sotto-item sono mostrati indentati sotto il padre, nella fase della
+      radice.</criterion>
+    <criterion id="AC-020">Guide `task-templates` e `migrations` aggiornate IT+EN con gli stessi id di sezione;
+      `help-content-parity.test.ts` verde.</criterion>
+    <criterion id="AC-021">Legacy: `php artisan route:list --path=migration/task-templates` mostra la route; una
+      chiamata read-only al controller sul DB locale restituisce total 39, 136 fasi, 1297 azioni in totale, con la
+      shape del contratto (parent_id 0 -> null).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza (backend, frontend, legacy).
+    - Autorizzazione invariata: task-templates via `TaskTemplatePolicy`, migrazioni via `EnsureSuperAdmin`,
+      endpoint legacy nel gruppo `auth:api` + `v2.access` esistente.
+    - La sorgente crea i modelli tramite `TaskTemplateService::create()` (nessuna logica di creazione duplicata);
+      `old_id` impostato dopo la creazione, come le altre sorgenti.
+    - File sotto 300 righe (500 limite rigido): `types.ts` e' a 192, i nuovi tipi dell'albero vanno in un file
+      dedicato se lo superano; la logica dell'albero FE (livello, discendenti, ordine) in un modulo puro testato.
+    - Test backend mirati con `XDEBUG_MODE=off ./vendor/bin/pest <path>`; suite completa `composer test` dal
+      verifier; FE Vitest + `npx tsc -b --force` + ESLint; Pint.
+    - Nessun commit ne' cambio di branch senza richiesta esplicita, in entrambi i repo.
+  </constraints>
+
+</spec>

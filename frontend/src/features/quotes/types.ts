@@ -249,7 +249,8 @@ export interface QuoteRewardInput {
  */
 export interface CreateQuotePayload {
   code?: string | null
-  title: string
+  /** Spec 0171 rev.2: omitted/`null` = the automatic `<code> - <products>` title. */
+  title?: string | null
   opportunity_id: number
   /** Omitted on create: the backend assigns the `open` row of the set it resolves (AC-020). */
   quote_workflow_status_id?: number | null

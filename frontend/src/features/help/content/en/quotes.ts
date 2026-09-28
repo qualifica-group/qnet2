@@ -36,6 +36,10 @@ const guide: HelpGuide = {
             ['Notes and payments', '**Payment method**, **Internal notes**', 'Internal notes are never shown to the client.'],
           ],
         },
+        {
+          type: 'tip',
+          text: "The **Title** is optional: left blank, QNet uses the quote code followed by the products on its revenue lines (for example QUO-0042 - ISO 9001 + SOA) and updates it when the lines change. A title you type stays yours; clear the field to go back to the automatic title.",
+        },
       ],
     },
     {

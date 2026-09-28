@@ -30,6 +30,17 @@ use Illuminate\Support\Collection;
  * resolved this same request's `stages` into — TaskTemplateService always
  * runs the stage writer first so this map is ready by the time this class
  * runs.
+ *
+ * `parent_id` (spec 0172, D-1/D-2/D-6): both methods build a `key => id` map
+ * of their OWN as they write rows, in submission order — the FormRequest
+ * already guarantees a row's `parent_key` only ever names a PRECEDING row, so
+ * that row's id is always in the map by the time a child resolves against
+ * it. sync() applies every kept row's NEW `parent_id` before deleting
+ * anything, so a row re-parented away from a dropped ancestor is never swept
+ * by that ancestor's `cascadeOnDelete`; the actually-dropped rows are then
+ * deleted deepest-first (TaskTemplateItemTree::deepestFirst) so
+ * `HasAttachments` fires at every level instead of a DB-level cascade
+ * silently skipping it for a descendant.
  */
 final class TaskTemplateItemWriter
 {
@@ -44,9 +55,12 @@ final class TaskTemplateItemWriter
      */
     public function create(TaskTemplate $taskTemplate, array $items, User $actor, array $stageIdsByKey = []): void
     {
+        $itemIdsByKey = [];
+
         foreach ($items as $index => $item) {
-            $row = $taskTemplate->items()->create($item->attributes($index, $stageIdsByKey));
+            $row = $taskTemplate->items()->create($item->attributes($index, $stageIdsByKey, $itemIdsByKey));
             $this->applyNewDescription($row, $item, $index, $actor);
+            $itemIdsByKey = $this->rememberKey($itemIdsByKey, $item, $row);
         }
     }
 
@@ -64,27 +78,40 @@ final class TaskTemplateItemWriter
         /** @var Collection<int, TaskTemplateItem> $existing */
         $existing = $taskTemplate->items()->get()->keyBy('id');
         $keptIds = [];
+        $itemIdsByKey = [];
 
         foreach ($items as $index => $item) {
             if ($item->id === null) {
-                $row = $taskTemplate->items()->create($item->attributes($index, $stageIdsByKey));
+                $row = $taskTemplate->items()->create($item->attributes($index, $stageIdsByKey, $itemIdsByKey));
                 $this->applyNewDescription($row, $item, $index, $actor);
-                $keptIds[] = $row->id;
-
-                continue;
+            } else {
+                /** @var TaskTemplateItem $row */
+                $row = $existing->get($item->id);
+                $row->fill($item->attributes($index, $stageIdsByKey, $itemIdsByKey));
+                $this->descriptionWriter->applyOnUpdate($row, $item->description, $actor, $this->field($index));
+                $row->save();
             }
 
-            /** @var TaskTemplateItem $row */
-            $row = $existing->get($item->id);
-            $row->fill($item->attributes($index, $stageIdsByKey));
-            $this->descriptionWriter->applyOnUpdate($row, $item->description, $actor, $this->field($index));
-            $row->save();
             $keptIds[] = $row->id;
+            $itemIdsByKey = $this->rememberKey($itemIdsByKey, $item, $row);
         }
 
-        $existing
-            ->filter(static fn (TaskTemplateItem $row): bool => ! in_array($row->id, $keptIds, true))
-            ->each(static fn (TaskTemplateItem $row) => $row->delete());
+        $dropped = $existing->filter(static fn (TaskTemplateItem $row): bool => ! in_array($row->id, $keptIds, true));
+
+        TaskTemplateItemTree::deepestFirst($dropped)->each(static fn (TaskTemplateItem $row) => $row->delete());
+    }
+
+    /**
+     * @param  array<string, int>  $itemIdsByKey
+     * @return array<string, int>
+     */
+    private function rememberKey(array $itemIdsByKey, TaskTemplateItemData $item, TaskTemplateItem $row): array
+    {
+        if ($item->key !== null) {
+            $itemIdsByKey[$item->key] = $row->id;
+        }
+
+        return $itemIdsByKey;
     }
 
     /**

@@ -48,6 +48,30 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'sub-tasks',
+      title: 'Sotto-task',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Ogni riga può avere sotto-task, fino a 3 livelli sotto una riga radice (figlio, nipote, pronipote). Premi **Aggiungi sotto-task** sulla riga per crearne uno: appare indentato subito sotto di essa.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Un sotto-task non ha una fase propria: segue sempre la fase della sua riga radice.',
+            'La sua scadenza (giorni da inizio Commessa) non può superare quella della riga padre diretta.',
+            'Rimuovendo una riga si rimuovono anche tutti i suoi sotto-task.',
+            '**Aggiungi sotto-task** non compare più sulle righe già al 3° livello: non si può andare oltre.',
+            'Un modello ha al massimo 500 righe, sotto-task compresi.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Alla creazione della Commessa i sotto-task del modello generano sotto-task dei task corrispondenti, con la stessa struttura.',
+        },
+      ],
+    },
+    {
       id: 'stages',
       title: 'Fasi',
       blocks: [

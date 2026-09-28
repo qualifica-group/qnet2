@@ -90,7 +90,9 @@ export const quotes = {
     codeRequired: 'Il codice è obbligatorio.',
     codeMax: 'Il codice può contenere al massimo 32 caratteri.',
     title: 'Titolo',
-    titleRequired: 'Il titolo è obbligatorio.',
+    titlePlaceholder: "Automatico: codice e prodotti dell'offerta",
+    titleHint:
+      "Proposto come codice dell'offerta seguito dai prodotti delle sue righe di ricavo (es. QUO-0042 - ISO 9001 + SOA). Se lo modifichi resta il tuo; svuota il campo per tornare al titolo automatico.",
     titleMax: 'Il titolo può contenere al massimo 191 caratteri.',
     opportunity: 'Opportunità',
     opportunitySearch: 'Cerca opportunità…',

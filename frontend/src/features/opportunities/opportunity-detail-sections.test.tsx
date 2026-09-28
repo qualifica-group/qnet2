@@ -99,7 +99,7 @@ describe('OpportunityDetailSections — manager role labels (spec 0080)', () => 
     const opened: number[] = []
 
     render(
-      <UserDetailSheetContext.Provider value={{ openUserDetail: (id) => opened.push(id) }}>
+      <UserDetailSheetContext.Provider value={{ openUserDetail: (id) => opened.push(id), canOpenUserDetail: true }}>
         <OpportunityDetailSections
           opportunity={opportunity({ supervisor_id: 300, supervisor: { id: 300, name: 'Luca Verdi' } })}
         />

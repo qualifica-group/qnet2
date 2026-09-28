@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Trash2 } from 'lucide-react'
+import { ListPlus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,8 +16,11 @@ export interface TaskTemplateItemRowContentProps {
   row: TaskTemplateItemFormRow
   errors: TaskTemplateItemErrors[string]
   stagedFiles: File[]
+  /** Hidden at the deepest allowed nesting level (spec 0172 AC-018 — a child there would exceed the 3-level cap). */
+  canAddSubtask: boolean
   onUpdateRow: (id: string, patch: TaskTemplateItemRowPatch) => void
   onRemove: (id: string) => void
+  onAddSubtask: (id: string) => void
   onAddStagedFiles: (rowId: string, files: File[]) => void
   onRemoveStagedFile: (rowId: string, index: number) => void
   disabled: boolean
@@ -39,8 +42,10 @@ export function TaskTemplateItemRowContent({
   row,
   errors,
   stagedFiles,
+  canAddSubtask,
   onUpdateRow,
   onRemove,
+  onAddSubtask,
   onAddStagedFiles,
   onRemoveStagedFile,
   disabled,
@@ -75,6 +80,19 @@ export function TaskTemplateItemRowContent({
             </span>
           ) : null}
         </div>
+        {canAddSubtask ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label={t('taskTemplates.form.items.addSubtask')}
+            disabled={disabled}
+            onClick={() => onAddSubtask(row.id)}
+          >
+            <ListPlus aria-hidden="true" />
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="ghost"
@@ -87,6 +105,12 @@ export function TaskTemplateItemRowContent({
           <Trash2 aria-hidden="true" />
         </Button>
       </div>
+
+      {errors.parent_key ? (
+        <span role="alert" className="block text-xs font-medium text-destructive">
+          {errors.parent_key}
+        </span>
+      ) : null}
 
       <div>
         <Label htmlFor={descriptionId} className="sr-only">

@@ -1,12 +1,10 @@
 <?php
 
-use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\QuoteWorkflowStatus;
 use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
@@ -19,101 +17,10 @@ use Spatie\Permission\Models\Permission;
  * Spec 0077 (D-3/D-4, `derivazione_nome`): `opportunities.name` derives from
  * the REVENUE lines of every quote of the opportunity, recalculated by
  * QuoteService inside create()/update()/delete() (AC-030..AC-037).
+ * Spec 0171 rev.2 (requirement changed): the derived name is now prefixed by
+ * the opportunity code, `OPP_{id} - <products>`.
  */
 uses(RefreshDatabase::class);
-
-if (! function_exists('nameDerivationQuoteService')) {
-    function nameDerivationQuoteService(): QuoteService
-    {
-        return app(QuoteService::class);
-    }
-}
-
-if (! function_exists('nameDerivationNewQuoteWorkflowStatus')) {
-    function nameDerivationNewQuoteWorkflowStatus(): QuoteWorkflowStatus
-    {
-        return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
-    }
-}
-
-if (! function_exists('nameDerivationActor')) {
-    function nameDerivationActor(): User
-    {
-        return User::factory()->create();
-    }
-}
-
-if (! function_exists('nameDerivationRevenueProduct')) {
-    /**
-     * A product whose category resolves an EFFECTIVE business function, so a
-     * REVENUE line never trips OpportunityProductLineCoverage's 422 guard.
-     */
-    function nameDerivationRevenueProduct(string $name): Product
-    {
-        $category = ProductCategory::factory()->create([
-            'business_function_id' => BusinessFunction::factory()->create()->id,
-        ]);
-
-        return Product::factory()->create(['name' => $name, 'category_id' => $category->id]);
-    }
-}
-
-if (! function_exists('nameDerivationCreateQuoteData')) {
-    /**
-     * @param  array<int, QuoteLineData>|null  $offerLines
-     * @param  array<int, QuoteLineData>|null  $costLines
-     */
-    function nameDerivationCreateQuoteData(int $opportunityId, ?array $offerLines = null, ?array $costLines = null): CreateQuoteData
-    {
-        return new CreateQuoteData(
-            code: null,
-            title: 'Offerta di test',
-            opportunityId: $opportunityId,
-            workflowStatusId: null,
-            note: null,
-            commercialId: null,
-            commercialIdSubmitted: false,
-            reporterId: null,
-            reporterIdSubmitted: false,
-            supervisorId: null,
-            supervisorIdSubmitted: false,
-            internalNotes: null,
-            offerLines: $offerLines,
-            costLines: $costLines,
-        );
-    }
-}
-
-if (! function_exists('nameDerivationRevenueLine')) {
-    function nameDerivationRevenueLine(Product $product): QuoteLineData
-    {
-        return new QuoteLineData(productId: $product->id, quantity: 1.0, unitPrice: 10.0, vatRateId: null, sortOrder: null);
-    }
-}
-
-if (! function_exists('nameDerivationOpportunityCreatePayload')) {
-    /**
-     * The mandatory POST /api/opportunities payload beyond `name` (which is
-     * never accepted from the client, AC-037): a fresh Registry/status/
-     * supervisor plus a valid one-row `product_lines` + `products_of_interest`.
-     *
-     * @return array<string, mixed>
-     */
-    function nameDerivationOpportunityCreatePayload(): array
-    {
-        $businessFunction = BusinessFunction::factory()->create();
-        $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-
-        return [
-            'registry_id' => Registry::factory()->create()->id,
-            'supervisor_id' => User::factory()->create()->id,
-            'product_lines' => [
-                ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
-            ],
-            'products_of_interest' => [Product::factory()->create(['category_id' => $category->id])->id],
-        ];
-    }
-}
 
 // ---------------------------------------------------------------------------
 // AC-030 — no offer at all -> the OPP_{id} fallback (unchanged behaviour)
@@ -150,7 +57,7 @@ it('AC-031: creating an offer with 3 revenue lines derives "ISO 9001 + SOA + Att
         nameDerivationRevenueLine($haccp),
     ]), nameDerivationActor());
 
-    expect($opportunity->fresh()->name)->toBe('ISO 9001 + SOA + Attestati HACCP');
+    expect($opportunity->fresh()->name)->toBe('OPP_'.$opportunity->id.' - ISO 9001 + SOA + Attestati HACCP');
 });
 
 // ---------------------------------------------------------------------------
@@ -189,7 +96,7 @@ it('AC-033: a cost line\'s product never appears in the derived name', function 
     ), nameDerivationActor());
 
     expect($opportunity->fresh()->name)
-        ->toBe('ISO 9001')
+        ->toBe('OPP_'.$opportunity->id.' - ISO 9001')
         ->not->toContain('Materiale di consumo');
 });
 
@@ -205,7 +112,7 @@ it('AC-034: deleting the only offer reverts the name to OPP_{id}', function () {
 
     $quote = $service->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($product)]), nameDerivationActor());
 
-    expect($opportunity->fresh()->name)->toBe('ISO 9001');
+    expect($opportunity->fresh()->name)->toBe('OPP_'.$opportunity->id.' - ISO 9001');
 
     $service->delete($quote);
 
@@ -232,7 +139,7 @@ it('AC-035: an over-length concatenation is capped at 191 chars, never splitting
     $name = $opportunity->fresh()->name;
 
     expect(mb_strlen($name))->toBeLessThanOrEqual(191)
-        ->and($name)->toBe(str_repeat('A', 100).' …')
+        ->and($name)->toBe('OPP_'.$opportunity->id.' - '.str_repeat('A', 100).' …')
         ->and($name)->not->toContain('B')
         ->and($name)->not->toContain('C');
 });
@@ -265,14 +172,15 @@ it('AC-036: an opportunity created via Gestione Richieste derives its name the s
     $product = nameDerivationRevenueProduct('ISO 9001');
     nameDerivationQuoteService()->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($product)]), nameDerivationActor());
 
-    expect($opportunity->fresh()->name)->toBe('ISO 9001');
+    expect($opportunity->fresh()->name)->toBe('OPP_'.$opportunity->id.' - ISO 9001');
 });
 
 // ---------------------------------------------------------------------------
-// AC-037 — `name` is never a client input, even with `Quote` in scope
+// AC-037, superseded by spec 0171 (requirement changed): a typed title wins
+// over the derivation, even once a quote is saved.
 // ---------------------------------------------------------------------------
 
-it('AC-037: a submitted `name` on POST /api/opportunities is ignored, derivation stays the only source', function () {
+it('spec 0171: a submitted `name` on POST /api/opportunities is kept, even after a quote is saved', function () {
     Permission::findOrCreate('opportunities.create');
     $actor = User::factory()->create();
     $actor->givePermissionTo('opportunities.create');
@@ -284,6 +192,11 @@ it('AC-037: a submitted `name` on POST /api/opportunities is ignored, derivation
 
     $opportunity = Opportunity::findOrFail($response->json('data.id'));
 
-    expect($opportunity->name)->toBe('OPP_'.$opportunity->id)
-        ->not->toBe('Client-supplied name');
+    expect($opportunity->name)->toBe('Client-supplied name');
+
+    nameDerivationNewQuoteWorkflowStatus();
+    $product = nameDerivationRevenueProduct('ISO 9001');
+    nameDerivationQuoteService()->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($product)]), nameDerivationActor());
+
+    expect($opportunity->fresh()->name)->toBe('Client-supplied name');
 });

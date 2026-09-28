@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { fetchTableConfig } from '@/features/table/api'
 
 /** Optional scope narrowing a domain's config (spec 0064: request-management's category tabs). */
@@ -13,6 +13,30 @@ export const tableKeys = {
   configs: (domain: string) => ['table', domain, 'config'] as const,
   config: (domain: string, scope?: TableConfigScope) =>
     ['table', domain, 'config', scope?.productCategoryId ?? null] as const,
+}
+
+/**
+ * Marks every scope's cached config of `domain` stale without refetching the
+ * inactive ones now: layout and filters are stored once per domain, while the
+ * config is cached per category tab.
+ */
+export function invalidateDomainConfigs(queryClient: QueryClient, domain: string): Promise<void> {
+  return queryClient.invalidateQueries({ queryKey: tableKeys.configs(domain), refetchType: 'none' })
+}
+
+/**
+ * Drops every OTHER scope's cached config of `domain` after a filter save or
+ * reset. Invalidating is not enough here: a stale entry is still served on
+ * the tab's next mount, and the grid applies its filters ONCE at creation, so
+ * it would query with the old filters while the fresh config arrives. With
+ * the entry gone the tab loads the fresh config before building the grid.
+ */
+export function removeOtherScopeConfigs(queryClient: QueryClient, domain: string, scope?: TableConfigScope): void {
+  const keep = tableKeys.config(domain, scope)
+  queryClient.removeQueries({
+    queryKey: tableKeys.configs(domain),
+    predicate: (query) => query.queryKey[3] !== keep[3],
+  })
 }
 
 /**

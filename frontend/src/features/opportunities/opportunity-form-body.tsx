@@ -15,6 +15,7 @@ import { OpportunityLeadSection } from '@/features/opportunities/opportunity-lea
 import { OpportunityPlanningSection } from '@/features/opportunities/opportunity-planning-section'
 import { OpportunityProductLinesSection } from '@/features/opportunities/opportunity-product-lines-section'
 import { OpportunityTeamSection } from '@/features/opportunities/opportunity-team-section'
+import { OpportunityTitleSection } from '@/features/opportunities/opportunity-title-section'
 import {
   NO_LEAD_SUBMISSION,
   useOpportunityForm,
@@ -59,7 +60,7 @@ interface OpportunityFormBodyProps {
  *  - two columns at `@4xl` — the read-only side column FIRST in the DOM
  *    (narrow containers read it before the long form), reordered to the right;
  *  - side column = the "Note generali" callout on top, then the live summary;
- *  - main column = origin, then the record's headline classification (product
+ *  - main column = the title (spec 0171), origin, then the record's headline classification (product
  *    lines, products of interest), the two state dimensions next to the
  *    planning estimates, attribution, team, and the client's data last.
  *
@@ -161,6 +162,8 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
               className="contents"
               noValidate
             >
+              <OpportunityTitleSection control={form.control} />
+
               <OpportunityLeadSection
                 mode={mode}
                 leadSelection={leadSelection.state}

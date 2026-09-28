@@ -9,6 +9,7 @@ use Database\Factories\TaskTemplateItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * TaskTemplateItem entity (spec 0124, D-1): one row of a `TaskTemplate`,
@@ -28,8 +29,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * `task_template_stage_id` (spec 0146, D-2): the "Fase" this row sits in,
  * null for "Senza fase" — written by the same full-sync writer as every
  * other column here, never a dedicated endpoint.
+ *
+ * `parent_id` (spec 0172, D-1): the row this one sits directly under, up to
+ * 3 levels below a root row, null for a root row — a sub-item never has its
+ * own `task_template_stage_id` (D-3), it follows its root's.
  */
-#[Fillable(['title', 'description', 'estimated_minutes', 'task_status_id', 'due_offset_days', 'sort_order', 'task_template_stage_id'])]
+#[Fillable(['title', 'description', 'estimated_minutes', 'task_status_id', 'due_offset_days', 'sort_order', 'task_template_stage_id', 'parent_id'])]
 class TaskTemplateItem extends BaseModel
 {
     /** @use HasFactory<TaskTemplateItemFactory> */
@@ -65,6 +70,28 @@ class TaskTemplateItem extends BaseModel
     public function stage(): BelongsTo
     {
         return $this->belongsTo(TaskTemplateStage::class, 'task_template_stage_id');
+    }
+
+    /**
+     * The row this sub-item sits directly under (spec 0172, D-1), null for a
+     * root row.
+     *
+     * @return BelongsTo<TaskTemplateItem, $this>
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /**
+     * The rows directly nested under this one (spec 0172, D-1), in display
+     * order — empty for a leaf row or a root with no sub-items.
+     *
+     * @return HasMany<TaskTemplateItem, $this>
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('sort_order');
     }
 
     /**

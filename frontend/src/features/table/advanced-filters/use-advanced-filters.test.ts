@@ -5,9 +5,13 @@ import { useAdvancedFilters } from '@/features/table/advanced-filters/use-advanc
 import type { AdvancedFilterDescriptor, AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 
 const mutateMock = vi.fn()
+const saveHookArgsMock = vi.fn()
 
 vi.mock('@/features/table/use-table-filters', () => ({
-  useSaveTableFilters: () => ({ mutate: mutateMock, isPending: false }),
+  useSaveTableFilters: (...args: unknown[]) => {
+    saveHookArgsMock(...args)
+    return { mutate: mutateMock, isPending: false }
+  },
 }))
 
 /** Minimal, schema-valid descriptor fixture; each test overrides only what it exercises. */
@@ -27,9 +31,25 @@ function descriptor(
 
 beforeEach(() => {
   mutateMock.mockReset()
+  saveHookArgsMock.mockReset()
 })
 
 describe('useAdvancedFilters', () => {
+  it('saves against the category tab the table is scoped to', () => {
+    const descriptors = [descriptor({ name: 'status', type: 'text' })]
+    renderHook(() =>
+      useAdvancedFilters({
+        domain: 'request-management',
+        productCategoryId: 12,
+        descriptors,
+        applied: null,
+        onApplied: vi.fn(),
+      }),
+    )
+
+    expect(saveHookArgsMock).toHaveBeenCalledWith('request-management', { productCategoryId: 12 })
+  })
+
   it('seeds draft/applied from defaultValue when there is no persisted state', () => {
     const descriptors = [descriptor({ name: 'status', type: 'text', defaultValue: 'active' })]
 

@@ -19,7 +19,7 @@ describe('WorkOrderDetailTeam', () => {
     const opened: number[] = []
 
     render(
-      <UserDetailSheetContext.Provider value={{ openUserDetail: (id) => opened.push(id) }}>
+      <UserDetailSheetContext.Provider value={{ openUserDetail: (id) => opened.push(id), canOpenUserDetail: true }}>
         <WorkOrderDetailTeam
           supervisors={[
             { id: 21, name: 'Ada Alberti' },

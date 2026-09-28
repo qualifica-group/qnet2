@@ -14,6 +14,8 @@ import {
 
 function baseValues(overrides: Record<string, unknown> = {}) {
   return {
+    // Spec 0171: optional title, blank = automatic.
+    name: '',
     registry_id: 1,
     // Spec 0043 D-3: opportunity_status_id is mandatory, mirrors registry_id.
     referent_id: null,

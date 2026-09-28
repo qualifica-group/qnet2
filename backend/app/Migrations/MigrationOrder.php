@@ -34,8 +34,11 @@ final class MigrationOrder
         // remapped via old_id, relinked within its own run); `roles` are
         // adopted/created by name and are referenced by `users` via old_id, so
         // they anchor here too; `payment-methods` is likewise a plain lookup,
-        // referenced by its consumer modules (quotes first), not referencing.
-        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'vat-rates', 'payment-methods', 'roles'],
+        // referenced by its consumer modules (quotes first), not referencing;
+        // `task-templates` (spec 0172, D-13) remaps its stages/items ONLY
+        // within the single record being imported (no old_id of their own),
+        // so it references nothing else either.
+        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'roles'],
 
         // Phase 2 — entities that reference the phase 1 anchors via old_id:
         // users (companies/sites/functions/roles), company-sites (companies)

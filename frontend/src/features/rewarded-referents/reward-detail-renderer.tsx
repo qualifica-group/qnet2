@@ -11,6 +11,7 @@ import { useReferentRewards } from '@/features/rewarded-referents/use-referent-r
 import { rewardedReferentsKeys } from '@/features/rewarded-referents/query-keys'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { resolveViewableDomain } from '@/features/modules/use-viewable-domain'
 import type { TableRow } from '@/features/table/types'
 import type { RewardSourceRef } from '@/features/rewards/types'
 
@@ -23,20 +24,16 @@ import type { RewardSourceRef } from '@/features/rewards/types'
 const REWARDED_REFERENTS_UPDATE_PERMISSION = 'rewarded-referents.update'
 
 /**
- * Where each linked-record morph alias may open, in order of preference, and
- * the view permission each target requires (user directive 2026-09-25: a
+ * The module of each linked-record morph alias (user directive 2026-09-25: a
  * record the user may not see is never clickable). A buono can be born on an
- * Offerta and every card carries both references (user directive 2026-08-31).
- * An Offerta falls back to Gestione Richieste, whose rows ARE quotes (spec
- * 0086 D-1), so the same id opens there. An alias absent from this map, or
- * with no permitted target, renders as plain text.
+ * Offerta and every card carries both references (user directive 2026-08-31);
+ * `resolveViewableDomain` then picks the first module the user may view (an
+ * Offerta falls back to Gestione Richieste). An alias absent from this map, or
+ * with no permitted module, renders as plain text.
  */
-const RECORD_OPEN_TARGETS: Record<string, { domain: string; permission: string }[]> = {
-  opportunity: [{ domain: 'opportunities', permission: 'opportunities.view' }],
-  quote: [
-    { domain: 'quotes', permission: 'quotes.view' },
-    { domain: 'request-management', permission: 'request-management.view' },
-  ],
+const RECORD_DOMAINS: Partial<Record<string, string>> = {
+  opportunity: 'opportunities',
+  quote: 'quotes',
 }
 
 /** Skeleton placeholder mirroring the card grid's shape while the lazy fetch is in flight. */
@@ -115,10 +112,10 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
   const { can, isLoading: abilitiesLoading } = useAbilities()
   const canEditStatus = !abilitiesLoading && can(REWARDED_REFERENTS_UPDATE_PERMISSION)
   // First target the user may view, null while abilities load (fail closed).
-  const resolveOpenDomain = (record: RewardSourceRef): string | null =>
-    abilitiesLoading
-      ? null
-      : (RECORD_OPEN_TARGETS[record.type]?.find((target) => can(target.permission))?.domain ?? null)
+  const resolveOpenDomain = (record: RewardSourceRef): string | null => {
+    const domain = RECORD_DOMAINS[record.type]
+    return abilitiesLoading || domain === undefined ? null : resolveViewableDomain(domain, can)
+  }
   const updateStatus = useUpdateRewardStatus({
     onSuccess: () => {
       if (referentId != null) {
