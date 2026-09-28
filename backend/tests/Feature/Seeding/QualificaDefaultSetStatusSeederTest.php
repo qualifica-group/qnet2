@@ -6,8 +6,8 @@ use App\Services\QuoteWorkflowService;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
-// The production seed adds "Non risponde" to the GLOBAL default set as a
-// closed loss (user directive 2026-09-28), next to whatever the configurator
+// The production seed adds "Non risponde" to the GLOBAL default set as an
+// open state (user directive 2026-09-28), next to whatever the configurator
 // already put there.
 uses(RefreshDatabase::class);
 
@@ -16,7 +16,7 @@ beforeEach(function (): void {
     config(['migrations.base_url' => null]);
 });
 
-it('adds "Non risponde" to the default set as a closed loss, keeping its custom rows, idempotently', function (): void {
+it('adds "Non risponde" to the default set as an open state, keeping its custom rows, idempotently', function (): void {
     // Step 1: a custom row the configurator already added to the default set.
     $service = app(QuoteWorkflowService::class);
     $service->syncDefaultStatuses([[
@@ -46,8 +46,8 @@ it('adds "Non risponde" to the default set as a closed loss, keeping its custom 
 
     $noAnswer = $defaultStatuses->firstWhere('name', 'Non risponde');
 
-    expect($noAnswer->group)->toBe(WorkflowStatusGroup::ClosedLost)
-        ->and($noAnswer->color)->toBe('red')
+    expect($noAnswer->group)->toBe(WorkflowStatusGroup::Open)
+        ->and($noAnswer->color)->toBe('slate')
         ->and($noAnswer->system_key)->toBeNull();
 
     // Only the default set gained it: no workflow row leaked to it.

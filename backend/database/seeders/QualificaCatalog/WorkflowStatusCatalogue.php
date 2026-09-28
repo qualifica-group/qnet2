@@ -69,10 +69,12 @@ use InvalidArgumentException;
  *     SECTION: the same name ("Da Richiamare", "Irreperibile", "Doppione")
  *     carries a different description in each block.
  *   - "Non risponde" is on the sheet only in AUTOFINANZIATO and CONSULENZA;
- *     the client extended it off-sheet to EVERY list, as a closed loss (user
- *     directive 2026-09-28). It sits right before "Irreperibile" everywhere,
- *     as in those two blocks, so no column gets a new first loss and no
- *     pinned closed_lost label moves.
+ *     the client extended it off-sheet to EVERY list (user directive
+ *     2026-09-28) and reclassified it as OPEN everywhere, overriding the
+ *     sheet's pesca fill (same-day user directive): an unanswered call is
+ *     still being worked, not a lost one. It sits right before "Irreperibile"
+ *     everywhere, as in those two blocks. Being open, it no longer takes the
+ *     pinned closed_lost row of AUTOFINANZIATO: "Irreperibile" does.
  */
 final class WorkflowStatusCatalogue
 {
@@ -181,7 +183,7 @@ final class WorkflowStatusCatalogue
             'NO _ Non ha Requisiti' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non idoneo per mancanza dei requisiti previsti.'],
             'Non interessato/a' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha comunicato di non essere interessato al percorso.'],
             'Stato Rinunciatario' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha rinunciato volontariamente al percorso.'],
-            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
+            'Non risponde' => ['legend' => self::OPEN, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Impossibile contattare il candidato dopo i tentativi effettuati.'],
             'Trasferito altra Sede QG' => ['legend' => self::NEGATIVE, 'description' => 'Candidato trasferito presso un\'altra sede QG.'],
             'Non pertinente - Altra regione' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non pertinente perché appartenente a un\'altra regione in cui non siamo accreditati.'],
@@ -203,7 +205,7 @@ final class WorkflowStatusCatalogue
             'Non ha i Requisiti' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non idoneo in quanto non possiede i requisiti previsti per l\'accesso al percorso.'],
             'Non Interessato' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha comunicato di non essere interessato a proseguire con il percorso proposto.'],
             'Rinunciatario' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha deciso di interrompere o non proseguire il percorso dopo l\'adesione iniziale.'],
-            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
+            'Non risponde' => ['legend' => self::OPEN, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non raggiungibile dopo i tentativi di contatto effettuati.'],
             'Doppione' => ['legend' => self::NEGATIVE, 'description' => 'Anagrafica o pratica duplicata già presente nel sistema.'],
             'In Standby' => ['legend' => self::OPEN, 'description' => 'Pratica temporaneamente sospesa in attesa di ulteriori informazioni, aggiornamenti o condizioni necessarie per procedere.'],
@@ -215,7 +217,7 @@ final class WorkflowStatusCatalogue
             'Appuntamento' => ['legend' => self::OPEN, 'description' => 'Appuntamento fissato con il candidato per approfondire la proposta, verificare l\'interesse o procedere con la fase successiva.'],
             'In trattativa' => ['legend' => self::PENDING, 'description' => 'Candidato in fase di valutazione della proposta, con contatti e approfondimenti ancora in corso prima della definizione dell\'esito.'],
             'OK_Iscritto' => ['legend' => self::POSITIVE, 'description' => 'Candidato che ha completato correttamente l\'iscrizione ed è stato confermato nel percorso.'],
-            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
+            'Non risponde' => ['legend' => self::OPEN, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non raggiungibile dopo diversi tentativi di contatto tramite i recapiti disponibili.'],
             'Esito negativo - prezzo' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che non ha aderito per motivazioni legate al costo o al prezzo della proposta.'],
             'Esito negativo - altri motivi' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che non ha aderito per motivazioni diverse dal prezzo.'],
@@ -233,7 +235,7 @@ final class WorkflowStatusCatalogue
             'VINTO' => ['legend' => self::POSITIVE, 'description' => 'Trattativa conclusa positivamente.'],
             'Persa' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa conclusa negativamente senza finalizzazione.'],
             'Annullata' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa o appuntamento annullato e non più proseguito.'],
-            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Nessuna risposta ricevuta dopo i tentativi di contatto effettuati.'],
+            'Non risponde' => ['legend' => self::OPEN, 'description' => 'Nessuna risposta ricevuta dopo i tentativi di contatto effettuati.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non raggiungibile dopo diversi tentativi tramite i recapiti disponibili.'],
             'Non pertinente' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non coerente con il servizio, la proposta o il target previsto.'],
             'Numero inesistente' => ['legend' => self::NEGATIVE, 'description' => 'Recapito telefonico errato, inesistente o non valido.'],
@@ -252,7 +254,7 @@ final class WorkflowStatusCatalogue
             'Frequenta già corso GOL' => ['legend' => self::NEGATIVE, 'description' => 'Candidato già iscritto o frequentante un corso GOL.'],
             'Non interessato/a' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha comunicato di non essere interessato al percorso.'],
             'Stato Rinunciatario' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha rinunciato volontariamente al percorso.'],
-            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
+            'Non risponde' => ['legend' => self::OPEN, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Impossibile contattare il candidato dopo i tentativi effettuati.'],
             'Trasferito altra Sede QG' => ['legend' => self::NEGATIVE, 'description' => 'Candidato trasferito presso un\'altra sede QG.'],
             'Non pertinente - Altra regione' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non pertinente perché appartenente a un\'altra regione in cui non siamo accreditati.'],

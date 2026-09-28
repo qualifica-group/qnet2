@@ -26,6 +26,18 @@
 - Guide IT/EN `migrations` + manuale Claude Docs (rev 111, sezione Migrazioni) aggiornati.
 - Da fare in locale: `php artisan migrate`, poi Migrazioni: `vat-rates` prima di `cost-products`.
 
+## SEED PRODUZIONE — "NON RISPONDE" RICLASSIFICATO APERTO — VERDE, NON COMMITTATO (2026-09-28)
+
+- Richiesta: "Non risponde" era `closed_lost` ma deve essere APERTO. Sostituisce la classificazione della voce sotto
+  (stesso giorno). `WorkflowStatusCatalogue`: legend `OPEN` (slate) in TUTTE le sezioni, anche AUTOFINANZIATO e
+  CONSULENZA dove il foglio lo coloriva pesca (override esplicito). Posizione invariata (prima di "Irreperibile").
+- Effetto collaterale: in `Autofinanziato` la riga fissa `closed_lost` passa da "Non risponde" a "Irreperibile".
+- `QualificaWorkflowSeeder::DEFAULT_SET_NO_ANSWER`: group `open`, color `slate`.
+- LIMITE: su un DB gia' seedato il seeder NON riclassifica (salta workflow esistenti e il set di default se la riga
+  esiste gia'): correggere dal configuratore o con un backfill.
+- Test aggiornati (requisito cambiato): `QualificaWorkflowSeederTest`, `QualificaDefaultSetStatusSeederTest`;
+  `tests/Feature/Seeding` + `QualificaLegacyImportSeederTest`: 112 verdi. Pint pulito. Manuale: nessun impatto.
+
 ## SEED PRODUZIONE — STATO "NON RISPONDE" IN TUTTI GLI STATI DI LAVORAZIONE — VERDE, NON COMMITTATO (2026-09-28)
 
 - Richiesta: aggiungere "Non risponde" (chiuso con esito negativo = `closed_lost`) a tutti gli stati di configurazione

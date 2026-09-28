@@ -41,7 +41,7 @@ use Illuminate\Database\Seeder;
  * a criterion FIELD the catalogue changed since: see realignCriterionField().
  *
  * The GLOBAL default set (the fallback of every category without a workflow)
- * gets "Non risponde" as a closed loss too (user directive 2026-09-28): see
+ * gets "Non risponde" as an open state too (user directive 2026-09-28): see
  * seedDefaultSetStatus().
  */
 class QualificaWorkflowSeeder extends Seeder
@@ -56,8 +56,8 @@ class QualificaWorkflowSeeder extends Seeder
         'id' => null,
         'name' => 'Non risponde',
         'description' => 'Nessuna risposta ricevuta dopo i tentativi di contatto effettuati.',
-        'color' => 'red',
-        'group' => WorkflowStatusGroup::ClosedLost->value,
+        'color' => 'slate',
+        'group' => WorkflowStatusGroup::Open->value,
         'requires_note' => false,
     ];
 

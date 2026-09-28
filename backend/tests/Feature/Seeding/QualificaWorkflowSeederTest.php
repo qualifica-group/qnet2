@@ -102,7 +102,7 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
     ]);
 
     expect($pinnedRowsOf('Autofinanziato'))->toBe([
-        'closed_lost' => 'Non risponde',
+        'closed_lost' => 'Irreperibile',
         'closed_won' => 'OK_Iscritto',
         'open' => 'Nuovo Contatto',
     ]);
@@ -165,7 +165,7 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
             'Appuntamento Fissato' => WorkflowStatusGroup::Pending->value,
             'Rimandata' => WorkflowStatusGroup::Open->value,
             'Annullata' => WorkflowStatusGroup::ClosedLost->value,
-            'Non risponde' => WorkflowStatusGroup::ClosedLost->value,
+            'Non risponde' => WorkflowStatusGroup::Open->value,
             'Irreperibile' => WorkflowStatusGroup::ClosedLost->value,
             'Non pertinente' => WorkflowStatusGroup::ClosedLost->value,
             'Numero inesistente' => WorkflowStatusGroup::ClosedLost->value,
@@ -226,9 +226,9 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
     // pinned closed_won row; every other closed state is a loss.
     expect($aplStatuses->pluck('group')->map(fn (WorkflowStatusGroup $group): string => $group->value)->countBy()->sortKeys()->all())
         ->toBe([
-            WorkflowStatusGroup::ClosedLost->value => 14,
+            WorkflowStatusGroup::ClosedLost->value => 13,
             WorkflowStatusGroup::ClosedWon->value => 1,
-            WorkflowStatusGroup::Open->value => 6,
+            WorkflowStatusGroup::Open->value => 7,
         ]);
 
     $assegnato = $aplStatuses->firstWhere('name', 'Assegnato');
@@ -402,7 +402,7 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
     // azzurro pending, verde chiaro the single positive outcome, pesca the
     // closures, no fill open. The column lists "OK App. Fissato APL" twice:
     // folded to one (user directive 2026-09-10). "Non risponde" is off-sheet:
-    // added to every list (user directive 2026-09-28).
+    // added to every list as an open state (user directive 2026-09-28).
     $transcribed = array_map(
         static fn (array $status): array => [$status['name'], $status['group']],
         WorkflowStatusCatalogue::statusesFor('DIL'),
@@ -424,7 +424,7 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
         ['Numero Inesistente/Errato', WorkflowStatusGroup::ClosedLost->value],
         ['Associato NO _ Altro Ente', WorkflowStatusGroup::ClosedLost->value],
         ['NO _ Non ha Requisiti', WorkflowStatusGroup::ClosedLost->value],
-        ['Non risponde', WorkflowStatusGroup::ClosedLost->value],
+        ['Non risponde', WorkflowStatusGroup::Open->value],
         ['Irreperibile', WorkflowStatusGroup::ClosedLost->value],
         ['Doppione già associato', WorkflowStatusGroup::ClosedLost->value],
         ['Doppione', WorkflowStatusGroup::ClosedLost->value],
@@ -436,9 +436,9 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
     ]);
 });
 
-it('offers "Non risponde" as a closed loss in every catalogue list (user directive 2026-09-28)', function (): void {
-    // Pure transcription check: every workflow carries it, classified as a
-    // loss. The pinned closed_lost labels stay put — asserted above.
+it('offers "Non risponde" as an open state in every catalogue list (user directive 2026-09-28)', function (): void {
+    // Pure transcription check: every workflow carries it, classified as
+    // open, never promoted onto a pinned row — asserted above.
     foreach (array_keys(WorkflowStatusCatalogue::WORKFLOWS) as $categoryName) {
         $noAnswer = array_find(
             WorkflowStatusCatalogue::statusesFor($categoryName),
@@ -446,7 +446,7 @@ it('offers "Non risponde" as a closed loss in every catalogue list (user directi
         );
 
         expect($noAnswer)->not->toBeNull($categoryName)
-            ->and($noAnswer['group'])->toBe(WorkflowStatusGroup::ClosedLost->value, $categoryName)
-            ->and($noAnswer['color'])->toBe('red', $categoryName);
+            ->and($noAnswer['group'])->toBe(WorkflowStatusGroup::Open->value, $categoryName)
+            ->and($noAnswer['color'])->toBe('slate', $categoryName);
     }
 });
