@@ -68,6 +68,11 @@ use InvalidArgumentException;
  *   - Descriptions come from the sheet's second page and are scoped PER
  *     SECTION: the same name ("Da Richiamare", "Irreperibile", "Doppione")
  *     carries a different description in each block.
+ *   - "Non risponde" is on the sheet only in AUTOFINANZIATO and CONSULENZA;
+ *     the client extended it off-sheet to EVERY list, as a closed loss (user
+ *     directive 2026-09-28). It sits right before "Irreperibile" everywhere,
+ *     as in those two blocks, so no column gets a new first loss and no
+ *     pinned closed_lost label moves.
  */
 final class WorkflowStatusCatalogue
 {
@@ -176,6 +181,7 @@ final class WorkflowStatusCatalogue
             'NO _ Non ha Requisiti' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non idoneo per mancanza dei requisiti previsti.'],
             'Non interessato/a' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha comunicato di non essere interessato al percorso.'],
             'Stato Rinunciatario' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha rinunciato volontariamente al percorso.'],
+            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Impossibile contattare il candidato dopo i tentativi effettuati.'],
             'Trasferito altra Sede QG' => ['legend' => self::NEGATIVE, 'description' => 'Candidato trasferito presso un\'altra sede QG.'],
             'Non pertinente - Altra regione' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non pertinente perché appartenente a un\'altra regione in cui non siamo accreditati.'],
@@ -197,6 +203,7 @@ final class WorkflowStatusCatalogue
             'Non ha i Requisiti' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non idoneo in quanto non possiede i requisiti previsti per l\'accesso al percorso.'],
             'Non Interessato' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha comunicato di non essere interessato a proseguire con il percorso proposto.'],
             'Rinunciatario' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha deciso di interrompere o non proseguire il percorso dopo l\'adesione iniziale.'],
+            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non raggiungibile dopo i tentativi di contatto effettuati.'],
             'Doppione' => ['legend' => self::NEGATIVE, 'description' => 'Anagrafica o pratica duplicata già presente nel sistema.'],
             'In Standby' => ['legend' => self::OPEN, 'description' => 'Pratica temporaneamente sospesa in attesa di ulteriori informazioni, aggiornamenti o condizioni necessarie per procedere.'],
@@ -245,6 +252,7 @@ final class WorkflowStatusCatalogue
             'Frequenta già corso GOL' => ['legend' => self::NEGATIVE, 'description' => 'Candidato già iscritto o frequentante un corso GOL.'],
             'Non interessato/a' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha comunicato di non essere interessato al percorso.'],
             'Stato Rinunciatario' => ['legend' => self::NEGATIVE, 'description' => 'Candidato che ha rinunciato volontariamente al percorso.'],
+            'Non risponde' => ['legend' => self::NEGATIVE, 'description' => 'Tentativi di contatto effettuati senza ricevere risposta dal candidato.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Impossibile contattare il candidato dopo i tentativi effettuati.'],
             'Trasferito altra Sede QG' => ['legend' => self::NEGATIVE, 'description' => 'Candidato trasferito presso un\'altra sede QG.'],
             'Non pertinente - Altra regione' => ['legend' => self::NEGATIVE, 'description' => 'Candidato non pertinente perché appartenente a un\'altra regione in cui non siamo accreditati.'],
@@ -267,7 +275,7 @@ final class WorkflowStatusCatalogue
     private const array GOL_BASE_STATUSES = [
         'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'Associato SI _ NOI',
         'Percorso 101', 'Autofinanziato', 'Associato NO _ Altro Ente', 'Frequenta già corso GOL',
-        'NO _ Non ha Requisiti', 'Non interessato/a', 'Stato Rinunciatario', 'Irreperibile',
+        'NO _ Non ha Requisiti', 'Non interessato/a', 'Stato Rinunciatario', 'Non risponde', 'Irreperibile',
         'Trasferito altra Sede QG', 'Non pertinente - Altra regione', 'Numero Inesistente/Errato', 'Doppione',
         'Doppione già associato', 'In Standby',
     ];
@@ -290,35 +298,35 @@ final class WorkflowStatusCatalogue
             'OK App. Fissato APL', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'Attesa Iscrizione SIUF',
             'In attesa aggancio BES', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'NO _ Non ha Requisiti', 'Non interessato/a', 'Stato Rinunciatario',
-            'Irreperibile', 'Non pertinente - Altra regione', 'Frequenta già corso GOL', 'Trasferito altra Sede QG',
+            'Non risponde', 'Irreperibile', 'Non pertinente - Altra regione', 'Frequenta già corso GOL', 'Trasferito altra Sede QG',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Campania' => ['section' => self::GOL, 'statuses' => [
             'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'APL-Orientamento',
             'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato', 'Associato NO _ Altro Ente',
             'NO _ Non ha Requisiti', 'Frequenta già corso GOL', 'Non interessato/a', 'Stato Rinunciatario',
-            'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione', 'Numero Inesistente/Errato',
+            'Non risponde', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione', 'Numero Inesistente/Errato',
             'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Lazio' => ['section' => self::GOL, 'statuses' => [
             'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
             'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
-            'Stato Rinunciatario', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
+            'Stato Rinunciatario', 'Non risponde', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Sicilia' => ['section' => self::GOL, 'statuses' => [
             'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
             'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
-            'Stato Rinunciatario', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
+            'Stato Rinunciatario', 'Non risponde', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Umbria' => ['section' => self::GOL, 'statuses' => [
             'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa ok Assegno GOL', 'Attesa _ App. CPI',
             'OK App. Fissato CPI', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
-            'Stato Rinunciatario', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
+            'Stato Rinunciatario', 'Non risponde', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Molise' => ['section' => self::GOL, 'statuses' => self::GOL_BASE_STATUSES],
@@ -336,7 +344,7 @@ final class WorkflowStatusCatalogue
             'OK App. Fissato APL', 'Attesa Attivazione DOTE', 'Attesa Iscrizione SIUF',
             'In attesa aggancio BES', 'Associato SI _ NOI', 'Non interessato/a', 'Stato Rinunciatario',
             'Numero Inesistente/Errato', 'Associato NO _ Altro Ente', 'NO _ Non ha Requisiti',
-            'Irreperibile', 'Doppione già associato', 'Doppione', 'Frequenta già corso GOL',
+            'Non risponde', 'Irreperibile', 'Doppione già associato', 'Doppione', 'Frequenta già corso GOL',
             'Non pertinente - Altra regione', 'Trasferito altra Sede QG', 'Autofinanziato', 'In Standby',
         ]],
         'Autoimpiego' => ['section' => self::SELF_EMPLOYMENT],

@@ -60,8 +60,10 @@ final class MigrationOrder
         // phase 1 vat-rates via old_id (only `supplier` is left unremapped); the
         // attribute/category pivot is the association pass that needs BOTH phase
         // 4 anchors migrated. The two have no cross-dependency, so they share
-        // the phase.
-        ['product-category-attributes', 'products'],
+        // the phase. `cost-products` (spec 0174) references only the phase 1
+        // vat-rates and provisions its own "Costi" branch, so it sits beside
+        // `products`.
+        ['product-category-attributes', 'products', 'cost-products'],
     ];
 
     /**

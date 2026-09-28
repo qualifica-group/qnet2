@@ -5,6 +5,7 @@ use App\Migrations\Sources\BusinessFunctionMembersSource;
 use App\Migrations\Sources\BusinessFunctionsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
+use App\Migrations\Sources\CostProductsSource;
 use App\Migrations\Sources\OperationalSitesSource;
 use App\Migrations\Sources\PaymentMethodsSource;
 use App\Migrations\Sources\ProductCategoriesSource;
@@ -84,6 +85,7 @@ return [
         'product-categories' => ProductCategoriesSource::class,
         'product-category-attributes' => ProductCategoryAttributesSource::class,
         'products' => ProductsSource::class,
+        'cost-products' => CostProductsSource::class,
     ],
 
 ];

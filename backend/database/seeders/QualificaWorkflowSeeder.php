@@ -7,6 +7,7 @@ use App\DataObjects\QuoteWorkflows\UpdateQuoteWorkflowData;
 use App\Enums\WorkflowStatusGroup;
 use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
+use App\Models\QuoteWorkflowStatus;
 use App\Services\QuoteWorkflowService;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Illuminate\Database\Seeder;
@@ -38,9 +39,28 @@ use Illuminate\Database\Seeder;
  * signature, both unique) is skipped, so a re-run neither duplicates nor
  * overwrites the manual edits made from the configurator. The one exception is
  * a criterion FIELD the catalogue changed since: see realignCriterionField().
+ *
+ * The GLOBAL default set (the fallback of every category without a workflow)
+ * gets "Non risponde" as a closed loss too (user directive 2026-09-28): see
+ * seedDefaultSetStatus().
  */
 class QualificaWorkflowSeeder extends Seeder
 {
+    /**
+     * The one custom row the production seed adds to the GLOBAL default set,
+     * shaped to the WorkflowStatusWriter row contract.
+     *
+     * @var array{id: null, name: string, description: string, color: string, group: string, requires_note: bool}
+     */
+    private const array DEFAULT_SET_NO_ANSWER = [
+        'id' => null,
+        'name' => 'Non risponde',
+        'description' => 'Nessuna risposta ricevuta dopo i tentativi di contatto effettuati.',
+        'color' => 'red',
+        'group' => WorkflowStatusGroup::ClosedLost->value,
+        'requires_note' => false,
+    ];
+
     public function run(): void
     {
         $service = app(QuoteWorkflowService::class);
@@ -53,6 +73,39 @@ class QualificaWorkflowSeeder extends Seeder
 
             $this->seedWorkflow($service, $category);
         }
+
+        $this->seedDefaultSetStatus($service);
+    }
+
+    /**
+     * Appends DEFAULT_SET_NO_ANSWER to the GLOBAL default set unless a row of
+     * that name is already there. The writer's sync is authoritative — a
+     * custom row left out is deleted — so every existing custom row is
+     * re-submitted as persisted, in its order: the configurator's edits
+     * survive. The pinned system rows are not submitted and stay untouched.
+     */
+    private function seedDefaultSetStatus(QuoteWorkflowService $service): void
+    {
+        $defaultStatuses = $service->defaultStatuses();
+
+        if ($defaultStatuses->contains('name', self::DEFAULT_SET_NO_ANSWER['name'])) {
+            return;
+        }
+
+        $existingCustoms = $defaultStatuses
+            ->reject(static fn (QuoteWorkflowStatus $status): bool => $status->isSystem())
+            ->map(static fn (QuoteWorkflowStatus $status): array => [
+                'id' => $status->id,
+                'name' => $status->name,
+                'description' => $status->description,
+                'color' => $status->color,
+                'group' => $status->group->value,
+                'requires_note' => $status->requires_note,
+            ])
+            ->values()
+            ->all();
+
+        $service->syncDefaultStatuses([...$existingCustoms, self::DEFAULT_SET_NO_ANSWER]);
     }
 
     /**

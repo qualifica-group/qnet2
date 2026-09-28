@@ -210,6 +210,7 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
         'Frequenta già corso GOL',
         'Non interessato/a',
         'Stato Rinunciatario',
+        'Non risponde',
         'Irreperibile',
         'Trasferito altra Sede QG',
         'Non pertinente - Altra regione',
@@ -225,7 +226,7 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
     // pinned closed_won row; every other closed state is a loss.
     expect($aplStatuses->pluck('group')->map(fn (WorkflowStatusGroup $group): string => $group->value)->countBy()->sortKeys()->all())
         ->toBe([
-            WorkflowStatusGroup::ClosedLost->value => 13,
+            WorkflowStatusGroup::ClosedLost->value => 14,
             WorkflowStatusGroup::ClosedWon->value => 1,
             WorkflowStatusGroup::Open->value => 6,
         ]);
@@ -400,7 +401,8 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
     // sheet, in the client's own order, with the colours sampled off it —
     // azzurro pending, verde chiaro the single positive outcome, pesca the
     // closures, no fill open. The column lists "OK App. Fissato APL" twice:
-    // folded to one (user directive 2026-09-10).
+    // folded to one (user directive 2026-09-10). "Non risponde" is off-sheet:
+    // added to every list (user directive 2026-09-28).
     $transcribed = array_map(
         static fn (array $status): array => [$status['name'], $status['group']],
         WorkflowStatusCatalogue::statusesFor('DIL'),
@@ -422,6 +424,7 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
         ['Numero Inesistente/Errato', WorkflowStatusGroup::ClosedLost->value],
         ['Associato NO _ Altro Ente', WorkflowStatusGroup::ClosedLost->value],
         ['NO _ Non ha Requisiti', WorkflowStatusGroup::ClosedLost->value],
+        ['Non risponde', WorkflowStatusGroup::ClosedLost->value],
         ['Irreperibile', WorkflowStatusGroup::ClosedLost->value],
         ['Doppione già associato', WorkflowStatusGroup::ClosedLost->value],
         ['Doppione', WorkflowStatusGroup::ClosedLost->value],
@@ -431,4 +434,19 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
         ['Autofinanziato', WorkflowStatusGroup::ClosedLost->value],
         ['In Standby', WorkflowStatusGroup::Open->value],
     ]);
+});
+
+it('offers "Non risponde" as a closed loss in every catalogue list (user directive 2026-09-28)', function (): void {
+    // Pure transcription check: every workflow carries it, classified as a
+    // loss. The pinned closed_lost labels stay put — asserted above.
+    foreach (array_keys(WorkflowStatusCatalogue::WORKFLOWS) as $categoryName) {
+        $noAnswer = array_find(
+            WorkflowStatusCatalogue::statusesFor($categoryName),
+            static fn (array $status): bool => $status['name'] === 'Non risponde',
+        );
+
+        expect($noAnswer)->not->toBeNull($categoryName)
+            ->and($noAnswer['group'])->toBe(WorkflowStatusGroup::ClosedLost->value, $categoryName)
+            ->and($noAnswer['color'])->toBe('red', $categoryName);
+    }
 });

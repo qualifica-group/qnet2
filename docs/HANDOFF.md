@@ -3,6 +3,45 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0174 MIGRAZIONE COSTI LEGACY -> PRODOTTI SOLO COSTO — NON COMMITTATO (2026-09-28)
+
+- Spec `docs/specs/0174-legacy-cost-products-migration.xml` (decisioni utente D-1/D-2/D-3).
+- Legacy (`/Users/Repository/qnet`, non committato): `Api/V2/CostProductMigrationController` +
+  `GET /api/v2/migration/cost-products` (UNION ALL di `products`/`vehicles`/`equipment`/`expense_reports`,
+  id riga `<source>:<source_id>`; 20 righe sul DB locale). Articoli: cost = `purchase`, price = `price`.
+- qnet-2: migrazione `2026_09_28_140000_add_old_source_to_products_table` (`old_source`, unique
+  (old_source, old_id), backfill `services`); `ProductsSource::OLD_SOURCE = 'services'` (idempotenza sulla coppia);
+  helper condivisi in `Sources/Concerns/MapsExternalProductRecord` (`resolveVatRate`, `unresolvableReference`,
+  `trimmedText`, sostituisce `mapDescription`/`mapCode` di ProductsSource).
+- Nuova sorgente `cost-products` (`Sources/CostProductsSource`, fase 5 di `MigrationOrder`): usages ["COST"],
+  ramo `Costi` > `Articoli` (+ sotto-categoria legacy) / `Veicoli` / `Attrezzature` / `Note spese` via
+  `Support/CostCategoryResolver` (firstOrCreate nome+padre, niente old_id); attributi text `cost_*` da
+  `Support/CostProductCatalogue`. Rev.2 (richiesta utente): `cost-products` e' in
+  `QualificaLegacyImportSeeder::SOURCES` (fase 5, ultima); la radice `Costi` non ha old_id e non viene annidata
+  sotto "Consulenza". `QualificaLegacyImportSeederTest` copre import + idempotenza.
+- `QuoteWorkflowMigrationTest` rollback a 110 step; `Unit/Migrations/MigrationRegistryTest` con la nuova sorgente
+  (requisito cambiato). Test `Migration/CostProductsSourceImportTest` (10, sanity-break verificato).
+- Verifica (dopo rev.2): `composer test` 8591 passati + 1 skip, Pint pulito; Vitest help 104/104, `tsc -b --force` e ESLint puliti.
+  Endpoint legacy provato via tinker sul DB locale (non via HTTP: `route:list` legacy rotto da errore preesistente).
+- Guide IT/EN `migrations` + manuale Claude Docs (rev 111, sezione Migrazioni) aggiornati.
+- Da fare in locale: `php artisan migrate`, poi Migrazioni: `vat-rates` prima di `cost-products`.
+
+## SEED PRODUZIONE — STATO "NON RISPONDE" IN TUTTI GLI STATI DI LAVORAZIONE — VERDE, NON COMMITTATO (2026-09-28)
+
+- Richiesta: aggiungere "Non risponde" (chiuso con esito negativo = `closed_lost`) a tutti gli stati di configurazione
+  del seed di produzione, anche al set di DEFAULT globale (solo produzione, non demo).
+- `WorkflowStatusCatalogue`: riga `Non risponde` (NEGATIVE, rossa) nelle sezioni GOL, AUTOIMPIEGO/YISU, APL (gia'
+  presente in AUTOFINANZIATO e CONSULENZA) e in ogni lista regionale GOL + `GOL_BASE_STATUSES` + DIL, sempre subito
+  prima di "Irreperibile": nessuna riga fissa `closed_lost` cambia etichetta.
+- `QualificaWorkflowSeeder::seedDefaultSetStatus()`: accoda `Non risponde` al set globale (`quote_workflow_id` null)
+  se manca; ripresenta le custom esistenti cosi' come sono (il sync del writer e' autoritativo). Idempotente.
+- LIMITE NOTO: i workflow gia' esistenti su un DB gia' seedato NON ricevono la riga (il seeder salta i workflow
+  esistenti per non toccare le modifiche del configuratore); il set di default invece si'. Serve un backfill se voluto.
+- Test: `QualificaWorkflowSeederTest` aggiornato (lista APL, conteggio closed_lost 13->14, trascrizione DIL) + nuovo test
+  "in ogni lista"; nuovo `QualificaDefaultSetStatusSeederTest` (sanity-break verificato). Pint pulito.
+  Suite completa: 8579 verdi, 2 rossi in `MigrationRegistryTest` dovuti al lavoro parallelo spec 0174 (`cost-products`,
+  file non tracciati altrui), estranei a questa modifica. Manuale: nessun impatto (non elenca gli stati del cliente).
+
 ## ANAGRAFICHE — GESTIONE DOCUMENTI COME OPPORTUNITA' (spec 0173) — VERDE, NON COMMITTATO (2026-09-28)
 
 - Richiesta: "Anagrafica bisogna inserire la gestione documenti come fatto in opportunita'". Ricalca spec 0134 (Commessa).

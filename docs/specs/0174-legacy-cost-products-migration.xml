@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0174-legacy-cost-products-migration" status="implemented" owner="utente" date="2026-09-28">
+
+  <goal>
+    Il modulo Migrazioni importa i COSTI del QNet legacy (prodotti di magazzino, veicoli, attrezzature, note spese)
+    come prodotti qnet-2 "Utilizzabile come costo" (usages = ["COST"]), sotto un ramo di categorie dedicato e con i
+    campi legacy senza equivalente nativo salvati come attributi di categoria.
+  </goal>
+
+  <context>
+    Nomi verificati il 2026-09-28.
+    Legacy (`/Users/Repository/qnet`, DB MySQL `qnet`):
+    - `products`(id, code, title, description, category_id -> `categories`(id, description), supplier_id (0 = nessuno),
+      brand, rate_id -> `rates`, price, purchase, barcode, ministerialcode, position, amount/ordered/techcard/...).
+    - `vehicles`(id, title, description, license_plate, price, rate_id).
+    - `equipment`(id, title, description, serial, brand, model, supplier_id, price, rate_id).
+    - `expense_reports`(id, title, description, rate_id, price) — "Note spese".
+    - Endpoint esistente `GET /api/v2/migration/products` = tabella `services` (catalogo vendibile), NON i costi.
+    qnet-2:
+    - `products.old_id` BIGINT unique = `services.id` (sorgente `products`). Gli id delle 4 tabelle costi si
+      sovrappongono a quelli di `services`.
+    - `ProductUsage::Cost` (spec 0142); `ProductService::create()` con `usages`, `attributeValues`, `code`
+      (fallback PRD-0001), unita'/tipologia di default.
+    - Attributi: `attributes`(code unique, name, type) + pivot `attribute_category`(context product, is_required,
+      sort_order); ereditati dai figli (`inherits_product_attributes` default true).
+    - `vat-rates` (fase 1) importa `rates` con `old_id`; `supplier_id` non rimappabile (registries senza old_id).
+  </context>
+
+  <decisions>
+    D-1  (utente) Categorie: radice "Costi" SENZA funzione aziendale con 4 figlie — "Articoli" (magazzino, nome
+         scelto al posto di "Prodotti"), "Veicoli", "Attrezzature", "Note spese". Gli articoli finiscono in una
+         sotto-categoria di "Articoli" col nome della loro categoria legacy (`categories.description`); senza
+         categoria legacy restano su "Articoli". Risolte per nome + genitore (firstOrCreate), senza `old_id`
+         (lo spazio `old_id` delle categorie e' quello di `service_categories`).
+    D-2  (utente) Campi extra come attributi di categoria (contesto product, tipo text, non obbligatori), creati se
+         mancanti (codice = chiave naturale) e assegnati in modo additivo:
+         Articoli: `cost_brand` Marca, `cost_barcode` Barcode, `cost_ministerial_code` Codice ministeriale,
+         `cost_storage_position` Posizione magazzino; Veicoli: `cost_license_plate` Targa;
+         Attrezzature: `cost_brand` Marca, `cost_model` Modello, `cost_serial_number` Matricola.
+    D-3  (utente) Importi: articoli cost = purchase, price = price; veicoli/attrezzature/note spese
+         cost = price = price legacy.
+    D-4  Idempotenza: nuova colonna `products.old_source` (tabella legacy di provenienza); unicita' su
+         (old_source, old_id) al posto di old_id. Le righe gia' migrate da `services` sono backfillate a
+         `services` e la sorgente `products` scrive/cerca solo `old_source = services`.
+    D-5  Nuova sorgente `cost-products` (fase 5, accanto a `products`): un solo endpoint legacy che unisce le 4
+         tabelle, id riga = `<source>:<source_id>`. Tipo prodotto Service, usages ["COST"], IVA rimappata via
+         `vat-rates` (non migrata -> vuota + warning), fornitore non rimappato (warning come `products`).
+         Codice legacy tenuto se libero, altrimenti PRD-sequenziale + warning.
+    D-6  Scartati (nessun uso nei costi): giacenza/ordinato, schede tecnica/sicurezza/etichetta del magazzino.
+    D-7  (utente, rev.2) Aggiunta a `QualificaLegacyImportSeeder::SOURCES` (fase 5, dopo
+         `product-category-attributes`): l'import legacy del seed porta anche i costi. La radice "Costi" non ha
+         `old_id`, quindi `nestImportedCategories()` non la sposta sotto "Consulenza".
+  </decisions>
+
+  <contract>
+    Legacy GET /api/v2/migration/cost-products?offset&amp;limit&amp;search -> { items[], pagination }
+      item: { id: "vehicles:3", source: "products"|"vehicles"|"equipment"|"expense_reports", source_id: int,
+              code: string|null, name, description: string|null, cost: number, price: number,
+              vat_rate_id: int|null, supplier_id: int|null, category_name: string|null,
+              brand, model, serial_number, license_plate, barcode, ministerial_code, storage_position: string|null }
+    qnet-2 sorgente `cost-products` (label "Cost products"), stessa shape nella preview.
+  </contract>
+
+  <acceptance>
+    AC-001  Migrazione: `products.old_source` aggiunta, righe con old_id backfillate a `services`, unicita'
+            (old_source, old_id); rollback ripristina lo schema.
+    AC-002  Import crea la radice "Costi" (nessuna funzione aziendale) e le 4 figlie; un articolo con categoria
+            legacy finisce nella sotto-categoria omonima sotto "Articoli".
+    AC-003  Ogni prodotto importato ha usages ["COST"], old_source = tabella legacy, old_id = id legacy, importi
+            secondo D-3, IVA rimappata.
+    AC-004  Targa/matricola/marca/modello/barcode/codice ministeriale/posizione salvati negli attribute_values
+            del prodotto; attributi assegnati alle categorie in contesto product.
+    AC-005  Re-import idempotente (skipped); un costo con lo stesso id di un servizio gia' migrato viene creato.
+    AC-006  La sorgente `products` non salta un servizio il cui id coincide con un costo gia' migrato.
+    AC-007  Riga senza nome -> errore di riga; codice legacy gia' usato -> PRD sequenziale + warning.
+    AC-008  Il seed `QualificaLegacyImportSeeder` importa i costi nella stessa mass run, la radice "Costi" resta
+            di primo livello e il re-run non duplica.
+  </acceptance>
+
+</spec>

@@ -7,10 +7,10 @@ use App\Enums\ProductType;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
+use App\Migrations\Sources\Concerns\MapsExternalProductRecord;
 use App\Migrations\Support\ExternalApiClient;
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\VatRate;
 use App\Services\ProductService;
 use RuntimeException;
 
@@ -35,9 +35,20 @@ use RuntimeException;
  * absent/blank value leaves it null so ProductService::create() falls back to
  * the sequential PRD-0001 generator (mirrors every other optional passthrough
  * field here), never duplicating the sequence across re-imports.
+ *
+ * `old_source` (spec 0174, D-4) is always `services`: CostProductsSource
+ * imports other legacy tables whose ids overlap, so idempotence is keyed on
+ * (old_source, old_id), never on `old_id` alone.
  */
 class ProductsSource extends AbstractMigrationSource
 {
+    use MapsExternalProductRecord;
+
+    /**
+     * The legacy table this source reads (the sellable catalogue).
+     */
+    public const string OLD_SOURCE = 'services';
+
     public function __construct(
         ExternalApiClient $client,
         private readonly ProductService $service,
@@ -112,7 +123,7 @@ class ProductsSource extends AbstractMigrationSource
             throw new RuntimeException('External id is required.');
         }
 
-        if ($this->existsByOldId(Product::class, $externalId)) {
+        if (Product::query()->where('old_source', self::OLD_SOURCE)->where('old_id', $externalId)->exists()) {
             return MigrationRowOutcome::skipped();
         }
 
@@ -126,17 +137,18 @@ class ProductsSource extends AbstractMigrationSource
 
         $product = $this->service->create(new CreateProductData(
             name: $name,
-            description: $this->mapDescription($record['description'] ?? null),
+            description: $this->trimmedText($record['description'] ?? null),
             cost: (float) ($record['cost'] ?? 0),
             price: (float) ($record['price'] ?? 0),
             categoryId: $this->resolveCategory($record['category_id'] ?? null),
             productType: $this->mapProductType($record['product_type'] ?? null, $warnings),
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),
-            code: $this->mapCode($record['code'] ?? null),
+            code: $this->trimmedText($record['code'] ?? null),
         ));
 
         $product->old_id = $externalId;
+        $product->old_source = self::OLD_SOURCE;
         $product->save();
 
         return MigrationRowOutcome::created($warnings, $product);
@@ -186,79 +198,5 @@ class ProductsSource extends AbstractMigrationSource
         }
 
         return $type;
-    }
-
-    /**
-     * Remap the OPTIONAL external VAT rate reference to the qnet vat_rate id via
-     * `old_id`. Absent/blank → null (no warning: the legacy row simply carries
-     * none); a reference that resolves to no migrated rate → null plus a
-     * non-fatal warning, never a failed row — a product is perfectly valid
-     * without a VAT rate, and failing here would block the whole catalogue on a
-     * missing lookup.
-     *
-     * @param  array<int, string>  $warnings
-     */
-    private function resolveVatRate(mixed $externalRef, array &$warnings): ?int
-    {
-        if ($externalRef === null || $externalRef === '') {
-            return null;
-        }
-
-        $id = $this->resolveOldId(VatRate::class, $externalRef);
-
-        if ($id === null) {
-            $warnings[] = "Unresolved vat_rate_id (external id {$externalRef}); left empty, migrate vat-rates first.";
-        }
-
-        return $id;
-    }
-
-    /**
-     * `supplier_id` cannot be remapped (`registries` carries no `old_id` and has
-     * no migration source). The external reference is dropped to null; a
-     * non-fatal warning records that the link was not carried.
-     *
-     * @param  array<int, string>  $warnings
-     */
-    private function unresolvableReference(string $field, mixed $externalRef, array &$warnings): ?int
-    {
-        if ($externalRef === null || $externalRef === '') {
-            return null;
-        }
-
-        $warnings[] = "{$field} (external id {$externalRef}) not remapped; the reference has no migration source and was left empty.";
-
-        return null;
-    }
-
-    /**
-     * A blank external description becomes null (the column is nullable);
-     * otherwise the trimmed string is kept.
-     */
-    private function mapDescription(mixed $externalDescription): ?string
-    {
-        if ($externalDescription === null) {
-            return null;
-        }
-
-        $description = trim((string) $externalDescription);
-
-        return $description !== '' ? $description : null;
-    }
-
-    /**
-     * A blank/absent external `code` becomes null, so ProductService::create()
-     * falls back to the sequential PRD-0001 generator (spec 0065, D-1b);
-     * otherwise the trimmed external value is kept as-is.
-     */
-    private function mapCode(mixed $externalCode): ?string
-    {
-        if ($externalCode === null) {
-            return null;
-        }
-
-        $code = trim((string) $externalCode);
-
-        return $code !== '' ? $code : null;
     }
 }

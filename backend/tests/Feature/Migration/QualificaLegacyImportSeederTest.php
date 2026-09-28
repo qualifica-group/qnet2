@@ -1,12 +1,14 @@
 <?php
 
 use App\Enums\MigrationStatus;
+use App\Enums\ProductUsage;
 use App\Models\Attribute;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\MassMigrationRun;
 use App\Models\MigrationRun;
 use App\Models\PaymentMethod;
+use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Role;
 use App\Models\Source;
@@ -99,6 +101,13 @@ function fakeLegacyCatalogues(): void
                 ['id' => 52, 'name' => 'Bandi Regionali', 'parent_id' => 51],
             ],
             'pagination' => ['total' => 2],
+        ]),
+        fakeMigrationsBaseUrl().'/cost-products*' => Http::response([
+            'items' => [[
+                'id' => 'vehicles:3', 'source' => 'vehicles', 'source_id' => 3, 'name' => 'Tagliando Smart',
+                'cost' => 140, 'price' => 140, 'vat_rate_id' => 61, 'license_plate' => 'FE700FV',
+            ]],
+            'pagination' => ['total' => 1],
         ]),
         fakeMigrationsBaseUrl().'/*' => Http::response(['items' => [], 'pagination' => ['total' => 0]]),
     ]);
@@ -207,10 +216,22 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and($subItem->parent_id)->toBe($rootItem->id)
         ->and($subItem->task_template_stage_id)->toBeNull();
 
+    // Spec 0174: the legacy costs land once, cost-only, under the "Costi"
+    // root, which stays at top level (no old_id, never nested).
+    $costRoot = ProductCategory::query()->where('name', 'Costi')->whereNull('parent_id')->sole();
+    $vehicle = Product::query()->where('old_source', 'vehicles')->where('old_id', 3)->sole();
+
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('cost-products')
+        ->and($vehicle->category_id)->toBe(ProductCategory::query()->where('name', 'Veicoli')->where('parent_id', $costRoot->id)->value('id'))
+        ->and($vehicle->usages->all())->toBe([ProductUsage::Cost])
+        ->and($vehicle->vat_rate_id)->toBe(VatRate::query()->where('old_id', 61)->value('id'))
+        ->and($vehicle->attribute_values)->toBe(['cost_license_plate' => 'FE700FV']);
+
     // was: 're-running the seeders never duplicates an imported catalogue'
     expect(Source::query()->count())->toBe($sourceCountAfterFirst)
         ->and(Tag::query()->where('name', 'Legacy Tag')->count())->toBe(1)
         ->and(ProductCategory::query()->where('name', 'Bandi')->count())->toBe(1)
+        ->and(Product::query()->where('old_source', 'vehicles')->count())->toBe(1)
         // Already nested by the first run: the second one moves nothing.
         ->and(ProductCategory::query()->where('old_id', 51)->value('parent_id'))
         ->toBe(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('id'))
