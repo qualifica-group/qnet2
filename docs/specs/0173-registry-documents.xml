@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0173-registry-documents" status="approved" owner="utente" date="2026-09-28">
+
+  <goal>
+    Gestione documenti sulle Anagrafiche identica a Opportunita': scheda "Documenti" nella colonna laterale del
+    dettaglio e azione "Documenti" (con badge del conteggio) nella riga della tabella.
+  </goal>
+
+  <context>
+    - Richiesta utente 2026-09-28: "Anagrafica bisogna inserire la gestione documenti come fatto in opportunita'".
+    - Precedenti: Opportunita' (sottosistema allegati polimorfico), Commessa (spec 0134 D-4), Task (spec 0117).
+    - Fuori scope: note sulle anagrafiche, documenti sui Referenti.
+  </context>
+
+  <decisions>
+    <decision id="D-1">`Registry` usa `HasAttachments`; alias `registry` in `config/attachments.php` (gia' nel morph
+      map globale). Nessun endpoint nuovo: upload/lista/download/eliminazione passano da `/api/attachments`,
+      autorizzati da `attachments.*` (nessun gate per record, come Opportunita'/Commessa).</decision>
+    <decision id="D-2">Nuova ability resource-level `registries.viewDocuments` (`RegistryPolicy`), esposta come
+      azione `view_documents` in `RegistriesAuthorization`. Apre la scheda e l'azione di riga, non il singolo
+      allegato. Serve `php artisan permissions:sync`; i ruoli Qualifica con il blocco Catalogo e Anagrafiche la
+      ricevono automaticamente (modulo concesso per intero).</decision>
+    <decision id="D-3">Tabella: azione `documents` (icona `paperclip`, `count_field = documents_count`) dopo `edit`,
+      quindi inline (view, edit, documents); `documents_count` conta solo la collection `documents`.</decision>
+    <decision id="D-4">Eliminare un'anagrafica elimina i suoi allegati e i file (hook di `HasAttachments`).</decision>
+  </decisions>
+
+  <data_contract>
+    GET /api/registries/{id}: `permissions.actions.view_documents: boolean`.
+    POST /api/tables/registries/rows: ogni riga + `documents_count: int`; `actions` puo' contenere `documents`.
+    GET /api/tables/registries/columns: `actions` + `{ key: documents, permission: registries.viewDocuments,
+    count_field: documents_count }`.
+    /api/attachments: `attachable_type = registry` ammesso.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Upload/lista con `attachable_type=registry`; upload 403 senza `attachments.create`.</criterion>
+    <criterion id="AC-002">`registries.viewDocuments` creato da `permissions:sync`; `view_documents` lo rispecchia.</criterion>
+    <criterion id="AC-003">Azione di riga `documents` e badge `documents_count` (solo collection `documents`)
+      presenti solo con `registries.viewDocuments`.</criterion>
+    <criterion id="AC-004">Eliminando l'anagrafica spariscono righe allegato e file.</criterion>
+    <criterion id="AC-005">FE: scheda Documenti nel dettaglio solo con `view_documents`, su alias `registry`;
+      azione di riga apre `DocumentsDialog` e alla chiusura aggiorna la griglia.</criterion>
+  </acceptance_criteria>
+
+  <tests>
+    Backend: `tests/Feature/Registries/RegistryDocumentsTest.php`.
+    Frontend: `registry-detail.test.tsx` (documents tab), `registries-table.test.tsx` (documents row action).
+  </tests>
+
+</spec>

@@ -40,6 +40,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'The **Title** is suggested automatically: the opportunity code followed by the products on the revenue lines of its quotes, not the products of interest (for example OPP_12 - ISO 9001 + SOA); with no products yet it is just the code. When editing, the field is prefilled: a title you type stays yours, even when the quotes change; clear the field to go back to the automatic title.',
         },
+        {
+          type: 'tip',
+          text: 'When you pick the **Registry**, **Sales rep**, **Reporter**, **Supervisor** and **Account managers** are filled with the registry\'s own. If you already entered different ones, QNet asks whether to **Replace** your values or **Keep mine**: nothing you chose is cleared without confirmation.',
+        },
       ],
     },
     {

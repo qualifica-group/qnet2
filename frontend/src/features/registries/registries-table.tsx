@@ -1,25 +1,37 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
-import { Plus } from 'lucide-react'
+import { Paperclip, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
+import { DocumentsDialog } from '@/features/attachments/documents-dialog'
 import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
 import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { registryColumnRenderers } from '@/features/registries/column-renderers'
-import { deleteRegistry } from '@/features/registries/api'
+import { deleteRegistry, REGISTRY_ATTACHABLE_ALIAS } from '@/features/registries/api'
 
 /** Domain key used to mount the generic table for registries. */
 const REGISTRIES_DOMAIN = 'registries'
+
+/**
+ * Domain icon override for the 'documents' row action (spec 0173): the backend
+ * catalog fixes its icon key as 'paperclip', absent from the shared defaults
+ * in `action-icon-map.ts`. Hoisted at module level so its identity stays
+ * stable across renders, mirroring `OPPORTUNITIES_ACTION_ICONS`.
+ */
+const REGISTRIES_ACTION_ICONS: ActionIconMap = {
+  paperclip: Paperclip,
+}
 
 /**
  * Thin Registries adapter over the generic table. It mounts `<TableView>` with
@@ -30,7 +42,8 @@ const REGISTRIES_DOMAIN = 'registries'
  * generic table still owns the delete flow (confirm + toast + grid refresh)
  * and the SSRM grid refresh after every mutation via the table's imperative
  * handle. Permission gating is an affordance only; the backend re-authorizes
- * each call.
+ * each call. The `documents` row action (spec 0173) opens the shared
+ * `DocumentsDialog`, exactly like Opportunita'.
  */
 export function RegistriesTable() {
   const { t } = useTranslation()
@@ -42,6 +55,7 @@ export function RegistriesTable() {
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+  const [documentsRowId, setDocumentsRowId] = useState<number | null>(null)
 
   // After a modal create/edit succeeds the Sheet closes itself; the grid and
   // the stats panel are this adapter's to refresh. The detail query is
@@ -88,11 +102,26 @@ export function RegistriesTable() {
         case 'activity':
           setActivityRow(row)
           break
+        case 'documents':
+          setDocumentsRowId(Number(row.id))
+          break
         default:
           break
       }
     },
     [openView, openEdit, runDelete],
+  )
+
+  // Documents are edited from inside the dialog (upload/delete); refresh the
+  // grid on close so the row's `documents_count` badge reflects the change.
+  const handleDocumentsOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setDocumentsRowId(null)
+        refreshGrid()
+      }
+    },
+    [refreshGrid],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
@@ -125,6 +154,7 @@ export function RegistriesTable() {
         renderers={registryColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}
+        iconMap={REGISTRIES_ACTION_ICONS}
       />
 
       {sheet}
@@ -137,6 +167,12 @@ export function RegistriesTable() {
             setActivityRow(null)
           }
         }}
+      />
+
+      <DocumentsDialog
+        resource={REGISTRY_ATTACHABLE_ALIAS}
+        id={documentsRowId}
+        onOpenChange={handleDocumentsOpenChange}
       />
     </div>
   )

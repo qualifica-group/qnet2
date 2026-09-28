@@ -36,6 +36,16 @@ vi.mock('@/features/personal-data/contacts-manager', () => ({
   ContactsManager: () => <div data-testid="contacts" />,
 }))
 
+// Spec 0173: the documents tab mounts the shared DocumentsSection, whose own
+// upload/delete flow is covered by `documents-section.test.tsx`.
+const documentsSectionMock = vi.fn()
+vi.mock('@/features/attachments/documents-section', () => ({
+  DocumentsSection: (props: { resource: string; id: number }) => {
+    documentsSectionMock(props)
+    return <div>{`documents-section:${props.resource}:${props.id}`}</div>
+  },
+}))
+
 function card(overrides: Partial<PersonalDataCard> = {}): PersonalDataCard {
   return {
     id: 1,
@@ -211,6 +221,29 @@ describe('RegistryDetailView — record card (user directive 2026-09-11)', () =>
       />,
     )
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+})
+
+describe('RegistryDetailView — documents tab (spec 0173)', () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage('en')
+  })
+
+  it('hides the Documents tab without the view_documents gate', () => {
+    render(<RegistryDetailView registry={registry()} />)
+    expect(screen.queryByRole('tab', { name: 'Documents' })).not.toBeInTheDocument()
+  })
+
+  it("shows the Documents tab on the registry's own attachable alias with view_documents", () => {
+    render(
+      <RegistryDetailView
+        registry={registry({ permissions: { ...registry().permissions, actions: { view_documents: true } } })}
+      />,
+    )
+
+    expect(screen.getByRole('tab', { name: 'Documents' })).toBeInTheDocument()
+    expect(screen.getByText('documents-section:registry:1')).toBeInTheDocument()
+    expect(documentsSectionMock).toHaveBeenCalledWith(expect.objectContaining({ resource: 'registry', id: 1 }))
   })
 })
 

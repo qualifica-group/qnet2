@@ -33,6 +33,16 @@ vi.mock('@/components/page-header', () => ({
   PageHeader: ({ actions }: { actions?: ReactNode }) => <div>{actions}</div>,
 }))
 
+const documentsSectionMock = vi.fn()
+vi.mock('@/features/attachments/documents-section', () => ({
+  DocumentsSection: (props: { resource: string; id: number; canUpload: boolean; canDelete: boolean }) => {
+    documentsSectionMock(props)
+    return <div>{`documents-section:${props.resource}:${props.id}`}</div>
+  },
+}))
+
+const refreshMock = vi.fn()
+
 const ROW: TableRow = { id: 12, actions: ['view', 'edit'] }
 const action = (key: string): TableActionDefinition => ({
   key,
@@ -47,7 +57,7 @@ vi.mock('@/features/table/table-view', () => ({
     { refresh: () => void },
     { domain: string; onAction: RowActionHandler }
   >(function TableViewStub({ domain, onAction }, ref) {
-    useImperativeHandle(ref, () => ({ refresh: () => {} }))
+    useImperativeHandle(ref, () => ({ refresh: refreshMock }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
         <button type="button" onClick={() => onAction(action('view'), ROW)}>
@@ -55,6 +65,9 @@ vi.mock('@/features/table/table-view', () => ({
         </button>
         <button type="button" onClick={() => onAction(action('edit'), ROW)}>
           row-edit
+        </button>
+        <button type="button" onClick={() => onAction(action('documents'), ROW)}>
+          row-documents
         </button>
       </div>
     )
@@ -88,6 +101,8 @@ beforeAll(async () => {
 beforeEach(() => {
   canMock.mockReset()
   canMock.mockReturnValue(true)
+  refreshMock.mockReset()
+  documentsSectionMock.mockReset()
 })
 
 describe('RegistriesTable — navigation to the dedicated pages (AC-A1)', () => {
@@ -121,5 +136,29 @@ describe('RegistriesTable — navigation to the dedicated pages (AC-A1)', () => 
     renderTable()
 
     expect(screen.queryByRole('button', { name: /new registry/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('RegistriesTable — "documents" row action (spec 0173)', () => {
+  it('opens the documents dialog on the registry attachable alias', () => {
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'row-documents' }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('documents-section:registry:12')).toBeInTheDocument()
+    expect(documentsSectionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'registry', id: 12, canUpload: true, canDelete: true }),
+    )
+  })
+
+  it('refreshes the grid when the dialog closes, so the documents badge stays current', () => {
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'row-documents' }))
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(refreshMock).toHaveBeenCalledTimes(1)
   })
 })

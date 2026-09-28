@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AgreementStatusEnum;
 use App\Enums\SizeClassEnum;
 use App\Models\Abstracts\BaseModel;
+use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasPersonalData;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\RegistryFactory;
@@ -24,6 +25,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `referents.name`, see RegistryProfileWriter). A registry represents
  * primarily a client but, via `is_supplier`, the SAME entity can also be
  * managed as a supplier (no duplication).
+ *
+ * `HasAttachments` (spec 0173): the registry's documents, alias `registry` in
+ * config/attachments.php (same identity as the global morph map).
  */
 #[Fillable([
     'name',
@@ -42,7 +46,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Registry extends BaseModel
 {
     /** @use HasFactory<RegistryFactory> */
-    use HasFactory, HasPersonalData, LogsModelActivity;
+    use HasAttachments, HasFactory, HasPersonalData, LogsModelActivity;
 
     /**
      * @return array<string, string>

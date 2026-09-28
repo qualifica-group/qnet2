@@ -5,6 +5,7 @@ use App\Models\Contract;
 use App\Models\DocumentLayout;
 use App\Models\Note;
 use App\Models\Opportunity;
+use App\Models\Registry;
 use App\Models\Task;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
@@ -114,6 +115,10 @@ return [
         // alias is already in the global morph map, this only opens the
         // upload boundary.
         'work_order' => WorkOrder::class,
+        // Registry documents (spec 0173): same treatment as 'work_order' --
+        // the alias is already in the global morph map, this only opens the
+        // upload boundary.
+        'registry' => Registry::class,
         // Note and task-template-header images embedded in a rich text field
         // (spec 0128, D-3): the record is its own attachment owner, under
         // the reserved `rich_text` collection (RichText::ATTACHMENT_COLLECTION).

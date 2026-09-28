@@ -126,7 +126,7 @@ const guide: HelpGuide = {
         { type: 'steps', items: ['Type in the box "Write a note, use @ to mention a colleague…".', 'To involve a colleague, type **@**, pick the name and confirm with **Tab** or **Enter**: they will receive a notification.', 'Press **Send**.'] },
         { type: 'paragraph', text: 'Use **Reply** to open a response under the note. Only the author sees **Edit note** and **Delete note**; an edited note shows "(edited)". In **Opportunities**, a note can be general or tied to a quote: filter by **All notes**, **General notes** or the quote name.' },
         { type: 'warning', text: 'Deleting a note also removes its replies.' },
-        { type: 'paragraph', text: 'The **Documents** section collects the files of a record, for example in **Opportunities**, **Quotes**, **Contracts**, **Work orders**, **Tasks** and **Request Management**.' },
+        { type: 'paragraph', text: 'The **Documents** section collects the files of a record, for example in **Registries**, **Opportunities**, **Quotes**, **Contracts**, **Work orders**, **Tasks** and **Request Management**.' },
         { type: 'steps', items: ["Open the record's **Documents** section, or the **Documents** action on the row.", 'Drag one or more files into the upload area, or click it to pick them.', 'Wait for the upload to finish.'] },
         {
           type: 'table',

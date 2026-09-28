@@ -158,6 +158,13 @@ export const opportunities = {
     managers: 'Account managers',
     managersMax: 'An opportunity has at most {{max}} managers.',
     managersSyncHint: 'Synced with its quote: a change here updates the quote’s account managers too, and vice versa.',
+    registryRolesConfirm: {
+      title: "Replace the roles with the registry's?",
+      description:
+        "The Sales rep, Reporter, Supervisor or Account managers you entered differ from the selected registry's. Replacing them fills the fields with the registry's values (empty if it has none).",
+      replace: 'Replace',
+      keep: 'Keep mine',
+    },
     startDate: 'Start date',
     expectedCloseDate: 'Expected close date',
     estimatedValue: 'Estimated value',

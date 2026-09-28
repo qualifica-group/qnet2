@@ -11,6 +11,7 @@ use App\Models\ProductCategory;
 use App\Models\Role;
 use App\Models\Source;
 use App\Models\Tag;
+use App\Models\TaskTemplate;
 use App\Models\User;
 use App\Models\VatRate;
 use Database\Seeders\QualificaCatalogSeeder;
@@ -67,6 +68,15 @@ function fakeLegacyCatalogues(): void
         ]),
         fakeMigrationsBaseUrl().'/payment-methods*' => Http::response([
             'items' => [['id' => 41, 'name' => 'Bonifico bancario', 'code' => 'bank_transfer', 'payment_days' => 30]],
+            'pagination' => ['total' => 1],
+        ]),
+        fakeMigrationsBaseUrl().'/task-templates*' => Http::response([
+            'items' => [['id' => 47, 'name' => 'ISO_Modello Iso_rev. 1_ (Attivo)', 'stages' => [
+                ['id' => 323, 'name' => 'LAVORAZIONE', 'position' => 1, 'items' => [
+                    ['id' => 392, 'parent_id' => null, 'title' => 'Primo contatto', 'description' => null, 'estimated_hours' => null, 'estimated_minutes' => null, 'position' => 1],
+                    ['id' => 393, 'parent_id' => 392, 'title' => 'Invio email', 'description' => null, 'estimated_hours' => null, 'estimated_minutes' => null, 'position' => 2],
+                ]],
+            ]]],
             'pagination' => ['total' => 1],
         ]),
         fakeMigrationsBaseUrl().'/company-sites*' => Http::response([
@@ -183,6 +193,19 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         // Phase 2 runs after phase 1 in this seed: the company_id is remapped
         // onto the company the SAME run imported, not left unlinked.
         ->and($legacySite->company_id)->toBe(Company::query()->where('old_id', 21)->value('id'));
+
+    // Spec 0172: the legacy task templates land with their stage and sub-task
+    // tree, once — the re-run above skipped the model by its old_id.
+    $taskTemplate = TaskTemplate::query()->where('old_id', 47)->sole();
+    $rootItem = $taskTemplate->items()->where('title', 'Primo contatto')->sole();
+    $subItem = $taskTemplate->items()->where('title', 'Invio email')->sole();
+
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('task-templates')
+        ->and($taskTemplate->is_active)->toBeTrue()
+        ->and($taskTemplate->stages()->pluck('name')->all())->toBe(['LAVORAZIONE'])
+        ->and($rootItem->task_template_stage_id)->toBe($taskTemplate->stages()->value('id'))
+        ->and($subItem->parent_id)->toBe($rootItem->id)
+        ->and($subItem->task_template_stage_id)->toBeNull();
 
     // was: 're-running the seeders never duplicates an imported catalogue'
     expect(Source::query()->count())->toBe($sourceCountAfterFirst)

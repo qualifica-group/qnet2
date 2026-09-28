@@ -69,6 +69,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'registry-documents',
+      title: "Documenti dell'anagrafica",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Ogni anagrafica raccoglie i suoi file (visure, contratti quadro, certificazioni) nella scheda Documenti, nella colonna di destra del dettaglio. Dalla tabella li apri anche con l'azione Documenti della riga, che mostra quanti file ci sono.",
+        },
+        {
+          type: 'steps',
+          items: [
+            "Apri il dettaglio dell'anagrafica e scegli la scheda Documenti, oppure premi Documenti nella riga della tabella.",
+            "Trascina uno o più file nell'area di caricamento, oppure cliccala per sceglierli.",
+            'Attendi la fine del caricamento: il file compare nella lista, pronto da scaricare.',
+          ],
+        },
+        {
+          type: 'tip',
+          text: "La scheda e l'azione Documenti compaiono solo con il permesso Visualizza documenti delle Anagrafiche; per caricare o eliminare file servono anche i permessi sui Documenti. Eliminando un'anagrafica si eliminano anche i suoi documenti.",
+        },
+      ],
+    },
+    {
       id: 'new-client-flow',
       title: 'Flusso tipico: un nuovo cliente con referenti e sedi',
       blocks: [

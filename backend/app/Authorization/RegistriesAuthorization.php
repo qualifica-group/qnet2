@@ -72,7 +72,7 @@ class RegistriesAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents'];
     }
 
     /**
@@ -147,6 +147,10 @@ class RegistriesAuthorization extends AbstractResourceAuthorization
             // record-level `registries.view` boundary is enforced separately
             // by GET /api/activity-log/registries/{id} itself.
             'view_activity' => $model !== null && $actor->can('registries.viewActivity'),
+            // Gates the documents tab in the detail (spec 0173); the
+            // per-attachment boundary is enforced separately by
+            // AttachmentPolicy on each attachment endpoint.
+            'view_documents' => $model !== null && $actor->can('registries.viewDocuments'),
         ];
     }
 }

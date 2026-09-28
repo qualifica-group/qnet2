@@ -63,7 +63,11 @@ class RegistriesTableDefinition extends AbstractTableDefinition
         // Eager-load source + the card's contacts (spec 0020 AC-015), so
         // mapRow reads source/primary_contact entirely from memory — a fixed
         // number of queries regardless of row count.
-        return Registry::query()->with(['source', 'personalData.contacts']);
+        return Registry::query()
+            ->with(['source', 'personalData.contacts'])
+            // Per-row count for the `documents` action badge (spec 0173),
+            // scoped to the 'documents' collection only, as Opportunita'.
+            ->withCount(['attachments as documents_count' => fn (Builder $q) => $q->where('collection', 'documents')]);
     }
 
     /**
@@ -128,6 +132,7 @@ class RegistriesTableDefinition extends AbstractTableDefinition
             'size_class' => $row->size_class?->value,
             'primary_contact' => $this->contactColumn->format($row->personalData?->contacts),
             'created_at' => $row->created_at,
+            'documents_count' => (int) ($row->documents_count ?? 0),
         ];
     }
 
@@ -146,6 +151,10 @@ class RegistriesTableDefinition extends AbstractTableDefinition
 
         if (Gate::forUser($actor)->allows('update', $row)) {
             $allowed[] = 'edit';
+        }
+
+        if (Gate::forUser($actor)->allows('viewDocuments', $row)) {
+            $allowed[] = 'documents';
         }
 
         if (Gate::forUser($actor)->allows('delete', $row)) {

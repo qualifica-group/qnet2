@@ -202,6 +202,7 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
               <OpportunityClientSection
                 control={form.control}
                 setValue={form.setValue}
+                getValues={form.getValues}
                 selectedItems={selectedItems}
                 lockedFields={lockedFields}
                 blockingOpportunity={blockingOpportunity}

@@ -59,6 +59,9 @@ class QualificaLegacyImportSeeder extends Seeder
         'sectors',
         'vat-rates',
         'payment-methods',
+        // The task templates (spec 0172) are template data too: stages,
+        // actions and sub-actions of every legacy model, no cross-source link.
+        'task-templates',
         // Phase 2 — company sites ("Societa Sedi") resolve their owning
         // company through the phase-1 `companies` old_id, so they can only run
         // once that anchor is in. The rest of phase 2 (users, referents) stays

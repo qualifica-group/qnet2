@@ -3,6 +3,49 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ANAGRAFICHE — GESTIONE DOCUMENTI COME OPPORTUNITA' (spec 0173) — VERDE, NON COMMITTATO (2026-09-28)
+
+- Richiesta: "Anagrafica bisogna inserire la gestione documenti come fatto in opportunita'". Ricalca spec 0134 (Commessa).
+- Backend: `HasAttachments` su `Registry`, alias `registry` in `config/attachments.php` (gia' nel morph map); nuova
+  ability `registries.viewDocuments` (`RegistryPolicy`) esposta come azione `view_documents`
+  (`RegistriesAuthorization`). Tabella: azione `documents` (paperclip, `count_field` `documents_count`, dopo `edit`
+  -> inline), `withCount` solo collection `documents`. Allegati autorizzati da `attachments.*` (nessun gate per record).
+  SERVE `php artisan permissions:sync`; i ruoli Qualifica col blocco Catalogo e Anagrafiche la ricevono da soli.
+- Frontend: `REGISTRY_ATTACHABLE_ALIAS` in `registries/api.ts`; `registry-detail.tsx` con `useCollaborationTabs`
+  (Documenti | Cronologia); `registries-table.tsx` con `DocumentsDialog` + `REGISTRIES_ACTION_ICONS`, refresh griglia
+  alla chiusura.
+- Test: `RegistryDocumentsTest` (7); `registry-detail.test.tsx` (+2), `registries-table.test.tsx` (+2), sanity-break
+  verificato. Pest suite completa 8578 verdi (1 skipped), Pint pulito; Vitest registries/help/attachments 176 verdi;
+  `tsc -b --force` 0 errori; ESLint pulito sui file toccati.
+- Guide in-app IT/EN: `registries` nuova sezione `registry-documents`, `general` (elenco moduli con Documenti).
+  Manuale Claude Docs aggiornato (rev 109): nuova sottosezione "Documenti dell'anagrafica" + elenco in "Documenti".
+- Preesistente, non toccato: ESLint `registry-form-metadata.test.tsx:271` (`_omit` inutilizzato).
+- Da verificare a mano: upload dal dettaglio (pagina e Sheet) e dall'azione di riga, badge conteggio.
+
+## TEAM OPPORTUNITA' PERSO ALLA SCELTA DELL'ANAGRAFICA + TEAM OFFERTA STALE — VERDE, NON COMMITTATO (2026-09-28)
+
+- Bug 1 (causa): la sezione Team (e Attribuzione) sta SOPRA Cliente; scegliere l'anagrafica azzerava Commerciale,
+  Segnalatore, Supervisore e G.A. sostituendoli con quelli dell'anagrafica (spesso vuoti) -> team perso al salvataggio.
+  Backend corretto (nessuna modifica). Decisione utente 2026-09-28: chiedere conferma, su tutti e 4 i campi.
+- Nuovo `features/opportunities/use-registry-role-inheritance.ts` (sostituisce `applyRegistrySelection` inline in
+  `opportunity-registry-field.tsx`): valori inseriti dall'utente (pieni e diversi da quanto ereditato dall'anagrafica
+  precedente) che cambierebbero -> dialog `useConfirm` (`opportunities.form.registryRolesConfirm.*`, "Sostituisci" /
+  "Mantieni i miei"); valori ereditati dall'anagrafica precedente si sostituiscono senza chiedere. G.A. sempre
+  paddati a `DEFAULT_MANAGER_SLOTS` (4 card visibili anche per anagrafica senza gestori). Risposte fuori ordine
+  ignorate (`requestRef`). `getValues` passato da `OpportunityFormBody` -> `OpportunityClientSection` -> registry field.
+- Bug 2 (causa): il form Offerta copia ruoli/team dal `meta` di `opportunities/for-select`, cache labels con
+  `staleTime` 5 min e applicata una sola volta. `useOpportunityFormSubmit` ora fa `resetQueries` (non invalidate:
+  il dato stale verrebbe servito e applicato prima del refetch) su `forSelectKeys.resource('opportunities')` dopo
+  create e update.
+- Test: blocco anagrafica spostato da `opportunity-form-body.test.tsx` (474 righe) al nuovo
+  `opportunity-registry-role-inheritance.test.tsx`; requisito cambiato su 2 test (conferma "Replace" prima del
+  re-inherit; 4 card G.A. vuote invece di nessuna) + 2 nuovi (Keep mine / Replace). Nuovi
+  `use-registry-role-inheritance.test.ts` (9) e `use-opportunity-form-submit-cache.test.tsx` (2, sanity-break
+  verificato con invalidateQueries). Suite opportunities/quotes/help verde, eslint e `tsc -b --force` puliti.
+- Manuale: guida in-app `opportunities` IT/EN (tip nella sezione creazione) + Manuale Utente QNet (paragrafo
+  "Anagrafica e ruoli" dopo "Titolo.").
+- Fuori scope (segnalato): la sync G.A. offerta -> opportunita' (spec 0087 D-7) non resetta la cache for-select.
+
 ## LINK DELLE SCHEDE DETTAGLIO FILTRATI PER PERMESSI (OFFERTE -> GESTIONE RICHIESTE) — VERDE, NON COMMITTATO (2026-09-28)
 
 - Richiesta utente: nelle schede dettaglio nessun link a un record che l'utente non puo' vedere; l'Offerta apre
@@ -45,7 +88,9 @@
 - Migrazione: sorgente `task-templates` (`Migrations\Sources\TaskTemplatesSource` + `Support\TaskTemplateTreeFlattener`,
   345 righe, sopra soft limit), fase 1 di `MigrationOrder`, idempotenza su `task_templates.old_id`; duplicati
   "<nome> (old_id N)", `is_active` false se il titolo contiene "non attivo", sotto-azioni anomale promosse a radice
-  con warning, descrizioni via `RichTextConverter::plainTextToHtml`.
+  con warning, descrizioni via `RichTextConverter::plainTextToHtml`. `task-templates` e' anche in
+  `QualificaLegacyImportSeeder::SOURCES` (fase 1, dopo `payment-methods`): il seed di produzione importa i modelli
+  legacy nella stessa mass run (`QualificaLegacyImportSeederTest` copre import e idempotenza).
 - Legacy (`/Users/Repository/qnet`, non committato): `Api/V2/TaskTemplateMigrationController` +
   `GET /api/v2/migration/task-templates` (proiezione grezza, 39 modelli / 136 fasi / 1297 azioni sul DB locale).
   `route:list` nel legacy fallisce per un errore preesistente (`App\Http\Controllers\email`).

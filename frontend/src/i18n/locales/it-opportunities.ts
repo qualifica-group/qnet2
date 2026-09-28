@@ -159,6 +159,13 @@ export const opportunities = {
     managers: 'Gestori account',
     managersMax: "Un'opportunità ha al massimo {{max}} gestori.",
     managersSyncHint: "Sincronizzato con la sua offerta: una modifica qui aggiorna anche i gestori account dell'offerta, e viceversa.",
+    registryRolesConfirm: {
+      title: "Sostituire i ruoli con quelli dell'anagrafica?",
+      description:
+        "Commerciale, Segnalatore, Supervisore o Gestori account inseriti sono diversi da quelli dell'anagrafica selezionata. Sostituendoli, i campi prendono i valori dell'anagrafica (vuoti se non ne ha).",
+      replace: 'Sostituisci',
+      keep: 'Mantieni i miei',
+    },
     startDate: 'Data inizio',
     expectedCloseDate: 'Data chiusura prevista',
     estimatedValue: 'Valore stimato',

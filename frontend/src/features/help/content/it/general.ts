@@ -126,7 +126,7 @@ const guide: HelpGuide = {
         { type: 'steps', items: ['Scrivi nel riquadro "Scrivi una nota, usa @ per menzionare un collega…".', 'Per coinvolgere un collega digita **@**, scegli il nome e conferma con **Tab** o **Invio**: riceverà una notifica.', 'Premi **Invia**.'] },
         { type: 'paragraph', text: 'Con **Rispondi** apri una risposta sotto la nota. Solo l’autore vede **Modifica nota** ed **Elimina nota**; una nota modificata riporta "(modificato)". Nelle **Opportunità** una nota può essere generale o legata a un’offerta: filtra con **Tutte le note**, **Note generali** o il nome dell’offerta.' },
         { type: 'warning', text: 'Eliminando una nota scompaiono anche le sue risposte.' },
-        { type: 'paragraph', text: 'La sezione **Documenti** raccoglie i file di un record, per esempio in **Opportunità**, **Offerte**, **Contratti**, **Commesse**, **Task** e **Gestione Richieste**.' },
+        { type: 'paragraph', text: 'La sezione **Documenti** raccoglie i file di un record, per esempio in **Anagrafiche**, **Opportunità**, **Offerte**, **Contratti**, **Commesse**, **Task** e **Gestione Richieste**.' },
         { type: 'steps', items: ['Apri la sezione **Documenti** del record, oppure l’azione **Documenti** nella riga.', 'Trascina uno o più file nell’area di caricamento, oppure cliccala per sceglierli.', 'Attendi la fine del caricamento.'] },
         {
           type: 'table',

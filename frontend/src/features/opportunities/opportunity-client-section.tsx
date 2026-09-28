@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Contact } from 'lucide-react'
-import { useWatch, type Control, type UseFormSetValue } from 'react-hook-form'
+import { useWatch, type Control, type UseFormGetValues, type UseFormSetValue } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/components/record-form/layout'
 import { RelationSelectField } from '@/components/form/relation-select-field'
@@ -17,6 +17,7 @@ import type { OpportunitySelectedItems } from '@/features/opportunities/use-oppo
 interface OpportunityClientSectionProps {
   control: Control<OpportunityFormValues>
   setValue: UseFormSetValue<OpportunityFormValues>
+  getValues: UseFormGetValues<OpportunityFormValues>
   selectedItems: OpportunitySelectedItems
   /** BR-2: keys derived from a linked Lead, forced read-only (spec 0040 MT-6; empty outside that flow). */
   lockedFields: ReadonlySet<string>
@@ -39,6 +40,7 @@ interface OpportunityClientSectionProps {
 export function OpportunityClientSection({
   control,
   setValue,
+  getValues,
   selectedItems,
   lockedFields,
   blockingOpportunity = null,
@@ -67,6 +69,7 @@ export function OpportunityClientSection({
       <OpportunityRegistryField
         control={control}
         setValue={setValue}
+        getValues={getValues}
         selected={selectedItems.registry}
         forceDisabled={lockedFields.has('registry_id')}
       />

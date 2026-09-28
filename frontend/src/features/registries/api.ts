@@ -9,6 +9,13 @@ import type {
 } from '@/features/registries/types'
 
 /**
+ * Attachable alias of a registry's documents (spec 0173): the value
+ * `config/attachments.php` maps to `Registry`, identical to the record's
+ * morph identity. Mirrors `WORK_ORDER_ATTACHABLE_ALIAS`.
+ */
+export const REGISTRY_ATTACHABLE_ALIAS = 'registry'
+
+/**
  * Query key of a single registry's detail (fresh-on-open pattern). Shared by
  * the detail/edit pages and by the post-mutation invalidation, so they can
  * never drift apart. `null` (an unparsable route param) is a key that is never

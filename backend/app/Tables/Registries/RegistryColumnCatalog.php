@@ -141,6 +141,15 @@ final class RegistryColumnCatalog
                 'permission' => 'registries.update',
             ],
             [
+                'key' => 'documents',
+                'label' => 'actions.documents',
+                'icon' => 'paperclip',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'registries.viewDocuments',
+                'count_field' => 'documents_count',
+            ],
+            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

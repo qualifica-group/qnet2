@@ -40,6 +40,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: "Il **Titolo** è proposto in automatico: il codice dell'opportunità seguito dai prodotti delle righe di ricavo delle offerte, non dai prodotti di interesse (per esempio OPP_12 - ISO 9001 + SOA); finché non ci sono prodotti vale solo il codice. In modifica il campo è precompilato: se scrivi un titolo tuo resta quello, anche quando cambiano le offerte; svuota il campo per tornare al titolo automatico.",
         },
+        {
+          type: 'tip',
+          text: "Scegliendo l'**Anagrafica**, **Commerciale**, **Segnalatore**, **Supervisore** e **Gestori account** vengono compilati con quelli dell'anagrafica. Se li hai già inseriti tu e sono diversi, QNet chiede se **Sostituire** i tuoi valori o **Mantenere i tuoi**: nulla di ciò che hai scelto viene cancellato senza conferma.",
+        },
       ],
     },
     {

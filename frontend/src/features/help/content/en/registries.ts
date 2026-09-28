@@ -69,6 +69,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'registry-documents',
+      title: 'Registry documents',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Each registry keeps its files (company reports, framework agreements, certifications) in the Documents tab, in the right column of the record view. From the table you also open them with the Documents row action, which shows how many files there are.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the registry record and choose the Documents tab, or press Documents on the table row.',
+            'Drag one or more files into the upload area, or click it to pick them.',
+            'Wait for the upload to finish: the file appears in the list, ready to download.',
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'The Documents tab and action appear only with the Registries View documents permission; uploading or deleting files also needs the Documents permissions. Deleting a registry also deletes its documents.',
+        },
+      ],
+    },
+    {
       id: 'new-client-flow',
       title: 'Typical flow: a new client with referents and sites',
       blocks: [

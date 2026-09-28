@@ -7,7 +7,9 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { forSelectKeys } from '@/features/for-select/query-keys'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
+import { OPPORTUNITIES_FOR_SELECT_RESOURCE } from '@/features/opportunities/for-select-api'
 import {
   createOpportunity,
   OPPORTUNITIES_DOMAIN,
@@ -263,6 +265,13 @@ export function useOpportunityFormSubmit({
   const [serverError, setServerError] = useState<string | null>(null)
   const [blockingOpportunity, setBlockingOpportunity] = useState<BlockingOpportunity | null>(null)
 
+  // The opportunity for-select `meta` is what a new Offerta copies its roles
+  // and team from. RESET, not invalidate: the Offerta form applies that meta
+  // once, as soon as it is available, so a stale entry still served while
+  // refetching would win over the saved values.
+  const resetOpportunityForSelect = () =>
+    void queryClient.resetQueries({ queryKey: forSelectKeys.resource(OPPORTUNITIES_FOR_SELECT_RESOURCE) })
+
   const onSubmit = async (values: OpportunityFormValues) => {
     setServerError(null)
     setBlockingOpportunity(null)
@@ -273,6 +282,7 @@ export function useOpportunityFormSubmit({
         queryClient.setQueryData(opportunityDetailQueryKey(mode.opportunity.id), saved)
         toast.success(t('opportunities.form.updated'))
         invalidateStats()
+        resetOpportunityForSelect()
         onSuccess(saved)
         return
       }
@@ -285,6 +295,7 @@ export function useOpportunityFormSubmit({
       const created = await createOpportunity(buildCreatePayload(values, leadSubmission.fromLead ?? undefined))
       toast.success(t('opportunities.form.created'))
       invalidateStats()
+      resetOpportunityForSelect()
       onSuccess(created)
     } catch (error) {
       // The open-opportunity refusal owns its own alert (message + link to the
